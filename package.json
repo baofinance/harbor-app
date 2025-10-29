@@ -17,12 +17,15 @@
     "@radix-ui/react-select": "^2.1.6",
     "@reown/appkit": "^1.7.15",
     "@reown/appkit-adapter-wagmi": "^1.7.15",
-    "@tanstack/react-query": "^5.83.0",
+    "@solana/codecs-numbers": "^5.0.0",
+    "@solana/codecs-strings": "^5.0.0",
     "@tailwindcss/postcss": "^4.1.5",
+    "@tanstack/react-query": "^5.83.0",
     "@web3icons/core": "^4.0.14",
     "@web3icons/react": "^4.0.14",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "fastestsmallesttextencoderdecoder": "^1.0.22",
     "geist": "^1.4.2",
     "gsap": "^3.13.0",
     "lucide-react": "^0.544.0",
@@ -54,5 +57,6 @@
     "postcss": "^8.4.35",
     "tailwindcss": "^3.4.1",
     "typescript": "^5.9.2"
-  }
+  },
+  "packageManager": "yarn@1.22.22+sha1.ac34549e6aa8e7ead463a7407e1c7390f61a6610"
 }

@@ -5,15 +5,19 @@ import { useAccount, useContractReads, usePublicClient } from "wagmi";
 
 // Proxy price feeds
 const proxyFeeds = [
-  { label: "fxSAVE/ETH", address: "0xb00b4fFDccDD4593b5c433a57c3a0bcB0c568D15" as const },
-  { label: "fxSAVE/BTC", address: "0x81eD16B508A8866079872db73335e1496A99e8D1" as const },
-  { label: "fxSAVE/EUR", address: "0xbf77C0707680427c27bf7C065b521331C0F052EA" as const },
-  { label: "fxSAVE/MCAP", address: "0xc1C61df639d7a0A71D4cdC2A506F8153DE2Ae9f5" as const },
-  { label: "fxSAVE/XAU", address: "0x4FDAB525D937F374eAbC6882CC0A3e7508cc8871" as const },
-  { label: "wstETH/BTC", address: "0xe129bc4Ce2E71e9036279C79Db5a8065A807B195" as const },
+  { label: "fxSAVE/ETH", address: "0x876d471068e723279Fe52Eb10A6A587cA1a26CA4" as const },
+  { label: "fxSAVE/BTC", address: "0xA3174691290D9F0D8Fe3E98D8222441e117d1c46" as const },
+  { label: "fxSAVE/EUR", address: "0xBFf03dF70F0da9A31B775cba6A338B9BC6d7991b" as const },
+  { label: "fxSAVE/XAU", address: "0x946178bAE2CD22b096489c9e183186235CbdE90f" as const },
+  { label: "fxSAVE/MCAP", address: "0x011b5b823663C76dc70411C2be32124372464575" as const },
+  { label: "wstETH/ETH", address: "0xE1CF94253EF9F9d01FDd5fDdd54fDE1D1Fd7F5A6" as const },
+  { label: "wstETH/BTC", address: "0x242f9504864776Be37752050EdA0F4ac33a565C4" as const },
+  { label: "wstETH/EUR", address: "0x939dE020A9242b6f632BB6A47F9CE8Db897F8C38" as const },
+  { label: "wstETH/XAU", address: "0x6cC54EF252B498B0Efb0b6d450a09EE5833104b2" as const },
+  { label: "wstETH/MCAP", address: "0x66de75651060d9EC7218abCc7a2e4400525a1B6E" as const },
 ];
 
-// Minimal ABI for proxy feeds (same as fxSAVE/ETH proxy)
+// Minimal ABI for proxy feeds - all feeds use consistent bytes32 for feedIdentifiers
 const proxyAbi = [
   { inputs: [], name: "getPrice", outputs: [{ type: "uint256" }], stateMutability: "view", type: "function" },
   {
@@ -181,7 +185,8 @@ function bytes32ToAddress(bytes?: `0x${string}`): `0x${string}` | undefined {
 
 export default function FlowPage() {
   const [expanded, setExpanded] = useState<null | { kind: "eth" } | { kind: "extra"; idx: number }>(null);
-  const ids = useMemo(() => [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as const, []);
+  // All feeds now use only 2 sources: firstFeed (ID 1) and secondFeed (ID 2)
+  const ids = useMemo(() => [1, 2] as const, []);
   const ZERO_BYTES32 =
     "0x0000000000000000000000000000000000000000000000000000000000000000" as const;
 
@@ -255,6 +260,7 @@ export default function FlowPage() {
     const out: string[] = [];
     for (let i = 0; i < proxyFeeds.length - 1; i += 1) {
       const p = extraReads?.[i]?.result as bigint | undefined;
+      const feed = proxyFeeds.slice(1)[i];
       out.push(format18(p));
     }
     return out;
@@ -297,44 +303,68 @@ export default function FlowPage() {
 
   // On-demand load of constraints + feed identifiers for non-ETH proxies
   useEffect(() => {
+    const ZERO_BYTES32 = "0x0000000000000000000000000000000000000000000000000000000000000000" as const;
+    const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as const;
+    
     async function loadTable(idx: number) {
-      const addr = proxyFeeds.slice(1)[idx]?.address;
+      const feedConfig = proxyFeeds.slice(1)[idx];
+      const addr = feedConfig?.address;
       if (!publicClient || !addr) return;
+      
       const rows: Array<{ id: number; name: string; feed?: `0x${string}`; constraintA?: bigint; constraintB?: bigint; price?: string }> = [];
+      
       for (const id of ids) {
         try {
           const [cons, feed] = await Promise.all([
-            publicClient.readContract({ address: addr, abi: proxyAbi, functionName: "getConstraints", args: [id] }),
-            publicClient.readContract({ address: addr, abi: proxyAbi, functionName: "feedIdentifiers", args: [id] }),
+            publicClient.readContract({ address: addr, abi: proxyAbi, functionName: "getConstraints", args: [id] }).catch(() => null),
+            publicClient.readContract({ address: addr, abi: proxyAbi, functionName: "feedIdentifiers", args: [id] }).catch(() => null),
           ]);
+          
+          if (!cons || !feed) continue;
+          
           const c = cons as [bigint, bigint];
           const f = feed as `0x${string}`;
+          
+          // Convert bytes32 to address
+          const aggAddr = bytes32ToAddress(f);
+          
+          // Skip zero addresses
+          if (!f || f === ZERO_BYTES32 || f === ZERO_ADDRESS || !aggAddr) continue;
+          
           // Try to resolve human-readable name via aggregator description
           let name = deriveFeedName(f);
           let price: string | undefined;
+          
           try {
-            const aggAddr = bytes32ToAddress(f);
             if (aggAddr) {
-              const desc = await publicClient.readContract({ address: aggAddr, abi: aggregatorAbi, functionName: "description" });
-              if (typeof desc === "string" && desc.trim().length > 0) {
-                name = desc.trim();
-              }
+              try {
+                const desc = await publicClient.readContract({ address: aggAddr, abi: aggregatorAbi, functionName: "description" }).catch(() => null);
+                if (typeof desc === "string" && desc.trim().length > 0) {
+                  name = desc.trim();
+                }
+              } catch {}
+              
               try {
                 const [dec, ans] = await Promise.all([
-                  publicClient.readContract({ address: aggAddr, abi: aggregatorAbi, functionName: "decimals" }),
-                  publicClient.readContract({ address: aggAddr, abi: aggregatorAbi, functionName: "latestAnswer" }),
+                  publicClient.readContract({ address: aggAddr, abi: aggregatorAbi, functionName: "decimals" }).catch(() => null),
+                  publicClient.readContract({ address: aggAddr, abi: aggregatorAbi, functionName: "latestAnswer" }).catch(() => null),
                 ]);
-                price = formatUnit(ans as bigint, Number(dec as number));
+                if (dec !== null && ans !== null) {
+                  price = formatUnit(ans as bigint, Number(dec as number));
+                }
               } catch {}
             }
           } catch {}
+          
           rows.push({ id, name, feed: f, constraintA: c?.[0], constraintB: c?.[1], price });
-        } catch {
-          rows.push({ id, name: "-" });
+        } catch (err) {
+          console.warn(`Failed to load feed ID ${id}:`, err);
         }
       }
-      setExtraTables((prev) => ({ ...prev, [idx]: rows.filter((r) => r.feed) }));
+      
+      setExtraTables((prev) => ({ ...prev, [idx]: rows }));
     }
+    
     if (expanded && expanded.kind === "extra" && !extraTables[expanded.idx]) {
       loadTable(expanded.idx);
     }
@@ -383,8 +413,8 @@ export default function FlowPage() {
               <thead>
                 <tr className="border-b border-white/10 uppercase tracking-wider text-[10px] text-white/60">
                   <th className="py-3 px-4 font-normal">Feed</th>
-                  <th className="w-40 py-3 px-4 font-normal">Type</th>
-                  <th className="w-60 py-3 px-4 font-normal">Price</th>
+                  <th className="w-32 py-3 px-4 font-normal">Type</th>
+                  <th className="w-72 py-3 px-4 font-normal">Price</th>
                 </tr>
               </thead>
               <tbody>
@@ -478,10 +508,7 @@ export default function FlowPage() {
                     <div className="md:col-span-2 outline outline-1 outline-white/10 rounded-sm p-4">
                       <div className="text-white/60 text-xs mb-1">{label} - Price</div>
                       <div className="text-2xl font-mono">{priceStr}</div>
-                      <div className="text-white/40 text-xs">{decimalsStr ?? "-"} decimals</div>
-                      {label.includes("MCAP") && (
-                        <div className="text-white/40 text-xs mt-2">Note: MCAP normalized from trillions to dollars (divides by T)</div>
-                      )}
+                      <div className="text-white/40 text-xs">18 decimals</div>
                     </div>
                     <div className="outline outline-1 outline-white/10 rounded-sm p-4">
                     <div className="text-white/60 text-xs mb-1">Latest oracle feed data</div>
@@ -517,26 +544,34 @@ export default function FlowPage() {
                           </tr>
                         </thead>
                         <tbody>
-                          {(extraTables[idx] || []).map((r) => (
-                            <tr key={r.id} className="border-t border-white/10">
-                              <td className="py-2 px-4 font-mono">{r.id}</td>
-                              <td className="py-2 px-4 font-mono">{r.name}</td>
-                              <td className="py-2 px-4 font-mono">
-                                <a
-                                  href={etherscanAddressUrl(formatFeedIdentifier(r.feed))}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="hover:underline"
-                                >
-                                  {formatFeedIdentifier(r.feed)}
-                                  <ExternalLinkIcon className="inline-block w-3 h-3 align-[-2px] ml-1" />
-                                </a>
+                          {(extraTables[idx] || []).length === 0 ? (
+                            <tr className="border-t border-white/10">
+                              <td colSpan={6} className="py-4 px-4 text-center text-white/50">
+                                Loading feed data...
                               </td>
-                              <td className="py-2 px-4 font-mono">{r.price || "-"}</td>
-                              <td className="py-2 px-4 font-mono">{formatHeartbeat(r.constraintA)}</td>
-                              <td className="py-2 px-4 font-mono">{formatPercent18(r.constraintB)}</td>
                             </tr>
-                          ))}
+                          ) : (
+                            (extraTables[idx] || []).map((r) => (
+                              <tr key={r.id} className="border-t border-white/10">
+                                <td className="py-2 px-4 font-mono">{r.id}</td>
+                                <td className="py-2 px-4 font-mono">{r.name}</td>
+                                <td className="py-2 px-4 font-mono">
+                                  <a
+                                    href={etherscanAddressUrl(formatFeedIdentifier(r.feed))}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="hover:underline"
+                                  >
+                                    {formatFeedIdentifier(r.feed)}
+                                    <ExternalLinkIcon className="inline-block w-3 h-3 align-[-2px] ml-1" />
+                                  </a>
+                                </td>
+                                <td className="py-2 px-4 font-mono">{r.price || "-"}</td>
+                                <td className="py-2 px-4 font-mono">{formatHeartbeat(r.constraintA)}</td>
+                                <td className="py-2 px-4 font-mono">{formatPercent18(r.constraintB)}</td>
+                              </tr>
+                            ))
+                          )}
                         </tbody>
                       </table>
                     </div>
