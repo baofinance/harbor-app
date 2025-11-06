@@ -31,7 +31,7 @@ function EtherscanLink({ label, address }: EtherscanLinkProps) {
         href={`${etherscanBaseUrl}${address}`}
         target="_blank"
         rel="noopener noreferrer"
-        className="font-mono text-white hover:underline flex items-center gap-1"
+        className="font-mono text-white hover:underline flex items-center gap-4"
       >
         {`${address.slice(0, 6)}...${address.slice(-4)}`}
         <svg
@@ -62,7 +62,7 @@ function ContractInfoSection({
 }) {
   if (!pool || !market) {
     return (
-      <div className="outline outline-1 outline-white/10 p-3 rounded-sm h-full">
+      <div className=" p-3  h-full">
         <h2 className="font-semibold font-mono text-white mb-2">
           Contract Info
         </h2>
@@ -77,7 +77,7 @@ function ContractInfoSection({
       : market.addresses.peggedToken;
 
   return (
-    <div className="outline outline-1 outline-white/10 p-3 rounded-sm h-full">
+    <div className=" p-3  h-full">
       <h2 className="font-semibold font-mono text-white mb-2">Contract Info</h2>
       <div className="divide-y divide-white/10">
         <EtherscanLink label={pool.name} address={pool.address} />
@@ -124,7 +124,7 @@ function InputField({
   maxButton?: { onClick: () => void; label: string };
 }) {
   return (
-    <div className="flex items-center gap-2 outline outline-1 outline-white/10 p-3 rounded-sm">
+    <div className="flex items-center gap-4  p-3 ">
       <input
         type="text"
         value={value}
@@ -135,7 +135,7 @@ function InputField({
       {maxButton && (
         <button
           onClick={maxButton.onClick}
-          className="text-xs text-white/80 hover:text-white outline outline-1 outline-white/10 px-2 py-1 rounded-sm"
+          className="text-xs text-white/80 hover:text-white  px-2 py-1 "
         >
           {maxButton.label}
         </button>
@@ -161,7 +161,7 @@ function ActionButton({
     <button
       onClick={onClick}
       disabled={disabled || isLoading}
-      className="w-full py-2 text-sm rounded-sm outline outline-1 outline-white/10 hover:outline-white/20 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+      className="w-full py-2 text-sm   hover:outline-white/20 text-white disabled:opacity-50 disabled:cursor-not-allowed"
     >
       {isLoading ? loadingText || "Processing..." : children}
     </button>
@@ -366,9 +366,9 @@ function ActionTabs({
   formatAmount: (value: bigint | undefined) => string;
 }) {
   return (
-    <div className="outline outline-1 outline-white/10 p-3 rounded-sm h-full flex flex-col">
+    <div className=" p-3  h-full flex flex-col">
       {/* Tab Navigation */}
-      <div className="flex gap-2 mb-3">
+      <div className="flex gap-4 mb-3">
         {(
           [
             ["deposit", "Deposit"],
@@ -379,10 +379,10 @@ function ActionTabs({
           <button
             key={key}
             onClick={() => setActiveTab(key)}
-            className={`px-3 py-1.5 text-sm rounded-sm outline outline-1 transition-colors ${
+            className={`px-3 py-1.5 text-sm  outline outline-1 transition-colors ${
               activeTab === key
                 ? "text-white outline-white/80"
-                : "text-white/80 outline-white/10 hover:outline-white/20"
+                : "text-white/80 outline-white/20 hover:outline-white/20"
             }`}
           >
             {label}
@@ -628,7 +628,7 @@ export default function PoolClient({ marketId, poolType }: PoolClientProps) {
 
   if (!pool) {
     return (
-      <div className="min-h-screen text-[#F5F5F5] max-w-[1300px] mx-auto font-sans relative px-4 sm:px-10">
+      <div className="min-h-screen text-white max-w-[1300px] mx-auto font-sans relative px-4 sm:px-10">
         <main className="container mx-auto max-w-full pb-10 relative z-10">
           <div className="text-center">
             <h1 className="text-3xl text-white font-semibold font-mono">
@@ -641,13 +641,13 @@ export default function PoolClient({ marketId, poolType }: PoolClientProps) {
   }
 
   return (
-    <div className="min-h-screen text-[#F5F5F5] max-w-[1300px] mx-auto font-sans relative px-4 sm:px-10">
+    <div className="min-h-screen text-white max-w-[1300px] mx-auto font-sans relative px-4 sm:px-10">
       <main className="container mx-auto max-w-full pb-8 relative z-10">
         {/* Breadcrumb */}
         <div className="mb-3">
           <Link
             href="/earn"
-            className="inline-flex items-center gap-2 text-white/60 hover:text-white"
+            className="inline-flex items-center gap-4 text-white/60 hover:text-white"
           >
             <svg
               className="w-4 h-4"
@@ -669,7 +669,7 @@ export default function PoolClient({ marketId, poolType }: PoolClientProps) {
 
         {/* Header */}
         <div className="mb-4">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4">
             <div className="flex w-7 items-center justify-center">
               {pool.assetIcons
                 .slice()
@@ -681,7 +681,7 @@ export default function PoolClient({ marketId, poolType }: PoolClientProps) {
                     alt="token icon"
                     width={28}
                     height={28}
-                    className={`rounded-full border border-white/40 ${
+                    className={`rounded-full  ${
                       index > 0 ? "-ml-3" : ""
                     }`}
                   />
@@ -695,9 +695,9 @@ export default function PoolClient({ marketId, poolType }: PoolClientProps) {
         </div>
 
         {/* Overview stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
-          <div className="outline outline-1 outline-white/10 p-3 rounded-sm">
-            <div className="flex items-center gap-2 mb-1">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+          <div className=" p-3 ">
+            <div className="flex items-center gap-4 mb-1">
               <h3 className="font-semibold font-mono text-white">
                 Total Value Locked
               </h3>
@@ -710,8 +710,8 @@ export default function PoolClient({ marketId, poolType }: PoolClientProps) {
               {formatFiat(tvlUSD)}
             </div>
           </div>
-          <div className="outline outline-1 outline-white/10 p-3 rounded-sm">
-            <div className="flex items-center gap-2 mb-1">
+          <div className=" p-3 ">
+            <div className="flex items-center gap-4 mb-1">
               <h3 className="font-semibold font-mono text-white">
                 Your Deposit
               </h3>
@@ -722,8 +722,8 @@ export default function PoolClient({ marketId, poolType }: PoolClientProps) {
               <span className="text-white/70">{tokenSymbol}</span>
             </div>
           </div>
-          <div className="outline outline-1 outline-white/10 p-3 rounded-sm">
-            <div className="flex items-center gap-2 mb-1">
+          <div className=" p-3 ">
+            <div className="flex items-center gap-4 mb-1">
               <h3 className="font-semibold font-mono text-white">Base APR</h3>
               <InfoTooltip
                 label="Estimated base APR for this pool."
@@ -732,8 +732,8 @@ export default function PoolClient({ marketId, poolType }: PoolClientProps) {
             </div>
             <div className="text-white font-mono text-lg">{baseAPR}</div>
           </div>
-          <div className="outline outline-1 outline-white/10 p-3 rounded-sm">
-            <div className="flex items-center gap-2 mb-1">
+          <div className=" p-3 ">
+            <div className="flex items-center gap-4 mb-1">
               <h3 className="font-semibold font-mono text-white">Boost APR</h3>
               <InfoTooltip
                 label="Additional APR from STEAM boosts."
@@ -746,7 +746,7 @@ export default function PoolClient({ marketId, poolType }: PoolClientProps) {
 
         {/* Chart */}
         <div className="mt-2">
-          <div className="outline outline-1 outline-white/10 p-2 rounded-sm w-full">
+          <div className=" p-2  w-full">
             <div className="h-[340px] sm:h-[420px]">
               <HistoricalDataChart marketId={marketId} />
             </div>
@@ -754,7 +754,7 @@ export default function PoolClient({ marketId, poolType }: PoolClientProps) {
         </div>
 
         {/* Actions + Contract info */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 mt-3">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-3">
           <div className="lg:col-span-2 h-full">
             <ActionTabs
               activeTab={activeTab}

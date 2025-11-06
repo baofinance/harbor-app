@@ -9,15 +9,8 @@ import {
   usePublicClient,
 } from "wagmi";
 import { anvil } from "wagmi/chains";
-import { Geo } from "next/font/google";
 import { BaseError, ContractFunctionRevertedError } from "viem";
 import { GENESIS_ABI, ERC20_ABI } from "../config/contracts";
-
-const geo = Geo({
-  subsets: ["latin"],
-  weight: "400",
-  display: "swap",
-});
 
 interface GenesisDepositModalProps {
   isOpen: boolean;
@@ -275,15 +268,15 @@ export const GenesisDepositModal = ({
       />
 
       {/* Modal */}
-      <div className="relative bg-zinc-900/50 border border-[#4A7C59]/30 shadow-2xl w-full max-w-md mx-4 animate-in fade-in-0 scale-in-95 duration-200">
+      <div className="relative bg-white shadow-2xl w-full max-w-md mx-4 animate-in fade-in-0 scale-in-95 duration-200">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-[#4A7C59]/20">
-          <h2 className={`text-xl font-medium text-[#F5F5F5] ${geo.className}`}>
-            Deposit to Genesis
+        <div className="flex items-center justify-between p-6 border-b border-[#1E4775]/20">
+          <h2 className="text-2xl font-bold text-[#1E4775]">
+            Deposit in Maiden Voyage
           </h2>
           <button
             onClick={handleClose}
-            className="text-[#F5F5F5]/50 hover:text-[#F5F5F5] transition-colors"
+            className="text-[#1E4775]/50 hover:text-[#1E4775] transition-colors"
             disabled={step === "approving" || step === "depositing"}
           >
             <svg
@@ -306,15 +299,15 @@ export const GenesisDepositModal = ({
         <div className="p-6 space-y-6">
           {/* Genesis Status Warning */}
           {genesisEnded && (
-            <div className="p-3 bg-red-900/20 border border-red-500/30 text-red-400 text-sm">
+            <div className="p-3 bg-red-50 border border-red-500/30 text-red-600 text-sm">
               ⚠️ Genesis period has ended. Deposits are no longer accepted.
             </div>
           )}
 
           {/* Current Deposit */}
-          <div className="text-sm text-[#F5F5F5]/70">
+          <div className="text-sm text-[#1E4775]/70">
             Current Deposit:{" "}
-            <span className="font-medium text-[#F5F5F5]">
+            <span className="font-medium text-[#1E4775]">
               {formatEther(userCurrentDeposit)} {collateralSymbol}
             </span>
           </div>
@@ -323,8 +316,8 @@ export const GenesisDepositModal = ({
           <div className="space-y-2">
             {/* Available Balance - AMM Style */}
             <div className="flex justify-between items-center text-xs">
-              <span className="text-[#F5F5F5]/50">Amount</span>
-              <span className="text-[#F5F5F5]/70">
+              <span className="text-[#1E4775]/70">Amount</span>
+              <span className="text-[#1E4775]/70">
                 Balance: {formatEther(balance)} {collateralSymbol}
               </span>
             </div>
@@ -334,16 +327,16 @@ export const GenesisDepositModal = ({
                 value={amount}
                 onChange={handleAmountChange}
                 placeholder="0.0"
-                className={`w-full h-12 px-4 pr-20 bg-[#0D0D0D] text-white border ${
-                  error ? "border-red-500" : "border-zinc-700/50"
-                } focus:border-[#4A7C59] focus:ring-2 focus:ring-[#4A7C59]/20 focus:outline-none transition-all text-lg font-mono`}
+                className={`w-full h-12 px-4 pr-20 bg-white text-[#1E4775] border ${
+                  error ? "border-red-500" : "border-[#1E4775]/30"
+                } focus:border-[#1E4775] focus:ring-2 focus:ring-[#1E4775]/20 focus:outline-none transition-all text-lg font-mono`}
                 disabled={
                   step === "approving" || step === "depositing" || genesisEnded
                 }
               />
               <button
                 onClick={handleMaxClick}
-                className="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 text-xs bg-[#4A7C59] hover:bg-[#3A6147] text-white transition-colors disabled:bg-zinc-600"
+                className="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 text-xs bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white transition-colors disabled:bg-gray-300 disabled:text-gray-500 rounded-full"
                 disabled={
                   step === "approving" || step === "depositing" || genesisEnded
                 }
@@ -351,33 +344,49 @@ export const GenesisDepositModal = ({
                 MAX
               </button>
             </div>
-            <div className="text-right text-xs text-[#F5F5F5]/50">
+            <div className="text-right text-xs text-[#1E4775]/50">
               {collateralSymbol}
             </div>
+            {/* Estimated Points */}
+            {amount && parseFloat(amount) > 0 && (
+              <div className="mt-3 p-3 bg-[#B8EBD5]/30 border border-[#B8EBD5]/50 rounded">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-[#1E4775]/70">Estimated Points:</span>
+                  <span className="text-lg font-bold text-[#1E4775]">
+                    {(parseFloat(amount) * 100).toLocaleString(undefined, {
+                      maximumFractionDigits: 2,
+                    })}
+                  </span>
+                </div>
+                <p className="text-xs text-[#1E4775]/60 mt-1">
+                  {amount} {collateralSymbol} × 100
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Transaction Preview */}
           {amount && parseFloat(amount) > 0 && (
-            <div className="p-3 bg-[#0F0F0F]/90 border border-harbor/20 space-y-2 text-sm">
-              <div className="font-medium text-[#F5F5F5]">
+            <div className="p-3 bg-[#17395F]/10 border border-[#1E4775]/20 space-y-2 text-sm">
+              <div className="font-medium text-[#1E4775]">
                 Transaction Preview:
               </div>
               <div className="flex justify-between">
-                <span className="text-[#F5F5F5]/70">Current Deposit:</span>
-                <span>
+                <span className="text-[#1E4775]/70">Current Deposit:</span>
+                <span className="text-[#1E4775]">
                   {formatEther(userCurrentDeposit)} {collateralSymbol}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-[#F5F5F5]/70">+ Deposit Amount:</span>
-                <span className="text-harbor">
+                <span className="text-[#1E4775]/70">+ Deposit Amount:</span>
+                <span className="text-[#1E4775]">
                   +{amount} {collateralSymbol}
                 </span>
               </div>
-              <div className="border-t border-harbor/30 pt-2">
+              <div className="border-t border-[#1E4775]/30 pt-2">
                 <div className="flex justify-between font-medium">
-                  <span className="text-[#F5F5F5]">New Total Deposit:</span>
-                  <span className="text-harbor">
+                  <span className="text-[#1E4775]">New Total Deposit:</span>
+                  <span className="text-[#1E4775]">
                     {formatEther(newTotalDeposit)} {collateralSymbol}
                   </span>
                 </div>
@@ -387,7 +396,7 @@ export const GenesisDepositModal = ({
 
           {/* Error */}
           {error && (
-            <div className="p-3 bg-red-900/20 border border-red-500/30 text-red-400 text-sm">
+            <div className="p-3 bg-red-50 border border-red-500/30 text-red-600 text-sm">
               {error}
             </div>
           )}
@@ -395,35 +404,35 @@ export const GenesisDepositModal = ({
           {/* Step Indicator */}
           {needsApproval && (step === "approving" || step === "depositing") && (
             <div className="space-y-2">
-              <div className="flex items-center gap-2 text-sm">
+              <div className="flex items-center gap-4 text-sm">
                 <div
-                  className={`w-2 h-2-full ${
+                  className={`w-2 h-2 rounded-full ${
                     step === "approving"
-                      ? "bg-harbor animate-pulse"
-                      : "bg-harbor"
+                      ? "bg-[#1E4775] animate-pulse"
+                      : "bg-[#1E4775]"
                   }`}
                 />
                 <span
                   className={
-                    step === "approving" ? "text-harbor" : "text-[#F5F5F5]/70"
+                    step === "approving" ? "text-[#1E4775]" : "text-[#1E4775]/70"
                   }
                 >
                   Step 1: Approve {collateralSymbol}
                 </span>
               </div>
-              <div className="flex items-center gap-2 text-sm">
+              <div className="flex items-center gap-4 text-sm">
                 <div
-                  className={`w-2 h-2-full ${
+                  className={`w-2 h-2 rounded-full ${
                     step === "depositing"
-                      ? "bg-harbor animate-pulse"
+                      ? "bg-[#1E4775] animate-pulse"
                       : step === "approving"
-                      ? "bg-zinc-600"
-                      : "bg-harbor"
+                      ? "bg-gray-300"
+                      : "bg-[#1E4775]"
                   }`}
                 />
                 <span
                   className={
-                    step === "depositing" ? "text-harbor" : "text-[#F5F5F5]/70"
+                    step === "depositing" ? "text-[#1E4775]" : "text-[#1E4775]/70"
                   }
                 >
                   Step 2: Deposit to Genesis
@@ -434,13 +443,13 @@ export const GenesisDepositModal = ({
 
           {/* Transaction Hash */}
           {txHash && (
-            <div className="text-xs text-center text-zinc-400">
+            <div className="text-xs text-center text-[#1E4775]/70">
               Tx:{" "}
               <a
                 href={`https://etherscan.io/tx/${txHash}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="underline hover:text-white"
+                className="underline hover:text-[#1E4775]"
               >
                 {txHash.slice(0, 10)}...{txHash.slice(-8)}
               </a>
@@ -449,17 +458,17 @@ export const GenesisDepositModal = ({
 
           {/* Success Message */}
           {step === "success" && (
-            <div className="p-3 bg-harbor/10 border border-harbor/30 text-harbor text-sm text-center">
+            <div className="p-3 bg-[#B8EBD5]/20 border border-[#B8EBD5]/30 text-[#1E4775] text-sm text-center">
               ✅ Deposit successful!
             </div>
           )}
         </div>
 
         {/* Footer */}
-        <div className="flex gap-3 p-6 border-t border-harbor/20">
+        <div className="flex gap-4 p-6 border-t border-[#1E4775]/20">
           <button
             onClick={handleClose}
-            className={`flex-1 py-2 px-4 text-[#F5F5F5]/70 hover:text-[#F5F5F5] transition-colors ${geo.className}`}
+            className="flex-1 py-2 px-4 text-[#1E4775]/70 hover:text-[#1E4775] transition-colors rounded-full"
             disabled={step === "approving" || step === "depositing"}
           >
             {step === "success" ? "Close" : "Cancel"}
@@ -467,12 +476,10 @@ export const GenesisDepositModal = ({
           <button
             onClick={handleMainButtonClick}
             disabled={isButtonDisabled()}
-            className={`flex-1 py-2 px-4 font-medium transition-colors ${
-              geo.className
-            } ${
+            className={`flex-1 py-2 px-4 font-medium transition-colors rounded-full ${
               step === "success"
-                ? "bg-[#4A7C59] hover:bg-[#3A6147] text-white"
-                : "bg-[#4A7C59] hover:bg-[#3A6147] text-white disabled:bg-zinc-800 disabled:text-zinc-500"
+                ? "bg-[#1E4775] hover:bg-[#17395F] text-white"
+                : "bg-[#1E4775] hover:bg-[#17395F] text-white disabled:bg-gray-300 disabled:text-gray-500"
             }`}
           >
             {getButtonText()}

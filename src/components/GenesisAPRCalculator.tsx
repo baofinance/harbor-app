@@ -41,7 +41,7 @@ export default function GenesisAPRCalculator({
   }, [depositPreview, rewardPoolAmount, totalDeposits]);
 
   return (
-    <div className="w-full rounded-md bg-zinc-900/60 outline outline-1 outline-white/10 p-4">
+    <div className="w-full  bg-zinc-900/60  p-4">
       <div className="flex items-center justify-between mb-2">
         <span className="text-sm text-white/70">Deposit preview</span>
         <span className="text-sm text-white font-mono">
@@ -55,9 +55,9 @@ export default function GenesisAPRCalculator({
         step={100}
         value={depositPreview}
         onChange={(e) => setDepositPreview(Number(e.target.value))}
-        className="w-full accent-[#4A7C59]"
+        className="w-full accent-[#1E4775]"
       />
-      <div className="mt-3 grid grid-cols-3 gap-3 text-xs">
+      <div className="mt-3 grid grid-cols-3 gap-4 text-xs">
         <div className="rounded bg-zinc-800/60 p-3">
           <div className="text-white/60">Your pool share</div>
           <div className="text-white font-semibold">

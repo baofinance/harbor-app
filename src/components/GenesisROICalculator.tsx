@@ -126,13 +126,13 @@ export default function GenesisROICalculator({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <div className="outline outline-1 outline-white/10 p-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className=" p-3">
           <div className="text-white/60 text-xs mb-1">Reward Pool Tokens</div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-4">
             <input
               type="number"
-              className="w-full bg-white/5 text-white text-sm px-3 py-2 outline outline-1 outline-white/10 focus:outline-white/20"
+              className="w-full bg-white/5 text-white text-sm px-3 py-2  focus:outline-white/20"
               value={rewardPoolTokens}
               min={0}
               onChange={(e) => setRewardPoolTokens(Number(e.target.value))}
@@ -140,15 +140,15 @@ export default function GenesisROICalculator({
             <span className="text-xs text-white/60">{rewardTokenSymbol}</span>
           </div>
         </div>
-        <div className="outline outline-1 outline-white/10 p-3">
+        <div className=" p-3">
           <div className="text-white/60 text-xs mb-1">FDV Presets</div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-4">
             <button
               onClick={() => setFdvPreset("bear")}
               className={`px-3 py-1 text-xs outline outline-1 ${
                 fdvPreset === "bear"
                   ? "bg-harbor text-white outline-harbor"
-                  : "text-white/70 outline-white/10 hover:outline-white/20"
+                  : "text-white/70 outline-white/20 hover:outline-white/20"
               }`}
             >
               Bear $10m
@@ -158,7 +158,7 @@ export default function GenesisROICalculator({
               className={`px-3 py-1 text-xs outline outline-1 ${
                 fdvPreset === "base"
                   ? "bg-harbor text-white outline-harbor"
-                  : "text-white/70 outline-white/10 hover:outline-white/20"
+                  : "text-white/70 outline-white/20 hover:outline-white/20"
               }`}
             >
               Base $25m
@@ -168,7 +168,7 @@ export default function GenesisROICalculator({
               className={`px-3 py-1 text-xs outline outline-1 ${
                 fdvPreset === "bull"
                   ? "bg-harbor text-white outline-harbor"
-                  : "text-white/70 outline-white/10 hover:outline-white/20"
+                  : "text-white/70 outline-white/20 hover:outline-white/20"
               }`}
             >
               Bull $50m
@@ -176,11 +176,11 @@ export default function GenesisROICalculator({
           </div>
           <div className="mt-2 text-xs text-white/60">or set a custom FDV</div>
           <div className="mt-1">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-4">
               <span className="text-white/70 text-xs">$</span>
               <input
                 type="number"
-                className="w-full bg-white/5 text-white text-sm px-3 py-2 outline outline-1 outline-white/10 focus:outline-white/20"
+                className="w-full bg-white/5 text-white text-sm px-3 py-2  focus:outline-white/20"
                 value={fdvCustom}
                 min={0}
                 onChange={(e) => {
@@ -193,12 +193,12 @@ export default function GenesisROICalculator({
         </div>
       </div>
 
-      <div className="mt-3 grid grid-cols-2 md:grid-cols-3 gap-3 text-xs">
-        <div className="outline outline-1 outline-white/10 p-3">
+      <div className="mt-3 grid grid-cols-2 md:grid-cols-3 gap-4 text-xs">
+        <div className=" p-3">
           <div className="text-white/60">Max Supply</div>
           <div className="text-white font-mono">100,000,000</div>
         </div>
-        <div className="outline outline-1 outline-white/10 p-3">
+        <div className=" p-3">
           <div className="text-white/60">Total Deposits</div>
           <div className="text-white font-mono">
             {totalDepositsStEth.toLocaleString(undefined, {
@@ -207,7 +207,7 @@ export default function GenesisROICalculator({
             {collateralSymbol}
           </div>
         </div>
-        <div className="outline outline-1 outline-white/10 p-3">
+        <div className=" p-3">
           <div className="text-white/60">Your Deposit</div>
           <div className="text-white font-mono">
             {userDepositStEth.toLocaleString(undefined, {
@@ -216,7 +216,7 @@ export default function GenesisROICalculator({
             {collateralSymbol}
           </div>
         </div>
-        <div className="outline outline-1 outline-white/10 p-3">
+        <div className=" p-3">
           <div className="text-white/60">stETH Price</div>
           <div className="text-white font-mono">
             {stEthPriceUSD
@@ -228,8 +228,8 @@ export default function GenesisROICalculator({
         </div>
       </div>
 
-      <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
-        <div className="outline outline-1 outline-white/10 p-3">
+      <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+        <div className=" p-3">
           <div className="text-white/60">Your Share of Rewards</div>
           <div className="text-white font-mono">
             {(() => {
@@ -240,13 +240,13 @@ export default function GenesisROICalculator({
             })()}
           </div>
         </div>
-        <div className="outline outline-1 outline-white/10 p-3">
+        <div className=" p-3">
           <div className="text-white/60">FDV Used</div>
           <div className="text-white font-mono">
             ${fdvEffective.toLocaleString()}
           </div>
         </div>
-        <div className="outline outline-1 outline-white/10 p-3">
+        <div className=" p-3">
           <div className="text-white/60">Estimated ROI</div>
           <div className="text-white font-mono text-lg">
             {Number.isFinite(roiPercent) ? `${roiPercent.toFixed(0)}%` : "-"}

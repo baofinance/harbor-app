@@ -48,10 +48,10 @@ function MarketAdminCard({
     "bg-gray-900/30 text-gray-400 border-gray-500/30";
 
   return (
-    <div className="bg-zinc-900/50 outline outline-1 outline-white/10 hover:outline-white/20 transition-colors p-4 sm:p-6">
+    <div className="bg-zinc-900/50  hover:outline-white/20 transition-colors p-4 sm:p-6">
       {/* Market Header */}
       <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4">
           <Image
             src={market.chain.logo}
             alt={market.chain.name}
@@ -63,12 +63,12 @@ function MarketAdminCard({
             <h3 className={`text-xl font-medium ${geo.className}`}>
               {market.name}
             </h3>
-            <p className="text-sm text-[#F5F5F5]/50">
+            <p className="text-sm text-white/50">
               {market.chain.name} • Genesis Token Generation Event
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-4">
           <span
             className={`px-3 py-1 border text-sm font-medium ${statusColor}`}
           >
@@ -84,29 +84,29 @@ function MarketAdminCard({
 
       {/* Statistics Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-        <div className="text-center p-3 outline outline-1 outline-white/10 bg-black/10">
+        <div className="text-center p-3  bg-black/10">
           <div className={`text-xl font-bold text-blue-400 ${geo.className}`}>
             {formatEther(totalCollateral)}
           </div>
-          <div className="text-xs text-[#F5F5F5]/70">
+          <div className="text-xs text-white/70">
             Total {collateralSymbol} Deposited
           </div>
         </div>
-        <div className="text-center p-3 outline outline-1 outline-white/10 bg-black/10">
+        <div className="text-center p-3  bg-black/10">
           <div className={`text-xl font-bold text-blue-400 ${geo.className}`}>
             {totalCollateral > 0n ? formatEther(totalCollateral / 2n) : "0"}
           </div>
-          <div className="text-xs text-[#F5F5F5]/70">
+          <div className="text-xs text-white/70">
             Collateral for Pegged Tokens
           </div>
         </div>
-        <div className="text-center p-3 outline outline-1 outline-white/10 bg-black/10">
+        <div className="text-center p-3  bg-black/10">
           <div className={`text-xl font-bold text-purple-400 ${geo.className}`}>
             {totalCollateral > 0n
               ? formatEther(totalCollateral - totalCollateral / 2n)
               : "0"}
           </div>
-          <div className="text-xs text-[#F5F5F5]/70">
+          <div className="text-xs text-white/70">
             Collateral for Leveraged Tokens
           </div>
         </div>
@@ -117,7 +117,7 @@ function MarketAdminCard({
         <div className="pt-4 border-t border-white/10">
           {genesisStatus.onChainStatus === "live" ? (
             <div>
-              <p className="text-sm text-[#F5F5F5]/70 mb-3">
+              <p className="text-sm text-white/70 mb-3">
                 Genesis is active for this market. Users can deposit collateral.
               </p>
               <button
@@ -166,7 +166,7 @@ export function MultiMarketGenesisAdmin() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen text-[#F5F5F5] max-w-[1300px] mx-auto font-sans relative">
+      <div className="min-h-screen text-white max-w-[1300px] mx-auto font-sans relative">
         <main className="container mx-auto px-4 sm:px-10 pt-[6rem] pb-6 relative z-10">
           <div className="text-center">
             <h1
@@ -183,9 +183,9 @@ export function MultiMarketGenesisAdmin() {
 
   if (!overallAdminStatus.hasAnyAdminAccess) {
     return (
-      <div className="min-h-screen text-[#F5F5F5] max-w-[1300px] mx-auto font-sans relative">
+      <div className="min-h-screen text-white max-w-[1300px] mx-auto font-sans relative">
         <main className="container mx-auto px-4 sm:px-10 pt-[6rem] pb-6 relative z-10">
-          <div className="bg-zinc-900/50 outline outline-1 outline-white/10 p-6 text-center">
+          <div className="bg-zinc-900/50  p-6 text-center">
             <h2
               className={`text-2xl font-medium text-white mb-2 ${geo.className}`}
             >
@@ -218,21 +218,21 @@ export function MultiMarketGenesisAdmin() {
   const displayedMarkets = getDisplayedMarkets();
 
   return (
-    <div className="min-h-screen text-[#F5F5F5] max-w-[1300px] mx-auto font-sans relative">
+    <div className="min-h-screen text-white max-w-[1300px] mx-auto font-sans relative">
       <main className="container mx-auto px-4 sm:px-10 pt-[6rem] pb-6 relative z-10">
         <h1 className={`text-4xl font-medium mb-6 text-white ${geo.className}`}>
           Multi-Market Genesis Admin
         </h1>
 
         {/* Overall Statistics */}
-        <div className="bg-zinc-900/50 outline outline-1 outline-white/10 p-4 sm:p-6 mb-4">
+        <div className="bg-zinc-900/50  p-4 sm:p-6 mb-4">
           <h2
             className={`text-lg font-medium text-white mb-4 font-geo ${geo.className}`}
           >
             Platform Overview
           </h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="text-center p-4 outline outline-1 outline-white/10 bg-black/10">
+            <div className="text-center p-4  bg-black/10">
               <div
                 className={`text-2xl font-semibold text-white ${geo.className}`}
               >
@@ -240,7 +240,7 @@ export function MultiMarketGenesisAdmin() {
               </div>
               <div className="text-sm text-white/70">Active Markets</div>
             </div>
-            <div className="text-center p-4 outline outline-1 outline-white/10 bg-black/10">
+            <div className="text-center p-4  bg-black/10">
               <div
                 className={`text-2xl font-semibold text-white ${geo.className}`}
               >
@@ -248,7 +248,7 @@ export function MultiMarketGenesisAdmin() {
               </div>
               <div className="text-sm text-white/70">Ended Markets</div>
             </div>
-            <div className="text-center p-4 outline outline-1 outline-white/10 bg-black/10">
+            <div className="text-center p-4  bg-black/10">
               <div
                 className={`text-2xl font-semibold text-white ${geo.className}`}
               >
@@ -256,7 +256,7 @@ export function MultiMarketGenesisAdmin() {
               </div>
               <div className="text-sm text-white/70">Scheduled Markets</div>
             </div>
-            <div className="text-center p-4 outline outline-1 outline-white/10 bg-black/10">
+            <div className="text-center p-4  bg-black/10">
               <div
                 className={`text-2xl font-semibold text-white ${geo.className}`}
               >

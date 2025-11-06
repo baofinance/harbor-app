@@ -67,7 +67,7 @@ export default function MarketSelector({
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 text-4xl font-semibold font-geo text-white hover:text-zinc-300 transition-colors"
+        className="flex items-center gap-4 text-4xl font-semibold font-geo text-white hover:text-zinc-300 transition-colors"
       >
         <span>{selectedMarket?.name || "Select Market"}</span>
         <svg
@@ -89,7 +89,7 @@ export default function MarketSelector({
 
       {/* Dropdown Menu */}
       <div
-        className={`absolute z-10 mt-2 w-[300px] origin-top-left left-0 bg-[#1C1C1C] border border-zinc-800 shadow-2xl focus:outline-none transition-all duration-300 ease-in-out ${
+        className={`absolute z-10 mt-2 w-[300px] origin-top-left left-0 bg-[#1C1C1C] shadow-2xl focus:outline-none transition-all duration-300 ease-in-out ${
           isOpen
             ? "opacity-100 scale-100"
             : "opacity-0 scale-95 pointer-events-none"
@@ -108,14 +108,14 @@ export default function MarketSelector({
                 className="w-full p-3 text-left hover:bg-zinc-800 transition-colors-lg flex justify-between items-center"
               >
                 <div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-4">
                     <span className="font-semibold text-base">
                       {market.name}
                     </span>
                     {getStatusBadge(market.status)}
                   </div>
                   <div className="text-sm text-zinc-400">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-4">
                       <span>wstETH</span>
                       <span className="text-zinc-600">•</span>
                       <span>{market.peggedToken.name}</span>

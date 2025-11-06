@@ -1,3 +1,5 @@
+@import url('https://api.fontshare.com/v2/css?f[]=chillax@200,300,400,500,600,700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -39,7 +41,7 @@
   }
 
   body {
-    @apply bg-black text-[#F5F5F5] min-h-screen;
+    @apply bg-[#1E4775] text-white min-h-screen;
   }
 
   .dark {
@@ -75,9 +77,9 @@
   border-radius: 50%;
   background: radial-gradient(
     circle,
-    rgba(59, 130, 246, 0.06) 0%,
-    /* blue-500 with low alpha */ rgba(96, 165, 250, 0.03) 40%,
-    /* blue-400 with lower alpha */ rgba(0, 0, 0, 0) 70%
+    rgba(30, 71, 117, 0.06) 0%,
+    /* harbor-blue with low alpha */ rgba(30, 71, 117, 0.03) 40%,
+    /* harbor-blue with lower alpha */ rgba(0, 0, 0, 0) 70%
   );
   mix-blend-mode: screen;
   animation: smoke-fade infinite;

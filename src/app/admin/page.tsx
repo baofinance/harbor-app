@@ -419,7 +419,7 @@ export default function Admin() {
   // Return a placeholder during server-side rendering
   if (!mounted) {
     return (
-      <div className="min-h-screen text-[#F5F5F5] max-w-[1300px] mx-auto font-sans relative">
+      <div className="min-h-screen text-white max-w-[1300px] mx-auto font-sans relative">
         <main className="container mx-auto px-4 sm:px-10 pt-[6rem] pb-6 relative z-10">
           <div className="mb-6">
             <h1
@@ -428,7 +428,7 @@ export default function Admin() {
               ADMIN
             </h1>
           </div>
-          <div className="bg-zinc-900/50 outline outline-1 outline-white/10 p-6 text-center">
+          <div className="bg-zinc-900/50  p-6 text-center">
             <p className="mb-4 text-white/70">
               Please connect your wallet to access admin functions
             </p>
@@ -442,7 +442,7 @@ export default function Admin() {
   }
 
   return (
-    <div className="min-h-screen text-[#F5F5F5] max-w-[1300px] mx-auto font-sans relative">
+    <div className="min-h-screen text-white max-w-[1300px] mx-auto font-sans relative">
       <main className="container mx-auto px-4 sm:px-10 pt-[6rem] pb-6 relative z-10">
         <div className="mb-6">
           <h1 className={`text-4xl font-medium font-geo text-left text-white`}>
@@ -451,7 +451,7 @@ export default function Admin() {
         </div>
 
         {!isConnected ? (
-          <div className="bg-zinc-900/50 outline outline-1 outline-white/10 p-6 text-center">
+          <div className="bg-zinc-900/50  p-6 text-center">
             <p className="mb-4 text-white/70">
               Please connect your wallet to access admin functions
             </p>
@@ -461,7 +461,7 @@ export default function Admin() {
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="bg-zinc-900/50 outline outline-1 outline-white/10 p-4 sm:p-6">
+            <div className="bg-zinc-900/50  p-4 sm:p-6">
               <h2 className="text-lg font-medium text-white mb-4 font-geo">
                 System Controls
               </h2>
@@ -472,17 +472,17 @@ export default function Admin() {
               </Link>
             </div>
 
-            <div className="bg-zinc-900/50 outline outline-1 outline-white/10 p-4 sm:p-6">
+            <div className="bg-zinc-900/50  p-4 sm:p-6">
               <h2 className="text-lg font-medium text-white mb-4 font-geo">
                 Update Fee Receiver
               </h2>
-              <div className="flex flex-col sm:flex-row gap-3">
+              <div className="flex flex-col sm:flex-row gap-4">
                 <input
                   type="text"
                   value={feeReceiver}
                   onChange={(e) => setFeeReceiver(e.target.value)}
                   placeholder="Enter new fee receiver address"
-                  className="flex-1 bg-zinc-900/50 outline outline-1 outline-white/10 px-3 py-2 text-white placeholder-white/40 focus:outline-none focus:ring-1 focus:ring-white/20"
+                  className="flex-1 bg-zinc-900/50  px-3 py-2 text-white placeholder-white/40 focus:outline-none focus:ring-1 focus:ring-white/20"
                 />
                 <button
                   onClick={handleUpdateFeeReceiver}
@@ -494,17 +494,17 @@ export default function Admin() {
               </div>
             </div>
 
-            <div className="bg-zinc-900/50 outline outline-1 outline-white/10 p-4 sm:p-6">
+            <div className="bg-zinc-900/50  p-4 sm:p-6">
               <h2 className="text-lg font-medium text-white mb-4 font-geo">
                 Update Reserve Pool
               </h2>
-              <div className="flex flex-col sm:flex-row gap-3">
+              <div className="flex flex-col sm:flex-row gap-4">
                 <input
                   type="text"
                   value={reservePool}
                   onChange={(e) => setReservePool(e.target.value)}
                   placeholder="Enter new reserve pool address"
-                  className="flex-1 bg-zinc-900/50 outline outline-1 outline-white/10 px-3 py-2 text-white placeholder-white/40 focus:outline-none focus:ring-1 focus:ring-white/20"
+                  className="flex-1 bg-zinc-900/50  px-3 py-2 text-white placeholder-white/40 focus:outline-none focus:ring-1 focus:ring-white/20"
                 />
                 <button
                   onClick={handleUpdateReservePool}
@@ -516,17 +516,17 @@ export default function Admin() {
               </div>
             </div>
 
-            <div className="bg-zinc-900/50 outline outline-1 outline-white/10 p-4 sm:p-6">
+            <div className="bg-zinc-900/50  p-4 sm:p-6">
               <h2 className="text-lg font-medium text-white mb-4 font-geo">
                 Update Price Oracle
               </h2>
-              <div className="flex flex-col sm:flex-row gap-3">
+              <div className="flex flex-col sm:flex-row gap-4">
                 <input
                   type="text"
                   value={priceOracle}
                   onChange={(e) => setPriceOracle(e.target.value)}
                   placeholder="Enter new price oracle address"
-                  className="flex-1 bg-zinc-900/50 outline outline-1 outline-white/10 px-3 py-2 text-white placeholder-white/40 focus:outline-none focus:ring-1 focus:ring-white/20"
+                  className="flex-1 bg-zinc-900/50  px-3 py-2 text-white placeholder-white/40 focus:outline-none focus:ring-1 focus:ring-white/20"
                 />
                 <button
                   onClick={handleUpdatePriceOracle}
@@ -538,12 +538,12 @@ export default function Admin() {
               </div>
             </div>
 
-            <div className="bg-zinc-900/50 outline outline-1 outline-white/10 p-4 sm:p-6">
+            <div className="bg-zinc-900/50  p-4 sm:p-6">
               <h2 className="text-lg font-medium text-white mb-4 font-geo">
                 Free Functions
               </h2>
               <div className="space-y-6">
-                <div className="outline outline-1 outline-white/10 bg-black/10 p-4">
+                <div className=" bg-black/10 p-4">
                   <h4 className="text-base font-medium mb-3 text-white/80">
                     Receiver Address
                   </h4>
@@ -557,7 +557,7 @@ export default function Admin() {
                         value={receiverAddress}
                         onChange={(e) => setReceiverAddress(e.target.value)}
                         placeholder="Enter receiver address"
-                        className="w-full bg-zinc-900/50 outline outline-1 outline-white/10 px-3 py-2 text-white placeholder-white/40 focus:outline-none focus:ring-1 focus:ring-white/20"
+                        className="w-full bg-zinc-900/50  px-3 py-2 text-white placeholder-white/40 focus:outline-none focus:ring-1 focus:ring-white/20"
                       />
                     </div>
                   </div>
@@ -570,7 +570,7 @@ export default function Admin() {
                   </h3>
 
                   {/* Add Approval Section */}
-                  <div className="outline outline-1 outline-white/10 bg-black/10 p-4">
+                  <div className=" bg-black/10 p-4">
                     <h4 className="text-base font-medium mb-3 text-white/80">
                       Approve Collateral Token
                     </h4>
@@ -584,10 +584,10 @@ export default function Admin() {
                           value={approvalAmount}
                           onChange={(e) => setApprovalAmount(e.target.value)}
                           placeholder="Enter amount to approve"
-                          className="w-full bg-zinc-900/50 outline outline-1 outline-white/10 px-3 py-2 text-white placeholder-white/40 focus:outline-none focus:ring-1 focus:ring-white/20"
+                          className="w-full bg-zinc-900/50  px-3 py-2 text-white placeholder-white/40 focus:outline-none focus:ring-1 focus:ring-white/20"
                         />
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-4">
                         <button
                           onClick={handleApprove}
                           disabled={isApprovingWrite || !approvalAmount}
@@ -605,7 +605,7 @@ export default function Admin() {
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="outline outline-1 outline-white/10 bg-black/10 p-4">
+                    <div className=" bg-black/10 p-4">
                       <h4 className="text-base font-medium mb-3 text-white/80">
                         Mint Pegged Token
                       </h4>
@@ -621,7 +621,7 @@ export default function Admin() {
                               setFreeMintCollateralAmount(e.target.value)
                             }
                             placeholder="Collateral Amount"
-                            className="w-full bg-zinc-900/50 outline outline-1 outline-white/10 px-3 py-2 text-white placeholder-white/40 focus:outline-none focus:ring-1 focus:ring-white/20"
+                            className="w-full bg-zinc-900/50  px-3 py-2 text-white placeholder-white/40 focus:outline-none focus:ring-1 focus:ring-white/20"
                           />
                         </div>
                         <button
@@ -651,7 +651,7 @@ export default function Admin() {
                       </div>
                     </div>
 
-                    <div className="outline outline-1 outline-white/10 bg-black/10 p-4">
+                    <div className=" bg-black/10 p-4">
                       <h4 className="text-base font-medium mb-3 text-white/80">
                         Mint Leveraged Token
                       </h4>
@@ -669,7 +669,7 @@ export default function Admin() {
                               )
                             }
                             placeholder="Collateral Amount"
-                            className="w-full bg-zinc-900/50 outline outline-1 outline-white/10 px-3 py-2 text-white placeholder-white/40 focus:outline-none focus:ring-1 focus:ring-white/20"
+                            className="w-full bg-zinc-900/50  px-3 py-2 text-white placeholder-white/40 focus:outline-none focus:ring-1 focus:ring-white/20"
                           />
                         </div>
                         <button
@@ -710,7 +710,7 @@ export default function Admin() {
                     Redeeming Operations
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="outline outline-1 outline-white/10 bg-black/10 p-4">
+                    <div className=" bg-black/10 p-4">
                       <h4 className="text-base font-medium mb-3 text-white/80">
                         Redeem Pegged Token
                       </h4>
@@ -720,7 +720,7 @@ export default function Admin() {
                           value={freeRedeemAmount}
                           onChange={(e) => setFreeRedeemAmount(e.target.value)}
                           placeholder="Amount to redeem"
-                          className="w-full bg-zinc-900/50 outline outline-1 outline-white/10 px-3 py-2 text-white placeholder-white/40 focus:outline-none focus:ring-1 focus:ring-white/20"
+                          className="w-full bg-zinc-900/50  px-3 py-2 text-white placeholder-white/40 focus:outline-none focus:ring-1 focus:ring-white/20"
                         />
                         <button
                           onClick={handleFreeRedeemPeggedToken}
@@ -734,7 +734,7 @@ export default function Admin() {
                       </div>
                     </div>
 
-                    <div className="outline outline-1 outline-white/10 bg-black/10 p-4">
+                    <div className=" bg-black/10 p-4">
                       <h4 className="text-base font-medium mb-3 text-white/80">
                         Swap Pegged for Leveraged
                       </h4>
@@ -744,7 +744,7 @@ export default function Admin() {
                           value={freeSwapAmount}
                           onChange={(e) => setFreeSwapAmount(e.target.value)}
                           placeholder="Amount to swap"
-                          className="w-full bg-zinc-900/50 outline outline-1 outline-white/10 px-3 py-2 text-white placeholder-white/40 focus:outline-none focus:ring-1 focus:ring-white/20"
+                          className="w-full bg-zinc-900/50  px-3 py-2 text-white placeholder-white/40 focus:outline-none focus:ring-1 focus:ring-white/20"
                         />
                         <button
                           onClick={handleFreeSwapPeggedForLeveraged}
@@ -758,7 +758,7 @@ export default function Admin() {
                       </div>
                     </div>
 
-                    <div className="outline outline-1 outline-white/10 bg-black/10 p-4">
+                    <div className=" bg-black/10 p-4">
                       <h4 className="text-base font-medium mb-3 text-white/80">
                         Redeem Leveraged Token
                       </h4>
@@ -770,7 +770,7 @@ export default function Admin() {
                             setFreeRedeemLeveragedAmount(e.target.value)
                           }
                           placeholder="Amount to redeem"
-                          className="w-full bg-zinc-900/50 outline outline-1 outline-white/10 px-3 py-2 text-white placeholder-white/40 focus:outline-none focus:ring-1 focus:ring-white/20"
+                          className="w-full bg-zinc-900/50  px-3 py-2 text-white placeholder-white/40 focus:outline-none focus:ring-1 focus:ring-white/20"
                         />
                         <button
                           onClick={handleFreeRedeemLeveragedToken}
@@ -789,7 +789,7 @@ export default function Admin() {
             </div>
 
             {/* Price Feed Update */}
-            <div className="bg-zinc-900/50 outline outline-1 outline-white/10 p-4 sm:p-6">
+            <div className="bg-zinc-900/50  p-4 sm:p-6">
               <h2 className="text-lg font-medium text-white mb-4 font-geo">
                 Price Feed Management
               </h2>

@@ -202,10 +202,10 @@ export default function ContractInfo({
   if (isLoading) {
     return (
       <div className="animate-pulse space-y-4 p-4">
-        <div className="h-4 bg-[#4A7C59]/20 w-3/4"></div>
-        <div className="h-4 bg-[#4A7C59]/20 w-1/2"></div>
-        <div className="h-4 bg-[#4A7C59]/20 w-2/3"></div>
-        <div className="h-4 bg-[#4A7C59]/20 w-1/2"></div>
+        <div className="h-4 bg-[#1E4775]/20 w-3/4"></div>
+        <div className="h-4 bg-[#1E4775]/20 w-1/2"></div>
+        <div className="h-4 bg-[#1E4775]/20 w-2/3"></div>
+        <div className="h-4 bg-[#1E4775]/20 w-1/2"></div>
       </div>
     );
   }
@@ -253,27 +253,27 @@ export default function ContractInfo({
       {/* Token Info */}
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1">
-          <div className="text-sm text-[#F5F5F5]/50 flex items-center gap-2">
+          <div className="text-sm text-white/50 flex items-center gap-4">
             <StatusIndicator
               isError={!leveragedTokenAddressData?.[0]?.result}
             />
             Leveraged Token
           </div>
-          <div className="text-lg flex items-center gap-2">
+          <div className="text-lg flex items-center gap-4">
             <span>{symbolsData?.[0]?.result || "..."}</span>
-            <span className="text-sm text-[#F5F5F5]/50">
+            <span className="text-sm text-white/50">
               {formatAddress(leveragedTokenAddress)}
             </span>
           </div>
         </div>
         <div className="space-y-1">
-          <div className="text-sm text-[#F5F5F5]/50 flex items-center gap-2">
+          <div className="text-sm text-white/50 flex items-center gap-4">
             <StatusIndicator isError={!peggedTokenAddressData?.[0]?.result} />
             Pegged Token
           </div>
-          <div className="text-lg flex items-center gap-2">
+          <div className="text-lg flex items-center gap-4">
             <span>{symbolsData?.[1]?.result || "..."}</span>
-            <span className="text-sm text-[#F5F5F5]/50">
+            <span className="text-sm text-white/50">
               {formatAddress(peggedTokenAddress)}
             </span>
           </div>
@@ -283,7 +283,7 @@ export default function ContractInfo({
       {/* Ratios and Prices */}
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1">
-          <div className="text-sm text-[#F5F5F5]/50 flex items-center gap-2">
+          <div className="text-sm text-white/50 flex items-center gap-4">
             <StatusIndicator
               isError={isMaxUint256(collateralRatioData?.[0]?.result)}
             />
@@ -294,7 +294,7 @@ export default function ContractInfo({
           </div>
         </div>
         <div className="space-y-1">
-          <div className="text-sm text-[#F5F5F5]/50 flex items-center gap-2">
+          <div className="text-sm text-white/50 flex items-center gap-4">
             <StatusIndicator
               isError={isMaxUint256(leverageRatioData?.[0]?.result)}
             />
@@ -305,7 +305,7 @@ export default function ContractInfo({
           </div>
         </div>
         <div className="space-y-1">
-          <div className="text-sm text-[#F5F5F5]/50 flex items-center gap-2">
+          <div className="text-sm text-white/50 flex items-center gap-4">
             <StatusIndicator isError={!leveragedTokenPriceData?.[0]?.result} />
             Leveraged Token Price
           </div>
@@ -314,7 +314,7 @@ export default function ContractInfo({
           </div>
         </div>
         <div className="space-y-1">
-          <div className="text-sm text-[#F5F5F5]/50 flex items-center gap-2">
+          <div className="text-sm text-white/50 flex items-center gap-4">
             <StatusIndicator isError={!peggedTokenPriceData?.[0]?.result} />
             Pegged Token Price
           </div>
@@ -326,7 +326,7 @@ export default function ContractInfo({
 
       {/* Fees */}
       <div className="space-y-1">
-        <div className="text-sm text-[#F5F5F5]/50 flex items-center gap-2">
+        <div className="text-sm text-white/50 flex items-center gap-4">
           <StatusIndicator isError={!mintFeeData?.[0]?.result} />
           Mint Fee
         </div>

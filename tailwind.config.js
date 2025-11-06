@@ -7,15 +7,21 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ["var(--font-geist-sans)", ...fontFamily.sans],
-        mono: ["var(--font-geist-mono)", ...fontFamily.mono],
+        sans: ["Chillax", ...fontFamily.sans],
+        mono: ["Chillax", ...fontFamily.mono],
       },
       colors: {
-        "custom-green": "#00df82",
-        "custom-background": "#ff8b7b",
-        // Added brand highlight color
-        harbor: "#00df82",
-        "harbor-green": "#00df82",
+        // Brand colors
+        "harbor-blue": "#1E4775",
+        "harbor-blue-dark": "#17395F", // Slightly darker for boxes
+        "harbor-coral": "#FF8A7A",
+        "harbor-mint": "#B8EBD5",
+        "harbor-charcoal": "#111213",
+        // Legacy support (mapped to new colors)
+        "custom-green": "#B8EBD5",
+        "custom-background": "#FF8A7A",
+        harbor: "#1E4775",
+        "harbor-green": "#B8EBD5",
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
         card: {

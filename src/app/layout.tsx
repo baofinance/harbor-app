@@ -3,8 +3,6 @@ import "./globals.css";
 import ContextProvider from "@/contexts";
 import { headers } from "next/headers";
 import Navigation from "@/components/Navigation";
-import { GeistSans } from "geist/font/sans";
-import { GeistMono } from "geist/font/mono";
 import FadeContent from "@/components/FadeContent";
 
 const siteUrl = "https://harbor.finance";
@@ -28,9 +26,9 @@ export const metadata: Metadata = {
   ],
   authors: [{ name: "Harbor Protocol" }],
   icons: {
-    icon: "/logo.png",
-    shortcut: "/logo.png",
-    apple: "/logo.png",
+    icon: "/logowhitenobg.png",
+    shortcut: "/logowhitenobg.png",
+    apple: "/logowhitenobg.png",
   },
   openGraph: {
     title,
@@ -71,7 +69,7 @@ export default async function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`antialiased font-sans bg-[#111213] text-zinc-100 ${GeistSans.variable} ${GeistMono.variable} relative`}
+        className={`antialiased font-sans bg-[#1E4775] text-white relative`}
       >
         <div className="relative z-10">
           <ContextProvider cookies={cookies}>

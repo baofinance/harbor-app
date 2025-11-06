@@ -35,7 +35,7 @@ function WalletOption({ connector, onClick }: { connector: Connector; onClick: (
     }, [connector])
 
     return (
-        <button disabled={!ready} onClick={onClick} className="flex items-center gap-2 text-white hover:text-black text-lg">
+        <button disabled={!ready} onClick={onClick} className="flex items-center gap-4 text-white hover:text-black text-lg">
             <WalletIcon name={connector.name} /> {connector.name}
         </button>
     )
@@ -61,7 +61,7 @@ function WalletIcon({ name }: { name: string }) {
     if (name === 'Injected') return <div className="w-6 h-6" />;
 
     return (
-        <div className="bg-white rounded-xs">
+        <div className="bg-white-xs">
             <WalletIconClient name={name} size={24} variant={variant} />
         </div>
     );
@@ -77,18 +77,18 @@ function ConnectButton() {
         <>
             <button
                 onClick={() => setShowModal(true)}
-                className={`bg-[#4A7C59] hover:bg-[#3A6147] px-6 py-2 text-white text-lg tracking-wider transition-all uppercase ${geo.className}`}
+                className={`bg-[#FF8A7A] hover:bg-[#FF6B5A] px-6 py-2 text-white text-lg tracking-wider transition-all uppercase rounded-full ${geo.className}`}
             >
                 {isConnected ? formatAddress(address!) : <div className="font-semibold">Connect Wallet</div>}
             </button>
 
             {showModal && (
                 <div className={`fixed inset-0 z-50 flex items-center justify-end px-4 pt-28 ${geo.className}`}>
-                    <div className="relative w-full max-w-md mt-28 bg-[#4A7C59] flex flex-col overflow-hidden shadow-lg">
+                    <div className="relative w-full max-w-md mt-28 bg-[#1E4775] flex flex-col overflow-hidden shadow-lg">
                         <button
                             type="button"
                             onClick={() => setShowModal(false)}
-                            className="absolute top-3 right-3 text-white bg-transparent hover:bg-[#4A7C59] hover:text-gray-900 text-sm p-1.5 inline-flex items-center"
+                            className="absolute top-3 right-3 text-white bg-transparent hover:bg-[#153A5F] hover:text-gray-900 text-sm p-1.5 inline-flex items-center"
                         >
                             <svg
                                 aria-hidden="true"
@@ -106,7 +106,7 @@ function ConnectButton() {
                             <span className="sr-only">Close modal</span>
                         </button>
 
-                        <div className="px-6 py-4 bg-[#3A6147]">
+                        <div className="px-6 py-4 bg-[#153A5F]">
                             <h3 className="text-base font-semibold text-gray-900 lg:text-xl dark:text-white">Wallets</h3>
                         </div>
 

@@ -1,5 +1,5 @@
 "use client";
-import { useRef, useEffect, useState, ReactNode } from "react";
+import { useEffect, useState, ReactNode } from "react";
 
 interface FadeContentProps {
   children: ReactNode;
@@ -23,32 +23,20 @@ const FadeContent: React.FC<FadeContentProps> = ({
   className = "",
 }) => {
   const [inView, setInView] = useState(false);
-  const ref = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    const element = ref.current;
-    if (!element) return;
+    // Simple fade-in on mount - no intersection observer needed for layout content
+    const timer = setTimeout(() => {
+      setInView(true);
+    }, delay);
 
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          observer.unobserve(element);
-          setTimeout(() => {
-            setInView(true);
-          }, delay);
-        }
-      },
-      { threshold }
-    );
-
-    observer.observe(element);
-
-    return () => observer.disconnect();
-  }, [threshold, delay]);
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [delay]);
 
   return (
     <div
-      ref={ref}
       className={className}
       style={{
         opacity: inView ? 1 : initialOpacity,

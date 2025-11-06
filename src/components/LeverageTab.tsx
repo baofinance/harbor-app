@@ -148,7 +148,7 @@ export function LeverageTab() {
                 value={leverage}
                 onChange={handleLeverage}
                 placeholder="0.0"
-                className="w-full bg-[#202020] text-[#F5F5F5] border border-[#4A7C59]/30 focus:border-[#4A7C59] outline-none transition-all p-4 pr-24"
+                className="w-full bg-[#202020] text-white focus:outline-none transition-all p-4 pr-24"
               />
             </div>
           </div>
@@ -173,7 +173,7 @@ export function LeverageTab() {
                 value={collateralAmount}
                 onChange={handleCollateralChange}
                 placeholder="0.0"
-                className="w-full bg-[#202020] text-[#F5F5F5] border border-[#4A7C59]/30 focus:border-[#4A7C59] outline-none transition-all p-4 pr-24"
+                className="w-full bg-[#202020] text-white focus:outline-none transition-all p-4 pr-24"
               />
             </div>
           </div>
@@ -195,7 +195,7 @@ export function LeverageTab() {
                 value={peggedAmount}
                 onChange={handlePeggedChange}
                 placeholder="0.0"
-                className="w-full bg-[#202020] text-[#F5F5F5] border border-[#4A7C59]/30 focus:border-[#4A7C59] outline-none transition-all p-4 pr-24"
+                className="w-full bg-[#202020] text-white focus:outline-none transition-all p-4 pr-24"
               />
             </div>
           </div>
@@ -217,7 +217,7 @@ export function LeverageTab() {
                 value={leveragedAmount}
                 onChange={handleLeveragedChange}
                 placeholder="0.0"
-                className="w-full bg-[#202020] text-[#F5F5F5] border border-[#4A7C59]/30 focus:border-[#4A7C59] outline-none transition-all p-4 pr-24"
+                className="w-full bg-[#202020] text-white focus:outline-none transition-all p-4 pr-24"
               />
             </div>
           </div>
@@ -225,7 +225,7 @@ export function LeverageTab() {
       </div>
 
       {error && (
-        <div className="rounded-md bg-red-50 p-4">
+        <div className=" bg-red-50 p-4">
           <div className="flex">
             <div className="ml-3">
               <h3 className="text-sm font-medium text-red-800">{error}</h3>

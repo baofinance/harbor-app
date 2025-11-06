@@ -63,18 +63,18 @@ export default function PriceChart({
     <div className="relative z-10 h-full">
       <div className="flex items-center justify-end mb-4">
         <div className="flex items-center gap-4">
-          <div className="text-sm text-[#F5F5F5]/50">
+          <div className="text-sm text-white/50">
             {isLoading ? "Loading..." : `${filteredData.length} data points`}
           </div>
-          <div className="flex gap-1">
+          <div className="flex gap-4">
             {(["1D", "1W", "1M"] as const).map((range) => (
               <button
                 key={range}
                 onClick={() => setTimeRange(range)}
                 className={`px-2 py-1 text-xs ${
                   timeRange === range
-                    ? "bg-[#4A7C59] text-white"
-                    : "bg-zinc-900/50 text-[#F5F5F5]/50 hover:text-[#F5F5F5] hover:bg-[#4A7C59]/20"
+                    ? "bg-[#1E4775] text-white"
+                    : "bg-zinc-900/50 text-white/50 hover:text-white hover:bg-[#1E4775]/20"
                 }`}
               >
                 {range}
@@ -85,11 +85,11 @@ export default function PriceChart({
       </div>
       <div className="h-[calc(100%-2rem)]">
         {isLoading ? (
-          <div className="flex items-center justify-center h-full text-[#F5F5F5]/50">
+          <div className="flex items-center justify-center h-full text-white/50">
             Loading price history...
           </div>
         ) : filteredData.length === 0 ? (
-          <div className="flex items-center justify-center h-full text-[#F5F5F5]/50">
+          <div className="flex items-center justify-center h-full text-white/50">
             No price data available
           </div>
         ) : (

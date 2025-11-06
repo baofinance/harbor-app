@@ -28,10 +28,10 @@ export default function Example() {
   };
 
   const linkClass = (href: string) =>
-    `rounded-md px-3 py-2 text-sm font-medium ${
+    ` px-3 py-2 text-sm font-medium ${
       isActive(href)
-        ? "text-white bg-white/5"
-        : "text-gray-300 hover:bg-white/5 hover:text-white"
+        ? "text-[#1E4775] bg-white"
+        : "text-white hover:bg-white/20 hover:text-white"
     }`;
 
   const optionsForSelect = options.map((o) => ({
@@ -43,17 +43,18 @@ export default function Example() {
   return (
     <Disclosure<"nav">
       as="nav"
-      className="relative bg-[#111213] after:pointer-events-none max-w-7xl mx-auto after:absolute after:inset-x-0 after:bottom-0 after:h-px mb-6"
+      className="relative bg-[#1E4775] after:pointer-events-none max-w-7xl mx-auto after:absolute after:inset-x-0 after:bottom-0 after:h-px after:bg-white/20 mb-6"
     >
       <div className="w-full px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center">
-            <Link href="/" className="w-8 h-8 relative mr-4">
+            <Link href="/genesis" className="h-10 w-auto relative mr-4">
               <Image
-                src="/logo.png"
+                src="/logo.svg"
                 alt="Logo"
-                fill
-                className="object-contain"
+                width={100}
+                height={40}
+                className="object-contain h-full w-auto"
                 priority
               />
             </Link>
@@ -66,26 +67,19 @@ export default function Example() {
                 >
                   Dashboard
                 </Link>
-                {/* <Link
-                  href="/"
-                  className={linkClass("/")}
-                  aria-current={isActive("/") ? "page" : undefined}
-                >
-                  Mint + Redeem
-                </Link> */}
                 <Link
                   href="/genesis"
                   className={linkClass("/genesis")}
                   aria-current={isActive("/genesis") ? "page" : undefined}
                 >
-                  Genesis
+                  Maiden Voyage
                 </Link>
                 <Link
-                  href="/flow"
-                  className={linkClass("/flow")}
-                  aria-current={isActive("/flow") ? "page" : undefined}
+                  href="/mintredeem"
+                  className={linkClass("/mintredeem")}
+                  aria-current={isActive("/mintredeem") ? "page" : undefined}
                 >
-                  Flow
+                  Mint + Redeem
                 </Link>
                 <Link
                   href="/earn"
@@ -94,11 +88,18 @@ export default function Example() {
                 >
                   Earn
                 </Link>
+                <Link
+                  href="/flow"
+                  className={linkClass("/flow")}
+                  aria-current={isActive("/flow") ? "page" : undefined}
+                >
+                  Map Room
+                </Link>
               </div>
             </div>
           </div>
           <div className="hidden sm:ml-6 sm:block">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-4">
               <CurrencySelect
                 value={code}
                 onValueChange={setCode}
@@ -109,7 +110,7 @@ export default function Example() {
           </div>
           <div className="-mr-2 flex sm:hidden">
             {/* Mobile menu button */}
-            <DisclosureButton className="group relative inline-flex items-center justify-center rounded-md p-2 text-gray-400 hover:bg-white/5 hover:text-white focus:outline-2 focus:-outline-offset-1 focus:outline-harbor">
+            <DisclosureButton className="group relative inline-flex items-center justify-center  p-2 text-gray-200 hover:bg-[#FF8A7A]/20 hover:text-white focus:outline-2 focus:-outline-offset-1 focus:outline-[#FF8A7A]">
               <span className="absolute -inset-0.5" />
               <span className="sr-only">Open main menu</span>
               <Bars3Icon
@@ -129,19 +130,11 @@ export default function Example() {
         <div className="px-2 pt-2 pb-3 space-y-1">
           <DisclosureButton
             as={Link}
-            href="/dashboard"
-            className={linkClass("/dashboard")}
-            aria-current={isActive("/dashboard") ? "page" : undefined}
-          >
-            Dashboard
-          </DisclosureButton>
-          <DisclosureButton
-            as={Link}
             href="/"
             className={linkClass("/")}
             aria-current={isActive("/") ? "page" : undefined}
           >
-            Mint + Redeem
+            Dashboard
           </DisclosureButton>
           <DisclosureButton
             as={Link}
@@ -149,15 +142,15 @@ export default function Example() {
             className={linkClass("/genesis")}
             aria-current={isActive("/genesis") ? "page" : undefined}
           >
-            Genesis
+            Maiden Voyage
           </DisclosureButton>
           <DisclosureButton
             as={Link}
-            href="/flow"
-            className={linkClass("/flow")}
-            aria-current={isActive("/flow") ? "page" : undefined}
+            href="/mintredeem"
+            className={linkClass("/mintredeem")}
+            aria-current={isActive("/mintredeem") ? "page" : undefined}
           >
-            Flow
+            Mint + Redeem
           </DisclosureButton>
           <DisclosureButton
             as={Link}
@@ -167,9 +160,17 @@ export default function Example() {
           >
             Earn
           </DisclosureButton>
+          <DisclosureButton
+            as={Link}
+            href="/flow"
+            className={linkClass("/flow")}
+            aria-current={isActive("/flow") ? "page" : undefined}
+          >
+            Map Room
+          </DisclosureButton>
         </div>
         <div className="border-t border-white/10 px-4 py-3">
-          <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center justify-between gap-4">
             <CurrencySelect
               value={code}
               onValueChange={setCode}

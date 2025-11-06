@@ -45,7 +45,7 @@ const NeutralTooltip: React.FC<{
   if (!active || !payload || !payload.length) return null;
   const items = payload as { name: string; value: number; color: string }[];
   return (
-    <div className="bg-zinc-950/95 border border-white/10 p-3 text-xs text-white/80">
+    <div className="bg-zinc-950/95  p-3 text-xs text-white/80">
       {typeof label === "number" && (
         <div className="mb-1 text-white">
           {formatTimestamp
@@ -56,9 +56,9 @@ const NeutralTooltip: React.FC<{
       <div className="space-y-0.5">
         {items.map((it, idx) => (
           <div key={idx} className="flex items-center justify-between gap-4">
-            <span className="inline-flex items-center gap-2">
+            <span className="inline-flex items-center gap-4">
               <span
-                className="inline-block w-2.5 h-2.5 rounded-sm"
+                className="inline-block w-2.5 h-2.5 "
                 style={{ backgroundColor: it.color }}
               />
               {it.name}

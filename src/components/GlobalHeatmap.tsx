@@ -28,8 +28,8 @@ export interface GlobalHeatmapProps {
   actives?: boolean[]; // mark in-month cells for dimming and tooltips
 }
 
-const NEUTRAL_PALETTE = ["#004d2d", "#006d40", "#00a65e", "#00c770", "#00df82"]; // harbor tones
-const BLUE_ACCENT = "#00df82";
+const NEUTRAL_PALETTE = ["#0A2F4F", "#0F3D66", "#1E4775", "#2A5A8F", "#3D6BA8"]; // harbor blue tones
+const BLUE_ACCENT = "#1E4775";
 
 function levelColor(value01: number): string {
   const v = Math.max(0, Math.min(1, value01));
@@ -164,13 +164,13 @@ export default function GlobalHeatmap({
       <div className="w-full relative" ref={wrapRef}>
         {!monthView && (
           <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2 text-[11px] text-white/60">
+            <div className="flex items-center gap-4 text-[11px] text-white/60">
               <span>Less</span>
               <div className="flex items-center" style={{ gap: `${gapPx}px` }}>
                 {NEUTRAL_PALETTE.map((c, i) => (
                   <div
                     key={i}
-                    className="rounded-[3px] outline outline-1 outline-white/5"
+                    className="rounded-[3px] 
                     style={{ ...cellStyle, backgroundColor: c }}
                   />
                 ))}
@@ -261,7 +261,7 @@ export default function GlobalHeatmap({
                       onMouseMove={isActive ? handleMove : undefined}
                       onMouseLeave={isActive ? handleLeave : undefined}
                       className={
-                        "rounded-[3px] outline outline-1 outline-white/5 " +
+                        "rounded-[3px]  " +
                         (isActive
                           ? "hover:outline-white/30 hover:opacity-90 cursor-pointer"
                           : "opacity-35")
@@ -276,7 +276,7 @@ export default function GlobalHeatmap({
         </div>
         {tip.show && (
           <div
-            className="pointer-events-none absolute z-50 rounded-md bg-zinc-950/95 outline outline-1 outline-white/10 shadow-lg px-3 py-2"
+            className="pointer-events-none absolute z-50  bg-zinc-950/95  shadow-lg px-3 py-2"
             style={{ left: tip.x, top: tip.y, minWidth: 140 }}
           >
             <div className="text-white text-sm font-semibold leading-tight">
@@ -320,7 +320,7 @@ export default function GlobalHeatmap({
               return (
                 <div
                   key={j}
-                  className="h-5 m-1 w-5 outline outline-1 outline-white/5"
+                  className="h-5 m-1 w-5 
                   style={{ backgroundColor: colorFor(cell.value) }}
                 />
               );

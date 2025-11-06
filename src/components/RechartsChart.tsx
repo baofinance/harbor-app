@@ -25,9 +25,9 @@ const CustomTooltip = ({
 }: any) => {
   if (active && payload && payload.length) {
     return (
-      <div className="bg-[#0c0c0c] p-4 border border-white/10 shadow-lg">
+      <div className="bg-[#0c0c0c] p-4 shadow-lg">
         <p className="text-sm text-white/80">{formatTooltipTimestamp(label)}</p>
-        <p className="text-lg font-bold text-[#4A7C59]">
+        <p className="text-lg font-bold text-[#1E4775]">
           {`${payload[0].value.toFixed(2)}%`}
           <span className="text-xs text-white/50 ml-1">APR</span>
         </p>
@@ -53,29 +53,29 @@ export default function RechartsChart({
       >
         <defs>
           <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor="#4A7C59" stopOpacity={0.4} />
-            <stop offset="95%" stopColor="#4A7C59" stopOpacity={0} />
+            <stop offset="5%" stopColor="#1E4775" stopOpacity={0.4} />
+            <stop offset="95%" stopColor="#1E4775" stopOpacity={0} />
           </linearGradient>
         </defs>
         <CartesianGrid
           strokeDasharray="1 4"
-          stroke="#4A7C59"
+          stroke="#1E4775"
           opacity={0.15}
           vertical={false}
         />
         <XAxis
           dataKey="timestamp"
-          stroke="#F5F5F5"
+          stroke="white"
           opacity={0.5}
           tick={{ fontSize: 12, fill: "#A3A3A3" }}
-          tickLine={{ stroke: "#4A7C59", opacity: 0.2 }}
+          tickLine={{ stroke: "#1E4775", opacity: 0.2 }}
           tickFormatter={formatTimestamp}
         />
         <YAxis
-          stroke="#F5F5F5"
+          stroke="white"
           opacity={0.5}
           tick={{ fontSize: 12, fill: "#A3A3A3" }}
-          tickLine={{ stroke: "#4A7C59", opacity: 0.2 }}
+          tickLine={{ stroke: "#1E4775", opacity: 0.2 }}
           domain={["auto", "auto"]}
           tickFormatter={(value) => `${value}${unit}`}
         />
@@ -87,7 +87,7 @@ export default function RechartsChart({
         <Area
           type="monotone"
           dataKey={dataKey}
-          stroke="#4A7C59"
+          stroke="#1E4775"
           strokeWidth={2}
           fillOpacity={1}
           fill="url(#colorPrice)"
@@ -96,7 +96,7 @@ export default function RechartsChart({
             r: 5,
             strokeWidth: 2,
             fill: "#0c0c0c",
-            stroke: "#4A7C59",
+            stroke: "#1E4775",
           }}
         />
       </AreaChart>

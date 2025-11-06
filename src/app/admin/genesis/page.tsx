@@ -5,7 +5,7 @@ import Navigation from "../../../components/Navigation";
 
 export default function GenesisAdmin() {
   return (
-    <div className="min-h-screen text-[#F5F5F5] font-sans relative">
+    <div className="min-h-screen text-white font-sans relative">
       <MultiMarketGenesisAdmin />
     </div>
   );

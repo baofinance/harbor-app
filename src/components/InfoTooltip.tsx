@@ -43,7 +43,7 @@ export default function InfoTooltip({
     >
       <span
         tabIndex={0}
-        className="inline-flex h-5 w-5 items-center justify-center rounded-sm text-white/60 hover:text-white focus:outline-none focus-visible:ring-1 focus-visible:ring-white/30"
+        className="inline-flex h-5 w-5 items-center justify-center  text-white/60 hover:text-white focus:outline-none focus-visible:ring-1 focus-visible:ring-white/30"
         aria-label="Info"
       >
         <svg
@@ -61,7 +61,7 @@ export default function InfoTooltip({
       <div
         role="tooltip"
         className={
-          "pointer-events-none absolute z-20 whitespace-nowrap rounded-sm bg-black/80 px-2 py-1 text-[11px] text-white outline outline-1 outline-white/10 shadow-lg opacity-0 transition-opacity duration-150 " +
+          "pointer-events-none absolute z-20 whitespace-nowrap  bg-black/80 px-2 py-1 text-[11px] text-white  shadow-lg opacity-0 transition-opacity duration-150 " +
           positionClasses.container +
           " group-hover:opacity-100 group-focus-within:opacity-100"
         }
@@ -69,7 +69,7 @@ export default function InfoTooltip({
         {label}
         <span
           className={
-            "absolute h-2 w-2 rotate-45 bg-black/80 outline outline-1 outline-white/10 " +
+            "absolute h-2 w-2 rotate-45 bg-black/80  " +
             positionClasses.arrow
           }
         />

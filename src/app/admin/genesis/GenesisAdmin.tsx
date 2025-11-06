@@ -13,9 +13,9 @@ export function GenesisAdminPage() {
 
   if (!isAdmin) {
     return (
-      <div className="min-h-screen text-[#F5F5F5] max-w-[1300px] mx-auto font-sans relative">
+      <div className="min-h-screen text-white max-w-[1300px] mx-auto font-sans relative">
         <main className="container mx-auto px-4 sm:px-10 pt-[6rem] pb-6 relative z-10">
-          <div className="bg-zinc-900/50 outline outline-1 outline-white/10 p-6 text-center">
+          <div className="bg-zinc-900/50  p-6 text-center">
             <h2 className="text-2xl font-medium text-white mb-2 font-geo">
               Access Denied
             </h2>
@@ -29,14 +29,14 @@ export function GenesisAdminPage() {
   }
 
   return (
-    <div className="min-h-screen text-[#F5F5F5] max-w-[1300px] mx-auto font-sans relative">
+    <div className="min-h-screen text-white max-w-[1300px] mx-auto font-sans relative">
       <main className="container mx-auto px-4 sm:px-10 pt-[6rem] pb-6 relative z-10">
         <h1 className="text-4xl font-medium mb-6 font-geo text-white">
           GENESIS ADMIN
         </h1>
 
         {/* Status Overview */}
-        <div className="bg-zinc-900/50 outline outline-1 outline-white/10 p-4 sm:p-6 mb-4">
+        <div className="bg-zinc-900/50  p-4 sm:p-6 mb-4">
           <h2 className="text-lg font-medium text-white mb-4 font-geo">
             Genesis Status
           </h2>
@@ -63,7 +63,7 @@ export function GenesisAdminPage() {
         </div>
 
         {/* Admin Actions */}
-        <div className="bg-zinc-900/50 outline outline-1 outline-white/10 p-4 sm:p-6 mb-4">
+        <div className="bg-zinc-900/50  p-4 sm:p-6 mb-4">
           <h2 className="text-lg font-medium text-white mb-4 font-geo">
             Admin Actions
           </h2>
@@ -107,24 +107,24 @@ export function GenesisAdminPage() {
         </div>
 
         {/* Genesis Statistics */}
-        <div className="bg-zinc-900/50 outline outline-1 outline-white/10 p-4 sm:p-6">
+        <div className="bg-zinc-900/50  p-4 sm:p-6">
           <h2 className="text-lg font-medium text-white mb-4 font-geo">
             Genesis Statistics
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="text-center p-4 outline outline-1 outline-white/10 bg-black/10">
+            <div className="text-center p-4  bg-black/10">
               <div className="text-2xl font-semibold text-white">
                 {formatEther(totalCollateral)}
               </div>
               <div className="text-white/70">Total wstETH Deposited</div>
             </div>
-            <div className="text-center p-4 outline outline-1 outline-white/10 bg-black/10">
+            <div className="text-center p-4  bg-black/10">
               <div className="text-2xl font-semibold text-white">
                 {totalCollateral > 0n ? formatEther(totalCollateral / 2n) : "0"}
               </div>
               <div className="text-white/70">Pegged Tokens to be Minted</div>
             </div>
-            <div className="text-center p-4 outline outline-1 outline-white/10 bg-black/10">
+            <div className="text-center p-4  bg-black/10">
               <div className="text-2xl font-semibold text-white">
                 {totalCollateral > 0n
                   ? formatEther(totalCollateral - totalCollateral / 2n)

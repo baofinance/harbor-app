@@ -43,8 +43,8 @@ export default function CurrencySelect({
       value={value}
       onValueChange={(v) => onValueChange(v as CurrencyCode)}
     >
-      <Select.Trigger className="inline-flex items-center justify-between gap-2 bg-zinc-900/60 outline outline-1 outline-white/10 hover:outline-white/20 text-white text-xs px-2 py-1.5 rounded-sm min-w-[120px] h-8 whitespace-nowrap">
-        <div className="inline-flex items-center gap-2">
+      <Select.Trigger className="inline-flex items-center justify-between gap-4 bg-zinc-900/60  hover:outline-white/20 text-white text-xs px-2 py-1.5  min-w-[120px] h-8 whitespace-nowrap">
+        <div className="inline-flex items-center gap-4">
           <span className="text-white/80 flex items-center justify-center">
             {IconFor[value as CurrencyCode]}
           </span>
@@ -60,7 +60,7 @@ export default function CurrencySelect({
           side="bottom"
           align="end"
           sideOffset={6}
-          className="z-50 overflow-hidden bg-zinc-900/95 outline outline-1 outline-white/10 rounded-md shadow-xl"
+          className="z-50 overflow-hidden bg-zinc-900/95   shadow-xl"
         >
           <Select.ScrollUpButton className="flex items-center justify-center h-6 text-white/60">
             <ChevronUp className="w-4 h-4" />
@@ -70,7 +70,7 @@ export default function CurrencySelect({
               <Select.Item
                 key={opt.code}
                 value={opt.code}
-                className="relative flex items-center gap-2 select-none px-2 py-1.5 text-xs text-white/90 data-[highlighted]:bg-white/10 data-[highlighted]:outline-none rounded-sm"
+                className="relative flex items-center gap-4 select-none px-2 py-1.5 text-xs text-white/90 data-[highlighted]:bg-white/10 data-[highlighted]:outline-none "
               >
                 <span className="text-white/80 flex items-center justify-center">
                   {IconFor[opt.code]}

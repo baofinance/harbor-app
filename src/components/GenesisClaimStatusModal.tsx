@@ -164,26 +164,26 @@ export default function GenesisClaimStatusModal({
 
   return (
     <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-      <div className="bg-zinc-900/50 border border-[#2563EB]/20 max-w-md w-full p-6">
+      <div className="bg-zinc-900/50  max-w-md w-full p-6">
         {/* Status Icon */}
         <div className="text-center mb-6">
           {getStatusIcon()}
           <h2
-            className={`text-xl font-medium text-[#F5F5F5] mb-2 ${geo.className}`}
+            className={`text-xl font-medium text-white mb-2 ${geo.className}`}
           >
             {getStatusTitle()}
           </h2>
-          <p className="text-sm text-[#F5F5F5]/60">{getStatusDescription()}</p>
+          <p className="text-sm text-white/60">{getStatusDescription()}</p>
         </div>
 
         {/* Transaction Hash */}
         {transactionHash && (
           <div className="mb-6">
-            <div className="bg-[#202020] border border-[#2563EB]/20 p-3">
-              <div className="text-xs text-[#F5F5F5]/60 mb-1">
+            <div className="bg-[#202020]  p-3">
+              <div className="text-xs text-white/60 mb-1">
                 Transaction Hash
               </div>
-              <div className="text-xs text-[#F5F5F5] font-mono break-all">
+              <div className="text-xs text-white font-mono break-all">
                 {transactionHash}
               </div>
             </div>
@@ -193,21 +193,21 @@ export default function GenesisClaimStatusModal({
         {/* Claimed Tokens - Only show when completed */}
         {status === "completed" && (
           <div className="space-y-3 mb-6">
-            <div className="bg-[#202020] border border-[#2563EB]/20 p-4">
+            <div className="bg-[#202020]  p-4">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm text-[#F5F5F5]/60">
+                <span className="text-sm text-white/60">
                   Claimed Amount
                 </span>
                 <span className="text-xs text-blue-400">✓ Transferred</span>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-4">
                 <div className="text-center">
                   <div
                     className={`text-lg font-medium text-blue-400 ${geo.className}`}
                   >
                     {formatEther(claimedPegged)}
                   </div>
-                  <div className="text-xs text-[#F5F5F5]/60">
+                  <div className="text-xs text-white/60">
                     {market?.peggedToken?.name || "Pegged Token"}
                   </div>
                 </div>
@@ -217,7 +217,7 @@ export default function GenesisClaimStatusModal({
                   >
                     {formatEther(claimedLeveraged)}
                   </div>
-                  <div className="text-xs text-[#F5F5F5]/60">
+                  <div className="text-xs text-white/60">
                     {market?.leveragedToken?.name || "Leveraged Token"}
                   </div>
                 </div>
@@ -230,11 +230,11 @@ export default function GenesisClaimStatusModal({
         {status === "completed" && (
           <div className="space-y-2 mb-6">
             <h3
-              className={`text-sm font-medium text-[#F5F5F5] mb-3 ${geo.className}`}
+              className={`text-sm font-medium text-white mb-3 ${geo.className}`}
             >
               Add to Wallet
             </h3>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-4">
               <button
                 onClick={() =>
                   addToWallet(
@@ -246,7 +246,7 @@ export default function GenesisClaimStatusModal({
                 disabled={
                   isAddingToWallet === (market?.peggedToken?.symbol || "ZHE")
                 }
-                className="flex items-center justify-center gap-2 px-3 py-2 bg-blue-600/20 hover:bg-blue-600/30 disabled:bg-gray-600/30 disabled:cursor-not-allowed text-blue-400 text-sm transition-colors"
+                className="flex items-center justify-center gap-4 px-3 py-2 bg-blue-600/20 hover:bg-blue-600/30 disabled:bg-gray-600/30 disabled:cursor-not-allowed text-blue-400 text-sm transition-colors"
               >
                 {isAddingToWallet === (market?.peggedToken?.symbol || "ZHE") ? (
                   <>
@@ -284,7 +284,7 @@ export default function GenesisClaimStatusModal({
                   isAddingToWallet ===
                   (market?.leveragedToken?.symbol || "STEAMED")
                 }
-                className="flex items-center justify-center gap-2 px-3 py-2 bg-purple-600/20 hover:bg-purple-600/30 disabled:bg-gray-600/30 disabled:cursor-not-allowed text-purple-400 text-sm transition-colors"
+                className="flex items-center justify-center gap-4 px-3 py-2 bg-purple-600/20 hover:bg-purple-600/30 disabled:bg-gray-600/30 disabled:cursor-not-allowed text-purple-400 text-sm transition-colors"
               >
                 {isAddingToWallet ===
                 (market?.leveragedToken?.symbol || "STEAMED") ? (
@@ -319,16 +319,16 @@ export default function GenesisClaimStatusModal({
         {status === "completed" && (
           <div className="space-y-2 mb-6">
             <h3
-              className={`text-sm font-medium text-[#F5F5F5] mb-3 ${geo.className}`}
+              className={`text-sm font-medium text-white mb-3 ${geo.className}`}
             >
               What's Next?
             </h3>
             <div className="space-y-2">
               <Link
                 href="/earn"
-                className="flex items-center justify-between p-3 bg-[#202020] hover:bg-[#2A2A2A] border border-[#2563EB]/20 transition-colors"
+                className="flex items-center justify-between p-3 bg-[#202020] hover:bg-[#2A2A2A]  transition-colors"
               >
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-4">
                   <div className="w-8 h-8 bg-blue-400/10 border border-blue-400/20 flex items-center justify-center">
                     <svg
                       className="w-4 h-4 text-blue-400"
@@ -345,16 +345,16 @@ export default function GenesisClaimStatusModal({
                     </svg>
                   </div>
                   <div>
-                    <div className="text-sm font-medium text-[#F5F5F5]">
+                    <div className="text-sm font-medium text-white">
                       Earn Page
                     </div>
-                    <div className="text-xs text-[#F5F5F5]/60">
+                    <div className="text-xs text-white/60">
                       Stake tokens and earn rewards
                     </div>
                   </div>
                 </div>
                 <svg
-                  className="w-4 h-4 text-[#F5F5F5]/40"
+                  className="w-4 h-4 text-white/40"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -369,9 +369,9 @@ export default function GenesisClaimStatusModal({
               </Link>
               <Link
                 href="/mint-redeem"
-                className="flex items-center justify-between p-3 bg-[#202020] hover:bg-[#2A2A2A] border border-[#4A7C59]/20 transition-colors"
+                className="flex items-center justify-between p-3 bg-[#202020] hover:bg-[#2A2A2A]  transition-colors"
               >
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-4">
                   <div className="w-8 h-8 bg-blue-400/10 border border-blue-400/20 flex items-center justify-center">
                     <svg
                       className="w-4 h-4 text-blue-400"
@@ -388,16 +388,16 @@ export default function GenesisClaimStatusModal({
                     </svg>
                   </div>
                   <div>
-                    <div className="text-sm font-medium text-[#F5F5F5]">
+                    <div className="text-sm font-medium text-white">
                       Mint/Redeem
                     </div>
-                    <div className="text-xs text-[#F5F5F5]/60">
+                    <div className="text-xs text-white/60">
                       Trade and manage your tokens
                     </div>
                   </div>
                 </div>
                 <svg
-                  className="w-4 h-4 text-[#F5F5F5]/40"
+                  className="w-4 h-4 text-white/40"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"

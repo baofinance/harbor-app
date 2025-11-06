@@ -303,14 +303,14 @@ function SystemHealth({
   if (!mounted) return null;
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-2">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
       {/* Total Collateral Box */}
-      <div className="bg-zinc-900/50/90 border border-[#4A7C59]/20 p-2 hover:border-[#4A7C59]/40 transition-colors text-center flex flex-col items-center justify-center">
+      <div className="bg-zinc-900/50/90  p-2 hover:border-[#1E4775]/40 transition-colors text-center flex flex-col items-center justify-center">
         <div className="text-zinc-400 text-[10px] uppercase tracking-wider mb-2">
           Total Collateral
         </div>
         <div
-          className={`text-2xl font-medium text-[#4A7C59] ${
+          className={`text-2xl font-medium text-[#1E4775] ${
             geoClassName || ""
           }`}
         >
@@ -326,12 +326,12 @@ function SystemHealth({
         </div>
       </div>
       {/* Pegged Tokens Box */}
-      <div className="bg-zinc-900/50/90 border border-[#4A7C59]/20 p-2 hover:border-[#4A7C59]/40 transition-colors text-center flex flex-col items-center justify-center">
+      <div className="bg-zinc-900/50/90  p-2 hover:border-[#1E4775]/40 transition-colors text-center flex flex-col items-center justify-center">
         <div className="text-zinc-400 text-[10px] uppercase tracking-wider mb-2">
           Pegged Tokens
         </div>
         <div
-          className={`text-2xl font-medium text-[#4A7C59] ${
+          className={`text-2xl font-medium text-[#1E4775] ${
             geoClassName || ""
           }`}
         >
@@ -342,12 +342,12 @@ function SystemHealth({
         </div>
       </div>
       {/* Leveraged Tokens Box */}
-      <div className="bg-zinc-900/50/90 border border-[#4A7C59]/20 p-2 hover:border-[#4A7C59]/40 transition-colors text-center flex flex-col items-center justify-center">
+      <div className="bg-zinc-900/50/90  p-2 hover:border-[#1E4775]/40 transition-colors text-center flex flex-col items-center justify-center">
         <div className="text-zinc-400 text-[10px] uppercase tracking-wider mb-2">
           Leveraged Tokens
         </div>
         <div
-          className={`text-2xl font-medium text-[#4A7C59] ${
+          className={`text-2xl font-medium text-[#1E4775] ${
             geoClassName || ""
           }`}
         >
@@ -367,12 +367,12 @@ function SystemHealth({
         </div>
       </div>
       {/* Collateral Ratio Box */}
-      <div className="bg-zinc-900/50/90 border border-[#4A7C59]/20 p-2 hover:border-[#4A7C59]/40 transition-colors text-center flex flex-col items-center justify-center">
+      <div className="bg-zinc-900/50/90  p-2 hover:border-[#1E4775]/40 transition-colors text-center flex flex-col items-center justify-center">
         <div className="text-zinc-400 text-[10px] uppercase tracking-wider mb-2">
           Collateral Ratio
         </div>
         <div
-          className={`text-2xl font-medium text-[#4A7C59] ${
+          className={`text-2xl font-medium text-[#1E4775] ${
             geoClassName || ""
           }`}
         >
@@ -383,19 +383,19 @@ function SystemHealth({
         </div>
       </div>
       {/* Price Oracle Box */}
-      <div className="bg-zinc-900/50/90 border border-[#4A7C59]/20 p-2 hover:border-[#4A7C59]/40 transition-colors text-center flex flex-col items-center justify-center">
+      <div className="bg-zinc-900/50/90  p-2 hover:border-[#1E4775]/40 transition-colors text-center flex flex-col items-center justify-center">
         <div className="text-zinc-400 text-[10px] uppercase tracking-wider mb-2">
           Price Oracle
         </div>
         <div
-          className={`text-2xl font-medium text-[#4A7C59] ${
+          className={`text-2xl font-medium text-[#1E4775] ${
             geoClassName || ""
           }`}
         >
           Chainlink
         </div>
         <div className="text-zinc-500 text-xs mt-1 opacity-80">
-          <div className="flex items-center justify-center gap-1.5">
+          <div className="flex items-center justify-center gap-4.5">
             {oraclePairName}
             {oracleAddress && (
               <>

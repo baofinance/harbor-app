@@ -220,15 +220,15 @@ export const GenesisWithdrawModal = ({
       />
 
       {/* Modal */}
-      <div className="relative bg-zinc-900/50 border border-[#4A7C59]/30 shadow-2xl w-full max-w-md mx-4 animate-in fade-in-0 scale-in-95 duration-200">
+      <div className="relative bg-zinc-900/50  shadow-2xl w-full max-w-md mx-4 animate-in fade-in-0 scale-in-95 duration-200">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-[#4A7C59]/20">
-          <h2 className={`text-xl font-medium text-[#F5F5F5] ${geo.className}`}>
+        <div className="flex items-center justify-between p-6 border-b border-[#1E4775]/20">
+          <h2 className={`text-xl font-medium text-white ${geo.className}`}>
             Withdraw from Genesis
           </h2>
           <button
             onClick={handleClose}
-            className="text-[#F5F5F5]/50 hover:text-[#F5F5F5] transition-colors"
+            className="text-white/50 hover:text-white transition-colors"
             disabled={step === "withdrawing"}
           >
             <svg
@@ -250,9 +250,9 @@ export const GenesisWithdrawModal = ({
         {/* Content */}
         <div className="p-6 space-y-6">
           {/* Balance */}
-          <div className="text-sm text-[#F5F5F5]/70">
+          <div className="text-sm text-white/70">
             Your Deposit:{" "}
-            <span className="font-medium text-[#F5F5F5]">
+            <span className="font-medium text-white">
               {formatEther(userDeposit)} {collateralSymbol}
             </span>
           </div>
@@ -267,49 +267,49 @@ export const GenesisWithdrawModal = ({
                 placeholder="0.0"
                 className={`w-full h-12 px-4 pr-20 bg-[#0D0D0D] text-white border ${
                   error ? "border-red-500" : "border-zinc-700/50"
-                } focus:border-[#4A7C59] focus:ring-2 focus:ring-[#4A7C59]/20 focus:outline-none transition-all text-lg font-mono`}
+                } focus:border-[#1E4775] focus:ring-2 focus:ring-[#1E4775]/20 focus:outline-none transition-all text-lg font-mono`}
                 disabled={step === "withdrawing"}
               />
               <button
                 onClick={handleMaxClick}
-                className="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 text-xs bg-[#4A7C59] hover:bg-[#3A6147] text-white transition-colors disabled:bg-zinc-600"
+                className="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 text-xs bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white transition-colors disabled:bg-zinc-600"
                 disabled={step === "withdrawing"}
               >
                 MAX
               </button>
             </div>
-            <div className="text-right text-xs text-[#F5F5F5]/50">
+            <div className="text-right text-xs text-white/50">
               {collateralSymbol}
             </div>
           </div>
 
           {/* Transaction Preview */}
           {amount && parseFloat(amount || "0") > 0 && (
-            <div className="p-3 bg-[#0F0F0F]/90 border border-[#4A7C59]/10 space-y-2 text-sm">
-              <div className="font-medium text-[#F5F5F5]">
+            <div className="p-3 bg-[#0F0F0F]/90  space-y-2 text-sm">
+              <div className="font-medium text-white">
                 Transaction Preview:
               </div>
               <div className="flex justify-between">
-                <span className="text-[#F5F5F5]/70">Current Deposit:</span>
+                <span className="text-white/70">Current Deposit:</span>
                 <span>
                   {formatEther(userDeposit)} {collateralSymbol}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-[#F5F5F5]/70">- Withdraw Amount:</span>
+                <span className="text-white/70">- Withdraw Amount:</span>
                 <span className="text-red-400">
                   -{isMaxWithdrawal ? formatEther(userDeposit) : amount}{" "}
                   {collateralSymbol}
                 </span>
               </div>
-              <div className="border-t border-[#4A7C59]/20 pt-2">
+              <div className="border-t border-[#1E4775]/20 pt-2">
                 <div className="flex justify-between font-medium">
-                  <span className="text-[#F5F5F5]">Remaining Deposit:</span>
+                  <span className="text-white">Remaining Deposit:</span>
                   <span
                     className={
                       remainingDeposit === 0n
                         ? "text-orange-400"
-                        : "text-[#4A7C59]"
+                        : "text-[#1E4775]"
                     }
                   >
                     {formatEther(remainingDeposit)} {collateralSymbol}
@@ -356,10 +356,10 @@ export const GenesisWithdrawModal = ({
         </div>
 
         {/* Footer */}
-        <div className="flex gap-3 p-6 border-t border-harbor/20">
+        <div className="flex gap-4 p-6 border-t border-harbor/20">
           <button
             onClick={handleClose}
-            className={`flex-1 py-2 px-4 text-[#F5F5F5]/70 hover:text-[#F5F5F5] transition-colors ${geo.className}`}
+            className={`flex-1 py-2 px-4 text-white/70 hover:text-white transition-colors rounded-full ${geo.className}`}
             disabled={step === "withdrawing"}
           >
             {step === "success" ? "Close" : "Cancel"}
@@ -367,12 +367,12 @@ export const GenesisWithdrawModal = ({
           <button
             onClick={handleMainButtonClick}
             disabled={isButtonDisabled()}
-            className={`flex-1 py-2 px-4 font-medium transition-colors ${
+            className={`flex-1 py-2 px-4 font-medium transition-colors rounded-full ${
               geo.className
             } ${
               step === "success"
-                ? "bg-[#4A7C59] hover:bg-[#3A6147] text-white"
-                : "bg-[#4A7C59] hover:bg-[#3A6147] text-white disabled:bg-zinc-800 disabled:text-zinc-500"
+                ? "bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white"
+                : "bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white disabled:bg-zinc-800 disabled:text-zinc-500"
             }`}
           >
             {getButtonText()}

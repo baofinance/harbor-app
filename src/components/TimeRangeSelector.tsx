@@ -17,7 +17,7 @@ const TimeRangeButton = ({
 }) => (
   <button
     onClick={() => onSelectRange(range)}
-    className={`px-3 py-1 text-xs font-medium-full transition-colors ${
+    className={`px-3 py-1 text-xs font-medium rounded-full transition-colors ${
       selectedRange === range
         ? "bg-white/10 text-white"
         : "text-white/50 hover:bg-white/5 hover:text-white"
@@ -33,7 +33,7 @@ export default function TimeRangeSelector({
 }: TimeRangeSelectorProps) {
   const ranges: TimeRange[] = ["1D", "1W", "1M", "1Y", "ALL"];
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-4">
       {ranges.map((range) => (
         <TimeRangeButton
           key={range}

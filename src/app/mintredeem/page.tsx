@@ -12,7 +12,7 @@ type TokenType = "LONG" | "STEAMED";
 
 export default function MintRedeemPage() {
   const { address, isConnected } = useAccount();
-  const [selectedMarket, setSelectedMarket] = useState<string>("eth-usd");
+  const [selectedMarket, setSelectedMarket] = useState<string>("usd-eth");
   const [selectedType, setSelectedType] = useState<TokenType>("LONG");
 
   const currentMarket = useMemo(() => {
@@ -32,12 +32,12 @@ export default function MintRedeemPage() {
         <meta name="description" content="Mint and Redeem tokens" />
       </Head>
 
-      <div className="min-h-screen text-[#F5F5F5] max-w-[1300px] mx-auto font-sans relative">
+      <div className="min-h-screen text-white max-w-[1300px] mx-auto font-sans relative">
         <main className="container mx-auto px-4 sm:px-10 pb-6">
           {/* Header */}
           <section className="mb-6">
-            <div className="outline outline-1 outline-white/10 rounded-sm p-4">
-              <div className="flex flex-col sm:flex-row gap-3 sm:gap-0 sm:items-center justify-between">
+            <div className="  p-4">
+              <div className="flex flex-col sm:flex-row gap-4 sm:gap-0 sm:items-center justify-between">
                 <h1 className="font-semibold font-mono text-white">
                   Mint / Redeem
                 </h1>
@@ -57,9 +57,9 @@ export default function MintRedeemPage() {
 
           {/* Content */}
           <section>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-start">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
               {/* Left: Form */}
-              <div className="outline outline-1 outline-white/10 rounded-sm p-3 sm:p-4">
+              <div className="  p-3 sm:p-4">
                 <div className="flex mb-3 gap-4">
                   <button
                     onClick={() => setSelectedType("LONG")}
@@ -96,7 +96,7 @@ export default function MintRedeemPage() {
               </div>
 
               {/* Right: Chart */}
-              <div className="outline outline-1 outline-white/10 rounded-sm p-3 sm:p-4">
+              <div className="  p-3 sm:p-4">
                 {currentMarket ? (
                   <div className="h-[340px] sm:h-[420px]">
                     <HistoricalDataChart marketId={selectedMarket} />

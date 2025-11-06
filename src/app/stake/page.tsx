@@ -262,31 +262,31 @@ export default function Staking() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-bg-zinc-900/50 to-black text-[#F5F5F5] font-sans relative max-w-[1300px] mx-auto">
+    <div className="min-h-screen bg-gradient-to-b from-bg-zinc-900/50 to-black text-white font-sans relative max-w-[1300px] mx-auto">
       {/* Steam Background */}
       <div className="fixed inset-0 pointer-events-none">
         {/* Large base squares */}
-        <div className="absolute top-[10%] left-[20%] w-[200px] h-[200px] bg-[#4A7C59]/[0.06]"></div>
-        <div className="absolute top-[15%] left-[35%] w-[180px] h-[180px] bg-[#4A7C59]/[0.05]"></div>
-        <div className="absolute top-[20%] left-[50%] w-[160px] h-[160px] bg-[#4A7C59]/[0.07]"></div>
+        <div className="absolute top-[10%] left-[20%] w-[200px] h-[200px] bg-[#1E4775]/[0.06]"></div>
+        <div className="absolute top-[15%] left-[35%] w-[180px] h-[180px] bg-[#1E4775]/[0.05]"></div>
+        <div className="absolute top-[20%] left-[50%] w-[160px] h-[160px] bg-[#1E4775]/[0.07]"></div>
 
         {/* Medium squares - Layer 1 */}
-        <div className="absolute top-[30%] left-[15%] w-[150px] h-[150px] bg-[#4A7C59]/[0.04] animate-float-1"></div>
-        <div className="absolute top-[35%] left-[30%] w-[140px] h-[140px] bg-[#4A7C59]/[0.045] animate-float-2"></div>
-        <div className="absolute top-[40%] left-[45%] w-[130px] h-[130px] bg-[#4A7C59]/[0.055] animate-float-3"></div>
+        <div className="absolute top-[30%] left-[15%] w-[150px] h-[150px] bg-[#1E4775]/[0.04] animate-float-1"></div>
+        <div className="absolute top-[35%] left-[30%] w-[140px] h-[140px] bg-[#1E4775]/[0.045] animate-float-2"></div>
+        <div className="absolute top-[40%] left-[45%] w-[130px] h-[130px] bg-[#1E4775]/[0.055] animate-float-3"></div>
 
         {/* Medium squares - Layer 2 */}
-        <div className="absolute top-[50%] left-[25%] w-[120px] h-[120px] bg-[#4A7C59]/[0.065] animate-float-4"></div>
-        <div className="absolute top-[55%] left-[40%] w-[110px] h-[110px] bg-[#4A7C59]/[0.05] animate-float-1"></div>
-        <div className="absolute top-[60%] left-[55%] w-[100px] h-[100px] bg-[#4A7C59]/[0.06] animate-float-2"></div>
+        <div className="absolute top-[50%] left-[25%] w-[120px] h-[120px] bg-[#1E4775]/[0.065] animate-float-4"></div>
+        <div className="absolute top-[55%] left-[40%] w-[110px] h-[110px] bg-[#1E4775]/[0.05] animate-float-1"></div>
+        <div className="absolute top-[60%] left-[55%] w-[100px] h-[100px] bg-[#1E4775]/[0.06] animate-float-2"></div>
 
         {/* Small squares */}
-        <div className="absolute top-[70%] left-[20%] w-[80px] h-[80px] bg-[#4A7C59]/[0.075] animate-steam-1"></div>
-        <div className="absolute top-[75%] left-[35%] w-[70px] h-[70px] bg-[#4A7C59]/[0.07] animate-steam-2"></div>
-        <div className="absolute top-[80%] left-[50%] w-[60px] h-[60px] bg-[#4A7C59]/[0.08] animate-steam-3"></div>
-        <div className="absolute top-[85%] left-[65%] w-[50px] h-[50px] bg-[#4A7C59]/[0.065] animate-steam-1"></div>
-        <div className="absolute top-[90%] left-[80%] w-[40px] h-[40px] bg-[#4A7C59]/[0.075] animate-steam-2"></div>
-        <div className="absolute top-[95%] left-[95%] w-[30px] h-[30px] bg-[#4A7C59]/[0.07] animate-steam-3"></div>
+        <div className="absolute top-[70%] left-[20%] w-[80px] h-[80px] bg-[#1E4775]/[0.075] animate-steam-1"></div>
+        <div className="absolute top-[75%] left-[35%] w-[70px] h-[70px] bg-[#1E4775]/[0.07] animate-steam-2"></div>
+        <div className="absolute top-[80%] left-[50%] w-[60px] h-[60px] bg-[#1E4775]/[0.08] animate-steam-3"></div>
+        <div className="absolute top-[85%] left-[65%] w-[50px] h-[50px] bg-[#1E4775]/[0.065] animate-steam-1"></div>
+        <div className="absolute top-[90%] left-[80%] w-[40px] h-[40px] bg-[#1E4775]/[0.075] animate-steam-2"></div>
+        <div className="absolute top-[95%] left-[95%] w-[30px] h-[30px] bg-[#1E4775]/[0.07] animate-steam-3"></div>
       </div>
 
       {/* Navigation */}
@@ -295,10 +295,10 @@ export default function Staking() {
       <main className="container mx-auto px-6 pt-[6rem] pb-20 relative z-10">
         {/* Header */}
         <div className="text-center mb-12">
-          <h1 className={`text-4xl text-[#4A7C59] ${geo.className}`}>
+          <h1 className={`text-4xl text-[#1E4775] ${geo.className}`}>
             STAKE STEAM
           </h1>
-          <p className="text-[#F5F5F5]/60 text-sm mt-2">
+          <p className="text-white/60 text-sm mt-2">
             Boost rewards, Share protocol revenue and vote on liquidity
             incentives
           </p>
@@ -308,18 +308,18 @@ export default function Staking() {
           <div className="bg-zinc-900/50 p-6 relative">
             {/* Stats */}
             <div className="grid grid-cols-2 gap-4 mb-6">
-              <div className="bg-black p-4 border border-[#4A7C59]/20">
-                <p className="text-xs text-[#F5F5F5]/50 mb-0.5">Total Staked</p>
-                <p className="text-sm font-medium text-[#4A7C59]">
+              <div className="bg-black p-4 
+                <p className="text-xs text-white/50 mb-0.5">Total Staked</p>
+                <p className="text-sm font-medium text-[#1E4775]">
                   {formatEther(stakingData?.[0]?.result as bigint)} STEAM
                 </p>
               </div>
               {address && (
-                <div className="bg-black p-4 border border-[#4A7C59]/20">
-                  <p className="text-xs text-[#F5F5F5]/50 mb-0.5">
+                <div className="bg-black p-4 
+                  <p className="text-xs text-white/50 mb-0.5">
                     Your Voting Power
                   </p>
-                  <p className="text-sm font-medium text-[#4A7C59]">
+                  <p className="text-sm font-medium text-[#1E4775]">
                     {formatEther(stakingData?.[1]?.result as bigint)} vSTEAM
                   </p>
                 </div>
@@ -332,10 +332,10 @@ export default function Staking() {
                 onClick={() =>
                   setStakingState((prev) => ({ ...prev, activeTab: "stake" }))
                 }
-                className={`px-4 py-2 text-sm font-medium border border-[#4A7C59]/20 ${
+                className={`px-4 py-2 text-sm font-medium  ${
                   stakingState.activeTab === "stake"
-                    ? "bg-[#4A7C59] text-white"
-                    : "bg-black text-[#4A7C59] hover:bg-[#4A7C59]/10"
+                    ? "bg-[#1E4775] text-white"
+                    : "bg-black text-[#1E4775] hover:bg-[#1E4775]/10"
                 }`}
               >
                 Stake
@@ -347,10 +347,10 @@ export default function Staking() {
                     activeTab: "increase",
                   }))
                 }
-                className={`px-4 py-2 text-sm font-medium border border-[#4A7C59]/20 ${
+                className={`px-4 py-2 text-sm font-medium  ${
                   stakingState.activeTab === "increase"
-                    ? "bg-[#4A7C59] text-white"
-                    : "bg-black text-[#4A7C59] hover:bg-[#4A7C59]/10"
+                    ? "bg-[#1E4775] text-white"
+                    : "bg-black text-[#1E4775] hover:bg-[#1E4775]/10"
                 }`}
               >
                 Increase
@@ -362,10 +362,10 @@ export default function Staking() {
                     activeTab: "extend",
                   }))
                 }
-                className={`px-4 py-2 text-sm font-medium border border-[#4A7C59]/20 ${
+                className={`px-4 py-2 text-sm font-medium  ${
                   stakingState.activeTab === "extend"
-                    ? "bg-[#4A7C59] text-white"
-                    : "bg-black text-[#4A7C59] hover:bg-[#4A7C59]/10"
+                    ? "bg-[#1E4775] text-white"
+                    : "bg-black text-[#1E4775] hover:bg-[#1E4775]/10"
                 }`}
               >
                 Extend
@@ -377,10 +377,10 @@ export default function Staking() {
                     activeTab: "withdraw",
                   }))
                 }
-                className={`px-4 py-2 text-sm font-medium border border-[#4A7C59]/20 ${
+                className={`px-4 py-2 text-sm font-medium  ${
                   stakingState.activeTab === "withdraw"
-                    ? "bg-[#4A7C59] text-white"
-                    : "bg-black text-[#4A7C59] hover:bg-[#4A7C59]/10"
+                    ? "bg-[#1E4775] text-white"
+                    : "bg-black text-[#1E4775] hover:bg-[#1E4775]/10"
                 }`}
               >
                 Withdraw
@@ -395,10 +395,10 @@ export default function Staking() {
                   <div className="space-y-4">
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
-                        <label className="text-sm text-[#F5F5F5]/70">
+                        <label className="text-sm text-white/70">
                           Amount
                         </label>
-                        <span className="text-sm text-[#F5F5F5]/50">
+                        <span className="text-sm text-white/50">
                           Balance: 0 STEAM
                         </span>
                       </div>
@@ -412,13 +412,13 @@ export default function Staking() {
                           }))
                         }
                         placeholder="Enter amount in STEAM"
-                        className="w-full bg-black text-white p-3 border border-[#4A7C59]/20 focus:outline-none focus:border-[#4A7C59]"
+                        className="w-full bg-black text-white p-3  focus:outline-none focus:border-[#1E4775]"
                       />
                     </div>
 
                     {stakingState.activeTab === "stake" && (
                       <div className="space-y-2">
-                        <label className="text-sm text-[#F5F5F5]/70">
+                        <label className="text-sm text-white/70">
                           Lock Duration (weeks)
                         </label>
                         <input
@@ -434,7 +434,7 @@ export default function Staking() {
                           }
                           className="w-full"
                         />
-                        <div className="flex justify-between text-sm text-[#F5F5F5]/50">
+                        <div className="flex justify-between text-sm text-white/50">
                           <span>1 week</span>
                           <span>{stakingState.lockDuration} weeks</span>
                           <span>4 years</span>
@@ -449,7 +449,7 @@ export default function Staking() {
                           : handleIncreaseAmount
                       }
                       disabled={isPending || !stakingState.amount}
-                      className="w-full py-3 bg-[#4A7C59] text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#4A7C59]/90"
+                      className="w-full py-3 bg-[#1E4775] text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#1E4775]/90"
                     >
                       {isPending
                         ? "Pending..."
@@ -463,7 +463,7 @@ export default function Staking() {
                 {stakingState.activeTab === "extend" && (
                   <div className="space-y-4">
                     <div className="space-y-2">
-                      <label className="text-sm text-[#F5F5F5]/70">
+                      <label className="text-sm text-white/70">
                         New Lock Duration (weeks)
                       </label>
                       <input
@@ -479,7 +479,7 @@ export default function Staking() {
                         }
                         className="w-full"
                       />
-                      <div className="flex justify-between text-sm text-[#F5F5F5]/50">
+                      <div className="flex justify-between text-sm text-white/50">
                         <span>1 week</span>
                         <span>{stakingState.lockDuration} weeks</span>
                         <span>4 years</span>
@@ -489,7 +489,7 @@ export default function Staking() {
                     <button
                       onClick={handleExtendLock}
                       disabled={isPending}
-                      className="w-full py-3 bg-[#4A7C59] text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#4A7C59]/90"
+                      className="w-full py-3 bg-[#1E4775] text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#1E4775]/90"
                     >
                       {isPending ? "Pending..." : "Extend Lock"}
                     </button>
@@ -498,11 +498,11 @@ export default function Staking() {
 
                 {stakingState.activeTab === "withdraw" && (
                   <div className="space-y-4">
-                    <div className="bg-black p-4 border border-[#4A7C59]/20">
-                      <p className="text-sm text-[#F5F5F5]/50 mb-1">
+                    <div className="bg-black p-4 
+                      <p className="text-sm text-white/50 mb-1">
                         Lock End Time
                       </p>
-                      <p className="text-lg font-medium text-[#4A7C59]">
+                      <p className="text-lg font-medium text-[#1E4775]">
                         {new Date(
                           Number(stakingData?.[2]?.result ?? 0) * 1000
                         ).toLocaleString()}
@@ -516,7 +516,7 @@ export default function Staking() {
                         (stakingData?.[2]?.result !== undefined &&
                           Number(stakingData[2].result) > Date.now() / 1000)
                       }
-                      className="w-full py-3 bg-[#4A7C59] text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#4A7C59]/90"
+                      className="w-full py-3 bg-[#1E4775] text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#1E4775]/90"
                     >
                       {isPending
                         ? "Pending..."

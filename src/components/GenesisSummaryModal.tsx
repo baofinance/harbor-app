@@ -27,12 +27,12 @@ export default function GenesisSummaryModal({
       onClick={onClose}
     >
       <div
-        className="bg-zinc-900/50 border border-[#4A7C59]/20 max-w-md w-full p-6"
+        className="bg-zinc-900/50  max-w-md w-full p-6"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="text-center mb-6">
           <h2
-            className={`text-xl font-medium text-[#F5F5F5] mb-2 ${geo.className}`}
+            className={`text-xl font-medium text-white mb-2 ${geo.className}`}
           >
             Genesis Summary
           </h2>
@@ -41,15 +41,15 @@ export default function GenesisSummaryModal({
         <div className="text-sm text-zinc-300 space-y-3">
           <p>Collateral is split 50/50:</p>
           <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <span className="w-1.5 h-1.5 bg-blue-400 rounded-full"></span>
+            <div className="flex items-center gap-4">
+              <span className="w-1.5 h-1.5 bg-blue-400-full"></span>
               <span className="text-blue-400 font-medium">ZHE</span>
               <span className="text-zinc-400">
                 - Tracks {marketName} price feed
               </span>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="w-1.5 h-1.5 bg-purple-400 rounded-full"></span>
+            <div className="flex items-center gap-4">
+              <span className="w-1.5 h-1.5 bg-purple-400-full"></span>
               <span className="text-purple-400 font-medium">STEAMED</span>
               <span className="text-zinc-400">
                 - Leveraged collateral vs feed
@@ -65,7 +65,7 @@ export default function GenesisSummaryModal({
 
         <button
           onClick={onClose}
-          className="w-full mt-6 py-3 font-medium transition-colors bg-[#4A7C59] hover:bg-[#3A6147] text-white"
+          className="w-full mt-6 py-3 font-medium transition-colors bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white"
         >
           Close
         </button>

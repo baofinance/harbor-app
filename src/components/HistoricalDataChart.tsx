@@ -91,9 +91,9 @@ const CustomTooltip = ({
     });
 
     return (
-      <div className="bg-[#0c0c0c] p-4 border border-white/10 shadow-lg">
+      <div className="bg-[#0c0c0c] p-4  shadow-lg">
         <p className="text-sm text-white/80">{formattedDate}</p>
-        <p className="text-lg font-bold text-[#00df82]">
+        <p className="text-lg font-bold text-[#1E4775]">
           {dataType === "apr"
             ? `${value.toFixed(2)}%`
             : `$${(value / 1_000_000).toFixed(2)}M`}
@@ -189,8 +189,8 @@ const HistoricalDataChart = ({ marketId }: { marketId: string }) => {
         >
           <defs>
             <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#00df82" stopOpacity={0.45} />
-              <stop offset="95%" stopColor="#00df82" stopOpacity={0} />
+              <stop offset="5%" stopColor="#1E4775" stopOpacity={0.45} />
+              <stop offset="95%" stopColor="#1E4775" stopOpacity={0} />
             </linearGradient>
           </defs>
           <CartesianGrid
@@ -201,7 +201,7 @@ const HistoricalDataChart = ({ marketId }: { marketId: string }) => {
           />
           <XAxis
             dataKey="timestamp"
-            stroke="#F5F5F5"
+            stroke="white"
             opacity={0.5}
             tick={{ fontSize: 12, fill: "#A3A3A3" }}
             tickLine={{ stroke: "#4f46e5", opacity: 0.25 }}
@@ -209,7 +209,7 @@ const HistoricalDataChart = ({ marketId }: { marketId: string }) => {
             padding={{ left: 20, right: 20 }}
           />
           <YAxis
-            stroke="#F5F5F5"
+            stroke="white"
             opacity={0.5}
             tick={{ fontSize: 12, fill: "#A3A3A3" }}
             tickLine={{ stroke: "#4f46e5", opacity: 0.25 }}
@@ -220,7 +220,7 @@ const HistoricalDataChart = ({ marketId }: { marketId: string }) => {
           <Area
             type="monotone"
             dataKey="value"
-            stroke="#00df82"
+            stroke="#1E4775"
             strokeWidth={2}
             fillOpacity={1}
             fill="url(#colorValue)"
@@ -228,8 +228,8 @@ const HistoricalDataChart = ({ marketId }: { marketId: string }) => {
             activeDot={{
               r: 5,
               strokeWidth: 2,
-              fill: "#00df82",
-              stroke: "#00df82",
+              fill: "#1E4775",
+              stroke: "#1E4775",
             }}
           />
         </AreaChart>

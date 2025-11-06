@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, use } from "react";
 import Link from "next/link";
 import {
   useAccount,
@@ -15,7 +15,7 @@ import InfoTooltip from "@/components/InfoTooltip";
 import HistoricalDataChart from "@/components/HistoricalDataChart";
 
 type PageProps = {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 };
 
 const erc20SymbolABI = [
@@ -62,7 +62,7 @@ function EtherscanLink({
         href={`${etherscanBaseUrl}${address}`}
         target="_blank"
         rel="noopener noreferrer"
-        className="font-mono text-white hover:underline flex items-center gap-1"
+        className="font-mono text-white hover:underline flex items-center gap-4"
       >
         {`${address.slice(0, 6)}...${address.slice(-4)}`}
         <svg
@@ -87,7 +87,7 @@ function EtherscanLink({
 function ContractInfoSection({ market }: { market: Market }) {
   const a = market.addresses as unknown as Record<string, string | undefined>;
   return (
-    <div className="outline outline-1 outline-white/10 p-3 rounded-sm h-full">
+    <div className="bg-[#17395F] p-3 h-full">
       <h2 className="font-semibold font-mono text-white mb-2">Contract Info</h2>
       <div className="divide-y divide-white/10">
         <EtherscanLink label="Genesis" address={a.genesis} />
@@ -113,7 +113,7 @@ function InputField({
   maxButton?: { onClick: () => void; label: string };
 }) {
   return (
-    <div className="flex items-center gap-2 outline outline-1 outline-white/10 p-3 rounded-sm">
+    <div className="flex items-center gap-4  p-3 ">
       <input
         type="text"
         value={value}
@@ -122,12 +122,12 @@ function InputField({
         className="w-full text-2xl sm:text-3xl font-semibold bg-transparent text-white focus:outline-none pr-2"
       />
       {maxButton && (
-        <button
-          onClick={maxButton.onClick}
-          className="text-xs text-white/80 hover:text-white outline outline-1 outline-white/10 px-2 py-1 rounded-sm"
-        >
-          {maxButton.label}
-        </button>
+      <button
+        onClick={maxButton.onClick}
+        className="text-xs text-white/80 hover:text-white px-2 py-1 rounded-full"
+      >
+        {maxButton.label}
+      </button>
       )}
     </div>
   );
@@ -150,7 +150,7 @@ function ActionButton({
     <button
       onClick={onClick}
       disabled={disabled || isLoading}
-      className="w-full py-2 text-sm rounded-sm outline outline-1 outline-white/10 hover:outline-white/20 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+      className="w-full py-2 text-sm hover:outline-white/20 text-white disabled:opacity-50 disabled:cursor-not-allowed rounded-full"
     >
       {isLoading ? loadingText || "Processing..." : children}
     </button>
@@ -235,8 +235,8 @@ function GenesisActionTabs({
   const formatAmount = (v?: bigint) =>
     v ? (Number(v) / 1e18).toFixed(4) : "0.00";
   return (
-    <div className="outline outline-1 outline-white/10 p-3 rounded-sm h-full flex flex-col">
-      <div className="flex gap-2 mb-3">
+    <div className="bg-[#17395F] p-3 h-full flex flex-col">
+      <div className="flex gap-4 mb-3">
         {(
           [
             ["deposit", "Deposit"],
@@ -247,10 +247,10 @@ function GenesisActionTabs({
           <button
             key={key}
             onClick={() => setActiveTab(key)}
-            className={`px-3 py-1.5 text-sm rounded-sm outline outline-1 transition-colors ${
+            className={`px-3 py-1.5 text-sm transition-colors rounded-full ${
               activeTab === key
-                ? "text-white outline-white/80"
-                : "text-white/80 outline-white/10 hover:outline-white/20"
+                ? "text-white bg-white/10"
+                : "text-white/80 bg-transparent hover:bg-white/5"
             }`}
           >
             {label}
@@ -273,7 +273,7 @@ function GenesisActionTabs({
               maxButton={{ onClick: handleMaxDeposit, label: "MAX" }}
             />
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-4">
                 <p className="text-xs text-white/60">Estimated ROI</p>
                 <InfoTooltip
                   side="top"
@@ -370,7 +370,7 @@ function GenesisActionTabs({
 }
 
 export default function GenesisMarketPage({ params }: PageProps) {
-  const { id } = params;
+  const { id } = use(params);
   const market = (markets as Record<string, Market>)[id] as Market | undefined;
   const { address, isConnected } = useAccount();
   const { writeContractAsync } = useWriteContract();
@@ -516,7 +516,7 @@ export default function GenesisMarketPage({ params }: PageProps) {
     ? Number(priceRaw) / 10 ** priceDecimals
     : 0;
 
-  const rewardPoolTokens = Number(market?.rewardToken?.amount || 0);
+  const rewardPoolTokens = Number((market as any)?.rewardToken?.amount || 0);
   const parsedDeposit = (() => {
     if (!depositAmount) return 0n;
     try {
@@ -667,9 +667,9 @@ export default function GenesisMarketPage({ params }: PageProps) {
   // If market id is invalid, show not found after hooks have been called
   if (!market) {
     return (
-      <div className="min-h-screen text-[#F5F5F5] max-w-[1300px] mx-auto font-sans relative">
+      <div className="min-h-screen text-white max-w-[1300px] mx-auto font-sans relative">
         <main className="container mx-auto px-4 sm:px-10 pb-6">
-          <div className="outline outline-1 outline-white/10 rounded-sm p-6 text-center">
+          <div className="bg-[#17395F] p-6 text-center">
             <h1 className="text-lg font-semibold text-white">
               Market not found
             </h1>
@@ -687,7 +687,7 @@ export default function GenesisMarketPage({ params }: PageProps) {
     );
   }
 
-  const rewardTokenSymbol = market.rewardToken?.symbol || "";
+  const rewardTokenSymbol = (market as any).rewardToken?.symbol || (market as any).rewardPoints ? "Points" : "";
 
   const statusColor = isEnded
     ? "bg-orange-900/30 text-orange-400 border-orange-500/30"
@@ -695,13 +695,13 @@ export default function GenesisMarketPage({ params }: PageProps) {
   const statusLabel = isEnded ? "ENDED" : "ACTIVE";
 
   return (
-    <div className="min-h-screen text-[#F5F5F5] max-w-[1300px] mx-auto font-sans relative px-4 sm:px-10">
+    <div className="min-h-screen text-white max-w-[1300px] mx-auto font-sans relative px-4 sm:px-10">
       <main className="container mx-auto max-w-full pb-8 relative z-10">
         {/* Breadcrumb */}
         <div className="mb-3">
           <Link
             href="/genesis"
-            className="inline-flex items-center gap-2 text-white/60 hover:text-white"
+            className="inline-flex items-center gap-4 text-white/60 hover:text-white"
           >
             <svg
               className="w-4 h-4"
@@ -731,7 +731,7 @@ export default function GenesisMarketPage({ params }: PageProps) {
               {market?.chain?.name ?? ""} • Genesis
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-4">
             <span
               className={`px-2 py-1 border text-[10px] uppercase ${statusColor}`}
             >
@@ -741,9 +741,9 @@ export default function GenesisMarketPage({ params }: PageProps) {
         </div>
 
         {/* Overview stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
-          <div className="outline outline-1 outline-white/10 p-3 rounded-sm">
-            <div className="flex items-center gap-2 mb-1">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+          <div className="bg-[#17395F] p-3">
+            <div className="flex items-center gap-4 mb-1">
               <h3 className="font-semibold font-mono text-white">
                 Total Deposits
               </h3>
@@ -758,8 +758,8 @@ export default function GenesisMarketPage({ params }: PageProps) {
                 : `${formatEther(totalDeposits)} ${collateralSymbol}`}
             </div>
           </div>
-          <div className="outline outline-1 outline-white/10 p-3 rounded-sm">
-            <div className="flex items-center gap-2 mb-1">
+          <div className="bg-[#17395F] p-3">
+            <div className="flex items-center gap-4 mb-1">
               <h3 className="font-semibold font-mono text-white">
                 Your Deposit
               </h3>
@@ -771,8 +771,8 @@ export default function GenesisMarketPage({ params }: PageProps) {
                 : `${formatEther(userDeposit)} ${collateralSymbol}`}
             </div>
           </div>
-          <div className="outline outline-1 outline-white/10 p-3 rounded-sm">
-            <div className="flex items-center gap-2 mb-1">
+          <div className="bg-[#17395F] p-3">
+            <div className="flex items-center gap-4 mb-1">
               <h3 className="font-semibold font-mono text-white">Claimable</h3>
               <InfoTooltip label="Claimable reward tokens." side="top" />
             </div>
@@ -782,8 +782,8 @@ export default function GenesisMarketPage({ params }: PageProps) {
                 : `${formatEther(userClaimableSum)} ${rewardTokenSymbol}`}
             </div>
           </div>
-          <div className="outline outline-1 outline-white/10 p-3 rounded-sm">
-            <div className="flex items-center gap-2 mb-1">
+          <div className="bg-[#17395F] p-3">
+            <div className="flex items-center gap-4 mb-1">
               <h3 className="font-semibold font-mono text-white">
                 Estimated ROI
               </h3>
@@ -805,7 +805,7 @@ export default function GenesisMarketPage({ params }: PageProps) {
 
         {/* Chart */}
         <div className="mt-2">
-          <div className="outline outline-1 outline-white/10 p-2 rounded-sm w-full">
+          <div className="bg-[#17395F] p-2 w-full">
             <div className="h-[340px] sm:h-[420px]">
               <HistoricalDataChart marketId={id} />
             </div>
@@ -813,7 +813,7 @@ export default function GenesisMarketPage({ params }: PageProps) {
         </div>
 
         {/* Actions + Contract info */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 mt-3">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-3">
           <div className="lg:col-span-2 h-full">
             <GenesisActionTabs
               activeTab={activeTab}
@@ -853,7 +853,7 @@ export default function GenesisMarketPage({ params }: PageProps) {
 
         {/* Claim statuses (tx/error) */}
         {(claimError || claimTx) && (
-          <div className="outline outline-1 outline-white/10 rounded-sm p-3 mt-3">
+          <div className="bg-[#17395F] p-3 mt-3">
             {claimError && (
               <p className="text-sm text-rose-400">{claimError}</p>
             )}
