@@ -18,6 +18,11 @@ interface GenesisDepositModalProps {
   genesisAddress: string;
   collateralAddress: string;
   collateralSymbol: string;
+  acceptedAssets: Array<{ symbol: string; name: string }>;
+  marketAddresses?: {
+    collateralToken?: string;
+    wrappedCollateralToken?: string;
+  };
   onSuccess?: () => void;
 }
 
@@ -29,31 +34,81 @@ export const GenesisDepositModal = ({
   genesisAddress,
   collateralAddress,
   collateralSymbol,
+  acceptedAssets,
+  marketAddresses,
   onSuccess,
 }: GenesisDepositModalProps) => {
   const { address } = useAccount();
   const [amount, setAmount] = useState("");
+  const [selectedAsset, setSelectedAsset] = useState<string>(collateralSymbol);
   const [step, setStep] = useState<ModalStep>("input");
   const [error, setError] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
 
   const publicClient = usePublicClient();
 
-  // Contract read hooks
-  const { data: balanceData } = useContractRead({
-    address: collateralAddress as `0x${string}`,
+  // Map selected asset to its token address
+  const getAssetAddress = (assetSymbol: string): string => {
+    const normalized = assetSymbol.toLowerCase();
+    if (normalized === collateralSymbol.toLowerCase()) {
+      // Collateral token (wstETH)
+      return collateralAddress;
+    } else if (normalized === "steth" && marketAddresses?.wrappedCollateralToken) {
+      // stETH (wrappedCollateralToken in config)
+      return marketAddresses.wrappedCollateralToken;
+    } else if (normalized === "eth") {
+      // Native ETH - return zero address as marker (will need special handling)
+      return "0x0000000000000000000000000000000000000000";
+    }
+    // Default to collateral address
+    return collateralAddress;
+  };
+
+  const selectedAssetAddress = getAssetAddress(selectedAsset);
+  const isNativeETH = selectedAsset.toLowerCase() === "eth";
+
+  // Debug logging
+  if (process.env.NODE_ENV === 'development') {
+    console.log('[GenesisDepositModal] Balance Debug:', {
+      selectedAsset,
+      selectedAssetAddress,
+      collateralAddress,
+      collateralSymbol,
+      marketAddresses,
+      address,
+      isOpen,
+      isNativeETH,
+    });
+  }
+
+  // Contract read hooks - only for ERC20 tokens (not native ETH)
+  const { data: balanceData, error: balanceError, status: balanceStatus } = useContractRead({
+    address: selectedAssetAddress as `0x${string}`,
     abi: ERC20_ABI,
     functionName: "balanceOf",
     args: address ? [address] : undefined,
-    query: { enabled: !!address && isOpen, refetchInterval: 5000 },
+    query: { 
+      enabled: !!address && isOpen && !isNativeETH && !!selectedAssetAddress && selectedAssetAddress !== "0x0000000000000000000000000000000000000000",
+      refetchInterval: 5000,
+    },
   });
 
+  // Debug balance result
+  if (process.env.NODE_ENV === 'development') {
+    console.log('[GenesisDepositModal] Balance Result:', {
+      balanceData,
+      balanceError,
+      balanceStatus,
+      formattedBalance: balanceData ? formatEther(balanceData) : 'N/A',
+    });
+  }
+
   const { data: allowanceData, refetch: refetchAllowance } = useContractRead({
-    address: collateralAddress as `0x${string}`,
+    address: selectedAssetAddress as `0x${string}`,
     abi: ERC20_ABI,
     functionName: "allowance",
     args: address ? [address, genesisAddress as `0x${string}`] : undefined,
-    query: { enabled: !!address && isOpen, refetchInterval: 5000 },
+    query: { enabled: !!address && isOpen && !isNativeETH, refetchInterval: 5000 },
   });
 
   // Check if genesis has ended
@@ -79,16 +134,20 @@ export const GenesisDepositModal = ({
   // Contract write hooks
   const { writeContractAsync } = useWriteContract();
 
-  const balance = balanceData || 0n;
-  const allowance = allowanceData || 0n;
+  // For native ETH, we'd need to get balance differently (useBalance hook)
+  // For now, we'll use the ERC20 balance for wstETH/stETH
+  const balance = isNativeETH ? 0n : (balanceData || 0n);
+  const allowance = isNativeETH ? 0n : (allowanceData || 0n);
   const amountBigInt = amount ? parseEther(amount) : 0n;
-  const needsApproval = amountBigInt > 0 && amountBigInt > allowance;
+  const needsApproval = !isNativeETH && amountBigInt > 0 && amountBigInt > allowance;
   const userCurrentDeposit = currentDeposit || 0n;
   const newTotalDeposit = userCurrentDeposit + amountBigInt;
+  const isNonCollateralAsset = selectedAsset.toLowerCase() !== collateralSymbol.toLowerCase();
 
   const handleClose = () => {
     if (step === "approving" || step === "depositing") return; // Prevent closing during transactions
     setAmount("");
+    setSelectedAsset(collateralSymbol);
     setStep("input");
     setError(null);
     setTxHash(null);
@@ -128,12 +187,13 @@ export const GenesisDepositModal = ({
   const handleDeposit = async () => {
     if (!validateAmount()) return;
     try {
-      if (needsApproval) {
+      // For non-native tokens, check and approve if needed
+      if (!isNativeETH && needsApproval) {
         setStep("approving");
         setError(null);
         setTxHash(null);
         const approveHash = await writeContractAsync({
-          address: collateralAddress as `0x${string}`,
+          address: selectedAssetAddress as `0x${string}`,
           abi: ERC20_ABI,
           functionName: "approve",
           args: [genesisAddress as `0x${string}`, amountBigInt],
@@ -153,12 +213,17 @@ export const GenesisDepositModal = ({
       setStep("depositing");
       setError(null);
       setTxHash(null);
+      
+      // For native ETH, the contract should handle it via msg.value
+      // For ERC20 tokens, we use the standard deposit function
       const depositHash = await writeContractAsync({
         address: genesisAddress as `0x${string}`,
         abi: GENESIS_ABI,
         functionName: "deposit",
         args: [amountBigInt, address as `0x${string}`],
-        // chainId intentionally omitted
+        // For native ETH, value would be amountBigInt, but genesis contract likely expects ERC20
+        // The contract should handle conversion internally if it accepts multiple tokens
+        value: isNativeETH ? amountBigInt : undefined,
       });
       setTxHash(depositHash);
       await publicClient?.waitForTransactionReceipt({ hash: depositHash });
@@ -312,13 +377,43 @@ export const GenesisDepositModal = ({
             </span>
           </div>
 
+          {/* Deposit Asset Selection */}
+          <div className="space-y-2">
+            <label className="text-sm text-[#1E4775]/70">Deposit Asset</label>
+            <select
+              value={selectedAsset}
+              onChange={(e) => setSelectedAsset(e.target.value)}
+              className="w-full h-12 px-4 bg-white text-[#1E4775] border border-[#1E4775]/30 focus:border-[#1E4775] focus:ring-2 focus:ring-[#1E4775]/20 focus:outline-none transition-all text-lg font-mono"
+              disabled={step === "approving" || step === "depositing" || genesisEnded}
+            >
+              {acceptedAssets.map((asset) => (
+                <option key={asset.symbol} value={asset.symbol}>
+                  {asset.name} ({asset.symbol})
+                </option>
+              ))}
+            </select>
+            {isNonCollateralAsset && (
+              <div className="p-3 bg-[#B8EBD5]/20 border border-[#B8EBD5]/30 text-[#1E4775] text-sm">
+                ℹ️ Your deposit will be converted to {collateralSymbol} on deposit. Withdrawals will be in {collateralSymbol} only.
+              </div>
+            )}
+          </div>
+
           {/* Amount Input */}
           <div className="space-y-2">
             {/* Available Balance - AMM Style */}
             <div className="flex justify-between items-center text-xs">
               <span className="text-[#1E4775]/70">Amount</span>
               <span className="text-[#1E4775]/70">
-                Balance: {formatEther(balance)} {collateralSymbol}
+                Balance: {balanceError ? (
+                  <span className="text-red-500" title={balanceError.message}>
+                    Error loading balance
+                  </span>
+                ) : balanceStatus === 'pending' ? (
+                  <span className="text-[#1E4775]/50">Loading...</span>
+                ) : (
+                  formatEther(balance)
+                )} {selectedAsset}
               </span>
             </div>
             <div className="relative">
@@ -345,54 +440,44 @@ export const GenesisDepositModal = ({
               </button>
             </div>
             <div className="text-right text-xs text-[#1E4775]/50">
-              {collateralSymbol}
+              {selectedAsset}
             </div>
-            {/* Estimated Points */}
-            {amount && parseFloat(amount) > 0 && (
-              <div className="mt-3 p-3 bg-[#B8EBD5]/30 border border-[#B8EBD5]/50 rounded">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-[#1E4775]/70">Estimated Points:</span>
-                  <span className="text-lg font-bold text-[#1E4775]">
-                    {(parseFloat(amount) * 100).toLocaleString(undefined, {
-                      maximumFractionDigits: 2,
-                    })}
+          </div>
+
+          {/* Transaction Preview - Always visible */}
+          <div className="p-3 bg-[#17395F]/10 border border-[#1E4775]/20 space-y-2 text-sm">
+            <div className="font-medium text-[#1E4775]">
+              Transaction Preview:
+            </div>
+            <div className="flex justify-between">
+              <span className="text-[#1E4775]/70">Current Deposit:</span>
+              <span className="text-[#1E4775]">
+                {formatEther(userCurrentDeposit)} {collateralSymbol}
+              </span>
+            </div>
+            {amount && parseFloat(amount) > 0 ? (
+              <>
+                <div className="flex justify-between">
+                  <span className="text-[#1E4775]/70">+ Deposit Amount:</span>
+                  <span className="text-[#1E4775]">
+                    +{amount} {collateralSymbol}
                   </span>
                 </div>
-                <p className="text-xs text-[#1E4775]/60 mt-1">
-                  {amount} {collateralSymbol} × 100
-                </p>
+                <div className="border-t border-[#1E4775]/30 pt-2">
+                  <div className="flex justify-between font-medium">
+                    <span className="text-[#1E4775]">New Total Deposit:</span>
+                    <span className="text-[#1E4775]">
+                      {formatEther(newTotalDeposit)} {collateralSymbol}
+                    </span>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="text-xs text-[#1E4775]/50 italic">
+                Enter an amount to see deposit preview
               </div>
             )}
           </div>
-
-          {/* Transaction Preview */}
-          {amount && parseFloat(amount) > 0 && (
-            <div className="p-3 bg-[#17395F]/10 border border-[#1E4775]/20 space-y-2 text-sm">
-              <div className="font-medium text-[#1E4775]">
-                Transaction Preview:
-              </div>
-              <div className="flex justify-between">
-                <span className="text-[#1E4775]/70">Current Deposit:</span>
-                <span className="text-[#1E4775]">
-                  {formatEther(userCurrentDeposit)} {collateralSymbol}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-[#1E4775]/70">+ Deposit Amount:</span>
-                <span className="text-[#1E4775]">
-                  +{amount} {collateralSymbol}
-                </span>
-              </div>
-              <div className="border-t border-[#1E4775]/30 pt-2">
-                <div className="flex justify-between font-medium">
-                  <span className="text-[#1E4775]">New Total Deposit:</span>
-                  <span className="text-[#1E4775]">
-                    {formatEther(newTotalDeposit)} {collateralSymbol}
-                  </span>
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* Error */}
           {error && (

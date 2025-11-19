@@ -1,7 +1,14 @@
 "use client";
 
 import React, { useMemo, useState, useEffect } from "react";
+import Head from "next/head";
 import { useAccount, useContractReads, usePublicClient } from "wagmi";
+import {
+  MapIcon,
+  ChartBarIcon,
+  CpuChipIcon,
+  InformationCircleIcon,
+} from "@heroicons/react/24/outline";
 
 // Proxy price feeds
 const proxyFeeds = [
@@ -568,23 +575,79 @@ export default function FlowPage() {
       : "fxSAVE/ETH";
 
   return (
-    <div className="min-h-screen text-white max-w-[1300px] mx-auto font-sans relative">
-      <main className="container mx-auto px-4 sm:px-10 pb-6">
-        <section className="mb-6">
-          <div className="bg-[#17395F] p-4">
-            <div className="flex items-center justify-between">
-              <h1 className="font-semibold font-mono text-white">Map Room</h1>
-            </div>
-            <p className="mt-2 text-white/60 text-sm">
-              Harbor uses oracles and contract rates for our haTokens and earn
-              pools.
-            </p>
-            <p className="mt-1 text-white/60 text-sm">
-              Here you can see all details regarding the pricefeeds we have and
-              can potentially implement.
+    <>
+      <Head>
+        <title>Map Room | Harbor</title>
+      </Head>
+
+      <div className="min-h-screen text-white max-w-[1300px] mx-auto font-sans relative">
+        <main className="container mx-auto px-4 sm:px-10 pb-6">
+        {/* Header */}
+        <div className="mb-2">
+          {/* Title - Full Row */}
+          <div className="p-4 flex items-center justify-center mb-0">
+            <h1 className="font-bold font-mono text-white text-7xl text-center">
+              Map Room
+            </h1>
+          </div>
+
+          {/* Subheader */}
+          <div className="flex items-center justify-center mb-2 -mt-2">
+            <p className="text-white/80 text-lg text-center">
+              Oracle feeds and price data for Harbor markets
             </p>
           </div>
-        </section>
+
+          {/* Four Boxes */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
+            {/* Oracle Feeds Box */}
+            <div className="bg-[#17395F] p-4">
+              <div className="flex items-center justify-center mb-2">
+                <MapIcon className="w-6 h-6 text-white mr-2" />
+                <h2 className="font-bold text-white text-lg text-center">Oracle Feeds</h2>
+              </div>
+              <p className="text-sm text-white/80 text-center">
+                View all available price feeds and oracle data
+              </p>
+            </div>
+
+            {/* Price Data Box */}
+            <div className="bg-[#17395F] p-4">
+              <div className="flex items-center justify-center mb-2">
+                <ChartBarIcon className="w-6 h-6 text-white mr-2" />
+                <h2 className="font-bold text-white text-lg text-center">Price Data</h2>
+              </div>
+              <p className="text-sm text-white/80 text-center">
+                Real-time prices and market data from Chainlink oracles
+              </p>
+            </div>
+
+            {/* Contract Rates Box */}
+            <div className="bg-[#17395F] p-4">
+              <div className="flex items-center justify-center mb-2">
+                <CpuChipIcon className="w-6 h-6 text-white mr-2" />
+                <h2 className="font-bold text-white text-lg text-center">Contract Rates</h2>
+              </div>
+              <p className="text-sm text-white/80 text-center">
+                Contract rates used for haTokens and stability pools
+              </p>
+            </div>
+
+            {/* Feed Details Box */}
+            <div className="bg-[#17395F] p-4">
+              <div className="flex items-center justify-center mb-2">
+                <InformationCircleIcon className="w-6 h-6 text-white mr-2" />
+                <h2 className="font-bold text-white text-lg text-center">Feed Details</h2>
+              </div>
+              <p className="text-sm text-white/80 text-center">
+                Detailed information about heartbeat windows and deviation thresholds
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Divider */}
+        <div className="border-t border-white/10 my-2"></div>
 
         {/* Feeds list (hardcoded for now) */}
         <section className="mb-6">
@@ -910,5 +973,6 @@ export default function FlowPage() {
         )}
       </main>
     </div>
+    </>
   );
 }

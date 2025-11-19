@@ -8,6 +8,7 @@ import {
   useMultiMarketGenesisAdmin,
   type MarketAdminData,
 } from "../hooks/useMultiMarketGenesisAdmin";
+import { useAccount } from "wagmi";
 
 const geo = Geo({
   subsets: ["latin"],
@@ -155,6 +156,7 @@ export function MultiMarketGenesisAdmin() {
     "active" | "ended" | "scheduled" | "closed" | "all"
   >("active");
 
+  const { address } = useAccount();
   const {
     marketsAdminData,
     groupedMarkets,
@@ -182,6 +184,8 @@ export function MultiMarketGenesisAdmin() {
   }
 
   if (!overallAdminStatus.hasAnyAdminAccess) {
+    const marketsWithoutAccess = marketsAdminData.filter((m) => !m.isOwner);
+    
     return (
       <div className="min-h-screen text-white max-w-[1300px] mx-auto font-sans relative">
         <main className="container mx-auto px-4 sm:px-10 pt-[6rem] pb-6 relative z-10">
@@ -191,9 +195,26 @@ export function MultiMarketGenesisAdmin() {
             >
               Access Denied
             </h2>
-            <p className="text-white/70">
+            <p className="text-white/70 mb-4">
               You don't have admin access to any Genesis markets.
             </p>
+            {process.env.NODE_ENV === 'development' && (
+              <div className="mt-4 text-left text-sm text-white/50 bg-zinc-800/50 p-4 rounded">
+                <p className="mb-2"><strong>Debug Info:</strong></p>
+                <p>Connected Address: {address || 'Not connected'}</p>
+                <p>Total Genesis Markets: {marketsAdminData.length}</p>
+                {marketsWithoutAccess.length > 0 && (
+                  <div className="mt-2">
+                    <p>Markets you don't own:</p>
+                    <ul className="list-disc list-inside ml-2">
+                      {marketsWithoutAccess.map((m) => (
+                        <li key={m.marketId}>{m.marketId}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </main>
       </div>

@@ -488,7 +488,8 @@ export default function GenesisMarketPage({ params }: PageProps) {
   const allowance = (assetReads?.[1]?.result as bigint | undefined) ?? 0n;
 
   // Minimal ROI calculation (FDV $25m), with preview from depositAmount
-  const oracleAddress = market?.addresses?.priceOracle as
+  // Use collateralPrice for calculating USD value of deposits
+  const oracleAddress = market?.addresses?.collateralPrice as
     | `0x${string}`
     | undefined;
   const { data: oracleReads } = useContractReads({
@@ -687,7 +688,7 @@ export default function GenesisMarketPage({ params }: PageProps) {
     );
   }
 
-  const rewardTokenSymbol = (market as any).rewardToken?.symbol || (market as any).rewardPoints ? "Points" : "";
+  const rewardTokenSymbol = (market as any).rewardToken?.symbol || (market as any).rewardPoints ? "Ledger Marks" : "";
 
   const statusColor = isEnded
     ? "bg-orange-900/30 text-orange-400 border-orange-500/30"

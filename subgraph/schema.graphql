@@ -1,0 +1,69 @@
+type Deposit @entity(immutable: true) {
+  id: ID! # {contractAddress}-{userAddress}-{txHash}-{logIndex}
+  contractAddress: Bytes! # Genesis contract address
+  user: Bytes! # User address
+  amount: BigInt! # Amount deposited (in wei)
+  amountUSD: BigDecimal # USD value at time of deposit
+  timestamp: BigInt! # Block timestamp
+  txHash: Bytes! # Transaction hash
+  blockNumber: BigInt! # Block number
+  
+  # Harbor Marks tracking
+  marksPerDay: BigDecimal! # Marks per day rate for this deposit
+  isActive: Boolean! # Whether this deposit is still active (not withdrawn)
+  
+  # Withdrawal tracking
+  withdrawnAmount: BigInt! # Amount withdrawn (0 if not withdrawn)
+  withdrawnAt: BigInt # Timestamp when withdrawn (null if not withdrawn)
+}
+
+type Withdrawal @entity(immutable: true) {
+  id: ID! # {contractAddress}-{userAddress}-{txHash}-{logIndex}
+  contractAddress: Bytes! # Contract address
+  user: Bytes! # User address
+  amount: BigInt! # Amount withdrawn (in wei)
+  amountUSD: BigDecimal # USD value at time of withdrawal
+  timestamp: BigInt! # Block timestamp
+  txHash: Bytes! # Transaction hash
+  blockNumber: BigInt! # Block number
+  
+  # Marks forfeited
+  marksForfeited: BigDecimal! # Marks forfeited due to this withdrawal
+}
+
+type GenesisEnd @entity(immutable: true) {
+  id: ID! # {contractAddress}
+  contractAddress: Bytes! # Genesis contract address
+  timestamp: BigInt! # Block timestamp when genesis ended
+  txHash: Bytes! # Transaction hash
+  blockNumber: BigInt! # Block number
+}
+
+type UserHarborMarks @entity(immutable: false) {
+  id: ID! # {contractAddress}-{userAddress}
+  contractAddress: Bytes! # Contract address
+  user: Bytes! # User address
+  
+  # Current marks
+  currentMarks: BigDecimal! # Current marks earned (accumulated)
+  marksPerDay: BigDecimal! # Current marks per day rate
+  
+  # Historical
+  totalMarksEarned: BigDecimal! # Total marks ever earned
+  totalMarksForfeited: BigDecimal! # Total marks forfeited from withdrawals
+  bonusMarks: BigDecimal! # Bonus marks from genesis end (100 marks per dollar)
+  
+  # Deposits
+  totalDeposited: BigInt! # Total amount ever deposited
+  totalDepositedUSD: BigDecimal! # Total deposited in USD
+  currentDeposit: BigInt! # Current active deposit
+  currentDepositUSD: BigDecimal! # Current active deposit in USD
+  
+  # Genesis period
+  genesisStartDate: BigInt! # Genesis start timestamp
+  genesisEndDate: BigInt # Genesis end timestamp (null if not ended)
+  genesisEnded: Boolean! # Whether genesis has ended
+  
+  # Last updated
+  lastUpdated: BigInt! # Last block timestamp when updated
+}

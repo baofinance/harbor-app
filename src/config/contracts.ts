@@ -1,19 +1,21 @@
-// Contract addresses for the new deployment
+// Contract addresses for local Anvil deployment
+// Chain ID: 31337, RPC URL: http://localhost:8545
 export const contracts = {
-  minter: "0xE41bBcf8ec773B477735b0b0D8bF6E7Ca6BDe9Ee",
-  peggedToken: "0x6c7Df3575f1d69eb3B245A082937794794C2b82E",
-  leveragedToken: "0x74ef79CFC735A10436eF9D4808547df0Ce38f788",
-  steam: "0x5f9dD176ea5282d392225ceC5c2E7A24d5d02672",
-  veSteam: "0x819F9213cE51Adac4C1c2EF7D4Cba563727C1206",
-  reservePool: "0x289BD64Deb826c134dA670f8B759FB4CA018dF4B",
-  stabilityPoolManager: "0xeC67cF0755c0A5aaD6C4A4235fDfA35c1EFEA6A9",
-  genesis: "0x49c58c6BE0680Eb756595c0F59ab3E0b6e1624cd",
-  priceOracle: "0x2C834EFcDd2E9D04C1a34367BA9D8aa587F90fBe",
-  feeReceiver: "0x3A5fBC501c5D515383fADFf5ebD92C393f5eFee9",
-  gaugeController: "0x3860B063928436F548c3A58A40c4d1d171E78838",
-  steamMinter: "0x14835B093D320AA5c9806BBC64C17F0F2546D9EE",
-  collateralToken: "0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84",
-  wrappedCollateralToken: "0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0",
+  minter: "0x4A679253410272dd5232B3Ff7cF5dbB88f295319",
+  peggedToken: "0x4ed7c70F96B99c776995fB64377f0d4aB3B0e1C1",
+  leveragedToken: "0x322813Fd9A801c5507c9de605d63CEA4f2CE6c44",
+  genesis: "0x67d269191c92Caf3cD7723F116c85e6E9bf55933",
+  reservePool: "0x7a2088a1bFc9d81c55368AE168C2C02570cB814F",
+  stabilityPoolManager: "0xc5a5C42992dECbae36851359345FE25997F5C42d",
+  feeReceiver: "0x09635F643e140090A9A8Dcd712eD6285858ceBef",
+  priceOracle: "0xa82fF9aFd8f496c3d6ac40E2a0F282E47488CFc9",
+  collateralToken: "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9",
+  wrappedCollateralToken: "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707",
+  // Note: steam, veSteam, gaugeController, steamMinter are not deployed in this setup
+  // steam: "0x...",
+  // veSteam: "0x...",
+  // gaugeController: "0x...",
+  // steamMinter: "0x...",
 } as const;
 
 // Legacy CONTRACTS constant for backward compatibility

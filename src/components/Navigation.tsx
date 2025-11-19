@@ -28,7 +28,7 @@ export default function Example() {
   };
 
   const linkClass = (href: string) =>
-    ` px-3 py-2 text-sm font-medium ${
+    ` px-3 py-2 text-sm font-medium rounded ${
       isActive(href)
         ? "text-[#1E4775] bg-white"
         : "text-white hover:bg-white/20 hover:text-white"
@@ -61,13 +61,6 @@ export default function Example() {
             <div className="hidden sm:block">
               <div className="flex space-x-2">
                 <Link
-                  href="/"
-                  className={linkClass("/")}
-                  aria-current={isActive("/") ? "page" : undefined}
-                >
-                  Dashboard
-                </Link>
-                <Link
                   href="/genesis"
                   className={linkClass("/genesis")}
                   aria-current={isActive("/genesis") ? "page" : undefined}
@@ -75,18 +68,18 @@ export default function Example() {
                   Maiden Voyage
                 </Link>
                 <Link
-                  href="/mintredeem"
-                  className={linkClass("/mintredeem")}
-                  aria-current={isActive("/mintredeem") ? "page" : undefined}
+                  href="/anchor"
+                  className={linkClass("/anchor")}
+                  aria-current={isActive("/anchor") ? "page" : undefined}
                 >
-                  Mint + Redeem
+                  Anchor
                 </Link>
                 <Link
-                  href="/earn"
-                  className={linkClass("/earn")}
-                  aria-current={isActive("/earn") ? "page" : undefined}
+                  href="/sail"
+                  className={linkClass("/sail")}
+                  aria-current={isActive("/sail") ? "page" : undefined}
                 >
-                  Earn
+                  Sail
                 </Link>
                 <Link
                   href="/flow"
@@ -95,18 +88,18 @@ export default function Example() {
                 >
                   Map Room
                 </Link>
+                <Link
+                  href="/ledger-marks"
+                  className={linkClass("/ledger-marks")}
+                  aria-current={isActive("/ledger-marks") ? "page" : undefined}
+                >
+                  Marks Leaderboard
+                </Link>
               </div>
             </div>
           </div>
           <div className="hidden sm:ml-6 sm:block">
-            <div className="flex items-center gap-4">
-              <CurrencySelect
-                value={code}
-                onValueChange={setCode}
-                options={optionsForSelect}
-              />
-              <WalletButton />
-            </div>
+            <WalletButton />
           </div>
           <div className="-mr-2 flex sm:hidden">
             {/* Mobile menu button */}
@@ -130,14 +123,6 @@ export default function Example() {
         <div className="px-2 pt-2 pb-3 space-y-1">
           <DisclosureButton
             as={Link}
-            href="/"
-            className={linkClass("/")}
-            aria-current={isActive("/") ? "page" : undefined}
-          >
-            Dashboard
-          </DisclosureButton>
-          <DisclosureButton
-            as={Link}
             href="/genesis"
             className={linkClass("/genesis")}
             aria-current={isActive("/genesis") ? "page" : undefined}
@@ -146,19 +131,19 @@ export default function Example() {
           </DisclosureButton>
           <DisclosureButton
             as={Link}
-            href="/mintredeem"
-            className={linkClass("/mintredeem")}
-            aria-current={isActive("/mintredeem") ? "page" : undefined}
+            href="/anchor"
+            className={linkClass("/anchor")}
+            aria-current={isActive("/anchor") ? "page" : undefined}
           >
-            Mint + Redeem
+            Anchor
           </DisclosureButton>
           <DisclosureButton
             as={Link}
-            href="/earn"
-            className={linkClass("/earn")}
-            aria-current={isActive("/earn") ? "page" : undefined}
+            href="/sail"
+            className={linkClass("/sail")}
+            aria-current={isActive("/sail") ? "page" : undefined}
           >
-            Earn
+            Sail
           </DisclosureButton>
           <DisclosureButton
             as={Link}
@@ -168,14 +153,17 @@ export default function Example() {
           >
             Map Room
           </DisclosureButton>
+          <DisclosureButton
+            as={Link}
+            href="/ledger-marks"
+            className={linkClass("/ledger-marks")}
+            aria-current={isActive("/ledger-marks") ? "page" : undefined}
+          >
+            Marks Leaderboard
+          </DisclosureButton>
         </div>
         <div className="border-t border-white/10 px-4 py-3">
-          <div className="flex items-center justify-between gap-4">
-            <CurrencySelect
-              value={code}
-              onValueChange={setCode}
-              options={optionsForSelect}
-            />
+          <div className="flex items-center justify-end">
             <WalletButton />
           </div>
         </div>

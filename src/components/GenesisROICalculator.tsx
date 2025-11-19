@@ -47,8 +47,9 @@ export default function GenesisROICalculator({
 
   useEffect(() => setMounted(true), []);
 
+  // Use collateralPrice for calculating USD value of deposits
   const oracleAddress = markets[marketId as keyof typeof markets].addresses
-    .priceOracle as `0x${string}`;
+    .collateralPrice as `0x${string}`;
 
   const { data: oracleData } = useContractReads({
     contracts: [

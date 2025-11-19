@@ -146,7 +146,12 @@ export function useMultiMarketGenesisAdmin() {
 
   // Overall admin status
   const overallAdminStatus: OverallAdminStatus = useMemo(() => {
-    const hasAnyAdminAccess = marketsAdminData.some((m) => m.isOwner);
+    // For development: allow access if no markets are configured or if user is connected
+    // In production, this should only be true if user is owner of at least one market
+    const hasAnyAdminAccess = 
+      process.env.NODE_ENV === 'development' && genesisMarkets.length === 0
+        ? true // Allow access in dev if no markets configured
+        : marketsAdminData.some((m) => m.isOwner);
     const totalCollateralAcrossMarkets = marketsAdminData.reduce(
       (total, market) => total + market.totalCollateral,
       0n

@@ -27,8 +27,8 @@ const FadeContent: React.FC<FadeContentProps> = ({
   useEffect(() => {
     // Simple fade-in on mount - no intersection observer needed for layout content
     const timer = setTimeout(() => {
-      setInView(true);
-    }, delay);
+            setInView(true);
+          }, delay);
 
     return () => {
       clearTimeout(timer);

@@ -9,14 +9,7 @@ import {
   useSimulateContract,
 } from "wagmi";
 import { anvil } from "wagmi/chains";
-import { Geo } from "next/font/google";
 import { BaseError, ContractFunctionRevertedError } from "viem";
-
-const geo = Geo({
-  subsets: ["latin"],
-  weight: "400",
-  display: "swap",
-});
 
 interface GenesisWithdrawalModalProps {
   isOpen: boolean;
@@ -61,16 +54,14 @@ export const GenesisWithdrawModal = ({
   const { writeContractAsync } = useWriteContract();
 
   const amountBigInt = amount ? parseEther(amount) : 0n;
-  // Support "max" withdrawal with MaxUint256
+  // Calculate withdraw amount - if amount equals or exceeds userDeposit, use userDeposit
   const withdrawAmount =
-    amount === "max" || amountBigInt >= userDeposit
-      ? BigInt(
-          "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
-        ) // MaxUint256
+    amountBigInt > 0n && amountBigInt >= userDeposit
+      ? userDeposit
       : amountBigInt;
 
   // Calculate remaining deposit
-  const isMaxWithdrawal = amount === "max" || amountBigInt >= userDeposit;
+  const isMaxWithdrawal = amountBigInt > 0n && amountBigInt >= userDeposit;
   const remainingDeposit = isMaxWithdrawal ? 0n : userDeposit - amountBigInt;
 
   const { data: simulateData, error: simulateError } = useSimulateContract({
@@ -82,8 +73,10 @@ export const GenesisWithdrawModal = ({
     query: {
       enabled:
         !!address &&
-        (!!amount || amount === "max") &&
-        parseFloat(amount || "0") > 0,
+        !!genesisAddress &&
+        !!amount &&
+        parseFloat(amount) > 0 &&
+        withdrawAmount > 0n,
     },
   });
   const handleClose = () => {
@@ -96,25 +89,32 @@ export const GenesisWithdrawModal = ({
   };
 
   const handleMaxClick = () => {
-    setAmount("max");
+    if (userDeposit > 0n) {
+      setAmount(formatEther(userDeposit));
+    }
   };
 
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
-    // Allow only numbers and decimal point, or "max"
-    if (value === "" || value === "max" || /^\d*\.?\d*$/.test(value)) {
+    // Allow only numbers and decimal point
+    if (value === "" || /^\d*\.?\d*$/.test(value)) {
       setAmount(value);
       setError(null);
     }
   };
 
   const validateAmount = (): boolean => {
-    if (!amount || (amount !== "max" && parseFloat(amount) <= 0)) {
+    if (!amount || parseFloat(amount) <= 0) {
       setError("Please enter a valid amount");
       return false;
     }
 
-    if (amount !== "max" && amountBigInt > userDeposit) {
+    if (userDeposit === 0n) {
+      setError("No deposit available to withdraw");
+      return false;
+    }
+
+    if (amountBigInt > userDeposit) {
       setError("Amount exceeds your deposit");
       return false;
     }
@@ -201,12 +201,10 @@ export const GenesisWithdrawModal = ({
 
   const isButtonDisabled = () => {
     if (step === "success") return false; // Always enable the button when successful
-    return (
-      step === "withdrawing" ||
-      !amount ||
-      (amount !== "max" && parseFloat(amount) <= 0) ||
-      !!simulateError
-    );
+    if (step === "withdrawing") return true;
+    if (!amount || parseFloat(amount) <= 0) return true;
+    if (userDeposit === 0n) return true;
+    return !!simulateError;
   };
 
   if (!isOpen) return null;
@@ -220,15 +218,15 @@ export const GenesisWithdrawModal = ({
       />
 
       {/* Modal */}
-      <div className="relative bg-zinc-900/50  shadow-2xl w-full max-w-md mx-4 animate-in fade-in-0 scale-in-95 duration-200">
+      <div className="relative bg-white shadow-2xl w-full max-w-md mx-4 animate-in fade-in-0 scale-in-95 duration-200">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-[#1E4775]/20">
-          <h2 className={`text-xl font-medium text-white ${geo.className}`}>
-            Withdraw from Genesis
+          <h2 className="text-2xl font-bold text-[#1E4775]">
+            Withdraw from Maiden Voyage
           </h2>
           <button
             onClick={handleClose}
-            className="text-white/50 hover:text-white transition-colors"
+            className="text-[#1E4775]/50 hover:text-[#1E4775] transition-colors"
             disabled={step === "withdrawing"}
           >
             <svg
@@ -250,76 +248,101 @@ export const GenesisWithdrawModal = ({
         {/* Content */}
         <div className="p-6 space-y-6">
           {/* Balance */}
-          <div className="text-sm text-white/70">
+          <div className="text-sm text-[#1E4775]/70">
             Your Deposit:{" "}
-            <span className="font-medium text-white">
+            <span className="font-medium text-[#1E4775]">
               {formatEther(userDeposit)} {collateralSymbol}
             </span>
           </div>
 
           {/* Amount Input */}
           <div className="space-y-2">
+            {/* Available Balance */}
+            <div className="flex justify-between items-center text-xs">
+              <span className="text-[#1E4775]/70">Amount</span>
+              <span className="text-[#1E4775]/70">
+                Available: {formatEther(userDeposit)} {collateralSymbol}
+              </span>
+            </div>
             <div className="relative">
               <input
                 type="text"
                 value={amount}
                 onChange={handleAmountChange}
                 placeholder="0.0"
-                className={`w-full h-12 px-4 pr-20 bg-[#0D0D0D] text-white border ${
-                  error ? "border-red-500" : "border-zinc-700/50"
+                className={`w-full h-12 px-4 pr-20 bg-white text-[#1E4775] border ${
+                  error ? "border-red-500" : "border-[#1E4775]/30"
                 } focus:border-[#1E4775] focus:ring-2 focus:ring-[#1E4775]/20 focus:outline-none transition-all text-lg font-mono`}
                 disabled={step === "withdrawing"}
               />
               <button
                 onClick={handleMaxClick}
-                className="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 text-xs bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white transition-colors disabled:bg-zinc-600"
+                className="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 text-xs bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white transition-colors disabled:bg-gray-300 disabled:text-gray-500 rounded-full"
                 disabled={step === "withdrawing"}
               >
                 MAX
               </button>
             </div>
-            <div className="text-right text-xs text-white/50">
+            <div className="text-right text-xs text-[#1E4775]/50">
               {collateralSymbol}
+            </div>
+          </div>
+
+          {/* Harbor Marks Warning - Always visible */}
+          <div className="p-3 bg-orange-50 border border-orange-200 rounded text-sm">
+            <div className="flex items-start gap-2">
+              <span className="text-orange-600 font-bold text-base">⚠️</span>
+              <div className="flex-1 space-y-1">
+                <div className="font-medium text-orange-800">
+                  Harbor Marks Warning
+                </div>
+                <div className="text-orange-700 text-xs leading-relaxed">
+                  Withdrawing forfeits any Harbor Marks for withdrawn assets. Only assets deposited at the end of Maiden Voyage are eligible for Harbor Marks earned throughout the Maiden Voyage period.
+                </div>
+              </div>
             </div>
           </div>
 
           {/* Transaction Preview */}
           {amount && parseFloat(amount || "0") > 0 && (
-            <div className="p-3 bg-[#0F0F0F]/90  space-y-2 text-sm">
-              <div className="font-medium text-white">
-                Transaction Preview:
-              </div>
-              <div className="flex justify-between">
-                <span className="text-white/70">Current Deposit:</span>
-                <span>
-                  {formatEther(userDeposit)} {collateralSymbol}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-white/70">- Withdraw Amount:</span>
-                <span className="text-red-400">
-                  -{isMaxWithdrawal ? formatEther(userDeposit) : amount}{" "}
-                  {collateralSymbol}
-                </span>
-              </div>
-              <div className="border-t border-[#1E4775]/20 pt-2">
-                <div className="flex justify-between font-medium">
-                  <span className="text-white">Remaining Deposit:</span>
-                  <span
-                    className={
-                      remainingDeposit === 0n
-                        ? "text-orange-400"
-                        : "text-[#1E4775]"
-                    }
-                  >
-                    {formatEther(remainingDeposit)} {collateralSymbol}
+            <div className="space-y-3">
+              <div className="p-3 bg-[#17395F]/10 border border-[#1E4775]/20 space-y-2 text-sm">
+                <div className="font-medium text-[#1E4775]">
+                  Transaction Preview:
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-[#1E4775]/70">Current Deposit:</span>
+                  <span className="text-[#1E4775]">
+                    {formatEther(userDeposit)} {collateralSymbol}
                   </span>
                 </div>
+                <div className="flex justify-between">
+                  <span className="text-[#1E4775]/70">- Withdraw Amount:</span>
+                  <span className="text-red-600">
+                    -{isMaxWithdrawal ? formatEther(userDeposit) : amount}{" "}
+                    {collateralSymbol}
+                  </span>
+                </div>
+                <div className="border-t border-[#1E4775]/20 pt-2">
+                  <div className="flex justify-between font-medium">
+                    <span className="text-[#1E4775]">Remaining Deposit:</span>
+                    <span
+                      className={
+                        remainingDeposit === 0n
+                          ? "text-orange-600"
+                          : "text-[#1E4775]"
+                      }
+                    >
+                      {formatEther(remainingDeposit)} {collateralSymbol}
+                    </span>
+                  </div>
+                </div>
               </div>
+
               {isMaxWithdrawal && (
-                <div className="text-xs text-yellow-400 mt-2">
-                  ⚠️ This will remove you from Genesis and forfeit potential
-                  rewards
+                <div className="p-3 bg-orange-50 border border-orange-200 rounded text-xs text-orange-700">
+                  <div className="font-medium mb-1">Additional Warning:</div>
+                  This will remove you from Maiden Voyage and forfeit all potential rewards.
                 </div>
               )}
             </div>
@@ -327,20 +350,20 @@ export const GenesisWithdrawModal = ({
 
           {/* Error */}
           {error && (
-            <div className="p-3 bg-red-900/20 border border-red-500/30 text-red-400 text-sm">
+            <div className="p-3 bg-red-50 border border-red-500/30 text-red-600 text-sm">
               {error}
             </div>
           )}
 
           {/* Transaction Hash */}
           {txHash && (
-            <div className="text-xs text-center text-zinc-400">
+            <div className="text-xs text-center text-[#1E4775]/70">
               Tx:{" "}
               <a
                 href={`https://etherscan.io/tx/${txHash}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="underline hover:text-white"
+                className="underline hover:text-[#1E4775]"
               >
                 {txHash.slice(0, 10)}...{txHash.slice(-8)}
               </a>
@@ -349,17 +372,17 @@ export const GenesisWithdrawModal = ({
 
           {/* Success Message */}
           {step === "success" && (
-            <div className="p-3 bg-harbor/10 border border-harbor/30 text-harbor text-sm text-center">
+            <div className="p-3 bg-[#B8EBD5]/30 border border-[#B8EBD5]/50 text-[#1E4775] text-sm text-center">
               ✅ Withdrawal successful!
             </div>
           )}
         </div>
 
         {/* Footer */}
-        <div className="flex gap-4 p-6 border-t border-harbor/20">
+        <div className="flex gap-4 p-6 border-t border-[#1E4775]/20">
           <button
             onClick={handleClose}
-            className={`flex-1 py-2 px-4 text-white/70 hover:text-white transition-colors rounded-full ${geo.className}`}
+            className="flex-1 py-2 px-4 text-[#1E4775]/70 hover:text-[#1E4775] transition-colors rounded-full"
             disabled={step === "withdrawing"}
           >
             {step === "success" ? "Close" : "Cancel"}
@@ -368,11 +391,9 @@ export const GenesisWithdrawModal = ({
             onClick={handleMainButtonClick}
             disabled={isButtonDisabled()}
             className={`flex-1 py-2 px-4 font-medium transition-colors rounded-full ${
-              geo.className
-            } ${
               step === "success"
                 ? "bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white"
-                : "bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white disabled:bg-zinc-800 disabled:text-zinc-500"
+                : "bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white disabled:bg-gray-300 disabled:text-gray-500"
             }`}
           >
             {getButtonText()}

@@ -1,156 +1,57 @@
 import { contracts } from "./contracts";
 
 export const markets = {
-  "usd-eth": {
-    name: "USD/ETH",
+  "pb-steth": {
+    name: "PB/stETH",
     status: "genesis" as const,
     chain: {
       name: "Ethereum",
       logo: "icons/eth.png",
     },
     collateral: {
-      symbol: "ETH",
-      name: "Ethereum",
+      symbol: "wstETH",
+      name: "Wrapped Staked ETH",
+    },
+    rewardTokens: {
+      default: ["wstETH"], // Wrapped collateral token is the primary reward token
+      additional: [], // Additional reward tokens (if any)
     },
     addresses: {
       minter: contracts.minter,
       peggedToken: contracts.peggedToken,
       leveragedToken: contracts.leveragedToken,
-      steam: contracts.steam,
-      veSteam: contracts.veSteam,
       reservePool: contracts.reservePool,
       stabilityPoolManager: contracts.stabilityPoolManager,
+      stabilityPoolCollateral: "0x82e01223d51Eb87e16A03E24687EDF0F294da6f1" as `0x${string}`,
+      stabilityPoolLeveraged: null as `0x${string}` | null, // No leveraged stability pool in this deployment
       genesis: contracts.genesis,
       priceOracle: contracts.priceOracle,
+      collateralPrice: contracts.priceOracle, // Using the same price oracle for collateral price
       feeReceiver: contracts.feeReceiver,
-      collateralToken: contracts.wrappedCollateralToken,
-      wrappedCollateralToken: contracts.collateralToken,
+      collateralToken: contracts.wrappedCollateralToken, // wstETH - primary collateral for UI (stored and given as rewards)
+      wrappedCollateralToken: contracts.collateralToken, // stETH - underlying reference token for yield scraping
+      // Note: steam and veSteam are not deployed in this setup
+      // steam: contracts.steam,
+      // veSteam: contracts.veSteam,
     },
     peggedToken: {
-      name: "haETH",
-      symbol: "haETH",
-      description: "Pegged to ETH",
+      name: "Harbor Anchored PB",
+      symbol: "haPB",
+      description: "Pegged to PB (Pork Bellies)",
     },
     leveragedToken: {
-      name: "hsUSD-ETH",
-      symbol: "hsUSD-ETH",
-      description: "Long USD vs ETH (short ETH)",
+      name: "Harbor Sail hsPBxstETH",
+      symbol: "hshsPBxstETH",
+      description: "Leveraged PB/stETH token",
     },
     rewardPoints: {
       pointsPerDollar: 100,
-      description: "100 points per dollar deposited at the end of genesis",
+      description:
+        "100 ledger marks per dollar deposited at the end of genesis",
     },
     genesis: {
       startDate: "2025-11-03T00:00:00Z",
-      endDate: "2025-11-18T23:59:59Z",
-      tokenDistribution: {
-        pegged: {
-          ratio: 0.5,
-          description: "50% of your deposit as pegged tokens",
-        },
-        leveraged: {
-          ratio: 0.5,
-          description: "50% of your deposit as leveraged tokens",
-        },
-      },
-    },
-  },
-  "usd-btc": {
-    name: "USD/BTC",
-    status: "genesis" as const,
-    chain: {
-      name: "Ethereum",
-      logo: "icons/eth.png",
-    },
-    collateral: {
-      symbol: "BTC",
-      name: "Bitcoin",
-    },
-    addresses: {
-      minter: contracts.minter,
-      peggedToken: contracts.peggedToken,
-      leveragedToken: contracts.leveragedToken,
-      steam: contracts.steam,
-      veSteam: contracts.veSteam,
-      reservePool: contracts.reservePool,
-      stabilityPoolManager: contracts.stabilityPoolManager,
-      genesis: contracts.genesis,
-      priceOracle: contracts.priceOracle,
-      feeReceiver: contracts.feeReceiver,
-      collateralToken: contracts.wrappedCollateralToken,
-      wrappedCollateralToken: contracts.collateralToken,
-    },
-    peggedToken: {
-      name: "haBTC",
-      symbol: "haBTC",
-      description: "Pegged to BTC",
-    },
-    leveragedToken: {
-      name: "hsUSD-BTC",
-      symbol: "hsUSD-BTC",
-      description: "Long USD vs BTC (short BTC)",
-    },
-    rewardPoints: {
-      pointsPerDollar: 100,
-      description: "100 points per dollar deposited at the end of genesis",
-    },
-    genesis: {
-      startDate: "2025-11-03T00:00:00Z",
-      endDate: "2025-11-18T23:59:59Z",
-      tokenDistribution: {
-        pegged: {
-          ratio: 0.5,
-          description: "50% of your deposit as pegged tokens",
-        },
-        leveraged: {
-          ratio: 0.5,
-          description: "50% of your deposit as leveraged tokens",
-        },
-      },
-    },
-  },
-  "eth-btc": {
-    name: "ETH/BTC",
-    status: "genesis" as const,
-    chain: {
-      name: "Ethereum",
-      logo: "icons/eth.png",
-    },
-    collateral: {
-      symbol: "BTC",
-      name: "Bitcoin",
-    },
-    addresses: {
-      minter: contracts.minter,
-      peggedToken: contracts.peggedToken,
-      leveragedToken: contracts.leveragedToken,
-      steam: contracts.steam,
-      veSteam: contracts.veSteam,
-      reservePool: contracts.reservePool,
-      stabilityPoolManager: contracts.stabilityPoolManager,
-      genesis: contracts.genesis,
-      priceOracle: contracts.priceOracle,
-      feeReceiver: contracts.feeReceiver,
-      collateralToken: contracts.wrappedCollateralToken,
-      wrappedCollateralToken: contracts.collateralToken,
-    },
-    peggedToken: {
-      name: "haBTC",
-      symbol: "haBTC",
-      description: "Pegged to BTC",
-    },
-    leveragedToken: {
-      name: "hsETH-BTC",
-      symbol: "hsETH-BTC",
-      description: "Long ETH vs BTC",
-    },
-    rewardPoints: {
-      pointsPerDollar: 100,
-      description: "100 points per dollar deposited at the end of genesis",
-    },
-    genesis: {
-      startDate: "2025-11-03T00:00:00Z",
-      endDate: "2025-11-18T23:59:59Z",
+      endDate: "2025-11-25T23:59:59Z",
       tokenDistribution: {
         pegged: {
           ratio: 0.5,

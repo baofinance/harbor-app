@@ -31,8 +31,8 @@ export default function InfoTooltip({
       case "top":
       default:
         return {
-          container: "bottom-full mb-2 left-1/2 -translate-x-1/2",
-          arrow: "-bottom-1 left-1/2 -translate-x-1/2",
+          container: "top-full mt-2 right-full mr-2",
+          arrow: "-top-1 -right-1",
         };
     }
   })();
@@ -61,15 +61,17 @@ export default function InfoTooltip({
       <div
         role="tooltip"
         className={
-          "pointer-events-none absolute z-20 whitespace-nowrap  bg-black/80 px-2 py-1 text-[11px] text-white  shadow-lg opacity-0 transition-opacity duration-150 " +
+          "pointer-events-none absolute z-20 bg-[#1E4775] px-6 py-4 text-base text-white shadow-xl opacity-0 transition-opacity duration-150 min-w-[400px] max-w-2xl " +
           positionClasses.container +
           " group-hover:opacity-100 group-focus-within:opacity-100"
         }
       >
-        {label}
+        <div className="break-words whitespace-normal leading-relaxed">
+          {label}
+        </div>
         <span
           className={
-            "absolute h-2 w-2 rotate-45 bg-black/80  " +
+            "absolute h-3 w-3 rotate-45 bg-[#1E4775]  " +
             positionClasses.arrow
           }
         />

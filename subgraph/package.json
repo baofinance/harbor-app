@@ -1,0 +1,20 @@
+{
+  "name": "harbor-marks-subgraph",
+  "version": "0.1.0",
+  "description": "Subgraph for tracking Harbor Marks in Maiden Voyage",
+  "scripts": {
+    "codegen": "graph codegen",
+    "build": "graph build",
+    "deploy": "graph deploy --node https://api.studio.thegraph.com/deploy/ --version-label v0.0.1 ledger-marks",
+    "deploy-local": "graph deploy --node http://localhost:8020/ --ipfs http://localhost:5001 <your-subgraph-name>",
+    "create-local": "graph create --node http://localhost:8020/ <your-subgraph-name>",
+    "remove-local": "graph remove --node http://localhost:8020/ <your-subgraph-name>"
+  },
+  "dependencies": {
+    "@graphprotocol/graph-cli": "^0.68.0",
+    "@graphprotocol/graph-ts": "^0.34.0"
+  },
+  "devDependencies": {
+    "source-map-support": "^0.5.21"
+  }
+}
