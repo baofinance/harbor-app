@@ -237,6 +237,45 @@ const proxyAbi = [
   },
 ] as const;
 
+// ABI for HarborCustomFeedAndRateAggregator_v1
+const customFeedAggregatorAbi = [
+  {
+    inputs: [],
+    name: "getCustomFeedCount",
+    outputs: [{ type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [{ name: "index", type: "uint256" }],
+    name: "getCustomFeed",
+    outputs: [{ type: "address" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [{ name: "identifier", type: "uint8" }],
+    name: "feedIdentifiers",
+    outputs: [{ type: "address" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [{ name: "identifier", type: "uint8" }],
+    name: "getConstraints",
+    outputs: [{ type: "uint64" }, { type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "usdFeed",
+    outputs: [{ type: "address" }],
+    stateMutability: "view",
+    type: "function",
+  },
+] as const;
+
 // Minimal Chainlink aggregator ABI for description/decimals/latestRoundData/latestAnswer
 const aggregatorAbi = [
   {
@@ -287,6 +326,9 @@ function formatBytes32(b?: `0x${string}`) {
 
 function formatFeedIdentifier(b?: `0x${string}`) {
   if (!b) return "-";
+  // If it's already a valid address (42 chars), return as is
+  if (b.length === 42) return b;
+  // Otherwise, it's bytes32, remove leading zeros
   return b.replace(/^0x000000000000000000000000/i, "0x");
 }
 
@@ -1274,38 +1316,98 @@ export default function FlowPage() {
         price?: string;
       }> = [];
 
-      for (const id of ids) {
+      // Check if this is a HarborCustomFeedAndRateAggregator_v1 contract
+      let isCustomFeedAggregator = false;
+      let customFeedCount = 0;
+      let feedIdsToCheck: number[] = [];
+
+      try {
+        const count = await publicClient
+          .readContract({
+            address: addr,
+            abi: customFeedAggregatorAbi,
+            functionName: "getCustomFeedCount",
+          })
+          .catch(() => null);
+        
+        if (count !== null && typeof count === "bigint" && Number(count) > 0) {
+          isCustomFeedAggregator = true;
+          customFeedCount = Number(count);
+          // Custom feeds are at IDs 1, 2, 3, ..., customFeedCount
+          // Note: ID 100 is the USD feed used for conversion, not a custom feed, so we exclude it
+          feedIdsToCheck = [...Array(customFeedCount).keys()].map(i => i + 1);
+        }
+      } catch {}
+
+      // If not a custom feed aggregator, use the default IDs
+      if (!isCustomFeedAggregator) {
+        feedIdsToCheck = [...ids];
+      }
+
+      for (const id of feedIdsToCheck) {
         try {
-          const [cons, feed] = await Promise.all([
-            publicClient
-              .readContract({
-                address: addr,
-                abi: proxyAbi,
-                functionName: "getConstraints",
-                args: [id],
-              })
-              .catch(() => null),
-            publicClient
-              .readContract({
-                address: addr,
-                abi: proxyAbi,
-                functionName: "feedIdentifiers",
-                args: [id],
-              })
-              .catch(() => null),
-          ]);
+          let aggAddr: `0x${string}` | undefined;
+          let cons: [bigint, bigint] | null = null;
 
-          if (!cons || !feed) continue;
+          if (isCustomFeedAggregator) {
+            // For custom feed aggregator, feedIdentifiers returns address directly
+            const [constraints, feedAddr] = await Promise.all([
+              publicClient
+                .readContract({
+                  address: addr,
+                  abi: customFeedAggregatorAbi,
+                  functionName: "getConstraints",
+                  args: [id as number],
+                })
+                .catch(() => null),
+              publicClient
+                .readContract({
+                  address: addr,
+                  abi: customFeedAggregatorAbi,
+                  functionName: "feedIdentifiers",
+                  args: [id as number],
+                })
+                .catch(() => null),
+            ]);
 
-          const c = cons as [bigint, bigint];
-          const f = feed as `0x${string}`;
+            if (!constraints || !feedAddr) continue;
 
-          const aggAddr = bytes32ToAddress(f);
+            cons = constraints as [bigint, bigint];
+            aggAddr = feedAddr as `0x${string}`;
 
-          if (!f || f === ZERO_BYTES32 || f === ZERO_ADDRESS || !aggAddr)
-            continue;
+            if (!aggAddr || aggAddr === ZERO_ADDRESS) continue;
+          } else {
+            // For regular proxy feeds, feedIdentifiers returns bytes32
+            const [constraints, feed] = await Promise.all([
+              publicClient
+                .readContract({
+                  address: addr,
+                  abi: proxyAbi,
+                  functionName: "getConstraints",
+                  args: [id],
+                })
+                .catch(() => null),
+              publicClient
+                .readContract({
+                  address: addr,
+                  abi: proxyAbi,
+                  functionName: "feedIdentifiers",
+                  args: [id],
+                })
+                .catch(() => null),
+            ]);
 
-          let name = deriveFeedName(f);
+            if (!constraints || !feed) continue;
+
+            cons = constraints as [bigint, bigint];
+            const f = feed as `0x${string}`;
+            aggAddr = bytes32ToAddress(f);
+
+            if (!f || f === ZERO_BYTES32 || f === ZERO_ADDRESS || !aggAddr)
+              continue;
+          }
+
+          let name = "-";
           let price: string | undefined;
 
           try {
@@ -1350,9 +1452,9 @@ export default function FlowPage() {
           rows.push({
             id,
             name,
-            feed: f,
-            constraintA: c?.[0],
-            constraintB: c?.[1],
+            feed: aggAddr as `0x${string}` | undefined,
+            constraintA: cons?.[0],
+            constraintB: cons?.[1],
             price,
           });
         } catch (err) {
