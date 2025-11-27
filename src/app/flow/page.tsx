@@ -3,6 +3,7 @@
 import React, { useMemo, useState, useEffect } from "react";
 import Head from "next/head";
 import { useAccount, useContractReads, usePublicClient } from "wagmi";
+import { createPublicClient, http, defineChain } from "viem";
 import {
   MapIcon,
   ChartBarIcon,
@@ -12,6 +13,32 @@ import {
 } from "@heroicons/react/24/outline";
 import Image from "next/image";
 import TokenIcon from "@/components/TokenIcon";
+
+// Create ETH Anvil chain for port 8546 (ETH mainnet fork)
+const ethAnvilChain = defineChain({
+  id: 31337,
+  name: "Anvil ETH Fork",
+  network: "anvil-eth",
+  nativeCurrency: {
+    decimals: 18,
+    name: "Ether",
+    symbol: "ETH",
+  },
+  rpcUrls: {
+    default: {
+      http: ["http://127.0.0.1:8546"],
+    },
+    public: {
+      http: ["http://127.0.0.1:8546"],
+    },
+  },
+});
+
+// Create public client for ETH Anvil fork (port 8546)
+const ethAnvilClient = createPublicClient({
+  chain: ethAnvilChain,
+  transport: http("http://127.0.0.1:8546"),
+});
 
 // Helper function to get logo path for tokens/networks
 function getLogoPath(symbol: string): string {
@@ -68,23 +95,23 @@ function getLogoPath(symbol: string): string {
 const fxSAVEMainnetFeeds = [
   {
     label: "fxSAVE/ETH",
-    address: "0xd4aa396CBEC88F1b2D76137eEBF4ef80e309169D" as const,
+    address: "0xe2A04F5d91D1AD137f854C5820C76e5b711158c5" as const,
   },
   {
     label: "fxSAVE/BTC",
-    address: "0x129b639a28aBAe0693C13FaCE56873d25f6Cb0AD" as const,
+    address: "0xBdd3AEAE360384410BFB65529B113bf13712cA2F" as const,
   },
   {
     label: "fxSAVE/EUR",
-    address: "0x5256c0d14cFEcEDBaF7D8D44e6D88Bea5344c5a9" as const,
+    address: "0xD9d684546ED4c727B136503016E137822DD9b4D7" as const,
   },
   {
     label: "fxSAVE/XAU",
-    address: "0x2bc0484B5b0FAfFf0a14B858D85E8830621fE0CA" as const,
+    address: "0x79b3f34855c3478Fa45f65344a3f5E3c7b94405c" as const,
   },
   {
     label: "fxSAVE/MCAP",
-    address: "0x4c07ce6454D5340591f62fD7d3978B6f42Ef953e" as const,
+    address: "0x7CA40e352B402C9800b3fedBFC63b6FE79B8Fc0B" as const,
   },
 ];
 
@@ -92,23 +119,23 @@ const fxSAVEMainnetFeeds = [
 const wstETHMainnetFeeds = [
   {
     label: "wstETH/ETH",
-    address: "0x1687d4BDE380019748605231C956335a473Fd3dc" as const,
+    address: "0xd31d3e1F60552ba8B35aA3Bd17c949404fdd12c4" as const,
   },
   {
     label: "wstETH/BTC",
-    address: "0x9f3F78951bBf68fc3cBA976f1370a87B0Fc13cd4" as const,
+    address: "0x27F9aFE3B3fCb63ae1A6c662331698F2183809bF" as const,
   },
   {
     label: "wstETH/EUR",
-    address: "0xdb9Bc1Cdc816B727d924C9ebEba73F04F26a318a" as const,
+    address: "0x3CFDf9646dBC385E47DC07869626Ea36BE7bA3a2" as const,
   },
   {
     label: "wstETH/XAU",
-    address: "0xF1a7a5060f22edA40b1A94a858995fa2bcf5E75A" as const,
+    address: "0x9A213F53334279C128C37DA962E5472eCD90554f" as const,
   },
   {
     label: "wstETH/MCAP",
-    address: "0x18903fF6E49c98615Ab741aE33b5CD202Ccc0158" as const,
+    address: "0xC55a98C1b3B0942883bB37df9716bea42d7d5009" as const,
   },
 ];
 
@@ -119,39 +146,39 @@ const proxyFeeds = [fxSAVEMainnetFeeds[0], ...fxSAVEMainnetFeeds.slice(1), ...ws
 const arbitrumFeeds = [
   {
     label: "sUSDE/USD",
-    address: "0xFA94648016f96a900Fa3038144d644Df9B445588" as const,
+    address: "0x91aaabA7a9D8141BcA9c3FD64A20fF08763E3EFd" as const,
   },
   {
     label: "sUSDE/AAPL",
-    address: "0x755752E1a403A7eb89e775353e4f0520de5726fB" as const,
+    address: "0x409488F6e4bcE418F9E90464863c3Caa34D6f5FE" as const,
   },
   {
     label: "sUSDE/AMZN",
-    address: "0xAdf53c523d140fa25b7bbaD9d6e2314964BF72f0" as const,
+    address: "0xA32e26B92C7B106D59f405B1Cb7Fe6beDf5E250b" as const,
   },
   {
     label: "sUSDE/GOOGL",
-    address: "0x17803CB7B18781EE6752C1b42A63f265f8fd38f0" as const,
+    address: "0x290e709E7f0b691EBc106639B405f329a39EAd8D" as const,
   },
   {
     label: "sUSDE/META",
-    address: "0x03d69eB9bA1cE92d16E4E0cEf94F3DE34225C89f" as const,
+    address: "0x9131b1DEC7d1fE791C599E9D0b94D6414cae0747" as const,
   },
   {
     label: "sUSDE/MSFT",
-    address: "0x4749D226754f0f022724D7f9458DEC776659FFd2" as const,
+    address: "0x32Cf7c29bAa92AB75A9f55E91603B8BabfEAA2c0" as const,
   },
   {
     label: "sUSDE/NVDA",
-    address: "0x7B204dCcF87ea084302F262366f42849f33E133C" as const,
+    address: "0x865B84d6bA604D24a43eADD464f6f75101965D06" as const,
   },
   {
     label: "sUSDE/SPY",
-    address: "0xA482A371768fd9880d9fC07F0999C1d6d6DE6b05" as const,
+    address: "0x13B313a703ba7109831C662c92a6A905Ec07240e" as const,
   },
   {
     label: "sUSDE/TSLA",
-    address: "0x15Eb42775751b3d39296558Cc3BE97507FC2B9a4" as const,
+    address: "0x55A36EA7c096EaD6098704594616544523530cA7" as const,
   },
 ];
 
@@ -159,43 +186,43 @@ const arbitrumFeeds = [
 const arbitrumWstETHFeeds = [
   {
     label: "wstETH/USD",
-    address: "0xf087d6f5b5cE424c61C03Da57ABCD2B03C34DA96" as const,
+    address: "0x5eE1F28F4ec5EBEB9b63978474CaaaBEBA030171" as const,
   },
   {
     label: "wstETH/AAPL",
-    address: "0x14e7810c0a800962705ab8156187Ce2B79319e4e" as const,
+    address: "0xFA94648016f96a900Fa3038144d644Df9B445588" as const,
   },
   {
     label: "wstETH/AMZN",
-    address: "0xB4172617FF8a780d190bC542C6db77d6D2ACb542" as const,
+    address: "0x755752E1a403A7eb89e775353e4f0520de5726fB" as const,
   },
   {
     label: "wstETH/GOOGL",
-    address: "0x1f5b3fE04e97C57642030f2757A376b1cF052850" as const,
+    address: "0xAdf53c523d140fa25b7bbaD9d6e2314964BF72f0" as const,
   },
   {
     label: "wstETH/META",
-    address: "0x63B8B8fE0F19D4Ed52E1d9319097321b5aaE0b05" as const,
+    address: "0x8759b64813A7CE8Db6ca0908C5513f803f9B8b13" as const,
   },
   {
     label: "wstETH/MSFT",
-    address: "0x1736B25b35051f124f70EEAb5FCac989e410f6Bc" as const,
+    address: "0x9c1BDf8Fc5Fa589B9Ccd990d85384B67c5d7E2F3" as const,
   },
   {
     label: "wstETH/NVDA",
-    address: "0x0912645321683005b1a3D85fa4eb52268ceBB36e" as const,
+    address: "0x484a90B65855875F596C8B41cAD58e08EF97cD36" as const,
   },
   {
     label: "wstETH/SPY",
-    address: "0x9720a8101A706307866bd9849F9F14E823dE1F6e" as const,
+    address: "0xfB6dFBD408C73b21Ac30e9Cc849905B2E2D58126" as const,
   },
   {
     label: "wstETH/TSLA",
-    address: "0x52986F8cb7F9900d7B39dbD8EB4238d67C62d42e" as const,
+    address: "0x41Fd5695e0C2D3884C476e0B54bbDD8a2320693c" as const,
   },
   {
     label: "wstETH/T6CH",
-    address: "0x5595d232581C021Dc748629f3f6A4EDF0EEee5eF" as const,
+    address: "0x88d777442094Db3B129b19C92bcD032f40057163" as const,
   },
 ];
 
@@ -314,8 +341,8 @@ const aggregatorAbi = [
   },
 ] as const;
 
-function format18(value?: bigint, maxFrac = 6) {
-  if (value === undefined) return "-";
+function format18(value?: bigint | null, maxFrac = 6) {
+  if (value === undefined || value === null) return "-";
   const n = Number(value) / 1e18;
   return n.toLocaleString(undefined, { maximumFractionDigits: maxFrac });
 }
@@ -475,81 +502,148 @@ export default function FlowPage() {
   const ZERO_BYTES32 =
     "0x0000000000000000000000000000000000000000000000000000000000000000" as const;
 
-  const { data } = useContractReads({
-    contracts: [
-      {
-        address: proxyFeeds[0].address,
-        abi: proxyAbi,
-        functionName: "getPrice",
-      },
-      {
-        address: proxyFeeds[0].address,
-        abi: proxyAbi,
-        functionName: "latestAnswer",
-      },
-      ...ids.flatMap((id) => [
-        {
-          address: proxyFeeds[0].address,
-          abi: proxyAbi,
-          functionName: "getConstraints",
-          args: [id] as const,
-        },
-        {
-          address: proxyFeeds[0].address,
-          abi: proxyAbi,
-          functionName: "feedIdentifiers",
-          args: [id] as const,
-        },
-      ]),
-    ],
-  });
+  // Fetch fxSAVE/ETH feed data using ETH Anvil fork on port 8546
+  const [price, setPrice] = useState<bigint | undefined>(undefined);
+  const [tuple, setTuple] = useState<[bigint, bigint, bigint, bigint] | undefined>(undefined);
+  const [feedIdentifiersData, setFeedIdentifiersData] = useState<Array<`0x${string}` | undefined>>([]);
+  const [constraintsData, setConstraintsData] = useState<Array<[bigint, bigint] | undefined>>([]);
 
-  const price = data?.[0]?.result as bigint | undefined;
-  const tuple = data?.[1]?.result as
-    | [bigint, bigint, bigint, bigint]
-    | undefined;
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const [priceResult, tupleResult] = await Promise.all([
+          ethAnvilClient.readContract({
+            address: proxyFeeds[0].address,
+            abi: proxyAbi,
+            functionName: "getPrice",
+          }).catch(() => null),
+          ethAnvilClient.readContract({
+            address: proxyFeeds[0].address,
+            abi: proxyAbi,
+            functionName: "latestAnswer",
+          }).catch(() => null),
+        ]);
+
+        if (!cancelled) {
+          setPrice(priceResult as bigint | undefined);
+          setTuple(tupleResult as [bigint, bigint, bigint, bigint] | undefined);
+        }
+
+        // Fetch constraints and feed identifiers
+        const constraints: Array<[bigint, bigint] | undefined> = [];
+        const feeds: Array<`0x${string}` | undefined> = [];
+
+        for (const id of ids) {
+          try {
+            const [cons, feed] = await Promise.all([
+              ethAnvilClient.readContract({
+                address: proxyFeeds[0].address,
+                abi: proxyAbi,
+                functionName: "getConstraints",
+                args: [id],
+              }).catch(() => null),
+              ethAnvilClient.readContract({
+                address: proxyFeeds[0].address,
+                abi: proxyAbi,
+                functionName: "feedIdentifiers",
+                args: [id],
+              }).catch(() => null),
+            ]);
+
+            constraints.push(cons as [bigint, bigint] | undefined);
+            feeds.push(feed as `0x${string}` | undefined);
+          } catch (err) {
+            constraints.push(undefined);
+            feeds.push(undefined);
+          }
+        }
+
+        if (!cancelled) {
+          setConstraintsData(constraints);
+          setFeedIdentifiersData(feeds);
+        }
+      } catch (err) {
+        console.error("Failed to fetch fxSAVE/ETH data:", err);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [ids]);
 
   // Derive aggregator addresses from feedIdentifiers (bytes32 left-padded addresses)
   const aggregatorAddresses = useMemo(() => {
     const out: (`0x${string}` | undefined)[] = ids.map((id, i) => {
-      const f = data?.[3 + i * 2]?.result as `0x${string}` | undefined;
+      const f = feedIdentifiersData[i];
       return bytes32ToAddress(f);
     });
     return out.filter((a): a is `0x${string}` => Boolean(a));
-  }, [data, ids]);
+  }, [feedIdentifiersData, ids]);
 
-  // Fetch descriptions for derived aggregator addresses (optional)
-  const { data: descReads } = useContractReads({
-    contracts: aggregatorAddresses.map((addr) => ({
-      address: addr,
-      abi: aggregatorAbi,
-      functionName: "description" as const,
-    })),
-    query: { enabled: aggregatorAddresses.length > 0 },
-  });
+  // Fetch descriptions, decimals, and latestAnswer for derived aggregator addresses using ETH Anvil fork
+  const [descReads, setDescReads] = useState<Array<string | undefined>>([]);
+  const [aggDecReads, setAggDecReads] = useState<Array<number | undefined>>([]);
+  const [aggAnsReads, setAggAnsReads] = useState<Array<bigint | undefined>>([]);
 
-  // Fetch decimals and latestAnswer for aggregator addresses to compute per-row prices
-  const { data: aggDecReads } = useContractReads({
-    contracts: aggregatorAddresses.map((addr) => ({
-      address: addr,
-      abi: aggregatorAbi,
-      functionName: "decimals" as const,
-    })),
-    query: { enabled: aggregatorAddresses.length > 0 },
-  });
-  const { data: aggAnsReads } = useContractReads({
-    contracts: aggregatorAddresses.map((addr) => ({
-      address: addr,
-      abi: aggregatorAbi,
-      functionName: "latestAnswer" as const,
-    })),
-    query: { enabled: aggregatorAddresses.length > 0 },
-  });
+  useEffect(() => {
+    if (aggregatorAddresses.length === 0) return;
+    let cancelled = false;
+
+    (async () => {
+      const descriptions: Array<string | undefined> = [];
+      const decimals: Array<number | undefined> = [];
+      const answers: Array<bigint | undefined> = [];
+
+      for (const addr of aggregatorAddresses) {
+        if (cancelled) break;
+        try {
+          const [desc, dec, ans] = await Promise.all([
+            ethAnvilClient.readContract({
+              address: addr,
+              abi: aggregatorAbi,
+              functionName: "description",
+            }).catch(() => null),
+            ethAnvilClient.readContract({
+              address: addr,
+              abi: aggregatorAbi,
+              functionName: "decimals",
+            }).catch(() => null),
+            ethAnvilClient.readContract({
+              address: addr,
+              abi: aggregatorAbi,
+              functionName: "latestAnswer",
+            }).catch(() => null),
+          ]);
+
+          descriptions.push(desc as string | undefined);
+          decimals.push(dec as number | undefined);
+          answers.push(ans as bigint | undefined);
+        } catch (err) {
+          descriptions.push(undefined);
+          decimals.push(undefined);
+          answers.push(undefined);
+        }
+      }
+
+      if (!cancelled) {
+        setDescReads(descriptions);
+        setAggDecReads(decimals);
+        setAggAnsReads(answers);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [aggregatorAddresses]);
 
   const addressToDescription = useMemo(() => {
     const map = new Map<string, string>();
     aggregatorAddresses.forEach((addr, idx) => {
-      const d = descReads?.[idx]?.result as string | undefined;
+      const d = descReads?.[idx];
       if (addr && typeof d === "string" && d.trim().length > 0) {
         map.set(addr.toLowerCase(), d.trim());
       }
@@ -557,63 +651,97 @@ export default function FlowPage() {
     return map;
   }, [aggregatorAddresses, descReads]);
 
-  // Fetch price for fxSAVE mainnet feeds (excluding ETH which is handled separately)
-  const { data: fxSAVEMainnetReads } = useContractReads({
-    contracts: fxSAVEMainnetFeeds.slice(1).map((f) => ({
-      address: f.address,
-      abi: proxyAbi,
-      functionName: "getPrice" as const,
-    })),
-    query: { enabled: fxSAVEMainnetFeeds.length > 1 },
-  });
+  // Fetch price for fxSAVE mainnet feeds (using ETH Anvil fork on port 8546)
+  const [fxSAVEMainnetFeedPrices, setFxSAVEMainnetFeedPrices] = useState<string[]>([]);
+  const [fxSAVEMainnetLatest, setFxSAVEMainnetLatest] = useState<Array<[bigint, bigint, bigint, bigint] | undefined>>([]);
 
-  // Read latestAnswer() tuples for fxSAVE mainnet feeds
-  const { data: fxSAVEMainnetLatest } = useContractReads({
-    contracts: fxSAVEMainnetFeeds.slice(1).map((f) => ({
-      address: f.address,
-      abi: proxyAbi,
-      functionName: "latestAnswer" as const,
-    })),
-    query: { enabled: fxSAVEMainnetFeeds.length > 1 },
-  });
+  useEffect(() => {
+    let cancelled = false;
 
-  const fxSAVEMainnetFeedPrices = useMemo(() => {
-    const out: string[] = [];
-    for (let i = 0; i < fxSAVEMainnetFeeds.length - 1; i += 1) {
-      const p = fxSAVEMainnetReads?.[i]?.result as bigint | undefined;
-      out.push(format18(p));
-    }
-    return out;
-  }, [fxSAVEMainnetReads]);
+    (async () => {
+      const prices: string[] = [];
+      const latest: Array<[bigint, bigint, bigint, bigint] | undefined> = [];
 
-  // Fetch price for wstETH mainnet feeds
-  const { data: wstETHMainnetReads } = useContractReads({
-    contracts: wstETHMainnetFeeds.map((f) => ({
-      address: f.address,
-      abi: proxyAbi,
-      functionName: "getPrice" as const,
-    })),
-    query: { enabled: wstETHMainnetFeeds.length > 0 },
-  });
+      for (const f of fxSAVEMainnetFeeds.slice(1)) {
+        if (cancelled) break;
+        try {
+          const [p, lat] = await Promise.all([
+            ethAnvilClient.readContract({
+              address: f.address,
+              abi: proxyAbi,
+              functionName: "getPrice",
+            }).catch(() => null),
+            ethAnvilClient.readContract({
+              address: f.address,
+              abi: proxyAbi,
+              functionName: "latestAnswer",
+            }).catch(() => null),
+          ]);
 
-  // Read latestAnswer() tuples for wstETH mainnet feeds
-  const { data: wstETHMainnetLatest } = useContractReads({
-    contracts: wstETHMainnetFeeds.map((f) => ({
-      address: f.address,
-      abi: proxyAbi,
-      functionName: "latestAnswer" as const,
-    })),
-    query: { enabled: wstETHMainnetFeeds.length > 0 },
-  });
+          prices.push(format18(p as bigint | undefined));
+          latest.push(lat as [bigint, bigint, bigint, bigint] | undefined);
+        } catch (err) {
+          prices.push("-");
+          latest.push(undefined);
+        }
+      }
 
-  const wstETHMainnetFeedPrices = useMemo(() => {
-    const out: string[] = [];
-    for (let i = 0; i < wstETHMainnetFeeds.length; i += 1) {
-      const p = wstETHMainnetReads?.[i]?.result as bigint | undefined;
-      out.push(format18(p));
-    }
-    return out;
-  }, [wstETHMainnetReads]);
+      if (!cancelled) {
+        setFxSAVEMainnetFeedPrices(prices);
+        setFxSAVEMainnetLatest(latest);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Fetch price for wstETH mainnet feeds (using ETH Anvil fork on port 8546)
+  const [wstETHMainnetFeedPrices, setWstETHMainnetFeedPrices] = useState<string[]>([]);
+  const [wstETHMainnetLatest, setWstETHMainnetLatest] = useState<Array<[bigint, bigint, bigint, bigint] | undefined>>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      const prices: string[] = [];
+      const latest: Array<[bigint, bigint, bigint, bigint] | undefined> = [];
+
+      for (const f of wstETHMainnetFeeds) {
+        if (cancelled) break;
+        try {
+          const [p, lat] = await Promise.all([
+            ethAnvilClient.readContract({
+              address: f.address,
+              abi: proxyAbi,
+              functionName: "getPrice",
+            }).catch(() => null),
+            ethAnvilClient.readContract({
+              address: f.address,
+              abi: proxyAbi,
+              functionName: "latestAnswer",
+            }).catch(() => null),
+          ]);
+
+          prices.push(format18(p as bigint | undefined));
+          latest.push(lat as [bigint, bigint, bigint, bigint] | undefined);
+        } catch (err) {
+          prices.push("-");
+          latest.push(undefined);
+        }
+      }
+
+      if (!cancelled) {
+        setWstETHMainnetFeedPrices(prices);
+        setWstETHMainnetLatest(latest);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Fallback fetch via public client to ensure feeds resolve on forks
   const publicClient = usePublicClient();
@@ -690,7 +818,7 @@ export default function FlowPage() {
     >
   >({});
   
-  // Fallback fetch for fxSAVE mainnet feeds
+  // Fallback fetch for fxSAVE mainnet feeds (using ETH Anvil fork on port 8546)
   useEffect(() => {
     let cancelled = false;
 
@@ -698,7 +826,7 @@ export default function FlowPage() {
       addr: `0x${string}`
     ): Promise<bigint | undefined> {
       try {
-        const p = await publicClient?.readContract({
+        const p = await ethAnvilClient.readContract({
           address: addr,
           abi: proxyAbi,
           functionName: "getPrice",
@@ -709,7 +837,6 @@ export default function FlowPage() {
     }
 
     (async () => {
-      if (!publicClient) return;
       const results: Array<{
         price: string;
         decimals: number | undefined;
@@ -734,9 +861,9 @@ export default function FlowPage() {
     return () => {
       cancelled = true;
     };
-  }, [publicClient]);
+  }, []);
 
-  // Fallback fetch for wstETH mainnet feeds
+  // Fallback fetch for wstETH mainnet feeds (using ETH Anvil fork on port 8546)
   useEffect(() => {
     let cancelled = false;
 
@@ -744,7 +871,7 @@ export default function FlowPage() {
       addr: `0x${string}`
     ): Promise<bigint | undefined> {
       try {
-        const p = await publicClient?.readContract({
+        const p = await ethAnvilClient.readContract({
           address: addr,
           abi: proxyAbi,
           functionName: "getPrice",
@@ -755,7 +882,6 @@ export default function FlowPage() {
     }
 
     (async () => {
-      if (!publicClient) return;
       const results: Array<{
         price: string;
         decimals: number | undefined;
@@ -778,9 +904,9 @@ export default function FlowPage() {
     return () => {
       cancelled = true;
     };
-  }, [publicClient]);
+  }, []);
 
-  // On-demand load of constraints + feed identifiers for fxSAVE mainnet feeds
+  // On-demand load of constraints + feed identifiers for fxSAVE mainnet feeds (using ETH Anvil fork on port 8546)
   useEffect(() => {
     const ZERO_BYTES32 =
       "0x0000000000000000000000000000000000000000000000000000000000000000" as const;
@@ -789,7 +915,7 @@ export default function FlowPage() {
     async function loadFxSAVETable(idx: number) {
       const feedConfig = fxSAVEMainnetFeeds.slice(1)[idx];
       const addr = feedConfig?.address;
-      if (!publicClient || !addr) return;
+      if (!addr) return;
 
       const rows: Array<{
         id: number;
@@ -803,7 +929,7 @@ export default function FlowPage() {
       for (const id of ids) {
         try {
           const [cons, feed] = await Promise.all([
-            publicClient
+            ethAnvilClient
               .readContract({
                 address: addr,
                 abi: proxyAbi,
@@ -811,7 +937,7 @@ export default function FlowPage() {
                 args: [id],
               })
               .catch(() => null),
-            publicClient
+            ethAnvilClient
               .readContract({
                 address: addr,
                 abi: proxyAbi,
@@ -837,7 +963,7 @@ export default function FlowPage() {
           try {
             if (aggAddr) {
               try {
-                const desc = await publicClient
+                const desc = await ethAnvilClient
                   .readContract({
                     address: aggAddr,
                     abi: aggregatorAbi,
@@ -851,14 +977,14 @@ export default function FlowPage() {
 
               try {
                 const [dec, ans] = await Promise.all([
-                  publicClient
+                  ethAnvilClient
                     .readContract({
                       address: aggAddr,
                       abi: aggregatorAbi,
                       functionName: "decimals",
                     })
                     .catch(() => null),
-                  publicClient
+                  ethAnvilClient
                     .readContract({
                       address: aggAddr,
                       abi: aggregatorAbi,
@@ -892,9 +1018,9 @@ export default function FlowPage() {
     if (expanded && expanded.kind === "fxSAVEMainnet" && !fxSAVEMainnetTables[expanded.idx]) {
       loadFxSAVETable(expanded.idx);
     }
-  }, [expanded, ids, publicClient, fxSAVEMainnetTables]);
+  }, [expanded, ids, fxSAVEMainnetTables]);
 
-  // On-demand load of constraints + feed identifiers for wstETH mainnet feeds
+  // On-demand load of constraints + feed identifiers for wstETH mainnet feeds (using ETH Anvil fork on port 8546)
   useEffect(() => {
     const ZERO_BYTES32 =
       "0x0000000000000000000000000000000000000000000000000000000000000000" as const;
@@ -903,7 +1029,7 @@ export default function FlowPage() {
     async function loadWstETHTable(idx: number) {
       const feedConfig = wstETHMainnetFeeds[idx];
       const addr = feedConfig?.address;
-      if (!publicClient || !addr) return;
+      if (!addr) return;
 
       const rows: Array<{
         id: number;
@@ -917,7 +1043,7 @@ export default function FlowPage() {
       for (const id of ids) {
         try {
           const [cons, feed] = await Promise.all([
-            publicClient
+            ethAnvilClient
               .readContract({
                 address: addr,
                 abi: proxyAbi,
@@ -925,7 +1051,7 @@ export default function FlowPage() {
                 args: [id],
               })
               .catch(() => null),
-            publicClient
+            ethAnvilClient
               .readContract({
                 address: addr,
                 abi: proxyAbi,
@@ -951,7 +1077,7 @@ export default function FlowPage() {
           try {
             if (aggAddr) {
               try {
-                const desc = await publicClient
+                const desc = await ethAnvilClient
                   .readContract({
                     address: aggAddr,
                     abi: aggregatorAbi,
@@ -965,14 +1091,14 @@ export default function FlowPage() {
 
               try {
                 const [dec, ans] = await Promise.all([
-                  publicClient
+                  ethAnvilClient
                     .readContract({
                       address: aggAddr,
                       abi: aggregatorAbi,
                       functionName: "decimals",
                     })
                     .catch(() => null),
-                  publicClient
+                  ethAnvilClient
                     .readContract({
                       address: aggAddr,
                       abi: aggregatorAbi,
@@ -1006,9 +1132,9 @@ export default function FlowPage() {
     if (expanded && expanded.kind === "wstETHMainnet" && !wstETHMainnetTables[expanded.idx]) {
       loadWstETHTable(expanded.idx);
     }
-  }, [expanded, ids, publicClient, wstETHMainnetTables]);
+  }, [expanded, ids, wstETHMainnetTables]);
 
-  // Fetch Arbitrum feed prices
+  // Fetch Arbitrum feed prices (using Arbitrum fork on port 8545)
   useEffect(() => {
     if (!publicClient) return;
     let cancelled = false;
@@ -1052,7 +1178,7 @@ export default function FlowPage() {
     };
   }, [publicClient]);
 
-  // Fallback fetch for Arbitrum feeds
+  // Fallback fetch for Arbitrum feeds (using Arbitrum fork on port 8545)
   useEffect(() => {
     if (!publicClient) return;
     let cancelled = false;
@@ -1095,7 +1221,7 @@ export default function FlowPage() {
     };
   }, [publicClient]);
 
-  // On-demand load of constraints + feed identifiers for Arbitrum proxies
+  // On-demand load of constraints + feed identifiers for Arbitrum proxies (using Arbitrum fork on port 8545)
   useEffect(() => {
     const ZERO_BYTES32 =
       "0x0000000000000000000000000000000000000000000000000000000000000000" as const;
@@ -1209,7 +1335,7 @@ export default function FlowPage() {
     }
   }, [expanded, ids, publicClient, arbitrumTables]);
 
-  // Fetch Arbitrum wstETH feed prices
+  // Fetch Arbitrum wstETH feed prices (using Arbitrum fork on port 8545)
   useEffect(() => {
     if (!publicClient) return;
     let cancelled = false;
@@ -1234,9 +1360,15 @@ export default function FlowPage() {
             }).catch(() => null),
           ]);
 
-          prices.push(format18(p as bigint | undefined));
+          // If p is null, it means the contract call failed - show "-" instead of "0"
+          if (p === null) {
+            prices.push("-");
+          } else {
+            prices.push(format18(p as bigint | undefined));
+          }
           latest.push(lat as [bigint, bigint, bigint, bigint] | undefined);
         } catch (err) {
+          console.warn(`Failed to fetch Arbitrum wstETH feed ${f.label}:`, err);
           prices.push("-");
           latest.push(undefined);
         }
@@ -1253,7 +1385,7 @@ export default function FlowPage() {
     };
   }, [publicClient]);
 
-  // Fallback fetch for Arbitrum wstETH feeds
+  // Fallback fetch for Arbitrum wstETH feeds (using Arbitrum fork on port 8545)
   useEffect(() => {
     if (!publicClient) return;
     let cancelled = false;
@@ -1296,7 +1428,7 @@ export default function FlowPage() {
     };
   }, [publicClient]);
 
-  // On-demand load of constraints + feed identifiers for Arbitrum wstETH proxies
+  // On-demand load of constraints + feed identifiers for Arbitrum wstETH proxies (using Arbitrum fork on port 8545)
   useEffect(() => {
     const ZERO_BYTES32 =
       "0x0000000000000000000000000000000000000000000000000000000000000000" as const;
@@ -1472,8 +1604,8 @@ export default function FlowPage() {
 
   const rows = ids
     .map((id, i) => {
-      const c = data?.[2 + i * 2]?.result as [bigint, bigint] | undefined;
-      const f = data?.[3 + i * 2]?.result as `0x${string}` | undefined;
+      const c = constraintsData[i];
+      const f = feedIdentifiersData[i];
       const asciiName = deriveFeedName(f);
       const aggAddr = bytes32ToAddress(f);
       const desc = aggAddr
@@ -1669,7 +1801,7 @@ export default function FlowPage() {
                           className="py-2 px-4 font-mono text-[#1E4775]"
                           title={pairEstimateLabel(
                             f.label,
-                            fxSAVEMainnetReads?.[idx]?.result as bigint | undefined,
+                            undefined,
                             (fxSAVEMainnetFeedPrices[idx] || fxSAVEMainnetFallback[idx]?.price) as
                               | string
                               | undefined
@@ -1754,7 +1886,7 @@ export default function FlowPage() {
                           className="py-2 px-4 font-mono text-[#1E4775]"
                           title={pairEstimateLabel(
                             f.label,
-                            wstETHMainnetReads?.[idx]?.result as bigint | undefined,
+                            undefined,
                             (wstETHMainnetFeedPrices[idx] || wstETHMainnetFallback[idx]?.price) as
                               | string
                               | undefined
@@ -2005,9 +2137,7 @@ export default function FlowPage() {
                 const label = fxSAVEMainnetFeeds.slice(1)[idx]?.label || "Feed";
                 const priceStr =
                   fxSAVEMainnetFeedPrices[idx] || fxSAVEMainnetFallback[idx]?.price || "-";
-                const latest = fxSAVEMainnetLatest?.[idx]?.result as
-                  | [bigint, bigint, bigint, bigint]
-                  | undefined;
+                const latest = fxSAVEMainnetLatest?.[idx];
                 return (
                   <>
                     <div className="md:col-span-2 bg-white p-4 border border-[#1E4775]/10">
@@ -2129,9 +2259,7 @@ export default function FlowPage() {
                 const label = wstETHMainnetFeeds[idx]?.label || "Feed";
                 const priceStr =
                   wstETHMainnetFeedPrices[idx] || wstETHMainnetFallback[idx]?.price || "-";
-                const latest = wstETHMainnetLatest?.[idx]?.result as
-                  | [bigint, bigint, bigint, bigint]
-                  | undefined;
+                const latest = wstETHMainnetLatest?.[idx];
                 return (
                   <>
                     <div className="md:col-span-2 bg-white border border-[#1E4775]/10 p-4">
@@ -2525,12 +2653,8 @@ export default function FlowPage() {
                     </td>
                     <td className="py-2 px-4 font-mono text-[#1E4775]">
                       {(() => {
-                          const dec = aggDecReads?.[i]?.result as
-                            | number
-                            | undefined;
-                          const ans = aggAnsReads?.[i]?.result as
-                            | bigint
-                            | undefined;
+                          const dec = aggDecReads?.[i];
+                          const ans = aggAnsReads?.[i];
                           if (dec === undefined || ans === undefined)
                             return "-";
                         return formatUnit(ans, dec, 6);
