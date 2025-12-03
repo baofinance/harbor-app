@@ -1,22 +1,42 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useAccount, usePublicClient } from "wagmi";
 import {
   TrophyIcon,
   QuestionMarkCircleIcon,
+  WalletIcon,
 } from "@heroicons/react/24/outline";
 import { markets } from "@/config/markets";
 import { getGraphUrl } from "@/config/graph";
+import { useAnchorMarks } from "@/hooks/useAnchorMarks";
+import {
+  calculateEstimatedMarks,
+  useAnchorLedgerMarks,
+} from "@/hooks/useAnchorLedgerMarks";
+import { CONTRACTS } from "@/config/contracts";
 
-// GraphQL query to get all users' marks
-const ALL_USERS_MARKS_QUERY = `
-  query GetAllUsersMarks {
-    userHarborMarks(
-      orderBy: currentMarks
-      orderDirection: desc
+// GraphQL queries for leaderboard
+// Note: userHarborMarks requires an ID, so we query deposits first to find all users
+const ALL_DEPOSITS_QUERY = `
+  query GetAllDeposits {
+    deposits(
       first: 1000
+      orderBy: timestamp
+      orderDirection: desc
     ) {
+      id
+      user
+      contractAddress
+    }
+  }
+`;
+
+// Query to get a specific user's marks by id
+const USER_MARKS_QUERY = `
+  query GetUserMarks($id: ID!) {
+    userHarborMarks(id: $id) {
       id
       user
       contractAddress
@@ -31,19 +51,116 @@ const ALL_USERS_MARKS_QUERY = `
   }
 `;
 
-interface UserMarksData {
-  userHarborMarks: Array<{
+// Query all ha token balances
+const ALL_HA_TOKEN_BALANCES_QUERY = `
+  query GetAllHaTokenBalances {
+    haTokenBalances(first: 1000) {
+      id
+      user
+      tokenAddress
+      balance
+      balanceUSD
+      accumulatedMarks
+      marksPerDay
+      lastUpdated
+    }
+  }
+`;
+
+// Query all stability pool deposits
+const ALL_STABILITY_POOL_DEPOSITS_QUERY = `
+  query GetAllStabilityPoolDeposits {
+    stabilityPoolDeposits(first: 1000) {
+      id
+      user
+      poolAddress
+      poolType
+      balance
+      balanceUSD
+      accumulatedMarks
+      marksPerDay
+      lastUpdated
+    }
+  }
+`;
+
+// Query all sail token balances
+const ALL_SAIL_TOKEN_BALANCES_QUERY = `
+  query GetAllSailTokenBalances {
+    sailTokenBalances(first: 1000) {
+      id
+      user
+      tokenAddress
+      balance
+      balanceUSD
+      accumulatedMarks
+      marksPerDay
+      lastUpdated
+    }
+  }
+`;
+
+interface DepositsData {
+  deposits: Array<{
     id: string;
     user: string;
     contractAddress: string;
-    currentMarks: string;
-    marksPerDay: string;
-    bonusMarks: string;
-    totalMarksEarned: string;
-    totalMarksForfeited: string;
-    currentDepositUSD: string;
-    genesisEnded: boolean;
   }>;
+}
+
+interface AllUserMarksData {
+  userHarborMarks: UserMarksEntry[];
+}
+
+interface UserMarksEntry {
+  id: string;
+  user: string;
+  contractAddress: string;
+  currentMarks: string;
+  marksPerDay: string;
+  bonusMarks: string;
+  totalMarksEarned: string;
+  totalMarksForfeited: string;
+  currentDepositUSD: string;
+  genesisEnded: boolean;
+}
+
+interface UserMarksResponse {
+  userHarborMarks: UserMarksEntry | null;
+}
+
+interface HaTokenBalance {
+  id: string;
+  user: string;
+  tokenAddress: string;
+  balance: string;
+  balanceUSD: string;
+  accumulatedMarks: string;
+  marksPerDay: string;
+  lastUpdated: string;
+}
+
+interface StabilityPoolDeposit {
+  id: string;
+  user: string;
+  poolAddress: string;
+  poolType?: string;
+  balance: string;
+  balanceUSD: string;
+  accumulatedMarks: string;
+  marksPerDay: string;
+  lastUpdated: string;
+}
+
+interface SailTokenBalance {
+  id: string;
+  user: string;
+  tokenAddress: string;
+  balance: string;
+  balanceUSD: string;
+  accumulatedMarks: string;
+  marksPerDay: string;
+  lastUpdated: string;
 }
 
 // Helper to format address
@@ -52,39 +169,399 @@ function formatAddress(address: string): string {
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
 }
 
+// Helper to check if an address is a known contract (should be filtered out)
+function isContractAddress(address: string): boolean {
+  const normalized = address.toLowerCase();
+  const knownContracts: string[] = [
+    CONTRACTS.GENESIS?.toLowerCase(),
+    CONTRACTS.MINTER?.toLowerCase(),
+    CONTRACTS.PEGGED_TOKEN?.toLowerCase(),
+    CONTRACTS.LEVERAGED_TOKEN?.toLowerCase(),
+    CONTRACTS.STABILITY_POOL_MANAGER?.toLowerCase(),
+    CONTRACTS.WSTETH?.toLowerCase(),
+    CONTRACTS.STETH?.toLowerCase(),
+    CONTRACTS.STABILITY_POOL_COLLATERAL?.toLowerCase(),
+    CONTRACTS.STABILITY_POOL_PEGGED?.toLowerCase(),
+  ].filter((addr): addr is string => !!addr);
+
+  // Also check all market contract addresses
+  Object.values(markets).forEach((market) => {
+    const addresses = (market as any).addresses;
+    if (addresses) {
+      Object.values(addresses).forEach((addr) => {
+        if (typeof addr === "string" && addr.startsWith("0x")) {
+          knownContracts.push(addr.toLowerCase());
+        }
+      });
+    }
+  });
+
+  return knownContracts.includes(normalized);
+}
+
 // Helper to get contract type from address
-function getContractType(contractAddress: string): "genesis" | "anchor" | "sail" | "unknown" {
+function getContractType(
+  contractAddress: string
+): "genesis" | "anchor" | "sail" | "unknown" {
   // Check if it's a genesis contract by looking at markets
   const genesisMarkets = Object.entries(markets).filter(([_, m]) => {
     const genesisAddr = (m as any).addresses?.genesis;
-    return genesisAddr && genesisAddr.toLowerCase() === contractAddress.toLowerCase();
+    return (
+      genesisAddr && genesisAddr.toLowerCase() === contractAddress.toLowerCase()
+    );
   });
   if (genesisMarkets.length > 0) return "genesis";
-  
+
   // Check if it's a stability pool (anchor) - collateral pool
   const anchorMarkets = Object.entries(markets).filter(([_, m]) => {
     const collateralPoolAddr = (m as any).addresses?.stabilityPoolCollateral;
-    return collateralPoolAddr && collateralPoolAddr.toLowerCase() === contractAddress.toLowerCase();
+    return (
+      collateralPoolAddr &&
+      collateralPoolAddr.toLowerCase() === contractAddress.toLowerCase()
+    );
   });
   if (anchorMarkets.length > 0) return "anchor";
-  
+
   // Check if it's a sail pool - leveraged pool
   const sailMarkets = Object.entries(markets).filter(([_, m]) => {
     const sailPoolAddr = (m as any).addresses?.stabilityPoolLeveraged;
-    return sailPoolAddr && sailPoolAddr.toLowerCase() === contractAddress.toLowerCase();
+    return (
+      sailPoolAddr &&
+      sailPoolAddr.toLowerCase() === contractAddress.toLowerCase()
+    );
   });
   if (sailMarkets.length > 0) return "sail";
-  
+
   return "unknown";
 }
 
 export default function LedgerMarksLeaderboard() {
   const graphUrl = getGraphUrl();
-  const [sortBy, setSortBy] = useState<"total" | "genesis" | "anchor" | "sail" | "perDay">("total");
+  const { address, isConnected } = useAccount();
+  const publicClient = usePublicClient();
+  const [currentChainTime, setCurrentChainTime] = useState<number | undefined>(
+    undefined
+  );
+  const [sortBy, setSortBy] = useState<
+    "total" | "genesis" | "anchor" | "sail" | "perDay"
+  >("total");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
 
-  const { data, isLoading, error } = useQuery<UserMarksData>({
+  // Get current blockchain timestamp (updates every second)
+  useEffect(() => {
+    const updateTime = async () => {
+      if (publicClient) {
+        try {
+          const block = await publicClient.getBlock({ blockTag: "latest" });
+          if (block.timestamp) {
+            setCurrentChainTime(Number(block.timestamp));
+          }
+        } catch (error) {
+          // Fallback to undefined, which will use system time
+          setCurrentChainTime(undefined);
+        }
+      }
+    };
+
+    // Initial update
+    updateTime();
+
+    // Update every second
+    const interval = setInterval(updateTime, 1000);
+    return () => clearInterval(interval);
+  }, [publicClient]);
+
+  // Get marks from ha tokens and stability pools for connected user
+  const { data: anchorMarksData, isLoading: isLoadingAnchorMarks } =
+    useAnchorMarks();
+
+  // Get anchor ledger marks (includes sail token balances)
+  const {
+    haBalances,
+    poolDeposits,
+    sailBalances,
+    loading: isLoadingAnchorLedgerMarks,
+  } = useAnchorLedgerMarks();
+
+  // Calculate anchor marks per day (ha tokens + collateral stability pools)
+  const anchorMarksPerDay = useMemo(() => {
+    if (!anchorMarksData) return 0;
+    return (
+      anchorMarksData.haTokenMarksPerDay +
+      anchorMarksData.collateralPoolMarksPerDay
+    );
+  }, [anchorMarksData]);
+
+  // Calculate sail marks per day (sail stability pools + sail token holdings)
+  const sailMarksPerDay = useMemo(() => {
+    let total = 0;
+    // Add sail stability pool marks
+    if (anchorMarksData) {
+      total += anchorMarksData.sailPoolMarksPerDay;
+    }
+    // Add sail token holdings marks
+    if (sailBalances) {
+      total += sailBalances.reduce(
+        (sum, balance) => sum + balance.marksPerDay,
+        0
+      );
+    }
+    return total;
+  }, [anchorMarksData, sailBalances]);
+
+  // Fetch genesis/maiden voyage marks per day for connected user
+  const { data: genesisMarksData, isLoading: isLoadingGenesisMarks } =
+    useQuery<{
+      userHarborMarks: Array<{
+        marksPerDay: string;
+      }>;
+    }>({
+      queryKey: ["genesisMarksPerDay", address],
+      queryFn: async () => {
+        if (!address) return { userHarborMarks: [] };
+
+        // First, get all deposits to find unique user-contract pairs
+        const depositsResponse = await fetch(graphUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            query: `
+              query GetUserDeposits($userAddress: Bytes!) {
+                deposits(
+                  where: { user: $userAddress }
+                  first: 1000
+                ) {
+                  id
+                  user
+                  contractAddress
+                }
+              }
+            `,
+            variables: { userAddress: address.toLowerCase() },
+          }),
+        });
+
+        if (!depositsResponse.ok) {
+          return { userHarborMarks: [] };
+        }
+
+        const depositsResult = await depositsResponse.json();
+        if (depositsResult.errors || !depositsResult.data?.deposits) {
+          return { userHarborMarks: [] };
+        }
+
+        // Get unique contract addresses for this user
+        const contractAddresses = new Set<string>();
+        depositsResult.data.deposits.forEach((deposit: any) => {
+          contractAddresses.add(deposit.contractAddress.toLowerCase());
+        });
+
+        // Fetch marks for each contract
+        const marksPromises = Array.from(contractAddresses).map(
+          async (contractAddr) => {
+            const id = `${contractAddr}-${address.toLowerCase()}`;
+            const marksResponse = await fetch(graphUrl, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                query: `
+                  query GetUserMarks($id: ID!) {
+                    userHarborMarks(id: $id) {
+                      marksPerDay
+                    }
+                  }
+                `,
+                variables: { id },
+              }),
+            });
+
+            if (!marksResponse.ok) return null;
+            const marksResult = await marksResponse.json();
+            return marksResult.data?.userHarborMarks || null;
+          }
+        );
+
+        const marks = await Promise.all(marksPromises);
+        return {
+          userHarborMarks: marks.filter(
+            (m): m is { marksPerDay: string } => m !== null
+          ),
+        };
+      },
+      enabled: !!address && isConnected,
+      refetchInterval: 60000,
+    });
+
+  // Calculate maiden voyage marks per day
+  const maidenVoyageMarksPerDay = useMemo(() => {
+    if (!genesisMarksData?.userHarborMarks) return 0;
+    return genesisMarksData.userHarborMarks.reduce(
+      (sum, entry) => sum + parseFloat(entry.marksPerDay || "0"),
+      0
+    );
+  }, [genesisMarksData]);
+
+  // Calculate total marks per day
+  const totalMarksPerDay = useMemo(() => {
+    return maidenVoyageMarksPerDay + anchorMarksPerDay + sailMarksPerDay;
+  }, [maidenVoyageMarksPerDay, anchorMarksPerDay, sailMarksPerDay]);
+
+  // Query genesis marks via deposits (userHarborMarks requires an ID, so we query deposits first)
+  const {
+    data: marksData,
+    isLoading: isLoadingMarks,
+    error: marksError,
+  } = useQuery<AllUserMarksData>({
     queryKey: ["allUsersMarks"],
+    queryFn: async () => {
+      // Step 1: Query all deposits to find unique user-contract pairs
+      const depositsResponse = await fetch(graphUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          query: ALL_DEPOSITS_QUERY,
+        }),
+      });
+
+      if (!depositsResponse.ok) {
+        throw new Error(`GraphQL query failed: ${depositsResponse.statusText}`);
+      }
+
+      const depositsResult = await depositsResponse.json();
+
+      if (depositsResult.errors) {
+        console.error(
+          "GraphQL errors fetching deposits:",
+          depositsResult.errors
+        );
+        return { userHarborMarks: [] };
+      }
+
+      if (
+        !depositsResult.data?.deposits ||
+        depositsResult.data.deposits.length === 0
+      ) {
+        if (process.env.NODE_ENV === "development") {
+          console.log("[Leaderboard] No deposits found");
+        }
+        return { userHarborMarks: [] };
+      }
+
+      // Step 2: Get unique user-contract pairs
+      const uniquePairs = new Map<
+        string,
+        { user: string; contractAddress: string }
+      >();
+      depositsResult.data.deposits.forEach((deposit: any) => {
+        const key = `${deposit.contractAddress.toLowerCase()}-${deposit.user.toLowerCase()}`;
+        if (!uniquePairs.has(key)) {
+          uniquePairs.set(key, {
+            user: deposit.user.toLowerCase(),
+            contractAddress: deposit.contractAddress.toLowerCase(),
+          });
+        }
+      });
+
+      // Step 3: Fetch marks for each unique pair
+      const marksPromises = Array.from(uniquePairs.values()).map(
+        async (pair) => {
+          const id = `${pair.contractAddress}-${pair.user}`;
+          const marksResponse = await fetch(graphUrl, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              query: USER_MARKS_QUERY,
+              variables: { id },
+            }),
+          });
+
+          if (!marksResponse.ok) {
+            if (process.env.NODE_ENV === "development") {
+              console.warn(`[Leaderboard] Failed to fetch marks for ${id}`);
+            }
+            return null;
+          }
+
+          const marksResult = await marksResponse.json();
+
+          if (marksResult.errors || !marksResult.data?.userHarborMarks) {
+            if (process.env.NODE_ENV === "development") {
+              console.warn(
+                `[Leaderboard] No marks data for ${id}`,
+                marksResult.errors
+              );
+            }
+            return null;
+          }
+
+          return marksResult.data.userHarborMarks as UserMarksEntry;
+        }
+      );
+
+      const marks = await Promise.all(marksPromises);
+      const validMarks = marks.filter((m): m is UserMarksEntry => m !== null);
+
+      // Debug logging
+      if (process.env.NODE_ENV === "development") {
+        console.log("[Leaderboard] Query succeeded", {
+          depositsCount: depositsResult.data.deposits.length,
+          uniquePairs: uniquePairs.size,
+          marksFound: validMarks.length,
+          sampleEntry: validMarks[0],
+        });
+      }
+
+      return { userHarborMarks: validMarks };
+    },
+    refetchInterval: 30000,
+    staleTime: 10000,
+  });
+
+  // Query all ha token balances
+  const { data: haTokenBalancesData, isLoading: isLoadingHaTokenBalances } =
+    useQuery<{ haTokenBalances: HaTokenBalance[] }>({
+      queryKey: ["allHaTokenBalances"],
+      queryFn: async () => {
+        const response = await fetch(graphUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            query: ALL_HA_TOKEN_BALANCES_QUERY,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`GraphQL query failed: ${response.statusText}`);
+        }
+
+        const result = await response.json();
+
+        if (result.errors) {
+          console.error(
+            "GraphQL errors fetching ha token balances:",
+            result.errors
+          );
+          return { haTokenBalances: [] };
+        }
+
+        return result.data || { haTokenBalances: [] };
+      },
+      refetchInterval: 30000,
+      staleTime: 10000,
+    });
+
+  // Query all stability pool deposits
+  const {
+    data: stabilityPoolDepositsData,
+    isLoading: isLoadingStabilityPoolDeposits,
+  } = useQuery<{ stabilityPoolDeposits: StabilityPoolDeposit[] }>({
+    queryKey: ["allStabilityPoolDeposits"],
     queryFn: async () => {
       const response = await fetch(graphUrl, {
         method: "POST",
@@ -92,7 +569,7 @@ export default function LedgerMarksLeaderboard() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          query: ALL_USERS_MARKS_QUERY,
+          query: ALL_STABILITY_POOL_DEPOSITS_QUERY,
         }),
       });
 
@@ -101,40 +578,166 @@ export default function LedgerMarksLeaderboard() {
       }
 
       const result = await response.json();
-      
+
       if (result.errors) {
-        throw new Error(`GraphQL errors: ${JSON.stringify(result.errors)}`);
+        console.error(
+          "GraphQL errors fetching stability pool deposits:",
+          result.errors
+        );
+        return { stabilityPoolDeposits: [] };
       }
 
-      return result.data;
+      return result.data || { stabilityPoolDeposits: [] };
     },
-    refetchInterval: 30000, // Refetch every 30 seconds
+    refetchInterval: 30000,
     staleTime: 10000,
   });
 
+  // Query all sail token balances
+  const { data: sailTokenBalancesData, isLoading: isLoadingSailTokenBalances } =
+    useQuery<{ sailTokenBalances: SailTokenBalance[] }>({
+      queryKey: ["allSailTokenBalances"],
+      queryFn: async () => {
+        const response = await fetch(graphUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            query: ALL_SAIL_TOKEN_BALANCES_QUERY,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`GraphQL query failed: ${response.statusText}`);
+        }
+
+        const result = await response.json();
+
+        if (result.errors) {
+          console.error(
+            "GraphQL errors fetching sail token balances:",
+            result.errors
+          );
+          return { sailTokenBalances: [] };
+        }
+
+        return result.data || { sailTokenBalances: [] };
+      },
+      refetchInterval: 30000,
+      staleTime: 10000,
+    });
+
+  const isLoading =
+    isLoadingMarks ||
+    isLoadingHaTokenBalances ||
+    isLoadingStabilityPoolDeposits ||
+    isLoadingSailTokenBalances;
+  const error = marksError;
+
+  // Extract marks array from query result
+  const marksArray = marksData?.userHarborMarks || [];
+
   // Process and aggregate user marks by wallet address
   const leaderboardData = useMemo(() => {
-    if (!data?.userHarborMarks) return [];
+    const haTokenBalances = haTokenBalancesData?.haTokenBalances || [];
+    const stabilityPoolDeposits =
+      stabilityPoolDepositsData?.stabilityPoolDeposits || [];
+    const sailTokenBalances = sailTokenBalancesData?.sailTokenBalances || [];
+
+    // If no data at all, return empty
+    if (
+      (!marksArray || marksArray.length === 0) &&
+      haTokenBalances.length === 0 &&
+      stabilityPoolDeposits.length === 0 &&
+      sailTokenBalances.length === 0
+    ) {
+      if (process.env.NODE_ENV === "development") {
+        console.log("[Leaderboard] No marks data", {
+          marksArrayLength: marksArray?.length,
+          haTokenBalancesLength: haTokenBalances.length,
+          stabilityPoolDepositsLength: stabilityPoolDeposits.length,
+        });
+      }
+      return [];
+    }
+
+    // Debug logging
+    if (process.env.NODE_ENV === "development") {
+      console.log("[Leaderboard] Processing marks", {
+        totalEntries: marksArray.length,
+        sampleEntry: marksArray[0],
+        knownWallet: "0xae7dbb17bc40d53a6363409c6b1ed88d3cfdc31e",
+        hasKnownWallet: marksArray.some(
+          (e) =>
+            e.user?.toLowerCase() ===
+            "0xae7dbb17bc40d53a6363409c6b1ed88d3cfdc31e"
+        ),
+      });
+    }
 
     // Group by user address
-    const userMap = new Map<string, {
-      address: string;
-      totalMarks: number;
-      genesisMarks: number;
-      anchorMarks: number;
-      sailMarks: number;
-      marksPerDay: number;
-    }>();
+    const userMap = new Map<
+      string,
+      {
+        address: string;
+        totalMarks: number;
+        genesisMarks: number;
+        anchorMarks: number;
+        sailMarks: number;
+        marksPerDay: number;
+      }
+    >();
 
-    data.userHarborMarks.forEach((entry) => {
-      const userAddress = entry.user.toLowerCase();
+    marksArray.forEach((entry) => {
+      const userAddress = entry.user?.toLowerCase();
+      if (!userAddress) {
+        console.warn("[Leaderboard] Entry missing user address", entry);
+        return;
+      }
+
+      // Filter out known contract addresses (they shouldn't be in the leaderboard)
+      if (isContractAddress(userAddress)) {
+        if (process.env.NODE_ENV === "development") {
+          console.log(
+            "[Leaderboard] Filtering out contract address",
+            userAddress
+          );
+        }
+        return;
+      }
+
       const contractType = getContractType(entry.contractAddress);
-      const currentMarks = parseFloat(entry.currentMarks || "0");
+      const currentMarksRaw = entry.currentMarks || "0";
+      const currentMarks = parseFloat(currentMarksRaw);
       const marksPerDay = parseFloat(entry.marksPerDay || "0");
+
+      // Debug logging for known wallet
+      if (userAddress === "0xae7dbb17bc40d53a6363409c6b1ed88d3cfdc31e") {
+        console.log("[Leaderboard] Found known wallet entry", {
+          entry,
+          currentMarksRaw,
+          currentMarks,
+          contractType,
+          contractAddress: entry.contractAddress,
+        });
+      }
+
+      // Skip entries with zero or invalid marks
+      if (isNaN(currentMarks) || currentMarks === 0) {
+        if (userAddress === "0xae7dbb17bc40d53a6363409c6b1ed88d3cfdc31e") {
+          console.warn("[Leaderboard] Known wallet has zero/invalid marks", {
+            currentMarksRaw,
+            currentMarks,
+            entry,
+          });
+        }
+        return;
+      }
 
       if (!userMap.has(userAddress)) {
         userMap.set(userAddress, {
-          address: entry.user,
+          address: entry.user?.toLowerCase() || userAddress, // Normalize to lowercase for consistency
           totalMarks: 0,
           genesisMarks: 0,
           anchorMarks: 0,
@@ -162,8 +765,176 @@ export default function LedgerMarksLeaderboard() {
       }
     });
 
-    // Convert to array and sort
-    const sorted = Array.from(userMap.values()).sort((a, b) => {
+    // Add ha token marks (using estimated marks for real-time display)
+    haTokenBalances.forEach((balance) => {
+      const userAddress = balance.user?.toLowerCase();
+      if (!userAddress) return;
+
+      // Filter out known contract addresses
+      if (isContractAddress(userAddress)) {
+        if (process.env.NODE_ENV === "development") {
+          console.log(
+            "[Leaderboard] Filtering out contract address from ha tokens",
+            userAddress
+          );
+        }
+        return;
+      }
+
+      const estimatedMarks = calculateEstimatedMarks(balance, currentChainTime);
+      const marksPerDay = parseFloat(balance.marksPerDay || "0");
+
+      // Debug logging for dev address
+      if (userAddress === "0xae7dbb17bc40d53a6363409c6b1ed88d3cfdc31e") {
+        console.log("[Leaderboard] Dev address ha token balance", {
+          balance,
+          accumulatedMarks: balance.accumulatedMarks,
+          marksPerDay,
+          lastUpdated: balance.lastUpdated,
+          estimatedMarks,
+        });
+      }
+
+      // Don't skip if marksPerDay > 0 even if estimatedMarks is 0 (might be just starting)
+      if (estimatedMarks === 0 && marksPerDay === 0) return;
+
+      if (!userMap.has(userAddress)) {
+        userMap.set(userAddress, {
+          address: balance.user?.toLowerCase() || userAddress, // Normalize to lowercase for consistency
+          totalMarks: 0,
+          genesisMarks: 0,
+          anchorMarks: 0,
+          sailMarks: 0,
+          marksPerDay: 0,
+        });
+      }
+
+      const user = userMap.get(userAddress)!;
+      user.totalMarks += estimatedMarks;
+      user.anchorMarks += estimatedMarks; // ha tokens count as anchor marks
+      user.marksPerDay += marksPerDay;
+    });
+
+    // Add stability pool marks (using estimated marks for real-time display)
+    stabilityPoolDeposits.forEach((deposit) => {
+      const userAddress = deposit.user?.toLowerCase();
+      if (!userAddress) return;
+
+      // Filter out known contract addresses
+      if (isContractAddress(userAddress)) {
+        return;
+      }
+
+      const estimatedMarks = calculateEstimatedMarks(deposit, currentChainTime);
+      const marksPerDay = parseFloat(deposit.marksPerDay || "0");
+
+      // Don't skip if marksPerDay > 0 even if estimatedMarks is 0 (might be just starting)
+      if (estimatedMarks === 0 && marksPerDay === 0) return;
+
+      if (!userMap.has(userAddress)) {
+        userMap.set(userAddress, {
+          address: deposit.user?.toLowerCase() || userAddress, // Normalize to lowercase for consistency
+          totalMarks: 0,
+          genesisMarks: 0,
+          anchorMarks: 0,
+          sailMarks: 0,
+          marksPerDay: 0,
+        });
+      }
+
+      const user = userMap.get(userAddress)!;
+      user.totalMarks += estimatedMarks;
+
+      // Categorize by pool type: collateral pools → anchor marks, sail pools → sail marks
+      const poolType = deposit.poolType?.toLowerCase();
+      if (poolType === "collateral" || poolType === "anchor") {
+        user.anchorMarks += estimatedMarks;
+        // Only add marksPerDay to anchor marks for collateral pools
+        // (marksPerDay will be added to total marksPerDay below)
+      } else if (poolType === "sail" || poolType === "leveraged") {
+        user.sailMarks += estimatedMarks;
+        // Only add marksPerDay to sail marks for sail pools
+        // (marksPerDay will be added to total marksPerDay below)
+      } else {
+        // Default to anchor marks if pool type is unknown
+        user.anchorMarks += estimatedMarks;
+      }
+
+      // Always add marksPerDay to total marksPerDay
+      user.marksPerDay += marksPerDay;
+    });
+
+    // Add sail token marks (using estimated marks for real-time display)
+    sailTokenBalances.forEach((balance) => {
+      const userAddress = balance.user?.toLowerCase();
+      if (!userAddress) return;
+
+      // Filter out known contract addresses
+      if (isContractAddress(userAddress)) {
+        if (process.env.NODE_ENV === "development") {
+          console.log(
+            "[Leaderboard] Filtering out contract address from sail tokens",
+            userAddress
+          );
+        }
+        return;
+      }
+
+      const estimatedMarks = calculateEstimatedMarks(balance, currentChainTime);
+      const marksPerDay = parseFloat(balance.marksPerDay || "0");
+
+      // Debug logging for dev address
+      if (userAddress === "0xae7dbb17bc40d53a6363409c6b1ed88d3cfdc31e") {
+        console.log("[Leaderboard] Dev address sail token balance", {
+          balance,
+          accumulatedMarks: balance.accumulatedMarks,
+          marksPerDay,
+          lastUpdated: balance.lastUpdated,
+          estimatedMarks,
+        });
+      }
+
+      // Don't skip if marksPerDay > 0 even if estimatedMarks is 0 (might be just starting)
+      if (estimatedMarks === 0 && marksPerDay === 0) return;
+
+      if (!userMap.has(userAddress)) {
+        userMap.set(userAddress, {
+          address: balance.user?.toLowerCase() || userAddress, // Normalize to lowercase for consistency
+          totalMarks: 0,
+          genesisMarks: 0,
+          anchorMarks: 0,
+          sailMarks: 0,
+          marksPerDay: 0,
+        });
+      }
+
+      const user = userMap.get(userAddress)!;
+      user.totalMarks += estimatedMarks;
+      user.sailMarks += estimatedMarks; // sail tokens count as sail marks
+      user.marksPerDay += marksPerDay;
+    });
+
+    // Convert to array, deduplicate by address (case-insensitive), and sort
+    const userArray = Array.from(userMap.values());
+
+    // Deduplicate by address (case-insensitive) - in case there are any edge cases
+    const deduplicated = new Map<string, (typeof userArray)[0]>();
+    userArray.forEach((user) => {
+      const key = user.address.toLowerCase();
+      if (!deduplicated.has(key)) {
+        deduplicated.set(key, user);
+      } else {
+        // If duplicate found, merge the marks (shouldn't happen, but just in case)
+        const existing = deduplicated.get(key)!;
+        existing.totalMarks += user.totalMarks;
+        existing.genesisMarks += user.genesisMarks;
+        existing.anchorMarks += user.anchorMarks;
+        existing.sailMarks += user.sailMarks;
+        existing.marksPerDay += user.marksPerDay;
+      }
+    });
+
+    const sorted = Array.from(deduplicated.values()).sort((a, b) => {
       let aValue: number;
       let bValue: number;
 
@@ -193,7 +964,15 @@ export default function LedgerMarksLeaderboard() {
     });
 
     return sorted;
-  }, [data, sortBy, sortDirection]);
+  }, [
+    marksArray,
+    haTokenBalancesData,
+    stabilityPoolDepositsData,
+    sailTokenBalancesData,
+    sortBy,
+    sortDirection,
+    currentChainTime, // Recalculate when chain time updates
+  ]);
 
   const handleSort = (column: typeof sortBy) => {
     if (sortBy === column) {
@@ -207,171 +986,289 @@ export default function LedgerMarksLeaderboard() {
   return (
     <div className="min-h-screen bg-[#1E4775]">
       <main className="container mx-auto px-4 py-8 max-w-7xl">
-          {/* Header */}
-          <div className="mb-4">
-            <h1 className="font-bold font-mono text-white text-7xl text-center mb-1">
-              Ledger Marks
-            </h1>
-            <p className="text-xl text-white/80 text-center mb-2">
-              Leaderboard
-            </p>
-          </div>
+        {/* Header */}
+        <div className="mb-4">
+          <h1 className="font-bold font-mono text-white text-7xl text-center mb-1">
+            Ledger Marks
+          </h1>
+          <p className="text-xl text-white/80 text-center mb-2">Leaderboard</p>
+        </div>
 
-          {/* Explainer Section */}
-          <div className="bg-[#17395F] p-4 mb-4">
+        {/* Explainer Section */}
+        <div className="bg-[#17395F] p-4 mb-2">
+          <div className="flex items-start gap-3">
+            <QuestionMarkCircleIcon className="w-6 h-6 text-white flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <h3 className="font-bold text-lg text-white mb-2">
+                What are Ledger Marks?
+              </h3>
+              <div className="space-y-3 text-white/90 leading-relaxed text-sm">
+                <p>
+                  A ledger is both a record of truth and a core DeFi symbol —
+                  and a mark is what every sailor leaves behind on a voyage.
+                </p>
+                <p>
+                  Each Ledger Mark is proof that you were here early, helping
+                  stabilize the first Harbor markets and guide them through calm
+                  launch conditions.
+                </p>
+                <div className="space-y-2 mt-3">
+                  <div className="flex items-start gap-2">
+                    <span className="text-white/70 mt-0.5">•</span>
+                    <p>
+                      <strong>Genesis Deposits:</strong> Earn 10 marks per
+                      dollar per day during genesis, plus 100 marks per dollar
+                      bonus at genesis end.
+                    </p>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-white/70 mt-0.5">•</span>
+                    <p>
+                      <strong>Holding ha Tokens:</strong> Earn 1 mark per dollar
+                      per day for ha tokens in your wallet.
+                    </p>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-white/70 mt-0.5">•</span>
+                    <p>
+                      <strong>Stability Pool Deposits:</strong> Earn 1 mark per
+                      dollar per day for deposits in Anchor or Sail stability
+                      pools.
+                    </p>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-white/70 mt-0.5">•</span>
+                    <p>
+                      When $TIDE surfaces, these marks will convert into your
+                      share of rewards and governance power.
+                    </p>
+                  </div>
+                </div>
+                <p className="text-white/80 italic mt-3 pt-3 border-t border-white/20">
+                  Think of them as a record of your journey — every mark, a line
+                  in Harbor's logbook.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Ledger Marks Summary */}
+        {isConnected && (
+          <div className="bg-[#B8EBD5] p-4 mb-2">
             <div className="flex items-start gap-3">
-              <QuestionMarkCircleIcon className="w-6 h-6 text-white flex-shrink-0 mt-0.5" />
+              <WalletIcon className="w-6 h-6 text-[#1E4775] flex-shrink-0 mt-0.5" />
               <div className="flex-1">
-                <h3 className="font-bold text-lg text-white mb-2">What are Ledger Marks?</h3>
-                <div className="space-y-3 text-white/90 leading-relaxed text-sm">
-                  <p>
-                    A ledger is both a record of truth and a core DeFi symbol — and a mark is what every sailor leaves behind on a voyage.
-                  </p>
-                  <p>
-                    Each Ledger Mark is proof that you were here early, helping stabilize the first Harbor markets and guide them through calm launch conditions.
-                  </p>
-                  <div className="space-y-2 mt-3">
-                    <div className="flex items-start gap-2">
-                      <span className="text-white/70 mt-0.5">•</span>
-                      <p>
-                        The more you contribute, the deeper your mark on the ledger.
-                      </p>
+                <h3 className="font-bold text-lg text-[#1E4775] mb-3">
+                  Ledger Marks Summary
+                </h3>
+                {isLoadingAnchorMarks ||
+                isLoadingAnchorLedgerMarks ||
+                isLoadingGenesisMarks ? (
+                  <p className="text-[#1E4775]/70">Loading your marks...</p>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="bg-white p-3 rounded">
+                      <div className="text-xs text-[#1E4775]/70 mb-1">
+                        Maiden Voyage Marks per Day
+                      </div>
+                      <div className="text-lg font-bold text-[#1E4775]">
+                        {maidenVoyageMarksPerDay.toLocaleString(undefined, {
+                          maximumFractionDigits: 2,
+                        })}
+                      </div>
+                      <div className="text-xs text-[#1E4775]/60">marks/day</div>
                     </div>
-                    <div className="flex items-start gap-2">
-                      <span className="text-white/70 mt-0.5">•</span>
-                      <p>
-                        When $TIDE surfaces, these marks will convert into your share of rewards and governance power.
-                      </p>
+                    <div className="bg-white p-3 rounded">
+                      <div className="text-xs text-[#1E4775]/70 mb-1">
+                        Anchor Marks per Day
+                      </div>
+                      <div className="text-lg font-bold text-[#1E4775]">
+                        {anchorMarksPerDay.toLocaleString(undefined, {
+                          maximumFractionDigits: 2,
+                        })}
+                      </div>
+                      <div className="text-xs text-[#1E4775]/60">marks/day</div>
+                    </div>
+                    <div className="bg-white p-3 rounded">
+                      <div className="text-xs text-[#1E4775]/70 mb-1">
+                        Sail Marks per Day
+                      </div>
+                      <div className="text-lg font-bold text-[#1E4775]">
+                        {sailMarksPerDay.toLocaleString(undefined, {
+                          maximumFractionDigits: 2,
+                        })}
+                      </div>
+                      <div className="text-xs text-[#1E4775]/60">marks/day</div>
+                    </div>
+                    <div className="bg-[#1E4775] p-3 rounded">
+                      <div className="text-xs text-white/70 mb-1">
+                        Total Marks per Day
+                      </div>
+                      <div className="text-lg font-bold text-white">
+                        {totalMarksPerDay.toLocaleString(undefined, {
+                          maximumFractionDigits: 2,
+                        })}
+                      </div>
+                      <div className="text-xs text-white/60">marks/day</div>
                     </div>
                   </div>
-                  <p className="text-white/80 italic mt-3 pt-3 border-t border-white/20">
-                    Think of them as a record of your journey — every mark, a line in Harbor's logbook.
-                  </p>
-                </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Divider */}
+        <div className="border-t border-white/10 my-2"></div>
+
+        {/* Leaderboard */}
+        <section className="space-y-2 overflow-visible">
+          {/* Header Row */}
+          <div className="bg-white p-3 overflow-x-auto">
+            <div className="grid grid-cols-[auto_1fr_1fr_1fr_1fr_1fr_1fr] gap-4 items-center uppercase tracking-wider text-xs text-[#1E4775] font-bold">
+              <div className="min-w-0 text-center">Rank</div>
+              <div className="min-w-0 text-center">Wallet Address</div>
+              <div
+                className="min-w-0 text-center cursor-pointer hover:opacity-70 transition-opacity"
+                onClick={() => handleSort("total")}
+              >
+                Total Marks
+                {sortBy === "total" && (
+                  <span className="ml-1">
+                    {sortDirection === "desc" ? "↓" : "↑"}
+                  </span>
+                )}
+              </div>
+              <div
+                className="min-w-0 text-center cursor-pointer hover:opacity-70 transition-opacity"
+                onClick={() => handleSort("genesis")}
+              >
+                Genesis Marks
+                {sortBy === "genesis" && (
+                  <span className="ml-1">
+                    {sortDirection === "desc" ? "↓" : "↑"}
+                  </span>
+                )}
+              </div>
+              <div
+                className="min-w-0 text-center cursor-pointer hover:opacity-70 transition-opacity"
+                onClick={() => handleSort("anchor")}
+              >
+                Anchor Ledger Marks
+                {sortBy === "anchor" && (
+                  <span className="ml-1">
+                    {sortDirection === "desc" ? "↓" : "↑"}
+                  </span>
+                )}
+              </div>
+              <div
+                className="min-w-0 text-center cursor-pointer hover:opacity-70 transition-opacity"
+                onClick={() => handleSort("sail")}
+              >
+                Sail Marks
+                {sortBy === "sail" && (
+                  <span className="ml-1">
+                    {sortDirection === "desc" ? "↓" : "↑"}
+                  </span>
+                )}
+              </div>
+              <div
+                className="min-w-0 text-center cursor-pointer hover:opacity-70 transition-opacity"
+                onClick={() => handleSort("perDay")}
+              >
+                Marks Per Day
+                {sortBy === "perDay" && (
+                  <span className="ml-1">
+                    {sortDirection === "desc" ? "↓" : "↑"}
+                  </span>
+                )}
               </div>
             </div>
           </div>
 
-          {/* Divider */}
-          <div className="border-t border-white/10 my-2 mb-4"></div>
-
-          {/* Leaderboard Table */}
-          <div className="bg-white overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-[#1E4775] text-white">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider">Rank</th>
-                    <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider">Wallet Address</th>
-                    <th 
-                      className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider cursor-pointer hover:bg-[#17395F] transition-colors"
-                      onClick={() => handleSort("total")}
-                    >
-                      Total Marks
-                      {sortBy === "total" && (
-                        <span className="ml-1">{sortDirection === "desc" ? "↓" : "↑"}</span>
-                      )}
-                    </th>
-                    <th 
-                      className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider cursor-pointer hover:bg-[#17395F] transition-colors"
-                      onClick={() => handleSort("genesis")}
-                    >
-                      Genesis Marks
-                      {sortBy === "genesis" && (
-                        <span className="ml-1">{sortDirection === "desc" ? "↓" : "↑"}</span>
-                      )}
-                    </th>
-                    <th 
-                      className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider cursor-pointer hover:bg-[#17395F] transition-colors"
-                      onClick={() => handleSort("anchor")}
-                    >
-                      Anchor Marks
-                      {sortBy === "anchor" && (
-                        <span className="ml-1">{sortDirection === "desc" ? "↓" : "↑"}</span>
-                      )}
-                    </th>
-                    <th 
-                      className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider cursor-pointer hover:bg-[#17395F] transition-colors"
-                      onClick={() => handleSort("sail")}
-                    >
-                      Sail Marks
-                      {sortBy === "sail" && (
-                        <span className="ml-1">{sortDirection === "desc" ? "↓" : "↑"}</span>
-                      )}
-                    </th>
-                    <th 
-                      className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider cursor-pointer hover:bg-[#17395F] transition-colors"
-                      onClick={() => handleSort("perDay")}
-                    >
-                      Marks Per Day
-                      {sortBy === "perDay" && (
-                        <span className="ml-1">{sortDirection === "desc" ? "↓" : "↑"}</span>
-                      )}
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200 bg-white">
-                  {isLoading ? (
-                    <tr>
-                      <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
-                        Loading leaderboard...
-                      </td>
-                    </tr>
-                  ) : error ? (
-                    <tr>
-                      <td colSpan={7} className="px-4 py-8 text-center text-red-500">
-                        Error loading leaderboard: {error instanceof Error ? error.message : "Unknown error"}
-                      </td>
-                    </tr>
-                  ) : leaderboardData.length === 0 ? (
-                    <tr>
-                      <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
-                        No marks data available yet
-                      </td>
-                    </tr>
-                  ) : (
-                    leaderboardData.map((user, index) => (
-                      <tr key={user.address} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-4 py-3 text-sm font-medium text-[#1E4775]">
-                          <div className="flex items-center gap-2">
-                            {index === 0 && <TrophyIcon className="w-5 h-5 text-yellow-500" />}
-                            <span>{index + 1}</span>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-sm font-mono text-[#1E4775]">
-                          <a 
-                            href={`https://etherscan.io/address/${user.address}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="hover:text-[#17395F] hover:underline"
-                          >
-                            {formatAddress(user.address)}
-                          </a>
-                        </td>
-                        <td className="px-4 py-3 text-sm font-bold text-[#1E4775] font-mono">
-                          {user.totalMarks.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-[#1E4775] font-mono">
-                          {user.genesisMarks.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-[#1E4775] font-mono">
-                          {user.anchorMarks.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-[#1E4775] font-mono">
-                          {user.sailMarks.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-[#1E4775] font-mono">
-                          {user.marksPerDay.toLocaleString(undefined, { maximumFractionDigits: 2 })}/day
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+          {/* Leaderboard Rows */}
+          {isLoading ? (
+            <div className="bg-white p-8 text-center text-gray-500">
+              Loading leaderboard...
             </div>
-          </div>
+          ) : error ? (
+            <div className="bg-white p-8 text-center text-red-500">
+              Error loading leaderboard:{" "}
+              {error instanceof Error ? error.message : "Unknown error"}
+            </div>
+          ) : leaderboardData.length === 0 ? (
+            <div className="bg-white p-8 text-center text-gray-500">
+              <div>No marks data available yet</div>
+              {process.env.NODE_ENV === "development" &&
+                marksArray.length > 0 && (
+                  <div className="mt-4 text-xs text-left">
+                    <p>
+                      Debug: Found {marksArray.length} entries in query result
+                    </p>
+                    <p>
+                      Sample entry: {JSON.stringify(marksArray[0], null, 2)}
+                    </p>
+                  </div>
+                )}
+            </div>
+          ) : (
+            leaderboardData.map((user, index) => (
+              <div
+                key={`${user.address.toLowerCase()}-${index}`}
+                className="bg-white p-3 overflow-x-auto"
+              >
+                <div className="grid grid-cols-[auto_1fr_1fr_1fr_1fr_1fr_1fr] gap-4 items-center text-sm text-[#1E4775]">
+                  <div className="min-w-0 text-center font-medium">
+                    <div className="flex items-center justify-center gap-2">
+                      {index === 0 && (
+                        <TrophyIcon className="w-5 h-5 text-yellow-500" />
+                      )}
+                      <span>{index + 1}</span>
+                    </div>
+                  </div>
+                  <div className="min-w-0 text-center font-mono">
+                    <a
+                      href={`https://etherscan.io/address/${user.address}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="hover:text-[#17395F] hover:underline"
+                    >
+                      {formatAddress(user.address)}
+                    </a>
+                  </div>
+                  <div className="min-w-0 text-center font-bold font-mono">
+                    {user.totalMarks.toLocaleString(undefined, {
+                      maximumFractionDigits: 2,
+                    })}
+                  </div>
+                  <div className="min-w-0 text-center font-mono">
+                    {user.genesisMarks.toLocaleString(undefined, {
+                      maximumFractionDigits: 2,
+                    })}
+                  </div>
+                  <div className="min-w-0 text-center font-mono">
+                    {user.anchorMarks.toLocaleString(undefined, {
+                      maximumFractionDigits: 2,
+                    })}
+                  </div>
+                  <div className="min-w-0 text-center font-mono">
+                    {user.sailMarks.toLocaleString(undefined, {
+                      maximumFractionDigits: 2,
+                    })}
+                  </div>
+                  <div className="min-w-0 text-center font-mono">
+                    {user.marksPerDay.toLocaleString(undefined, {
+                      maximumFractionDigits: 2,
+                    })}
+                    /day
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </section>
       </main>
     </div>
   );
 }
-

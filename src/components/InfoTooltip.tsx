@@ -61,7 +61,7 @@ export default function InfoTooltip({
       <div
         role="tooltip"
         className={
-          "pointer-events-none absolute z-20 bg-[#1E4775] px-6 py-4 text-base text-white shadow-xl opacity-0 transition-opacity duration-150 min-w-[400px] max-w-2xl " +
+          "pointer-events-none absolute z-20 bg-gray-900 px-6 py-4 text-base text-white shadow-xl opacity-0 transition-opacity duration-150 min-w-[400px] max-w-2xl border border-gray-700 " +
           positionClasses.container +
           " group-hover:opacity-100 group-focus-within:opacity-100"
         }
@@ -71,7 +71,7 @@ export default function InfoTooltip({
         </div>
         <span
           className={
-            "absolute h-3 w-3 rotate-45 bg-[#1E4775]  " +
+            "absolute h-3 w-3 rotate-45 bg-gray-900 border-l border-b border-gray-700 " +
             positionClasses.arrow
           }
         />

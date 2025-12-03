@@ -582,387 +582,158 @@ export default function FlowPage() {
 
       <div className="min-h-screen text-white max-w-[1300px] mx-auto font-sans relative">
         <main className="container mx-auto px-4 sm:px-10 pb-6">
-        {/* Header */}
-        <div className="mb-2">
-          {/* Title - Full Row */}
-          <div className="p-4 flex items-center justify-center mb-0">
-            <h1 className="font-bold font-mono text-white text-7xl text-center">
-              Map Room
-            </h1>
+          {/* Header */}
+          <div className="mb-2">
+            {/* Title - Full Row */}
+            <div className="p-4 flex items-center justify-center mb-0">
+              <h1 className="font-bold font-mono text-white text-7xl text-center">
+                Map Room
+              </h1>
+            </div>
+
+            {/* Subheader */}
+            <div className="flex items-center justify-center mb-2 -mt-2">
+              <p className="text-white/80 text-lg text-center">
+                Oracle feeds and price data for Harbor markets
+              </p>
+            </div>
+
+            {/* Four Boxes */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
+              {/* Oracle Feeds Box */}
+              <div className="bg-[#17395F] p-4">
+                <div className="flex items-center justify-center mb-2">
+                  <MapIcon className="w-6 h-6 text-white mr-2" />
+                  <h2 className="font-bold text-white text-lg text-center">
+                    Oracle Feeds
+                  </h2>
+                </div>
+                <p className="text-sm text-white/80 text-center">
+                  View all available price feeds and oracle data
+                </p>
+              </div>
+
+              {/* Price Data Box */}
+              <div className="bg-[#17395F] p-4">
+                <div className="flex items-center justify-center mb-2">
+                  <ChartBarIcon className="w-6 h-6 text-white mr-2" />
+                  <h2 className="font-bold text-white text-lg text-center">
+                    Price Data
+                  </h2>
+                </div>
+                <p className="text-sm text-white/80 text-center">
+                  Real-time prices and market data from Chainlink oracles
+                </p>
+              </div>
+
+              {/* Contract Rates Box */}
+              <div className="bg-[#17395F] p-4">
+                <div className="flex items-center justify-center mb-2">
+                  <CpuChipIcon className="w-6 h-6 text-white mr-2" />
+                  <h2 className="font-bold text-white text-lg text-center">
+                    Contract Rates
+                  </h2>
+                </div>
+                <p className="text-sm text-white/80 text-center">
+                  Contract rates used for haTokens and stability pools
+                </p>
+              </div>
+
+              {/* Feed Details Box */}
+              <div className="bg-[#17395F] p-4">
+                <div className="flex items-center justify-center mb-2">
+                  <InformationCircleIcon className="w-6 h-6 text-white mr-2" />
+                  <h2 className="font-bold text-white text-lg text-center">
+                    Feed Details
+                  </h2>
+                </div>
+                <p className="text-sm text-white/80 text-center">
+                  Detailed information about heartbeat windows and deviation
+                  thresholds
+                </p>
+              </div>
+            </div>
           </div>
 
-          {/* Subheader */}
-          <div className="flex items-center justify-center mb-2 -mt-2">
-            <p className="text-white/80 text-lg text-center">
-              Oracle feeds and price data for Harbor markets
-            </p>
-          </div>
+          {/* Divider */}
+          <div className="border-t border-white/10 my-2"></div>
 
-          {/* Four Boxes */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
-            {/* Oracle Feeds Box */}
-            <div className="bg-[#17395F] p-4">
-              <div className="flex items-center justify-center mb-2">
-                <MapIcon className="w-6 h-6 text-white mr-2" />
-                <h2 className="font-bold text-white text-lg text-center">Oracle Feeds</h2>
+          {/* Feeds list (hardcoded for now) */}
+          <section className="mb-6">
+            <div className="bg-[#17395F] p-3 sm:p-4 overflow-x-auto">
+              <div className="flex items-center justify-between mb-2">
+                <h2 className="text-sm font-semibold text-white/90">Feeds</h2>
+                <div className="text-xs text-white/50">
+                  {proxyFeeds.length} feeds
+                </div>
               </div>
-              <p className="text-sm text-white/80 text-center">
-                View all available price feeds and oracle data
-              </p>
-            </div>
-
-            {/* Price Data Box */}
-            <div className="bg-[#17395F] p-4">
-              <div className="flex items-center justify-center mb-2">
-                <ChartBarIcon className="w-6 h-6 text-white mr-2" />
-                <h2 className="font-bold text-white text-lg text-center">Price Data</h2>
-              </div>
-              <p className="text-sm text-white/80 text-center">
-                Real-time prices and market data from Chainlink oracles
-              </p>
-            </div>
-
-            {/* Contract Rates Box */}
-            <div className="bg-[#17395F] p-4">
-              <div className="flex items-center justify-center mb-2">
-                <CpuChipIcon className="w-6 h-6 text-white mr-2" />
-                <h2 className="font-bold text-white text-lg text-center">Contract Rates</h2>
-              </div>
-              <p className="text-sm text-white/80 text-center">
-                Contract rates used for haTokens and stability pools
-              </p>
-            </div>
-
-            {/* Feed Details Box */}
-            <div className="bg-[#17395F] p-4">
-              <div className="flex items-center justify-center mb-2">
-                <InformationCircleIcon className="w-6 h-6 text-white mr-2" />
-                <h2 className="font-bold text-white text-lg text-center">Feed Details</h2>
-              </div>
-              <p className="text-sm text-white/80 text-center">
-                Detailed information about heartbeat windows and deviation thresholds
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Divider */}
-        <div className="border-t border-white/10 my-2"></div>
-
-        {/* Feeds list (hardcoded for now) */}
-        <section className="mb-6">
-          <div className="bg-[#17395F] p-3 sm:p-4 overflow-x-auto">
-            <div className="flex items-center justify-between mb-2">
-              <h2 className="text-sm font-semibold text-white/90">Feeds</h2>
-              <div className="text-xs text-white/50">
-                {proxyFeeds.length} feeds
-              </div>
-            </div>
-            <table className="min-w-full text-left text-sm table-fixed">
-              <thead>
-                <tr className="border-b border-white/10 uppercase tracking-wider text-[10px] text-white/60">
-                  <th className="py-3 px-4 font-normal">Feed</th>
-                  <th className="w-32 py-3 px-4 font-normal">Type</th>
-                  <th className="w-72 py-3 px-4 font-normal">Price</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr
-                  className="border-t border-white/10 hover:bg-white/5 transition cursor-pointer"
-                  onClick={() =>
-                    setExpanded((prev) =>
-                      prev?.kind === "eth" ? null : { kind: "eth" }
-                    )
-                  }
-                >
-                  <td className="py-2 px-4 whitespace-nowrap">
-                    <div className="flex items-center gap-4">
-                      <span className="text-white font-medium">fxSAVE/ETH</span>
-                    </div>
-                  </td>
-                  <td className="py-2 px-4">Chainlink</td>
-                  <td
-                    className="py-2 px-4 font-mono"
-                    title={pairEstimateLabel("fxSAVE/ETH", price)}
-                  >
-                    {formatPairDisplay("fxSAVE/ETH", format18(price))}
-                  </td>
-                </tr>
-                {proxyFeeds.slice(1).map((f, idx) => (
+              <table className="min-w-full text-left text-sm table-fixed">
+                <thead>
+                  <tr className="border-b border-white/10 uppercase tracking-wider text-[10px] text-white/60">
+                    <th className="py-3 px-4 font-normal">Feed</th>
+                    <th className="w-32 py-3 px-4 font-normal">Type</th>
+                    <th className="w-72 py-3 px-4 font-normal">Price</th>
+                  </tr>
+                </thead>
+                <tbody>
                   <tr
-                    key={f.address}
                     className="border-t border-white/10 hover:bg-white/5 transition cursor-pointer"
                     onClick={() =>
                       setExpanded((prev) =>
-                        prev?.kind === "extra" && prev.idx === idx
-                          ? null
-                          : { kind: "extra", idx }
+                        prev?.kind === "eth" ? null : { kind: "eth" }
                       )
                     }
                   >
                     <td className="py-2 px-4 whitespace-nowrap">
                       <div className="flex items-center gap-4">
                         <span className="text-white font-medium">
-                          {f.label}
+                          fxSAVE/ETH
                         </span>
                       </div>
                     </td>
                     <td className="py-2 px-4">Chainlink</td>
                     <td
                       className="py-2 px-4 font-mono"
-                      title={pairEstimateLabel(
-                        f.label,
-                        extraReads?.[idx]?.result as bigint | undefined,
-                        (extraFeedPrices[idx] || extraFallback[idx]?.price) as
-                          | string
-                          | undefined
-                      )}
+                      title={pairEstimateLabel("fxSAVE/ETH", price)}
                     >
-                      {formatPairDisplay(
-                        f.label,
-                        (extraFeedPrices[idx] ||
-                          extraFallback[idx]?.price ||
-                          "-") as string
-                      )}
+                      {formatPairDisplay("fxSAVE/ETH", format18(price))}
                     </td>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-
-        {expanded && (
-          <section className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            {expanded.kind === "eth" ? (
-              <>
-                <div className="md:col-span-2 bg-[#17395F] p-4">
-                  <div className="text-white/60 text-xs mb-1">
-                    {feedLabel} - Price
-                  </div>
-                  <div className="text-2xl font-mono">{format18(price)}</div>
-                  <div className="text-white/40 text-xs">18 decimals</div>
-                </div>
-                <div className="bg-[#17395F] p-4">
-                  <div className="text-white/60 text-xs mb-1">
-                    Latest oracle feed data
-                  </div>
-                  <div className="space-y-1 font-mono">
-                    <div>
-                      {feedLabel} min price: {format18(tuple?.[0])}
-                    </div>
-                    <div>
-                      {feedLabel} max price: {format18(tuple?.[1])}
-                    </div>
-                    <div>
-                      {parsePair(feedLabel).base} min rate:{" "}
-                      {format18(tuple?.[2])}
-                    </div>
-                    <div>
-                      {parsePair(feedLabel).base} max rate:{" "}
-                      {format18(tuple?.[3])}
-                    </div>
-                  </div>
-                </div>
-                <div className="md:col-span-3 bg-[#17395F] p-4">
-                  <div className="text-white/60 text-xs mb-1">Contract</div>
-                  <a
-                    href={etherscanAddressUrl(proxyFeeds[0].address)}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="hover:underline"
-                  >
-                    {proxyFeeds[0].address}
-                    <ExternalLinkIcon />
-                  </a>
-                </div>
-              </>
-            ) : (
-              (() => {
-                const idx = expanded.idx;
-                const label = proxyFeeds.slice(1)[idx]?.label || "Feed";
-                const priceStr =
-                  extraFeedPrices[idx] || extraFallback[idx]?.price || "-";
-                const latest = extraLatest?.[idx]?.result as
-                  | [bigint, bigint, bigint, bigint]
-                  | undefined;
-                const decimalsStr = (extraFallback[idx]?.decimals ?? 18) as
-                  | number
-                  | undefined;
-                const updatedStr = extraFallback[idx]?.updatedAt || "-";
-                return (
-                  <>
-                    <div className="md:col-span-2 bg-[#17395F] p-4">
-                      <div className="text-white/60 text-xs mb-1">
-                        {label} - Price
-                      </div>
-                      <div className="text-2xl font-mono">{priceStr}</div>
-                      <div className="text-white/40 text-xs">18 decimals</div>
-                    </div>
-                    <div className="bg-[#17395F] p-4">
-                      <div className="text-white/60 text-xs mb-1">
-                        Latest oracle feed data
-                      </div>
-                      <div className="space-y-1 font-mono">
-                        <div>
-                          {label} min price: {format18(latest?.[0])}
+                  {proxyFeeds.slice(1).map((f, idx) => (
+                    <tr
+                      key={f.address}
+                      className="border-t border-white/10 hover:bg-white/5 transition cursor-pointer"
+                      onClick={() =>
+                        setExpanded((prev) =>
+                          prev?.kind === "extra" && prev.idx === idx
+                            ? null
+                            : { kind: "extra", idx }
+                        )
+                      }
+                    >
+                      <td className="py-2 px-4 whitespace-nowrap">
+                        <div className="flex items-center gap-4">
+                          <span className="text-white font-medium">
+                            {f.label}
+                          </span>
                         </div>
-                        <div>
-                          {label} max price: {format18(latest?.[1])}
-                        </div>
-                        <div>
-                          {parsePair(label).base} min rate:{" "}
-                          {format18(latest?.[2])}
-                        </div>
-                        <div>
-                          {parsePair(label).base} max rate:{" "}
-                          {format18(latest?.[3])}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="md:col-span-3 bg-[#17395F] p-4">
-                      <div className="text-white/60 text-xs mb-1">Contract</div>
-                      <a
-                        href={etherscanAddressUrl(
-                          proxyFeeds.slice(1)[idx]?.address
+                      </td>
+                      <td className="py-2 px-4">Chainlink</td>
+                      <td
+                        className="py-2 px-4 font-mono"
+                        title={pairEstimateLabel(
+                          f.label,
+                          extraReads?.[idx]?.result as bigint | undefined,
+                          (extraFeedPrices[idx] ||
+                            extraFallback[idx]?.price) as string | undefined
                         )}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="hover:underline"
                       >
-                        {proxyFeeds.slice(1)[idx]?.address}
-                        <ExternalLinkIcon />
-                      </a>
-                    </div>
-                    <div className="md:col-span-3 bg-[#17395F] p-3 sm:p-4 overflow-x-auto">
-                      <table className="min-w-full text-left text-sm table-fixed">
-                        <thead>
-                          <tr className="border-b border-white/10 uppercase tracking-wider text-[10px] text-white/60">
-                            <th className="py-3 px-4 font-normal">ID</th>
-                            <th className="py-3 px-4 font-normal">
-                              Feed Name / Description
-                            </th>
-                            <th className="py-3 px-4 font-normal">
-                              Feed Identifier
-                            </th>
-                            <th className="py-3 px-4 font-normal">Price</th>
-                            <th className="py-3 px-4 font-normal">
-                              Heartbeat Window
-                            </th>
-                            <th className="py-3 px-4 font-normal">
-                              Deviation Threshold
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {(extraTables[idx] || []).length === 0 ? (
-                            <tr className="border-t border-white/10">
-                              <td
-                                colSpan={6}
-                                className="py-4 px-4 text-center text-white/50"
-                              >
-                                Loading feed data...
-                              </td>
-                            </tr>
-                          ) : (
-                            (extraTables[idx] || []).map((r) => (
-                              <tr
-                                key={r.id}
-                                className="border-t border-white/10"
-                              >
-                                <td className="py-2 px-4 font-mono">{r.id}</td>
-                                <td className="py-2 px-4 font-mono">
-                                  {r.name}
-                                </td>
-                                <td className="py-2 px-4 font-mono">
-                                  <a
-                                    href={etherscanAddressUrl(
-                                      formatFeedIdentifier(r.feed)
-                                    )}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="hover:underline"
-                                  >
-                                    {formatFeedIdentifier(r.feed)}
-                                    <ExternalLinkIcon className="inline-block w-3 h-3 align-[-2px] ml-1" />
-                                  </a>
-                                </td>
-                                <td className="py-2 px-4 font-mono">
-                                  {r.price || "-"}
-                                </td>
-                                <td className="py-2 px-4 font-mono">
-                                  {formatHeartbeat(r.constraintA)}
-                                </td>
-                                <td className="py-2 px-4 font-mono">
-                                  {formatPercent18(r.constraintB)}
-                                </td>
-                              </tr>
-                            ))
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
-                  </>
-                );
-              })()
-            )}
-          </section>
-        )}
-
-        {expanded && expanded.kind === "eth" && (
-          <section>
-            <div className="bg-[#17395F] p-3 sm:p-4 overflow-x-auto">
-              <table className="min-w-full text-left text-sm table-fixed">
-                <thead>
-                  <tr className="border-b border-white/10 uppercase tracking-wider text-[10px] text-white/60">
-                    <th className="py-3 px-4 font-normal">ID</th>
-                    <th className="py-3 px-4 font-normal">
-                      Feed Name / Description
-                    </th>
-                    <th className="py-3 px-4 font-normal">Feed Identifier</th>
-                    <th className="py-3 px-4 font-normal">Price</th>
-                    <th className="py-3 px-4 font-normal">Heartbeat Window</th>
-                    <th className="py-3 px-4 font-normal">
-                      Deviation Threshold
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((r, i) => (
-                    <tr key={r.id} className="border-t border-white/10">
-                      <td className="py-2 px-4 font-mono">{r.id}</td>
-                      <td className="py-2 px-4 font-mono">{r.name}</td>
-                      <td className="py-2 px-4 font-mono">
-                        <a
-                          href={etherscanAddressUrl(
-                            formatFeedIdentifier(r.feed)
-                          )}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="hover:underline"
-                        >
-                          {formatFeedIdentifier(r.feed)}
-                          <ExternalLinkIcon className="inline-block w-3 h-3 align-[-2px] ml-1" />
-                        </a>
-                      </td>
-                      <td className="py-2 px-4 font-mono">
-                        {(() => {
-                          const dec = aggDecReads?.[i]?.result as
-                            | number
-                            | undefined;
-                          const ans = aggAnsReads?.[i]?.result as
-                            | bigint
-                            | undefined;
-                          if (dec === undefined || ans === undefined)
-                            return "-";
-                          return formatUnit(ans, dec, 6);
-                        })()}
-                      </td>
-                      <td className="py-2 px-4 font-mono">
-                        {formatHeartbeat(r.constraintA)}
-                      </td>
-                      <td className="py-2 px-4 font-mono">
-                        {formatPercent18(r.constraintB)}
+                        {formatPairDisplay(
+                          f.label,
+                          (extraFeedPrices[idx] ||
+                            extraFallback[idx]?.price ||
+                            "-") as string
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -970,9 +741,254 @@ export default function FlowPage() {
               </table>
             </div>
           </section>
-        )}
-      </main>
-    </div>
+
+          {expanded && (
+            <section className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+              {expanded.kind === "eth" ? (
+                <>
+                  <div className="md:col-span-2 bg-[#17395F] p-4">
+                    <div className="text-white/60 text-xs mb-1">
+                      {feedLabel} - Price
+                    </div>
+                    <div className="text-2xl font-mono">{format18(price)}</div>
+                    <div className="text-white/40 text-xs">18 decimals</div>
+                  </div>
+                  <div className="bg-[#17395F] p-4">
+                    <div className="text-white/60 text-xs mb-1">
+                      Latest oracle feed data
+                    </div>
+                    <div className="space-y-1 font-mono">
+                      <div>
+                        {feedLabel} min price: {format18(tuple?.[0])}
+                      </div>
+                      <div>
+                        {feedLabel} max price: {format18(tuple?.[1])}
+                      </div>
+                      <div>
+                        {parsePair(feedLabel).base} min rate:{" "}
+                        {format18(tuple?.[2])}
+                      </div>
+                      <div>
+                        {parsePair(feedLabel).base} max rate:{" "}
+                        {format18(tuple?.[3])}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="md:col-span-3 bg-[#17395F] p-4">
+                    <div className="text-white/60 text-xs mb-1">Contract</div>
+                    <a
+                      href={etherscanAddressUrl(proxyFeeds[0].address)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="hover:underline"
+                    >
+                      {proxyFeeds[0].address}
+                      <ExternalLinkIcon />
+                    </a>
+                  </div>
+                </>
+              ) : (
+                (() => {
+                  const idx = expanded.idx;
+                  const label = proxyFeeds.slice(1)[idx]?.label || "Feed";
+                  const priceStr =
+                    extraFeedPrices[idx] || extraFallback[idx]?.price || "-";
+                  const latest = extraLatest?.[idx]?.result as
+                    | [bigint, bigint, bigint, bigint]
+                    | undefined;
+                  const decimalsStr = (extraFallback[idx]?.decimals ?? 18) as
+                    | number
+                    | undefined;
+                  const updatedStr = extraFallback[idx]?.updatedAt || "-";
+                  return (
+                    <>
+                      <div className="md:col-span-2 bg-[#17395F] p-4">
+                        <div className="text-white/60 text-xs mb-1">
+                          {label} - Price
+                        </div>
+                        <div className="text-2xl font-mono">{priceStr}</div>
+                        <div className="text-white/40 text-xs">18 decimals</div>
+                      </div>
+                      <div className="bg-[#17395F] p-4">
+                        <div className="text-white/60 text-xs mb-1">
+                          Latest oracle feed data
+                        </div>
+                        <div className="space-y-1 font-mono">
+                          <div>
+                            {label} min price: {format18(latest?.[0])}
+                          </div>
+                          <div>
+                            {label} max price: {format18(latest?.[1])}
+                          </div>
+                          <div>
+                            {parsePair(label).base} min rate:{" "}
+                            {format18(latest?.[2])}
+                          </div>
+                          <div>
+                            {parsePair(label).base} max rate:{" "}
+                            {format18(latest?.[3])}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="md:col-span-3 bg-[#17395F] p-4">
+                        <div className="text-white/60 text-xs mb-1">
+                          Contract
+                        </div>
+                        <a
+                          href={etherscanAddressUrl(
+                            proxyFeeds.slice(1)[idx]?.address
+                          )}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="hover:underline"
+                        >
+                          {proxyFeeds.slice(1)[idx]?.address}
+                          <ExternalLinkIcon />
+                        </a>
+                      </div>
+                      <div className="md:col-span-3 bg-[#17395F] p-3 sm:p-4 overflow-x-auto">
+                        <table className="min-w-full text-left text-sm table-fixed">
+                          <thead>
+                            <tr className="border-b border-white/10 uppercase tracking-wider text-[10px] text-white/60">
+                              <th className="py-3 px-4 font-normal">ID</th>
+                              <th className="py-3 px-4 font-normal">
+                                Feed Name / Description
+                              </th>
+                              <th className="py-3 px-4 font-normal">
+                                Feed Identifier
+                              </th>
+                              <th className="py-3 px-4 font-normal">Price</th>
+                              <th className="py-3 px-4 font-normal">
+                                Heartbeat Window
+                              </th>
+                              <th className="py-3 px-4 font-normal">
+                                Deviation Threshold
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {(extraTables[idx] || []).length === 0 ? (
+                              <tr className="border-t border-white/10">
+                                <td
+                                  colSpan={6}
+                                  className="py-4 px-4 text-center text-white/50"
+                                >
+                                  Loading feed data...
+                                </td>
+                              </tr>
+                            ) : (
+                              (extraTables[idx] || []).map((r) => (
+                                <tr
+                                  key={r.id}
+                                  className="border-t border-white/10"
+                                >
+                                  <td className="py-2 px-4 font-mono">
+                                    {r.id}
+                                  </td>
+                                  <td className="py-2 px-4 font-mono">
+                                    {r.name}
+                                  </td>
+                                  <td className="py-2 px-4 font-mono">
+                                    <a
+                                      href={etherscanAddressUrl(
+                                        formatFeedIdentifier(r.feed)
+                                      )}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="hover:underline"
+                                    >
+                                      {formatFeedIdentifier(r.feed)}
+                                      <ExternalLinkIcon className="inline-block w-3 h-3 align-[-2px] ml-1" />
+                                    </a>
+                                  </td>
+                                  <td className="py-2 px-4 font-mono">
+                                    {r.price || "-"}
+                                  </td>
+                                  <td className="py-2 px-4 font-mono">
+                                    {formatHeartbeat(r.constraintA)}
+                                  </td>
+                                  <td className="py-2 px-4 font-mono">
+                                    {formatPercent18(r.constraintB)}
+                                  </td>
+                                </tr>
+                              ))
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </>
+                  );
+                })()
+              )}
+            </section>
+          )}
+
+          {expanded && expanded.kind === "eth" && (
+            <section>
+              <div className="bg-[#17395F] p-3 sm:p-4 overflow-x-auto">
+                <table className="min-w-full text-left text-sm table-fixed">
+                  <thead>
+                    <tr className="border-b border-white/10 uppercase tracking-wider text-[10px] text-white/60">
+                      <th className="py-3 px-4 font-normal">ID</th>
+                      <th className="py-3 px-4 font-normal">
+                        Feed Name / Description
+                      </th>
+                      <th className="py-3 px-4 font-normal">Feed Identifier</th>
+                      <th className="py-3 px-4 font-normal">Price</th>
+                      <th className="py-3 px-4 font-normal">
+                        Heartbeat Window
+                      </th>
+                      <th className="py-3 px-4 font-normal">
+                        Deviation Threshold
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.map((r, i) => (
+                      <tr key={r.id} className="border-t border-white/10">
+                        <td className="py-2 px-4 font-mono">{r.id}</td>
+                        <td className="py-2 px-4 font-mono">{r.name}</td>
+                        <td className="py-2 px-4 font-mono">
+                          <a
+                            href={etherscanAddressUrl(
+                              formatFeedIdentifier(r.feed)
+                            )}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="hover:underline"
+                          >
+                            {formatFeedIdentifier(r.feed)}
+                            <ExternalLinkIcon className="inline-block w-3 h-3 align-[-2px] ml-1" />
+                          </a>
+                        </td>
+                        <td className="py-2 px-4 font-mono">
+                          {(() => {
+                            const dec = aggDecReads?.[i]?.result as
+                              | number
+                              | undefined;
+                            const ans = aggAnsReads?.[i]?.result as
+                              | bigint
+                              | undefined;
+                            if (dec === undefined || ans === undefined)
+                              return "-";
+                            return formatUnit(ans, dec, 6);
+                          })()}
+                        </td>
+                        <td className="py-2 px-4 font-mono">
+                          {formatHeartbeat(r.constraintA)}
+                        </td>
+                        <td className="py-2 px-4 font-mono">
+                          {formatPercent18(r.constraintB)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          )}
+        </main>
+      </div>
     </>
   );
 }

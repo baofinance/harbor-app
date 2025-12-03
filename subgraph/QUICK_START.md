@@ -5,10 +5,12 @@
 Based on your requirements, the system is already configured with these default rules:
 
 - **1 mark per dollar per day** for:
+
   - ha tokens in wallet (`haToken`)
   - Collateral stability pool deposits (`stabilityPoolCollateral`)
 
 - **2 marks per dollar per day** for:
+
   - Sail stability pool deposits (`stabilityPoolSail`)
 
 - **5 marks per dollar per day** for:
@@ -48,6 +50,7 @@ export function handleAdminUpdate(event: AdminUpdateEvent): void {
 ### Option 3: Add New Contract Type
 
 1. Add to `marksRules.ts`:
+
 ```typescript
 else if (contractType == "newType") {
   rule.marksPerDollarPerDay = BigDecimal.fromString("3");
@@ -76,6 +79,7 @@ To track stability pools, you need to:
 To track wallet balances:
 
 1. **Map token addresses** in `src/tokenBalances.ts`:
+
 ```typescript
 TOKEN_TYPE_MAP.set("0x...", "haToken");
 TOKEN_TYPE_MAP.set("0x...", "sailToken");
@@ -94,6 +98,7 @@ TOKEN_TYPE_MAP.set("0x...", "sailToken");
 ## Common Patterns
 
 ### Time-Limited Promotion
+
 ```typescript
 updateMarksRule(contractAddress, "stabilityPoolCollateral", {
   marksPerDollarPerDay: BigDecimal.fromString("5"), // Higher rate
@@ -104,14 +109,14 @@ updateMarksRule(contractAddress, "stabilityPoolCollateral", {
 ```
 
 ### Gradual Rate Change
+
 Use `additionalRules` JSON to store tiered rates based on deposit size or time.
 
 ### No Forfeiture Period
+
 ```typescript
 updateMarksRule(contractAddress, contractType, {
   forfeitOnWithdrawal: false,
 });
 ```
-
-
 

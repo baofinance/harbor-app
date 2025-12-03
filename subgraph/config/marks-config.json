@@ -1,0 +1,62 @@
+{
+  "version": "1.0.0",
+  "lastUpdated": "2025-01-01T00:00:00Z",
+  "multipliers": {
+    "haToken": {
+      "default": 1.0,
+      "perToken": {}
+    },
+    "stabilityPoolCollateral": {
+      "default": 1.0,
+      "perPool": {}
+    },
+    "stabilityPoolSail": {
+      "default": 1.0,
+      "perPool": {}
+    }
+  },
+  "priceFeeds": {
+    "wstETH": {
+      "usd": "0xeC827421505972a2AE9C320302d3573B42363C26",
+      "decimals": 8
+    },
+    "stETH": {
+      "usd": "0xb007167714e2940013ec3bb551584130b7497e22",
+      "eth": "0x6b39b761b1b64c8c095bf0e3bb0c6a74705b4788",
+      "decimals": 8
+    }
+  },
+  "markets": []
+}
+
+
+  "version": "1.0.0",
+  "lastUpdated": "2025-01-01T00:00:00Z",
+  "multipliers": {
+    "haToken": {
+      "default": 1.0,
+      "perToken": {}
+    },
+    "stabilityPoolCollateral": {
+      "default": 1.0,
+      "perPool": {}
+    },
+    "stabilityPoolSail": {
+      "default": 1.0,
+      "perPool": {}
+    }
+  },
+  "priceFeeds": {
+    "wstETH": {
+      "usd": "0xeC827421505972a2AE9C320302d3573B42363C26",
+      "decimals": 8
+    },
+    "stETH": {
+      "usd": "0xb007167714e2940013ec3bb551584130b7497e22",
+      "eth": "0x6b39b761b1b64c8c095bf0e3bb0c6a74705b4788",
+      "decimals": 8
+    }
+  },
+  "markets": []
+}
+

@@ -16,6 +16,7 @@ We've set up the basic structure, but there are AssemblyScript compilation issue
 ## 🔧 Next Steps to Fix Build
 
 The AssemblyScript compiler is crashing. This is likely due to:
+
 - Type assertion issues (`as BigInt`, `as BigDecimal`)
 - Nullable type handling
 - Complex operations on nullable values
@@ -29,6 +30,7 @@ The AssemblyScript compiler is crashing. This is likely due to:
 ### Alternative: Use The Graph Studio Template
 
 If the AssemblyScript issues persist, you can:
+
 1. Use The Graph Studio's template generator
 2. Start with a simpler schema
 3. Add complexity gradually
@@ -49,25 +51,29 @@ If the AssemblyScript issues persist, you can:
 ## 🚀 Once Build Works
 
 1. **Authenticate:**
+
    ```bash
    graph auth --studio <YOUR_DEPLOYMENT_KEY>
    ```
 
 2. **Deploy:**
+
    ```bash
    npm run deploy
    ```
 
 3. **Get Endpoint:**
+
    - Go to The Graph Studio
    - Copy the GraphQL endpoint
    - Add to `.env.local`
 
 4. **Test:**
+
    ```typescript
-   import { useHarborMarks } from '@/hooks/useHarborMarks';
-   
-   const { data } = useHarborMarks({ 
+   import { useHarborMarks } from "@/hooks/useHarborMarks";
+
+   const { data } = useHarborMarks({
      genesisAddress: "0x...",
    });
    ```
@@ -81,9 +87,8 @@ Given the AssemblyScript complexity, I recommend:
 3. **Test Each Step**: Verify each addition compiles before moving on
 
 Would you like me to:
+
 - A) Create a minimal working version first?
 - B) Continue debugging the current version?
 - C) Use a different approach (like starting from The Graph template)?
-
-
 

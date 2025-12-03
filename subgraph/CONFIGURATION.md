@@ -6,13 +6,13 @@ This guide explains how to configure and adapt Harbor Marks rules for different 
 
 The system comes with default rules for each contract type:
 
-| Contract Type | Marks per Dollar per Day | Bonus | Forfeit on Withdrawal |
-|--------------|-------------------------|-------|----------------------|
-| `genesis` | 10 | 100x at end | Yes (100%) |
-| `stabilityPoolCollateral` | 1 | None | Yes (100%) |
-| `stabilityPoolSail` | 2 | None | Yes (100%) |
-| `sailToken` | 5 | None | No |
-| `haToken` | 1 | None | No |
+| Contract Type             | Marks per Dollar per Day | Bonus       | Forfeit on Withdrawal |
+| ------------------------- | ------------------------ | ----------- | --------------------- |
+| `genesis`                 | 10                       | 100x at end | Yes (100%)            |
+| `stabilityPoolCollateral` | 1                        | None        | Yes (100%)            |
+| `stabilityPoolSail`       | 2                        | None        | Yes (100%)            |
+| `sailToken`               | 5                        | None        | No                    |
+| `haToken`                 | 1                        | None        | No                    |
 
 ## Adding New Contract Types
 
@@ -33,6 +33,7 @@ else if (contractType == "yourNewType") {
 ### Step 2: Create Event Handlers
 
 Create a new handler file (e.g., `src/yourContract.ts`) that:
+
 - Listens to deposit/withdraw/transfer events
 - Uses `getOrCreateMarksRule()` to get the rule
 - Uses `calculateMarksWithRule()` to calculate marks
@@ -76,14 +77,10 @@ Rules can be updated via admin functions or events. Create an admin handler:
 import { updateMarksRule } from "./marksRules";
 
 export function handleRuleUpdate(event: RuleUpdateEvent): void {
-  updateMarksRule(
-    event.params.contractAddress,
-    event.params.contractType,
-    {
-      marksPerDollarPerDay: event.params.newRate,
-      // ... other updates
-    }
-  );
+  updateMarksRule(event.params.contractAddress, event.params.contractType, {
+    marksPerDollarPerDay: event.params.newRate,
+    // ... other updates
+  });
 }
 ```
 
@@ -130,7 +127,7 @@ const tieredRules = {
   tiers: [
     { minDeposit: 1000, bonusMultiplier: 1.1 },
     { minDeposit: 10000, bonusMultiplier: 1.2 },
-  ]
+  ],
 };
 updateMarksRule(contractAddress, contractType, {
   additionalRules: JSON.stringify(tieredRules),
@@ -142,6 +139,7 @@ updateMarksRule(contractAddress, contractType, {
 For wallet balances (ha tokens, sail tokens), you need to:
 
 1. **Map token addresses** in `tokenBalances.ts`:
+
    ```typescript
    TOKEN_TYPE_MAP.set("0x...", "haToken");
    TOKEN_TYPE_MAP.set("0x...", "sailToken");
@@ -158,6 +156,4 @@ For wallet balances (ha tokens, sail tokens), you need to:
 3. **Document custom rules** - Use `additionalRules` JSON field for complex logic
 4. **Version your rules** - Consider adding a `version` field to `MarksRule`
 5. **Monitor rule changes** - Log when rules are updated for audit purposes
-
-
 

@@ -10,17 +10,15 @@ export function getOrCreateMarksRule(
   contractType: string
 ): MarksRule {
   // Try contract-specific rule first, then default rule
-  const ruleId = contractAddress
-    ? contractAddress
-    : `default-${contractType}`;
-  
+  const ruleId = contractAddress ? contractAddress : `default-${contractType}`;
+
   let rule = MarksRule.load(ruleId);
-  
+
   if (rule == null) {
     rule = new MarksRule(ruleId);
     rule.contractType = contractType;
     rule.contractAddress = contractAddress ? (contractAddress as string) : null;
-    
+
     // Set default rules based on contract type
     if (contractType == "genesis") {
       rule.marksPerDollarPerDay = BigDecimal.fromString("10");
@@ -60,7 +58,7 @@ export function getOrCreateMarksRule(
       rule.forfeitOnWithdrawal = true;
       rule.forfeitPercentage = BigDecimal.fromString("100");
     }
-    
+
     rule.bonusType = null;
     rule.periodStartDate = null;
     rule.periodEndDate = null;
@@ -71,7 +69,7 @@ export function getOrCreateMarksRule(
     rule.updatedAt = now;
     rule.save();
   }
-  
+
   return rule;
 }
 
@@ -105,15 +103,16 @@ export function calculateMarksWithRule(
   if (!rule.isActive) {
     return BigDecimal.fromString("0");
   }
-  
+
   const marksPerDay = amountUSD.times(rule.marksPerDollarPerDay);
-  
+
   if (rule.hasPeriod && rule.periodEndDate != null) {
     const periodEnd = rule.periodEndDate as BigInt;
-    const periodStart = rule.periodStartDate != null
-      ? (rule.periodStartDate as BigInt)
-      : depositTimestamp;
-    
+    const periodStart =
+      rule.periodStartDate != null
+        ? (rule.periodStartDate as BigInt)
+        : depositTimestamp;
+
     if (currentTimestamp >= periodEnd) {
       // Period has ended - calculate final marks
       const daysInPeriod = periodEnd
@@ -121,13 +120,13 @@ export function calculateMarksWithRule(
         .div(BigInt.fromI32(86400))
         .toBigDecimal();
       const accumulatedMarks = marksPerDay.times(daysInPeriod);
-      
+
       // Add bonus if applicable
       if (rule.bonusMultiplier != null) {
         const bonus = amountUSD.times(rule.bonusMultiplier as BigDecimal);
         return accumulatedMarks.plus(bonus);
       }
-      
+
       return accumulatedMarks;
     } else {
       // Period ongoing - calculate marks up to current time
@@ -158,15 +157,14 @@ export function calculateForfeitedMarksWithRule(
   if (!rule.forfeitOnWithdrawal) {
     return BigDecimal.fromString("0");
   }
-  
+
   if (rule.forfeitPercentage == null) {
     // 100% forfeit
     return marksEarned;
   }
-  
+
   // Partial forfeit
   return marksEarned.times(
     (rule.forfeitPercentage as BigDecimal).div(BigDecimal.fromString("100"))
   );
 }
-

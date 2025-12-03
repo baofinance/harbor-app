@@ -1,0 +1,94 @@
+/**
+ * ha Token balance tracking for Harbor Marks - MINIMAL VERSION FOR DEBUGGING
+ */
+
+import {
+  Transfer as TransferEvent,
+} from "../generated/HaToken_haPB/ERC20";
+import {
+  HaTokenBalance,
+} from "../generated/schema";
+import { BigDecimal, BigInt, Bytes, Address } from "@graphprotocol/graph-ts";
+
+// Minimal handler - just track transfers
+export function handleHaTokenTransfer(event: TransferEvent): void {
+  const tokenAddress = event.address;
+  const from = event.params.from;
+  const to = event.params.to;
+  const value = event.params.value;
+  
+  // Skip zero address transfers
+  const zeroAddress = Address.fromString("0x0000000000000000000000000000000000000000");
+  
+  // Update receiver balance (if not zero address)
+  if (!to.equals(zeroAddress)) {
+    const id = `${tokenAddress.toHexString()}-${to.toHexString()}`;
+    let balance = HaTokenBalance.load(id);
+    
+    if (balance == null) {
+      balance = new HaTokenBalance(id);
+      balance.tokenAddress = tokenAddress;
+      balance.user = to;
+      balance.balance = BigInt.fromI32(0);
+      balance.balanceUSD = BigDecimal.fromString("0");
+      balance.marksPerDay = BigDecimal.fromString("0");
+      balance.accumulatedMarks = BigDecimal.fromString("0");
+      balance.totalMarksEarned = BigDecimal.fromString("0");
+      balance.firstSeenAt = BigInt.fromI32(0);
+      balance.lastUpdated = BigInt.fromI32(0);
+      balance.marketId = null;
+    }
+    
+    // Simple balance update (no contract calls for now)
+    balance.balance = balance.balance.plus(value);
+    balance.save();
+  }
+}
+
+
+ * ha Token balance tracking for Harbor Marks - MINIMAL VERSION FOR DEBUGGING
+ */
+
+import {
+  Transfer as TransferEvent,
+} from "../generated/HaToken_haPB/ERC20";
+import {
+  HaTokenBalance,
+} from "../generated/schema";
+import { BigDecimal, BigInt, Bytes, Address } from "@graphprotocol/graph-ts";
+
+// Minimal handler - just track transfers
+export function handleHaTokenTransfer(event: TransferEvent): void {
+  const tokenAddress = event.address;
+  const from = event.params.from;
+  const to = event.params.to;
+  const value = event.params.value;
+  
+  // Skip zero address transfers
+  const zeroAddress = Address.fromString("0x0000000000000000000000000000000000000000");
+  
+  // Update receiver balance (if not zero address)
+  if (!to.equals(zeroAddress)) {
+    const id = `${tokenAddress.toHexString()}-${to.toHexString()}`;
+    let balance = HaTokenBalance.load(id);
+    
+    if (balance == null) {
+      balance = new HaTokenBalance(id);
+      balance.tokenAddress = tokenAddress;
+      balance.user = to;
+      balance.balance = BigInt.fromI32(0);
+      balance.balanceUSD = BigDecimal.fromString("0");
+      balance.marksPerDay = BigDecimal.fromString("0");
+      balance.accumulatedMarks = BigDecimal.fromString("0");
+      balance.totalMarksEarned = BigDecimal.fromString("0");
+      balance.firstSeenAt = BigInt.fromI32(0);
+      balance.lastUpdated = BigInt.fromI32(0);
+      balance.marketId = null;
+    }
+    
+    // Simple balance update (no contract calls for now)
+    balance.balance = balance.balance.plus(value);
+    balance.save();
+  }
+}
+

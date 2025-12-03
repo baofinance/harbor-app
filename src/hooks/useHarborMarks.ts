@@ -6,16 +6,14 @@ import { formatEther } from "viem";
 import { getGraphUrl } from "@/config/graph";
 
 // GraphQL query for Harbor Marks
+// Note: UserHarborMarks id format is {genesisAddress}-{userAddress}
+// userTotalMarks id format is {userAddress}
 const HARBOR_MARKS_QUERY = `
-  query GetUserHarborMarks($contractAddress: Bytes!, $userAddress: Bytes!) {
-    userHarborMarks(
-      where: {
-        contractAddress: $contractAddress
-        user: $userAddress
-      }
-      first: 1
-    ) {
+  query GetUserMarks($userAddress: Bytes!, $genesisAddress: Bytes!, $genesisId: ID!) {
+    # Genesis marks (from deposits during genesis period)
+    userHarborMarks(id: $genesisId) {
       id
+      user
       currentMarks
       marksPerDay
       totalMarksEarned
@@ -30,9 +28,23 @@ const HARBOR_MARKS_QUERY = `
       genesisEnded
       lastUpdated
     }
+    
+    # Aggregated marks across all sources (if available)
+    userTotalMarks(id: $userAddress) {
+      id
+      user
+      genesisMarks
+      haTokenMarks
+      stabilityPoolMarks
+      totalMarks
+      totalMarksPerDay
+      lastUpdated
+    }
+    
+    # Individual deposits (for detailed breakdown)
     deposits(
       where: {
-        contractAddress: $contractAddress
+        contractAddress: $genesisAddress
         user: $userAddress
         isActive: true
       }
@@ -42,13 +54,15 @@ const HARBOR_MARKS_QUERY = `
       id
       amount
       amountUSD
+      blockNumber
       timestamp
       marksPerDay
       isActive
     }
+    
     withdrawals(
       where: {
-        contractAddress: $contractAddress
+        contractAddress: $genesisAddress
         user: $userAddress
       }
       orderBy: timestamp
@@ -64,8 +78,9 @@ const HARBOR_MARKS_QUERY = `
 `;
 
 interface HarborMarksData {
-  userHarborMarks: Array<{
+  userHarborMarks: {
     id: string;
+    user: string;
     currentMarks: string;
     marksPerDay: string;
     totalMarksEarned: string;
@@ -79,11 +94,22 @@ interface HarborMarksData {
     genesisEndDate: string | null;
     genesisEnded: boolean;
     lastUpdated: string;
-  }>;
+  } | null;
+  userTotalMarks: {
+    id: string;
+    user: string;
+    genesisMarks: string;
+    haTokenMarks: string;
+    stabilityPoolMarks: string;
+    totalMarks: string;
+    totalMarksPerDay: string;
+    lastUpdated: string;
+  } | null;
   deposits: Array<{
     id: string;
     amount: string;
     amountUSD: string | null;
+    blockNumber: string;
     timestamp: string;
     marksPerDay: string;
     isActive: boolean;
@@ -117,6 +143,11 @@ export function useHarborMarks({
         throw new Error("Address and genesis address required");
       }
 
+      // Construct the genesisId: {genesisAddress}-{userAddress}
+      const genesisId = `${genesisAddress.toLowerCase()}-${address.toLowerCase()}`;
+      const userAddress = address.toLowerCase();
+      const genesisAddressLower = genesisAddress.toLowerCase();
+
       const response = await fetch(graphUrl, {
         method: "POST",
         headers: {
@@ -125,8 +156,9 @@ export function useHarborMarks({
         body: JSON.stringify({
           query: HARBOR_MARKS_QUERY,
           variables: {
-            contractAddress: genesisAddress.toLowerCase(),
-            userAddress: address.toLowerCase(),
+            userAddress: userAddress,
+            genesisAddress: genesisAddressLower,
+            genesisId: genesisId,
           },
         }),
       });
@@ -136,7 +168,7 @@ export function useHarborMarks({
       }
 
       const data = await response.json();
-      
+
       if (data.errors) {
         throw new Error(`GraphQL errors: ${JSON.stringify(data.errors)}`);
       }
@@ -163,23 +195,28 @@ export function useAllHarborMarks(genesisAddresses: string[]) {
 
       // Query all markets in parallel
       const queries = genesisAddresses.map((genesisAddress) => {
+        // UserHarborMarks id format is {genesisAddress}-{userAddress}
+        const genesisId = `${genesisAddress.toLowerCase()}-${address.toLowerCase()}`;
+        const userAddress = address.toLowerCase();
+        const genesisAddressLower = genesisAddress.toLowerCase();
         return fetch(graphUrl, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-            body: JSON.stringify({
-              query: HARBOR_MARKS_QUERY,
-              variables: {
-                contractAddress: genesisAddress.toLowerCase(),
-                userAddress: address.toLowerCase(),
-              },
-            }),
+          body: JSON.stringify({
+            query: HARBOR_MARKS_QUERY,
+            variables: {
+              userAddress: userAddress,
+              genesisAddress: genesisAddressLower,
+              genesisId: genesisId,
+            },
+          }),
         }).then((res) => res.json());
       });
 
       const results = await Promise.all(queries);
-      
+
       return results.map((result, index) => ({
         genesisAddress: genesisAddresses[index],
         data: result.data,
@@ -194,13 +231,34 @@ export function useAllHarborMarks(genesisAddresses: string[]) {
 
 // Helper function to format Harbor Marks data
 export function formatHarborMarks(data: HarborMarksData | null | undefined) {
-  if (!data?.userHarborMarks || data.userHarborMarks.length === 0) {
+  const userMarks = data?.userHarborMarks;
+  const totalMarks = data?.userTotalMarks;
+
+  // Use userTotalMarks if available (aggregates all sources), otherwise fall back to genesis marks
+  const totalMarksValue = totalMarks?.totalMarks
+    ? parseFloat(totalMarks.totalMarks)
+    : userMarks?.currentMarks
+    ? parseFloat(userMarks.currentMarks)
+    : 0;
+
+  const totalMarksPerDayValue = totalMarks?.totalMarksPerDay
+    ? parseFloat(totalMarks.totalMarksPerDay)
+    : userMarks?.marksPerDay
+    ? parseFloat(userMarks.marksPerDay)
+    : 0;
+
+  if (!userMarks && !totalMarks) {
     return {
+      totalMarks: 0,
       currentMarks: 0,
       marksPerDay: 0,
+      totalMarksPerDay: 0,
       totalMarksEarned: 0,
       totalMarksForfeited: 0,
       bonusMarks: 0,
+      genesisMarks: 0,
+      haTokenMarks: 0,
+      stabilityPoolMarks: 0,
       currentDeposit: "0",
       currentDepositUSD: 0,
       totalDeposited: "0",
@@ -211,20 +269,41 @@ export function formatHarborMarks(data: HarborMarksData | null | undefined) {
     };
   }
 
-  const marks = data.userHarborMarks[0];
-
   return {
-    currentMarks: parseFloat(marks.currentMarks),
-    marksPerDay: parseFloat(marks.marksPerDay),
-    totalMarksEarned: parseFloat(marks.totalMarksEarned),
-    totalMarksForfeited: parseFloat(marks.totalMarksForfeited),
-    bonusMarks: parseFloat(marks.bonusMarks),
-    currentDeposit: formatEther(BigInt(marks.currentDeposit)),
-    currentDepositUSD: parseFloat(marks.currentDepositUSD),
-    totalDeposited: formatEther(BigInt(marks.totalDeposited)),
-    totalDepositedUSD: parseFloat(marks.totalDepositedUSD),
-    genesisEnded: marks.genesisEnded,
-    deposits: data.deposits.map((d) => ({
+    // Total marks across all sources (preferred)
+    totalMarks: totalMarksValue,
+    // Genesis-specific marks
+    currentMarks: userMarks ? parseFloat(userMarks.currentMarks) : 0,
+    marksPerDay: userMarks ? parseFloat(userMarks.marksPerDay) : 0,
+    // Total marks per day across all sources
+    totalMarksPerDay: totalMarksPerDayValue,
+    // Breakdown by source
+    genesisMarks: totalMarks
+      ? parseFloat(totalMarks.genesisMarks)
+      : userMarks
+      ? parseFloat(userMarks.currentMarks)
+      : 0,
+    haTokenMarks: totalMarks ? parseFloat(totalMarks.haTokenMarks) : 0,
+    stabilityPoolMarks: totalMarks
+      ? parseFloat(totalMarks.stabilityPoolMarks)
+      : 0,
+    // Historical data
+    totalMarksEarned: userMarks ? parseFloat(userMarks.totalMarksEarned) : 0,
+    totalMarksForfeited: userMarks
+      ? parseFloat(userMarks.totalMarksForfeited)
+      : 0,
+    bonusMarks: userMarks ? parseFloat(userMarks.bonusMarks) : 0,
+    // Deposit information
+    currentDeposit: userMarks
+      ? formatEther(BigInt(userMarks.currentDeposit))
+      : "0",
+    currentDepositUSD: userMarks ? parseFloat(userMarks.currentDepositUSD) : 0,
+    totalDeposited: userMarks
+      ? formatEther(BigInt(userMarks.totalDeposited))
+      : "0",
+    totalDepositedUSD: userMarks ? parseFloat(userMarks.totalDepositedUSD) : 0,
+    genesisEnded: userMarks ? userMarks.genesisEnded : false,
+    deposits: (data?.deposits || []).map((d) => ({
       id: d.id,
       amount: formatEther(BigInt(d.amount)),
       amountUSD: d.amountUSD ? parseFloat(d.amountUSD) : null,
@@ -232,7 +311,7 @@ export function formatHarborMarks(data: HarborMarksData | null | undefined) {
       marksPerDay: parseFloat(d.marksPerDay),
       isActive: d.isActive,
     })),
-    withdrawals: data.withdrawals.map((w) => ({
+    withdrawals: (data?.withdrawals || []).map((w) => ({
       id: w.id,
       amount: formatEther(BigInt(w.amount)),
       amountUSD: w.amountUSD ? parseFloat(w.amountUSD) : null,
@@ -241,4 +320,3 @@ export function formatHarborMarks(data: HarborMarksData | null | undefined) {
     })),
   };
 }
-

@@ -8,9 +8,11 @@ import {
   useWriteContract,
   usePublicClient,
 } from "wagmi";
-import { anvil } from "wagmi/chains";
 import { BaseError, ContractFunctionRevertedError } from "viem";
 import { GENESIS_ABI, ERC20_ABI } from "../config/contracts";
+import { anvil, anvilPublicClient } from "@/config/anvil";
+import { useAnvilContractRead } from "@/hooks/useAnvilContractRead";
+import { shouldUseAnvil } from "@/config/environment";
 
 interface GenesisDepositModalProps {
   isOpen: boolean;
@@ -39,13 +41,17 @@ export const GenesisDepositModal = ({
   onSuccess,
 }: GenesisDepositModalProps) => {
   const { address } = useAccount();
+  const wagmiPublicClient = usePublicClient();
+  // Use Anvil public client as fallback in development if wagmi client is not available
+  const publicClient =
+    shouldUseAnvil() && !wagmiPublicClient
+      ? anvilPublicClient
+      : wagmiPublicClient;
   const [amount, setAmount] = useState("");
   const [selectedAsset, setSelectedAsset] = useState<string>(collateralSymbol);
   const [step, setStep] = useState<ModalStep>("input");
   const [error, setError] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
-
-  const publicClient = usePublicClient();
 
   // Map selected asset to its token address
   const getAssetAddress = (assetSymbol: string): string => {
@@ -53,7 +59,10 @@ export const GenesisDepositModal = ({
     if (normalized === collateralSymbol.toLowerCase()) {
       // Collateral token (wstETH)
       return collateralAddress;
-    } else if (normalized === "steth" && marketAddresses?.wrappedCollateralToken) {
+    } else if (
+      normalized === "steth" &&
+      marketAddresses?.wrappedCollateralToken
+    ) {
       // stETH (wrappedCollateralToken in config)
       return marketAddresses.wrappedCollateralToken;
     } else if (normalized === "eth") {
@@ -68,8 +77,8 @@ export const GenesisDepositModal = ({
   const isNativeETH = selectedAsset.toLowerCase() === "eth";
 
   // Debug logging
-  if (process.env.NODE_ENV === 'development') {
-    console.log('[GenesisDepositModal] Balance Debug:', {
+  if (process.env.NODE_ENV === "development") {
+    console.log("[GenesisDepositModal] Balance Debug:", {
       selectedAsset,
       selectedAssetAddress,
       collateralAddress,
@@ -82,53 +91,66 @@ export const GenesisDepositModal = ({
   }
 
   // Contract read hooks - only for ERC20 tokens (not native ETH)
-  const { data: balanceData, error: balanceError, status: balanceStatus } = useContractRead({
+  // Use custom Anvil hook to bypass wagmi chain detection
+  const {
+    data: balanceData,
+    error: balanceError,
+    status: balanceStatus,
+  } = useAnvilContractRead({
     address: selectedAssetAddress as `0x${string}`,
     abi: ERC20_ABI,
     functionName: "balanceOf",
     args: address ? [address] : undefined,
-    query: { 
-      enabled: !!address && isOpen && !isNativeETH && !!selectedAssetAddress && selectedAssetAddress !== "0x0000000000000000000000000000000000000000",
-      refetchInterval: 5000,
-    },
+    enabled:
+      !!address &&
+      isOpen &&
+      !isNativeETH &&
+      !!selectedAssetAddress &&
+      selectedAssetAddress !== "0x0000000000000000000000000000000000000000",
+    refetchInterval: 5000,
   });
 
   // Debug balance result
-  if (process.env.NODE_ENV === 'development') {
-    console.log('[GenesisDepositModal] Balance Result:', {
+  if (process.env.NODE_ENV === "development") {
+    console.log("[GenesisDepositModal] Balance Result:", {
       balanceData,
       balanceError,
       balanceStatus,
-      formattedBalance: balanceData ? formatEther(balanceData) : 'N/A',
+      formattedBalance: balanceData ? formatEther(balanceData) : "N/A",
     });
   }
 
-  const { data: allowanceData, refetch: refetchAllowance } = useContractRead({
-    address: selectedAssetAddress as `0x${string}`,
-    abi: ERC20_ABI,
-    functionName: "allowance",
-    args: address ? [address, genesisAddress as `0x${string}`] : undefined,
-    query: { enabled: !!address && isOpen && !isNativeETH, refetchInterval: 5000 },
-  });
+  const { data: allowanceData, refetch: refetchAllowance } =
+    useAnvilContractRead({
+      address: selectedAssetAddress as `0x${string}`,
+      abi: ERC20_ABI,
+      functionName: "allowance",
+      args: address ? [address, genesisAddress as `0x${string}`] : undefined,
+      enabled:
+        !!address &&
+        isOpen &&
+        !isNativeETH &&
+        !!selectedAssetAddress &&
+        selectedAssetAddress !== "0x0000000000000000000000000000000000000000",
+      refetchInterval: 5000,
+    });
 
   // Check if genesis has ended
-  const { data: genesisEnded } = useContractRead({
+  const { data: genesisEnded } = useAnvilContractRead({
     address: genesisAddress as `0x${string}`,
     abi: GENESIS_ABI,
     functionName: "genesisIsEnded",
-    query: { enabled: !!genesisAddress && isOpen },
+    enabled: !!genesisAddress && isOpen,
   });
 
   // Get current user deposit in Genesis
-  const { data: currentDeposit } = useContractRead({
+  const { data: currentDeposit } = useAnvilContractRead({
     address: genesisAddress as `0x${string}`,
     abi: GENESIS_ABI,
     functionName: "balanceOf",
     args: address ? [address] : undefined,
-    query: {
-      enabled: !!address && !!genesisAddress && isOpen,
-      refetchInterval: 5000,
-    },
+    enabled: !!address && !!genesisAddress && isOpen,
+    refetchInterval: 5000,
   });
 
   // Contract write hooks
@@ -136,13 +158,16 @@ export const GenesisDepositModal = ({
 
   // For native ETH, we'd need to get balance differently (useBalance hook)
   // For now, we'll use the ERC20 balance for wstETH/stETH
-  const balance = isNativeETH ? 0n : (balanceData || 0n);
-  const allowance = isNativeETH ? 0n : (allowanceData || 0n);
+  // If there's an error or no data, default to 0
+  const balance = isNativeETH ? 0n : balanceError ? 0n : balanceData || 0n;
+  const allowance = isNativeETH ? 0n : allowanceData || 0n;
   const amountBigInt = amount ? parseEther(amount) : 0n;
-  const needsApproval = !isNativeETH && amountBigInt > 0 && amountBigInt > allowance;
+  const needsApproval =
+    !isNativeETH && amountBigInt > 0 && amountBigInt > allowance;
   const userCurrentDeposit = currentDeposit || 0n;
   const newTotalDeposit = userCurrentDeposit + amountBigInt;
-  const isNonCollateralAsset = selectedAsset.toLowerCase() !== collateralSymbol.toLowerCase();
+  const isNonCollateralAsset =
+    selectedAsset.toLowerCase() !== collateralSymbol.toLowerCase();
 
   const handleClose = () => {
     if (step === "approving" || step === "depositing") return; // Prevent closing during transactions
@@ -213,7 +238,7 @@ export const GenesisDepositModal = ({
       setStep("depositing");
       setError(null);
       setTxHash(null);
-      
+
       // For native ETH, the contract should handle it via msg.value
       // For ERC20 tokens, we use the standard deposit function
       const depositHash = await writeContractAsync({
@@ -384,7 +409,9 @@ export const GenesisDepositModal = ({
               value={selectedAsset}
               onChange={(e) => setSelectedAsset(e.target.value)}
               className="w-full h-12 px-4 bg-white text-[#1E4775] border border-[#1E4775]/30 focus:border-[#1E4775] focus:ring-2 focus:ring-[#1E4775]/20 focus:outline-none transition-all text-lg font-mono"
-              disabled={step === "approving" || step === "depositing" || genesisEnded}
+              disabled={
+                step === "approving" || step === "depositing" || genesisEnded
+              }
             >
               {acceptedAssets.map((asset) => (
                 <option key={asset.symbol} value={asset.symbol}>
@@ -394,7 +421,8 @@ export const GenesisDepositModal = ({
             </select>
             {isNonCollateralAsset && (
               <div className="p-3 bg-[#B8EBD5]/20 border border-[#B8EBD5]/30 text-[#1E4775] text-sm">
-                ℹ️ Your deposit will be converted to {collateralSymbol} on deposit. Withdrawals will be in {collateralSymbol} only.
+                ℹ️ Your deposit will be converted to {collateralSymbol} on
+                deposit. Withdrawals will be in {collateralSymbol} only.
               </div>
             )}
           </div>
@@ -405,15 +433,17 @@ export const GenesisDepositModal = ({
             <div className="flex justify-between items-center text-xs">
               <span className="text-[#1E4775]/70">Amount</span>
               <span className="text-[#1E4775]/70">
-                Balance: {balanceError ? (
+                Balance:{" "}
+                {balanceError ? (
                   <span className="text-red-500" title={balanceError.message}>
                     Error loading balance
                   </span>
-                ) : balanceStatus === 'pending' ? (
+                ) : balanceStatus === "pending" ? (
                   <span className="text-[#1E4775]/50">Loading...</span>
                 ) : (
                   formatEther(balance)
-                )} {selectedAsset}
+                )}{" "}
+                {selectedAsset}
               </span>
             </div>
             <div className="relative">
@@ -499,7 +529,9 @@ export const GenesisDepositModal = ({
                 />
                 <span
                   className={
-                    step === "approving" ? "text-[#1E4775]" : "text-[#1E4775]/70"
+                    step === "approving"
+                      ? "text-[#1E4775]"
+                      : "text-[#1E4775]/70"
                   }
                 >
                   Step 1: Approve {collateralSymbol}
@@ -517,7 +549,9 @@ export const GenesisDepositModal = ({
                 />
                 <span
                   className={
-                    step === "depositing" ? "text-[#1E4775]" : "text-[#1E4775]/70"
+                    step === "depositing"
+                      ? "text-[#1E4775]"
+                      : "text-[#1E4775]/70"
                   }
                 >
                   Step 2: Deposit to Genesis

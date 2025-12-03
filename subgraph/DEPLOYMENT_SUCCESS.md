@@ -22,12 +22,14 @@ NEXT_PUBLIC_GRAPH_URL=https://api.studio.thegraph.com/query/1715934/ledger-marks
 The subgraph will start syncing from block 0 on Sepolia. You can monitor progress in The Graph Studio.
 
 **Note**: Since your contract is on local Anvil (not Sepolia), the subgraph won't find any events until you:
+
 - Deploy your contract to Sepolia (or another supported network), OR
 - Update the network in `subgraph.yaml` to match where your contract is deployed
 
 ### 3. Update Network (When Ready)
 
 When you deploy to production, update `subgraph.yaml`:
+
 - Change `network: sepolia` to your production network (mainnet, base, arbitrum-one, etc.)
 - Update `startBlock` to the actual deployment block
 - Update contract address if different
@@ -38,11 +40,11 @@ When you deploy to production, update `subgraph.yaml`:
 Once synced, test in your app:
 
 ```typescript
-import { useHarborMarks } from '@/hooks/useHarborMarks';
+import { useHarborMarks } from "@/hooks/useHarborMarks";
 
-const { data, isLoading, error } = useHarborMarks({ 
+const { data, isLoading, error } = useHarborMarks({
   genesisAddress: "0xDeF8a62f50BA3B9f319B473c48928595A333acba",
-  enabled: true 
+  enabled: true,
 });
 ```
 
@@ -67,6 +69,7 @@ const { data, isLoading, error } = useHarborMarks({
 ## GraphQL Query Examples
 
 ### Get User Marks
+
 ```graphql
 {
   userHarborMarks(id: "0x...-0x...") {
@@ -81,13 +84,10 @@ const { data, isLoading, error } = useHarborMarks({
 ```
 
 ### Get All Deposits
+
 ```graphql
 {
-  deposits(
-    where: { user: "0x..." }
-    orderBy: timestamp
-    orderDirection: desc
-  ) {
+  deposits(where: { user: "0x..." }, orderBy: timestamp, orderDirection: desc) {
     amount
     amountUSD
     marksPerDay
@@ -102,9 +102,8 @@ const { data, isLoading, error } = useHarborMarks({
 Check sync status at: https://thegraph.com/studio/subgraph/ledger-marks
 
 The subgraph will show:
+
 - Current block
 - Synced blocks
 - Status (Syncing, Pending, Failed, etc.)
-
-
 

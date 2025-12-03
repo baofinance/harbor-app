@@ -7,12 +7,14 @@ The minimal version is now compiling successfully! Here's what we have:
 ### What's Working
 
 1. **Schema** - Simplified schema tracking:
+
    - Deposits
-   - Withdrawals  
+   - Withdrawals
    - Genesis End events
    - User Harbor Marks (per user per contract)
 
 2. **Event Handlers**:
+
    - `handleDeposit` - Tracks deposits and calculates marks per day
    - `handleWithdraw` - Tracks withdrawals
    - `handleGenesisEnd` - Tracks when genesis ends
@@ -49,6 +51,7 @@ The minimal version is now compiling successfully! Here's what we have:
 ### Step 2: Add Time-Based Marks Calculation
 
 Once deployed and working, we can add:
+
 - Calculate marks based on days since deposit
 - Track genesis start/end dates
 - Calculate bonus marks on genesis end
@@ -56,6 +59,7 @@ Once deployed and working, we can add:
 ### Step 3: Add Flexible Rules
 
 After time-based calculation works:
+
 - Add the `MarksRule` entity back
 - Support different rates per contract type
 - Add configuration system
@@ -69,6 +73,7 @@ After time-based calculation works:
 ## Testing
 
 Once deployed, test with:
+
 1. Make a deposit to your Genesis contract
 2. Wait for subgraph to sync
 3. Query marks using the GraphQL endpoint
@@ -78,9 +83,7 @@ Once deployed, test with:
 
 ```graphql
 {
-  userHarborMarks(
-    id: "0x...-0x..."
-  ) {
+  userHarborMarks(id: "0x...-0x...") {
     currentMarks
     marksPerDay
     totalDepositedUSD
@@ -98,6 +101,4 @@ Once deployed, test with:
 - ✅ Builds successfully!
 
 Ready to deploy! 🚀
-
-
 

@@ -10,14 +10,25 @@ interface PoolPosition {
   rewardsUSD: number;
   deposit: bigint;
   depositUSD: number;
+  rewardTokens: Array<{
+    symbol: string;
+    claimable: bigint;
+    claimableFormatted: string;
+  }>;
 }
 
 interface AnchorClaimAllModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onBasicClaim: (selectedPools: Array<{ marketId: string; poolType: "collateral" | "sail" }>) => void;
-  onCompound: (selectedPools: Array<{ marketId: string; poolType: "collateral" | "sail" }>) => void;
-  onBuyTide: (selectedPools: Array<{ marketId: string; poolType: "collateral" | "sail" }>) => void;
+  onBasicClaim: (
+    selectedPools: Array<{ marketId: string; poolType: "collateral" | "sail" }>
+  ) => void;
+  onCompound: (
+    selectedPools: Array<{ marketId: string; poolType: "collateral" | "sail" }>
+  ) => void;
+  onBuyTide: (
+    selectedPools: Array<{ marketId: string; poolType: "collateral" | "sail" }>
+  ) => void;
   positions?: PoolPosition[];
   isLoading?: boolean;
 }
@@ -37,7 +48,7 @@ export const AnchorClaimAllModal = ({
   React.useEffect(() => {
     if (isOpen && positions.length > 0) {
       const allPoolKeys = new Set(
-        positions.map(p => `${p.marketId}-${p.poolType}`)
+        positions.map((p) => `${p.marketId}-${p.poolType}`)
       );
       setSelectedPools(allPoolKeys);
     }
@@ -45,7 +56,7 @@ export const AnchorClaimAllModal = ({
 
   const togglePool = (marketId: string, poolType: "collateral" | "sail") => {
     const key = `${marketId}-${poolType}`;
-    setSelectedPools(prev => {
+    setSelectedPools((prev) => {
       const next = new Set(prev);
       if (next.has(key)) {
         next.delete(key);
@@ -57,8 +68,11 @@ export const AnchorClaimAllModal = ({
   };
 
   const selectedPoolsArray = useMemo(() => {
-    return Array.from(selectedPools).map(key => {
-      const [marketId, poolType] = key.split("-");
+    return Array.from(selectedPools).map((key) => {
+      // Split from the end to handle marketIds that contain hyphens (e.g., "pb-steth")
+      const lastDashIndex = key.lastIndexOf("-");
+      const marketId = key.substring(0, lastDashIndex);
+      const poolType = key.substring(lastDashIndex + 1);
       return {
         marketId,
         poolType: poolType as "collateral" | "sail",
@@ -68,7 +82,7 @@ export const AnchorClaimAllModal = ({
 
   const totalSelectedRewardsUSD = useMemo(() => {
     return positions
-      .filter(p => selectedPools.has(`${p.marketId}-${p.poolType}`))
+      .filter((p) => selectedPools.has(`${p.marketId}-${p.poolType}`))
       .reduce((sum, p) => sum + p.rewardsUSD, 0);
   }, [positions, selectedPools]);
 
@@ -113,14 +127,17 @@ export const AnchorClaimAllModal = ({
                 Select Pools to Claim
               </h3>
               {positions.length === 0 ? (
-                <p className="text-sm text-[#1E4775]/70">No positions with rewards available.</p>
+                <p className="text-sm text-[#1E4775]/70">
+                  No positions with rewards available.
+                </p>
               ) : (
                 <div className="space-y-2">
                   {positions.map((position) => {
                     const key = `${position.marketId}-${position.poolType}`;
                     const isSelected = selectedPools.has(key);
-                    const marketSymbol = position.market?.peggedToken?.symbol || position.marketId;
-                    
+                    const marketSymbol =
+                      position.market?.peggedToken?.symbol || position.marketId;
+
                     return (
                       <label
                         key={key}
@@ -129,23 +146,42 @@ export const AnchorClaimAllModal = ({
                         <input
                           type="checkbox"
                           checked={isSelected}
-                          onChange={() => togglePool(position.marketId, position.poolType)}
+                          onChange={() =>
+                            togglePool(position.marketId, position.poolType)
+                          }
                           className="w-4 h-4 text-[#1E4775] border-[#1E4775]/30 rounded focus:ring-[#1E4775]"
                           disabled={isLoading}
                         />
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
+                          <div className="flex items-center justify-between gap-2 mb-1">
                             <span className="text-sm font-semibold text-[#1E4775]">
-                              {marketSymbol}
+                              {marketSymbol} {position.poolType} pool
                             </span>
-                            <span className="bg-[#FF8A7A] text-[#1E4775] text-[10px] px-2 py-0.5 rounded-full">
-                              {position.poolType}
+                            <span className="text-sm font-semibold text-[#1E4775]">
+                              ${position.rewardsUSD.toFixed(2)}
                             </span>
                           </div>
                           <div className="text-xs text-[#1E4775]/70">
-                            <div>Rewards: ${position.rewardsUSD.toFixed(2)}</div>
+                            {position.rewardTokens && position.rewardTokens.length > 0 ? (
+                              position.rewardTokens.map((token, idx) => {
+                                const amount = parseFloat(token.claimableFormatted);
+                                return (
+                                  <div key={idx}>
+                                    {amount.toLocaleString(undefined, {
+                                      maximumFractionDigits: amount >= 1 ? 2 : 6,
+                                      minimumFractionDigits: 0,
+                                    })}{" "}
+                                    {token.symbol}
+                                  </div>
+                                );
+                              })
+                            ) : (
+                              <div>No rewards available</div>
+                            )}
                             {position.depositUSD > 0 && (
-                              <div>Position: ${position.depositUSD.toFixed(2)}</div>
+                              <div className="mt-1">
+                                Position: ${position.depositUSD.toFixed(2)}
+                              </div>
                             )}
                           </div>
                         </div>
@@ -164,7 +200,9 @@ export const AnchorClaimAllModal = ({
                 Choose how you would like to handle your rewards:
               </p>
               <div className="bg-[#1E4775]/5 p-3 rounded-lg">
-                <div className="text-xs text-[#1E4775]/70 mb-1">Total Selected Rewards</div>
+                <div className="text-xs text-[#1E4775]/70 mb-1">
+                  Total Selected Rewards
+                </div>
                 <div className="text-lg font-bold text-[#1E4775] font-mono">
                   ${totalSelectedRewardsUSD.toFixed(2)}
                 </div>
@@ -176,6 +214,7 @@ export const AnchorClaimAllModal = ({
               <button
                 onClick={() => {
                   onBasicClaim(selectedPoolsArray);
+                  // Close this modal - the progress modal will open
                   onClose();
                 }}
                 disabled={isLoading || selectedPoolsArray.length === 0}
@@ -217,9 +256,7 @@ export const AnchorClaimAllModal = ({
               >
                 <div className="flex items-center gap-3">
                   <div>
-                    <div className="font-semibold text-[#1E4775]">
-                      Compound
-                    </div>
+                    <div className="font-semibold text-[#1E4775]">Compound</div>
                     <p className="text-xs text-[#1E4775]/70 mt-1">
                       Automatically reinvest rewards for compound growth
                     </p>
@@ -280,5 +317,3 @@ export const AnchorClaimAllModal = ({
     </div>
   );
 };
-
-

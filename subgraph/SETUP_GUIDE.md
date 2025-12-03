@@ -16,6 +16,7 @@ npm install -g @graphprotocol/graph-cli
 ```
 
 Verify installation:
+
 ```bash
 graph --version
 ```
@@ -49,11 +50,13 @@ cp path/to/Genesis.json subgraph/abis/Genesis.json
 ```
 
 Or if you need to fetch it from Etherscan/your deployment:
+
 - Go to your contract on Etherscan
 - Copy the ABI JSON
 - Save it to `subgraph/abis/Genesis.json`
 
 **Important**: The ABI must include these events:
+
 - `Deposit(address indexed caller, address indexed receiver, uint256 collateralIn)`
 - `Withdraw(address indexed caller, address indexed receiver, uint256 amount)`
 - `GenesisEnds()`
@@ -68,14 +71,15 @@ Edit `subgraph/subgraph.yaml`:
 dataSources:
   - kind: ethereum
     name: Genesis
-    network: anvil  # Change to: mainnet, sepolia, etc. for production
+    network: anvil # Change to: mainnet, sepolia, etc. for production
     source:
-      address: "0xDeF8a62f50BA3B9f319B473c48928595A333acba"  # Your Genesis contract address
+      address: "0xDeF8a62f50BA3B9f319B473c48928595A333acba" # Your Genesis contract address
       abi: Genesis
-      startBlock: 0  # Change to the block where Genesis was deployed
+      startBlock: 0 # Change to the block where Genesis was deployed
 ```
 
 **For production**, change:
+
 - `network: mainnet` (or your chain)
 - `startBlock: <deployment-block-number>`
 
@@ -91,11 +95,13 @@ npm run codegen
 ```
 
 This will:
+
 - Read your schema
 - Generate TypeScript types
 - Create the `generated/` folder
 
 **If you get errors**, check:
+
 - Your ABI file exists and is valid JSON
 - The event signatures match your contract
 
@@ -132,6 +138,7 @@ npm run deploy
 ```
 
 This will:
+
 - Upload your subgraph to IPFS
 - Deploy to The Graph Studio
 - Start syncing with your blockchain
@@ -146,6 +153,7 @@ This will:
 ## Step 11: Get Your GraphQL Endpoint
 
 Once synced, you'll see a GraphQL endpoint like:
+
 ```
 https://api.studio.thegraph.com/query/<subgraph-id>/harbor-marks/<version>
 ```
@@ -171,14 +179,14 @@ import { useHarborMarks } from '@/hooks/useHarborMarks';
 
 function TestComponent() {
   const genesisAddress = "0xDeF8a62f50BA3B9f319B473c48928595A333acba";
-  const { data, isLoading, error } = useHarborMarks({ 
+  const { data, isLoading, error } = useHarborMarks({
     genesisAddress,
-    enabled: true 
+    enabled: true
   });
-  
+
   if (isLoading) return <div>Loading...</div>;
   if (error) return <div>Error: {error.message}</div>;
-  
+
   return <div>Marks: {data?.userHarborMarks?.currentMarks}</div>;
 }
 ```
@@ -193,22 +201,26 @@ function TestComponent() {
 ## Troubleshooting
 
 ### "Failed to fetch" errors
+
 - Check your `NEXT_PUBLIC_GRAPH_URL` is correct
 - Verify the subgraph is synced in The Graph Studio
 - Check browser console for CORS errors
 
 ### Subgraph not syncing
+
 - Verify the contract address is correct
 - Check the start block is before any events
 - Verify the network matches (anvil vs mainnet)
 - Check The Graph Studio logs for errors
 
 ### Type errors in codegen
+
 - Ensure ABI file is valid JSON
 - Check event signatures match exactly
 - Try deleting `generated/` folder and running `codegen` again
 
 ### Marks not calculating correctly
+
 - Check `marksRules.ts` has correct default rates
 - Verify USD price calculation (currently simplified)
 - Check event handlers are firing correctly
@@ -227,16 +239,19 @@ Once basic setup is working:
 If you want to test locally before deploying:
 
 1. Start local Graph node:
+
 ```bash
 docker-compose up
 ```
 
 2. Create local subgraph:
+
 ```bash
 npm run create-local
 ```
 
 3. Deploy locally:
+
 ```bash
 npm run deploy-local
 ```
@@ -252,6 +267,4 @@ When ready for production:
 3. Update contract addresses
 4. Redeploy to The Graph Studio
 5. Update `NEXT_PUBLIC_GRAPH_URL` in production environment
-
-
 

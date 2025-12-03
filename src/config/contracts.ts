@@ -1,42 +1,31 @@
 // Contract addresses for local Anvil deployment
 // Chain ID: 31337, RPC URL: http://localhost:8545
+// Clean Chain Deployment
 export const contracts = {
-  minter: "0x4A679253410272dd5232B3Ff7cF5dbB88f295319",
-  peggedToken: "0x4ed7c70F96B99c776995fB64377f0d4aB3B0e1C1",
-  leveragedToken: "0x322813Fd9A801c5507c9de605d63CEA4f2CE6c44",
-  genesis: "0x67d269191c92Caf3cD7723F116c85e6E9bf55933",
-  reservePool: "0x7a2088a1bFc9d81c55368AE168C2C02570cB814F",
-  stabilityPoolManager: "0xc5a5C42992dECbae36851359345FE25997F5C42d",
-  feeReceiver: "0x09635F643e140090A9A8Dcd712eD6285858ceBef",
-  priceOracle: "0xa82fF9aFd8f496c3d6ac40E2a0F282E47488CFc9",
-  collateralToken: "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9",
-  wrappedCollateralToken: "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707",
-  // Note: steam, veSteam, gaugeController, steamMinter are not deployed in this setup
-  // steam: "0x...",
-  // veSteam: "0x...",
-  // gaugeController: "0x...",
-  // steamMinter: "0x...",
+  minter: "0x7a9ec1d04904907de0ed7b6839ccdd59c3716ac9",
+  peggedToken: "0x1c85638e118b37167e9298c2268758e058DdfDA0", // haPB (Harbor Anchored PB)
+  leveragedToken: "0x367761085BF3C12e5DA2Df99AC6E1a824612b8fb", // hsPB (Harbor Sail)
+  genesis: "0xA4899D35897033b927acFCf422bc745916139776",
+  reservePool: "0x0000000000000000000000000000000000000000", // Not provided in this deployment
+  stabilityPoolManager: "0xb9bEECD1A582768711dE1EE7B0A1d582D9d72a6C",
+  feeReceiver: "0x0000000000000000000000000000000000000000", // Not provided in this deployment
+  priceOracle: "0x8A791620dd6260079BF849Dc5567aDC3F2FdC318", // wstETH/USD price feed
+  collateralToken: "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707", // stETH
+  wrappedCollateralToken: "0x0165878A594ca255338adfa4d48449f69242Eb8F", // wstETH
 } as const;
 
 // Legacy CONTRACTS constant for backward compatibility
 export const CONTRACTS = {
-  MINTER: "0xE41bBcf8ec773B477735b0b0D8bF6E7Ca6BDe9Ee",
-  PEGGED_TOKEN: "0x6c7Df3575f1d69eb3B245A082937794794C2b82E",
-  LEVERAGED_TOKEN: "0x74ef79CFC735A10436eF9D4808547df0Ce38f788",
-  GENESIS: "0x49c58c6BE0680Eb756595c0F59ab3E0b6e1624cd",
-  STABILITY_POOL_MANAGER: "0xeC67cF0755c0A5aaD6C4A4235fDfA35c1EFEA6A9",
-  STABILITY_POOL_COLLATERAL: "0x5ea494676ecE7e46837038eDab78B7C3557A3977",
-  STABILITY_POOL_PEGGED: "0x0659A97068958Ebaba97121A6D7a2a95924824Ea",
-  STABILITY_POOL_COLLATERAL_STAKE: "0xe828215EB5A61a5cB62fB980288B835689af4091",
-  STABILITY_POOL_STEAMED_STAKE: "0xd3873FDF150b3fFFb447d3701DFD234DF452f367",
-  PRICE_ORACLE: "0x2C834EFcDd2E9D04C1a34367BA9D8aa587F90fBe",
-  TOKEN_DISTRIBUTOR: "0x819F9213cE51Adac4C1c2EF7D4Cba563727C1206",
-  RESERVE_POOL: "0x289BD64Deb826c134dA670f8B759FB4CA018dF4B",
-  CONFIG: "0x3A5fBC501c5D515383fADFf5ebD92C393f5eFee9",
-  GAUGE_CONTROLLER: "0x3860B063928436F548c3A58A40c4d1d171E78838",
-  STEAM_MINTER: "0x14835B093D320AA5c9806BBC64C17F0F2546D9EE",
-  WSTETH: "0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0",
-  STETH: "0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84",
+  MINTER: "0x7a9ec1d04904907de0ed7b6839ccdd59c3716ac9",
+  PEGGED_TOKEN: "0x1c85638e118b37167e9298c2268758e058DdfDA0",
+  LEVERAGED_TOKEN: "0x367761085BF3C12e5DA2Df99AC6E1a824612b8fb",
+  GENESIS: "0xA4899D35897033b927acFCf422bc745916139776",
+  STABILITY_POOL_MANAGER: "0xb9bEECD1A582768711dE1EE7B0A1d582D9d72a6C",
+  STABILITY_POOL_COLLATERAL: "0x3aAde2dCD2Df6a8cAc689EE797591b2913658659",
+  STABILITY_POOL_PEGGED: "0x525C7063E7C20997BaaE9bDa922159152D0e8417",
+  PRICE_ORACLE: "0x8A791620dd6260079BF849Dc5567aDC3F2FdC318",
+  WSTETH: "0x0165878A594ca255338adfa4d48449f69242Eb8F",
+  STETH: "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707",
   CHAIN_ID: 31337,
   RPC_URL: "http://127.0.0.1:8545",
 } as const;
@@ -86,134 +75,9 @@ export type Markets = {
 
 // ============================================================================
 // Market Configurations
-// When adding new markets, add them to this object following the same structure
-// Make sure to:
-// 1. Use a descriptive key that reflects the market pair (e.g. "steth-usd")
-// 2. Include all required contract addresses
-// 3. Set appropriate genesis parameters
-// 4. Update any dependent configurations
 // ============================================================================
 
-export const markets: Markets = {
-  zheeth: {
-    id: "zheeth",
-    name: "zheETH",
-    description: "zheETH",
-    addresses: {
-      collateralToken: "0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0",
-      underlyingCollateralToken: "0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84",
-      feeReceiver: "0x72f78328bf23b9A44d3Cc41189e5fd874BF01cBC",
-      genesis: "0x576C5cF0774990CEf78f15B9D7d9946E44e8fDa3",
-      leveragedToken: "0x6dD1d5459CfF7eD8Bd60FdD08fb461A5A849469B",
-      minter: "0x3FD3d725e7Ab6C1E12a916410437f47b002560d2",
-      owner: "0xFC69e0a5823E2AfCBEb8a35d33588360F1496a00",
-      peggedToken: "0x84F36aeF81aBf1E34bcA9e470fE15e12697CB7Fd",
-      priceOracle: "0x3F6514E6bBFFeE6cEDE3d07850F84cDde3D1F825",
-      stabilityPoolCollateral: "0xF0F53654c24ae511099D032020975C4baa273d12",
-      stabilityPoolLeveraged: "0x59D0e1Cd1b5521E8F21AcA6B8Fd95181297E2784",
-      reservePool: "0x3c682cf8492e3e7206E984278bd30e030C703De8",
-      rebalancePoolCollateral: "0x37e2156B0d78098F06F8075a18d7E3a09483048e",
-      rebalancePoolLeveraged: "0xfC47d03bd4C8a7E62A62f29000ceBa4D84142343",
-      collateralPrice: "0xCfE54B5cD566aB89272946F602D76Ea879CAb4a8",
-    },
-    genesis: {
-      startDate: "2024-03-21T00:00:00Z",
-      endDate: "2024-09-01T00:00:00Z",
-      rewards: {
-        pegged: {
-          symbol: "fxSAVE",
-          amount: "1000000", // 1 million fxSAVE
-        },
-        leveraged: {
-          symbol: "steamedUSD/ETH",
-          amount: "1000000", // 1 million steamedUSD/ETH
-        },
-      },
-      collateralRatio: 1.0,
-      leverageRatio: 2 * 1e18,
-    },
-  },
-  "zhebtc-fxsave": {
-    id: "zhebtc-fxsave",
-    name: "zheBTC (fxSAVE collateral)",
-    description: "zheBTC (fxSAVE collateral)",
-    addresses: {
-      collateralToken: "0x0000000000000000000000000000000000000015",
-      underlyingCollateralToken: "0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84",
-      feeReceiver: "0xE3e7A4B35574Ce4b9Bc661cD93e8804Da548932a",
-      genesis: "0x0000000000000000000000000000000000000013",
-      leveragedToken: "0x0000000000000000000000000000000000000017",
-      minter: "0x0000000000000000000000000000000000000014",
-      owner: "0xFC69e0a5823E2AfCBEb8a35d33588360F1496a00",
-      peggedToken: "0x0000000000000000000000000000000000000016",
-      priceOracle: "0x0000000000000000000000000000000000000018",
-      stabilityPoolCollateral: "0x000000000000000000000000000000000000001a",
-      stabilityPoolLeveraged: "0x000000000000000000000000000000000000001b",
-      reservePool: "0x0000000000000000000000000000000000000019",
-      rebalancePoolCollateral: "0x37e2156B0d78098F06F8075a18d7E3a09483048e",
-      rebalancePoolLeveraged: "0xfC47d03bd4C8a7E62A62f29000ceBa4D84142343",
-      collateralPrice: "0xCfE54B5cD566aB89272946F602D76Ea879CAb4a8",
-    },
-    genesis: {
-      startDate: "2024-03-21T00:00:00Z",
-      endDate: "2024-09-01T00:00:00Z",
-      rewards: {
-        pegged: {
-          symbol: "fxSAVE",
-          amount: "1000000", // 1 million fxSAVE
-        },
-        leveraged: {
-          symbol: "steamedUSD/BTC",
-          amount: "1000000", // 1 million steamedUSD/BTC
-        },
-      },
-      collateralRatio: 1.0,
-      leverageRatio: 2 * 1e18,
-    },
-  },
-  "zhebtc-wsteth": {
-    id: "zhebtc-wsteth",
-    name: "zheBTC (wstETH collateral)",
-    description: "zheBTC (wstETH collateral)",
-    addresses: {
-      collateralToken: "0x0000000000000000000000000000000000000025",
-      underlyingCollateralToken: "0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84",
-      feeReceiver: "0xE3e7A4B35574Ce4b9Bc661cD93e8804Da548932a",
-      genesis: "0x0000000000000000000000000000000000000023",
-      leveragedToken: "0x0000000000000000000000000000000000000027",
-      minter: "0x0000000000000000000000000000000000000024",
-      owner: "0xFC69e0a5823E2AfCBEb8a35d33588360F1496a00",
-      peggedToken: "0x0000000000000000000000000000000000000026",
-      priceOracle: "0x0000000000000000000000000000000000000028",
-      stabilityPoolCollateral: "0x000000000000000000000000000000000000002a",
-      stabilityPoolLeveraged: "0x000000000000000000000000000000000000002b",
-      reservePool: "0x0000000000000000000000000000000000000029",
-      rebalancePoolCollateral: "0x37e2156B0d78098F06F8075a18d7E3a09483048e",
-      rebalancePoolLeveraged: "0xfC47d03bd4C8a7E62A62f29000ceBa4D84142343",
-      collateralPrice: "0xCfE54B5cD566aB89272946F602D76Ea879CAb4a8",
-    },
-    genesis: {
-      startDate: "2024-03-21T00:00:00Z",
-      endDate: "2024-09-01T00:00:00Z",
-      rewards: {
-        pegged: {
-          symbol: "wstETH",
-          amount: "1000000", // 1 million wstETH
-        },
-        leveraged: {
-          symbol: "steamedETH/BTC",
-          amount: "1000000", // 1 million steamedETH/BTC
-        },
-      },
-      collateralRatio: 1.0,
-      leverageRatio: 2 * 1e18,
-    },
-  },
-};
-
-// For backward compatibility and convenience
-export const marketConfig = markets["zheeth"];
-export const contractAddresses = markets["zheeth"].addresses;
+export const markets: Markets = {};
 
 // ============================================================================
 // Contract ABIs and Types
@@ -492,6 +356,55 @@ export const ERC20_ABI = [
     name: "balanceOf",
     outputs: [{ type: "uint256" }],
     stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "decimals",
+    outputs: [{ type: "uint8" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "name",
+    outputs: [{ type: "string" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "symbol",
+    outputs: [{ type: "string" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "totalSupply",
+    outputs: [{ type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
+      { name: "to", type: "address" },
+      { name: "amount", type: "uint256" },
+    ],
+    name: "transfer",
+    outputs: [{ type: "bool" }],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      { name: "from", type: "address" },
+      { name: "to", type: "address" },
+      { name: "amount", type: "uint256" },
+    ],
+    name: "transferFrom",
+    outputs: [{ type: "bool" }],
+    stateMutability: "nonpayable",
     type: "function",
   },
 ] as const;

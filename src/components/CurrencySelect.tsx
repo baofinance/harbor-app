@@ -60,7 +60,7 @@ export default function CurrencySelect({
           side="bottom"
           align="end"
           sideOffset={6}
-          className="z-50 overflow-hidden bg-zinc-900/95   shadow-xl"
+          className="z-50 overflow-hidden bg-gray-900 border border-gray-700 rounded shadow-xl"
         >
           <Select.ScrollUpButton className="flex items-center justify-center h-6 text-white/60">
             <ChevronUp className="w-4 h-4" />
