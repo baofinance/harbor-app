@@ -5,6 +5,7 @@ This guide will help you set up Harbor Marks tracking using The Graph.
 ## Overview
 
 Harbor Marks are earned by users during Maiden Voyage (Genesis period):
+
 - **10 marks per dollar per day** during the genesis period
 - **100x bonus** at the end of genesis (only for assets still deposited)
 - **Forfeited** when users withdraw before genesis ends
@@ -27,11 +28,13 @@ npm install -g @graphprotocol/graph-cli
 ### 1.3 Update Configuration
 
 1. Update `subgraph/subgraph.yaml`:
+
    - Set `network` to your chain (mainnet, sepolia, etc.)
    - Update `address` to your Genesis contract address
    - Set `startBlock` to the deployment block
 
 2. Add Genesis ABI:
+
    - Copy your Genesis contract ABI to `subgraph/abis/Genesis.json`
 
 3. Update constants in `subgraph/src/genesis.ts`:
@@ -56,6 +59,7 @@ npm run deploy
 ### 2.1 Add Environment Variable
 
 Add to `.env.local`:
+
 ```
 NEXT_PUBLIC_GRAPH_URL=https://api.studio.thegraph.com/query/<your-subgraph-id>/<your-subgraph-name>/latest
 ```
@@ -63,17 +67,17 @@ NEXT_PUBLIC_GRAPH_URL=https://api.studio.thegraph.com/query/<your-subgraph-id>/<
 ### 2.2 Use the Hook
 
 ```typescript
-import { useHarborMarks, formatHarborMarks } from '@/hooks/useHarborMarks';
+import { useHarborMarks, formatHarborMarks } from "@/hooks/useHarborMarks";
 
 function MyComponent() {
   const genesisAddress = "0x..."; // Your genesis contract address
-  const { data, isLoading, error } = useHarborMarks({ 
+  const { data, isLoading, error } = useHarborMarks({
     genesisAddress,
-    enabled: true 
+    enabled: true,
   });
-  
+
   const marks = formatHarborMarks(data);
-  
+
   return (
     <div>
       <p>Current Marks: {marks.currentMarks.toLocaleString()}</p>
@@ -90,7 +94,7 @@ function MyComponent() {
 For multiple genesis markets:
 
 ```typescript
-import { useAllHarborMarks } from '@/hooks/useHarborMarks';
+import { useAllHarborMarks } from "@/hooks/useHarborMarks";
 
 const genesisAddresses = [
   "0x...", // Market 1
@@ -100,9 +104,10 @@ const genesisAddresses = [
 const { data: allMarks } = useAllHarborMarks(genesisAddresses);
 
 // Aggregate totals
-const totalMarks = allMarks?.reduce((sum, market) => {
-  return sum + parseFloat(market.data?.userHarborMarks?.currentMarks || "0");
-}, 0) || 0;
+const totalMarks =
+  allMarks?.reduce((sum, market) => {
+    return sum + parseFloat(market.data?.userHarborMarks?.currentMarks || "0");
+  }, 0) || 0;
 ```
 
 ## Step 4: Update Genesis Page
@@ -111,7 +116,7 @@ Replace the current client-side calculation with The Graph data:
 
 ```typescript
 // In src/app/genesis/page.tsx
-import { useHarborMarks, formatHarborMarks } from '@/hooks/useHarborMarks';
+import { useHarborMarks, formatHarborMarks } from "@/hooks/useHarborMarks";
 
 // Replace the ledger marks calculation with:
 const { data: marksData } = useHarborMarks({
@@ -125,20 +130,23 @@ const marks = formatHarborMarks(marksData);
 ## Important Notes
 
 1. **USD Price Tracking**: The subgraph currently uses a simplified USD calculation. You may want to:
+
    - Add a price oracle data source to track USD prices at deposit/withdrawal time
    - Or calculate USD values in the frontend using current prices
 
 2. **Withdrawal Tracking**: The current implementation tracks withdrawals but doesn't map them to specific deposits. You may want to enhance this to:
+
    - Track which deposits were partially/fully withdrawn
    - Calculate forfeited marks more precisely
 
 3. **Genesis End Bonus**: The 100x bonus is calculated when genesis ends. Make sure the `handleGenesisEnd` event handler is working correctly.
 
 4. **Testing**: Test the subgraph locally before deploying:
+
    ```bash
    # Start local Graph node
    docker-compose up
-   
+
    # Deploy locally
    npm run deploy-local
    ```
@@ -155,6 +163,4 @@ const marks = formatHarborMarks(marksData);
 2. Update the frontend to use the hook
 3. Replace client-side calculations with subgraph data
 4. Add Harbor Marks display to other parts of the app (profile, leaderboard, etc.)
-
-
 

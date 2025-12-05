@@ -1,10 +1,10 @@
 import { useState, useMemo, useEffect } from "react";
 import {
   useAccount,
-  useContractReads,
   useWriteContract,
   useWaitForTransactionReceipt,
 } from "wagmi";
+import { useAnvilContractReads } from "./useAnvilContractReads";
 import { markets, getGenesisStatus } from "../config/markets";
 import { GENESIS_ABI, ERC20_ABI } from "../config/contracts";
 
@@ -43,12 +43,12 @@ export function useMultiMarketGenesisAdmin() {
     ([_, market]) => market.status === "genesis" || market.status === "live"
   );
 
-  // Contract reads for all markets
+  // Contract reads for all markets - use Anvil-specific reads to ensure we read from Anvil network
   const {
     data: contractData,
     isLoading,
     refetch,
-  } = useContractReads({
+  } = useAnvilContractReads({
     contracts: genesisMarkets.flatMap(([id, market]) => [
       // Genesis contract data
       {
@@ -75,7 +75,7 @@ export function useMultiMarketGenesisAdmin() {
         functionName: "symbol",
       },
     ]),
-    query: { enabled: genesisMarkets.length > 0 },
+    enabled: genesisMarkets.length > 0,
   });
 
   // Wait for transaction receipt to trigger refetch
@@ -108,7 +108,9 @@ export function useMultiMarketGenesisAdmin() {
       const isOwner =
         address && owner && address.toLowerCase() === owner.toLowerCase();
 
-      const genesisStatus = getGenesisStatus(market, genesisEnded);
+      // For admin, use contract state directly - ignore config end dates
+      // Config dates are just informational about when team plans to end genesis
+      const genesisStatus = getGenesisStatus(market, genesisEnded, true);
 
       return {
         marketId,
@@ -148,8 +150,8 @@ export function useMultiMarketGenesisAdmin() {
   const overallAdminStatus: OverallAdminStatus = useMemo(() => {
     // For development: allow access if no markets are configured or if user is connected
     // In production, this should only be true if user is owner of at least one market
-    const hasAnyAdminAccess = 
-      process.env.NODE_ENV === 'development' && genesisMarkets.length === 0
+    const hasAnyAdminAccess =
+      process.env.NODE_ENV === "development" && genesisMarkets.length === 0
         ? true // Allow access in dev if no markets configured
         : marketsAdminData.some((m) => m.isOwner);
     const totalCollateralAcrossMarkets = marketsAdminData.reduce(

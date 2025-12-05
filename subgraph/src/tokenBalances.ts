@@ -4,19 +4,14 @@
  * Uses Transfer events to track balance changes
  */
 
-import {
-  Transfer as TransferEvent,
-} from "../generated/ERC20/ERC20";
+import { Transfer as TransferEvent } from "../generated/ERC20/ERC20";
 import {
   TokenBalance,
   UserHarborMarks,
   UserTotalHarborMarks,
 } from "../generated/schema";
 import { BigDecimal, BigInt } from "@graphprotocol/graph-ts";
-import {
-  getOrCreateMarksRule,
-  calculateMarksWithRule,
-} from "./marksRules";
+import { getOrCreateMarksRule, calculateMarksWithRule } from "./marksRules";
 
 // Map token addresses to contract types
 // This should be configured based on your token addresses
@@ -58,18 +53,22 @@ function updateTokenBalanceMarks(
   balanceUSD: BigDecimal,
   timestamp: BigInt
 ): void {
-  const tokenBalance = getOrCreateTokenBalance(tokenAddress, userAddress, contractType);
+  const tokenBalance = getOrCreateTokenBalance(
+    tokenAddress,
+    userAddress,
+    contractType
+  );
   const oldBalance = tokenBalance.balance;
   const oldBalanceUSD = tokenBalance.balanceUSD || BigDecimal.fromString("0");
-  
+
   tokenBalance.balance = balance;
   tokenBalance.balanceUSD = balanceUSD;
   tokenBalance.timestamp = timestamp;
   tokenBalance.blockNumber = BigInt.fromI32(0); // Will be set from event
-  
+
   const rule = getOrCreateMarksRule(tokenAddress, contractType);
   tokenBalance.marksPerDay = balanceUSD.times(rule.marksPerDollarPerDay);
-  
+
   // Calculate marks based on balance change
   // If balance increased, calculate marks from new amount
   // If balance decreased, recalculate from remaining balance
@@ -92,14 +91,18 @@ function updateTokenBalanceMarks(
     );
     tokenBalance.currentMarks = currentMarks;
   }
-  
+
   tokenBalance.save();
-  
+
   // Update UserHarborMarks for this token
-  const userMarks = getOrCreateUserMarksForToken(tokenAddress, userAddress, contractType);
+  const userMarks = getOrCreateUserMarksForToken(
+    tokenAddress,
+    userAddress,
+    contractType
+  );
   userMarks.currentDeposit = balance;
   userMarks.currentDepositUSD = balanceUSD;
-  
+
   const totalMarks = calculateMarksWithRule(
     balanceUSD,
     userMarks.periodStartDate,
@@ -132,13 +135,14 @@ function getOrCreateUserMarksForToken(
     userMarks.totalDepositedUSD = BigDecimal.fromString("0");
     userMarks.currentDeposit = BigInt.fromI32(0);
     userMarks.currentDepositUSD = BigDecimal.fromString("0");
-    
+
     const rule = getOrCreateMarksRule(contractAddress, contractType);
     userMarks.periodStartDate = rule.periodStartDate || BigInt.fromI32(0);
     userMarks.periodEndDate = rule.periodEndDate;
-    userMarks.periodEnded = rule.periodEndDate != null && 
+    userMarks.periodEnded =
+      rule.periodEndDate != null &&
       (rule.periodEndDate as BigInt).gt(BigInt.fromI32(0));
-    
+
     userMarks.lastUpdated = BigInt.fromI32(0);
   }
   return userMarks;
@@ -147,34 +151,52 @@ function getOrCreateUserMarksForToken(
 export function handleTransfer(event: TransferEvent): void {
   const tokenAddress = event.address.toHexString();
   const contractType = getTokenType(tokenAddress);
-  
+
   // Only track if this is a token we care about (haToken or sailToken)
-  if (contractType == null || (contractType != "haToken" && contractType != "sailToken")) {
+  if (
+    contractType == null ||
+    (contractType != "haToken" && contractType != "sailToken")
+  ) {
     return;
   }
-  
+
   const from = event.params.from.toHexString();
   const to = event.params.to.toHexString();
   const value = event.params.value;
   const timestamp = event.block.timestamp;
-  
+
   // TODO: Get USD price for this token
-  const valueUSD = value.toBigDecimal().div(BigDecimal.fromString("1000000000000000000"));
-  
+  const valueUSD = value
+    .toBigDecimal()
+    .div(BigDecimal.fromString("1000000000000000000"));
+
   // Update balance for sender (decrease)
   if (from != "0x0000000000000000000000000000000000000000") {
     // Get current balance (would need to track this or query contract)
     // For now, this is simplified - in production you'd track balances
     const fromBalance = BigInt.fromI32(0); // TODO: Track actual balance
     const fromBalanceUSD = BigDecimal.fromString("0"); // TODO: Calculate USD
-    updateTokenBalanceMarks(tokenAddress, from, contractType, fromBalance, fromBalanceUSD, timestamp);
+    updateTokenBalanceMarks(
+      tokenAddress,
+      from,
+      contractType,
+      fromBalance,
+      fromBalanceUSD,
+      timestamp
+    );
   }
-  
+
   // Update balance for receiver (increase)
   if (to != "0x0000000000000000000000000000000000000000") {
     const toBalance = BigInt.fromI32(0); // TODO: Track actual balance
     const toBalanceUSD = BigDecimal.fromString("0"); // TODO: Calculate USD
-    updateTokenBalanceMarks(tokenAddress, to, contractType, toBalance, toBalanceUSD, timestamp);
+    updateTokenBalanceMarks(
+      tokenAddress,
+      to,
+      contractType,
+      toBalance,
+      toBalanceUSD,
+      timestamp
+    );
   }
 }
-

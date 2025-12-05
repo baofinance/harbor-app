@@ -167,4 +167,3 @@ export const markets = {
   - [ ] Set `reservePool` address (if applicable)
   - [ ] Set `stabilityPoolManager` address (if applicable)
 
-

@@ -85,7 +85,7 @@ export default function SailTokenSelector({
       </button>
 
       {isOpen && (
-        <div className="absolute z-50 w-full mt-2 bg-[#17395F] border border-white/20 rounded shadow-lg max-h-60 overflow-auto">
+        <div className="absolute z-50 w-full mt-2 bg-gray-900 border border-gray-700 rounded shadow-xl max-h-60 overflow-auto">
           {sailTokens.map((token) => (
             <button
               key={token.id}
@@ -115,6 +115,7 @@ export default function SailTokenSelector({
     </div>
   );
 }
+
 
 
 

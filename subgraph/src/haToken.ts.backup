@@ -1,0 +1,347 @@
+/**
+ * ha Token balance tracking for Harbor Marks
+ * Tracks ERC20 Transfer events to calculate user balances and marks
+ * Supports multiple ha tokens (markets) with configurable multipliers
+ */
+
+import {
+  Transfer as TransferEvent,
+} from "../generated/HaToken_haPB/ERC20";
+// Note: This import is for the static data source HaToken_haPB
+import {
+  updateHaTokenMarksInTotal,
+} from "./marksAggregation";
+import {
+  HaTokenBalance,
+  MarksMultiplier,
+  UserTotalMarks,
+  PriceFeed,
+} from "../generated/schema";
+import { BigDecimal, BigInt, Bytes, Address, ethereum } from "@graphprotocol/graph-ts";
+// Config imports - using inline defaults for now to avoid compilation issues
+// import {
+//   getHaTokenMultiplier as getConfigMultiplier,
+//   getPriceFeedAddress,
+//   getPriceFeedDecimals,
+// } from "./config";
+import { ERC20 } from "../generated/HaToken_haPB/ERC20";
+import { ChainlinkAggregator } from "../generated/HaToken_haPB/ChainlinkAggregator";
+
+// Constants
+const SECONDS_PER_DAY = BigDecimal.fromString("86400");
+const DEFAULT_MULTIPLIER = BigDecimal.fromString("1.0"); // 1 mark per dollar per day
+const DEFAULT_MARKS_PER_DOLLAR_PER_DAY = BigDecimal.fromString("1.0");
+
+// Helper to get or create price feed and update from oracle
+function getOrCreatePriceFeed(tokenAddress: Bytes, block: ethereum.Block): PriceFeed {
+  const id = tokenAddress.toHexString();
+  let priceFeed = PriceFeed.load(id);
+  
+  if (priceFeed == null) {
+    priceFeed = new PriceFeed(id);
+    priceFeed.tokenAddress = tokenAddress;
+    priceFeed.priceFeedAddress = Bytes.fromHexString("0x0000000000000000000000000000000000000000");
+    priceFeed.priceUSD = BigDecimal.fromString("1.0"); // Default to $1
+    priceFeed.decimals = 8; // Chainlink default
+    priceFeed.lastUpdated = BigInt.fromI32(0);
+  }
+  
+  // Update price from oracle if available
+  // For now, using hardcoded addresses - will be configurable later
+  let priceFeedAddress: Bytes | null = null;
+  // Map token addresses to price feeds (from bcinfo.local.json)
+  const tokenAddressStr = tokenAddress.toHexString();
+  if (tokenAddressStr == "0x2e8880cAdC08E9B438c6052F5ce3869FBd6cE513") { // wstETH
+    priceFeedAddress = Bytes.fromHexString("0xeC827421505972a2AE9C320302d3573B42363C26");
+  } else if (tokenAddressStr == "0x5FbDB2315678afecb367f032d93F642f64180aa3") { // stETH
+    priceFeedAddress = Bytes.fromHexString("0xb007167714e2940013ec3bb551584130b7497e22");
+  }
+  
+  if (priceFeedAddress != null) {
+    priceFeed.priceFeedAddress = priceFeedAddress;
+    
+    // Query Chainlink aggregator for latest price
+    const aggregator = ChainlinkAggregator.bind(Address.fromBytes(priceFeedAddress));
+    const latestAnswerResult = aggregator.try_latestAnswer();
+    
+    if (!latestAnswerResult.reverted) {
+      const priceRaw = latestAnswerResult.value;
+      // Convert from 8 decimals to 18 decimals for USD price
+      // latestAnswer returns int256, but prices are always positive
+      const priceDecimal = priceRaw.toBigDecimal().div(BigDecimal.fromString("100000000")); // 8 decimals
+      priceFeed.priceUSD = priceDecimal;
+      priceFeed.lastUpdated = block.timestamp;
+    }
+  }
+  
+  priceFeed.save();
+  return priceFeed;
+}
+
+// Helper to get current multiplier for ha tokens (from config file)
+function getHaTokenMultiplier(tokenAddress: Bytes, timestamp: BigInt): BigDecimal {
+  // First, try to load from stored MarksMultiplier (for historical tracking)
+  const id = `haToken-${tokenAddress.toHexString()}`;
+  let multiplier = MarksMultiplier.load(id);
+  
+  // Get multiplier from config file (GitHub-controlled)
+  // For now, using default - will load from config file later
+  const configMultiplier = DEFAULT_MULTIPLIER;
+  
+  if (multiplier == null) {
+    // Create new multiplier from config
+    multiplier = new MarksMultiplier(id);
+    multiplier.sourceType = "haToken";
+    multiplier.sourceAddress = tokenAddress;
+    multiplier.multiplier = configMultiplier;
+    multiplier.effectiveFrom = timestamp;
+    multiplier.updatedAt = timestamp;
+    multiplier.updatedBy = null;
+    multiplier.save();
+  } else {
+    // Check if config has changed
+    if (!multiplier.multiplier.equals(configMultiplier)) {
+      // Config changed - create historical entry and update
+      const historicalId = `${id}-${timestamp.toString()}`;
+      const historical = new MarksMultiplier(historicalId);
+      historical.sourceType = multiplier.sourceType;
+      historical.sourceAddress = multiplier.sourceAddress;
+      historical.multiplier = configMultiplier;
+      historical.effectiveFrom = timestamp;
+      historical.updatedAt = timestamp;
+      historical.updatedBy = null; // Config file update (not on-chain)
+      historical.save();
+      
+      // Update current multiplier
+      multiplier.multiplier = configMultiplier;
+      multiplier.updatedAt = timestamp;
+      multiplier.save();
+    }
+  }
+  
+  return multiplier.multiplier;
+}
+
+// Helper to update multiplier (can be called by admin events in future)
+export function updateHaTokenMultiplier(
+  tokenAddress: Bytes,
+  newMultiplier: BigDecimal,
+  timestamp: BigInt,
+  updatedBy: Bytes | null
+): void {
+  const id = `haToken-${tokenAddress.toHexString()}`;
+  let multiplier = MarksMultiplier.load(id);
+  
+  if (multiplier == null) {
+    multiplier = new MarksMultiplier(id);
+    multiplier.sourceType = "haToken";
+    multiplier.sourceAddress = tokenAddress;
+    multiplier.effectiveFrom = timestamp;
+  }
+  
+  // Create new multiplier entry (historical tracking)
+  const historicalId = `${id}-${timestamp.toString()}`;
+  const historical = new MarksMultiplier(historicalId);
+  historical.sourceType = multiplier.sourceType;
+  historical.sourceAddress = multiplier.sourceAddress;
+  historical.multiplier = newMultiplier;
+  historical.effectiveFrom = timestamp;
+  historical.updatedAt = timestamp;
+  historical.updatedBy = updatedBy;
+  historical.save();
+  
+  // Update current multiplier
+  multiplier.multiplier = newMultiplier;
+  multiplier.updatedAt = timestamp;
+  multiplier.updatedBy = updatedBy;
+  multiplier.save();
+}
+
+// Helper to get or create ha token balance
+function getOrCreateHaTokenBalance(
+  tokenAddress: Bytes,
+  userAddress: Bytes
+): HaTokenBalance {
+  const id = `${tokenAddress.toHexString()}-${userAddress.toHexString()}`;
+  let balance = HaTokenBalance.load(id);
+  
+  if (balance == null) {
+    balance = new HaTokenBalance(id);
+    balance.tokenAddress = tokenAddress;
+    balance.user = userAddress;
+    balance.balance = BigInt.fromI32(0);
+    balance.balanceUSD = BigDecimal.fromString("0");
+    balance.marksPerDay = BigDecimal.fromString("0");
+    balance.accumulatedMarks = BigDecimal.fromString("0");
+    balance.totalMarksEarned = BigDecimal.fromString("0");
+    balance.firstSeenAt = BigInt.fromI32(0);
+    balance.lastUpdated = BigInt.fromI32(0);
+    balance.marketId = null;
+    balance.save();
+  }
+  
+  return balance;
+}
+
+// Helper to calculate balance in USD (with price feed update)
+function calculateBalanceUSD(balance: BigInt, tokenAddress: Bytes, block: ethereum.Block): BigDecimal {
+  const priceFeed = getOrCreatePriceFeed(tokenAddress, block);
+  const balanceDecimal = balance.toBigDecimal().div(BigDecimal.fromString("1000000000000000000")); // 18 decimals
+  return balanceDecimal.times(priceFeed.priceUSD);
+}
+
+// Helper to query contract balance directly
+function queryTokenBalance(tokenAddress: Address, userAddress: Address): BigInt {
+  const token = ERC20.bind(tokenAddress);
+  const balanceResult = token.try_balanceOf(userAddress);
+  
+  if (balanceResult.reverted) {
+    return BigInt.fromI32(0);
+  }
+  
+  return balanceResult.value;
+}
+
+// Helper to accumulate marks for a balance
+function accumulateMarks(
+  balance: HaTokenBalance,
+  block: ethereum.Block
+): void {
+  const currentTimestamp = block.timestamp;
+  if (balance.balance.equals(BigInt.fromI32(0))) {
+    balance.accumulatedMarks = BigDecimal.fromString("0");
+    balance.marksPerDay = BigDecimal.fromString("0");
+    balance.lastUpdated = currentTimestamp;
+    balance.save();
+    return;
+  }
+  
+  // Get multiplier for this token
+  const multiplier = getHaTokenMultiplier(balance.tokenAddress, currentTimestamp);
+  const marksPerDollarPerDay = DEFAULT_MARKS_PER_DOLLAR_PER_DAY.times(multiplier);
+  
+  // Calculate time since last update
+  const lastUpdate = balance.lastUpdated.gt(BigInt.fromI32(0)) 
+    ? balance.lastUpdated 
+    : balance.firstSeenAt;
+  
+  if (lastUpdate.equals(BigInt.fromI32(0))) {
+    // First time seeing this balance
+    balance.firstSeenAt = currentTimestamp;
+    balance.lastUpdated = currentTimestamp;
+    balance.marksPerDay = balance.balanceUSD.times(marksPerDollarPerDay);
+    balance.accumulatedMarks = BigDecimal.fromString("0");
+    balance.save();
+    return;
+  }
+  
+  const timeSinceLastUpdate = currentTimestamp.minus(lastUpdate);
+  const timeSinceLastUpdateBD = timeSinceLastUpdate.toBigDecimal();
+  const daysSinceLastUpdate = timeSinceLastUpdateBD.div(SECONDS_PER_DAY);
+  
+  // Accumulate marks for the period
+  const marksAccumulated = balance.balanceUSD.times(marksPerDollarPerDay).times(daysSinceLastUpdate);
+  balance.accumulatedMarks = balance.accumulatedMarks.plus(marksAccumulated);
+  balance.totalMarksEarned = balance.totalMarksEarned.plus(marksAccumulated);
+  
+  // Update marks per day rate
+  balance.marksPerDay = balance.balanceUSD.times(marksPerDollarPerDay);
+  balance.lastUpdated = currentTimestamp;
+  balance.save();
+}
+
+
+// Main handler for ERC20 Transfer events
+// Note: This handler name must match subgraph.yaml
+export function handleHaTokenTransfer(event: TransferEvent): void {
+  const tokenAddress = event.address;
+  const from = event.params.from;
+  const to = event.params.to;
+  const value = event.params.value;
+  const timestamp = event.block.timestamp;
+  
+  // Skip zero address transfers (minting/burning)
+  const zeroAddress = Address.fromString("0x0000000000000000000000000000000000000000");
+  
+  // Update sender balance (if not zero address)
+  if (!from.equals(zeroAddress)) {
+    const fromBalance = getOrCreateHaTokenBalance(tokenAddress, from);
+    
+    // Accumulate marks before balance change
+    accumulateMarks(fromBalance, event.block);
+    
+    // Query actual balance from contract (more accurate than tracking transfers)
+    const tokenContract = Address.fromBytes(tokenAddress);
+    const userContract = Address.fromBytes(from);
+    const actualBalance = queryTokenBalance(tokenContract, userContract);
+    fromBalance.balance = actualBalance;
+    fromBalance.balanceUSD = calculateBalanceUSD(actualBalance, tokenAddress, event.block);
+    
+    // Reset accumulation start if balance goes to zero
+    if (actualBalance.equals(BigInt.fromI32(0))) {
+      fromBalance.accumulatedMarks = BigDecimal.fromString("0");
+      fromBalance.firstSeenAt = BigInt.fromI32(0);
+    }
+    
+    fromBalance.save();
+    updateHaTokenMarksInTotal(from, fromBalance, timestamp);
+  }
+  
+  // Update receiver balance (if not zero address)
+  if (!to.equals(zeroAddress)) {
+    const toBalance = getOrCreateHaTokenBalance(tokenAddress, to);
+    
+    // Accumulate marks before balance change
+    accumulateMarks(toBalance, event.block);
+    
+    // Query actual balance from contract
+    const tokenContract = Address.fromBytes(tokenAddress);
+    const userContract = Address.fromBytes(to);
+    const actualBalance = queryTokenBalance(tokenContract, userContract);
+    toBalance.balance = actualBalance;
+    toBalance.balanceUSD = calculateBalanceUSD(actualBalance, tokenAddress, event.block);
+    
+    // Set first seen if this is first time having balance
+    if (toBalance.firstSeenAt.equals(BigInt.fromI32(0)) && actualBalance.gt(BigInt.fromI32(0))) {
+      toBalance.firstSeenAt = timestamp;
+    }
+    
+    toBalance.save();
+    updateHaTokenMarksInTotal(to, toBalance, timestamp);
+  }
+}
+
+// Helper to get current balance from contract (for periodic updates)
+// This would be called by a time-based trigger or manual update
+// NOTE: This function requires a block parameter for accumulateMarks - commented out for now
+// export function updateHaTokenBalance(
+//   tokenAddress: Bytes,
+//   userAddress: Bytes,
+//   balance: BigInt,
+//   timestamp: BigInt
+// ): void {
+//   const tokenBalance = getOrCreateHaTokenBalance(tokenAddress, userAddress);
+//   
+//   // Accumulate marks for old balance - requires block, not timestamp
+//   // accumulateMarks(tokenBalance, timestamp); // ERROR: Type mismatch
+//   
+//   // Update balance
+//   tokenBalance.balance = balance;
+//   // Note: This function would need block parameter for price feed update
+//   // For now, using placeholder - in production, pass block from event
+//   tokenBalance.balanceUSD = BigDecimal.fromString("0"); // Will be updated on next transfer event
+//   
+//   // Reset if balance is zero
+//   if (balance.equals(BigInt.fromI32(0))) {
+//     tokenBalance.accumulatedMarks = BigDecimal.fromString("0");
+//     if (tokenBalance.firstSeenAt.equals(BigInt.fromI32(0))) {
+//       tokenBalance.firstSeenAt = BigInt.fromI32(0);
+//     }
+//   } else if (tokenBalance.firstSeenAt.equals(BigInt.fromI32(0))) {
+//     tokenBalance.firstSeenAt = timestamp;
+//   }
+//   
+//   tokenBalance.save();
+//   updateHaTokenMarksInTotal(userAddress, tokenBalance, timestamp);
+// }
+

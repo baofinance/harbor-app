@@ -53,7 +53,7 @@ export default function Dropdown({
       </div>
 
       {isOpen && (
-        <div className="absolute z-10 mt-2 w-56 origin-top-right right-0 bg-neutral-800 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+        <div className="absolute z-10 mt-2 w-56 origin-top-right right-0 bg-gray-900 border border-gray-700 rounded shadow-xl focus:outline-none">
           <div
             className="p-1"
             role="menu"
@@ -64,7 +64,7 @@ export default function Dropdown({
               <button
                 key={option.value}
                 onClick={() => handleSelect(option.value)}
-                className="w-full text-left flex justify-between items-center px-4 py-2 text-sm text-gray-300 hover:bg-neutral-700 hover:text-white"
+                className="w-full text-left flex justify-between items-center px-4 py-2 text-sm text-white hover:bg-gray-800 transition-colors"
                 role="menuitem"
               >
                 <span>{option.label}</span>

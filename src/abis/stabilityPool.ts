@@ -123,6 +123,108 @@ export const stabilityPoolABI = [
     stateMutability: "nonpayable",
   },
   {
+    type: "function",
+    name: "requestWithdraw",
+    inputs: [
+      { name: "assetAmount", type: "uint256", internalType: "uint256" },
+    ],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "executeWithdraw",
+    inputs: [
+      { name: "receiver", type: "address", internalType: "address" },
+      { name: "minAmount", type: "uint256", internalType: "uint256" },
+    ],
+    outputs: [
+      { name: "sharesBurned", type: "uint256", internalType: "uint256" },
+    ],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "withdrawEarly",
+    inputs: [
+      { name: "receiver", type: "address", internalType: "address" },
+      { name: "minAmount", type: "uint256", internalType: "uint256" },
+    ],
+    outputs: [
+      { name: "sharesBurned", type: "uint256", internalType: "uint256" },
+    ],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "withdrawRequest",
+    inputs: [
+      { name: "account", type: "address", internalType: "address" },
+    ],
+    outputs: [
+      { name: "amount", type: "uint256", internalType: "uint256" },
+      { name: "requestedAt", type: "uint256", internalType: "uint256" },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "withdrawWindow",
+    inputs: [],
+    outputs: [{ name: "window", type: "uint256", internalType: "uint256" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "earlyWithdrawFee",
+    inputs: [],
+    outputs: [{ name: "fee", type: "uint256", internalType: "uint256" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "activeRewardTokens",
+    inputs: [],
+    outputs: [{ name: "", type: "address[]", internalType: "address[]" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "isActiveRewardToken",
+    inputs: [{ name: "token", type: "address", internalType: "address" }],
+    outputs: [{ name: "", type: "bool", internalType: "bool" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "claimable",
+    inputs: [
+      { name: "account", type: "address", internalType: "address" },
+      { name: "rewardToken", type: "address", internalType: "address" },
+    ],
+    outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "rewardData",
+    inputs: [{ name: "rewardToken", type: "address", internalType: "address" }],
+    outputs: [
+      { name: "lastUpdate", type: "uint256", internalType: "uint256" },
+      { name: "finishAt", type: "uint256", internalType: "uint256" },
+      { name: "rate", type: "uint256", internalType: "uint256" },
+      { name: "queued", type: "uint256", internalType: "uint256" },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "REWARD_PERIOD_LENGTH",
+    inputs: [],
+    outputs: [{ name: "", type: "uint40", internalType: "uint40" }],
+    stateMutability: "view",
+  },
+  {
     type: "event",
     name: "Deposit",
     inputs: [

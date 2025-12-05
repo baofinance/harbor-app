@@ -22,8 +22,10 @@ export const markets = {
       leveragedToken: contracts.leveragedToken,
       reservePool: contracts.reservePool,
       stabilityPoolManager: contracts.stabilityPoolManager,
-      stabilityPoolCollateral: "0x82e01223d51Eb87e16A03E24687EDF0F294da6f1" as `0x${string}`,
-      stabilityPoolLeveraged: null as `0x${string}` | null, // No leveraged stability pool in this deployment
+      stabilityPoolCollateral:
+        "0x3aAde2dCD2Df6a8cAc689EE797591b2913658659" as `0x${string}`,
+      stabilityPoolLeveraged:
+        "0x525C7063E7C20997BaaE9bDa922159152D0e8417" as `0x${string}`,
       genesis: contracts.genesis,
       priceOracle: contracts.priceOracle,
       collateralPrice: contracts.priceOracle, // Using the same price oracle for collateral price
@@ -69,11 +71,16 @@ export const markets = {
 export type Market = (typeof markets)[keyof typeof markets];
 
 // Helper functions for genesis status
-export function getGenesisStatus(market: Market, onChainGenesisEnded: boolean) {
+export function getGenesisStatus(
+  market: Market,
+  onChainGenesisEnded: boolean,
+  isAdmin: boolean = false
+) {
   const now = new Date();
   const startDate = new Date(market.genesis.startDate);
   const endDate = new Date(market.genesis.endDate);
 
+  // Contract's genesisIsEnded() is the authoritative source
   if (onChainGenesisEnded) {
     return {
       phase: "completed" as const,
@@ -84,6 +91,29 @@ export function getGenesisStatus(market: Market, onChainGenesisEnded: boolean) {
     };
   }
 
+  // For admin: if contract says genesis hasn't ended, it's live (regardless of config dates)
+  // Config dates are just informational for users about when team plans to end genesis
+  if (isAdmin) {
+    if (now < startDate) {
+      return {
+        phase: "scheduled" as const,
+        onChainStatus: "scheduled" as const,
+        canClaim: false,
+        canDeposit: false,
+        canWithdraw: false,
+      };
+    }
+    // If contract hasn't ended, it's live (even if config end date has passed)
+    return {
+      phase: "live" as const,
+      onChainStatus: "live" as const,
+      canClaim: false,
+      canDeposit: true,
+      canWithdraw: true,
+    };
+  }
+
+  // For users: use config dates for display purposes
   if (now < startDate) {
     return {
       phase: "scheduled" as const,
@@ -104,6 +134,8 @@ export function getGenesisStatus(market: Market, onChainGenesisEnded: boolean) {
     };
   }
 
+  // Time has passed but contract hasn't ended - this is "processing" for users
+  // But for admin, we treat it as "live" since contract hasn't ended
   return {
     phase: "closed" as const,
     onChainStatus: "closed" as const,

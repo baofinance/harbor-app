@@ -8,13 +8,27 @@ import {
   Withdrawal,
   GenesisEnd,
   UserHarborMarks,
+  UserList,
 } from "../generated/schema";
-import { BigDecimal, BigInt, Bytes } from "@graphprotocol/graph-ts";
+import { BigDecimal, BigInt, Bytes, ethereum } from "@graphprotocol/graph-ts";
 
 // Constants
 const MARKS_PER_DOLLAR_PER_DAY = BigDecimal.fromString("10");
 const BONUS_MARKS_PER_DOLLAR = BigDecimal.fromString("100"); // 100 marks per dollar bonus at genesis end
 const SECONDS_PER_DAY = BigDecimal.fromString("86400");
+
+// Oracle address for wstETH/USD (Chainlink Aggregator)
+const WSTETH_USD_ORACLE = "0x202CCe504e04bEd6fC0521238dDf04Bc9E8E15aB";
+// Mock oracle price: $2000 per wstETH (200000000000 with 8 decimals = 2000 * 10^8)
+const WSTETH_PRICE_USD = BigDecimal.fromString("2000");
+
+// Helper function to get wstETH price from Chainlink oracle
+// For now, using fixed price. Can be enhanced to fetch from oracle dynamically
+function getWstETHPrice(block: ethereum.Block): BigDecimal {
+  // TODO: Implement dynamic oracle price fetching
+  // For now, return fixed price from mock oracle ($2000)
+  return WSTETH_PRICE_USD;
+}
 
 // Helper to get or create user marks
 function getOrCreateUserMarks(
@@ -63,8 +77,12 @@ export function handleDeposit(event: DepositEvent): void {
   deposit.txHash = txHash;
   deposit.blockNumber = blockNumber;
   
-  // Calculate amount in USD (simplified - 1:1 for now)
-  const amountUSD = amount.toBigDecimal().div(BigDecimal.fromString("1000000000000000000"));
+  // Calculate amount in USD using oracle price
+  const wstETHPrice = getWstETHPrice(event.block);
+  // amount is in wei (18 decimals), price is in USD with 8 decimals from Chainlink
+  // amountUSD = (amount * price) / (10^18 * 10^8) * 10^8 = (amount * price) / 10^18
+  const amountInTokens = amount.toBigDecimal().div(BigDecimal.fromString("1000000000000000000"));
+  const amountUSD = amountInTokens.times(wstETHPrice);
   deposit.amountUSD = amountUSD;
   deposit.marksPerDay = amountUSD.times(MARKS_PER_DOLLAR_PER_DAY);
   deposit.isActive = true;
@@ -75,8 +93,35 @@ export function handleDeposit(event: DepositEvent): void {
   // Update user marks
   let userMarks = getOrCreateUserMarks(contractAddress, userAddress);
   
+  // Add user to UserList for processing when genesis ends
+  const contractAddressString = contractAddress.toHexString();
+  let userList = UserList.load(contractAddressString);
+  if (userList == null) {
+    userList = new UserList(contractAddressString);
+    userList.contractAddress = contractAddress;
+    userList.users = [];
+  }
+  // Check if user is already in the list
+  let userExists = false;
+  for (let i = 0; i < userList.users.length; i++) {
+    if (userList.users[i].equals(userAddress)) {
+      userExists = true;
+      break;
+    }
+  }
+  if (!userExists) {
+    // Add user to array (AssemblyScript array operations)
+    const newUsers = new Array<Bytes>(userList.users.length + 1);
+    for (let i = 0; i < userList.users.length; i++) {
+      newUsers[i] = userList.users[i];
+    }
+    newUsers[userList.users.length] = userAddress;
+    userList.users = newUsers;
+    userList.save();
+  }
+  
   // Check if genesis has ended - if so, process marks for genesis end first
-  const genesisEnd = GenesisEnd.load(contractAddress.toHexString());
+  const genesisEnd = GenesisEnd.load(contractAddressString);
   if (genesisEnd != null && !userMarks.genesisEnded) {
     updateUserMarksForGenesisEnd(userMarks, genesisEnd.timestamp);
     // Reload to get updated values
@@ -142,8 +187,11 @@ export function handleWithdraw(event: WithdrawEvent): void {
   withdrawal.txHash = txHash;
   withdrawal.blockNumber = blockNumber;
   
-  // Calculate amount in USD
-  const amountUSD = amount.toBigDecimal().div(BigDecimal.fromString("1000000000000000000"));
+  // Calculate amount in USD using oracle price
+  const wstETHPrice = getWstETHPrice(event.block);
+  // amount is in wei (18 decimals), price is in USD with 8 decimals from Chainlink
+  const amountInTokens = amount.toBigDecimal().div(BigDecimal.fromString("1000000000000000000"));
+  const amountUSD = amountInTokens.times(wstETHPrice);
   withdrawal.amountUSD = amountUSD;
   
   // Update user marks
@@ -157,38 +205,55 @@ export function handleWithdraw(event: WithdrawEvent): void {
     userMarks = getOrCreateUserMarks(contractAddress, userAddress);
   }
   
-  // If genesis hasn't ended, accumulate marks up to this point
-  if (!userMarks.genesisEnded && userMarks.genesisStartDate.gt(BigInt.fromI32(0)) && userMarks.currentDepositUSD.gt(BigDecimal.fromString("0"))) {
+  // Store values BEFORE withdrawal for correct calculation
+  const depositBeforeWithdrawal = userMarks.currentDeposit;
+  const depositUSDBeforeWithdrawal = userMarks.currentDepositUSD;
+  const marksBeforeAccumulation = userMarks.currentMarks;
+  
+  // First, accumulate marks for the time period BEFORE withdrawal
+  // Use the deposit amount BEFORE withdrawal for accumulation
+  let marksAfterAccumulation = marksBeforeAccumulation;
+  if (!userMarks.genesisEnded && userMarks.genesisStartDate.gt(BigInt.fromI32(0)) && depositUSDBeforeWithdrawal.gt(BigDecimal.fromString("0"))) {
     const timeSinceLastUpdate = timestamp.minus(userMarks.lastUpdated);
     const timeSinceLastUpdateBD = timeSinceLastUpdate.toBigDecimal();
     const daysSinceLastUpdate = timeSinceLastUpdateBD.div(SECONDS_PER_DAY);
     
-    // Accumulate marks for existing deposit
-    const marksAccumulated = userMarks.currentDepositUSD.times(MARKS_PER_DOLLAR_PER_DAY).times(daysSinceLastUpdate);
-    userMarks.currentMarks = userMarks.currentMarks.plus(marksAccumulated);
+    // Accumulate marks for the deposit BEFORE withdrawal
+    const marksAccumulated = depositUSDBeforeWithdrawal.times(MARKS_PER_DOLLAR_PER_DAY).times(daysSinceLastUpdate);
+    marksAfterAccumulation = marksBeforeAccumulation.plus(marksAccumulated);
     userMarks.totalMarksEarned = userMarks.totalMarksEarned.plus(marksAccumulated);
   }
   
-  // Calculate forfeited marks proportionally
-  // If user withdraws 50% of their deposit, they lose 50% of their accumulated marks
+  // Now calculate forfeited marks proportionally based on withdrawal
+  // Forfeit from the total marks (original + accumulated) proportionally to withdrawal
   let marksForfeited = BigDecimal.fromString("0");
   
   // Only calculate forfeiture if user has marks and deposits
-  if (userMarks.currentDeposit.gt(BigInt.fromI32(0)) && userMarks.currentMarks.gt(BigDecimal.fromString("0"))) {
-    // Calculate withdrawal percentage
-    const currentDepositBD = userMarks.currentDeposit.toBigDecimal();
-    const withdrawalPercentage = amount.toBigDecimal().div(currentDepositBD);
+  if (depositBeforeWithdrawal.gt(BigInt.fromI32(0)) && marksAfterAccumulation.gt(BigDecimal.fromString("0"))) {
+    // Calculate withdrawal percentage based on deposit BEFORE withdrawal
+    const depositBeforeWithdrawalBD = depositBeforeWithdrawal.toBigDecimal();
+    const amountBD = amount.toBigDecimal();
     
-    // Forfeit marks proportional to withdrawal
-    marksForfeited = userMarks.currentMarks.times(withdrawalPercentage);
-    
-    // Update user marks
-    userMarks.currentMarks = userMarks.currentMarks.minus(marksForfeited);
-    userMarks.totalMarksForfeited = userMarks.totalMarksForfeited.plus(marksForfeited);
-    
-    // Ensure non-negative
-    if (userMarks.currentMarks.lt(BigDecimal.fromString("0"))) {
+    // Ensure we don't divide by zero and withdrawal doesn't exceed deposit
+    if (depositBeforeWithdrawalBD.gt(BigDecimal.fromString("0")) && amountBD.le(depositBeforeWithdrawalBD)) {
+      const withdrawalPercentage = amountBD.div(depositBeforeWithdrawalBD);
+      
+      // Forfeit marks proportional to withdrawal from the total marks (after accumulation)
+      marksForfeited = marksAfterAccumulation.times(withdrawalPercentage);
+      
+      // Update user marks
+      userMarks.currentMarks = marksAfterAccumulation.minus(marksForfeited);
+      userMarks.totalMarksForfeited = userMarks.totalMarksForfeited.plus(marksForfeited);
+      
+      // Ensure non-negative
+      if (userMarks.currentMarks.lt(BigDecimal.fromString("0"))) {
+        userMarks.currentMarks = BigDecimal.fromString("0");
+      }
+    } else {
+      // If withdrawal exceeds deposit or invalid, forfeit all marks (shouldn't happen in practice)
+      marksForfeited = marksAfterAccumulation;
       userMarks.currentMarks = BigDecimal.fromString("0");
+      userMarks.totalMarksForfeited = userMarks.totalMarksForfeited.plus(marksForfeited);
     }
   }
   
@@ -236,20 +301,21 @@ export function handleGenesisEnd(event: GenesisEndsEvent): void {
   genesisEnd.blockNumber = blockNumber;
   genesisEnd.save();
   
-  // Update all users with active deposits to calculate accumulated marks and add bonus
-  // We need to load all UserHarborMarks for this contract
-  // Note: In a real scenario, you might want to use a different approach to iterate all users
-  // For now, we'll update users as they interact, but we can also query all deposits
-  
-  // Load all deposits for this contract to find all users
-  // Since we can't easily iterate all entities, we'll update users when they next interact
-  // But we can mark genesis as ended for all users by updating the GenesisEnd entity
-  // Individual user updates will happen when they interact next, or we can batch update
-  
-  // For now, we'll handle user updates in a helper function that can be called
-  // when users interact, or we can add a separate handler that processes all users
-  // This is a limitation of The Graph - we can't easily iterate all entities
-  // So we'll update users as they interact, checking if genesis has ended
+  // Process all users from UserList
+  const userList = UserList.load(contractAddressString);
+  if (userList != null) {
+    // Iterate through all users and update their marks
+    for (let i = 0; i < userList.users.length; i++) {
+      const userAddress = userList.users[i];
+      const userMarksId = `${contractAddressString}-${userAddress.toHexString()}`;
+      const userMarks = UserHarborMarks.load(userMarksId);
+      
+      if (userMarks != null && !userMarks.genesisEnded) {
+        // Process genesis end for this user
+        updateUserMarksForGenesisEnd(userMarks, timestamp);
+      }
+    }
+  }
 }
 
 // Helper function to update user marks when genesis ends

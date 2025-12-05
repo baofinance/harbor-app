@@ -53,11 +53,16 @@ export const AnchorDepositModal = ({
 }: AnchorDepositModalProps) => {
   const { address } = useAccount();
   const [amount, setAmount] = useState("");
+  const [selectedDepositAsset, setSelectedDepositAsset] = useState<
+    "collateral" | "pegged"
+  >("collateral");
   const [step, setStep] = useState<ModalStep>("input");
   const [error, setError] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
   const [depositInStabilityPool, setDepositInStabilityPool] = useState(true);
-  const [stabilityPoolType, setStabilityPoolType] = useState<"collateral" | "sail">("collateral");
+  const [stabilityPoolType, setStabilityPoolType] = useState<
+    "collateral" | "sail"
+  >("collateral");
 
   const publicClient = usePublicClient();
 
@@ -66,30 +71,60 @@ export const AnchorDepositModal = ({
   const peggedTokenAddress = market?.addresses?.peggedToken;
   const collateralSymbol = market?.collateral?.symbol || "ETH";
   const peggedTokenSymbol = market?.peggedToken?.symbol || "ha";
-  
+
+  // When depositing ha tokens directly, we must deposit to stability pool
+  const isDirectPeggedDeposit = selectedDepositAsset === "pegged";
+
   // Get stability pool address based on selected type
-  const stabilityPoolAddress = depositInStabilityPool
-    ? (stabilityPoolType === "collateral"
-        ? (market?.addresses?.stabilityPoolCollateral as `0x${string}` | undefined)
-        : (market?.addresses?.stabilityPoolLeveraged as `0x${string}` | undefined))
+  // For direct ha deposits, always use stability pool
+  const effectiveDepositInStabilityPool =
+    isDirectPeggedDeposit || depositInStabilityPool;
+  const stabilityPoolAddress = effectiveDepositInStabilityPool
+    ? stabilityPoolType === "collateral"
+      ? (market?.addresses?.stabilityPoolCollateral as
+          | `0x${string}`
+          | undefined)
+      : (market?.addresses?.stabilityPoolLeveraged as `0x${string}` | undefined)
     : undefined;
 
-  // Contract read hooks
+  // Contract read hooks - collateral balance
   const { data: balanceData } = useContractRead({
     address: collateralAddress as `0x${string}`,
     abi: ERC20_ABI,
     functionName: "balanceOf",
     args: address ? [address] : undefined,
-    query: { enabled: !!address && isOpen, refetchInterval: 5000 },
+    query: {
+      enabled: !!address && isOpen && selectedDepositAsset === "collateral",
+      refetchInterval: 5000,
+    },
   });
 
-  // Get user's current deposit (pegged token balance)
+  // Contract read hooks - pegged token balance (for direct ha token deposits)
+  const { data: peggedTokenBalanceData } = useContractRead({
+    address: peggedTokenAddress as `0x${string}`,
+    abi: ERC20_ABI,
+    functionName: "balanceOf",
+    args: address ? [address] : undefined,
+    query: {
+      enabled:
+        !!address &&
+        !!peggedTokenAddress &&
+        isOpen &&
+        selectedDepositAsset === "pegged",
+      refetchInterval: 5000,
+    },
+  });
+
+  // Get user's current deposit (pegged token balance in stability pool)
   const { data: currentDepositData } = useContractRead({
     address: peggedTokenAddress as `0x${string}`,
     abi: ERC20_ABI,
     functionName: "balanceOf",
     args: address ? [address] : undefined,
-    query: { enabled: !!address && !!peggedTokenAddress && isOpen, refetchInterval: 5000 },
+    query: {
+      enabled: !!address && !!peggedTokenAddress && isOpen,
+      refetchInterval: 5000,
+    },
   });
 
   // Get pegged token price to calculate USD value
@@ -112,57 +147,108 @@ export const AnchorDepositModal = ({
     address: collateralAddress as `0x${string}`,
     abi: ERC20_ABI,
     functionName: "allowance",
-    args: address && minterAddress ? [address, minterAddress as `0x${string}`] : undefined,
-    query: { enabled: !!address && !!minterAddress && isOpen, refetchInterval: 5000 },
+    args:
+      address && minterAddress
+        ? [address, minterAddress as `0x${string}`]
+        : undefined,
+    query: {
+      enabled: !!address && !!minterAddress && isOpen,
+      refetchInterval: 5000,
+    },
   });
 
-  // Check allowance for pegged token to stability pool (if depositing to stability pool)
-  const { data: peggedTokenAllowanceData, refetch: refetchPeggedTokenAllowance } = useContractRead({
+  // Check allowance for pegged token to stability pool (if depositing to stability pool or direct ha deposit)
+  const {
+    data: peggedTokenAllowanceData,
+    refetch: refetchPeggedTokenAllowance,
+  } = useContractRead({
     address: peggedTokenAddress as `0x${string}`,
     abi: ERC20_ABI,
     functionName: "allowance",
-    args: address && stabilityPoolAddress ? [address, stabilityPoolAddress] : undefined,
-    query: { enabled: !!address && !!peggedTokenAddress && !!stabilityPoolAddress && isOpen && depositInStabilityPool, refetchInterval: 5000 },
+    args:
+      address && stabilityPoolAddress
+        ? [address, stabilityPoolAddress]
+        : undefined,
+    query: {
+      enabled:
+        !!address &&
+        !!peggedTokenAddress &&
+        !!stabilityPoolAddress &&
+        isOpen &&
+        (depositInStabilityPool || isDirectPeggedDeposit),
+      refetchInterval: 5000,
+    },
   });
 
-  // Calculate expected output
+  // Calculate expected output (only for collateral deposits)
   const { data: expectedOutput } = useContractRead({
     address: minterAddress as `0x${string}`,
     abi: minterABI,
     functionName: "calculateMintPeggedTokenOutput",
     args: amount ? [parseEther(amount)] : undefined,
-    query: { enabled: !!minterAddress && !!amount && parseFloat(amount) > 0 && isOpen },
+    query: {
+      enabled:
+        !!minterAddress &&
+        !!amount &&
+        parseFloat(amount) > 0 &&
+        isOpen &&
+        selectedDepositAsset === "collateral",
+    },
   });
+
+  // For pegged token deposits, the amount is the output
+  const depositAmount = isDirectPeggedDeposit
+    ? amountBigInt
+    : expectedOutput || 0n;
 
   // Contract write hooks
   const { writeContractAsync } = useWriteContract();
 
-  const balance = balanceData || 0n;
+  // Use appropriate balance based on selected asset
+  const collateralBalance = balanceData || 0n;
+  const peggedTokenBalance = peggedTokenBalanceData || 0n;
+  const balance =
+    selectedDepositAsset === "pegged" ? peggedTokenBalance : collateralBalance;
+
   const allowance = allowanceData || 0n;
   const peggedTokenAllowance = peggedTokenAllowanceData || 0n;
   const amountBigInt = amount ? parseEther(amount) : 0n;
-  const needsApproval = amountBigInt > 0 && amountBigInt > allowance;
-  const needsPeggedTokenApproval = depositInStabilityPool && expectedOutput && expectedOutput > peggedTokenAllowance;
+
+  // For collateral deposits: need approval for minter
+  // For pegged deposits: need approval for stability pool
+  const needsApproval =
+    selectedDepositAsset === "collateral"
+      ? amountBigInt > 0 && amountBigInt > allowance
+      : false;
+  const needsPeggedTokenApproval = isDirectPeggedDeposit
+    ? amountBigInt > 0 && amountBigInt > peggedTokenAllowance
+    : depositInStabilityPool &&
+      expectedOutput &&
+      expectedOutput > peggedTokenAllowance;
+
   const currentDeposit = currentDepositData || 0n;
 
   // Calculate current deposit USD value and ledger marks per day
   // Ledger Marks: 1 ledger mark per dollar per day
   // peggedTokenPrice is in 18 decimals, representing collateral value per pegged token
-  const currentDepositUSD = peggedTokenPrice && currentDeposit
-    ? (Number(currentDeposit) * Number(peggedTokenPrice)) / 1e36
-    : 0;
+  const currentDepositUSD =
+    peggedTokenPrice && currentDeposit
+      ? (Number(currentDeposit) * Number(peggedTokenPrice)) / 1e36
+      : 0;
   const currentLedgerMarksPerDay = currentDepositUSD;
 
   // Calculate expected ledger marks per day after deposit
-  const expectedDepositUSD = expectedOutput && peggedTokenPrice
-    ? (Number(expectedOutput) * Number(peggedTokenPrice)) / 1e36
-    : 0;
+  const expectedDepositUSD =
+    depositAmount && peggedTokenPrice
+      ? (Number(depositAmount) * Number(peggedTokenPrice)) / 1e36
+      : 0;
   const newTotalDepositUSD = currentDepositUSD + expectedDepositUSD;
   const newLedgerMarksPerDay = newTotalDepositUSD;
 
   const handleClose = () => {
     if (step === "approving" || step === "depositing") return;
     setAmount("");
+    setSelectedDepositAsset("collateral");
     setStep("input");
     setError(null);
     setTxHash(null);
@@ -198,52 +284,17 @@ export const AnchorDepositModal = ({
   };
 
   const handleDeposit = async () => {
-    if (!validateAmount() || !address || !minterAddress) return;
+    if (!validateAmount() || !address) return;
+    if (selectedDepositAsset === "collateral" && !minterAddress) return;
+    if (isDirectPeggedDeposit && !stabilityPoolAddress) {
+      setError("Please select a stability pool");
+      return;
+    }
 
     try {
-      // Step 1: Approve collateral token for minter (if needed)
-      if (needsApproval) {
-        setStep("approving");
-        setError(null);
-        setTxHash(null);
-        const approveHash = await writeContractAsync({
-          address: collateralAddress as `0x${string}`,
-          abi: ERC20_ABI,
-          functionName: "approve",
-          args: [minterAddress as `0x${string}`, amountBigInt],
-        });
-        setTxHash(approveHash);
-        await publicClient?.waitForTransactionReceipt({ hash: approveHash });
-        await refetchAllowance();
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        await refetchAllowance();
-      }
-
-      // Step 2: Mint pegged token
-      setStep("depositing");
-      setError(null);
-      setTxHash(null);
-
-      // Calculate minimum output (with 1% slippage tolerance)
-      const minPeggedOut = expectedOutput
-        ? (expectedOutput * 99n) / 100n
-        : 0n;
-
-      const mintHash = await writeContractAsync({
-        address: minterAddress as `0x${string}`,
-        abi: minterABI,
-        functionName: "mintPeggedToken",
-        args: [amountBigInt, address as `0x${string}`, minPeggedOut],
-      });
-      setTxHash(mintHash);
-      await publicClient?.waitForTransactionReceipt({ hash: mintHash });
-      
-      // Refetch to get updated pegged token balance
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      // Step 3: If depositing to stability pool, approve and deposit
-      if (depositInStabilityPool && stabilityPoolAddress && expectedOutput) {
-        // Check if we need to approve pegged token for stability pool
+      if (isDirectPeggedDeposit) {
+        // Direct ha token deposit to stability pool - skip minting
+        // Step 1: Approve pegged token for stability pool (if needed)
         if (needsPeggedTokenApproval) {
           setStep("approving");
           setError(null);
@@ -252,27 +303,110 @@ export const AnchorDepositModal = ({
             address: peggedTokenAddress as `0x${string}`,
             abi: ERC20_ABI,
             functionName: "approve",
-            args: [stabilityPoolAddress, expectedOutput],
+            args: [stabilityPoolAddress!, amountBigInt],
           });
           setTxHash(approvePeggedHash);
-          await publicClient?.waitForTransactionReceipt({ hash: approvePeggedHash });
+          await publicClient?.waitForTransactionReceipt({
+            hash: approvePeggedHash,
+          });
           await refetchPeggedTokenAllowance();
           await new Promise((resolve) => setTimeout(resolve, 1000));
           await refetchPeggedTokenAllowance();
         }
 
-        // Deposit pegged token to stability pool
+        // Step 2: Deposit pegged token directly to stability pool
         setStep("depositing");
         setError(null);
         setTxHash(null);
         const poolDepositHash = await writeContractAsync({
-          address: stabilityPoolAddress,
+          address: stabilityPoolAddress!,
           abi: stabilityPoolABI,
           functionName: "deposit",
-          args: [expectedOutput, address as `0x${string}`, 0n],
+          args: [amountBigInt, address as `0x${string}`, 0n],
         });
         setTxHash(poolDepositHash);
-        await publicClient?.waitForTransactionReceipt({ hash: poolDepositHash });
+        await publicClient?.waitForTransactionReceipt({
+          hash: poolDepositHash,
+        });
+      } else {
+        // Collateral deposit flow: mint then optionally deposit to stability pool
+        // Step 1: Approve collateral token for minter (if needed)
+        if (needsApproval) {
+          setStep("approving");
+          setError(null);
+          setTxHash(null);
+          const approveHash = await writeContractAsync({
+            address: collateralAddress as `0x${string}`,
+            abi: ERC20_ABI,
+            functionName: "approve",
+            args: [minterAddress as `0x${string}`, amountBigInt],
+          });
+          setTxHash(approveHash);
+          await publicClient?.waitForTransactionReceipt({ hash: approveHash });
+          await refetchAllowance();
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+          await refetchAllowance();
+        }
+
+        // Step 2: Mint pegged token
+        setStep("depositing");
+        setError(null);
+        setTxHash(null);
+
+        // Calculate minimum output (with 1% slippage tolerance)
+        const minPeggedOut = expectedOutput
+          ? (expectedOutput * 99n) / 100n
+          : 0n;
+
+        const mintHash = await writeContractAsync({
+          address: minterAddress as `0x${string}`,
+          abi: minterABI,
+          functionName: "mintPeggedToken",
+          args: [amountBigInt, address as `0x${string}`, minPeggedOut],
+        });
+        setTxHash(mintHash);
+        await publicClient?.waitForTransactionReceipt({ hash: mintHash });
+
+        // Refetch to get updated pegged token balance
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+
+        // Step 3: If depositing to stability pool, approve and deposit
+        if (depositInStabilityPool && stabilityPoolAddress && expectedOutput) {
+          // Check if we need to approve pegged token for stability pool
+          if (needsPeggedTokenApproval) {
+            setStep("approving");
+            setError(null);
+            setTxHash(null);
+            const approvePeggedHash = await writeContractAsync({
+              address: peggedTokenAddress as `0x${string}`,
+              abi: ERC20_ABI,
+              functionName: "approve",
+              args: [stabilityPoolAddress, expectedOutput],
+            });
+            setTxHash(approvePeggedHash);
+            await publicClient?.waitForTransactionReceipt({
+              hash: approvePeggedHash,
+            });
+            await refetchPeggedTokenAllowance();
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+            await refetchPeggedTokenAllowance();
+          }
+
+          // Deposit pegged token to stability pool
+          setStep("depositing");
+          setError(null);
+          setTxHash(null);
+          const poolDepositHash = await writeContractAsync({
+            address: stabilityPoolAddress,
+            abi: stabilityPoolABI,
+            functionName: "deposit",
+            args: [expectedOutput, address as `0x${string}`, 0n],
+          });
+          setTxHash(poolDepositHash);
+          await publicClient?.waitForTransactionReceipt({
+            hash: poolDepositHash,
+          });
+        }
       }
 
       setStep("success");
@@ -312,6 +446,9 @@ export const AnchorDepositModal = ({
       case "error":
         return "Try Again";
       default:
+        if (isDirectPeggedDeposit) {
+          return needsPeggedTokenApproval ? "Approve & Deposit" : "Deposit";
+        }
         return needsApproval ? "Approve & Deposit" : "Deposit";
     }
   };
@@ -361,14 +498,48 @@ export const AnchorDepositModal = ({
 
         <div className="p-6 space-y-6">
           <div className="text-sm text-[#1E4775]/70">
-            Deposit {collateralSymbol} to receive {peggedTokenSymbol}
+            {isDirectPeggedDeposit
+              ? `Deposit ${peggedTokenSymbol} directly to stability pool`
+              : `Deposit ${collateralSymbol} to receive ${peggedTokenSymbol}`}
+          </div>
+
+          {/* Deposit Asset Selection */}
+          <div className="space-y-2">
+            <label className="text-sm text-[#1E4775]/70">Deposit Asset</label>
+            <select
+              value={selectedDepositAsset}
+              onChange={(e) => {
+                setSelectedDepositAsset(
+                  e.target.value as "collateral" | "pegged"
+                );
+                setAmount(""); // Reset amount when changing asset
+              }}
+              className="w-full h-12 px-4 bg-white text-[#1E4775] border border-[#1E4775]/30 focus:border-[#1E4775] focus:ring-2 focus:ring-[#1E4775]/20 focus:outline-none transition-all text-lg font-mono"
+              disabled={step === "approving" || step === "depositing"}
+            >
+              <option value="collateral">
+                {collateralSymbol} (Mint {peggedTokenSymbol})
+              </option>
+              <option value="pegged">
+                {peggedTokenSymbol} (Direct to Stability Pool)
+              </option>
+            </select>
+            {isDirectPeggedDeposit && (
+              <div className="p-3 bg-[#B8EBD5]/20 border border-[#B8EBD5]/30 text-[#1E4775] text-sm">
+                ℹ️ Depositing {peggedTokenSymbol} directly to stability pool. No
+                minting required.
+              </div>
+            )}
           </div>
 
           <div className="space-y-2">
             <div className="flex justify-between items-center text-xs">
               <span className="text-[#1E4775]/70">Amount</span>
               <span className="text-[#1E4775]/70">
-                Balance: {formatEther(balance)} {collateralSymbol}
+                Balance: {formatEther(balance)}{" "}
+                {selectedDepositAsset === "pegged"
+                  ? peggedTokenSymbol
+                  : collateralSymbol}
               </span>
             </div>
             <div className="relative">
@@ -391,14 +562,33 @@ export const AnchorDepositModal = ({
               </button>
             </div>
             <div className="text-right text-xs text-[#1E4775]/50">
-              {collateralSymbol}
+              {selectedDepositAsset === "pegged"
+                ? peggedTokenSymbol
+                : collateralSymbol}
             </div>
-            {expectedOutput && amount && parseFloat(amount) > 0 && (
+            {!isDirectPeggedDeposit &&
+              expectedOutput &&
+              amount &&
+              parseFloat(amount) > 0 && (
+                <div className="mt-3 p-3 bg-[#B8EBD5]/30 border border-[#B8EBD5]/50 rounded">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-sm text-[#1E4775]/70">
+                      You will receive:
+                    </span>
+                    <span className="text-lg font-bold text-[#1E4775]">
+                      {formatEther(expectedOutput)} {peggedTokenSymbol}
+                    </span>
+                  </div>
+                </div>
+              )}
+            {isDirectPeggedDeposit && amount && parseFloat(amount) > 0 && (
               <div className="mt-3 p-3 bg-[#B8EBD5]/30 border border-[#B8EBD5]/50 rounded">
                 <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm text-[#1E4775]/70">You will receive:</span>
+                  <span className="text-sm text-[#1E4775]/70">
+                    You will deposit:
+                  </span>
                   <span className="text-lg font-bold text-[#1E4775]">
-                    {formatEther(expectedOutput)} {peggedTokenSymbol}
+                    {formatEther(amountBigInt)} {peggedTokenSymbol}
                   </span>
                 </div>
               </div>
@@ -407,20 +597,31 @@ export const AnchorDepositModal = ({
 
           {/* Stability Pool Options */}
           <div className="space-y-3 pt-2 border-t border-[#1E4775]/10">
-            <label className="flex items-center gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={depositInStabilityPool}
-                onChange={(e) => setDepositInStabilityPool(e.target.checked)}
-                className="w-5 h-5 text-[#1E4775] border-[#1E4775]/30 rounded focus:ring-2 focus:ring-[#1E4775]/20 focus:ring-offset-0 cursor-pointer"
-                disabled={step === "approving" || step === "depositing"}
-              />
-              <span className="text-sm font-medium text-[#1E4775]">
-                Deposit in stability pool
-              </span>
-            </label>
+            {isDirectPeggedDeposit ? (
+              <div className="p-3 bg-[#17395F]/10 border border-[#17395F]/20 rounded">
+                <p className="text-xs text-[#1E4775]/80">
+                  <span className="font-semibold">
+                    Direct {peggedTokenSymbol} deposit
+                  </span>{" "}
+                  will go to the selected stability pool.
+                </p>
+              </div>
+            ) : (
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={depositInStabilityPool}
+                  onChange={(e) => setDepositInStabilityPool(e.target.checked)}
+                  className="w-5 h-5 text-[#1E4775] border-[#1E4775]/30 rounded focus:ring-2 focus:ring-[#1E4775]/20 focus:ring-offset-0 cursor-pointer"
+                  disabled={step === "approving" || step === "depositing"}
+                />
+                <span className="text-sm font-medium text-[#1E4775]">
+                  Deposit in stability pool
+                </span>
+              </label>
+            )}
 
-            {depositInStabilityPool && (
+            {(depositInStabilityPool || isDirectPeggedDeposit) && (
               <div className="space-y-3 pl-8">
                 {/* Toggle for Collateral vs Sail */}
                 <div className="flex items-center gap-3">
@@ -458,15 +659,21 @@ export const AnchorDepositModal = ({
                   <p className="text-xs text-[#1E4775]/80 leading-relaxed">
                     {stabilityPoolType === "collateral" ? (
                       <>
-                        <span className="font-semibold">Collateral stability pool</span> redeems to{" "}
-                        <span className="font-semibold">market collateral</span> when the market is
-                        below min collateral ratio.
+                        <span className="font-semibold">
+                          Collateral stability pool
+                        </span>{" "}
+                        redeems to{" "}
+                        <span className="font-semibold">market collateral</span>{" "}
+                        when the market is below min collateral ratio.
                       </>
                     ) : (
                       <>
-                        <span className="font-semibold">Sail stability pool</span> redeems to{" "}
-                        <span className="font-semibold">Sail tokens</span> when the market is below
-                        min collateral ratio.
+                        <span className="font-semibold">
+                          Sail stability pool
+                        </span>{" "}
+                        redeems to{" "}
+                        <span className="font-semibold">Sail tokens</span> when
+                        the market is below min collateral ratio.
                       </>
                     )}
                   </p>
@@ -480,14 +687,18 @@ export const AnchorDepositModal = ({
             {currentDeposit > 0n && (
               <div className="p-3 bg-[#17395F]/10 border border-[#17395F]/20 rounded">
                 <div className="flex justify-between items-center mb-1">
-                  <span className="text-xs text-[#1E4775]/70">Current Deposit:</span>
+                  <span className="text-xs text-[#1E4775]/70">
+                    Current Deposit:
+                  </span>
                   <span className="text-sm font-semibold text-[#1E4775]">
                     {formatEther(currentDeposit)} {peggedTokenSymbol}
                   </span>
                 </div>
                 {currentDepositUSD > 0 && (
                   <div className="flex justify-between items-center">
-                    <span className="text-xs text-[#1E4775]/70">Ledger marks per day:</span>
+                    <span className="text-xs text-[#1E4775]/70">
+                      Ledger marks per day:
+                    </span>
                     <span className="text-sm font-bold text-[#1E4775]">
                       {currentLedgerMarksPerDay.toFixed(2)} ledger marks/day
                     </span>
@@ -496,17 +707,22 @@ export const AnchorDepositModal = ({
               </div>
             )}
 
-            {amount && parseFloat(amount) > 0 && expectedOutput && (
+            {amount && parseFloat(amount) > 0 && depositAmount > 0n && (
               <div className="p-3 bg-[#B8EBD5]/30 border border-[#B8EBD5]/50 rounded">
                 <div className="flex justify-between items-center mb-1">
-                  <span className="text-xs text-[#1E4775]/70">After deposit:</span>
+                  <span className="text-xs text-[#1E4775]/70">
+                    After deposit:
+                  </span>
                   <span className="text-sm font-semibold text-[#1E4775]">
-                    {formatEther(currentDeposit + expectedOutput)} {peggedTokenSymbol}
+                    {formatEther(currentDeposit + depositAmount)}{" "}
+                    {peggedTokenSymbol}
                   </span>
                 </div>
                 {newLedgerMarksPerDay > 0 && (
                   <div className="flex justify-between items-center">
-                    <span className="text-xs text-[#1E4775]/70">Ledger marks per day:</span>
+                    <span className="text-xs text-[#1E4775]/70">
+                      Ledger marks per day:
+                    </span>
                     <span className="text-sm font-bold text-[#1E4775]">
                       {newLedgerMarksPerDay.toFixed(2)} ledger marks/day
                     </span>
@@ -567,4 +783,3 @@ export const AnchorDepositModal = ({
     </div>
   );
 };
-

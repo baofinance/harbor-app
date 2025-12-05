@@ -297,7 +297,9 @@ export const GenesisWithdrawModal = ({
                   Harbor Marks Warning
                 </div>
                 <div className="text-orange-700 text-xs leading-relaxed">
-                  Withdrawing forfeits any Harbor Marks for withdrawn assets. Only assets deposited at the end of Maiden Voyage are eligible for Harbor Marks earned throughout the Maiden Voyage period.
+                  Withdrawing forfeits any Harbor Marks for withdrawn assets.
+                  Only assets deposited at the end of Maiden Voyage are eligible
+                  for Harbor Marks earned throughout the Maiden Voyage period.
                 </div>
               </div>
             </div>
@@ -342,7 +344,8 @@ export const GenesisWithdrawModal = ({
               {isMaxWithdrawal && (
                 <div className="p-3 bg-orange-50 border border-orange-200 rounded text-xs text-orange-700">
                   <div className="font-medium mb-1">Additional Warning:</div>
-                  This will remove you from Maiden Voyage and forfeit all potential rewards.
+                  This will remove you from Maiden Voyage and forfeit all
+                  potential rewards.
                 </div>
               )}
             </div>

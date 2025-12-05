@@ -1,10 +1,13 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import Head from "next/head";
 import { useAccount, useContractReads } from "wagmi";
 import { formatEther } from "viem";
 import { markets } from "@/config/markets";
+import { useAnvilContractReads } from "@/hooks/useAnvilContractReads";
+import { shouldUseAnvil } from "@/config/environment";
+import { useAnchorLedgerMarks } from "@/hooks/useAnchorLedgerMarks";
 import {
   ChevronDownIcon,
   ChevronUpIcon,
@@ -21,6 +24,7 @@ import {
 import Image from "next/image";
 import PriceChart from "@/components/PriceChart";
 import InfoTooltip from "@/components/InfoTooltip";
+import { SailManageModal } from "@/components/SailManageModal";
 
 const minterABI = [
   {
@@ -128,14 +132,18 @@ function SailMarketExpandedView({
         {/* Left: Market Info */}
         <div className="grid grid-cols-1 gap-2">
           <div className="bg-white p-3 h-full flex flex-col">
-            <h3 className="text-[#1E4775] font-semibold mb-2 text-xs">Leverage Ratio</h3>
+            <h3 className="text-[#1E4775] font-semibold mb-2 text-xs">
+              Leverage Ratio
+            </h3>
             <p className="text-sm font-bold text-[#1E4775]">
               {formatLeverage(leverageRatio)}
             </p>
           </div>
 
           <div className="bg-white p-3 h-full flex flex-col">
-            <h3 className="text-[#1E4775] font-semibold mb-2 text-xs">Token Price</h3>
+            <h3 className="text-[#1E4775] font-semibold mb-2 text-xs">
+              Token Price
+            </h3>
             <p className="text-sm font-bold text-[#1E4775]">
               {leveragedTokenPrice
                 ? formatToken(leveragedTokenPrice, 18, 4)
@@ -144,14 +152,18 @@ function SailMarketExpandedView({
           </div>
 
           <div className="bg-white p-3 h-full flex flex-col">
-            <h3 className="text-[#1E4775] font-semibold mb-2 text-xs">Collateral Ratio</h3>
+            <h3 className="text-[#1E4775] font-semibold mb-2 text-xs">
+              Collateral Ratio
+            </h3>
             <p className="text-sm font-bold text-[#1E4775]">
               {formatRatio(collateralRatio)}
             </p>
           </div>
 
           <div className="bg-white p-3 h-full flex flex-col">
-            <h3 className="text-[#1E4775] font-semibold mb-2 text-xs">Collateral Value</h3>
+            <h3 className="text-[#1E4775] font-semibold mb-2 text-xs">
+              Collateral Value
+            </h3>
             <p className="text-sm font-bold text-[#1E4775]">
               {formatToken(collateralValue)}
             </p>
@@ -163,7 +175,9 @@ function SailMarketExpandedView({
 
         {/* Right: Price Chart */}
         <div className="bg-white p-3">
-          <h3 className="text-[#1E4775] font-semibold mb-3 text-xs">Price Chart</h3>
+          <h3 className="text-[#1E4775] font-semibold mb-3 text-xs">
+            Price Chart
+          </h3>
           <div className="h-[300px]">
             <PriceChart
               tokenType="STEAMED"
@@ -180,11 +194,60 @@ function SailMarketExpandedView({
 export default function SailPage() {
   const { address, isConnected } = useAccount();
   const [expandedMarket, setExpandedMarket] = useState<string | null>(null);
+  const [manageModalOpen, setManageModalOpen] = useState(false);
+  const [selectedMarketId, setSelectedMarketId] = useState<string | null>(null);
+  const [selectedMarket, setSelectedMarket] = useState<any>(null);
+  const [manageModalTab, setManageModalTab] = useState<"mint" | "redeem">(
+    "mint"
+  );
+
+  // Get sail marks from subgraph
+  const { sailBalances, loading: isLoadingSailMarks } = useAnchorLedgerMarks();
+
+  // Calculate total sail marks and marks per day from sail balances
+  // Use useState + useEffect to ensure component re-renders when marks change every second
+  const [totalSailMarksState, setTotalSailMarksState] = useState(0);
+
+  // Update marks state whenever sailBalances change (they update every second via currentTime in the hook)
+  useEffect(() => {
+    if (!sailBalances || sailBalances.length === 0) {
+      setTotalSailMarksState(0);
+      if (process.env.NODE_ENV === "development") {
+        console.log("[Sail Page] No sail balances, setting to 0");
+      }
+      return;
+    }
+
+    const totalMarks = sailBalances.reduce((sum, balance) => sum + balance.estimatedMarks, 0);
+    
+    if (process.env.NODE_ENV === "development") {
+      console.log("[Sail Page] Updating totalSailMarksState", {
+        totalMarks,
+        sailBalancesCount: sailBalances.length,
+        sailBalances: sailBalances.map(b => ({ token: b.tokenAddress, marks: b.estimatedMarks })),
+      });
+    }
+    
+    setTotalSailMarksState(totalMarks);
+  }, [sailBalances]);
+
+  const { totalSailMarks, sailMarksPerDay } = useMemo(() => {
+    if (!sailBalances || sailBalances.length === 0) {
+      return { totalSailMarks: 0, sailMarksPerDay: 0 };
+    }
+
+    const totalMarks = totalSailMarksState;
+    const totalPerDay = sailBalances.reduce((sum, balance) => sum + balance.marksPerDay, 0);
+
+    return {
+      totalSailMarks: totalMarks,
+      sailMarksPerDay: totalPerDay,
+    };
+  }, [totalSailMarksState, sailBalances]);
 
   // Get all markets with leveraged tokens
   const sailMarkets = useMemo(
-    () =>
-      Object.entries(markets).filter(([_, m]) => m.leveragedToken),
+    () => Object.entries(markets).filter(([_, m]) => m.leveragedToken),
     []
   );
 
@@ -241,7 +304,6 @@ export default function SailPage() {
       enabled: sailMarkets.length > 0,
       retry: 1,
       retryOnMount: false,
-      allowFailure: true,
     },
   });
 
@@ -273,21 +335,41 @@ export default function SailPage() {
       .filter((c): c is NonNullable<typeof c> => c !== null);
   }, [sailMarkets, address]);
 
-  const { data: userDepositReads } = useContractReads({
-    contracts: userDepositContracts.map((c) => c.contract),
+  const useAnvil = shouldUseAnvil();
+  const userDepositContractArray = useMemo(() => {
+    return userDepositContracts.map((c) => c.contract);
+  }, [userDepositContracts]);
+
+  const wagmiUserDepositReads = useContractReads({
+    contracts: userDepositContractArray,
     query: {
-      enabled: sailMarkets.length > 0 && !!address,
+      enabled: sailMarkets.length > 0 && !!address && !useAnvil,
       retry: 1,
       retryOnMount: false,
-      allowFailure: true,
     },
   });
+
+  const anvilUserDepositReads = useAnvilContractReads({
+    contracts: userDepositContractArray,
+    enabled: sailMarkets.length > 0 && !!address && useAnvil,
+    refetchInterval: 5000,
+  });
+
+  const userDepositReads = useAnvil
+    ? anvilUserDepositReads.data
+    : wagmiUserDepositReads.data;
 
   // Create a map for quick lookup: marketIndex -> deposit balance
   const userDepositMap = useMemo(() => {
     const map = new Map<number, bigint | undefined>();
     userDepositContracts.forEach(({ marketIndex }, contractIndex) => {
-      map.set(marketIndex, userDepositReads?.[contractIndex]?.result as bigint | undefined);
+      const readResult = userDepositReads?.[contractIndex];
+      // Handle both { result: ... } and direct result formats
+      const balance =
+        readResult && typeof readResult === "object" && "result" in readResult
+          ? (readResult.result as bigint | undefined)
+          : (readResult as bigint | undefined);
+      map.set(marketIndex, balance);
     });
     return map;
   }, [userDepositReads, userDepositContracts]);
@@ -296,7 +378,10 @@ export default function SailPage() {
     <>
       <Head>
         <title>Sail</title>
-        <meta name="description" content="Mint and redeem Sail (leveraged) tokens" />
+        <meta
+          name="description"
+          content="Mint and redeem Sail (leveraged) tokens"
+        />
       </Head>
 
       <div className="min-h-screen text-white max-w-[1300px] mx-auto font-sans relative">
@@ -323,10 +408,13 @@ export default function SailPage() {
               <div className="bg-[#17395F] p-4">
                 <div className="flex items-center justify-center mb-2">
                   <BanknotesIcon className="w-6 h-6 text-white mr-2" />
-                  <h2 className="font-bold text-white text-lg text-center">Mint</h2>
+                  <h2 className="font-bold text-white text-lg text-center">
+                    Mint
+                  </h2>
                 </div>
                 <p className="text-sm text-white/80 text-center">
-                  Mint leveraged tokens with amplified exposure to price movements
+                  Mint leveraged tokens with amplified exposure to price
+                  movements
                 </p>
               </div>
 
@@ -334,10 +422,13 @@ export default function SailPage() {
               <div className="bg-[#17395F] p-4">
                 <div className="flex items-center justify-center mb-2">
                   <CurrencyDollarIcon className="w-6 h-6 text-white mr-2" />
-                  <h2 className="font-bold text-white text-lg text-center">Leverage</h2>
+                  <h2 className="font-bold text-white text-lg text-center">
+                    Leverage
+                  </h2>
                 </div>
                 <p className="text-sm text-white/80 text-center">
-                  No funding fees - There are no ongoing fees for holding Sail tokens
+                  No funding fees - There are no ongoing fees for holding Sail
+                  tokens
                 </p>
               </div>
 
@@ -345,10 +436,13 @@ export default function SailPage() {
               <div className="bg-[#17395F] p-4">
                 <div className="flex items-center justify-center mb-2">
                   <ShieldCheckIcon className="w-6 h-6 text-white mr-2" />
-                  <h2 className="font-bold text-white text-lg text-center">Auto rebalancing</h2>
+                  <h2 className="font-bold text-white text-lg text-center">
+                    Auto rebalancing
+                  </h2>
                 </div>
                 <p className="text-sm text-white/80 text-center">
-                  Positions automatically rebalance to protect you from liquidation
+                  Positions automatically rebalance to protect you from
+                  liquidation
                 </p>
               </div>
 
@@ -356,10 +450,13 @@ export default function SailPage() {
               <div className="bg-[#17395F] p-4">
                 <div className="flex items-center justify-center mb-2">
                   <StarIcon className="w-6 h-6 text-white mr-2" />
-                  <h2 className="font-bold text-white text-lg text-center">Ledger Marks</h2>
+                  <h2 className="font-bold text-white text-lg text-center">
+                    Ledger Marks
+                  </h2>
                 </div>
                 <p className="text-sm text-white/80 text-center">
-                  Earn ledger marks for deposits: 1 ledger mark per dollar per day
+                  Earn ledger marks for deposits: 1 ledger mark per dollar per
+                  day
                 </p>
               </div>
 
@@ -367,7 +464,9 @@ export default function SailPage() {
               <div className="bg-[#17395F] p-4">
                 <div className="flex items-center justify-center mb-2">
                   <ArrowPathIcon className="w-6 h-6 text-white mr-2" />
-                  <h2 className="font-bold text-white text-lg text-center">Redeem</h2>
+                  <h2 className="font-bold text-white text-lg text-center">
+                    Redeem
+                  </h2>
                 </div>
                 <p className="text-sm text-white/80 text-center">
                   Redeem sail tokens for collateral at any time
@@ -379,146 +478,88 @@ export default function SailPage() {
           {/* Divider */}
           <div className="border-t border-white/10 my-2"></div>
 
-          {/* Ledger Marks Section */}
-          {(() => {
-            // Calculate total ledger marks: 1x multiplier per dollar per day
-            // For leveraged tokens, we need to calculate USD value using leveraged token price and collateral price
-            let totalCurrentMarks = 0;
-            let totalMarksPerDay = 0;
-            let totalEstimatedMarks = 0;
-            
-            sailMarkets.forEach(([id, m], mi) => {
-              const baseOffset = mi * 4;
-              const leveragedTokenPrice = reads?.[baseOffset + 1]?.result as bigint | undefined;
-              const userDeposit = userDepositMap.get(mi);
-              
-              if (userDeposit && leveragedTokenPrice) {
-                // Leveraged token price is in terms of the underlying asset
-                // To get USD, we multiply by collateral price (approximate as 1 for now if no oracle)
-                // For now, use leveraged token price directly as approximation
-                // In production, this should use collateral price oracle
-                const leveragedPrice = Number(leveragedTokenPrice) / 1e18;
-                const depositAmount = Number(userDeposit) / 1e18;
-                // Approximate USD: leveraged token price * deposit amount
-                // This assumes leveraged token price is already in a comparable unit
-                // For more accuracy, multiply by collateral price from oracle
-                const depositUSD = depositAmount * leveragedPrice;
-                
-                // 1x multiplier: 1 mark per dollar per day
-                // Since we don't track deposit dates, we'll use the USD value as the base
-                // Current marks would be calculated based on days since deposit, but without that data,
-                // we'll show 0 for current marks and use depositUSD for marks per day
-                // Marks per day: 1 mark per dollar per day
-                const marksPerDay = depositUSD * 1;
-                totalMarksPerDay += marksPerDay;
-                
-                // Estimated total marks: same as marks per day (ongoing, no end date)
-                totalEstimatedMarks += marksPerDay;
-              }
-            });
-            
-            return (
-              <div className="grid grid-cols-4 gap-2 mb-2">
-                {/* Header Box */}
-                <div className="bg-[#FF8A7A] p-3 flex items-center justify-center gap-2">
-                  <h2 className="font-bold font-mono text-white text-2xl text-center">
-                    Ledger Marks
-                  </h2>
-                  <InfoTooltip
-                    label={
-                      <div className="space-y-3">
-                        <div>
-                          <h3 className="font-bold text-lg mb-2">Ledger Marks</h3>
-                          <p className="text-white/90 leading-relaxed">
-                            A ledger is both a record of truth and a core DeFi
-                            symbol — and a mark is what every sailor leaves behind
-                            on a voyage.
-                          </p>
-                        </div>
+          {/* Sail Marks Section */}
+          <div className="grid grid-cols-3 gap-2 mb-2">
+            {/* Header Box */}
+            <div className="bg-[#FF8A7A] p-3 flex items-center justify-center gap-2">
+              <h2 className="font-bold font-mono text-white text-2xl text-center">
+                Sail Marks
+              </h2>
+              <InfoTooltip
+                label={
+                  <div className="space-y-3">
+                    <div>
+                      <h3 className="font-bold text-lg mb-2">
+                        Sail Marks
+                      </h3>
+                      <p className="text-white/90 leading-relaxed">
+                        Earn marks for holding Sail tokens. Sail marks are earned at 1 mark per dollar per day (with a 5x multiplier).
+                      </p>
+                    </div>
 
-                        <div className="border-t border-white/20 pt-3">
-                          <p className="text-white/90 leading-relaxed mb-2">
-                            Each Ledger Mark is proof that you were here early,
-                            helping stabilize the first Harbor markets and guide
-                            them through calm launch conditions.
-                          </p>
-                        </div>
+                    <div className="border-t border-white/20 pt-3">
+                      <p className="text-white/90 leading-relaxed mb-2">
+                        Sail marks track your contribution to the Harbor ecosystem through leveraged token positions.
+                      </p>
+                    </div>
 
-                        <div className="space-y-2">
-                          <div className="flex items-start gap-2">
-                            <span className="text-white/70 mt-0.5">•</span>
-                            <p className="text-white/90 leading-relaxed">
-                              The more you contribute, the deeper your mark on the
-                              ledger.
-                            </p>
-                          </div>
-                          <div className="flex items-start gap-2">
-                            <span className="text-white/70 mt-0.5">•</span>
-                            <p className="text-white/90 leading-relaxed">
-                              When $TIDE surfaces, these marks will convert into
-                              your share of rewards and governance power.
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="border-t border-white/20 pt-3">
-                          <p className="text-white/80 italic leading-relaxed">
-                            Think of them as a record of your journey — every mark,
-                            a line in Harbor's logbook.
-                          </p>
-                        </div>
+                    <div className="space-y-2">
+                      <div className="flex items-start gap-2">
+                        <span className="text-white/70 mt-0.5">•</span>
+                        <p className="text-white/90 leading-relaxed">
+                          The more Sail tokens you hold, the more marks you earn.
+                        </p>
                       </div>
-                    }
-                    side="right"
-                  >
-                    <QuestionMarkCircleIcon className="w-5 h-5 text-white cursor-help" />
-                  </InfoTooltip>
-                </div>
+                      <div className="flex items-start gap-2">
+                        <span className="text-white/70 mt-0.5">•</span>
+                        <p className="text-white/90 leading-relaxed">
+                          When $TIDE surfaces, these marks will convert into
+                          your share of rewards and governance power.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                }
+                side="right"
+              />
+            </div>
 
-                {/* Current Marks Box */}
-                <div className="bg-[#17395F] p-3">
-                  <div className="text-xs text-white/70 mb-0.5 text-center">
-                    Current Marks
-                  </div>
-                  <div className="text-base font-bold text-white font-mono text-center">
-                    {totalCurrentMarks > 0
-                      ? totalCurrentMarks.toLocaleString(undefined, {
-                          maximumFractionDigits: 0,
-                        })
-                      : "0"}
-                  </div>
-                </div>
-
-                {/* Marks per Day Box */}
-                <div className="bg-[#17395F] p-3">
-                  <div className="text-xs text-white/70 mb-0.5 text-center">
-                    Marks per Day
-                  </div>
-                  <div className="text-base font-bold text-white font-mono text-center">
-                    {totalMarksPerDay > 0
-                      ? totalMarksPerDay.toLocaleString(undefined, {
-                          maximumFractionDigits: 2,
-                        })
-                      : "0"}
-                  </div>
-                </div>
-
-                {/* Estimated Total Marks Box */}
-                <div className="bg-[#17395F] p-3">
-                  <div className="text-xs text-white/70 mb-0.5 text-center">
-                    Estimated Total Marks
-                  </div>
-                  <div className="text-base font-bold text-white font-mono text-center">
-                    {totalEstimatedMarks > 0
-                      ? totalEstimatedMarks.toLocaleString(undefined, {
-                          maximumFractionDigits: 0,
-                        })
-                      : "0"}
-                  </div>
-                </div>
+            {/* Current Sail Marks Box */}
+            <div className="bg-[#17395F] p-3">
+              <div className="text-xs text-white/70 mb-0.5 text-center">
+                Current Sail Marks
               </div>
-            );
-          })()}
+              <div className="text-base font-bold text-white font-mono text-center">
+                {isLoadingSailMarks ? (
+                  "-"
+                ) : totalSailMarks > 0 ? (
+                  totalSailMarks.toLocaleString(undefined, {
+                    maximumFractionDigits: 0,
+                  })
+                ) : (
+                  "0"
+                )}
+              </div>
+            </div>
+
+            {/* Sail Marks per Day Box */}
+            <div className="bg-[#17395F] p-3">
+              <div className="text-xs text-white/70 mb-0.5 text-center">
+                Sail Marks per Day
+              </div>
+              <div className="text-base font-bold text-white font-mono text-center">
+                {isLoadingSailMarks ? (
+                  "-"
+                ) : sailMarksPerDay > 0 ? (
+                  sailMarksPerDay.toLocaleString(undefined, {
+                    maximumFractionDigits: 2,
+                  })
+                ) : (
+                  "0"
+                )}
+              </div>
+            </div>
+          </div>
 
           {/* Divider */}
           <div className="border-t border-white/10 mb-3"></div>
@@ -546,13 +587,22 @@ export default function SailPage() {
                 <div className="space-y-2">
                   {markets.map(([id, m], mi) => {
                     // Find the global index of this market
-                    const globalIndex = sailMarkets.findIndex(([marketId]) => marketId === id);
+                    const globalIndex = sailMarkets.findIndex(
+                      ([marketId]) => marketId === id
+                    );
                     const baseOffset = globalIndex * 4;
 
-                    const leverageRatio = reads?.[baseOffset]?.result as bigint | undefined;
-                    const leveragedTokenPrice = reads?.[baseOffset + 1]?.result as bigint | undefined;
-                    const collateralRatio = reads?.[baseOffset + 2]?.result as bigint | undefined;
-                    const collateralValue = reads?.[baseOffset + 3]?.result as bigint | undefined;
+                    const leverageRatio = reads?.[baseOffset]?.result as
+                      | bigint
+                      | undefined;
+                    const leveragedTokenPrice = reads?.[baseOffset + 1]
+                      ?.result as bigint | undefined;
+                    const collateralRatio = reads?.[baseOffset + 2]?.result as
+                      | bigint
+                      | undefined;
+                    const collateralValue = reads?.[baseOffset + 3]?.result as
+                      | bigint
+                      | undefined;
 
                     const userDeposit = userDepositMap.get(globalIndex);
                     const isExpanded = expandedMarket === id;
@@ -565,7 +615,9 @@ export default function SailPage() {
                               ? "bg-[#B8EBD5]"
                               : "bg-white hover:bg-[#B8EBD5]"
                           }`}
-                          onClick={() => setExpandedMarket(isExpanded ? null : id)}
+                          onClick={() =>
+                            setExpandedMarket(isExpanded ? null : id)
+                          }
                         >
                           <div className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr] gap-4 items-center text-sm">
                             <div className="whitespace-nowrap min-w-0 overflow-hidden">
@@ -590,7 +642,8 @@ export default function SailPage() {
                             </div>
                             <div className="text-center min-w-0">
                               <span className="text-[#1E4775] font-medium text-xs font-mono">
-                                {formatToken(collateralValue)} {m.collateral?.symbol || "ETH"}
+                                {formatToken(collateralValue)}{" "}
+                                {m.collateral?.symbol || "ETH"}
                               </span>
                             </div>
                             <div className="text-center min-w-0">
@@ -602,27 +655,19 @@ export default function SailPage() {
                               className="text-center min-w-0"
                               onClick={(e) => e.stopPropagation()}
                             >
-                              <div className="flex items-center justify-center gap-2 flex-nowrap">
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    // TODO: Open deposit modal
-                                  }}
-                                  className="px-4 py-2 text-xs font-medium bg-[#1E4775] text-white hover:bg-[#17395F] disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors rounded-full whitespace-nowrap"
-                                >
-                                  Deposit
-                                </button>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    // TODO: Open withdraw modal
-                                  }}
-                                  disabled={!isConnected}
-                                  className="px-4 py-2 text-xs font-medium bg-white text-[#1E4775] border border-[#1E4775] hover:bg-[#1E4775]/5 disabled:bg-gray-100 disabled:text-gray-400 disabled:border-gray-300 disabled:cursor-not-allowed transition-colors rounded-full whitespace-nowrap"
-                                >
-                                  Withdraw
-                                </button>
-                              </div>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedMarketId(id);
+                                  setSelectedMarket(m);
+                                  setManageModalTab("mint");
+                                  setManageModalOpen(true);
+                                }}
+                                disabled={!isConnected}
+                                className="px-4 py-2 text-xs font-medium bg-[#1E4775] text-white hover:bg-[#17395F] disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors rounded-full whitespace-nowrap"
+                              >
+                                Manage
+                              </button>
                             </div>
                           </div>
                         </div>
@@ -646,6 +691,27 @@ export default function SailPage() {
             ))}
           </section>
         </main>
+
+        {/* Manage Modal */}
+        {selectedMarketId && selectedMarket && (
+          <SailManageModal
+            isOpen={manageModalOpen}
+            onClose={() => {
+              setManageModalOpen(false);
+              setSelectedMarketId(null);
+              setSelectedMarket(null);
+            }}
+            marketId={selectedMarketId}
+            market={selectedMarket}
+            initialTab={manageModalTab}
+            onSuccess={() => {
+              // Refresh data if needed
+              setManageModalOpen(false);
+              setSelectedMarketId(null);
+              setSelectedMarket(null);
+            }}
+          />
+        )}
       </div>
     </>
   );

@@ -13,6 +13,7 @@ import { markets, type Market } from "../../../config/markets";
 import { GENESIS_ABI, ERC20_ABI } from "../../../config/contracts";
 import InfoTooltip from "@/components/InfoTooltip";
 import HistoricalDataChart from "@/components/HistoricalDataChart";
+import Image from "next/image";
 
 type PageProps = {
   params: Promise<{ id: string }>;
@@ -44,6 +45,41 @@ const chainlinkOracleABI = [
     type: "function",
   },
 ] as const;
+
+// Helper function to get logo path for tokens
+function getLogoPath(symbol: string): string {
+  const normalizedSymbol = symbol.toLowerCase();
+  if (normalizedSymbol === "eth" || normalizedSymbol === "ethereum") {
+    return "/icons/eth.png";
+  }
+  if (normalizedSymbol === "fxsave") {
+    return "/icons/fxSave.png";
+  }
+  if (normalizedSymbol === "fxusd") {
+    return "/icons/fxUSD.webp";
+  }
+  if (normalizedSymbol === "usdc") {
+    return "/icons/usdc.webp";
+  }
+  if (normalizedSymbol === "steth") {
+    return "/icons/steth_logo.webp";
+  }
+  if (normalizedSymbol === "wsteth") {
+    return "/icons/wstETH.webp";
+  }
+  // Use haETH logo for haPB, haUSD2 for other ha tokens
+  if (normalizedSymbol === "hapb") {
+    return "/icons/haETH.png";
+  }
+  if (normalizedSymbol.startsWith("ha")) {
+    return "/icons/haUSD2.png";
+  }
+  // Use hsUSDETH logo for sail tokens (e.g., hsPB) - for test environment
+  if (normalizedSymbol.startsWith("hs")) {
+    return "/icons/hsUSDETH.png";
+  }
+  return "/icons/placeholder.svg";
+}
 
 // Reusable UI pieces styled like PoolClient
 function EtherscanLink({
@@ -122,12 +158,12 @@ function InputField({
         className="w-full text-2xl sm:text-3xl font-semibold bg-transparent text-white focus:outline-none pr-2"
       />
       {maxButton && (
-      <button
-        onClick={maxButton.onClick}
-        className="text-xs text-white/80 hover:text-white px-2 py-1 rounded-full"
-      >
-        {maxButton.label}
-      </button>
+        <button
+          onClick={maxButton.onClick}
+          className="text-xs text-white/80 hover:text-white px-2 py-1 rounded-full"
+        >
+          {maxButton.label}
+        </button>
       )}
     </div>
   );
@@ -188,6 +224,10 @@ function GenesisActionTabs({
   userDeposit,
   collateralSymbol,
   claimable,
+  claimablePegged,
+  claimableLeveraged,
+  peggedTokenSymbol,
+  leveragedTokenSymbol,
   error,
   isConnected,
   isApproveLoading,
@@ -213,6 +253,10 @@ function GenesisActionTabs({
   userDeposit: bigint;
   collateralSymbol: string;
   claimable: bigint;
+  claimablePegged: bigint;
+  claimableLeveraged: bigint;
+  peggedTokenSymbol: string;
+  leveragedTokenSymbol: string;
   error: string | null;
   isConnected: boolean;
   isApproveLoading: boolean;
@@ -349,10 +393,45 @@ function GenesisActionTabs({
         {activeTab === "claim" && (
           <div className="space-y-3">
             <div>
-              <p className="text-xs text-white/60 mb-1">Claimable Rewards</p>
-              <p className="text-lg font-medium text-white font-mono">
-                {formatAmount(claimable)} STEAM
-              </p>
+              <p className="text-xs text-white/60 mb-2">Claimable Tokens</p>
+              <div className="space-y-2">
+                {claimablePegged > 0n && (
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-white font-mono">
+                        {formatAmount(claimablePegged)} {peggedTokenSymbol}
+                      </span>
+                      <Image
+                        src={getLogoPath(peggedTokenSymbol)}
+                        alt={peggedTokenSymbol}
+                        width={24}
+                        height={24}
+                        className="flex-shrink-0"
+                      />
+                    </div>
+                  </div>
+                )}
+                {claimableLeveraged > 0n && (
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-white font-mono">
+                        {formatAmount(claimableLeveraged)}{" "}
+                        {leveragedTokenSymbol}
+                      </span>
+                      <Image
+                        src={getLogoPath(leveragedTokenSymbol)}
+                        alt={leveragedTokenSymbol}
+                        width={24}
+                        height={24}
+                        className="flex-shrink-0"
+                      />
+                    </div>
+                  </div>
+                )}
+                {claimablePegged === 0n && claimableLeveraged === 0n && (
+                  <p className="text-sm text-white/60">No tokens to claim</p>
+                )}
+              </div>
             </div>
             {error && <p className="text-sm text-rose-400">{error}</p>}
             <ActionButton
@@ -688,7 +767,10 @@ export default function GenesisMarketPage({ params }: PageProps) {
     );
   }
 
-  const rewardTokenSymbol = (market as any).rewardToken?.symbol || (market as any).rewardPoints ? "Ledger Marks" : "";
+  const rewardTokenSymbol =
+    (market as any).rewardToken?.symbol || (market as any).rewardPoints
+      ? "Ledger Marks"
+      : "";
 
   const statusColor = isEnded
     ? "bg-orange-900/30 text-orange-400 border-orange-500/30"
@@ -831,6 +913,12 @@ export default function GenesisMarketPage({ params }: PageProps) {
               userDeposit={userDeposit}
               collateralSymbol={collateralSymbol}
               claimable={userClaimableSum}
+              claimablePegged={userClaimable?.[0] || 0n}
+              claimableLeveraged={userClaimable?.[1] || 0n}
+              peggedTokenSymbol={(market as any)?.peggedToken?.symbol || "haPB"}
+              leveragedTokenSymbol={
+                (market as any)?.leveragedToken?.symbol || "hsPB"
+              }
               error={actionError}
               isConnected={!!isConnected}
               isApproveLoading={isApproveLoading}

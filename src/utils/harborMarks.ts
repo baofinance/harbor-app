@@ -39,26 +39,27 @@ export function calculateHarborMarks(
   bonusMultiplier: number = 100
 ): HarborMarksCalculation {
   const marksPerDay = depositUSD * marksPerDollarPerDay;
-  
+
   // Calculate days since deposit
   const daysSinceDeposit = Math.max(
     0,
     (currentTimestamp - depositTimestamp) / (1000 * 60 * 60 * 24)
   );
-  
+
   // Calculate days since genesis start
   const daysSinceGenesisStart = Math.max(
     0,
     (currentTimestamp - genesisStartDate) / (1000 * 60 * 60 * 24)
   );
-  
+
   let currentMarks = 0;
   let estimatedTotalMarks = 0;
   let bonusMarks = 0;
-  
+
   if (genesisEndDate && currentTimestamp >= genesisEndDate) {
     // Genesis has ended - calculate final marks with bonus
-    const daysInGenesis = (genesisEndDate - genesisStartDate) / (1000 * 60 * 60 * 24);
+    const daysInGenesis =
+      (genesisEndDate - genesisStartDate) / (1000 * 60 * 60 * 24);
     const accumulatedMarks = depositUSD * marksPerDollarPerDay * daysInGenesis;
     bonusMarks = depositUSD * bonusMultiplier;
     currentMarks = accumulatedMarks + bonusMarks;
@@ -66,9 +67,11 @@ export function calculateHarborMarks(
   } else if (genesisEndDate) {
     // Genesis ongoing - calculate current and estimated
     currentMarks = depositUSD * marksPerDollarPerDay * daysSinceGenesisStart;
-    
-    const daysUntilEnd = (genesisEndDate - currentTimestamp) / (1000 * 60 * 60 * 24);
-    const daysInGenesis = (genesisEndDate - genesisStartDate) / (1000 * 60 * 60 * 24);
+
+    const daysUntilEnd =
+      (genesisEndDate - currentTimestamp) / (1000 * 60 * 60 * 24);
+    const daysInGenesis =
+      (genesisEndDate - genesisStartDate) / (1000 * 60 * 60 * 24);
     const futureMarks = depositUSD * marksPerDollarPerDay * daysUntilEnd;
     bonusMarks = depositUSD * bonusMultiplier;
     estimatedTotalMarks = currentMarks + futureMarks + bonusMarks;
@@ -77,7 +80,7 @@ export function calculateHarborMarks(
     currentMarks = depositUSD * marksPerDollarPerDay * daysSinceGenesisStart;
     estimatedTotalMarks = currentMarks; // No estimate without end date
   }
-  
+
   return {
     currentMarks,
     marksPerDay,
@@ -101,7 +104,7 @@ export function calculateTotalHarborMarks(
   let totalMarksPerDay = 0;
   let totalEstimatedMarks = 0;
   let totalBonusMarks = 0;
-  
+
   deposits.forEach((deposit) => {
     if (deposit.withdrawn && deposit.withdrawnAt) {
       // Calculate marks up to withdrawal time
@@ -109,7 +112,9 @@ export function calculateTotalHarborMarks(
         deposit.amountUSD,
         deposit.timestamp,
         genesisStartDate,
-        deposit.withdrawnAt >= genesisEndDate ? genesisEndDate : deposit.withdrawnAt,
+        deposit.withdrawnAt >= genesisEndDate
+          ? genesisEndDate
+          : deposit.withdrawnAt,
         deposit.withdrawnAt,
         marksPerDollarPerDay,
         bonusMultiplier
@@ -117,7 +122,7 @@ export function calculateTotalHarborMarks(
       // Marks are forfeited, so don't add to totals
       return;
     }
-    
+
     const marks = calculateHarborMarks(
       deposit.amountUSD,
       deposit.timestamp,
@@ -127,13 +132,13 @@ export function calculateTotalHarborMarks(
       marksPerDollarPerDay,
       bonusMultiplier
     );
-    
+
     totalCurrentMarks += marks.currentMarks;
     totalMarksPerDay += marks.marksPerDay;
     totalEstimatedMarks += marks.estimatedTotalMarks;
     totalBonusMarks += marks.bonusMarks;
   });
-  
+
   return {
     currentMarks: totalCurrentMarks,
     marksPerDay: totalMarksPerDay,
@@ -164,17 +169,16 @@ export function calculateForfeitedMarks(
     marksPerDollarPerDay,
     bonusMultiplier
   );
-  
+
   // If genesis hasn't ended yet, forfeit potential future marks too
   if (genesisEndDate && withdrawalTimestamp < genesisEndDate) {
-    const daysUntilEnd = (genesisEndDate - withdrawalTimestamp) / (1000 * 60 * 60 * 24);
+    const daysUntilEnd =
+      (genesisEndDate - withdrawalTimestamp) / (1000 * 60 * 60 * 24);
     const futureMarks = withdrawalUSD * marksPerDollarPerDay * daysUntilEnd;
     const potentialBonus = withdrawalUSD * bonusMultiplier;
     return marks.currentMarks + futureMarks + potentialBonus;
   }
-  
+
   return marks.currentMarks;
 }
-
-
 
