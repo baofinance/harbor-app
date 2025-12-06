@@ -10,6 +10,11 @@ const projectId = "513620ae374ee96b895eb92231eecb7f";
 const ANVIL_RPC_URL =
   process.env.NEXT_PUBLIC_RPC_URL || "http://localhost:8545";
 
+// Mainnet RPC URL - defaults to Alchemy if not set in environment
+const MAINNET_RPC_URL =
+  process.env.NEXT_PUBLIC_MAINNET_RPC_URL ||
+  "https://eth-mainnet.g.alchemy.com/v2/uGl5kuD60tnGFHRmkevK1iYQuIQKmh1n";
+
 // Determine which chains to include based on environment
 const useAnvil = shouldUseAnvil();
 const chains = useAnvil
@@ -22,7 +27,7 @@ export const wagmi = createConfig({
   connectors: [injected(), metaMask(), safe()],
   transports: {
     ...(useAnvil ? { [anvil.id]: http(ANVIL_RPC_URL) } : {}),
-    [mainnet.id]: http(process.env.NEXT_PUBLIC_MAINNET_RPC_URL),
+    [mainnet.id]: http(MAINNET_RPC_URL),
     [base.id]: http(process.env.NEXT_PUBLIC_BASE_RPC_URL),
     [arbitrum.id]: http(process.env.NEXT_PUBLIC_ARBITRUM_RPC_URL),
   },

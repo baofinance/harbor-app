@@ -1,7 +1,9 @@
+import { shouldUseAnvil } from "./environment";
+
 // Contract addresses for local Anvil deployment
 // Chain ID: 31337, RPC URL: http://localhost:8545
 // Clean Chain Deployment
-export const contracts = {
+export const anvilContracts = {
   minter: "0x7a9ec1d04904907de0ed7b6839ccdd59c3716ac9",
   peggedToken: "0x1c85638e118b37167e9298c2268758e058DdfDA0", // haPB (Harbor Anchored PB)
   leveragedToken: "0x367761085BF3C12e5DA2Df99AC6E1a824612b8fb", // hsPB (Harbor Sail)
@@ -14,20 +16,39 @@ export const contracts = {
   wrappedCollateralToken: "0x0165878A594ca255338adfa4d48449f69242Eb8F", // wstETH
 } as const;
 
+// Mainnet contract addresses
+// Update these with your mainnet deployment addresses
+export const mainnetContracts = {
+  minter: "0x0000000000000000000000000000000000000000" as `0x${string}`, // Update with mainnet address
+  peggedToken: "0x0000000000000000000000000000000000000000" as `0x${string}`, // Update with mainnet address
+  leveragedToken: "0x0000000000000000000000000000000000000000" as `0x${string}`, // Update with mainnet address
+  genesis: "0x0000000000000000000000000000000000000000" as `0x${string}`, // Update with mainnet address
+  reservePool: "0x0000000000000000000000000000000000000000" as `0x${string}`,
+  stabilityPoolManager: "0x0000000000000000000000000000000000000000" as `0x${string}`, // Update with mainnet address
+  feeReceiver: "0x0000000000000000000000000000000000000000" as `0x${string}`,
+  priceOracle: "0x0000000000000000000000000000000000000000" as `0x${string}`, // Update with mainnet price oracle address
+  collateralToken: "0x0000000000000000000000000000000000000000" as `0x${string}`, // Update with mainnet address
+  wrappedCollateralToken: "0x0000000000000000000000000000000000000000" as `0x${string}`, // Update with mainnet address
+} as const;
+
+// Get contracts based on environment
+export const contracts = shouldUseAnvil() ? anvilContracts : mainnetContracts;
+
 // Legacy CONTRACTS constant for backward compatibility
+const useAnvil = shouldUseAnvil();
 export const CONTRACTS = {
-  MINTER: "0x7a9ec1d04904907de0ed7b6839ccdd59c3716ac9",
-  PEGGED_TOKEN: "0x1c85638e118b37167e9298c2268758e058DdfDA0",
-  LEVERAGED_TOKEN: "0x367761085BF3C12e5DA2Df99AC6E1a824612b8fb",
-  GENESIS: "0xA4899D35897033b927acFCf422bc745916139776",
-  STABILITY_POOL_MANAGER: "0xb9bEECD1A582768711dE1EE7B0A1d582D9d72a6C",
-  STABILITY_POOL_COLLATERAL: "0x3aAde2dCD2Df6a8cAc689EE797591b2913658659",
-  STABILITY_POOL_PEGGED: "0x525C7063E7C20997BaaE9bDa922159152D0e8417",
-  PRICE_ORACLE: "0x8A791620dd6260079BF849Dc5567aDC3F2FdC318",
-  WSTETH: "0x0165878A594ca255338adfa4d48449f69242Eb8F",
-  STETH: "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707",
-  CHAIN_ID: 31337,
-  RPC_URL: "http://127.0.0.1:8545",
+  MINTER: contracts.minter,
+  PEGGED_TOKEN: contracts.peggedToken,
+  LEVERAGED_TOKEN: contracts.leveragedToken,
+  GENESIS: contracts.genesis,
+  STABILITY_POOL_MANAGER: contracts.stabilityPoolManager,
+  STABILITY_POOL_COLLATERAL: "0x3aAde2dCD2Df6a8cAc689EE797591b2913658659", // Update for mainnet if needed
+  STABILITY_POOL_PEGGED: "0x525C7063E7C20997BaaE9bDa922159152D0e8417", // Update for mainnet if needed
+  PRICE_ORACLE: contracts.priceOracle,
+  WSTETH: contracts.wrappedCollateralToken,
+  STETH: contracts.collateralToken,
+  CHAIN_ID: useAnvil ? 31337 : 1,
+  RPC_URL: useAnvil ? "http://127.0.0.1:8545" : "https://eth-mainnet.g.alchemy.com/v2/uGl5kuD60tnGFHRmkevK1iYQuIQKmh1n",
 } as const;
 
 export type MarketConfig = {
