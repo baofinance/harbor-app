@@ -19,38 +19,28 @@ import { aggregatorAbi } from "@/abis/chainlink";
 import { customFeedAggregatorAbi } from "@/abis/harbor";
 import { getLogoPath } from "@/lib/logos";
 import { parsePair, format18, formatUnit, deriveFeedName, bytes32ToAddress, formatPairDisplay, pairEstimateLabel } from "@/lib/utils";
-
-// Mainnet RPC URL - defaults to Alchemy
-const MAINNET_RPC_URL =
-  process.env.NEXT_PUBLIC_MAINNET_RPC_URL ||
-  "https://eth-mainnet.g.alchemy.com/v2/uGl5kuD60tnGFHRmkevK1iYQuIQKmh1n";
+import { MAINNET_RPC_URL, ARBITRUM_RPC_URL, getMainnetRpcClient, getArbitrumRpcClient } from "@/config/rpc";
 
 // Create mainnet public client - ensure it's always available
 let mainnetClient: ReturnType<typeof createPublicClient>;
 
 try {
-  mainnetClient = createPublicClient({
-    chain: defineChain({
-      id: 1,
-      name: "Ethereum Mainnet",
-      network: "mainnet",
-      nativeCurrency: {
-        decimals: 18,
-        name: "Ether",
-        symbol: "ETH",
-      },
-      rpcUrls: {
-        default: { http: [MAINNET_RPC_URL] },
-        public: { http: [MAINNET_RPC_URL] },
-      },
-    }),
-    transport: http(MAINNET_RPC_URL),
-  });
+  mainnetClient = getMainnetRpcClient();
   console.log("[FlowPage] Mainnet client initialized with RPC:", MAINNET_RPC_URL);
 } catch (error) {
   console.error("[FlowPage] Failed to initialize mainnet client:", error);
-  // Fallback - will be recreated in getRpcClient if needed
   mainnetClient = null as any;
+}
+
+// Create Arbitrum public client - always available for fetching Arbitrum feeds
+let arbitrumClient: ReturnType<typeof createPublicClient>;
+
+try {
+  arbitrumClient = getArbitrumRpcClient();
+  console.log("[FlowPage] Arbitrum client initialized with RPC:", ARBITRUM_RPC_URL);
+} catch (error) {
+  console.error("[FlowPage] Failed to initialize Arbitrum client:", error);
+  arbitrumClient = null as any;
 }
 
 function formatBytes32(b?: `0x${string}`) {
@@ -119,45 +109,22 @@ function getRpcClient(network: Network, publicClient?: any) {
   // Always use mainnet client for mainnet feeds
   if (network === "mainnet") {
     if (!mainnetClient) {
-      // Recreate if not initialized
-      mainnetClient = createPublicClient({
-        chain: defineChain({
-          id: 1,
-          name: "Ethereum Mainnet",
-          network: "mainnet",
-          nativeCurrency: {
-            decimals: 18,
-            name: "Ether",
-            symbol: "ETH",
-          },
-          rpcUrls: {
-            default: { http: [MAINNET_RPC_URL] },
-            public: { http: [MAINNET_RPC_URL] },
-          },
-        }),
-        transport: http(MAINNET_RPC_URL),
-      });
+      mainnetClient = getMainnetRpcClient();
     }
     console.log("[getRpcClient] Returning mainnet client for", network);
     return mainnetClient;
   }
-  // For arbitrum, use wagmi's public client if available, otherwise fallback to mainnet
-  if (network === "arbitrum" && publicClient) {
-    console.log("[getRpcClient] Returning wagmi publicClient for", network);
-    return publicClient;
+  // Always use dedicated Arbitrum client for Arbitrum feeds (regardless of connected chain)
+  if (network === "arbitrum") {
+    if (!arbitrumClient) {
+      arbitrumClient = getArbitrumRpcClient();
+    }
+    console.log("[getRpcClient] Returning Arbitrum client for", network);
+    return arbitrumClient;
   }
   // Default to mainnet client as fallback
   console.log("[getRpcClient] Returning mainnet client as fallback for", network);
-  return mainnetClient || createPublicClient({
-    chain: defineChain({
-      id: 1,
-      name: "Ethereum Mainnet",
-      network: "mainnet",
-      nativeCurrency: { decimals: 18, name: "Ether", symbol: "ETH" },
-      rpcUrls: { default: { http: [MAINNET_RPC_URL] }, public: { http: [MAINNET_RPC_URL] } },
-    }),
-    transport: http(MAINNET_RPC_URL),
-  });
+  return mainnetClient || getMainnetRpcClient();
 }
 
 type ExpandedState = 

@@ -11,6 +11,11 @@ export const MAINNET_RPC_URL =
   process.env.NEXT_PUBLIC_MAINNET_RPC_URL ||
   "https://eth-mainnet.g.alchemy.com/v2/uGl5kuD60tnGFHRmkevK1iYQuIQKmh1n";
 
+// Arbitrum RPC URL - defaults to Alchemy if not set in environment
+export const ARBITRUM_RPC_URL =
+  process.env.NEXT_PUBLIC_ARBITRUM_RPC_URL ||
+  "https://arb-mainnet.g.alchemy.com/v2/uGl5kuD60tnGFHRmkevK1iYQuIQKmh1n";
+
 // Anvil RPC URL - defaults to localhost:8545
 export const ANVIL_RPC_URL =
   process.env.NEXT_PUBLIC_RPC_URL || "http://localhost:8545";
@@ -133,6 +138,42 @@ export function getAnvilForkRpcClient() {
   return createPublicClient({
     chain: anvilForkChain,
     transport: http(ANVIL_FORK_RPC_URL),
+  });
+}
+
+// Define Arbitrum chain
+const arbitrumChain = defineChain({
+  id: 42161,
+  name: "Arbitrum One",
+  network: "arbitrum",
+  nativeCurrency: {
+    decimals: 18,
+    name: "Ether",
+    symbol: "ETH",
+  },
+  rpcUrls: {
+    default: {
+      http: [ARBITRUM_RPC_URL],
+    },
+    public: {
+      http: [ARBITRUM_RPC_URL],
+    },
+  },
+  blockExplorers: {
+    default: {
+      name: "Arbiscan",
+      url: "https://arbiscan.io",
+    },
+  },
+});
+
+/**
+ * Get Arbitrum RPC client (always returns Arbitrum, regardless of environment)
+ */
+export function getArbitrumRpcClient() {
+  return createPublicClient({
+    chain: arbitrumChain,
+    transport: http(ARBITRUM_RPC_URL),
   });
 }
 
