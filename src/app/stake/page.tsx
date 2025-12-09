@@ -308,14 +308,14 @@ export default function Staking() {
           <div className="bg-zinc-900/50 p-6 relative">
             {/* Stats */}
             <div className="grid grid-cols-2 gap-4 mb-6">
-              <div className="bg-black p-4 
+              <div className="bg-black p-4 rounded">
                 <p className="text-xs text-white/50 mb-0.5">Total Staked</p>
                 <p className="text-sm font-medium text-[#1E4775]">
                   {formatEther(stakingData?.[0]?.result as bigint)} STEAM
                 </p>
               </div>
               {address && (
-                <div className="bg-black p-4 
+                <div className="bg-black p-4 rounded">
                   <p className="text-xs text-white/50 mb-0.5">
                     Your Voting Power
                   </p>
@@ -498,7 +498,7 @@ export default function Staking() {
 
                 {stakingState.activeTab === "withdraw" && (
                   <div className="space-y-4">
-                    <div className="bg-black p-4 
+                    <div className="bg-black p-4 rounded">
                       <p className="text-sm text-white/50 mb-1">
                         Lock End Time
                       </p>

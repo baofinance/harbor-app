@@ -14,6 +14,7 @@ import { GENESIS_ABI, ERC20_ABI } from "../../../config/contracts";
 import InfoTooltip from "@/components/InfoTooltip";
 import HistoricalDataChart from "@/components/HistoricalDataChart";
 import Image from "next/image";
+import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
 
 type PageProps = {
   params: Promise<{ id: string }>;
@@ -592,7 +593,18 @@ export default function GenesisMarketPage({ params }: PageProps) {
     (oracleReads?.[0]?.result as unknown as number) ?? 0
   );
   const priceRaw = oracleReads?.[1]?.result as unknown as bigint | undefined;
-  const stEthPriceUSD: number = priceRaw
+  
+  // Fetch CoinGecko price if available
+  const coinGeckoId = (market as any)?.coinGeckoId as string | undefined;
+  const { price: coinGeckoPriceUSD } = useCoinGeckoPrice(
+    coinGeckoId || "",
+    60000
+  );
+
+  // Use CoinGecko price if available, otherwise use oracle price
+  const stEthPriceUSD: number = coinGeckoPriceUSD
+    ? coinGeckoPriceUSD
+    : priceRaw
     ? Number(priceRaw) / 10 ** priceDecimals
     : 0;
 

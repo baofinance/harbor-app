@@ -1,4 +1,5 @@
-import { contracts } from "./contracts";
+import { contracts, anvilContracts } from "./contracts";
+import { shouldUseAnvil } from "./environment";
 
 export const markets = {
   "pb-steth": {
@@ -23,15 +24,16 @@ export const markets = {
       reservePool: contracts.reservePool,
       stabilityPoolManager: contracts.stabilityPoolManager,
       stabilityPoolCollateral:
-        "0x3aAde2dCD2Df6a8cAc689EE797591b2913658659" as `0x${string}`,
+        (shouldUseAnvil() ? "0xAccA4DabdD245aB5AE373434Aa1AB4164ab01290" : "0x3aAde2dCD2Df6a8cAc689EE797591b2913658659") as `0x${string}`,
       stabilityPoolLeveraged:
-        "0x525C7063E7C20997BaaE9bDa922159152D0e8417" as `0x${string}`,
+        (shouldUseAnvil() ? "0x5e8bC075e088666F6D3CF6539A32B4c280Cdf4D8" : "0x525C7063E7C20997BaaE9bDa922159152D0e8417") as `0x${string}`,
       genesis: contracts.genesis,
       priceOracle: contracts.priceOracle,
       collateralPrice: contracts.priceOracle, // Using the same price oracle for collateral price
       feeReceiver: contracts.feeReceiver,
       collateralToken: contracts.wrappedCollateralToken, // wstETH - primary collateral for UI (stored and given as rewards)
       wrappedCollateralToken: contracts.collateralToken, // stETH - underlying reference token for yield scraping
+      genesisZap: shouldUseAnvil() ? anvilContracts.genesisZap : undefined, // Zap contract for ETH/stETH deposits
       // Note: steam and veSteam are not deployed in this setup
       // steam: contracts.steam,
       // veSteam: contracts.veSteam,
@@ -65,6 +67,7 @@ export const markets = {
         },
       },
     },
+    coinGeckoId: "wrapped-steth", // CoinGecko ID for wstETH
   },
 } as const;
 

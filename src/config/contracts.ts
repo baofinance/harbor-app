@@ -4,16 +4,17 @@ import { shouldUseAnvil } from "./environment";
 // Chain ID: 31337, RPC URL: http://localhost:8545
 // Clean Chain Deployment
 export const anvilContracts = {
-  minter: "0x7a9ec1d04904907de0ed7b6839ccdd59c3716ac9",
-  peggedToken: "0x1c85638e118b37167e9298c2268758e058DdfDA0", // haPB (Harbor Anchored PB)
-  leveragedToken: "0x367761085BF3C12e5DA2Df99AC6E1a824612b8fb", // hsPB (Harbor Sail)
-  genesis: "0xA4899D35897033b927acFCf422bc745916139776",
-  reservePool: "0x0000000000000000000000000000000000000000", // Not provided in this deployment
-  stabilityPoolManager: "0xb9bEECD1A582768711dE1EE7B0A1d582D9d72a6C",
-  feeReceiver: "0x0000000000000000000000000000000000000000", // Not provided in this deployment
-  priceOracle: "0x8A791620dd6260079BF849Dc5567aDC3F2FdC318", // wstETH/USD price feed
+  minter: "0x530bBEb594DA20AEAdA801BF682cb6F5E55c313E",
+  peggedToken: "0xf7461a489c71EAE6fA1Bfe69F8c3d661De0619Da", // haBTC (Harbor Anchored BTC)
+  leveragedToken: "0xB366d941E045F40c953C68b191E24E6acB54b33D", // hsBTC (Harbor Sail)
+  genesis: "0xd6817E21c1770323F97BdC8981A67c1b9ad79eA9",
+  reservePool: "0x4e22324993321efC0F239Fe6FC1dee93264544EB",
+  stabilityPoolManager: "0x409C36E5Cd41DC79b8B6E13B2371aB6dA506Cb01",
+  feeReceiver: "0xb4d3f14A8FE911fE8A0Cc68F3C0424fD88C0a96E",
+  priceOracle: "0xE370289aF2145A5B2F0F7a4a900eBfD478A156dB", // wstETH/BTC price feed
   collateralToken: "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707", // stETH
   wrappedCollateralToken: "0x0165878A594ca255338adfa4d48449f69242Eb8F", // wstETH
+  genesisZap: "0x31C6137CCFde802960068Da873b1F48D6D628D42", // GenesisETHZap_v3
 } as const;
 
 // Mainnet contract addresses
