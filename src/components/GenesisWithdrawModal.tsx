@@ -10,6 +10,10 @@ import {
 } from "wagmi";
 import { anvil } from "wagmi/chains";
 import { BaseError, ContractFunctionRevertedError } from "viem";
+import {
+  TransactionProgressModal,
+  TransactionStep,
+} from "./TransactionProgressModal";
 
 interface GenesisWithdrawalModalProps {
   isOpen: boolean;
@@ -48,6 +52,9 @@ export const GenesisWithdrawModal = ({
   const [step, setStep] = useState<ModalStep>("input");
   const [error, setError] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
+  const [progressModalOpen, setProgressModalOpen] = useState(false);
+  const [progressSteps, setProgressSteps] = useState<TransactionStep[]>([]);
+  const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const publicClient = usePublicClient();
 
   // Contract write hooks
@@ -85,6 +92,9 @@ export const GenesisWithdrawModal = ({
     setStep("input");
     setError(null);
     setTxHash(null);
+    setProgressModalOpen(false);
+    setProgressSteps([]);
+    setCurrentStepIndex(0);
     onClose();
   };
 
@@ -132,8 +142,25 @@ export const GenesisWithdrawModal = ({
     }
 
     try {
+      // Initialize progress modal
+      const steps: TransactionStep[] = [
+        {
+          id: "withdraw",
+          label: "Withdraw from Genesis",
+          status: "pending",
+        },
+      ];
+      setProgressSteps(steps);
+      setCurrentStepIndex(0);
+      setProgressModalOpen(true);
+
       setStep("withdrawing");
       setError(null);
+      setProgressSteps((prev) =>
+        prev.map((s) =>
+          s.id === "withdraw" ? { ...s, status: "in_progress" } : s
+        )
+      );
 
       const hash = await writeContractAsync({
         address: genesisAddress as `0x${string}`,
@@ -144,9 +171,19 @@ export const GenesisWithdrawModal = ({
       });
 
       setTxHash(hash);
+      setProgressSteps((prev) =>
+        prev.map((s) =>
+          s.id === "withdraw" ? { ...s, txHash: hash } : s
+        )
+      );
       await publicClient?.waitForTransactionReceipt({ hash });
 
       setStep("success");
+      setProgressSteps((prev) =>
+        prev.map((s) =>
+          s.id === "withdraw" ? { ...s, status: "completed" } : s
+        )
+      );
       if (onSuccess) {
         await onSuccess();
       }
@@ -169,84 +206,84 @@ export const GenesisWithdrawModal = ({
 
       setError(errorMessage);
       setStep("error");
+      setProgressSteps((prev) =>
+        prev.map((s, idx) =>
+          idx === currentStepIndex ? { ...s, status: "error", error: errorMessage } : s
+        )
+      );
     }
   };
 
-  const getButtonText = () => {
-    switch (step) {
-      case "withdrawing":
-        return "Withdrawing...";
-      case "success":
-        return "Withdraw";
-      case "error":
-        return "Try Again";
-      default:
-        return "Withdraw";
-    }
+  const renderSuccessContent = () => {
+    return (
+      <div className="space-y-3">
+        <div className="p-3 bg-[#B8EBD5]/20 border border-[#B8EBD5]/30 rounded text-center">
+          <p className="text-sm text-[#1E4775]/80">Withdrawal successful!</p>
+          {amount && (
+            <p className="text-lg font-bold text-[#1E4775] font-mono mt-1">
+              {amount} {collateralSymbol}
+            </p>
+          )}
+        </div>
+      </div>
+    );
   };
 
-  const handleMainButtonClick = () => {
-    if (step === "error") {
-      setStep("input");
-      setError(null);
-    } else if (step === "success") {
-      // Reset to input step for a new withdrawal
-      setStep("input");
-      setError(null);
-      setTxHash(null);
-    } else {
-      handleWithdraw();
-    }
-  };
-
-  const isButtonDisabled = () => {
-    if (step === "success") return false; // Always enable the button when successful
-    if (step === "withdrawing") return true;
-    if (!amount || parseFloat(amount) <= 0) return true;
-    if (userDeposit === 0n) return true;
-    return !!simulateError;
-  };
-
-  if (!isOpen) return null;
+  if (!isOpen && !progressModalOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-        onClick={handleClose}
-      />
+    <>
+      {progressModalOpen && (
+        <TransactionProgressModal
+          isOpen={progressModalOpen}
+          onClose={handleClose}
+          title="Processing Withdrawal"
+          steps={progressSteps}
+          currentStepIndex={currentStepIndex}
+          canCancel={false}
+          errorMessage={error || undefined}
+          renderSuccessContent={renderSuccessContent}
+        />
+      )}
 
-      {/* Modal */}
-      <div className="relative bg-white shadow-2xl w-full max-w-md mx-4 animate-in fade-in-0 scale-in-95 duration-200">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-[#1E4775]/20">
-          <h2 className="text-2xl font-bold text-[#1E4775]">
-            Withdraw from Maiden Voyage
-          </h2>
-          <button
+      {!progressModalOpen && isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
             onClick={handleClose}
-            className="text-[#1E4775]/50 hover:text-[#1E4775] transition-colors"
-            disabled={step === "withdrawing"}
-          >
-            <svg
-              className="w-6 h-6"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
-          </button>
-        </div>
+          />
 
-        {/* Content */}
-        <div className="p-6 space-y-6">
+          {/* Modal */}
+          <div className="relative bg-white shadow-2xl w-full max-w-md mx-4 animate-in fade-in-0 scale-in-95 duration-200">
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b border-[#1E4775]/20">
+              <h2 className="text-2xl font-bold text-[#1E4775]">
+                Withdraw from Maiden Voyage
+              </h2>
+              <button
+                onClick={handleClose}
+                className="text-[#1E4775]/50 hover:text-[#1E4775] transition-colors"
+                disabled={step === "withdrawing"}
+              >
+                <svg
+                  className="w-6 h-6"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 space-y-6">
           {/* Balance */}
           <div className="text-sm text-[#1E4775]/70">
             Your Deposit:{" "}
@@ -373,36 +410,44 @@ export const GenesisWithdrawModal = ({
             </div>
           )}
 
-          {/* Success Message */}
-          {step === "success" && (
-            <div className="p-3 bg-[#B8EBD5]/30 border border-[#B8EBD5]/50 text-[#1E4775] text-sm text-center">
-              ✅ Withdrawal successful!
-            </div>
-          )}
-        </div>
+            {/* Success Message */}
+            {step === "success" && (
+              <div className="p-3 bg-[#B8EBD5]/30 border border-[#B8EBD5]/50 text-[#1E4775] text-sm text-center">
+                ✅ Withdrawal successful!
+              </div>
+            )}
+          </div>
 
-        {/* Footer */}
-        <div className="flex gap-4 p-6 border-t border-[#1E4775]/20">
-          <button
-            onClick={handleClose}
-            className="flex-1 py-2 px-4 text-[#1E4775]/70 hover:text-[#1E4775] transition-colors rounded-full"
-            disabled={step === "withdrawing"}
-          >
-            {step === "success" ? "Close" : "Cancel"}
-          </button>
-          <button
-            onClick={handleMainButtonClick}
-            disabled={isButtonDisabled()}
-            className={`flex-1 py-2 px-4 font-medium transition-colors rounded-full ${
-              step === "success"
-                ? "bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white"
-                : "bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white disabled:bg-gray-300 disabled:text-gray-500"
-            }`}
-          >
-            {getButtonText()}
-          </button>
+          {/* Footer */}
+          <div className="flex gap-4 p-6 border-t border-[#1E4775]/20">
+            <button
+              onClick={handleClose}
+              className="flex-1 py-2 px-4 text-[#1E4775]/70 hover:text-[#1E4775] transition-colors rounded-full"
+              disabled={step === "withdrawing"}
+            >
+              {step === "success" ? "Close" : "Cancel"}
+            </button>
+            <button
+              onClick={handleWithdraw}
+              disabled={
+                step === "withdrawing" ||
+                !amount ||
+                parseFloat(amount) <= 0 ||
+                userDeposit === 0n ||
+                !!simulateError
+              }
+              className={`flex-1 py-2 px-4 font-medium transition-colors rounded-full ${
+                step === "success"
+                  ? "bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white"
+                  : "bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white disabled:bg-gray-300 disabled:text-gray-500"
+              }`}
+            >
+              {step === "withdrawing" ? "Withdrawing..." : step === "error" ? "Try Again" : "Withdraw"}
+            </button>
+          </div>
         </div>
-      </div>
-    </div>
+        </div>
+      )}
+    </>
   );
 };

@@ -113,16 +113,16 @@ interface AllUserMarksData {
 }
 
 interface UserMarksEntry {
-  id: string;
-  user: string;
-  contractAddress: string;
-  currentMarks: string;
-  marksPerDay: string;
-  bonusMarks: string;
-  totalMarksEarned: string;
-  totalMarksForfeited: string;
-  currentDepositUSD: string;
-  genesisEnded: boolean;
+    id: string;
+    user: string;
+    contractAddress: string;
+    currentMarks: string;
+    marksPerDay: string;
+    bonusMarks: string;
+    totalMarksEarned: string;
+    totalMarksForfeited: string;
+    currentDepositUSD: string;
+    genesisEnded: boolean;
 }
 
 interface UserMarksResponse {
@@ -211,7 +211,7 @@ function getContractType(
     );
   });
   if (genesisMarkets.length > 0) return "genesis";
-
+  
   // Check if it's a stability pool (anchor) - collateral pool
   const anchorMarkets = Object.entries(markets).filter(([_, m]) => {
     const collateralPoolAddr = (m as any).addresses?.stabilityPoolCollateral;
@@ -221,7 +221,7 @@ function getContractType(
     );
   });
   if (anchorMarkets.length > 0) return "anchor";
-
+  
   // Check if it's a sail pool - leveraged pool
   const sailMarkets = Object.entries(markets).filter(([_, m]) => {
     const sailPoolAddr = (m as any).addresses?.stabilityPoolLeveraged;
@@ -231,7 +231,7 @@ function getContractType(
     );
   });
   if (sailMarkets.length > 0) return "sail";
-
+  
   return "unknown";
 }
 
@@ -578,7 +578,7 @@ export default function LedgerMarksLeaderboard() {
       }
 
       const result = await response.json();
-
+      
       if (result.errors) {
         console.error(
           "GraphQL errors fetching stability pool deposits:",
@@ -680,12 +680,12 @@ export default function LedgerMarksLeaderboard() {
     const userMap = new Map<
       string,
       {
-        address: string;
-        totalMarks: number;
-        genesisMarks: number;
-        anchorMarks: number;
-        sailMarks: number;
-        marksPerDay: number;
+      address: string;
+      totalMarks: number;
+      genesisMarks: number;
+      anchorMarks: number;
+      sailMarks: number;
+      marksPerDay: number;
       }
     >();
 
@@ -986,48 +986,48 @@ export default function LedgerMarksLeaderboard() {
   return (
     <div className="min-h-screen bg-[#1E4775]">
       <main className="container mx-auto px-4 py-8 max-w-7xl">
-        {/* Header */}
-        <div className="mb-4">
-          <h1 className="font-bold font-mono text-white text-7xl text-center mb-1">
-            Ledger Marks
-          </h1>
+          {/* Header */}
+          <div className="mb-4">
+            <h1 className="font-bold font-mono text-white text-7xl text-center mb-1">
+              Ledger Marks
+            </h1>
           <p className="text-xl text-white/80 text-center mb-2">Leaderboard</p>
-        </div>
+          </div>
 
-        {/* Explainer Section */}
+          {/* Explainer Section */}
         <div className="bg-[#17395F] p-4 mb-2">
-          <div className="flex items-start gap-3">
-            <QuestionMarkCircleIcon className="w-6 h-6 text-white flex-shrink-0 mt-0.5" />
-            <div className="flex-1">
+            <div className="flex items-start gap-3">
+              <QuestionMarkCircleIcon className="w-6 h-6 text-white flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
               <h3 className="font-bold text-lg text-white mb-2">
                 What are Ledger Marks?
               </h3>
-              <div className="space-y-3 text-white/90 leading-relaxed text-sm">
-                <p>
+                <div className="space-y-3 text-white/90 leading-relaxed text-sm">
+                  <p>
                   A ledger is both a record of truth and a core DeFi symbol —
                   and a mark is what every sailor leaves behind on a voyage.
-                </p>
-                <p>
+                  </p>
+                  <p>
                   Each Ledger Mark is proof that you were here early, helping
                   stabilize the first Harbor markets and guide them through calm
                   launch conditions.
-                </p>
-                <div className="space-y-2 mt-3">
-                  <div className="flex items-start gap-2">
-                    <span className="text-white/70 mt-0.5">•</span>
-                    <p>
+                  </p>
+                  <div className="space-y-2 mt-3">
+                    <div className="flex items-start gap-2">
+                      <span className="text-white/70 mt-0.5">•</span>
+                      <p>
                       <strong>Genesis Deposits:</strong> Earn 10 marks per
                       dollar per day during genesis, plus 100 marks per dollar
                       bonus at genesis end.
-                    </p>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <span className="text-white/70 mt-0.5">•</span>
-                    <p>
+                      </p>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-white/70 mt-0.5">•</span>
+                      <p>
                       <strong>Holding ha Tokens:</strong> Earn 1 mark per dollar
                       per day for ha tokens in your wallet.
-                    </p>
-                  </div>
+                      </p>
+                    </div>
                   <div className="flex items-start gap-2">
                     <span className="text-white/70 mt-0.5">•</span>
                     <p>
@@ -1119,7 +1119,7 @@ export default function LedgerMarksLeaderboard() {
           </div>
         )}
 
-        {/* Divider */}
+          {/* Divider */}
         <div className="border-t border-white/10 my-2"></div>
 
         {/* Leaderboard */}
@@ -1131,10 +1131,10 @@ export default function LedgerMarksLeaderboard() {
               <div className="min-w-0 text-center">Wallet Address</div>
               <div
                 className="min-w-0 text-center cursor-pointer hover:opacity-70 transition-opacity"
-                onClick={() => handleSort("total")}
-              >
-                Total Marks
-                {sortBy === "total" && (
+                      onClick={() => handleSort("total")}
+                    >
+                      Total Marks
+                      {sortBy === "total" && (
                   <span className="ml-1">
                     {sortDirection === "desc" ? "↓" : "↑"}
                   </span>
@@ -1142,10 +1142,10 @@ export default function LedgerMarksLeaderboard() {
               </div>
               <div
                 className="min-w-0 text-center cursor-pointer hover:opacity-70 transition-opacity"
-                onClick={() => handleSort("genesis")}
-              >
-                Genesis Marks
-                {sortBy === "genesis" && (
+                      onClick={() => handleSort("genesis")}
+                    >
+                      Genesis Marks
+                      {sortBy === "genesis" && (
                   <span className="ml-1">
                     {sortDirection === "desc" ? "↓" : "↑"}
                   </span>
@@ -1153,10 +1153,10 @@ export default function LedgerMarksLeaderboard() {
               </div>
               <div
                 className="min-w-0 text-center cursor-pointer hover:opacity-70 transition-opacity"
-                onClick={() => handleSort("anchor")}
-              >
+                      onClick={() => handleSort("anchor")}
+                    >
                 Anchor Ledger Marks
-                {sortBy === "anchor" && (
+                      {sortBy === "anchor" && (
                   <span className="ml-1">
                     {sortDirection === "desc" ? "↓" : "↑"}
                   </span>
@@ -1164,10 +1164,10 @@ export default function LedgerMarksLeaderboard() {
               </div>
               <div
                 className="min-w-0 text-center cursor-pointer hover:opacity-70 transition-opacity"
-                onClick={() => handleSort("sail")}
-              >
-                Sail Marks
-                {sortBy === "sail" && (
+                      onClick={() => handleSort("sail")}
+                    >
+                      Sail Marks
+                      {sortBy === "sail" && (
                   <span className="ml-1">
                     {sortDirection === "desc" ? "↓" : "↑"}
                   </span>
@@ -1175,10 +1175,10 @@ export default function LedgerMarksLeaderboard() {
               </div>
               <div
                 className="min-w-0 text-center cursor-pointer hover:opacity-70 transition-opacity"
-                onClick={() => handleSort("perDay")}
-              >
-                Marks Per Day
-                {sortBy === "perDay" && (
+                      onClick={() => handleSort("perDay")}
+                    >
+                      Marks Per Day
+                      {sortBy === "perDay" && (
                   <span className="ml-1">
                     {sortDirection === "desc" ? "↓" : "↑"}
                   </span>
@@ -1188,16 +1188,16 @@ export default function LedgerMarksLeaderboard() {
           </div>
 
           {/* Leaderboard Rows */}
-          {isLoading ? (
+                  {isLoading ? (
             <div className="bg-white p-8 text-center text-gray-500">
-              Loading leaderboard...
+                        Loading leaderboard...
             </div>
-          ) : error ? (
+                  ) : error ? (
             <div className="bg-white p-8 text-center text-red-500">
               Error loading leaderboard:{" "}
               {error instanceof Error ? error.message : "Unknown error"}
             </div>
-          ) : leaderboardData.length === 0 ? (
+                  ) : leaderboardData.length === 0 ? (
             <div className="bg-white p-8 text-center text-gray-500">
               <div>No marks data available yet</div>
               {process.env.NODE_ENV === "development" &&
@@ -1212,8 +1212,8 @@ export default function LedgerMarksLeaderboard() {
                   </div>
                 )}
             </div>
-          ) : (
-            leaderboardData.map((user, index) => (
+                  ) : (
+                    leaderboardData.map((user, index) => (
               <div
                 key={`${user.address.toLowerCase()}-${index}`}
                 className="bg-white p-3 overflow-x-auto"
@@ -1224,18 +1224,18 @@ export default function LedgerMarksLeaderboard() {
                       {index === 0 && (
                         <TrophyIcon className="w-5 h-5 text-yellow-500" />
                       )}
-                      <span>{index + 1}</span>
-                    </div>
+                            <span>{index + 1}</span>
+                          </div>
                   </div>
                   <div className="min-w-0 text-center font-mono">
-                    <a
-                      href={`https://etherscan.io/address/${user.address}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="hover:text-[#17395F] hover:underline"
-                    >
-                      {formatAddress(user.address)}
-                    </a>
+                          <a 
+                            href={`https://etherscan.io/address/${user.address}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="hover:text-[#17395F] hover:underline"
+                          >
+                            {formatAddress(user.address)}
+                          </a>
                   </div>
                   <div className="min-w-0 text-center font-bold font-mono">
                     {user.totalMarks.toLocaleString(undefined, {

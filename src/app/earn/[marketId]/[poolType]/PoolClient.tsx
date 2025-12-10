@@ -7,9 +7,8 @@ import { usePools } from "@/hooks/usePools";
 import Link from "next/link";
 import TokenIcon from "@/components/TokenIcon";
 import { usePoolData } from "@/hooks/usePoolData";
-import { stabilityPoolABI } from "@/abis/stabilityPool";
+import { STABILITY_POOL_ABI, ERC20_ABI } from "@/abis/shared";
 import { rewardsABI } from "@/abis/rewards";
-import { erc20ABI } from "@/abis/erc20";
 import InfoTooltip from "@/components/InfoTooltip";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import HistoricalDataChart from "@/components/HistoricalDataChart";
@@ -485,7 +484,7 @@ export default function PoolClient({ marketId, poolType }: PoolClientProps) {
       ? [
           {
             address: assetAddress as `0x${string}`,
-            abi: erc20ABI,
+            abi: ERC20_ABI,
             functionName: "balanceOf",
             args: [address ?? "0x"],
           },
@@ -500,7 +499,7 @@ export default function PoolClient({ marketId, poolType }: PoolClientProps) {
         ? [
             {
               address: assetAddress as `0x${string}`,
-              abi: erc20ABI,
+              abi: ERC20_ABI,
               functionName: "allowance",
               args: [address ?? "0x0", poolAddress as `0x${string}`],
             },
@@ -542,7 +541,7 @@ export default function PoolClient({ marketId, poolType }: PoolClientProps) {
         setIsApproveLoading(true);
         await writeContractAsync({
           address: assetAddress as `0x${string}`,
-          abi: erc20ABI,
+          abi: ERC20_ABI,
           functionName: "approve",
           args: [poolAddress as `0x${string}`, amount],
         });
@@ -552,7 +551,7 @@ export default function PoolClient({ marketId, poolType }: PoolClientProps) {
       setIsDepositLoading(true);
       await writeContractAsync({
         address: poolAddress as `0x${string}`,
-        abi: stabilityPoolABI,
+          abi: STABILITY_POOL_ABI,
         functionName: "deposit",
         args: [amount, address as `0x${string}`, 0n],
       });
@@ -574,7 +573,7 @@ export default function PoolClient({ marketId, poolType }: PoolClientProps) {
       const amount = parseEther(withdrawAmount);
       await writeContractAsync({
         address: poolAddress as `0x${string}`,
-        abi: stabilityPoolABI,
+          abi: STABILITY_POOL_ABI,
         functionName: "withdraw",
         args: [amount, address as `0x${string}`, 0n],
       });

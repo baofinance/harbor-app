@@ -10,29 +10,7 @@ import {
   usePublicClient,
 } from "wagmi";
 import { BaseError, ContractFunctionRevertedError } from "viem";
-import { ERC20_ABI } from "../config/contracts";
-import { stabilityPoolABI } from "@/abis/stabilityPool";
-
-const minterABI = [
-  {
-    inputs: [
-      { name: "collateralIn", type: "uint256" },
-      { name: "receiver", type: "address" },
-      { name: "minPeggedOut", type: "uint256" },
-    ],
-    name: "mintPeggedToken",
-    outputs: [{ type: "uint256", name: "peggedAmount" }],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [{ name: "collateralAmount", type: "uint256" }],
-    name: "calculateMintPeggedTokenOutput",
-    outputs: [{ type: "uint256", name: "peggedAmount" }],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
+import { ERC20_ABI, STABILITY_POOL_ABI, MINTER_ABI } from "@/abis/shared";
 
 interface AnchorDepositModalProps {
   isOpen: boolean;
@@ -183,7 +161,7 @@ export const AnchorDepositModal = ({
   // Calculate expected output (only for collateral deposits)
   const { data: expectedOutput } = useContractRead({
     address: minterAddress as `0x${string}`,
-    abi: minterABI,
+    abi: MINTER_ABI,
     functionName: "calculateMintPeggedTokenOutput",
     args: amount ? [parseEther(amount)] : undefined,
     query: {
@@ -320,7 +298,7 @@ export const AnchorDepositModal = ({
         setTxHash(null);
         const poolDepositHash = await writeContractAsync({
           address: stabilityPoolAddress!,
-          abi: stabilityPoolABI,
+          abi: STABILITY_POOL_ABI,
           functionName: "deposit",
           args: [amountBigInt, address as `0x${string}`, 0n],
         });
@@ -360,7 +338,7 @@ export const AnchorDepositModal = ({
 
         const mintHash = await writeContractAsync({
           address: minterAddress as `0x${string}`,
-          abi: minterABI,
+          abi: MINTER_ABI,
           functionName: "mintPeggedToken",
           args: [amountBigInt, address as `0x${string}`, minPeggedOut],
         });
@@ -398,7 +376,7 @@ export const AnchorDepositModal = ({
           setTxHash(null);
           const poolDepositHash = await writeContractAsync({
             address: stabilityPoolAddress,
-            abi: stabilityPoolABI,
+            abi: STABILITY_POOL_ABI,
             functionName: "deposit",
             args: [expectedOutput, address as `0x${string}`, 0n],
           });

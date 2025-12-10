@@ -20,6 +20,8 @@ export interface PoolRewards {
     claimableUSD: number;
   }>;
   totalRewardAPR: number; // APR from all reward tokens combined
+  totalAPR: number; // Alias for totalRewardAPR for compatibility
+  tvl: bigint; // Total Value Locked in the pool
   rewardTokenAPRs: Array<{
     tokenAddress: `0x${string}`;
     symbol: string;
@@ -90,6 +92,19 @@ export function useAllStabilityPoolRewards({
           })) as `0x${string}`[];
 
           if (!rewardTokenAddresses || rewardTokenAddresses.length === 0) {
+            // Still fetch TVL even if no reward tokens
+            let poolTVL = 0n;
+            try {
+              poolTVL = (await client.readContract({
+                address: pool.address,
+                abi: stabilityPoolABI,
+                functionName: "totalAssetSupply",
+                args: [],
+              })) as bigint;
+            } catch (e) {
+              // TVL fetch failed
+            }
+            
             results.push({
               poolAddress: pool.address,
               poolType: pool.poolType,
@@ -97,6 +112,8 @@ export function useAllStabilityPoolRewards({
               claimableValue: 0,
               rewardTokens: [],
               totalRewardAPR: 0,
+              totalAPR: 0,
+              tvl: poolTVL,
               rewardTokenAPRs: [],
             });
             continue;
@@ -285,6 +302,8 @@ export function useAllStabilityPoolRewards({
               .filter((token) => token.claimable > 0n)
               .map(({ apr, ...rest }) => rest), // Remove apr from rewardTokens array
             totalRewardAPR,
+            totalAPR: totalRewardAPR, // Alias for compatibility
+            tvl: poolTVL, // Include TVL for display
             rewardTokenAPRs,
           });
         } catch (e) {
@@ -295,6 +314,10 @@ export function useAllStabilityPoolRewards({
             marketId: pool.marketId,
             claimableValue: 0,
             rewardTokens: [],
+            totalRewardAPR: 0,
+            totalAPR: 0,
+            tvl: 0n,
+            rewardTokenAPRs: [],
           });
         }
       }

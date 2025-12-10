@@ -40,6 +40,9 @@ interface TransactionProgressModalProps {
   onConfirmFee?: () => void;
   onCancel?: () => void;
   canCancel?: boolean; // Whether to show cancel button
+  onRetry?: () => void; // Callback for "Try Again" button on error
+  errorMessage?: string; // Optional error message to display
+  renderSuccessContent?: () => React.ReactNode; // Optional extra content when all steps completed
 }
 
 export const TransactionProgressModal = ({
@@ -52,8 +55,12 @@ export const TransactionProgressModal = ({
   onConfirmFee,
   onCancel,
   canCancel = false,
+  onRetry,
+  errorMessage,
+  renderSuccessContent,
 }: TransactionProgressModalProps) => {
   if (!isOpen) return null;
+  const allCompleted = steps.every((s) => s.status === "completed");
 
   // If we're showing fee info, show confirmation screen
   if (showFeeInfo && onConfirmFee) {
@@ -368,8 +375,59 @@ export const TransactionProgressModal = ({
           {steps.some((s) => s.status === "error") && (
             <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-lg">
               <p className="text-sm font-medium text-red-800 text-center">
-                An error occurred. Please try again.
+                {errorMessage || "An error occurred. Please try again."}
               </p>
+              {onRetry && (
+                <div className="mt-4 flex justify-center">
+                  <button
+                    onClick={onRetry}
+                    className="px-4 py-2 text-sm font-medium bg-[#1E4775] text-white rounded-full hover:bg-[#17395F] transition-colors"
+                  >
+                    Try Again
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {allCompleted && steps.some((s) => s.txHash) && (
+            <div className="mt-4 space-y-2">
+              <div className="text-sm font-semibold text-[#1E4775]">
+                Transactions
+              </div>
+              {steps
+                .filter((s) => s.txHash)
+                .map((s) => (
+                  <div
+                    key={s.id}
+                    className="text-xs text-[#1E4775]/80 flex items-center gap-2"
+                  >
+                    <span className="font-medium">{s.label}:</span>
+                    <a
+                      href={`https://etherscan.io/tx/${s.txHash}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline hover:text-[#1E4775]"
+                    >
+                      {s.txHash?.slice(0, 10)}...{s.txHash?.slice(-8)}
+                    </a>
+                  </div>
+                ))}
+            </div>
+          )}
+
+          {allCompleted && renderSuccessContent && (
+            <div className="mt-6">{renderSuccessContent()}</div>
+          )}
+
+          {allCompleted && (
+            <div className="mt-6 flex justify-end">
+              <button
+                onClick={onClose}
+                className="px-4 py-2 text-sm font-medium bg-[#1E4775] text-white rounded-full hover:bg-[#17395F] transition-colors"
+              >
+                Close
+              </button>
             </div>
           )}
 

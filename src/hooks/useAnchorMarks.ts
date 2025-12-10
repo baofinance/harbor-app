@@ -29,7 +29,12 @@ const CHAINLINK_ABI = [
   {
     inputs: [],
     name: "latestAnswer",
-    outputs: [{ name: "", type: "int256" }],
+    outputs: [
+      { name: "minUnderlyingPrice", type: "uint256" },
+      { name: "maxUnderlyingPrice", type: "uint256" },
+      { name: "minWrappedRate", type: "uint256" },
+      { name: "maxWrappedRate", type: "uint256" },
+    ],
     stateMutability: "view",
     type: "function",
   },
@@ -129,12 +134,12 @@ export function useAnchorMarks() {
         reads.push({
           address: config.priceOracle,
           abi: CHAINLINK_ABI,
-          functionName: "latestAnswer",
+          functionName: "decimals",
         });
         reads.push({
           address: config.priceOracle,
           abi: CHAINLINK_ABI,
-          functionName: "decimals",
+          functionName: "latestAnswer",
         });
       }
     });
@@ -208,14 +213,21 @@ export function useAnchorMarks() {
 
       // Price oracle
       if (config.priceOracle) {
-        const priceResult = reads[readIndex];
-        const decimalsResult = reads[readIndex + 1];
+        const decimalsResult = reads[readIndex];
+        const priceResult = reads[readIndex + 1];
 
         if (
           priceResult?.status === "success" &&
           decimalsResult?.status === "success"
         ) {
-          const rawPrice = priceResult.result as bigint;
+          // latestAnswer returns a tuple: (minUnderlyingPrice, maxUnderlyingPrice, minWrappedRate, maxWrappedRate)
+          // Use maxUnderlyingPrice (index 1) as the price
+          const latestAnswerResult = priceResult.result as
+            | [bigint, bigint, bigint, bigint]
+            | undefined;
+          const rawPrice = Array.isArray(latestAnswerResult)
+            ? latestAnswerResult[1] // maxUnderlyingPrice is at index 1
+            : undefined;
           const decimals = decimalsResult.result as number;
           // For ha tokens, assume $1 peg for simplicity
           // The collateral price is for wstETH, but ha tokens are pegged
@@ -270,4 +282,5 @@ export function useAnchorMarks() {
     refetch,
   };
 }
+
 

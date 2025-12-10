@@ -1,8 +1,7 @@
 import { useAccount, usePublicClient } from "wagmi";
 import { useQuery } from "@tanstack/react-query";
 import { formatEther } from "viem";
-import { stabilityPoolABI } from "@/abis/stabilityPool";
-import { ERC20_ABI } from "@/config/contracts";
+import { STABILITY_POOL_ABI, ERC20_ABI } from "@/abis/shared";
 import { shouldUseAnvil } from "@/config/environment";
 import { anvilPublicClient } from "@/config/anvil";
 
@@ -61,7 +60,7 @@ export function usePoolRewardAPR({
         // Get all active reward tokens
         const rewardTokenAddresses = (await client.readContract({
           address: poolAddress,
-          abi: stabilityPoolABI,
+          abi: STABILITY_POOL_ABI,
           functionName: "activeRewardTokens",
           args: [],
         })) as `0x${string}`[];
@@ -78,7 +77,7 @@ export function usePoolRewardAPR({
               const [lastUpdate, finishAt, rate, queued] =
                 (await client.readContract({
                   address: poolAddress,
-                  abi: stabilityPoolABI,
+          abi: STABILITY_POOL_ABI,
                   functionName: "rewardData",
                   args: [tokenAddress],
                 })) as [bigint, bigint, bigint, bigint];
@@ -193,4 +192,6 @@ export function usePoolRewardAPR({
     retry: 2,
   });
 }
+
+
 

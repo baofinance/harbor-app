@@ -164,3 +164,5 @@ const marks = formatHarborMarks(marksData);
 3. Replace client-side calculations with subgraph data
 4. Add Harbor Marks display to other parts of the app (profile, leaderboard, etc.)
 
+
+

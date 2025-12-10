@@ -212,3 +212,7 @@ Imagine you're building a restaurant app:
 
 **Together** = Subgraph can talk to your deployed contracts!
 
+
+
+
+

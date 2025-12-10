@@ -530,3 +530,5 @@ export function handleStabilityPoolDepositChange(event: UserDepositChangeEvent):
   updateStabilityPoolMarksInTotal(userAddress, deposit, timestamp);
 }
 
+
+

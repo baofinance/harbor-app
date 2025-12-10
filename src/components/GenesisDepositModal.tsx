@@ -8,11 +8,18 @@ import {
   useWriteContract,
   usePublicClient,
 } from "wagmi";
-import { BaseError, ContractFunctionRevertedError } from "viem";
+import {
+  BaseError,
+  ContractFunctionRevertedError,
+} from "viem";
 import { GENESIS_ABI, ERC20_ABI } from "../config/contracts";
 import { anvil, anvilPublicClient } from "@/config/anvil";
 import { useAnvilContractRead } from "@/hooks/useAnvilContractRead";
 import { shouldUseAnvil } from "@/config/environment";
+import {
+  TransactionProgressModal,
+  TransactionStep,
+} from "./TransactionProgressModal";
 
 interface GenesisDepositModalProps {
   isOpen: boolean;
@@ -52,6 +59,10 @@ export const GenesisDepositModal = ({
   const [step, setStep] = useState<ModalStep>("input");
   const [error, setError] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
+  const [progressModalOpen, setProgressModalOpen] = useState(false);
+  const [progressSteps, setProgressSteps] = useState<TransactionStep[]>([]);
+  const [currentStepIndex, setCurrentStepIndex] = useState(0);
+  const [successfulDepositAmount, setSuccessfulDepositAmount] = useState<string>("");
 
   // Map selected asset to its token address
   const getAssetAddress = (assetSymbol: string): string => {
@@ -176,7 +187,22 @@ export const GenesisDepositModal = ({
     setStep("input");
     setError(null);
     setTxHash(null);
+    setSuccessfulDepositAmount("");
+    setProgressModalOpen(false);
+    setProgressSteps([]);
+    setCurrentStepIndex(0);
     onClose();
+  };
+
+  const handleShareOnX = () => {
+    const shareMessage = `Just secured my @0xharborfi airdrop with their maiden voyage. ⚓️
+
+Predeposits are still open for a limited time - don't miss out!
+
+https://www.harborfinance.io/`;
+    const encodedMessage = encodeURIComponent(shareMessage);
+    const xUrl = `https://x.com/intent/tweet?text=${encodedMessage}`;
+    window.open(xUrl, "_blank", "noopener,noreferrer");
   };
 
   const handleMaxClick = () => {
@@ -212,9 +238,33 @@ export const GenesisDepositModal = ({
   const handleDeposit = async () => {
     if (!validateAmount()) return;
     try {
+      // Initialize progress modal steps
+      const steps: TransactionStep[] = [];
+      const includeApproval = !isNativeETH && needsApproval;
+      if (includeApproval) {
+        steps.push({
+          id: "approve",
+          label: `Approve ${selectedAsset}`,
+          status: "pending",
+        });
+      }
+      steps.push({
+        id: "deposit",
+        label: "Deposit to Genesis",
+        status: "pending",
+      });
+      setProgressSteps(steps);
+      setCurrentStepIndex(0);
+      setProgressModalOpen(true);
+
       // For non-native tokens, check and approve if needed
       if (!isNativeETH && needsApproval) {
         setStep("approving");
+        setProgressSteps((prev) =>
+          prev.map((s) =>
+            s.id === "approve" ? { ...s, status: "in_progress" } : s
+          )
+        );
         setError(null);
         setTxHash(null);
         const approveHash = await writeContractAsync({
@@ -233,9 +283,24 @@ export const GenesisDepositModal = ({
 
         // Force another refetch to ensure we have the latest allowance
         await refetchAllowance();
+
+        setProgressSteps((prev) =>
+          prev.map((s, idx) =>
+            s.id === "approve"
+              ? { ...s, status: "completed", txHash: approveHash }
+              : s
+          )
+        );
+        setCurrentStepIndex(steps.findIndex((s) => s.id === "deposit"));
       }
 
       setStep("depositing");
+      setProgressSteps((prev) =>
+        prev.map((s) =>
+          s.id === "deposit" ? { ...s, status: "in_progress" } : s
+        )
+      );
+      setCurrentStepIndex(steps.findIndex((s) => s.id === "deposit"));
       setError(null);
       setTxHash(null);
 
@@ -254,6 +319,13 @@ export const GenesisDepositModal = ({
       await publicClient?.waitForTransactionReceipt({ hash: depositHash });
 
       setStep("success");
+      setSuccessfulDepositAmount(amount);
+      setProgressSteps((prev) =>
+        prev.map((s) =>
+          s.id === "deposit" ? { ...s, status: "completed", txHash: depositHash } : s
+        )
+      );
+      setCurrentStepIndex(steps.findIndex((s) => s.id === "deposit"));
       if (onSuccess) {
         await onSuccess();
       }
@@ -261,6 +333,98 @@ export const GenesisDepositModal = ({
       console.error("Full transaction error object:", err);
       let errorMessage = "Transaction failed";
 
+      // Helper to check if error is user rejection
+      const isUserRejection = (error: any): boolean => {
+        if (!error) return false;
+        const errorMessage = error.message?.toLowerCase() || "";
+        const errorCode = error.code;
+        const errorName = error.name?.toLowerCase() || "";
+        
+        // Check for common rejection messages
+        if (
+          errorMessage.includes("user rejected") ||
+          errorMessage.includes("user denied") ||
+          errorMessage.includes("rejected") ||
+          errorMessage.includes("denied") ||
+          errorMessage.includes("action rejected") ||
+          errorMessage.includes("user cancelled") ||
+          errorMessage.includes("user canceled") ||
+          errorName.includes("userrejected") ||
+          errorName.includes("rejected")
+        ) {
+          return true;
+        }
+        
+        // Check for common rejection error codes
+        // 4001 = MetaMask user rejection, 4900 = Uniswap user rejection, etc.
+        if (errorCode === 4001 || errorCode === 4900) {
+          return true;
+        }
+        
+        return false;
+      };
+
+      // Handle user rejection first
+      if (isUserRejection(err)) {
+        errorMessage = "Transaction was rejected. Please try again.";
+        setError(errorMessage);
+        setStep("error");
+        return;
+      }
+
+      // Check for RPC errors by examining error properties
+      const errObj = err as any;
+      if (errObj && (errObj.code !== undefined || errObj.name?.includes("Rpc") || errObj.name?.includes("RPC"))) {
+        const rpcCode = errObj.code;
+        console.error("RPC Error details:", {
+          code: rpcCode,
+          message: errObj.message,
+          shortMessage: errObj.shortMessage,
+          name: errObj.name,
+          data: errObj.data,
+        });
+
+        // Map common RPC error codes to user-friendly messages
+        if (rpcCode !== undefined) {
+          switch (rpcCode) {
+            case -32000:
+              errorMessage = "Transaction execution failed. Please check your balance and try again.";
+              break;
+            case -32002:
+              errorMessage = "Transaction already pending. Please wait for the previous transaction to complete.";
+              break;
+            case -32003:
+              errorMessage = "Transaction was rejected by the network.";
+              break;
+            case -32602:
+              errorMessage = "Invalid transaction parameters.";
+              break;
+            case -32603:
+              errorMessage = "Internal RPC error. Please try again later.";
+              break;
+            default:
+              // Try to extract meaningful error message
+              if (errObj.shortMessage) {
+                errorMessage = errObj.shortMessage;
+              } else if (errObj.message) {
+                errorMessage = errObj.message;
+              } else {
+                errorMessage = `RPC error (code: ${rpcCode}). Please try again.`;
+              }
+          }
+        } else if (errObj.shortMessage) {
+          errorMessage = errObj.shortMessage;
+        } else if (errObj.message) {
+          errorMessage = errObj.message;
+        } else {
+          errorMessage = "RPC error occurred. Please try again.";
+        }
+        setError(errorMessage);
+        setStep("error");
+        return;
+      }
+
+      // Handle BaseError (viem errors)
       if (err instanceof BaseError) {
         const revertError = err.walk(
           (err) => err instanceof ContractFunctionRevertedError
@@ -293,16 +457,62 @@ export const GenesisDepositModal = ({
               errorMessage = `Contract error: ${errorName || "Unknown error"}`;
           }
         } else {
-          errorMessage = err.shortMessage || err.message;
+          // Check for common error patterns in the message
+          const errorMsg = err.shortMessage || err.message || "";
+          const lowerMsg = errorMsg.toLowerCase();
+
+          if (lowerMsg.includes("insufficient funds") || lowerMsg.includes("insufficient balance")) {
+            errorMessage = "Insufficient balance for this transaction";
+          } else if (lowerMsg.includes("gas") || lowerMsg.includes("fee")) {
+            errorMessage = "Transaction failed due to gas estimation. Please try again.";
+          } else if (lowerMsg.includes("network") || lowerMsg.includes("rpc")) {
+            errorMessage = "Network error. Please check your connection and try again.";
+          } else if (lowerMsg.includes("nonce")) {
+            errorMessage = "Transaction nonce error. Please try again.";
+          } else {
+            errorMessage = errorMsg || "Transaction failed";
+          }
         }
       } else if (err && typeof err === "object" && "message" in err) {
-        errorMessage = (err as { message: string }).message;
+        const errObj = err as { message: string; code?: number };
+        const msg = errObj.message || "";
+        const lowerMsg = msg.toLowerCase();
+
+        // Check for user rejection patterns
+        if (
+          lowerMsg.includes("user rejected") ||
+          lowerMsg.includes("user denied") ||
+          lowerMsg.includes("rejected") ||
+          errObj.code === 4001 ||
+          errObj.code === 4900
+        ) {
+          errorMessage = "Transaction was rejected. Please try again.";
+        } else if (lowerMsg.includes("rpc") || lowerMsg.includes("network")) {
+          errorMessage = "Network error. Please check your connection and try again.";
+        } else {
+          errorMessage = msg;
+        }
       } else {
-        errorMessage = "Unknown error occurred";
+        errorMessage = "An unknown error occurred. Please try again.";
+      }
+
+      // Log detailed error information for debugging
+      if (process.env.NODE_ENV === "development") {
+        console.error("Error details:", {
+          error: err,
+          errorMessage,
+          type: err?.constructor?.name,
+          stack: err instanceof Error ? err.stack : undefined,
+        });
       }
 
       setError(errorMessage);
       setStep("error");
+      setProgressSteps((prev) =>
+        prev.map((s, idx) =>
+          idx === currentStepIndex ? { ...s, status: "error", error: errorMessage } : s
+        )
+      );
     }
   };
 
@@ -347,46 +557,93 @@ export const GenesisDepositModal = ({
     );
   };
 
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-        onClick={handleClose}
-      />
-
-      {/* Modal */}
-      <div className="relative bg-white shadow-2xl w-full max-w-md mx-4 animate-in fade-in-0 scale-in-95 duration-200">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-[#1E4775]/20">
-          <h2 className="text-2xl font-bold text-[#1E4775]">
-            Deposit in Maiden Voyage
-          </h2>
+  const renderSuccessContent = () => {
+    return (
+      <div className="space-y-4">
+        <div className="p-4 bg-[#B8EBD5]/20 border border-[#B8EBD5]/30 rounded-lg text-center">
+          <p className="text-sm text-[#1E4775]/80">Thank you for joining the Maiden Voyage!</p>
+          {successfulDepositAmount && (
+            <p className="text-lg font-bold text-[#1E4775] font-mono mt-2">
+              {successfulDepositAmount} {collateralSymbol}
+            </p>
+          )}
+        </div>
+        <div className="space-y-2 bg-[#17395F]/5 border border-[#1E4775]/15 rounded-lg p-4">
+          <div className="text-base font-semibold text-[#1E4775]">
+            Boost your airdrop
+          </div>
+          <p className="text-sm text-[#1E4775]/80">
+            Boost your airdrop with our community marketing program: Share your deposit on X and post a link in our Discord booster channel.
+          </p>
           <button
-            onClick={handleClose}
-            className="text-[#1E4775]/50 hover:text-[#1E4775] transition-colors"
-            disabled={step === "approving" || step === "depositing"}
+            onClick={handleShareOnX}
+            className="w-full py-3 px-4 bg-black hover:bg-gray-800 text-white font-medium rounded-full transition-colors flex items-center justify-center gap-2"
           >
-            <svg
-              className="w-6 h-6"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
+            <svg viewBox="0 0 24 24" className="w-5 h-5 fill-current" aria-hidden="true">
+              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
             </svg>
+            <span>Share on X</span>
           </button>
         </div>
+      </div>
+    );
+  };
 
-        {/* Content */}
-        <div className="p-6 space-y-6">
+  if (!isOpen && !progressModalOpen) return null;
+
+  return (
+    <>
+      {progressModalOpen && (
+        <TransactionProgressModal
+          isOpen={progressModalOpen}
+          onClose={handleClose}
+          title="Processing Deposit"
+          steps={progressSteps}
+          currentStepIndex={currentStepIndex}
+          canCancel={false}
+          errorMessage={error || undefined}
+          renderSuccessContent={renderSuccessContent}
+        />
+      )}
+
+      {!progressModalOpen && isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            onClick={handleClose}
+          />
+
+          {/* Modal */}
+          <div className="relative bg-white shadow-2xl w-full max-w-md mx-4 animate-in fade-in-0 scale-in-95 duration-200">
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b border-[#1E4775]/20">
+              <h2 className="text-2xl font-bold text-[#1E4775]">
+                Deposit in Maiden Voyage
+              </h2>
+              <button
+                onClick={handleClose}
+                className="text-[#1E4775]/50 hover:text-[#1E4775] transition-colors"
+                disabled={step === "approving" || step === "depositing"}
+              >
+                <svg
+                  className="w-6 h-6"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 space-y-6">
           {/* Genesis Status Warning */}
           {genesisEnded && (
             <div className="p-3 bg-red-50 border border-red-500/30 text-red-600 text-sm">
@@ -575,12 +832,6 @@ export const GenesisDepositModal = ({
             </div>
           )}
 
-          {/* Success Message */}
-          {step === "success" && (
-            <div className="p-3 bg-[#B8EBD5]/20 border border-[#B8EBD5]/30 text-[#1E4775] text-sm text-center">
-              ✅ Deposit successful!
-            </div>
-          )}
         </div>
 
         {/* Footer */}
@@ -606,5 +857,7 @@ export const GenesisDepositModal = ({
         </div>
       </div>
     </div>
+  )}
+    </>
   );
 };

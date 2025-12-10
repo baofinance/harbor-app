@@ -4,7 +4,7 @@ import React, { useMemo, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   useAccount,
-  useContractReads,
+  useContractReads as wagmiUseContractReads,
   useWriteContract,
   usePublicClient,
 } from "wagmi";
@@ -13,7 +13,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { markets } from "../../config/markets";
 import { GenesisDepositModal } from "@/components/GenesisDepositModal";
 import { GenesisWithdrawModal } from "@/components/GenesisWithdrawModal";
-import { GENESIS_ABI } from "../../config/contracts";
+import { GENESIS_ABI, contracts } from "../../config/contracts";
 import { useAnvilContractReads } from "@/hooks/useAnvilContractReads";
 import {
   ArrowRightIcon,
@@ -35,41 +35,16 @@ import InfoTooltip from "@/components/InfoTooltip";
 import SimpleTooltip from "@/components/SimpleTooltip";
 import Image from "next/image";
 import { useAllHarborMarks } from "@/hooks/useHarborMarks";
-
-// Helper function to get logo path for tokens/networks
-function getLogoPath(symbol: string): string {
-  const normalizedSymbol = symbol.toLowerCase();
-  if (normalizedSymbol === "eth" || normalizedSymbol === "ethereum") {
-    return "/icons/eth.png";
-  }
-  if (normalizedSymbol === "fxsave") {
-    return "/icons/fxSave.png";
-  }
-  if (normalizedSymbol === "fxusd") {
-    return "/icons/fxUSD.webp";
-  }
-  if (normalizedSymbol === "usdc") {
-    return "/icons/usdc.webp";
-  }
-  if (normalizedSymbol === "steth") {
-    return "/icons/steth_logo.webp";
-  }
-  if (normalizedSymbol === "wsteth") {
-    return "/icons/wstETH.webp";
-  }
-  // Use haETH logo for haPB, haUSD2 for other ha tokens
-  if (normalizedSymbol === "hapb") {
-    return "/icons/haETH.png";
-  }
-  if (normalizedSymbol.startsWith("ha")) {
-    return "/icons/haUSD2.png";
-  }
-  // Use hsUSDETH logo for sail tokens (e.g., hsPB) - for test environment
-  if (normalizedSymbol.startsWith("hs")) {
-    return "/icons/hsUSDETH.png";
-  }
-  return "/icons/placeholder.svg";
-}
+import { useMinterTokenMeta } from "@/hooks/useMinterTokenMeta";
+import {
+  formatUSD,
+  formatToken,
+  formatTimeRemaining,
+  formatDateTime,
+} from "@/utils/formatters";
+import { EtherscanLink, getLogoPath, TokenLogo } from "@/components/shared";
+import { MINTER_ABI } from "@/abis/shared";
+import Link from "next/link";
 
 // Helper function to get accepted deposit assets for a market
 function getAcceptedDepositAssets(
@@ -154,6 +129,7 @@ const erc20SymbolABI = [
   },
 ] as const;
 
+// Standard Chainlink-style oracle ABI: latestAnswer returns a single price, decimals describes scaling
 const chainlinkOracleABI = [
   {
     inputs: [],
@@ -171,95 +147,6 @@ const chainlinkOracleABI = [
   },
 ] as const;
 
-function formatToken(
-  value: bigint | undefined,
-  decimals = 18,
-  maxFrac = 4
-): string {
-  if (!value) return "0";
-  const n = Number(value) / 10 ** decimals;
-  if (n > 0 && n < 1 / 10 ** maxFrac)
-    return `<${(1 / 10 ** maxFrac).toFixed(maxFrac)}`;
-  return n.toLocaleString(undefined, { maximumFractionDigits: maxFrac });
-}
-
-function formatUSD(value: number): string {
-  if (value === 0) return "$0";
-  if (value < 0.01) return `<$0.01`;
-  if (value >= 1000000) {
-    return `$${(value / 1000000).toFixed(2)}M`;
-  }
-  if (value >= 1000) {
-    return `$${(value / 1000).toFixed(2)}K`;
-  }
-  return `$${value.toLocaleString(undefined, {
-    maximumFractionDigits: 2,
-    minimumFractionDigits: 2,
-  })}`;
-}
-
-function formatTimeRemaining(
-  endDate: string,
-  currentTime: Date = new Date()
-): string {
-  const end = new Date(endDate);
-  const diffMs = end.getTime() - currentTime.getTime();
-
-  if (diffMs <= 0) {
-    return "Ended";
-  }
-
-  const diffHours = diffMs / (1000 * 60 * 60);
-  const diffDays = diffHours / 24;
-  const diffMinutes = diffMs / (1000 * 60);
-
-  if (diffDays >= 2) {
-    return `ends in ${diffDays.toFixed(1)} days`;
-  } else if (diffHours >= 2) {
-    return `ends in ${diffHours.toFixed(1)} hours`;
-  } else {
-    return `ends in ${diffMinutes.toFixed(0)} minutes`;
-  }
-}
-
-function EtherscanLink({
-  label,
-  address,
-}: {
-  label: string;
-  address?: string;
-}) {
-  if (!address) return null;
-  const etherscanBaseUrl = "https://etherscan.io/address/";
-  return (
-    <div className="flex justify-between items-center text-xs py-0.5 border-b border-[#1E4775]/20 last:border-b-0">
-      <span className="text-[#1E4775]/70">{label}</span>
-      <a
-        href={`${etherscanBaseUrl}${address}`}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="font-mono text-[#1E4775] hover:underline flex items-center gap-1"
-      >
-        {`${address.slice(0, 6)}...${address.slice(-4)}`}
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          className="h-3 w-3"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-          />
-        </svg>
-      </a>
-    </div>
-  );
-}
-
 function MarketExpandedView({
   marketId,
   market,
@@ -272,6 +159,9 @@ function MarketExpandedView({
   endDate,
   collateralSymbol,
   collateralPriceUSD,
+  peggedSymbol,
+  leveragedSymbol,
+  onShare,
 }: {
   marketId: string;
   market: any;
@@ -284,9 +174,12 @@ function MarketExpandedView({
   endDate: string | undefined;
   collateralSymbol: string;
   collateralPriceUSD: number;
+  peggedSymbol?: string;
+  leveragedSymbol?: string;
+  onShare?: () => void;
 }) {
   // Fetch contract data for expanded view
-  const { data: expandedReads, error: expandedReadsError } = useContractReads({
+  const { data: expandedReads, error: expandedReadsError } = wagmiUseContractReads({
     contracts:
       genesisAddress &&
       typeof genesisAddress === "string" &&
@@ -332,7 +225,7 @@ function MarketExpandedView({
     | undefined;
 
   // Get token symbols
-  const { data: tokenSymbols, error: tokenSymbolsError } = useContractReads({
+  const { data: tokenSymbols, error: tokenSymbolsError } = wagmiUseContractReads({
     contracts: [
       ...(peggedTokenAddress &&
       typeof peggedTokenAddress === "string" &&
@@ -391,13 +284,17 @@ function MarketExpandedView({
   });
 
   const peggedTokenSymbol =
-    peggedTokenAddress && tokenSymbols?.[0]?.result
-      ? (tokenSymbols[0].result as string)
-      : market.peggedToken?.symbol || "ha";
+    (peggedSymbol ||
+      (peggedTokenAddress && tokenSymbols?.[0]?.result
+        ? (tokenSymbols[0].result as string)
+        : market.peggedToken?.symbol)) ||
+    "ha";
   const leveragedTokenSymbol =
-    leveragedTokenAddress && tokenSymbols?.[1]?.result
-      ? (tokenSymbols[1].result as string)
-      : market.leveragedToken?.symbol || "hs";
+    (leveragedSymbol ||
+      (leveragedTokenAddress && tokenSymbols?.[1]?.result
+        ? (tokenSymbols[1].result as string)
+        : market.leveragedToken?.symbol)) ||
+    "hs";
   const collateralTokenSymbol =
     collateralTokenAddress && tokenSymbols?.[2]?.result
       ? (tokenSymbols[2].result as string)
@@ -440,12 +337,12 @@ function MarketExpandedView({
     <div className="bg-[#B8EBD5] p-2 border-t border-white/20">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         {/* Genesis Info */}
-        <div className="bg-white p-2 flex flex-col">
-          <h3 className="text-[#1E4775] font-semibold mb-1 text-xs">
+        <div className="bg-white p-2 flex flex-col justify-center">
+          <h3 className="text-[#1E4775] font-semibold mb-1 text-xs text-center">
             End Date/Time
           </h3>
-          <p className="text-sm font-bold text-[#1E4775]">
-            {formatEndDateTime(endDate)}
+          <p className="text-sm font-bold text-[#1E4775] text-center">
+            {formatDateTime(endDate)}
           </p>
         </div>
 
@@ -495,6 +392,16 @@ function MarketExpandedView({
                 {leveragedTokenSymbol}
               </span>
             </div>
+            {onShare && (
+              <div className="pt-2">
+                <button
+                  onClick={onShare}
+                  className="w-full text-center text-xs font-semibold text-white bg-[#1E4775] rounded-full py-1.5 hover:bg-[#17395F] transition"
+                >
+                  Share on X
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -522,9 +429,32 @@ export default function GenesisIndexPage() {
   const [expandedMarket, setExpandedMarket] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
   const [claimingMarket, setClaimingMarket] = useState<string | null>(null);
+  const [claimModal, setClaimModal] = useState<{
+    open: boolean;
+    status: "pending" | "success" | "error";
+    marketId?: string | null;
+    errorMessage?: string;
+  }>({ open: false, status: "pending", marketId: null });
+  const [shareModal, setShareModal] = useState<{
+    open: boolean;
+    marketName?: string;
+    peggedSymbol?: string;
+  }>({ open: false });
 
   const { writeContractAsync } = useWriteContract();
   const publicClient = usePublicClient();
+
+  // Fetch on-chain token metadata (symbol/name) from minter contract
+  const tokenMeta = useMinterTokenMeta(contracts.minter as `0x${string}`);
+  
+  // Get token symbols with loading/error states
+  const getTokenDisplay = (type: 'pegged' | 'leveraged') => {
+    if (tokenMeta.isLoading) return 'Loading...';
+    if (tokenMeta.error) return '⚠️ Error';
+    
+    const token = type === 'pegged' ? tokenMeta.pegged : tokenMeta.leveraged;
+    return token?.symbol || (type === 'pegged' ? 'ha' : 'hs');
+  };
 
   // Prevent hydration mismatch by only rendering dynamic content after mount
   useEffect(() => {
@@ -553,6 +483,10 @@ export default function GenesisIndexPage() {
         .filter((addr): addr is string => !!addr && typeof addr === "string"),
     [genesisMarkets]
   );
+
+  // On-chain token symbols from the useMinterTokenMeta hook
+  const peggedSymbol = getTokenDisplay('pegged');
+  const leveragedSymbol = getTokenDisplay('leveraged');
 
   // Fetch marks data from subgraph
   const {
@@ -602,7 +536,7 @@ export default function GenesisIndexPage() {
 
   const { data: reads, refetch: refetchReads } = useAnvilContractReads({
     contracts: genesisReadContracts,
-    enabled: genesisMarkets.length > 0,
+      enabled: genesisMarkets.length > 0,
     refetchInterval: 5000, // Refetch every 5 seconds to catch genesis end
   });
 
@@ -610,19 +544,19 @@ export default function GenesisIndexPage() {
   const collateralTokenContracts = useMemo(() => {
     return genesisMarkets
       .map(([_, m]) => {
-        const g = (m as any).addresses?.genesis as `0x${string}` | undefined;
+      const g = (m as any).addresses?.genesis as `0x${string}` | undefined;
         if (
           !g ||
           typeof g !== "string" ||
           !g.startsWith("0x") ||
           g.length !== 42
         )
-          return null;
-        return {
-          address: g,
-          abi: genesisABI,
-          functionName: "WRAPPED_COLLATERAL_TOKEN" as const,
-        };
+        return null;
+      return {
+        address: g,
+        abi: genesisABI,
+        functionName: "WRAPPED_COLLATERAL_TOKEN" as const,
+      };
       })
       .filter((c): c is NonNullable<typeof c> => c !== null);
   }, [genesisMarkets]);
@@ -631,7 +565,7 @@ export default function GenesisIndexPage() {
     useAnvilContractReads({
       contracts: collateralTokenContracts,
       enabled: genesisMarkets.length > 0,
-    });
+  });
 
   // Fetch total deposits by checking the balance of wrapped collateral token in genesis contract
   // Since totalDeposits() doesn't exist in IGenesis, we get it from the token balance
@@ -644,7 +578,7 @@ export default function GenesisIndexPage() {
       type: "function",
     },
   ] as const;
-
+  
   const totalDepositsContracts = useMemo(() => {
     return genesisMarkets.flatMap(([_, m], mi) => {
       const g = (m as any).addresses?.genesis as `0x${string}` | undefined;
@@ -680,7 +614,153 @@ export default function GenesisIndexPage() {
         genesisMarkets.length > 0 &&
         collateralTokenReads &&
         collateralTokenReads.length > 0,
-    });
+  });
+
+  const buildShareMessage = (
+    marketName: string,
+    peggedSymbolNoPrefix: string
+  ) => {
+    return `The ${marketName} market is now live! Earn unbeatable yields on ${peggedSymbolNoPrefix} or get liquidation protected, funding free leverage on ${marketName} on @0xharborfi at harborfinance.io\n\nParticipate for your share of the $TIDE airdrop`;
+  };
+
+  const openShareIntent = (marketName: string, peggedSymbol: string) => {
+    const msg = buildShareMessage(marketName, peggedSymbol);
+    const encoded = encodeURIComponent(msg);
+    const url = `https://x.com/intent/tweet?text=${encoded}`;
+    window.open(url, "_blank", "noopener,noreferrer");
+  };
+
+  const ClaimProgressModal = ({
+    open,
+    status,
+    errorMessage,
+    onClose,
+    onShare,
+    marketName,
+    peggedSymbolNoPrefix,
+  }: {
+    open: boolean;
+    status: "pending" | "success" | "error";
+    errorMessage?: string;
+    onClose: () => void;
+    onShare?: () => void;
+    marketName?: string;
+    peggedSymbolNoPrefix?: string;
+  }) => {
+    if (!open) return null;
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center">
+        {/* Backdrop */}
+        <div
+          className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+          onClick={status === "pending" ? undefined : onClose}
+        />
+        <div className="relative bg-white shadow-2xl w-full max-w-md mx-4 animate-in fade-in-0 scale-in-95 duration-200 rounded-2xl overflow-hidden">
+          {/* Header */}
+          <div className="flex items-center justify-between px-4 py-3 border-b border-[#1E4775]/10">
+            <div>
+              <p className="text-xs uppercase tracking-wide text-[#1E4775]/60">
+                Claim Progress
+              </p>
+              <h3 className="text-sm font-semibold text-[#1E4775]">
+                {status === "pending"
+                  ? "Processing claim"
+                  : status === "success"
+                  ? "Claim successful"
+                  : "Claim failed"}
+              </h3>
+            </div>
+            <button
+              onClick={onClose}
+              className="text-xs text-[#1E4775]/60 hover:text-[#1E4775]"
+              disabled={status === "pending"}
+            >
+              Close
+            </button>
+          </div>
+
+          <div className="p-4 space-y-4">
+            {status === "pending" && (
+              <div className="space-y-3">
+                <p className="text-sm text-[#1E4775]/80">
+                  Waiting for transaction confirmation...
+                </p>
+                <div className="w-full bg-[#1E4775]/10 h-2 rounded-full overflow-hidden">
+                  <div className="h-2 bg-[#1E4775] animate-pulse w-1/2 rounded-full" />
+                </div>
+              </div>
+            )}
+
+            {status === "success" && (
+              <div className="space-y-4">
+                <div className="p-4 bg-[#B8EBD5]/20 border border-[#B8EBD5]/30 rounded-lg text-center">
+                  <p className="text-sm text-[#1E4775]/80">
+                    Tokens claimed{marketName ? ` for ${marketName}` : ""}.
+                  </p>
+                </div>
+
+                <div className="space-y-2 bg-[#17395F]/5 border border-[#1E4775]/15 rounded-lg p-4">
+                  <div className="text-base font-semibold text-[#1E4775]">
+                    Boost your airdrop
+                  </div>
+                  <p className="text-sm text-[#1E4775]/80">
+                    Share that {marketName || "this market"} is live and invite
+                    others to earn unbeatable yields on {peggedSymbolNoPrefix} or
+                    get liquidation-protected, funding-free leverage.
+                  </p>
+                  {onShare && (
+                    <button
+                      onClick={onShare}
+                      className="w-full py-3 px-4 bg-black hover:bg-gray-800 text-white font-medium rounded-full transition-colors flex items-center justify-center gap-2 text-sm"
+                    >
+                      <svg
+                        viewBox="0 0 24 24"
+                        className="w-5 h-5 fill-current"
+                        aria-hidden="true"
+                      >
+                        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                      </svg>
+                      <span>Share on X</span>
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex justify-end">
+                  <button
+                    onClick={onClose}
+                    className="text-xs font-semibold text-[#1E4775] border border-[#1E4775] rounded-full py-2 px-4 hover:bg-[#1E4775]/10 transition"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {status === "error" && (
+              <div className="space-y-3">
+                <div className="p-4 bg-red-50 border border-red-100 rounded-lg">
+                  <p className="text-sm text-red-700 font-semibold">
+                    Claim failed
+                  </p>
+                  <p className="text-xs text-[#1E4775]/80 break-words mt-1">
+                    {errorMessage || "Something went wrong. Please try again."}
+                  </p>
+                </div>
+                <div className="flex justify-end">
+                  <button
+                    onClick={onClose}
+                    className="text-xs font-semibold text-[#1E4775] border border-[#1E4775] rounded-full py-2 px-4 hover:bg-[#1E4775]/10 transition"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   // Fetch collateral price oracles for each market (for USD calculations)
   const priceContracts = useMemo(() => {
@@ -713,7 +793,7 @@ export default function GenesisIndexPage() {
 
   const { data: priceReads, refetch: refetchPrices } = useAnvilContractReads({
     contracts: priceContracts,
-    enabled: genesisMarkets.length > 0,
+      enabled: genesisMarkets.length > 0,
   });
 
   // Refetch marks when genesis ends to get bonus marks
@@ -929,20 +1009,6 @@ export default function GenesisIndexPage() {
           if (allMarksData && !isLoadingMarks) {
             const currentTime = Math.floor(Date.now() / 1000); // Current Unix timestamp in seconds
 
-            // Debug: log the raw marks data
-            if (process.env.NODE_ENV === "development") {
-              console.log("[Marks Data Debug]", {
-                allMarksDataLength: allMarksData.length,
-                allMarksData: allMarksData.map((r) => ({
-                  genesisAddress: r.genesisAddress,
-                  hasData: !!r.data,
-                  hasUserHarborMarks: !!r.data?.userHarborMarks,
-                  userHarborMarksLength: r.data?.userHarborMarks?.length || 0,
-                  errors: r.errors,
-                })),
-              });
-            }
-
             allMarksData.forEach((result) => {
               // Handle both array and single object responses from GraphQL
               const userMarksData = result.data?.userHarborMarks;
@@ -957,16 +1023,16 @@ export default function GenesisIndexPage() {
                 const bonusMarks = parseFloat(marks.bonusMarks || "0");
 
                 // Find the market to get contract's genesisIsEnded() status
-                const market = genesisMarkets.find(
+                  const market = genesisMarkets.find(
                   ([_, m]) =>
                     (m as any).addresses?.genesis?.toLowerCase() ===
                     result.genesisAddress?.toLowerCase()
-                );
+                  );
 
                 // Use contract's genesisIsEnded() as authoritative source
                 // Fallback to subgraph value if contract read is not available
                 let contractSaysEnded: boolean | undefined;
-                if (market) {
+                  if (market) {
                   const marketIndex = genesisMarkets.findIndex(
                     ([id]) => id === market[0]
                   );
@@ -1027,11 +1093,20 @@ export default function GenesisIndexPage() {
                       priceDecimals = Number(priceDecimalsResult.result);
                     }
 
-                    const priceRaw =
+                    // latestAnswer returns a tuple: (minUnderlyingPrice, maxUnderlyingPrice, minWrappedRate, maxWrappedRate)
+                    // Use maxUnderlyingPrice (index 1) as the price
+                    let priceRaw: bigint | undefined;
+                    if (
                       priceAnswerResult?.status === "success" &&
                       priceAnswerResult?.result !== undefined
-                        ? (priceAnswerResult.result as bigint)
-                        : undefined;
+                    ) {
+                      const latestAnswerResult = priceAnswerResult.result as
+                        | [bigint, bigint, bigint, bigint]
+                        | undefined;
+                      if (Array.isArray(latestAnswerResult)) {
+                        priceRaw = latestAnswerResult[1]; // maxUnderlyingPrice is at index 1
+                      }
+                    }
 
                     // Calculate price: handle negative values (convert to positive) and apply decimals
                     let collateralPriceUSD: number = 0;
@@ -1054,33 +1129,6 @@ export default function GenesisIndexPage() {
                       // marksPerDay should be: currentDepositUSD * 10 marks per dollar per day
                       // But if genesis has ended, marksPerDay should be 0
                       marksPerDay = genesisEnded ? 0 : currentDepositUSD * 10;
-
-                      // Debug logging
-                      if (process.env.NODE_ENV === "development") {
-                        console.log("[Marks USD Calculation]", {
-                          genesisAddress: result.genesisAddress,
-                          currentDepositTokenAmount,
-                          collateralPriceUSD,
-                          calculatedCurrentDepositUSD: currentDepositUSD,
-                          marksPerDayFromSubgraph: marksPerDayFromSubgraph,
-                          correctedMarksPerDay: marksPerDay,
-                          usingFallback:
-                            priceRaw === undefined || priceRaw === 0n,
-                        });
-                      }
-                    } else {
-                      // Debug if price is not available
-                      if (process.env.NODE_ENV === "development") {
-                        console.log("[Marks USD Calculation - No Price]", {
-                          genesisAddress: result.genesisAddress,
-                          currentDepositTokenAmount,
-                          priceRaw: priceRaw?.toString(),
-                          priceDecimals,
-                          collateralPriceUSD,
-                          priceAnswerStatus: priceAnswerResult?.status,
-                          priceDecimalsStatus: priceDecimalsResult?.status,
-                        });
-                      }
                     }
                   }
                 }
@@ -1101,14 +1149,6 @@ export default function GenesisIndexPage() {
                 if (genesisEnded) {
                   // Genesis has ended - use subgraph's currentMarks directly (includes bonus)
                   // No need to accumulate more marks
-                  if (process.env.NODE_ENV === "development") {
-                    console.log("[Marks - Genesis Ended]", {
-                      genesisAddress: result.genesisAddress,
-                      currentMarksFromSubgraph: marks.currentMarks,
-                      bonusMarks: bonusMarks,
-                      currentMarks: currentMarks,
-                    });
-                  }
                 } else if (currentDepositUSD > 0 && genesisStartDate > 0) {
                   // Calculate time elapsed since last update (not since genesis start)
                   // This ensures we only accumulate marks for the time since the last event (deposit/withdraw)
@@ -1122,41 +1162,6 @@ export default function GenesisIndexPage() {
                   const marksAccumulated = currentDepositUSD * 10 * daysElapsed;
                   currentMarks = currentMarks + marksAccumulated;
 
-                  // Debug logging
-                  if (process.env.NODE_ENV === "development") {
-                    console.log("[Marks Calculation]", {
-                      genesisAddress: result.genesisAddress,
-                      currentMarksFromSubgraph: marks.currentMarks,
-                      currentDepositUSD,
-                      genesisStartDate: new Date(
-                        genesisStartDate * 1000
-                      ).toISOString(),
-                      lastUpdated: new Date(lastUpdated * 1000).toISOString(),
-                      currentTime: new Date(currentTime * 1000).toISOString(),
-                      timeElapsed,
-                      daysElapsed,
-                      marksAccumulated,
-                      calculatedCurrentMarks: currentMarks,
-                      genesisEnded,
-                    });
-                  }
-                } else {
-                  // Debug why marks aren't being calculated
-                  if (process.env.NODE_ENV === "development") {
-                    console.log("[Marks Calculation - Skipped]", {
-                      genesisAddress: result.genesisAddress,
-                      genesisEnded,
-                      currentDepositUSD,
-                      genesisStartDate,
-                      reason: !genesisEnded
-                        ? "genesisEnded is true"
-                        : currentDepositUSD <= 0
-                        ? "no deposit"
-                        : genesisStartDate <= 0
-                        ? "no start date"
-                        : "unknown",
-                    });
-                  }
                 }
 
                 totalCurrentMarks += currentMarks;
@@ -1354,21 +1359,20 @@ export default function GenesisIndexPage() {
                 ? contractSaysEnded
                 : subgraphSaysEnded ?? false;
 
-            // Debug logging for genesis end status
-            if (process.env.NODE_ENV === "development") {
-              const genesisAddress = (m as any).addresses?.genesis;
-              console.log(`[Genesis ${id}] End Status Check:`, {
-                genesisAddress,
-                baseOffset,
-                contractReadStatus: contractReadResult?.status,
-                contractReadResult: contractReadResult?.result,
-                contractSaysEnded,
-                subgraphSaysEnded,
-                finalIsEnded: isEnded,
-                error: contractReadResult?.error?.message,
-                allReadsLength: reads?.length,
-              });
-            }
+            // On-chain token symbols (from useMinterTokenMeta hook)
+            const rowPeggedSymbol = peggedSymbol;
+            const rowLeveragedSymbol = leveragedSymbol;
+            const displayMarketName =
+              rowLeveragedSymbol &&
+              rowLeveragedSymbol.toLowerCase().startsWith("hs")
+                ? rowLeveragedSymbol.slice(2)
+                : rowLeveragedSymbol || (m as any).name || "Market";
+            const peggedNoPrefix =
+              rowPeggedSymbol &&
+              rowPeggedSymbol.toLowerCase().startsWith("ha")
+                ? rowPeggedSymbol.slice(2)
+                : rowPeggedSymbol || "pegged token";
+
             // Get total deposits from the collateral token balance of the genesis contract
             const totalDeposits = totalDepositsReads?.[mi]?.result as
               | bigint
@@ -1389,57 +1393,32 @@ export default function GenesisIndexPage() {
             const collateralAddress =
               onChainCollateralAddress || (m as any).addresses?.collateralToken;
             const collateralSymbol = (m as any).collateral?.symbol || "ETH";
-
+            
             // Debug logging for collateral address
-            if (process.env.NODE_ENV === "development") {
-              console.log(`[Genesis ${id}] Collateral Address Debug:`, {
-                onChainCollateralAddress,
-                configCollateralToken: (m as any).addresses?.collateralToken,
-                finalCollateralAddress: collateralAddress,
-                collateralSymbol,
-                expectedWstETH: "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707",
-              });
-            }
             const endDate = (m as any).genesis?.endDate;
 
             // Get price from oracle
             const priceOffset = mi * 2;
             const priceDecimalsResult = priceReads?.[priceOffset];
             const priceAnswerResult = priceReads?.[priceOffset + 1];
-
-            // Debug logging (remove in production)
-            if (process.env.NODE_ENV === "development") {
-              console.log(`[Genesis ${id}] Price Oracle Debug:`, {
-                oracleAddress: (m as any).addresses?.collateralPrice,
-                priceOffset,
-                decimalsResult: priceDecimalsResult,
-                answerResult: priceAnswerResult,
-                decimalsStatus: priceDecimalsResult?.status,
-                answerStatus: priceAnswerResult?.status,
-              });
-            }
-
-            // Try to get decimals from oracle, fallback to 8 (Chainlink standard) if not available
-            // Most Chainlink oracles use 8 decimals for USD pairs
-            let priceDecimals = 8; // Default fallback (Chainlink standard)
+            // Try to get decimals from oracle; default to 18 (wstETH-style feeds) if unavailable
+            let priceDecimals = 18;
             if (
               priceDecimalsResult?.status === "success" &&
               priceDecimalsResult?.result !== undefined
             ) {
               priceDecimals = Number(priceDecimalsResult.result);
-            } else if (priceDecimalsResult?.status === "failure") {
-              // If decimals() function doesn't exist or reverts, try 8 (Chainlink) then 18 (ETH standard)
-              // Try to infer from price value if available
-              priceDecimals = 8; // Default to Chainlink standard
             }
 
-            // latestAnswer returns int256, which can be negative, but prices should be positive
-            const priceRaw =
+            // latestAnswer returns a single price (int256)
+            let priceRaw: bigint | undefined;
+            if (
               priceAnswerResult?.status === "success" &&
               priceAnswerResult?.result !== undefined
-                ? (priceAnswerResult.result as bigint)
-                : undefined;
-
+            ) {
+              priceRaw = priceAnswerResult.result as bigint;
+            }
+            
             // Calculate price: handle negative values (convert to positive) and apply decimals
             let collateralPriceUSD: number = 0;
             let priceError: string | null = null;
@@ -1467,25 +1446,7 @@ export default function GenesisIndexPage() {
                 priceError = "Price oracle not available";
               }
             }
-
-            // Debug logging for calculated price
-            if (process.env.NODE_ENV === "development") {
-              console.log(`[Genesis ${id}] Price Calculation:`, {
-                oracleAddress: (m as any).addresses?.collateralPrice,
-                priceRaw: priceRaw?.toString(),
-                priceRawNumber: priceRaw ? Number(priceRaw) : undefined,
-                priceDecimals,
-                calculatedPrice: collateralPriceUSD,
-                priceError,
-                decimalsSource:
-                  priceDecimalsResult?.status === "success"
-                    ? "oracle"
-                    : "fallback",
-                answerStatus: priceAnswerResult?.status,
-                decimalsStatus: priceDecimalsResult?.status,
-              });
-            }
-
+            
             // Calculate USD values
             const totalDepositsAmount = totalDeposits
               ? Number(formatEther(totalDeposits))
@@ -1496,39 +1457,6 @@ export default function GenesisIndexPage() {
               ? Number(formatEther(userDeposit))
               : 0;
             const userDepositUSD = userDepositAmount * collateralPriceUSD;
-
-            // Debug logging for deposits (after all variables are defined)
-            if (process.env.NODE_ENV === "development") {
-              console.log(`[Genesis ${id}] Deposit Debug:`, {
-                genesisAddress,
-                baseOffset,
-                readsLength: reads?.length,
-                readsData: reads?.map((r, idx) => ({
-                  idx,
-                  status: r.status,
-                  result: r.result?.toString(),
-                  error: r.error?.message,
-                })),
-                totalDepositsReadsLength: totalDepositsReads?.length,
-                totalDepositsRead: totalDepositsReads?.[mi],
-                totalDeposits: totalDeposits?.toString(),
-                totalDepositsAmount,
-                totalDepositsUSD,
-                userDeposit: userDeposit?.toString(),
-                userDepositAmount,
-                userDepositUSD,
-                isConnected,
-                address,
-                collateralTokenReads: collateralTokenReads?.map((r, idx) => ({
-                  idx,
-                  status: r.status,
-                  result: r.result,
-                })),
-                collateralAddress,
-                onChainCollateralAddress,
-                collateralPriceUSD,
-              });
-            }
 
             // Calculate status
             // IMPORTANT: Contract's genesisIsEnded() takes precedence over time-based calculation
@@ -1544,20 +1472,6 @@ export default function GenesisIndexPage() {
               ? new Date(endDate).getTime() <= now.getTime()
               : false;
             const isProcessing = timeHasExpired && !isEnded;
-
-            if (process.env.NODE_ENV === "development") {
-              const readResult = reads?.[baseOffset];
-              console.log(`[Genesis ${id}] Status Calculation:`, {
-                isEnded,
-                timeHasExpired,
-                isProcessing,
-                contractReadStatus: readResult?.status,
-                contractReadResult: readResult?.result,
-                hasClaimable,
-                endDate,
-                now: now.toISOString(),
-              });
-            }
 
             if (isEnded) {
               statusText = hasClaimable ? "Claim available" : "Ended";
@@ -1587,7 +1501,10 @@ export default function GenesisIndexPage() {
                     <div className="whitespace-nowrap min-w-0 overflow-hidden">
                       <div className="flex items-center justify-center gap-2">
                         <span className="text-[#1E4775] font-medium">
-                          {(m as any).name}
+                          {rowLeveragedSymbol &&
+                          rowLeveragedSymbol.toLowerCase().startsWith("hs")
+                            ? rowLeveragedSymbol.slice(2)
+                            : rowLeveragedSymbol || (m as any).name}
                         </span>
                         {isExpanded ? (
                           <ChevronUpIcon className="w-5 h-5 text-[#1E4775] flex-shrink-0" />
@@ -1635,14 +1552,20 @@ export default function GenesisIndexPage() {
                                 <div className="flex items-center gap-1">
                                   <span className="font-mono text-[#1E4775] font-semibold text-xs">
                                     {formatEther(claimablePegged)}{" "}
-                                    {(m as any).peggedToken?.symbol || "haPB"}
+                                    {rowPeggedSymbol ||
+                                      (m as any).peggedToken?.symbol ||
+                                      "haPB"}
                                   </span>
                                   <Image
                                     src={getLogoPath(
-                                      (m as any).peggedToken?.symbol || "haPB"
+                                      rowPeggedSymbol ||
+                                        (m as any).peggedToken?.symbol ||
+                                        "haPB"
                                     )}
                                     alt={
-                                      (m as any).peggedToken?.symbol || "haPB"
+                                      rowPeggedSymbol ||
+                                      (m as any).peggedToken?.symbol ||
+                                      "haPB"
                                     }
                                     width={24}
                                     height={24}
@@ -1654,15 +1577,18 @@ export default function GenesisIndexPage() {
                                 <div className="flex items-center gap-1">
                                   <span className="font-mono text-[#1E4775] font-semibold text-xs">
                                     {formatEther(claimableLeveraged)}{" "}
-                                    {(m as any).leveragedToken?.symbol ||
+                                    {rowLeveragedSymbol ||
+                                      (m as any).leveragedToken?.symbol ||
                                       "hsPB"}
                                   </span>
                                   <Image
                                     src={getLogoPath(
-                                      (m as any).leveragedToken?.symbol ||
+                                      rowLeveragedSymbol ||
+                                        (m as any).leveragedToken?.symbol ||
                                         "hsPB"
                                     )}
                                     alt={
+                                      rowLeveragedSymbol ||
                                       (m as any).leveragedToken?.symbol ||
                                       "hsPB"
                                     }
@@ -1681,10 +1607,10 @@ export default function GenesisIndexPage() {
                         </div>
                       ) : (
                         // Before genesis ends, show total deposits
-                        <div className="flex items-center justify-center gap-1.5">
-                          <SimpleTooltip
-                            label={
-                              totalDeposits && totalDeposits > 0n
+                      <div className="flex items-center justify-center gap-1.5">
+                        <SimpleTooltip
+                          label={
+                            totalDeposits && totalDeposits > 0n
                                 ? priceError
                                   ? `${formatToken(
                                       totalDeposits
@@ -1694,10 +1620,10 @@ export default function GenesisIndexPage() {
                                     )} ${collateralSymbol}`
                                 : priceError
                                 ? `No deposits\n\nPrice Error: ${priceError}`
-                                : "No deposits"
-                            }
-                          >
-                            <div className="font-mono text-[#1E4775] font-semibold cursor-help">
+                              : "No deposits"
+                          }
+                        >
+                          <div className="font-mono text-[#1E4775] font-semibold cursor-help">
                               {totalDeposits && totalDeposits > 0n ? (
                                 collateralPriceUSD > 0 ? (
                                   formatUSD(totalDepositsUSD)
@@ -1719,18 +1645,18 @@ export default function GenesisIndexPage() {
                               ) : (
                                 "0"
                               )}
-                            </div>
-                          </SimpleTooltip>
-                          <SimpleTooltip label={collateralSymbol}>
-                            <Image
-                              src={getLogoPath(collateralSymbol)}
-                              alt={collateralSymbol}
+                          </div>
+                        </SimpleTooltip>
+                        <SimpleTooltip label={collateralSymbol}>
+                          <Image
+                            src={getLogoPath(collateralSymbol)}
+                            alt={collateralSymbol}
                               width={24}
                               height={24}
-                              className="flex-shrink-0 cursor-help rounded-full"
-                            />
-                          </SimpleTooltip>
-                        </div>
+                            className="flex-shrink-0 cursor-help rounded-full"
+                          />
+                        </SimpleTooltip>
+                      </div>
                       )}
                     </div>
                     <div className="text-center min-w-0">
@@ -1818,9 +1744,9 @@ export default function GenesisIndexPage() {
                           </span>
                         </SimpleTooltip>
                       ) : (
-                        <span className="text-[10px] uppercase px-2 py-1 bg-[#1E4775]/10 text-[#1E4775]">
-                          {statusText}
-                        </span>
+                      <span className="text-[10px] uppercase px-2 py-1 bg-[#1E4775]/10 text-[#1E4775]">
+                        {statusText}
+                      </span>
                       )}
                     </div>
                     <div
@@ -1837,6 +1763,11 @@ export default function GenesisIndexPage() {
                                 if (genesisAddress && address && hasClaimable) {
                                   try {
                                     setClaimingMarket(id);
+                                    setClaimModal({
+                                      open: true,
+                                      status: "pending",
+                                      marketId: id,
+                                    });
                                     const tx = await writeContractAsync({
                                       address: genesisAddress as `0x${string}`,
                                       abi: GENESIS_ABI,
@@ -1852,8 +1783,25 @@ export default function GenesisIndexPage() {
                                     queryClient.invalidateQueries({
                                       queryKey: ["allHarborMarks"],
                                     });
+                                    setClaimModal((prev) => ({
+                                      ...prev,
+                                      status: "success",
+                                    }));
+                                    setShareModal({
+                                      open: true,
+                                      marketName: displayMarketName,
+                                      peggedSymbol: peggedNoPrefix,
+                                    });
                                   } catch (error) {
-                                    console.error("Claim failed:", error);
+                                    setClaimModal({
+                                      open: true,
+                                      status: "error",
+                                      marketId: id,
+                                      errorMessage:
+                                        (error as any)?.shortMessage ||
+                                        (error as any)?.message ||
+                                        "Claim failed",
+                                    });
                                   } finally {
                                     setClaimingMarket(null);
                                   }
@@ -1877,60 +1825,60 @@ export default function GenesisIndexPage() {
                         </div>
                       ) : (
                         // Before genesis ends, show deposit/withdraw buttons
-                        <div className="flex items-center justify-center gap-2">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (genesisAddress && collateralAddress) {
-                                setDepositModal({
-                                  marketId: id,
-                                  genesisAddress,
-                                  collateralAddress,
-                                  collateralSymbol,
-                                  acceptedAssets,
-                                  marketAddresses: {
+                      <div className="flex items-center justify-center gap-2">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (genesisAddress && collateralAddress) {
+                              setDepositModal({
+                                marketId: id,
+                                genesisAddress,
+                                collateralAddress,
+                                collateralSymbol,
+                                acceptedAssets,
+                                marketAddresses: {
                                     collateralToken: (m as any).addresses
                                       ?.collateralToken,
                                     wrappedCollateralToken: (m as any).addresses
                                       ?.wrappedCollateralToken,
-                                  },
-                                });
-                              }
-                            }}
-                            disabled={
-                              isEnded || !genesisAddress || !collateralAddress
+                                },
+                              });
                             }
-                            className="px-4 py-2 text-xs font-medium bg-[#1E4775] text-white hover:bg-[#17395F] disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors rounded-full whitespace-nowrap"
-                          >
-                            Deposit
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (
-                                genesisAddress &&
-                                userDeposit &&
-                                userDeposit > 0n
-                              ) {
-                                setWithdrawModal({
-                                  marketId: id,
-                                  genesisAddress,
-                                  collateralSymbol,
-                                  userDeposit,
-                                });
-                              }
-                            }}
-                            disabled={
-                              !userDeposit ||
-                              userDeposit === 0n ||
-                              !genesisAddress ||
-                              isEnded
+                          }}
+                          disabled={
+                            isEnded || !genesisAddress || !collateralAddress
+                          }
+                          className="px-4 py-2 text-xs font-medium bg-[#1E4775] text-white hover:bg-[#17395F] disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors rounded-full whitespace-nowrap"
+                        >
+                          Deposit
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (
+                              genesisAddress &&
+                              userDeposit &&
+                              userDeposit > 0n
+                            ) {
+                              setWithdrawModal({
+                                marketId: id,
+                                genesisAddress,
+                                collateralSymbol,
+                                userDeposit,
+                              });
                             }
-                            className="px-4 py-2 text-xs font-medium bg-white text-[#1E4775] border border-[#1E4775] hover:bg-[#1E4775]/5 disabled:bg-gray-100 disabled:text-gray-400 disabled:border-gray-300 disabled:cursor-not-allowed transition-colors rounded-full whitespace-nowrap"
-                          >
-                            Withdraw
-                          </button>
-                        </div>
+                          }}
+                          disabled={
+                            !userDeposit ||
+                            userDeposit === 0n ||
+                            !genesisAddress ||
+                            isEnded
+                          }
+                          className="px-4 py-2 text-xs font-medium bg-white text-[#1E4775] border border-[#1E4775] hover:bg-[#1E4775]/5 disabled:bg-gray-100 disabled:text-gray-400 disabled:border-gray-300 disabled:cursor-not-allowed transition-colors rounded-full whitespace-nowrap"
+                        >
+                          Withdraw
+                        </button>
+                      </div>
                       )}
                     </div>
                   </div>
@@ -1950,6 +1898,11 @@ export default function GenesisIndexPage() {
                     endDate={endDate}
                     collateralSymbol={collateralSymbol}
                     collateralPriceUSD={collateralPriceUSD}
+                    peggedSymbol={rowPeggedSymbol}
+                    leveragedSymbol={rowLeveragedSymbol}
+                    onShare={() =>
+                      openShareIntent(displayMarketName, peggedNoPrefix)
+                    }
                   />
                 )}
               </React.Fragment>
@@ -1996,23 +1949,23 @@ export default function GenesisIndexPage() {
               refetchReads(),
               refetchTotalDeposits(),
             ]);
-
+            
             // Wait longer for subgraph to index the deposit event
             // The subgraph needs time to process the event and update marks
             await new Promise((resolve) => setTimeout(resolve, 5000));
-
+            
             // Invalidate and refetch harbor marks queries
             queryClient.invalidateQueries({ queryKey: ["allHarborMarks"] });
             queryClient.invalidateQueries({ queryKey: ["harborMarks"] });
-
+            
             // Force a refetch of marks data
             await refetchMarks();
-
+            
             // Poll for marks update (subgraph might need more time)
             let attempts = 0;
             const maxAttempts = 6; // Try for up to 30 seconds (6 * 5 seconds)
             const pollInterval = 5000; // 5 seconds
-
+            
             const pollForMarks = async () => {
               if (attempts >= maxAttempts) return;
               attempts++;
@@ -2023,10 +1976,10 @@ export default function GenesisIndexPage() {
                 await pollForMarks();
               }
             };
-
+            
             // Start polling in background (don't await)
             pollForMarks();
-
+            
             setDepositModal(null);
           }}
         />
@@ -2052,22 +2005,22 @@ export default function GenesisIndexPage() {
               refetchTotalDeposits(),
               refetchPrices(),
             ]);
-
+            
             // Wait longer for subgraph to index the withdrawal event
             await new Promise((resolve) => setTimeout(resolve, 5000));
-
+            
             // Invalidate and refetch harbor marks queries
             queryClient.invalidateQueries({ queryKey: ["allHarborMarks"] });
             queryClient.invalidateQueries({ queryKey: ["harborMarks"] });
-
+            
             // Force a refetch of marks data
             await refetchMarks();
-
+            
             // Poll for marks update (subgraph might need more time)
             let attempts = 0;
             const maxAttempts = 6; // Try for up to 30 seconds (6 * 5 seconds)
             const pollInterval = 5000; // 5 seconds
-
+            
             const pollForMarks = async () => {
               if (attempts >= maxAttempts) return;
               attempts++;
@@ -2078,14 +2031,34 @@ export default function GenesisIndexPage() {
                 await pollForMarks();
               }
             };
-
+            
             // Start polling in background (don't await)
             pollForMarks();
-
+            
             setWithdrawModal(null);
           }}
         />
       )}
+
+      <ClaimProgressModal
+        open={claimModal.open}
+        status={claimModal.status}
+        errorMessage={claimModal.errorMessage}
+        marketName={shareModal.marketName}
+        peggedSymbolNoPrefix={shareModal.peggedSymbol}
+        onClose={() =>
+          setClaimModal({ open: false, status: "pending", marketId: null })
+        }
+        onShare={
+          shareModal.marketName && shareModal.peggedSymbol
+            ? () =>
+                openShareIntent(
+                  shareModal.marketName || "Market",
+                  shareModal.peggedSymbol || "token"
+                )
+            : undefined
+        }
+      />
     </div>
   );
 }

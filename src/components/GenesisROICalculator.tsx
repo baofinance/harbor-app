@@ -24,7 +24,12 @@ const chainlinkOracleABI = [
   {
     inputs: [],
     name: "latestAnswer",
-    outputs: [{ type: "int256", name: "" }],
+    outputs: [
+      { type: "uint256", name: "minUnderlyingPrice" },
+      { type: "uint256", name: "maxUnderlyingPrice" },
+      { type: "uint256", name: "minWrappedRate" },
+      { type: "uint256", name: "maxWrappedRate" },
+    ],
     stateMutability: "view",
     type: "function",
   },
@@ -71,7 +76,15 @@ export default function GenesisROICalculator({
   const stEthPriceUSD = useMemo(() => {
     if (!oracleData?.[0]?.result || !oracleData?.[1]?.result) return undefined;
     const decimals = Number(oracleData[0].result as unknown as number);
-    const raw = oracleData[1].result as unknown as bigint;
+    // latestAnswer returns a tuple: (minUnderlyingPrice, maxUnderlyingPrice, minWrappedRate, maxWrappedRate)
+    // Use maxUnderlyingPrice (index 1) as the price
+    const latestAnswerResult = oracleData[1].result as
+      | [bigint, bigint, bigint, bigint]
+      | undefined;
+    const raw = Array.isArray(latestAnswerResult)
+      ? latestAnswerResult[1] // maxUnderlyingPrice is at index 1
+      : undefined;
+    if (!raw) return undefined;
     const price = Number(raw) / 10 ** decimals;
     return price; // in USD
   }, [oracleData]);

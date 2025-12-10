@@ -18,12 +18,12 @@ export const GRAPH_CONFIG = {
 };
 
 export const CONTRACTS = {
-  genesis: "0xA4899D35897033b927acFCf422bc745916139776",
-  minter: "0x7a9ec1d04904907de0ed7b6839ccdd59c3716ac9",
-  peggedToken: "0x1c85638e118b37167e9298c2268758e058DdfDA0", // haPB (Harbor Anchored PB)
-  leveragedToken: "0x367761085BF3C12e5DA2Df99AC6E1a824612b8fb", // hsPB (Harbor Sail)
-  collateralToken: "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707", // stETH
-  wrappedCollateralToken: "0x0165878A594ca255338adfa4d48449f69242Eb8F", // wstETH
+  genesis: "0xa25b38aa76ae58ec8683ec9a9057afbe34c765e9",
+  minter: "0x980d1d2c22fadc8fff8fb3e3261037a75cc7cd3f",
+  peggedToken: "0xad91b3c34e4e17b2d22c53c25d9873ff22395ec3",
+  leveragedToken: "0xbc63dc67b78925d8d593af8708aceb14125e8d5f",
+  collateralToken: "0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0", // wstETH (mainnet)
+  wrappedCollateralToken: "0xae7ab96520de3a18e5e111b5eaab095312d7fe84", // stETH (mainnet)
 };
 
 // Get the appropriate Graph URL based on environment

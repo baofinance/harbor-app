@@ -118,7 +118,7 @@ export const AnchorClaimMarketModal = ({
               <div className="flex items-center gap-2">
                 <span className="text-lg font-semibold text-[#1E4775]">Buy $TIDE</span>
                 <InfoTooltip
-                  label="Use your rewards to increase your ownership of Harbor's governance rights and revenue."
+                  label="$TIDE token is not live yet. This feature will be available soon."
                   side="top"
                   className="text-[#1E4775]/60"
                 />
@@ -128,14 +128,10 @@ export const AnchorClaimMarketModal = ({
                   onBuyTide();
                   onClose();
                 }}
-                disabled={isLoading}
-                className={`px-4 py-2 text-sm font-medium transition-colors rounded-full ${
-                  isLoading
-                    ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                    : "bg-[#B8EBD5] hover:bg-[#A0D0C0] text-[#1E4775]"
-                }`}
+                disabled={true}
+                className="px-4 py-2 text-sm font-medium transition-colors rounded-full bg-gray-300 text-gray-500 cursor-not-allowed"
               >
-                {isLoading ? "Buying..." : "Buy"}
+                Coming Soon
               </button>
             </div>
           </div>

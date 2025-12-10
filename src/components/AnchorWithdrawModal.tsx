@@ -9,28 +9,7 @@ import {
   usePublicClient,
 } from "wagmi";
 import { BaseError, ContractFunctionRevertedError } from "viem";
-import { ERC20_ABI } from "../config/contracts";
-
-const minterABI = [
-  {
-    inputs: [
-      { name: "peggedIn", type: "uint256" },
-      { name: "receiver", type: "address" },
-      { name: "minCollateralOut", type: "uint256" },
-    ],
-    name: "redeemPeggedToken",
-    outputs: [{ type: "uint256", name: "collateralAmount" }],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [{ name: "peggedAmount", type: "uint256" }],
-    name: "calculateRedeemPeggedTokenOutput",
-    outputs: [{ type: "uint256", name: "collateralAmount" }],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
+import { ERC20_ABI, MINTER_ABI } from "@/abis/shared";
 
 interface AnchorWithdrawModalProps {
   isOpen: boolean;
@@ -74,7 +53,7 @@ export const AnchorWithdrawModal = ({
   // Calculate expected output
   const { data: expectedOutput } = useContractRead({
     address: minterAddress as `0x${string}`,
-    abi: minterABI,
+    abi: MINTER_ABI,
     functionName: "calculateRedeemPeggedTokenOutput",
     args: amount ? [parseEther(amount)] : undefined,
     query: { enabled: !!minterAddress && !!amount && parseFloat(amount) > 0 && isOpen },
@@ -136,7 +115,7 @@ export const AnchorWithdrawModal = ({
 
       const withdrawHash = await writeContractAsync({
         address: minterAddress as `0x${string}`,
-        abi: minterABI,
+        abi: MINTER_ABI,
         functionName: "redeemPeggedToken",
         args: [amountBigInt, address as `0x${string}`, minCollateralOut],
       });
@@ -322,6 +301,8 @@ export const AnchorWithdrawModal = ({
     </div>
   );
 };
+
+
 
 
 

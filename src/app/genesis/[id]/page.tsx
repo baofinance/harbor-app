@@ -10,7 +10,10 @@ import {
 } from "wagmi";
 import { formatEther, parseEther } from "viem";
 import { markets, type Market } from "../../../config/markets";
-import { GENESIS_ABI, ERC20_ABI } from "../../../config/contracts";
+import { GENESIS_ABI } from "../../../config/contracts";
+import { ERC20_ABI, CHAINLINK_ORACLE_ABI } from "@/abis/shared";
+import { formatUSD, formatToken, formatDateTime } from "@/utils/formatters";
+import { EtherscanLink, TokenLogo, getLogoPath } from "@/components/shared";
 import InfoTooltip from "@/components/InfoTooltip";
 import HistoricalDataChart from "@/components/HistoricalDataChart";
 import Image from "next/image";
@@ -28,58 +31,6 @@ const erc20SymbolABI = [
     type: "function",
   },
 ] as const;
-
-const chainlinkOracleABI = [
-  {
-    inputs: [],
-    name: "decimals",
-    outputs: [{ type: "uint8", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "latestAnswer",
-    outputs: [{ type: "int256", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
-
-// Helper function to get logo path for tokens
-function getLogoPath(symbol: string): string {
-  const normalizedSymbol = symbol.toLowerCase();
-  if (normalizedSymbol === "eth" || normalizedSymbol === "ethereum") {
-    return "/icons/eth.png";
-  }
-  if (normalizedSymbol === "fxsave") {
-    return "/icons/fxSave.png";
-  }
-  if (normalizedSymbol === "fxusd") {
-    return "/icons/fxUSD.webp";
-  }
-  if (normalizedSymbol === "usdc") {
-    return "/icons/usdc.webp";
-  }
-  if (normalizedSymbol === "steth") {
-    return "/icons/steth_logo.webp";
-  }
-  if (normalizedSymbol === "wsteth") {
-    return "/icons/wstETH.webp";
-  }
-  // Use haETH logo for haPB, haUSD2 for other ha tokens
-  if (normalizedSymbol === "hapb") {
-    return "/icons/haETH.png";
-  }
-  if (normalizedSymbol.startsWith("ha")) {
-    return "/icons/haUSD2.png";
-  }
-  // Use hsUSDETH logo for sail tokens (e.g., hsPB) - for test environment
-  if (normalizedSymbol.startsWith("hs")) {
-    return "/icons/hsUSDETH.png";
-  }
-  return "/icons/placeholder.svg";
-}
 
 // Reusable UI pieces styled like PoolClient
 function EtherscanLink({
@@ -576,12 +527,12 @@ export default function GenesisMarketPage({ params }: PageProps) {
       ? [
           {
             address: oracleAddress,
-            abi: chainlinkOracleABI,
+            abi: CHAINLINK_ORACLE_ABI,
             functionName: "decimals",
           },
           {
             address: oracleAddress,
-            abi: chainlinkOracleABI,
+            abi: CHAINLINK_ORACLE_ABI,
             functionName: "latestAnswer",
           },
         ]

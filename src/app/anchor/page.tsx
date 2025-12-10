@@ -11,7 +11,15 @@ import {
 import { formatEther, parseEther } from "viem";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { markets } from "@/config/markets";
-import { getGraphUrl } from "@/config/graph";
+import { POLLING_INTERVALS } from "@/config/polling";
+import {
+  formatUSD,
+  formatToken,
+  formatDateTime,
+  formatTimeRemaining,
+} from "@/utils/formatters";
+import { EtherscanLink, TokenLogo, getLogoPath } from "@/components/shared";
+import { useGenesisMarks } from "@/hooks/useGenesisMarks";
 import { useAnvilContractReads } from "@/hooks/useAnvilContractReads";
 import { shouldUseAnvil } from "@/config/environment";
 import { anvilPublicClient } from "@/config/anvil";
@@ -39,23 +47,51 @@ import {
   CompoundConfirmationModal,
   FeeInfo,
 } from "@/components/CompoundConfirmationModal";
+import {
+  CompoundPoolSelectionModal,
+  PoolOption,
+} from "@/components/CompoundPoolSelectionModal";
 import { AnchorClaimMarketModal } from "@/components/AnchorClaimMarketModal";
 import SimpleTooltip from "@/components/SimpleTooltip";
 import InfoTooltip from "@/components/InfoTooltip";
 import { aprABI } from "@/abis/apr";
 import { rewardsABI } from "@/abis/rewards";
-import { stabilityPoolABI as fullStabilityPoolABI } from "@/abis/stabilityPool";
-import { minterABI as fullMinterABI } from "@/abis/minter";
-import { ERC20_ABI } from "@/config/contracts";
+import { STABILITY_POOL_ABI, ERC20_ABI, MINTER_ABI } from "@/abis/shared";
 import Image from "next/image";
 import { useProjectedAPR } from "@/hooks/useProjectedAPR";
 import { useAnchorLedgerMarks } from "@/hooks/useAnchorLedgerMarks";
 import { useWithdrawalRequests } from "@/hooks/useWithdrawalRequests";
 import { useStabilityPoolRewards } from "@/hooks/useStabilityPoolRewards";
 import { useAllStabilityPoolRewards } from "@/hooks/useAllStabilityPoolRewards";
+import { useMultipleVolatilityProtection } from "@/hooks/useVolatilityProtection";
+import { useMarketPositions } from "@/hooks/useMarketPositions";
+import { useContractReads as useWagmiContractReads } from "wagmi";
+
+// ---------------------------------------------------------------------------
+// Token metadata (pegged / leveraged) via minter contract
+// ---------------------------------------------------------------------------
+const TOKEN_KIND_PEGGED = "pegged" as const;
+const TOKEN_KIND_LEVERAGED = "leveraged" as const;
+
+type TokenKind = typeof TOKEN_KIND_PEGGED | typeof TOKEN_KIND_LEVERAGED;
+
+type TokenAddressMeta = {
+  marketId: string;
+  kind: TokenKind;
+};
+
+type TokenMeta = {
+  peggedAddress?: `0x${string}`;
+  leveragedAddress?: `0x${string}`;
+  peggedSymbol?: string;
+  peggedName?: string;
+  leveragedSymbol?: string;
+  leveragedName?: string;
+};
 import { usePoolRewardAPR } from "@/hooks/usePoolRewardAPR";
 import { usePoolRewardTokens } from "@/hooks/usePoolRewardTokens";
 import { WithdrawalTimer } from "@/components/WithdrawalTimer";
+import { minterABI as fullMinterABI } from "@/abis/minter";
 
 const minterABI = [
   {
@@ -214,22 +250,25 @@ const erc20ABI = [
   },
 ] as const;
 
-const chainlinkOracleABI = [
-  {
-    inputs: [],
-    name: "decimals",
-    outputs: [{ type: "uint8", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
+// IWrappedPriceOracle ABI - returns prices in 18 decimals
+// latestAnswer() returns (minUnderlyingPrice, maxUnderlyingPrice, minWrappedRate, maxWrappedRate)
+const wrappedPriceOracleABI = [
   {
     inputs: [],
     name: "latestAnswer",
-    outputs: [{ type: "int256", name: "" }],
+    outputs: [
+      { type: "uint256", name: "minUnderlyingPrice" },
+      { type: "uint256", name: "maxUnderlyingPrice" },
+      { type: "uint256", name: "minWrappedRate" },
+      { type: "uint256", name: "maxWrappedRate" },
+    ],
     stateMutability: "view",
     type: "function",
   },
 ] as const;
+
+// Keep alias for backwards compatibility
+const chainlinkOracleABI = wrappedPriceOracleABI;
 
 // Helper function to get logo path for tokens
 function getAcceptedDepositAssets(
@@ -263,48 +302,6 @@ function getAcceptedDepositAssets(
   return [];
 }
 
-function getLogoPath(symbol: string): string {
-  const normalizedSymbol = symbol.toLowerCase();
-  if (normalizedSymbol === "eth" || normalizedSymbol === "ethereum") {
-    return "/icons/eth.png";
-  }
-  if (normalizedSymbol === "fxsave") {
-    return "/icons/fxSave.png";
-  }
-  if (normalizedSymbol === "fxusd") {
-    return "/icons/fxUSD.webp";
-  }
-  if (normalizedSymbol === "usdc") {
-    return "/icons/usdc.webp";
-  }
-  if (normalizedSymbol === "steth") {
-    return "/icons/steth_logo.webp";
-  }
-  if (normalizedSymbol === "wsteth") {
-    return "/icons/wstETH.webp";
-  }
-  // Use haETH logo for haPB, haUSD2 for other ha tokens
-  if (normalizedSymbol === "hapb") {
-    return "/icons/haETH.png";
-  }
-  if (normalizedSymbol.startsWith("ha")) {
-    return "/icons/haUSD2.png";
-  }
-  return "/icons/placeholder.svg";
-}
-
-function formatToken(
-  value: bigint | undefined,
-  decimals = 18,
-  maxFrac = 4
-): string {
-  if (!value) return "0";
-  const n = Number(value) / 10 ** decimals;
-  if (n > 0 && n < 1 / 10 ** maxFrac)
-    return `<${(1 / 10 ** maxFrac).toFixed(maxFrac)}`;
-  return n.toLocaleString(undefined, { maximumFractionDigits: maxFrac });
-}
-
 function formatRatio(value: bigint | undefined): string {
   if (value === undefined || value === null) return "-";
   // Handle 0n explicitly - show "0.00%" instead of "-"
@@ -313,8 +310,10 @@ function formatRatio(value: bigint | undefined): string {
   return `${percentage.toFixed(2)}%`;
 }
 
-function formatAPR(apr: number | undefined): string {
+function formatAPR(apr: number | undefined, hasRewardsNoTVL?: boolean): string {
+  if (hasRewardsNoTVL && apr !== undefined && apr >= 10000) return "10k%+";
   if (apr === undefined || isNaN(apr)) return "-";
+  if (apr >= 10000) return "10k%+";
   return `${apr.toFixed(2)}%`;
 }
 
@@ -338,7 +337,9 @@ function formatCompactUSD(value: number): string {
 }
 
 /**
- * Calculate the price drop needed to reach below 100% collateral ratio (depeg point).
+ * Calculate the adverse price movement between collateral and pegged token needed to reach below 100% collateral ratio (depeg point).
+ *
+ * This measures protection against relative price changes (e.g., ETH price spike for ETH-pegged token with USD collateral).
  *
  * This accounts for stability pools that can rebalance and improve the CR:
  * - Collateral Pool: Burns pegged tokens → receives collateral (reduces both debt AND collateral)
@@ -347,7 +348,7 @@ function formatCompactUSD(value: number): string {
  * The sail pool is more effective because leveraged tokens represent the excess collateral
  * above 100% CR, so converting pegged→leveraged only reduces debt while collateral stays.
  */
-function calculateVolatilityRisk(
+function calculateVolatilityProtection(
   collateralRatio: bigint | undefined,
   totalDebt: bigint | undefined,
   collateralPoolTVL: bigint | undefined,
@@ -447,12 +448,18 @@ function RewardTokensDisplay({
       enabled: !!sailPool,
     });
 
-  // Combine and deduplicate reward tokens
-  const rewardTokenMap = new Map<string, string>();
+  // Combine and deduplicate reward tokens, keeping full token info
+  const rewardTokenMap = new Map<
+    string,
+    { symbol: string; displayName: string; name?: string }
+  >();
   [...collateralRewardTokens, ...sailRewardTokens].forEach((token) => {
-    // Include all tokens, even if symbol is UNKNOWN (it means symbol fetch failed but token exists)
     if (token.symbol && !rewardTokenMap.has(token.symbol.toLowerCase())) {
-      rewardTokenMap.set(token.symbol.toLowerCase(), token.symbol);
+      rewardTokenMap.set(token.symbol.toLowerCase(), {
+        symbol: token.symbol,
+        displayName: token.displayName || token.name || token.symbol,
+        name: token.name,
+      });
     }
   });
   const allRewardTokens = Array.from(rewardTokenMap.values());
@@ -470,10 +477,13 @@ function RewardTokensDisplay({
           }}
         >
           {allRewardTokens.map((token, idx) => (
-            <SimpleTooltip key={token} label={token}>
+            <SimpleTooltip
+              key={token.symbol}
+              label={token.name || token.displayName}
+            >
               <Image
-                src={getLogoPath(token)}
-                alt={token}
+                src={getLogoPath(token.symbol)}
+                alt={token.displayName}
                 width={24}
                 height={24}
                 className="flex-shrink-0 cursor-help rounded-full border border-white"
@@ -484,12 +494,20 @@ function RewardTokensDisplay({
               />
             </SimpleTooltip>
           ))}
+          {/* Separator between reward tokens and Harbor Marks */}
+          <span
+            className="text-[#1E4775]/60 font-semibold mx-1"
+            style={{
+              fontSize: "14px",
+            }}
+          >
+            +
+          </span>
           {/* Ledger Marks Multiplier Logo */}
           <SimpleTooltip label="1 ledger mark per dollar per day">
             <div
               className="relative flex-shrink-0"
               style={{
-                marginLeft: "4px",
                 zIndex: allRewardTokens.length + 1,
               }}
             >
@@ -556,6 +574,8 @@ function AnchorMarketExpandedView({
   onCompoundSailRewards,
   isClaiming,
   isCompounding,
+  handleCompoundRewards,
+  allPoolRewards,
 }: {
   marketId: string;
   market: any;
@@ -592,8 +612,18 @@ function AnchorMarketExpandedView({
   onCompoundSailRewards: () => void;
   isClaiming: boolean;
   isCompounding: boolean;
+  handleCompoundRewards: (
+    market: any,
+    poolType: "collateral" | "sail",
+    rewardAmount: bigint
+  ) => void;
+  allPoolRewards?: Array<{
+    poolAddress: string;
+    totalAPR?: number;
+    tvl?: bigint;
+  }>;
 }) {
-  const volatilityRisk = calculateVolatilityRisk(
+  const volatilityProtection = calculateVolatilityProtection(
     collateralRatio,
     totalDebt,
     collateralPoolTVL,
@@ -764,12 +794,39 @@ function AnchorMarketExpandedView({
 
         <div className="bg-white p-3 h-full flex flex-col">
           <h3 className="text-[#1E4775] font-semibold mb-2 text-xs flex items-center gap-1">
-            Volatility Risk
-            <SimpleTooltip label="The percentage price drop of collateral needed before the system goes below 100% collateral ratio (depeg point). This accounts for stability pools being able to rebalance and improve the ratio. Assumes no additional stability pool deposits or withdrawals. Under normal circumstances, stability pool APRs increase as deposit value decreases, incentivising more deposits and providing additional protection.">
+            Volatility Protection
+            <SimpleTooltip
+              side="top"
+              label={
+                <div className="space-y-2">
+                  <p className="font-semibold mb-1">Volatility Protection</p>
+                  <p>
+                    The percentage adverse price movement between collateral and
+                    the pegged token that the system can withstand before
+                    reaching the depeg point (100% collateral ratio).
+                  </p>
+                  <p>
+                    For example, an ETH-pegged token with USD collateral is
+                    protected against ETH price spikes (ETH becoming more
+                    expensive relative to USD).
+                  </p>
+                  <p>
+                    This accounts for stability pools that can rebalance and
+                    improve the collateral ratio during adverse price movements.
+                  </p>
+                  <p className="text-xs text-gray-400 italic">
+                    Higher percentage = more protection. Assumes no additional
+                    deposits or withdrawals.
+                  </p>
+                </div>
+              }
+            >
               <span className="text-[#1E4775]/50 cursor-help">[?]</span>
             </SimpleTooltip>
           </h3>
-          <p className="text-sm font-bold text-[#1E4775]">{volatilityRisk}</p>
+          <p className="text-sm font-bold text-[#1E4775]">
+            {volatilityProtection}
+          </p>
           <p className="text-xs text-[#1E4775]/70 mt-0.5">
             Price drop to &lt;100% CR
           </p>
@@ -1025,7 +1082,25 @@ function AnchorMarketExpandedView({
                       Claim
                     </button>
                     <button
-                      onClick={onCompoundCollateralRewards}
+                      onClick={() => {
+                        if (!handleCompoundRewards) {
+                          return;
+                        }
+                        const rewardAmount =
+                          collateralPoolRewardsData.claimableValue > 0
+                            ? BigInt(
+                                Math.floor(
+                                  collateralPoolRewardsData.claimableValue *
+                                    1e18
+                                )
+                              )
+                            : 0n;
+                        handleCompoundRewards(
+                          market,
+                          "collateral",
+                          rewardAmount
+                        );
+                      }}
                       disabled={
                         collateralPoolRewardsData.claimableValue === 0 ||
                         isClaiming ||
@@ -1119,7 +1194,20 @@ function AnchorMarketExpandedView({
                       Claim
                     </button>
                     <button
-                      onClick={onCompoundSailRewards}
+                      onClick={() => {
+                        if (!handleCompoundRewards) {
+                          return;
+                        }
+                        const rewardAmount =
+                          sailPoolRewardsData.claimableValue > 0
+                            ? BigInt(
+                                Math.floor(
+                                  sailPoolRewardsData.claimableValue * 1e18
+                                )
+                              )
+                            : 0n;
+                        handleCompoundRewards(market, "sail", rewardAmount);
+                      }}
                       disabled={
                         sailPoolRewardsData.claimableValue === 0 ||
                         isClaiming ||
@@ -1291,6 +1379,10 @@ export default function AnchorPage() {
     poolType: "collateral" | "sail";
     rewardAmount: bigint;
   } | null>(null);
+  const [compoundPoolSelection, setCompoundPoolSelection] = useState<{
+    market: any;
+    pools: PoolOption[];
+  } | null>(null);
   const [isClaiming, setIsClaiming] = useState(false);
   const [isCompounding, setIsCompounding] = useState(false);
   const [isClaimingAll, setIsClaimingAll] = useState(false);
@@ -1304,6 +1396,7 @@ export default function AnchorPage() {
   const [compoundConfirmation, setCompoundConfirmation] = useState<{
     steps: TransactionStep[];
     fees: FeeInfo[];
+    feeErrors?: string[];
     onConfirm: () => void;
   } | null>(null);
   // Ref to track cancellation for claim all and compound operations
@@ -1331,6 +1424,29 @@ export default function AnchorPage() {
   const anchorMarkets = useMemo(
     () => Object.entries(markets).filter(([_, m]) => m.peggedToken),
     []
+  );
+
+  // Build markets config for volatility protection hook
+  const volProtectionMarketsConfig = useMemo(
+    () =>
+      anchorMarkets.map(([_, m]) => ({
+        minterAddress: (m as any).addresses?.minter as
+          | `0x${string}`
+          | undefined,
+        collateralPoolAddress: (m as any).addresses?.stabilityPoolCollateral as
+          | `0x${string}`
+          | undefined,
+        sailPoolAddress: (m as any).addresses?.stabilityPoolLeveraged as
+          | `0x${string}`
+          | undefined,
+      })),
+    [anchorMarkets]
+  );
+
+  // Fetch volatility protection data for all markets
+  const { data: volProtectionData } = useMultipleVolatilityProtection(
+    volProtectionMarketsConfig,
+    { refetchInterval: 30000 }
   );
 
   const queryClient = useQueryClient();
@@ -1413,99 +1529,11 @@ export default function AnchorPage() {
     return sailBalances.reduce((sum, balance) => sum + balance.marksPerDay, 0);
   }, [sailBalances]);
 
-  // Fetch genesis/maiden voyage marks per day
-  const { data: genesisMarksData, isLoading: isLoadingGenesisMarks } =
-    useQuery<{
-      userHarborMarks: Array<{
-        marksPerDay: string;
-      }>;
-    }>({
-      queryKey: ["genesisMarksPerDay", address],
-      queryFn: async () => {
-        if (!address) return { userHarborMarks: [] };
-
-        const graphUrl = getGraphUrl();
-
-        // First, get all deposits to find unique user-contract pairs
-        const depositsResponse = await fetch(graphUrl, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            query: `
-            query GetUserDeposits($userAddress: Bytes!) {
-              deposits(
-                where: { user: $userAddress }
-                first: 1000
-              ) {
-                id
-                user
-                contractAddress
-              }
-            }
-          `,
-            variables: { userAddress: address.toLowerCase() },
-          }),
-        });
-
-        if (!depositsResponse.ok) {
-          return { userHarborMarks: [] };
-        }
-
-        const depositsResult = await depositsResponse.json();
-        if (depositsResult.errors || !depositsResult.data?.deposits) {
-          return { userHarborMarks: [] };
-        }
-
-        // Get unique contract addresses for this user
-        const contractAddresses = new Set<string>();
-        depositsResult.data.deposits.forEach((deposit: any) => {
-          contractAddresses.add(deposit.contractAddress.toLowerCase());
-        });
-
-        // Fetch marks for each contract
-        const marksPromises = Array.from(contractAddresses).map(
-          async (contractAddr) => {
-            const id = `${contractAddr}-${address.toLowerCase()}`;
-            const marksResponse = await fetch(graphUrl, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                query: `
-              query GetUserMarks($id: ID!) {
-                userHarborMarks(id: $id) {
-                  marksPerDay
-                }
-              }
-            `,
-                variables: { id },
-              }),
-            });
-
-            if (!marksResponse.ok) return null;
-            const marksResult = await marksResponse.json();
-            return marksResult.data?.userHarborMarks || null;
-          }
-        );
-
-        const marks = await Promise.all(marksPromises);
-        return {
-          userHarborMarks: marks.filter(
-            (m): m is { marksPerDay: string } => m !== null
-          ),
-        };
-      },
-      enabled: !!address,
-      refetchInterval: 60000,
-    });
-
-  // Calculate maiden voyage marks per day
-  const maidenVoyageMarksPerDay = useMemo(() => {
-    if (!genesisMarksData?.userHarborMarks) return 0;
-    return genesisMarksData.userHarborMarks.reduce(
-      (sum, entry) => sum + parseFloat(entry.marksPerDay || "0"),
-      0
-    );
-  }, [genesisMarksData]);
+  // Genesis/maiden voyage marks per day via hook
+  const {
+    marksPerDay: maidenVoyageMarksPerDay,
+    isLoading: isLoadingGenesisMarks,
+  } = useGenesisMarks(address);
 
   // Note: totalMarksPerDay calculation is moved after totalAnchorMarksPerDay is defined (see below)
 
@@ -1533,27 +1561,27 @@ export default function AnchorPage() {
       const contracts = [
         {
           address: minter,
-          abi: minterABI,
+          abi: MINTER_ABI,
           functionName: "collateralRatio" as const,
         },
         {
           address: minter,
-          abi: minterABI,
+          abi: MINTER_ABI,
           functionName: "collateralTokenBalance" as const,
         },
         {
           address: minter,
-          abi: minterABI,
+          abi: MINTER_ABI,
           functionName: "peggedTokenBalance" as const,
         },
         {
           address: minter,
-          abi: minterABI,
+          abi: MINTER_ABI,
           functionName: "peggedTokenPrice" as const,
         },
         {
           address: minter,
-          abi: minterABI,
+          abi: MINTER_ABI,
           functionName: "config" as const,
         },
       ];
@@ -1586,7 +1614,7 @@ export default function AnchorPage() {
           {
             address: collateralStabilityPool,
             abi: stabilityPoolABI,
-            functionName: "totalAssetSupply" as const,
+            functionName: "totalAssets" as const,
           },
           {
             address: collateralStabilityPool,
@@ -1606,7 +1634,7 @@ export default function AnchorPage() {
           },
           {
             address: collateralStabilityPool,
-            abi: fullStabilityPoolABI,
+            abi: STABILITY_POOL_ABI,
             functionName: "assetBalanceOf" as const,
             args: address
               ? [address as `0x${string}`]
@@ -1617,7 +1645,7 @@ export default function AnchorPage() {
         if (peggedTokenAddress) {
           contracts.push({
             address: collateralStabilityPool,
-            abi: fullStabilityPoolABI,
+            abi: STABILITY_POOL_ABI,
             functionName: "rewardData" as const,
             args: [peggedTokenAddress],
           });
@@ -1635,7 +1663,7 @@ export default function AnchorPage() {
           {
             address: sailStabilityPool,
             abi: stabilityPoolABI,
-            functionName: "totalAssetSupply" as const,
+            functionName: "totalAssets" as const,
           },
           {
             address: sailStabilityPool,
@@ -1655,7 +1683,7 @@ export default function AnchorPage() {
           },
           {
             address: sailStabilityPool,
-            abi: fullStabilityPoolABI,
+            abi: STABILITY_POOL_ABI,
             functionName: "assetBalanceOf" as const,
             args: address
               ? [address as `0x${string}`]
@@ -1666,7 +1694,7 @@ export default function AnchorPage() {
         if (peggedTokenAddress) {
           contracts.push({
             address: sailStabilityPool,
-            abi: fullStabilityPoolABI,
+            abi: STABILITY_POOL_ABI,
             functionName: "rewardData" as const,
             args: [peggedTokenAddress],
           });
@@ -1674,6 +1702,7 @@ export default function AnchorPage() {
       }
 
       // Add collateral price oracle data for USD calculations
+      // IWrappedPriceOracle.latestAnswer() returns (minPrice, maxPrice, minRate, maxRate) - all in 18 decimals
       const collateralPriceOracle = (m as any).addresses?.collateralPrice as
         | `0x${string}`
         | undefined;
@@ -1683,18 +1712,11 @@ export default function AnchorPage() {
         collateralPriceOracle.startsWith("0x") &&
         collateralPriceOracle.length === 42
       ) {
-        contracts.push(
-          {
-            address: collateralPriceOracle,
-            abi: chainlinkOracleABI,
-            functionName: "decimals" as const,
-          },
-          {
-            address: collateralPriceOracle,
-            abi: chainlinkOracleABI,
-            functionName: "latestAnswer" as const,
-          }
-        );
+        contracts.push({
+          address: collateralPriceOracle,
+          abi: wrappedPriceOracleABI,
+          functionName: "latestAnswer" as const,
+        });
       }
 
       // Note: peggedTokenPrice is read from minter contract (peggedTokenPrice() function)
@@ -1703,6 +1725,162 @@ export default function AnchorPage() {
       return contracts;
     });
   }, [anchorMarkets, address]);
+
+  // ---------------------------------------------------------------------------
+  // Fetch pegged / leveraged token addresses from minter (PEGGED_TOKEN / LEVERAGED_TOKEN)
+  // Then fetch token name/symbol from the ERC20
+  // ---------------------------------------------------------------------------
+  const tokenAddressContracts = useMemo(() => {
+    const contracts: any[] = [];
+    const meta: TokenAddressMeta[] = [];
+
+    anchorMarkets.forEach(([marketId, m]) => {
+      const minter = (m as any).addresses?.minter as `0x${string}` | undefined;
+      if (
+        !minter ||
+        typeof minter !== "string" ||
+        !minter.startsWith("0x") ||
+        minter.length !== 42
+      ) {
+        return;
+      }
+      contracts.push({
+        address: minter,
+        abi: MINTER_ABI,
+        functionName: "PEGGED_TOKEN" as const,
+      });
+      meta.push({ marketId, kind: TOKEN_KIND_PEGGED });
+
+      contracts.push({
+        address: minter,
+        abi: MINTER_ABI,
+        functionName: "LEVERAGED_TOKEN" as const,
+      });
+      meta.push({ marketId, kind: TOKEN_KIND_LEVERAGED });
+    });
+
+    return { contracts, meta };
+  }, [anchorMarkets]);
+
+  const { data: tokenAddressReads } = useWagmiContractReads({
+    contracts: tokenAddressContracts.contracts,
+    query: {
+      enabled: tokenAddressContracts.contracts.length > 0,
+      staleTime: 300_000, // 5 minutes
+    },
+  });
+
+  const tokenAddressesByMarket = useMemo(() => {
+    const map = new Map<string, TokenMeta>();
+    tokenAddressContracts.meta.forEach((meta, idx) => {
+      const result = tokenAddressReads?.[idx];
+      if (result?.status === "success" && result.result) {
+        const addr = result.result as `0x${string}`;
+        const entry = map.get(meta.marketId) || {};
+        if (meta.kind === TOKEN_KIND_PEGGED) entry.peggedAddress = addr;
+        if (meta.kind === TOKEN_KIND_LEVERAGED) entry.leveragedAddress = addr;
+        map.set(meta.marketId, entry);
+      }
+    });
+    return map;
+  }, [tokenAddressContracts.meta, tokenAddressReads]);
+
+  const tokenMetaContracts = useMemo(() => {
+    const contracts: any[] = [];
+    const meta: Array<{
+      marketId: string;
+      kind: TokenKind;
+      field: "symbol" | "name";
+    }> = [];
+
+    tokenAddressesByMarket.forEach((entry, marketId) => {
+      if (entry.peggedAddress) {
+        contracts.push({
+          address: entry.peggedAddress,
+          abi: ERC20_ABI,
+          functionName: "symbol" as const,
+        });
+        meta.push({ marketId, kind: TOKEN_KIND_PEGGED, field: "symbol" });
+
+        contracts.push({
+          address: entry.peggedAddress,
+          abi: ERC20_ABI,
+          functionName: "name" as const,
+        });
+        meta.push({ marketId, kind: TOKEN_KIND_PEGGED, field: "name" });
+      }
+
+      if (entry.leveragedAddress) {
+        contracts.push({
+          address: entry.leveragedAddress,
+          abi: ERC20_ABI,
+          functionName: "symbol" as const,
+        });
+        meta.push({ marketId, kind: TOKEN_KIND_LEVERAGED, field: "symbol" });
+
+        contracts.push({
+          address: entry.leveragedAddress,
+          abi: ERC20_ABI,
+          functionName: "name" as const,
+        });
+        meta.push({ marketId, kind: TOKEN_KIND_LEVERAGED, field: "name" });
+      }
+    });
+
+    return { contracts, meta };
+  }, [tokenAddressesByMarket]);
+
+  const { data: tokenMetaReads } = useWagmiContractReads({
+    contracts: tokenMetaContracts.contracts,
+    query: {
+      enabled: tokenMetaContracts.contracts.length > 0,
+      staleTime: 300_000,
+    },
+  });
+
+  const tokenMetaByMarket = useMemo(() => {
+    const map = new Map<string, TokenMeta>();
+    tokenMetaContracts.meta.forEach((meta, idx) => {
+      const result = tokenMetaReads?.[idx];
+      if (result?.status === "success" && result.result) {
+        const entry = map.get(meta.marketId) || {};
+        if (meta.kind === TOKEN_KIND_PEGGED) {
+          if (meta.field === "symbol")
+            entry.peggedSymbol = result.result as string;
+          if (meta.field === "name") entry.peggedName = result.result as string;
+        } else {
+          if (meta.field === "symbol")
+            entry.leveragedSymbol = result.result as string;
+          if (meta.field === "name")
+            entry.leveragedName = result.result as string;
+        }
+        map.set(meta.marketId, entry);
+      }
+    });
+    return map;
+  }, [tokenMetaContracts.meta, tokenMetaReads]);
+
+  // Mutate market config for display so all downstream render logic picks up the correct names/symbols
+  useEffect(() => {
+    tokenMetaByMarket.forEach((meta, marketId) => {
+      const m = (markets as any)[marketId];
+      if (!m) return;
+      if (meta.peggedSymbol || meta.peggedName) {
+        m.peggedToken = {
+          ...(m.peggedToken || {}),
+          symbol: meta.peggedSymbol || m.peggedToken?.symbol,
+          name: meta.peggedName || m.peggedToken?.name,
+        };
+      }
+      if (meta.leveragedSymbol || meta.leveragedName) {
+        m.leveragedToken = {
+          ...(m.leveragedToken || {}),
+          symbol: meta.leveragedSymbol || m.leveragedToken?.symbol,
+          name: meta.leveragedName || m.leveragedToken?.name,
+        };
+      }
+    });
+  }, [tokenMetaByMarket]);
 
   const wagmiMarketReads = useContractReads({
     contracts: allMarketContracts,
@@ -1717,7 +1895,7 @@ export default function AnchorPage() {
   const anvilMarketReads = useAnvilContractReads({
     contracts: allMarketContracts,
     enabled: anchorMarkets.length > 0 && useAnvil,
-    refetchInterval: 5000,
+    refetchInterval: POLLING_INTERVALS.FAST,
   });
 
   const reads = useAnvil ? anvilMarketReads.data : wagmiMarketReads.data;
@@ -1912,7 +2090,7 @@ export default function AnchorPage() {
   const anvilUserDepositReads = useAnvilContractReads({
     contracts: userDepositContractArray,
     enabled: anchorMarkets.length > 0 && !!address && useAnvil,
-    refetchInterval: 5000,
+    refetchInterval: POLLING_INTERVALS.FAST,
   });
 
   const userDepositReads = useAnvil
@@ -1980,7 +2158,7 @@ export default function AnchorPage() {
           offset += 4; // 4 pool reads
           if (prevPeggedTokenAddress) offset += 1; // rewardData
         }
-        if (prevHasPriceOracle) offset += 2;
+        if (prevHasPriceOracle) offset += 1;
       }
 
       const baseOffset = offset;
@@ -1996,7 +2174,8 @@ export default function AnchorPage() {
 
       // Get collateral price and decimals
       let collateralPrice: bigint | undefined;
-      let collateralPriceDecimals: number | undefined;
+      // IWrappedPriceOracle always returns prices in 18 decimals
+      const collateralPriceDecimals: number = 18;
       if (hasPriceOracle) {
         let priceOracleOffset = baseOffset + 5; // 4 minter + 1 config
         if (hasStabilityPoolManager) priceOracleOffset += 1; // rebalanceThreshold
@@ -2008,12 +2187,27 @@ export default function AnchorPage() {
           priceOracleOffset += 4; // 4 pool reads
           if (peggedTokenAddress) priceOracleOffset += 1; // rewardData
         }
-        collateralPriceDecimals = reads?.[priceOracleOffset]?.result as
-          | number
-          | undefined;
-        collateralPrice = reads?.[priceOracleOffset + 1]?.result as
-          | bigint
-          | undefined;
+        // latestAnswer returns a tuple: (minUnderlyingPrice, maxUnderlyingPrice, minWrappedRate, maxWrappedRate)
+        // Use maxUnderlyingPrice (index 1) as the price
+        // Handle both array format and object format (viem can return either)
+        const latestAnswerResult = reads?.[priceOracleOffset]?.result;
+        if (latestAnswerResult !== undefined && latestAnswerResult !== null) {
+          if (Array.isArray(latestAnswerResult)) {
+            collateralPrice = latestAnswerResult[1] as bigint; // maxUnderlyingPrice is at index 1
+          } else if (typeof latestAnswerResult === "object") {
+            // Handle named tuple object format
+            const objResult = latestAnswerResult as {
+              maxUnderlyingPrice?: bigint;
+              [key: string]: unknown;
+            };
+            if (objResult.maxUnderlyingPrice !== undefined) {
+              collateralPrice = objResult.maxUnderlyingPrice;
+            }
+          } else if (typeof latestAnswerResult === "bigint") {
+            // Single value format (standard Chainlink)
+            collateralPrice = latestAnswerResult;
+          }
+        }
       }
 
       const currentOffset = baseOffset + 5 + (hasStabilityPoolManager ? 1 : 0);
@@ -2055,20 +2249,25 @@ export default function AnchorPage() {
   // Build global token price map for all reward tokens
   const globalTokenPriceMap = useMemo(() => {
     const map = new Map<string, number>();
-    
+
     // Iterate through all markets to collect token prices
     anchorMarkets.forEach(([id, m], mi) => {
       const hasPriceOracle = !!(m as any).addresses?.collateralPrice;
-      
+
       // Calculate offset for this market (same logic as allPoolsForRewards)
       let offset = 0;
       for (let i = 0; i < mi; i++) {
         const prevMarket = anchorMarkets[i][1];
-        const prevHasCollateral = !!(prevMarket as any).addresses?.stabilityPoolCollateral;
-        const prevHasSail = !!(prevMarket as any).addresses?.stabilityPoolLeveraged;
-        const prevHasPriceOracle = !!(prevMarket as any).addresses?.collateralPrice;
-        const prevHasStabilityPoolManager = !!(prevMarket as any).addresses?.stabilityPoolManager;
-        const prevPeggedTokenAddress = (prevMarket as any)?.addresses?.peggedToken;
+        const prevHasCollateral = !!(prevMarket as any).addresses
+          ?.stabilityPoolCollateral;
+        const prevHasSail = !!(prevMarket as any).addresses
+          ?.stabilityPoolLeveraged;
+        const prevHasPriceOracle = !!(prevMarket as any).addresses
+          ?.collateralPrice;
+        const prevHasStabilityPoolManager = !!(prevMarket as any).addresses
+          ?.stabilityPoolManager;
+        const prevPeggedTokenAddress = (prevMarket as any)?.addresses
+          ?.peggedToken;
         offset += 5; // 4 minter calls + 1 config call
         if (prevHasStabilityPoolManager) offset += 1;
         if (prevHasCollateral) {
@@ -2079,25 +2278,33 @@ export default function AnchorPage() {
           offset += 4;
           if (prevPeggedTokenAddress) offset += 1;
         }
-        if (prevHasPriceOracle) offset += 2;
+        if (prevHasPriceOracle) offset += 1;
       }
-      
+
       const baseOffset = offset;
-      const peggedTokenPrice = reads?.[baseOffset + 3]?.result as bigint | undefined;
-      const peggedTokenAddress = (m as any).addresses?.peggedToken as `0x${string}` | undefined;
-      const collateralTokenAddress = (m as any).addresses?.collateralToken as `0x${string}` | undefined;
-      
+      const peggedTokenPrice = reads?.[baseOffset + 3]?.result as
+        | bigint
+        | undefined;
+      const peggedTokenAddress = (m as any).addresses?.peggedToken as
+        | `0x${string}`
+        | undefined;
+      const collateralTokenAddress = (m as any).addresses?.collateralToken as
+        | `0x${string}`
+        | undefined;
+
       // Add pegged token price
       if (peggedTokenAddress && peggedTokenPrice) {
         const price = Number(peggedTokenPrice) / 1e18;
         map.set(peggedTokenAddress.toLowerCase(), price);
       }
-      
+
       // Add collateral token price
       if (hasPriceOracle && collateralTokenAddress) {
         let priceOracleOffset = baseOffset + 5;
-        const hasStabilityPoolManager = !!(m as any).addresses?.stabilityPoolManager;
-        const hasCollateralPool = !!(m as any).addresses?.stabilityPoolCollateral;
+        const hasStabilityPoolManager = !!(m as any).addresses
+          ?.stabilityPoolManager;
+        const hasCollateralPool = !!(m as any).addresses
+          ?.stabilityPoolCollateral;
         const hasSailPool = !!(m as any).addresses?.stabilityPoolLeveraged;
         if (hasStabilityPoolManager) priceOracleOffset += 1;
         if (hasCollateralPool) {
@@ -2108,22 +2315,47 @@ export default function AnchorPage() {
           priceOracleOffset += 4;
           if (peggedTokenAddress) priceOracleOffset += 1;
         }
-        const collateralPriceDecimals = reads?.[priceOracleOffset]?.result as number | undefined;
-        const collateralPrice = reads?.[priceOracleOffset + 1]?.result as bigint | undefined;
-        
-        if (collateralPrice && collateralPriceDecimals !== undefined) {
+        // IWrappedPriceOracle always returns prices in 18 decimals
+        const collateralPriceDecimals = 18;
+        // latestAnswer returns a tuple: (minUnderlyingPrice, maxUnderlyingPrice, minWrappedRate, maxWrappedRate)
+        // Use maxUnderlyingPrice (index 1) as the price
+        // Handle both array format and object format (viem can return either)
+        const latestAnswerResult = reads?.[priceOracleOffset]?.result;
+        let collateralPrice: bigint | undefined;
+        if (latestAnswerResult !== undefined && latestAnswerResult !== null) {
+          if (Array.isArray(latestAnswerResult)) {
+            collateralPrice = latestAnswerResult[1] as bigint;
+          } else if (typeof latestAnswerResult === "object") {
+            const objResult = latestAnswerResult as {
+              maxUnderlyingPrice?: bigint;
+              [key: string]: unknown;
+            };
+            if (objResult.maxUnderlyingPrice !== undefined) {
+              collateralPrice = objResult.maxUnderlyingPrice;
+            }
+          } else if (typeof latestAnswerResult === "bigint") {
+            collateralPrice = latestAnswerResult;
+          }
+        }
+
+        if (collateralPrice) {
           const price = Number(collateralPrice) / 10 ** collateralPriceDecimals;
           map.set(collateralTokenAddress.toLowerCase(), price);
-          
+
           // Also add wstETH if it's a different address
-          const wstETHAddress = (m as any).addresses?.wstETH as `0x${string}` | undefined;
-          if (wstETHAddress && wstETHAddress.toLowerCase() !== collateralTokenAddress.toLowerCase()) {
+          const wstETHAddress = (m as any).addresses?.wstETH as
+            | `0x${string}`
+            | undefined;
+          if (
+            wstETHAddress &&
+            wstETHAddress.toLowerCase() !== collateralTokenAddress.toLowerCase()
+          ) {
             map.set(wstETHAddress.toLowerCase(), price);
           }
         }
       }
     });
-    
+
     return map;
   }, [anchorMarkets, reads]);
 
@@ -2144,6 +2376,38 @@ export default function AnchorPage() {
     return map;
   }, [allPoolRewards]);
 
+  // Build market configs for positions hook
+  const marketPositionConfigs = useMemo(() => {
+    return anchorMarkets.map(([id, m]) => {
+      const hasCollateralPool = !!(m as any).addresses?.stabilityPoolCollateral;
+      const hasSailPool = !!(m as any).addresses?.stabilityPoolLeveraged;
+      const peggedTokenAddress = (m as any)?.addresses?.peggedToken as
+        | `0x${string}`
+        | undefined;
+
+      return {
+        marketId: id,
+        peggedTokenAddress,
+        collateralPoolAddress: hasCollateralPool
+          ? ((m as any).addresses?.stabilityPoolCollateral as `0x${string}`)
+          : undefined,
+        sailPoolAddress: hasSailPool
+          ? ((m as any).addresses?.stabilityPoolLeveraged as `0x${string}`)
+          : undefined,
+        minterAddress: (m as any).addresses?.minter as
+          | `0x${string}`
+          | undefined,
+      };
+    });
+  }, [anchorMarkets]);
+
+  // Fetch all positions using the unified hook
+  const {
+    positionsMap: marketPositions,
+    totalPositionUSD: allMarketsTotalPositionUSD,
+    hasPositions: userHasPositions,
+    refetch: refetchPositions,
+  } = useMarketPositions(marketPositionConfigs, address);
 
   // Group markets by peggedToken.symbol (for grouping ha tokens)
   const groupedMarkets = useMemo(() => {
@@ -2215,7 +2479,7 @@ export default function AnchorPage() {
           if (prevHasStabilityPoolManager) offset += 1; // rebalanceThreshold
           if (prevHasCollateral) offset += 4;
           if (prevHasSail) offset += 4;
-          if (prevHasPriceOracle) offset += 2;
+          if (prevHasPriceOracle) offset += 1;
         }
 
         const baseOffset = offset;
@@ -2272,17 +2536,22 @@ export default function AnchorPage() {
         }
 
         // Get price oracle for USD calculations
+        // IWrappedPriceOracle.latestAnswer() returns (minPrice, maxPrice, minRate, maxRate) - all in 18 decimals
         const hasPriceOracle = !!(market as any).addresses?.collateralPrice;
-        let collateralPriceDecimals: number | undefined;
+        const collateralPriceDecimals = 18;
         let collateralPrice: bigint | undefined;
         if (hasPriceOracle) {
-          collateralPriceDecimals = reads?.[currentOffset]?.result as
-            | number
-            | undefined;
-          const priceRaw = reads?.[currentOffset + 1]?.result as
-            | bigint
-            | undefined;
-          collateralPrice = priceRaw;
+          const latestAnswerResult = reads?.[currentOffset]?.result;
+          if (latestAnswerResult !== undefined && latestAnswerResult !== null) {
+            if (Array.isArray(latestAnswerResult)) {
+              collateralPrice = latestAnswerResult[1] as bigint; // maxUnderlyingPrice
+            } else if (typeof latestAnswerResult === "object") {
+              const obj = latestAnswerResult as { maxUnderlyingPrice?: bigint };
+              collateralPrice = obj.maxUnderlyingPrice;
+            } else if (typeof latestAnswerResult === "bigint") {
+              collateralPrice = latestAnswerResult;
+            }
+          }
         }
 
         // Calculate APRs
@@ -2336,43 +2605,22 @@ export default function AnchorPage() {
             leveragedAmount * (peggedPrice * collateralPriceNum);
         }
 
-        // Calculate position USD and track deposits
-        // Use contract reads for deposits (more reliable and real-time)
-        let collateralPoolDepositUSD = 0;
-        let sailPoolDepositUSD = 0;
+        // Get position data from unified hook
+        const position = marketPositions[marketId];
 
-        if (
-          collateralPoolDeposit &&
-          collateralPoolDeposit > 0n &&
-          peggedTokenPrice
-        ) {
-          hasStabilityPoolDeposits = true;
-          // Calculate from contract read using peggedTokenPrice
-          const depositAmount = Number(collateralPoolDeposit) / 1e18;
-          const peggedPriceUSD = Number(peggedTokenPrice) / 1e18;
-          collateralPoolDepositUSD = depositAmount * peggedPriceUSD;
-        }
-
-        if (sailPoolDeposit && sailPoolDeposit > 0n && peggedTokenPrice) {
-          hasStabilityPoolDeposits = true;
-          // Calculate from contract read using peggedTokenPrice
-          const depositAmount = Number(sailPoolDeposit) / 1e18;
-          const peggedPriceUSD = Number(peggedTokenPrice) / 1e18;
-          sailPoolDepositUSD = depositAmount * peggedPriceUSD;
-        }
-
-        // Add stability pool deposits to total
-        totalPositionUSD += collateralPoolDepositUSD + sailPoolDepositUSD;
-
-        // Calculate ha token position
-        const userDeposit = userDepositMap.get(marketIndex) || 0n;
-        if (userDeposit && userDeposit > 0n) {
-          hasHaTokens = true;
-          if (peggedTokenPrice) {
-            const haTokenAmount = Number(userDeposit) / 1e18;
-            const peggedPriceUSD = Number(peggedTokenPrice) / 1e18;
-            totalPositionUSD += haTokenAmount * peggedPriceUSD;
+        if (position) {
+          // Track position USD from hook
+          if (position.collateralPool > 0n) {
+            hasStabilityPoolDeposits = true;
           }
+          if (position.sailPool > 0n) {
+            hasStabilityPoolDeposits = true;
+          }
+          if (position.walletHa > 0n) {
+            hasHaTokens = true;
+          }
+          // Use totalUSD from hook (includes wallet + both pools)
+          totalPositionUSD += position.totalUSD || 0;
         }
 
         if (!collateralSymbol && market.collateral?.symbol) {
@@ -2397,7 +2645,7 @@ export default function AnchorPage() {
     });
 
     return groupedData;
-  }, [reads, anchorMarkets, userDepositMap]);
+  }, [reads, anchorMarkets, marketPositions]);
 
   // Claim and compound handlers
   const updateProgressStep = (
@@ -2430,7 +2678,7 @@ export default function AnchorPage() {
     if (!error) return false;
     const errorMessage = error.message?.toLowerCase() || "";
     const errorCode = error.code;
-    
+
     // Check for common rejection messages
     if (
       errorMessage.includes("user rejected") ||
@@ -2443,13 +2691,13 @@ export default function AnchorPage() {
     ) {
       return true;
     }
-    
+
     // Check for common rejection error codes
     // 4001 = MetaMask user rejection, 4900 = Uniswap user rejection, etc.
     if (errorCode === 4001 || errorCode === 4900) {
       return true;
     }
-    
+
     return false;
   };
 
@@ -2494,10 +2742,10 @@ export default function AnchorPage() {
       updateProgressStep("claim", { status: "in_progress" });
 
       // Call claim() directly on the Stability Pool contract
-      // Use fullStabilityPoolABI which has the claim function
+      // Use rewardsABI which has the claim function
       const hash = await writeContractAsync({
         address: poolAddress,
-        abi: fullStabilityPoolABI,
+        abi: rewardsABI,
         functionName: "claim",
       });
 
@@ -2544,17 +2792,141 @@ export default function AnchorPage() {
     poolType: "collateral" | "sail",
     rewardAmount: bigint
   ) => {
-    setCompoundModal({
-      marketId: market.id || "",
+    // Show pool selection modal instead of directly calling handleCompoundConfirm
+    const collateralPoolAddress = market.addresses?.stabilityPoolCollateral as
+      | `0x${string}`
+      | undefined;
+    const sailPoolAddress = market.addresses?.stabilityPoolLeveraged as
+      | `0x${string}`
+      | undefined;
+
+    // Get pegged token price for TVL calculation
+    // Find the market in anchorMarkets to get peggedTokenPrice from reads
+    let peggedTokenPrice: bigint | undefined;
+    const marketIndex = anchorMarkets.findIndex(
+      ([id]) => id === market.id || (market as any).addresses?.peggedToken
+    );
+    if (marketIndex >= 0 && reads) {
+      // Calculate offset to get peggedTokenPrice
+      let offset = 0;
+      for (let i = 0; i < marketIndex; i++) {
+        const prevMarket = anchorMarkets[i][1];
+        const prevHasCollateral = !!(prevMarket as any).addresses
+          ?.stabilityPoolCollateral;
+        const prevHasSail = !!(prevMarket as any).addresses
+          ?.stabilityPoolLeveraged;
+        const prevHasPriceOracle = !!(prevMarket as any).addresses
+          ?.collateralPrice;
+        const prevHasStabilityPoolManager = !!(prevMarket as any).addresses
+          ?.stabilityPoolManager;
+        const prevPeggedTokenAddress = (prevMarket as any)?.addresses
+          ?.peggedToken;
+        offset += 5; // 4 minter calls + 1 config call
+        if (prevHasStabilityPoolManager) offset += 1;
+        if (prevHasCollateral) {
+          offset += 4;
+          if (prevPeggedTokenAddress) offset += 1;
+        }
+        if (prevHasSail) {
+          offset += 4;
+          if (prevPeggedTokenAddress) offset += 1;
+        }
+        if (prevHasPriceOracle) offset += 1;
+      }
+      peggedTokenPrice = reads?.[offset + 3]?.result as bigint | undefined;
+    }
+
+    const pools: PoolOption[] = [];
+
+    if (collateralPoolAddress) {
+      // Get APR and TVL for collateral pool if available
+      const collateralPoolData = allPoolRewards?.find(
+        (r) =>
+          r.poolAddress.toLowerCase() === collateralPoolAddress.toLowerCase()
+      );
+      const collateralPoolAPR = collateralPoolData?.totalAPR;
+
+      // Calculate TVL USD from pool data if available
+      let collateralTVLUSD: number | undefined;
+      if (collateralPoolData?.tvl !== undefined && peggedTokenPrice) {
+        const tvlTokens = Number(collateralPoolData.tvl) / 1e18;
+        const peggedPriceUSD = Number(peggedTokenPrice) / 1e18;
+        collateralTVLUSD = tvlTokens * peggedPriceUSD;
+      }
+
+      pools.push({
+        id: "collateral",
+        name: `${market.peggedToken?.symbol || market.id} Collateral Pool`,
+        address: collateralPoolAddress,
+        apr: collateralPoolAPR,
+        tvl: collateralPoolData?.tvl,
+        tvlUSD: collateralTVLUSD,
+        enabled: true,
+      });
+    }
+
+    if (sailPoolAddress) {
+      // Get APR and TVL for sail pool if available
+      const sailPoolData = allPoolRewards?.find(
+        (r) => r.poolAddress.toLowerCase() === sailPoolAddress.toLowerCase()
+      );
+      const sailPoolAPR = sailPoolData?.totalAPR;
+
+      // Calculate TVL USD from pool data if available
+      let sailTVLUSD: number | undefined;
+      if (sailPoolData?.tvl !== undefined && peggedTokenPrice) {
+        const tvlTokens = Number(sailPoolData.tvl) / 1e18;
+        const peggedPriceUSD = Number(peggedTokenPrice) / 1e18;
+        sailTVLUSD = tvlTokens * peggedPriceUSD;
+      }
+
+      pools.push({
+        id: "sail",
+        name: `${market.peggedToken?.symbol || market.id} Sail Pool`,
+        address: sailPoolAddress,
+        apr: sailPoolAPR,
+        tvl: sailPoolData?.tvl,
+        tvlUSD: sailTVLUSD,
+        enabled: true,
+      });
+    }
+
+    if (pools.length === 0) {
+      // No pools available, show error or fallback
+      return;
+    }
+
+    setCompoundPoolSelection({
       market,
-      poolType,
-      rewardAmount,
+      pools,
     });
+  };
+
+  // Create handlers for AnchorMarketExpandedView compound buttons
+  const createCompoundHandlers = (market: any) => {
+    return {
+      onCompoundCollateralRewards: () => {
+        const rewardAmount =
+          collateralPoolRewardsData.claimableValue > 0
+            ? BigInt(
+                Math.floor(collateralPoolRewardsData.claimableValue * 1e18)
+              )
+            : 0n;
+        handleCompoundRewards(market, "collateral", rewardAmount);
+      },
+      onCompoundSailRewards: () => {
+        const rewardAmount =
+          sailPoolRewardsData.claimableValue > 0
+            ? BigInt(Math.floor(sailPoolRewardsData.claimableValue * 1e18))
+            : 0n;
+        handleCompoundRewards(market, "sail", rewardAmount);
+      },
+    };
   };
 
   const handleCompoundConfirm = async (
     market: any,
-    poolType: "collateral" | "sail",
+    allocations: Array<{ poolId: "collateral" | "sail"; percentage: number }>,
     rewardAmount: bigint
   ) => {
     if (!address) {
@@ -2583,14 +2955,74 @@ export default function AnchorPage() {
     }
 
     const marketSymbol = market.peggedToken?.symbol || market.id;
-    const poolName = `${marketSymbol} ${poolType} pool`;
-    const collateralSymbol = market.collateralToken?.symbol || market.collateral?.symbol || "collateral";
-    const leveragedSymbol = market.leveragedToken?.symbol || market.sail?.symbol || "sail";
+    const collateralSymbol =
+      market.collateralToken?.symbol ||
+      market.collateral?.symbol ||
+      "collateral";
+    const leveragedSymbol =
+      market.leveragedToken?.symbol || market.sail?.symbol || "sail";
 
-    // Get the pool address based on pool type
-    const poolAddress = poolType === "collateral" ? collateralPoolAddress : sailPoolAddress;
-    if (!poolAddress || !collateralAddress || !peggedTokenAddress) {
-      throw new Error("Missing required pool or token addresses");
+    // Validate allocations
+    if (allocations.length === 0) {
+      throw new Error("No pools selected for compounding");
+    }
+
+    // Filter allocations to only include pools with percentage > 0
+    const activeAllocations = allocations.filter((a) => a.percentage > 0);
+    if (activeAllocations.length === 0) {
+      throw new Error("No pools selected for compounding");
+    }
+
+    // Get pool addresses for ALL pools that have rewards - we'll claim from each one
+    interface PoolWithRewards {
+      poolType: "collateral" | "sail";
+      poolAddress: `0x${string}`;
+      rewards: {
+        poolAddress: string;
+        rewardTokens?: Array<{
+          address: string;
+          symbol: string;
+          claimable: bigint;
+        }>;
+      };
+    }
+    const poolsWithRewards: PoolWithRewards[] = [];
+
+    if (collateralPoolAddress) {
+      const collateralRewards = allPoolRewards?.find(
+        (r) =>
+          r.poolAddress.toLowerCase() === collateralPoolAddress.toLowerCase() &&
+          r.rewardTokens.some((rt) => rt.claimable > 0n)
+      );
+      if (collateralRewards) {
+        poolsWithRewards.push({
+          poolType: "collateral",
+          poolAddress: collateralPoolAddress,
+          rewards: collateralRewards,
+        });
+      }
+    }
+    if (sailPoolAddress) {
+      const sailRewards = allPoolRewards?.find(
+        (r) =>
+          r.poolAddress.toLowerCase() === sailPoolAddress.toLowerCase() &&
+          r.rewardTokens.some((rt) => rt.claimable > 0n)
+      );
+      if (sailRewards) {
+        poolsWithRewards.push({
+          poolType: "sail",
+          poolAddress: sailPoolAddress,
+          rewards: sailRewards,
+        });
+      }
+    }
+
+    if (poolsWithRewards.length === 0) {
+      throw new Error("No pools with claimable rewards found");
+    }
+
+    if (!collateralAddress || !peggedTokenAddress) {
+      throw new Error("Missing required token addresses");
     }
 
     // Initialize progress modal early to show errors if they occur
@@ -2601,7 +3033,7 @@ export default function AnchorPage() {
         status: "in_progress",
       },
     ];
-    
+
     setTransactionProgress({
       isOpen: true,
       title: "Compounding Rewards",
@@ -2609,18 +3041,64 @@ export default function AnchorPage() {
       currentStepIndex: 0,
     });
 
-    try {
-      // Step 1: Get claimable rewards from the existing allPoolRewards data
-      // This avoids calling activeRewardTokens which may not be available
-      if (!allPoolRewards || allPoolRewards.length === 0) {
-        throw new Error("Rewards data not loaded yet. Please wait and try again.");
-      }
-      
-      const poolRewards = allPoolRewards.find(
-        (r) => r.poolAddress.toLowerCase() === poolAddress.toLowerCase()
-      );
+    // Track if the process has been cancelled (defined outside try block so it's accessible everywhere)
+    const cancelRef = { current: false };
 
-      if (!poolRewards || !poolRewards.rewardTokens || poolRewards.rewardTokens.length === 0) {
+    // Declare variables outside try blocks so they're accessible in both setup and execution phases
+    let steps: TransactionStep[] = [];
+    let leveragedReceived = 0n;
+    let totalCollateralForMinting = 0n;
+    let collateralReceived = 0n;
+    let haReceived = 0n;
+    let expectedOutput: bigint | undefined;
+
+    // Interface for categorized rewards (declared here for type access in both blocks)
+    interface CategorizedReward {
+      address: `0x${string}`;
+      symbol: string;
+      amount: bigint;
+      type: "collateral" | "ha" | "hs";
+    }
+    let categorizedRewards: CategorizedReward[] = [];
+
+    try {
+      // Step 1: Get claimable rewards from ALL pools that have rewards
+      if (!allPoolRewards || allPoolRewards.length === 0) {
+        throw new Error(
+          "Rewards data not loaded yet. Please wait and try again."
+        );
+      }
+
+      // Aggregate rewards from ALL pools
+      const allClaimableRewards: Array<{
+        address: `0x${string}`;
+        symbol: string;
+        claimable: bigint;
+      }> = [];
+
+      poolsWithRewards.forEach((pool) => {
+        if (pool.rewards?.rewardTokens) {
+          pool.rewards.rewardTokens.forEach((rt) => {
+            if (rt.claimable > 0n) {
+              // Check if we already have this token, if so add to it
+              const existing = allClaimableRewards.find(
+                (r) => r.address.toLowerCase() === rt.address.toLowerCase()
+              );
+              if (existing) {
+                existing.claimable += rt.claimable;
+              } else {
+                allClaimableRewards.push({
+                  address: rt.address as `0x${string}`,
+                  symbol: rt.symbol,
+                  claimable: rt.claimable,
+                });
+              }
+            }
+          });
+        }
+      });
+
+      if (allClaimableRewards.length === 0) {
         updateProgressStep("setup", {
           status: "error",
           error: "No rewards available to compound",
@@ -2628,42 +3106,35 @@ export default function AnchorPage() {
         throw new Error("No rewards available to compound");
       }
 
-    // Convert reward tokens from allPoolRewards to our format
-    const claimableRewards = poolRewards.rewardTokens.map((rt) => ({
-      address: rt.address as `0x${string}`,
-      symbol: rt.symbol,
-      claimable: rt.claimable,
-    }));
-
-    // Categorize reward tokens by type (collateral, ha, hs)
-    interface CategorizedReward {
-      address: `0x${string}`;
-      symbol: string;
-      amount: bigint;
-      type: 'collateral' | 'ha' | 'hs';
-    }
-
-    const categorizedRewards: CategorizedReward[] = claimableRewards
-      .filter((r) => r.claimable > 0n)
-      .map((r) => {
+      // Categorize reward tokens by type (collateral, ha, hs)
+      categorizedRewards = allClaimableRewards.map((r) => {
         const tokenLower = r.address.toLowerCase();
-        let tokenType: 'collateral' | 'ha' | 'hs' = 'collateral';
-        
+        let tokenType: "collateral" | "ha" | "hs" = "collateral";
+
         // Check if it's the collateral token
-        if (collateralAddress && tokenLower === collateralAddress.toLowerCase()) {
-          tokenType = 'collateral';
+        if (
+          collateralAddress &&
+          tokenLower === collateralAddress.toLowerCase()
+        ) {
+          tokenType = "collateral";
         }
         // Check if it's the pegged token (ha)
-        else if (peggedTokenAddress && tokenLower === peggedTokenAddress.toLowerCase()) {
-          tokenType = 'ha';
+        else if (
+          peggedTokenAddress &&
+          tokenLower === peggedTokenAddress.toLowerCase()
+        ) {
+          tokenType = "ha";
         }
         // Check if it's the leveraged token (hs)
-        else if (leveragedTokenAddress && tokenLower === leveragedTokenAddress.toLowerCase()) {
-          tokenType = 'hs';
+        else if (
+          leveragedTokenAddress &&
+          tokenLower === leveragedTokenAddress.toLowerCase()
+        ) {
+          tokenType = "hs";
         }
         // Default to collateral if we can't identify
         else {
-          tokenType = 'collateral';
+          tokenType = "collateral";
         }
 
         return {
@@ -2674,484 +3145,549 @@ export default function AnchorPage() {
         };
       });
 
-    // Extract amounts by type
-    const collateralReceived = categorizedRewards
-      .filter((r) => r.type === 'collateral')
-      .reduce((sum, r) => sum + r.amount, 0n);
-    
-    const haReceived = categorizedRewards
-      .filter((r) => r.type === 'ha')
-      .reduce((sum, r) => sum + r.amount, 0n);
-    
-    const leveragedReceived = categorizedRewards
-      .filter((r) => r.type === 'hs')
-      .reduce((sum, r) => sum + r.amount, 0n);
+      // Extract amounts by type
+      collateralReceived = categorizedRewards
+        .filter((r) => r.type === "collateral")
+        .reduce((sum, r) => sum + r.amount, 0n);
 
+      haReceived = categorizedRewards
+        .filter((r) => r.type === "ha")
+        .reduce((sum, r) => sum + r.amount, 0n);
 
-    // Build all steps upfront based on reward types
-    const steps: TransactionStep[] = [
-      {
-        id: "claim",
-        label: `Claim rewards from ${poolName}`,
-        status: "pending",
-        details: categorizedRewards.length > 0
-          ? `Claiming ${categorizedRewards.map(r => {
-              const amount = Number(r.amount) / 1e18;
-              let formatted: string;
-              if (amount >= 1) {
-                formatted = amount.toLocaleString(undefined, { 
-                  minimumFractionDigits: 0,
-                  maximumFractionDigits: 6 
-                });
-              } else if (amount >= 0.01) {
-                formatted = amount.toLocaleString(undefined, { 
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 6 
-                });
-              } else {
-                formatted = amount.toLocaleString(undefined, { 
+      leveragedReceived = categorizedRewards
+        .filter((r) => r.type === "hs")
+        .reduce((sum, r) => sum + r.amount, 0n);
+
+      // Build all steps upfront based on reward types
+      // Create claim steps for EACH pool that has rewards
+      steps = [];
+
+      poolsWithRewards.forEach((pool) => {
+        const poolName = pool.poolType === "collateral" ? "Collateral" : "Sail";
+        const fullPoolName = `${marketSymbol} ${poolName} Pool`;
+
+        // Get rewards specific to this pool for the details
+        const poolRewardDetails = pool.rewards?.rewardTokens
+          ?.filter((rt) => rt.claimable > 0n)
+          .map((rt) => {
+            const amount = Number(rt.claimable) / 1e18;
+            let formatted: string;
+            if (amount >= 1) {
+              formatted = amount.toLocaleString(undefined, {
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 6,
+              });
+            } else if (amount >= 0.01) {
+              formatted = amount.toLocaleString(undefined, {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 6,
+              });
+            } else {
+              formatted = amount
+                .toLocaleString(undefined, {
                   minimumFractionDigits: 0,
                   maximumFractionDigits: 18,
-                  useGrouping: false 
-                }).replace(/\.?0+$/, '');
-              }
-              return `${formatted} ${r.symbol}`;
-            }).join(', ')}`
-          : undefined,
-      },
-    ];
+                  useGrouping: false,
+                })
+                .replace(/\.?0+$/, "");
+            }
+            return `${formatted} ${rt.symbol}`;
+          })
+          .join(", ");
 
-    // Add redeem steps if we'll receive hs (leveraged) tokens
-    // We'll attach fee info to the redeem step after calculating fees
-    let redeemStepIndex: number | null = null;
-    if (leveragedReceived > 0n && leveragedTokenAddress) {
-      steps.push(
-        {
-          id: "approve-leveraged",
-          label: "Approve leveraged tokens for redemption",
-          status: "pending",
-          details: (() => {
-            const amount = Number(leveragedReceived) / 1e18;
-            const formatted = amount >= 1
-              ? amount.toLocaleString(undefined, { maximumFractionDigits: 6 })
-              : amount.toLocaleString(undefined, { maximumFractionDigits: 18, useGrouping: false }).replace(/\.?0+$/, '');
-            return `Approve ${formatted} ${categorizedRewards.find(r => r.type === 'hs')?.symbol || 'hs'}`;
-          })(),
-        },
-        {
-          id: "redeem",
-          label: "Redeem leveraged tokens for collateral",
-          status: "pending",
-          details: (() => {
-            const amount = Number(leveragedReceived) / 1e18;
-            const formatted = amount >= 1
-              ? amount.toLocaleString(undefined, { maximumFractionDigits: 6 })
-              : amount.toLocaleString(undefined, { maximumFractionDigits: 18, useGrouping: false }).replace(/\.?0+$/, '');
-            return `Redeem ${formatted} ${categorizedRewards.find(r => r.type === 'hs')?.symbol || 'hs'} → ${collateralSymbol}`;
-          })(),
-        }
-      );
-      redeemStepIndex = steps.length - 1; // The redeem step is the last one we just added
-    }
+        steps.push({
+          id: `claim-${pool.poolType}`,
+          label: `Claim rewards from ${fullPoolName}`,
+          status: "pending" as const,
+          details: poolRewardDetails
+            ? `Claiming ${poolRewardDetails}`
+            : undefined,
+        });
+      });
 
-    // Add mint steps only if we have collateral to mint (from direct collateral rewards or from redeemed hs tokens)
-    // Note: ha tokens don't need minting, they can be deposited directly
-    const needsMinting = collateralReceived > 0n || leveragedReceived > 0n;
-    
-    // We'll attach fee info to the mint step after calculating fees
-    let mintStepIndex: number | null = null;
-    if (needsMinting) {
-      steps.push(
-        {
-          id: "approve-collateral",
-          label: `Approve ${collateralSymbol} for minting`,
-          status: "pending",
-          details: collateralReceived > 0n 
-            ? (() => {
-                const amount = Number(collateralReceived) / 1e18;
-                let formatted: string;
-                if (amount >= 1) {
-                  formatted = amount.toLocaleString(undefined, { 
-                    minimumFractionDigits: 0,
-                    maximumFractionDigits: 6 
-                  });
-                } else if (amount >= 0.01) {
-                  formatted = amount.toLocaleString(undefined, { 
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 6 
-                  });
-                } else {
-                  formatted = amount.toLocaleString(undefined, { 
-                    minimumFractionDigits: 0,
-                    maximumFractionDigits: 18,
-                    useGrouping: false 
-                  }).replace(/\.?0+$/, '');
-                }
-                return `Approve ${formatted} ${collateralSymbol}`;
-              })()
-            : `Approve ${collateralSymbol} from redemption`,
-        },
-        {
-          id: "mint",
-          label: "Mint pegged tokens",
-          status: "pending",
-          details: "Mint ha tokens from collateral",
-        }
-      );
-      mintStepIndex = steps.length - 1; // The mint step is the last one we just added
-    }
+      // Add redeem steps if we'll receive hs (leveraged) tokens
+      // We'll attach fee info to the redeem step after calculating fees
+      let redeemStepIndex: number | null = null;
+      if (leveragedReceived > 0n && leveragedTokenAddress) {
+        steps.push(
+          {
+            id: "approve-leveraged",
+            label: "Approve leveraged tokens for redemption",
+            status: "pending",
+            details: (() => {
+              const amount = Number(leveragedReceived) / 1e18;
+              const formatted =
+                amount >= 1
+                  ? amount.toLocaleString(undefined, {
+                      maximumFractionDigits: 6,
+                    })
+                  : amount
+                      .toLocaleString(undefined, {
+                        maximumFractionDigits: 18,
+                        useGrouping: false,
+                      })
+                      .replace(/\.?0+$/, "");
+              return `Approve ${formatted} ${
+                categorizedRewards.find((r) => r.type === "hs")?.symbol || "hs"
+              }`;
+            })(),
+          },
+          {
+            id: "redeem",
+            label: "Redeem leveraged tokens for collateral",
+            status: "pending",
+            details: (() => {
+              const amount = Number(leveragedReceived) / 1e18;
+              const formatted =
+                amount >= 1
+                  ? amount.toLocaleString(undefined, {
+                      maximumFractionDigits: 6,
+                    })
+                  : amount
+                      .toLocaleString(undefined, {
+                        maximumFractionDigits: 18,
+                        useGrouping: false,
+                      })
+                      .replace(/\.?0+$/, "");
+              return `Redeem ${formatted} ${
+                categorizedRewards.find((r) => r.type === "hs")?.symbol || "hs"
+              } → ${collateralSymbol}`;
+            })(),
+          }
+        );
+        redeemStepIndex = steps.length - 1; // The redeem step is the last one we just added
+      }
 
-    // Add deposit steps
-    // If we have ha tokens directly, we can deposit them without minting
-    const hasHaTokens = haReceived > 0n;
-    const willHaveHaTokens = needsMinting || hasHaTokens;
-    
-    if (willHaveHaTokens) {
-      steps.push(
-        {
+      // Add mint steps only if we have collateral to mint (from direct collateral rewards or from redeemed hs tokens)
+      // Note: ha tokens don't need minting, they can be deposited directly
+      const needsMinting = collateralReceived > 0n || leveragedReceived > 0n;
+
+      // We'll attach fee info to the mint step after calculating fees
+      let mintStepIndex: number | null = null;
+      if (needsMinting) {
+        steps.push(
+          {
+            id: "approve-collateral",
+            label: `Approve ${collateralSymbol} for minting`,
+            status: "pending",
+            details:
+              collateralReceived > 0n
+                ? (() => {
+                    const amount = Number(collateralReceived) / 1e18;
+                    let formatted: string;
+                    if (amount >= 1) {
+                      formatted = amount.toLocaleString(undefined, {
+                        minimumFractionDigits: 0,
+                        maximumFractionDigits: 6,
+                      });
+                    } else if (amount >= 0.01) {
+                      formatted = amount.toLocaleString(undefined, {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 6,
+                      });
+                    } else {
+                      formatted = amount
+                        .toLocaleString(undefined, {
+                          minimumFractionDigits: 0,
+                          maximumFractionDigits: 18,
+                          useGrouping: false,
+                        })
+                        .replace(/\.?0+$/, "");
+                    }
+                    return `Approve ${formatted} ${collateralSymbol}`;
+                  })()
+                : `Approve ${collateralSymbol} from redemption`,
+          },
+          {
+            id: "mint",
+            label: "Mint pegged tokens",
+            status: "pending",
+            details: "Mint ha tokens from collateral",
+          }
+        );
+        mintStepIndex = steps.length - 1; // The mint step is the last one we just added
+      }
+
+      // Add deposit steps for each selected pool
+      // If we have ha tokens directly, we can deposit them without minting
+      const hasHaTokens = haReceived > 0n;
+      const willHaveHaTokens = needsMinting || hasHaTokens;
+
+      if (willHaveHaTokens) {
+        // Add approve step (only once, before first deposit)
+        steps.push({
           id: "approve-pegged",
           label: "Approve pegged tokens for deposit",
           status: "pending",
           details: "Approve ha tokens for deposit",
-        },
-        {
-          id: "deposit",
-          label: "Deposit to stability pool",
-          status: "pending",
-          details: `Deposit to ${poolType === "collateral" ? "collateral" : "collateral"} pool`,
-        }
-      );
-    }
+        });
 
-    // Calculate all fees upfront
-    const fees: FeeInfo[] = [];
-
-    let totalCollateralForMinting = collateralReceived;
-
-    // Calculate redeem fee if we'll receive leveraged tokens
-    if (leveragedReceived > 0n && leveragedTokenAddress) {
-      if (!publicClient) {
-        throw new Error("Public client not available");
-      }
-      
-      // Use the appropriate client based on environment (same as deposit modal)
-      const client = shouldUseAnvil() ? anvilPublicClient : publicClient;
-      if (!client) {
-        throw new Error("Public client not available");
-      }
-      
-      let redeemDryRunResult: [bigint, bigint, bigint, bigint, bigint, bigint] | undefined;
-      // Retry logic similar to deposit modal (retry: 1)
-      let lastError: any = null;
-      for (let attempt = 0; attempt < 2; attempt++) {
-        try {
-          redeemDryRunResult = (await client.readContract({
-            address: minterAddress,
-            abi: fullMinterABI,
-            functionName: "redeemLeveragedTokenDryRun",
-            args: [leveragedReceived],
-          })) as [bigint, bigint, bigint, bigint, bigint, bigint] | undefined;
-          // If successful, break out of retry loop
-          if (redeemDryRunResult) break;
-        } catch (error: any) {
-          lastError = error;
-          // Wait a bit before retrying (only on first attempt)
-          if (attempt === 0) {
-            await new Promise(resolve => setTimeout(resolve, 500));
-          }
-        }
-      }
-      
-      // If still failed after retries, log but don't throw
-      if (!redeemDryRunResult && lastError) {
-        // Contract call failed - fees won't be shown upfront
-        // User will see fees during actual transaction
-      }
-
-      if (redeemDryRunResult && Array.isArray(redeemDryRunResult) && redeemDryRunResult.length >= 4) {
-        const wrappedFee = redeemDryRunResult[1] as bigint;
-        const wrappedCollateralReturned = redeemDryRunResult[3] as bigint;
-        
-        // Validate that wrappedFee is a valid bigint
-        if (wrappedFee !== undefined && typeof wrappedFee === 'bigint' && wrappedFee >= 0n) {
-          // Format fee amount nicely
-          const feeAmountNum = Number(wrappedFee) / 1e18;
-          let feeFormatted: string;
-          if (feeAmountNum >= 1) {
-            feeFormatted = feeAmountNum.toLocaleString(undefined, { 
-              minimumFractionDigits: 0,
-              maximumFractionDigits: 6 
-            });
-          } else if (feeAmountNum >= 0.01) {
-            feeFormatted = feeAmountNum.toLocaleString(undefined, { 
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 6 
-            });
-          } else if (feeAmountNum >= 0.0001) {
-            // For amounts between 0.0001 and 0.01, show up to 6 decimals
-            feeFormatted = feeAmountNum.toLocaleString(undefined, { 
-              minimumFractionDigits: 0,
-              maximumFractionDigits: 6,
-              useGrouping: false 
-            }).replace(/\.?0+$/, '');
-          } else {
-            // For very small amounts (< 0.0001), show up to 8 significant digits
-            const significantDigits = 8;
-            const magnitude = Math.floor(Math.log10(Math.abs(feeAmountNum)));
-            const decimals = Math.max(0, significantDigits - magnitude - 1);
-            feeFormatted = feeAmountNum.toFixed(decimals).replace(/\.?0+$/, '');
-          }
-          const feePercentage =
-            leveragedReceived > 0n
-              ? (Number(wrappedFee) / Number(leveragedReceived)) * 100
-              : 0;
-
-          // Get collateral price for USD calculation
-          // Look for price oracle reads (decimals + price)
-          let collateralPrice: bigint | undefined;
-          let collateralPriceDecimals: number = 8; // Default to 8 for Chainlink
-          
-          // Try to find price from reads (price oracle format: decimals, then price)
-          const priceReads = reads?.filter(
-            (r) =>
-              r?.result &&
-              typeof r.result === "bigint" &&
-              r.result > 0n &&
-              r.result < BigInt(1e30)
-          );
-          
-          if (priceReads && priceReads.length > 0) {
-            // Price is typically the last valid bigint in the reads
-            collateralPrice = priceReads[priceReads.length - 1]?.result as bigint | undefined;
-            // Try to find decimals (usually the read before price)
-            const decimalsRead = reads?.find(
-              (r) =>
-                r?.result &&
-                typeof r.result === "number" &&
-                r.result >= 0 &&
-                r.result <= 18
-            );
-            if (decimalsRead) {
-              collateralPriceDecimals = decimalsRead.result as number;
-            }
-          }
-
-          let feeUSD: number | undefined;
-          if (collateralPrice) {
-            const price = Number(collateralPrice) / (10 ** collateralPriceDecimals);
-            feeUSD = parseFloat(feeFormatted) * price;
-          }
-
-          const redeemFee = {
-            feeAmount: wrappedFee,
-            feeFormatted,
-            feeUSD,
-            feePercentage,
-            tokenSymbol: collateralSymbol, // Fee is in wrapped collateral, not leveraged token
-            label: "Redeem Leveraged Tokens",
-          };
-          fees.push(redeemFee);
-
-          // Attach fee to the redeem step
-          if (redeemStepIndex !== null && steps[redeemStepIndex]) {
-            steps[redeemStepIndex].fee = {
-              amount: wrappedFee,
-              formatted: feeFormatted,
-              usd: feeUSD,
-              percentage: feePercentage,
-              tokenSymbol: collateralSymbol, // Fee is in wrapped collateral, not leveraged token
-            };
-          }
-
-          // Update total collateral for minting
-          if (wrappedCollateralReturned !== undefined && typeof wrappedCollateralReturned === 'bigint') {
-            totalCollateralForMinting = collateralReceived + wrappedCollateralReturned;
-          }
-        }
-      }
-    }
-
-    // Calculate mint fee
-    if (totalCollateralForMinting > 0n) {
-      if (!publicClient) {
-        throw new Error("Public client not available");
-      }
-      
-      // Use the appropriate client based on environment (same as deposit modal)
-      const client = shouldUseAnvil() ? anvilPublicClient : publicClient;
-      if (!client) {
-        throw new Error("Public client not available");
-      }
-      
-      let mintDryRunResult: [bigint, bigint, bigint, bigint, bigint, bigint] | undefined;
-      // Retry logic similar to deposit modal (retry: 1)
-      let lastError: any = null;
-      for (let attempt = 0; attempt < 2; attempt++) {
-        try {
-          mintDryRunResult = (await client.readContract({
-            address: minterAddress,
-            abi: fullMinterABI,
-            functionName: "mintPeggedTokenDryRun",
-            args: [totalCollateralForMinting],
-          })) as [bigint, bigint, bigint, bigint, bigint, bigint] | undefined;
-          // If successful, break out of retry loop
-          if (mintDryRunResult && Array.isArray(mintDryRunResult) && mintDryRunResult.length >= 2) {
-            break;
-          }
-        } catch (error: any) {
-          lastError = error;
-          // Wait a bit before retrying (only on first attempt)
-          if (attempt === 0) {
-            await new Promise(resolve => setTimeout(resolve, 500));
-          }
-        }
-      }
-
-      if (mintDryRunResult && Array.isArray(mintDryRunResult) && mintDryRunResult.length >= 2) {
-        const wrappedFee = mintDryRunResult[1] as bigint;
-        
-        // Validate that wrappedFee is a valid bigint
-        if (wrappedFee !== undefined && typeof wrappedFee === 'bigint' && wrappedFee >= 0n) {
-          // Format fee amount nicely
-          const feeAmountNum = Number(wrappedFee) / 1e18;
-          let feeFormatted: string;
-          if (feeAmountNum >= 1) {
-            feeFormatted = feeAmountNum.toLocaleString(undefined, { 
-              minimumFractionDigits: 0,
-              maximumFractionDigits: 6 
-            });
-          } else if (feeAmountNum >= 0.01) {
-            feeFormatted = feeAmountNum.toLocaleString(undefined, { 
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 6 
-            });
-          } else if (feeAmountNum >= 0.0001) {
-            // For amounts between 0.0001 and 0.01, show up to 6 decimals
-            feeFormatted = feeAmountNum.toLocaleString(undefined, { 
-              minimumFractionDigits: 0,
-              maximumFractionDigits: 6,
-              useGrouping: false 
-            }).replace(/\.?0+$/, '');
-          } else {
-            // For very small amounts (< 0.0001), show up to 8 significant digits
-            const significantDigits = 8;
-            const magnitude = Math.floor(Math.log10(Math.abs(feeAmountNum)));
-            const decimals = Math.max(0, significantDigits - magnitude - 1);
-            feeFormatted = feeAmountNum.toFixed(decimals).replace(/\.?0+$/, '');
-          }
-          const feePercentage =
-            totalCollateralForMinting > 0n
-              ? (Number(wrappedFee) / Number(totalCollateralForMinting)) * 100
-              : 0;
-
-          // Get collateral price for USD calculation
-          // Look for price oracle reads (decimals + price)
-          let collateralPrice: bigint | undefined;
-          let collateralPriceDecimals: number = 8; // Default to 8 for Chainlink
-          
-          // Try to find price from reads (price oracle format: decimals, then price)
-          const priceReads = reads?.filter(
-            (r) =>
-              r?.result &&
-              typeof r.result === "bigint" &&
-              r.result > 0n &&
-              r.result < BigInt(1e30)
-          );
-          
-          if (priceReads && priceReads.length > 0) {
-            // Price is typically the last valid bigint in the reads
-            collateralPrice = priceReads[priceReads.length - 1]?.result as bigint | undefined;
-            // Try to find decimals (usually the read before price)
-            const decimalsRead = reads?.find(
-              (r) =>
-                r?.result &&
-                typeof r.result === "number" &&
-                r.result >= 0 &&
-                r.result <= 18
-            );
-            if (decimalsRead) {
-              collateralPriceDecimals = decimalsRead.result as number;
-            }
-          }
-
-          let feeUSD: number | undefined;
-          if (collateralPrice) {
-            const price = Number(collateralPrice) / (10 ** collateralPriceDecimals);
-            feeUSD = parseFloat(feeFormatted) * price;
-          }
-
-          const mintFee = {
-            feeAmount: wrappedFee,
-            feeFormatted,
-            feeUSD,
-            feePercentage,
-            tokenSymbol: collateralSymbol,
-            label: "Mint Pegged Tokens",
-          };
-          fees.push(mintFee);
-
-          // Attach fee to the mint step
-          if (mintStepIndex !== null && steps[mintStepIndex]) {
-            steps[mintStepIndex].fee = {
-              amount: wrappedFee,
-              formatted: feeFormatted,
-              usd: feeUSD,
-              percentage: feePercentage,
-              tokenSymbol: collateralSymbol,
-            };
-          }
-        }
-      }
-    }
-
-    // Track if the process has been cancelled
-    const cancelRef = { current: false };
-
-    const handleCancel = () => {
-      cancelRef.current = true;
-      setIsCompounding(false);
-      // Mark all pending steps as cancelled
-      steps.forEach((step) => {
-        if (step.status === "pending") {
-          updateProgressStep(step.id, {
-            status: "error",
-            error: "Cancelled by user",
+        // Add deposit step for each selected pool
+        activeAllocations.forEach((allocation) => {
+          const poolName =
+            allocation.poolId === "collateral" ? "Collateral" : "Sail";
+          steps.push({
+            id: `deposit-${allocation.poolId}`,
+            label: `Deposit to ${poolName} Pool`,
+            status: "pending",
+            details: `Deposit ${
+              allocation.percentage
+            }% to ${poolName.toLowerCase()} pool`,
           });
+        });
+      }
+
+      // Fetch collateral price from price oracle for accurate USD calculations
+      let collateralPriceUSD = 0;
+      const priceOracleAddress = market.addresses?.collateralPrice as
+        | `0x${string}`
+        | undefined;
+      if (priceOracleAddress && publicClient) {
+        try {
+          const client = shouldUseAnvil() ? anvilPublicClient : publicClient;
+          const priceResult = await client?.readContract({
+            address: priceOracleAddress,
+            abi: wrappedPriceOracleABI,
+            functionName: "latestAnswer",
+          });
+
+          if (
+            priceResult &&
+            Array.isArray(priceResult) &&
+            priceResult.length >= 2
+          ) {
+            // Use maxUnderlyingPrice (index 1), prices are in 18 decimals
+            const maxPrice = priceResult[1] as bigint;
+            collateralPriceUSD = Number(maxPrice) / 1e18;
+            console.log("[handleCompoundConfirm] Fetched collateral price:", {
+              priceOracleAddress,
+              maxPrice: maxPrice.toString(),
+              collateralPriceUSD,
+            });
+          }
+        } catch (priceError) {
+          console.error(
+            "[handleCompoundConfirm] Failed to fetch collateral price:",
+            priceError
+          );
         }
+      }
+
+      // Calculate all fees upfront
+      const fees: FeeInfo[] = [];
+      const feeErrors: string[] = [];
+
+      totalCollateralForMinting = collateralReceived;
+
+      // Calculate redeem fee if we'll receive leveraged tokens
+      if (leveragedReceived > 0n && leveragedTokenAddress) {
+        if (!publicClient) {
+          throw new Error("Public client not available");
+        }
+
+        // Use the appropriate client based on environment (same as deposit modal)
+        const client = shouldUseAnvil() ? anvilPublicClient : publicClient;
+        if (!client) {
+          throw new Error("Public client not available");
+        }
+
+        let redeemDryRunResult:
+          | [bigint, bigint, bigint, bigint, bigint, bigint]
+          | undefined;
+        // Retry logic similar to deposit modal (retry: 1)
+        let lastError: any = null;
+        for (let attempt = 0; attempt < 2; attempt++) {
+          try {
+            redeemDryRunResult = (await client.readContract({
+              address: minterAddress,
+              abi: fullMinterABI,
+              functionName: "redeemLeveragedTokenDryRun",
+              args: [leveragedReceived],
+            })) as [bigint, bigint, bigint, bigint, bigint, bigint] | undefined;
+            // If successful, break out of retry loop
+            if (redeemDryRunResult) break;
+          } catch (error: any) {
+            lastError = error;
+            // Wait a bit before retrying (only on first attempt)
+            if (attempt === 0) {
+              await new Promise((resolve) => setTimeout(resolve, 500));
+            }
+          }
+        }
+
+        // If still failed after retries, log but don't throw
+        if (!redeemDryRunResult && lastError) {
+          // Contract call failed - fees won't be shown upfront
+          // User will see fees during actual transaction
+        }
+
+        if (
+          redeemDryRunResult &&
+          Array.isArray(redeemDryRunResult) &&
+          redeemDryRunResult.length >= 4
+        ) {
+          const wrappedFee = redeemDryRunResult[1] as bigint;
+          const wrappedCollateralReturned = redeemDryRunResult[3] as bigint;
+
+          // Validate that wrappedFee is a valid bigint
+          if (
+            wrappedFee !== undefined &&
+            typeof wrappedFee === "bigint" &&
+            wrappedFee >= 0n
+          ) {
+            // Format fee amount nicely
+            const feeAmountNum = Number(wrappedFee) / 1e18;
+            let feeFormatted: string;
+            if (feeAmountNum >= 1) {
+              feeFormatted = feeAmountNum.toLocaleString(undefined, {
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 6,
+              });
+            } else if (feeAmountNum >= 0.01) {
+              feeFormatted = feeAmountNum.toLocaleString(undefined, {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 6,
+              });
+            } else if (feeAmountNum >= 0.0001) {
+              // For amounts between 0.0001 and 0.01, show up to 6 decimals
+              feeFormatted = feeAmountNum
+                .toLocaleString(undefined, {
+                  minimumFractionDigits: 0,
+                  maximumFractionDigits: 6,
+                  useGrouping: false,
+                })
+                .replace(/\.?0+$/, "");
+            } else {
+              // For very small amounts (< 0.0001), show up to 8 significant digits
+              const significantDigits = 8;
+              const magnitude = Math.floor(Math.log10(Math.abs(feeAmountNum)));
+              const decimals = Math.max(0, significantDigits - magnitude - 1);
+              feeFormatted = feeAmountNum
+                .toFixed(decimals)
+                .replace(/\.?0+$/, "");
+            }
+            const feePercentage =
+              leveragedReceived > 0n
+                ? (Number(wrappedFee) / Number(leveragedReceived)) * 100
+                : 0;
+
+            // Calculate USD value using the fetched collateral price
+            let feeUSD: number | undefined;
+            if (collateralPriceUSD > 0) {
+              feeUSD = parseFloat(feeFormatted) * collateralPriceUSD;
+            }
+
+            const redeemFee = {
+              feeAmount: wrappedFee,
+              feeFormatted,
+              feeUSD,
+              feePercentage,
+              tokenSymbol: collateralSymbol, // Fee is in wrapped collateral, not leveraged token
+              label: "Redeem Leveraged Tokens",
+            };
+            fees.push(redeemFee);
+
+            // Attach fee to the redeem step
+            if (redeemStepIndex !== null && steps[redeemStepIndex]) {
+              steps[redeemStepIndex].fee = {
+                amount: wrappedFee,
+                formatted: feeFormatted,
+                usd: feeUSD,
+                percentage: feePercentage,
+                tokenSymbol: collateralSymbol, // Fee is in wrapped collateral, not leveraged token
+              };
+            }
+
+            // Update total collateral for minting
+            if (
+              wrappedCollateralReturned !== undefined &&
+              typeof wrappedCollateralReturned === "bigint"
+            ) {
+              totalCollateralForMinting =
+                collateralReceived + wrappedCollateralReturned;
+            }
+          }
+        }
+      }
+
+      // Calculate mint fee
+      if (totalCollateralForMinting > 0n) {
+        if (!publicClient) {
+          throw new Error("Public client not available");
+        }
+
+        // Use the appropriate client based on environment (same as deposit modal)
+        const client = shouldUseAnvil() ? anvilPublicClient : publicClient;
+        if (!client) {
+          throw new Error("Public client not available");
+        }
+
+        let mintDryRunResult:
+          | [bigint, bigint, bigint, bigint, bigint, bigint]
+          | undefined;
+        // Retry logic similar to deposit modal (retry: 1)
+        let lastError: any = null;
+        for (let attempt = 0; attempt < 2; attempt++) {
+          try {
+            mintDryRunResult = (await client.readContract({
+              address: minterAddress,
+              abi: fullMinterABI,
+              functionName: "mintPeggedTokenDryRun",
+              args: [totalCollateralForMinting],
+            })) as [bigint, bigint, bigint, bigint, bigint, bigint] | undefined;
+            // If successful, break out of retry loop
+            if (
+              mintDryRunResult &&
+              Array.isArray(mintDryRunResult) &&
+              mintDryRunResult.length >= 2
+            ) {
+              break;
+            }
+          } catch (error: any) {
+            lastError = error;
+            // Wait a bit before retrying (only on first attempt)
+            if (attempt === 0) {
+              await new Promise((resolve) => setTimeout(resolve, 500));
+            }
+          }
+        }
+
+        if (
+          mintDryRunResult &&
+          Array.isArray(mintDryRunResult) &&
+          mintDryRunResult.length >= 2
+        ) {
+          const wrappedFee = mintDryRunResult[1] as bigint;
+
+          // Validate that wrappedFee is a valid bigint
+          if (
+            wrappedFee !== undefined &&
+            typeof wrappedFee === "bigint" &&
+            wrappedFee >= 0n
+          ) {
+            // Format fee amount nicely
+            const feeAmountNum = Number(wrappedFee) / 1e18;
+            let feeFormatted: string;
+            if (feeAmountNum >= 1) {
+              feeFormatted = feeAmountNum.toLocaleString(undefined, {
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 6,
+              });
+            } else if (feeAmountNum >= 0.01) {
+              feeFormatted = feeAmountNum.toLocaleString(undefined, {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 6,
+              });
+            } else if (feeAmountNum >= 0.0001) {
+              // For amounts between 0.0001 and 0.01, show up to 6 decimals
+              feeFormatted = feeAmountNum
+                .toLocaleString(undefined, {
+                  minimumFractionDigits: 0,
+                  maximumFractionDigits: 6,
+                  useGrouping: false,
+                })
+                .replace(/\.?0+$/, "");
+            } else {
+              // For very small amounts (< 0.0001), show up to 8 significant digits
+              const significantDigits = 8;
+              const magnitude = Math.floor(Math.log10(Math.abs(feeAmountNum)));
+              const decimals = Math.max(0, significantDigits - magnitude - 1);
+              feeFormatted = feeAmountNum
+                .toFixed(decimals)
+                .replace(/\.?0+$/, "");
+            }
+            const feePercentage =
+              totalCollateralForMinting > 0n
+                ? (Number(wrappedFee) / Number(totalCollateralForMinting)) * 100
+                : 0;
+
+            // Calculate USD value using the fetched collateral price
+            let feeUSD: number | undefined;
+            if (collateralPriceUSD > 0) {
+              feeUSD = parseFloat(feeFormatted) * collateralPriceUSD;
+            }
+
+            const mintFee = {
+              feeAmount: wrappedFee,
+              feeFormatted,
+              feeUSD,
+              feePercentage,
+              tokenSymbol: collateralSymbol,
+              label: "Mint Pegged Tokens",
+            };
+            fees.push(mintFee);
+
+            // Attach fee to the mint step
+            if (mintStepIndex !== null && steps[mintStepIndex]) {
+              steps[mintStepIndex].fee = {
+                amount: wrappedFee,
+                formatted: feeFormatted,
+                usd: feeUSD,
+                percentage: feePercentage,
+                tokenSymbol: collateralSymbol,
+              };
+            }
+          }
+        } else if (lastError) {
+          // Track fee estimation error
+          feeErrors.push(
+            `Failed to estimate mint fee: ${
+              lastError.message || "Unknown error"
+            }`
+          );
+          console.error(
+            "[handleCompoundConfirm] Mint fee estimation failed:",
+            lastError
+          );
+        }
+      }
+
+      const handleCancel = () => {
+        cancelRef.current = true;
+        setIsCompounding(false);
+        // Mark all pending steps as cancelled
+        steps.forEach((step) => {
+          if (step.status === "pending") {
+            updateProgressStep(step.id, {
+              status: "error",
+              error: "Cancelled by user",
+            });
+          }
+        });
+      };
+
+      // Store cancel handler in ref so TransactionProgressModal can access it
+      cancelOperationRef.current = handleCancel;
+
+      // Show confirmation modal first (always show it, even if no fees, to show steps)
+      await new Promise<void>((resolve, reject) => {
+        setCompoundConfirmation({
+          steps,
+          fees,
+          feeErrors,
+          onConfirm: () => {
+            // Close confirmation modal first
+            setCompoundConfirmation(null);
+            // Resolve immediately - UI updates will happen in next tick
+            resolve();
+          },
+        });
       });
-    };
 
-    // Store cancel handler in ref so TransactionProgressModal can access it
-    cancelOperationRef.current = handleCancel;
-
-    // Show confirmation modal first (always show it, even if no fees, to show steps)
-    await new Promise<void>((resolve, reject) => {
-      setCompoundConfirmation({
+      // Now show the progress modal after confirmation
+      setTransactionProgress({
+        isOpen: true,
+        title: "Compounding Rewards",
         steps,
-        fees,
-        onConfirm: () => {
-          // Close confirmation modal first
-          setCompoundConfirmation(null);
-          // Resolve immediately - UI updates will happen in next tick
-          resolve();
-        },
+        currentStepIndex: 0,
       });
-    });
-    
-    // Now show the progress modal after confirmation
-    setTransactionProgress({
-      isOpen: true,
-      title: "Compounding Rewards",
-      steps,
-      currentStepIndex: 0,
-    });
-    
-    // Small delay to ensure UI updates
-    await new Promise(resolve => setTimeout(resolve, 100));
-    
+
+      // Small delay to ensure UI updates
+      await new Promise((resolve) => setTimeout(resolve, 100));
     } catch (setupError: any) {
       // Handle errors during setup phase
-      const errorMessage = setupError?.message || "Failed to set up compound process";
+      const errorMessage =
+        setupError?.message || "Failed to set up compound process";
       updateProgressStep("setup", {
         status: "error",
         error: errorMessage,
@@ -3161,54 +3697,74 @@ export default function AnchorPage() {
     }
 
     // Wait a moment after confirmation to ensure UI is ready
-    await new Promise(resolve => setTimeout(resolve, 200));
+    await new Promise((resolve) => setTimeout(resolve, 200));
 
     try {
       setIsCompounding(true);
 
-      // Step 1: Claim rewards (we already know what we'll receive from claimable amounts)
-      if (cancelRef.current) throw new Error("Cancelled by user");
-      
-      // Update progress to show we're starting the claim
-      setCurrentStep(0);
-      updateProgressStep("claim", { status: "in_progress" });
-      
-      // Wait a moment to ensure UI updates
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-      if (cancelRef.current) throw new Error("Cancelled by user");
-      
       // Verify writeContractAsync is available
-      if (typeof writeContractAsync !== 'function') {
+      if (typeof writeContractAsync !== "function") {
         throw new Error("writeContractAsync is not a function");
       }
-      
-      // Execute the claim transaction
-      const claimHash = await writeContractAsync({
-        address: poolAddress,
-        abi: fullStabilityPoolABI,
-        functionName: "claim",
-      });
-      updateProgressStep("claim", {
-        status: "in_progress",
-        txHash: claimHash as string,
-        details: "Waiting for transaction confirmation...",
-      });
-      await publicClient?.waitForTransactionReceipt({
-        hash: claimHash as `0x${string}`,
-      });
-      updateProgressStep("claim", {
-        status: "completed",
-        txHash: claimHash as string,
-        details: "Transaction confirmed",
-      });
+
+      // Find the index of a step dynamically
+      const findStepIndex = (stepId: string): number => {
+        return steps.findIndex((s) => s.id === stepId);
+      };
+
+      // Step 1: Claim rewards from ALL pools that have rewards
+      for (let i = 0; i < poolsWithRewards.length; i++) {
+        const pool = poolsWithRewards[i];
+        const stepId = `claim-${pool.poolType}`;
+
+        if (cancelRef.current) throw new Error("Cancelled by user");
+
+        // Update progress to show we're starting this claim
+        const stepIndex = findStepIndex(stepId);
+        setCurrentStep(stepIndex);
+        updateProgressStep(stepId, { status: "in_progress" });
+
+        // Wait a moment to ensure UI updates
+        await new Promise((resolve) => setTimeout(resolve, 100));
+
+        if (cancelRef.current) throw new Error("Cancelled by user");
+
+        // Execute the claim transaction for this pool
+        updateProgressStep(stepId, {
+          status: "in_progress",
+          details: "Sending transaction to wallet...",
+        });
+
+        const claimHash = await writeContractAsync({
+          address: pool.poolAddress,
+          abi: rewardsABI,
+          functionName: "claim",
+        });
+        updateProgressStep(stepId, {
+          status: "in_progress",
+          txHash: claimHash as string,
+          details: "Waiting for transaction confirmation...",
+        });
+        await publicClient?.waitForTransactionReceipt({
+          hash: claimHash as `0x${string}`,
+        });
+        updateProgressStep(stepId, {
+          status: "completed",
+          txHash: claimHash as string,
+          details: "Transaction confirmed",
+        });
+
+        // Small delay to ensure UI updates before moving to next step
+        await new Promise((resolve) => setTimeout(resolve, 300));
+      }
 
       // Step 2: If we received leveraged tokens, redeem them for collateral
-      let currentStepIndex = 1;
-      
+      let currentStepIndex = poolsWithRewards.length;
+
       if (leveragedReceived > 0n && leveragedTokenAddress) {
         // Approve leveraged token for minter if needed
         if (cancelRef.current) throw new Error("Cancelled by user");
+        currentStepIndex = findStepIndex("approve-leveraged");
         setCurrentStep(currentStepIndex);
         updateProgressStep("approve-leveraged", { status: "in_progress" });
         const leveragedAllowance = (await publicClient?.readContract({
@@ -3247,10 +3803,10 @@ export default function AnchorPage() {
 
         // Redeem leveraged tokens for collateral
         if (cancelRef.current) throw new Error("Cancelled by user");
-        currentStepIndex++;
+        currentStepIndex = findStepIndex("redeem");
         setCurrentStep(currentStepIndex);
         updateProgressStep("redeem", { status: "in_progress" });
-        
+
         const collateralFromRedeem = (await publicClient?.readContract({
           address: minterAddress,
           abi: minterABI,
@@ -3258,7 +3814,8 @@ export default function AnchorPage() {
           args: [leveragedReceived],
         })) as bigint | undefined;
 
-        if (!collateralFromRedeem) throw new Error("Failed to calculate redeem output");
+        if (!collateralFromRedeem)
+          throw new Error("Failed to calculate redeem output");
 
         const minCollateralOut = (collateralFromRedeem * 99n) / 100n;
         const redeemHash = await writeContractAsync({
@@ -3280,7 +3837,6 @@ export default function AnchorPage() {
           txHash: redeemHash as string,
           details: "Transaction confirmed",
         });
-        currentStepIndex++;
       }
 
       // Step 3: Mint ha tokens from total collateral
@@ -3300,6 +3856,7 @@ export default function AnchorPage() {
 
       // Approve collateral for minter if needed
       if (cancelRef.current) throw new Error("Cancelled by user");
+      currentStepIndex = findStepIndex("approve-collateral");
       setCurrentStep(currentStepIndex);
       updateProgressStep("approve-collateral", { status: "in_progress" });
       const allowance = (await publicClient?.readContract({
@@ -3339,7 +3896,7 @@ export default function AnchorPage() {
 
       // Mint pegged tokens
       if (cancelRef.current) throw new Error("Cancelled by user");
-      currentStepIndex++;
+      currentStepIndex = findStepIndex("mint");
       setCurrentStep(currentStepIndex);
       updateProgressStep("mint", { status: "in_progress" });
       const minPeggedOut = (expectedOutput * 99n) / 100n;
@@ -3363,85 +3920,122 @@ export default function AnchorPage() {
         details: "Transaction confirmed",
       });
 
-      // Step 4: Approve and deposit to stability pool
-      if (cancelRef.current) throw new Error("Cancelled by user");
-      setCurrentStep(currentStepIndex);
-      updateProgressStep("approve-pegged", { status: "in_progress" });
-      
+      // Step 4: Approve and deposit to each stability pool
       // Get actual ha token balance (includes both direct rewards and minted tokens)
-      const haTokenBalance = (await publicClient?.readContract({
-        address: peggedTokenAddress,
-        abi: ERC20_ABI,
-        functionName: "balanceOf",
-        args: [address],
-      })) as bigint || 0n;
-
-      const peggedAllowance = (await publicClient?.readContract({
-        address: peggedTokenAddress,
-        abi: ERC20_ABI,
-        functionName: "allowance",
-        args: [address, collateralPoolAddress],
-      })) as bigint | undefined;
-
-      // Use actual balance instead of expected output (in case we have direct ha rewards)
-      const depositAmount = haTokenBalance > 0n ? haTokenBalance : expectedOutput;
-
-      if (!peggedAllowance || peggedAllowance < depositAmount) {
-        const approvePeggedHash = await writeContractAsync({
+      const haTokenBalance =
+        ((await publicClient?.readContract({
           address: peggedTokenAddress,
           abi: ERC20_ABI,
-          functionName: "approve",
-          args: [collateralPoolAddress, depositAmount],
+          functionName: "balanceOf",
+          args: [address],
+        })) as bigint) || 0n;
+
+      // Use actual balance instead of expected output (in case we have direct ha rewards)
+      const depositAmount =
+        haTokenBalance > 0n ? haTokenBalance : expectedOutput;
+
+      // Deposit to all selected pools based on percentage allocations
+      // Calculate deposit amounts based on percentages
+      let remainingAmount = depositAmount;
+
+      for (let i = 0; i < activeAllocations.length; i++) {
+        const allocation = activeAllocations[i];
+        const poolType = allocation.poolId;
+        const targetPoolAddress =
+          poolType === "collateral" ? collateralPoolAddress : sailPoolAddress;
+        const poolName = poolType === "collateral" ? "Collateral" : "Sail";
+
+        if (!targetPoolAddress) {
+          throw new Error(`Pool address not found for ${poolType} pool`);
+        }
+
+        // Calculate deposit amount based on percentage
+        // For the last pool, use remaining amount to account for rounding
+        let poolDepositAmount: bigint;
+        if (i === activeAllocations.length - 1) {
+          poolDepositAmount = remainingAmount;
+        } else {
+          // Calculate: depositAmount * percentage / 100
+          poolDepositAmount =
+            (depositAmount * BigInt(allocation.percentage)) / 100n;
+          remainingAmount -= poolDepositAmount;
+        }
+
+        // Step: Approve for this pool
+        if (cancelRef.current) throw new Error("Cancelled by user");
+        const approveStepId = `approve-pegged-${poolType}`;
+        currentStepIndex = findStepIndex(approveStepId);
+        setCurrentStep(currentStepIndex);
+        updateProgressStep(approveStepId, { status: "in_progress" });
+
+        // Check allowance for this pool
+        const poolAllowance = (await publicClient?.readContract({
+          address: peggedTokenAddress,
+          abi: ERC20_ABI,
+          functionName: "allowance",
+          args: [address, targetPoolAddress],
+        })) as bigint | undefined;
+
+        if (!poolAllowance || poolAllowance < poolDepositAmount) {
+          const approveHash = await writeContractAsync({
+            address: peggedTokenAddress,
+            abi: ERC20_ABI,
+            functionName: "approve",
+            args: [targetPoolAddress, poolDepositAmount],
+          });
+          updateProgressStep(approveStepId, {
+            status: "in_progress",
+            txHash: approveHash as string,
+            details: "Waiting for transaction confirmation...",
+          });
+          await publicClient?.waitForTransactionReceipt({
+            hash: approveHash as `0x${string}`,
+          });
+          updateProgressStep(approveStepId, {
+            status: "completed",
+            txHash: approveHash as string,
+            details: "Transaction confirmed",
+          });
+        } else {
+          updateProgressStep(approveStepId, {
+            status: "completed",
+            details: "Already approved",
+          });
+        }
+
+        // Step: Deposit to this pool
+        if (cancelRef.current) throw new Error("Cancelled by user");
+        const depositStepId = `deposit-${poolType}`;
+        currentStepIndex = findStepIndex(depositStepId);
+        setCurrentStep(currentStepIndex);
+        updateProgressStep(depositStepId, { status: "in_progress" });
+
+        const minDepositAmount = (poolDepositAmount * 99n) / 100n;
+        const depositHash = await writeContractAsync({
+          address: targetPoolAddress,
+          abi: STABILITY_POOL_ABI,
+          functionName: "deposit",
+          args: [poolDepositAmount, address, minDepositAmount],
         });
-        updateProgressStep("approve-pegged", {
+        updateProgressStep(depositStepId, {
           status: "in_progress",
-          txHash: approvePeggedHash as string,
+          txHash: depositHash as string,
           details: "Waiting for transaction confirmation...",
         });
         await publicClient?.waitForTransactionReceipt({
-          hash: approvePeggedHash as `0x${string}`,
+          hash: depositHash as `0x${string}`,
         });
-        updateProgressStep("approve-pegged", {
+        updateProgressStep(depositStepId, {
           status: "completed",
-          txHash: approvePeggedHash as string,
+          txHash: depositHash as string,
           details: "Transaction confirmed",
         });
-      } else {
-        updateProgressStep("approve-pegged", {
-          status: "completed",
-          details: "Already approved",
-        });
-      }
 
-      if (cancelRef.current) throw new Error("Cancelled by user");
-      currentStepIndex++;
-      setCurrentStep(currentStepIndex);
-      updateProgressStep("deposit", { status: "in_progress" });
-      
-      // Always deposit to collateral pool after compounding
-      if (!collateralPoolAddress || !peggedTokenAddress) throw new Error("Deposit pool address not found");
-      
-      // Use actual balance for deposit (with 1% slippage protection)
-      const minDepositAmount = (depositAmount * 99n) / 100n;
-      const depositHash = await writeContractAsync({
-        address: collateralPoolAddress,
-        abi: fullStabilityPoolABI,
-        functionName: "deposit",
-        args: [depositAmount, address, minDepositAmount],
-      });
-      updateProgressStep("deposit", {
-        status: "in_progress",
-        txHash: depositHash as string,
-        details: "Waiting for transaction confirmation...",
-      });
-      await publicClient?.waitForTransactionReceipt({
-        hash: depositHash as `0x${string}`,
-      });
-      updateProgressStep("deposit", {
-        status: "completed",
-        txHash: depositHash as string,
-        details: "Transaction confirmed",
-      });
+        // Small delay between pools to ensure UI updates
+        if (i < activeAllocations.length - 1) {
+          await new Promise((resolve) => setTimeout(resolve, 500));
+        }
+      }
 
       // Wait for blockchain state to update
       await new Promise((resolve) => setTimeout(resolve, 2000));
@@ -3456,12 +4050,15 @@ export default function AnchorPage() {
       const errorMessage = isUserRejection(error)
         ? "User declined the transaction"
         : error.message || "Transaction failed";
-      
+
       // If user rejected or cancelled, mark all remaining steps as cancelled
       if (isUserRejection(error) || error.message === "Cancelled by user") {
         if (transactionProgress) {
           transactionProgress.steps.forEach((step, index) => {
-            if (index > transactionProgress.currentStepIndex && step.status === "pending") {
+            if (
+              index > transactionProgress.currentStepIndex &&
+              step.status === "pending"
+            ) {
               updateProgressStep(step.id, {
                 status: "error",
                 error: "Cancelled - previous transaction declined",
@@ -3470,16 +4067,40 @@ export default function AnchorPage() {
           });
         }
       }
-      
+
       // Mark current step as error
       if (transactionProgress) {
-        const currentStep = transactionProgress.steps[transactionProgress.currentStepIndex];
+        const currentStep =
+          transactionProgress.steps[transactionProgress.currentStepIndex];
         if (currentStep) {
           updateProgressStep(currentStep.id, {
             status: "error",
             error: errorMessage,
           });
+        } else {
+          // If no current step, mark the first pending step as error
+          const firstPendingStep = transactionProgress.steps.find(
+            (s) => s.status === "pending"
+          );
+          if (firstPendingStep) {
+            updateProgressStep(firstPendingStep.id, {
+              status: "error",
+              error: errorMessage,
+            });
+          }
         }
+      } else {
+        // If transactionProgress is null, create it to show the error
+        setTransactionProgress({
+          isOpen: true,
+          title: "Compounding Rewards",
+          steps: steps.map((s, i) =>
+            i === 0
+              ? { ...s, status: "error" as const, error: errorMessage }
+              : s
+          ),
+          currentStepIndex: 0,
+        });
       }
       // Don't close modal on error - let user see what failed
     } finally {
@@ -3523,17 +4144,18 @@ export default function AnchorPage() {
         return;
       }
 
-
       // Initialize progress modal with steps for each pool
-      const steps: TransactionStep[] = poolsToClaim.map(({ marketId, poolType }) => {
-        const market = anchorMarkets.find(([id]) => id === marketId)?.[1];
-        const marketSymbol = market?.peggedToken?.symbol || marketId;
-        return {
-          id: `${marketId}-${poolType}`,
-          label: `Claim rewards from ${marketSymbol} ${poolType} pool`,
-          status: "pending",
-        };
-      });
+      const steps: TransactionStep[] = poolsToClaim.map(
+        ({ marketId, poolType }) => {
+          const market = anchorMarkets.find(([id]) => id === marketId)?.[1];
+          const marketSymbol = market?.peggedToken?.symbol || marketId;
+          return {
+            id: `${marketId}-${poolType}`,
+            label: `Claim rewards from ${marketSymbol} ${poolType} pool`,
+            status: "pending",
+          };
+        }
+      );
 
       // Track if the process has been cancelled - use a ref so it persists across renders
       const cancelRef = { current: false };
@@ -3568,7 +4190,7 @@ export default function AnchorPage() {
           break;
         }
         const { marketId, poolType } = poolsToClaim[i];
-        
+
         const market = anchorMarkets.find(([id]) => id === marketId)?.[1];
         if (!market) {
           const stepId = `${marketId}-${poolType}`;
@@ -3594,7 +4216,6 @@ export default function AnchorPage() {
               : ((market as any).addresses?.stabilityPoolLeveraged as
                   | `0x${string}`
                   | undefined);
-
 
           if (!poolAddress) {
             updateProgressStep(stepId, {
@@ -3637,7 +4258,7 @@ export default function AnchorPage() {
             error: errorMessage,
           });
           errorCount++;
-          
+
           // If user rejected, stop processing remaining transactions
           if (isUserRejection(e)) {
             cancelRef.current = true;
@@ -3668,7 +4289,7 @@ export default function AnchorPage() {
         setTimeout(() => {
           setTransactionProgress(null);
         }, 1500);
-        } else {
+      } else {
         // If no transactions completed, keep modal open to show errors
         // Don't close the modal - let user see what went wrong
       }
@@ -3700,109 +4321,69 @@ export default function AnchorPage() {
     }> = []
   ) => {
     if (!address || isCompoundingAll) return;
-    try {
-      setIsCompoundingAll(true);
 
-      // Collect rewards from selected pools
-      const allRewards: Array<{
-        market: any;
-        poolType: "collateral" | "sail";
-        rewardAmount: bigint;
-      }> = [];
+    // First, find the market with rewards to compound
+    // Use the first market with rewards (for now, we show one pool selection modal)
+    let marketWithRewards: any = null;
+    let totalRewardAmount = 0n;
 
-      // If no pools selected, compound from all pools (backward compatibility)
-      const poolsToCompound =
-        selectedPools.length > 0
-          ? selectedPools
-          : anchorMarkets.flatMap(([id, m]) => {
-              const pools: Array<{
-                marketId: string;
-                poolType: "collateral" | "sail";
-              }> = [];
-              if ((m as any).addresses?.stabilityPoolCollateral) {
-                pools.push({ marketId: id, poolType: "collateral" });
-              }
-              if ((m as any).addresses?.stabilityPoolLeveraged) {
-                pools.push({ marketId: id, poolType: "sail" });
-              }
-              return pools;
-            });
+    // If no pools selected, use all pools with rewards
+    const poolsToCompound =
+      selectedPools.length > 0
+        ? selectedPools
+        : anchorMarkets.flatMap(([id, m]) => {
+            const pools: Array<{
+              marketId: string;
+              poolType: "collateral" | "sail";
+            }> = [];
+            if ((m as any).addresses?.stabilityPoolCollateral) {
+              pools.push({ marketId: id, poolType: "collateral" });
+            }
+            if ((m as any).addresses?.stabilityPoolLeveraged) {
+              pools.push({ marketId: id, poolType: "sail" });
+            }
+            return pools;
+          });
 
-      anchorMarkets.forEach(([id, m], mi) => {
-        const selectedPool = poolsToCompound.find((p) => p.marketId === id);
-        if (!selectedPool) return;
+    // Find first market with rewards
+    for (const [id, m] of anchorMarkets) {
+      const selectedPool = poolsToCompound.find((p) => p.marketId === id);
+      if (!selectedPool) continue;
 
-        const hasCollateralPool = !!(m as any).addresses
-          ?.stabilityPoolCollateral;
-        const hasSailPool = !!(m as any).addresses?.stabilityPoolLeveraged;
+      // Check if this market has rewards
+      const collateralPoolAddress = (m as any).addresses
+        ?.stabilityPoolCollateral;
+      const sailPoolAddress = (m as any).addresses?.stabilityPoolLeveraged;
 
-        let offset = 0;
-        for (let i = 0; i < mi; i++) {
-          const prevMarket = anchorMarkets[i][1];
-          const prevHasCollateral = !!(prevMarket as any).addresses
-            ?.stabilityPoolCollateral;
-          const prevHasSail = !!(prevMarket as any).addresses
-            ?.stabilityPoolLeveraged;
-          const prevHasPriceOracle = !!(prevMarket as any).addresses
-            ?.collateralPrice;
-          offset += 4;
-          if (prevHasCollateral) offset += 3;
-          if (prevHasSail) offset += 3;
-          if (prevHasPriceOracle) offset += 2;
-        }
+      const poolReward = allPoolRewards?.find(
+        (r) =>
+          (collateralPoolAddress &&
+            r.poolAddress.toLowerCase() ===
+              collateralPoolAddress.toLowerCase()) ||
+          (sailPoolAddress &&
+            r.poolAddress.toLowerCase() === sailPoolAddress.toLowerCase())
+      );
 
-        const baseOffset = offset;
-        let currentOffset = baseOffset + 4;
-
-        if (hasCollateralPool && selectedPool.poolType === "collateral") {
-          const collateralPoolRewards = reads?.[currentOffset + 2]?.result as
-            | bigint
-            | undefined;
-          if (collateralPoolRewards && collateralPoolRewards > 0n) {
-            allRewards.push({
-              market: m,
-              poolType: "collateral",
-              rewardAmount: collateralPoolRewards,
-            });
-          }
-          currentOffset += 3;
-        }
-
-        if (hasSailPool && selectedPool.poolType === "sail") {
-          const sailPoolRewards = reads?.[currentOffset + 2]?.result as
-            | bigint
-            | undefined;
-          if (sailPoolRewards && sailPoolRewards > 0n) {
-            allRewards.push({
-              market: m,
-              poolType: "sail",
-              rewardAmount: sailPoolRewards,
-            });
-          }
-        }
-      });
-
-      // Process all rewards - compound each one
-      for (const reward of allRewards) {
-        try {
-          await handleCompoundConfirm(
-            reward.market,
-            reward.poolType,
-            reward.rewardAmount
-          );
-        } catch (e) {
-          // Failed to compound rewards
-        }
+      if (
+        poolReward &&
+        poolReward.rewardTokens.some((rt) => rt.claimable > 0n)
+      ) {
+        marketWithRewards = m;
+        totalRewardAmount = poolReward.rewardTokens.reduce(
+          (sum, rt) => sum + rt.claimable,
+          0n
+        );
+        break;
       }
-      // Wait for blockchain state to update
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-      // Refetch all contract data
-      await Promise.all([refetchReads(), refetchUserDeposits()]);
-    } catch (error) {
-      // Compound all error
-    } finally {
-      setIsCompoundingAll(false);
     }
+
+    if (!marketWithRewards) {
+      // No rewards to compound
+      return;
+    }
+
+    // Show pool selection modal for this market
+    handleCompoundRewards(marketWithRewards, "collateral", totalRewardAmount);
   };
 
   const handleBuyTide = async (
@@ -4055,7 +4636,7 @@ export default function AnchorPage() {
                     offset += 4; // 4 pool reads
                     if (prevPeggedTokenAddress) offset += 1; // rewardData
                   }
-                  if (prevHasPriceOracle) offset += 2;
+                  if (prevHasPriceOracle) offset += 1;
                 }
 
                 const baseOffset = offset;
@@ -4167,7 +4748,8 @@ export default function AnchorPage() {
                             // Add to existing APR
                             collateralPoolAPR = {
                               collateral:
-                                (collateralPoolAPR.collateral || 0) + calculatedAPR,
+                                (collateralPoolAPR.collateral || 0) +
+                                calculatedAPR,
                               steam: collateralPoolAPR.steam || 0,
                             };
                           }
@@ -4178,28 +4760,49 @@ export default function AnchorPage() {
 
                   // Add additional APR from all reward tokens (including wstETH, etc.)
                   const collateralPoolAddress = hasCollateralPool
-                    ? ((m as any).addresses
-                        ?.stabilityPoolCollateral as `0x${string}` | undefined)
+                    ? ((m as any).addresses?.stabilityPoolCollateral as
+                        | `0x${string}`
+                        | undefined)
                     : undefined;
                   if (collateralPoolAddress) {
-                    const poolReward = poolRewardsMap.get(collateralPoolAddress);
-                    if (poolReward?.totalRewardAPR && poolReward.totalRewardAPR > 0) {
+                    const poolReward = poolRewardsMap.get(
+                      collateralPoolAddress
+                    );
+                    if (
+                      poolReward?.totalRewardAPR &&
+                      poolReward.totalRewardAPR > 0
+                    ) {
                       // Add the APR from all reward tokens to the existing APR
                       // We need to subtract the pegged token APR we already added to avoid double-counting
-                      const peggedTokenAPR = collateralRewardData && collateralRewardData[2] > 0n
-                        ? (() => {
-                            const rewardRate = collateralRewardData[2];
-                            const SECONDS_PER_YEAR = 365 * 24 * 60 * 60;
-                            const ratePerTokenPerSecond = Number(rewardRate) / Number(collateralPoolTVL);
-                            const annualRewards = ratePerTokenPerSecond * Number(collateralPoolTVL) * SECONDS_PER_YEAR;
-                            const rewardTokenPrice = Number(peggedTokenPrice) / 1e18;
-                            const depositTokenPrice = Number(peggedTokenPrice) / 1e18;
-                            const annualRewardsValueUSD = (annualRewards * rewardTokenPrice) / 1e18;
-                            const depositValueUSD = (Number(collateralPoolTVL) * depositTokenPrice) / 1e18;
-                            return depositValueUSD > 0 ? (annualRewardsValueUSD / depositValueUSD) * 100 : 0;
-                          })()
-                        : 0;
-                      const additionalAPR = poolReward.totalRewardAPR - peggedTokenAPR;
+                      const peggedTokenAPR =
+                        collateralRewardData && collateralRewardData[2] > 0n
+                          ? (() => {
+                              const rewardRate = collateralRewardData[2];
+                              const SECONDS_PER_YEAR = 365 * 24 * 60 * 60;
+                              const ratePerTokenPerSecond =
+                                Number(rewardRate) / Number(collateralPoolTVL);
+                              const annualRewards =
+                                ratePerTokenPerSecond *
+                                Number(collateralPoolTVL) *
+                                SECONDS_PER_YEAR;
+                              const rewardTokenPrice =
+                                Number(peggedTokenPrice) / 1e18;
+                              const depositTokenPrice =
+                                Number(peggedTokenPrice) / 1e18;
+                              const annualRewardsValueUSD =
+                                (annualRewards * rewardTokenPrice) / 1e18;
+                              const depositValueUSD =
+                                (Number(collateralPoolTVL) *
+                                  depositTokenPrice) /
+                                1e18;
+                              return depositValueUSD > 0
+                                ? (annualRewardsValueUSD / depositValueUSD) *
+                                    100
+                                : 0;
+                            })()
+                          : 0;
+                      const additionalAPR =
+                        poolReward.totalRewardAPR - peggedTokenAPR;
                       if (additionalAPR > 0) {
                         if (!collateralPoolAPR) {
                           collateralPoolAPR = {
@@ -4209,11 +4812,15 @@ export default function AnchorPage() {
                         } else {
                           collateralPoolAPR = {
                             collateral:
-                              (collateralPoolAPR.collateral || 0) + additionalAPR,
+                              (collateralPoolAPR.collateral || 0) +
+                              additionalAPR,
                             steam: collateralPoolAPR.steam || 0,
                           };
                         }
-                      } else if (poolReward.totalRewardAPR > 0 && !collateralPoolAPR) {
+                      } else if (
+                        poolReward.totalRewardAPR > 0 &&
+                        !collateralPoolAPR
+                      ) {
                         // If we don't have pegged token APR but have other reward tokens
                         collateralPoolAPR = {
                           collateral: poolReward.totalRewardAPR,
@@ -4322,12 +4929,16 @@ export default function AnchorPage() {
 
                   // Add additional APR from all reward tokens (including wstETH, etc.)
                   const sailPoolAddress = hasSailPool
-                    ? ((m as any).addresses
-                        ?.stabilityPoolLeveraged as `0x${string}` | undefined)
+                    ? ((m as any).addresses?.stabilityPoolLeveraged as
+                        | `0x${string}`
+                        | undefined)
                     : undefined;
                   if (sailPoolAddress) {
                     const poolReward = poolRewardsMap.get(sailPoolAddress);
-                    if (poolReward?.totalRewardAPR && poolReward.totalRewardAPR > 0) {
+                    if (
+                      poolReward?.totalRewardAPR &&
+                      poolReward.totalRewardAPR > 0
+                    ) {
                       // Add the APR from all reward tokens to the existing APR
                       // We need to subtract the pegged token APR we already added to avoid double-counting
                       // Calculate pegged token APR if we have the data
@@ -4341,17 +4952,27 @@ export default function AnchorPage() {
                       ) {
                         const rewardRate = sailRewardData[2];
                         const SECONDS_PER_YEAR = 365 * 24 * 60 * 60;
-                        const ratePerTokenPerSecond = Number(rewardRate) / Number(sailPoolTVL);
-                        const annualRewards = ratePerTokenPerSecond * Number(sailPoolTVL) * SECONDS_PER_YEAR;
-                        const rewardTokenPrice = Number(peggedTokenPrice) / 1e18;
-                        const depositTokenPrice = Number(peggedTokenPrice) / 1e18;
-                        const annualRewardsValueUSD = (annualRewards * rewardTokenPrice) / 1e18;
-                        const depositValueUSD = (Number(sailPoolTVL) * depositTokenPrice) / 1e18;
+                        const ratePerTokenPerSecond =
+                          Number(rewardRate) / Number(sailPoolTVL);
+                        const annualRewards =
+                          ratePerTokenPerSecond *
+                          Number(sailPoolTVL) *
+                          SECONDS_PER_YEAR;
+                        const rewardTokenPrice =
+                          Number(peggedTokenPrice) / 1e18;
+                        const depositTokenPrice =
+                          Number(peggedTokenPrice) / 1e18;
+                        const annualRewardsValueUSD =
+                          (annualRewards * rewardTokenPrice) / 1e18;
+                        const depositValueUSD =
+                          (Number(sailPoolTVL) * depositTokenPrice) / 1e18;
                         if (depositValueUSD > 0) {
-                          peggedTokenAPR = (annualRewardsValueUSD / depositValueUSD) * 100;
+                          peggedTokenAPR =
+                            (annualRewardsValueUSD / depositValueUSD) * 100;
                         }
                       }
-                      const additionalAPR = poolReward.totalRewardAPR - peggedTokenAPR;
+                      const additionalAPR =
+                        poolReward.totalRewardAPR - peggedTokenAPR;
                       if (additionalAPR > 0) {
                         if (!sailPoolAPR) {
                           sailPoolAPR = {
@@ -4374,19 +4995,33 @@ export default function AnchorPage() {
                 }
 
                 const hasPriceOracle = !!(m as any).addresses?.collateralPrice;
-                let collateralPriceDecimals: number | undefined;
+                const collateralPriceDecimals = 18;
                 let collateralPrice: bigint | undefined;
                 if (hasPriceOracle) {
-                  collateralPriceDecimals = reads?.[currentOffset]?.result as
-                    | number
-                    | undefined;
-                  const priceRaw = reads?.[currentOffset + 1]?.result as
-                    | bigint
-                    | undefined;
-                  collateralPrice = priceRaw;
+                  const latestAnswerResult = reads?.[currentOffset]?.result;
+                  if (
+                    latestAnswerResult !== undefined &&
+                    latestAnswerResult !== null
+                  ) {
+                    if (Array.isArray(latestAnswerResult)) {
+                      collateralPrice = latestAnswerResult[1] as bigint;
+                    } else if (typeof latestAnswerResult === "object") {
+                      const obj = latestAnswerResult as {
+                        maxUnderlyingPrice?: bigint;
+                      };
+                      collateralPrice = obj.maxUnderlyingPrice;
+                    } else if (typeof latestAnswerResult === "bigint") {
+                      collateralPrice = latestAnswerResult;
+                    }
+                  }
                 }
 
-                const userDeposit = userDepositMap.get(mi) || 0n;
+                // Get position data from hook (more accurate than contract reads)
+                const positionData = marketPositions?.[id];
+                const userDeposit = positionData?.walletHa || 0n;
+                const collateralPoolDepositUSD =
+                  positionData?.collateralPoolUSD || 0;
+                const sailPoolDepositUSD = positionData?.sailPoolUSD || 0;
 
                 // Calculate rewards USD from all reward tokens
                 // Use the aggregated rewards from useAllStabilityPoolRewards
@@ -4407,74 +5042,66 @@ export default function AnchorPage() {
                   }
                 }
 
-                // Calculate position USD and blended APR
-                if (
-                  collateralPoolDeposit &&
-                  collateralPoolDeposit > 0n &&
-                  peggedTokenPrice
-                ) {
-                  const depositAmount = Number(collateralPoolDeposit) / 1e18;
-                  const peggedPriceUSD = Number(peggedTokenPrice) / 1e18;
-                  const depositUSD = depositAmount * peggedPriceUSD;
-                  totalPositionForBar += depositUSD;
+                // Calculate blended APR using position data from hooks and APR from all reward tokens
+                // Collateral Pool
+                if (hasCollateralPool && collateralPoolDepositUSD > 0) {
+                  const collateralPoolAddress = (m as any).addresses
+                    ?.stabilityPoolCollateral as `0x${string}`;
+                  const poolReward = poolRewardsMap.get(collateralPoolAddress);
 
-                  // Add to blended APR calculation
-                  if (collateralPoolAPR) {
-                    const poolAPR =
-                      collateralPoolAPR.collateral + collateralPoolAPR.steam;
-                    if (poolAPR > 0) {
-                      totalWeightedAPR += depositUSD * poolAPR;
-                      totalDepositUSD += depositUSD;
-                      // Track for tooltip
-                      positionAPRs.push({
-                        poolType: "collateral",
-                        marketId: id,
-                        depositUSD,
-                        apr: poolAPR,
-                      });
-                    }
+                  // Use totalRewardAPR from useAllStabilityPoolRewards (includes all reward tokens)
+                  const poolAPR = poolReward?.totalRewardAPR || 0;
+
+                  if (poolAPR > 0) {
+                    totalPositionForBar += collateralPoolDepositUSD;
+                    totalWeightedAPR += collateralPoolDepositUSD * poolAPR;
+                    totalDepositUSD += collateralPoolDepositUSD;
+                    // Track for tooltip
+                    positionAPRs.push({
+                      poolType: "collateral",
+                      marketId: id,
+                      depositUSD: collateralPoolDepositUSD,
+                      apr: poolAPR,
+                    });
+                  } else {
+                    // Still count position even if no APR
+                    totalPositionForBar += collateralPoolDepositUSD;
                   }
                 }
-                if (
-                  sailPoolDeposit &&
-                  sailPoolDeposit > 0n &&
-                  peggedTokenPrice
-                ) {
-                  const depositAmount = Number(sailPoolDeposit) / 1e18;
-                  const peggedPriceUSD = Number(peggedTokenPrice) / 1e18;
-                  const depositUSD = depositAmount * peggedPriceUSD;
-                  totalPositionForBar += depositUSD;
 
-                  // Add to blended APR calculation
-                  if (sailPoolAPR) {
-                    const poolAPR = sailPoolAPR.collateral + sailPoolAPR.steam;
-                    if (poolAPR > 0) {
-                      totalWeightedAPR += depositUSD * poolAPR;
-                      totalDepositUSD += depositUSD;
-                      // Track for tooltip
-                      positionAPRs.push({
-                        poolType: "sail",
-                        marketId: id,
-                        depositUSD,
-                        apr: poolAPR,
-                      });
-                    }
+                // Sail Pool
+                if (hasSailPool && sailPoolDepositUSD > 0) {
+                  const sailPoolAddress = (m as any).addresses
+                    ?.stabilityPoolLeveraged as `0x${string}`;
+                  const poolReward = poolRewardsMap.get(sailPoolAddress);
+
+                  // Use totalRewardAPR from useAllStabilityPoolRewards (includes all reward tokens)
+                  const poolAPR = poolReward?.totalRewardAPR || 0;
+
+                  if (poolAPR > 0) {
+                    totalPositionForBar += sailPoolDepositUSD;
+                    totalWeightedAPR += sailPoolDepositUSD * poolAPR;
+                    totalDepositUSD += sailPoolDepositUSD;
+                    // Track for tooltip
+                    positionAPRs.push({
+                      poolType: "sail",
+                      marketId: id,
+                      depositUSD: sailPoolDepositUSD,
+                      apr: poolAPR,
+                    });
+                  } else {
+                    // Still count position even if no APR
+                    totalPositionForBar += sailPoolDepositUSD;
                   }
                 }
+
+                // Wallet ha tokens (don't earn APR, but count towards total position)
                 if (
                   userDeposit &&
                   userDeposit > 0n &&
-                  peggedTokenPrice &&
-                  collateralPrice &&
-                  collateralPriceDecimals !== undefined
+                  positionData?.walletHaUSD
                 ) {
-                  const peggedPrice = Number(peggedTokenPrice) / 1e18;
-                  const collateralPriceNum =
-                    Number(collateralPrice) /
-                    10 ** (Number(collateralPriceDecimals) || 8);
-                  const depositAmount = Number(userDeposit) / 1e18;
-                  const depositUSD = depositAmount * peggedPrice;
-                  totalPositionForBar += depositUSD;
+                  totalPositionForBar += positionData.walletHaUSD;
                   // Note: ha tokens in wallet don't earn APR, so we don't add them to blended APR
                 }
               });
@@ -4491,12 +5118,11 @@ export default function AnchorPage() {
             const blendedAPRForBar =
               totalDepositUSD > 0 ? totalWeightedAPR / totalDepositUSD : 0;
 
-
             return (
               <div className="mb-2">
-                <div className="grid grid-cols-[1fr_2fr_1fr] gap-2">
+                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-2">
                   {/* Rewards Header Box */}
-                  <div className="bg-[#FF8A7A] p-3 flex items-center justify-center gap-2">
+                  <div className="bg-[#FF8A7A] p-3 flex items-center justify-center gap-2 md:col-span-1 lg:col-span-1">
                     <h2 className="font-bold font-mono text-white text-2xl text-center">
                       Rewards
                     </h2>
@@ -4554,7 +5180,7 @@ export default function AnchorPage() {
                   </div>
 
                   {/* Combined Content Box */}
-                  <div className="bg-[#17395F] p-3">
+                  <div className="bg-[#17395F] p-3 md:col-span-1 lg:col-span-2">
                     <div className="grid grid-cols-[1fr_1fr_1fr] gap-3 pl-2">
                       {/* Claimable Value */}
                       <div className="flex flex-col items-center justify-center">
@@ -4669,7 +5295,7 @@ export default function AnchorPage() {
                   </div>
 
                   {/* Anchor Ledger Marks Box */}
-                  <div className="bg-[#17395F] p-3">
+                  <div className="bg-[#17395F] p-3 md:col-span-1 lg:col-span-1">
                     <div className="text-xs text-white/70 mb-0.5 text-center">
                       Anchor Ledger Marks
                     </div>
@@ -4735,7 +5361,7 @@ export default function AnchorPage() {
                 if (prevHasStabilityPoolManager) offset += 1; // rebalanceThreshold
                 if (prevHasCollateral) offset += 4;
                 if (prevHasSail) offset += 4;
-                if (prevHasPriceOracle) offset += 2;
+                if (prevHasPriceOracle) offset += 1;
               }
 
               const baseOffset = offset;
@@ -4782,24 +5408,37 @@ export default function AnchorPage() {
 
               // Get price oracle for USD calculations
               const hasPriceOracle = !!(m as any).addresses?.collateralPrice;
-              let collateralPriceDecimals: number | undefined;
+              const collateralPriceDecimals = 18;
               let collateralPrice: bigint | undefined;
               if (hasPriceOracle) {
-                collateralPriceDecimals = reads?.[currentOffset]?.result as
-                  | number
-                  | undefined;
-                const priceRaw = reads?.[currentOffset + 1]?.result as
-                  | bigint
-                  | undefined;
-                collateralPrice = priceRaw;
+                const latestAnswerResult = reads?.[currentOffset]?.result;
+                if (
+                  latestAnswerResult !== undefined &&
+                  latestAnswerResult !== null
+                ) {
+                  if (Array.isArray(latestAnswerResult)) {
+                    collateralPrice = latestAnswerResult[1] as bigint;
+                  } else if (typeof latestAnswerResult === "object") {
+                    const obj = latestAnswerResult as {
+                      maxUnderlyingPrice?: bigint;
+                    };
+                    collateralPrice = obj.maxUnderlyingPrice;
+                  } else if (typeof latestAnswerResult === "bigint") {
+                    collateralPrice = latestAnswerResult;
+                  }
+                }
               }
 
               // Calculate USD values using aggregated rewards from all reward tokens
               const collateralPoolAddress = hasCollateralPool
-                ? ((m as any).addresses?.stabilityPoolCollateral as `0x${string}` | undefined)
+                ? ((m as any).addresses?.stabilityPoolCollateral as
+                    | `0x${string}`
+                    | undefined)
                 : undefined;
               const sailPoolAddress = hasSailPool
-                ? ((m as any).addresses?.stabilityPoolLeveraged as `0x${string}` | undefined)
+                ? ((m as any).addresses?.stabilityPoolLeveraged as
+                    | `0x${string}`
+                    | undefined)
                 : undefined;
 
               // Use aggregated rewards from useAllStabilityPoolRewards (includes all reward tokens)
@@ -4809,15 +5448,22 @@ export default function AnchorPage() {
                   totalCollateralRewardsUSD += poolReward.claimableValue;
                 }
                 // Also update APR to include all reward tokens
-                if (poolReward?.totalRewardAPR && poolReward.totalRewardAPR > 0) {
+                if (
+                  poolReward?.totalRewardAPR &&
+                  poolReward.totalRewardAPR > 0
+                ) {
                   // Replace the APR from contract with the aggregated APR from all reward tokens
                   if (collateralPoolAPR) {
                     // Add additional APR from other reward tokens (subtract contract APR to avoid double-counting)
-                    const contractAPR = (collateralPoolAPR.collateral || 0) + (collateralPoolAPR.steam || 0);
-                    const additionalAPR = poolReward.totalRewardAPR - contractAPR;
+                    const contractAPR =
+                      (collateralPoolAPR.collateral || 0) +
+                      (collateralPoolAPR.steam || 0);
+                    const additionalAPR =
+                      poolReward.totalRewardAPR - contractAPR;
                     if (additionalAPR > 0) {
                       collateralPoolAPR = {
-                        collateral: (collateralPoolAPR.collateral || 0) + additionalAPR,
+                        collateral:
+                          (collateralPoolAPR.collateral || 0) + additionalAPR,
                         steam: collateralPoolAPR.steam || 0,
                       };
                     } else {
@@ -4843,15 +5489,21 @@ export default function AnchorPage() {
                   totalSailRewardsUSD += poolReward.claimableValue;
                 }
                 // Also update APR to include all reward tokens
-                if (poolReward?.totalRewardAPR && poolReward.totalRewardAPR > 0) {
+                if (
+                  poolReward?.totalRewardAPR &&
+                  poolReward.totalRewardAPR > 0
+                ) {
                   // Replace the APR from contract with the aggregated APR from all reward tokens
                   if (sailPoolAPR) {
                     // Add additional APR from other reward tokens (subtract contract APR to avoid double-counting)
-                    const contractAPR = (sailPoolAPR.collateral || 0) + (sailPoolAPR.steam || 0);
-                    const additionalAPR = poolReward.totalRewardAPR - contractAPR;
+                    const contractAPR =
+                      (sailPoolAPR.collateral || 0) + (sailPoolAPR.steam || 0);
+                    const additionalAPR =
+                      poolReward.totalRewardAPR - contractAPR;
                     if (additionalAPR > 0) {
                       sailPoolAPR = {
-                        collateral: (sailPoolAPR.collateral || 0) + additionalAPR,
+                        collateral:
+                          (sailPoolAPR.collateral || 0) + additionalAPR,
                         steam: sailPoolAPR.steam || 0,
                       };
                     } else {
@@ -4871,21 +5523,10 @@ export default function AnchorPage() {
                 }
               }
 
-              // Calculate total deposit USD for earnings calculation
-              const userDeposit = userDepositMap.get(mi);
-              if (
-                userDeposit &&
-                peggedTokenPrice &&
-                collateralPrice &&
-                collateralPriceDecimals !== undefined
-              ) {
-                const peggedPrice = Number(peggedTokenPrice) / 1e18;
-                const collateralPriceNum =
-                  Number(collateralPrice) /
-                  10 ** (Number(collateralPriceDecimals) || 8);
-                const depositAmount = Number(userDeposit) / 1e18;
-                totalDepositUSD +=
-                  depositAmount * (peggedPrice * collateralPriceNum);
+              // Calculate total deposit USD for earnings calculation using hook data
+              const positionData = marketPositions[id];
+              if (positionData?.walletHaUSD) {
+                totalDepositUSD += positionData.walletHaUSD;
               }
 
               // Update total APR after we've updated the APR values with all reward tokens
@@ -4927,7 +5568,8 @@ export default function AnchorPage() {
                 ?.stabilityPoolCollateral;
               const hasSailPool = !!(m as any).addresses
                 ?.stabilityPoolLeveraged;
-              const userDeposit = userDepositMap.get(mi) || 0n;
+              const positionData = marketPositions[id];
+              const userDeposit = positionData?.walletHa || 0n;
 
               let offset = 0;
               for (let i = 0; i < mi; i++) {
@@ -4941,7 +5583,7 @@ export default function AnchorPage() {
                 offset += 4;
                 if (prevHasCollateral) offset += 3;
                 if (prevHasSail) offset += 3;
-                if (prevHasPriceOracle) offset += 2;
+                if (prevHasPriceOracle) offset += 1;
               }
 
               const baseOffset = offset;
@@ -4968,16 +5610,25 @@ export default function AnchorPage() {
               }
 
               const hasPriceOracle = !!(m as any).addresses?.collateralPrice;
-              let collateralPriceDecimals: number | undefined;
+              const collateralPriceDecimals = 18;
               let collateralPrice: bigint | undefined;
               if (hasPriceOracle) {
-                collateralPriceDecimals = reads?.[currentOffset]?.result as
-                  | number
-                  | undefined;
-                const priceRaw = reads?.[currentOffset + 1]?.result as
-                  | bigint
-                  | undefined;
-                collateralPrice = priceRaw;
+                const latestAnswerResult = reads?.[currentOffset]?.result;
+                if (
+                  latestAnswerResult !== undefined &&
+                  latestAnswerResult !== null
+                ) {
+                  if (Array.isArray(latestAnswerResult)) {
+                    collateralPrice = latestAnswerResult[1] as bigint;
+                  } else if (typeof latestAnswerResult === "object") {
+                    const obj = latestAnswerResult as {
+                      maxUnderlyingPrice?: bigint;
+                    };
+                    collateralPrice = obj.maxUnderlyingPrice;
+                  } else if (typeof latestAnswerResult === "bigint") {
+                    collateralPrice = latestAnswerResult;
+                  }
+                }
               }
 
               let collateralRewardsUSD = 0;
@@ -5230,7 +5881,7 @@ export default function AnchorPage() {
                         offset += 4; // 4 pool reads
                         if (prevPeggedTokenAddress) offset += 1; // rewardData (if pegged token exists)
                       }
-                      if (prevHasPriceOracle) offset += 2;
+                      if (prevHasPriceOracle) offset += 1;
                     }
 
                     const baseOffset = offset;
@@ -5404,7 +6055,6 @@ export default function AnchorPage() {
                             ]) // [lastUpdate, finishAt, rate, queued]
                           : undefined;
 
-
                       // Calculate APR from reward rate if contract APR is 0 or undefined
                       let peggedTokenAPRForCollateral = 0;
                       if (
@@ -5462,14 +6112,22 @@ export default function AnchorPage() {
                       // This replaces the contract APR with the more accurate total from all tokens
                       const collateralPoolAddress = hasCollateralPool
                         ? ((market as any).addresses
-                            ?.stabilityPoolCollateral as `0x${string}` | undefined)
+                            ?.stabilityPoolCollateral as
+                            | `0x${string}`
+                            | undefined)
                         : undefined;
                       if (collateralPoolAddress) {
-                        const poolReward = poolRewardsMap.get(collateralPoolAddress);
+                        const poolReward = poolRewardsMap.get(
+                          collateralPoolAddress
+                        );
                         const contractAPRTotal = collateralPoolAPR
-                          ? (collateralPoolAPR.collateral || 0) + (collateralPoolAPR.steam || 0)
+                          ? (collateralPoolAPR.collateral || 0) +
+                            (collateralPoolAPR.steam || 0)
                           : 0;
-                        if (poolReward?.totalRewardAPR !== undefined && poolReward.totalRewardAPR > 0) {
+                        if (
+                          poolReward?.totalRewardAPR !== undefined &&
+                          poolReward.totalRewardAPR > 0
+                        ) {
                           // Use the total reward APR from all tokens directly
                           // This includes ha tokens, wstETH, and any other reward tokens
                           collateralPoolAPR = {
@@ -5482,7 +6140,6 @@ export default function AnchorPage() {
                       currentOffset += 4; // 4 pool reads
                       if (currentPeggedTokenAddress) currentOffset += 1; // rewardData (if pegged token exists)
                     }
-
 
                     if (hasSailPool) {
                       sailPoolTVL = reads?.[currentOffset]?.result as
@@ -5531,7 +6188,6 @@ export default function AnchorPage() {
                             ]) // [lastUpdate, finishAt, rate, queued]
                           : undefined;
 
-
                       // Calculate APR from reward rate if contract APR is 0 or undefined
                       if (
                         sailRewardData &&
@@ -5573,7 +6229,8 @@ export default function AnchorPage() {
                                 // Add to existing APR
                                 sailPoolAPR = {
                                   collateral:
-                                    (sailPoolAPR.collateral || 0) + calculatedAPR,
+                                    (sailPoolAPR.collateral || 0) +
+                                    calculatedAPR,
                                   steam: sailPoolAPR.steam || 0,
                                 };
                               }
@@ -5585,15 +6242,20 @@ export default function AnchorPage() {
                       // Use total APR from all reward tokens (including wstETH, etc.)
                       // This replaces the contract APR with the more accurate total from all tokens
                       const sailPoolAddress = hasSailPool
-                        ? ((market as any).addresses
-                            ?.stabilityPoolLeveraged as `0x${string}` | undefined)
+                        ? ((market as any).addresses?.stabilityPoolLeveraged as
+                            | `0x${string}`
+                            | undefined)
                         : undefined;
                       if (sailPoolAddress) {
                         const poolReward = poolRewardsMap.get(sailPoolAddress);
                         const contractAPRTotal = sailPoolAPR
-                          ? (sailPoolAPR.collateral || 0) + (sailPoolAPR.steam || 0)
+                          ? (sailPoolAPR.collateral || 0) +
+                            (sailPoolAPR.steam || 0)
                           : 0;
-                        if (poolReward?.totalRewardAPR !== undefined && poolReward.totalRewardAPR > 0) {
+                        if (
+                          poolReward?.totalRewardAPR !== undefined &&
+                          poolReward.totalRewardAPR > 0
+                        ) {
                           // Use the total reward APR from all tokens directly
                           // This includes ha tokens, wstETH, and any other reward tokens
                           sailPoolAPR = {
@@ -5609,70 +6271,57 @@ export default function AnchorPage() {
 
                     const hasPriceOracle = !!(market as any).addresses
                       ?.collateralPrice;
-                    let collateralPriceDecimals: number | undefined;
+                    const collateralPriceDecimals = 18;
                     let collateralPrice: bigint | undefined;
                     if (hasPriceOracle) {
-                      collateralPriceDecimals = reads?.[currentOffset]
-                        ?.result as number | undefined;
-                      const priceRaw = reads?.[currentOffset + 1]?.result as
-                        | bigint
-                        | undefined;
-                      collateralPrice = priceRaw;
-                      currentOffset += 2; // Move past collateral oracle (decimals + price)
+                      const latestAnswerResult = reads?.[currentOffset]?.result;
+                      if (
+                        latestAnswerResult !== undefined &&
+                        latestAnswerResult !== null
+                      ) {
+                        if (Array.isArray(latestAnswerResult)) {
+                          collateralPrice = latestAnswerResult[1] as bigint;
+                        } else if (typeof latestAnswerResult === "object") {
+                          const obj = latestAnswerResult as {
+                            maxUnderlyingPrice?: bigint;
+                          };
+                          collateralPrice = obj.maxUnderlyingPrice;
+                        } else if (typeof latestAnswerResult === "bigint") {
+                          collateralPrice = latestAnswerResult;
+                        }
+                      }
+                      currentOffset += 1; // Move past collateral oracle (latestAnswer only)
                     }
 
                     // peggedTokenPrice is already read from minter contract at baseOffset + 3
                     // It returns price in terms of underlying collateral (18 decimals)
                     // where 1e18 = $1.00 normally
 
-                    const userDeposit = userDepositMap.get(mi) || 0n;
+                    // Get position data from unified hook (overrides reads data for consistency)
+                    const positionData = marketPositions[marketId];
+                    const userDeposit = positionData?.walletHa || 0n;
+                    // Override pool deposits from hook for consistent display
+                    const finalCollateralPoolDeposit =
+                      positionData?.collateralPool ||
+                      collateralPoolDeposit ||
+                      0n;
+                    const finalSailPoolDeposit =
+                      positionData?.sailPool || sailPoolDeposit || 0n;
 
-                    // Calculate USD values
-                    // Use contract reads for deposits (more reliable and real-time)
-                    // Subgraph is only used for marks calculations
-                    let collateralPoolDepositUSD = 0;
-                    let sailPoolDepositUSD = 0;
-                    let haTokenBalanceUSD = 0;
+                    // Use position data from hook for USD values
+                    const collateralPoolDepositUSD =
+                      positionData?.collateralPoolUSD || 0;
+                    const sailPoolDepositUSD = positionData?.sailPoolUSD || 0;
+                    const haTokenBalanceUSD = positionData?.walletHaUSD || 0;
                     let collateralRewardsUSD = 0;
                     let sailRewardsUSD = 0;
-
-                    // Calculate collateral pool deposit USD from contract read
-                    if (
-                      collateralPoolDeposit &&
-                      peggedTokenPrice &&
-                      collateralPoolDeposit > 0n
-                    ) {
-                      const depositAmount =
-                        Number(collateralPoolDeposit) / 1e18;
-                      const peggedPriceUSD = Number(peggedTokenPrice) / 1e18;
-                      collateralPoolDepositUSD = depositAmount * peggedPriceUSD;
-                    }
-
-                    // Calculate sail pool deposit USD from contract read
-                    if (
-                      sailPoolDeposit &&
-                      peggedTokenPrice &&
-                      sailPoolDeposit > 0n
-                    ) {
-                      const depositAmount = Number(sailPoolDeposit) / 1e18;
-                      const peggedPriceUSD = Number(peggedTokenPrice) / 1e18;
-                      sailPoolDepositUSD = depositAmount * peggedPriceUSD;
-                    }
-
-                    if (userDeposit && userDeposit > 0n && peggedTokenPrice) {
-                      const haTokenAmount = Number(userDeposit) / 1e18;
-
-                      // peggedTokenPrice from minter is in 18 decimals, where 1e18 = $1.00
-                      // Convert to USD price: Number(peggedTokenPrice) / 1e18
-                      const peggedPriceUSD = Number(peggedTokenPrice) / 1e18;
-                      haTokenBalanceUSD = haTokenAmount * peggedPriceUSD;
-                    }
 
                     // Use aggregated rewards from useAllStabilityPoolRewards
                     // This handles multiple reward tokens correctly (ha tokens, wstETH, etc.)
                     const collateralPoolAddressForRewards = hasCollateralPool
-                      ? ((market as any).addresses
-                          ?.stabilityPoolCollateral as `0x${string}` | undefined)
+                      ? ((market as any).addresses?.stabilityPoolCollateral as
+                          | `0x${string}`
+                          | undefined)
                       : undefined;
                     if (collateralPoolAddressForRewards) {
                       const poolReward = poolRewardsMap.get(
@@ -5684,11 +6333,14 @@ export default function AnchorPage() {
                     }
 
                     const sailPoolAddressForRewards = hasSailPool
-                      ? ((market as any).addresses
-                          ?.stabilityPoolLeveraged as `0x${string}` | undefined)
+                      ? ((market as any).addresses?.stabilityPoolLeveraged as
+                          | `0x${string}`
+                          | undefined)
                       : undefined;
                     if (sailPoolAddressForRewards) {
-                      const poolReward = poolRewardsMap.get(sailPoolAddressForRewards);
+                      const poolReward = poolRewardsMap.get(
+                        sailPoolAddressForRewards
+                      );
                       if (poolReward) {
                         sailRewardsUSD = poolReward.claimableValue;
                       }
@@ -5748,12 +6400,12 @@ export default function AnchorPage() {
                       collateralPoolTVL,
                       collateralPoolAPR,
                       collateralPoolRewards,
-                      collateralPoolDeposit,
+                      collateralPoolDeposit: finalCollateralPoolDeposit,
                       collateralPoolDepositUSD,
                       sailPoolTVL,
                       sailPoolAPR,
                       sailPoolRewards,
-                      sailPoolDeposit,
+                      sailPoolDeposit: finalSailPoolDeposit,
                       sailPoolDepositUSD,
                       haTokenBalanceUSD,
                       collateralRewardsUSD,
@@ -5778,6 +6430,15 @@ export default function AnchorPage() {
                     m.collateralPoolDepositUSD +
                     m.sailPoolDepositUSD +
                     m.haTokenBalanceUSD,
+                  0
+                );
+                // Also track total token amounts (for display when USD isn't available)
+                const combinedPositionTokens = marketsData.reduce(
+                  (sum, m) =>
+                    sum +
+                    Number(m.collateralPoolDeposit || 0n) / 1e18 +
+                    Number(m.sailPoolDeposit || 0n) / 1e18 +
+                    Number(m.userDeposit || 0n) / 1e18,
                   0
                 );
                 const combinedRewardsUSD = marketsData.reduce(
@@ -5869,6 +6530,8 @@ export default function AnchorPage() {
                   ?.stabilityPoolCollateral as `0x${string}` | undefined;
                 const sailPoolAddress = firstMarket?.addresses
                   ?.stabilityPoolLeveraged as `0x${string}` | undefined;
+                const peggedTokenSymbol = firstMarket?.peggedToken?.symbol;
+                const collateralSymbol = firstMarket?.collateral?.symbol || "";
 
                 const isExpanded = expandedMarket === symbol;
 
@@ -5901,30 +6564,49 @@ export default function AnchorPage() {
                           className="flex items-center justify-center gap-1.5 min-w-0"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          {allDepositAssets.map((asset) => (
-                            <SimpleTooltip
-                              key={asset.symbol}
-                              label={
-                                <div>
-                                  <div className="font-semibold mb-1">
-                                    {asset.name}
+                          {allDepositAssets.map((asset) => {
+                            // Check if this asset is a ha token (pegged token)
+                            const isHaToken =
+                              peggedTokenSymbol &&
+                              asset.symbol === peggedTokenSymbol;
+
+                            return (
+                              <SimpleTooltip
+                                key={asset.symbol}
+                                label={
+                                  <div>
+                                    <div className="font-semibold mb-1">
+                                      {asset.name}
+                                    </div>
+                                    <div className="text-xs opacity-90">
+                                      {isHaToken ? (
+                                        <>
+                                          {asset.name} tokens are deposited
+                                          directly into the chosen stability
+                                          pool. The collateral backing these
+                                          tokens is already in the market.
+                                        </>
+                                      ) : (
+                                        <>
+                                          Collateral is owned by the market and
+                                          your position is swapped for{" "}
+                                          {peggedTokenSymbol || "haTOKENS"}.
+                                        </>
+                                      )}
+                                    </div>
                                   </div>
-                                  <div className="text-xs opacity-90">
-                                    All assets are converted to the market's
-                                    collateral token on deposit
-                                  </div>
-                                </div>
-                              }
-                            >
-                              <Image
-                                src={getLogoPath(asset.symbol)}
-                                alt={asset.name}
-                                width={24}
-                                height={24}
-                                className="flex-shrink-0 cursor-help rounded-full"
-                              />
-                            </SimpleTooltip>
-                          ))}
+                                }
+                              >
+                                <Image
+                                  src={getLogoPath(asset.symbol)}
+                                  alt={asset.name}
+                                  width={24}
+                                  height={24}
+                                  className="flex-shrink-0 cursor-help rounded-full"
+                                />
+                              </SimpleTooltip>
+                            );
+                          })}
                         </div>
                         <div
                           className="text-center min-w-0"
@@ -5936,81 +6618,142 @@ export default function AnchorPage() {
                                 <div className="font-semibold mb-1">
                                   APR by Pool
                                 </div>
-                                <div className="text-xs space-y-1">
-                                  <div>
-                                    • Collateral Pool:{" "}
-                                    {collateralPoolAPRMin !== null &&
-                                    collateralPoolAPRMax !== null
-                                      ? collateralPoolAPRMin ===
-                                        collateralPoolAPRMax
-                                        ? `${collateralPoolAPRMin.toFixed(2)}%`
-                                        : `${collateralPoolAPRMin.toFixed(
-                                            2
-                                          )}% - ${collateralPoolAPRMax.toFixed(
-                                            2
-                                          )}%`
-                                      : "-"}
-                                  </div>
-                                  <div>
-                                    • Sail Pool:{" "}
-                                    {sailPoolAPRMin !== null &&
-                                    sailPoolAPRMax !== null
-                                      ? sailPoolAPRMin === sailPoolAPRMax
-                                        ? `${sailPoolAPRMin.toFixed(2)}%`
-                                        : `${sailPoolAPRMin.toFixed(
-                                            2
-                                          )}% - ${sailPoolAPRMax.toFixed(2)}%`
-                                      : "-"}
-                                  </div>
-                                </div>
-                                {(projectedAPR.collateralPoolAPR !== null ||
-                                  projectedAPR.leveragedPoolAPR !== null) && (
-                                  <div className="mt-2 pt-2 border-t border-white/20 text-xs opacity-90">
-                                    <div className="font-semibold mb-1">
-                                      Projected APR (next 7 days)
+                                {projectedAPR.hasRewardsNoTVL ? (
+                                  <div className="text-xs space-y-2">
+                                    <div className="bg-green-500/20 border border-green-500/30 rounded px-2 py-1">
+                                      <span className="font-semibold text-green-400">
+                                        Rewards waiting!
+                                      </span>
+                                      <div className="mt-1 text-green-300">
+                                        No deposits yet - first depositors will
+                                        receive maximum APR
+                                      </div>
                                     </div>
                                     <div className="space-y-1">
-                                      <div>
-                                        • Collateral Pool:{" "}
-                                        {projectedAPR.collateralPoolAPR !== null
-                                          ? `${projectedAPR.collateralPoolAPR.toFixed(
-                                              2
-                                            )}%`
-                                          : "-"}
-                                      </div>
-                                      <div>
-                                        • Sail Pool:{" "}
-                                        {projectedAPR.leveragedPoolAPR !== null
-                                          ? `${projectedAPR.leveragedPoolAPR.toFixed(
-                                              2
-                                            )}%`
-                                          : "-"}
-                                      </div>
+                                      {projectedAPR.collateralRewards7Day !==
+                                        null &&
+                                        projectedAPR.collateralRewards7Day >
+                                          0n && (
+                                          <div>
+                                            • Collateral Pool:{" "}
+                                            {(
+                                              Number(
+                                                projectedAPR.collateralRewards7Day
+                                              ) / 1e18
+                                            ).toFixed(4)}{" "}
+                                            wstETH streaming over 7 days
+                                          </div>
+                                        )}
+                                      {projectedAPR.leveragedRewards7Day !==
+                                        null &&
+                                        projectedAPR.leveragedRewards7Day >
+                                          0n && (
+                                          <div>
+                                            • Sail Pool:{" "}
+                                            {(
+                                              Number(
+                                                projectedAPR.leveragedRewards7Day
+                                              ) / 1e18
+                                            ).toFixed(4)}{" "}
+                                            wstETH streaming over 7 days
+                                          </div>
+                                        )}
                                     </div>
-                                    {projectedAPR.harvestableAmount !== null &&
-                                      projectedAPR.harvestableAmount > 0n && (
-                                        <div className="mt-1 text-xs opacity-80">
-                                          Based on{" "}
-                                          {(
-                                            Number(
-                                              projectedAPR.harvestableAmount
-                                            ) / 1e18
-                                          ).toFixed(4)}{" "}
-                                          wstETH harvestable.
-                                          {projectedAPR.remainingDays !==
-                                            null &&
-                                            ` ~${projectedAPR.remainingDays.toFixed(
-                                              1
-                                            )} days until harvest.`}
-                                        </div>
-                                      )}
+                                  </div>
+                                ) : (
+                                  <div className="text-xs space-y-1">
+                                    <div>
+                                      • Collateral Pool:{" "}
+                                      {collateralPoolAPRMin !== null &&
+                                      collateralPoolAPRMax !== null
+                                        ? collateralPoolAPRMin ===
+                                          collateralPoolAPRMax
+                                          ? `${collateralPoolAPRMin.toFixed(
+                                              2
+                                            )}%`
+                                          : `${collateralPoolAPRMin.toFixed(
+                                              2
+                                            )}% - ${collateralPoolAPRMax.toFixed(
+                                              2
+                                            )}%`
+                                        : "-"}
+                                    </div>
+                                    <div>
+                                      • Sail Pool:{" "}
+                                      {sailPoolAPRMin !== null &&
+                                      sailPoolAPRMax !== null
+                                        ? sailPoolAPRMin === sailPoolAPRMax
+                                          ? `${sailPoolAPRMin.toFixed(2)}%`
+                                          : `${sailPoolAPRMin.toFixed(
+                                              2
+                                            )}% - ${sailPoolAPRMax.toFixed(2)}%`
+                                        : "-"}
+                                    </div>
                                   </div>
                                 )}
+                                {!projectedAPR.hasRewardsNoTVL &&
+                                  (projectedAPR.collateralPoolAPR !== null ||
+                                    projectedAPR.leveragedPoolAPR !== null) && (
+                                    <div className="mt-2 pt-2 border-t border-white/20 text-xs opacity-90">
+                                      <div className="font-semibold mb-1">
+                                        Projected APR (next 7 days)
+                                      </div>
+                                      <div className="space-y-1">
+                                        <div>
+                                          • Collateral Pool:{" "}
+                                          {projectedAPR.collateralPoolAPR !==
+                                          null
+                                            ? `${projectedAPR.collateralPoolAPR.toFixed(
+                                                2
+                                              )}%`
+                                            : "-"}
+                                        </div>
+                                        <div>
+                                          • Sail Pool:{" "}
+                                          {projectedAPR.leveragedPoolAPR !==
+                                          null
+                                            ? `${projectedAPR.leveragedPoolAPR.toFixed(
+                                                2
+                                              )}%`
+                                            : "-"}
+                                        </div>
+                                      </div>
+                                      {projectedAPR.harvestableAmount !==
+                                        null &&
+                                        projectedAPR.harvestableAmount > 0n && (
+                                          <div className="mt-1 text-xs opacity-80">
+                                            Based on{" "}
+                                            {(
+                                              Number(
+                                                projectedAPR.harvestableAmount
+                                              ) / 1e18
+                                            ).toFixed(4)}{" "}
+                                            wstETH harvestable.
+                                            {projectedAPR.remainingDays !==
+                                              null &&
+                                              ` ~${projectedAPR.remainingDays.toFixed(
+                                                1
+                                              )} days until harvest.`}
+                                          </div>
+                                        )}
+                                    </div>
+                                  )}
                               </div>
                             }
                           >
-                            <span className="text-[#1E4775] font-medium text-xs font-mono cursor-help">
+                            <span
+                              className={`font-medium text-xs font-mono cursor-help ${
+                                projectedAPR.hasRewardsNoTVL
+                                  ? "text-green-600 font-bold"
+                                  : "text-[#1E4775]"
+                              }`}
+                            >
                               {(() => {
+                                // Special case: rewards waiting with no TVL
+                                if (projectedAPR.hasRewardsNoTVL) {
+                                  return "10k%+";
+                                }
+
                                 // Format APR display: "X% - Y% (Proj: A% - B%)"
                                 const hasCurrentAPR = minAPR > 0 || maxAPR > 0;
                                 const hasProjectedAPR =
@@ -6029,11 +6772,21 @@ export default function AnchorPage() {
                                     maxProjectedAPR !== null &&
                                     minProjectedAPR !== maxProjectedAPR
                                   ) {
-                                    display = `${minProjectedAPR.toFixed(
-                                      1
-                                    )}% - ${maxProjectedAPR.toFixed(1)}%`;
+                                    // Cap display at 10k%
+                                    const minDisplay =
+                                      minProjectedAPR >= 10000
+                                        ? "10k"
+                                        : minProjectedAPR.toFixed(1);
+                                    const maxDisplay =
+                                      maxProjectedAPR >= 10000
+                                        ? "10k+"
+                                        : maxProjectedAPR.toFixed(1);
+                                    display = `${minDisplay}% - ${maxDisplay}%`;
                                   } else if (maxProjectedAPR !== null) {
-                                    display = `${maxProjectedAPR.toFixed(1)}%`;
+                                    display =
+                                      maxProjectedAPR >= 10000
+                                        ? "10k%+"
+                                        : `${maxProjectedAPR.toFixed(1)}%`;
                                   }
                                 } else if (hasCurrentAPR) {
                                   // Fallback to current APR if no projected
@@ -6069,6 +6822,11 @@ export default function AnchorPage() {
                           <span className="text-[#1E4775] font-medium text-xs font-mono">
                             {combinedPositionUSD > 0
                               ? formatCompactUSD(combinedPositionUSD)
+                              : combinedPositionTokens > 0
+                              ? `${combinedPositionTokens.toLocaleString(
+                                  undefined,
+                                  { maximumFractionDigits: 2 }
+                                )} ${symbol}`
                               : "-"}
                           </span>
                         </div>
@@ -6103,12 +6861,14 @@ export default function AnchorPage() {
                     {isExpanded && (
                       <div className="bg-[#B8EBD5] p-2 border-t border-white/20">
                         {marketsData.map((marketData) => {
-                          const volatilityRisk = calculateVolatilityRisk(
-                            marketData.collateralRatio,
-                            marketData.totalDebt,
-                            marketData.collateralPoolTVL,
-                            marketData.sailPoolTVL
-                          );
+                          // Get volatility protection from hook data
+                          const minterAddr =
+                            marketData.minterAddress?.toLowerCase();
+                          const volProtData = minterAddr
+                            ? volProtectionData?.get(minterAddr)
+                            : undefined;
+                          const volatilityProtection =
+                            volProtData?.protection ?? "-";
 
                           // Format min collateral ratio
                           const minCollateralRatioFormatted =
@@ -6172,11 +6932,7 @@ export default function AnchorPage() {
                               key={marketData.marketId}
                               className="bg-white p-2 mb-2 rounded border border-[#1E4775]/10"
                             >
-                              <div className="flex items-center justify-between mb-2">
-                                <h3 className="text-base font-bold text-[#1E4775]">
-                                  {marketData.market.name ||
-                                    marketData.marketId}
-                                </h3>
+                              <div className="flex items-center justify-end mb-2">
                                 <button
                                   onClick={() =>
                                     setContractAddressesModal({
@@ -6243,15 +6999,51 @@ export default function AnchorPage() {
                                     </div>
                                     <div className="bg-[#1E4775]/5 p-1.5 rounded text-center">
                                       <div className="text-[10px] text-[#1E4775]/70 mb-0.5 flex items-center justify-center gap-1">
-                                        Vol. Risk
-                                        <SimpleTooltip label="The percentage price drop of collateral needed before the system goes below 100% collateral ratio (depeg point). This accounts for stability pools being able to rebalance and improve the ratio. Assumes no additional stability pool deposits or withdrawals. Under normal circumstances, stability pool APRs increase as deposit value decreases, incentivising more deposits and providing additional protection.">
+                                        Vol. Protection
+                                        <SimpleTooltip
+                                          side="top"
+                                          label={
+                                            <div className="space-y-2">
+                                              <p className="font-semibold mb-1">
+                                                Volatility Protection
+                                              </p>
+                                              <p>
+                                                The percentage adverse price
+                                                movement between collateral and
+                                                the pegged token that the system
+                                                can withstand before reaching
+                                                the depeg point (100% collateral
+                                                ratio).
+                                              </p>
+                                              <p>
+                                                For example, an ETH-pegged token
+                                                with USD collateral is protected
+                                                against ETH price spikes (ETH
+                                                becoming more expensive relative
+                                                to USD).
+                                              </p>
+                                              <p>
+                                                This accounts for stability
+                                                pools that can rebalance and
+                                                improve the collateral ratio
+                                                during adverse price movements.
+                                              </p>
+                                              <p className="text-xs text-gray-400 italic">
+                                                Higher percentage = more
+                                                protection. Assumes no
+                                                additional deposits or
+                                                withdrawals.
+                                              </p>
+                                            </div>
+                                          }
+                                        >
                                           <span className="text-[#1E4775]/30 cursor-help">
                                             [?]
                                           </span>
                                         </SimpleTooltip>
                                       </div>
                                       <div className="text-xs font-semibold text-[#1E4775]">
-                                        {volatilityRisk}
+                                        {volatilityProtection}
                                       </div>
                                     </div>
                                     <div className="bg-[#1E4775]/5 p-1.5 rounded text-center">
@@ -6387,6 +7179,12 @@ export default function AnchorPage() {
                               {(marketData.haTokenBalanceUSD > 0 ||
                                 marketData.collateralPoolDepositUSD > 0 ||
                                 marketData.sailPoolDepositUSD > 0 ||
+                                (marketData.userDeposit &&
+                                  marketData.userDeposit > 0n) ||
+                                (marketData.collateralPoolDeposit &&
+                                  marketData.collateralPoolDeposit > 0n) ||
+                                (marketData.sailPoolDeposit &&
+                                  marketData.sailPoolDeposit > 0n) ||
                                 withdrawalRequests.some(
                                   (req) =>
                                     req.poolAddress.toLowerCase() ===
@@ -6560,7 +7358,7 @@ export default function AnchorPage() {
                                                           {
                                                             address:
                                                               request.poolAddress,
-                                                            abi: fullStabilityPoolABI,
+                                                            abi: STABILITY_POOL_ABI,
                                                             functionName:
                                                               "executeWithdraw",
                                                             args: [
@@ -6591,7 +7389,7 @@ export default function AnchorPage() {
                                                           {
                                                             address:
                                                               request.poolAddress,
-                                                            abi: fullStabilityPoolABI,
+                                                            abi: STABILITY_POOL_ABI,
                                                             functionName:
                                                               "withdrawEarly",
                                                             args: [
@@ -6644,47 +7442,153 @@ export default function AnchorPage() {
               await new Promise((resolve) => setTimeout(resolve, 2000));
               // Refetch all contract data
               await Promise.all([refetchReads(), refetchUserDeposits()]);
-              setManageModal(null);
             }}
           />
         )}
 
         {compoundModal && (
-          <AnchorCompoundModal
-            isOpen={!!compoundModal}
+          // Convert old compoundModal to new pool selection flow
+          <CompoundPoolSelectionModal
+            isOpen={true}
             onClose={() => setCompoundModal(null)}
-            poolType={compoundModal.poolType}
-            rewardAmount={compoundModal.rewardAmount}
-            rewardTokenSymbol={
-              compoundModal.poolType === "collateral"
-                ? compoundModal.market.collateral?.symbol || "ETH"
-                : compoundModal.market.leveragedToken?.symbol || "hs"
-            }
-            expectedPeggedOutput={0n} // TODO: Calculate expected output
-            peggedTokenSymbol={compoundModal.market.peggedToken?.symbol || "ha"}
-            fees={[]} // TODO: Calculate fees
-            onConfirm={async () => {
+            onConfirm={async (allocations) => {
+              setCompoundModal(null);
               try {
-                // Close the compound modal first, then start the compound process
-                // The progress modal will be shown by handleCompoundConfirm
-                setCompoundModal(null);
-                
+                // Calculate reward amount from all pools
+                const totalRewardAmount = BigInt(0); // Will be calculated in handleCompoundConfirm
                 await handleCompoundConfirm(
                   compoundModal.market,
-                  compoundModal.poolType,
-                  compoundModal.rewardAmount
+                  allocations,
+                  totalRewardAmount
                 );
               } catch (error: any) {
-                // Show error in progress modal if it was opened, otherwise show alert
-                if (transactionProgress) {
-                  // Error will be shown in progress modal
-                } else {
-                  // If progress modal wasn't opened, show error alert
-                  alert(error.message || "Failed to start compound process");
-                }
+                setTransactionProgress({
+                  isOpen: true,
+                  title: "Compounding Rewards",
+                  steps: [
+                    {
+                      id: "error",
+                      label: "Error",
+                      status: "error",
+                      error: error?.message || "An error occurred",
+                    },
+                  ],
+                  currentStepIndex: 0,
+                });
               }
             }}
-            isLoading={isCompounding}
+            pools={(() => {
+              // Build pools array from the market
+              const market = compoundModal.market;
+              const collateralPoolAddress = market.addresses
+                ?.stabilityPoolCollateral as `0x${string}` | undefined;
+              const sailPoolAddress = market.addresses
+                ?.stabilityPoolLeveraged as `0x${string}` | undefined;
+
+              const pools: PoolOption[] = [];
+
+              // Get pegged token price for TVL calculation
+              let peggedTokenPrice: bigint | undefined;
+              const marketIndex = anchorMarkets.findIndex(
+                ([id]) =>
+                  id === compoundModal.market.id ||
+                  (compoundModal.market as any).addresses?.peggedToken
+              );
+              if (marketIndex >= 0 && reads) {
+                let offset = 0;
+                for (let i = 0; i < marketIndex; i++) {
+                  const prevMarket = anchorMarkets[i][1];
+                  const prevHasCollateral = !!(prevMarket as any).addresses
+                    ?.stabilityPoolCollateral;
+                  const prevHasSail = !!(prevMarket as any).addresses
+                    ?.stabilityPoolLeveraged;
+                  const prevHasPriceOracle = !!(prevMarket as any).addresses
+                    ?.collateralPrice;
+                  const prevHasStabilityPoolManager = !!(prevMarket as any)
+                    .addresses?.stabilityPoolManager;
+                  const prevPeggedTokenAddress = (prevMarket as any)?.addresses
+                    ?.peggedToken;
+                  offset += 5;
+                  if (prevHasStabilityPoolManager) offset += 1;
+                  if (prevHasCollateral) {
+                    offset += 4;
+                    if (prevPeggedTokenAddress) offset += 1;
+                  }
+                  if (prevHasSail) {
+                    offset += 4;
+                    if (prevPeggedTokenAddress) offset += 1;
+                  }
+                  if (prevHasPriceOracle) offset += 1;
+                }
+                peggedTokenPrice = reads?.[offset + 3]?.result as
+                  | bigint
+                  | undefined;
+              }
+
+              if (collateralPoolAddress) {
+                const collateralPoolData = allPoolRewards?.find(
+                  (r) =>
+                    r.poolAddress.toLowerCase() ===
+                    collateralPoolAddress.toLowerCase()
+                );
+                const collateralPoolAPR = collateralPoolData?.totalAPR;
+
+                let collateralTVLUSD: number | undefined;
+                if (collateralPoolData?.tvl !== undefined && peggedTokenPrice) {
+                  const tvlTokens = Number(collateralPoolData.tvl) / 1e18;
+                  const peggedPriceUSD = Number(peggedTokenPrice) / 1e18;
+                  collateralTVLUSD = tvlTokens * peggedPriceUSD;
+                }
+
+                pools.push({
+                  id: "collateral",
+                  name: `${
+                    compoundModal.market.peggedToken?.symbol ||
+                    compoundModal.market.id
+                  } Collateral Pool`,
+                  address: collateralPoolAddress,
+                  apr: collateralPoolAPR,
+                  tvl: collateralPoolData?.tvl,
+                  tvlUSD: collateralTVLUSD,
+                  enabled: true,
+                });
+              }
+
+              if (sailPoolAddress) {
+                const sailPoolData = allPoolRewards?.find(
+                  (r) =>
+                    r.poolAddress.toLowerCase() ===
+                    sailPoolAddress.toLowerCase()
+                );
+                const sailPoolAPR = sailPoolData?.totalAPR;
+
+                let sailTVLUSD: number | undefined;
+                if (sailPoolData?.tvl !== undefined && peggedTokenPrice) {
+                  const tvlTokens = Number(sailPoolData.tvl) / 1e18;
+                  const peggedPriceUSD = Number(peggedTokenPrice) / 1e18;
+                  sailTVLUSD = tvlTokens * peggedPriceUSD;
+                }
+
+                pools.push({
+                  id: "sail",
+                  name: `${
+                    compoundModal.market.peggedToken?.symbol ||
+                    compoundModal.market.id
+                  } Sail Pool`,
+                  address: sailPoolAddress,
+                  apr: sailPoolAPR,
+                  tvl: sailPoolData?.tvl,
+                  tvlUSD: sailTVLUSD,
+                  enabled: true,
+                });
+              }
+
+              return pools;
+            })()}
+            marketSymbol={
+              compoundModal.market.peggedToken?.symbol ||
+              compoundModal.market.id
+            }
           />
         )}
 
@@ -6731,7 +7635,7 @@ export default function AnchorPage() {
                   offset += 4;
                   if (prevHasCollateral) offset += 3;
                   if (prevHasSail) offset += 3;
-                  if (prevHasPriceOracle) offset += 2;
+                  if (prevHasPriceOracle) offset += 1;
                 }
 
                 const baseOffset = offset;
@@ -6742,19 +7646,28 @@ export default function AnchorPage() {
 
                 // Get price oracle for USD calculations
                 const hasPriceOracle = !!(m as any).addresses?.collateralPrice;
-                let collateralPriceDecimals: number | undefined;
+                const collateralPriceDecimals = 18;
                 let collateralPrice: bigint | undefined;
                 let priceOffset = currentOffset;
                 if (hasCollateralPool) priceOffset += 3;
                 if (hasSailPool) priceOffset += 3;
                 if (hasPriceOracle) {
-                  collateralPriceDecimals = reads?.[priceOffset]?.result as
-                    | number
-                    | undefined;
-                  const priceRaw = reads?.[priceOffset + 1]?.result as
-                    | bigint
-                    | undefined;
-                  collateralPrice = priceRaw;
+                  const latestAnswerResult = reads?.[priceOffset]?.result;
+                  if (
+                    latestAnswerResult !== undefined &&
+                    latestAnswerResult !== null
+                  ) {
+                    if (Array.isArray(latestAnswerResult)) {
+                      collateralPrice = latestAnswerResult[1] as bigint;
+                    } else if (typeof latestAnswerResult === "object") {
+                      const obj = latestAnswerResult as {
+                        maxUnderlyingPrice?: bigint;
+                      };
+                      collateralPrice = obj.maxUnderlyingPrice;
+                    } else if (typeof latestAnswerResult === "bigint") {
+                      collateralPrice = latestAnswerResult;
+                    }
+                  }
                 }
 
                 // Collateral pool position
@@ -6763,20 +7676,23 @@ export default function AnchorPage() {
                     ?.stabilityPoolCollateral as `0x${string}`;
                   const collateralPoolDeposit = reads?.[currentOffset]
                     ?.result as bigint | undefined;
-                  
+
                   // Get rewards from allPoolRewards
                   const poolReward = allPoolRewards.find(
-                    (pr) => pr.poolAddress.toLowerCase() === collateralPoolAddress.toLowerCase()
+                    (pr) =>
+                      pr.poolAddress.toLowerCase() ===
+                      collateralPoolAddress.toLowerCase()
                   );
 
                   let depositUSD = 0;
                   let rewardsUSD = poolReward?.claimableValue || 0;
-                  
+
                   // Calculate total rewards as bigint (sum of all reward tokens)
-                  const totalRewards = poolReward?.rewardTokens.reduce(
-                    (sum, token) => sum + token.claimable,
-                    0n
-                  ) || 0n;
+                  const totalRewards =
+                    poolReward?.rewardTokens.reduce(
+                      (sum, token) => sum + token.claimable,
+                      0n
+                    ) || 0n;
 
                   if (
                     collateralPoolDeposit &&
@@ -6821,17 +7737,20 @@ export default function AnchorPage() {
 
                   // Get rewards from allPoolRewards
                   const poolReward = allPoolRewards.find(
-                    (pr) => pr.poolAddress.toLowerCase() === sailPoolAddress.toLowerCase()
+                    (pr) =>
+                      pr.poolAddress.toLowerCase() ===
+                      sailPoolAddress.toLowerCase()
                   );
 
                   let depositUSD = 0;
                   let rewardsUSD = poolReward?.claimableValue || 0;
-                  
+
                   // Calculate total rewards as bigint (sum of all reward tokens)
-                  const totalRewards = poolReward?.rewardTokens.reduce(
-                    (sum, token) => sum + token.claimable,
-                    0n
-                  ) || 0n;
+                  const totalRewards =
+                    poolReward?.rewardTokens.reduce(
+                      (sum, token) => sum + token.claimable,
+                      0n
+                    ) || 0n;
 
                   if (
                     sailPoolDeposit &&
@@ -6889,7 +7808,48 @@ export default function AnchorPage() {
           />
         )}
 
-        {/* Compound Confirmation Modal */}
+        {/* Compound Pool Selection Modal */}
+        {compoundPoolSelection && (
+          <CompoundPoolSelectionModal
+            isOpen={true}
+            onClose={() => {
+              setCompoundPoolSelection(null);
+            }}
+            onConfirm={async (allocations) => {
+              setCompoundPoolSelection(null);
+              try {
+                // Calculate reward amount from all pools
+                const totalRewardAmount = BigInt(0); // Will be calculated in handleCompoundConfirm
+                await handleCompoundConfirm(
+                  compoundPoolSelection.market,
+                  allocations,
+                  totalRewardAmount
+                );
+              } catch (error: any) {
+                // Show error in a simple alert or toast
+                setTransactionProgress({
+                  isOpen: true,
+                  title: "Compounding Rewards",
+                  steps: [
+                    {
+                      id: "error",
+                      label: "Error",
+                      status: "error",
+                      error: error?.message || "An error occurred",
+                    },
+                  ],
+                  currentStepIndex: 0,
+                });
+              }
+            }}
+            pools={compoundPoolSelection.pools}
+            marketSymbol={
+              compoundPoolSelection.market.peggedToken?.symbol ||
+              compoundPoolSelection.market.id
+            }
+          />
+        )}
+
         {compoundConfirmation && (
           <CompoundConfirmationModal
             isOpen={true}
@@ -6900,6 +7860,7 @@ export default function AnchorPage() {
             onConfirm={compoundConfirmation.onConfirm}
             steps={compoundConfirmation.steps}
             fees={compoundConfirmation.fees}
+            feeErrors={compoundConfirmation.feeErrors}
           />
         )}
 

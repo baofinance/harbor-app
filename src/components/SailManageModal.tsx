@@ -12,9 +12,7 @@ import {
 import { useAnvilContractRead } from "@/hooks/useAnvilContractRead";
 import { shouldUseAnvil } from "@/config/environment";
 import { BaseError, ContractFunctionRevertedError } from "viem";
-import { ERC20_ABI } from "../config/contracts";
-import { minterABI } from "@/abis/minter";
-import Image from "next/image";
+import { ERC20_ABI, MINTER_ABI } from "@/abis/shared";
 import SimpleTooltip from "@/components/SimpleTooltip";
 
 interface SailManageModalProps {
@@ -53,15 +51,6 @@ function getAcceptedDepositAssets(
     ];
   }
   return [];
-}
-
-function getLogoPath(symbol: string): string {
-  const normalized = symbol.toLowerCase();
-  if (normalized === "hapb") return "/icons/haETH.png";
-  if (normalized === "hspb") return "/icons/hsUSDETH.png";
-  if (normalized === "hausd") return "/icons/haUSD2.png";
-  if (normalized === "hsusdeth") return "/icons/hsUSDETH.png";
-  return `/icons/${symbol}.png`;
 }
 
 export const SailManageModal = ({
@@ -257,7 +246,7 @@ export const SailManageModal = ({
 
   const { data: mintDryRunData, error: mintDryRunError } = useAnvilContractRead({
     address: minterAddress,
-    abi: minterABI,
+    abi: MINTER_ABI,
     functionName: "mintLeveragedTokenDryRun",
     args: parsedAmount ? [parsedAmount] : undefined,
     query: {
@@ -268,7 +257,7 @@ export const SailManageModal = ({
   const { data: mintDryRunDataProd, error: mintDryRunErrorProd } =
     useContractRead({
       address: minterAddress,
-      abi: minterABI,
+      abi: MINTER_ABI,
       functionName: "mintLeveragedTokenDryRun",
       args: parsedAmount ? [parsedAmount] : undefined,
       query: {
@@ -293,7 +282,7 @@ export const SailManageModal = ({
   const { data: redeemDryRunData, error: redeemDryRunError } =
     useAnvilContractRead({
       address: minterAddress,
-      abi: minterABI,
+      abi: MINTER_ABI,
       functionName: "redeemLeveragedTokenDryRun",
       args: parsedAmount ? [parsedAmount] : undefined,
       query: {
@@ -304,7 +293,7 @@ export const SailManageModal = ({
   const { data: redeemDryRunDataProd, error: redeemDryRunErrorProd } =
     useContractRead({
       address: minterAddress,
-      abi: minterABI,
+      abi: MINTER_ABI,
       functionName: "redeemLeveragedTokenDryRun",
       args: parsedAmount ? [parsedAmount] : undefined,
       query: {
@@ -518,7 +507,7 @@ export const SailManageModal = ({
       // Mint leveraged token
       const mintHash = await writeContractAsync({
         address: minterAddress,
-        abi: minterABI,
+        abi: MINTER_ABI,
         functionName: "mintLeveragedToken",
         args: [parsedAmount, address, minOutput],
       });
@@ -579,7 +568,7 @@ export const SailManageModal = ({
       // Redeem leveraged token
       const redeemHash = await writeContractAsync({
         address: minterAddress,
-        abi: minterABI,
+        abi: MINTER_ABI,
         functionName: "redeemLeveragedToken",
         args: [parsedAmount, address, minOutput],
       });

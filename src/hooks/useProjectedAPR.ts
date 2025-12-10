@@ -3,139 +3,16 @@ import { useAnvilContractReads } from "./useAnvilContractReads";
 import { useAnvilContractRead } from "./useAnvilContractRead";
 import { formatEther } from "viem";
 import { markets } from "@/config/markets";
-import { contracts } from "@/config/contracts";
-
-// ABIs for the contracts we need to read from
-const minterABI = [
-  {
-    inputs: [],
-    name: "harvestable",
-    outputs: [{ name: "wrappedAmount", type: "uint256" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "WRAPPED_COLLATERAL_TOKEN",
-    outputs: [{ name: "", type: "address" }],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
-
-const stabilityPoolManagerABI = [
-  {
-    inputs: [],
-    name: "harvestBountyRatio",
-    outputs: [{ name: "", type: "uint256" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "harvestCutRatio",
-    outputs: [{ name: "", type: "uint256" }],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
-
-const stabilityPoolABI = [
-  {
-    inputs: [],
-    name: "totalAssetSupply",
-    outputs: [{ name: "amount", type: "uint256" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [{ name: "rewardToken", type: "address" }],
-    name: "rewardData",
-    outputs: [
-      {
-        components: [
-          { name: "rate", type: "uint256" },
-          { name: "queued", type: "uint256" },
-          { name: "finishAt", type: "uint40" },
-          { name: "lastUpdate", type: "uint40" },
-          { name: "index", type: "uint256" },
-        ],
-        name: "",
-        type: "tuple",
-      },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "REWARD_PERIOD_LENGTH",
-    outputs: [{ name: "", type: "uint256" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [{ name: "account", type: "address" }],
-    name: "assetBalanceOf",
-    outputs: [{ name: "amount", type: "uint256" }],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
-
-const wstETHABI = [
-  {
-    inputs: [],
-    name: "stEthPerToken",
-    outputs: [{ name: "", type: "uint256" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [{ name: "account", type: "address" }],
-    name: "balanceOf",
-    outputs: [{ name: "", type: "uint256" }],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
-
-const erc20ABI = [
-  {
-    inputs: [{ name: "account", type: "address" }],
-    name: "balanceOf",
-    outputs: [{ name: "", type: "uint256" }],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
-
-const chainlinkOracleABI = [
-  {
-    inputs: [],
-    name: "latestAnswer",
-    outputs: [{ name: "", type: "int256" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "decimals",
-    outputs: [{ name: "", type: "uint8" }],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
-
-const genesisABI = [
-  {
-    inputs: [],
-    name: "genesisIsEnded",
-    outputs: [{ name: "", type: "bool" }],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
+import { contracts, GENESIS_ABI } from "@/config/contracts";
+import {
+  MINTER_ABI,
+  STABILITY_POOL_ABI,
+  STABILITY_POOL_MANAGER_ABI,
+  WSTETH_ABI,
+  ERC20_ABI,
+  CHAINLINK_ORACLE_ABI,
+} from "@/abis/shared";
+import { POLLING_INTERVALS } from "@/config/polling";
 
 // Constants
 const STAKING_APR = 0.035; // 3.5% APR for stETH staking rewards
@@ -151,6 +28,20 @@ interface ProjectedAPRResult {
   harvestableAmount: bigint | null;
   projectedHarvestable: bigint | null;
   remainingDays: number | null;
+  // Queued rewards waiting to be distributed
+  collateralQueuedRewards: bigint | null;
+  leveragedQueuedRewards: bigint | null;
+  // Total rewards value for 7 days (queued + projected harvestable share)
+  collateralRewards7Day: bigint | null;
+  leveragedRewards7Day: bigint | null;
+  // Flag for "infinite APR" when there are rewards but no TVL (DEPRECATED - use per-pool flags)
+  hasRewardsNoTVL: boolean;
+  // Per-pool flags for "rewards waiting" state
+  collateralPoolHasRewardsNoTVL: boolean;
+  leveragedPoolHasRewardsNoTVL: boolean;
+  // Pool TVL values
+  collateralPoolTVL: bigint | null;
+  leveragedPoolTVL: bigint | null;
 }
 
 export function useProjectedAPR(
@@ -176,52 +67,52 @@ export function useProjectedAPR(
         // Minter reads
         {
           address: minterAddress as `0x${string}`,
-          abi: minterABI,
+          abi: MINTER_ABI,
           functionName: "harvestable",
         },
         {
           address: minterAddress as `0x${string}`,
-          abi: minterABI,
+          abi: MINTER_ABI,
           functionName: "WRAPPED_COLLATERAL_TOKEN",
         },
         // Stability Pool Manager reads
         {
           address: stabilityPoolManagerAddress as `0x${string}`,
-          abi: stabilityPoolManagerABI,
+          abi: STABILITY_POOL_MANAGER_ABI,
           functionName: "harvestBountyRatio",
         },
         {
           address: stabilityPoolManagerAddress as `0x${string}`,
-          abi: stabilityPoolManagerABI,
+          abi: STABILITY_POOL_MANAGER_ABI,
           functionName: "harvestCutRatio",
         },
         // Collateral pool reads
         {
           address: collateralPoolAddress as `0x${string}`,
-          abi: stabilityPoolABI,
+          abi: STABILITY_POOL_ABI,
           functionName: "totalAssetSupply",
         },
         // Leveraged pool reads
         {
           address: leveragedPoolAddress as `0x${string}`,
-          abi: stabilityPoolABI,
+          abi: STABILITY_POOL_ABI,
           functionName: "totalAssetSupply",
         },
         // Genesis status
         {
           address: genesisAddress as `0x${string}`,
-          abi: genesisABI,
+          abi: GENESIS_ABI,
           functionName: "genesisIsEnded",
         },
         // Price oracle
         {
           address: priceOracleAddress as `0x${string}`,
-          abi: chainlinkOracleABI,
+          abi: CHAINLINK_ORACLE_ABI,
           functionName: "latestAnswer",
         },
         {
           address: priceOracleAddress as `0x${string}`,
-          abi: chainlinkOracleABI,
+          abi: CHAINLINK_ORACLE_ABI,
           functionName: "decimals",
         },
       ],
@@ -230,7 +121,7 @@ export function useProjectedAPR(
         !!stabilityPoolManagerAddress &&
         !!collateralPoolAddress &&
         !!leveragedPoolAddress,
-      refetchInterval: 30000, // Refresh every 30 seconds
+      refetchInterval: POLLING_INTERVALS.SLOW, // Refresh every 30 seconds
     }
   );
 
@@ -240,18 +131,18 @@ export function useProjectedAPR(
       contracts: [
         {
           address: wstETHAddress as `0x${string}`,
-          abi: wstETHABI,
+          abi: WSTETH_ABI,
           functionName: "stEthPerToken",
         },
         {
           address: wstETHAddress as `0x${string}`,
-          abi: erc20ABI,
+          abi: ERC20_ABI,
           functionName: "balanceOf",
           args: [minterAddress as `0x${string}`],
         },
       ],
       enabled: !!wstETHAddress && !!minterAddress,
-      refetchInterval: 30000,
+      refetchInterval: POLLING_INTERVALS.SLOW,
     });
 
   // Get reward data from collateral pool (for finishAt and queued)
@@ -264,19 +155,19 @@ export function useProjectedAPR(
       contracts: [
         {
           address: collateralPoolAddress as `0x${string}`,
-          abi: stabilityPoolABI,
+          abi: STABILITY_POOL_ABI,
           functionName: "rewardData",
           args: wrappedCollateralToken ? [wrappedCollateralToken] : undefined,
         },
         {
           address: leveragedPoolAddress as `0x${string}`,
-          abi: stabilityPoolABI,
+          abi: STABILITY_POOL_ABI,
           functionName: "rewardData",
           args: wrappedCollateralToken ? [wrappedCollateralToken] : undefined,
         },
         {
           address: collateralPoolAddress as `0x${string}`,
-          abi: stabilityPoolABI,
+          abi: STABILITY_POOL_ABI,
           functionName: "REWARD_PERIOD_LENGTH",
         },
       ],
@@ -284,7 +175,7 @@ export function useProjectedAPR(
         !!wrappedCollateralToken &&
         !!collateralPoolAddress &&
         !!leveragedPoolAddress,
-      refetchInterval: 30000,
+      refetchInterval: POLLING_INTERVALS.SLOW,
     });
 
   const result = useMemo(() => {
@@ -296,6 +187,15 @@ export function useProjectedAPR(
       harvestableAmount: null,
       projectedHarvestable: null,
       remainingDays: null,
+      collateralQueuedRewards: null,
+      leveragedQueuedRewards: null,
+      collateralRewards7Day: null,
+      leveragedRewards7Day: null,
+      hasRewardsNoTVL: false,
+      collateralPoolHasRewardsNoTVL: false,
+      leveragedPoolHasRewardsNoTVL: false,
+      collateralPoolTVL: null,
+      leveragedPoolTVL: null,
     };
 
     if (isLoadingBasic || isLoadingWstETH || isLoadingRewardData) {
@@ -320,52 +220,135 @@ export function useProjectedAPR(
       const stEthPerToken = wstETHReads?.[0]?.result as bigint | undefined;
       const wstETHBalance = wstETHReads?.[1]?.result as bigint | undefined;
 
-      // Extract reward data
-      const collateralRewardData = rewardDataReads?.[0]?.result as
-        | {
-            rate: bigint;
-            queued: bigint;
-            finishAt: number;
-            lastUpdate: number;
-            index: bigint;
-          }
-        | undefined;
-      const leveragedRewardData = rewardDataReads?.[1]?.result as
-        | {
-            rate: bigint;
-            queued: bigint;
-            finishAt: number;
-            lastUpdate: number;
-            index: bigint;
-          }
-        | undefined;
+      // Extract reward period length
       const rewardPeriodLength = rewardDataReads?.[2]?.result as
         | bigint
         | undefined;
 
-      // Validation
+      // Extract queued rewards FIRST - before any early returns
+      // rewardData returns: [lastUpdate, finishAt, rate, queued] as 4 separate uint256 values
+      const collateralRewardDataRaw = rewardDataReads?.[0]?.result as
+        | readonly [bigint, bigint, bigint, bigint]
+        | undefined;
+      const leveragedRewardDataRaw = rewardDataReads?.[1]?.result as
+        | readonly [bigint, bigint, bigint, bigint]
+        | undefined;
+
+      // Parse the array into named fields
+      const collateralRewardDataParsed = collateralRewardDataRaw
+        ? {
+            lastUpdate: Number(collateralRewardDataRaw[0]),
+            finishAt: Number(collateralRewardDataRaw[1]),
+            rate: collateralRewardDataRaw[2],
+            queued: collateralRewardDataRaw[3],
+          }
+        : undefined;
+      const leveragedRewardDataParsed = leveragedRewardDataRaw
+        ? {
+            lastUpdate: Number(leveragedRewardDataRaw[0]),
+            finishAt: Number(leveragedRewardDataRaw[1]),
+            rate: leveragedRewardDataRaw[2],
+            queued: leveragedRewardDataRaw[3],
+          }
+        : undefined;
+
+      const collateralQueued = collateralRewardDataParsed?.queued ?? 0n;
+      const leveragedQueued = leveragedRewardDataParsed?.queued ?? 0n;
+      const collateralRate = collateralRewardDataParsed?.rate ?? 0n;
+      const leveragedRate = leveragedRewardDataParsed?.rate ?? 0n;
+      // Reward period length (default to 7 days if missing)
+      const periodLengthSeconds = rewardPeriodLength
+        ? Number(rewardPeriodLength)
+        : SECONDS_PER_WEEK;
+
+      // Compute 7‑day rewards: current queued plus what will stream over the next period
+      const collateralRewards7Day =
+        collateralQueued + collateralRate * BigInt(periodLengthSeconds);
+      const leveragedRewards7Day =
+        leveragedQueued + leveragedRate * BigInt(periodLengthSeconds);
+
+      const totalQueuedRewards = collateralQueued + leveragedQueued;
+
+      // Check if no harvestable amount BUT there are queued/streaming rewards
       if (harvestable === undefined || harvestable === 0n) {
+        // Even if no harvestable, if there are queued rewards, we should show them
+        const hasRewardsStreaming =
+          collateralRewards7Day > 0n || leveragedRewards7Day > 0n;
+
+        // Calculate per-pool "rewards waiting" state
+        const collateralHasRewardsNoTVL =
+          collateralRewards7Day > 0n &&
+          (!collateralPoolSupply || collateralPoolSupply === 0n);
+        const leveragedHasRewardsNoTVL =
+          leveragedRewards7Day > 0n &&
+          (!leveragedPoolSupply || leveragedPoolSupply === 0n);
+
+        if (totalQueuedRewards > 0n || hasRewardsStreaming) {
+          return {
+            ...defaultResult,
+            collateralPoolAPR: collateralHasRewardsNoTVL ? 10000 : null,
+            leveragedPoolAPR: leveragedHasRewardsNoTVL ? 10000 : null,
+            error: null,
+            harvestableAmount: harvestable ?? 0n,
+            collateralQueuedRewards: collateralQueued,
+            leveragedQueuedRewards: leveragedQueued,
+            collateralRewards7Day,
+            leveragedRewards7Day,
+            hasRewardsNoTVL:
+              collateralHasRewardsNoTVL && leveragedHasRewardsNoTVL,
+            collateralPoolHasRewardsNoTVL: collateralHasRewardsNoTVL,
+            leveragedPoolHasRewardsNoTVL: leveragedHasRewardsNoTVL,
+            collateralPoolTVL: collateralPoolSupply ?? null,
+            leveragedPoolTVL: leveragedPoolSupply ?? null,
+          };
+        }
         return {
           ...defaultResult,
           error: "No harvestable amount available",
           harvestableAmount: harvestable ?? 0n,
+          collateralQueuedRewards: collateralQueued,
+          leveragedQueuedRewards: leveragedQueued,
+          collateralPoolTVL: collateralPoolSupply ?? null,
+          leveragedPoolTVL: leveragedPoolSupply ?? null,
         };
       }
 
-      if (!collateralPoolSupply || !leveragedPoolSupply) {
-        return {
-          ...defaultResult,
-          error: "Could not read pool supplies",
-          harvestableAmount: harvestable,
-        };
-      }
+      // Note: We no longer require BOTH pools to have supply data
+      // One pool may have deposits while the other doesn't
 
-      const totalPoolHolding = collateralPoolSupply + leveragedPoolSupply;
+      // Get safe pool supply values (default to 0n if undefined)
+      const safeCollateralPoolSupply = collateralPoolSupply ?? 0n;
+      const safeLeveragedPoolSupply = leveragedPoolSupply ?? 0n;
+      const totalPoolHolding =
+        safeCollateralPoolSupply + safeLeveragedPoolSupply;
+
+      // Calculate per-pool "rewards waiting" state
+      const collateralHasRewardsNoTVL =
+        collateralRewards7Day > 0n && safeCollateralPoolSupply === 0n;
+      const leveragedHasRewardsNoTVL =
+        leveragedRewards7Day > 0n && safeLeveragedPoolSupply === 0n;
+
       if (totalPoolHolding === 0n) {
+        // No TVL in either pool but there may be queued rewards waiting
         return {
           ...defaultResult,
-          error: "No deposits in stability pools",
+          collateralPoolAPR: collateralRewards7Day > 0n ? 10000 : null, // Signal "10k%+"
+          leveragedPoolAPR: leveragedRewards7Day > 0n ? 10000 : null,
+          error:
+            collateralRewards7Day > 0n || leveragedRewards7Day > 0n
+              ? null
+              : "No deposits in stability pools",
           harvestableAmount: harvestable,
+          collateralQueuedRewards: collateralQueued,
+          leveragedQueuedRewards: leveragedQueued,
+          collateralRewards7Day,
+          leveragedRewards7Day,
+          hasRewardsNoTVL:
+            collateralRewards7Day > 0n || leveragedRewards7Day > 0n,
+          collateralPoolHasRewardsNoTVL: collateralHasRewardsNoTVL,
+          leveragedPoolHasRewardsNoTVL: leveragedHasRewardsNoTVL,
+          collateralPoolTVL: safeCollateralPoolSupply,
+          leveragedPoolTVL: safeLeveragedPoolSupply,
         };
       }
 
@@ -378,7 +361,7 @@ export function useProjectedAPR(
       let remainingSeconds: number;
 
       // Check if there's an active reward period
-      const finishAt = collateralRewardData?.finishAt ?? 0;
+      const finishAt = collateralRewardDataParsed?.finishAt ?? 0;
 
       if (finishAt > currentTimestamp) {
         // Active reward period - calculate remaining time
@@ -448,14 +431,10 @@ export function useProjectedAPR(
 
       // Calculate split between pools
       const toCollateralPool =
-        (harvestableRemaining * collateralPoolSupply) / totalPoolHolding;
+        (harvestableRemaining * safeCollateralPoolSupply) / totalPoolHolding;
       const toLeveragedPool = harvestableRemaining - toCollateralPool;
 
-      // Get queued rewards
-      const collateralQueued = collateralRewardData?.queued ?? 0n;
-      const leveragedQueued = leveragedRewardData?.queued ?? 0n;
-
-      // Total rewards for next period
+      // Total rewards for next period (already extracted collateralQueued and leveragedQueued above)
       const totalCollateralRewards = toCollateralPool + collateralQueued;
       const totalLeveragedRewards = toLeveragedPool + leveragedQueued;
 
@@ -472,47 +451,70 @@ export function useProjectedAPR(
 
       // Calculate APR for collateral pool
       // APR = (rewardsValue / depositValue) * (365/7) * 100
-      let collateralPoolAPR = 0;
-      if (collateralPoolSupply > 0n && collateralPriceUSD > 0) {
+      let collateralPoolAPR: number | null = null;
+      if (safeCollateralPoolSupply > 0n && collateralPriceUSD > 0) {
         const rewardsPer7Days = Number(projectedCollateralRate) * periodLength;
         const rewardsValueUSD = (rewardsPer7Days / 1e18) * collateralPriceUSD;
         const depositValueUSD =
-          (Number(collateralPoolSupply) / 1e18) * collateralPriceUSD;
+          (Number(safeCollateralPoolSupply) / 1e18) * collateralPriceUSD;
 
         if (depositValueUSD > 0) {
           collateralPoolAPR =
             (rewardsValueUSD / depositValueUSD) * (DAYS_PER_YEAR / 7) * 100;
         }
+      } else if (collateralHasRewardsNoTVL) {
+        // No TVL but rewards waiting - signal "10k%+"
+        collateralPoolAPR = 10000;
       }
 
       // Calculate APR for leveraged pool
       // For leveraged pool, deposits are in pegged tokens (different price)
       // For simplicity, we'll use same price assumption (pegged token ~= collateral value)
-      let leveragedPoolAPR = 0;
-      if (leveragedPoolSupply > 0n && collateralPriceUSD > 0) {
+      let leveragedPoolAPR: number | null = null;
+      if (safeLeveragedPoolSupply > 0n && collateralPriceUSD > 0) {
         const rewardsPer7Days = Number(projectedLeveragedRate) * periodLength;
         const rewardsValueUSD = (rewardsPer7Days / 1e18) * collateralPriceUSD;
         // Pegged tokens are roughly $1 each (or track some underlying)
         // For now, assume leveraged pool deposits are valued similarly to rewards token
         const depositValueUSD =
-          (Number(leveragedPoolSupply) / 1e18) * collateralPriceUSD;
+          (Number(safeLeveragedPoolSupply) / 1e18) * collateralPriceUSD;
 
         if (depositValueUSD > 0) {
           leveragedPoolAPR =
             (rewardsValueUSD / depositValueUSD) * (DAYS_PER_YEAR / 7) * 100;
         }
+      } else if (leveragedHasRewardsNoTVL) {
+        // No TVL but rewards waiting - signal "10k%+"
+        leveragedPoolAPR = 10000;
       }
 
       return {
-        collateralPoolAPR: isFinite(collateralPoolAPR)
-          ? collateralPoolAPR
-          : null,
-        leveragedPoolAPR: isFinite(leveragedPoolAPR) ? leveragedPoolAPR : null,
+        collateralPoolAPR:
+          collateralPoolAPR !== null &&
+          typeof collateralPoolAPR === "number" &&
+          isFinite(collateralPoolAPR)
+            ? collateralPoolAPR
+            : null,
+        leveragedPoolAPR:
+          leveragedPoolAPR !== null &&
+          typeof leveragedPoolAPR === "number" &&
+          isFinite(leveragedPoolAPR)
+            ? leveragedPoolAPR
+            : null,
         isLoading: false,
         error: null,
         harvestableAmount: harvestable,
         projectedHarvestable,
         remainingDays,
+        collateralQueuedRewards: collateralQueued,
+        leveragedQueuedRewards: leveragedQueued,
+        collateralRewards7Day: totalCollateralRewards,
+        leveragedRewards7Day: totalLeveragedRewards,
+        hasRewardsNoTVL: collateralHasRewardsNoTVL && leveragedHasRewardsNoTVL,
+        collateralPoolHasRewardsNoTVL: collateralHasRewardsNoTVL,
+        leveragedPoolHasRewardsNoTVL: leveragedHasRewardsNoTVL,
+        collateralPoolTVL: safeCollateralPoolSupply,
+        leveragedPoolTVL: safeLeveragedPoolSupply,
       };
     } catch (error) {
       console.error("[useProjectedAPR] Error calculating APR:", error);
@@ -563,20 +565,20 @@ export function useUserProjectedAPR(
       contracts: [
         {
           address: collateralPoolAddress as `0x${string}`,
-          abi: stabilityPoolABI,
+          abi: STABILITY_POOL_ABI,
           functionName: "assetBalanceOf",
           args: userAddress ? [userAddress] : undefined,
         },
         {
           address: leveragedPoolAddress as `0x${string}`,
-          abi: stabilityPoolABI,
+          abi: STABILITY_POOL_ABI,
           functionName: "assetBalanceOf",
           args: userAddress ? [userAddress] : undefined,
         },
       ],
       enabled:
         !!userAddress && !!collateralPoolAddress && !!leveragedPoolAddress,
-      refetchInterval: 30000,
+      refetchInterval: POLLING_INTERVALS.SLOW,
     });
 
   return useMemo(() => {

@@ -107,3 +107,5 @@ The subgraph will show:
 - Synced blocks
 - Status (Syncing, Pending, Failed, etc.)
 
+
+

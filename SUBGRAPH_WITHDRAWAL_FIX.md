@@ -48,3 +48,5 @@ After redeploying, test:
 
 The fix has been implemented in the codebase at `subgraph/src/genesis.ts` lines 160-210. The subgraph needs to be redeployed for the fix to take effect.
 
+
+

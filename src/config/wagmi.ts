@@ -16,15 +16,22 @@ const chains = useAnvil
   ? [anvil, mainnet, base, arbitrum] // Anvil first for local dev
   : [mainnet, base, arbitrum]; // Mainnet first for production
 
-// Set up wagmi config
+// Set up wagmi config with fallback RPC URLs
 export const wagmi = createConfig({
   chains,
   connectors: [injected(), metaMask(), safe()],
   transports: {
     ...(useAnvil ? { [anvil.id]: http(ANVIL_RPC_URL) } : {}),
-    [mainnet.id]: http(process.env.NEXT_PUBLIC_MAINNET_RPC_URL),
-    [base.id]: http(process.env.NEXT_PUBLIC_BASE_RPC_URL),
-    [arbitrum.id]: http(process.env.NEXT_PUBLIC_ARBITRUM_RPC_URL),
+    // Use provided RPC URL or fallback to public RPC endpoints
+    [mainnet.id]: http(
+      process.env.NEXT_PUBLIC_MAINNET_RPC_URL || "https://eth.llamarpc.com"
+    ),
+    [base.id]: http(
+      process.env.NEXT_PUBLIC_BASE_RPC_URL || "https://mainnet.base.org"
+    ),
+    [arbitrum.id]: http(
+      process.env.NEXT_PUBLIC_ARBITRUM_RPC_URL || "https://arb1.arbitrum.io/rpc"
+    ),
   },
   ssr: true, // Enable SSR support
 });

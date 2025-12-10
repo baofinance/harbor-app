@@ -283,21 +283,21 @@ export const AnchorClaimAllModal = ({
                   onBuyTide(selectedPoolsArray);
                   onClose();
                 }}
-                disabled={isLoading || selectedPoolsArray.length === 0}
-                className="w-full p-4 text-left bg-white border-2 border-[#1E4775] hover:bg-[#1E4775]/5 transition-colors rounded-lg flex items-center justify-between group disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={true}
+                className="w-full p-4 text-left bg-white border-2 border-gray-300 transition-colors rounded-lg flex items-center justify-between group disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <div className="flex items-center gap-3">
                   <div>
-                    <div className="font-semibold text-[#1E4775]">
+                    <div className="font-semibold text-gray-500">
                       Buy $TIDE
                     </div>
-                    <p className="text-xs text-[#1E4775]/70 mt-1">
-                      Acquire Harbor governance tokens
+                    <p className="text-xs text-gray-400 mt-1">
+                      $TIDE token is not live yet
                     </p>
                   </div>
                 </div>
                 <svg
-                  className="w-5 h-5 text-[#1E4775] group-hover:translate-x-1 transition-transform"
+                  className="w-5 h-5 text-gray-400"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"

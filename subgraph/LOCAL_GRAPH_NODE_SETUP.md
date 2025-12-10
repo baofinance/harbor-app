@@ -157,3 +157,5 @@ ETHEREUM_RPC_URL=http://localhost:8545
 
 5. **Update frontend** to point to local Graph endpoint for testing
 
+
+

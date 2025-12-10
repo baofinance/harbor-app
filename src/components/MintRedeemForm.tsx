@@ -18,6 +18,8 @@ import {
 import { markets } from "../config/markets";
 import MintRedeemStatusModal from "./MintRedeemStatusModal";
 import type { Market as MarketCfg } from "../config/markets";
+import { minterABI } from "@/abis/minter";
+import { ERC20_ABI } from "@/abis/shared";
 
 // Constants (to be moved from page.tsx)
 const tokens = {
@@ -33,194 +35,6 @@ const tokens = {
     "hsSP500-DOWN",
   ],
 };
-
-// Corrected minterABI (ensure this is the FULL and CORRECT one from page.tsx)
-const minterABI = [
-  // ... (ALL OTHER FUNCTIONS FROM THE ORIGINAL minterABI)
-  {
-    inputs: [],
-    name: "leverageRatio",
-    outputs: [{ type: "uint256", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "mintPeggedTokenIncentiveRatio",
-    outputs: [{ type: "int256", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "redeemPeggedTokenIncentiveRatio",
-    outputs: [{ type: "int256", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [
-      { name: "collateralIn", type: "uint256" },
-      { name: "receiver", type: "address" },
-      { name: "minPeggedOut", type: "uint256" },
-    ],
-    name: "mintPeggedToken",
-    outputs: [{ type: "uint256", name: "peggedAmount" }],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [
-      { name: "peggedIn", type: "uint256" },
-      { name: "receiver", type: "address" },
-      { name: "minCollateralOut", type: "uint256" },
-    ],
-    name: "redeemPeggedToken",
-    outputs: [{ type: "uint256", name: "collateralAmount" }],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [
-      { name: "collateralIn", type: "uint256" },
-      { name: "receiver", type: "address" },
-      { name: "minLeveragedOut", type: "uint256" },
-    ],
-    name: "mintLeveragedToken",
-    outputs: [{ type: "uint256", name: "leveragedAmount" }],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [
-      { name: "leveragedIn", type: "uint256" },
-      { name: "receiver", type: "address" },
-      { name: "minCollateralOut", type: "uint256" },
-    ],
-    name: "redeemLeveragedToken",
-    outputs: [{ type: "uint256", name: "collateralAmount" }],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [{ name: "collateralAmount", type: "uint256" }],
-    name: "calculateMintPeggedTokenOutput",
-    outputs: [{ type: "uint256", name: "peggedAmount" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [{ name: "peggedAmount", type: "uint256" }],
-    name: "calculateRedeemPeggedTokenOutput",
-    outputs: [{ type: "uint256", name: "collateralAmount" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [{ name: "collateralAmount", type: "uint256" }],
-    name: "calculateMintLeveragedTokenOutput",
-    outputs: [{ type: "uint256", name: "leveragedAmount" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [{ name: "leveragedAmount", type: "uint256" }],
-    name: "calculateRedeemLeveragedTokenOutput",
-    outputs: [{ type: "uint256", name: "collateralAmount" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [{ name: "amount", type: "uint256" }],
-    name: "mintPeggedTokenDryRun",
-    outputs: [
-      { type: "int256", name: "incentiveRatio" },
-      { type: "uint256", name: "wrappedFee" },
-      { type: "uint256", name: "wrappedCollateralTaken" },
-      { type: "uint256", name: "peggedMinted" },
-      { type: "uint256", name: "price" },
-      { type: "uint256", name: "rate" },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [{ name: "peggedIn", type: "uint256" }],
-    name: "redeemPeggedTokenDryRun",
-    outputs: [
-      { type: "int256", name: "incentiveRatio" },
-      { type: "uint256", name: "wrappedFee" },
-      { type: "uint256", name: "wrappedDiscount" },
-      { type: "uint256", name: "peggedRedeemed" },
-      { type: "uint256", name: "wrappedCollateralReturned" },
-      { type: "uint256", name: "price" },
-      { type: "uint256", name: "rate" },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [{ name: "leveragedIn", type: "uint256" }],
-    name: "redeemLeveragedTokenDryRun",
-    outputs: [
-      { type: "int256", name: "incentiveRatio" },
-      { type: "uint256", name: "wrappedFee" },
-      { type: "uint256", name: "leveragedRedeemed" },
-      { type: "uint256", name: "wrappedCollateralReturned" },
-      { type: "uint256", name: "price" },
-      { type: "uint256", name: "rate" },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [{ name: "collateralIn", type: "uint256" }],
-    name: "mintLeveragedTokenDryRun",
-    outputs: [
-      { type: "int256", name: "incentiveRatio" },
-      { type: "uint256", name: "wrappedFee" },
-      { type: "uint256", name: "wrappedDiscount" },
-      { type: "uint256", name: "wrappedCollateralUsed" },
-      { type: "uint256", name: "leveragedMinted" },
-      { type: "uint256", name: "price" },
-      { type: "uint256", name: "rate" },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-  // Add any other missing functions from your original page.tsx minterABI like totalCollateralTokens etc.
-] as const;
-
-// Corrected erc20ABI (ensure this is the FULL and CORRECT one from page.tsx)
-const erc20ABI = [
-  {
-    inputs: [{ name: "account", type: "address" }],
-    name: "balanceOf",
-    outputs: [{ type: "uint256", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [
-      { name: "spender", type: "address" },
-      { name: "amount", type: "uint256" },
-    ],
-    name: "approve",
-    outputs: [{ type: "bool", name: "" }],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [
-      { name: "owner", type: "address" },
-      { name: "spender", type: "address" },
-    ],
-    name: "allowance",
-    outputs: [{ type: "uint256", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
 
 // Minimal Genesis ABI to check if genesis has ended
 const genesisABI = [
@@ -379,13 +193,13 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
       contracts: [
         {
           address: currentMarket.addresses.collateralToken as `0x${string}`,
-          abi: erc20ABI,
+          abi: ERC20_ABI,
           functionName: "balanceOf",
           args: userAddress ? [userAddress as `0x${string}`] : undefined,
         },
         {
           address: currentMarket.addresses.collateralToken as `0x${string}`,
-          abi: erc20ABI,
+          abi: ERC20_ABI,
           functionName: "allowance",
           args: userAddress
             ? [
@@ -405,13 +219,13 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
       contracts: [
         {
           address: currentMarket.addresses.peggedToken as `0x${string}`,
-          abi: erc20ABI,
+          abi: ERC20_ABI,
           functionName: "balanceOf",
           args: userAddress ? [userAddress as `0x${string}`] : undefined,
         },
         {
           address: currentMarket.addresses.peggedToken as `0x${string}`,
-          abi: erc20ABI,
+          abi: ERC20_ABI,
           functionName: "allowance",
           args: userAddress
             ? [
@@ -431,13 +245,13 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
       contracts: [
         {
           address: currentMarket.addresses.leveragedToken as `0x${string}`,
-          abi: erc20ABI,
+          abi: ERC20_ABI,
           functionName: "balanceOf",
           args: userAddress ? [userAddress as `0x${string}`] : undefined,
         },
         {
           address: currentMarket.addresses.leveragedToken as `0x${string}`,
-          abi: erc20ABI,
+          abi: ERC20_ABI,
           functionName: "allowance",
           args: userAddress
             ? [
@@ -1232,7 +1046,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
           setPendingStep("approval");
           await writeContractAsync({
             address: currentMarket.addresses.collateralToken as `0x${string}`,
-            abi: erc20ABI,
+            abi: ERC20_ABI,
             functionName: "approve",
             args: [
               currentMarket.addresses.minter as `0x${string}`,
@@ -1248,7 +1062,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
           setPendingStep("approval");
           await writeContractAsync({
             address: currentMarket.addresses.peggedToken as `0x${string}`,
-            abi: erc20ABI,
+            abi: ERC20_ABI,
             functionName: "approve",
             args: [
               currentMarket.addresses.minter as `0x${string}`,
@@ -1264,7 +1078,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
           setPendingStep("approval");
           await writeContractAsync({
             address: currentMarket.addresses.leveragedToken as `0x${string}`,
-            abi: erc20ABI,
+            abi: ERC20_ABI,
             functionName: "approve",
             args: [
               currentMarket.addresses.minter as `0x${string}`,

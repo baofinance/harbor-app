@@ -23,28 +23,28 @@ export const markets = {
       reservePool: contracts.reservePool,
       stabilityPoolManager: contracts.stabilityPoolManager,
       stabilityPoolCollateral:
-        "0x3aAde2dCD2Df6a8cAc689EE797591b2913658659" as `0x${string}`,
+        "0xa95a6a19d6b693d71f41887e24f6d9652dab89ce" as `0x${string}`,
       stabilityPoolLeveraged:
-        "0x525C7063E7C20997BaaE9bDa922159152D0e8417" as `0x${string}`,
+        "0x76a1bb7fe2697b23d43f76f66867f35aceaf04c4" as `0x${string}`,
       genesis: contracts.genesis,
       priceOracle: contracts.priceOracle,
-      collateralPrice: contracts.priceOracle, // Using the same price oracle for collateral price
+      collateralPrice: "0x28304c7fff39d0b83fae7c1537cb0e095041a19a", // MockWrappedPriceOracle
       feeReceiver: contracts.feeReceiver,
-      collateralToken: contracts.wrappedCollateralToken, // wstETH - primary collateral for UI (stored and given as rewards)
-      wrappedCollateralToken: contracts.collateralToken, // stETH - underlying reference token for yield scraping
+      collateralToken: contracts.collateralToken, // wstETH - primary collateral for UI (stored and given as rewards)
+      wrappedCollateralToken: contracts.wrappedCollateralToken, // stETH - underlying reference token for yield scraping
       // Note: steam and veSteam are not deployed in this setup
       // steam: contracts.steam,
       // veSteam: contracts.veSteam,
     },
     peggedToken: {
-      name: "Harbor Anchored PB",
-      symbol: "haPB",
-      description: "Pegged to PB (Pork Bellies)",
+      name: "Harbor Anchored Token",
+      symbol: "ha",
+      description: "Pegged token (fetched from contract)",
     },
     leveragedToken: {
-      name: "Harbor Sail hsPBxstETH",
-      symbol: "hshsPBxstETH",
-      description: "Leveraged PB/stETH token",
+      name: "Harbor Sail Token",
+      symbol: "hs",
+      description: "Leveraged token (fetched from contract)",
     },
     rewardPoints: {
       pointsPerDollar: 100,

@@ -19,7 +19,12 @@ const chainlinkOracleABI = [
   {
     inputs: [],
     name: "latestAnswer",
-    outputs: [{ type: "int256", name: "" }],
+    outputs: [
+      { type: "uint256", name: "minUnderlyingPrice" },
+      { type: "uint256", name: "maxUnderlyingPrice" },
+      { type: "uint256", name: "minWrappedRate" },
+      { type: "uint256", name: "maxWrappedRate" },
+    ],
     stateMutability: "view",
     type: "function",
   },
@@ -211,7 +216,15 @@ function Value({
   } else if (type === "collateralValue") {
     if (!data?.[0]?.result || !data?.[1]?.result) return <>-</>;
     const totalCollateralBalance = data[0].result as bigint; // From minter.collateralTokenBalance()
-    const collateralPrice = data[1].result as bigint; // From price oracle latestAnswer
+    // latestAnswer returns a tuple: (minUnderlyingPrice, maxUnderlyingPrice, minWrappedRate, maxWrappedRate)
+    // Use maxUnderlyingPrice (index 1) as the price
+    const latestAnswerResult = data[1].result as
+      | [bigint, bigint, bigint, bigint]
+      | undefined;
+    const collateralPrice = Array.isArray(latestAnswerResult)
+      ? latestAnswerResult[1] // maxUnderlyingPrice is at index 1
+      : undefined;
+    if (!collateralPrice) return <>-</>;
 
     console.log("[DEBUG] Collateral value calculation:", {
       totalCollateralBalance: totalCollateralBalance.toString(),
