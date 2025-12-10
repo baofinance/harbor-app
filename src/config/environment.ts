@@ -35,5 +35,3 @@ export function getTargetChainId(): number {
   return 1;
 }
 
-
-

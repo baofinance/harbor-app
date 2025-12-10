@@ -63,5 +63,3 @@ After redeploying, check:
 2. Verify users are updated
 3. If users still aren't updated, they will be updated on their next interaction
 
-
-

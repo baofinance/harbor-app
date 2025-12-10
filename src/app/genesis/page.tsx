@@ -796,6 +796,16 @@ export default function GenesisIndexPage() {
       enabled: genesisMarkets.length > 0,
   });
 
+  // Fetch CoinGecko prices for markets that have coinGeckoId
+  const coinGeckoIds = useMemo(
+    () =>
+      genesisMarkets
+        .map(([_, m]) => (m as any)?.coinGeckoId)
+        .filter((id): id is string => !!id),
+    [genesisMarkets]
+  );
+  const { prices: coinGeckoPrices } = useCoinGeckoPrices(coinGeckoIds, 60000);
+
   // Refetch marks when genesis ends to get bonus marks
   useEffect(() => {
     if (!reads || !isConnected) return;
@@ -1110,7 +1120,12 @@ export default function GenesisIndexPage() {
 
                     // Calculate price: handle negative values (convert to positive) and apply decimals
                     let collateralPriceUSD: number = 0;
-                    if (priceRaw !== undefined) {
+                    const marketCoinGeckoId = (m as any)?.coinGeckoId as string | undefined;
+                    
+                    // Try CoinGecko price first if available
+                    if (marketCoinGeckoId && coinGeckoPrices[marketCoinGeckoId]) {
+                      collateralPriceUSD = coinGeckoPrices[marketCoinGeckoId]!;
+                    } else if (priceRaw !== undefined) {
                       // Convert to positive if negative (some oracles return negative for error states)
                       const priceValue = priceRaw < 0n ? -priceRaw : priceRaw;
 
@@ -1422,8 +1437,12 @@ export default function GenesisIndexPage() {
             // Calculate price: handle negative values (convert to positive) and apply decimals
             let collateralPriceUSD: number = 0;
             let priceError: string | null = null;
+            const marketCoinGeckoId = (m as any)?.coinGeckoId as string | undefined;
 
-            if (priceRaw !== undefined) {
+            // Try CoinGecko price first if available
+            if (marketCoinGeckoId && coinGeckoPrices[marketCoinGeckoId]) {
+              collateralPriceUSD = coinGeckoPrices[marketCoinGeckoId]!;
+            } else if (priceRaw !== undefined) {
               // Convert to positive if negative (some oracles return negative for error states)
               const priceValue = priceRaw < 0n ? -priceRaw : priceRaw;
 
