@@ -1,10 +1,12 @@
 /**
  * Stability Pool Leveraged (Sail) event handlers for Harbor Marks tracking
+ * Note: Leveraged pool deposits may have different multipliers
  */
 
 import {
   Deposit as StabilityPoolDepositEvent,
   Withdraw as StabilityPoolWithdrawEvent,
+  UserDepositChange as UserDepositChangeEvent,
 } from "../generated/StabilityPoolLeveraged/StabilityPool";
 import {
   StabilityPoolDeposit,
@@ -16,7 +18,7 @@ import { StabilityPool } from "../generated/StabilityPoolLeveraged/StabilityPool
 
 // Constants
 const SECONDS_PER_DAY = BigDecimal.fromString("86400");
-const DEFAULT_MULTIPLIER = BigDecimal.fromString("1.0");
+const DEFAULT_MULTIPLIER = BigDecimal.fromString("1.0"); // Could be higher for leveraged pool
 const DEFAULT_MARKS_PER_DOLLAR_PER_DAY = BigDecimal.fromString("1.0");
 const POOL_TYPE = "sail";
 
@@ -90,13 +92,10 @@ function accumulateMarks(
   }
 
   // Calculate time since last update (continuous accumulation)
-  // Marks are awarded for all time held, including partial days
-  // Frontend will estimate marks between graph updates
   if (currentTimestamp.gt(lastUpdate)) {
     const timeSinceLastUpdate = currentTimestamp.minus(lastUpdate);
     const daysSinceLastUpdate = timeSinceLastUpdate.toBigDecimal().div(SECONDS_PER_DAY);
 
-    // Count all time (including partial days)
     if (daysSinceLastUpdate.gt(BigDecimal.fromString("0"))) {
       const marksAccumulated = deposit.balanceUSD.times(marksPerDollarPerDay).times(daysSinceLastUpdate);
       deposit.accumulatedMarks = deposit.accumulatedMarks.plus(marksAccumulated);
@@ -166,3 +165,29 @@ export function handleStabilityPoolWithdraw(event: StabilityPoolWithdrawEvent): 
   deposit.save();
 }
 
+// Handler for UserDepositChange event (triggered by internal balance changes like liquidations)
+export function handleStabilityPoolDepositChange(event: UserDepositChangeEvent): void {
+  const poolAddress = event.address;
+  const userAddress = event.params.owner;
+  const newDeposit = event.params.newDeposit;
+  const timestamp = event.block.timestamp;
+  
+  const deposit = getOrCreateStabilityPoolDeposit(poolAddress, userAddress);
+  
+  // Accumulate marks before balance change
+  accumulateMarks(deposit, event.block);
+  
+  // Update balance directly from event
+  deposit.balance = newDeposit;
+  deposit.balanceUSD = newDeposit.toBigDecimal().div(BigDecimal.fromString("1000000000000000000"));
+  deposit.marksPerDay = deposit.balanceUSD.times(DEFAULT_MARKS_PER_DOLLAR_PER_DAY);
+  
+  // Reset if balance is zero
+  if (newDeposit.equals(BigInt.fromI32(0))) {
+    deposit.accumulatedMarks = BigDecimal.fromString("0");
+    deposit.firstDepositAt = BigInt.fromI32(0);
+  }
+  
+  deposit.lastUpdated = timestamp;
+  deposit.save();
+}

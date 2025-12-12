@@ -17,50 +17,14 @@
   },
   "priceFeeds": {
     "wstETH": {
-      "usd": "0xeC827421505972a2AE9C320302d3573B42363C26",
+      "usd": "0x164b276057258d81941e97B0a900D4C7B358bCe0",
       "decimals": 8
     },
     "stETH": {
-      "usd": "0xb007167714e2940013ec3bb551584130b7497e22",
-      "eth": "0x6b39b761b1b64c8c095bf0e3bb0c6a74705b4788",
+      "usd": "0xCfE54B5cD566aB89272946F602D76Ea879CAb4a8",
+      "eth": "0x86392dC19c0b719886221c78AB11eb8Cf5c52812",
       "decimals": 8
     }
   },
   "markets": []
 }
-
-
-  "version": "1.0.0",
-  "lastUpdated": "2025-01-01T00:00:00Z",
-  "multipliers": {
-    "haToken": {
-      "default": 1.0,
-      "perToken": {}
-    },
-    "stabilityPoolCollateral": {
-      "default": 1.0,
-      "perPool": {}
-    },
-    "stabilityPoolSail": {
-      "default": 1.0,
-      "perPool": {}
-    }
-  },
-  "priceFeeds": {
-    "wstETH": {
-      "usd": "0xeC827421505972a2AE9C320302d3573B42363C26",
-      "decimals": 8
-    },
-    "stETH": {
-      "usd": "0xb007167714e2940013ec3bb551584130b7497e22",
-      "eth": "0x6b39b761b1b64c8c095bf0e3bb0c6a74705b4788",
-      "decimals": 8
-    }
-  },
-  "markets": []
-}
-
-
-
-
-

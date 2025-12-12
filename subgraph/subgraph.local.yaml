@@ -1,0 +1,148 @@
+# Harbor Marks Subgraph - Local Anvil Configuration
+# For local development and testing
+#
+# To use:
+#   1. Copy this file to subgraph.yaml: cp subgraph.local.yaml subgraph.yaml
+#   2. Update addresses to match your local deployment
+#   3. Run: graph codegen && graph build
+#   4. Deploy to local Graph Node: npm run deploy-local
+
+specVersion: 0.0.5
+schema:
+  file: ./schema.graphql
+dataSources:
+  # ============================================================================
+  # GENESIS CONTRACT
+  # ============================================================================
+  - kind: ethereum
+    name: Genesis
+    network: anvil
+    source:
+      address: "0xA4899D35897033b927acFCf422bc745916139776"
+      abi: Genesis
+      startBlock: 93
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - Deposit
+        - Withdrawal
+        - GenesisEnd
+        - UserHarborMarks
+        - UserList
+        - MarksMultiplier
+        - UserTotalMarks
+      abis:
+        - name: Genesis
+          file: ./abis/Genesis.json
+        - name: ERC20
+          file: ./abis/ERC20.json
+      eventHandlers:
+        - event: Deposit(indexed address,indexed address,uint256)
+          handler: handleDeposit
+        - event: Withdraw(indexed address,indexed address,uint256)
+          handler: handleWithdraw
+        - event: GenesisEnds()
+          handler: handleGenesisEnd
+      file: ./src/genesis.ts
+
+  # ============================================================================
+  # PEGGED TOKEN (haPB)
+  # ============================================================================
+  - kind: ethereum
+    name: HaToken_haPB
+    network: anvil
+    source:
+      address: "0x1c85638e118b37167e9298c2268758e058DdfDA0"
+      abi: ERC20
+      startBlock: 93
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - HaTokenBalance
+        - MarksMultiplier
+        - UserTotalMarks
+        - PriceFeed
+      abis:
+        - name: ERC20
+          file: ./abis/ERC20.json
+        - name: ChainlinkAggregator
+          file: ./abis/ChainlinkAggregator.json
+      eventHandlers:
+        - event: Transfer(indexed address,indexed address,uint256)
+          handler: handleHaTokenTransfer
+      file: ./src/haToken.ts
+
+  # ============================================================================
+  # STABILITY POOL COLLATERAL
+  # ============================================================================
+  - kind: ethereum
+    name: StabilityPoolCollateral
+    network: anvil
+    source:
+      address: "0x3aAde2dCD2Df6a8cAc689EE797591b2913658659"
+      abi: StabilityPool
+      startBlock: 93
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - StabilityPoolDeposit
+        - MarksMultiplier
+        - UserTotalMarks
+        - PriceFeed
+      abis:
+        - name: StabilityPool
+          file: ./abis/StabilityPool.json
+        - name: ERC20
+          file: ./abis/ERC20.json
+        - name: ChainlinkAggregator
+          file: ./abis/ChainlinkAggregator.json
+      eventHandlers:
+        - event: Deposit(indexed address,indexed address,uint256)
+          handler: handleStabilityPoolDeposit
+        - event: Withdraw(indexed address,indexed address,uint256)
+          handler: handleStabilityPoolWithdraw
+        - event: UserDepositChange(indexed address,uint256,uint256)
+          handler: handleStabilityPoolDepositChange
+      file: ./src/stabilityPoolCollateral.ts
+
+  # ============================================================================
+  # STABILITY POOL LEVERAGED
+  # ============================================================================
+  - kind: ethereum
+    name: StabilityPoolLeveraged
+    network: anvil
+    source:
+      address: "0x525C7063E7C20997BaaE9bDa922159152D0e8417"
+      abi: StabilityPool
+      startBlock: 93
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - StabilityPoolDeposit
+        - MarksMultiplier
+        - UserTotalMarks
+        - PriceFeed
+      abis:
+        - name: StabilityPool
+          file: ./abis/StabilityPool.json
+        - name: ERC20
+          file: ./abis/ERC20.json
+        - name: ChainlinkAggregator
+          file: ./abis/ChainlinkAggregator.json
+      eventHandlers:
+        - event: Deposit(indexed address,indexed address,uint256)
+          handler: handleStabilityPoolDeposit
+        - event: Withdraw(indexed address,indexed address,uint256)
+          handler: handleStabilityPoolWithdraw
+        - event: UserDepositChange(indexed address,uint256,uint256)
+          handler: handleStabilityPoolDepositChange
+      file: ./src/stabilityPoolLeveraged.ts
+

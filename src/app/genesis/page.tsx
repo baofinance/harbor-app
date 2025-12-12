@@ -66,6 +66,9 @@ function getAcceptedDepositAssets(
       { symbol: "stETH", name: "Lido Staked ETH" },
       { symbol: "wstETH", name: "Wrapped Staked ETH" },
     ];
+  } else if (normalized === "wbtc") {
+    // WBTC-based markets: only wrapped collateral (WBTC)
+    return [{ symbol: "WBTC", name: "Wrapped Bitcoin" }];
   }
   return [];
 }
@@ -474,7 +477,9 @@ export default function GenesisIndexPage() {
 
   const genesisMarkets = useMemo(
     () =>
-      Object.entries(markets).filter(([_, mkt]) => (mkt as any).addresses?.genesis),
+      Object.entries(markets).filter(
+        ([_, mkt]) => (mkt as any).addresses?.genesis
+      ),
     []
   );
 
@@ -1123,9 +1128,8 @@ export default function GenesisIndexPage() {
 
                     // Calculate price: handle negative values (convert to positive) and apply decimals
                     let collateralPriceUSD: number = 0;
-                    const marketCoinGeckoId = (market?.[1] as any)?.coinGeckoId as
-                      | string
-                      | undefined;
+                    const marketCoinGeckoId = (market?.[1] as any)
+                      ?.coinGeckoId as string | undefined;
 
                     // Try CoinGecko price first if available
                     if (
@@ -1412,7 +1416,8 @@ export default function GenesisIndexPage() {
             const onChainCollateralAddress = collateralTokenReads?.[mi]
               ?.result as `0x${string}` | undefined;
             const collateralAddress =
-              onChainCollateralAddress || (mkt as any).addresses?.collateralToken;
+              onChainCollateralAddress ||
+              (mkt as any).addresses?.collateralToken;
             const collateralSymbol = (mkt as any).collateral?.symbol || "ETH";
 
             // Debug logging for collateral address
@@ -1868,8 +1873,8 @@ export default function GenesisIndexPage() {
                                   marketAddresses: {
                                     collateralToken: (mkt as any).addresses
                                       ?.collateralToken,
-                                    wrappedCollateralToken: (mkt as any).addresses
-                                      ?.wrappedCollateralToken,
+                                    wrappedCollateralToken: (mkt as any)
+                                      .addresses?.wrappedCollateralToken,
                                   },
                                 });
                               }

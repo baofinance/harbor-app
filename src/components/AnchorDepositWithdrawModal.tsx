@@ -201,6 +201,9 @@ function getAcceptedDepositAssets(
       { symbol: "stETH", name: "Lido Staked ETH" },
       { symbol: "wstETH", name: "Wrapped Staked ETH" },
     ];
+  } else if (normalized === "wbtc") {
+    // WBTC-based markets: only wrapped collateral (WBTC)
+    return [{ symbol: "WBTC", name: "Wrapped Bitcoin" }];
   }
   return [];
 }

@@ -1,12 +1,11 @@
 /**
- * ha Token balance tracking for Harbor Marks
+ * ha Token (Leveraged) balance tracking for WBTC market
  * Tracks ERC20 Transfer events to calculate user balances and marks
- * Supports multiple ha tokens (markets) with configurable multipliers
  */
 
 import {
   Transfer as TransferEvent,
-} from "../generated/HaToken_haPB/ERC20";
+} from "../generated/HaToken_hsWBTC/ERC20";
 import {
   updateHaTokenMarksInTotal,
 } from "./marksAggregation";
@@ -17,8 +16,7 @@ import {
   PriceFeed,
 } from "../generated/schema";
 import { BigDecimal, BigInt, Bytes, Address, ethereum } from "@graphprotocol/graph-ts";
-import { ERC20 } from "../generated/HaToken_haPB/ERC20";
-import { ChainlinkAggregator } from "../generated/HaToken_haPB/ChainlinkAggregator";
+import { ERC20 } from "../generated/HaToken_hsWBTC/ERC20";
 
 // Constants
 const SECONDS_PER_DAY = BigDecimal.fromString("86400");
@@ -44,7 +42,7 @@ function getOrCreateHaTokenBalance(
     balance.totalMarksEarned = BigDecimal.fromString("0");
     balance.firstSeenAt = BigInt.fromI32(0);
     balance.lastUpdated = BigInt.fromI32(0);
-    balance.marketId = null;
+    balance.marketId = "WBTC";
     balance.save();
   }
   
@@ -60,7 +58,7 @@ function getOrCreatePriceFeed(tokenAddress: Bytes, block: ethereum.Block): Price
     priceFeed = new PriceFeed(id);
     priceFeed.tokenAddress = tokenAddress;
     priceFeed.priceFeedAddress = Bytes.fromHexString("0x0000000000000000000000000000000000000000");
-    priceFeed.priceUSD = BigDecimal.fromString("1.0"); // Default to $1 for ha tokens
+    priceFeed.priceUSD = BigDecimal.fromString("1.0");
     priceFeed.decimals = 8;
     priceFeed.lastUpdated = block.timestamp;
     priceFeed.save();
@@ -72,7 +70,7 @@ function getOrCreatePriceFeed(tokenAddress: Bytes, block: ethereum.Block): Price
 // Simplified USD calculation
 function calculateBalanceUSD(balance: BigInt, tokenAddress: Bytes, block: ethereum.Block): BigDecimal {
   const priceFeed = getOrCreatePriceFeed(tokenAddress, block);
-  const balanceDecimal = balance.toBigDecimal().div(BigDecimal.fromString("1000000000000000000")); // 18 decimals
+  const balanceDecimal = balance.toBigDecimal().div(BigDecimal.fromString("1000000000000000000"));
   return balanceDecimal.times(priceFeed.priceUSD);
 }
 
@@ -88,7 +86,7 @@ function queryTokenBalance(tokenAddress: Address, userAddress: Address): BigInt 
   return balanceResult.value;
 }
 
-// Get multiplier (simplified)
+// Get multiplier
 function getHaTokenMultiplier(tokenAddress: Bytes, timestamp: BigInt): BigDecimal {
   const id = `haToken-${tokenAddress.toHexString()}`;
   let multiplier = MarksMultiplier.load(id);
@@ -107,7 +105,7 @@ function getHaTokenMultiplier(tokenAddress: Bytes, timestamp: BigInt): BigDecima
   return multiplier.multiplier;
 }
 
-// Accumulate marks (simplified - no complex time calculations for now)
+// Accumulate marks
 function accumulateMarks(
   balance: HaTokenBalance,
   block: ethereum.Block
@@ -122,17 +120,14 @@ function accumulateMarks(
     return;
   }
   
-  // Get multiplier
   const multiplier = getHaTokenMultiplier(balance.tokenAddress, currentTimestamp);
   const marksPerDollarPerDay = DEFAULT_MARKS_PER_DOLLAR_PER_DAY.times(multiplier);
   
-  // Calculate time since last update
   const lastUpdate = balance.lastUpdated.gt(BigInt.fromI32(0)) 
     ? balance.lastUpdated 
     : balance.firstSeenAt;
   
   if (lastUpdate.equals(BigInt.fromI32(0))) {
-    // First time seeing this balance
     balance.firstSeenAt = currentTimestamp;
     balance.lastUpdated = currentTimestamp;
     balance.marksPerDay = balance.balanceUSD.times(marksPerDollarPerDay);
@@ -141,100 +136,73 @@ function accumulateMarks(
     return;
   }
   
-  // Calculate time since last update (continuous accumulation)
-  // Marks are awarded for all time held, including partial days
-  // Frontend will estimate marks between graph updates
   if (currentTimestamp.gt(lastUpdate)) {
     const timeSinceLastUpdate = currentTimestamp.minus(lastUpdate);
     const timeSinceLastUpdateBD = timeSinceLastUpdate.toBigDecimal();
     const daysSinceLastUpdate = timeSinceLastUpdateBD.div(SECONDS_PER_DAY);
     
-    // Only count full days (snapshot approach - like polling once per day)
-    // This means if someone holds tokens for 1.5 days, they get marks for 1 full day
-    // Count all time (including partial days)
-    // If someone holds tokens for 2 hours, they get marks for 2/24 of a day
     if (daysSinceLastUpdate.gt(BigDecimal.fromString("0"))) {
-      // Use the balance USD from the last snapshot (the balance held during this time)
       const marksAccumulated = balance.balanceUSD.times(marksPerDollarPerDay).times(daysSinceLastUpdate);
       balance.accumulatedMarks = balance.accumulatedMarks.plus(marksAccumulated);
       balance.totalMarksEarned = balance.totalMarksEarned.plus(marksAccumulated);
-      
-      // Update lastUpdated to current timestamp (continuous tracking)
       balance.lastUpdated = currentTimestamp;
     }
   }
   
-  // Update marks per day rate based on current balance
   balance.marksPerDay = balance.balanceUSD.times(marksPerDollarPerDay);
   balance.save();
 }
 
-// Main handler - Simplified daily snapshot approach
-// On each transfer, we:
-// 1. Accumulate marks for full days since last update (daily snapshot)
-// 2. Update the balance snapshot
-// 3. Reset the snapshot timer
+// Main handler
 export function handleHaTokenTransfer(event: TransferEvent): void {
   const tokenAddress = event.address;
   const from = event.params.from;
   const to = event.params.to;
   const timestamp = event.block.timestamp;
   
-  // Skip zero address transfers
   const zeroAddress = Address.fromString("0x0000000000000000000000000000000000000000");
   
-  // Update sender balance (if not zero address)
+  // Update sender balance
   if (!from.equals(zeroAddress)) {
     const fromBalance = getOrCreateHaTokenBalance(tokenAddress, from);
-    
-    // Accumulate marks for full days since last snapshot
     accumulateMarks(fromBalance, event.block);
     
-    // Query actual balance from contract (daily snapshot value)
     const tokenContract = Address.fromBytes(tokenAddress);
     const userContract = Address.fromBytes(from);
     const actualBalance = queryTokenBalance(tokenContract, userContract);
     
-    // Update balance snapshot
     fromBalance.balance = actualBalance;
     fromBalance.balanceUSD = calculateBalanceUSD(actualBalance, tokenAddress, event.block);
     
-    // Reset if balance goes to zero
     if (actualBalance.equals(BigInt.fromI32(0))) {
       fromBalance.accumulatedMarks = BigDecimal.fromString("0");
       fromBalance.firstSeenAt = BigInt.fromI32(0);
-      fromBalance.lastUpdated = timestamp; // Reset snapshot time
+      fromBalance.lastUpdated = timestamp;
     }
-    // Note: lastUpdated is already updated in accumulateMarks() to the start of current day
     
     fromBalance.save();
     updateHaTokenMarksInTotal(from, fromBalance, timestamp);
   }
   
-  // Update receiver balance (if not zero address)
+  // Update receiver balance
   if (!to.equals(zeroAddress)) {
     const toBalance = getOrCreateHaTokenBalance(tokenAddress, to);
-    
-    // Accumulate marks for full days since last snapshot
     accumulateMarks(toBalance, event.block);
     
-    // Query actual balance from contract (daily snapshot value)
     const tokenContract = Address.fromBytes(tokenAddress);
     const userContract = Address.fromBytes(to);
     const actualBalance = queryTokenBalance(tokenContract, userContract);
     
-    // Update balance snapshot
     toBalance.balance = actualBalance;
     toBalance.balanceUSD = calculateBalanceUSD(actualBalance, tokenAddress, event.block);
     
-    // Set first seen if this is first time having balance
     if (toBalance.firstSeenAt.equals(BigInt.fromI32(0)) && actualBalance.gt(BigInt.fromI32(0))) {
       toBalance.firstSeenAt = timestamp;
-      toBalance.lastUpdated = timestamp; // Initialize snapshot time
+      toBalance.lastUpdated = timestamp;
     }
-    // Note: lastUpdated is already updated in accumulateMarks() to the start of current day
     
     toBalance.save();
     updateHaTokenMarksInTotal(to, toBalance, timestamp);
   }
 }
+

@@ -1,19 +1,19 @@
 /**
- * Stability Pool Collateral event handlers for Harbor Marks tracking
+ * Stability Pool Collateral event handlers for WBTC market
  */
 
 import {
   Deposit as StabilityPoolDepositEvent,
   Withdraw as StabilityPoolWithdrawEvent,
   UserDepositChange as UserDepositChangeEvent,
-} from "../generated/StabilityPoolCollateral/StabilityPool";
+} from "../generated/StabilityPoolCollateral_WBTC/StabilityPool";
 import {
   StabilityPoolDeposit,
   MarksMultiplier,
   PriceFeed,
 } from "../generated/schema";
 import { BigDecimal, BigInt, Bytes, Address, ethereum } from "@graphprotocol/graph-ts";
-import { StabilityPool } from "../generated/StabilityPoolCollateral/StabilityPool";
+import { StabilityPool } from "../generated/StabilityPoolCollateral_WBTC/StabilityPool";
 
 // Constants
 const SECONDS_PER_DAY = BigDecimal.fromString("86400");
@@ -41,7 +41,7 @@ function getOrCreateStabilityPoolDeposit(
     deposit.firstDepositAt = BigInt.fromI32(0);
     deposit.lastUpdated = BigInt.fromI32(0);
     deposit.poolType = POOL_TYPE;
-    deposit.marketId = null;
+    deposit.marketId = "WBTC";
     deposit.save();
   }
   
@@ -60,7 +60,7 @@ function queryPoolDepositBalance(poolAddress: Address, userAddress: Address): Bi
   return balanceResult.value;
 }
 
-// Accumulate marks based on time held (continuous accumulation)
+// Accumulate marks based on time held
 function accumulateMarks(
   deposit: StabilityPoolDeposit,
   block: ethereum.Block
@@ -90,7 +90,6 @@ function accumulateMarks(
     return;
   }
 
-  // Calculate time since last update (continuous accumulation)
   if (currentTimestamp.gt(lastUpdate)) {
     const timeSinceLastUpdate = currentTimestamp.minus(lastUpdate);
     const daysSinceLastUpdate = timeSinceLastUpdate.toBigDecimal().div(SECONDS_PER_DAY);
@@ -114,21 +113,13 @@ export function handleStabilityPoolDeposit(event: StabilityPoolDepositEvent): vo
   const timestamp = event.block.timestamp;
   
   const deposit = getOrCreateStabilityPoolDeposit(poolAddress, userAddress);
-  
-  // Accumulate marks before balance change
   accumulateMarks(deposit, event.block);
   
-  // Query actual balance from pool contract
   const actualBalance = queryPoolDepositBalance(Address.fromBytes(poolAddress), Address.fromBytes(userAddress));
   deposit.balance = actualBalance;
-  
-  // Calculate USD value (simplified: $1 per token)
   deposit.balanceUSD = actualBalance.toBigDecimal().div(BigDecimal.fromString("1000000000000000000"));
-  
-  // Update marks per day
   deposit.marksPerDay = deposit.balanceUSD.times(DEFAULT_MARKS_PER_DOLLAR_PER_DAY);
   
-  // Set first deposit time if needed
   if (deposit.firstDepositAt.equals(BigInt.fromI32(0)) && actualBalance.gt(BigInt.fromI32(0))) {
     deposit.firstDepositAt = timestamp;
   }
@@ -144,17 +135,13 @@ export function handleStabilityPoolWithdraw(event: StabilityPoolWithdrawEvent): 
   const timestamp = event.block.timestamp;
   
   const deposit = getOrCreateStabilityPoolDeposit(poolAddress, userAddress);
-  
-  // Accumulate marks before balance change
   accumulateMarks(deposit, event.block);
   
-  // Query actual balance from pool contract
   const actualBalance = queryPoolDepositBalance(Address.fromBytes(poolAddress), Address.fromBytes(userAddress));
   deposit.balance = actualBalance;
   deposit.balanceUSD = actualBalance.toBigDecimal().div(BigDecimal.fromString("1000000000000000000"));
   deposit.marksPerDay = deposit.balanceUSD.times(DEFAULT_MARKS_PER_DOLLAR_PER_DAY);
   
-  // Reset if balance is zero
   if (actualBalance.equals(BigInt.fromI32(0))) {
     deposit.accumulatedMarks = BigDecimal.fromString("0");
     deposit.firstDepositAt = BigInt.fromI32(0);
@@ -164,7 +151,7 @@ export function handleStabilityPoolWithdraw(event: StabilityPoolWithdrawEvent): 
   deposit.save();
 }
 
-// Handler for UserDepositChange event (triggered by internal balance changes like liquidations)
+// Handler for UserDepositChange event
 export function handleStabilityPoolDepositChange(event: UserDepositChangeEvent): void {
   const poolAddress = event.address;
   const userAddress = event.params.owner;
@@ -172,16 +159,12 @@ export function handleStabilityPoolDepositChange(event: UserDepositChangeEvent):
   const timestamp = event.block.timestamp;
   
   const deposit = getOrCreateStabilityPoolDeposit(poolAddress, userAddress);
-  
-  // Accumulate marks before balance change
   accumulateMarks(deposit, event.block);
   
-  // Update balance directly from event
   deposit.balance = newDeposit;
   deposit.balanceUSD = newDeposit.toBigDecimal().div(BigDecimal.fromString("1000000000000000000"));
   deposit.marksPerDay = deposit.balanceUSD.times(DEFAULT_MARKS_PER_DOLLAR_PER_DAY);
   
-  // Reset if balance is zero
   if (newDeposit.equals(BigInt.fromI32(0))) {
     deposit.accumulatedMarks = BigDecimal.fromString("0");
     deposit.firstDepositAt = BigInt.fromI32(0);
@@ -190,3 +173,4 @@ export function handleStabilityPoolDepositChange(event: UserDepositChangeEvent):
   deposit.lastUpdated = timestamp;
   deposit.save();
 }
+

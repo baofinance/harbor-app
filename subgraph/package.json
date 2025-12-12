@@ -6,9 +6,13 @@
     "codegen": "graph codegen",
     "build": "graph build",
     "deploy": "graph deploy --node https://api.studio.thegraph.com/deploy/ --version-label v0.0.1 ledger-marks",
-    "deploy-local": "graph deploy --node http://localhost:8020/ --ipfs http://localhost:5001 <your-subgraph-name>",
-    "create-local": "graph create --node http://localhost:8020/ <your-subgraph-name>",
-    "remove-local": "graph remove --node http://localhost:8020/ <your-subgraph-name>"
+    "deploy:mainnet": "cp subgraph.mainnet.yaml subgraph.yaml && graph codegen && graph build && graph deploy --studio harbor-marks",
+    "deploy:mainnet:version": "cp subgraph.mainnet.yaml subgraph.yaml && graph codegen && graph build && graph deploy --studio harbor-marks --version-label",
+    "deploy-local": "graph deploy --node http://localhost:8020/ --ipfs http://localhost:5001 harbor-marks-local",
+    "create-local": "graph create --node http://localhost:8020/ harbor-marks-local",
+    "remove-local": "graph remove --node http://localhost:8020/ harbor-marks-local",
+    "use:mainnet": "cp subgraph.mainnet.yaml subgraph.yaml",
+    "use:local": "cp subgraph.local.yaml subgraph.yaml 2>/dev/null || echo 'No local config found'"
   },
   "dependencies": {
     "@graphprotocol/graph-cli": "^0.98.1",

@@ -1,0 +1,65 @@
+{
+  "deployment": "test1-USD-stETH",
+  "network": "mainnet",
+  "chainId": 1,
+  "startBlock": 23993255,
+  "deployedAt": "2025-12-12T01:18:47Z",
+  "contracts": {
+    "genesis": {
+      "address": "0x1454707877cdb966e29cea8a190c2169eeca4b8c",
+      "name": "Genesis",
+      "description": "Maiden voyage deposits"
+    },
+    "peggedToken": {
+      "address": "0x6ff0fe773d4ad4ea923ba9ea9cc1c1b42b70f5fc",
+      "symbol": "haUSD-stETH",
+      "name": "Harbor anchored USD for stETH",
+      "description": "Pegged token (1x marks multiplier)"
+    },
+    "leveragedToken": {
+      "address": "0x469ddfcfa98d0661b7efedc82aceeab84133f7fe",
+      "symbol": "hsUSD-stETH",
+      "name": "Harbor sail USD for stETH",
+      "description": "Leveraged/sail token (5x marks multiplier)"
+    },
+    "stabilityPoolCollateral": {
+      "address": "0xac8113ef28c8ef06064e8d78b69890d670273c73",
+      "description": "Stability pool for wstETH collateral"
+    },
+    "stabilityPoolLeveraged": {
+      "address": "0x6738c3ee945218fb80700e2f4c1a5f3022a28c8d",
+      "description": "Stability pool for leveraged token"
+    },
+    "minter": {
+      "address": "0x8b17b6e8f9ce3477ddaf372a4140ac6005787901",
+      "description": "Minter contract"
+    },
+    "stabilityPoolManager": {
+      "address": "0x7b1514d2422f7567047d7cd1b8531e48f22c1dcf",
+      "description": "Stability pool manager"
+    },
+    "collateral": {
+      "address": "0xae7ab96520de3a18e5e111b5eaab095312d7fe84",
+      "symbol": "stETH",
+      "description": "Lido staked ETH"
+    },
+    "wrappedCollateral": {
+      "address": "0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0",
+      "symbol": "wstETH",
+      "description": "Wrapped staked ETH"
+    }
+  },
+  "priceFeeds": {
+    "stETH_USD": {
+      "address": "0xCfE54B5cD566aB89272946F602D76Ea879CAb4a8",
+      "description": "Chainlink stETH/USD price feed on mainnet"
+    },
+    "wstETH_USD": {
+      "address": "0x164b276057258d81941e97B0a900D4C7B358bCe0",
+      "description": "Chainlink wstETH/USD price feed on mainnet"
+    }
+  },
+  "owner": "0x9babfc1a1952a6ed2cac1922bffe80c0506364a2",
+  "treasury": "0x9babfc1a1952a6ed2cac1922bffe80c0506364a2"
+}
+

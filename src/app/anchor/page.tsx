@@ -310,6 +310,19 @@ function getAcceptedDepositAssets(
       });
     }
     return assets;
+  } else if (normalized === "wbtc") {
+    // WBTC-based markets: only wrapped collateral (WBTC)
+    const assets: Array<{ symbol: string; name: string }> = [
+      { symbol: "WBTC", name: "Wrapped Bitcoin" },
+    ];
+    // Add pegged token if provided
+    if (peggedTokenSymbol) {
+      assets.push({
+        symbol: peggedTokenSymbol,
+        name: peggedTokenSymbol,
+      });
+    }
+    return assets;
   }
   return [];
 }
