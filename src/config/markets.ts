@@ -1,6 +1,9 @@
 import { contracts } from "./contracts";
 
 export const markets = {
+  // ============================================================================
+  // USD-stETH Market (stETH collateral)
+  // ============================================================================
   "pb-steth": {
     name: "PB/stETH",
     status: "genesis" as const,
@@ -54,6 +57,70 @@ export const markets = {
     genesis: {
       startDate: "2025-11-03T00:00:00Z",
       endDate: "2025-11-25T23:59:59Z",
+      tokenDistribution: {
+        pegged: {
+          ratio: 0.5,
+          description: "50% of your deposit as pegged tokens",
+        },
+        leveraged: {
+          ratio: 0.5,
+          description: "50% of your deposit as leveraged tokens",
+        },
+      },
+    },
+  },
+
+  // ============================================================================
+  // USD-WBTC Market (WBTC collateral)
+  // ============================================================================
+  "usd-wbtc": {
+    name: "USD/WBTC",
+    status: "genesis" as const,
+    chain: {
+      name: "Ethereum",
+      logo: "icons/eth.png",
+    },
+    collateral: {
+      symbol: "WBTC",
+      name: "Wrapped Bitcoin",
+    },
+    rewardTokens: {
+      default: ["WBTC"], // Wrapped collateral token is the primary reward token
+      additional: [], // Additional reward tokens (if any)
+    },
+    addresses: {
+      minter: "0xa9434313a4b9a4d624c6d67b1d61091b159f5a77" as `0x${string}`,
+      peggedToken: "0x6ff0fe773d4ad4ea923ba9ea9cc1c1b42b70f5fc" as `0x${string}`, // haUSD-stETH (shared)
+      leveragedToken: "0x03fd55f80277c13bb17739190b1e086b836c9f20" as `0x${string}`, // hsUSD-WBTC
+      reservePool: "0x17cbf88764bd47d6c2105b782bf9b7615f7b2d9e" as `0x${string}`,
+      stabilityPoolManager: "0x37a38a1c76d3a3a588aa9f1cb9af4b2055f790d7" as `0x${string}`,
+      stabilityPoolCollateral: "0x39613a4c9582dea56f9ee8ad0351011421c3593a" as `0x${string}`,
+      stabilityPoolLeveraged: "0xfc2145de73ec53e34c4e6809b56a61321315e806" as `0x${string}`,
+      genesis: "0x0569ebf818902e448235592f86e63255bbe64fd3" as `0x${string}`,
+      priceOracle: "0x7df29f02e6baf23fbd77940d78b158a66f1bd33c" as `0x${string}`,
+      collateralPrice: "0x7df29f02e6baf23fbd77940d78b158a66f1bd33c" as `0x${string}`, // MockWrappedPriceOracle (same as priceOracle)
+      feeReceiver: "0x1ca04526fa156fd18a182ab436c3ff2f306af907" as `0x${string}`,
+      collateralToken: "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599" as `0x${string}`, // WBTC
+      wrappedCollateralToken: "0x5ee5bf7ae06d1be5997a1a72006fe6c607ec6de8" as `0x${string}`, // Wrapped WBTC
+    },
+    peggedToken: {
+      name: "Harbor Anchored USD",
+      symbol: "haUSD",
+      description: "Pegged token (fetched from contract)",
+    },
+    leveragedToken: {
+      name: "Harbor Sail USD for WBTC",
+      symbol: "hsUSD-WBTC",
+      description: "Leveraged token (fetched from contract)",
+    },
+    rewardPoints: {
+      pointsPerDollar: 100,
+      description:
+        "100 ledger marks per dollar deposited at the end of genesis",
+    },
+    genesis: {
+      startDate: "2025-12-12T22:35:47Z", // From deployment timestamp
+      endDate: "2026-01-12T23:59:59Z", // ~1 month genesis period (adjust as needed)
       tokenDistribution: {
         pegged: {
           ratio: 0.5,

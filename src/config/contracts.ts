@@ -207,6 +207,47 @@ export const markets: Markets = {
       leverageRatio: 2 * 1e18,
     },
   },
+  // ============================================================================
+  // USD-WBTC Market (WBTC collateral) - Mainnet deployment Dec 2025
+  // ============================================================================
+  "usd-wbtc": {
+    id: "usd-wbtc",
+    name: "USD/WBTC",
+    description: "USD pegged to WBTC collateral",
+    addresses: {
+      collateralToken: "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599", // WBTC
+      underlyingCollateralToken: "0x5ee5bf7ae06d1be5997a1a72006fe6c607ec6de8", // Wrapped WBTC
+      feeReceiver: "0x1ca04526fa156fd18a182ab436c3ff2f306af907",
+      genesis: "0x0569ebf818902e448235592f86e63255bbe64fd3",
+      leveragedToken: "0x03fd55f80277c13bb17739190b1e086b836c9f20", // hsUSD-WBTC
+      minter: "0xa9434313a4b9a4d624c6d67b1d61091b159f5a77",
+      owner: "0x9babfc1a1952a6ed2cac1922bffe80c0506364a2",
+      peggedToken: "0x6ff0fe773d4ad4ea923ba9ea9cc1c1b42b70f5fc", // haUSD-stETH (shared)
+      priceOracle: "0x7df29f02e6baf23fbd77940d78b158a66f1bd33c",
+      stabilityPoolCollateral: "0x39613a4c9582dea56f9ee8ad0351011421c3593a",
+      stabilityPoolLeveraged: "0xfc2145de73ec53e34c4e6809b56a61321315e806",
+      reservePool: "0x17cbf88764bd47d6c2105b782bf9b7615f7b2d9e",
+      rebalancePoolCollateral: "0x0000000000000000000000000000000000000000", // Not deployed yet
+      rebalancePoolLeveraged: "0x0000000000000000000000000000000000000000", // Not deployed yet
+      collateralPrice: "0x7df29f02e6baf23fbd77940d78b158a66f1bd33c",
+    },
+    genesis: {
+      startDate: "2025-12-12T22:35:47Z",
+      endDate: "2026-01-12T23:59:59Z",
+      rewards: {
+        pegged: {
+          symbol: "haUSD",
+          amount: "1000000",
+        },
+        leveraged: {
+          symbol: "hsUSD-WBTC",
+          amount: "1000000",
+        },
+      },
+      collateralRatio: 1.0,
+      leverageRatio: 2 * 1e18,
+    },
+  },
 };
 
 // For backward compatibility and convenience

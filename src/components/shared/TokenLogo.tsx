@@ -31,6 +31,12 @@ export function getLogoPath(symbol: string): string {
   if (normalizedSymbol === "susde") {
     return "/icons/susde.svg";
   }
+  if (normalizedSymbol === "btc" || normalizedSymbol === "bitcoin") {
+    return "/icons/btc.png";
+  }
+  if (normalizedSymbol === "wbtc") {
+    return "/icons/btc.png"; // Use BTC icon for WBTC
+  }
 
   // Harbor tokens
   if (normalizedSymbol === "hapb") {
