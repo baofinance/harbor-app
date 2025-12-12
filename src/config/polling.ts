@@ -1,6 +1,6 @@
 /**
  * Centralized polling interval configuration
- * 
+ *
  * Use these constants instead of hardcoding intervals to:
  * 1. Ensure consistent behavior across the app
  * 2. Make it easy to tune performance
@@ -60,20 +60,20 @@ export const RECOMMENDED_INTERVALS = {
   totalSupply: POLLING_INTERVALS.SLOW,
   poolAPR: POLLING_INTERVALS.SLOW,
   rewardRates: POLLING_INTERVALS.SLOW,
-  
+
   // Oracle data (external updates)
   oraclePrice: POLLING_INTERVALS.SLOW,
-  
+
   // Genesis-specific (need to catch end event)
   genesisStatus: POLLING_INTERVALS.FAST,
-  
+
   // Marks/points (updated by subgraph)
   harborMarks: POLLING_INTERVALS.SLOW,
-  
+
   // Static contract data
   tokenMetadata: POLLING_INTERVALS.STATIC,
   contractAddresses: POLLING_INTERVALS.STATIC,
-  
+
   // Transaction-related (while modal is open)
   pendingTransaction: POLLING_INTERVALS.FAST,
 } as const;
@@ -92,4 +92,8 @@ export function getModalPollingInterval(
   }
   return RECOMMENDED_INTERVALS[dataType];
 }
+
+
+
+
 

@@ -9,6 +9,7 @@ export type MarketPositionBreakdown = {
   collateralPool: bigint;
   sailPool: bigint;
   total: bigint;
+  peggedTokenPrice?: bigint;
   // USD values
   walletHaUSD: number;
   collateralPoolUSD: number;
@@ -36,7 +37,8 @@ export interface MarketConfig {
  */
 export function useMarketPositions(
   marketConfigs: MarketConfig[],
-  userAddress?: `0x${string}`
+  userAddress?: `0x${string}`,
+  externalPriceMap?: Record<string, bigint | undefined>
 ) {
   // Build contract calls for all markets
   const { contracts, indexMap } = useMemo(() => {
@@ -107,12 +109,17 @@ export function useMarketPositions(
   const positionsMap = useMemo((): MarketPositionsMap => {
     const map: MarketPositionsMap = {};
 
-    // First pass: collect prices from minter reads
-    const priceMap = new Map<string, bigint>();
+    // First pass: collect prices from minter reads, merge with external map
+    const priceMap = new Map<string, bigint | undefined>();
+    if (externalPriceMap) {
+      Object.entries(externalPriceMap).forEach(([marketId, price]) => {
+        priceMap.set(marketId, price);
+      });
+    }
     if (data) {
       data.forEach((result, idx) => {
         const meta = indexMap.get(idx);
-        if (meta?.kind === "price" && result?.status === "success" && result.result !== undefined) {
+        if (meta?.kind === "price" && result?.result !== undefined && result?.result !== null) {
           priceMap.set(meta.marketId, BigInt(result.result as bigint));
         }
       });
@@ -125,6 +132,7 @@ export function useMarketPositions(
         collateralPool: 0n,
         sailPool: 0n,
         total: 0n,
+        peggedTokenPrice: undefined,
         walletHaUSD: 0,
         collateralPoolUSD: 0,
         sailPoolUSD: 0,
@@ -156,18 +164,22 @@ export function useMarketPositions(
 
       pos.total = pos.walletHa + pos.collateralPool + pos.sailPool;
 
-      // Get price from fetched data, or default to 1.0 (pegged token = $1)
       const peggedTokenPrice = priceMap.get(config.marketId);
-      // peggedTokenPrice returns 1e18 when pegged at $1.00 USD
-      // For ha tokens, this effectively means 1 token = $1.00 USD when pegged
-      const priceUSD = peggedTokenPrice 
-        ? Number(peggedTokenPrice) / 1e18 
-        : 1.0; // Default to $1.00 for pegged tokens
+      pos.peggedTokenPrice = peggedTokenPrice;
 
-      pos.walletHaUSD = (Number(pos.walletHa) / 1e18) * priceUSD;
-      pos.collateralPoolUSD = (Number(pos.collateralPool) / 1e18) * priceUSD;
-      pos.sailPoolUSD = (Number(pos.sailPool) / 1e18) * priceUSD;
-      pos.totalUSD = pos.walletHaUSD + pos.collateralPoolUSD + pos.sailPoolUSD;
+      if (peggedTokenPrice !== undefined) {
+        const priceUSD = Number(peggedTokenPrice) / 1e18;
+        pos.walletHaUSD = (Number(pos.walletHa) / 1e18) * priceUSD;
+        pos.collateralPoolUSD = (Number(pos.collateralPool) / 1e18) * priceUSD;
+        pos.sailPoolUSD = (Number(pos.sailPool) / 1e18) * priceUSD;
+        pos.totalUSD = pos.walletHaUSD + pos.collateralPoolUSD + pos.sailPoolUSD;
+      } else {
+        // If price missing, keep USD as 0 to signal unavailable
+        pos.walletHaUSD = 0;
+        pos.collateralPoolUSD = 0;
+        pos.sailPoolUSD = 0;
+        pos.totalUSD = 0;
+      }
     });
 
     return map;

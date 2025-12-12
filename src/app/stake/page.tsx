@@ -332,7 +332,7 @@ export default function Staking() {
                 onClick={() =>
                   setStakingState((prev) => ({ ...prev, activeTab: "stake" }))
                 }
-                className={`px-4 py-2 text-sm font-medium  ${
+                className={`px-4 py-2 text-sm font-medium ${
                   stakingState.activeTab === "stake"
                     ? "bg-[#1E4775] text-white"
                     : "bg-black text-[#1E4775] hover:bg-[#1E4775]/10"
@@ -347,7 +347,7 @@ export default function Staking() {
                     activeTab: "increase",
                   }))
                 }
-                className={`px-4 py-2 text-sm font-medium  ${
+                className={`px-4 py-2 text-sm font-medium ${
                   stakingState.activeTab === "increase"
                     ? "bg-[#1E4775] text-white"
                     : "bg-black text-[#1E4775] hover:bg-[#1E4775]/10"
@@ -362,7 +362,7 @@ export default function Staking() {
                     activeTab: "extend",
                   }))
                 }
-                className={`px-4 py-2 text-sm font-medium  ${
+                className={`px-4 py-2 text-sm font-medium ${
                   stakingState.activeTab === "extend"
                     ? "bg-[#1E4775] text-white"
                     : "bg-black text-[#1E4775] hover:bg-[#1E4775]/10"
@@ -377,7 +377,7 @@ export default function Staking() {
                     activeTab: "withdraw",
                   }))
                 }
-                className={`px-4 py-2 text-sm font-medium  ${
+                className={`px-4 py-2 text-sm font-medium ${
                   stakingState.activeTab === "withdraw"
                     ? "bg-[#1E4775] text-white"
                     : "bg-black text-[#1E4775] hover:bg-[#1E4775]/10"
@@ -395,9 +395,7 @@ export default function Staking() {
                   <div className="space-y-4">
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
-                        <label className="text-sm text-white/70">
-                          Amount
-                        </label>
+                        <label className="text-sm text-white/70">Amount</label>
                         <span className="text-sm text-white/50">
                           Balance: 0 STEAM
                         </span>
@@ -412,7 +410,7 @@ export default function Staking() {
                           }))
                         }
                         placeholder="Enter amount in STEAM"
-                        className="w-full bg-black text-white p-3  focus:outline-none focus:border-[#1E4775]"
+                        className="w-full bg-black text-white p-3 focus:outline-none focus:border-[#1E4775]"
                       />
                     </div>
 

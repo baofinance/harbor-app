@@ -249,17 +249,11 @@ export function useVolatilityProtection(
 
     // Extract values from reads
     const collateralRatio =
-      reads[0]?.status === "success"
-        ? (reads[0].result as bigint)
-        : undefined;
+      reads[0]?.status === "success" ? (reads[0].result as bigint) : undefined;
     const totalDebt =
-      reads[1]?.status === "success"
-        ? (reads[1].result as bigint)
-        : undefined;
+      reads[1]?.status === "success" ? (reads[1].result as bigint) : undefined;
     const collateralTokenBalance =
-      reads[2]?.status === "success"
-        ? (reads[2].result as bigint)
-        : undefined;
+      reads[2]?.status === "success" ? (reads[2].result as bigint) : undefined;
 
     let readIndex = 3;
     let collateralPoolTVL: bigint | undefined;
@@ -299,13 +293,7 @@ export function useVolatilityProtection(
       isLoading,
       error: error as Error | null,
     };
-  }, [
-    reads,
-    isLoading,
-    error,
-    collateralPoolAddress,
-    sailPoolAddress,
-  ]);
+  }, [reads, isLoading, error, collateralPoolAddress, sailPoolAddress]);
 }
 
 /**
@@ -463,4 +451,8 @@ export function useMultipleVolatilityProtection(
 
   return { data, isLoading, error: error as Error | null };
 }
+
+
+
+
 

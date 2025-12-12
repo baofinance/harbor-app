@@ -28,7 +28,7 @@ export default function Example() {
   };
 
   const linkClass = (href: string) =>
-    ` px-3 py-2 text-sm font-medium rounded ${
+    ` px-3 py-2 text-sm font-medium ${
       isActive(href)
         ? "text-[#1E4775] bg-white"
         : "text-white hover:bg-white/20 hover:text-white"
@@ -95,6 +95,13 @@ export default function Example() {
                 >
                   Marks Leaderboard
                 </Link>
+                <Link
+                  href="/transparency"
+                  className={linkClass("/transparency")}
+                  aria-current={isActive("/transparency") ? "page" : undefined}
+                >
+                  Transparency
+                </Link>
               </div>
             </div>
           </div>
@@ -103,7 +110,7 @@ export default function Example() {
           </div>
           <div className="-mr-2 flex sm:hidden">
             {/* Mobile menu button */}
-            <DisclosureButton className="group relative inline-flex items-center justify-center  p-2 text-gray-200 hover:bg-[#FF8A7A]/20 hover:text-white focus:outline-2 focus:-outline-offset-1 focus:outline-[#FF8A7A]">
+            <DisclosureButton className="group relative inline-flex items-center justify-center p-2 text-gray-200 hover:bg-[#FF8A7A]/20 hover:text-white focus:outline-2 focus:-outline-offset-1 focus:outline-[#FF8A7A]">
               <span className="absolute -inset-0.5" />
               <span className="sr-only">Open main menu</span>
               <Bars3Icon
@@ -160,6 +167,14 @@ export default function Example() {
             aria-current={isActive("/ledger-marks") ? "page" : undefined}
           >
             Marks Leaderboard
+          </DisclosureButton>
+          <DisclosureButton
+            as={Link}
+            href="/transparency"
+            className={linkClass("/transparency")}
+            aria-current={isActive("/transparency") ? "page" : undefined}
+          >
+            Transparency
           </DisclosureButton>
         </div>
         <div className="border-t border-white/10 px-4 py-3">

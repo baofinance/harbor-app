@@ -129,7 +129,9 @@ export function usePriceOracle({
       }
     }
   } else if (data?.[1]?.status === "failure") {
-    errorMsg = `Failed to read price: ${data[1].error?.message || "Unknown error"}`;
+    errorMsg = `Failed to read price: ${
+      data[1].error?.message || "Unknown error"
+    }`;
   }
 
   return {
@@ -157,7 +159,9 @@ export function useMultiplePriceOracles(
 
   const contracts = oracles.flatMap((oracle) => {
     if (!oracle.address) return [];
-    const abi = oracle.isHarborOracle ? HARBOR_ORACLE_ABI : CHAINLINK_ORACLE_ABI;
+    const abi = oracle.isHarborOracle
+      ? HARBOR_ORACLE_ABI
+      : CHAINLINK_ORACLE_ABI;
     return [
       {
         address: oracle.address as `0x${string}`,
@@ -181,7 +185,11 @@ export function useMultiplePriceOracles(
   // Parse results
   const prices = oracles.map((oracle, index) => {
     if (!oracle.address) {
-      return { price: 0, priceRaw: undefined, decimals: oracle.defaultDecimals ?? 18 };
+      return {
+        price: 0,
+        priceRaw: undefined,
+        decimals: oracle.defaultDecimals ?? 18,
+      };
     }
 
     const baseIndex = index * 2;
@@ -189,7 +197,10 @@ export function useMultiplePriceOracles(
     const priceResult = data?.[baseIndex + 1];
 
     let decimals = oracle.defaultDecimals ?? 18;
-    if (decimalsResult?.status === "success" && decimalsResult.result !== undefined) {
+    if (
+      decimalsResult?.status === "success" &&
+      decimalsResult.result !== undefined
+    ) {
       decimals = Number(decimalsResult.result);
     }
 
@@ -223,4 +234,8 @@ export function useMultiplePriceOracles(
     refetch,
   };
 }
+
+
+
+
 

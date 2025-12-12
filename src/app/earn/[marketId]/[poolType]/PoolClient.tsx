@@ -61,7 +61,7 @@ function ContractInfoSection({
 }) {
   if (!pool || !market) {
     return (
-      <div className=" p-3  h-full">
+      <div className="p-3 h-full">
         <h2 className="font-semibold font-mono text-white mb-2">
           Contract Info
         </h2>
@@ -76,7 +76,7 @@ function ContractInfoSection({
       : market.addresses.peggedToken;
 
   return (
-    <div className=" p-3  h-full">
+    <div className="p-3 h-full">
       <h2 className="font-semibold font-mono text-white mb-2">Contract Info</h2>
       <div className="divide-y divide-white/10">
         <EtherscanLink label={pool.name} address={pool.address} />
@@ -123,7 +123,7 @@ function InputField({
   maxButton?: { onClick: () => void; label: string };
 }) {
   return (
-    <div className="flex items-center gap-4  p-3 ">
+    <div className="flex items-center gap-4 p-3">
       <input
         type="text"
         value={value}
@@ -134,7 +134,7 @@ function InputField({
       {maxButton && (
         <button
           onClick={maxButton.onClick}
-          className="text-xs text-white/80 hover:text-white  px-2 py-1 "
+          className="text-xs text-white/80 hover:text-white px-2 py-1"
         >
           {maxButton.label}
         </button>
@@ -160,7 +160,7 @@ function ActionButton({
     <button
       onClick={onClick}
       disabled={disabled || isLoading}
-      className="w-full py-2 text-sm   hover:outline-white/20 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+      className="w-full py-2 text-sm hover:outline-white/20 text-white disabled:opacity-50 disabled:cursor-not-allowed"
     >
       {isLoading ? loadingText || "Processing..." : children}
     </button>
@@ -365,7 +365,7 @@ function ActionTabs({
   formatAmount: (value: bigint | undefined) => string;
 }) {
   return (
-    <div className=" p-3  h-full flex flex-col">
+    <div className="p-3 h-full flex flex-col">
       {/* Tab Navigation */}
       <div className="flex gap-4 mb-3">
         {(
@@ -378,7 +378,7 @@ function ActionTabs({
           <button
             key={key}
             onClick={() => setActiveTab(key)}
-            className={`px-3 py-1.5 text-sm  outline outline-1 transition-colors ${
+            className={`px-3 py-1.5 text-sm outline outline-1 transition-colors ${
               activeTab === key
                 ? "text-white outline-white/80"
                 : "text-white/80 outline-white/20 hover:outline-white/20"
@@ -551,7 +551,7 @@ export default function PoolClient({ marketId, poolType }: PoolClientProps) {
       setIsDepositLoading(true);
       await writeContractAsync({
         address: poolAddress as `0x${string}`,
-          abi: STABILITY_POOL_ABI,
+        abi: STABILITY_POOL_ABI,
         functionName: "deposit",
         args: [amount, address as `0x${string}`, 0n],
       });
@@ -573,7 +573,7 @@ export default function PoolClient({ marketId, poolType }: PoolClientProps) {
       const amount = parseEther(withdrawAmount);
       await writeContractAsync({
         address: poolAddress as `0x${string}`,
-          abi: STABILITY_POOL_ABI,
+        abi: STABILITY_POOL_ABI,
         functionName: "withdraw",
         args: [amount, address as `0x${string}`, 0n],
       });
@@ -680,9 +680,7 @@ export default function PoolClient({ marketId, poolType }: PoolClientProps) {
                     alt="token icon"
                     width={28}
                     height={28}
-                    className={`rounded-full  ${
-                      index > 0 ? "-ml-3" : ""
-                    }`}
+                    className={`rounded-full ${index > 0 ? "-ml-3" : ""}`}
                   />
                 ))}
             </div>
@@ -695,7 +693,7 @@ export default function PoolClient({ marketId, poolType }: PoolClientProps) {
 
         {/* Overview stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-          <div className=" p-3 ">
+          <div className="p-3">
             <div className="flex items-center gap-4 mb-1">
               <h3 className="font-semibold font-mono text-white">
                 Total Value Locked
@@ -709,7 +707,7 @@ export default function PoolClient({ marketId, poolType }: PoolClientProps) {
               {formatFiat(tvlUSD)}
             </div>
           </div>
-          <div className=" p-3 ">
+          <div className="p-3">
             <div className="flex items-center gap-4 mb-1">
               <h3 className="font-semibold font-mono text-white">
                 Your Deposit
@@ -717,11 +715,12 @@ export default function PoolClient({ marketId, poolType }: PoolClientProps) {
               <InfoTooltip label="Your current deposit amount." side="top" />
             </div>
             <div className="text-white font-mono text-lg">
-              {formatAmount(poolWithData?.userDeposit)}{" "}
+              {formatAmount(poolWithData?.userDeposit)}
+              {""}
               <span className="text-white/70">{tokenSymbol}</span>
             </div>
           </div>
-          <div className=" p-3 ">
+          <div className="p-3">
             <div className="flex items-center gap-4 mb-1">
               <h3 className="font-semibold font-mono text-white">Base APR</h3>
               <InfoTooltip
@@ -731,7 +730,7 @@ export default function PoolClient({ marketId, poolType }: PoolClientProps) {
             </div>
             <div className="text-white font-mono text-lg">{baseAPR}</div>
           </div>
-          <div className=" p-3 ">
+          <div className="p-3">
             <div className="flex items-center gap-4 mb-1">
               <h3 className="font-semibold font-mono text-white">Boost APR</h3>
               <InfoTooltip
@@ -745,7 +744,7 @@ export default function PoolClient({ marketId, poolType }: PoolClientProps) {
 
         {/* Chart */}
         <div className="mt-2">
-          <div className=" p-2  w-full">
+          <div className="p-2 w-full">
             <div className="h-[340px] sm:h-[420px]">
               <HistoricalDataChart marketId={marketId} />
             </div>

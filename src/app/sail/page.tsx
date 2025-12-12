@@ -2,11 +2,12 @@
 
 import React, { useMemo, useState, useEffect } from "react";
 import Head from "next/head";
-import { useAccount, useContractReads } from "wagmi";
-import { formatEther } from "viem";
+import { useAccount, useContractReads, usePublicClient } from "wagmi";
+import { formatEther, parseAbiItem } from "viem";
 import { markets } from "@/config/markets";
 import { useAnvilContractReads } from "@/hooks/useAnvilContractReads";
 import { shouldUseAnvil } from "@/config/environment";
+import { anvilPublicClient } from "@/config/anvil";
 import { useAnchorLedgerMarks } from "@/hooks/useAnchorLedgerMarks";
 import {
   ChevronDownIcon,
@@ -25,6 +26,39 @@ import Image from "next/image";
 import PriceChart from "@/components/PriceChart";
 import InfoTooltip from "@/components/InfoTooltip";
 import { SailManageModal } from "@/components/SailManageModal";
+
+// Event ABIs for PnL calculation
+const MINT_LEVERAGED_TOKEN_EVENT = parseAbiItem(
+  "event MintLeveragedToken(address indexed sender, address indexed receiver, uint256 collateralIn, uint256 leveragedOut)"
+);
+
+const REDEEM_LEVERAGED_TOKEN_EVENT = parseAbiItem(
+  "event RedeemLeveragedToken(address indexed sender, address indexed receiver, uint256 leveragedTokenBurned, uint256 collateralOut)"
+);
+
+// Oracle ABI for historical price lookups
+const oracleABI = [
+  {
+    inputs: [],
+    name: "latestAnswer",
+    outputs: [
+      { type: "uint256", name: "minUnderlyingPrice" },
+      { type: "uint256", name: "maxUnderlyingPrice" },
+      { type: "uint256", name: "minWrappedRate" },
+      { type: "uint256", name: "maxWrappedRate" },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+] as const;
+
+interface PnLData {
+  costBasis: number;
+  unrealizedPnL: number;
+  unrealizedPnLPercent: number;
+  realizedPnL: number;
+  isLoading: boolean;
+}
 
 const minterABI = [
   {
@@ -67,6 +101,59 @@ const erc20ABI = [
   },
 ] as const;
 
+// ERC20 metadata ABI for name(), symbol(), and totalSupply()
+const erc20MetadataABI = [
+  {
+    inputs: [],
+    name: "name",
+    outputs: [{ type: "string", name: "" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "symbol",
+    outputs: [{ type: "string", name: "" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "totalSupply",
+    outputs: [{ type: "uint256", name: "" }],
+    stateMutability: "view",
+    type: "function",
+  },
+] as const;
+
+// IWrappedPriceOracle ABI - returns prices in 18 decimals
+// latestAnswer() returns (minUnderlyingPrice, maxUnderlyingPrice, minWrappedRate, maxWrappedRate)
+const wrappedPriceOracleABI = [
+  {
+    inputs: [],
+    name: "latestAnswer",
+    outputs: [
+      { type: "uint256", name: "minUnderlyingPrice" },
+      { type: "uint256", name: "maxUnderlyingPrice" },
+      { type: "uint256", name: "minWrappedRate" },
+      { type: "uint256", name: "maxWrappedRate" },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+] as const;
+
+// Format USD value
+function formatUSD(value: number | undefined): string {
+  if (value === undefined || isNaN(value)) return "-";
+  if (value === 0) return "$0.00";
+  if (value < 0.01) return "<$0.01";
+  return `$${value.toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
 function formatToken(
   value: bigint | undefined,
   decimals = 18,
@@ -91,24 +178,504 @@ function formatLeverage(value: bigint | undefined): string {
   return `${leverage.toFixed(2)}x`;
 }
 
-// Extract the "long" side from leveraged token description
-// e.g., "Long USD vs ETH" -> "USD", "Long ETH vs BTC" -> "ETH"
+// Parse the"long" side from token name (fetched from contract)
+// e.g.,"Harbor Short USD versus stETH" ->"USD"
+// e.g.,"Harbor Short stETH versus USD" ->"stETH" (the part after"Short")
+function parseLongSide(tokenName: string | undefined, market: any): string {
+  if (tokenName) {
+    // Token name format:"Harbor Short X versus Y"
+    // The"long" side is what we're SHORT against, so it's X (the asset after"Short")
+    // Actually, if it says"Short USD versus stETH", we're shorting USD, so we're LONG stETH
+    // So the LONG side is Y (after"versus")
+    const versusMatch = tokenName.match(/versus\s+(\w+)/i);
+    if (versusMatch) return versusMatch[1];
+
+    // Fallback: try other patterns
+    const longMatch = tokenName.match(/Long\s+(\w+)/i);
+    if (longMatch) return longMatch[1];
+  }
+
+  // Fallback: parse from symbol like"hsUSD-stETH"
+  const symbol = market.leveragedToken?.symbol || "";
+  const symbolMatch = symbol.match(/^hs([A-Z]+)-/i);
+  if (symbolMatch) return symbolMatch[1];
+
+  return "Other";
+}
+
+// Parse the"short" side from token name (fetched from contract)
+// e.g.,"Harbor Short USD versus stETH" ->"USD"
+function parseShortSide(tokenName: string | undefined, market: any): string {
+  if (tokenName) {
+    // Token name format:"Harbor Short X versus Y"
+    // The"short" side is X (what comes after"Short")
+    const shortMatch = tokenName.match(/Short\s+(\w+)/i);
+    if (shortMatch) return shortMatch[1];
+  }
+
+  // Fallback: parse from symbol like"hsUSD-stETH" -> the second part
+  const symbol = market.leveragedToken?.symbol || "";
+  const symbolMatch = symbol.match(/^hs[A-Z]+-(.+)$/i);
+  if (symbolMatch) return symbolMatch[1];
+
+  return "Other";
+}
+
+// Extract the"long" side from market config (for grouping)
+// This uses the config data, not fetched name
 function getLongSide(market: any): string {
   const desc = market.leveragedToken?.description || "";
   const match = desc.match(/Long\s+(\w+)/i);
-  return match ? match[1] : "Other";
+  if (match) return match[1];
+
+  // Check if we can get it from the name stored in config
+  const name = market.leveragedToken?.name || "";
+  const versusMatch = name.match(/versus\s+(\w+)/i);
+  if (versusMatch) return versusMatch[1];
+
+  // Fallback: parse from symbol like"hsUSD-stETH" ->"USD"
+  const symbol = market.leveragedToken?.symbol || "";
+  const symbolMatch = symbol.match(/^hs([A-Z]+)-/i);
+  if (symbolMatch) return symbolMatch[1];
+
+  return "Other";
 }
 
-// Extract the "short" side from leveraged token description
-// e.g., "Long USD vs ETH (short ETH)" -> "ETH", "Long ETH vs BTC" -> "BTC"
+// Extract the"short" side from market config (for display when contract data isn't loaded)
 function getShortSide(market: any): string {
   const desc = market.leveragedToken?.description || "";
-  // First try to find explicit "short" mention
+  // First try to find explicit"short" mention
   const shortMatch = desc.match(/short\s+(\w+)/i);
   if (shortMatch) return shortMatch[1];
-  // Otherwise, if it's "Long X vs Y", Y is the short side
+
+  // Check if we can get it from the name stored in config
+  const name = market.leveragedToken?.name || "";
+  const nameShortMatch = name.match(/Short\s+(\w+)/i);
+  if (nameShortMatch) return nameShortMatch[1];
+
+  // Otherwise, if it's"Long X vs Y", Y is the short side
   const longMatch = desc.match(/Long\s+\w+\s+vs\s+(\w+)/i);
-  return longMatch ? longMatch[1] : "Other";
+  if (longMatch) return longMatch[1];
+
+  // Fallback: parse from symbol like"hsUSD-stETH" ->"stETH"
+  const symbol = market.leveragedToken?.symbol || "";
+  const symbolMatch = symbol.match(/^hs[A-Z]+-(.+)$/i);
+  if (symbolMatch) return symbolMatch[1];
+
+  return "Other";
+}
+
+// Hook to calculate PnL from event logs
+function usePnLCalculation(
+  userAddress: `0x${string}` | undefined,
+  minterAddress: `0x${string}` | undefined,
+  oracleAddress: `0x${string}` | undefined,
+  userBalance: bigint | undefined,
+  currentValueUSD: number | undefined,
+  currentCollateralPriceUSD: bigint | undefined,
+  currentWrappedRate: bigint | undefined,
+  enabled: boolean
+): PnLData {
+  const wagmiClient = usePublicClient();
+  const client = shouldUseAnvil() ? anvilPublicClient : wagmiClient;
+
+  const [pnlData, setPnlData] = useState<PnLData>({
+    costBasis: 0,
+    unrealizedPnL: 0,
+    unrealizedPnLPercent: 0,
+    realizedPnL: 0,
+    isLoading: false,
+  });
+  const [hasFetched, setHasFetched] = useState(false);
+
+  useEffect(() => {
+    if (
+      !enabled ||
+      !client ||
+      !userAddress ||
+      !minterAddress ||
+      !oracleAddress ||
+      !userBalance ||
+      userBalance === 0n ||
+      hasFetched
+    ) {
+      return;
+    }
+
+    const fetchPnL = async () => {
+      setPnlData((prev) => ({ ...prev, isLoading: true }));
+
+      try {
+        const currentBlock = await client.getBlockNumber();
+        // Start from a reasonable block (e.g., 30 days ago assuming ~12s blocks)
+        const blocksPerDay = (24 * 60 * 60) / 12;
+        const fromBlock = BigInt(
+          Math.max(0, Number(currentBlock) - blocksPerDay * 90)
+        );
+
+        // Fetch mint events where user is receiver
+        const mintLogs = await client.getLogs({
+          address: minterAddress,
+          event: MINT_LEVERAGED_TOKEN_EVENT,
+          args: { receiver: userAddress },
+          fromBlock,
+          toBlock: currentBlock,
+        });
+
+        // Fetch redeem events where user is sender
+        const redeemLogs = await client.getLogs({
+          address: minterAddress,
+          event: REDEEM_LEVERAGED_TOKEN_EVENT,
+          args: { sender: userAddress },
+          fromBlock,
+          toBlock: currentBlock,
+        });
+
+        // Sort all events by block number
+        const allEvents = [
+          ...mintLogs.map((log) => ({ ...log, type: "mint" as const })),
+          ...redeemLogs.map((log) => ({ ...log, type: "redeem" as const })),
+        ].sort((a, b) => Number(a.blockNumber) - Number(b.blockNumber));
+
+        // Process events using FIFO for cost basis
+        interface Lot {
+          qty: bigint;
+          costUSD: number;
+        }
+        const lots: Lot[] = [];
+        let totalRealized = 0;
+
+        for (const event of allEvents) {
+          // Get oracle price at event block
+          let priceUSD = currentCollateralPriceUSD || 0n;
+          let rate = currentWrappedRate || BigInt("1000000000000000000");
+
+          try {
+            const oracleResult = await client.readContract({
+              address: oracleAddress,
+              abi: oracleABI,
+              functionName: "latestAnswer",
+              blockNumber: event.blockNumber,
+            });
+
+            if (Array.isArray(oracleResult)) {
+              priceUSD = oracleResult[1];
+              rate = oracleResult[3];
+            } else if (typeof oracleResult === "bigint") {
+              priceUSD = oracleResult;
+            } else if (typeof oracleResult === "object") {
+              const obj = oracleResult as any;
+              priceUSD = obj.maxUnderlyingPrice || priceUSD;
+              rate = obj.maxWrappedRate || rate;
+            }
+          } catch {
+            // Use current prices as fallback
+          }
+
+          const priceNum = Number(priceUSD) / 1e18;
+          const rateNum = Number(rate) / 1e18;
+
+          if (event.type === "mint") {
+            const collateralIn = event.args.collateralIn as bigint;
+            const leveragedOut = event.args.leveragedOut as bigint;
+            const costUSD = (Number(collateralIn) / 1e18) * priceNum * rateNum;
+            lots.push({ qty: leveragedOut, costUSD });
+          } else {
+            const leveragedBurned = event.args.leveragedTokenBurned as bigint;
+            const collateralOut = event.args.collateralOut as bigint;
+            const redeemValueUSD =
+              (Number(collateralOut) / 1e18) * priceNum * rateNum;
+
+            // FIFO: reduce lots
+            let remaining = leveragedBurned;
+            let matchedCost = 0;
+
+            while (remaining > 0n && lots.length > 0) {
+              const lot = lots[0];
+              if (lot.qty <= remaining) {
+                matchedCost += lot.costUSD;
+                remaining -= lot.qty;
+                lots.shift();
+              } else {
+                const fraction = Number(remaining) / Number(lot.qty);
+                matchedCost += lot.costUSD * fraction;
+                lot.qty -= remaining;
+                lot.costUSD *= 1 - fraction;
+                remaining = 0n;
+              }
+            }
+
+            totalRealized += redeemValueUSD - matchedCost;
+          }
+        }
+
+        // Calculate remaining cost basis
+        const costBasis = lots.reduce((sum, lot) => sum + lot.costUSD, 0);
+        const unrealizedPnL = (currentValueUSD || 0) - costBasis;
+        const unrealizedPnLPercent =
+          costBasis > 0 ? (unrealizedPnL / costBasis) * 100 : 0;
+
+        setPnlData({
+          costBasis,
+          unrealizedPnL,
+          unrealizedPnLPercent,
+          realizedPnL: totalRealized,
+          isLoading: false,
+        });
+        setHasFetched(true);
+      } catch (e) {
+        console.error("Error calculating PnL:", e);
+        setPnlData((prev) => ({ ...prev, isLoading: false }));
+      }
+    };
+
+    fetchPnL();
+  }, [
+    enabled,
+    client,
+    userAddress,
+    minterAddress,
+    oracleAddress,
+    userBalance,
+    currentValueUSD,
+    currentCollateralPriceUSD,
+    currentWrappedRate,
+    hasFetched,
+  ]);
+
+  return pnlData;
+}
+
+// Format PnL for display
+function formatPnL(value: number): { text: string; color: string } {
+  const isPositive = value >= 0;
+  const text = `${isPositive ? "+" : ""}$${Math.abs(value).toLocaleString(
+    undefined,
+    {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }
+  )}`;
+  const color = isPositive ? "text-green-600" : "text-red-600";
+  return { text, color };
+}
+
+// Individual market row component that can use hooks for PnL
+function SailMarketRow({
+  id,
+  market,
+  globalIndex,
+  reads,
+  userDeposit,
+  isExpanded,
+  onToggleExpand,
+  onManageClick,
+  isConnected,
+}: {
+  id: string;
+  market: any;
+  globalIndex: number;
+  reads: any;
+  userDeposit: bigint | undefined;
+  isExpanded: boolean;
+  onToggleExpand: () => void;
+  onManageClick: () => void;
+  isConnected: boolean;
+}) {
+  const { address } = useAccount();
+
+  // 7 reads per market: leverageRatio, leveragedTokenPrice, collateralRatio, collateralTokenBalance, latestAnswer, name, totalSupply
+  const baseOffset = globalIndex * 7;
+
+  const leverageRatio = reads?.[baseOffset]?.result as bigint | undefined;
+  const leveragedTokenPrice = reads?.[baseOffset + 1]?.result as
+    | bigint
+    | undefined;
+  const collateralRatio = reads?.[baseOffset + 2]?.result as bigint | undefined;
+  const collateralValue = reads?.[baseOffset + 3]?.result as bigint | undefined;
+
+  // Parse oracle price
+  const oracleResult = reads?.[baseOffset + 4]?.result;
+  let collateralPriceUSD: bigint | undefined;
+  let wrappedRate: bigint | undefined;
+  if (oracleResult !== undefined && oracleResult !== null) {
+    if (Array.isArray(oracleResult)) {
+      collateralPriceUSD = oracleResult[1] as bigint;
+      wrappedRate = oracleResult[3] as bigint;
+    } else if (typeof oracleResult === "object") {
+      const obj = oracleResult as {
+        maxUnderlyingPrice?: bigint;
+        maxWrappedRate?: bigint;
+      };
+      collateralPriceUSD = obj.maxUnderlyingPrice;
+      wrappedRate = obj.maxWrappedRate;
+    } else if (typeof oracleResult === "bigint") {
+      collateralPriceUSD = oracleResult;
+      wrappedRate = BigInt("1000000000000000000");
+    }
+  }
+
+  // Get token name and total supply
+  const tokenName = reads?.[baseOffset + 5]?.result as string | undefined;
+  const totalSupply = reads?.[baseOffset + 6]?.result as bigint | undefined;
+  const shortSide = parseShortSide(tokenName, market);
+
+  // Calculate current value in USD using collateral value and collateral ratio
+  // HS token value = Total Collateral Value - HA token claims
+  // HA claims = Collateral Value / Collateral Ratio
+  // HS value = Collateral Value * (1 - 1/CR)
+  let currentValueUSD: number | undefined;
+  if (
+    userDeposit &&
+    collateralValue &&
+    collateralRatio &&
+    collateralPriceUSD &&
+    totalSupply &&
+    totalSupply > 0n
+  ) {
+    const rate = wrappedRate || BigInt("1000000000000000000");
+
+    // Calculate total collateral value in USD
+    // collateralValue is in wrapped collateral (18 decimals)
+    // collateralPriceUSD is USD per underlying (18 decimals)
+    // rate is wrapped to underlying conversion (18 decimals)
+    const collateralValueNum = Number(collateralValue) / 1e18;
+    const usdNum = Number(collateralPriceUSD) / 1e18;
+    const rateNum = Number(rate) / 1e18;
+    const totalCollateralUSD = collateralValueNum * usdNum * rateNum;
+
+    // Calculate HS token total value
+    // Collateral ratio is in 18 decimals (e.g., 1.5e18 = 150%)
+    const crNum = Number(collateralRatio) / 1e18;
+    const haClaimsUSD = totalCollateralUSD / crNum;
+    const hsValueTotalUSD = totalCollateralUSD - haClaimsUSD;
+
+    // Calculate HS price per token
+    const totalSupplyNum = Number(totalSupply) / 1e18;
+    const hsPriceUSD = hsValueTotalUSD / totalSupplyNum;
+
+    // Calculate user's position value
+    const balanceNum = Number(userDeposit) / 1e18;
+    currentValueUSD = balanceNum * hsPriceUSD;
+  }
+
+  // Get addresses for PnL calculation
+  const minterAddress = market.addresses?.minter as `0x${string}` | undefined;
+  const oracleAddress = market.addresses?.collateralPrice as
+    | `0x${string}`
+    | undefined;
+
+  // Calculate PnL - only when user has a position
+  const pnlData = usePnLCalculation(
+    address,
+    minterAddress,
+    oracleAddress,
+    userDeposit,
+    currentValueUSD,
+    collateralPriceUSD,
+    wrappedRate,
+    !!userDeposit && userDeposit > 0n
+  );
+
+  const pnlFormatted =
+    pnlData.unrealizedPnL !== 0 ? formatPnL(pnlData.unrealizedPnL) : null;
+
+  return (
+    <div key={id}>
+      <div
+        className={`p-3 overflow-x-auto transition cursor-pointer ${
+          isExpanded
+            ? "bg-[rgb(var(--surface-selected-rgb))]"
+            : "bg-white hover:bg-[rgb(var(--surface-selected-rgb))]"
+        }`}
+        onClick={onToggleExpand}
+      >
+        <div className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr] gap-4 items-center text-sm">
+          <div className="whitespace-nowrap min-w-0 overflow-hidden">
+            <div className="flex items-center justify-center gap-2">
+              <span className="text-[#1E4775] font-medium">
+                Short {shortSide}
+              </span>
+              {isExpanded ? (
+                <ChevronUpIcon className="w-5 h-5 text-[#1E4775] flex-shrink-0" />
+              ) : (
+                <ChevronDownIcon className="w-5 h-5 text-[#1E4775] flex-shrink-0" />
+              )}
+            </div>
+            <div className="text-xs text-[#1E4775]/50 font-mono text-center mt-0.5">
+              {market.leveragedToken.symbol}
+            </div>
+          </div>
+          <div className="text-center min-w-0">
+            <span className="text-[#1E4775] font-medium text-xs font-mono">
+              {formatLeverage(leverageRatio)}
+            </span>
+          </div>
+          <div className="text-center min-w-0">
+            <span className="text-[#1E4775] font-medium text-xs font-mono">
+              {userDeposit
+                ? `${formatToken(userDeposit)} ${
+                    market.leveragedToken?.symbol || ""
+                  }`
+                : "-"}
+            </span>
+          </div>
+          <div className="text-center min-w-0">
+            <div className="text-[#1E4775] font-medium text-xs font-mono">
+              {userDeposit && currentValueUSD !== undefined
+                ? formatUSD(currentValueUSD)
+                : "-"}
+            </div>
+            {userDeposit && pnlFormatted && !pnlData.isLoading && (
+              <div className={`text-[10px] font-mono ${pnlFormatted.color}`}>
+                {pnlFormatted.text} (
+                {pnlData.unrealizedPnLPercent >= 0 ? "+" : ""}
+                {pnlData.unrealizedPnLPercent.toFixed(1)}%)
+              </div>
+            )}
+            {userDeposit && pnlData.isLoading && (
+              <div className="text-[10px] text-[#1E4775]/50">
+                Loading PnL...
+              </div>
+            )}
+          </div>
+          <div
+            className="text-center min-w-0"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onManageClick();
+              }}
+              disabled={!isConnected}
+              className="px-4 py-2 text-xs font-medium bg-[#1E4775] text-white hover:bg-[#17395F] disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors rounded-full whitespace-nowrap"
+            >
+              Manage
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Expanded View */}
+      {isExpanded && (
+        <SailMarketExpandedView
+          marketId={id}
+          market={market}
+          leverageRatio={leverageRatio}
+          leveragedTokenPrice={leveragedTokenPrice}
+          collateralRatio={collateralRatio}
+          collateralValue={collateralValue}
+          totalSupply={totalSupply}
+          collateralPriceUSD={collateralPriceUSD}
+          wrappedRate={wrappedRate}
+          pnlData={pnlData}
+          currentValueUSD={currentValueUSD}
+          userDeposit={userDeposit}
+        />
+      )}
+    </div>
+  );
 }
 
 function SailMarketExpandedView({
@@ -118,6 +685,12 @@ function SailMarketExpandedView({
   leveragedTokenPrice,
   collateralRatio,
   collateralValue,
+  totalSupply,
+  collateralPriceUSD,
+  wrappedRate,
+  pnlData,
+  currentValueUSD,
+  userDeposit,
 }: {
   marketId: string;
   market: any;
@@ -125,60 +698,166 @@ function SailMarketExpandedView({
   leveragedTokenPrice: bigint | undefined;
   collateralRatio: bigint | undefined;
   collateralValue: bigint | undefined;
+  totalSupply: bigint | undefined;
+  collateralPriceUSD: bigint | undefined;
+  wrappedRate: bigint | undefined;
+  pnlData?: PnLData;
+  currentValueUSD?: number;
+  userDeposit?: bigint;
 }) {
+  // Calculate TVL in USD
+  let tvlUSD: number | undefined;
+  if (collateralValue && collateralPriceUSD) {
+    const rate = wrappedRate || BigInt("1000000000000000000");
+    const valueNum = Number(collateralValue) / 1e18;
+    const priceNum = Number(collateralPriceUSD) / 1e18;
+    const rateNum = Number(rate) / 1e18;
+    tvlUSD = valueNum * priceNum * rateNum;
+  }
+
+  const hasPosition = userDeposit && userDeposit > 0n;
+  const totalPnL = pnlData ? pnlData.realizedPnL + pnlData.unrealizedPnL : 0;
+  const totalPnLFormatted = totalPnL !== 0 ? formatPnL(totalPnL) : null;
+
+  const computedTokenPrice = useMemo(() => {
+    if (
+      !collateralValue ||
+      !leverageRatio ||
+      leverageRatio === 0n ||
+      !totalSupply ||
+      totalSupply === 0n
+    ) {
+      return undefined;
+    }
+    const oneEther = BigInt("1000000000000000000");
+    const totalLeveragedValue = (collateralValue * oneEther) / leverageRatio;
+    return totalLeveragedValue / totalSupply;
+  }, [collateralValue, leverageRatio, totalSupply]);
+
+  // Calculate token price in USD
+  const computedTokenPriceUSD = useMemo(() => {
+    if (!computedTokenPrice || !collateralPriceUSD || !wrappedRate) {
+      return undefined;
+    }
+    // Convert token price from collateral units to USD
+    // computedTokenPrice is in collateral token units (18 decimals)
+    // collateralPriceUSD is USD per underlying (18 decimals)
+    // wrappedRate is wrapped to underlying conversion (18 decimals)
+    const tokenPriceUSD_BigInt =
+      (computedTokenPrice * collateralPriceUSD * wrappedRate) /
+      BigInt("1000000000000000000000000000000000000000000000000000000");
+    return Number(tokenPriceUSD_BigInt) / 1e18;
+  }, [computedTokenPrice, collateralPriceUSD, wrappedRate]);
+
   return (
-    <div className="bg-[#B8EBD5] p-2 border-t border-white/20">
+    <div className="bg-[rgb(var(--surface-selected-rgb))] p-4 border-t border-white/20">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-        {/* Left: Market Info */}
-        <div className="grid grid-cols-1 gap-2">
-          <div className="bg-white p-3 h-full flex flex-col">
-            <h3 className="text-[#1E4775] font-semibold mb-2 text-xs">
-              Leverage Ratio
-            </h3>
-            <p className="text-sm font-bold text-[#1E4775]">
-              {formatLeverage(leverageRatio)}
-            </p>
-          </div>
+        {/* Left: Market Info & PnL */}
+        <div className="space-y-2 flex flex-col">
+          {/* PnL Details - only show if user has position */}
+          {hasPosition && pnlData && !pnlData.isLoading && (
+            <div className="bg-white p-4 flex-1">
+              <h3 className="text-[#1E4775] font-semibold mb-3 text-xs">
+                Position Details
+              </h3>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+                <div className="text-[#1E4775]/70">Cost Basis:</div>
+                <div className="text-[#1E4775] font-mono text-right">
+                  {formatUSD(pnlData.costBasis)}
+                </div>
+                <div className="text-[#1E4775]/70">Current Value:</div>
+                <div className="text-[#1E4775] font-mono text-right">
+                  {formatUSD(currentValueUSD || 0)}
+                </div>
+                <div className="text-[#1E4775]/70">Unrealized PnL:</div>
+                <div
+                  className={`font-mono text-right ${
+                    formatPnL(pnlData.unrealizedPnL).color
+                  }`}
+                >
+                  {formatPnL(pnlData.unrealizedPnL).text} (
+                  {pnlData.unrealizedPnLPercent >= 0 ? "+" : ""}
+                  {pnlData.unrealizedPnLPercent.toFixed(1)}%)
+                </div>
+                {pnlData.realizedPnL !== 0 && (
+                  <>
+                    <div className="text-[#1E4775]/70">Realized PnL:</div>
+                    <div
+                      className={`font-mono text-right ${
+                        formatPnL(pnlData.realizedPnL).color
+                      }`}
+                    >
+                      {formatPnL(pnlData.realizedPnL).text}
+                    </div>
+                  </>
+                )}
+                <div className="text-[#1E4775]/70 font-semibold pt-1 border-t border-[#1E4775]/10">
+                  Total PnL:
+                </div>
+                <div
+                  className={`font-mono text-right font-semibold pt-1 border-t border-[#1E4775]/10 ${
+                    totalPnLFormatted?.color || ""
+                  }`}
+                >
+                  {totalPnLFormatted?.text || "-"}
+                </div>
+              </div>
+            </div>
+          )}
 
-          <div className="bg-white p-3 h-full flex flex-col">
-            <h3 className="text-[#1E4775] font-semibold mb-2 text-xs">
-              Token Price
-            </h3>
-            <p className="text-sm font-bold text-[#1E4775]">
-              {leveragedTokenPrice
-                ? formatToken(leveragedTokenPrice, 18, 4)
-                : "-"}
-            </p>
-          </div>
+          {/* Market Stats */}
+          <div className="grid grid-cols-2 gap-2">
+            <div className="bg-white p-3 h-full flex flex-col">
+              <h3 className="text-[#1E4775] font-semibold mb-2 text-xs">TVL</h3>
+              <p className="text-sm font-bold text-[#1E4775]">
+                {formatToken(collateralValue)}
+                {""}
+                {market.collateral?.symbol || "ETH"}
+              </p>
+              {tvlUSD !== undefined && (
+                <p className="text-xs text-[#1E4775]/70 mt-0.5">
+                  {formatUSD(tvlUSD)}
+                </p>
+              )}
+            </div>
 
-          <div className="bg-white p-3 h-full flex flex-col">
-            <h3 className="text-[#1E4775] font-semibold mb-2 text-xs">
-              Collateral Ratio
-            </h3>
-            <p className="text-sm font-bold text-[#1E4775]">
-              {formatRatio(collateralRatio)}
-            </p>
-          </div>
+            <div className="bg-white p-3 h-full flex flex-col">
+              <h3 className="text-[#1E4775] font-semibold mb-2 text-xs">
+                Token Price
+              </h3>
+              <p className="text-sm font-bold text-[#1E4775]">
+                {computedTokenPriceUSD !== undefined
+                  ? formatUSD(computedTokenPriceUSD)
+                  : "-"}
+              </p>
+            </div>
 
-          <div className="bg-white p-3 h-full flex flex-col">
-            <h3 className="text-[#1E4775] font-semibold mb-2 text-xs">
-              Collateral Value
-            </h3>
-            <p className="text-sm font-bold text-[#1E4775]">
-              {formatToken(collateralValue)}
-            </p>
-            <p className="text-xs text-[#1E4775]/70 mt-0.5">
-              {market.collateral?.symbol || "ETH"}
-            </p>
+            <div className="bg-white p-3 h-full flex flex-col">
+              <h3 className="text-[#1E4775] font-semibold mb-2 text-xs">
+                Collateral Ratio
+              </h3>
+              <p className="text-sm font-bold text-[#1E4775]">
+                {formatRatio(collateralRatio)}
+              </p>
+            </div>
+
+            <div className="bg-white p-3 h-full flex flex-col">
+              <h3 className="text-[#1E4775] font-semibold mb-2 text-xs">
+                Leverage Ratio
+              </h3>
+              <p className="text-sm font-bold text-[#1E4775]">
+                {formatLeverage(leverageRatio)}
+              </p>
+            </div>
           </div>
         </div>
 
         {/* Right: Price Chart */}
-        <div className="bg-white p-3">
+        <div className="bg-white p-3 flex flex-col">
           <h3 className="text-[#1E4775] font-semibold mb-3 text-xs">
             Price Chart
           </h3>
-          <div className="h-[300px]">
+          <div className="h-[300px] flex-1">
             <PriceChart
               tokenType="STEAMED"
               selectedToken={market.leveragedToken?.symbol || ""}
@@ -218,16 +897,22 @@ export default function SailPage() {
       return;
     }
 
-    const totalMarks = sailBalances.reduce((sum, balance) => sum + balance.estimatedMarks, 0);
-    
+    const totalMarks = sailBalances.reduce(
+      (sum, balance) => sum + balance.estimatedMarks,
+      0
+    );
+
     if (process.env.NODE_ENV === "development") {
       console.log("[Sail Page] Updating totalSailMarksState", {
         totalMarks,
         sailBalancesCount: sailBalances.length,
-        sailBalances: sailBalances.map(b => ({ token: b.tokenAddress, marks: b.estimatedMarks })),
+        sailBalances: sailBalances.map((b) => ({
+          token: b.tokenAddress,
+          marks: b.estimatedMarks,
+        })),
       });
     }
-    
+
     setTotalSailMarksState(totalMarks);
   }, [sailBalances]);
 
@@ -237,7 +922,10 @@ export default function SailPage() {
     }
 
     const totalMarks = totalSailMarksState;
-    const totalPerDay = sailBalances.reduce((sum, balance) => sum + balance.marksPerDay, 0);
+    const totalPerDay = sailBalances.reduce(
+      (sum, balance) => sum + balance.marksPerDay,
+      0
+    );
 
     return {
       totalSailMarks: totalMarks,
@@ -264,10 +952,13 @@ export default function SailPage() {
     return groups;
   }, [sailMarkets]);
 
-  // Fetch contract data for all markets
+  // Fetch contract data for all markets (7 reads per market: 4 minter + 1 oracle + 1 name + 1 totalSupply)
   const { data: reads } = useContractReads({
     contracts: sailMarkets.flatMap(([_, m]) => {
       const minter = (m as any).addresses?.minter as `0x${string}` | undefined;
+      const priceOracle = (m as any).addresses?.collateralPrice as
+        | `0x${string}`
+        | undefined;
 
       if (
         !minter ||
@@ -277,7 +968,7 @@ export default function SailPage() {
       )
         return [];
 
-      return [
+      const contracts: any[] = [
         {
           address: minter,
           abi: minterABI,
@@ -299,6 +990,44 @@ export default function SailPage() {
           functionName: "collateralTokenBalance" as const,
         },
       ];
+
+      // Add oracle price read if available
+      if (
+        priceOracle &&
+        typeof priceOracle === "string" &&
+        priceOracle.startsWith("0x") &&
+        priceOracle.length === 42
+      ) {
+        contracts.push({
+          address: priceOracle,
+          abi: wrappedPriceOracleABI,
+          functionName: "latestAnswer" as const,
+        });
+      }
+
+      // Add leveraged token name and totalSupply reads
+      const leveragedTokenAddress = (m as any).addresses?.leveragedToken as
+        | `0x${string}`
+        | undefined;
+      if (
+        leveragedTokenAddress &&
+        typeof leveragedTokenAddress === "string" &&
+        leveragedTokenAddress.startsWith("0x") &&
+        leveragedTokenAddress.length === 42
+      ) {
+        contracts.push({
+          address: leveragedTokenAddress,
+          abi: erc20MetadataABI,
+          functionName: "name" as const,
+        });
+        contracts.push({
+          address: leveragedTokenAddress,
+          abi: erc20MetadataABI,
+          functionName: "totalSupply" as const,
+        });
+      }
+
+      return contracts;
     }),
     query: {
       enabled: sailMarkets.length > 0,
@@ -489,17 +1218,18 @@ export default function SailPage() {
                 label={
                   <div className="space-y-3">
                     <div>
-                      <h3 className="font-bold text-lg mb-2">
-                        Sail Marks
-                      </h3>
+                      <h3 className="font-bold text-lg mb-2">Sail Marks</h3>
                       <p className="text-white/90 leading-relaxed">
-                        Earn marks for holding Sail tokens. Sail marks are earned at 1 mark per dollar per day (with a 5x multiplier).
+                        Earn marks for holding Sail tokens. Sail marks are
+                        earned at 1 mark per dollar per day (with a 5x
+                        multiplier).
                       </p>
                     </div>
 
                     <div className="border-t border-white/20 pt-3">
                       <p className="text-white/90 leading-relaxed mb-2">
-                        Sail marks track your contribution to the Harbor ecosystem through leveraged token positions.
+                        Sail marks track your contribution to the Harbor
+                        ecosystem through leveraged token positions.
                       </p>
                     </div>
 
@@ -507,7 +1237,8 @@ export default function SailPage() {
                       <div className="flex items-start gap-2">
                         <span className="text-white/70 mt-0.5">•</span>
                         <p className="text-white/90 leading-relaxed">
-                          The more Sail tokens you hold, the more marks you earn.
+                          The more Sail tokens you hold, the more marks you
+                          earn.
                         </p>
                       </div>
                       <div className="flex items-start gap-2">
@@ -530,15 +1261,13 @@ export default function SailPage() {
                 Current Sail Marks
               </div>
               <div className="text-base font-bold text-white font-mono text-center">
-                {isLoadingSailMarks ? (
-                  "-"
-                ) : totalSailMarks > 0 ? (
-                  totalSailMarks.toLocaleString(undefined, {
-                    maximumFractionDigits: 0,
-                  })
-                ) : (
-                  "0"
-                )}
+                {isLoadingSailMarks
+                  ? "-"
+                  : totalSailMarks > 0
+                  ? totalSailMarks.toLocaleString(undefined, {
+                      maximumFractionDigits: 0,
+                    })
+                  : "0"}
               </div>
             </div>
 
@@ -548,15 +1277,13 @@ export default function SailPage() {
                 Sail Marks per Day
               </div>
               <div className="text-base font-bold text-white font-mono text-center">
-                {isLoadingSailMarks ? (
-                  "-"
-                ) : sailMarksPerDay > 0 ? (
-                  sailMarksPerDay.toLocaleString(undefined, {
-                    maximumFractionDigits: 2,
-                  })
-                ) : (
-                  "0"
-                )}
+                {isLoadingSailMarks
+                  ? "-"
+                  : sailMarksPerDay > 0
+                  ? sailMarksPerDay.toLocaleString(undefined, {
+                      maximumFractionDigits: 2,
+                    })
+                  : "0"}
               </div>
             </div>
           </div>
@@ -577,113 +1304,40 @@ export default function SailPage() {
                   <div className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr] gap-4 items-center uppercase tracking-wider text-xs text-[#1E4775] font-bold">
                     <div className="min-w-0 text-center">Token</div>
                     <div className="text-center min-w-0">Leverage</div>
-                    <div className="text-center min-w-0">TVL</div>
                     <div className="text-center min-w-0">Your Position</div>
+                    <div className="text-center min-w-0">Current Value</div>
                     <div className="text-center min-w-0">Action</div>
                   </div>
                 </div>
 
                 {/* Market Rows */}
                 <div className="space-y-2">
-                  {markets.map(([id, m], mi) => {
-                    // Find the global index of this market
+                  {markets.map(([id, m]) => {
                     const globalIndex = sailMarkets.findIndex(
                       ([marketId]) => marketId === id
                     );
-                    const baseOffset = globalIndex * 4;
-
-                    const leverageRatio = reads?.[baseOffset]?.result as
-                      | bigint
-                      | undefined;
-                    const leveragedTokenPrice = reads?.[baseOffset + 1]
-                      ?.result as bigint | undefined;
-                    const collateralRatio = reads?.[baseOffset + 2]?.result as
-                      | bigint
-                      | undefined;
-                    const collateralValue = reads?.[baseOffset + 3]?.result as
-                      | bigint
-                      | undefined;
-
                     const userDeposit = userDepositMap.get(globalIndex);
-                    const isExpanded = expandedMarket === id;
 
                     return (
-                      <div key={id}>
-                        <div
-                          className={`p-3 overflow-x-auto transition cursor-pointer ${
-                            isExpanded
-                              ? "bg-[#B8EBD5]"
-                              : "bg-white hover:bg-[#B8EBD5]"
-                          }`}
-                          onClick={() =>
-                            setExpandedMarket(isExpanded ? null : id)
-                          }
-                        >
-                          <div className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr] gap-4 items-center text-sm">
-                            <div className="whitespace-nowrap min-w-0 overflow-hidden">
-                              <div className="flex items-center justify-center gap-2">
-                                <span className="text-[#1E4775] font-medium">
-                                  Short {getShortSide(m)}
-                                </span>
-                                {isExpanded ? (
-                                  <ChevronUpIcon className="w-5 h-5 text-[#1E4775] flex-shrink-0" />
-                                ) : (
-                                  <ChevronDownIcon className="w-5 h-5 text-[#1E4775] flex-shrink-0" />
-                                )}
-                              </div>
-                              <div className="text-xs text-[#1E4775]/50 font-mono text-center mt-0.5">
-                                {m.leveragedToken.symbol}
-                              </div>
-                            </div>
-                            <div className="text-center min-w-0">
-                              <span className="text-[#1E4775] font-medium text-xs font-mono">
-                                {formatLeverage(leverageRatio)}
-                              </span>
-                            </div>
-                            <div className="text-center min-w-0">
-                              <span className="text-[#1E4775] font-medium text-xs font-mono">
-                                {formatToken(collateralValue)}{" "}
-                                {m.collateral?.symbol || "ETH"}
-                              </span>
-                            </div>
-                            <div className="text-center min-w-0">
-                              <span className="text-[#1E4775] font-medium text-xs font-mono">
-                                {userDeposit ? formatToken(userDeposit) : "-"}
-                              </span>
-                            </div>
-                            <div
-                              className="text-center min-w-0"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setSelectedMarketId(id);
-                                  setSelectedMarket(m);
-                                  setManageModalTab("mint");
-                                  setManageModalOpen(true);
-                                }}
-                                disabled={!isConnected}
-                                className="px-4 py-2 text-xs font-medium bg-[#1E4775] text-white hover:bg-[#17395F] disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors rounded-full whitespace-nowrap"
-                              >
-                                Manage
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Expanded View */}
-                        {isExpanded && (
-                          <SailMarketExpandedView
-                            marketId={id}
-                            market={m}
-                            leverageRatio={leverageRatio}
-                            leveragedTokenPrice={leveragedTokenPrice}
-                            collateralRatio={collateralRatio}
-                            collateralValue={collateralValue}
-                          />
-                        )}
-                      </div>
+                      <SailMarketRow
+                        key={id}
+                        id={id}
+                        market={m}
+                        globalIndex={globalIndex}
+                        reads={reads}
+                        userDeposit={userDeposit}
+                        isExpanded={expandedMarket === id}
+                        onToggleExpand={() =>
+                          setExpandedMarket(expandedMarket === id ? null : id)
+                        }
+                        onManageClick={() => {
+                          setSelectedMarketId(id);
+                          setSelectedMarket(m);
+                          setManageModalTab("mint");
+                          setManageModalOpen(true);
+                        }}
+                        isConnected={isConnected}
+                      />
                     );
                   })}
                 </div>

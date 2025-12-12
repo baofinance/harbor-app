@@ -178,7 +178,10 @@ interface UseTokenInfoOptions {
  * Hook to get token metadata (symbol, decimals)
  * Uses a longer cache since this data rarely changes
  */
-export function useTokenInfo({ tokenAddress, enabled = true }: UseTokenInfoOptions) {
+export function useTokenInfo({
+  tokenAddress,
+  enabled = true,
+}: UseTokenInfoOptions) {
   const { data, isLoading, error } = useAnvilContractReads({
     contracts: [
       {
@@ -204,4 +207,8 @@ export function useTokenInfo({ tokenAddress, enabled = true }: UseTokenInfoOptio
     error,
   };
 }
+
+
+
+
 

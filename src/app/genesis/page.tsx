@@ -45,6 +45,7 @@ import {
 import { EtherscanLink, getLogoPath, TokenLogo } from "@/components/shared";
 import { MINTER_ABI } from "@/abis/shared";
 import Link from "next/link";
+import { useCoinGeckoPrices } from "@/hooks/useCoinGeckoPrice";
 
 // Helper function to get accepted deposit assets for a market
 function getAcceptedDepositAssets(
@@ -179,40 +180,41 @@ function MarketExpandedView({
   onShare?: () => void;
 }) {
   // Fetch contract data for expanded view
-  const { data: expandedReads, error: expandedReadsError } = wagmiUseContractReads({
-    contracts:
-      genesisAddress &&
-      typeof genesisAddress === "string" &&
-      genesisAddress.startsWith("0x") &&
-      genesisAddress.length === 42
-        ? [
-            {
-              address: genesisAddress as `0x${string}`,
-              abi: genesisABI,
-              functionName: "peggedToken" as const,
-            },
-            {
-              address: genesisAddress as `0x${string}`,
-              abi: genesisABI,
-              functionName: "leveragedToken" as const,
-            },
-            {
-              address: genesisAddress as `0x${string}`,
-              abi: genesisABI,
-              functionName: "collateralToken" as const,
-            },
-          ]
-        : [],
-    query: {
-      enabled:
-        !!genesisAddress &&
+  const { data: expandedReads, error: expandedReadsError } =
+    wagmiUseContractReads({
+      contracts:
+        genesisAddress &&
         typeof genesisAddress === "string" &&
         genesisAddress.startsWith("0x") &&
-        genesisAddress.length === 42,
-      retry: 1,
-      retryOnMount: false,
-    },
-  });
+        genesisAddress.length === 42
+          ? [
+              {
+                address: genesisAddress as `0x${string}`,
+                abi: genesisABI,
+                functionName: "peggedToken" as const,
+              },
+              {
+                address: genesisAddress as `0x${string}`,
+                abi: genesisABI,
+                functionName: "leveragedToken" as const,
+              },
+              {
+                address: genesisAddress as `0x${string}`,
+                abi: genesisABI,
+                functionName: "collateralToken" as const,
+              },
+            ]
+          : [],
+      query: {
+        enabled:
+          !!genesisAddress &&
+          typeof genesisAddress === "string" &&
+          genesisAddress.startsWith("0x") &&
+          genesisAddress.length === 42,
+        retry: 1,
+        retryOnMount: false,
+      },
+    });
 
   const peggedTokenAddress = expandedReads?.[0]?.result as
     | `0x${string}`
@@ -225,75 +227,76 @@ function MarketExpandedView({
     | undefined;
 
   // Get token symbols
-  const { data: tokenSymbols, error: tokenSymbolsError } = wagmiUseContractReads({
-    contracts: [
-      ...(peggedTokenAddress &&
-      typeof peggedTokenAddress === "string" &&
-      peggedTokenAddress.startsWith("0x") &&
-      peggedTokenAddress.length === 42
-        ? [
-            {
-              address: peggedTokenAddress,
-              abi: erc20SymbolABI,
-              functionName: "symbol" as const,
-            },
-          ]
-        : []),
-      ...(leveragedTokenAddress &&
-      typeof leveragedTokenAddress === "string" &&
-      leveragedTokenAddress.startsWith("0x") &&
-      leveragedTokenAddress.length === 42
-        ? [
-            {
-              address: leveragedTokenAddress,
-              abi: erc20SymbolABI,
-              functionName: "symbol" as const,
-            },
-          ]
-        : []),
-      ...(collateralTokenAddress &&
-      typeof collateralTokenAddress === "string" &&
-      collateralTokenAddress.startsWith("0x") &&
-      collateralTokenAddress.length === 42
-        ? [
-            {
-              address: collateralTokenAddress,
-              abi: erc20SymbolABI,
-              functionName: "symbol" as const,
-            },
-          ]
-        : []),
-    ],
-    query: {
-      enabled:
-        (!!peggedTokenAddress &&
-          typeof peggedTokenAddress === "string" &&
-          peggedTokenAddress.startsWith("0x") &&
-          peggedTokenAddress.length === 42) ||
-        (!!leveragedTokenAddress &&
-          typeof leveragedTokenAddress === "string" &&
-          leveragedTokenAddress.startsWith("0x") &&
-          leveragedTokenAddress.length === 42) ||
-        (!!collateralTokenAddress &&
-          typeof collateralTokenAddress === "string" &&
-          collateralTokenAddress.startsWith("0x") &&
-          collateralTokenAddress.length === 42),
-      retry: 1,
-      retryOnMount: false,
-    },
-  });
+  const { data: tokenSymbols, error: tokenSymbolsError } =
+    wagmiUseContractReads({
+      contracts: [
+        ...(peggedTokenAddress &&
+        typeof peggedTokenAddress === "string" &&
+        peggedTokenAddress.startsWith("0x") &&
+        peggedTokenAddress.length === 42
+          ? [
+              {
+                address: peggedTokenAddress,
+                abi: erc20SymbolABI,
+                functionName: "symbol" as const,
+              },
+            ]
+          : []),
+        ...(leveragedTokenAddress &&
+        typeof leveragedTokenAddress === "string" &&
+        leveragedTokenAddress.startsWith("0x") &&
+        leveragedTokenAddress.length === 42
+          ? [
+              {
+                address: leveragedTokenAddress,
+                abi: erc20SymbolABI,
+                functionName: "symbol" as const,
+              },
+            ]
+          : []),
+        ...(collateralTokenAddress &&
+        typeof collateralTokenAddress === "string" &&
+        collateralTokenAddress.startsWith("0x") &&
+        collateralTokenAddress.length === 42
+          ? [
+              {
+                address: collateralTokenAddress,
+                abi: erc20SymbolABI,
+                functionName: "symbol" as const,
+              },
+            ]
+          : []),
+      ],
+      query: {
+        enabled:
+          (!!peggedTokenAddress &&
+            typeof peggedTokenAddress === "string" &&
+            peggedTokenAddress.startsWith("0x") &&
+            peggedTokenAddress.length === 42) ||
+          (!!leveragedTokenAddress &&
+            typeof leveragedTokenAddress === "string" &&
+            leveragedTokenAddress.startsWith("0x") &&
+            leveragedTokenAddress.length === 42) ||
+          (!!collateralTokenAddress &&
+            typeof collateralTokenAddress === "string" &&
+            collateralTokenAddress.startsWith("0x") &&
+            collateralTokenAddress.length === 42),
+        retry: 1,
+        retryOnMount: false,
+      },
+    });
 
   const peggedTokenSymbol =
-    (peggedSymbol ||
-      (peggedTokenAddress && tokenSymbols?.[0]?.result
-        ? (tokenSymbols[0].result as string)
-        : market.peggedToken?.symbol)) ||
+    peggedSymbol ||
+    (peggedTokenAddress && tokenSymbols?.[0]?.result
+      ? (tokenSymbols[0].result as string)
+      : market.peggedToken?.symbol) ||
     "ha";
   const leveragedTokenSymbol =
-    (leveragedSymbol ||
-      (leveragedTokenAddress && tokenSymbols?.[1]?.result
-        ? (tokenSymbols[1].result as string)
-        : market.leveragedToken?.symbol)) ||
+    leveragedSymbol ||
+    (leveragedTokenAddress && tokenSymbols?.[1]?.result
+      ? (tokenSymbols[1].result as string)
+      : market.leveragedToken?.symbol) ||
     "hs";
   const collateralTokenSymbol =
     collateralTokenAddress && tokenSymbols?.[2]?.result
@@ -334,7 +337,7 @@ function MarketExpandedView({
   const addresses = market.addresses as Record<string, string | undefined>;
 
   return (
-    <div className="bg-[#B8EBD5] p-2 border-t border-white/20">
+    <div className="bg-[rgb(var(--surface-selected-rgb))] p-4 border-t border-white/20">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         {/* Genesis Info */}
         <div className="bg-white p-2 flex flex-col justify-center">
@@ -446,14 +449,14 @@ export default function GenesisIndexPage() {
 
   // Fetch on-chain token metadata (symbol/name) from minter contract
   const tokenMeta = useMinterTokenMeta(contracts.minter as `0x${string}`);
-  
+
   // Get token symbols with loading/error states
-  const getTokenDisplay = (type: 'pegged' | 'leveraged') => {
-    if (tokenMeta.isLoading) return 'Loading...';
-    if (tokenMeta.error) return '⚠️ Error';
-    
-    const token = type === 'pegged' ? tokenMeta.pegged : tokenMeta.leveraged;
-    return token?.symbol || (type === 'pegged' ? 'ha' : 'hs');
+  const getTokenDisplay = (type: "pegged" | "leveraged") => {
+    if (tokenMeta.isLoading) return "Loading...";
+    if (tokenMeta.error) return "⚠️ Error";
+
+    const token = type === "pegged" ? tokenMeta.pegged : tokenMeta.leveraged;
+    return token?.symbol || (type === "pegged" ? "ha" : "hs");
   };
 
   // Prevent hydration mismatch by only rendering dynamic content after mount
@@ -485,8 +488,8 @@ export default function GenesisIndexPage() {
   );
 
   // On-chain token symbols from the useMinterTokenMeta hook
-  const peggedSymbol = getTokenDisplay('pegged');
-  const leveragedSymbol = getTokenDisplay('leveraged');
+  const peggedSymbol = getTokenDisplay("pegged");
+  const leveragedSymbol = getTokenDisplay("leveraged");
 
   // Fetch marks data from subgraph
   const {
@@ -536,7 +539,7 @@ export default function GenesisIndexPage() {
 
   const { data: reads, refetch: refetchReads } = useAnvilContractReads({
     contracts: genesisReadContracts,
-      enabled: genesisMarkets.length > 0,
+    enabled: genesisMarkets.length > 0,
     refetchInterval: 5000, // Refetch every 5 seconds to catch genesis end
   });
 
@@ -544,19 +547,19 @@ export default function GenesisIndexPage() {
   const collateralTokenContracts = useMemo(() => {
     return genesisMarkets
       .map(([_, m]) => {
-      const g = (m as any).addresses?.genesis as `0x${string}` | undefined;
+        const g = (m as any).addresses?.genesis as `0x${string}` | undefined;
         if (
           !g ||
           typeof g !== "string" ||
           !g.startsWith("0x") ||
           g.length !== 42
         )
-        return null;
-      return {
-        address: g,
-        abi: genesisABI,
-        functionName: "WRAPPED_COLLATERAL_TOKEN" as const,
-      };
+          return null;
+        return {
+          address: g,
+          abi: genesisABI,
+          functionName: "WRAPPED_COLLATERAL_TOKEN" as const,
+        };
       })
       .filter((c): c is NonNullable<typeof c> => c !== null);
   }, [genesisMarkets]);
@@ -565,7 +568,7 @@ export default function GenesisIndexPage() {
     useAnvilContractReads({
       contracts: collateralTokenContracts,
       enabled: genesisMarkets.length > 0,
-  });
+    });
 
   // Fetch total deposits by checking the balance of wrapped collateral token in genesis contract
   // Since totalDeposits() doesn't exist in IGenesis, we get it from the token balance
@@ -578,7 +581,7 @@ export default function GenesisIndexPage() {
       type: "function",
     },
   ] as const;
-  
+
   const totalDepositsContracts = useMemo(() => {
     return genesisMarkets.flatMap(([_, m], mi) => {
       const g = (m as any).addresses?.genesis as `0x${string}` | undefined;
@@ -614,7 +617,7 @@ export default function GenesisIndexPage() {
         genesisMarkets.length > 0 &&
         collateralTokenReads &&
         collateralTokenReads.length > 0,
-  });
+    });
 
   const buildShareMessage = (
     marketName: string,
@@ -655,7 +658,7 @@ export default function GenesisIndexPage() {
           className="absolute inset-0 bg-black/40 backdrop-blur-sm"
           onClick={status === "pending" ? undefined : onClose}
         />
-        <div className="relative bg-white shadow-2xl w-full max-w-md mx-4 animate-in fade-in-0 scale-in-95 duration-200 rounded-2xl overflow-hidden">
+        <div className="relative bg-white shadow-2xl w-full max-w-md mx-4 animate-in fade-in-0 scale-in-95 duration-200  overflow-hidden">
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-[#1E4775]/10">
             <div>
@@ -693,20 +696,20 @@ export default function GenesisIndexPage() {
 
             {status === "success" && (
               <div className="space-y-4">
-                <div className="p-4 bg-[#B8EBD5]/20 border border-[#B8EBD5]/30 rounded-lg text-center">
+                <div className="p-4 bg-[rgb(var(--surface-selected-rgb))]/20 border border-[rgb(var(--surface-selected-border-rgb))]  text-center">
                   <p className="text-sm text-[#1E4775]/80">
                     Tokens claimed{marketName ? ` for ${marketName}` : ""}.
                   </p>
                 </div>
 
-                <div className="space-y-2 bg-[#17395F]/5 border border-[#1E4775]/15 rounded-lg p-4">
+                <div className="space-y-2 bg-[#17395F]/5 border border-[#1E4775]/15  p-4">
                   <div className="text-base font-semibold text-[#1E4775]">
                     Boost your airdrop
                   </div>
                   <p className="text-sm text-[#1E4775]/80">
                     Share that {marketName || "this market"} is live and invite
-                    others to earn unbeatable yields on {peggedSymbolNoPrefix} or
-                    get liquidation-protected, funding-free leverage.
+                    others to earn unbeatable yields on {peggedSymbolNoPrefix}{" "}
+                    or get liquidation-protected, funding-free leverage.
                   </p>
                   {onShare && (
                     <button
@@ -738,7 +741,7 @@ export default function GenesisIndexPage() {
 
             {status === "error" && (
               <div className="space-y-3">
-                <div className="p-4 bg-red-50 border border-red-100 rounded-lg">
+                <div className="p-4 bg-red-50 border border-red-100 ">
                   <p className="text-sm text-red-700 font-semibold">
                     Claim failed
                   </p>
@@ -793,7 +796,7 @@ export default function GenesisIndexPage() {
 
   const { data: priceReads, refetch: refetchPrices } = useAnvilContractReads({
     contracts: priceContracts,
-      enabled: genesisMarkets.length > 0,
+    enabled: genesisMarkets.length > 0,
   });
 
   // Fetch CoinGecko prices for markets that have coinGeckoId
@@ -842,41 +845,41 @@ export default function GenesisIndexPage() {
               Maiden Voyage
             </h1>
             {/* Compact Social Buttons */}
-            <div className="flex flex-col items-end gap-2 border border-white/30 rounded-lg px-3 py-2">
+            <div className="flex flex-col items-end gap-2 border border-white/30  px-3 py-2">
               <div className="text-white text-xs font-medium whitespace-nowrap">
                 follow to stay up to date
               </div>
               <div className="flex items-center justify-center gap-2 w-full">
-              <a
-                href="https://x.com/0xharborfi"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="p-2 bg-black hover:bg-gray-800 text-white rounded-lg transition-colors"
-                title="Follow @0xharborfi on X"
-              >
-                <svg
-                  className="w-4 h-4"
-                  viewBox="0 0 24 24"
-                  fill="currentColor"
+                <a
+                  href="https://x.com/0xharborfi"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-2 bg-black hover:bg-gray-800 text-white  transition-colors"
+                  title="Follow @0xharborfi on X"
                 >
-                  <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-                </svg>
-              </a>
-              <a
-                href="https://discord.gg/harborfin"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="p-2 bg-[#5865F2] hover:bg-[#4752C4] text-white rounded-lg transition-colors"
-                title="Join Discord"
-              >
-                <svg
-                  className="w-4 h-4"
-                  viewBox="0 0 24 24"
-                  fill="currentColor"
+                  <svg
+                    className="w-4 h-4"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                  >
+                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                  </svg>
+                </a>
+                <a
+                  href="https://discord.gg/harborfin"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-2 bg-[#5865F2] hover:bg-[#4752C4] text-white  transition-colors"
+                  title="Join Discord"
                 >
-                  <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z" />
-                </svg>
-              </a>
+                  <svg
+                    className="w-4 h-4"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                  >
+                    <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z" />
+                  </svg>
+                </a>
               </div>
             </div>
           </div>
@@ -917,7 +920,7 @@ export default function GenesisIndexPage() {
                   <div className="text-center">
                     <div className="mb-1">During Genesis:</div>
                     <div className="flex justify-center">
-                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-white text-[#1E4775] text-xs font-mono rounded w-fit">
+                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-white text-[#1E4775] text-xs font-mono w-fit">
                         <span>10x</span>
                         <Image
                           src="/icons/marks.png"
@@ -933,7 +936,7 @@ export default function GenesisIndexPage() {
                   <div className="text-center">
                     <div className="mb-1">End Bonus:</div>
                     <div className="flex justify-center">
-                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-white text-[#1E4775] text-xs font-mono rounded w-fit">
+                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-white text-[#1E4775] text-xs font-mono w-fit">
                         <span>100x</span>
                         <Image
                           src="/icons/marks.png"
@@ -964,7 +967,7 @@ export default function GenesisIndexPage() {
                 </p>
                 <div className="text-center">
                   <div className="flex items-center justify-center">
-                    <span className="inline-flex items-center gap-1 px-2 py-1 bg-white text-[#1E4775] text-xs font-mono rounded w-fit">
+                    <span className="inline-flex items-center gap-1 px-2 py-1 bg-white text-[#1E4775] text-xs font-mono w-fit">
                       <span>1-10x</span>
                       <Image
                         src="/icons/marks.png"
@@ -1033,16 +1036,16 @@ export default function GenesisIndexPage() {
                 const bonusMarks = parseFloat(marks.bonusMarks || "0");
 
                 // Find the market to get contract's genesisIsEnded() status
-                  const market = genesisMarkets.find(
+                const market = genesisMarkets.find(
                   ([_, m]) =>
                     (m as any).addresses?.genesis?.toLowerCase() ===
                     result.genesisAddress?.toLowerCase()
-                  );
+                );
 
                 // Use contract's genesisIsEnded() as authoritative source
                 // Fallback to subgraph value if contract read is not available
                 let contractSaysEnded: boolean | undefined;
-                  if (market) {
+                if (market) {
                   const marketIndex = genesisMarkets.findIndex(
                     ([id]) => id === market[0]
                   );
@@ -1120,10 +1123,15 @@ export default function GenesisIndexPage() {
 
                     // Calculate price: handle negative values (convert to positive) and apply decimals
                     let collateralPriceUSD: number = 0;
-                    const marketCoinGeckoId = (m as any)?.coinGeckoId as string | undefined;
-                    
+                    const marketCoinGeckoId = (m as any)?.coinGeckoId as
+                      | string
+                      | undefined;
+
                     // Try CoinGecko price first if available
-                    if (marketCoinGeckoId && coinGeckoPrices[marketCoinGeckoId]) {
+                    if (
+                      marketCoinGeckoId &&
+                      coinGeckoPrices[marketCoinGeckoId]
+                    ) {
                       collateralPriceUSD = coinGeckoPrices[marketCoinGeckoId]!;
                     } else if (priceRaw !== undefined) {
                       // Convert to positive if negative (some oracles return negative for error states)
@@ -1176,7 +1184,6 @@ export default function GenesisIndexPage() {
                   // 10 marks per dollar per day
                   const marksAccumulated = currentDepositUSD * 10 * daysElapsed;
                   currentMarks = currentMarks + marksAccumulated;
-
                 }
 
                 totalCurrentMarks += currentMarks;
@@ -1383,8 +1390,7 @@ export default function GenesisIndexPage() {
                 ? rowLeveragedSymbol.slice(2)
                 : rowLeveragedSymbol || (m as any).name || "Market";
             const peggedNoPrefix =
-              rowPeggedSymbol &&
-              rowPeggedSymbol.toLowerCase().startsWith("ha")
+              rowPeggedSymbol && rowPeggedSymbol.toLowerCase().startsWith("ha")
                 ? rowPeggedSymbol.slice(2)
                 : rowPeggedSymbol || "pegged token";
 
@@ -1408,7 +1414,7 @@ export default function GenesisIndexPage() {
             const collateralAddress =
               onChainCollateralAddress || (m as any).addresses?.collateralToken;
             const collateralSymbol = (m as any).collateral?.symbol || "ETH";
-            
+
             // Debug logging for collateral address
             const endDate = (m as any).genesis?.endDate;
 
@@ -1433,11 +1439,13 @@ export default function GenesisIndexPage() {
             ) {
               priceRaw = priceAnswerResult.result as bigint;
             }
-            
+
             // Calculate price: handle negative values (convert to positive) and apply decimals
             let collateralPriceUSD: number = 0;
             let priceError: string | null = null;
-            const marketCoinGeckoId = (m as any)?.coinGeckoId as string | undefined;
+            const marketCoinGeckoId = (m as any)?.coinGeckoId as
+              | string
+              | undefined;
 
             // Try CoinGecko price first if available
             if (marketCoinGeckoId && coinGeckoPrices[marketCoinGeckoId]) {
@@ -1465,7 +1473,7 @@ export default function GenesisIndexPage() {
                 priceError = "Price oracle not available";
               }
             }
-            
+
             // Calculate USD values
             const totalDepositsAmount = totalDeposits
               ? Number(formatEther(totalDeposits))
@@ -1512,7 +1520,9 @@ export default function GenesisIndexPage() {
               <React.Fragment key={id}>
                 <div
                   className={`p-3 overflow-x-auto overflow-y-visible transition cursor-pointer ${
-                    isExpanded ? "bg-[#B8EBD5]" : "bg-white hover:bg-[#B8EBD5]"
+                    isExpanded
+                      ? "bg-[rgb(var(--surface-selected-rgb))]"
+                      : "bg-white hover:bg-[rgb(var(--surface-selected-rgb))]"
                   }`}
                   onClick={() => setExpandedMarket(isExpanded ? null : id)}
                 >
@@ -1626,10 +1636,10 @@ export default function GenesisIndexPage() {
                         </div>
                       ) : (
                         // Before genesis ends, show total deposits
-                      <div className="flex items-center justify-center gap-1.5">
-                        <SimpleTooltip
-                          label={
-                            totalDeposits && totalDeposits > 0n
+                        <div className="flex items-center justify-center gap-1.5">
+                          <SimpleTooltip
+                            label={
+                              totalDeposits && totalDeposits > 0n
                                 ? priceError
                                   ? `${formatToken(
                                       totalDeposits
@@ -1639,10 +1649,10 @@ export default function GenesisIndexPage() {
                                     )} ${collateralSymbol}`
                                 : priceError
                                 ? `No deposits\n\nPrice Error: ${priceError}`
-                              : "No deposits"
-                          }
-                        >
-                          <div className="font-mono text-[#1E4775] font-semibold cursor-help">
+                                : "No deposits"
+                            }
+                          >
+                            <div className="font-mono text-[#1E4775] font-semibold cursor-help">
                               {totalDeposits && totalDeposits > 0n ? (
                                 collateralPriceUSD > 0 ? (
                                   formatUSD(totalDepositsUSD)
@@ -1664,18 +1674,18 @@ export default function GenesisIndexPage() {
                               ) : (
                                 "0"
                               )}
-                          </div>
-                        </SimpleTooltip>
-                        <SimpleTooltip label={collateralSymbol}>
-                          <Image
-                            src={getLogoPath(collateralSymbol)}
-                            alt={collateralSymbol}
+                            </div>
+                          </SimpleTooltip>
+                          <SimpleTooltip label={collateralSymbol}>
+                            <Image
+                              src={getLogoPath(collateralSymbol)}
+                              alt={collateralSymbol}
                               width={24}
                               height={24}
-                            className="flex-shrink-0 cursor-help rounded-full"
-                          />
-                        </SimpleTooltip>
-                      </div>
+                              className="flex-shrink-0 cursor-help rounded-full"
+                            />
+                          </SimpleTooltip>
+                        </div>
                       )}
                     </div>
                     <div className="text-center min-w-0">
@@ -1763,9 +1773,9 @@ export default function GenesisIndexPage() {
                           </span>
                         </SimpleTooltip>
                       ) : (
-                      <span className="text-[10px] uppercase px-2 py-1 bg-[#1E4775]/10 text-[#1E4775]">
-                        {statusText}
-                      </span>
+                        <span className="text-[10px] uppercase px-2 py-1 bg-[#1E4775]/10 text-[#1E4775]">
+                          {statusText}
+                        </span>
                       )}
                     </div>
                     <div
@@ -1844,60 +1854,60 @@ export default function GenesisIndexPage() {
                         </div>
                       ) : (
                         // Before genesis ends, show deposit/withdraw buttons
-                      <div className="flex items-center justify-center gap-2">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (genesisAddress && collateralAddress) {
-                              setDepositModal({
-                                marketId: id,
-                                genesisAddress,
-                                collateralAddress,
-                                collateralSymbol,
-                                acceptedAssets,
-                                marketAddresses: {
+                        <div className="flex items-center justify-center gap-2">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (genesisAddress && collateralAddress) {
+                                setDepositModal({
+                                  marketId: id,
+                                  genesisAddress,
+                                  collateralAddress,
+                                  collateralSymbol,
+                                  acceptedAssets,
+                                  marketAddresses: {
                                     collateralToken: (m as any).addresses
                                       ?.collateralToken,
                                     wrappedCollateralToken: (m as any).addresses
                                       ?.wrappedCollateralToken,
-                                },
-                              });
+                                  },
+                                });
+                              }
+                            }}
+                            disabled={
+                              isEnded || !genesisAddress || !collateralAddress
                             }
-                          }}
-                          disabled={
-                            isEnded || !genesisAddress || !collateralAddress
-                          }
-                          className="px-4 py-2 text-xs font-medium bg-[#1E4775] text-white hover:bg-[#17395F] disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors rounded-full whitespace-nowrap"
-                        >
-                          Deposit
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (
-                              genesisAddress &&
-                              userDeposit &&
-                              userDeposit > 0n
-                            ) {
-                              setWithdrawModal({
-                                marketId: id,
-                                genesisAddress,
-                                collateralSymbol,
-                                userDeposit,
-                              });
+                            className="px-4 py-2 text-xs font-medium bg-[#1E4775] text-white hover:bg-[#17395F] disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors rounded-full whitespace-nowrap"
+                          >
+                            Deposit
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (
+                                genesisAddress &&
+                                userDeposit &&
+                                userDeposit > 0n
+                              ) {
+                                setWithdrawModal({
+                                  marketId: id,
+                                  genesisAddress,
+                                  collateralSymbol,
+                                  userDeposit,
+                                });
+                              }
+                            }}
+                            disabled={
+                              !userDeposit ||
+                              userDeposit === 0n ||
+                              !genesisAddress ||
+                              isEnded
                             }
-                          }}
-                          disabled={
-                            !userDeposit ||
-                            userDeposit === 0n ||
-                            !genesisAddress ||
-                            isEnded
-                          }
-                          className="px-4 py-2 text-xs font-medium bg-white text-[#1E4775] border border-[#1E4775] hover:bg-[#1E4775]/5 disabled:bg-gray-100 disabled:text-gray-400 disabled:border-gray-300 disabled:cursor-not-allowed transition-colors rounded-full whitespace-nowrap"
-                        >
-                          Withdraw
-                        </button>
-                      </div>
+                            className="px-4 py-2 text-xs font-medium bg-white text-[#1E4775] border border-[#1E4775] hover:bg-[#1E4775]/5 disabled:bg-gray-100 disabled:text-gray-400 disabled:border-gray-300 disabled:cursor-not-allowed transition-colors rounded-full whitespace-nowrap"
+                          >
+                            Withdraw
+                          </button>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -1968,23 +1978,23 @@ export default function GenesisIndexPage() {
               refetchReads(),
               refetchTotalDeposits(),
             ]);
-            
+
             // Wait longer for subgraph to index the deposit event
             // The subgraph needs time to process the event and update marks
             await new Promise((resolve) => setTimeout(resolve, 5000));
-            
+
             // Invalidate and refetch harbor marks queries
             queryClient.invalidateQueries({ queryKey: ["allHarborMarks"] });
             queryClient.invalidateQueries({ queryKey: ["harborMarks"] });
-            
+
             // Force a refetch of marks data
             await refetchMarks();
-            
+
             // Poll for marks update (subgraph might need more time)
             let attempts = 0;
             const maxAttempts = 6; // Try for up to 30 seconds (6 * 5 seconds)
             const pollInterval = 5000; // 5 seconds
-            
+
             const pollForMarks = async () => {
               if (attempts >= maxAttempts) return;
               attempts++;
@@ -1995,10 +2005,10 @@ export default function GenesisIndexPage() {
                 await pollForMarks();
               }
             };
-            
+
             // Start polling in background (don't await)
             pollForMarks();
-            
+
             setDepositModal(null);
           }}
         />
@@ -2024,22 +2034,22 @@ export default function GenesisIndexPage() {
               refetchTotalDeposits(),
               refetchPrices(),
             ]);
-            
+
             // Wait longer for subgraph to index the withdrawal event
             await new Promise((resolve) => setTimeout(resolve, 5000));
-            
+
             // Invalidate and refetch harbor marks queries
             queryClient.invalidateQueries({ queryKey: ["allHarborMarks"] });
             queryClient.invalidateQueries({ queryKey: ["harborMarks"] });
-            
+
             // Force a refetch of marks data
             await refetchMarks();
-            
+
             // Poll for marks update (subgraph might need more time)
             let attempts = 0;
             const maxAttempts = 6; // Try for up to 30 seconds (6 * 5 seconds)
             const pollInterval = 5000; // 5 seconds
-            
+
             const pollForMarks = async () => {
               if (attempts >= maxAttempts) return;
               attempts++;
@@ -2050,10 +2060,10 @@ export default function GenesisIndexPage() {
                 await pollForMarks();
               }
             };
-            
+
             // Start polling in background (don't await)
             pollForMarks();
-            
+
             setWithdrawModal(null);
           }}
         />

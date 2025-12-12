@@ -102,12 +102,12 @@ export function usePoolRewardTokens({
               displayName = truncateAddress(tokenAddress);
             }
 
-            return {
-              address: tokenAddress,
+              return {
+                address: tokenAddress,
               symbol: symbol || truncateAddress(tokenAddress),
               name: name,
               displayName,
-            };
+              };
           })
         );
 

@@ -47,11 +47,11 @@ export interface CollateralPriceData {
 /**
  * Hook to fetch collateral price from the IWrappedPriceOracle interface.
  * This is the standard price oracle interface used by Harbor's Minter contract.
- * 
+ *
  * @param priceOracleAddress - The address of the price oracle contract
  * @param options - Optional configuration
  * @returns CollateralPriceData with price information
- * 
+ *
  * @example
  * ```tsx
  * const { priceUSD, maxPrice, isLoading } = useCollateralPrice(
@@ -81,7 +81,11 @@ export function useCollateralPrice(
     ];
   }, [priceOracleAddress]);
 
-  const { data: reads, isLoading, error } = useAnvilContractReads({
+  const {
+    data: reads,
+    isLoading,
+    error,
+  } = useAnvilContractReads({
     contracts,
     enabled: enabled && !!priceOracleAddress && contracts.length > 0,
     refetchInterval,
@@ -139,18 +143,18 @@ export function useCollateralPrice(
     }
 
     // Calculate mid values
-    const midPrice = minPrice !== undefined && maxPrice !== undefined
-      ? (minPrice + maxPrice) / 2n
-      : undefined;
-    const midRate = minRate !== undefined && maxRate !== undefined
-      ? (minRate + maxRate) / 2n
-      : undefined;
+    const midPrice =
+      minPrice !== undefined && maxPrice !== undefined
+        ? (minPrice + maxPrice) / 2n
+        : undefined;
+    const midRate =
+      minRate !== undefined && maxRate !== undefined
+        ? (minRate + maxRate) / 2n
+        : undefined;
 
     // Calculate USD price (using maxPrice as the display price)
     // All prices are in 18 decimals
-    const priceUSD = maxPrice !== undefined
-      ? Number(maxPrice) / 1e18
-      : 0;
+    const priceUSD = maxPrice !== undefined ? Number(maxPrice) / 1e18 : 0;
 
     return {
       minPrice,
@@ -168,7 +172,7 @@ export function useCollateralPrice(
 
 /**
  * Hook to fetch collateral prices for multiple markets.
- * 
+ *
  * @param priceOracleAddresses - Array of price oracle addresses
  * @returns Map of oracle address to CollateralPriceData
  */
@@ -198,7 +202,11 @@ export function useMultipleCollateralPrices(
     }));
   }, [validAddresses]);
 
-  const { data: reads, isLoading, error } = useAnvilContractReads({
+  const {
+    data: reads,
+    isLoading,
+    error,
+  } = useAnvilContractReads({
     contracts,
     enabled: enabled && contracts.length > 0,
     refetchInterval,
@@ -250,12 +258,14 @@ export function useMultipleCollateralPrices(
         maxRate = obj.maxWrappedRate;
       }
 
-      const midPrice = minPrice !== undefined && maxPrice !== undefined
-        ? (minPrice + maxPrice) / 2n
-        : undefined;
-      const midRate = minRate !== undefined && maxRate !== undefined
-        ? (minRate + maxRate) / 2n
-        : undefined;
+      const midPrice =
+        minPrice !== undefined && maxPrice !== undefined
+          ? (minPrice + maxPrice) / 2n
+          : undefined;
+      const midRate =
+        minRate !== undefined && maxRate !== undefined
+          ? (minRate + maxRate) / 2n
+          : undefined;
 
       const priceUSD = maxPrice !== undefined ? Number(maxPrice) / 1e18 : 0;
 
@@ -277,4 +287,8 @@ export function useMultipleCollateralPrices(
 
   return { prices, isLoading, error: error as Error | null };
 }
+
+
+
+
 

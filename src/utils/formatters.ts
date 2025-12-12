@@ -173,3 +173,7 @@ export function truncateAddress(
   return `${address.slice(0, chars + 2)}...${address.slice(-chars)}`;
 }
 
+
+
+
+

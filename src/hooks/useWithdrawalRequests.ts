@@ -1,18 +1,19 @@
 import { useAccount, usePublicClient } from "wagmi";
 import { useQuery } from "@tanstack/react-query";
-import { stabilityPoolABI } from "@/abis/stabilityPool";
+import { STABILITY_POOL_ABI } from "@/abis/shared";
 import { shouldUseAnvil } from "@/config/environment";
 import { anvilPublicClient } from "@/config/anvil";
-import { formatEther } from "viem";
+
+export type WithdrawalStatus = "waiting" | "window" | "expired";
 
 export interface WithdrawalRequest {
   poolAddress: `0x${string}`;
-  amount: bigint;
-  requestedAt: bigint;
-  withdrawWindow: bigint;
+  start: bigint;
+  end: bigint;
   earlyWithdrawFee: bigint;
+  status: WithdrawalStatus;
   canWithdraw: boolean;
-  withdrawableAt: bigint;
+  currentTime: bigint;
 }
 
 export function useWithdrawalRequests(poolAddresses: `0x${string}`[]) {
@@ -34,100 +35,55 @@ export function useWithdrawalRequests(poolAddresses: `0x${string}`[]) {
 
       for (const poolAddress of poolAddresses) {
         try {
-          // First check if the function exists by trying to read it
-          // If it reverts or returns zero, there's no pending request
-          let amount: bigint = 0n;
-          let requestedAt: bigint = 0n;
-          
-          try {
-            const result = (await client.readContract({
-              address: poolAddress,
-              abi: stabilityPoolABI,
-              functionName: "withdrawRequest",
-              args: [address],
-            })) as [bigint, bigint] | bigint | undefined;
+          // Read the withdrawal window for this user
+          const [start, end] = (await client.readContract({
+            address: poolAddress,
+            abi: STABILITY_POOL_ABI,
+            functionName: "getWithdrawalRequest",
+            args: [address],
+          })) as [bigint, bigint];
 
-            // Handle different return types
-            if (Array.isArray(result)) {
-              [amount, requestedAt] = result;
-            } else if (result !== undefined) {
-              // If it's a single value, assume it's the amount
-              amount = result as bigint;
-            }
-          } catch (readError: any) {
-            // If the function reverts (e.g., no request exists), that's fine
-            // Check if it's a revert error or a function not found error
-            const errorMessage = readError?.message || "";
-            const errorCode = readError?.code || "";
-            
-            if (
-              errorMessage.includes("revert") ||
-              errorMessage.includes("execution reverted") ||
-              errorMessage.includes("ContractFunctionExecutionError") ||
-              errorCode === "CALL_EXCEPTION" ||
-              errorCode === "CONTRACT_FUNCTION_EXECUTION_ERROR"
-            ) {
-              // No withdrawal request exists, which is fine - skip this pool
-              continue;
-            }
-            // For network errors, skip silently
-            if (errorMessage.includes("Failed to fetch") || errorMessage.includes("network")) {
-              continue;
-            }
-            // For other errors, log at debug level and skip
-            console.debug(`Skipping withdrawal request check for ${poolAddress}:`, errorMessage);
+          // If no request, skip
+          if (!start || !end || (start === 0n && end === 0n)) {
             continue;
           }
 
-          // If there's a pending request
-          if (amount > 0n && requestedAt > 0n) {
-            // Get withdrawal window and early withdraw fee
-            let withdrawWindow: bigint = 0n;
-            let earlyWithdrawFee: bigint = 0n;
-            
-            try {
-              [withdrawWindow, earlyWithdrawFee] = await Promise.all([
-                client.readContract({
-                  address: poolAddress,
-                  abi: stabilityPoolABI,
-                  functionName: "withdrawWindow",
-                  args: [],
-                }) as Promise<bigint>,
-                client.readContract({
-                  address: poolAddress,
-                  abi: stabilityPoolABI,
-                  functionName: "earlyWithdrawFee",
-                  args: [],
-                }) as Promise<bigint>,
-              ]);
-            } catch (configError) {
-              // If these functions don't exist, use defaults
-              console.warn(`Could not read withdrawal config for ${poolAddress}, using defaults:`, configError);
-              withdrawWindow = BigInt(7 * 24 * 60 * 60); // Default 7 days
-              earlyWithdrawFee = BigInt(0); // Default no fee
-            }
-
-            // Get current block timestamp
-            const block = await client.getBlock({ blockTag: "latest" });
-            const currentTime = BigInt(block.timestamp);
-            const withdrawableAt = requestedAt + withdrawWindow;
-            const canWithdraw = currentTime >= withdrawableAt;
-
-            requests.push({
-              poolAddress,
-              amount,
-              requestedAt,
-              withdrawWindow,
-              earlyWithdrawFee,
-              canWithdraw,
-              withdrawableAt,
-            });
+          // Early withdrawal fee (best-effort)
+          let earlyWithdrawFee: bigint = 0n;
+          try {
+            earlyWithdrawFee = (await client.readContract({
+              address: poolAddress,
+              abi: STABILITY_POOL_ABI,
+              functionName: "getEarlyWithdrawalFee",
+              args: [],
+            })) as bigint;
+          } catch {
+            earlyWithdrawFee = 0n;
           }
+
+          // Determine status
+          const block = await client.getBlock({ blockTag: "latest" });
+          const now = BigInt(block.timestamp);
+          let status: WithdrawalStatus = "waiting";
+          if (now >= start && now <= end) status = "window";
+          else if (now > end) status = "expired";
+
+          const canWithdraw = status === "window";
+
+          requests.push({
+            poolAddress,
+            start,
+            end,
+            earlyWithdrawFee,
+            status,
+            canWithdraw,
+            currentTime: now,
+          });
         } catch (error: any) {
           // If function doesn't exist or other error, skip this pool silently
           // This is expected if the contract doesn't support withdrawal requests
           const errorMessage = error?.message || "";
-          
+
           // Don't throw network errors or contract errors - just skip
           if (
             errorMessage.includes("Failed to fetch") ||
@@ -138,9 +94,12 @@ export function useWithdrawalRequests(poolAddresses: `0x${string}`[]) {
             // Expected errors - skip silently
             continue;
           }
-          
+
           // Log unexpected errors at debug level
-          console.debug(`Skipping withdrawal request check for ${poolAddress}:`, errorMessage);
+          console.debug(
+            `Skipping withdrawal request check for ${poolAddress}:`,
+            errorMessage
+          );
         }
       }
 
@@ -149,7 +108,11 @@ export function useWithdrawalRequests(poolAddresses: `0x${string}`[]) {
     enabled: !!address && poolAddresses.length > 0 && !!publicClient,
     refetchInterval: (query) => {
       // Only refetch if we have valid data
-      if (query.state.data && Array.isArray(query.state.data) && query.state.data.length > 0) {
+      if (
+        query.state.data &&
+        Array.isArray(query.state.data) &&
+        query.state.data.length > 0
+      ) {
         return 1000; // Refetch every second to update timers
       }
       return false; // Don't refetch if no requests
@@ -158,4 +121,3 @@ export function useWithdrawalRequests(poolAddresses: `0x${string}`[]) {
     throwOnError: false, // Don't throw errors, just return empty array
   });
 }
-

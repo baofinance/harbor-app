@@ -18,7 +18,11 @@ import {
   formatDateTime,
   formatTimeRemaining,
 } from "@/utils/formatters";
-import { EtherscanLink, TokenLogo, getLogoPath } from "@/components/shared";
+import {
+  EtherscanLink as SharedEtherscanLink,
+  TokenLogo,
+  getLogoPath,
+} from "@/components/shared";
 import { useGenesisMarks } from "@/hooks/useGenesisMarks";
 import { useAnvilContractReads } from "@/hooks/useAnvilContractReads";
 import { shouldUseAnvil } from "@/config/environment";
@@ -65,6 +69,7 @@ import { useStabilityPoolRewards } from "@/hooks/useStabilityPoolRewards";
 import { useAllStabilityPoolRewards } from "@/hooks/useAllStabilityPoolRewards";
 import { useMultipleVolatilityProtection } from "@/hooks/useVolatilityProtection";
 import { useMarketPositions } from "@/hooks/useMarketPositions";
+import { usePeggedTokenPrices } from "@/hooks/usePeggedTokenPrices";
 import { useContractReads as useWagmiContractReads } from "wagmi";
 
 // ---------------------------------------------------------------------------
@@ -228,6 +233,13 @@ const stabilityPoolABI = [
     stateMutability: "view",
     type: "function",
   },
+  {
+    inputs: [],
+    name: "totalAssets",
+    outputs: [{ type: "uint256", name: "" }],
+    stateMutability: "view",
+    type: "function",
+  },
 ] as const;
 
 const stabilityPoolManagerABI = [
@@ -304,7 +316,7 @@ function getAcceptedDepositAssets(
 
 function formatRatio(value: bigint | undefined): string {
   if (value === undefined || value === null) return "-";
-  // Handle 0n explicitly - show "0.00%" instead of "-"
+  // Handle 0n explicitly - show"0.00%" instead of"-"
   if (value === 0n) return "0.00%";
   const percentage = Number(value) / 1e16;
   return `${percentage.toFixed(2)}%`;
@@ -403,30 +415,6 @@ function calculateVolatilityProtection(
   if (priceDropPercent >= 100) return ">100%";
 
   return `${priceDropPercent.toFixed(1)}%`;
-}
-
-// Helper component for Etherscan links
-function EtherscanLink({
-  label,
-  address,
-}: {
-  label: string;
-  address: string | undefined;
-}) {
-  if (!address) return null;
-  const etherscanBaseUrl = "https://etherscan.io/address/";
-  const displayText = label || `${address.slice(0, 6)}...${address.slice(-4)}`;
-  return (
-    <a
-      href={`${etherscanBaseUrl}${address}`}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="text-xs text-[#1E4775] hover:text-[#17395F] underline flex items-center gap-1"
-    >
-      {displayText}
-      <ArrowRightIcon className="w-3 h-3" />
-    </a>
-  );
 }
 
 // Component to display reward tokens for a market group
@@ -758,7 +746,7 @@ function AnchorMarketExpandedView({
   const totalSupply = totalDebt ? formatToken(totalDebt) : "0";
 
   return (
-    <div className="bg-[#B8EBD5] p-2 border-t border-white/20">
+    <div className="bg-[rgb(var(--surface-selected-rgb))] p-4 border-t border-white/20">
       {/* Market Health Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-2">
         <div className="bg-white p-3 h-full flex flex-col">
@@ -1048,7 +1036,8 @@ function AnchorMarketExpandedView({
                           {reward.symbol}
                         </div>
                         <div className="text-sm font-bold text-[#1E4775] font-mono">
-                          {parseFloat(reward.claimableFormatted).toFixed(6)}{" "}
+                          {parseFloat(reward.claimableFormatted).toFixed(6)}
+                          {""}
                           {reward.symbol}
                         </div>
                         {reward.claimableUSD > 0 && (
@@ -1160,7 +1149,8 @@ function AnchorMarketExpandedView({
                           {reward.symbol}
                         </div>
                         <div className="text-sm font-bold text-[#1E4775] font-mono">
-                          {parseFloat(reward.claimableFormatted).toFixed(6)}{" "}
+                          {parseFloat(reward.claimableFormatted).toFixed(6)}
+                          {""}
                           {reward.symbol}
                         </div>
                         {reward.claimableUSD > 0 && (
@@ -1268,7 +1258,8 @@ function AnchorMarketExpandedView({
                 </div>
                 {collateralPoolDeposit && collateralPoolDeposit > 0n && (
                   <div className="text-xs text-[#1E4775]/70 font-mono">
-                    {formatToken(collateralPoolDeposit)}{" "}
+                    {formatToken(collateralPoolDeposit)}
+                    {""}
                     {market.peggedToken?.symbol || "ha"}
                   </div>
                 )}
@@ -1291,7 +1282,8 @@ function AnchorMarketExpandedView({
                 </div>
                 {sailPoolDeposit && sailPoolDeposit > 0n && (
                   <div className="text-xs text-[#1E4775]/70 font-mono">
-                    {formatToken(sailPoolDeposit)}{" "}
+                    {formatToken(sailPoolDeposit)}
+                    {""}
                     {market.peggedToken?.symbol || "ha"}
                   </div>
                 )}
@@ -1308,7 +1300,8 @@ function AnchorMarketExpandedView({
               </div>
               {haTokenBalance && haTokenBalance > 0n && (
                 <div className="text-xs text-[#1E4775]/70 font-mono">
-                  {formatToken(haTokenBalance)}{" "}
+                  {formatToken(haTokenBalance)}
+                  {""}
                   {market.peggedToken?.symbol || "ha"}
                 </div>
               )}
@@ -1324,26 +1317,26 @@ function AnchorMarketExpandedView({
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
           <div className="space-y-1">
-            <EtherscanLink label="Minter" address={minterAddress} />
-            <EtherscanLink
+            <SharedEtherscanLink label="Minter" address={minterAddress} />
+            <SharedEtherscanLink
               label="Collateral Pool"
               address={(market as any).addresses?.stabilityPoolCollateral}
             />
-            <EtherscanLink
+            <SharedEtherscanLink
               label="Sail Pool"
               address={(market as any).addresses?.stabilityPoolLeveraged}
             />
           </div>
           <div className="space-y-1">
-            <EtherscanLink
+            <SharedEtherscanLink
               label="ha Token"
               address={(market as any).addresses?.peggedToken}
             />
-            <EtherscanLink
+            <SharedEtherscanLink
               label="Collateral Token"
               address={(market as any).addresses?.collateralToken}
             />
-            <EtherscanLink
+            <SharedEtherscanLink
               label="Price Oracle"
               address={(market as any).addresses?.collateralPrice}
             />
@@ -1387,6 +1380,26 @@ export default function AnchorPage() {
   const [isCompounding, setIsCompounding] = useState(false);
   const [isClaimingAll, setIsClaimingAll] = useState(false);
   const [isCompoundingAll, setIsCompoundingAll] = useState(false);
+  const [earlyWithdrawModal, setEarlyWithdrawModal] = useState<{
+    poolAddress: `0x${string}`;
+    poolType: "collateral" | "sail";
+    start: bigint;
+    end: bigint;
+    earlyWithdrawFee: bigint;
+    symbol?: string;
+    poolBalance?: bigint;
+  } | null>(null);
+  const [withdrawAmountModal, setWithdrawAmountModal] = useState<{
+    poolAddress: `0x${string}`;
+    poolType: "collateral" | "sail";
+    useEarly: boolean;
+    symbol?: string;
+    maxAmount?: bigint;
+  } | null>(null);
+  const [withdrawAmountInput, setWithdrawAmountInput] = useState("");
+  const [withdrawAmountError, setWithdrawAmountError] = useState<string | null>(
+    null
+  );
   const [transactionProgress, setTransactionProgress] = useState<{
     isOpen: boolean;
     title: string;
@@ -1614,7 +1627,7 @@ export default function AnchorPage() {
           {
             address: collateralStabilityPool,
             abi: stabilityPoolABI,
-            functionName: "totalAssets" as const,
+            functionName: "totalAssetSupply" as const,
           },
           {
             address: collateralStabilityPool,
@@ -1663,7 +1676,7 @@ export default function AnchorPage() {
           {
             address: sailStabilityPool,
             abi: stabilityPoolABI,
-            functionName: "totalAssets" as const,
+            functionName: "totalAssetSupply" as const,
           },
           {
             address: sailStabilityPool,
@@ -2100,6 +2113,56 @@ export default function AnchorPage() {
     ? anvilUserDepositReads.refetch
     : wagmiUserDepositReads.refetch;
 
+  // Execute a pending withdrawal (fee-free when window is open, fee when not)
+  const handlePendingWithdraw = async (
+    poolAddress: `0x${string}`,
+    poolType: "collateral" | "sail",
+    useEarly: boolean,
+    amount?: bigint
+  ) => {
+    if (!address) return;
+    const client = shouldUseAnvil() ? anvilPublicClient : publicClient;
+    if (!client) return;
+
+    // For fee-free withdrawals, require an amount
+    if (!useEarly && amount === undefined) return;
+
+    setTransactionProgress({
+      isOpen: true,
+      title: useEarly ? "Early Withdraw" : "Withdraw",
+      steps: [
+        {
+          id: "withdraw",
+          label: useEarly ? "Withdraw (fee applies)" : "Withdraw",
+          status: "in_progress",
+        },
+      ],
+      currentStepIndex: 0,
+    });
+
+    try {
+      const fn = useEarly ? "withdrawEarly" : "withdraw";
+      const args = useEarly
+        ? [address as `0x${string}`, 0n]
+        : [amount as bigint, address as `0x${string}`, 0n];
+
+      const tx = await writeContractAsync({
+        address: poolAddress,
+        abi: STABILITY_POOL_ABI,
+        functionName: fn,
+        args,
+      });
+
+      await client.waitForTransactionReceipt({ hash: tx });
+      await Promise.allSettled([refetchReads(), refetchUserDeposits()]);
+    } catch (err) {
+      console.error("Pending withdraw error", err);
+    } finally {
+      setTransactionProgress(null);
+      setEarlyWithdrawModal(null);
+    }
+  };
+
   // Create a map for quick lookup: marketIndex -> deposit balance
   const userDepositMap = useMemo(() => {
     const map = new Map<number, bigint | undefined>();
@@ -2401,13 +2464,81 @@ export default function AnchorPage() {
     });
   }, [anchorMarkets]);
 
-  // Fetch all positions using the unified hook
+  // Build a fallback price map from the existing reads (per-market peggedTokenPrice)
+  const peggedPricesFromReads = useMemo(() => {
+    const map: Record<string, bigint | undefined> = {};
+    if (!reads) return map;
+
+    anchorMarkets.forEach(([id, m], mi) => {
+      // Recompute offset for this market (aligns with the reads order above)
+      let offset = 0;
+      for (let i = 0; i < mi; i++) {
+        const prevMarket = anchorMarkets[i][1];
+        const prevHasCollateral = !!(prevMarket as any).addresses
+          ?.stabilityPoolCollateral;
+        const prevHasSail = !!(prevMarket as any).addresses
+          ?.stabilityPoolLeveraged;
+        const prevHasPriceOracle = !!(prevMarket as any).addresses
+          ?.collateralPrice;
+        const prevHasStabilityPoolManager = !!(prevMarket as any).addresses
+          ?.stabilityPoolManager;
+        const prevPeggedTokenAddress = (prevMarket as any)?.addresses
+          ?.peggedToken;
+        offset += 5; // 4 minter calls + 1 config call
+        if (prevHasStabilityPoolManager) offset += 1; // rebalanceThreshold
+        if (prevHasCollateral) {
+          offset += 4; // 4 pool reads
+          if (prevPeggedTokenAddress) offset += 1; // rewardData
+        }
+        if (prevHasSail) {
+          offset += 4; // 4 pool reads
+          if (prevPeggedTokenAddress) offset += 1; // rewardData
+        }
+        if (prevHasPriceOracle) offset += 1;
+      }
+      const baseOffset = offset;
+      const priceRead = reads?.[baseOffset + 3];
+      if (
+        priceRead &&
+        priceRead.result !== undefined &&
+        priceRead.result !== null
+      ) {
+        map[id] = priceRead.result as bigint;
+      }
+    });
+
+    return map;
+  }, [anchorMarkets, reads]);
+
+  // Fetch pegged token prices (shared) then positions
+  const { priceMap: peggedPriceMap } = usePeggedTokenPrices(
+    marketPositionConfigs.map((c) => ({
+      marketId: c.marketId,
+      minterAddress: c.minterAddress,
+    })),
+    anchorMarkets.length > 0
+  );
+
+  const mergedPeggedPriceMap = useMemo(() => {
+    const out: Record<string, bigint | undefined> = {
+      ...peggedPricesFromReads,
+    };
+    // Only overwrite when we have a defined price from the shared hook
+    Object.entries(peggedPriceMap).forEach(([id, price]) => {
+      if (price !== undefined) {
+        out[id] = price;
+      }
+    });
+    return out;
+  }, [peggedPricesFromReads, peggedPriceMap]);
+
+  // Fetch all positions using the unified hook, passing shared prices
   const {
     positionsMap: marketPositions,
     totalPositionUSD: allMarketsTotalPositionUSD,
     hasPositions: userHasPositions,
     refetch: refetchPositions,
-  } = useMarketPositions(marketPositionConfigs, address);
+  } = useMarketPositions(marketPositionConfigs, address, mergedPeggedPriceMap);
 
   // Group markets by peggedToken.symbol (for grouping ha tokens)
   const groupedMarkets = useMemo(() => {
@@ -2769,11 +2900,6 @@ export default function AnchorPage() {
       await new Promise((resolve) => setTimeout(resolve, 2000));
       // Refetch all contract data
       await Promise.all([refetchReads(), refetchUserDeposits()]);
-
-      // Close modal after a short delay
-      setTimeout(() => {
-        setTransactionProgress(null);
-      }, 1500);
     } catch (error: any) {
       const errorMessage = isUserRejection(error)
         ? "User declined the transaction"
@@ -3193,7 +3319,7 @@ export default function AnchorPage() {
             }
             return `${formatted} ${rt.symbol}`;
           })
-          .join(", ");
+          .join(",");
 
         steps.push({
           id: `claim-${pool.poolType}`,
@@ -3314,18 +3440,18 @@ export default function AnchorPage() {
       const willHaveHaTokens = needsMinting || hasHaTokens;
 
       if (willHaveHaTokens) {
-        // Add approve step (only once, before first deposit)
-        steps.push({
-          id: "approve-pegged",
-          label: "Approve pegged tokens for deposit",
-          status: "pending",
-          details: "Approve ha tokens for deposit",
-        });
-
-        // Add deposit step for each selected pool
+        // Add approve and deposit steps for each selected pool
         activeAllocations.forEach((allocation) => {
           const poolName =
             allocation.poolId === "collateral" ? "Collateral" : "Sail";
+
+          steps.push({
+            id: `approve-pegged-${allocation.poolId}`,
+            label: `Approve pegged tokens for ${poolName} Pool`,
+            status: "pending",
+            details: `Approve ha tokens for ${poolName.toLowerCase()} pool deposit`,
+          });
+
           steps.push({
             id: `deposit-${allocation.poolId}`,
             label: `Deposit to ${poolName} Pool`,
@@ -3844,13 +3970,15 @@ export default function AnchorPage() {
         throw new Error("No collateral available for minting");
       }
 
-      // Calculate mint output (we already calculated fees upfront)
-      const expectedOutput = (await publicClient?.readContract({
+      // Calculate mint output (use dry run to get peggedMinted)
+      const dryRunResult = (await publicClient?.readContract({
         address: minterAddress,
         abi: minterABI,
-        functionName: "calculateMintPeggedTokenOutput",
+        functionName: "mintPeggedTokenDryRun",
         args: [totalCollateralForMinting],
-      })) as bigint | undefined;
+      })) as [bigint, bigint, bigint, bigint, bigint, bigint] | undefined;
+
+      const expectedOutput = dryRunResult?.[3];
 
       if (!expectedOutput) throw new Error("Failed to calculate mint output");
 
@@ -3921,18 +4049,12 @@ export default function AnchorPage() {
       });
 
       // Step 4: Approve and deposit to each stability pool
-      // Get actual ha token balance (includes both direct rewards and minted tokens)
-      const haTokenBalance =
-        ((await publicClient?.readContract({
-          address: peggedTokenAddress,
-          abi: ERC20_ABI,
-          functionName: "balanceOf",
-          args: [address],
-        })) as bigint) || 0n;
-
-      // Use actual balance instead of expected output (in case we have direct ha rewards)
-      const depositAmount =
-        haTokenBalance > 0n ? haTokenBalance : expectedOutput;
+      // Use only ha tokens from this flow: claimed ha rewards + newly minted ha
+      const mintedHaFromThisFlow = expectedOutput || 0n;
+      const depositAmount = haReceived + mintedHaFromThisFlow;
+      if (depositAmount === 0n) {
+        throw new Error("No ha tokens from rewards/mint to deposit");
+      }
 
       // Deposit to all selected pools based on percentage allocations
       // Calculate deposit amounts based on percentages
@@ -4041,11 +4163,6 @@ export default function AnchorPage() {
       await new Promise((resolve) => setTimeout(resolve, 2000));
       // Refetch all contract data
       await Promise.all([refetchReads(), refetchUserDeposits()]);
-
-      // Close modal after a short delay
-      setTimeout(() => {
-        setTransactionProgress(null);
-      }, 1500);
     } catch (error: any) {
       const errorMessage = isUserRejection(error)
         ? "User declined the transaction"
@@ -4284,11 +4401,6 @@ export default function AnchorPage() {
         await new Promise((resolve) => setTimeout(resolve, 2000));
         // Refetch all contract data
         await Promise.all([refetchReads(), refetchUserDeposits()]);
-
-        // Close modal after a short delay
-        setTimeout(() => {
-          setTransactionProgress(null);
-        }, 1500);
       } else {
         // If no transactions completed, keep modal open to show errors
         // Don't close the modal - let user see what went wrong
@@ -5209,17 +5321,18 @@ export default function AnchorPage() {
                                   <div className="text-xs space-y-1">
                                     {positionAPRs.map((pos, idx) => (
                                       <div key={idx}>
-                                        •{" "}
+                                        •{""}
                                         {pos.poolType === "collateral"
                                           ? "Collateral"
-                                          : "Sail"}{" "}
-                                        Pool ({pos.marketId}):{" "}
+                                          : "Sail"}
+                                        {""}
+                                        Pool ({pos.marketId}):{""}
                                         {pos.apr.toFixed(2)}% (
                                         {formatCompactUSD(pos.depositUSD)})
                                       </div>
                                     ))}
                                     <div className="mt-2 pt-2 border-t border-white/20 font-semibold">
-                                      Weighted Average:{" "}
+                                      Weighted Average:{""}
                                       {blendedAPRForBar > 0
                                         ? `${blendedAPRForBar.toFixed(2)}%`
                                         : "-"}
@@ -5233,7 +5346,7 @@ export default function AnchorPage() {
                                 {projectedAPR.harvestableAmount !== null &&
                                   projectedAPR.harvestableAmount > 0n && (
                                     <div className="mt-2 pt-2 border-t border-white/20 text-xs opacity-90">
-                                      Projected APR (next 7 days):{" "}
+                                      Projected APR (next 7 days):{""}
                                       {projectedAPR.collateralPoolAPR !==
                                         null &&
                                         `${projectedAPR.collateralPoolAPR.toFixed(
@@ -5243,17 +5356,18 @@ export default function AnchorPage() {
                                         null &&
                                         projectedAPR.leveragedPoolAPR !==
                                           null &&
-                                        " / "}
+                                        " /"}
                                       {projectedAPR.leveragedPoolAPR !== null &&
                                         `${projectedAPR.leveragedPoolAPR.toFixed(
                                           2
                                         )}% (Sail)`}
                                       <br />
-                                      Based on{" "}
+                                      Based on{""}
                                       {(
                                         Number(projectedAPR.harvestableAmount) /
                                         1e18
-                                      ).toFixed(4)}{" "}
+                                      ).toFixed(4)}
+                                      {""}
                                       wstETH harvestable.
                                       {projectedAPR.remainingDays !== null &&
                                         ` ~${projectedAPR.remainingDays.toFixed(
@@ -5746,7 +5860,8 @@ export default function AnchorPage() {
                                   ${marketTotalUSD.toFixed(2)}
                                   {hasCollateral && (
                                     <span className="ml-2">
-                                      {formatToken(collateralRewards)}{" "}
+                                      {formatToken(collateralRewards)}
+                                      {""}
                                       {collateralSymbol}
                                     </span>
                                   )}
@@ -5916,9 +6031,12 @@ export default function AnchorPage() {
                       collateralRatio =
                         (collateralValue * 10n ** 18n) / totalDebt;
                     }
-                    const peggedTokenPrice = reads?.[baseOffset + 3]?.result as
-                      | bigint
-                      | undefined;
+                    const positionData = marketPositions[marketId];
+                    const peggedTokenPriceRead = reads?.[baseOffset + 3];
+                    const peggedTokenPrice =
+                      peggedTokenPriceRead?.status === "success"
+                        ? (peggedTokenPriceRead.result as bigint | undefined)
+                        : positionData?.peggedTokenPrice;
                     const minterConfig = reads?.[baseOffset + 4]?.result as
                       | any
                       | undefined;
@@ -6006,9 +6124,19 @@ export default function AnchorPage() {
                     if (hasStabilityPoolManager) currentOffset += 1; // rebalanceThreshold
 
                     if (hasCollateralPool) {
-                      collateralPoolTVL = reads?.[currentOffset]?.result as
-                        | bigint
-                        | undefined;
+                      // Debug: Check what's at this offset
+                      const tvlRead = reads?.[currentOffset];
+                      // console.log("[TVL Debug] Collateral pool TVL read:", {
+                      // marketId,
+                      // baseOffset,
+                      // currentOffset,
+                      // hasStabilityPoolManager,
+                      // rawRead: tvlRead,
+                      // status: tvlRead?.status,
+                      // result: tvlRead?.result,
+                      // error: tvlRead?.error,
+                      // });
+                      collateralPoolTVL = tvlRead?.result as bigint | undefined;
                       const collateralAPRResult = reads?.[currentOffset + 1]
                         ?.result as [bigint, bigint] | undefined;
                       collateralPoolAPR = collateralAPRResult
@@ -6142,9 +6270,17 @@ export default function AnchorPage() {
                     }
 
                     if (hasSailPool) {
-                      sailPoolTVL = reads?.[currentOffset]?.result as
-                        | bigint
-                        | undefined;
+                      // Debug: Check what's at this offset
+                      const sailTvlRead = reads?.[currentOffset];
+                      // console.log("[TVL Debug] Sail pool TVL read:", {
+                      // marketId,
+                      // currentOffset,
+                      // rawRead: sailTvlRead,
+                      // status: sailTvlRead?.status,
+                      // result: sailTvlRead?.result,
+                      // error: sailTvlRead?.error,
+                      // });
+                      sailPoolTVL = sailTvlRead?.result as bigint | undefined;
                       const sailAPRResult = reads?.[currentOffset + 1]
                         ?.result as [bigint, bigint] | undefined;
                       sailPoolAPR = sailAPRResult
@@ -6298,7 +6434,6 @@ export default function AnchorPage() {
                     // where 1e18 = $1.00 normally
 
                     // Get position data from unified hook (overrides reads data for consistency)
-                    const positionData = marketPositions[marketId];
                     const userDeposit = positionData?.walletHa || 0n;
                     // Override pool deposits from hook for consistent display
                     const finalCollateralPoolDeposit =
@@ -6540,8 +6675,8 @@ export default function AnchorPage() {
                     <div
                       className={`p-3 overflow-x-auto transition cursor-pointer ${
                         isExpanded
-                          ? "bg-[#B8EBD5]"
-                          : "bg-white hover:bg-[#B8EBD5]"
+                          ? "bg-[rgb(var(--surface-selected-rgb))]"
+                          : "bg-white hover:bg-[rgb(var(--surface-selected-rgb))]"
                       }`}
                       onClick={() =>
                         setExpandedMarket(isExpanded ? null : symbol)
@@ -6589,7 +6724,7 @@ export default function AnchorPage() {
                                       ) : (
                                         <>
                                           Collateral is owned by the market and
-                                          your position is swapped for{" "}
+                                          your position is swapped for{""}
                                           {peggedTokenSymbol || "haTOKENS"}.
                                         </>
                                       )}
@@ -6620,7 +6755,7 @@ export default function AnchorPage() {
                                 </div>
                                 {projectedAPR.hasRewardsNoTVL ? (
                                   <div className="text-xs space-y-2">
-                                    <div className="bg-green-500/20 border border-green-500/30 rounded px-2 py-1">
+                                    <div className="bg-green-500/20 border border-green-500/30 px-2 py-1">
                                       <span className="font-semibold text-green-400">
                                         Rewards waiting!
                                       </span>
@@ -6635,12 +6770,13 @@ export default function AnchorPage() {
                                         projectedAPR.collateralRewards7Day >
                                           0n && (
                                           <div>
-                                            • Collateral Pool:{" "}
+                                            • Collateral Pool:{""}
                                             {(
                                               Number(
                                                 projectedAPR.collateralRewards7Day
                                               ) / 1e18
-                                            ).toFixed(4)}{" "}
+                                            ).toFixed(4)}
+                                            {""}
                                             wstETH streaming over 7 days
                                           </div>
                                         )}
@@ -6649,12 +6785,13 @@ export default function AnchorPage() {
                                         projectedAPR.leveragedRewards7Day >
                                           0n && (
                                           <div>
-                                            • Sail Pool:{" "}
+                                            • Sail Pool:{""}
                                             {(
                                               Number(
                                                 projectedAPR.leveragedRewards7Day
                                               ) / 1e18
-                                            ).toFixed(4)}{" "}
+                                            ).toFixed(4)}
+                                            {""}
                                             wstETH streaming over 7 days
                                           </div>
                                         )}
@@ -6663,7 +6800,7 @@ export default function AnchorPage() {
                                 ) : (
                                   <div className="text-xs space-y-1">
                                     <div>
-                                      • Collateral Pool:{" "}
+                                      • Collateral Pool:{""}
                                       {collateralPoolAPRMin !== null &&
                                       collateralPoolAPRMax !== null
                                         ? collateralPoolAPRMin ===
@@ -6679,7 +6816,7 @@ export default function AnchorPage() {
                                         : "-"}
                                     </div>
                                     <div>
-                                      • Sail Pool:{" "}
+                                      • Sail Pool:{""}
                                       {sailPoolAPRMin !== null &&
                                       sailPoolAPRMax !== null
                                         ? sailPoolAPRMin === sailPoolAPRMax
@@ -6700,7 +6837,7 @@ export default function AnchorPage() {
                                       </div>
                                       <div className="space-y-1">
                                         <div>
-                                          • Collateral Pool:{" "}
+                                          • Collateral Pool:{""}
                                           {projectedAPR.collateralPoolAPR !==
                                           null
                                             ? `${projectedAPR.collateralPoolAPR.toFixed(
@@ -6709,7 +6846,7 @@ export default function AnchorPage() {
                                             : "-"}
                                         </div>
                                         <div>
-                                          • Sail Pool:{" "}
+                                          • Sail Pool:{""}
                                           {projectedAPR.leveragedPoolAPR !==
                                           null
                                             ? `${projectedAPR.leveragedPoolAPR.toFixed(
@@ -6722,12 +6859,13 @@ export default function AnchorPage() {
                                         null &&
                                         projectedAPR.harvestableAmount > 0n && (
                                           <div className="mt-1 text-xs opacity-80">
-                                            Based on{" "}
+                                            Based on{""}
                                             {(
                                               Number(
                                                 projectedAPR.harvestableAmount
                                               ) / 1e18
-                                            ).toFixed(4)}{" "}
+                                            ).toFixed(4)}
+                                            {""}
                                             wstETH harvestable.
                                             {projectedAPR.remainingDays !==
                                               null &&
@@ -6754,7 +6892,7 @@ export default function AnchorPage() {
                                   return "10k%+";
                                 }
 
-                                // Format APR display: "X% - Y% (Proj: A% - B%)"
+                                // Format APR display:"X% - Y% (Proj: A% - B%)"
                                 const hasCurrentAPR = minAPR > 0 || maxAPR > 0;
                                 const hasProjectedAPR =
                                   minProjectedAPR !== null ||
@@ -6859,7 +6997,7 @@ export default function AnchorPage() {
 
                     {/* Expanded View - Show all markets in group */}
                     {isExpanded && (
-                      <div className="bg-[#B8EBD5] p-2 border-t border-white/20">
+                      <div className="bg-[rgb(var(--surface-selected-rgb))] p-4 border-t border-white/20">
                         {marketsData.map((marketData) => {
                           // Get volatility protection from hook data
                           const minterAddr =
@@ -6917,20 +7055,20 @@ export default function AnchorPage() {
                             // CR = collateralValue / debtValue, so debtValue = collateralValue / CR
                             totalDebtUSD =
                               collateralValueUSD / collateralRatioNum;
-                          } else if (
-                            marketData.totalDebt &&
-                            marketData.peggedTokenPrice
-                          ) {
-                            // Fallback: calculate from totalDebt * peggedTokenPrice
+                          } else if (marketData.totalDebt) {
+                            // Fallback: calculate from totalDebt * peggedTokenPrice (default $1 if missing)
                             const peggedPriceUSD =
-                              Number(marketData.peggedTokenPrice) / 1e18;
+                              marketData.peggedTokenPrice &&
+                              marketData.peggedTokenPrice > 0n
+                                ? Number(marketData.peggedTokenPrice) / 1e18
+                                : 1;
                             totalDebtUSD = totalHaTokens * peggedPriceUSD;
                           }
 
                           return (
                             <div
                               key={marketData.marketId}
-                              className="bg-white p-2 mb-2 rounded border border-[#1E4775]/10"
+                              className="bg-white p-2 mb-2 border border-[#1E4775]/10"
                             >
                               <div className="flex items-center justify-end mb-2">
                                 <button
@@ -6950,9 +7088,10 @@ export default function AnchorPage() {
                               {(() => {
                                 // Calculate TVL in USD for both pools
                                 const peggedPriceUSD =
-                                  marketData.peggedTokenPrice
+                                  marketData.peggedTokenPrice &&
+                                  marketData.peggedTokenPrice > 0n
                                     ? Number(marketData.peggedTokenPrice) / 1e18
-                                    : 0;
+                                    : 1; // fallback to $1 peg if price missing
 
                                 const collateralPoolTVLTokens =
                                   marketData.collateralPoolTVL
@@ -6970,7 +7109,7 @@ export default function AnchorPage() {
 
                                 return (
                                   <div className="grid grid-cols-3 md:grid-cols-8 gap-1.5">
-                                    <div className="bg-[#1E4775]/5 p-1.5 rounded text-center">
+                                    <div className="bg-[#1E4775]/5 p-1.5 text-center">
                                       <div className="text-[10px] text-[#1E4775]/70 mb-0.5">
                                         Collateral
                                       </div>
@@ -6979,7 +7118,7 @@ export default function AnchorPage() {
                                           "ETH"}
                                       </div>
                                     </div>
-                                    <div className="bg-[#1E4775]/5 p-1.5 rounded text-center">
+                                    <div className="bg-[#1E4775]/5 p-1.5 text-center">
                                       <div className="text-[10px] text-[#1E4775]/70 mb-0.5">
                                         Min CR
                                       </div>
@@ -6987,7 +7126,7 @@ export default function AnchorPage() {
                                         {minCollateralRatioFormatted}
                                       </div>
                                     </div>
-                                    <div className="bg-[#1E4775]/5 p-1.5 rounded text-center">
+                                    <div className="bg-[#1E4775]/5 p-1.5 text-center">
                                       <div className="text-[10px] text-[#1E4775]/70 mb-0.5">
                                         Current CR
                                       </div>
@@ -6997,7 +7136,7 @@ export default function AnchorPage() {
                                         )}
                                       </div>
                                     </div>
-                                    <div className="bg-[#1E4775]/5 p-1.5 rounded text-center">
+                                    <div className="bg-[#1E4775]/5 p-1.5 text-center">
                                       <div className="text-[10px] text-[#1E4775]/70 mb-0.5 flex items-center justify-center gap-1">
                                         Vol. Protection
                                         <SimpleTooltip
@@ -7046,7 +7185,7 @@ export default function AnchorPage() {
                                         {volatilityProtection}
                                       </div>
                                     </div>
-                                    <div className="bg-[#1E4775]/5 p-1.5 rounded text-center">
+                                    <div className="bg-[#1E4775]/5 p-1.5 text-center">
                                       <div className="text-[10px] text-[#1E4775]/70 mb-0.5">
                                         Collateral (USD)
                                       </div>
@@ -7077,9 +7216,9 @@ export default function AnchorPage() {
                                         </div>
                                       </SimpleTooltip>
                                     </div>
-                                    <div className="bg-[#1E4775]/5 p-1.5 rounded text-center">
+                                    <div className="bg-[#1E4775]/5 p-1.5 text-center">
                                       <div className="text-[10px] text-[#1E4775]/70 mb-0.5">
-                                        Total{" "}
+                                        Total{""}
                                         {marketData.market.peggedToken
                                           ?.symbol || "ha"}
                                       </div>
@@ -7111,7 +7250,7 @@ export default function AnchorPage() {
                                         </div>
                                       </SimpleTooltip>
                                     </div>
-                                    <div className="bg-[#1E4775]/5 p-1.5 rounded text-center">
+                                    <div className="bg-[#1E4775]/5 p-1.5 text-center">
                                       <div className="text-[10px] text-[#1E4775]/70 mb-0.5">
                                         Collateral Pool TVL
                                       </div>
@@ -7142,7 +7281,7 @@ export default function AnchorPage() {
                                         </div>
                                       </SimpleTooltip>
                                     </div>
-                                    <div className="bg-[#1E4775]/5 p-1.5 rounded text-center">
+                                    <div className="bg-[#1E4775]/5 p-1.5 text-center">
                                       <div className="text-[10px] text-[#1E4775]/70 mb-0.5">
                                         Sail Pool TVL
                                       </div>
@@ -7175,246 +7314,286 @@ export default function AnchorPage() {
                                 );
                               })()}
 
-                              {/* Your Positions - Compact rows */}
-                              {(marketData.haTokenBalanceUSD > 0 ||
-                                marketData.collateralPoolDepositUSD > 0 ||
-                                marketData.sailPoolDepositUSD > 0 ||
-                                (marketData.userDeposit &&
-                                  marketData.userDeposit > 0n) ||
-                                (marketData.collateralPoolDeposit &&
-                                  marketData.collateralPoolDeposit > 0n) ||
-                                (marketData.sailPoolDeposit &&
-                                  marketData.sailPoolDeposit > 0n) ||
-                                withdrawalRequests.some(
-                                  (req) =>
-                                    req.poolAddress.toLowerCase() ===
-                                      marketData.market.addresses?.stabilityPoolCollateral?.toLowerCase() ||
-                                    req.poolAddress.toLowerCase() ===
-                                      marketData.market.addresses?.stabilityPoolLeveraged?.toLowerCase()
-                                )) && (
-                                <div className="mt-2 pt-2 border-t border-[#1E4775]/10">
-                                  <div className="text-[10px] text-[#1E4775]/70 mb-1.5 font-medium">
-                                    Your Positions
-                                  </div>
-                                  <div className="space-y-1">
-                                    {/* ha Tokens in Wallet */}
-                                    {marketData.userDeposit &&
-                                      marketData.userDeposit > 0n && (
-                                        <div className="flex justify-between items-center text-xs">
-                                          <span className="text-[#1E4775]/70">
-                                            In Wallet:
-                                          </span>
-                                          <div className="text-right">
-                                            <div className="font-semibold text-[#1E4775] font-mono">
-                                              {formatCompactUSD(
-                                                marketData.haTokenBalanceUSD
-                                              )}
-                                            </div>
-                                            <div className="text-[10px] text-[#1E4775]/50 font-mono">
-                                              {formatToken(
-                                                marketData.userDeposit
-                                              )}{" "}
-                                              {marketData.market.peggedToken
-                                                ?.symbol || "ha"}
-                                            </div>
-                                          </div>
+                              {(() => {
+                                const marketWithdrawalRequests =
+                                  withdrawalRequests.filter(
+                                    (req) =>
+                                      req.poolAddress.toLowerCase() ===
+                                        marketData.market.addresses?.stabilityPoolCollateral?.toLowerCase() ||
+                                      req.poolAddress.toLowerCase() ===
+                                        marketData.market.addresses?.stabilityPoolLeveraged?.toLowerCase()
+                                  );
+                                const hasPositions =
+                                  marketData.haTokenBalanceUSD > 0 ||
+                                  marketData.collateralPoolDepositUSD > 0 ||
+                                  marketData.sailPoolDepositUSD > 0 ||
+                                  (marketData.userDeposit &&
+                                    marketData.userDeposit > 0n) ||
+                                  (marketData.collateralPoolDeposit &&
+                                    marketData.collateralPoolDeposit > 0n) ||
+                                  (marketData.sailPoolDeposit &&
+                                    marketData.sailPoolDeposit > 0n);
+
+                                return (
+                                  <>
+                                    {/* Withdrawal requests */}
+                                    {marketWithdrawalRequests.length > 0 && (
+                                      <div className="mt-3 bg-white border border-[#1E4775]/10 shadow-sm p-3 space-y-2">
+                                        <div className="text-[10px] text-[#1E4775]/70 font-semibold uppercase tracking-wide">
+                                          Withdrawal requests
                                         </div>
-                                      )}
+                                        <div className="space-y-1.5">
+                                          {marketWithdrawalRequests.map(
+                                            (request) => {
+                                              const isCollateralPool =
+                                                request.poolAddress.toLowerCase() ===
+                                                marketData.market.addresses?.stabilityPoolCollateral?.toLowerCase();
+                                              const poolType = isCollateralPool
+                                                ? "collateral"
+                                                : "sail";
+                                              const startSec = Number(
+                                                request.start
+                                              );
+                                              const endSec = Number(
+                                                request.end
+                                              );
+                                              const isWindowOpen =
+                                                request.status === "window";
+                                              const countdownTarget =
+                                                request.status === "waiting"
+                                                  ? startSec
+                                                  : endSec;
+                                              const countdownLabel =
+                                                request.status === "waiting"
+                                                  ? "Window opens in"
+                                                  : request.status === "window"
+                                                  ? "Window closes in"
+                                                  : "Window expired";
+                                              const countdownText =
+                                                countdownTarget > 0
+                                                  ? formatTimeRemaining(
+                                                      new Date(
+                                                        countdownTarget * 1000
+                                                      ).toISOString(),
+                                                      request.currentTime
+                                                        ? new Date(
+                                                            Number(
+                                                              request.currentTime
+                                                            ) * 1000
+                                                          )
+                                                        : new Date()
+                                                    )
+                                                  : "Ended";
 
-                                    {/* Collateral Pool Deposit */}
-                                    {marketData.market.addresses
-                                      ?.stabilityPoolCollateral &&
-                                      marketData.collateralPoolDeposit &&
-                                      marketData.collateralPoolDeposit > 0n && (
-                                        <div className="flex justify-between items-center text-xs">
-                                          <div className="flex items-center gap-1.5">
-                                            <span className="text-[#1E4775]/70">
-                                              Collateral Pool:
-                                            </span>
-                                            <span className="bg-[#FF8A7A] text-[#1E4775] text-[9px] px-1.5 py-0.5 rounded-full">
-                                              collateral
-                                            </span>
-                                          </div>
-                                          <div className="text-right">
-                                            <div className="font-semibold text-[#1E4775] font-mono">
-                                              {formatCompactUSD(
-                                                marketData.collateralPoolDepositUSD
-                                              )}
-                                            </div>
-                                            <div className="text-[10px] text-[#1E4775]/50 font-mono">
-                                              {formatToken(
-                                                marketData.collateralPoolDeposit
-                                              )}{" "}
-                                              {marketData.market.peggedToken
-                                                ?.symbol || "ha"}
-                                            </div>
-                                          </div>
-                                        </div>
-                                      )}
-
-                                    {/* Sail Pool Deposit */}
-                                    {marketData.market.addresses
-                                      ?.stabilityPoolLeveraged &&
-                                      marketData.sailPoolDeposit &&
-                                      marketData.sailPoolDeposit > 0n && (
-                                        <div className="flex justify-between items-center text-xs">
-                                          <div className="flex items-center gap-1.5">
-                                            <span className="text-[#1E4775]/70">
-                                              Sail Pool:
-                                            </span>
-                                            <span className="bg-[#FF8A7A] text-[#1E4775] text-[9px] px-1.5 py-0.5 rounded-full">
-                                              sail
-                                            </span>
-                                          </div>
-                                          <div className="text-right">
-                                            <div className="font-semibold text-[#1E4775] font-mono">
-                                              {formatCompactUSD(
-                                                marketData.sailPoolDepositUSD
-                                              )}
-                                            </div>
-                                            <div className="text-[10px] text-[#1E4775]/50 font-mono">
-                                              {formatToken(
-                                                marketData.sailPoolDeposit
-                                              )}{" "}
-                                              {marketData.market.peggedToken
-                                                ?.symbol || "ha"}
-                                            </div>
-                                          </div>
-                                        </div>
-                                      )}
-
-                                    {/* Pending Withdrawal Requests */}
-                                    {withdrawalRequests
-                                      .filter(
-                                        (req) =>
-                                          req.poolAddress.toLowerCase() ===
-                                            marketData.market.addresses?.stabilityPoolCollateral?.toLowerCase() ||
-                                          req.poolAddress.toLowerCase() ===
-                                            marketData.market.addresses?.stabilityPoolLeveraged?.toLowerCase()
-                                      )
-                                      .map((request) => {
-                                        const isCollateralPool =
-                                          request.poolAddress.toLowerCase() ===
-                                          marketData.market.addresses?.stabilityPoolCollateral?.toLowerCase();
-                                        const poolType = isCollateralPool
-                                          ? "collateral"
-                                          : "sail";
-                                        const peggedPriceUSD =
-                                          marketData.peggedTokenPrice
-                                            ? Number(
-                                                marketData.peggedTokenPrice
-                                              ) / 1e18
-                                            : 1;
-                                        const requestAmountUSD =
-                                          (Number(request.amount) / 1e18) *
-                                          peggedPriceUSD;
-
-                                        return (
-                                          <div
-                                            key={request.poolAddress}
-                                            className="p-2 bg-[#FF8A7A]/10 border border-[#FF8A7A]/30 rounded text-xs"
-                                          >
-                                            <div className="flex justify-between items-start mb-1.5">
-                                              <div>
-                                                <div className="flex items-center gap-1.5 mb-0.5">
-                                                  <span className="text-[#1E4775] font-medium">
-                                                    Pending Withdrawal -{" "}
-                                                    {poolType === "collateral"
-                                                      ? "Collateral"
-                                                      : "Sail"}{" "}
-                                                    Pool:
-                                                  </span>
+                                              return (
+                                                <div
+                                                  key={`${
+                                                    request.poolAddress
+                                                  }-${request.start.toString()}`}
+                                                  className="p-2 bg-[#FF8A7A]/10 border border-[#FF8A7A]/30 text-xs flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between"
+                                                >
+                                                  <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2">
+                                                    <span className="text-[#1E4775] font-semibold">
+                                                      {poolType === "collateral"
+                                                        ? "Collateral"
+                                                        : "Sail"}
+                                                      {""}
+                                                      Pool
+                                                    </span>
+                                                    <span
+                                                      className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${
+                                                        request.status ===
+                                                        "window"
+                                                          ? "bg-green-200 text-green-800 border-green-500"
+                                                          : request.status ===
+                                                            "waiting"
+                                                          ? "bg-amber-200 text-amber-800 border-amber-500"
+                                                          : "bg-gray-200 text-gray-700 border-gray-400"
+                                                      }`}
+                                                    >
+                                                      {request.status ===
+                                                      "window"
+                                                        ? "Open"
+                                                        : request.status ===
+                                                          "waiting"
+                                                        ? "Waiting"
+                                                        : "Expired"}
+                                                    </span>
+                                                    <span className="text-[11px] text-[#1E4775]/70">
+                                                      {countdownLabel}:{""}
+                                                      {countdownText}
+                                                    </span>
+                                                  </div>
+                                                  <div className="flex gap-1.5">
+                                                    <button
+                                                      onClick={async () => {
+                                                        if (isWindowOpen) {
+                                                          setWithdrawAmountInput(
+                                                            ""
+                                                          );
+                                                          setWithdrawAmountError(
+                                                            null
+                                                          );
+                                                          const maxAmount =
+                                                            poolType ===
+                                                            "collateral"
+                                                              ? marketData.collateralPoolDeposit
+                                                              : marketData.sailPoolDeposit;
+                                                          setWithdrawAmountModal(
+                                                            {
+                                                              poolAddress:
+                                                                request.poolAddress,
+                                                              poolType,
+                                                              useEarly: false,
+                                                              symbol:
+                                                                marketData
+                                                                  .market
+                                                                  .peggedToken
+                                                                  ?.symbol ||
+                                                                "ha",
+                                                              maxAmount:
+                                                                maxAmount || 0n,
+                                                            }
+                                                          );
+                                                        } else {
+                                                          setEarlyWithdrawModal(
+                                                            {
+                                                              poolAddress:
+                                                                request.poolAddress,
+                                                              poolType,
+                                                              start:
+                                                                request.start,
+                                                              end: request.end,
+                                                              earlyWithdrawFee:
+                                                                request.earlyWithdrawFee,
+                                                              symbol:
+                                                                marketData
+                                                                  .market
+                                                                  .peggedToken
+                                                                  ?.symbol ||
+                                                                "ha",
+                                                              poolBalance:
+                                                                (poolType ===
+                                                                "collateral"
+                                                                  ? marketData.collateralPoolDeposit
+                                                                  : marketData.sailPoolDeposit) ||
+                                                                0n,
+                                                            }
+                                                          );
+                                                        }
+                                                      }}
+                                                      className={`px-2 py-0.5 text-[10px] font-medium rounded-full ${
+                                                        isWindowOpen
+                                                          ? "bg-[#1E4775] text-white hover:bg-[#17395F]"
+                                                          : "bg-orange-500 text-white hover:bg-orange-600"
+                                                      } transition-colors whitespace-nowrap`}
+                                                    >
+                                                      Withdraw
+                                                    </button>
+                                                  </div>
                                                 </div>
-                                                <div className="text-[#1E4775]/70 font-mono text-[10px]">
-                                                  {formatToken(request.amount)}{" "}
-                                                  {marketData.market.peggedToken
-                                                    ?.symbol || "ha"}{" "}
-                                                  (
-                                                  {formatCompactUSD(
-                                                    requestAmountUSD
-                                                  )}
-                                                  )
+                                              );
+                                            }
+                                          )}
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {/* Your Positions - Compact rows */}
+                                    {hasPositions && (
+                                      <div className="mt-3 bg-white border border-[#1E4775]/10 shadow-sm p-3 space-y-2">
+                                        <div className="text-[10px] text-[#1E4775]/70 font-semibold uppercase tracking-wide">
+                                          Your Positions
+                                        </div>
+                                        <div className="space-y-2">
+                                          {/* ha Tokens in Wallet */}
+                                          {marketData.userDeposit &&
+                                            marketData.userDeposit > 0n && (
+                                              <div className="flex justify-between items-center text-xs">
+                                                <span className="text-[#1E4775]/70">
+                                                  In Wallet:
+                                                </span>
+                                                <div className="text-right">
+                                                  <div className="font-semibold text-[#1E4775] font-mono">
+                                                    {formatCompactUSD(
+                                                      marketData.haTokenBalanceUSD
+                                                    )}
+                                                  </div>
+                                                  <div className="text-[10px] text-[#1E4775]/50 font-mono">
+                                                    {formatToken(
+                                                      marketData.userDeposit
+                                                    )}
+                                                    {""}
+                                                    {marketData.market
+                                                      .peggedToken?.symbol ||
+                                                      "ha"}
+                                                  </div>
                                                 </div>
                                               </div>
-                                            </div>
-                                            <div className="flex items-center justify-between mt-1.5">
-                                              <WithdrawalTimer
-                                                withdrawableAt={
-                                                  request.withdrawableAt
-                                                }
-                                              />
-                                              <div className="flex gap-1.5">
-                                                {request.canWithdraw ? (
-                                                  <button
-                                                    onClick={async () => {
-                                                      try {
-                                                        const client =
-                                                          shouldUseAnvil()
-                                                            ? anvilPublicClient
-                                                            : publicClient;
-                                                        if (!client) return;
+                                            )}
 
-                                                        await writeContractAsync(
-                                                          {
-                                                            address:
-                                                              request.poolAddress,
-                                                            abi: STABILITY_POOL_ABI,
-                                                            functionName:
-                                                              "executeWithdraw",
-                                                            args: [
-                                                              address as `0x${string}`,
-                                                              0n,
-                                                            ],
-                                                          }
-                                                        );
-                                                      } catch (error) {
-                                                        // Withdraw error
-                                                      }
-                                                    }}
-                                                    className="px-2 py-0.5 text-[10px] font-medium bg-[#1E4775] text-white hover:bg-[#17395F] transition-colors rounded"
-                                                  >
-                                                    Withdraw
-                                                  </button>
-                                                ) : (
-                                                  <button
-                                                    onClick={async () => {
-                                                      if (
-                                                        !confirm(
-                                                          "You will pay an early withdrawal fee. Continue?"
-                                                        )
-                                                      )
-                                                        return;
-                                                      try {
-                                                        await writeContractAsync(
-                                                          {
-                                                            address:
-                                                              request.poolAddress,
-                                                            abi: STABILITY_POOL_ABI,
-                                                            functionName:
-                                                              "withdrawEarly",
-                                                            args: [
-                                                              address as `0x${string}`,
-                                                              0n,
-                                                            ],
-                                                          }
-                                                        );
-                                                      } catch (error) {
-                                                        // Early withdraw error
-                                                      }
-                                                    }}
-                                                    className="px-2 py-0.5 text-[10px] font-medium bg-orange-500 text-white hover:bg-orange-600 transition-colors rounded"
-                                                  >
-                                                    Withdraw Early
-                                                  </button>
-                                                )}
+                                          {/* Collateral Pool Deposit */}
+                                          {marketData.market.addresses
+                                            ?.stabilityPoolCollateral &&
+                                            marketData.collateralPoolDeposit &&
+                                            marketData.collateralPoolDeposit >
+                                              0n && (
+                                              <div className="flex justify-between items-center text-xs">
+                                                <span className="text-[#1E4775]/70">
+                                                  Collateral Pool:
+                                                </span>
+                                                <div className="text-right">
+                                                  <div className="font-semibold text-[#1E4775] font-mono">
+                                                    {formatCompactUSD(
+                                                      marketData.collateralPoolDepositUSD
+                                                    )}
+                                                  </div>
+                                                  <div className="text-[10px] text-[#1E4775]/50 font-mono">
+                                                    {formatToken(
+                                                      marketData.collateralPoolDeposit
+                                                    )}
+                                                    {""}
+                                                    {marketData.market
+                                                      .peggedToken?.symbol ||
+                                                      "ha"}
+                                                  </div>
+                                                </div>
                                               </div>
-                                            </div>
-                                          </div>
-                                        );
-                                      })}
-                                  </div>
-                                </div>
-                              )}
+                                            )}
+
+                                          {/* Sail Pool Deposit */}
+                                          {marketData.market.addresses
+                                            ?.stabilityPoolLeveraged &&
+                                            marketData.sailPoolDeposit &&
+                                            marketData.sailPoolDeposit > 0n && (
+                                              <div className="flex justify-between items-center text-xs">
+                                                <span className="text-[#1E4775]/70">
+                                                  Sail Pool:
+                                                </span>
+                                                <div className="text-right">
+                                                  <div className="font-semibold text-[#1E4775] font-mono">
+                                                    {formatCompactUSD(
+                                                      marketData.sailPoolDepositUSD
+                                                    )}
+                                                  </div>
+                                                  <div className="text-[10px] text-[#1E4775]/50 font-mono">
+                                                    {formatToken(
+                                                      marketData.sailPoolDeposit
+                                                    )}
+                                                    {""}
+                                                    {marketData.market
+                                                      .peggedToken?.symbol ||
+                                                      "ha"}
+                                                  </div>
+                                                </div>
+                                              </div>
+                                            )}
+                                        </div>
+                                      </div>
+                                    )}
+                                  </>
+                                );
+                              })()}
                             </div>
                           );
                         })}
@@ -7864,6 +8043,190 @@ export default function AnchorPage() {
           />
         )}
 
+        {/* Early withdraw confirmation */}
+        {earlyWithdrawModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+            <div className="bg-white shadow-xl max-w-md w-full p-4">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-[#1E4775] font-semibold">
+                  Withdraw early?
+                </h3>
+                <button
+                  onClick={() => setEarlyWithdrawModal(null)}
+                  className="text-[#1E4775]/60 hover:text-[#1E4775]"
+                >
+                  ✕
+                </button>
+              </div>
+              <p className="text-sm text-[#1E4775]/80">
+                Withdrawing now will incur the early withdrawal fee. The
+                fee-free window opens in{""}
+                {formatTimeRemaining(Number(earlyWithdrawModal.start) * 1000)}
+                {""}
+                and closes at{""}
+                {formatDateTime(
+                  new Date(Number(earlyWithdrawModal.end) * 1000)
+                )}
+                .
+              </p>
+              <div className="text-xs text-[#1E4775]/70 mt-2">
+                Fee:{""}
+                {(Number(earlyWithdrawModal.earlyWithdrawFee) / 1e16).toFixed(
+                  2
+                )}
+                %
+              </div>
+              <div className="flex justify-end gap-2 mt-4">
+                <button
+                  onClick={() => setEarlyWithdrawModal(null)}
+                  className="px-3 py-1 text-sm rounded-full border border-[#1E4775]/30 text-[#1E4775]"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    setWithdrawAmountInput("");
+                    setWithdrawAmountError(null);
+                    setWithdrawAmountModal({
+                      poolAddress: earlyWithdrawModal.poolAddress,
+                      poolType: earlyWithdrawModal.poolType,
+                      useEarly: true,
+                      symbol: earlyWithdrawModal.symbol,
+                      maxAmount: earlyWithdrawModal.poolBalance || 0n,
+                    });
+                    setEarlyWithdrawModal(null);
+                  }}
+                  className="px-3 py-1 text-sm rounded-full bg-orange-500 text-white hover:bg-orange-600"
+                >
+                  Continue with fee
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {withdrawAmountModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+            <div className="bg-white shadow-2xl max-w-lg w-full p-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-[#1E4775] font-semibold text-lg">
+                  {withdrawAmountModal.useEarly
+                    ? "Withdraw (fee applies)"
+                    : "Withdraw"}
+                </h3>
+                <button
+                  onClick={() => {
+                    setWithdrawAmountModal(null);
+                    setWithdrawAmountInput("");
+                    setWithdrawAmountError(null);
+                  }}
+                  className="text-[#1E4775]/60 hover:text-[#1E4775]"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <label className="text-sm font-semibold text-[#1E4775]">
+                    Enter Amount
+                  </label>
+                  {withdrawAmountModal?.maxAmount !== undefined && (
+                    <span className="text-sm text-[#1E4775]/70">
+                      Balance: {formatToken(withdrawAmountModal.maxAmount)}
+                      {""}
+                      {withdrawAmountModal.symbol || "pegged"}
+                    </span>
+                  )}
+                </div>
+                <div className="relative">
+                  <input
+                    value={withdrawAmountInput}
+                    onChange={(e) => {
+                      setWithdrawAmountInput(e.target.value);
+                      setWithdrawAmountError(null);
+                    }}
+                    type="text"
+                    placeholder="0.0"
+                    className={`w-full h-14 px-4 pr-24 bg-white text-[#1E4775] border-2 ${
+                      withdrawAmountError
+                        ? "border-red-500"
+                        : "border-[#1E4775]/30"
+                    } focus:border-[#1E4775] focus:ring-2 focus:ring-[#1E4775]/20 focus:outline-none transition-all text-xl font-mono `}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!withdrawAmountModal?.maxAmount) return;
+                      setWithdrawAmountInput(
+                        formatEther(withdrawAmountModal.maxAmount)
+                      );
+                      setWithdrawAmountError(null);
+                    }}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1.5 text-sm bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white transition-colors disabled:bg-gray-300 disabled:text-gray-500 rounded-full font-medium"
+                  >
+                    MAX
+                  </button>
+                </div>
+                {withdrawAmountError && (
+                  <p className="mt-2 text-sm text-red-600">
+                    {withdrawAmountError}
+                  </p>
+                )}
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => {
+                    setWithdrawAmountModal(null);
+                    setWithdrawAmountInput("");
+                    setWithdrawAmountError(null);
+                  }}
+                  className="flex-1 py-3 px-4 rounded-full border-2 border-[#1E4775]/30 text-[#1E4775] font-semibold hover:bg-[#1E4775]/5 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={async () => {
+                    if (!withdrawAmountModal) return;
+                    const raw = withdrawAmountInput.trim();
+                    if (!raw) {
+                      setWithdrawAmountError("Enter an amount to withdraw");
+                      return;
+                    }
+
+                    let amountValue: bigint | undefined;
+                    try {
+                      amountValue = parseEther(raw);
+                    } catch {
+                      setWithdrawAmountError("Enter a valid amount");
+                      return;
+                    }
+
+                    await handlePendingWithdraw(
+                      withdrawAmountModal.poolAddress,
+                      withdrawAmountModal.poolType,
+                      withdrawAmountModal.useEarly,
+                      amountValue
+                    );
+
+                    setWithdrawAmountModal(null);
+                    setWithdrawAmountInput("");
+                    setWithdrawAmountError(null);
+                  }}
+                  className={`flex-1 py-3 px-4 rounded-full font-semibold text-white transition-colors ${
+                    withdrawAmountModal.useEarly
+                      ? "bg-orange-500 hover:bg-orange-600"
+                      : "bg-[#1E4775] hover:bg-[#17395F]"
+                  }`}
+                >
+                  Confirm Withdraw
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Transaction Progress Modal */}
         {transactionProgress && (
           <TransactionProgressModal
@@ -7894,7 +8257,7 @@ export default function AnchorPage() {
             onClick={() => setContractAddressesModal(null)}
           >
             <div
-              className="bg-white rounded-lg p-6 max-w-md w-full mx-4"
+              className="bg-white p-6 max-w-md w-full mx-4"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between mb-4">
@@ -7911,7 +8274,7 @@ export default function AnchorPage() {
               <div className="space-y-3">
                 <div>
                   <div className="text-xs text-[#1E4775]/70 mb-1">Minter</div>
-                  <EtherscanLink
+                  <SharedEtherscanLink
                     label=""
                     address={contractAddressesModal.minterAddress}
                   />
@@ -7920,7 +8283,7 @@ export default function AnchorPage() {
                   <div className="text-xs text-[#1E4775]/70 mb-1">
                     Collateral Pool
                   </div>
-                  <EtherscanLink
+                  <SharedEtherscanLink
                     label=""
                     address={
                       (contractAddressesModal.market as any).addresses
@@ -7932,7 +8295,7 @@ export default function AnchorPage() {
                   <div className="text-xs text-[#1E4775]/70 mb-1">
                     Sail Pool
                   </div>
-                  <EtherscanLink
+                  <SharedEtherscanLink
                     label=""
                     address={
                       (contractAddressesModal.market as any).addresses
@@ -7942,7 +8305,7 @@ export default function AnchorPage() {
                 </div>
                 <div>
                   <div className="text-xs text-[#1E4775]/70 mb-1">ha Token</div>
-                  <EtherscanLink
+                  <SharedEtherscanLink
                     label=""
                     address={
                       (contractAddressesModal.market as any).addresses
@@ -7954,7 +8317,7 @@ export default function AnchorPage() {
                   <div className="text-xs text-[#1E4775]/70 mb-1">
                     Collateral Token
                   </div>
-                  <EtherscanLink
+                  <SharedEtherscanLink
                     label=""
                     address={
                       (contractAddressesModal.market as any).addresses
@@ -7966,7 +8329,7 @@ export default function AnchorPage() {
                   <div className="text-xs text-[#1E4775]/70 mb-1">
                     Price Oracle
                   </div>
-                  <EtherscanLink
+                  <SharedEtherscanLink
                     label=""
                     address={
                       (contractAddressesModal.market as any).addresses

@@ -3,7 +3,11 @@
 import { useMemo } from "react";
 import { useAnvilContractReads } from "./useAnvilContractReads";
 import { POLLING_INTERVALS } from "@/config/polling";
-import { STABILITY_POOL_ABI, MINTER_ABI, CHAINLINK_ORACLE_ABI } from "@/abis/shared";
+import {
+  STABILITY_POOL_ABI,
+  MINTER_ABI,
+  CHAINLINK_ORACLE_ABI,
+} from "@/abis/shared";
 
 type TVLConfig = {
   poolAddress?: `0x${string}`;
@@ -119,21 +123,23 @@ export function useStabilityPoolTVLs(configs: TVLConfig[]) {
 
       // CR-aware inputs from minter
       const collateralBalance = cfg.minterAddress
-        ? ((data[idx]?.result as bigint | undefined) ?? undefined)
+        ? (data[idx]?.result as bigint | undefined) ?? undefined
         : undefined;
       idx += cfg.minterAddress ? 1 : 0;
       const collateralRatio = cfg.minterAddress
-        ? ((data[idx]?.result as bigint | undefined) ?? undefined)
+        ? (data[idx]?.result as bigint | undefined) ?? undefined
         : undefined;
       idx += cfg.minterAddress ? 1 : 0;
       const peggedSupply = cfg.minterAddress
-        ? ((data[idx]?.result as bigint | undefined) ?? undefined)
+        ? (data[idx]?.result as bigint | undefined) ?? undefined
         : undefined;
       idx += cfg.minterAddress ? 1 : 0;
 
       // Oracle latestAnswer tuple: (minUnderlyingPrice, maxUnderlyingPrice, minWrappedRate, maxWrappedRate)
       // OR a single bigint price value from simpler oracles
-      const latestAnswer = cfg.priceOracleAddress ? data[idx]?.result : undefined;
+      const latestAnswer = cfg.priceOracleAddress
+        ? data[idx]?.result
+        : undefined;
       let minUnder: bigint | undefined;
       let maxUnder: bigint | undefined;
       let minRate: bigint | undefined;
@@ -186,8 +192,7 @@ export function useStabilityPoolTVLs(configs: TVLConfig[]) {
       ) {
         const underUSD = Number(minUnder + maxUnder) / 2 / 1e18;
         const rate = Number(minRate + maxRate) / 2 / 1e18;
-        const collUsd =
-          (Number(collateralBalance) / 1e18) * rate * underUSD;
+        const collUsd = (Number(collateralBalance) / 1e18) * rate * underUSD;
         const crFloat = Number(collateralRatio) / 1e18;
         const pegTotalUsd = collUsd / crFloat;
         const pegSupplyFloat = Number(peggedSupply) / 1e18;
@@ -217,4 +222,3 @@ export function useStabilityPoolTVLs(configs: TVLConfig[]) {
     error,
   };
 }
-

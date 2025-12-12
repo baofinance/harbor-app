@@ -281,6 +281,81 @@ export const STABILITY_POOL_ABI = [
     stateMutability: "view",
     type: "function",
   },
+  {
+    inputs: [],
+    name: "getEarlyWithdrawalFee",
+    outputs: [{ name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "getWithdrawalWindow",
+    outputs: [
+      { name: "startDelay", type: "uint64" },
+      { name: "endWindow", type: "uint64" },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "requestWithdrawal",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [{ name: "account", type: "address" }],
+    name: "getWithdrawalRequest",
+    outputs: [
+      { name: "start", type: "uint64" },
+      { name: "end", type: "uint64" },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
+      { name: "receiver", type: "address" },
+      { name: "minAmount", type: "uint256" },
+    ],
+    name: "withdrawEarly",
+    outputs: [{ name: "sharesBurned", type: "uint256" }],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      { name: "receiver", type: "address" },
+      { name: "minAmount", type: "uint256" },
+    ],
+    name: "executeWithdraw",
+    outputs: [{ name: "sharesBurned", type: "uint256" }],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      { name: "assetAmount", type: "uint256" },
+      { name: "receiver", type: "address" },
+      { name: "minAmount", type: "uint256" },
+    ],
+    name: "withdraw",
+    outputs: [{ name: "sharesBurned", type: "uint256" }],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [{ name: "account", type: "address" }],
+    name: "withdrawRequest",
+    outputs: [
+      { name: "amount", type: "uint256" },
+      { name: "requestedAt", type: "uint256" },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
 ] as const;
 
 /**
@@ -405,5 +480,64 @@ export const MINTER_ABI = [
     stateMutability: "view",
     type: "function",
   },
+  {
+    inputs: [],
+    name: "peggedTokenPrice",
+    outputs: [{ type: "uint256", name: "" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  // Leveraged token dry run functions for fee prediction
+  {
+    inputs: [{ name: "wrappedCollateralIn", type: "uint256" }],
+    name: "mintLeveragedTokenDryRun",
+    outputs: [
+      { name: "incentiveRatio", type: "int256" },
+      { name: "wrappedFee", type: "uint256" },
+      { name: "wrappedDiscount", type: "uint256" },
+      { name: "wrappedCollateralUsed", type: "uint256" },
+      { name: "leveragedMinted", type: "uint256" },
+      { name: "price", type: "uint256" },
+      { name: "rate", type: "uint256" },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [{ name: "leveragedIn", type: "uint256" }],
+    name: "redeemLeveragedTokenDryRun",
+    outputs: [
+      { name: "incentiveRatio", type: "int256" },
+      { name: "wrappedFee", type: "uint256" },
+      { name: "leveragedRedeemed", type: "uint256" },
+      { name: "wrappedCollateralReturned", type: "uint256" },
+      { name: "price", type: "uint256" },
+      { name: "rate", type: "uint256" },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  // Leveraged token mint/redeem functions
+  {
+    inputs: [
+      { name: "wrappedCollateralIn", type: "uint256" },
+      { name: "receiver", type: "address" },
+      { name: "minLeveragedOut", type: "uint256" },
+    ],
+    name: "mintLeveragedToken",
+    outputs: [{ name: "leveragedOut", type: "uint256" }],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      { name: "leveragedIn", type: "uint256" },
+      { name: "receiver", type: "address" },
+      { name: "minWrappedCollateralOut", type: "uint256" },
+    ],
+    name: "redeemLeveragedToken",
+    outputs: [{ name: "wrappedCollateralOut", type: "uint256" }],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
 ] as const;
-
