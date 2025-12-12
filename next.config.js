@@ -13,7 +13,9 @@ const nextConfig = {
   env: {
     NEXT_PUBLIC_APP_ENV: process.env.NEXT_PUBLIC_APP_ENV || "production",
   },
-  basePath: process.env.NEXT_PUBLIC_APP_ENV === "staging" ? "/staging" : "",
+  // Only use basePath if staging is on same domain with path prefix
+  // For separate domains (staging.app.harborfinance.io), set basePath to ""
+  basePath: process.env.NEXT_PUBLIC_USE_BASEPATH === "true" && process.env.NEXT_PUBLIC_APP_ENV === "staging" ? "/staging" : "",
 };
 
 module.exports = nextConfig;
