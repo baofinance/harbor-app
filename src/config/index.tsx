@@ -20,4 +20,5 @@ export const wagmiConfig = createConfig({
   transports: {
     [mainnet.id]: http(MAINNET_RPC_URL),
   },
+  ssr: true,
 });
