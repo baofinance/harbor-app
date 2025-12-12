@@ -10,10 +10,8 @@ import {
 } from"wagmi";
 import { BaseError, ContractFunctionRevertedError } from"viem";
 import { GENESIS_ABI, ERC20_ABI } from"../config/contracts";
-import { publicClient as anvilPublicClient } from "@/config/rpc";
-import { mainnet as anvil } from "wagmi/chains";
-import { useAnvilContractRead } from "@/hooks/useContractRead";
-import { shouldUseAnvil } from"@/config/environment";
+import { publicClient as mainnetPublicClient } from "@/config/rpc";
+import { useContractRead as useCustomContractRead } from "@/hooks/useContractRead";
 import {
  TransactionProgressModal,
  TransactionStep,
@@ -47,11 +45,8 @@ export const GenesisDepositModal = ({
 }: GenesisDepositModalProps) => {
  const { address } = useAccount();
  const wagmiPublicClient = usePublicClient();
- // Use Anvil public client as fallback in development if wagmi client is not available
- const publicClient =
- shouldUseAnvil() && !wagmiPublicClient
- ? anvilPublicClient
- : wagmiPublicClient;
+  // Use mainnet public client as fallback if wagmi client is not available
+  const publicClient = wagmiPublicClient || mainnetPublicClient;
  const [amount, setAmount] = useState("");
  const [selectedAsset, setSelectedAsset] = useState<string>(collateralSymbol);
  const [step, setStep] = useState<ModalStep>("input");
@@ -106,7 +101,7 @@ export const GenesisDepositModal = ({
  data: balanceData,
  error: balanceError,
  status: balanceStatus,
- } = useAnvilContractRead({
+ } = useCustomContractRead({
  address: selectedAssetAddress as `0x${string}`,
  abi: ERC20_ABI,
  functionName:"balanceOf",
@@ -131,7 +126,7 @@ export const GenesisDepositModal = ({
  }
 
  const { data: allowanceData, refetch: refetchAllowance } =
- useAnvilContractRead({
+ useCustomContractRead({
  address: selectedAssetAddress as `0x${string}`,
  abi: ERC20_ABI,
  functionName:"allowance",
@@ -146,7 +141,7 @@ export const GenesisDepositModal = ({
  });
 
  // Check if genesis has ended
- const { data: genesisEnded } = useAnvilContractRead({
+ const { data: genesisEnded } = useCustomContractRead({
  address: genesisAddress as `0x${string}`,
  abi: GENESIS_ABI,
  functionName:"genesisIsEnded",
@@ -154,7 +149,7 @@ export const GenesisDepositModal = ({
  });
 
  // Get current user deposit in Genesis
- const { data: currentDeposit } = useAnvilContractRead({
+ const { data: currentDeposit } = useCustomContractRead({
  address: genesisAddress as `0x${string}`,
  abi: GENESIS_ABI,
  functionName:"balanceOf",

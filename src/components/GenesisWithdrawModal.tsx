@@ -8,7 +8,7 @@ import {
  usePublicClient,
  useSimulateContract,
 } from"wagmi";
-import { anvil } from"wagmi/chains";
+import { mainnet } from "wagmi/chains";
 import { BaseError, ContractFunctionRevertedError } from"viem";
 import {
  TransactionProgressModal,
@@ -76,7 +76,7 @@ export const GenesisWithdrawModal = ({
  abi: genesisABI,
  functionName:"withdraw",
  args: [withdrawAmount, address as `0x${string}`],
- chainId: anvil.id,
+ chainId: mainnet.id,
  query: {
  enabled:
  !!address &&
@@ -180,7 +180,7 @@ export const GenesisWithdrawModal = ({
  abi: genesisABI,
  functionName:"withdraw",
  args: [withdrawAmount, address as `0x${string}`],
- chainId: anvil.id,
+ chainId: mainnet.id,
  });
 
  setTxHash(hash);
