@@ -1,6 +1,6 @@
 import { useMemo } from "react";
-import { useAnvilContractReads } from "./useAnvilContractReads";
-import { useAnvilContractRead } from "./useAnvilContractRead";
+import { useAnvilContractReads } from "./useContractReads";
+import { useAnvilContractRead } from "./useContractRead";
 import { formatEther } from "viem";
 import { markets } from "@/config/markets";
 import { contracts, GENESIS_ABI } from "@/config/contracts";

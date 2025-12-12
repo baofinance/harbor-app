@@ -4,7 +4,7 @@ import {
   useWriteContract,
   useWaitForTransactionReceipt,
 } from "wagmi";
-import { useAnvilContractReads } from "./useAnvilContractReads";
+import { useAnvilContractReads } from "./useContractReads";
 import { markets, getGenesisStatus } from "../config/markets";
 import { GENESIS_ABI, ERC20_ABI } from "../config/contracts";
 

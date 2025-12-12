@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { stabilityPoolABI } from "@/abis/stabilityPool";
 import { ERC20_ABI } from "@/config/contracts";
 import { shouldUseAnvil } from "@/config/environment";
-import { anvilPublicClient } from "@/config/anvil";
+import { publicClient as anvilPublicClient } from "@/config/rpc";
 
 export interface RewardTokenInfo {
   address: `0x${string}`;

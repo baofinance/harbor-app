@@ -1,37 +1,19 @@
 /**
  * Environment detection utilities
- * Determines if we're running on local Anvil or production networks
+ * Simplified for mainnet-only deployment
  */
 
-// Chain ID for local Anvil
-export const ANVIL_CHAIN_ID = 31337;
-
 /**
- * Check if we should use Anvil-specific behavior
- * This can be controlled via environment variable or chain ID detection
+ * @deprecated Anvil is no longer used. This always returns false.
+ * Kept for backward compatibility during migration.
  */
 export function shouldUseAnvil(): boolean {
-  // Allow explicit override via environment variable
-  if (process.env.NEXT_PUBLIC_USE_ANVIL === "false") {
-    return false;
-  }
-  if (process.env.NEXT_PUBLIC_USE_ANVIL === "true") {
-    return true;
-  }
-
-  // Default: use Anvil in development mode
-  // In production, this will be false unless explicitly set
-  return process.env.NODE_ENV === "development";
+  return false;
 }
 
 /**
- * Get the target chain ID based on environment
+ * Get the target chain ID - always returns mainnet (1)
  */
 export function getTargetChainId(): number {
-  if (shouldUseAnvil()) {
-    return ANVIL_CHAIN_ID;
-  }
-  // Default to mainnet (1) for production
   return 1;
 }
-

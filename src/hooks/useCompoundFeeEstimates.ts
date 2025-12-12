@@ -2,7 +2,7 @@
 
 import { useCallback } from "react";
 import { shouldUseAnvil } from "@/config/environment";
-import { anvilPublicClient } from "@/config/anvil";
+import { publicClient as anvilPublicClient } from "@/config/rpc";
 import { minterABI as fullMinterABI } from "@/abis/minter";
 
 export interface CompoundFeeEstimateParams {

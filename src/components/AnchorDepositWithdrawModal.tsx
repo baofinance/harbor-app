@@ -10,10 +10,10 @@ import {
   useWriteContract,
   usePublicClient,
 } from "wagmi";
-import { useAnvilContractRead } from "@/hooks/useAnvilContractRead";
-import { useAnvilContractReads } from "@/hooks/useAnvilContractReads";
+import { useAnvilContractRead } from "@/hooks/useContractRead";
+import { useAnvilContractReads } from "@/hooks/useContractReads";
 import { shouldUseAnvil } from "@/config/environment";
-import { anvilPublicClient } from "@/config/anvil";
+import { publicClient as anvilPublicClient } from "@/config/rpc";
 import { BaseError, ContractFunctionRevertedError } from "viem";
 import { ERC20_ABI, STABILITY_POOL_ABI } from "@/abis/shared";
 import { aprABI } from "@/abis/apr";

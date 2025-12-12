@@ -3,6 +3,7 @@
 ## TL;DR - Get Staging Live in 10 Minutes
 
 ### 1. Create Vercel Project
+
 1. Go to [vercel.com](https://vercel.com) → **Add New Project**
 2. Import `baofinance/harbor-app` from GitHub
 3. Project name: `harbor-app-staging`
@@ -10,17 +11,22 @@
 5. Click **Deploy**
 
 ### 2. Add Environment Variable
+
 In Vercel project → **Settings** → **Environment Variables**:
+
 ```
 NEXT_PUBLIC_APP_ENV = staging
 ```
 
 ### 3. Add Custom Domains
+
 In Vercel project → **Settings** → **Domains**:
+
 - Add: `staging.app.harborfinance.io`
 - Vercel will show DNS instructions
 
 ### 4. Configure DNS in GoDaddy
+
 1. Go to GoDaddy → **My Products** → **Domains** → `harborfinance.io` → **DNS**
 2. Add CNAME record:
    ```
@@ -31,6 +37,7 @@ In Vercel project → **Settings** → **Domains**:
    ```
 
 ### 5. Wait & Deploy
+
 - Wait 5-15 minutes for DNS propagation
 - Push to `staging` branch or deploy manually
 - Visit `https://staging.app.harborfinance.io`
@@ -38,6 +45,7 @@ In Vercel project → **Settings** → **Domains**:
 ## DNS Record Examples
 
 ### For staging.app.harborfinance.io:
+
 ```
 Type: CNAME
 Name: staging.app
@@ -46,20 +54,24 @@ TTL: 600
 ```
 
 **Note**: If GoDaddy doesn't support `staging.app` as a subdomain, you may need to:
+
 - Use `staging-app` instead, then configure in Vercel
 - Or contact GoDaddy support for multi-level subdomain support
 
 ## Branch Strategy
 
 **Option 1: Separate Branch (Recommended)**
+
 ```bash
 git checkout -b staging
 git push origin staging
 ```
+
 - Configure Vercel to deploy `staging` branch to staging environment
 - `main` branch → production (when ready)
 
 **Option 2: Same Branch, Different Projects**
+
 - Create two Vercel projects
 - One for staging, one for production
 - Both deploy from `main` branch
@@ -68,9 +80,11 @@ git push origin staging
 ## Environment Variables Checklist
 
 **Required for Staging:**
+
 - ✅ `NEXT_PUBLIC_APP_ENV=staging`
 
 **Optional (if needed):**
+
 - `NEXT_PUBLIC_GRAPH_URL` (subgraph URL)
 - `NEXT_PUBLIC_MAINNET_RPC_URL` (custom RPC)
 - `NEXT_PUBLIC_BASE_RPC_URL` (custom RPC)
@@ -100,4 +114,3 @@ git push origin staging
 1. ✅ Staging is live at `staging.app.harborfinance.io`
 2. Update landing page (`harborfinance.io`) with "App" button
 3. When ready, set up `app.harborfinance.io` for production
-

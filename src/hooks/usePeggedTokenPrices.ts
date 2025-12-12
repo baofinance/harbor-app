@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { useAnvilContractReads } from "./useAnvilContractReads";
+import { useAnvilContractReads } from "./useContractReads";
 import { MINTER_ABI } from "@/abis/shared";
 
 export interface PeggedPriceConfig {

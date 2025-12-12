@@ -1,5 +1,5 @@
-import { useAnvilContractRead } from "./useAnvilContractRead";
-import { useAnvilContractReads } from "./useAnvilContractReads";
+import { useAnvilContractRead } from "./useContractRead";
+import { useAnvilContractReads } from "./useContractReads";
 
 /**
  * Shared ERC20 ABI - minimal set for common operations

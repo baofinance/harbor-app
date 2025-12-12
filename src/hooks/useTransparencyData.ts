@@ -1,4 +1,4 @@
-import { useAnvilContractReads } from "./useAnvilContractReads";
+import { useAnvilContractReads } from "./useContractReads";
 import { useAccount } from "wagmi";
 import { markets as marketsConfig } from "@/config/markets";
 import { minterABI } from "@/abis/minter";

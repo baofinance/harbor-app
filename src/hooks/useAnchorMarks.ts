@@ -1,7 +1,7 @@
 "use client";
 
 import { useAccount } from "wagmi";
-import { useAnvilContractReads } from "./useAnvilContractReads";
+import { useAnvilContractReads } from "./useContractReads";
 import { markets } from "@/config/markets";
 import { useMemo } from "react";
 

@@ -2,7 +2,7 @@ import { useAccount, usePublicClient } from "wagmi";
 import { useQuery } from "@tanstack/react-query";
 import { STABILITY_POOL_ABI } from "@/abis/shared";
 import { shouldUseAnvil } from "@/config/environment";
-import { anvilPublicClient } from "@/config/anvil";
+import { publicClient as anvilPublicClient } from "@/config/rpc";
 
 export type WithdrawalStatus = "waiting" | "window" | "expired";
 

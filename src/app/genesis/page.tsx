@@ -14,7 +14,7 @@ import { markets } from "../../config/markets";
 import { GenesisDepositModal } from "@/components/GenesisDepositModal";
 import { GenesisWithdrawModal } from "@/components/GenesisWithdrawModal";
 import { GENESIS_ABI, contracts } from "../../config/contracts";
-import { useAnvilContractReads } from "@/hooks/useAnvilContractReads";
+import { useAnvilContractReads } from "@/hooks/useContractReads";
 import {
   ArrowRightIcon,
   GiftIcon,

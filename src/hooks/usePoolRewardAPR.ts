@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { formatEther } from "viem";
 import { STABILITY_POOL_ABI, ERC20_ABI } from "@/abis/shared";
 import { shouldUseAnvil } from "@/config/environment";
-import { anvilPublicClient } from "@/config/anvil";
+import { publicClient as anvilPublicClient } from "@/config/rpc";
 
 interface UsePoolRewardAPRParams {
   poolAddress: `0x${string}` | undefined;

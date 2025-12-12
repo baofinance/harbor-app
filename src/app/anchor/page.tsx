@@ -24,9 +24,9 @@ import {
   getLogoPath,
 } from "@/components/shared";
 import { useGenesisMarks } from "@/hooks/useGenesisMarks";
-import { useAnvilContractReads } from "@/hooks/useAnvilContractReads";
+import { useAnvilContractReads } from "@/hooks/useContractReads";
 import { shouldUseAnvil } from "@/config/environment";
-import { anvilPublicClient } from "@/config/anvil";
+import { publicClient as anvilPublicClient } from "@/config/rpc";
 import {
   ChevronDownIcon,
   ChevronUpIcon,

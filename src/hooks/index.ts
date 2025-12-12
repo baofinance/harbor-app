@@ -3,9 +3,9 @@
  * Import from '@/hooks' instead of individual files
  */
 
-// Core Anvil hooks
-export * from "./useAnvilContractRead";
-export * from "./useAnvilContractReads";
+// Core contract read hooks (simplified for mainnet)
+export * from "./useContractRead";
+export * from "./useContractReads";
 
 // ERC20 hooks
 export * from "./useErc20";

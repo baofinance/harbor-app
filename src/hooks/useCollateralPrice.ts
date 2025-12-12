@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { useAnvilContractReads } from "./useAnvilContractReads";
+import { useAnvilContractReads } from "./useContractReads";
 
 /**
  * ABI for the IWrappedPriceOracle interface used by the Minter contract.

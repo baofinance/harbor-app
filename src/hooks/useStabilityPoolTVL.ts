@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { useAnvilContractReads } from "./useAnvilContractReads";
+import { useAnvilContractReads } from "./useContractReads";
 import { POLLING_INTERVALS } from "@/config/polling";
 import {
   STABILITY_POOL_ABI,

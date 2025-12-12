@@ -9,7 +9,7 @@ import {
  useWriteContract,
  usePublicClient,
 } from"wagmi";
-import { useAnvilContractRead } from"@/hooks/useAnvilContractRead";
+import { useAnvilContractRead } from "@/hooks/useContractRead";
 import { shouldUseAnvil } from"@/config/environment";
 import { BaseError, ContractFunctionRevertedError } from"viem";
 import { ERC20_ABI, MINTER_ABI } from"@/abis/shared";

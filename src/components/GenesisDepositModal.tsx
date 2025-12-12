@@ -10,8 +10,9 @@ import {
 } from"wagmi";
 import { BaseError, ContractFunctionRevertedError } from"viem";
 import { GENESIS_ABI, ERC20_ABI } from"../config/contracts";
-import { anvil, anvilPublicClient } from"@/config/anvil";
-import { useAnvilContractRead } from"@/hooks/useAnvilContractRead";
+import { publicClient as anvilPublicClient } from "@/config/rpc";
+import { mainnet as anvil } from "wagmi/chains";
+import { useAnvilContractRead } from "@/hooks/useContractRead";
 import { shouldUseAnvil } from"@/config/environment";
 import {
  TransactionProgressModal,

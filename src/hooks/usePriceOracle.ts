@@ -1,4 +1,4 @@
-import { useAnvilContractReads } from "./useAnvilContractReads";
+import { useAnvilContractReads } from "./useContractReads";
 
 /**
  * Standard Chainlink-style price oracle ABI
