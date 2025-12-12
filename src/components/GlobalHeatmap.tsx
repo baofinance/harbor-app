@@ -170,8 +170,8 @@ export default function GlobalHeatmap({
  {NEUTRAL_PALETTE.map((c, i) => (
  <div
  key={i}
- className="-[3px] 
- style={{ ...cellStyle, backgroundColor: c }}
+ className="rounded-[3px]"
+                style={{ ...cellStyle, backgroundColor: c }}
  />
  ))}
  </div>
@@ -320,8 +320,8 @@ export default function GlobalHeatmap({
  return (
  <div
  key={j}
- className="h-5 m-1 w-5 
- style={{ backgroundColor: colorFor(cell.value) }}
+ className="h-5 m-1 w-5 rounded"
+                    style={{ backgroundColor: colorFor(cell.value) }}
  />
  );
  })}
