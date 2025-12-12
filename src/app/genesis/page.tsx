@@ -474,7 +474,7 @@ export default function GenesisIndexPage() {
 
   const genesisMarkets = useMemo(
     () =>
-      Object.entries(markets).filter(([_, m]) => (m as any).addresses?.genesis),
+      Object.entries(markets).filter(([_, mkt]) => (mkt as any).addresses?.genesis),
     []
   );
 
@@ -482,7 +482,7 @@ export default function GenesisIndexPage() {
   const genesisAddresses = useMemo(
     () =>
       genesisMarkets
-        .map(([_, m]) => (m as any).addresses?.genesis)
+        .map(([_, mkt]) => (mkt as any).addresses?.genesis)
         .filter((addr): addr is string => !!addr && typeof addr === "string"),
     [genesisMarkets]
   );
@@ -505,8 +505,8 @@ export default function GenesisIndexPage() {
   // We'll get total deposits by checking the collateral token balance of the genesis contract
   // Use Anvil-specific hook to ensure reads go to Anvil network
   const genesisReadContracts = useMemo(() => {
-    return genesisMarkets.flatMap(([_, m]) => {
-      const g = (m as any).addresses?.genesis as `0x${string}` | undefined;
+    return genesisMarkets.flatMap(([_, mkt]) => {
+      const g = (mkt as any).addresses?.genesis as `0x${string}` | undefined;
       if (!g || typeof g !== "string" || !g.startsWith("0x") || g.length !== 42)
         return [];
       const base = [
@@ -546,8 +546,8 @@ export default function GenesisIndexPage() {
   // Fetch collateral token addresses from genesis contracts
   const collateralTokenContracts = useMemo(() => {
     return genesisMarkets
-      .map(([_, m]) => {
-        const g = (m as any).addresses?.genesis as `0x${string}` | undefined;
+      .map(([_, mkt]) => {
+        const g = (mkt as any).addresses?.genesis as `0x${string}` | undefined;
         if (
           !g ||
           typeof g !== "string" ||
@@ -583,8 +583,8 @@ export default function GenesisIndexPage() {
   ] as const;
 
   const totalDepositsContracts = useMemo(() => {
-    return genesisMarkets.flatMap(([_, m], mi) => {
-      const g = (m as any).addresses?.genesis as `0x${string}` | undefined;
+    return genesisMarkets.flatMap(([_, mkt], mi) => {
+      const g = (mkt as any).addresses?.genesis as `0x${string}` | undefined;
       const wrappedCollateralAddress = collateralTokenReads?.[mi]?.result as
         | `0x${string}`
         | undefined;
@@ -767,9 +767,9 @@ export default function GenesisIndexPage() {
 
   // Fetch collateral price oracles for each market (for USD calculations)
   const priceContracts = useMemo(() => {
-    return genesisMarkets.flatMap(([_, m]) => {
+    return genesisMarkets.flatMap(([_, mkt]) => {
       // Use collateralPrice for calculating USD value of deposits
-      const oracleAddress = (m as any).addresses?.collateralPrice as
+      const oracleAddress = (mkt as any).addresses?.collateralPrice as
         | `0x${string}`
         | undefined;
       if (
@@ -803,7 +803,7 @@ export default function GenesisIndexPage() {
   const coinGeckoIds = useMemo(
     () =>
       genesisMarkets
-        .map(([_, m]) => (m as any)?.coinGeckoId)
+        .map(([_, mkt]) => (mkt as any)?.coinGeckoId)
         .filter((id): id is string => !!id),
     [genesisMarkets]
   );
@@ -814,7 +814,7 @@ export default function GenesisIndexPage() {
     if (!reads || !isConnected) return;
 
     // Check if any genesis has ended
-    const anyEnded = genesisMarkets.some(([_, m], mi) => {
+    const anyEnded = genesisMarkets.some(([_, mkt], mi) => {
       const baseOffset = mi * (isConnected ? 3 : 1);
       const isEnded = (reads?.[baseOffset]?.result as boolean) ?? false;
       return isEnded;
@@ -998,7 +998,7 @@ export default function GenesisIndexPage() {
 
           // Check if ALL genesis contracts have ended based on contract reads
           // This is the authoritative check - bonus marks are only "Applied" when contract says so
-          const allContractsEnded = genesisMarkets.every(([_, m], mi) => {
+          const allContractsEnded = genesisMarkets.every(([_, mkt], mi) => {
             const baseOffset = mi * (isConnected ? 3 : 1);
             const contractSaysEnded = reads?.[baseOffset]?.result as
               | boolean
@@ -1007,12 +1007,12 @@ export default function GenesisIndexPage() {
           });
 
           // Check if any genesis is in "processing" state (time expired but contract not ended)
-          const anyInProcessing = genesisMarkets.some(([_, m], mi) => {
+          const anyInProcessing = genesisMarkets.some(([_, mkt], mi) => {
             const baseOffset = mi * (isConnected ? 3 : 1);
             const contractSaysEnded = reads?.[baseOffset]?.result as
               | boolean
               | undefined;
-            const endDate = (m as any).genesis?.endDate;
+            const endDate = (mkt as any).genesis?.endDate;
             const timeHasExpired = endDate
               ? new Date(endDate).getTime() <= Date.now()
               : false;
@@ -1037,8 +1037,8 @@ export default function GenesisIndexPage() {
 
                 // Find the market to get contract's genesisIsEnded() status
                 const market = genesisMarkets.find(
-                  ([_, m]) =>
-                    (m as any).addresses?.genesis?.toLowerCase() ===
+                  ([_, mkt]) =>
+                    (mkt as any).addresses?.genesis?.toLowerCase() ===
                     result.genesisAddress?.toLowerCase()
                 );
 
@@ -1123,7 +1123,7 @@ export default function GenesisIndexPage() {
 
                     // Calculate price: handle negative values (convert to positive) and apply decimals
                     let collateralPriceUSD: number = 0;
-                    const marketCoinGeckoId = (m as any)?.coinGeckoId as
+                    const marketCoinGeckoId = (market?.[1] as any)?.coinGeckoId as
                       | string
                       | undefined;
 
@@ -1337,7 +1337,7 @@ export default function GenesisIndexPage() {
               <div className="min-w-0 text-center">Market</div>
               <div className="text-center min-w-0">Deposit Assets</div>
               <div className="text-center min-w-0">
-                {genesisMarkets.some(([_, m], mi) => {
+                {genesisMarkets.some(([_, mkt], mi) => {
                   const baseOffset = mi * (isConnected ? 3 : 1);
                   const isEnded =
                     (reads?.[baseOffset]?.result as boolean) ?? false;
@@ -1353,7 +1353,7 @@ export default function GenesisIndexPage() {
           </div>
 
           {/* Market Rows */}
-          {genesisMarkets.map(([id, m], mi) => {
+          {genesisMarkets.map(([id, mkt], mi) => {
             // Updated offset: [isEnded, balanceOf?, claimable?] - no totalDeposits anymore
             const baseOffset = mi * (isConnected ? 3 : 1);
             const contractReadResult = reads?.[baseOffset];
@@ -1366,7 +1366,7 @@ export default function GenesisIndexPage() {
             const marksForMarket = allMarksData?.find(
               (marks) =>
                 marks.genesisAddress?.toLowerCase() ===
-                (m as any).addresses?.genesis?.toLowerCase()
+                (mkt as any).addresses?.genesis?.toLowerCase()
             );
             // Extract genesisEnded from subgraph data (handle both array and single object responses)
             const userMarksData = marksForMarket?.data?.userHarborMarks;
@@ -1388,7 +1388,7 @@ export default function GenesisIndexPage() {
               rowLeveragedSymbol &&
               rowLeveragedSymbol.toLowerCase().startsWith("hs")
                 ? rowLeveragedSymbol.slice(2)
-                : rowLeveragedSymbol || (m as any).name || "Market";
+                : rowLeveragedSymbol || (mkt as any).name || "Market";
             const peggedNoPrefix =
               rowPeggedSymbol && rowPeggedSymbol.toLowerCase().startsWith("ha")
                 ? rowPeggedSymbol.slice(2)
@@ -1407,16 +1407,16 @@ export default function GenesisIndexPage() {
                   | undefined)
               : undefined;
 
-            const genesisAddress = (m as any).addresses?.genesis;
+            const genesisAddress = (mkt as any).addresses?.genesis;
             // Use on-chain collateral token address from genesis contract, fallback to config
             const onChainCollateralAddress = collateralTokenReads?.[mi]
               ?.result as `0x${string}` | undefined;
             const collateralAddress =
-              onChainCollateralAddress || (m as any).addresses?.collateralToken;
-            const collateralSymbol = (m as any).collateral?.symbol || "ETH";
+              onChainCollateralAddress || (mkt as any).addresses?.collateralToken;
+            const collateralSymbol = (mkt as any).collateral?.symbol || "ETH";
 
             // Debug logging for collateral address
-            const endDate = (m as any).genesis?.endDate;
+            const endDate = (mkt as any).genesis?.endDate;
 
             // Get price from oracle
             const priceOffset = mi * 2;
@@ -1443,7 +1443,7 @@ export default function GenesisIndexPage() {
             // Calculate price: handle negative values (convert to positive) and apply decimals
             let collateralPriceUSD: number = 0;
             let priceError: string | null = null;
-            const marketCoinGeckoId = (m as any)?.coinGeckoId as
+            const marketCoinGeckoId = (mkt as any)?.coinGeckoId as
               | string
               | undefined;
 
@@ -1533,7 +1533,7 @@ export default function GenesisIndexPage() {
                           {rowLeveragedSymbol &&
                           rowLeveragedSymbol.toLowerCase().startsWith("hs")
                             ? rowLeveragedSymbol.slice(2)
-                            : rowLeveragedSymbol || (m as any).name}
+                            : rowLeveragedSymbol || (mkt as any).name}
                         </span>
                         {isExpanded ? (
                           <ChevronUpIcon className="w-5 h-5 text-[#1E4775] flex-shrink-0" />
@@ -1582,18 +1582,18 @@ export default function GenesisIndexPage() {
                                   <span className="font-mono text-[#1E4775] font-semibold text-xs">
                                     {formatEther(claimablePegged)}{" "}
                                     {rowPeggedSymbol ||
-                                      (m as any).peggedToken?.symbol ||
+                                      (mkt as any).peggedToken?.symbol ||
                                       "haPB"}
                                   </span>
                                   <Image
                                     src={getLogoPath(
                                       rowPeggedSymbol ||
-                                        (m as any).peggedToken?.symbol ||
+                                        (mkt as any).peggedToken?.symbol ||
                                         "haPB"
                                     )}
                                     alt={
                                       rowPeggedSymbol ||
-                                      (m as any).peggedToken?.symbol ||
+                                      (mkt as any).peggedToken?.symbol ||
                                       "haPB"
                                     }
                                     width={24}
@@ -1607,18 +1607,18 @@ export default function GenesisIndexPage() {
                                   <span className="font-mono text-[#1E4775] font-semibold text-xs">
                                     {formatEther(claimableLeveraged)}{" "}
                                     {rowLeveragedSymbol ||
-                                      (m as any).leveragedToken?.symbol ||
+                                      (mkt as any).leveragedToken?.symbol ||
                                       "hsPB"}
                                   </span>
                                   <Image
                                     src={getLogoPath(
                                       rowLeveragedSymbol ||
-                                        (m as any).leveragedToken?.symbol ||
+                                        (mkt as any).leveragedToken?.symbol ||
                                         "hsPB"
                                     )}
                                     alt={
                                       rowLeveragedSymbol ||
-                                      (m as any).leveragedToken?.symbol ||
+                                      (mkt as any).leveragedToken?.symbol ||
                                       "hsPB"
                                     }
                                     width={24}
@@ -1866,9 +1866,9 @@ export default function GenesisIndexPage() {
                                   collateralSymbol,
                                   acceptedAssets,
                                   marketAddresses: {
-                                    collateralToken: (m as any).addresses
+                                    collateralToken: (mkt as any).addresses
                                       ?.collateralToken,
-                                    wrappedCollateralToken: (m as any).addresses
+                                    wrappedCollateralToken: (mkt as any).addresses
                                       ?.wrappedCollateralToken,
                                   },
                                 });
@@ -1917,7 +1917,7 @@ export default function GenesisIndexPage() {
                 {isExpanded && (
                   <MarketExpandedView
                     marketId={id}
-                    market={m}
+                    market={mkt}
                     genesisAddress={genesisAddress}
                     totalDeposits={totalDeposits}
                     totalDepositsUSD={totalDepositsUSD}
