@@ -23,12 +23,12 @@ export const markets = {
       reservePool: contracts.reservePool,
       stabilityPoolManager: contracts.stabilityPoolManager,
       stabilityPoolCollateral:
-        "0xa95a6a19d6b693d71f41887e24f6d9652dab89ce" as `0x${string}`,
+        "0xac8113ef28c8ef06064e8d78b69890d670273c73" as `0x${string}`,
       stabilityPoolLeveraged:
-        "0x76a1bb7fe2697b23d43f76f66867f35aceaf04c4" as `0x${string}`,
+        "0x6738c3ee945218fb80700e2f4c1a5f3022a28c8d" as `0x${string}`,
       genesis: contracts.genesis,
       priceOracle: contracts.priceOracle,
-      collateralPrice: "0x28304c7fff39d0b83fae7c1537cb0e095041a19a", // MockWrappedPriceOracle
+      collateralPrice: "0xbb12a263bda971a64f9573ceab4fa689eb93daff", // MockWrappedPriceOracle
       feeReceiver: contracts.feeReceiver,
       collateralToken: contracts.collateralToken, // wstETH - primary collateral for UI (stored and given as rewards)
       wrappedCollateralToken: contracts.wrappedCollateralToken, // stETH - underlying reference token for yield scraping

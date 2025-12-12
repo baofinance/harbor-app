@@ -1,15 +1,15 @@
-// Contract addresses for the new deployment (mainnet fork)
+// Contract addresses for mainnet deployment (test1-USD-stETH)
 export const contracts = {
-  minter: "0x980d1d2c22fadc8fff8fb3e3261037a75cc7cd3f",
-  peggedToken: "0xad91b3c34e4e17b2d22c53c25d9873ff22395ec3",
-  leveragedToken: "0xbc63dc67b78925d8d593af8708aceb14125e8d5f",
+  minter: "0x8b17b6e8f9ce3477ddaf372a4140ac6005787901",
+  peggedToken: "0x6ff0fe773d4ad4ea923ba9ea9cc1c1b42b70f5fc", // haUSD-stETH
+  leveragedToken: "0x469ddfcfa98d0661b7efedc82aceeab84133f7fe", // hsUSD-stETH
   steam: "0x5f9dD176ea5282d392225ceC5c2E7A24d5d02672",
   veSteam: "0x819F9213cE51Adac4C1c2EF7D4Cba563727C1206",
-  reservePool: "0x88d4e7016df0854f9aa6877f83a004039bc3e16d",
-  stabilityPoolManager: "0x60bba7266baa7808d774eadfbd408d430af6ac60",
-  genesis: "0xa25b38aa76ae58ec8683ec9a9057afbe34c765e9",
-  priceOracle: "0x28304c7fff39d0b83fae7c1537cb0e095041a19a",
-  feeReceiver: "0x1ca477fbb6dd0300719880486264dcb87473ef4f",
+  reservePool: "0xa63b31f3551a151d75fa43fa653ef37b5f7f1ad6",
+  stabilityPoolManager: "0x7b1514d2422f7567047d7cd1b8531e48f22c1dcf",
+  genesis: "0x1454707877cdb966e29cea8a190c2169eeca4b8c",
+  priceOracle: "0xbb12a263bda971a64f9573ceab4fa689eb93daff",
+  feeReceiver: "0xa041d36bb18ae1660ff3a684aa2eaff77786f55c", // minterFeeReceiver
   gaugeController: "0x3860B063928436F548c3A58A40c4d1d171E78838",
   steamMinter: "0x14835B093D320AA5c9806BBC64C17F0F2546D9EE",
   collateralToken: "0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0", // wstETH (mainnet)
@@ -18,18 +18,18 @@ export const contracts = {
 
 // Legacy CONTRACTS constant for backward compatibility
 export const CONTRACTS = {
-  MINTER: "0x980d1d2c22fadc8fff8fb3e3261037a75cc7cd3f",
-  PEGGED_TOKEN: "0xad91b3c34e4e17b2d22c53c25d9873ff22395ec3",
-  LEVERAGED_TOKEN: "0xbc63dc67b78925d8d593af8708aceb14125e8d5f",
-  GENESIS: "0xa25b38aa76ae58ec8683ec9a9057afbe34c765e9",
-  STABILITY_POOL_MANAGER: "0x60bba7266baa7808d774eadfbd408d430af6ac60",
-  STABILITY_POOL_COLLATERAL: "0xa95a6a19d6b693d71f41887e24f6d9652dab89ce",
-  STABILITY_POOL_PEGGED: "0x76a1bb7fe2697b23d43f76f66867f35aceaf04c4",
+  MINTER: "0x8b17b6e8f9ce3477ddaf372a4140ac6005787901",
+  PEGGED_TOKEN: "0x6ff0fe773d4ad4ea923ba9ea9cc1c1b42b70f5fc",
+  LEVERAGED_TOKEN: "0x469ddfcfa98d0661b7efedc82aceeab84133f7fe",
+  GENESIS: "0x1454707877cdb966e29cea8a190c2169eeca4b8c",
+  STABILITY_POOL_MANAGER: "0x7b1514d2422f7567047d7cd1b8531e48f22c1dcf",
+  STABILITY_POOL_COLLATERAL: "0xac8113ef28c8ef06064e8d78b69890d670273c73",
+  STABILITY_POOL_PEGGED: "0x6738c3ee945218fb80700e2f4c1a5f3022a28c8d",
   STABILITY_POOL_COLLATERAL_STAKE: "0xe828215EB5A61a5cB62fB980288B835689af4091",
   STABILITY_POOL_STEAMED_STAKE: "0xd3873FDF150b3fFFb447d3701DFD234DF452f367",
-  PRICE_ORACLE: "0x28304c7fff39d0b83fae7c1537cb0e095041a19a",
-  TOKEN_DISTRIBUTOR: "0x1ca477fbb6dd0300719880486264dcb87473ef4f",
-  RESERVE_POOL: "0x88d4e7016df0854f9aa6877f83a004039bc3e16d",
+  PRICE_ORACLE: "0xbb12a263bda971a64f9573ceab4fa689eb93daff",
+  TOKEN_DISTRIBUTOR: "0xa041d36bb18ae1660ff3a684aa2eaff77786f55c",
+  RESERVE_POOL: "0xa63b31f3551a151d75fa43fa653ef37b5f7f1ad6",
   CONFIG: "0x1ca477fbb6dd0300719880486264dcb87473ef4f",
   GAUGE_CONTROLLER: "0x3860B063928436F548c3A58A40c4d1d171E78838",
   STEAM_MINTER: "0x14835B093D320AA5c9806BBC64C17F0F2546D9EE",
