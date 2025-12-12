@@ -310,10 +310,10 @@ function getAcceptedDepositAssets(
       });
     }
     return assets;
-  } else if (normalized === "wbtc") {
-    // WBTC-based markets: only wrapped collateral (WBTC)
+  } else if (normalized === "abtc" || normalized === "awbtc") {
+    // aWBTC-based markets: only Aave wrapped WBTC
     const assets: Array<{ symbol: string; name: string }> = [
-      { symbol: "WBTC", name: "Wrapped Bitcoin" },
+      { symbol: "aWBTC", name: "Aave WBTC" },
     ];
     // Add pegged token if provided
     if (peggedTokenSymbol) {

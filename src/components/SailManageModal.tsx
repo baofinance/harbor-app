@@ -53,8 +53,8 @@ function getAcceptedDepositAssets(
  { symbol:"stETH", name:"Lido Staked ETH" },
  { symbol:"wstETH", name:"Wrapped Staked ETH" },
  ];
- } else if (normalized ==="wbtc") {
- return [{ symbol:"WBTC", name:"Wrapped Bitcoin" }];
+ } else if (normalized ==="abtc" || normalized ==="awbtc") {
+ return [{ symbol:"aWBTC", name:"Aave WBTC" }];
  }
  return [];
 }

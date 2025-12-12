@@ -215,8 +215,8 @@ export const markets: Markets = {
     name: "USD/WBTC",
     description: "USD pegged to WBTC collateral",
     addresses: {
-      collateralToken: "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599", // WBTC
-      underlyingCollateralToken: "0x5ee5bf7ae06d1be5997a1a72006fe6c607ec6de8", // Wrapped WBTC
+      collateralToken: "0x5ee5bf7ae06d1be5997a1a72006fe6c607ec6de8", // aWBTC (Aave WBTC) - what users deposit
+      underlyingCollateralToken: "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599", // WBTC - underlying
       feeReceiver: "0x1ca04526fa156fd18a182ab436c3ff2f306af907",
       genesis: "0x0569ebf818902e448235592f86e63255bbe64fd3",
       leveragedToken: "0x03fd55f80277c13bb17739190b1e086b836c9f20", // hsUSD-WBTC

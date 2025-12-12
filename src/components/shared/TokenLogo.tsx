@@ -37,6 +37,9 @@ export function getLogoPath(symbol: string): string {
   if (normalizedSymbol === "wbtc") {
     return "/icons/btc.png"; // Use BTC icon for WBTC
   }
+  if (normalizedSymbol === "awbtc" || normalizedSymbol === "abtc") {
+    return "/icons/btc.png"; // Use BTC icon for Aave WBTC
+  }
 
   // Harbor tokens
   if (normalizedSymbol === "hapb") {

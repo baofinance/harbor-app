@@ -71,7 +71,7 @@ export const markets = {
   },
 
   // ============================================================================
-  // USD-WBTC Market (WBTC collateral)
+  // USD-WBTC Market (aWBTC collateral - Aave deposited WBTC)
   // ============================================================================
   "usd-wbtc": {
     name: "USD/WBTC",
@@ -81,11 +81,12 @@ export const markets = {
       logo: "icons/eth.png",
     },
     collateral: {
-      symbol: "WBTC",
-      name: "Wrapped Bitcoin",
+      symbol: "aWBTC", // Aave deposited WBTC - what users deposit
+      name: "Aave WBTC",
+      underlyingSymbol: "WBTC", // The underlying asset
     },
     rewardTokens: {
-      default: ["WBTC"], // Wrapped collateral token is the primary reward token
+      default: ["aWBTC"], // Wrapped collateral token is the primary reward token
       additional: [], // Additional reward tokens (if any)
     },
     addresses: {
@@ -100,8 +101,8 @@ export const markets = {
       priceOracle: "0x7df29f02e6baf23fbd77940d78b158a66f1bd33c" as `0x${string}`,
       collateralPrice: "0x7df29f02e6baf23fbd77940d78b158a66f1bd33c" as `0x${string}`, // MockWrappedPriceOracle (same as priceOracle)
       feeReceiver: "0x1ca04526fa156fd18a182ab436c3ff2f306af907" as `0x${string}`,
-      collateralToken: "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599" as `0x${string}`, // WBTC
-      wrappedCollateralToken: "0x5ee5bf7ae06d1be5997a1a72006fe6c607ec6de8" as `0x${string}`, // Wrapped WBTC
+      collateralToken: "0x5ee5bf7ae06d1be5997a1a72006fe6c607ec6de8" as `0x${string}`, // aWBTC (Aave WBTC) - what users deposit
+      wrappedCollateralToken: "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599" as `0x${string}`, // WBTC - underlying
     },
     peggedToken: {
       name: "Harbor Anchored USD",
