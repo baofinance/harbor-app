@@ -451,8 +451,3 @@ export function useMultipleVolatilityProtection(
 
   return { data, isLoading, error: error as Error | null };
 }
-
-
-
-
-

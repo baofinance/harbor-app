@@ -234,8 +234,3 @@ export function useMultiplePriceOracles(
     refetch,
   };
 }
-
-
-
-
-

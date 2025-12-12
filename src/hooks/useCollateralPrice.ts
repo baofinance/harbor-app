@@ -287,8 +287,3 @@ export function useMultipleCollateralPrices(
 
   return { prices, isLoading, error: error as Error | null };
 }
-
-
-
-
-

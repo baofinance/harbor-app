@@ -1,18 +1,12 @@
 // GraphQL configuration for Harbor Marks subgraph
 
 export const GRAPH_CONFIG = {
-  // Local development
-  local: {
-    url: "http://localhost:8000/subgraphs/name/harbor-marks-local",
-    chainId: 31337,
-    network: "anvil",
-  },
-  // Production (when deployed to The Graph Network)
+  // Production (mainnet)
   production: {
     url:
       process.env.NEXT_PUBLIC_GRAPH_URL ||
       "https://api.studio.thegraph.com/query/<your-subgraph-id>/<your-subgraph-name>/latest",
-    chainId: 1, // or your production chain ID
+    chainId: 1,
     network: "mainnet",
   },
 };
@@ -26,17 +20,7 @@ export const CONTRACTS = {
   wrappedCollateralToken: "0xae7ab96520de3a18e5e111b5eaab095312d7fe84", // stETH (mainnet)
 };
 
-// Get the appropriate Graph URL based on environment
+// Get the Graph URL (always production/mainnet)
 export const getGraphUrl = (): string => {
-  // Check if we're in development (localhost) or production
-  const isLocal =
-    typeof window !== "undefined" &&
-    (window.location.hostname === "localhost" ||
-      window.location.hostname === "127.0.0.1");
-
-  if (isLocal) {
-    return process.env.NEXT_PUBLIC_GRAPH_URL || GRAPH_CONFIG.local.url;
-  }
-
   return process.env.NEXT_PUBLIC_GRAPH_URL || GRAPH_CONFIG.production.url;
 };

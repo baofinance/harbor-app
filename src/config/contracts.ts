@@ -35,8 +35,8 @@ export const CONTRACTS = {
   STEAM_MINTER: "0x14835B093D320AA5c9806BBC64C17F0F2546D9EE",
   WSTETH: "0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0",
   STETH: "0xae7ab96520de3a18e5e111b5eaab095312d7fe84",
-  CHAIN_ID: 31337,
-  RPC_URL: "http://127.0.0.1:8545",
+  CHAIN_ID: 1, // Mainnet
+  RPC_URL: "https://eth.llamarpc.com", // Mainnet RPC
 } as const;
 
 export type MarketConfig = {
