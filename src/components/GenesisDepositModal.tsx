@@ -191,12 +191,13 @@ const needsApproval =
 const userCurrentDeposit: bigint = typeof currentDeposit === 'bigint' ? currentDeposit : 0n;
 
 // Calculate expected wstETH output for ETH deposits (for preview)
-// ETH converts 1:1 to stETH, then stETH wraps to wstETH
+// Contract flow: ETH → stETH (via submit, 1:1) → wstETH (via wrap)
+// For preview: ETH amount = stETH amount (1:1), then convert to wstETH
 const { data: expectedWstETHFromETH } = useCustomContractRead({
   address: wstETHAddress,
   abi: WSTETH_ABI,
   functionName: "getWstETHByStETH",
-  args: amountBigInt > 0n && isNativeETH ? [amountBigInt] : undefined, // ETH amount = stETH amount (1:1)
+  args: amountBigInt > 0n && isNativeETH ? [amountBigInt] : undefined, // stETH.submit() gives 1:1 ETH→stETH
   enabled: !!address && isOpen && isNativeETH && amountBigInt > 0n,
 });
 
@@ -369,8 +370,9 @@ https://www.harborfinance.io/`;
     let depositHash: `0x${string}`;
     if (isNativeETH) {
       // Use zapEth for ETH deposits with slippage protection
-      // ETH converts 1:1 to stETH, then stETH wraps to wstETH
-      const stETHAmount = amountBigInt; // ETH amount = stETH amount (1:1)
+      // Contract flow: ETH → stETH (via submit, 1:1) → wstETH (via wrap) → Genesis
+      // stETH.submit() returns stETH tokens 1:1 with ETH (not shares)
+      const stETHAmount = amountBigInt; // ETH amount = stETH amount (1:1 from submit)
       
       // Get expected wstETH from stETH amount
       const expectedWstETH = await publicClient.readContract({

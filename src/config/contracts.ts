@@ -8,7 +8,7 @@ export const contracts = {
   reservePool: "0xa63b31f3551a151d75fa43fa653ef37b5f7f1ad6",
   stabilityPoolManager: "0x7b1514d2422f7567047d7cd1b8531e48f22c1dcf",
   genesis: "0x1454707877cdb966e29cea8a190c2169eeca4b8c",
-  zap: "0x864d1b5297e1819645df348d440705eca7f4f787",
+  zap: "0xc199605a723d21fd597ac206fe650be4191333de",
   priceOracle: "0xbb12a263bda971a64f9573ceab4fa689eb93daff",
   feeReceiver: "0xa041d36bb18ae1660ff3a684aa2eaff77786f55c", // minterFeeReceiver
   gaugeController: "0x3860B063928436F548c3A58A40c4d1d171E78838",
