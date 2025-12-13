@@ -58,7 +58,12 @@ function getAcceptedDepositAssets(
   }
   // Fallback: return collateral token as the only accepted asset
   if (market?.collateral?.symbol) {
-    return [{ symbol: market.collateral.symbol, name: market.collateral.name || market.collateral.symbol }];
+    return [
+      {
+        symbol: market.collateral.symbol,
+        name: market.collateral.name || market.collateral.symbol,
+      },
+    ];
   }
   return [];
 }
