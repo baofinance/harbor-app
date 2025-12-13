@@ -350,7 +350,7 @@ function MarketExpandedView({
           <h3 className="text-[#1E4775] font-semibold mb-1 text-xs">
             Contract Info
           </h3>
-          <div className="divide-y divide-[#1E4775]/20 space-y-1">
+          <div className="divide-y divide-[#1E4775]/20">
             <EtherscanLink label="Genesis" address={addresses.genesis} />
             <EtherscanLink label="Minter" address={addresses.minter} />
             <EtherscanLink
@@ -359,15 +359,6 @@ function MarketExpandedView({
             />
             <EtherscanLink label="ha Token" address={peggedTokenAddress} />
             <EtherscanLink label="hs Token" address={leveragedTokenAddress} />
-            <EtherscanLink
-              label="Stability Pool (Collateral)"
-              address={addresses.stabilityPoolCollateral}
-            />
-            <EtherscanLink
-              label="Stability Pool (Leveraged)"
-              address={addresses.stabilityPoolLeveraged}
-            />
-            <EtherscanLink label="Price Oracle" address={addresses.priceOracle} />
           </div>
         </div>
 
