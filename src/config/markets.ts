@@ -15,6 +15,12 @@ export const markets = {
       symbol: "wstETH",
       name: "Wrapped Staked ETH",
     },
+    // Accepted deposit assets for this market
+    acceptedAssets: [
+      { symbol: "ETH", name: "Ethereum" },
+      { symbol: "stETH", name: "Lido Staked ETH" },
+      { symbol: "wstETH", name: "Wrapped Staked ETH" },
+    ],
     rewardTokens: {
       default: ["wstETH"], // Wrapped collateral token is the primary reward token
       additional: [], // Additional reward tokens (if any)
@@ -81,12 +87,16 @@ export const markets = {
       logo: "icons/eth.png",
     },
     collateral: {
-      symbol: "aWBTC", // Aave deposited WBTC - what users deposit
-      name: "Aave WBTC",
+      symbol: "aEthWBTC", // Aave Ethereum WBTC - what users deposit
+      name: "Aave Ethereum WBTC",
       underlyingSymbol: "WBTC", // The underlying asset
     },
+    // Accepted deposit assets for this market
+    acceptedAssets: [
+      { symbol: "aEthWBTC", name: "Aave Ethereum WBTC" },
+    ],
     rewardTokens: {
-      default: ["aWBTC"], // Wrapped collateral token is the primary reward token
+      default: ["aEthWBTC"], // Wrapped collateral token is the primary reward token
       additional: [], // Additional reward tokens (if any)
     },
     addresses: {

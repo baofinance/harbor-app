@@ -182,28 +182,17 @@ type TransactionStatus = {
   error?: string;
 };
 
-// Helper function to get accepted deposit assets
+// Helper function to get accepted deposit assets from market config
 function getAcceptedDepositAssets(
-  collateralSymbol: string
+  market: any
 ): Array<{ symbol: string; name: string }> {
-  const normalized = collateralSymbol.toLowerCase();
-  if (normalized === "fxsave") {
-    // USD-based markets: fxSAVE, fxUSD, USDC
-    return [
-      { symbol: "fxSAVE", name: "fxSAVE" },
-      { symbol: "fxUSD", name: "fxUSD" },
-      { symbol: "USDC", name: "USDC" },
-    ];
-  } else if (normalized === "wsteth") {
-    // ETH-based markets: ETH, stETH, wstETH
-    return [
-      { symbol: "ETH", name: "Ethereum" },
-      { symbol: "stETH", name: "Lido Staked ETH" },
-      { symbol: "wstETH", name: "Wrapped Staked ETH" },
-    ];
-  } else if (normalized === "abtc" || normalized === "awbtc") {
-    // aWBTC-based markets: only Aave wrapped WBTC
-    return [{ symbol: "aWBTC", name: "Aave WBTC" }];
+  // Use acceptedAssets from market config if available
+  if (market?.acceptedAssets && Array.isArray(market.acceptedAssets)) {
+    return market.acceptedAssets;
+  }
+  // Fallback: return collateral token as the only accepted asset
+  if (market?.collateral?.symbol) {
+    return [{ symbol: market.collateral.symbol, name: market.collateral.name || market.collateral.symbol }];
   }
   return [];
 }
@@ -563,8 +552,7 @@ export const AnchorDepositWithdrawModal = ({
     // Find the market whose collateral symbol matches the deposit asset
     // or whose accepted deposit assets include the selected asset
     for (const { market: m } of marketsForToken) {
-      const collateralSymbol = m?.collateral?.symbol || "";
-      const assets = getAcceptedDepositAssets(collateralSymbol);
+      const assets = getAcceptedDepositAssets(m);
       if (assets.some((asset) => asset.symbol === selectedDepositAsset)) {
         return m;
       }
@@ -591,8 +579,7 @@ export const AnchorDepositWithdrawModal = ({
       }
     >();
     marketsForToken.forEach(({ market: m }) => {
-      const collateralSymbol = m?.collateral?.symbol || "";
-      const assets = getAcceptedDepositAssets(collateralSymbol);
+      const assets = getAcceptedDepositAssets(m);
       const minterAddr = m?.addresses?.minter;
       const peggedTokenSymbol = m?.peggedToken?.symbol || "ha";
 

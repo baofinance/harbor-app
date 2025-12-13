@@ -282,49 +282,30 @@ const wrappedPriceOracleABI = [
 // Keep alias for backwards compatibility
 const chainlinkOracleABI = wrappedPriceOracleABI;
 
-// Helper function to get logo path for tokens
+// Helper function to get accepted deposit assets from market config
 function getAcceptedDepositAssets(
-  collateralSymbol: string,
+  market: any,
   peggedTokenSymbol?: string
 ): Array<{ symbol: string; name: string }> {
-  const normalized = collateralSymbol.toLowerCase();
-  if (normalized === "fxsave") {
-    // USD-based markets: fxSAVE, fxUSD, USDC
-    return [
-      { symbol: "fxSAVE", name: "fxSAVE" },
-      { symbol: "fxUSD", name: "fxUSD" },
-      { symbol: "USDC", name: "USDC" },
-    ];
-  } else if (normalized === "wsteth") {
-    // ETH-based markets: ETH, stETH, wstETH, and pegged token (e.g., haPB)
-    const assets = [
-      { symbol: "ETH", name: "Ethereum" },
-      { symbol: "stETH", name: "Lido Staked ETH" },
-      { symbol: "wstETH", name: "Wrapped Staked ETH" },
-    ];
-    // Add pegged token if provided (e.g., haPB)
-    if (peggedTokenSymbol) {
-      assets.push({
-        symbol: peggedTokenSymbol,
-        name: peggedTokenSymbol,
-      });
-    }
-    return assets;
-  } else if (normalized === "abtc" || normalized === "awbtc") {
-    // aWBTC-based markets: only Aave wrapped WBTC
-    const assets: Array<{ symbol: string; name: string }> = [
-      { symbol: "aWBTC", name: "Aave WBTC" },
-    ];
-    // Add pegged token if provided
-    if (peggedTokenSymbol) {
-      assets.push({
-        symbol: peggedTokenSymbol,
-        name: peggedTokenSymbol,
-      });
-    }
-    return assets;
+  const assets: Array<{ symbol: string; name: string }> = [];
+  
+  // Use acceptedAssets from market config if available
+  if (market?.acceptedAssets && Array.isArray(market.acceptedAssets)) {
+    assets.push(...market.acceptedAssets);
+  } else if (market?.collateral?.symbol) {
+    // Fallback: return collateral token as the only accepted asset
+    assets.push({ symbol: market.collateral.symbol, name: market.collateral.name || market.collateral.symbol });
   }
-  return [];
+  
+  // Add pegged token if provided (e.g., haPB)
+  if (peggedTokenSymbol && !assets.some(a => a.symbol === peggedTokenSymbol)) {
+    assets.push({
+      symbol: peggedTokenSymbol,
+      name: peggedTokenSymbol,
+    });
+  }
+  
+  return assets;
 }
 
 function formatRatio(value: bigint | undefined): string {
@@ -6658,10 +6639,9 @@ export default function AnchorPage() {
                   { symbol: string; name: string }
                 >();
                 marketList.forEach(({ market }) => {
-                  const collateralSymbol = market?.collateral?.symbol || "";
                   const peggedTokenSymbol = market?.peggedToken?.symbol;
                   const assets = getAcceptedDepositAssets(
-                    collateralSymbol,
+                    market,
                     peggedTokenSymbol
                   );
                   assets.forEach((asset) => {

@@ -36,25 +36,17 @@ type ModalStep =
  |"success"
  |"error";
 
-// Helper function to get accepted deposit assets
+// Helper function to get accepted deposit assets from market config
 function getAcceptedDepositAssets(
- collateralSymbol: string
+ market: any
 ): Array<{ symbol: string; name: string }> {
- const normalized = collateralSymbol.toLowerCase();
- if (normalized ==="fxsave") {
- return [
- { symbol:"fxSAVE", name:"fxSAVE" },
- { symbol:"fxUSD", name:"fxUSD" },
- { symbol:"USDC", name:"USDC" },
- ];
- } else if (normalized ==="wsteth" || normalized ==="steth") {
- return [
- { symbol:"ETH", name:"Ethereum" },
- { symbol:"stETH", name:"Lido Staked ETH" },
- { symbol:"wstETH", name:"Wrapped Staked ETH" },
- ];
- } else if (normalized ==="abtc" || normalized ==="awbtc") {
- return [{ symbol:"aWBTC", name:"Aave WBTC" }];
+ // Use acceptedAssets from market config if available
+ if (market?.acceptedAssets && Array.isArray(market.acceptedAssets)) {
+   return market.acceptedAssets;
+ }
+ // Fallback: return collateral token as the only accepted asset
+ if (market?.collateral?.symbol) {
+   return [{ symbol: market.collateral.symbol, name: market.collateral.name || market.collateral.symbol }];
  }
  return [];
 }
@@ -117,8 +109,8 @@ export const SailManageModal = ({
 
  // Get accepted deposit assets
  const acceptedAssets = useMemo(
- () => getAcceptedDepositAssets(collateralSymbol),
- [collateralSymbol]
+ () => getAcceptedDepositAssets(market),
+ [market]
  );
 
  // Set default deposit asset
