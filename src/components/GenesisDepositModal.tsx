@@ -3,13 +3,15 @@
 import React, { useState } from"react";
 import { parseEther, formatEther } from"viem";
 import {
- useAccount,
- useContractRead,
- useWriteContract,
- usePublicClient,
+  useAccount,
+  useBalance,
+  useContractRead,
+  useWriteContract,
+  usePublicClient,
 } from"wagmi";
 import { BaseError, ContractFunctionRevertedError } from"viem";
-import { GENESIS_ABI, ERC20_ABI } from"../config/contracts";
+import { GENESIS_ABI, ERC20_ABI, contracts } from"../config/contracts";
+import { ZAP_ABI, STETH_ABI, WSTETH_ABI } from"@/abis";
 import { publicClient as mainnetPublicClient } from "@/config/rpc";
 import { useContractRead as useCustomContractRead } from "@/hooks/useContractRead";
 import {
@@ -43,8 +45,8 @@ export const GenesisDepositModal = ({
  marketAddresses,
  onSuccess,
 }: GenesisDepositModalProps) => {
- const { address } = useAccount();
- const wagmiPublicClient = usePublicClient();
+  const { address } = useAccount();
+  const wagmiPublicClient = usePublicClient();
   // Use mainnet public client as fallback if wagmi client is not available
   const publicClient = wagmiPublicClient || mainnetPublicClient;
  const [amount, setAmount] = useState("");
@@ -78,8 +80,20 @@ export const GenesisDepositModal = ({
  return collateralAddress;
  };
 
- const selectedAssetAddress = getAssetAddress(selectedAsset);
- const isNativeETH = selectedAsset.toLowerCase() ==="eth";
+const selectedAssetAddress = getAssetAddress(selectedAsset);
+const isNativeETH = selectedAsset.toLowerCase() ==="eth";
+const isStETH = selectedAsset.toLowerCase() ==="steth";
+const zapAddress = contracts.zap as `0x${string}`;
+const stETHAddress = contracts.wrappedCollateralToken as `0x${string}`; // stETH
+const wstETHAddress = contracts.collateralToken as `0x${string}`; // wstETH
+
+// Get ETH balance for native ETH deposits
+const { data: ethBalance } = useBalance({
+  address: address,
+  query: {
+    enabled: !!address && isOpen && isNativeETH,
+  },
+});
 
  // Debug logging
  if (process.env.NODE_ENV ==="development") {
@@ -125,20 +139,22 @@ export const GenesisDepositModal = ({
  });
  }
 
- const { data: allowanceData, refetch: refetchAllowance } =
- useCustomContractRead({
- address: selectedAssetAddress as `0x${string}`,
- abi: ERC20_ABI,
- functionName:"allowance",
- args: address ? [address, genesisAddress as `0x${string}`] : undefined,
- enabled:
- !!address &&
- isOpen &&
- !isNativeETH &&
- !!selectedAssetAddress &&
- selectedAssetAddress !=="0x0000000000000000000000000000000000000000",
- refetchInterval: 5000,
- });
+// For stETH, check allowance for zap contract; for other tokens, check allowance for genesis
+const allowanceTarget = isStETH ? zapAddress : genesisAddress;
+const { data: allowanceData, refetch: refetchAllowance } =
+  useCustomContractRead({
+    address: selectedAssetAddress as `0x${string}`,
+    abi: ERC20_ABI,
+    functionName:"allowance",
+    args: address ? [address, allowanceTarget as `0x${string}`] : undefined,
+    enabled:
+      !!address &&
+      isOpen &&
+      !isNativeETH &&
+      !!selectedAssetAddress &&
+      selectedAssetAddress !=="0x0000000000000000000000000000000000000000",
+    refetchInterval: 5000,
+  });
 
  // Check if genesis has ended
  const { data: genesisEnded } = useCustomContractRead({
@@ -161,18 +177,56 @@ export const GenesisDepositModal = ({
  // Contract write hooks
  const { writeContractAsync } = useWriteContract();
 
- // For native ETH, we'd need to get balance differently (useBalance hook)
- // For now, we'll use the ERC20 balance for wstETH/stETH
- // If there's an error or no data, default to 0
- const balance = isNativeETH ? 0n : balanceError ? 0n : balanceData || 0n;
- const allowance = isNativeETH ? 0n : allowanceData || 0n;
- const amountBigInt = amount ? parseEther(amount) : 0n;
- const needsApproval =
- !isNativeETH && amountBigInt > 0 && amountBigInt > allowance;
- const userCurrentDeposit = currentDeposit || 0n;
- const newTotalDeposit = userCurrentDeposit + amountBigInt;
- const isNonCollateralAsset =
- selectedAsset.toLowerCase() !== collateralSymbol.toLowerCase();
+  // For native ETH, use useBalance hook; for ERC20 tokens, use contract read
+  // If there's an error or no data, default to 0
+  const balance = isNativeETH 
+    ? (ethBalance?.value || 0n)
+    : balanceError 
+    ? 0n 
+    : balanceData || 0n;
+const allowance = isNativeETH ? 0n : (typeof allowanceData === 'bigint' ? allowanceData : 0n);
+const amountBigInt = amount ? parseEther(amount) : 0n;
+const needsApproval =
+!isNativeETH && amountBigInt > 0 && amountBigInt > allowance;
+const userCurrentDeposit: bigint = typeof currentDeposit === 'bigint' ? currentDeposit : 0n;
+
+// Calculate expected wstETH output for ETH deposits (for preview)
+// ETH converts 1:1 to stETH, then stETH wraps to wstETH
+const { data: expectedWstETHFromETH } = useCustomContractRead({
+  address: wstETHAddress,
+  abi: WSTETH_ABI,
+  functionName: "getWstETHByStETH",
+  args: amountBigInt > 0n && isNativeETH ? [amountBigInt] : undefined, // ETH amount = stETH amount (1:1)
+  enabled: !!address && isOpen && isNativeETH && amountBigInt > 0n,
+});
+
+// Calculate expected wstETH output for stETH deposits (for preview)
+const { data: expectedWstETHFromStETH } = useCustomContractRead({
+  address: wstETHAddress,
+  abi: WSTETH_ABI,
+  functionName: "getWstETHByStETH",
+  args: amountBigInt > 0n && isStETH ? [amountBigInt] : undefined,
+  enabled: !!address && isOpen && isStETH && amountBigInt > 0n,
+});
+
+// Helper to safely extract bigint from hook result
+const toBigInt = (value: unknown): bigint => {
+  if (typeof value === 'bigint') return value;
+  return 0n;
+};
+
+// Calculate the actual wstETH amount that will be deposited
+const actualWstETHDeposit: bigint = isNativeETH
+  ? toBigInt(expectedWstETHFromETH)
+  : isStETH
+  ? toBigInt(expectedWstETHFromStETH)
+  : amountBigInt; // For wstETH, use the amount directly
+
+// Calculate new total deposit using actual wstETH amount
+const newTotalDepositActual: bigint = userCurrentDeposit + actualWstETHDeposit;
+
+const isNonCollateralAsset =
+selectedAsset.toLowerCase() !== collateralSymbol.toLowerCase();
 
  const handleClose = () => {
  if (step ==="approving" || step ==="depositing") return; // Prevent closing during transactions
@@ -264,64 +318,106 @@ https://www.harborfinance.io/`;
  setCurrentStepIndex(0);
  setProgressModalOpen(true);
 
- // For non-native tokens, check and approve if needed
- if (!isNativeETH && needsApproval) {
- setStep("approving");
- setProgressSteps((prev) =>
- prev.map((s) =>
- s.id ==="approve" ? { ...s, status:"in_progress" } : s
- )
- );
- setError(null);
- setTxHash(null);
- const approveHash = await writeContractAsync({
- address: selectedAssetAddress as `0x${string}`,
- abi: ERC20_ABI,
- functionName:"approve",
- args: [genesisAddress as `0x${string}`, amountBigInt],
- // chainId intentionally omitted to let wallet infer the network
- });
- setTxHash(approveHash);
- await publicClient?.waitForTransactionReceipt({ hash: approveHash });
- await refetchAllowance();
+    // For non-native tokens, check and approve if needed
+    if (!isNativeETH && needsApproval) {
+      setStep("approving");
+      setProgressSteps((prev) =>
+        prev.map((s) =>
+          s.id ==="approve" ? { ...s, status:"in_progress" } : s
+        )
+      );
+      setError(null);
+      setTxHash(null);
+      const approveHash = await writeContractAsync({
+        address: selectedAssetAddress as `0x${string}`,
+        abi: ERC20_ABI,
+        functionName:"approve",
+        args: [allowanceTarget as `0x${string}`, amountBigInt],
+        // chainId intentionally omitted to let wallet infer the network
+      });
+      setTxHash(approveHash);
+      await publicClient?.waitForTransactionReceipt({ hash: approveHash });
+      await refetchAllowance();
 
- // Give a moment for the blockchain state to update
- await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Give a moment for the blockchain state to update
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
- // Force another refetch to ensure we have the latest allowance
- await refetchAllowance();
+      // Force another refetch to ensure we have the latest allowance
+      await refetchAllowance();
 
- setProgressSteps((prev) =>
- prev.map((s, idx) =>
- s.id ==="approve"
- ? { ...s, status:"completed", txHash: approveHash }
- : s
- )
- );
- setCurrentStepIndex(steps.findIndex((s) => s.id ==="deposit"));
- }
+      setProgressSteps((prev) =>
+        prev.map((s, idx) =>
+          s.id ==="approve"
+            ? { ...s, status:"completed", txHash: approveHash }
+            : s
+        )
+      );
+      setCurrentStepIndex(steps.findIndex((s) => s.id ==="deposit"));
+    }
 
- setStep("depositing");
- setProgressSteps((prev) =>
- prev.map((s) =>
- s.id ==="deposit" ? { ...s, status:"in_progress" } : s
- )
- );
- setCurrentStepIndex(steps.findIndex((s) => s.id ==="deposit"));
- setError(null);
- setTxHash(null);
+    setStep("depositing");
+    setProgressSteps((prev) =>
+      prev.map((s) =>
+        s.id ==="deposit" ? { ...s, status:"in_progress" } : s
+      )
+    );
+    setCurrentStepIndex(steps.findIndex((s) => s.id ==="deposit"));
+    setError(null);
+    setTxHash(null);
 
- // For native ETH, the contract should handle it via msg.value
- // For ERC20 tokens, we use the standard deposit function
- const depositHash = await writeContractAsync({
- address: genesisAddress as `0x${string}`,
- abi: GENESIS_ABI,
- functionName:"deposit",
- args: [amountBigInt, address as `0x${string}`],
- // For native ETH, value would be amountBigInt, but genesis contract likely expects ERC20
- // The contract should handle conversion internally if it accepts multiple tokens
- value: isNativeETH ? amountBigInt : undefined,
- });
+    // Use zap contract for ETH and stETH deposits
+    let depositHash: `0x${string}`;
+    if (isNativeETH) {
+      // Use zapEth for ETH deposits with slippage protection
+      // ETH converts 1:1 to stETH, then stETH wraps to wstETH
+      const stETHAmount = amountBigInt; // ETH amount = stETH amount (1:1)
+      
+      // Get expected wstETH from stETH amount
+      const expectedWstETH = await publicClient.readContract({
+        address: wstETHAddress,
+        abi: WSTETH_ABI,
+        functionName: "getWstETHByStETH",
+        args: [stETHAmount],
+      });
+      
+      // Apply 1% slippage buffer (99% of expected)
+      const minWstETHOut = (expectedWstETH * 99n) / 100n;
+      
+      depositHash = await writeContractAsync({
+        address: zapAddress,
+        abi: ZAP_ABI,
+        functionName:"zapEth",
+        args: [address as `0x${string}`, minWstETHOut],
+        value: amountBigInt,
+      });
+    } else if (isStETH) {
+      // Use zapStEth for stETH deposits with slippage protection
+      // Get expected wstETH from stETH amount
+      const expectedWstETH = await publicClient.readContract({
+        address: wstETHAddress,
+        abi: WSTETH_ABI,
+        functionName: "getWstETHByStETH",
+        args: [amountBigInt],
+      });
+      
+      // Apply 1% slippage buffer (99% of expected)
+      const minWstETHOut = (expectedWstETH * 99n) / 100n;
+      
+      depositHash = await writeContractAsync({
+        address: zapAddress,
+        abi: ZAP_ABI,
+        functionName:"zapStEth",
+        args: [amountBigInt, address as `0x${string}`, minWstETHOut],
+      });
+    } else {
+      // For other tokens (wstETH), use standard genesis deposit
+      depositHash = await writeContractAsync({
+        address: genesisAddress as `0x${string}`,
+        abi: GENESIS_ABI,
+        functionName:"deposit",
+        args: [amountBigInt, address as `0x${string}`],
+      });
+    }
  setTxHash(depositHash);
  await publicClient?.waitForTransactionReceipt({ hash: depositHash });
 
@@ -784,32 +880,41 @@ https://www.harborfinance.io/`;
  {formatEther(userCurrentDeposit)} {collateralSymbol}
  </span>
  </div>
- {amount && parseFloat(amount) > 0 ? (
- <>
- <div className="flex justify-between">
- <span className="text-[#1E4775]/70">
- + Deposit Amount:
- </span>
- <span className="text-[#1E4775]">
- +{amount} {collateralSymbol}
- </span>
- </div>
- <div className="border-t border-[#1E4775]/30 pt-2">
- <div className="flex justify-between font-medium">
- <span className="text-[#1E4775]">
- New Total Deposit:
- </span>
- <span className="text-[#1E4775]">
- {formatEther(newTotalDeposit)} {collateralSymbol}
- </span>
- </div>
- </div>
- </>
- ) : (
- <div className="text-xs text-[#1E4775]/50 italic">
- Enter an amount to see deposit preview
- </div>
- )}
+{amount && parseFloat(amount) > 0 ? (
+<>
+<div className="flex justify-between">
+<span className="text-[#1E4775]/70">
++ Deposit Amount:
+</span>
+<span className="text-[#1E4775]">
++{isNativeETH || isStETH 
+  ? (actualWstETHDeposit > 0n 
+    ? formatEther(actualWstETHDeposit) 
+    : "Calculating...")
+  : amount} {collateralSymbol}
+</span>
+</div>
+{(isNativeETH || isStETH) && actualWstETHDeposit > 0n && (
+<div className="text-xs text-[#1E4775]/50 italic">
+({amount} {selectedAsset} ≈ {formatEther(actualWstETHDeposit)} {collateralSymbol})
+</div>
+)}
+<div className="border-t border-[#1E4775]/30 pt-2">
+<div className="flex justify-between font-medium">
+<span className="text-[#1E4775]">
+New Total Deposit:
+</span>
+<span className="text-[#1E4775]">
+{formatEther(newTotalDepositActual)} {collateralSymbol}
+</span>
+</div>
+</div>
+</>
+) : (
+<div className="text-xs text-[#1E4775]/50 italic">
+Enter an amount to see deposit preview
+</div>
+)}
  </div>
 
  {/* Error */}

@@ -403,6 +403,33 @@ export const WSTETH_ABI = [
     stateMutability: "view",
     type: "function",
   },
+  {
+    inputs: [{ internalType: "uint256", name: "stETHAmount", type: "uint256" }],
+    name: "getWstETHByStETH",
+    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+] as const;
+
+/**
+ * stETH specific ABI
+ */
+export const STETH_ABI = [
+  {
+    inputs: [{ internalType: "uint256", name: "ethAmount", type: "uint256" }],
+    name: "getSharesByPooledEth",
+    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [{ name: "account", type: "address" }],
+    name: "balanceOf",
+    outputs: [{ name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
 ] as const;
 
 /**

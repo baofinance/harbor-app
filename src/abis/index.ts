@@ -9,6 +9,7 @@ export * from "./minter";
 export * from "./stabilityPool";
 export * from "./rewards";
 export * from "./apr";
+export * from "./zap";
 
 
 
