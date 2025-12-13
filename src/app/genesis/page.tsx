@@ -129,7 +129,32 @@ const erc20SymbolABI = [
 ] as const;
 
 // Standard Chainlink-style oracle ABI: latestAnswer returns a single price, decimals describes scaling
+// Harbor oracle returns tuple: (minUnderlyingPrice, maxUnderlyingPrice, minWrappedRate, maxWrappedRate)
+// Support both formats for backward compatibility
 const chainlinkOracleABI = [
+  {
+    inputs: [],
+    name: "decimals",
+    outputs: [{ type: "uint8", name: "" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "latestAnswer",
+    outputs: [
+      { type: "uint256", name: "" },
+      { type: "uint256", name: "" },
+      { type: "uint256", name: "" },
+      { type: "uint256", name: "" },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+] as const;
+
+// Fallback ABI for single-value oracles (backward compatibility)
+const chainlinkOracleSingleValueABI = [
   {
     inputs: [],
     name: "decimals",
@@ -755,6 +780,7 @@ export default function GenesisIndexPage() {
   };
 
   // Fetch collateral price oracles for each market (for USD calculations)
+  // Priority order: CoinGecko → Tuple answer → Single answer
   const priceContracts = useMemo(() => {
     return genesisMarkets.flatMap(([_, mkt]) => {
       // Use collateralPrice for calculating USD value of deposits
@@ -768,6 +794,7 @@ export default function GenesisIndexPage() {
         oracleAddress.length !== 42
       )
         return [];
+      // Try tuple format first (Harbor oracle), fallback to single-value handled in result processing
       return [
         {
           address: oracleAddress,
@@ -1420,26 +1447,40 @@ export default function GenesisIndexPage() {
               priceDecimals = Number(priceDecimalsResult.result);
             }
 
-            // latestAnswer returns a single price (int256)
+            // Price priority order: CoinGecko → Tuple answer → Single answer
+            // Handle both tuple and single-value oracle formats
+            // Harbor oracle returns tuple: (minUnderlyingPrice, maxUnderlyingPrice, minWrappedRate, maxWrappedRate)
+            // Standard Chainlink returns single int256
+            // Note: We try tuple format first via chainlinkOracleABI, but handle both formats in result processing
             let priceRaw: bigint | undefined;
             if (
               priceAnswerResult?.status === "success" &&
               priceAnswerResult?.result !== undefined
             ) {
-              priceRaw = priceAnswerResult.result as bigint;
+              const result = priceAnswerResult.result;
+              // Priority 2: Check if result is a tuple (array with 4 elements) - Harbor oracle format
+              if (Array.isArray(result) && result.length === 4) {
+                // Harbor oracle format: use maxUnderlyingPrice (index 1)
+                priceRaw = result[1] as bigint;
+              } else if (typeof result === "bigint") {
+                // Priority 3: Standard Chainlink format - single int256 value
+                // Convert to positive if negative (some oracles return negative for error states)
+                priceRaw = result < 0n ? -result : result;
+              }
             }
 
-            // Calculate price: handle negative values (convert to positive) and apply decimals
+            // Calculate price: Priority order: CoinGecko → Tuple answer → Single answer
             let collateralPriceUSD: number = 0;
             let priceError: string | null = null;
             const marketCoinGeckoId = (mkt as any)?.coinGeckoId as
               | string
               | undefined;
 
-            // Try CoinGecko price first if available
+            // Priority 1: Try CoinGecko price first if available
             if (marketCoinGeckoId && coinGeckoPrices[marketCoinGeckoId]) {
               collateralPriceUSD = coinGeckoPrices[marketCoinGeckoId]!;
             } else if (priceRaw !== undefined) {
+              // Priority 2 & 3: Use oracle price (tuple or single-value format)
               // Convert to positive if negative (some oracles return negative for error states)
               const priceValue = priceRaw < 0n ? -priceRaw : priceRaw;
 

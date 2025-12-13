@@ -37,7 +37,7 @@ export const markets = {
         "0x6738c3ee945218fb80700e2f4c1a5f3022a28c8d" as `0x${string}`,
       genesis: contracts.genesis,
       priceOracle: contracts.priceOracle,
-      collateralPrice: "0xbb12a263bda971a64f9573ceab4fa689eb93daff", // MockWrappedPriceOracle
+      collateralPrice: "0xa79191BbB7542805B30326165516a8fEd77ce92c", // HarborSingleFeedAndRateAggregator_v1 (wstETH/USD)
       feeReceiver: contracts.feeReceiver,
       collateralToken: contracts.collateralToken, // wstETH - primary collateral for UI (stored and given as rewards)
       wrappedCollateralToken: contracts.wrappedCollateralToken, // stETH - underlying reference token for yield scraping
@@ -60,6 +60,7 @@ export const markets = {
       description:
         "100 ledger marks per dollar deposited at the end of genesis",
     },
+    coinGeckoId: "wrapped-steth", // CoinGecko ID for wstETH
     genesis: {
       startDate: "2025-11-03T00:00:00Z",
       endDate: "2025-11-25T23:59:59Z",

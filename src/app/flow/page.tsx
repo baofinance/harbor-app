@@ -450,7 +450,7 @@ function FeedGroupSection({
  <th className="py-3 px-4 font-normal text-left w-1/3">Feed</th>
  <th className="py-3 px-4 font-normal text-left w-24">Type</th>
  <th className="py-3 px-4 font-normal text-left">Price</th>
- <th className="py-3 px-4 font-normal text-left">Status</th>
+ <th className="py-3 px-4 font-normal text-left w-24">Status</th>
  </tr>
  </thead>
  <tbody>
@@ -501,9 +501,9 @@ function FeedGroupSection({
  ?"-"
  : `1 ${pair.base} = ${price} ${pair.quote}`}
  </td>
- <td className="py-2 px-4">
+ <td className="py-2 px-4 w-24">
  <span
- className={`px-2 py-1 text-xs font-medium ${
+ className={`inline-block px-2 py-1 text-xs font-medium rounded ${
  status ==="active"
  ?"bg-green-100 text-green-800"
  :"bg-gray-100 text-gray-600"
