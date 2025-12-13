@@ -160,7 +160,6 @@ function MarketExpandedView({
   collateralPriceUSD,
   peggedSymbol,
   leveragedSymbol,
-  onShare,
 }: {
   marketId: string;
   market: any;
@@ -175,7 +174,6 @@ function MarketExpandedView({
   collateralPriceUSD: number;
   peggedSymbol?: string;
   leveragedSymbol?: string;
-  onShare?: () => void;
 }) {
   // Fetch contract data for expanded view
   const { data: expandedReads, error: expandedReadsError } =
@@ -354,12 +352,22 @@ function MarketExpandedView({
           </h3>
           <div className="divide-y divide-[#1E4775]/20 space-y-1">
             <EtherscanLink label="Genesis" address={addresses.genesis} />
+            <EtherscanLink label="Minter" address={addresses.minter} />
             <EtherscanLink
-              label="Market Collateral"
+              label="Collateral Token"
               address={addresses.collateralToken}
             />
             <EtherscanLink label="ha Token" address={peggedTokenAddress} />
             <EtherscanLink label="hs Token" address={leveragedTokenAddress} />
+            <EtherscanLink
+              label="Stability Pool (Collateral)"
+              address={addresses.stabilityPoolCollateral}
+            />
+            <EtherscanLink
+              label="Stability Pool (Leveraged)"
+              address={addresses.stabilityPoolLeveraged}
+            />
+            <EtherscanLink label="Price Oracle" address={addresses.priceOracle} />
           </div>
         </div>
 
@@ -393,16 +401,6 @@ function MarketExpandedView({
                 {leveragedTokenSymbol}
               </span>
             </div>
-            {onShare && (
-              <div className="pt-2">
-                <button
-                  onClick={onShare}
-                  className="w-full text-center text-xs font-semibold text-white bg-[#1E4775] rounded-full py-1.5 hover:bg-[#17395F] transition"
-                >
-                  Share on X
-                </button>
-              </div>
-            )}
           </div>
         </div>
       </div>
@@ -1929,9 +1927,6 @@ export default function GenesisIndexPage() {
                     collateralPriceUSD={collateralPriceUSD}
                     peggedSymbol={rowPeggedSymbol}
                     leveragedSymbol={rowLeveragedSymbol}
-                    onShare={() =>
-                      openShareIntent(displayMarketName, peggedNoPrefix)
-                    }
                   />
                 )}
               </React.Fragment>
