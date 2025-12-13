@@ -350,7 +350,7 @@ function MarketExpandedView({
           <h3 className="text-[#1E4775] font-semibold mb-1 text-xs">
             Contract Info
           </h3>
-          <div className="divide-y divide-[#1E4775]/20">
+          <div>
             <EtherscanLink label="Genesis" address={addresses.genesis} />
             <EtherscanLink label="Minter" address={addresses.minter} />
             <EtherscanLink
