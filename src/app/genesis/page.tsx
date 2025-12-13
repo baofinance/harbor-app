@@ -1995,7 +1995,7 @@ export default function GenesisIndexPage() {
             // Start polling in background (don't await)
             pollForMarks();
 
-            setDepositModal(null);
+            // Don't auto-close modal - let user see success state and close manually
           }}
         />
       )}
@@ -2050,7 +2050,7 @@ export default function GenesisIndexPage() {
             // Start polling in background (don't await)
             pollForMarks();
 
-            setWithdrawModal(null);
+            // Don't auto-close modal - let user see success state and close manually
           }}
         />
       )}
