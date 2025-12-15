@@ -14,23 +14,60 @@ import { GENESIS_ABI, ERC20_ABI, contracts } from"../config/contracts";
 import { ZAP_ABI, STETH_ABI, WSTETH_ABI } from"@/abis";
 import { publicClient as mainnetPublicClient } from "@/config/rpc";
 import { useContractRead as useCustomContractRead } from "@/hooks/useContractRead";
+import { useCollateralPrice } from "@/hooks/useCollateralPrice";
 import {
- TransactionProgressModal,
- TransactionStep,
+TransactionProgressModal,
+TransactionStep,
 } from"./TransactionProgressModal";
 
 interface GenesisDepositModalProps {
- isOpen: boolean;
- onClose: () => void;
- genesisAddress: string;
- collateralAddress: string;
- collateralSymbol: string;
- acceptedAssets: Array<{ symbol: string; name: string }>;
- marketAddresses?: {
- collateralToken?: string;
- wrappedCollateralToken?: string;
- };
- onSuccess?: () => void;
+isOpen: boolean;
+onClose: () => void;
+genesisAddress: string;
+collateralAddress: string;
+collateralSymbol: string;
+acceptedAssets: Array<{ symbol: string; name: string }>;
+marketAddresses?: {
+collateralToken?: string;
+wrappedCollateralToken?: string;
+priceOracle?: string;
+};
+onSuccess?: () => void;
+}
+
+// Format a bigint token amount with limited decimals and optional USD value
+function formatTokenAmount(
+  amount: bigint,
+  symbol: string,
+  priceUSD?: number,
+  maxDecimals: number = 6
+): { formatted: string; usd: string | null } {
+  const numValue = Number(formatEther(amount));
+  
+  // Format with limited decimals, removing trailing zeros
+  let formatted: string;
+  if (numValue === 0) {
+    formatted = "0";
+  } else if (numValue < 0.000001) {
+    formatted = numValue.toExponential(2);
+  } else {
+    formatted = numValue.toFixed(maxDecimals).replace(/\.?0+$/, "");
+  }
+  
+  // Calculate USD value if price is available
+  let usd: string | null = null;
+  if (priceUSD && priceUSD > 0 && numValue > 0) {
+    const usdValue = numValue * priceUSD;
+    if (usdValue < 0.01) {
+      usd = `$${usdValue.toFixed(4)}`;
+    } else if (usdValue < 1000) {
+      usd = `$${usdValue.toFixed(2)}`;
+    } else {
+      usd = `$${usdValue.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+    }
+  }
+  
+  return { formatted, usd };
 }
 
 type ModalStep ="input" |"approving" |"depositing" |"success" |"error";
@@ -57,10 +94,16 @@ export const GenesisDepositModal = ({
  const [progressModalOpen, setProgressModalOpen] = useState(false);
  const [progressSteps, setProgressSteps] = useState<TransactionStep[]>([]);
  const [currentStepIndex, setCurrentStepIndex] = useState(0);
- const [successfulDepositAmount, setSuccessfulDepositAmount] =
- useState<string>("");
+const [successfulDepositAmount, setSuccessfulDepositAmount] =
+useState<string>("");
 
- // Map selected asset to its token address
+// Get collateral price for USD display
+const { priceUSD: collateralPriceUSD } = useCollateralPrice(
+  marketAddresses?.priceOracle as `0x${string}` | undefined,
+  { enabled: isOpen && !!marketAddresses?.priceOracle }
+);
+
+// Map selected asset to its token address
  const getAssetAddress = (assetSymbol: string): string => {
  const normalized = assetSymbol.toLowerCase();
  if (normalized === collateralSymbol.toLowerCase()) {
@@ -710,19 +753,35 @@ setSuccessfulDepositAmount(actualDepositedAmount);
  );
  };
 
- const renderSuccessContent = () => {
- return (
- <div className="space-y-4">
- <div className="p-4 bg-[rgb(var(--surface-selected-rgb))]/20 border border-[rgb(var(--surface-selected-border-rgb))]/30 text-center">
- <p className="text-sm text-[#1E4775]/80">
- Thank you for joining the Maiden Voyage!
- </p>
- {successfulDepositAmount && (
- <p className="text-lg font-bold text-[#1E4775] font-mono mt-2">
- {successfulDepositAmount} {collateralSymbol}
- </p>
- )}
- </div>
+const renderSuccessContent = () => {
+// Format the success amount with USD
+const successAmountNum = parseFloat(successfulDepositAmount || "0");
+const successAmountFormatted = successAmountNum > 0 
+  ? successAmountNum.toFixed(6).replace(/\.?0+$/, "") 
+  : "0";
+const successUSD = successAmountNum > 0 && collateralPriceUSD > 0
+  ? successAmountNum * collateralPriceUSD
+  : null;
+
+return (
+<div className="space-y-4">
+<div className="p-4 bg-[rgb(var(--surface-selected-rgb))]/20 border border-[rgb(var(--surface-selected-border-rgb))]/30 text-center">
+<p className="text-sm text-[#1E4775]/80">
+Thank you for joining the Maiden Voyage!
+</p>
+{successfulDepositAmount && (
+<>
+<p className="text-lg font-bold text-[#1E4775] font-mono mt-2">
+{successAmountFormatted} {collateralSymbol}
+</p>
+{successUSD && (
+<p className="text-sm text-[#1E4775]/60">
+(≈ ${successUSD < 0.01 ? successUSD.toFixed(4) : successUSD.toFixed(2)})
+</p>
+)}
+</>
+)}
+</div>
  <div className="space-y-2 bg-[#17395F]/5 border border-[#1E4775]/15 p-4">
  <div className="text-base font-semibold text-[#1E4775]">
  Boost your airdrop
@@ -811,13 +870,19 @@ setSuccessfulDepositAmount(actualDepositedAmount);
  </div>
  )}
 
- {/* Current Deposit */}
- <div className="text-sm text-[#1E4775]/70">
- Current Deposit:{""}
- <span className="font-medium text-[#1E4775]">
- {formatEther(userCurrentDeposit)} {collateralSymbol}
- </span>
- </div>
+{/* Current Deposit */}
+{(() => {
+  const currentFmt = formatTokenAmount(userCurrentDeposit, collateralSymbol, collateralPriceUSD);
+  return (
+    <div className="text-sm text-[#1E4775]/70">
+      Current Deposit:{" "}
+      <span className="font-medium text-[#1E4775]">
+        {currentFmt.formatted} {collateralSymbol}
+        {currentFmt.usd && <span className="text-[#1E4775]/50 ml-1">({currentFmt.usd})</span>}
+      </span>
+    </div>
+  );
+})()}
 
  {/* Deposit Asset Selection */}
  <div className="space-y-2">
@@ -914,45 +979,62 @@ Balance:{""}
  </div>
  </div>
 
- {/* Transaction Preview - Always visible */}
- <div className="p-3 bg-[#17395F]/10 border border-[#1E4775]/20 space-y-2 text-sm">
- <div className="font-medium text-[#1E4775]">
- Transaction Preview:
- </div>
- <div className="flex justify-between">
- <span className="text-[#1E4775]/70">Current Deposit:</span>
- <span className="text-[#1E4775]">
- {formatEther(userCurrentDeposit)} {collateralSymbol}
- </span>
- </div>
+{/* Transaction Preview - Always visible */}
+<div className="p-3 bg-[#17395F]/10 border border-[#1E4775]/20 space-y-2 text-sm">
+<div className="font-medium text-[#1E4775]">
+Transaction Preview:
+</div>
+{(() => {
+  const currentFmt = formatTokenAmount(userCurrentDeposit, collateralSymbol, collateralPriceUSD);
+  return (
+    <div className="flex justify-between items-baseline">
+      <span className="text-[#1E4775]/70">Current Deposit:</span>
+      <span className="text-[#1E4775]">
+        {currentFmt.formatted} {collateralSymbol}
+        {currentFmt.usd && <span className="text-[#1E4775]/50 ml-1">({currentFmt.usd})</span>}
+      </span>
+    </div>
+  );
+})()}
 {amount && parseFloat(amount) > 0 ? (
 <>
-<div className="flex justify-between">
-<span className="text-[#1E4775]/70">
-+ Deposit Amount:
-</span>
-<span className="text-[#1E4775]">
-+{isNativeETH || isStETH 
-  ? (actualWstETHDeposit > 0n 
-    ? formatEther(actualWstETHDeposit) 
-    : "Calculating...")
-  : amount} {collateralSymbol}
-</span>
-</div>
+{(() => {
+  const depositAmt = isNativeETH || isStETH ? actualWstETHDeposit : amountBigInt;
+  const depositFmt = formatTokenAmount(depositAmt, collateralSymbol, collateralPriceUSD);
+  return (
+    <div className="flex justify-between items-baseline">
+      <span className="text-[#1E4775]/70">+ Deposit Amount:</span>
+      <span className="text-[#1E4775]">
+        {depositAmt > 0n ? (
+          <>
+            +{depositFmt.formatted} {collateralSymbol}
+            {depositFmt.usd && <span className="text-[#1E4775]/50 ml-1">(+{depositFmt.usd})</span>}
+          </>
+        ) : (
+          "Calculating..."
+        )}
+      </span>
+    </div>
+  );
+})()}
 {(isNativeETH || isStETH) && actualWstETHDeposit > 0n && (
 <div className="text-xs text-[#1E4775]/50 italic">
-({amount} {selectedAsset} ≈ {formatEther(actualWstETHDeposit)} {collateralSymbol})
+({parseFloat(amount).toFixed(6)} {selectedAsset} ≈ {formatTokenAmount(actualWstETHDeposit, collateralSymbol).formatted} {collateralSymbol})
 </div>
 )}
 <div className="border-t border-[#1E4775]/30 pt-2">
-<div className="flex justify-between font-medium">
-<span className="text-[#1E4775]">
-New Total Deposit:
-</span>
-<span className="text-[#1E4775]">
-{formatEther(newTotalDepositActual)} {collateralSymbol}
-</span>
-</div>
+{(() => {
+  const totalFmt = formatTokenAmount(newTotalDepositActual, collateralSymbol, collateralPriceUSD);
+  return (
+    <div className="flex justify-between items-baseline font-medium">
+      <span className="text-[#1E4775]">New Total Deposit:</span>
+      <span className="text-[#1E4775]">
+        {totalFmt.formatted} {collateralSymbol}
+        {totalFmt.usd && <span className="text-[#1E4775]/50 font-normal ml-1">({totalFmt.usd})</span>}
+      </span>
+    </div>
+  );
+})()}
 </div>
 </>
 ) : (
@@ -960,7 +1042,7 @@ New Total Deposit:
 Enter an amount to see deposit preview
 </div>
 )}
- </div>
+</div>
 
  {/* Error */}
  {error && (

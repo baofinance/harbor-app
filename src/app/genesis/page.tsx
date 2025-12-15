@@ -433,12 +433,18 @@ export default function GenesisIndexPage() {
     collateralAddress: string;
     collateralSymbol: string;
     acceptedAssets: Array<{ symbol: string; name: string }>;
+    marketAddresses?: {
+      collateralToken?: string;
+      wrappedCollateralToken?: string;
+      priceOracle?: string;
+    };
   } | null>(null);
   const [withdrawModal, setWithdrawModal] = useState<{
     marketId: string;
     genesisAddress: string;
     collateralSymbol: string;
     userDeposit: bigint;
+    priceOracleAddress?: string;
   } | null>(null);
   const [now, setNow] = useState(new Date());
   const [expandedMarket, setExpandedMarket] = useState<string | null>(null);
@@ -1900,6 +1906,8 @@ export default function GenesisIndexPage() {
                                       ?.collateralToken,
                                     wrappedCollateralToken: (mkt as any)
                                       .addresses?.wrappedCollateralToken,
+                                    priceOracle: (mkt as any).addresses
+                                      ?.collateralPrice,
                                   },
                                 });
                               }
@@ -1924,6 +1932,8 @@ export default function GenesisIndexPage() {
                                   genesisAddress,
                                   collateralSymbol,
                                   userDeposit,
+                                  priceOracleAddress: (mkt as any).addresses
+                                    ?.collateralPrice,
                                 });
                               }
                             }}
@@ -2048,6 +2058,7 @@ export default function GenesisIndexPage() {
           genesisAddress={withdrawModal.genesisAddress}
           collateralSymbol={withdrawModal.collateralSymbol}
           userDeposit={withdrawModal.userDeposit}
+          priceOracleAddress={withdrawModal.priceOracleAddress}
           onSuccess={async () => {
             // Wait for blockchain state to update
             await new Promise((resolve) => setTimeout(resolve, 2000));
