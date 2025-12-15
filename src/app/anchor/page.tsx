@@ -6403,6 +6403,7 @@ export default function AnchorPage() {
                       ?.collateralPrice;
                     const collateralPriceDecimals = 18;
                     let collateralPrice: bigint | undefined;
+                    let wrappedRate: bigint | undefined;
                     if (hasPriceOracle) {
                       const latestAnswerResult = reads?.[currentOffset]?.result;
                       if (
@@ -6410,14 +6411,18 @@ export default function AnchorPage() {
                         latestAnswerResult !== null
                       ) {
                         if (Array.isArray(latestAnswerResult)) {
-                          collateralPrice = latestAnswerResult[1] as bigint;
+                          collateralPrice = latestAnswerResult[1] as bigint; // maxUnderlyingPrice
+                          wrappedRate = latestAnswerResult[3] as bigint; // maxWrappedRate
                         } else if (typeof latestAnswerResult === "object") {
                           const obj = latestAnswerResult as {
                             maxUnderlyingPrice?: bigint;
+                            maxWrappedRate?: bigint;
                           };
                           collateralPrice = obj.maxUnderlyingPrice;
+                          wrappedRate = obj.maxWrappedRate;
                         } else if (typeof latestAnswerResult === "bigint") {
                           collateralPrice = latestAnswerResult;
+                          wrappedRate = BigInt("1000000000000000000"); // Default 1:1 ratio
                         }
                       }
                       currentOffset += 1; // Move past collateral oracle (latestAnswer only)
@@ -6541,6 +6546,7 @@ export default function AnchorPage() {
                       sailRewardsUSD,
                       collateralPrice,
                       collateralPriceDecimals,
+                      wrappedRate,
                       userDeposit,
                       minAPR,
                       maxAPR,
@@ -7260,14 +7266,20 @@ export default function AnchorPage() {
                               10 ** priceDecimals
                             : 0;
 
-                          // Collateral value from collateralValue (token balance) * price
+                          // Collateral value from collateralValue (token balance) * price * wrappedRate
+                          // collateralValue is in wrapped tokens (e.g., wstETH)
+                          // collateralPriceUSD is the underlying price (e.g., stETH in USD)
+                          // wrappedRate converts wrapped to underlying (e.g., wstETH to stETH ratio ~1.18)
                           const collateralTokens =
                             marketData.collateralValue !== undefined
                               ? Number(marketData.collateralValue) / 1e18
                               : 0;
+                          const wrappedRateNum = marketData.wrappedRate
+                            ? Number(marketData.wrappedRate) / 1e18
+                            : 1; // Default 1:1 if no rate
                           const collateralValueUSD =
                             collateralTokens > 0 && collateralPriceUSD > 0
-                              ? collateralTokens * collateralPriceUSD
+                              ? collateralTokens * collateralPriceUSD * wrappedRateNum
                               : 0;
 
                           // Total ha tokens (totalDebt is the supply of pegged tokens)
@@ -7453,7 +7465,7 @@ export default function AnchorPage() {
                                     </div>
                                     <div className="bg-[#1E4775]/5 p-1.5 text-center">
                                       <div className="text-[10px] text-[#1E4775]/70 mb-0.5">
-                                        Total{""}
+                                        Total{" "}
                                         {marketData.market.peggedToken
                                           ?.symbol || "ha"}
                                       </div>
