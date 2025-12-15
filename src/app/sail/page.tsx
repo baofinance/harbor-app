@@ -270,6 +270,45 @@ function getShortSide(market: any): string {
   return "Other";
 }
 
+// Helper to fetch logs in batches (max 1000 blocks per request for public RPCs)
+async function getLogsInBatches(
+  client: any,
+  params: {
+    address: `0x${string}`;
+    event: any;
+    args?: any;
+    fromBlock: bigint;
+    toBlock: bigint;
+  },
+  batchSize = 900n // Use 900 to stay under 1000 limit
+): Promise<any[]> {
+  const allLogs: any[] = [];
+  let currentFrom = params.fromBlock;
+
+  while (currentFrom <= params.toBlock) {
+    const currentTo =
+      currentFrom + batchSize > params.toBlock
+        ? params.toBlock
+        : currentFrom + batchSize;
+
+    try {
+      const logs = await client.getLogs({
+        ...params,
+        fromBlock: currentFrom,
+        toBlock: currentTo,
+      });
+      allLogs.push(...logs);
+    } catch (error) {
+      // If batch fails, skip this range
+      console.warn(`Failed to fetch logs from ${currentFrom} to ${currentTo}`);
+    }
+
+    currentFrom = currentTo + 1n;
+  }
+
+  return allLogs;
+}
+
 // Hook to calculate PnL from event logs (includes genesis deposits for cost basis)
 function usePnLCalculation(
   userAddress: `0x${string}` | undefined,
@@ -313,14 +352,13 @@ function usePnLCalculation(
 
       try {
         const currentBlock = await client.getBlockNumber();
-        // Start from a reasonable block (e.g., 30 days ago assuming ~12s blocks)
-        const blocksPerDay = (24 * 60 * 60) / 12;
-        const fromBlock = BigInt(
-          Math.max(0, Number(currentBlock) - blocksPerDay * 90)
-        );
+        // Start from deployment block (block 23993255 per subgraph docs)
+        // This avoids querying unnecessary blocks
+        const deploymentBlock = 23993255n;
+        const fromBlock = deploymentBlock;
 
-        // Fetch mint events where user is receiver
-        const mintLogs = await client.getLogs({
+        // Fetch mint events where user is receiver (in batches)
+        const mintLogs = await getLogsInBatches(client, {
           address: minterAddress,
           event: MINT_LEVERAGED_TOKEN_EVENT,
           args: { receiver: userAddress },
@@ -328,8 +366,8 @@ function usePnLCalculation(
           toBlock: currentBlock,
         });
 
-        // Fetch redeem events where user is sender
-        const redeemLogs = await client.getLogs({
+        // Fetch redeem events where user is sender (in batches)
+        const redeemLogs = await getLogsInBatches(client, {
           address: minterAddress,
           event: REDEEM_LEVERAGED_TOKEN_EVENT,
           args: { sender: userAddress },
@@ -342,7 +380,7 @@ function usePnLCalculation(
         let genesisLogs: any[] = [];
         if (genesisAddress) {
           try {
-            genesisLogs = await client.getLogs({
+            genesisLogs = await getLogsInBatches(client, {
               address: genesisAddress,
               event: GENESIS_DEPOSIT_EVENT,
               args: { receiver: userAddress },
@@ -542,20 +580,9 @@ function SailMarketRow({
     const oracleRead = reads?.[baseOffset + oracleOffset];
     const oracleResult = oracleRead?.result;
     
-    // Debug: log once per market when expanded
-    if (typeof window !== 'undefined' && oracleRead) {
-      console.log(`[Sail ${id}] Oracle read:`, {
-        offset: baseOffset + oracleOffset,
-        status: oracleRead?.status,
-        error: oracleRead?.error?.message,
-        resultType: typeof oracleResult,
-        isArray: Array.isArray(oracleResult),
-        result: oracleResult,
-      });
-    }
-    
     if (oracleResult !== undefined && oracleResult !== null) {
       if (Array.isArray(oracleResult)) {
+        // latestAnswer returns [minUnderlyingPrice, maxUnderlyingPrice, minWrappedRate, maxWrappedRate]
         collateralPriceUSD = oracleResult[1] as bigint;
         wrappedRate = oracleResult[3] as bigint;
       } else if (typeof oracleResult === "object") {
@@ -801,13 +828,16 @@ function SailMarketExpandedView({
       return undefined;
     }
     // Convert token price from collateral units to USD
-    // computedTokenPrice is in collateral token units (18 decimals)
+    // computedTokenPrice is in wrapped collateral units (18 decimals)
     // collateralPriceUSD is USD per underlying (18 decimals)
     // wrappedRate is wrapped to underlying conversion (18 decimals)
-    const tokenPriceUSD_BigInt =
-      (computedTokenPrice * collateralPriceUSD * wrappedRate) /
-      BigInt("1000000000000000000000000000000000000000000000000000000");
-    return Number(tokenPriceUSD_BigInt) / 1e18;
+    // Formula: tokenPrice * wrappedRate * underlyingPriceUSD / 1e36
+    // This gives us USD value with 18 decimals
+    const oneE18 = BigInt("1000000000000000000");
+    const oneE36 = oneE18 * oneE18;
+    const tokenPriceUSD_18dec =
+      (computedTokenPrice * wrappedRate * collateralPriceUSD) / oneE36;
+    return Number(tokenPriceUSD_18dec) / 1e18;
   }, [computedTokenPrice, collateralPriceUSD, wrappedRate]);
 
   return (
