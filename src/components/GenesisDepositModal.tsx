@@ -297,11 +297,15 @@ https://www.harborfinance.io/`;
  return true;
  };
 
- const handleDeposit = async () => {
- if (!validateAmount()) return;
- try {
- // Initialize progress modal steps
- const steps: TransactionStep[] = [];
+const handleDeposit = async () => {
+if (!validateAmount()) return;
+try {
+// Capture the current deposit balance BEFORE any transactions
+// This prevents race conditions with the refetching hook
+const preDepositBalance = userCurrentDeposit;
+
+// Initialize progress modal steps
+const steps: TransactionStep[] = [];
  const includeApproval = !isNativeETH && needsApproval;
  if (includeApproval) {
  steps.push({
@@ -436,7 +440,8 @@ if (isNativeETH || isStETH) {
       args: [address as `0x${string}`],
     });
     // Calculate the difference (new balance - old balance = amount deposited)
-    const depositedWstETH = (newBalance as bigint) - userCurrentDeposit;
+    // Use preDepositBalance captured at start of transaction to avoid race conditions
+    const depositedWstETH = (newBalance as bigint) - preDepositBalance;
     if (depositedWstETH > 0n) {
       actualDepositedAmount = formatEther(depositedWstETH);
     }
