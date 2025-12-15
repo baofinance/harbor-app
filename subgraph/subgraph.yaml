@@ -97,6 +97,9 @@ dataSources:
         - MarksMultiplier
         - UserTotalMarks
         - PriceFeed
+        - UserSailPosition
+        - CostBasisLot
+        - SailTokenPricePoint
       abis:
         - name: ERC20
           file: ./abis/ERC20.json
@@ -104,6 +107,8 @@ dataSources:
           file: ./abis/ChainlinkAggregator.json
         - name: Minter
           file: ./abis/Minter.json
+        - name: WrappedPriceOracle
+          file: ./abis/WrappedPriceOracle.json
       eventHandlers:
         - event: Transfer(indexed address,indexed address,uint256)
           handler: handleSailTokenTransfer
@@ -213,9 +218,9 @@ dataSources:
           handler: handleGenesisEnd
       file: ./src/genesisWBTC.ts
 
-  # Leveraged Token (hsUSD-WBTC)
+  # Leveraged Token (hsUSD-WBTC) - Sail token for WBTC market (5x marks multiplier)
   - kind: ethereum
-    name: HaToken_hsWBTC
+    name: SailToken_hsWBTC
     network: mainnet
     source:
       address: "0x03fd55f80277c13bb17739190b1e086b836c9f20"
@@ -226,19 +231,26 @@ dataSources:
       apiVersion: 0.0.7
       language: wasm/assemblyscript
       entities:
-        - HaTokenBalance
+        - SailTokenBalance
         - MarksMultiplier
         - UserTotalMarks
         - PriceFeed
+        - UserSailPosition
+        - CostBasisLot
+        - SailTokenPricePoint
       abis:
         - name: ERC20
           file: ./abis/ERC20.json
         - name: ChainlinkAggregator
           file: ./abis/ChainlinkAggregator.json
+        - name: Minter
+          file: ./abis/Minter.json
+        - name: WrappedPriceOracle
+          file: ./abis/WrappedPriceOracle.json
       eventHandlers:
         - event: Transfer(indexed address,indexed address,uint256)
-          handler: handleHaTokenTransfer
-      file: ./src/haTokenWBTC.ts
+          handler: handleSailTokenTransfer
+      file: ./src/sailTokenWBTC.ts
 
   # Stability Pool Collateral - WBTC market (wrapped WBTC deposits)
   - kind: ethereum
@@ -305,3 +317,85 @@ dataSources:
         - event: UserDepositChange(indexed address,uint256,uint256)
           handler: handleStabilityPoolDepositChange
       file: ./src/stabilityPoolLeveragedWBTC.ts
+
+  # ============================================================================
+  # MINTER CONTRACTS - For Sail Token Price History & PnL
+  # ============================================================================
+  
+  # Minter - stETH market (tracks mint/redeem events for price history and PnL)
+  - kind: ethereum
+    name: Minter_stETH
+    network: mainnet
+    source:
+      address: "0x8b17b6e8f9ce3477ddaf372a4140ac6005787901"
+      abi: Minter
+      startBlock: 23993255
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - SailTokenPricePoint
+        - HourlyPriceSnapshot
+        - PriceTracker
+        - UserSailPosition
+        - CostBasisLot
+        - SailTokenMintEvent
+        - SailTokenRedeemEvent
+      abis:
+        - name: Minter
+          file: ./abis/Minter.json
+        - name: ERC20
+          file: ./abis/ERC20.json
+        - name: WrappedPriceOracle
+          file: ./abis/WrappedPriceOracle.json
+      eventHandlers:
+        - event: MintLeveragedToken(indexed address,indexed address,uint256,uint256,uint256)
+          handler: handleMintLeveragedToken
+        - event: RedeemLeveragedToken(indexed address,uint256,uint256)
+          handler: handleRedeemLeveragedToken
+      blockHandlers:
+        - handler: handleBlock
+          filter:
+            kind: polling
+            every: 300  # Check every 300 blocks (~1 hour at 12s/block)
+      file: ./src/minter.ts
+
+  # Minter - WBTC market
+  - kind: ethereum
+    name: Minter_WBTC
+    network: mainnet
+    source:
+      address: "0xa9434313a4b9a4d624c6d67b1d61091b159f5a77"
+      abi: Minter
+      startBlock: 23999551
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - SailTokenPricePoint
+        - HourlyPriceSnapshot
+        - PriceTracker
+        - UserSailPosition
+        - CostBasisLot
+        - SailTokenMintEvent
+        - SailTokenRedeemEvent
+      abis:
+        - name: Minter
+          file: ./abis/Minter.json
+        - name: ERC20
+          file: ./abis/ERC20.json
+        - name: WrappedPriceOracle
+          file: ./abis/WrappedPriceOracle.json
+      eventHandlers:
+        - event: MintLeveragedToken(indexed address,indexed address,uint256,uint256,uint256)
+          handler: handleMintLeveragedToken
+        - event: RedeemLeveragedToken(indexed address,uint256,uint256)
+          handler: handleRedeemLeveragedToken
+      blockHandlers:
+        - handler: handleBlock
+          filter:
+            kind: polling
+            every: 300  # Check every 300 blocks (~1 hour at 12s/block)
+      file: ./src/minterWBTC.ts

@@ -160,3 +160,157 @@ type UserTotalMarks @entity(immutable: false) {
   # Last updated
   lastUpdated: BigInt! # Last block timestamp when updated
 }
+
+# ============ Entities for Sail Token Price History & PnL ============
+
+# Track each mint/redeem/genesis event with price data (for price charts)
+type SailTokenPricePoint @entity(immutable: true) {
+  id: ID! # "{tokenAddress}-{txHash}-{logIndex}"
+  tokenAddress: Bytes! # Sail token address
+  minterAddress: Bytes! # Minter contract address
+  blockNumber: BigInt!
+  timestamp: BigInt!
+  txHash: Bytes!
+  
+  # Price data at time of event
+  tokenPriceUSD: BigDecimal! # Sail token price in USD
+  collateralPriceUSD: BigDecimal! # Underlying collateral price in USD
+  wrappedRate: BigDecimal! # Wrapped to underlying conversion rate
+  
+  # Event details
+  eventType: String! # "mint" | "redeem" | "genesis" | "hourly"
+  collateralAmount: BigInt! # Collateral in/out (0 for hourly snapshots)
+  tokenAmount: BigInt! # Sail tokens minted/redeemed (0 for hourly)
+  
+  # Derived price from event (collateralAmount * price / tokenAmount)
+  impliedTokenPrice: BigDecimal # Implied price from this transaction
+}
+
+# Hourly price snapshots for continuous chart data
+type HourlyPriceSnapshot @entity(immutable: true) {
+  id: ID! # "{tokenAddress}-{hourTimestamp}"
+  tokenAddress: Bytes! # Sail token address
+  minterAddress: Bytes! # Minter contract address
+  hourTimestamp: BigInt! # Hour start timestamp (rounded down to hour)
+  blockNumber: BigInt! # Block number when snapshot was taken
+  
+  # Price data
+  tokenPriceUSD: BigDecimal! # Sail token price in USD
+  collateralPriceUSD: BigDecimal! # Underlying collateral price
+  wrappedRate: BigDecimal! # Wrapped to underlying rate
+  
+  # Market data at this hour
+  totalSupply: BigInt! # Total sail token supply
+  collateralBalance: BigInt! # Total collateral in minter
+  leverageRatio: BigInt! # Current leverage ratio (18 decimals)
+  collateralRatio: BigInt! # Current collateral ratio (18 decimals)
+}
+
+# Tracks when last price was recorded per token (for hourly logic)
+type PriceTracker @entity(immutable: false) {
+  id: ID! # "{tokenAddress}"
+  tokenAddress: Bytes!
+  minterAddress: Bytes!
+  oracleAddress: Bytes!
+  lastPriceTimestamp: BigInt! # Timestamp of last price point
+  lastHourlySnapshot: BigInt! # Hour timestamp of last hourly snapshot
+  lastBlockNumber: BigInt! # Block number of last update
+}
+
+# User's sail token position with cost basis (for PnL)
+type UserSailPosition @entity(immutable: false) {
+  id: ID! # "{tokenAddress}-{userAddress}"
+  tokenAddress: Bytes! # Sail token address
+  user: Bytes! # User address
+  
+  # Current position
+  balance: BigInt! # Current token balance
+  balanceUSD: BigDecimal! # Current value in USD
+  
+  # Cost basis (aggregated from lots)
+  totalCostBasisUSD: BigDecimal! # Sum of all remaining lots' cost
+  averageCostPerToken: BigDecimal! # Total cost / balance
+  
+  # Realized P&L
+  realizedPnLUSD: BigDecimal! # Realized profit/loss from redeems
+  
+  # Lifetime stats
+  totalTokensBought: BigInt! # Total tokens ever acquired (mint + genesis)
+  totalTokensSold: BigInt! # Total tokens ever sold (redeem)
+  totalSpentUSD: BigDecimal! # Total USD spent to acquire tokens
+  totalReceivedUSD: BigDecimal! # Total USD received from redeems
+  
+  # Tracking
+  firstAcquiredAt: BigInt! # First acquisition timestamp
+  lastUpdated: BigInt! # Last update timestamp
+  
+  # Reference to lots
+  lots: [CostBasisLot!]! @derivedFrom(field: "position")
+}
+
+# Individual cost basis lots for FIFO tracking
+type CostBasisLot @entity(immutable: false) {
+  id: ID! # "{positionId}-{index}"
+  position: UserSailPosition! # Parent position
+  lotIndex: Int! # Index in FIFO queue (0 = oldest)
+  
+  # Lot details
+  tokenAmount: BigInt! # Remaining tokens in this lot
+  originalAmount: BigInt! # Original tokens when lot was created
+  costUSD: BigDecimal! # Remaining cost basis for this lot
+  originalCostUSD: BigDecimal! # Original cost when lot was created
+  pricePerToken: BigDecimal! # USD price per token when acquired
+  
+  # Source
+  eventType: String! # "mint" | "genesis"
+  timestamp: BigInt! # When lot was created
+  blockNumber: BigInt!
+  txHash: Bytes!
+  
+  # Status
+  isFullyRedeemed: Boolean! # True if tokenAmount == 0
+}
+
+# Mint/Redeem events (immutable log)
+type SailTokenMintEvent @entity(immutable: true) {
+  id: ID! # "{txHash}-{logIndex}"
+  tokenAddress: Bytes!
+  minterAddress: Bytes!
+  user: Bytes! # Receiver
+  
+  collateralIn: BigInt!
+  feeIn: BigInt!
+  leveragedOut: BigInt!
+  
+  # USD values at time of event
+  collateralValueUSD: BigDecimal!
+  tokenValueUSD: BigDecimal!
+  pricePerToken: BigDecimal!
+  
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  txHash: Bytes!
+}
+
+type SailTokenRedeemEvent @entity(immutable: true) {
+  id: ID! # "{txHash}-{logIndex}"
+  tokenAddress: Bytes!
+  minterAddress: Bytes!
+  user: Bytes! # Sender
+  
+  leveragedBurned: BigInt!
+  collateralOut: BigInt!
+  
+  # USD values at time of event
+  collateralValueUSD: BigDecimal!
+  tokenValueUSD: BigDecimal!
+  pricePerToken: BigDecimal!
+  
+  # PnL for this redeem
+  costBasisUSD: BigDecimal! # Cost basis of tokens redeemed (FIFO)
+  realizedPnLUSD: BigDecimal! # Profit/loss from this redeem
+  
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  txHash: Bytes!
+}

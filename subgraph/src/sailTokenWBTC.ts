@@ -1,24 +1,19 @@
 /**
- * Sail Token balance tracking for Harbor Marks
+ * Sail Token balance tracking for Harbor Marks - WBTC Market
  * Tracks ERC20 Transfer events to calculate user balances and marks
  * Sail tokens (leveraged tokens, hs) have a 5x marks multiplier by default
- * 
- * IMPORTANT: Sail tokens have VARIABLE prices (not pegged to $1)
- * The price is fetched from Minter.leveragedTokenPrice()
  */
 
-import { Transfer as TransferEvent } from "../generated/SailToken_hsPB/ERC20";
-import { ERC20 } from "../generated/SailToken_hsPB/ERC20";
-import { Minter } from "../generated/SailToken_hsPB/Minter";
-import { WrappedPriceOracle } from "../generated/SailToken_hsPB/WrappedPriceOracle";
+import { Transfer as TransferEvent } from "../generated/SailToken_hsWBTC/ERC20";
+import { ERC20 } from "../generated/SailToken_hsWBTC/ERC20";
+import { Minter } from "../generated/SailToken_hsWBTC/Minter";
+import { WrappedPriceOracle } from "../generated/SailToken_hsWBTC/WrappedPriceOracle";
 import {
   updateSailTokenMarksInTotal,
 } from "./marksAggregation";
 import {
   SailTokenBalance,
   MarksMultiplier,
-  PriceFeed,
-  UserTotalMarks,
   UserSailPosition,
   CostBasisLot,
   SailTokenPricePoint,
@@ -27,7 +22,7 @@ import { BigDecimal, BigInt, Bytes, Address, ethereum } from "@graphprotocol/gra
 
 // Constants
 const SECONDS_PER_DAY = BigDecimal.fromString("86400");
-const DEFAULT_MULTIPLIER = BigDecimal.fromString("5.0"); // 5x for sail tokens (default)
+const DEFAULT_MULTIPLIER = BigDecimal.fromString("5.0");
 const DEFAULT_MARKS_PER_DOLLAR_PER_DAY = BigDecimal.fromString("1.0");
 const ONE_ETHER = BigDecimal.fromString("1000000000000000000");
 const ONE_ETHER_BI = BigInt.fromString("1000000000000000000");
@@ -35,77 +30,33 @@ const ZERO_BI = BigInt.fromI32(0);
 const ZERO_BD = BigDecimal.fromString("0");
 const ZERO_ADDRESS = Address.fromHexString("0x0000000000000000000000000000000000000000");
 
-// Genesis contract addresses (mints from these indicate genesis distribution)
-const STETH_GENESIS = Address.fromString("0x1454707877cdb966e29cea8a190c2169eeca4b8c");
+// WBTC Market addresses
+const WBTC_SAIL_TOKEN = Address.fromString("0x03fd55f80277c13bb17739190b1e086b836c9f20");
+const WBTC_MINTER = Address.fromString("0xa9434313a4b9a4d624c6d67b1d61091b159f5a77");
+const WBTC_ORACLE = Address.fromString("0x7df29f02e6baf23fbd77940d78b158a66f1bd33c");
 const WBTC_GENESIS = Address.fromString("0x0569ebf818902e448235592f86e63255bbe64fd3");
 
-// Oracle addresses for price fetching
-const STETH_ORACLE = Address.fromString("0xa79191BbB7542805B30326165516a8fEd77ce92c");
-const WBTC_ORACLE = Address.fromString("0x7df29f02e6baf23fbd77940d78b158a66f1bd33c");
-
-// ============================================================================
-// TOKEN TO MINTER MAPPING
-// Maps sail token addresses to their corresponding Minter contracts
-// ============================================================================
-
-// stETH Market (USD-pegged)
-const STETH_SAIL_TOKEN = Address.fromString("0x469ddfcfa98d0661b7efedc82aceeab84133f7fe");   // hsUSD-stETH
-const STETH_MINTER = Address.fromString("0x8b17b6e8f9ce3477ddaf372a4140ac6005787901");
-
-// WBTC Market (USD-pegged)
-const WBTC_SAIL_TOKEN = Address.fromString("0x03fd55f80277c13bb17739190b1e086b836c9f20");    // hsUSD-WBTC
-const WBTC_MINTER = Address.fromString("0xa9434313a4b9a4d624c6d67b1d61091b159f5a77");
-
-/**
- * Get the Minter address for a sail token
- */
-function getMinterForSailToken(tokenAddress: Address): Address | null {
-  if (tokenAddress.equals(STETH_SAIL_TOKEN)) {
-    return STETH_MINTER;
-  }
-  if (tokenAddress.equals(WBTC_SAIL_TOKEN)) {
-    return WBTC_MINTER;
-  }
-  return null;
-}
-
-/**
- * Get the Oracle address for a sail token
- */
-function getOracleForSailToken(tokenAddress: Address): Address | null {
-  if (tokenAddress.equals(STETH_SAIL_TOKEN)) {
-    return STETH_ORACLE;
-  }
-  if (tokenAddress.equals(WBTC_SAIL_TOKEN)) {
-    return WBTC_ORACLE;
-  }
-  return null;
-}
-
-/**
- * Check if an address is a Genesis contract
- */
-function isGenesisContract(address: Address): boolean {
-  return address.equals(STETH_GENESIS) || address.equals(WBTC_GENESIS);
-}
-
-/**
- * Helper to convert BigInt to BigDecimal with 18 decimals
- */
 function toDecimal(value: BigInt): BigDecimal {
   return value.toBigDecimal().div(ONE_ETHER);
 }
 
-/**
- * Fetch oracle prices (collateralPriceUSD, wrappedRate)
- */
-function fetchOraclePrices(tokenAddress: Address): BigDecimal[] {
-  const oracleAddress = getOracleForSailToken(tokenAddress);
-  if (oracleAddress === null) {
-    return [ZERO_BD, BigDecimal.fromString("1.0")];
+function isGenesisContract(address: Address): boolean {
+  return address.equals(WBTC_GENESIS);
+}
+
+function fetchSailTokenPrice(): BigDecimal {
+  const minter = Minter.bind(WBTC_MINTER);
+  const priceResult = minter.try_leveragedTokenPrice();
+  
+  if (priceResult.reverted) {
+    return BigDecimal.fromString("1.0");
   }
   
-  const oracle = WrappedPriceOracle.bind(oracleAddress);
+  return priceResult.value.toBigDecimal().div(ONE_ETHER);
+}
+
+function fetchOraclePrices(): BigDecimal[] {
+  const oracle = WrappedPriceOracle.bind(WBTC_ORACLE);
   const result = oracle.try_latestAnswer();
   
   if (result.reverted) {
@@ -118,9 +69,36 @@ function fetchOraclePrices(tokenAddress: Address): BigDecimal[] {
   return [maxUnderlyingPrice, maxWrappedRate];
 }
 
-/**
- * Get or create user sail position for PnL tracking
- */
+function calculateBalanceUSD(balance: BigInt): BigDecimal {
+  const price = fetchSailTokenPrice();
+  const balanceDecimal = balance.toBigDecimal().div(ONE_ETHER);
+  return balanceDecimal.times(price);
+}
+
+function getOrCreateSailTokenBalance(
+  tokenAddress: Bytes,
+  userAddress: Bytes
+): SailTokenBalance {
+  const id = `${tokenAddress.toHexString()}-${userAddress.toHexString()}`;
+  let balance = SailTokenBalance.load(id);
+
+  if (balance == null) {
+    balance = new SailTokenBalance(id);
+    balance.tokenAddress = tokenAddress;
+    balance.user = userAddress;
+    balance.balance = ZERO_BI;
+    balance.balanceUSD = ZERO_BD;
+    balance.marksPerDay = ZERO_BD;
+    balance.accumulatedMarks = ZERO_BD;
+    balance.totalMarksEarned = ZERO_BD;
+    balance.firstSeenAt = ZERO_BI;
+    balance.lastUpdated = ZERO_BI;
+    balance.marketId = "usd-wbtc";
+    balance.save();
+  }
+  return balance;
+}
+
 function getOrCreateUserSailPosition(
   tokenAddress: Bytes,
   userAddress: Bytes
@@ -149,9 +127,6 @@ function getOrCreateUserSailPosition(
   return position;
 }
 
-/**
- * Count existing lots for a position
- */
 function countLots(positionId: string): i32 {
   let count = 0;
   while (true) {
@@ -163,9 +138,6 @@ function countLots(positionId: string): i32 {
   return count;
 }
 
-/**
- * Create a new cost basis lot
- */
 function createCostBasisLot(
   position: UserSailPosition,
   tokenAmount: BigInt,
@@ -199,9 +171,6 @@ function createCostBasisLot(
   lot.save();
 }
 
-/**
- * Update position aggregates from lots
- */
 function updatePositionAggregates(position: UserSailPosition): void {
   let totalCost = ZERO_BD;
   let totalTokens = ZERO_BI;
@@ -228,80 +197,15 @@ function updatePositionAggregates(position: UserSailPosition): void {
     : ZERO_BD;
 }
 
-/**
- * Fetch sail token price from Minter.leveragedTokenPrice()
- * Returns price in USD (18 decimals scaled to BigDecimal)
- */
-function fetchSailTokenPrice(tokenAddress: Address): BigDecimal {
-  const minterAddress = getMinterForSailToken(tokenAddress);
-  
-  if (minterAddress === null) {
-    // Unknown token - fallback to $1
-    return BigDecimal.fromString("1.0");
-  }
-  
-  const minter = Minter.bind(minterAddress);
-  const priceResult = minter.try_leveragedTokenPrice();
-  
-  if (priceResult.reverted) {
-    // If call fails, fallback to $1
-    return BigDecimal.fromString("1.0");
-  }
-  
-  // leveragedTokenPrice() returns price with 18 decimals
-  return priceResult.value.toBigDecimal().div(ONE_ETHER);
-}
-
-/**
- * Calculate USD value of sail token balance
- * Uses actual leveraged token price from Minter
- */
-function calculateBalanceUSDForToken(balance: BigInt, tokenAddress: Bytes, block: ethereum.Block): BigDecimal {
-  const tokenAddr = Address.fromBytes(tokenAddress);
-  const price = fetchSailTokenPrice(tokenAddr);
-  
-  // Convert balance from wei to token units (18 decimals)
-  const balanceDecimal = balance.toBigDecimal().div(ONE_ETHER);
-  
-  return balanceDecimal.times(price);
-}
-
-// Helper to get or create sail token balance
-function getOrCreateSailTokenBalance(
-  tokenAddress: Bytes,
-  userAddress: Bytes
-): SailTokenBalance {
-  const id = `${tokenAddress.toHexString()}-${userAddress.toHexString()}`;
-  let balance = SailTokenBalance.load(id);
-
-  if (balance == null) {
-    balance = new SailTokenBalance(id);
-    balance.tokenAddress = tokenAddress;
-    balance.user = userAddress;
-    balance.balance = BigInt.fromI32(0);
-    balance.balanceUSD = BigDecimal.fromString("0");
-    balance.marksPerDay = BigDecimal.fromString("0");
-    balance.accumulatedMarks = BigDecimal.fromString("0");
-    balance.totalMarksEarned = BigDecimal.fromString("0");
-    balance.firstSeenAt = BigInt.fromI32(0);
-    balance.lastUpdated = BigInt.fromI32(0);
-    balance.marketId = null;
-    balance.save();
-  }
-  return balance;
-}
-
-// Helper to query actual token balance from contract
 function queryTokenBalance(tokenAddress: Address, userAddress: Address): BigInt {
   const token = ERC20.bind(tokenAddress);
   const balanceResult = token.try_balanceOf(userAddress);
   if (balanceResult.reverted) {
-    return BigInt.fromI32(0);
+    return ZERO_BI;
   }
   return balanceResult.value;
 }
 
-// Get multiplier for sail token (default 5x)
 function getSailTokenMultiplier(tokenAddress: Bytes, timestamp: BigInt): BigDecimal {
   const sourceType = "sailToken";
   const id = `${sourceType}-${tokenAddress.toHexString()}`;
@@ -311,7 +215,7 @@ function getSailTokenMultiplier(tokenAddress: Bytes, timestamp: BigInt): BigDeci
     multiplier = new MarksMultiplier(id);
     multiplier.sourceType = sourceType;
     multiplier.sourceAddress = tokenAddress;
-    multiplier.multiplier = DEFAULT_MULTIPLIER; // 5x default
+    multiplier.multiplier = DEFAULT_MULTIPLIER;
     multiplier.effectiveFrom = timestamp;
     multiplier.updatedAt = timestamp;
     multiplier.updatedBy = null;
@@ -320,15 +224,11 @@ function getSailTokenMultiplier(tokenAddress: Bytes, timestamp: BigInt): BigDeci
   return multiplier.multiplier;
 }
 
-// Helper to accumulate marks (daily snapshot approach)
-function accumulateMarks(
-  balance: SailTokenBalance,
-  block: ethereum.Block
-): void {
+function accumulateMarks(balance: SailTokenBalance, block: ethereum.Block): void {
   const currentTimestamp = block.timestamp;
-  if (balance.balance.equals(BigInt.fromI32(0))) {
-    balance.accumulatedMarks = BigDecimal.fromString("0");
-    balance.marksPerDay = BigDecimal.fromString("0");
+  if (balance.balance.equals(ZERO_BI)) {
+    balance.accumulatedMarks = ZERO_BD;
+    balance.marksPerDay = ZERO_BD;
     balance.lastUpdated = currentTimestamp;
     balance.save();
     return;
@@ -337,34 +237,27 @@ function accumulateMarks(
   const multiplier = getSailTokenMultiplier(balance.tokenAddress, currentTimestamp);
   const marksPerDollarPerDay = DEFAULT_MARKS_PER_DOLLAR_PER_DAY.times(multiplier);
 
-  const lastUpdate = balance.lastUpdated.gt(BigInt.fromI32(0))
+  const lastUpdate = balance.lastUpdated.gt(ZERO_BI)
     ? balance.lastUpdated
     : balance.firstSeenAt;
 
-  if (lastUpdate.equals(BigInt.fromI32(0))) {
+  if (lastUpdate.equals(ZERO_BI)) {
     balance.firstSeenAt = currentTimestamp;
     balance.lastUpdated = currentTimestamp;
     balance.marksPerDay = balance.balanceUSD.times(marksPerDollarPerDay);
-    balance.accumulatedMarks = BigDecimal.fromString("0");
+    balance.accumulatedMarks = ZERO_BD;
     balance.save();
     return;
   }
 
-  // Calculate time since last update (continuous accumulation)
-  // Marks are awarded for all time held, including partial days
-  // Frontend will estimate marks between graph updates
   if (currentTimestamp.gt(lastUpdate)) {
     const timeSinceLastUpdate = currentTimestamp.minus(lastUpdate);
     const daysSinceLastUpdate = timeSinceLastUpdate.toBigDecimal().div(SECONDS_PER_DAY);
 
-    // Count all time (including partial days)
-    // If someone holds tokens for 2 hours, they get marks for 2/24 of a day
-    if (daysSinceLastUpdate.gt(BigDecimal.fromString("0"))) {
+    if (daysSinceLastUpdate.gt(ZERO_BD)) {
       const marksAccumulated = balance.balanceUSD.times(marksPerDollarPerDay).times(daysSinceLastUpdate);
       balance.accumulatedMarks = balance.accumulatedMarks.plus(marksAccumulated);
       balance.totalMarksEarned = balance.totalMarksEarned.plus(marksAccumulated);
-
-      // Update lastUpdated to current timestamp (continuous tracking)
       balance.lastUpdated = currentTimestamp;
     }
   }
@@ -372,7 +265,6 @@ function accumulateMarks(
   balance.save();
 }
 
-// Handler for Transfer event
 export function handleSailTokenTransfer(event: TransferEvent): void {
   const tokenAddress = event.address;
   const fromAddress = event.params.from;
@@ -382,31 +274,29 @@ export function handleSailTokenTransfer(event: TransferEvent): void {
   const blockNumber = event.block.number;
   const txHash = event.transaction.hash;
 
-  // Check if this is a mint from genesis (transfer from Genesis contract or 0 address to user)
   const isGenesisMint = fromAddress.equals(ZERO_ADDRESS) || isGenesisContract(fromAddress);
-  
-  // Handle sender (if not zero address)
+
+  // Handle sender
   if (!fromAddress.equals(ZERO_ADDRESS)) {
     const senderBalance = getOrCreateSailTokenBalance(tokenAddress, fromAddress);
     accumulateMarks(senderBalance, event.block);
     
     const actualBalance = queryTokenBalance(Address.fromBytes(tokenAddress), fromAddress);
     senderBalance.balance = actualBalance;
-    senderBalance.balanceUSD = calculateBalanceUSDForToken(actualBalance, tokenAddress, event.block);
+    senderBalance.balanceUSD = calculateBalanceUSD(actualBalance);
     
-    // Recalculate marksPerDay with updated balanceUSD
     const multiplier = getSailTokenMultiplier(tokenAddress, timestamp);
     const marksPerDollarPerDay = DEFAULT_MARKS_PER_DOLLAR_PER_DAY.times(multiplier);
     senderBalance.marksPerDay = senderBalance.balanceUSD.times(marksPerDollarPerDay);
     
-    if (senderBalance.firstSeenAt.equals(BigInt.fromI32(0)) && actualBalance.gt(BigInt.fromI32(0))) {
+    if (senderBalance.firstSeenAt.equals(ZERO_BI) && actualBalance.gt(ZERO_BI)) {
       senderBalance.firstSeenAt = timestamp;
     }
     
-    if (actualBalance.equals(BigInt.fromI32(0))) {
-      senderBalance.accumulatedMarks = BigDecimal.fromString("0");
-      senderBalance.firstSeenAt = BigInt.fromI32(0);
-      senderBalance.marksPerDay = BigDecimal.fromString("0");
+    if (actualBalance.equals(ZERO_BI)) {
+      senderBalance.accumulatedMarks = ZERO_BD;
+      senderBalance.firstSeenAt = ZERO_BI;
+      senderBalance.marksPerDay = ZERO_BD;
     }
     
     senderBalance.lastUpdated = timestamp;
@@ -414,21 +304,20 @@ export function handleSailTokenTransfer(event: TransferEvent): void {
     updateSailTokenMarksInTotal(fromAddress, senderBalance, timestamp);
   }
 
-  // Handle receiver (if not zero address)
+  // Handle receiver
   if (!toAddress.equals(ZERO_ADDRESS)) {
     const receiverBalance = getOrCreateSailTokenBalance(tokenAddress, toAddress);
     accumulateMarks(receiverBalance, event.block);
     
     const actualBalance = queryTokenBalance(Address.fromBytes(tokenAddress), toAddress);
     receiverBalance.balance = actualBalance;
-    receiverBalance.balanceUSD = calculateBalanceUSDForToken(actualBalance, tokenAddress, event.block);
+    receiverBalance.balanceUSD = calculateBalanceUSD(actualBalance);
     
-    // Recalculate marksPerDay with updated balanceUSD
     const multiplier = getSailTokenMultiplier(tokenAddress, timestamp);
     const marksPerDollarPerDay = DEFAULT_MARKS_PER_DOLLAR_PER_DAY.times(multiplier);
     receiverBalance.marksPerDay = receiverBalance.balanceUSD.times(marksPerDollarPerDay);
     
-    if (receiverBalance.firstSeenAt.equals(BigInt.fromI32(0)) && actualBalance.gt(BigInt.fromI32(0))) {
+    if (receiverBalance.firstSeenAt.equals(ZERO_BI) && actualBalance.gt(ZERO_BI)) {
       receiverBalance.firstSeenAt = timestamp;
     }
     
@@ -436,20 +325,14 @@ export function handleSailTokenTransfer(event: TransferEvent): void {
     receiverBalance.save();
     updateSailTokenMarksInTotal(toAddress, receiverBalance, timestamp);
     
-    // ============================================================================
-    // COST BASIS TRACKING FOR GENESIS MINTS
-    // ============================================================================
-    // When tokens are minted from genesis, track cost basis for PnL
-    // Genesis gives 50% of deposit value in sail tokens, so cost = current token value
+    // Cost basis tracking for genesis mints
     if (isGenesisMint && amount.gt(ZERO_BI)) {
       const position = getOrCreateUserSailPosition(tokenAddress, toAddress);
       
-      // Fetch current token price to calculate cost basis
-      const tokenPrice = fetchSailTokenPrice(Address.fromBytes(tokenAddress));
+      const tokenPrice = fetchSailTokenPrice();
       const tokenAmountDecimal = toDecimal(amount);
       const costUSD = tokenAmountDecimal.times(tokenPrice);
       
-      // Create cost basis lot
       createCostBasisLot(
         position,
         amount,
@@ -460,7 +343,6 @@ export function handleSailTokenTransfer(event: TransferEvent): void {
         txHash
       );
       
-      // Update position stats
       if (position.firstAcquiredAt.equals(ZERO_BI)) {
         position.firstAcquiredAt = timestamp;
       }
@@ -471,27 +353,23 @@ export function handleSailTokenTransfer(event: TransferEvent): void {
       position.lastUpdated = timestamp;
       position.save();
       
-      // Create price point for chart
-      const prices = fetchOraclePrices(Address.fromBytes(tokenAddress));
-      const collateralPriceUSD = prices[0];
-      const wrappedRate = prices[1];
-      
+      // Create price point
+      const prices = fetchOraclePrices();
       const pricePointId = tokenAddress.toHexString() + "-" + 
         txHash.toHexString() + "-" + 
         event.logIndex.toString();
       
       const pricePoint = new SailTokenPricePoint(pricePointId);
       pricePoint.tokenAddress = tokenAddress;
-      const minter = getMinterForSailToken(Address.fromBytes(tokenAddress));
-      pricePoint.minterAddress = minter !== null ? minter : Address.zero();
+      pricePoint.minterAddress = WBTC_MINTER;
       pricePoint.blockNumber = blockNumber;
       pricePoint.timestamp = timestamp;
       pricePoint.txHash = txHash;
       pricePoint.tokenPriceUSD = tokenPrice;
-      pricePoint.collateralPriceUSD = collateralPriceUSD;
-      pricePoint.wrappedRate = wrappedRate;
+      pricePoint.collateralPriceUSD = prices[0];
+      pricePoint.wrappedRate = prices[1];
       pricePoint.eventType = "genesis";
-      pricePoint.collateralAmount = ZERO_BI; // Not applicable for genesis
+      pricePoint.collateralAmount = ZERO_BI;
       pricePoint.tokenAmount = amount;
       pricePoint.impliedTokenPrice = tokenPrice;
       pricePoint.save();

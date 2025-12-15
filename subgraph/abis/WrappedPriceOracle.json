@@ -1,0 +1,15 @@
+[
+  {
+    "inputs": [],
+    "name": "latestAnswer",
+    "outputs": [
+      { "name": "minUnderlyingPrice", "type": "uint256" },
+      { "name": "maxUnderlyingPrice", "type": "uint256" },
+      { "name": "minWrappedRate", "type": "uint256" },
+      { "name": "maxWrappedRate", "type": "uint256" }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  }
+]
+

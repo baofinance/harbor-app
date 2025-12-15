@@ -3,11 +3,7 @@
     "inputs": [],
     "name": "leveragedTokenPrice",
     "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "nav",
-        "type": "uint256"
-      }
+      { "internalType": "uint256", "name": "nav", "type": "uint256" }
     ],
     "stateMutability": "view",
     "type": "function"
@@ -16,11 +12,7 @@
     "inputs": [],
     "name": "peggedTokenPrice",
     "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "nav",
-        "type": "uint256"
-      }
+      { "internalType": "uint256", "name": "nav", "type": "uint256" }
     ],
     "stateMutability": "view",
     "type": "function"
@@ -29,11 +21,25 @@
     "inputs": [],
     "name": "collateralRatio",
     "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
+      { "internalType": "uint256", "name": "", "type": "uint256" }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "leverageRatio",
+    "outputs": [
+      { "internalType": "uint256", "name": "", "type": "uint256" }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "collateralTokenBalance",
+    "outputs": [
+      { "internalType": "uint256", "name": "", "type": "uint256" }
     ],
     "stateMutability": "view",
     "type": "function"
@@ -42,11 +48,7 @@
     "inputs": [],
     "name": "PEGGED_TOKEN",
     "outputs": [
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      }
+      { "internalType": "address", "name": "", "type": "address" }
     ],
     "stateMutability": "view",
     "type": "function"
@@ -55,14 +57,40 @@
     "inputs": [],
     "name": "LEVERAGED_TOKEN",
     "outputs": [
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      }
+      { "internalType": "address", "name": "", "type": "address" }
     ],
     "stateMutability": "view",
     "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "PRICE_ORACLE",
+    "outputs": [
+      { "internalType": "address", "name": "", "type": "address" }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      { "indexed": true, "internalType": "address", "name": "sender", "type": "address" },
+      { "indexed": true, "internalType": "address", "name": "receiver", "type": "address" },
+      { "indexed": false, "internalType": "uint256", "name": "collateralIn", "type": "uint256" },
+      { "indexed": false, "internalType": "uint256", "name": "feeIn", "type": "uint256" },
+      { "indexed": false, "internalType": "uint256", "name": "leveragedOut", "type": "uint256" }
+    ],
+    "name": "MintLeveragedToken",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      { "indexed": true, "internalType": "address", "name": "sender", "type": "address" },
+      { "indexed": false, "internalType": "uint256", "name": "leveragedTokenBurned", "type": "uint256" },
+      { "indexed": false, "internalType": "uint256", "name": "collateralOut", "type": "uint256" }
+    ],
+    "name": "RedeemLeveragedToken",
+    "type": "event"
   }
 ]
-
