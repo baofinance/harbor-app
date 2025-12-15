@@ -3,7 +3,7 @@
 import React, { useEffect, useState, type ReactNode } from "react";
 import SafeAppsSDK, { type SafeInfo } from "@safe-global/safe-apps-sdk";
 import { SafeAppProvider } from "@safe-global/safe-apps-provider";
-import { useAccount, useConnect } from "wagmi";
+import { useAccount, useConnect, useDisconnect } from "wagmi";
 
 interface SafeAppContextValue {
   sdk: SafeAppsSDK | null;
@@ -42,6 +42,27 @@ if (typeof window !== "undefined") {
           safeInfoInstance = info;
           safeProviderInstance = new SafeAppProvider(info, safeSDKInstance!);
           
+          // Safe already injects window.ethereum, but we ensure it's properly set up
+          // Don't override if Safe already set it, just ensure our provider is available
+          if (safeProviderInstance && typeof window !== "undefined") {
+            // Store our provider but don't override window.ethereum if it already exists
+            // Safe's injected provider should already be there
+            if (!(window as any).ethereum) {
+              (window as any).ethereum = {
+                ...safeProviderInstance,
+                isSafe: true,
+                isMetaMask: false,
+                request: safeProviderInstance.request.bind(safeProviderInstance),
+              };
+            } else {
+              // Ensure our Safe provider methods are available
+              const existingEthereum = (window as any).ethereum;
+              if (!existingEthereum.isSafe) {
+                existingEthereum.isSafe = true;
+              }
+            }
+          }
+          
           // Store globally
           (window as any).__SAFE_APP_PROVIDER__ = safeProviderInstance;
           (window as any).__SAFE_INFO__ = info;
@@ -75,6 +96,23 @@ export function SafeAppProviderWrapper({ children }: { children: ReactNode }) {
           const provider = new SafeAppProvider(info, safeSDKInstance!);
           safeProviderInstance = provider;
           
+          // Ensure Safe provider is properly set up (Safe may have already injected it)
+          if (provider && typeof window !== "undefined") {
+            if (!(window as any).ethereum) {
+              (window as any).ethereum = {
+                ...provider,
+                isSafe: true,
+                isMetaMask: false,
+                request: provider.request.bind(provider),
+              };
+            } else {
+              const existingEthereum = (window as any).ethereum;
+              if (!existingEthereum.isSafe) {
+                existingEthereum.isSafe = true;
+              }
+            }
+          }
+          
           setSdk(safeSDKInstance);
           setSafe(provider);
           setSafeInfo(info);
@@ -87,8 +125,24 @@ export function SafeAppProviderWrapper({ children }: { children: ReactNode }) {
         .catch((error) => {
           console.log("Failed to get Safe info:", error);
         });
-    } else if (safeSDKInstance && safeInfoInstance) {
-      // Already initialized, just set state
+    } else if (safeSDKInstance && safeInfoInstance && safeProviderInstance) {
+      // Already initialized, just set state and ensure provider is set
+      if (typeof window !== "undefined" && safeProviderInstance) {
+        if (!(window as any).ethereum) {
+          (window as any).ethereum = {
+            ...safeProviderInstance,
+            isSafe: true,
+            isMetaMask: false,
+            request: safeProviderInstance.request.bind(safeProviderInstance),
+          };
+        } else {
+          const existingEthereum = (window as any).ethereum;
+          if (!existingEthereum.isSafe) {
+            existingEthereum.isSafe = true;
+          }
+        }
+      }
+      
       setSdk(safeSDKInstance);
       setSafe(safeProviderInstance);
       setSafeInfo(safeInfoInstance);
@@ -98,23 +152,49 @@ export function SafeAppProviderWrapper({ children }: { children: ReactNode }) {
 
   // Auto-connect when Safe is detected
   useEffect(() => {
-    if (isSafeApp && !isConnected && !hasTriedConnect && connectors.length > 0) {
-      // Find the injected connector (Safe injects an ethereum provider)
-      const injectedConnector = connectors.find(
-        (c) => c.type === "injected" || c.id === "injected"
-      );
-      
-      if (injectedConnector) {
-        setHasTriedConnect(true);
-        // Small delay to ensure everything is ready
-        setTimeout(() => {
-          connect({ connector: injectedConnector }).catch((error) => {
-            console.error("Failed to auto-connect Safe:", error);
+    if (isSafeApp && safeInfo && !isConnected && !hasTriedConnect) {
+      // Wait a bit for connectors to be ready and provider to be set
+      const tryConnect = () => {
+        if (connectors.length === 0) {
+          // Retry if connectors aren't ready yet
+          setTimeout(tryConnect, 200);
+          return;
+        }
+
+        // Find the injected connector (Safe injects an ethereum provider)
+        const injectedConnector = connectors.find(
+          (c) => c.type === "injected" || c.id === "injected" || c.name.toLowerCase().includes("injected")
+        );
+        
+        if (injectedConnector) {
+          setHasTriedConnect(true);
+          console.log("Attempting to auto-connect Safe wallet...", {
+            safeAddress: safeInfo.safeAddress,
+            connector: injectedConnector.name,
           });
-        }, 500);
-      }
+          
+          connect({ connector: injectedConnector })
+            .then(() => {
+              console.log("Successfully connected to Safe wallet");
+            })
+            .catch((error) => {
+              console.error("Failed to auto-connect Safe:", error);
+              // Reset to allow retry
+              setHasTriedConnect(false);
+            });
+        } else {
+          console.warn("No injected connector found for Safe");
+          // Retry after a delay
+          setTimeout(() => {
+            setHasTriedConnect(false);
+          }, 1000);
+        }
+      };
+
+      // Initial delay to ensure everything is set up
+      setTimeout(tryConnect, 300);
     }
-  }, [isSafeApp, isConnected, hasTriedConnect, connectors, connect]);
+  }, [isSafeApp, safeInfo, isConnected, hasTriedConnect, connectors, connect]);
 
   return (
     <SafeAppContext.Provider
