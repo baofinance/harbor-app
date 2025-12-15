@@ -540,6 +540,16 @@ function SailMarketRow({
   let wrappedRate: bigint | undefined;
   if (hasOracle) {
     const oracleResult = reads?.[baseOffset + oracleOffset]?.result;
+    console.log("[SailMarketRow] Oracle debug:", {
+      id,
+      baseOffset,
+      oracleOffset,
+      hasOracle,
+      oracleResultRaw: reads?.[baseOffset + oracleOffset],
+      oracleResult,
+      oracleResultType: typeof oracleResult,
+      isArray: Array.isArray(oracleResult),
+    });
     if (oracleResult !== undefined && oracleResult !== null) {
       if (Array.isArray(oracleResult)) {
         collateralPriceUSD = oracleResult[1] as bigint;
@@ -556,6 +566,10 @@ function SailMarketRow({
         wrappedRate = BigInt("1000000000000000000");
       }
     }
+    console.log("[SailMarketRow] Parsed oracle:", {
+      collateralPriceUSD: collateralPriceUSD?.toString(),
+      wrappedRate: wrappedRate?.toString(),
+    });
   }
 
   // Get token name and total supply (after oracle if it exists)
