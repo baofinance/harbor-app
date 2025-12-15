@@ -86,6 +86,24 @@ type HaTokenBalance @entity(immutable: false) {
   marketId: String # Market identifier (optional, for grouping)
 }
 
+# Tracks sail token balances (from ERC20 transfers) - leveraged tokens with 5x multiplier
+type SailTokenBalance @entity(immutable: false) {
+  id: ID! # {tokenAddress}-{userAddress}
+  tokenAddress: Bytes! # sail token contract address
+  user: Bytes! # User address
+  balance: BigInt! # Current token balance
+  balanceUSD: BigDecimal! # Current balance in USD
+  # Marks tracking
+  marksPerDay: BigDecimal! # Current marks per day rate (includes 5x multiplier)
+  accumulatedMarks: BigDecimal! # Marks accumulated from this balance
+  totalMarksEarned: BigDecimal! # Total marks ever earned from this token
+  # Tracking
+  firstSeenAt: BigInt! # First time user had balance > 0
+  lastUpdated: BigInt! # Last block timestamp when updated
+  # Market info
+  marketId: String # Market identifier (optional, for grouping)
+}
+
 # Tracks stability pool deposits
 type StabilityPoolDeposit @entity(immutable: false) {
   id: ID! # {poolAddress}-{userAddress}
@@ -133,7 +151,8 @@ type UserTotalMarks @entity(immutable: false) {
   user: Bytes! # User address
   # Marks by source
   genesisMarks: BigDecimal! # Marks from Genesis deposits
-  haTokenMarks: BigDecimal! # Marks from ha token balances
+  haTokenMarks: BigDecimal! # Marks from ha token balances (anchor tokens, 1x multiplier)
+  sailTokenMarks: BigDecimal! # Marks from sail token balances (leveraged tokens, 5x multiplier)
   stabilityPoolMarks: BigDecimal! # Marks from stability pool deposits
   # Totals
   totalMarks: BigDecimal! # Total marks across all sources

@@ -53,7 +53,7 @@ dataSources:
           handler: handleGenesisEnd
       file: ./src/genesis.ts
 
-  # Pegged Token (haUSD-stETH) - shared across markets
+  # Pegged Token (haUSD-stETH) - anchor token for stETH market
   - kind: ethereum
     name: HaToken_haPB
     network: mainnet
@@ -79,6 +79,33 @@ dataSources:
         - event: Transfer(indexed address,indexed address,uint256)
           handler: handleHaTokenTransfer
       file: ./src/haToken.ts
+
+  # Leveraged Token (hsUSD-stETH) - sail token for stETH market (5x marks multiplier)
+  - kind: ethereum
+    name: SailToken_hsPB
+    network: mainnet
+    source:
+      address: "0x469ddfcfa98d0661b7efedc82aceeab84133f7fe"
+      abi: ERC20
+      startBlock: 23993255
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - SailTokenBalance
+        - MarksMultiplier
+        - UserTotalMarks
+        - PriceFeed
+      abis:
+        - name: ERC20
+          file: ./abis/ERC20.json
+        - name: ChainlinkAggregator
+          file: ./abis/ChainlinkAggregator.json
+      eventHandlers:
+        - event: Transfer(indexed address,indexed address,uint256)
+          handler: handleSailTokenTransfer
+      file: ./src/sailToken.ts
 
   # Stability Pool Collateral - stETH market (wstETH deposits)
   - kind: ethereum

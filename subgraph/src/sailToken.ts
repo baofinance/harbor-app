@@ -1,9 +1,14 @@
-// This file should be placed in: /Users/andrewyoung/Harbor-App/harbor-app/subgraph/src/sailToken.ts
-// Handler for sail token (leveraged token, hs) Transfer events
-// Similar to haToken.ts but with 5x default multiplier
+/**
+ * Sail Token balance tracking for Harbor Marks
+ * Tracks ERC20 Transfer events to calculate user balances and marks
+ * Sail tokens (leveraged tokens, hs) have a 5x marks multiplier by default
+ */
 
 import { Transfer as TransferEvent } from "../generated/SailToken_hsPB/ERC20";
 import { ERC20 } from "../generated/SailToken_hsPB/ERC20";
+import {
+  updateSailTokenMarksInTotal,
+} from "./marksAggregation";
 import {
   SailTokenBalance,
   MarksMultiplier,
@@ -180,6 +185,7 @@ export function handleSailTokenTransfer(event: TransferEvent): void {
     
     senderBalance.lastUpdated = timestamp;
     senderBalance.save();
+    updateSailTokenMarksInTotal(fromAddress, senderBalance, timestamp);
   }
 
   // Handle receiver (if not zero address)
@@ -202,6 +208,7 @@ export function handleSailTokenTransfer(event: TransferEvent): void {
     
     receiverBalance.lastUpdated = timestamp;
     receiverBalance.save();
+    updateSailTokenMarksInTotal(toAddress, receiverBalance, timestamp);
   }
 }
 

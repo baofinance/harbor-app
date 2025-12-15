@@ -36,6 +36,11 @@ const REDEEM_LEVERAGED_TOKEN_EVENT = parseAbiItem(
   "event RedeemLeveragedToken(address indexed sender, address indexed receiver, uint256 leveragedTokenBurned, uint256 collateralOut)"
 );
 
+// Genesis deposit event - used for cost basis of tokens received from genesis
+const GENESIS_DEPOSIT_EVENT = parseAbiItem(
+  "event Deposit(address indexed sender, address indexed receiver, uint256 collateralIn)"
+);
+
 // Oracle ABI for historical price lookups
 const oracleABI = [
   {
@@ -265,10 +270,11 @@ function getShortSide(market: any): string {
   return "Other";
 }
 
-// Hook to calculate PnL from event logs
+// Hook to calculate PnL from event logs (includes genesis deposits for cost basis)
 function usePnLCalculation(
   userAddress: `0x${string}` | undefined,
   minterAddress: `0x${string}` | undefined,
+  genesisAddress: `0x${string}` | undefined,
   oracleAddress: `0x${string}` | undefined,
   userBalance: bigint | undefined,
   currentValueUSD: number | undefined,
@@ -331,8 +337,26 @@ function usePnLCalculation(
           toBlock: currentBlock,
         });
 
+        // Fetch genesis deposit events if genesis address is available
+        // Genesis deposits result in 50% leveraged tokens, so cost basis = 50% of deposit
+        let genesisLogs: any[] = [];
+        if (genesisAddress) {
+          try {
+            genesisLogs = await client.getLogs({
+              address: genesisAddress,
+              event: GENESIS_DEPOSIT_EVENT,
+              args: { receiver: userAddress },
+              fromBlock,
+              toBlock: currentBlock,
+            });
+          } catch {
+            // Genesis contract might not exist or have different event signature
+          }
+        }
+
         // Sort all events by block number
         const allEvents = [
+          ...genesisLogs.map((log) => ({ ...log, type: "genesis" as const })),
           ...mintLogs.map((log) => ({ ...log, type: "mint" as const })),
           ...redeemLogs.map((log) => ({ ...log, type: "redeem" as const })),
         ].sort((a, b) => Number(a.blockNumber) - Number(b.blockNumber));
@@ -375,12 +399,24 @@ function usePnLCalculation(
           const priceNum = Number(priceUSD) / 1e18;
           const rateNum = Number(rate) / 1e18;
 
-          if (event.type === "mint") {
+          if (event.type === "genesis") {
+            // Genesis deposits: user receives 50% pegged, 50% leveraged tokens
+            // Cost basis for leveraged tokens = 50% of the deposit value
+            const collateralIn = event.args.collateralIn as bigint;
+            const totalDepositUSD = (Number(collateralIn) / 1e18) * priceNum * rateNum;
+            const leveragedCostUSD = totalDepositUSD * 0.5; // 50% allocation to leveraged
+            // Estimate leveraged tokens received (50% of deposit in collateral terms, at ~1:1 ratio)
+            // This is approximate since we don't have the exact leveraged amount from this event
+            const estimatedLeveragedTokens = collateralIn / 2n;
+            if (leveragedCostUSD > 0) {
+              lots.push({ qty: estimatedLeveragedTokens, costUSD: leveragedCostUSD });
+            }
+          } else if (event.type === "mint") {
             const collateralIn = event.args.collateralIn as bigint;
             const leveragedOut = event.args.leveragedOut as bigint;
             const costUSD = (Number(collateralIn) / 1e18) * priceNum * rateNum;
             lots.push({ qty: leveragedOut, costUSD });
-          } else {
+          } else if (event.type === "redeem") {
             const leveragedBurned = event.args.leveragedTokenBurned as bigint;
             const collateralOut = event.args.collateralOut as bigint;
             const redeemValueUSD =
@@ -435,6 +471,7 @@ function usePnLCalculation(
     client,
     userAddress,
     minterAddress,
+    genesisAddress,
     oracleAddress,
     userBalance,
     currentValueUSD,
@@ -561,14 +598,17 @@ function SailMarketRow({
 
   // Get addresses for PnL calculation
   const minterAddress = market.addresses?.minter as `0x${string}` | undefined;
+  const genesisAddress = market.addresses?.genesis as `0x${string}` | undefined;
   const oracleAddress = market.addresses?.collateralPrice as
     | `0x${string}`
     | undefined;
 
   // Calculate PnL - only when user has a position
+  // Includes genesis deposits in cost basis calculation
   const pnlData = usePnLCalculation(
     address,
     minterAddress,
+    genesisAddress,
     oracleAddress,
     userDeposit,
     currentValueUSD,
@@ -952,82 +992,81 @@ export default function SailPage() {
     return groups;
   }, [sailMarkets]);
 
-  // Fetch contract data for all markets (7 reads per market: 4 minter + 1 oracle + 1 name + 1 totalSupply)
+  // Fetch contract data for all markets (ALWAYS 7 reads per market to ensure consistent offsets)
+  // Reads: 0=leverageRatio, 1=leveragedTokenPrice, 2=collateralRatio, 3=collateralTokenBalance, 4=latestAnswer, 5=name, 6=totalSupply
   const { data: reads } = useContractReads({
     contracts: sailMarkets.flatMap(([_, m]) => {
       const minter = (m as any).addresses?.minter as `0x${string}` | undefined;
       const priceOracle = (m as any).addresses?.collateralPrice as
         | `0x${string}`
         | undefined;
+      const leveragedTokenAddress = (m as any).addresses?.leveragedToken as
+        | `0x${string}`
+        | undefined;
 
-      if (
-        !minter ||
-        typeof minter !== "string" ||
-        !minter.startsWith("0x") ||
-        minter.length !== 42
-      )
-        return [];
+      const isValidAddress = (addr: any): addr is `0x${string}` =>
+        addr &&
+        typeof addr === "string" &&
+        addr.startsWith("0x") &&
+        addr.length === 42;
 
-      const contracts: any[] = [
+      // Skip entire market if minter is invalid
+      if (!isValidAddress(minter)) {
+        // Still need to return 7 placeholders to maintain offset alignment
+        return Array(7).fill(null);
+      }
+
+      // Always return exactly 7 reads per market
+      return [
+        // 0: leverageRatio
         {
           address: minter,
           abi: minterABI,
           functionName: "leverageRatio" as const,
         },
+        // 1: leveragedTokenPrice
         {
           address: minter,
           abi: minterABI,
           functionName: "leveragedTokenPrice" as const,
         },
+        // 2: collateralRatio
         {
           address: minter,
           abi: minterABI,
           functionName: "collateralRatio" as const,
         },
+        // 3: collateralTokenBalance
         {
           address: minter,
           abi: minterABI,
           functionName: "collateralTokenBalance" as const,
         },
+        // 4: latestAnswer (oracle) - use placeholder if missing
+        isValidAddress(priceOracle)
+          ? {
+              address: priceOracle,
+              abi: wrappedPriceOracleABI,
+              functionName: "latestAnswer" as const,
+            }
+          : null,
+        // 5: name (leveraged token) - use placeholder if missing
+        isValidAddress(leveragedTokenAddress)
+          ? {
+              address: leveragedTokenAddress,
+              abi: erc20MetadataABI,
+              functionName: "name" as const,
+            }
+          : null,
+        // 6: totalSupply (leveraged token) - use placeholder if missing
+        isValidAddress(leveragedTokenAddress)
+          ? {
+              address: leveragedTokenAddress,
+              abi: erc20MetadataABI,
+              functionName: "totalSupply" as const,
+            }
+          : null,
       ];
-
-      // Add oracle price read if available
-      if (
-        priceOracle &&
-        typeof priceOracle === "string" &&
-        priceOracle.startsWith("0x") &&
-        priceOracle.length === 42
-      ) {
-        contracts.push({
-          address: priceOracle,
-          abi: wrappedPriceOracleABI,
-          functionName: "latestAnswer" as const,
-        });
-      }
-
-      // Add leveraged token name and totalSupply reads
-      const leveragedTokenAddress = (m as any).addresses?.leveragedToken as
-        | `0x${string}`
-        | undefined;
-      if (
-        leveragedTokenAddress &&
-        typeof leveragedTokenAddress === "string" &&
-        leveragedTokenAddress.startsWith("0x") &&
-        leveragedTokenAddress.length === 42
-      ) {
-        contracts.push({
-          address: leveragedTokenAddress,
-          abi: erc20MetadataABI,
-          functionName: "name" as const,
-        });
-        contracts.push({
-          address: leveragedTokenAddress,
-          abi: erc20MetadataABI,
-          functionName: "totalSupply" as const,
-        });
-      }
-
-      return contracts;
     }),
     query: {
       enabled: sailMarkets.length > 0,
