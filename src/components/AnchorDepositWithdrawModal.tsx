@@ -313,6 +313,10 @@ export const AnchorDepositWithdrawModal = ({
     sailPool: false,
   });
 
+  // Track if we've initialized positions for the current withdraw session
+  // This prevents resetting selections when balances update from polling
+  const hasInitializedWithdraw = React.useRef(false);
+
   // Individual amounts for each position
   const [positionAmounts, setPositionAmounts] = useState<{
     wallet: string;
@@ -2593,37 +2597,31 @@ export const AnchorDepositWithdrawModal = ({
       amountBigInt > peggedTokenAllowance);
   const currentDeposit = currentDepositData || 0n;
 
-  // Auto-select positions to withdraw from based on holdings
+  // Reset positions only when modal opens or tab changes, NOT on balance updates
   useEffect(() => {
     if (activeTab === "withdraw" && isOpen) {
-      if (process.env.NODE_ENV === "development") {
-        console.log(
-          "[AnchorDepositWithdrawModal] Withdraw tab - checking balances:",
-          {
-            peggedBalance: peggedBalance?.toString() || "0",
-            peggedBalanceContract: peggedBalanceData?.toString() || "0",
-            peggedBalanceFromSubgraph:
-              haBalances?.find(
-                (b) =>
-                  b.tokenAddress.toLowerCase() ===
-                  peggedTokenAddress?.toLowerCase()
-              )?.balance || "0",
-            collateralPoolBalance: collateralPoolBalance?.toString() || "0",
-            sailPoolBalance: sailPoolBalance?.toString() || "0",
-            peggedTokenAddress,
-            selectedMarket: selectedMarket?.name,
-            address,
-          }
-        );
+      // Only initialize once per withdraw session
+      if (!hasInitializedWithdraw.current) {
+        if (process.env.NODE_ENV === "development") {
+          console.log(
+            "[AnchorDepositWithdrawModal] Withdraw tab - initializing (first time):",
+            {
+              peggedBalance: peggedBalance?.toString() || "0",
+              collateralPoolBalance: collateralPoolBalance?.toString() || "0",
+              sailPoolBalance: sailPoolBalance?.toString() || "0",
+            }
+          );
+        }
+        // Start with all positions unchecked by default
+        setSelectedPositions({
+          wallet: false,
+          collateralPool: false,
+          sailPool: false,
+        });
+        setWithdrawFromCollateralPool(false);
+        setWithdrawFromSailPool(false);
+        hasInitializedWithdraw.current = true;
       }
-      // Start with all positions unchecked by default
-      setSelectedPositions({
-        wallet: false,
-        collateralPool: false,
-        sailPool: false,
-      });
-      setWithdrawFromCollateralPool(false);
-      setWithdrawFromSailPool(false);
     } else if (activeTab !== "withdraw") {
       // Reset when switching away from withdraw tab
       setSelectedPositions({
@@ -2638,19 +2636,16 @@ export const AnchorDepositWithdrawModal = ({
         collateralPool: "",
         sailPool: "",
       });
+      hasInitializedWithdraw.current = false;
     }
-  }, [
-    activeTab,
-    isOpen,
-    collateralPoolBalance,
-    sailPoolBalance,
-    peggedBalance,
-    peggedBalanceData,
-    haBalances,
-    peggedTokenAddress,
-    selectedMarket,
-    address,
-  ]);
+  }, [activeTab, isOpen]);
+
+  // Reset the ref when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      hasInitializedWithdraw.current = false;
+    }
+  }, [isOpen]);
 
   // Get available balance based on active tab
   const getAvailableBalance = (): bigint => {
