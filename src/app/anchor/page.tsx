@@ -6403,6 +6403,7 @@ export default function AnchorPage() {
                       ?.collateralPrice;
                     const collateralPriceDecimals = 18;
                     let collateralPrice: bigint | undefined;
+                    let wrappedRate: bigint | undefined;
                     if (hasPriceOracle) {
                       const latestAnswerResult = reads?.[currentOffset]?.result;
                       if (
@@ -6411,13 +6412,17 @@ export default function AnchorPage() {
                       ) {
                         if (Array.isArray(latestAnswerResult)) {
                           collateralPrice = latestAnswerResult[1] as bigint; // maxUnderlyingPrice
+                          wrappedRate = latestAnswerResult[3] as bigint; // maxWrappedRate
                         } else if (typeof latestAnswerResult === "object") {
                           const obj = latestAnswerResult as {
                             maxUnderlyingPrice?: bigint;
+                            maxWrappedRate?: bigint;
                           };
                           collateralPrice = obj.maxUnderlyingPrice;
+                          wrappedRate = obj.maxWrappedRate;
                         } else if (typeof latestAnswerResult === "bigint") {
                           collateralPrice = latestAnswerResult;
+                          wrappedRate = BigInt("1000000000000000000"); // Default 1:1 ratio
                         }
                       }
                       currentOffset += 1; // Move past collateral oracle (latestAnswer only)
@@ -6541,6 +6546,7 @@ export default function AnchorPage() {
                       sailRewardsUSD,
                       collateralPrice,
                       collateralPriceDecimals,
+                      wrappedRate,
                       userDeposit,
                       minAPR,
                       maxAPR,
@@ -7271,21 +7277,31 @@ export default function AnchorPage() {
                             ? Number(marketData.collateralRatio) / 1e18
                             : 0;
 
-                          // Calculate total debt in USD (totalDebt * peggedTokenPrice)
-                          // peggedTokenPrice is in 18 decimals, where 1e18 = $1
+                          // Collateral value from collateralTokenBalance * wrappedRate * underlyingPrice
+                          // collateralValue is in wrapped tokens (e.g., wstETH) - 18 decimals
+                          // wrappedRate converts wrapped to underlying (e.g., wstETH to stETH) - 18 decimals
+                          // collateralPriceUSD is the underlying price (e.g., stETH in USD) - 18 decimals
+                          // Formula: collUSD = (collateralBalance * wrappedRate * underlyingPrice) / 1e36
+                          const collateralTokens =
+                            marketData.collateralValue !== undefined
+                              ? Number(marketData.collateralValue)
+                              : 0;
+                          const wrappedRateNum = marketData.wrappedRate
+                            ? Number(marketData.wrappedRate)
+                            : 1e18; // Default 1:1 if no rate
+                          const underlyingPriceNum = collateralPriceUSD * 1e18; // Convert back to 18 decimals for formula
+                          const collateralValueUSD =
+                            collateralTokens > 0 && collateralPriceUSD > 0
+                              ? (collateralTokens * wrappedRateNum * underlyingPriceNum) / 1e36
+                              : 0;
+
+                          // Calculate total debt in USD
                           const peggedPriceUSD =
                             marketData.peggedTokenPrice &&
                             marketData.peggedTokenPrice > 0n
                               ? Number(marketData.peggedTokenPrice) / 1e18
                               : 1; // Default to $1 peg
                           const totalDebtUSD = totalHaTokens * peggedPriceUSD;
-
-                          // Collateral value = CR * totalDebtUSD
-                          // This is more accurate than token balance * price
-                          const collateralValueUSD =
-                            collateralRatioNum > 0 && totalDebtUSD > 0
-                              ? collateralRatioNum * totalDebtUSD
-                              : 0;
 
                           return (
                             <div
