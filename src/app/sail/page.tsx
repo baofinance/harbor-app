@@ -371,6 +371,27 @@ function SailMarketRow({
     | `0x${string}`
     | undefined;
 
+  // Calculate PnL from subgraph - uses pre-computed cost basis
+  const pnlSubgraph = useSailPositionPnL({
+    tokenAddress: leveragedTokenAddress || "",
+    currentTokenPrice: currentValueUSD && userDeposit && userDeposit > 0n 
+      ? currentValueUSD / (Number(userDeposit) / 1e18)
+      : undefined,
+    enabled: !!leveragedTokenAddress && !!userDeposit && userDeposit > 0n,
+  });
+
+  // Map subgraph data to PnLData format for compatibility
+  const pnlData: PnLData = {
+    costBasis: pnlSubgraph.position?.totalCostBasisUSD || 0,
+    unrealizedPnL: pnlSubgraph.unrealizedPnL,
+    unrealizedPnLPercent: pnlSubgraph.unrealizedPnLPercent,
+    realizedPnL: pnlSubgraph.position?.realizedPnLUSD || 0,
+    isLoading: pnlSubgraph.isLoading,
+  };
+
+  const pnlFormatted =
+    pnlData.unrealizedPnL !== 0 ? formatPnL(pnlData.unrealizedPnL) : null;
+
   return (
     <div key={id}>
       <div
@@ -542,25 +563,6 @@ function SailMarketExpandedView({
       (computedTokenPrice * wrappedRate * collateralPriceUSD) / oneE36;
     return Number(tokenPriceUSD_18dec) / 1e18;
   }, [computedTokenPrice, collateralPriceUSD, wrappedRate]);
-
-  // Calculate PnL from subgraph - uses pre-computed cost basis
-  const pnlSubgraph = useSailPositionPnL({
-    tokenAddress: leveragedTokenAddress || "",
-    currentTokenPrice: computedTokenPriceUSD,
-    enabled: !!leveragedTokenAddress && !!userDeposit && userDeposit > 0n,
-  });
-
-  // Map subgraph data to PnLData format for compatibility
-  const pnlData: PnLData = {
-    costBasis: pnlSubgraph.position?.totalCostBasisUSD || 0,
-    unrealizedPnL: pnlSubgraph.unrealizedPnL,
-    unrealizedPnLPercent: pnlSubgraph.unrealizedPnLPercent,
-    realizedPnL: pnlSubgraph.position?.realizedPnLUSD || 0,
-    isLoading: pnlSubgraph.isLoading,
-  };
-
-  const pnlFormatted =
-    pnlData.unrealizedPnL !== 0 ? formatPnL(pnlData.unrealizedPnL) : null;
 
   return (
     <div className="bg-[rgb(var(--surface-selected-rgb))] p-4 border-t border-white/20">
