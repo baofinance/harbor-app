@@ -12,6 +12,7 @@ import {
 import { Copy, Check, LogOut, Wallet, AlertTriangle } from "lucide-react";
 import { mainnet } from "wagmi/chains";
 import DecryptedText from "./DecryptedText";
+import { useSafeApp } from "./SafeAppProvider";
 
 function formatAddress(addr?: string) {
   if (!addr) return "";
@@ -22,6 +23,7 @@ export default function WalletButton() {
  const { address, isConnected } = useAccount();
  const { connectors, connect, isPending } = useConnect();
  const { disconnect } = useDisconnect();
+ const { isSafeApp, safeInfo } = useSafeApp();
  const chainId = useChainId();
  const { data: balance } = useBalance({
  address,
@@ -212,15 +214,41 @@ export default function WalletButton() {
                       const isReady = readyConnectors.includes(c.uid);
                       return (
  <button
- key={c.uid}
- onClick={async () => {
-                            try {
- await connect({ connector: c });
- setOpen(false);
-                            } catch (error) {
-                              console.error("Failed to connect:", error);
-                            }
- }}
+key={c.uid}
+onClick={async () => {
+                          try {
+// If we're in Safe App mode and using injected connector,
+// ensure window.ethereum is Safe's provider before connecting
+if (isSafeApp && safeInfo && (c.type === "injected" || c.id === "injected" || c.name.toLowerCase().includes("injected"))) {
+  const safeProvider = (window as any).__SAFE_APP_PROVIDER__;
+  if (safeProvider) {
+    // Override window.ethereum to ensure Safe's provider is used
+    (window as any).ethereum = {
+      ...safeProvider,
+      isSafe: true,
+      isMetaMask: false,
+      isCoinbaseWallet: false,
+      request: safeProvider.request.bind(safeProvider),
+      send: safeProvider.send?.bind(safeProvider),
+      sendAsync: safeProvider.sendAsync?.bind(safeProvider),
+    };
+    console.log("Set window.ethereum to Safe provider before connecting");
+  }
+}
+
+const result = connect({ connector: c });
+if (result && typeof result.then === 'function') {
+  await result;
+} else {
+  // Handle synchronous case
+  await new Promise(resolve => setTimeout(resolve, 100));
+}
+
+setOpen(false);
+                          } catch (error) {
+                            console.error("Failed to connect:", error);
+                          }
+}}
  disabled={isPending}
  className="w-full flex items-center justify-between px-3 py-2 bg-white/10 hover:bg-white/20 disabled:opacity-50 rounded-full"
  >

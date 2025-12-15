@@ -42,25 +42,21 @@ if (typeof window !== "undefined") {
           safeInfoInstance = info;
           safeProviderInstance = new SafeAppProvider(info, safeSDKInstance!);
           
-          // Safe already injects window.ethereum, but we ensure it's properly set up
-          // Don't override if Safe already set it, just ensure our provider is available
+          // Set Safe provider as the primary ethereum provider
+          // This ensures wagmi's injected connector uses Safe, not other wallets
           if (safeProviderInstance && typeof window !== "undefined") {
-            // Store our provider but don't override window.ethereum if it already exists
-            // Safe's injected provider should already be there
-            if (!(window as any).ethereum) {
-              (window as any).ethereum = {
-                ...safeProviderInstance,
-                isSafe: true,
-                isMetaMask: false,
-                request: safeProviderInstance.request.bind(safeProviderInstance),
-              };
-            } else {
-              // Ensure our Safe provider methods are available
-              const existingEthereum = (window as any).ethereum;
-              if (!existingEthereum.isSafe) {
-                existingEthereum.isSafe = true;
-              }
-            }
+            // Override window.ethereum with Safe's provider to ensure it's used
+            // This is necessary because if user has MetaMask, it might be prioritized
+            (window as any).ethereum = {
+              ...safeProviderInstance,
+              isSafe: true,
+              isMetaMask: false,
+              isCoinbaseWallet: false,
+              request: safeProviderInstance.request.bind(safeProviderInstance),
+              // Add standard EIP-1193 methods
+              send: safeProviderInstance.send?.bind(safeProviderInstance),
+              sendAsync: safeProviderInstance.sendAsync?.bind(safeProviderInstance),
+            };
           }
           
           // Store globally
@@ -86,6 +82,7 @@ export function SafeAppProviderWrapper({ children }: { children: ReactNode }) {
   const [hasTriedConnect, setHasTriedConnect] = useState(false);
   const { address, isConnected } = useAccount();
   const { connect, connectors } = useConnect();
+  const { disconnect } = useDisconnect();
 
   useEffect(() => {
     // If SDK was initialized but we don't have info yet, try to get it
@@ -96,21 +93,17 @@ export function SafeAppProviderWrapper({ children }: { children: ReactNode }) {
           const provider = new SafeAppProvider(info, safeSDKInstance!);
           safeProviderInstance = provider;
           
-          // Ensure Safe provider is properly set up (Safe may have already injected it)
+          // Set Safe provider as the primary ethereum provider
           if (provider && typeof window !== "undefined") {
-            if (!(window as any).ethereum) {
-              (window as any).ethereum = {
-                ...provider,
-                isSafe: true,
-                isMetaMask: false,
-                request: provider.request.bind(provider),
-              };
-            } else {
-              const existingEthereum = (window as any).ethereum;
-              if (!existingEthereum.isSafe) {
-                existingEthereum.isSafe = true;
-              }
-            }
+            (window as any).ethereum = {
+              ...provider,
+              isSafe: true,
+              isMetaMask: false,
+              isCoinbaseWallet: false,
+              request: provider.request.bind(provider),
+              send: provider.send?.bind(provider),
+              sendAsync: provider.sendAsync?.bind(provider),
+            };
           }
           
           setSdk(safeSDKInstance);
@@ -128,19 +121,15 @@ export function SafeAppProviderWrapper({ children }: { children: ReactNode }) {
     } else if (safeSDKInstance && safeInfoInstance && safeProviderInstance) {
       // Already initialized, just set state and ensure provider is set
       if (typeof window !== "undefined" && safeProviderInstance) {
-        if (!(window as any).ethereum) {
-          (window as any).ethereum = {
-            ...safeProviderInstance,
-            isSafe: true,
-            isMetaMask: false,
-            request: safeProviderInstance.request.bind(safeProviderInstance),
-          };
-        } else {
-          const existingEthereum = (window as any).ethereum;
-          if (!existingEthereum.isSafe) {
-            existingEthereum.isSafe = true;
-          }
-        }
+        (window as any).ethereum = {
+          ...safeProviderInstance,
+          isSafe: true,
+          isMetaMask: false,
+          isCoinbaseWallet: false,
+          request: safeProviderInstance.request.bind(safeProviderInstance),
+          send: safeProviderInstance.send?.bind(safeProviderInstance),
+          sendAsync: safeProviderInstance.sendAsync?.bind(safeProviderInstance),
+        };
       }
       
       setSdk(safeSDKInstance);
@@ -150,11 +139,28 @@ export function SafeAppProviderWrapper({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  // Check if we're connected to the wrong address (not Safe)
+  useEffect(() => {
+    if (isSafeApp && safeInfo && isConnected && address) {
+      const safeAddress = safeInfo.safeAddress.toLowerCase();
+      const connectedAddress = address.toLowerCase();
+      
+      if (connectedAddress !== safeAddress) {
+        console.log("Connected to wrong address, disconnecting and reconnecting to Safe...", {
+          connected: connectedAddress,
+          expected: safeAddress,
+        });
+        disconnect();
+        setHasTriedConnect(false);
+      }
+    }
+  }, [isSafeApp, safeInfo, isConnected, address, disconnect]);
+
   // Auto-connect when Safe is detected
   useEffect(() => {
     if (isSafeApp && safeInfo && !isConnected && !hasTriedConnect) {
       // Wait a bit for connectors to be ready and provider to be set
-      const tryConnect = () => {
+      const tryConnect = async () => {
         if (connectors.length === 0) {
           // Retry if connectors aren't ready yet
           setTimeout(tryConnect, 200);
@@ -173,15 +179,21 @@ export function SafeAppProviderWrapper({ children }: { children: ReactNode }) {
             connector: injectedConnector.name,
           });
           
-          connect({ connector: injectedConnector })
-            .then(() => {
+          try {
+            // In wagmi v2, connect might not return a promise, so we handle it safely
+            const result = connect({ connector: injectedConnector });
+            if (result && typeof result.then === 'function') {
+              await result;
               console.log("Successfully connected to Safe wallet");
-            })
-            .catch((error) => {
-              console.error("Failed to auto-connect Safe:", error);
-              // Reset to allow retry
-              setHasTriedConnect(false);
-            });
+            } else {
+              // If it doesn't return a promise, assume it's synchronous
+              console.log("Connect called (may be synchronous)");
+            }
+          } catch (error) {
+            console.error("Failed to auto-connect Safe:", error);
+            // Reset to allow retry
+            setHasTriedConnect(false);
+          }
         } else {
           console.warn("No injected connector found for Safe");
           // Retry after a delay
@@ -191,8 +203,8 @@ export function SafeAppProviderWrapper({ children }: { children: ReactNode }) {
         }
       };
 
-      // Initial delay to ensure everything is set up
-      setTimeout(tryConnect, 300);
+      // Initial delay to ensure everything is set up, especially window.ethereum
+      setTimeout(tryConnect, 500);
     }
   }, [isSafeApp, safeInfo, isConnected, hasTriedConnect, connectors, connect]);
 
