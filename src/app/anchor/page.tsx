@@ -1427,9 +1427,9 @@ export default function AnchorPage() {
     setMounted(true);
   }, []);
 
-  // Get all markets with pegged tokens (exclude markets still in genesis)
+  // Get all markets with pegged tokens (we'll filter by collateral balance later)
   const anchorMarkets = useMemo(
-    () => Object.entries(markets).filter(([_, m]) => m.peggedToken && m.status !== "genesis"),
+    () => Object.entries(markets).filter(([_, m]) => m.peggedToken),
     []
   );
 
@@ -6552,8 +6552,18 @@ export default function AnchorPage() {
                   }
                 );
 
+                // Filter to only show markets where genesis has completed (has collateral deposited)
+                const activeMarketsData = marketsData.filter(
+                  (m) => m.collateralValue !== undefined && m.collateralValue > 0n
+                );
+
+                // Skip this group if no markets have completed genesis
+                if (activeMarketsData.length === 0) {
+                  return null;
+                }
+
                 // Calculate combined values
-                const combinedPositionUSD = marketsData.reduce(
+                const combinedPositionUSD = activeMarketsData.reduce(
                   (sum, m) =>
                     sum +
                     m.collateralPoolDepositUSD +
@@ -6562,7 +6572,7 @@ export default function AnchorPage() {
                   0
                 );
                 // Also track total token amounts (for display when USD isn't available)
-                const combinedPositionTokens = marketsData.reduce(
+                const combinedPositionTokens = activeMarketsData.reduce(
                   (sum, m) =>
                     sum +
                     Number(m.collateralPoolDeposit || 0n) / 1e18 +
@@ -6570,16 +6580,16 @@ export default function AnchorPage() {
                     Number(m.userDeposit || 0n) / 1e18,
                   0
                 );
-                const combinedRewardsUSD = marketsData.reduce(
+                const combinedRewardsUSD = activeMarketsData.reduce(
                   (sum, m) => sum + m.collateralRewardsUSD + m.sailRewardsUSD,
                   0
                 );
 
                 // Calculate APR ranges across all markets in group
-                const allMinAPRs = marketsData
+                const allMinAPRs = activeMarketsData
                   .map((m) => m.minAPR)
                   .filter((v) => v > 0);
-                const allMaxAPRs = marketsData
+                const allMaxAPRs = activeMarketsData
                   .map((m) => m.maxAPR)
                   .filter((v) => v > 0);
                 const minAPR =
@@ -6588,7 +6598,7 @@ export default function AnchorPage() {
                   allMaxAPRs.length > 0 ? Math.max(...allMaxAPRs) : 0;
 
                 // Collect actual APRs from stability pools for tooltip
-                const collateralPoolAPRs = marketsData
+                const collateralPoolAPRs = activeMarketsData
                   .map((m) => m.collateralPoolAPR)
                   .filter(
                     (apr): apr is { collateral: number; steam: number } =>
@@ -6596,7 +6606,7 @@ export default function AnchorPage() {
                   )
                   .map((apr) => apr.collateral + apr.steam)
                   .filter((v) => v > 0);
-                const sailPoolAPRs = marketsData
+                const sailPoolAPRs = activeMarketsData
                   .map((m) => m.sailPoolAPR)
                   .filter(
                     (apr): apr is { collateral: number; steam: number } =>
@@ -6618,10 +6628,10 @@ export default function AnchorPage() {
                   sailPoolAPRs.length > 0 ? Math.max(...sailPoolAPRs) : null;
 
                 // Calculate projected APR ranges
-                const allMinProjectedAPRs = marketsData
+                const allMinProjectedAPRs = activeMarketsData
                   .map((m) => m.minProjectedAPR)
                   .filter((v): v is number => v !== null && v > 0);
-                const allMaxProjectedAPRs = marketsData
+                const allMaxProjectedAPRs = activeMarketsData
                   .map((m) => m.maxProjectedAPR)
                   .filter((v): v is number => v !== null && v > 0);
                 const minProjectedAPR =
@@ -6995,7 +7005,7 @@ export default function AnchorPage() {
                         {(() => {
                           // Aggregate positions across all markets in this group
                           // ha token balance is the same for all markets (same token)
-                          const firstMarket = marketsData[0];
+                          const firstMarket = activeMarketsData[0];
                           const haTokenBalance = firstMarket?.userDeposit;
                           const haTokenBalanceUSD = firstMarket?.haTokenBalanceUSD || 0;
                           const haSymbol = firstMarket?.market?.peggedToken?.symbol || "ha";
@@ -7009,7 +7019,7 @@ export default function AnchorPage() {
                           // Collect all withdrawal requests for this group
                           const groupWithdrawalRequests: typeof withdrawalRequests = [];
                           
-                          marketsData.forEach((md) => {
+                          activeMarketsData.forEach((md) => {
                             if (md.collateralPoolDeposit && md.collateralPoolDeposit > 0n) {
                               totalCollateralPoolDeposit += md.collateralPoolDeposit;
                               totalCollateralPoolDepositUSD += md.collateralPoolDepositUSD || 0;
@@ -7052,7 +7062,7 @@ export default function AnchorPage() {
                                   <div className="space-y-1.5">
                                     {groupWithdrawalRequests.map((request) => {
                                       // Find the market this request belongs to
-                                      const requestMarket = marketsData.find(
+                                      const requestMarket = activeMarketsData.find(
                                         (md) =>
                                           request.poolAddress.toLowerCase() ===
                                             md.market.addresses?.stabilityPoolCollateral?.toLowerCase() ||
@@ -7092,7 +7102,7 @@ export default function AnchorPage() {
                                           <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2">
                                             <span className="text-[#1E4775] font-semibold">
                                               {poolType === "collateral" ? "Collateral" : "Sail"} Pool
-                                              {requestMarket && marketsData.length > 1 && (
+                                              {requestMarket && activeMarketsData.length > 1 && (
                                                 <span className="text-[#1E4775]/50 ml-1">
                                                   ({requestMarket.market.collateral?.symbol || "?"})
                                                 </span>
@@ -7223,7 +7233,7 @@ export default function AnchorPage() {
                           );
                         })()}
                         
-                        {marketsData.map((marketData) => {
+                        {activeMarketsData.map((marketData) => {
                           // Get volatility protection from hook data
                           const minterAddr =
                             marketData.minterAddress?.toLowerCase();

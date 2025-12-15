@@ -933,9 +933,9 @@ export default function SailPage() {
     };
   }, [totalSailMarksState, sailBalances]);
 
-  // Get all markets with leveraged tokens (exclude markets still in genesis)
+  // Get all markets with leveraged tokens (we'll filter by collateral balance later)
   const sailMarkets = useMemo(
-    () => Object.entries(markets).filter(([_, m]) => m.leveragedToken && m.status !== "genesis"),
+    () => Object.entries(markets).filter(([_, m]) => m.leveragedToken),
     []
   );
 
@@ -1293,7 +1293,23 @@ export default function SailPage() {
 
           {/* Markets List - Grouped by Long Side */}
           <section className="space-y-4">
-            {Object.entries(groupedMarkets).map(([longSide, markets]) => (
+            {Object.entries(groupedMarkets).map(([longSide, markets]) => {
+              // Filter to only show markets where genesis has completed (has collateral)
+              const activeMarkets = markets.filter(([id]) => {
+                const globalIndex = sailMarkets.findIndex(
+                  ([marketId]) => marketId === id
+                );
+                const baseOffset = globalIndex * 7;
+                const collateralValue = reads?.[baseOffset + 3]?.result as bigint | undefined;
+                return collateralValue !== undefined && collateralValue > 0n;
+              });
+              
+              // Skip this group if no markets have completed genesis
+              if (activeMarkets.length === 0) {
+                return null;
+              }
+              
+              return (
               <div key={longSide}>
                 <h2 className="text-xl font-semibold text-white mb-2">
                   Long {longSide}
@@ -1312,7 +1328,7 @@ export default function SailPage() {
 
                 {/* Market Rows */}
                 <div className="space-y-2">
-                  {markets.map(([id, m]) => {
+                  {activeMarkets.map(([id, m]) => {
                     const globalIndex = sailMarkets.findIndex(
                       ([marketId]) => marketId === id
                     );
@@ -1342,7 +1358,8 @@ export default function SailPage() {
                   })}
                 </div>
               </div>
-            ))}
+              );
+            })}
           </section>
         </main>
 
