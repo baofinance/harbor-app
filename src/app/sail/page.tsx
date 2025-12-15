@@ -501,7 +501,9 @@ function formatPnL(value: number): { text: string; color: string } {
 function SailMarketRow({
   id,
   market,
-  globalIndex,
+  baseOffset,
+  hasOracle,
+  hasToken,
   reads,
   userDeposit,
   isExpanded,
@@ -511,7 +513,9 @@ function SailMarketRow({
 }: {
   id: string;
   market: any;
-  globalIndex: number;
+  baseOffset: number;
+  hasOracle: boolean;
+  hasToken: boolean;
   reads: any;
   userDeposit: bigint | undefined;
   isExpanded: boolean;
@@ -521,9 +525,8 @@ function SailMarketRow({
 }) {
   const { address } = useAccount();
 
-  // 7 reads per market: leverageRatio, leveragedTokenPrice, collateralRatio, collateralTokenBalance, latestAnswer, name, totalSupply
-  const baseOffset = globalIndex * 7;
-
+  // Parse contract reads using dynamic offsets
+  // Offsets: 0-3 = minter reads, 4 = oracle (if exists), 5-6 = token reads (if exists)
   const leverageRatio = reads?.[baseOffset]?.result as bigint | undefined;
   const leveragedTokenPrice = reads?.[baseOffset + 1]?.result as
     | bigint
@@ -531,30 +534,34 @@ function SailMarketRow({
   const collateralRatio = reads?.[baseOffset + 2]?.result as bigint | undefined;
   const collateralValue = reads?.[baseOffset + 3]?.result as bigint | undefined;
 
-  // Parse oracle price
-  const oracleResult = reads?.[baseOffset + 4]?.result;
+  // Parse oracle price (at offset 4 if oracle exists)
+  let oracleOffset = 4;
   let collateralPriceUSD: bigint | undefined;
   let wrappedRate: bigint | undefined;
-  if (oracleResult !== undefined && oracleResult !== null) {
-    if (Array.isArray(oracleResult)) {
-      collateralPriceUSD = oracleResult[1] as bigint;
-      wrappedRate = oracleResult[3] as bigint;
-    } else if (typeof oracleResult === "object") {
-      const obj = oracleResult as {
-        maxUnderlyingPrice?: bigint;
-        maxWrappedRate?: bigint;
-      };
-      collateralPriceUSD = obj.maxUnderlyingPrice;
-      wrappedRate = obj.maxWrappedRate;
-    } else if (typeof oracleResult === "bigint") {
-      collateralPriceUSD = oracleResult;
-      wrappedRate = BigInt("1000000000000000000");
+  if (hasOracle) {
+    const oracleResult = reads?.[baseOffset + oracleOffset]?.result;
+    if (oracleResult !== undefined && oracleResult !== null) {
+      if (Array.isArray(oracleResult)) {
+        collateralPriceUSD = oracleResult[1] as bigint;
+        wrappedRate = oracleResult[3] as bigint;
+      } else if (typeof oracleResult === "object") {
+        const obj = oracleResult as {
+          maxUnderlyingPrice?: bigint;
+          maxWrappedRate?: bigint;
+        };
+        collateralPriceUSD = obj.maxUnderlyingPrice;
+        wrappedRate = obj.maxWrappedRate;
+      } else if (typeof oracleResult === "bigint") {
+        collateralPriceUSD = oracleResult;
+        wrappedRate = BigInt("1000000000000000000");
+      }
     }
   }
 
-  // Get token name and total supply
-  const tokenName = reads?.[baseOffset + 5]?.result as string | undefined;
-  const totalSupply = reads?.[baseOffset + 6]?.result as bigint | undefined;
+  // Get token name and total supply (after oracle if it exists)
+  const tokenOffset = hasOracle ? 5 : 4;
+  const tokenName = hasToken ? reads?.[baseOffset + tokenOffset]?.result as string | undefined : undefined;
+  const totalSupply = hasToken ? reads?.[baseOffset + tokenOffset + 1]?.result as bigint | undefined : undefined;
   const shortSide = parseShortSide(tokenName, market);
 
   // Calculate current value in USD using collateral value and collateral ratio
@@ -1010,14 +1017,13 @@ export default function SailPage() {
         addr.startsWith("0x") &&
         addr.length === 42;
 
-      // Skip entire market if minter is invalid
+      // Skip entire market if minter is invalid - return empty array, this market won't be rendered
       if (!isValidAddress(minter)) {
-        // Still need to return 7 placeholders to maintain offset alignment
-        return Array(7).fill(null);
+        return [];
       }
 
-      // Always return exactly 7 reads per market
-      return [
+      // Build contracts array - always include oracle and token reads if addresses are valid
+      const contracts: any[] = [
         // 0: leverageRatio
         {
           address: minter,
@@ -1042,31 +1048,32 @@ export default function SailPage() {
           abi: minterABI,
           functionName: "collateralTokenBalance" as const,
         },
-        // 4: latestAnswer (oracle) - use placeholder if missing
-        isValidAddress(priceOracle)
-          ? {
-              address: priceOracle,
-              abi: wrappedPriceOracleABI,
-              functionName: "latestAnswer" as const,
-            }
-          : null,
-        // 5: name (leveraged token) - use placeholder if missing
-        isValidAddress(leveragedTokenAddress)
-          ? {
-              address: leveragedTokenAddress,
-              abi: erc20MetadataABI,
-              functionName: "name" as const,
-            }
-          : null,
-        // 6: totalSupply (leveraged token) - use placeholder if missing
-        isValidAddress(leveragedTokenAddress)
-          ? {
-              address: leveragedTokenAddress,
-              abi: erc20MetadataABI,
-              functionName: "totalSupply" as const,
-            }
-          : null,
       ];
+
+      // 4: latestAnswer (oracle) - always add if valid
+      if (isValidAddress(priceOracle)) {
+        contracts.push({
+          address: priceOracle,
+          abi: wrappedPriceOracleABI,
+          functionName: "latestAnswer" as const,
+        });
+      }
+
+      // 5 & 6: name and totalSupply (leveraged token) - always add if valid
+      if (isValidAddress(leveragedTokenAddress)) {
+        contracts.push({
+          address: leveragedTokenAddress,
+          abi: erc20MetadataABI,
+          functionName: "name" as const,
+        });
+        contracts.push({
+          address: leveragedTokenAddress,
+          abi: erc20MetadataABI,
+          functionName: "totalSupply" as const,
+        });
+      }
+
+      return contracts;
     }),
     query: {
       enabled: sailMarkets.length > 0,
@@ -1074,6 +1081,43 @@ export default function SailPage() {
       retryOnMount: false,
     },
   });
+
+  // Calculate the offset for each market (since contract count varies per market)
+  const marketOffsets = useMemo(() => {
+    const offsets = new Map<number, number>();
+    let currentOffset = 0;
+    
+    sailMarkets.forEach(([_, m], index) => {
+      offsets.set(index, currentOffset);
+      
+      const minter = (m as any).addresses?.minter as `0x${string}` | undefined;
+      const priceOracle = (m as any).addresses?.collateralPrice as `0x${string}` | undefined;
+      const leveragedTokenAddress = (m as any).addresses?.leveragedToken as `0x${string}` | undefined;
+      
+      const isValidAddress = (addr: any): boolean =>
+        addr && typeof addr === "string" && addr.startsWith("0x") && addr.length === 42;
+      
+      if (!isValidAddress(minter)) {
+        // No reads for invalid minter
+        return;
+      }
+      
+      // Always 4 minter reads
+      currentOffset += 4;
+      
+      // Oracle read if valid
+      if (isValidAddress(priceOracle)) {
+        currentOffset += 1;
+      }
+      
+      // Token reads if valid
+      if (isValidAddress(leveragedTokenAddress)) {
+        currentOffset += 2; // name + totalSupply
+      }
+    });
+    
+    return offsets;
+  }, [sailMarkets]);
 
   // Fetch user's leveraged token balances for all markets
   const userDepositContracts = useMemo(() => {
@@ -1338,7 +1382,7 @@ export default function SailPage() {
                 const globalIndex = sailMarkets.findIndex(
                   ([marketId]) => marketId === id
                 );
-                const baseOffset = globalIndex * 7;
+                const baseOffset = marketOffsets.get(globalIndex) ?? 0;
                 const collateralValue = reads?.[baseOffset + 3]?.result as bigint | undefined;
                 return collateralValue !== undefined && collateralValue > 0n;
               });
@@ -1372,13 +1416,24 @@ export default function SailPage() {
                       ([marketId]) => marketId === id
                     );
                     const userDeposit = userDepositMap.get(globalIndex);
+                    const baseOffset = marketOffsets.get(globalIndex) ?? 0;
+                    
+                    // Check if this market has oracle and token addresses
+                    const priceOracle = (m as any).addresses?.collateralPrice as `0x${string}` | undefined;
+                    const leveragedTokenAddress = (m as any).addresses?.leveragedToken as `0x${string}` | undefined;
+                    const isValidAddress = (addr: any): boolean =>
+                      addr && typeof addr === "string" && addr.startsWith("0x") && addr.length === 42;
+                    const hasOracle = isValidAddress(priceOracle);
+                    const hasToken = isValidAddress(leveragedTokenAddress);
 
                     return (
                       <SailMarketRow
                         key={id}
                         id={id}
                         market={m}
-                        globalIndex={globalIndex}
+                        baseOffset={baseOffset}
+                        hasOracle={hasOracle}
+                        hasToken={hasToken}
                         reads={reads}
                         userDeposit={userDeposit}
                         isExpanded={expandedMarket === id}

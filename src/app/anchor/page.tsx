@@ -7278,21 +7278,20 @@ export default function AnchorPage() {
                             : 0;
 
                           // Collateral value from collateralTokenBalance * wrappedRate * underlyingPrice
-                          // collateralValue is in wrapped tokens (e.g., wstETH) - 18 decimals
-                          // wrappedRate converts wrapped to underlying (e.g., wstETH to stETH) - 18 decimals
-                          // collateralPriceUSD is the underlying price (e.g., stETH in USD) - 18 decimals
-                          // Formula: collUSD = (collateralBalance * wrappedRate * underlyingPrice) / 1e36
+                          // collateralValue is in wrapped tokens (e.g., wstETH) - 18 decimals raw
+                          // wrappedRate converts wrapped to underlying (e.g., wstETH to stETH) - 18 decimals raw
+                          // collateralPriceUSD is already normalized (e.g., 4400 for $4400)
                           const collateralTokens =
                             marketData.collateralValue !== undefined
-                              ? Number(marketData.collateralValue)
+                              ? Number(marketData.collateralValue) / 1e18
                               : 0;
                           const wrappedRateNum = marketData.wrappedRate
-                            ? Number(marketData.wrappedRate)
-                            : 1e18; // Default 1:1 if no rate
-                          const underlyingPriceNum = collateralPriceUSD * 1e18; // Convert back to 18 decimals for formula
+                            ? Number(marketData.wrappedRate) / 1e18
+                            : 1; // Default 1:1 if no rate
+                          // Formula: collateralUSD = collateralTokens * wrappedRate * underlyingPriceUSD
                           const collateralValueUSD =
                             collateralTokens > 0 && collateralPriceUSD > 0
-                              ? (collateralTokens * wrappedRateNum * underlyingPriceNum) / 1e36
+                              ? collateralTokens * wrappedRateNum * collateralPriceUSD
                               : 0;
 
                           // Calculate total debt in USD
