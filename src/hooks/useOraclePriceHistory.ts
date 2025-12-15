@@ -45,12 +45,30 @@ export function useOraclePriceHistory(marketId: string) {
     async function fetchOraclePriceHistory() {
       setIsLoading(true);
       try {
-        // Get latest round data
-        const latestRound = await publicClient.readContract({
-          address: markets[marketId].addresses.priceOracle as `0x${string}`,
-          abi: aggregatorV3ABI,
-          functionName: "latestRoundData",
-        });
+        // Check if oracle address exists and is valid
+        const oracleAddress = markets[marketId]?.addresses?.priceOracle;
+        if (!oracleAddress || oracleAddress === '0x0000000000000000000000000000000000000000') {
+          console.warn(`No valid oracle address for market ${marketId}`);
+          setPriceHistory([]);
+          setIsLoading(false);
+          return;
+        }
+
+        // Get latest round data with error handling
+        let latestRound;
+        try {
+          latestRound = await publicClient.readContract({
+            address: oracleAddress as `0x${string}`,
+            abi: aggregatorV3ABI,
+            functionName: "latestRoundData",
+          });
+        } catch (oracleError) {
+          // Oracle might not be a standard Chainlink oracle or not deployed
+          console.warn(`Oracle at ${oracleAddress} does not support latestRoundData():`, oracleError);
+          setPriceHistory([]);
+          setIsLoading(false);
+          return;
+        }
 
         const pricePoints: PriceDataPoint[] = [];
         const latestRoundId = Number(latestRound[0]);
@@ -62,7 +80,7 @@ export function useOraclePriceHistory(marketId: string) {
 
           try {
             const roundData = await publicClient.readContract({
-              address: markets[marketId].addresses.priceOracle as `0x${string}`,
+              address: oracleAddress as `0x${string}`,
               abi: aggregatorV3ABI,
               functionName: "getRoundData",
               args: [BigInt(roundId)],
@@ -71,13 +89,16 @@ export function useOraclePriceHistory(marketId: string) {
             const price = Number(formatUnits(roundData[1], 8)); // Chainlink prices typically have 8 decimals
             const timestamp = Number(roundData[3]);
 
-            pricePoints.push({
-              timestamp,
-              price,
-              type: "oracle",
-              tokenAmount: BigInt(0),
-              collateralAmount: BigInt(0),
-            });
+            // Only add if we have valid data
+            if (timestamp > 0 && price > 0) {
+              pricePoints.push({
+                timestamp,
+                price,
+                type: "oracle",
+                tokenAmount: BigInt(0),
+                collateralAmount: BigInt(0),
+              });
+            }
           } catch (error) {
             console.warn(`Failed to fetch round ${roundId}:`, error);
             continue;
@@ -93,7 +114,9 @@ export function useOraclePriceHistory(marketId: string) {
       }
     }
 
-    fetchOraclePriceHistory();
+    if (marketId && publicClient) {
+      fetchOraclePriceHistory();
+    }
   }, [marketId, publicClient]);
 
   return {

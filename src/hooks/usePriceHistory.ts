@@ -7,6 +7,7 @@ import { minterABI } from "../config/contracts";
 
 const BLOCKS_PER_DAY = 7200; // Approximate number of blocks per day on Ethereum
 const DAYS_TO_FETCH = 30; // Number of days of history to fetch
+const MAX_BLOCKS_PER_REQUEST = 900; // Stay under 1k block limit with some buffer
 
 const mintEventAbi = {
   anonymous: false,
@@ -43,26 +44,41 @@ export function usePriceHistory(marketId: string, tokenSymbol: string) {
       try {
         const currentBlock = await publicClient.getBlockNumber();
         const fromBlock = currentBlock - BigInt(BLOCKS_PER_DAY * DAYS_TO_FETCH);
+        const totalBlocks = Number(currentBlock - fromBlock);
+        
+        // Split into chunks to avoid exceeding RPC limits
+        const chunks = Math.ceil(totalBlocks / MAX_BLOCKS_PER_REQUEST);
+        const allMintEvents = [];
+        const allRedeemEvents = [];
 
-        // Fetch mint events
-        const mintEvents = await publicClient.getLogs({
-          address: markets[marketId].addresses.minter as `0x${string}`,
-          event: mintEventAbi,
-          fromBlock,
-          toBlock: currentBlock,
-        });
+        for (let i = 0; i < chunks; i++) {
+          const chunkFromBlock = fromBlock + BigInt(i * MAX_BLOCKS_PER_REQUEST);
+          const chunkToBlock = i === chunks - 1 
+            ? currentBlock 
+            : fromBlock + BigInt((i + 1) * MAX_BLOCKS_PER_REQUEST);
 
-        // Fetch redeem events
-        const redeemEvents = await publicClient.getLogs({
-          address: markets[marketId].addresses.minter as `0x${string}`,
-          event: redeemEventAbi,
-          fromBlock,
-          toBlock: currentBlock,
-        });
+          // Fetch mint events for this chunk
+          const mintEvents = await publicClient.getLogs({
+            address: markets[marketId].addresses.minter as `0x${string}`,
+            event: mintEventAbi,
+            fromBlock: chunkFromBlock,
+            toBlock: chunkToBlock,
+          });
+          allMintEvents.push(...mintEvents);
+
+          // Fetch redeem events for this chunk
+          const redeemEvents = await publicClient.getLogs({
+            address: markets[marketId].addresses.minter as `0x${string}`,
+            event: redeemEventAbi,
+            fromBlock: chunkFromBlock,
+            toBlock: chunkToBlock,
+          });
+          allRedeemEvents.push(...redeemEvents);
+        }
 
         // Process events into price points
         const pricePoints: PriceDataPoint[] = [
-          ...mintEvents.map((event) => {
+          ...allMintEvents.map((event) => {
             const decodedData = decodeEventLog({
               abi: [mintEventAbi],
               data: event.data,
@@ -78,7 +94,7 @@ export function usePriceHistory(marketId: string, tokenSymbol: string) {
               collateralAmount: decodedData.args.collateralAmount,
             };
           }),
-          ...redeemEvents.map((event) => {
+          ...allRedeemEvents.map((event) => {
             const decodedData = decodeEventLog({
               abi: [redeemEventAbi],
               data: event.data,
