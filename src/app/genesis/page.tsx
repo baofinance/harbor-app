@@ -746,6 +746,11 @@ export default function GenesisIndexPage() {
                       <span>Share on X</span>
                     </button>
                   )}
+                  <p className="text-xs text-[#1E4775]/60 mt-2">
+                    Share your post in the{" "}
+                    <span className="font-semibold">#boosters</span> channel on
+                    Discord to be included in the community marketing airdrop.
+                  </p>
                 </div>
 
                 <div className="flex justify-end">

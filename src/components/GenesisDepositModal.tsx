@@ -787,8 +787,7 @@ Thank you for joining the Maiden Voyage!
  Boost your airdrop
  </div>
  <p className="text-sm text-[#1E4775]/80">
- Boost your airdrop with our community marketing program: Share your
- deposit on X and post a link in our Discord booster channel.
+ Share your deposit on X to spread the word about Harbor Protocol.
  </p>
  <button
  onClick={handleShareOnX}
@@ -803,6 +802,10 @@ Thank you for joining the Maiden Voyage!
  </svg>
  <span>Share on X</span>
  </button>
+ <p className="text-xs text-[#1E4775]/60 mt-2">
+ Share your post in the <span className="font-semibold">#boosters</span> channel on
+ Discord to be included in the community marketing airdrop.
+ </p>
  </div>
  </div>
  );
