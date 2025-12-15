@@ -2,10 +2,14 @@
  * Sail Token balance tracking for Harbor Marks
  * Tracks ERC20 Transfer events to calculate user balances and marks
  * Sail tokens (leveraged tokens, hs) have a 5x marks multiplier by default
+ * 
+ * IMPORTANT: Sail tokens have VARIABLE prices (not pegged to $1)
+ * The price is fetched from Minter.leveragedTokenPrice()
  */
 
 import { Transfer as TransferEvent } from "../generated/SailToken_hsPB/ERC20";
 import { ERC20 } from "../generated/SailToken_hsPB/ERC20";
+import { Minter } from "../generated/SailToken_hsPB/Minter";
 import {
   updateSailTokenMarksInTotal,
 } from "./marksAggregation";
@@ -21,29 +25,70 @@ import { BigDecimal, BigInt, Bytes, Address, ethereum } from "@graphprotocol/gra
 const SECONDS_PER_DAY = BigDecimal.fromString("86400");
 const DEFAULT_MULTIPLIER = BigDecimal.fromString("5.0"); // 5x for sail tokens (default)
 const DEFAULT_MARKS_PER_DOLLAR_PER_DAY = BigDecimal.fromString("1.0");
+const ONE_ETHER = BigDecimal.fromString("1000000000000000000");
 
-// Helper to get or create price feed (simplified - using $1 for sail tokens)
-function getOrCreatePriceFeed(tokenAddress: Bytes, block: ethereum.Block): PriceFeed {
-  const id = tokenAddress.toHexString();
-  let priceFeed = PriceFeed.load(id);
+// ============================================================================
+// TOKEN TO MINTER MAPPING
+// Maps sail token addresses to their corresponding Minter contracts
+// ============================================================================
 
-  if (priceFeed == null) {
-    priceFeed = new PriceFeed(id);
-    priceFeed.tokenAddress = tokenAddress;
-    priceFeed.priceFeedAddress = Bytes.fromHexString("0x0000000000000000000000000000000000000000");
-    priceFeed.priceUSD = BigDecimal.fromString("1.0"); // Default to $1 for sail tokens
-    priceFeed.decimals = 8;
-    priceFeed.lastUpdated = block.timestamp;
-    priceFeed.save();
+// stETH Market (USD-pegged)
+const STETH_SAIL_TOKEN = Address.fromString("0x469ddfcfa98d0661b7efedc82aceeab84133f7fe");   // hsUSD-stETH
+const STETH_MINTER = Address.fromString("0x8b17b6e8f9ce3477ddaf372a4140ac6005787901");
+
+// WBTC Market (USD-pegged)
+const WBTC_SAIL_TOKEN = Address.fromString("0x03fd55f80277c13bb17739190b1e086b836c9f20");    // hsUSD-WBTC
+const WBTC_MINTER = Address.fromString("0xa9434313a4b9a4d624c6d67b1d61091b159f5a77");
+
+/**
+ * Get the Minter address for a sail token
+ */
+function getMinterForSailToken(tokenAddress: Address): Address | null {
+  if (tokenAddress.equals(STETH_SAIL_TOKEN)) {
+    return STETH_MINTER;
   }
-  return priceFeed;
+  if (tokenAddress.equals(WBTC_SAIL_TOKEN)) {
+    return WBTC_MINTER;
+  }
+  return null;
 }
 
-// Helper to calculate balance in USD
-function calculateBalanceUSD(balance: BigInt, tokenAddress: Bytes, block: ethereum.Block): BigDecimal {
-  const priceFeed = getOrCreatePriceFeed(tokenAddress, block);
-  const balanceDecimal = balance.toBigDecimal().div(BigDecimal.fromString("1000000000000000000")); // 18 decimals
-  return balanceDecimal.times(priceFeed.priceUSD);
+/**
+ * Fetch sail token price from Minter.leveragedTokenPrice()
+ * Returns price in USD (18 decimals scaled to BigDecimal)
+ */
+function fetchSailTokenPrice(tokenAddress: Address): BigDecimal {
+  const minterAddress = getMinterForSailToken(tokenAddress);
+  
+  if (minterAddress === null) {
+    // Unknown token - fallback to $1
+    return BigDecimal.fromString("1.0");
+  }
+  
+  const minter = Minter.bind(minterAddress);
+  const priceResult = minter.try_leveragedTokenPrice();
+  
+  if (priceResult.reverted) {
+    // If call fails, fallback to $1
+    return BigDecimal.fromString("1.0");
+  }
+  
+  // leveragedTokenPrice() returns price with 18 decimals
+  return priceResult.value.toBigDecimal().div(ONE_ETHER);
+}
+
+/**
+ * Calculate USD value of sail token balance
+ * Uses actual leveraged token price from Minter
+ */
+function calculateBalanceUSDForToken(balance: BigInt, tokenAddress: Bytes, block: ethereum.Block): BigDecimal {
+  const tokenAddr = Address.fromBytes(tokenAddress);
+  const price = fetchSailTokenPrice(tokenAddr);
+  
+  // Convert balance from wei to token units (18 decimals)
+  const balanceDecimal = balance.toBigDecimal().div(ONE_ETHER);
+  
+  return balanceDecimal.times(price);
 }
 
 // Helper to get or create sail token balance
@@ -166,7 +211,7 @@ export function handleSailTokenTransfer(event: TransferEvent): void {
     
     const actualBalance = queryTokenBalance(Address.fromBytes(tokenAddress), fromAddress);
     senderBalance.balance = actualBalance;
-    senderBalance.balanceUSD = calculateBalanceUSD(actualBalance, tokenAddress, event.block);
+    senderBalance.balanceUSD = calculateBalanceUSDForToken(actualBalance, tokenAddress, event.block);
     
     // Recalculate marksPerDay with updated balanceUSD
     const multiplier = getSailTokenMultiplier(tokenAddress, timestamp);
@@ -195,7 +240,7 @@ export function handleSailTokenTransfer(event: TransferEvent): void {
     
     const actualBalance = queryTokenBalance(Address.fromBytes(tokenAddress), toAddress);
     receiverBalance.balance = actualBalance;
-    receiverBalance.balanceUSD = calculateBalanceUSD(actualBalance, tokenAddress, event.block);
+    receiverBalance.balanceUSD = calculateBalanceUSDForToken(actualBalance, tokenAddress, event.block);
     
     // Recalculate marksPerDay with updated balanceUSD
     const multiplier = getSailTokenMultiplier(tokenAddress, timestamp);

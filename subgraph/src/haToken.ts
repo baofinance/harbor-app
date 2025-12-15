@@ -11,6 +11,9 @@ import {
   updateHaTokenMarksInTotal,
 } from "./marksAggregation";
 import {
+  calculateBalanceUSD,
+} from "./priceOracle";
+import {
   HaTokenBalance,
   MarksMultiplier,
   UserTotalMarks,
@@ -18,7 +21,6 @@ import {
 } from "../generated/schema";
 import { BigDecimal, BigInt, Bytes, Address, ethereum } from "@graphprotocol/graph-ts";
 import { ERC20 } from "../generated/HaToken_haPB/ERC20";
-import { ChainlinkAggregator } from "../generated/HaToken_haPB/ChainlinkAggregator";
 
 // Constants
 const SECONDS_PER_DAY = BigDecimal.fromString("86400");
@@ -51,29 +53,9 @@ function getOrCreateHaTokenBalance(
   return balance;
 }
 
-// Simplified price feed - just return $1 for now
-function getOrCreatePriceFeed(tokenAddress: Bytes, block: ethereum.Block): PriceFeed {
-  const id = tokenAddress.toHexString();
-  let priceFeed = PriceFeed.load(id);
-  
-  if (priceFeed == null) {
-    priceFeed = new PriceFeed(id);
-    priceFeed.tokenAddress = tokenAddress;
-    priceFeed.priceFeedAddress = Bytes.fromHexString("0x0000000000000000000000000000000000000000");
-    priceFeed.priceUSD = BigDecimal.fromString("1.0"); // Default to $1 for ha tokens
-    priceFeed.decimals = 8;
-    priceFeed.lastUpdated = block.timestamp;
-    priceFeed.save();
-  }
-  
-  return priceFeed;
-}
-
-// Simplified USD calculation
-function calculateBalanceUSD(balance: BigInt, tokenAddress: Bytes, block: ethereum.Block): BigDecimal {
-  const priceFeed = getOrCreatePriceFeed(tokenAddress, block);
-  const balanceDecimal = balance.toBigDecimal().div(BigDecimal.fromString("1000000000000000000")); // 18 decimals
-  return balanceDecimal.times(priceFeed.priceUSD);
+// USD calculation now uses priceOracle module
+function calculateBalanceUSDForToken(balance: BigInt, tokenAddress: Bytes, block: ethereum.Block): BigDecimal {
+  return calculateBalanceUSD(balance, tokenAddress, block.timestamp, 18);
 }
 
 // Query contract balance directly
@@ -197,7 +179,7 @@ export function handleHaTokenTransfer(event: TransferEvent): void {
     
     // Update balance snapshot
     fromBalance.balance = actualBalance;
-    fromBalance.balanceUSD = calculateBalanceUSD(actualBalance, tokenAddress, event.block);
+    fromBalance.balanceUSD = calculateBalanceUSDForToken(actualBalance, tokenAddress, event.block);
     
     // Reset if balance goes to zero
     if (actualBalance.equals(BigInt.fromI32(0))) {
@@ -225,7 +207,7 @@ export function handleHaTokenTransfer(event: TransferEvent): void {
     
     // Update balance snapshot
     toBalance.balance = actualBalance;
-    toBalance.balanceUSD = calculateBalanceUSD(actualBalance, tokenAddress, event.block);
+    toBalance.balanceUSD = calculateBalanceUSDForToken(actualBalance, tokenAddress, event.block);
     
     // Set first seen if this is first time having balance
     if (toBalance.firstSeenAt.equals(BigInt.fromI32(0)) && actualBalance.gt(BigInt.fromI32(0))) {

@@ -102,6 +102,8 @@ dataSources:
           file: ./abis/ERC20.json
         - name: ChainlinkAggregator
           file: ./abis/ChainlinkAggregator.json
+        - name: Minter
+          file: ./abis/Minter.json
       eventHandlers:
         - event: Transfer(indexed address,indexed address,uint256)
           handler: handleSailTokenTransfer

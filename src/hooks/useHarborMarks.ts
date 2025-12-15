@@ -5,7 +5,7 @@ import { useAccount } from "wagmi";
 import { formatEther } from "viem";
 import { getGraphUrl } from "@/config/graph";
 
-// GraphQL query for Harbor Marks
+// GraphQL query for Harbor Marks (v0.0.5 schema)
 // Note: UserHarborMarks id format is {genesisAddress}-{userAddress}
 // userTotalMarks id format is {userAddress}
 const HARBOR_MARKS_QUERY = `
@@ -29,15 +29,38 @@ const HARBOR_MARKS_QUERY = `
       lastUpdated
     }
     
-    # Aggregated marks across all sources (if available)
+    # Aggregated marks across all sources (v0.0.5+)
     userTotalMarks(id: $userAddress) {
       id
       user
       genesisMarks
       haTokenMarks
+      sailTokenMarks
       stabilityPoolMarks
       totalMarks
       totalMarksPerDay
+      lastUpdated
+    }
+    
+    # Anchor token positions (1x multiplier)
+    haTokenBalances(where: { user: $userAddress }) {
+      tokenAddress
+      balance
+      balanceUSD
+      marksPerDay
+      accumulatedMarks
+      totalMarksEarned
+      lastUpdated
+    }
+    
+    # Sail token positions (5x multiplier)
+    sailTokenBalances(where: { user: $userAddress }) {
+      tokenAddress
+      balance
+      balanceUSD
+      marksPerDay
+      accumulatedMarks
+      totalMarksEarned
       lastUpdated
     }
     
@@ -77,6 +100,17 @@ const HARBOR_MARKS_QUERY = `
   }
 `;
 
+// Token balance position (for anchor/sail tokens)
+interface TokenPosition {
+  tokenAddress: string;
+  balance: string;
+  balanceUSD: string;
+  marksPerDay: string;
+  accumulatedMarks: string;
+  totalMarksEarned: string;
+  lastUpdated: string;
+}
+
 interface HarborMarksData {
   userHarborMarks: {
     id: string;
@@ -100,11 +134,14 @@ interface HarborMarksData {
     user: string;
     genesisMarks: string;
     haTokenMarks: string;
+    sailTokenMarks: string;
     stabilityPoolMarks: string;
     totalMarks: string;
     totalMarksPerDay: string;
     lastUpdated: string;
   } | null;
+  haTokenBalances: TokenPosition[];
+  sailTokenBalances: TokenPosition[];
   deposits: Array<{
     id: string;
     amount: string;
@@ -258,6 +295,7 @@ export function formatHarborMarks(data: HarborMarksData | null | undefined) {
       bonusMarks: 0,
       genesisMarks: 0,
       haTokenMarks: 0,
+      sailTokenMarks: 0,
       stabilityPoolMarks: 0,
       currentDeposit: "0",
       currentDepositUSD: 0,
@@ -266,6 +304,8 @@ export function formatHarborMarks(data: HarborMarksData | null | undefined) {
       genesisEnded: false,
       deposits: [],
       withdrawals: [],
+      anchorPositions: [],
+      sailPositions: [],
     };
   }
 
@@ -284,6 +324,7 @@ export function formatHarborMarks(data: HarborMarksData | null | undefined) {
       ? parseFloat(userMarks.currentMarks)
       : 0,
     haTokenMarks: totalMarks ? parseFloat(totalMarks.haTokenMarks) : 0,
+    sailTokenMarks: totalMarks ? parseFloat(totalMarks.sailTokenMarks) : 0,
     stabilityPoolMarks: totalMarks
       ? parseFloat(totalMarks.stabilityPoolMarks)
       : 0,
@@ -317,6 +358,25 @@ export function formatHarborMarks(data: HarborMarksData | null | undefined) {
       amountUSD: w.amountUSD ? parseFloat(w.amountUSD) : null,
       timestamp: parseInt(w.timestamp),
       marksForfeited: parseFloat(w.marksForfeited),
+    })),
+    // Token positions
+    anchorPositions: (data?.haTokenBalances || []).map((p) => ({
+      tokenAddress: p.tokenAddress,
+      balance: p.balance,
+      balanceUSD: parseFloat(p.balanceUSD),
+      marksPerDay: parseFloat(p.marksPerDay),
+      accumulatedMarks: parseFloat(p.accumulatedMarks),
+      totalMarksEarned: parseFloat(p.totalMarksEarned),
+      lastUpdated: parseInt(p.lastUpdated),
+    })),
+    sailPositions: (data?.sailTokenBalances || []).map((p) => ({
+      tokenAddress: p.tokenAddress,
+      balance: p.balance,
+      balanceUSD: parseFloat(p.balanceUSD),
+      marksPerDay: parseFloat(p.marksPerDay),
+      accumulatedMarks: parseFloat(p.accumulatedMarks),
+      totalMarksEarned: parseFloat(p.totalMarksEarned),
+      lastUpdated: parseInt(p.lastUpdated),
     })),
   };
 }

@@ -5,7 +5,7 @@ export const GRAPH_CONFIG = {
   production: {
     url:
       process.env.NEXT_PUBLIC_GRAPH_URL ||
-      "https://api.studio.thegraph.com/query/1718836/harbor-marks/v0.0.2",
+      "https://api.studio.thegraph.com/query/1718836/harbor-marks/v0.0.5",
     chainId: 1,
     network: "mainnet",
   },
