@@ -1,0 +1,12 @@
+{
+  "name": "Harbor Finance",
+  "description": "A decentralized protocol for creating synthetic assets pegged to any real-world data feed",
+  "iconPath": "/logowhitenobg.png",
+  "providedBy": {
+    "name": "Harbor Protocol",
+    "url": "https://harborfinance.io"
+  },
+  "shortName": "Harbor",
+  "appUrl": "https://staging.app.harborfinance.io"
+}
+

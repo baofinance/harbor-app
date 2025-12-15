@@ -174,3 +174,4 @@ export function handleStabilityPoolDepositChange(event: UserDepositChangeEvent):
   deposit.save();
 }
 
+

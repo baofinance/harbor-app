@@ -66,12 +66,12 @@ export default async function RootLayout({
  const headersObj = await headers();
  const cookies = headersObj.get("cookie");
 
- return (
- <html lang="en">
- <body
- className={`antialiased font-sans bg-[#1E4775] text-white relative`}
- >
- <div className="relative z-10">
+return (
+<html lang="en">
+<body
+className={`antialiased font-sans bg-[#1E4775] text-white relative`}
+>
+<div className="relative z-10">
  <ContextProvider cookies={cookies}>
  <Navigation />
  <FadeContent
