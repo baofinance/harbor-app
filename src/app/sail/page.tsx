@@ -933,9 +933,9 @@ export default function SailPage() {
     };
   }, [totalSailMarksState, sailBalances]);
 
-  // Get all markets with leveraged tokens
+  // Get all markets with leveraged tokens (exclude markets still in genesis)
   const sailMarkets = useMemo(
-    () => Object.entries(markets).filter(([_, m]) => m.leveragedToken),
+    () => Object.entries(markets).filter(([_, m]) => m.leveragedToken && m.status !== "genesis"),
     []
   );
 

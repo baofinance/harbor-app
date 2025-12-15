@@ -1427,9 +1427,9 @@ export default function AnchorPage() {
     setMounted(true);
   }, []);
 
-  // Get all markets with pegged tokens
+  // Get all markets with pegged tokens (exclude markets still in genesis)
   const anchorMarkets = useMemo(
-    () => Object.entries(markets).filter(([_, m]) => m.peggedToken),
+    () => Object.entries(markets).filter(([_, m]) => m.peggedToken && m.status !== "genesis"),
     []
   );
 
