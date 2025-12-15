@@ -539,17 +539,21 @@ function SailMarketRow({
   let collateralPriceUSD: bigint | undefined;
   let wrappedRate: bigint | undefined;
   if (hasOracle) {
-    const oracleResult = reads?.[baseOffset + oracleOffset]?.result;
-    console.log("[SailMarketRow] Oracle debug:", {
-      id,
-      baseOffset,
-      oracleOffset,
-      hasOracle,
-      oracleResultRaw: reads?.[baseOffset + oracleOffset],
-      oracleResult,
-      oracleResultType: typeof oracleResult,
-      isArray: Array.isArray(oracleResult),
-    });
+    const oracleRead = reads?.[baseOffset + oracleOffset];
+    const oracleResult = oracleRead?.result;
+    
+    // Debug: log once per market when expanded
+    if (typeof window !== 'undefined' && oracleRead) {
+      console.log(`[Sail ${id}] Oracle read:`, {
+        offset: baseOffset + oracleOffset,
+        status: oracleRead?.status,
+        error: oracleRead?.error?.message,
+        resultType: typeof oracleResult,
+        isArray: Array.isArray(oracleResult),
+        result: oracleResult,
+      });
+    }
+    
     if (oracleResult !== undefined && oracleResult !== null) {
       if (Array.isArray(oracleResult)) {
         collateralPriceUSD = oracleResult[1] as bigint;
@@ -566,10 +570,6 @@ function SailMarketRow({
         wrappedRate = BigInt("1000000000000000000");
       }
     }
-    console.log("[SailMarketRow] Parsed oracle:", {
-      collateralPriceUSD: collateralPriceUSD?.toString(),
-      wrappedRate: wrappedRate?.toString(),
-    });
   }
 
   // Get token name and total supply (after oracle if it exists)
