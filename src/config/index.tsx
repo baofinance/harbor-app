@@ -9,16 +9,16 @@ const MAINNET_RPC_URL =
   process.env.NEXT_PUBLIC_MAINNET_RPC_URL || "https://eth.llamarpc.com";
 
 const connectors = [
-  injected(),
+ injected(),
   coinbaseWallet({ appName: "harbor" }),
-  ...(WC_PROJECT_ID ? [walletConnect({ projectId: WC_PROJECT_ID })] : []),
+ ...(WC_PROJECT_ID ? [walletConnect({ projectId: WC_PROJECT_ID })] : []),
 ];
 
 export const wagmiConfig = createConfig({
-  chains: [mainnet],
-  connectors,
-  transports: {
+ chains: [mainnet],
+ connectors,
+ transports: {
     [mainnet.id]: http(MAINNET_RPC_URL),
-  },
+ },
   ssr: true,
 });

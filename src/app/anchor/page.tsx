@@ -297,15 +297,15 @@ function getAcceptedDepositAssets(
     assets.push({ symbol: market.collateral.symbol, name: market.collateral.name || market.collateral.symbol });
   }
   
-  // Add pegged token if provided (e.g., haPB)
+    // Add pegged token if provided (e.g., haPB)
   if (peggedTokenSymbol && !assets.some(a => a.symbol === peggedTokenSymbol)) {
-    assets.push({
-      symbol: peggedTokenSymbol,
-      name: peggedTokenSymbol,
-    });
-  }
+      assets.push({
+        symbol: peggedTokenSymbol,
+        name: peggedTokenSymbol,
+      });
+    }
   
-  return assets;
+    return assets;
 }
 
 function formatRatio(value: bigint | undefined): string {

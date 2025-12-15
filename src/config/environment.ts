@@ -8,8 +8,8 @@
  * Kept for backward compatibility during migration.
  */
 export function shouldUseAnvil(): boolean {
-  return false;
-}
+    return false;
+  }
 
 /**
  * Get the target chain ID - always returns mainnet (1)

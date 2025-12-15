@@ -420,11 +420,37 @@ https://www.harborfinance.io/`;
         args: [amountBigInt, address as `0x${string}`],
       });
     }
- setTxHash(depositHash);
- await publicClient?.waitForTransactionReceipt({ hash: depositHash });
+setTxHash(depositHash);
+const receipt = await publicClient?.waitForTransactionReceipt({ hash: depositHash });
 
- setStep("success");
- setSuccessfulDepositAmount(amount);
+// For zap transactions (stETH or ETH), get the actual wstETH deposited from transaction
+// by reading the user's new balance in the Genesis contract
+let actualDepositedAmount = amount;
+if (isNativeETH || isStETH) {
+  try {
+    // Read the user's new deposit balance from Genesis
+    const newBalance = await publicClient.readContract({
+      address: genesisAddress as `0x${string}`,
+      abi: GENESIS_ABI,
+      functionName: "balanceOf",
+      args: [address as `0x${string}`],
+    });
+    // Calculate the difference (new balance - old balance = amount deposited)
+    const depositedWstETH = (newBalance as bigint) - userCurrentDeposit;
+    if (depositedWstETH > 0n) {
+      actualDepositedAmount = formatEther(depositedWstETH);
+    }
+  } catch (err) {
+    console.error("Failed to read actual deposit amount:", err);
+    // Fall back to the expected amount
+    if (actualWstETHDeposit > 0n) {
+      actualDepositedAmount = formatEther(actualWstETHDeposit);
+    }
+  }
+}
+
+setStep("success");
+setSuccessfulDepositAmount(actualDepositedAmount);
  setProgressSteps((prev) =>
  prev.map((s) =>
  s.id ==="deposit"

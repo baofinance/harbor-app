@@ -171,7 +171,7 @@ export default function GlobalHeatmap({
  <div
  key={i}
  className="rounded-[3px]"
-                style={{ ...cellStyle, backgroundColor: c }}
+ style={{ ...cellStyle, backgroundColor: c }}
  />
  ))}
  </div>
@@ -321,7 +321,7 @@ export default function GlobalHeatmap({
  <div
  key={j}
  className="h-5 m-1 w-5 rounded"
-                    style={{ backgroundColor: colorFor(cell.value) }}
+ style={{ backgroundColor: colorFor(cell.value) }}
  />
  );
  })}

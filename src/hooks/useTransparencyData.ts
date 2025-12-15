@@ -88,165 +88,89 @@ export interface TransparencyData {
   refetch: () => void;
 }
 
+// Number of contract reads per market
+const READS_PER_MARKET = 16;
+// Number of pool reads per market (2 pools * 4 reads each)
+const POOL_READS_PER_MARKET = 8;
+// Number of user reads per market (2 pools * 2 reads each)
+const USER_READS_PER_MARKET = 4;
+
 export function useTransparencyData(): TransparencyData {
   const { address: userAddress, isConnected } = useAccount();
 
-  // Get the first market config (pb-steth)
-  const market = marketsConfig["pb-steth"];
-  const minterAddress = market.addresses.minter as `0x${string}`;
-  const oracleAddress = market.addresses.priceOracle as `0x${string}`;
-  const stabilityPoolCollateral = market.addresses
-    .stabilityPoolCollateral as `0x${string}`;
-  const stabilityPoolLeveraged = market.addresses
-    .stabilityPoolLeveraged as `0x${string}`;
-  const stabilityPoolManager = market.addresses
-    .stabilityPoolManager as `0x${string}`;
+  // Get all markets from config
+  const marketEntries = Object.entries(marketsConfig).filter(
+    ([_, market]) => market.addresses?.minter // Only include markets with minter address
+  );
 
-  // Build contract reads for market data
-  const marketContracts = [
-    // Minter reads
-    { address: minterAddress, abi: minterABI, functionName: "collateralRatio" },
-    { address: minterAddress, abi: minterABI, functionName: "leverageRatio" },
-    {
-      address: minterAddress,
-      abi: minterABI,
-      functionName: "peggedTokenPrice",
-    },
-    {
-      address: minterAddress,
-      abi: minterABI,
-      functionName: "leveragedTokenPrice",
-    },
-    {
-      address: minterAddress,
-      abi: minterABI,
-      functionName: "peggedTokenBalance",
-    },
-    {
-      address: minterAddress,
-      abi: minterABI,
-      functionName: "leveragedTokenBalance",
-    },
-    {
-      address: minterAddress,
-      abi: minterABI,
-      functionName: "collateralTokenBalance",
-    },
-    { address: minterAddress, abi: minterABI, functionName: "priceOracle" },
-    { address: minterAddress, abi: minterABI, functionName: "feeReceiver" },
-    { address: minterAddress, abi: minterABI, functionName: "reservePool" },
-    {
-      address: minterAddress,
-      abi: minterABI,
-      functionName: "mintPeggedTokenIncentiveRatio",
-    },
-    {
-      address: minterAddress,
-      abi: minterABI,
-      functionName: "redeemPeggedTokenIncentiveRatio",
-    },
-    {
-      address: minterAddress,
-      abi: minterABI,
-      functionName: "mintLeveragedTokenIncentiveRatio",
-    },
-    {
-      address: minterAddress,
-      abi: minterABI,
-      functionName: "redeemLeveragedTokenIncentiveRatio",
-    },
-    // Oracle reads
-    { address: oracleAddress, abi: oracleABI, functionName: "latestAnswer" },
-    // Stability pool manager
-    {
-      address: stabilityPoolManager,
-      abi: STABILITY_POOL_MANAGER_ABI,
-      functionName: "rebalanceThreshold",
-    },
-  ];
+  // Build contract reads for all markets
+  const allMarketContracts = marketEntries.flatMap(([_, market]) => {
+    const minterAddress = market.addresses.minter as `0x${string}`;
+    const oracleAddress = market.addresses.priceOracle as `0x${string}`;
+    const stabilityPoolManager = market.addresses.stabilityPoolManager as `0x${string}`;
 
-  // Pool reads
-  const poolContracts = [
-    // Collateral pool
-    {
-      address: stabilityPoolCollateral,
-      abi: stabilityPoolABI,
-      functionName: "totalAssetSupply",
-    },
-    {
-      address: stabilityPoolCollateral,
-      abi: stabilityPoolABI,
-      functionName: "activeRewardTokens",
-    },
-    {
-      address: stabilityPoolCollateral,
-      abi: stabilityPoolABI,
-      functionName: "earlyWithdrawFee",
-    },
-    {
-      address: stabilityPoolCollateral,
-      abi: stabilityPoolABI,
-      functionName: "withdrawWindow",
-    },
-    // Leveraged pool
-    {
-      address: stabilityPoolLeveraged,
-      abi: stabilityPoolABI,
-      functionName: "totalAssetSupply",
-    },
-    {
-      address: stabilityPoolLeveraged,
-      abi: stabilityPoolABI,
-      functionName: "activeRewardTokens",
-    },
-    {
-      address: stabilityPoolLeveraged,
-      abi: stabilityPoolABI,
-      functionName: "earlyWithdrawFee",
-    },
-    {
-      address: stabilityPoolLeveraged,
-      abi: stabilityPoolABI,
-      functionName: "withdrawWindow",
-    },
-  ];
+    return [
+      // Minter reads (0-13)
+      { address: minterAddress, abi: minterABI, functionName: "collateralRatio" },
+      { address: minterAddress, abi: minterABI, functionName: "leverageRatio" },
+      { address: minterAddress, abi: minterABI, functionName: "peggedTokenPrice" },
+      { address: minterAddress, abi: minterABI, functionName: "leveragedTokenPrice" },
+      { address: minterAddress, abi: minterABI, functionName: "peggedTokenBalance" },
+      { address: minterAddress, abi: minterABI, functionName: "leveragedTokenBalance" },
+      { address: minterAddress, abi: minterABI, functionName: "collateralTokenBalance" },
+      { address: minterAddress, abi: minterABI, functionName: "priceOracle" },
+      { address: minterAddress, abi: minterABI, functionName: "feeReceiver" },
+      { address: minterAddress, abi: minterABI, functionName: "reservePool" },
+      { address: minterAddress, abi: minterABI, functionName: "mintPeggedTokenIncentiveRatio" },
+      { address: minterAddress, abi: minterABI, functionName: "redeemPeggedTokenIncentiveRatio" },
+      { address: minterAddress, abi: minterABI, functionName: "mintLeveragedTokenIncentiveRatio" },
+      { address: minterAddress, abi: minterABI, functionName: "redeemLeveragedTokenIncentiveRatio" },
+      // Oracle reads (14)
+      { address: oracleAddress, abi: oracleABI, functionName: "latestAnswer" },
+      // Stability pool manager (15)
+      { address: stabilityPoolManager, abi: STABILITY_POOL_MANAGER_ABI, functionName: "rebalanceThreshold" },
+    ];
+  });
 
-  // User-specific reads (only if connected)
-  const userContracts =
-    isConnected && userAddress
-      ? [
-          {
-            address: stabilityPoolCollateral,
-            abi: stabilityPoolABI,
-            functionName: "assetBalanceOf",
-            args: [userAddress],
-          },
-          {
-            address: stabilityPoolCollateral,
-            abi: stabilityPoolABI,
-            functionName: "withdrawRequest",
-            args: [userAddress],
-          },
-          {
-            address: stabilityPoolLeveraged,
-            abi: stabilityPoolABI,
-            functionName: "assetBalanceOf",
-            args: [userAddress],
-          },
-          {
-            address: stabilityPoolLeveraged,
-            abi: stabilityPoolABI,
-            functionName: "withdrawRequest",
-            args: [userAddress],
-          },
-        ]
-      : [];
+  // Pool reads for all markets
+  const allPoolContracts = marketEntries.flatMap(([_, market]) => {
+    const stabilityPoolCollateral = market.addresses.stabilityPoolCollateral as `0x${string}`;
+    const stabilityPoolLeveraged = market.addresses.stabilityPoolLeveraged as `0x${string}`;
+
+    return [
+      // Collateral pool (0-3)
+      { address: stabilityPoolCollateral, abi: stabilityPoolABI, functionName: "totalAssetSupply" },
+      { address: stabilityPoolCollateral, abi: stabilityPoolABI, functionName: "activeRewardTokens" },
+      { address: stabilityPoolCollateral, abi: stabilityPoolABI, functionName: "earlyWithdrawFee" },
+      { address: stabilityPoolCollateral, abi: stabilityPoolABI, functionName: "withdrawWindow" },
+      // Leveraged pool (4-7)
+      { address: stabilityPoolLeveraged, abi: stabilityPoolABI, functionName: "totalAssetSupply" },
+      { address: stabilityPoolLeveraged, abi: stabilityPoolABI, functionName: "activeRewardTokens" },
+      { address: stabilityPoolLeveraged, abi: stabilityPoolABI, functionName: "earlyWithdrawFee" },
+      { address: stabilityPoolLeveraged, abi: stabilityPoolABI, functionName: "withdrawWindow" },
+    ];
+  });
+
+  // User-specific reads for all markets (only if connected)
+  const allUserContracts = isConnected && userAddress
+    ? marketEntries.flatMap(([_, market]) => {
+        const stabilityPoolCollateral = market.addresses.stabilityPoolCollateral as `0x${string}`;
+        const stabilityPoolLeveraged = market.addresses.stabilityPoolLeveraged as `0x${string}`;
+
+        return [
+          { address: stabilityPoolCollateral, abi: stabilityPoolABI, functionName: "assetBalanceOf", args: [userAddress] },
+          { address: stabilityPoolCollateral, abi: stabilityPoolABI, functionName: "withdrawRequest", args: [userAddress] },
+          { address: stabilityPoolLeveraged, abi: stabilityPoolABI, functionName: "assetBalanceOf", args: [userAddress] },
+          { address: stabilityPoolLeveraged, abi: stabilityPoolABI, functionName: "withdrawRequest", args: [userAddress] },
+        ];
+      })
+    : [];
 
   // Combine all contracts
   const allContracts = [
-    ...marketContracts,
-    ...poolContracts,
-    ...userContracts,
+    ...allMarketContracts,
+    ...allPoolContracts,
+    ...allUserContracts,
   ] as const;
 
   const { data, isLoading, error, refetch } = useAnvilContractReads({
@@ -254,7 +178,7 @@ export function useTransparencyData(): TransparencyData {
     enabled: true,
   });
 
-  // Parse market data
+  // Parse result helper
   const parseResult = <T>(index: number, defaultValue: T): T => {
     const result = data?.[index];
     if (result?.status === "success" && result.result !== undefined) {
@@ -263,108 +187,121 @@ export function useTransparencyData(): TransparencyData {
     return defaultValue;
   };
 
-  // Parse oracle tuple
-  const oracleData = parseResult<readonly [bigint, bigint, bigint, bigint]>(
-    14,
-    [0n, 0n, 0n, 0n]
-  );
+  // Parse all markets
+  const markets: MarketTransparencyData[] = marketEntries.map(([marketId, market], marketIndex) => {
+    const baseIndex = marketIndex * READS_PER_MARKET;
+    
+    const minterAddress = market.addresses.minter as `0x${string}`;
+    const oracleAddress = market.addresses.priceOracle as `0x${string}`;
+    const stabilityPoolCollateral = market.addresses.stabilityPoolCollateral as `0x${string}`;
+    const stabilityPoolLeveraged = market.addresses.stabilityPoolLeveraged as `0x${string}`;
+    const stabilityPoolManager = market.addresses.stabilityPoolManager as `0x${string}`;
 
-  const marketData: MarketTransparencyData = {
-    marketId: "pb-steth",
-    marketName: market.name,
-    collateralRatio: parseResult(0, 0n),
-    leverageRatio: parseResult(1, 0n),
-    peggedTokenPrice: parseResult(2, 0n),
-    leveragedTokenPrice: parseResult(3, 0n),
-    peggedTokenBalance: parseResult(4, 0n),
-    leveragedTokenBalance: parseResult(5, 0n),
-    collateralTokenBalance: parseResult(6, 0n),
-    priceOracleAddress: parseResult(7, oracleAddress),
-    feeReceiverAddress: parseResult(
-      8,
-      market.addresses.feeReceiver as `0x${string}`
-    ),
-    reservePoolAddress: parseResult(
-      9,
-      market.addresses.reservePool as `0x${string}`
-    ),
-    mintPeggedIncentiveRatio: parseResult(10, 0n),
-    redeemPeggedIncentiveRatio: parseResult(11, 0n),
-    mintLeveragedIncentiveRatio: parseResult(12, 0n),
-    redeemLeveragedIncentiveRatio: parseResult(13, 0n),
-    minPrice: oracleData[0],
-    maxPrice: oracleData[1],
-    minRate: oracleData[2],
-    maxRate: oracleData[3],
-    rebalanceThreshold: parseResult(15, 0n),
-    minterAddress,
-    peggedTokenAddress: market.addresses.peggedToken as `0x${string}`,
-    leveragedTokenAddress: market.addresses.leveragedToken as `0x${string}`,
-    stabilityPoolCollateralAddress: stabilityPoolCollateral,
-    stabilityPoolLeveragedAddress: stabilityPoolLeveraged,
-    stabilityPoolManagerAddress: stabilityPoolManager,
-  };
+    // Parse oracle tuple
+    const oracleData = parseResult<readonly [bigint, bigint, bigint, bigint]>(
+      baseIndex + 14,
+      [0n, 0n, 0n, 0n]
+    );
 
-  // Parse pool data
-  const collateralPool: PoolTransparencyData = {
-    address: stabilityPoolCollateral,
-    name: "Collateral Pool (Anchor)",
-    type: "collateral",
-    tvl: parseResult(16, 0n),
-    activeRewardTokens: parseResult(17, []),
-    earlyWithdrawalFee: parseResult(18, 0n),
-    withdrawWindow: parseResult(19, 0n),
-  };
+    return {
+      marketId,
+      marketName: market.name,
+      collateralRatio: parseResult(baseIndex + 0, 0n),
+      leverageRatio: parseResult(baseIndex + 1, 0n),
+      peggedTokenPrice: parseResult(baseIndex + 2, 0n),
+      leveragedTokenPrice: parseResult(baseIndex + 3, 0n),
+      peggedTokenBalance: parseResult(baseIndex + 4, 0n),
+      leveragedTokenBalance: parseResult(baseIndex + 5, 0n),
+      collateralTokenBalance: parseResult(baseIndex + 6, 0n),
+      priceOracleAddress: parseResult(baseIndex + 7, oracleAddress),
+      feeReceiverAddress: parseResult(baseIndex + 8, market.addresses.feeReceiver as `0x${string}`),
+      reservePoolAddress: parseResult(baseIndex + 9, market.addresses.reservePool as `0x${string}`),
+      mintPeggedIncentiveRatio: parseResult(baseIndex + 10, 0n),
+      redeemPeggedIncentiveRatio: parseResult(baseIndex + 11, 0n),
+      mintLeveragedIncentiveRatio: parseResult(baseIndex + 12, 0n),
+      redeemLeveragedIncentiveRatio: parseResult(baseIndex + 13, 0n),
+      minPrice: oracleData[0],
+      maxPrice: oracleData[1],
+      minRate: oracleData[2],
+      maxRate: oracleData[3],
+      rebalanceThreshold: parseResult(baseIndex + 15, 0n),
+      minterAddress,
+      peggedTokenAddress: market.addresses.peggedToken as `0x${string}`,
+      leveragedTokenAddress: market.addresses.leveragedToken as `0x${string}`,
+      stabilityPoolCollateralAddress: stabilityPoolCollateral,
+      stabilityPoolLeveragedAddress: stabilityPoolLeveraged,
+      stabilityPoolManagerAddress: stabilityPoolManager,
+    };
+  });
 
-  const leveragedPool: PoolTransparencyData = {
-    address: stabilityPoolLeveraged,
-    name: "Leveraged Pool (Sail)",
-    type: "leveraged",
-    tvl: parseResult(20, 0n),
-    activeRewardTokens: parseResult(21, []),
-    earlyWithdrawalFee: parseResult(22, 0n),
-    withdrawWindow: parseResult(23, 0n),
-  };
+  // Parse all pools
+  const poolBaseIndex = marketEntries.length * READS_PER_MARKET;
+  const pools: PoolTransparencyData[] = marketEntries.flatMap(([marketId, market], marketIndex) => {
+    const stabilityPoolCollateral = market.addresses.stabilityPoolCollateral as `0x${string}`;
+    const stabilityPoolLeveraged = market.addresses.stabilityPoolLeveraged as `0x${string}`;
+    const baseIndex = poolBaseIndex + marketIndex * POOL_READS_PER_MARKET;
+
+    return [
+      {
+        address: stabilityPoolCollateral,
+        name: `${market.name} Anchor Pool`,
+        type: "collateral" as const,
+        tvl: parseResult(baseIndex + 0, 0n),
+        activeRewardTokens: parseResult(baseIndex + 1, []),
+        earlyWithdrawalFee: parseResult(baseIndex + 2, 0n),
+        withdrawWindow: parseResult(baseIndex + 3, 0n),
+      },
+      {
+        address: stabilityPoolLeveraged,
+        name: `${market.name} Sail Pool`,
+        type: "leveraged" as const,
+        tvl: parseResult(baseIndex + 4, 0n),
+        activeRewardTokens: parseResult(baseIndex + 5, []),
+        earlyWithdrawalFee: parseResult(baseIndex + 6, 0n),
+        withdrawWindow: parseResult(baseIndex + 7, 0n),
+      },
+    ];
+  });
 
   // Parse user data if connected
   let userPools: UserPoolData[] | undefined;
   if (isConnected && userAddress) {
-    const baseIndex = 24; // After pool data
+    const userBaseIndex = poolBaseIndex + marketEntries.length * POOL_READS_PER_MARKET;
+    
+    userPools = marketEntries.flatMap(([_, market], marketIndex) => {
+      const stabilityPoolCollateral = market.addresses.stabilityPoolCollateral as `0x${string}`;
+      const stabilityPoolLeveraged = market.addresses.stabilityPoolLeveraged as `0x${string}`;
+      const baseIndex = userBaseIndex + marketIndex * USER_READS_PER_MARKET;
 
-    const collateralWithdrawRequest = parseResult<readonly [bigint, bigint]>(
-      baseIndex + 1,
-      [0n, 0n]
-    );
-    const leveragedWithdrawRequest = parseResult<readonly [bigint, bigint]>(
-      baseIndex + 3,
-      [0n, 0n]
-    );
+      const collateralWithdrawRequest = parseResult<readonly [bigint, bigint]>(baseIndex + 1, [0n, 0n]);
+      const leveragedWithdrawRequest = parseResult<readonly [bigint, bigint]>(baseIndex + 3, [0n, 0n]);
 
-    userPools = [
-      {
-        poolAddress: stabilityPoolCollateral,
-        assetBalance: parseResult(baseIndex, 0n),
-        withdrawalRequest: {
-          amount: collateralWithdrawRequest[0],
-          requestedAt: collateralWithdrawRequest[1],
+      return [
+        {
+          poolAddress: stabilityPoolCollateral,
+          assetBalance: parseResult(baseIndex + 0, 0n),
+          withdrawalRequest: {
+            amount: collateralWithdrawRequest[0],
+            requestedAt: collateralWithdrawRequest[1],
+          },
         },
-      },
-      {
-        poolAddress: stabilityPoolLeveraged,
-        assetBalance: parseResult(baseIndex + 2, 0n),
-        withdrawalRequest: {
-          amount: leveragedWithdrawRequest[0],
-          requestedAt: leveragedWithdrawRequest[1],
+        {
+          poolAddress: stabilityPoolLeveraged,
+          assetBalance: parseResult(baseIndex + 2, 0n),
+          withdrawalRequest: {
+            amount: leveragedWithdrawRequest[0],
+            requestedAt: leveragedWithdrawRequest[1],
+          },
         },
-      },
-    ];
+      ];
+    });
   }
 
   return {
-    markets: [marketData],
-    pools: [collateralPool, leveragedPool],
+    markets,
+    pools,
     userPools,
-    lastUpdatedBlock: 0n, // Would need block number query
+    lastUpdatedBlock: 0n,
     lastUpdatedTimestamp: Date.now(),
     isLoading,
     error: error ? String(error) : null,

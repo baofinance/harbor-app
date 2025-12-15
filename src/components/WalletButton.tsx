@@ -2,12 +2,12 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import {
-  useAccount,
-  useConnect,
-  useDisconnect,
-  useBalance,
-  useChainId,
-  useSwitchChain,
+ useAccount,
+ useConnect,
+ useDisconnect,
+ useBalance,
+ useChainId,
+ useSwitchChain,
 } from "wagmi";
 import { Copy, Check, LogOut, Wallet, AlertTriangle } from "lucide-react";
 import { mainnet } from "wagmi/chains";
@@ -15,28 +15,28 @@ import DecryptedText from "./DecryptedText";
 
 function formatAddress(addr?: string) {
   if (!addr) return "";
-  return `${addr.slice(0, 4)}...${addr.slice(-4)}`;
+ return `${addr.slice(0, 4)}...${addr.slice(-4)}`;
 }
 
 export default function WalletButton() {
-  const { address, isConnected } = useAccount();
-  const { connectors, connect, isPending } = useConnect();
-  const { disconnect } = useDisconnect();
-  const chainId = useChainId();
-  const { data: balance } = useBalance({
-    address,
-    query: { enabled: !!address },
-  });
-  const { switchChain, isPending: isSwitching } = useSwitchChain();
+ const { address, isConnected } = useAccount();
+ const { connectors, connect, isPending } = useConnect();
+ const { disconnect } = useDisconnect();
+ const chainId = useChainId();
+ const { data: balance } = useBalance({
+ address,
+ query: { enabled: !!address },
+ });
+ const { switchChain, isPending: isSwitching } = useSwitchChain();
 
-  const [open, setOpen] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const [isMounted, setIsMounted] = useState(false);
+ const [open, setOpen] = useState(false);
+ const [copied, setCopied] = useState(false);
+ const [isMounted, setIsMounted] = useState(false);
   const [readyConnectors, setReadyConnectors] = useState<string[]>([]);
 
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
+ useEffect(() => {
+ setIsMounted(true);
+ }, []);
 
   // Check which connectors are ready (have providers available)
   useEffect(() => {
@@ -60,10 +60,10 @@ export default function WalletButton() {
   }, [connectors, isMounted]);
 
   // Filter to show all connectors, marking which are ready
-  const available = useMemo(
+ const available = useMemo(
     () => connectors,
-    [connectors]
-  );
+ [connectors]
+ );
 
  const wrongNetwork = isConnected && chainId !== mainnet.id;
  const displayAddr = useMemo(
@@ -206,40 +206,40 @@ export default function WalletButton() {
  </button>
  </div>
  ) : (
-                <div className="p-3">
-                  <div className="space-y-2">
+ <div className="p-3">
+ <div className="space-y-2">
                     {available.map((c) => {
                       const isReady = readyConnectors.includes(c.uid);
                       return (
-                        <button
-                          key={c.uid}
-                          onClick={async () => {
+ <button
+ key={c.uid}
+ onClick={async () => {
                             try {
-                              await connect({ connector: c });
-                              setOpen(false);
+ await connect({ connector: c });
+ setOpen(false);
                             } catch (error) {
                               console.error("Failed to connect:", error);
                             }
-                          }}
-                          disabled={isPending}
-                          className="w-full flex items-center justify-between px-3 py-2 bg-white/10 hover:bg-white/20 disabled:opacity-50 rounded-full"
-                        >
-                          <span className="text-left">{c.name}</span>
+ }}
+ disabled={isPending}
+ className="w-full flex items-center justify-between px-3 py-2 bg-white/10 hover:bg-white/20 disabled:opacity-50 rounded-full"
+ >
+ <span className="text-left">{c.name}</span>
                           {isReady && (
                             <span className="text-green-400 text-xs">
                               Ready
-                            </span>
+ </span>
                           )}
-                        </button>
+ </button>
                       );
                     })}
-                    {available.length === 0 && (
-                      <div className="text-sm text-white/60 p-2 text-center">
+ {available.length === 0 && (
+ <div className="text-sm text-white/60 p-2 text-center">
                         No wallet connectors configured.
-                      </div>
-                    )}
-                  </div>
-                </div>
+ </div>
+ )}
+ </div>
+ </div>
  )}
  </div>
  </div>
