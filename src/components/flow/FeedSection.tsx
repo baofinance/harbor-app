@@ -1,6 +1,6 @@
-import { FeedHeader } from"./FeedHeader";
-import { FeedTable } from"./FeedTable";
-import type { FeedEntry } from"@/config/feeds";
+import { FeedHeader } from "./FeedHeader";
+import { FeedTable } from "./FeedTable";
+import type { FeedEntry } from "@/config/feeds";
 
 export function FeedSection({
  title,

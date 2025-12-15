@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect } from"react";
+import React, { useEffect } from "react";
 import {
  BarChart,
  Bar,
@@ -10,7 +10,7 @@ import {
  Tooltip,
  ResponsiveContainer,
  Cell,
-} from"recharts";
+} from "recharts";
 
 export type NeutralBarPoint = {
  timestamp: number;

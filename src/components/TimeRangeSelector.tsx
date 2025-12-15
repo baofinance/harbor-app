@@ -1,5 +1,5 @@
-import React from"react";
-import { TimeRange } from"../config/types";
+import React from "react";
+import { TimeRange } from "../config/types";
 
 interface TimeRangeSelectorProps {
  selectedRange: TimeRange;

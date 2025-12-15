@@ -1,24 +1,24 @@
 "use client";
 
-import React, { useState } from"react";
-import { parseEther, formatEther } from"viem";
+import React, { useState } from "react";
+import { parseEther, formatEther } from "viem";
 import {
  useAccount,
   useBalance,
  useContractRead,
  useWriteContract,
  usePublicClient,
-} from"wagmi";
-import { BaseError, ContractFunctionRevertedError } from"viem";
-import { GENESIS_ABI, ERC20_ABI, contracts } from"../config/contracts";
-import { ZAP_ABI, STETH_ABI, WSTETH_ABI } from"@/abis";
+} from "wagmi";
+import { BaseError, ContractFunctionRevertedError } from "viem";
+import { GENESIS_ABI, ERC20_ABI, contracts } from "../config/contracts";
+import { ZAP_ABI, STETH_ABI, WSTETH_ABI } from "@/abis";
 import { publicClient as mainnetPublicClient } from "@/config/rpc";
 import { useContractRead as useCustomContractRead } from "@/hooks/useContractRead";
 import { useCollateralPrice } from "@/hooks/useCollateralPrice";
 import {
  TransactionProgressModal,
  TransactionStep,
-} from"./TransactionProgressModal";
+} from "./TransactionProgressModal";
 
 interface GenesisDepositModalProps {
  isOpen: boolean;

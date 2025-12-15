@@ -1,6 +1,6 @@
 // components/map-room/FeedTable.tsx
 
-import type { FeedEntry } from"@/config/feeds";
+import type { FeedEntry } from "@/config/feeds";
 
 export function FeedTable({ feeds }: { feeds: readonly FeedEntry[] }) {
  return (

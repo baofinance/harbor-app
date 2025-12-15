@@ -124,3 +124,4 @@ updateMarksRule(contractAddress, contractType, {
 
 
 
+

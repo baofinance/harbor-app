@@ -1,23 +1,23 @@
 "use client";
 
-import React, { useMemo, useState, useEffect } from"react";
-import Head from"next/head";
-import { usePublicClient } from"wagmi";
-import { createPublicClient, http, defineChain } from"viem";
+import React, { useMemo, useState, useEffect } from "react";
+import Head from "next/head";
+import { usePublicClient } from "wagmi";
+import { createPublicClient, http, defineChain } from "viem";
 import {
  MapIcon,
  ChartBarIcon,
  CpuChipIcon,
  InformationCircleIcon,
  XMarkIcon,
-} from"@heroicons/react/24/outline";
-import TokenIcon from"@/components/TokenIcon";
-import { NETWORKS, type Network } from"@/config/networks";
-import { feeds, type TokenSymbol, type FeedStatus } from"@/config/feeds";
-import { proxyAbi } from"@/abis/proxy";
-import { aggregatorAbi } from"@/abis/chainlink";
-import { customFeedAggregatorAbi } from"@/abis/harbor";
-import { getLogoPath } from"@/lib/logos";
+} from "@heroicons/react/24/outline";
+import TokenIcon from "@/components/TokenIcon";
+import { NETWORKS, type Network } from "@/config/networks";
+import { feeds, type TokenSymbol, type FeedStatus } from "@/config/feeds";
+import { proxyAbi } from "@/abis/proxy";
+import { aggregatorAbi } from "@/abis/chainlink";
+import { customFeedAggregatorAbi } from "@/abis/harbor";
+import { getLogoPath } from "@/lib/logos";
 import {
  parsePair,
  format18,
@@ -26,13 +26,13 @@ import {
  bytes32ToAddress,
  formatPairDisplay,
  pairEstimateLabel,
-} from"@/lib/utils";
+} from "@/lib/utils";
 import {
  MAINNET_RPC_URL,
  ARBITRUM_RPC_URL,
  getMainnetRpcClient,
  getArbitrumRpcClient,
-} from"@/config/rpc";
+} from "@/config/rpc";
 
 // Create mainnet public client - ensure it's always available
 let mainnetClient: ReturnType<typeof createPublicClient>;

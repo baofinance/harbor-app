@@ -1,7 +1,7 @@
 "use client";
 
-import { useContractReads } from"wagmi";
-import { markets } from"../config/markets";
+import { useContractReads } from "wagmi";
+import { markets } from "../config/markets";
 
 // ABI for just the read functions we need
 const minterABI = [

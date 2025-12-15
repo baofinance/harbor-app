@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useState, useEffect } from"react";
-import { useContractReads } from"wagmi";
-import { markets } from"../config/markets";
+import { useMemo, useState, useEffect } from "react";
+import { useContractReads } from "wagmi";
+import { markets } from "../config/markets";
 
 interface GenesisROICalculatorProps {
  marketId: string;

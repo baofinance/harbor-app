@@ -1,7 +1,7 @@
 "use client";
 
-import React from"react";
-import InfoTooltip from"./InfoTooltip";
+import React from "react";
+import InfoTooltip from "./InfoTooltip";
 
 interface AnchorClaimMarketModalProps {
  isOpen: boolean;

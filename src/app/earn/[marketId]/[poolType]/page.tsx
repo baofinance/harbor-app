@@ -1,5 +1,5 @@
-import PoolClient from"./PoolClient";
-import { markets } from"@/config/contracts";
+import PoolClient from "./PoolClient";
+import { markets } from "@/config/contracts";
 
 export async function generateStaticParams() {
  const params: Array<{ marketId: string; poolType: string }> = [];

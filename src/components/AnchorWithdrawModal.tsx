@@ -1,15 +1,15 @@
 "use client";
 
-import React, { useState } from"react";
-import { parseEther, formatEther } from"viem";
+import React, { useState } from "react";
+import { parseEther, formatEther } from "viem";
 import {
  useAccount,
  useContractRead,
  useWriteContract,
  usePublicClient,
-} from"wagmi";
-import { BaseError, ContractFunctionRevertedError } from"viem";
-import { ERC20_ABI, MINTER_ABI } from"@/abis/shared";
+} from "wagmi";
+import { BaseError, ContractFunctionRevertedError } from "viem";
+import { ERC20_ABI, MINTER_ABI } from "@/abis/shared";
 
 interface AnchorWithdrawModalProps {
  isOpen: boolean;

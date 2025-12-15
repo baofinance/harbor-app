@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from"react";
+import React, { useState } from "react";
 import {
  useTransparencyData,
  formatCollateralRatio,
@@ -14,7 +14,7 @@ import {
  type MarketTransparencyData,
  type PoolTransparencyData,
  type UserPoolData,
-} from"@/hooks/useTransparencyData";
+} from "@/hooks/useTransparencyData";
 import {
  ClipboardDocumentIcon,
  CheckIcon,
@@ -28,8 +28,8 @@ import {
  CurrencyDollarIcon,
  Squares2X2Icon,
  EyeIcon,
-} from"@heroicons/react/24/outline";
-import InfoTooltip from"@/components/InfoTooltip";
+} from "@heroicons/react/24/outline";
+import InfoTooltip from "@/components/InfoTooltip";
 
 // Copy to clipboard component
 function CopyButton({ text, label }: { text: string; label?: string }) {

@@ -1,23 +1,23 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from"react";
-import { parseEther, formatEther } from"viem";
+import React, { useState, useEffect, useMemo } from "react";
+import { parseEther, formatEther } from "viem";
 import {
  useAccount,
  useBalance,
  useContractRead,
  useWriteContract,
  usePublicClient,
-} from"wagmi";
+} from "wagmi";
 import { useAnvilContractRead } from "@/hooks/useContractRead";
-import { shouldUseAnvil } from"@/config/environment";
-import { BaseError, ContractFunctionRevertedError } from"viem";
-import { ERC20_ABI, MINTER_ABI } from"@/abis/shared";
-import SimpleTooltip from"@/components/SimpleTooltip";
+import { shouldUseAnvil } from "@/config/environment";
+import { BaseError, ContractFunctionRevertedError } from "viem";
+import { ERC20_ABI, MINTER_ABI } from "@/abis/shared";
+import SimpleTooltip from "@/components/SimpleTooltip";
 import {
  TransactionProgressModal,
  TransactionStep,
-} from"@/components/TransactionProgressModal";
+} from "@/components/TransactionProgressModal";
 
 interface SailManageModalProps {
  isOpen: boolean;

@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState } from"react";
-import { TransactionStep } from"./TransactionProgressModal";
-import { ChevronDownIcon, ChevronRightIcon } from"@heroicons/react/24/outline";
+import React, { useState } from "react";
+import { TransactionStep } from "./TransactionProgressModal";
+import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
 
 export interface FeeInfo {
  feeAmount: bigint;

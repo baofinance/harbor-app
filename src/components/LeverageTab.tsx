@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useState } from"react";
-import { useAddresses } from"../contexts/AddressesContext";
-import { useContractWrite } from"../contexts/ContractWriteContext";
-import { minterABI } from"../abis/minter";
-import { parseUnits } from"ethers";
+import React, { useState } from "react";
+import { useAddresses } from "../contexts/AddressesContext";
+import { useContractWrite } from "../contexts/ContractWriteContext";
+import { minterABI } from "../abis/minter";
+import { parseUnits } from "ethers";
 
 export function LeverageTab() {
  const [leverage, setLeverage] = useState<string>("2");

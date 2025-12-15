@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect } from"react";
-import { Geo } from"next/font/google";
-import Link from"next/link";
-import { formatEther } from"viem";
-import { useWaitForTransactionReceipt } from"wagmi";
+import { useState, useEffect } from "react";
+import { Geo } from "next/font/google";
+import Link from "next/link";
+import { formatEther } from "viem";
+import { useWaitForTransactionReceipt } from "wagmi";
 
 const geo = Geo({
  subsets: ["latin"],

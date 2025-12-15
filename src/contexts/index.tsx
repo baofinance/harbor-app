@@ -1,11 +1,11 @@
 "use client";
 
-import { wagmiConfig } from"@/config";
-import { QueryClient, QueryClientProvider } from"@tanstack/react-query";
-import React, { type ReactNode } from"react";
-import { cookieToInitialState, WagmiProvider, type Config } from"wagmi";
-import { CurrencyProvider, type CurrencyCode } from"./CurrencyContext";
-import { SafeAppProviderWrapper } from"@/components/SafeAppProvider";
+import { wagmiConfig } from "@/config";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import React, { type ReactNode } from "react";
+import { cookieToInitialState, WagmiProvider, type Config } from "wagmi";
+import { CurrencyProvider, type CurrencyCode } from "./CurrencyContext";
+import { SafeAppProviderWrapper } from "@/components/SafeAppProvider";
 
 // Set up queryClient
 const queryClient = new QueryClient();
@@ -50,20 +50,20 @@ function ContextProvider({
  ? cookieCurrency
  : undefined;
 
-return (
-<WagmiProvider
-config={wagmiConfig as unknown as Config}
-initialState={initialState}
->
-<QueryClientProvider client={queryClient}>
+ return (
+ <WagmiProvider
+ config={wagmiConfig as unknown as Config}
+ initialState={initialState}
+ >
+ <QueryClientProvider client={queryClient}>
 <SafeAppProviderWrapper>
-<CurrencyProvider initialCode={initialCurrency}>
-{children}
-</CurrencyProvider>
+ <CurrencyProvider initialCode={initialCurrency}>
+ {children}
+ </CurrencyProvider>
 </SafeAppProviderWrapper>
-</QueryClientProvider>
-</WagmiProvider>
-);
+ </QueryClientProvider>
+ </WagmiProvider>
+ );
 }
 
 export default ContextProvider;

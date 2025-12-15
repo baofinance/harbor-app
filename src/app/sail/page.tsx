@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import Head from "next/head";
 import { useAccount, useContractReads } from "wagmi";
 import { formatEther } from "viem";

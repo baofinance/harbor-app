@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useState } from"react";
+import React, { useRef, useState } from "react";
 
 type HeatCell = {
  value: number; // -1..1 or 0..1

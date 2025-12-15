@@ -1,9 +1,9 @@
-import { useState } from"react";
-import type { PriceDataPoint } from"../config/contracts";
-import { markets } from"../config/markets";
-import { usePriceHistory } from"../hooks/usePriceHistory";
-import { useOraclePriceHistory } from"../hooks/useOraclePriceHistory";
-import dynamic from"next/dynamic";
+import { useState } from "react";
+import type { PriceDataPoint } from "../config/contracts";
+import { markets } from "../config/markets";
+import { usePriceHistory } from "../hooks/usePriceHistory";
+import { useOraclePriceHistory } from "../hooks/useOraclePriceHistory";
+import dynamic from "next/dynamic";
 
 const RechartsChart = dynamic(() => import("./RechartsChart"), {
  ssr: false,

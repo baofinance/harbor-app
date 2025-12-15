@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from"react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
  AreaChart,
  Area,
@@ -9,14 +9,14 @@ import {
  CartesianGrid,
  Tooltip,
  ResponsiveContainer,
-} from"recharts";
-import TimeRangeSelector from"./TimeRangeSelector";
-import { TimeRange } from"../config/types";
-import type { TooltipProps } from"recharts";
+} from "recharts";
+import TimeRangeSelector from "./TimeRangeSelector";
+import { TimeRange } from "../config/types";
+import type { TooltipProps } from "recharts";
 import type {
  ValueType,
  NameType,
-} from"recharts/types/component/DefaultTooltipContent";
+} from "recharts/types/component/DefaultTooltipContent";
 
 const generateData = (
  timeRange: TimeRange,

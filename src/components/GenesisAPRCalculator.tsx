@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from"react";
+import { useMemo, useState } from "react";
 
 type GenesisAPRCalculatorProps = {
  marketId: string;

@@ -1,17 +1,17 @@
 "use client";
 
-import { useState, useEffect } from"react";
+import { useState, useEffect } from "react";
 import {
  useAccount,
  useWriteContract,
  useReadContract,
  useWaitForTransactionReceipt,
-} from"wagmi";
-import { parseEther, formatEther } from"viem";
-import { markets } from"../../config/markets";
-import WalletButton from"../../components/WalletButton";
-import Navigation from"../../components/Navigation";
-import Link from"next/link";
+} from "wagmi";
+import { parseEther, formatEther } from "viem";
+import { markets } from "../../config/markets";
+import WalletButton from "../../components/WalletButton";
+import Navigation from "../../components/Navigation";
+import Link from "next/link";
 
 const minterABI = [
  {

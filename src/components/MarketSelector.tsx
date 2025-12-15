@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useRef, useEffect } from"react";
-import { markets } from"../config/markets";
+import { useState, useRef, useEffect } from "react";
+import { markets } from "../config/markets";
 
 interface MarketSelectorProps {
  selectedMarketId: string;

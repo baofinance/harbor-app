@@ -1,7 +1,7 @@
 "use client";
 
-import React from"react";
-import { formatEther } from"viem";
+import React from "react";
+import { formatEther } from "viem";
 
 export type TransactionStepStatus ="pending" |"in_progress" |"completed" |"error";
 

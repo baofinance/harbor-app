@@ -1,10 +1,10 @@
 'use client'
 
 import {useAccount, useDisconnect, useEnsName, useSwitchChain} from'wagmi'
-import {Geo} from"next/font/google";
-import {useState} from"react";
-import NetworkIconClient from"@/components/NetworkIconClient";
-import * as React from"react";
+import {Geo} from "next/font/google";
+import {useState} from "react";
+import NetworkIconClient from "@/components/NetworkIconClient";
+import * as React from "react";
 
 const geo = Geo({
  subsets: ["latin"],

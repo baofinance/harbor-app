@@ -1,4 +1,4 @@
-import { ChevronDownIcon } from"@heroicons/react/24/outline";
+import { ChevronDownIcon } from "@heroicons/react/24/outline";
 
 export function ChevronIcon({
  expanded,

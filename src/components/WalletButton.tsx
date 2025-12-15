@@ -225,8 +225,8 @@ export default function WalletButton() {
                       const isReady = readyConnectors.includes(c.uid);
                       return (
  <button
-key={c.uid}
-onClick={async () => {
+ key={c.uid}
+ onClick={async () => {
                           try {
                             console.log("Connecting with:", c.name, c.id);
                             connect({ connector: c });
@@ -236,7 +236,7 @@ onClick={async () => {
                           } catch (error) {
                             console.error("Failed to connect:", error);
                           }
-}}
+ }}
  disabled={isPending}
  className="w-full flex items-center justify-between px-3 py-2 bg-white/10 hover:bg-white/20 disabled:opacity-50 rounded-full"
  >

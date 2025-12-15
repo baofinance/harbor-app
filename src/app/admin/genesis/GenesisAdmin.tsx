@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useState } from"react";
-import { formatEther } from"viem";
-import { useAdminAccess } from"../../../hooks/useAdminAccess";
-import { useGenesisStatus } from"../../../hooks/useGenesisAdminStats";
-import { useGenesisAdmin } from"../../../hooks/useAdminActions";
+import React, { useState } from "react";
+import { formatEther } from "viem";
+import { useAdminAccess } from "../../../hooks/useAdminAccess";
+import { useGenesisStatus } from "../../../hooks/useGenesisAdminStats";
+import { useGenesisAdmin } from "../../../hooks/useAdminActions";
 
 export function GenesisAdminPage() {
  const { isAdmin } = useAdminAccess();

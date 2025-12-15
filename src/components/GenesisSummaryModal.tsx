@@ -1,6 +1,6 @@
 "use client";
 
-import { Geo } from"next/font/google";
+import { Geo } from "next/font/google";
 
 const geo = Geo({
  subsets: ["latin"],

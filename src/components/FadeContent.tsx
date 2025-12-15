@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, ReactNode } from"react";
+import { useEffect, useState, ReactNode } from "react";
 
 interface FadeContentProps {
  children: ReactNode;

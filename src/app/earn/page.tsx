@@ -1,9 +1,9 @@
 "use client";
 
-import React from"react";
-import Link from"next/link";
-import { usePools } from"@/hooks/usePools";
-import Image from"next/image";
+import React from "react";
+import Link from "next/link";
+import { usePools } from "@/hooks/usePools";
+import Image from "next/image";
 
 export default function Earn() {
  const { getAllPools } = usePools();

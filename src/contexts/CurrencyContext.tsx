@@ -6,7 +6,7 @@ import React, {
  useMemo,
  useState,
  useEffect,
-} from"react";
+} from "react";
 
 export type CurrencyCode ="USD" |"EUR" |"JPY" |"GBP";
 

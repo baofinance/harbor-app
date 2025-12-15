@@ -1,29 +1,29 @@
 "use client";
 
-import React, { useState } from"react";
-import { parseEther, formatEther } from"viem";
+import React, { useState } from "react";
+import { parseEther, formatEther } from "viem";
 import {
-useAccount,
-useWriteContract,
-usePublicClient,
-useSimulateContract,
-} from"wagmi";
+ useAccount,
+ useWriteContract,
+ usePublicClient,
+ useSimulateContract,
+} from "wagmi";
 import { mainnet } from "wagmi/chains";
-import { BaseError, ContractFunctionRevertedError } from"viem";
+import { BaseError, ContractFunctionRevertedError } from "viem";
 import {
-TransactionProgressModal,
-TransactionStep,
-} from"./TransactionProgressModal";
+ TransactionProgressModal,
+ TransactionStep,
+} from "./TransactionProgressModal";
 import { useCollateralPrice } from "@/hooks/useCollateralPrice";
 
 interface GenesisWithdrawalModalProps {
-isOpen: boolean;
-onClose: () => void;
-genesisAddress: string;
-collateralSymbol: string;
-userDeposit: bigint;
+ isOpen: boolean;
+ onClose: () => void;
+ genesisAddress: string;
+ collateralSymbol: string;
+ userDeposit: bigint;
 priceOracleAddress?: string;
-onSuccess?: () => void;
+ onSuccess?: () => void;
 }
 
 // Format a bigint token amount with limited decimals and optional USD value
@@ -77,23 +77,23 @@ const genesisABI = [
 type ModalStep ="input" |"withdrawing" |"success" |"error";
 
 export const GenesisWithdrawModal = ({
-isOpen,
-onClose,
-genesisAddress,
-collateralSymbol,
-userDeposit,
+ isOpen,
+ onClose,
+ genesisAddress,
+ collateralSymbol,
+ userDeposit,
 priceOracleAddress,
-onSuccess,
+ onSuccess,
 }: GenesisWithdrawalModalProps) => {
-const { address } = useAccount();
-const [amount, setAmount] = useState("");
-const [step, setStep] = useState<ModalStep>("input");
-const [error, setError] = useState<string | null>(null);
-const [txHash, setTxHash] = useState<string | null>(null);
-const [progressModalOpen, setProgressModalOpen] = useState(false);
-const [progressSteps, setProgressSteps] = useState<TransactionStep[]>([]);
-const [currentStepIndex, setCurrentStepIndex] = useState(0);
-const publicClient = usePublicClient();
+ const { address } = useAccount();
+ const [amount, setAmount] = useState("");
+ const [step, setStep] = useState<ModalStep>("input");
+ const [error, setError] = useState<string | null>(null);
+ const [txHash, setTxHash] = useState<string | null>(null);
+ const [progressModalOpen, setProgressModalOpen] = useState(false);
+ const [progressSteps, setProgressSteps] = useState<TransactionStep[]>([]);
+ const [currentStepIndex, setCurrentStepIndex] = useState(0);
+ const publicClient = usePublicClient();
 
 // Get collateral price for USD display
 const { priceUSD: collateralPriceUSD } = useCollateralPrice(
@@ -271,7 +271,7 @@ const { priceUSD: collateralPriceUSD } = useCollateralPrice(
  }
  };
 
-const renderSuccessContent = () => {
+ const renderSuccessContent = () => {
 // Format the success amount with USD
 const successAmountNum = parseFloat(amount || "0");
 const successAmountFormatted = successAmountNum > 0 
@@ -281,26 +281,26 @@ const successUSD = successAmountNum > 0 && collateralPriceUSD > 0
   ? successAmountNum * collateralPriceUSD
   : null;
 
-return (
-<div className="space-y-3">
-<div className="p-3 bg-[rgb(var(--surface-selected-rgb))]/20 border border-[rgb(var(--surface-selected-border-rgb))]/30 text-center">
-<p className="text-sm text-[#1E4775]/80">Withdrawal successful!</p>
-{amount && (
+ return (
+ <div className="space-y-3">
+ <div className="p-3 bg-[rgb(var(--surface-selected-rgb))]/20 border border-[rgb(var(--surface-selected-border-rgb))]/30 text-center">
+ <p className="text-sm text-[#1E4775]/80">Withdrawal successful!</p>
+ {amount && (
 <>
-<p className="text-lg font-bold text-[#1E4775] font-mono mt-1">
+ <p className="text-lg font-bold text-[#1E4775] font-mono mt-1">
 {successAmountFormatted} {collateralSymbol}
-</p>
+ </p>
 {successUSD && (
 <p className="text-sm text-[#1E4775]/60">
 (≈ ${successUSD < 0.01 ? successUSD.toFixed(4) : successUSD.toFixed(2)})
 </p>
 )}
 </>
-)}
-</div>
-</div>
-);
-};
+ )}
+ </div>
+ </div>
+ );
+ };
 
  if (!isOpen && !progressModalOpen) return null;
 
@@ -357,29 +357,29 @@ return (
 
  {/* Content */}
  <div className="p-6 space-y-6">
-{/* Balance */}
+ {/* Balance */}
 {(() => {
   const depositFmt = formatTokenAmount(userDeposit, collateralSymbol, collateralPriceUSD);
   return (
-    <div className="text-sm text-[#1E4775]/70">
+ <div className="text-sm text-[#1E4775]/70">
       Your Deposit:{" "}
-      <span className="font-medium text-[#1E4775]">
+ <span className="font-medium text-[#1E4775]">
         {depositFmt.formatted} {collateralSymbol}
         {depositFmt.usd && <span className="text-[#1E4775]/50 ml-1">({depositFmt.usd})</span>}
-      </span>
-    </div>
+ </span>
+ </div>
   );
 })()}
 
-{/* Amount Input */}
-<div className="space-y-2">
-{/* Available Balance */}
-<div className="flex justify-between items-center text-xs">
-<span className="text-[#1E4775]/70">Amount</span>
-<span className="text-[#1E4775]/70">
+ {/* Amount Input */}
+ <div className="space-y-2">
+ {/* Available Balance */}
+ <div className="flex justify-between items-center text-xs">
+ <span className="text-[#1E4775]/70">Amount</span>
+ <span className="text-[#1E4775]/70">
 Available: {formatTokenAmount(userDeposit, collateralSymbol).formatted} {collateralSymbol}
-</span>
-</div>
+ </span>
+ </div>
  <div className="relative">
  <input
  type="text"
@@ -424,23 +424,23 @@ Available: {formatTokenAmount(userDeposit, collateralSymbol).formatted} {collate
  </div>
  </div>
 
-{/* Transaction Preview */}
-{amount && parseFloat(amount ||"0") > 0 && (
-<div className="space-y-3">
-<div className="p-3 bg-[#17395F]/10 border border-[#1E4775]/20 space-y-2 text-sm">
-<div className="font-medium text-[#1E4775]">
-Transaction Preview:
-</div>
+ {/* Transaction Preview */}
+ {amount && parseFloat(amount ||"0") > 0 && (
+ <div className="space-y-3">
+ <div className="p-3 bg-[#17395F]/10 border border-[#1E4775]/20 space-y-2 text-sm">
+ <div className="font-medium text-[#1E4775]">
+ Transaction Preview:
+ </div>
 {(() => {
   const currentFmt = formatTokenAmount(userDeposit, collateralSymbol, collateralPriceUSD);
   return (
     <div className="flex justify-between items-baseline">
       <span className="text-[#1E4775]/70">Current Deposit:</span>
-      <span className="text-[#1E4775]">
+ <span className="text-[#1E4775]">
         {currentFmt.formatted} {collateralSymbol}
         {currentFmt.usd && <span className="text-[#1E4775]/50 ml-1">({currentFmt.usd})</span>}
-      </span>
-    </div>
+ </span>
+ </div>
   );
 })()}
 {(() => {
@@ -449,14 +449,14 @@ Transaction Preview:
   return (
     <div className="flex justify-between items-baseline">
       <span className="text-[#1E4775]/70">- Withdraw Amount:</span>
-      <span className="text-red-600">
+ <span className="text-red-600">
         -{withdrawFmt.formatted} {collateralSymbol}
         {withdrawFmt.usd && <span className="text-red-400 ml-1">(-{withdrawFmt.usd})</span>}
-      </span>
-    </div>
+ </span>
+ </div>
   );
 })()}
-<div className="border-t border-[#1E4775]/20 pt-2">
+ <div className="border-t border-[#1E4775]/20 pt-2">
 {(() => {
   const remainingFmt = formatTokenAmount(remainingDeposit, collateralSymbol, collateralPriceUSD);
   return (
@@ -465,8 +465,8 @@ Transaction Preview:
       <span className={remainingDeposit === 0n ? "text-orange-600" : "text-[#1E4775]"}>
         {remainingFmt.formatted} {collateralSymbol}
         {remainingFmt.usd && <span className={`font-normal ml-1 ${remainingDeposit === 0n ? "text-orange-400" : "text-[#1E4775]/50"}`}>({remainingFmt.usd})</span>}
-      </span>
-    </div>
+ </span>
+ </div>
   );
 })()}
  </div>

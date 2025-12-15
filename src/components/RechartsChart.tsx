@@ -6,8 +6,8 @@ import {
  CartesianGrid,
  Tooltip,
  ResponsiveContainer,
-} from"recharts";
-import type { PriceDataPoint } from"../config/contracts";
+} from "recharts";
+import type { PriceDataPoint } from "../config/contracts";
 
 interface RechartsChartProps {
  data: PriceDataPoint[];

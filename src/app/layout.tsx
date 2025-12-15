@@ -1,9 +1,9 @@
-import type { Metadata } from"next";
+import type { Metadata } from "next";
 import"./globals.css";
-import ContextProvider from"@/contexts";
-import { headers } from"next/headers";
-import Navigation from"@/components/Navigation";
-import FadeContent from"@/components/FadeContent";
+import ContextProvider from "@/contexts";
+import { headers } from "next/headers";
+import Navigation from "@/components/Navigation";
+import FadeContent from "@/components/FadeContent";
 
 const siteUrl ="https://harbor.finance";
 const title ="Harbor Protocol";
@@ -66,12 +66,12 @@ export default async function RootLayout({
  const headersObj = await headers();
  const cookies = headersObj.get("cookie");
 
-return (
-<html lang="en">
-<body
-className={`antialiased font-sans bg-[#1E4775] text-white relative`}
->
-<div className="relative z-10">
+ return (
+ <html lang="en">
+ <body
+ className={`antialiased font-sans bg-[#1E4775] text-white relative`}
+ >
+ <div className="relative z-10">
  <ContextProvider cookies={cookies}>
  <Navigation />
  <FadeContent

@@ -1,14 +1,14 @@
 "use client";
 
-import React, { useState } from"react";
-import { formatEther } from"viem";
-import { Geo } from"next/font/google";
-import Image from"next/image";
+import React, { useState } from "react";
+import { formatEther } from "viem";
+import { Geo } from "next/font/google";
+import Image from "next/image";
 import {
  useMultiMarketGenesisAdmin,
  type MarketAdminData,
-} from"../hooks/useMultiMarketGenesisAdmin";
-import { useAccount } from"wagmi";
+} from "../hooks/useMultiMarketGenesisAdmin";
+import { useAccount } from "wagmi";
 
 const geo = Geo({
  subsets: ["latin"],

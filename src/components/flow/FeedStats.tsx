@@ -1,4 +1,4 @@
-import type { FeedEntry } from"@/config/feeds";
+import type { FeedEntry } from "@/config/feeds";
 
 export function FeedStats({ feed }: { feed: FeedEntry }) {
  return (

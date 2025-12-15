@@ -1,21 +1,21 @@
 "use client";
 
-import React, { useMemo, useState, useEffect } from"react";
-import { useQuery } from"@tanstack/react-query";
-import { useAccount, usePublicClient } from"wagmi";
+import React, { useMemo, useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useAccount, usePublicClient } from "wagmi";
 import {
  TrophyIcon,
  QuestionMarkCircleIcon,
  WalletIcon,
-} from"@heroicons/react/24/outline";
-import { markets } from"@/config/markets";
-import { getGraphUrl } from"@/config/graph";
-import { useAnchorMarks } from"@/hooks/useAnchorMarks";
+} from "@heroicons/react/24/outline";
+import { markets } from "@/config/markets";
+import { getGraphUrl } from "@/config/graph";
+import { useAnchorMarks } from "@/hooks/useAnchorMarks";
 import {
  calculateEstimatedMarks,
  useAnchorLedgerMarks,
-} from"@/hooks/useAnchorLedgerMarks";
-import { CONTRACTS } from"@/config/contracts";
+} from "@/hooks/useAnchorLedgerMarks";
+import { CONTRACTS } from "@/config/contracts";
 
 // GraphQL queries for leaderboard
 // Note: userHarborMarks requires an ID, so we query deposits first to find all users

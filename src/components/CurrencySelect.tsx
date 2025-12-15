@@ -1,7 +1,7 @@
 "use client";
 
-import React from"react";
-import * as Select from"@radix-ui/react-select";
+import React from "react";
+import * as Select from "@radix-ui/react-select";
 import {
  ChevronDown,
  ChevronUp,
@@ -9,7 +9,7 @@ import {
  Euro,
  JapaneseYen,
  PoundSterling,
-} from"lucide-react";
+} from "lucide-react";
 
 export type CurrencyCode ="USD" |"EUR" |"JPY" |"GBP";
 

@@ -1,23 +1,23 @@
 "use client";
 
-import React, { useState, use } from"react";
-import Link from"next/link";
+import React, { useState, use } from "react";
+import Link from "next/link";
 import {
  useAccount,
  useContractReads,
  useWriteContract,
  usePublicClient,
-} from"wagmi";
-import { formatEther, parseEther } from"viem";
-import { markets, type Market } from"../../../config/markets";
-import { GENESIS_ABI } from"../../../config/contracts";
-import { ERC20_ABI, CHAINLINK_ORACLE_ABI } from"@/abis/shared";
-import { formatUSD, formatToken, formatDateTime } from"@/utils/formatters";
-import { EtherscanLink, TokenLogo, getLogoPath } from"@/components/shared";
-import InfoTooltip from"@/components/InfoTooltip";
-import HistoricalDataChart from"@/components/HistoricalDataChart";
-import Image from"next/image";
-import { useCoinGeckoPrice } from"@/hooks/useCoinGeckoPrice";
+} from "wagmi";
+import { formatEther, parseEther } from "viem";
+import { markets, type Market } from "../../../config/markets";
+import { GENESIS_ABI } from "../../../config/contracts";
+import { ERC20_ABI, CHAINLINK_ORACLE_ABI } from "@/abis/shared";
+import { formatUSD, formatToken, formatDateTime } from "@/utils/formatters";
+import { EtherscanLink, TokenLogo, getLogoPath } from "@/components/shared";
+import InfoTooltip from "@/components/InfoTooltip";
+import HistoricalDataChart from "@/components/HistoricalDataChart";
+import Image from "next/image";
+import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
 
 type PageProps = {
  params: Promise<{ id: string }>;
