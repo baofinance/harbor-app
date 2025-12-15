@@ -88,7 +88,7 @@ const stETHAddress = contracts.wrappedCollateralToken as `0x${string}`; // stETH
 const wstETHAddress = contracts.collateralToken as `0x${string}`; // wstETH
 
 // Get ETH balance for native ETH deposits
-const { data: ethBalance } = useBalance({
+const { data: ethBalance, isLoading: isEthBalanceLoading, isError: isEthBalanceError } = useBalance({
   address: address,
   query: {
     enabled: !!address && isOpen && isNativeETH,
@@ -848,28 +848,40 @@ setSuccessfulDepositAmount(actualDepositedAmount);
  )}
  </div>
 
- {/* Amount Input */}
- <div className="space-y-2">
- {/* Available Balance - AMM Style */}
- <div className="flex justify-between items-center text-xs">
- <span className="text-[#1E4775]/70">Amount</span>
- <span className="text-[#1E4775]/70">
- Balance:{""}
- {balanceError ? (
- <span
- className="text-red-500"
- title={balanceError.message}
- >
- Error loading balance
- </span>
- ) : balanceStatus ==="pending" ? (
- <span className="text-[#1E4775]/50">Loading...</span>
- ) : (
- formatEther(balance)
- )}{""}
- {selectedAsset}
- </span>
- </div>
+{/* Amount Input */}
+<div className="space-y-2">
+{/* Available Balance - AMM Style */}
+<div className="flex justify-between items-center text-xs">
+<span className="text-[#1E4775]/70">Amount</span>
+<span className="text-[#1E4775]/70">
+Balance:{""}
+{isNativeETH ? (
+  // ETH balance display
+  isEthBalanceError ? (
+    <span className="text-red-500">Error loading balance</span>
+  ) : isEthBalanceLoading ? (
+    <span className="text-[#1E4775]/50">Loading...</span>
+  ) : (
+    formatEther(balance)
+  )
+) : (
+  // ERC20 balance display
+  balanceError ? (
+    <span
+      className="text-red-500"
+      title={balanceError.message}
+    >
+      Error loading balance
+    </span>
+  ) : balanceStatus ==="pending" ? (
+    <span className="text-[#1E4775]/50">Loading...</span>
+  ) : (
+    formatEther(balance)
+  )
+)}{""}
+{selectedAsset}
+</span>
+</div>
  <div className="relative">
  <input
  type="text"
