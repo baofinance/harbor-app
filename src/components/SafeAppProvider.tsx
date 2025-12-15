@@ -158,7 +158,8 @@ export function SafeAppProviderWrapper({ children }: { children: ReactNode }) {
 
   // Auto-connect when Safe is detected
   useEffect(() => {
-    if (isSafeApp && safeInfo && !isConnected && !hasTriedConnect) {
+    // Only try to connect if we're in Safe mode, have Safe info, not already connected, haven't tried yet, and have the Safe provider
+    if (isSafeApp && safeInfo && safe && !isConnected && !hasTriedConnect) {
       // Wait a bit for connectors to be ready and provider to be set
       const tryConnect = async () => {
         if (connectors.length === 0) {
@@ -167,7 +168,30 @@ export function SafeAppProviderWrapper({ children }: { children: ReactNode }) {
           return;
         }
 
-        // Find the injected connector (Safe injects an ethereum provider)
+        // Ensure window.ethereum is set to Safe's provider BEFORE wagmi tries to detect it
+        if (safe && typeof window !== "undefined") {
+          (window as any).ethereum = {
+            ...safe,
+            isSafe: true,
+            isMetaMask: false,
+            isCoinbaseWallet: false,
+            request: safe.request.bind(safe),
+            send: safe.send?.bind(safe),
+            sendAsync: safe.sendAsync?.bind(safe),
+            // Add required EIP-1193 properties
+            selectedAddress: safeInfo.safeAddress,
+            chainId: `0x${safeInfo.chainId.toString(16)}`,
+            // Add event emitter methods
+            on: safe.on?.bind(safe),
+            removeListener: safe.removeListener?.bind(safe),
+          };
+          console.log("Set window.ethereum to Safe provider", {
+            address: safeInfo.safeAddress,
+            chainId: safeInfo.chainId,
+          });
+        }
+
+        // Find the injected connector
         const injectedConnector = connectors.find(
           (c) => c.type === "injected" || c.id === "injected" || c.name.toLowerCase().includes("injected")
         );
@@ -177,18 +201,40 @@ export function SafeAppProviderWrapper({ children }: { children: ReactNode }) {
           console.log("Attempting to auto-connect Safe wallet...", {
             safeAddress: safeInfo.safeAddress,
             connector: injectedConnector.name,
+            hasProvider: !!(window as any).ethereum,
           });
           
           try {
-            // In wagmi v2, connect might not return a promise, so we handle it safely
-            const result = connect({ connector: injectedConnector });
-            if (result && typeof result.then === 'function') {
-              await result;
-              console.log("Successfully connected to Safe wallet");
-            } else {
-              // If it doesn't return a promise, assume it's synchronous
-              console.log("Connect called (may be synchronous)");
-            }
+            // Try to get provider from connector to verify it sees our Safe provider
+            const provider = await injectedConnector.getProvider();
+            console.log("Connector provider:", {
+              isSafe: (provider as any)?.isSafe,
+              selectedAddress: (provider as any)?.selectedAddress,
+            });
+
+            // Connect using wagmi
+            await new Promise<void>((resolve, reject) => {
+              try {
+                const result = connect({ connector: injectedConnector });
+                if (result && typeof result.then === 'function') {
+                  result
+                    .then(() => {
+                      console.log("Successfully connected to Safe wallet");
+                      resolve();
+                    })
+                    .catch(reject);
+                } else {
+                  // If synchronous, wait a bit - connection state will update via wagmi
+                  // We'll resolve and let wagmi handle the state update
+                  setTimeout(() => {
+                    console.log("Connection attempt completed (synchronous)");
+                    resolve();
+                  }, 1000);
+                }
+              } catch (error) {
+                reject(error);
+              }
+            });
           } catch (error) {
             console.error("Failed to auto-connect Safe:", error);
             // Reset to allow retry
@@ -203,10 +249,10 @@ export function SafeAppProviderWrapper({ children }: { children: ReactNode }) {
         }
       };
 
-      // Initial delay to ensure everything is set up, especially window.ethereum
-      setTimeout(tryConnect, 500);
+      // Initial delay to ensure everything is set up
+      setTimeout(tryConnect, 800);
     }
-  }, [isSafeApp, safeInfo, isConnected, hasTriedConnect, connectors, connect]);
+  }, [isSafeApp, safeInfo, isConnected, hasTriedConnect, connectors, connect, safe]);
 
   return (
     <SafeAppContext.Provider
@@ -225,4 +271,5 @@ export function SafeAppProviderWrapper({ children }: { children: ReactNode }) {
 export function useSafeApp() {
   return React.useContext(SafeAppContext);
 }
+
 

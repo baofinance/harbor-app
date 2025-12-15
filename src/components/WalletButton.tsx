@@ -231,20 +231,38 @@ if (isSafeApp && safeInfo && (c.type === "injected" || c.id === "injected" || c.
       request: safeProvider.request.bind(safeProvider),
       send: safeProvider.send?.bind(safeProvider),
       sendAsync: safeProvider.sendAsync?.bind(safeProvider),
+      selectedAddress: safeInfo.safeAddress,
+      chainId: `0x${safeInfo.chainId.toString(16)}`,
+      on: safeProvider.on?.bind(safeProvider),
+      removeListener: safeProvider.removeListener?.bind(safeProvider),
     };
-    console.log("Set window.ethereum to Safe provider before connecting");
+    console.log("Set window.ethereum to Safe provider before connecting", {
+      address: safeInfo.safeAddress,
+    });
   }
 }
 
-const result = connect({ connector: c });
-if (result && typeof result.then === 'function') {
-  await result;
-} else {
-  // Handle synchronous case
-  await new Promise(resolve => setTimeout(resolve, 100));
+try {
+  const result = connect({ connector: c });
+  if (result && typeof result.then === 'function') {
+    await result;
+    console.log("Connection promise resolved");
+  } else {
+    // Handle synchronous case - wait and check if connected
+    await new Promise(resolve => setTimeout(resolve, 500));
+    // Check if we're now connected
+    if (!isConnected) {
+      console.warn("Connection may have failed - not connected after timeout");
+    }
+  }
+  
+  // Wait a bit more to ensure state updates
+  await new Promise(resolve => setTimeout(resolve, 300));
+  setOpen(false);
+} catch (error) {
+  console.error("Connection error:", error);
+  throw error;
 }
-
-setOpen(false);
                           } catch (error) {
                             console.error("Failed to connect:", error);
                           }
