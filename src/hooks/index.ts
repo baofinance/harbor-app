@@ -12,8 +12,8 @@ export * from "./useErc20";
 
 // Price hooks
 export * from "./usePriceOracle";
-export * from "./usePriceHistory";
 export * from "./useOraclePriceHistory";
+export * from "./useSailPriceHistory";
 
 // Pool hooks
 export * from "./usePoolData";

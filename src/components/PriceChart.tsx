@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import type { PriceDataPoint } from "../config/contracts";
 import { markets } from "../config/markets";
-import { usePriceHistory } from "../hooks/usePriceHistory";
+import { useSailPriceHistory } from "../hooks/useSailPriceHistory";
 import { useOraclePriceHistory } from "../hooks/useOraclePriceHistory";
 import dynamic from "next/dynamic";
 
@@ -22,15 +22,33 @@ export default function PriceChart({
 }: PriceChartProps) {
  const [timeRange, setTimeRange] = useState<"1D" |"1W" |"1M">("1M");
 
- // Use different hooks based on token type
- const { priceHistory: leveragedPriceHistory, isLoading: isLeveragedLoading } =
- usePriceHistory(marketId, selectedToken);
+ // Get leveraged token address for subgraph query
+ const leveragedTokenAddress = markets[marketId]?.addresses?.leveragedToken as string | undefined;
+
+ // Use subgraph for leveraged tokens (SAIL), oracle for pegged tokens
+ const { pricePoints: sailPricePoints, isLoading: isSailLoading } = useSailPriceHistory({
+ tokenAddress: leveragedTokenAddress || "",
+ daysBack: 30,
+ enabled: tokenType ==="STEAMED" && !!leveragedTokenAddress,
+ });
+
  const { priceHistory: oraclePriceHistory, isLoading: isOracleLoading } =
  useOraclePriceHistory(marketId);
 
+ // Convert subgraph price points to PriceDataPoint format
+ const leveragedPriceHistory: PriceDataPoint[] = useMemo(() => {
+ return sailPricePoints.map((point) => ({
+ timestamp: point.timestamp,
+ price: point.priceUSD,
+ type: point.eventType as "mint" | "redeem" | "oracle",
+ tokenAmount: BigInt(0),
+ collateralAmount: BigInt(0),
+ }));
+ }, [sailPricePoints]);
+
  const priceHistory =
  tokenType ==="LONG" ? oraclePriceHistory : leveragedPriceHistory;
- const isLoading = tokenType ==="LONG" ? isOracleLoading : isLeveragedLoading;
+ const isLoading = tokenType ==="LONG" ? isOracleLoading : isSailLoading;
 
  // Filter data based on time range
  const filteredData = priceHistory.filter((point) => {
