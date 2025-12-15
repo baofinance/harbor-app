@@ -3,11 +3,11 @@
 import React, { useState } from"react";
 import { parseEther, formatEther } from"viem";
 import {
-  useAccount,
+ useAccount,
   useBalance,
-  useContractRead,
-  useWriteContract,
-  usePublicClient,
+ useContractRead,
+ useWriteContract,
+ usePublicClient,
 } from"wagmi";
 import { BaseError, ContractFunctionRevertedError } from"viem";
 import { GENESIS_ABI, ERC20_ABI, contracts } from"../config/contracts";
@@ -16,23 +16,23 @@ import { publicClient as mainnetPublicClient } from "@/config/rpc";
 import { useContractRead as useCustomContractRead } from "@/hooks/useContractRead";
 import { useCollateralPrice } from "@/hooks/useCollateralPrice";
 import {
-TransactionProgressModal,
-TransactionStep,
+ TransactionProgressModal,
+ TransactionStep,
 } from"./TransactionProgressModal";
 
 interface GenesisDepositModalProps {
-isOpen: boolean;
-onClose: () => void;
-genesisAddress: string;
-collateralAddress: string;
-collateralSymbol: string;
-acceptedAssets: Array<{ symbol: string; name: string }>;
-marketAddresses?: {
-collateralToken?: string;
-wrappedCollateralToken?: string;
+ isOpen: boolean;
+ onClose: () => void;
+ genesisAddress: string;
+ collateralAddress: string;
+ collateralSymbol: string;
+ acceptedAssets: Array<{ symbol: string; name: string }>;
+ marketAddresses?: {
+ collateralToken?: string;
+ wrappedCollateralToken?: string;
 priceOracle?: string;
-};
-onSuccess?: () => void;
+ };
+ onSuccess?: () => void;
 }
 
 // Format a bigint token amount with limited decimals and optional USD value
@@ -82,8 +82,8 @@ export const GenesisDepositModal = ({
  marketAddresses,
  onSuccess,
 }: GenesisDepositModalProps) => {
-  const { address } = useAccount();
-  const wagmiPublicClient = usePublicClient();
+ const { address } = useAccount();
+ const wagmiPublicClient = usePublicClient();
   // Use mainnet public client as fallback if wagmi client is not available
   const publicClient = wagmiPublicClient || mainnetPublicClient;
  const [amount, setAmount] = useState("");
@@ -94,8 +94,8 @@ export const GenesisDepositModal = ({
  const [progressModalOpen, setProgressModalOpen] = useState(false);
  const [progressSteps, setProgressSteps] = useState<TransactionStep[]>([]);
  const [currentStepIndex, setCurrentStepIndex] = useState(0);
-const [successfulDepositAmount, setSuccessfulDepositAmount] =
-useState<string>("");
+ const [successfulDepositAmount, setSuccessfulDepositAmount] =
+ useState<string>("");
 
 // Get collateral price for USD display
 const { priceUSD: collateralPriceUSD } = useCollateralPrice(
@@ -103,7 +103,7 @@ const { priceUSD: collateralPriceUSD } = useCollateralPrice(
   { enabled: isOpen && !!marketAddresses?.priceOracle }
 );
 
-// Map selected asset to its token address
+ // Map selected asset to its token address
  const getAssetAddress = (assetSymbol: string): string => {
  const normalized = assetSymbol.toLowerCase();
  if (normalized === collateralSymbol.toLowerCase()) {
@@ -123,8 +123,8 @@ const { priceUSD: collateralPriceUSD } = useCollateralPrice(
  return collateralAddress;
  };
 
-const selectedAssetAddress = getAssetAddress(selectedAsset);
-const isNativeETH = selectedAsset.toLowerCase() ==="eth";
+ const selectedAssetAddress = getAssetAddress(selectedAsset);
+ const isNativeETH = selectedAsset.toLowerCase() ==="eth";
 const isStETH = selectedAsset.toLowerCase() ==="steth";
 const zapAddress = contracts.zap as `0x${string}`;
 const stETHAddress = contracts.wrappedCollateralToken as `0x${string}`; // stETH
@@ -184,20 +184,20 @@ const { data: ethBalance, isLoading: isEthBalanceLoading, isError: isEthBalanceE
 
 // For stETH, check allowance for zap contract; for other tokens, check allowance for genesis
 const allowanceTarget = isStETH ? zapAddress : genesisAddress;
-const { data: allowanceData, refetch: refetchAllowance } =
+ const { data: allowanceData, refetch: refetchAllowance } =
   useCustomContractRead({
-    address: selectedAssetAddress as `0x${string}`,
-    abi: ERC20_ABI,
-    functionName:"allowance",
+ address: selectedAssetAddress as `0x${string}`,
+ abi: ERC20_ABI,
+ functionName:"allowance",
     args: address ? [address, allowanceTarget as `0x${string}`] : undefined,
-    enabled:
-      !!address &&
-      isOpen &&
-      !isNativeETH &&
-      !!selectedAssetAddress &&
-      selectedAssetAddress !=="0x0000000000000000000000000000000000000000",
-    refetchInterval: 5000,
-  });
+ enabled:
+ !!address &&
+ isOpen &&
+ !isNativeETH &&
+ !!selectedAssetAddress &&
+ selectedAssetAddress !=="0x0000000000000000000000000000000000000000",
+ refetchInterval: 5000,
+ });
 
  // Check if genesis has ended
  const { data: genesisEnded } = useCustomContractRead({
@@ -221,16 +221,16 @@ const { data: allowanceData, refetch: refetchAllowance } =
  const { writeContractAsync } = useWriteContract();
 
   // For native ETH, use useBalance hook; for ERC20 tokens, use contract read
-  // If there's an error or no data, default to 0
+ // If there's an error or no data, default to 0
   const balance = isNativeETH 
     ? (ethBalance?.value || 0n)
     : balanceError 
     ? 0n 
     : balanceData || 0n;
 const allowance = isNativeETH ? 0n : (typeof allowanceData === 'bigint' ? allowanceData : 0n);
-const amountBigInt = amount ? parseEther(amount) : 0n;
-const needsApproval =
-!isNativeETH && amountBigInt > 0 && amountBigInt > allowance;
+ const amountBigInt = amount ? parseEther(amount) : 0n;
+ const needsApproval =
+ !isNativeETH && amountBigInt > 0 && amountBigInt > allowance;
 const userCurrentDeposit: bigint = typeof currentDeposit === 'bigint' ? currentDeposit : 0n;
 
 // Calculate expected wstETH output for ETH deposits (for preview)
@@ -269,8 +269,8 @@ const actualWstETHDeposit: bigint = isNativeETH
 // Calculate new total deposit using actual wstETH amount
 const newTotalDepositActual: bigint = userCurrentDeposit + actualWstETHDeposit;
 
-const isNonCollateralAsset =
-selectedAsset.toLowerCase() !== collateralSymbol.toLowerCase();
+ const isNonCollateralAsset =
+ selectedAsset.toLowerCase() !== collateralSymbol.toLowerCase();
 
  const handleClose = () => {
  if (step ==="approving" || step ==="depositing") return; // Prevent closing during transactions
@@ -340,15 +340,15 @@ https://www.harborfinance.io/`;
  return true;
  };
 
-const handleDeposit = async () => {
-if (!validateAmount()) return;
-try {
+ const handleDeposit = async () => {
+ if (!validateAmount()) return;
+ try {
 // Capture the current deposit balance BEFORE any transactions
 // This prevents race conditions with the refetching hook
 const preDepositBalance = userCurrentDeposit;
 
-// Initialize progress modal steps
-const steps: TransactionStep[] = [];
+ // Initialize progress modal steps
+ const steps: TransactionStep[] = [];
  const includeApproval = !isNativeETH && needsApproval;
  if (includeApproval) {
  steps.push({
@@ -366,52 +366,52 @@ const steps: TransactionStep[] = [];
  setCurrentStepIndex(0);
  setProgressModalOpen(true);
 
-    // For non-native tokens, check and approve if needed
-    if (!isNativeETH && needsApproval) {
-      setStep("approving");
-      setProgressSteps((prev) =>
-        prev.map((s) =>
-          s.id ==="approve" ? { ...s, status:"in_progress" } : s
-        )
-      );
-      setError(null);
-      setTxHash(null);
-      const approveHash = await writeContractAsync({
-        address: selectedAssetAddress as `0x${string}`,
-        abi: ERC20_ABI,
-        functionName:"approve",
+ // For non-native tokens, check and approve if needed
+ if (!isNativeETH && needsApproval) {
+ setStep("approving");
+ setProgressSteps((prev) =>
+ prev.map((s) =>
+ s.id ==="approve" ? { ...s, status:"in_progress" } : s
+ )
+ );
+ setError(null);
+ setTxHash(null);
+ const approveHash = await writeContractAsync({
+ address: selectedAssetAddress as `0x${string}`,
+ abi: ERC20_ABI,
+ functionName:"approve",
         args: [allowanceTarget as `0x${string}`, amountBigInt],
-        // chainId intentionally omitted to let wallet infer the network
-      });
-      setTxHash(approveHash);
-      await publicClient?.waitForTransactionReceipt({ hash: approveHash });
-      await refetchAllowance();
+ // chainId intentionally omitted to let wallet infer the network
+ });
+ setTxHash(approveHash);
+ await publicClient?.waitForTransactionReceipt({ hash: approveHash });
+ await refetchAllowance();
 
-      // Give a moment for the blockchain state to update
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+ // Give a moment for the blockchain state to update
+ await new Promise((resolve) => setTimeout(resolve, 1000));
 
-      // Force another refetch to ensure we have the latest allowance
-      await refetchAllowance();
+ // Force another refetch to ensure we have the latest allowance
+ await refetchAllowance();
 
-      setProgressSteps((prev) =>
-        prev.map((s, idx) =>
-          s.id ==="approve"
-            ? { ...s, status:"completed", txHash: approveHash }
-            : s
-        )
-      );
-      setCurrentStepIndex(steps.findIndex((s) => s.id ==="deposit"));
-    }
+ setProgressSteps((prev) =>
+ prev.map((s, idx) =>
+ s.id ==="approve"
+ ? { ...s, status:"completed", txHash: approveHash }
+ : s
+ )
+ );
+ setCurrentStepIndex(steps.findIndex((s) => s.id ==="deposit"));
+ }
 
-    setStep("depositing");
-    setProgressSteps((prev) =>
-      prev.map((s) =>
-        s.id ==="deposit" ? { ...s, status:"in_progress" } : s
-      )
-    );
-    setCurrentStepIndex(steps.findIndex((s) => s.id ==="deposit"));
-    setError(null);
-    setTxHash(null);
+ setStep("depositing");
+ setProgressSteps((prev) =>
+ prev.map((s) =>
+ s.id ==="deposit" ? { ...s, status:"in_progress" } : s
+ )
+ );
+ setCurrentStepIndex(steps.findIndex((s) => s.id ==="deposit"));
+ setError(null);
+ setTxHash(null);
 
     // Use zap contract for ETH and stETH deposits
     let depositHash: `0x${string}`;
@@ -461,13 +461,13 @@ const steps: TransactionStep[] = [];
     } else {
       // For other tokens (wstETH), use standard genesis deposit
       depositHash = await writeContractAsync({
-        address: genesisAddress as `0x${string}`,
-        abi: GENESIS_ABI,
-        functionName:"deposit",
-        args: [amountBigInt, address as `0x${string}`],
-      });
+ address: genesisAddress as `0x${string}`,
+ abi: GENESIS_ABI,
+ functionName:"deposit",
+ args: [amountBigInt, address as `0x${string}`],
+ });
     }
-setTxHash(depositHash);
+ setTxHash(depositHash);
 const receipt = await publicClient?.waitForTransactionReceipt({ hash: depositHash });
 
 // For zap transactions (stETH or ETH), get the actual wstETH deposited from transaction
@@ -497,7 +497,7 @@ if (isNativeETH || isStETH) {
   }
 }
 
-setStep("success");
+ setStep("success");
 setSuccessfulDepositAmount(actualDepositedAmount);
  setProgressSteps((prev) =>
  prev.map((s) =>
@@ -753,7 +753,7 @@ setSuccessfulDepositAmount(actualDepositedAmount);
  );
  };
 
-const renderSuccessContent = () => {
+ const renderSuccessContent = () => {
 // Format the success amount with USD
 const successAmountNum = parseFloat(successfulDepositAmount || "0");
 const successAmountFormatted = successAmountNum > 0 
@@ -763,25 +763,25 @@ const successUSD = successAmountNum > 0 && collateralPriceUSD > 0
   ? successAmountNum * collateralPriceUSD
   : null;
 
-return (
-<div className="space-y-4">
-<div className="p-4 bg-[rgb(var(--surface-selected-rgb))]/20 border border-[rgb(var(--surface-selected-border-rgb))]/30 text-center">
-<p className="text-sm text-[#1E4775]/80">
-Thank you for joining the Maiden Voyage!
-</p>
-{successfulDepositAmount && (
+ return (
+ <div className="space-y-4">
+ <div className="p-4 bg-[rgb(var(--surface-selected-rgb))]/20 border border-[rgb(var(--surface-selected-border-rgb))]/30 text-center">
+ <p className="text-sm text-[#1E4775]/80">
+ Thank you for joining the Maiden Voyage!
+ </p>
+ {successfulDepositAmount && (
 <>
-<p className="text-lg font-bold text-[#1E4775] font-mono mt-2">
+ <p className="text-lg font-bold text-[#1E4775] font-mono mt-2">
 {successAmountFormatted} {collateralSymbol}
-</p>
+ </p>
 {successUSD && (
 <p className="text-sm text-[#1E4775]/60">
 (≈ ${successUSD < 0.01 ? successUSD.toFixed(4) : successUSD.toFixed(2)})
 </p>
 )}
 </>
-)}
-</div>
+ )}
+ </div>
  <div className="space-y-2 bg-[#17395F]/5 border border-[#1E4775]/15 p-4">
  <div className="text-base font-semibold text-[#1E4775]">
  Boost your airdrop
@@ -873,17 +873,17 @@ Thank you for joining the Maiden Voyage!
  </div>
  )}
 
-{/* Current Deposit */}
+ {/* Current Deposit */}
 {(() => {
   const currentFmt = formatTokenAmount(userCurrentDeposit, collateralSymbol, collateralPriceUSD);
   return (
-    <div className="text-sm text-[#1E4775]/70">
+ <div className="text-sm text-[#1E4775]/70">
       Current Deposit:{" "}
-      <span className="font-medium text-[#1E4775]">
+ <span className="font-medium text-[#1E4775]">
         {currentFmt.formatted} {collateralSymbol}
         {currentFmt.usd && <span className="text-[#1E4775]/50 ml-1">({currentFmt.usd})</span>}
-      </span>
-    </div>
+ </span>
+ </div>
   );
 })()}
 
@@ -916,13 +916,13 @@ Thank you for joining the Maiden Voyage!
  )}
  </div>
 
-{/* Amount Input */}
-<div className="space-y-2">
-{/* Available Balance - AMM Style */}
-<div className="flex justify-between items-center text-xs">
-<span className="text-[#1E4775]/70">Amount</span>
-<span className="text-[#1E4775]/70">
-Balance:{""}
+ {/* Amount Input */}
+ <div className="space-y-2">
+ {/* Available Balance - AMM Style */}
+ <div className="flex justify-between items-center text-xs">
+ <span className="text-[#1E4775]/70">Amount</span>
+ <span className="text-[#1E4775]/70">
+ Balance:{""}
 {isNativeETH ? (
   // ETH balance display
   isEthBalanceError ? (
@@ -935,21 +935,21 @@ Balance:{""}
 ) : (
   // ERC20 balance display
   balanceError ? (
-    <span
-      className="text-red-500"
-      title={balanceError.message}
-    >
-      Error loading balance
-    </span>
-  ) : balanceStatus ==="pending" ? (
-    <span className="text-[#1E4775]/50">Loading...</span>
-  ) : (
-    formatEther(balance)
+ <span
+ className="text-red-500"
+ title={balanceError.message}
+ >
+ Error loading balance
+ </span>
+ ) : balanceStatus ==="pending" ? (
+ <span className="text-[#1E4775]/50">Loading...</span>
+ ) : (
+ formatEther(balance)
   )
-)}{""}
-{selectedAsset}
-</span>
-</div>
+ )}{""}
+ {selectedAsset}
+ </span>
+ </div>
  <div className="relative">
  <input
  type="text"
@@ -982,32 +982,32 @@ Balance:{""}
  </div>
  </div>
 
-{/* Transaction Preview - Always visible */}
-<div className="p-3 bg-[#17395F]/10 border border-[#1E4775]/20 space-y-2 text-sm">
-<div className="font-medium text-[#1E4775]">
-Transaction Preview:
-</div>
+ {/* Transaction Preview - Always visible */}
+ <div className="p-3 bg-[#17395F]/10 border border-[#1E4775]/20 space-y-2 text-sm">
+ <div className="font-medium text-[#1E4775]">
+ Transaction Preview:
+ </div>
 {(() => {
   const currentFmt = formatTokenAmount(userCurrentDeposit, collateralSymbol, collateralPriceUSD);
   return (
     <div className="flex justify-between items-baseline">
-      <span className="text-[#1E4775]/70">Current Deposit:</span>
-      <span className="text-[#1E4775]">
+ <span className="text-[#1E4775]/70">Current Deposit:</span>
+ <span className="text-[#1E4775]">
         {currentFmt.formatted} {collateralSymbol}
         {currentFmt.usd && <span className="text-[#1E4775]/50 ml-1">({currentFmt.usd})</span>}
-      </span>
-    </div>
+ </span>
+ </div>
   );
 })()}
-{amount && parseFloat(amount) > 0 ? (
-<>
+ {amount && parseFloat(amount) > 0 ? (
+ <>
 {(() => {
   const depositAmt = isNativeETH || isStETH ? actualWstETHDeposit : amountBigInt;
   const depositFmt = formatTokenAmount(depositAmt, collateralSymbol, collateralPriceUSD);
   return (
     <div className="flex justify-between items-baseline">
       <span className="text-[#1E4775]/70">+ Deposit Amount:</span>
-      <span className="text-[#1E4775]">
+ <span className="text-[#1E4775]">
         {depositAmt > 0n ? (
           <>
             +{depositFmt.formatted} {collateralSymbol}
@@ -1016,8 +1016,8 @@ Transaction Preview:
         ) : (
           "Calculating..."
         )}
-      </span>
-    </div>
+ </span>
+ </div>
   );
 })()}
 {(isNativeETH || isStETH) && actualWstETHDeposit > 0n && (
@@ -1025,27 +1025,27 @@ Transaction Preview:
 ({parseFloat(amount).toFixed(6)} {selectedAsset} ≈ {formatTokenAmount(actualWstETHDeposit, collateralSymbol).formatted} {collateralSymbol})
 </div>
 )}
-<div className="border-t border-[#1E4775]/30 pt-2">
+ <div className="border-t border-[#1E4775]/30 pt-2">
 {(() => {
   const totalFmt = formatTokenAmount(newTotalDepositActual, collateralSymbol, collateralPriceUSD);
   return (
     <div className="flex justify-between items-baseline font-medium">
       <span className="text-[#1E4775]">New Total Deposit:</span>
-      <span className="text-[#1E4775]">
+ <span className="text-[#1E4775]">
         {totalFmt.formatted} {collateralSymbol}
         {totalFmt.usd && <span className="text-[#1E4775]/50 font-normal ml-1">({totalFmt.usd})</span>}
-      </span>
-    </div>
+ </span>
+ </div>
   );
 })()}
-</div>
-</>
-) : (
-<div className="text-xs text-[#1E4775]/50 italic">
-Enter an amount to see deposit preview
-</div>
-)}
-</div>
+ </div>
+ </>
+ ) : (
+ <div className="text-xs text-[#1E4775]/50 italic">
+ Enter an amount to see deposit preview
+ </div>
+ )}
+ </div>
 
  {/* Error */}
  {error && (

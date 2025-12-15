@@ -6991,6 +6991,238 @@ export default function AnchorPage() {
                     {/* Expanded View - Show all markets in group */}
                     {isExpanded && (
                       <div className="bg-[rgb(var(--surface-selected-rgb))] p-4 border-t border-white/20">
+                        {/* Consolidated Your Positions - shown once for the group */}
+                        {(() => {
+                          // Aggregate positions across all markets in this group
+                          // ha token balance is the same for all markets (same token)
+                          const firstMarket = marketsData[0];
+                          const haTokenBalance = firstMarket?.userDeposit;
+                          const haTokenBalanceUSD = firstMarket?.haTokenBalanceUSD || 0;
+                          const haSymbol = firstMarket?.market?.peggedToken?.symbol || "ha";
+                          
+                          // Aggregate pool deposits across all markets
+                          let totalCollateralPoolDeposit = 0n;
+                          let totalCollateralPoolDepositUSD = 0;
+                          let totalSailPoolDeposit = 0n;
+                          let totalSailPoolDepositUSD = 0;
+                          
+                          // Collect all withdrawal requests for this group
+                          const groupWithdrawalRequests: typeof withdrawalRequests = [];
+                          
+                          marketsData.forEach((md) => {
+                            if (md.collateralPoolDeposit && md.collateralPoolDeposit > 0n) {
+                              totalCollateralPoolDeposit += md.collateralPoolDeposit;
+                              totalCollateralPoolDepositUSD += md.collateralPoolDepositUSD || 0;
+                            }
+                            if (md.sailPoolDeposit && md.sailPoolDeposit > 0n) {
+                              totalSailPoolDeposit += md.sailPoolDeposit;
+                              totalSailPoolDepositUSD += md.sailPoolDepositUSD || 0;
+                            }
+                            // Collect withdrawal requests for this market
+                            const marketRequests = withdrawalRequests.filter(
+                              (req) =>
+                                req.poolAddress.toLowerCase() ===
+                                  md.market.addresses?.stabilityPoolCollateral?.toLowerCase() ||
+                                req.poolAddress.toLowerCase() ===
+                                  md.market.addresses?.stabilityPoolLeveraged?.toLowerCase()
+                            );
+                            groupWithdrawalRequests.push(...marketRequests);
+                          });
+                          
+                          const hasGroupPositions =
+                            haTokenBalanceUSD > 0 ||
+                            totalCollateralPoolDepositUSD > 0 ||
+                            totalSailPoolDepositUSD > 0 ||
+                            (haTokenBalance && haTokenBalance > 0n) ||
+                            totalCollateralPoolDeposit > 0n ||
+                            totalSailPoolDeposit > 0n;
+                          
+                          if (!hasGroupPositions && groupWithdrawalRequests.length === 0) {
+                            return null;
+                          }
+                          
+                          return (
+                            <div className="mb-4">
+                              {/* Withdrawal requests for the group */}
+                              {groupWithdrawalRequests.length > 0 && (
+                                <div className="bg-white border border-[#1E4775]/10 shadow-sm p-3 space-y-2 mb-3">
+                                  <div className="text-[10px] text-[#1E4775]/70 font-semibold uppercase tracking-wide">
+                                    Withdrawal Requests
+                                  </div>
+                                  <div className="space-y-1.5">
+                                    {groupWithdrawalRequests.map((request) => {
+                                      // Find the market this request belongs to
+                                      const requestMarket = marketsData.find(
+                                        (md) =>
+                                          request.poolAddress.toLowerCase() ===
+                                            md.market.addresses?.stabilityPoolCollateral?.toLowerCase() ||
+                                          request.poolAddress.toLowerCase() ===
+                                            md.market.addresses?.stabilityPoolLeveraged?.toLowerCase()
+                                      );
+                                      const isCollateralPool =
+                                        request.poolAddress.toLowerCase() ===
+                                        requestMarket?.market.addresses?.stabilityPoolCollateral?.toLowerCase();
+                                      const poolType = isCollateralPool ? "collateral" : "sail";
+                                      const startSec = Number(request.start);
+                                      const endSec = Number(request.end);
+                                      const isWindowOpen = request.status === "window";
+                                      const countdownTarget =
+                                        request.status === "waiting" ? startSec : endSec;
+                                      const countdownLabel =
+                                        request.status === "waiting"
+                                          ? "Window opens in"
+                                          : request.status === "window"
+                                          ? "Window closes in"
+                                          : "Window expired";
+                                      const countdownText =
+                                        countdownTarget > 0
+                                          ? formatTimeRemaining(
+                                              new Date(countdownTarget * 1000).toISOString(),
+                                              request.currentTime
+                                                ? new Date(Number(request.currentTime) * 1000)
+                                                : new Date()
+                                            )
+                                          : "Ended";
+
+                                      return (
+                                        <div
+                                          key={`${request.poolAddress}-${request.start.toString()}`}
+                                          className="p-2 bg-[#FF8A7A]/10 border border-[#FF8A7A]/30 text-xs flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between"
+                                        >
+                                          <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2">
+                                            <span className="text-[#1E4775] font-semibold">
+                                              {poolType === "collateral" ? "Collateral" : "Sail"} Pool
+                                              {requestMarket && marketsData.length > 1 && (
+                                                <span className="text-[#1E4775]/50 ml-1">
+                                                  ({requestMarket.market.collateral?.symbol || "?"})
+                                                </span>
+                                              )}
+                                            </span>
+                                            <span
+                                              className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${
+                                                request.status === "window"
+                                                  ? "bg-green-200 text-green-800 border-green-500"
+                                                  : request.status === "waiting"
+                                                  ? "bg-amber-200 text-amber-800 border-amber-500"
+                                                  : "bg-gray-200 text-gray-700 border-gray-400"
+                                              }`}
+                                            >
+                                              {request.status === "window"
+                                                ? "Open"
+                                                : request.status === "waiting"
+                                                ? "Waiting"
+                                                : "Expired"}
+                                            </span>
+                                            <span className="text-[11px] text-[#1E4775]/70">
+                                              {countdownLabel}: {countdownText}
+                                            </span>
+                                          </div>
+                                          <div className="flex gap-1.5">
+                                            <button
+                                              onClick={async () => {
+                                                if (isWindowOpen) {
+                                                  setWithdrawAmountInput("");
+                                                  setWithdrawAmountError(null);
+                                                  const maxAmount =
+                                                    poolType === "collateral"
+                                                      ? requestMarket?.collateralPoolDeposit
+                                                      : requestMarket?.sailPoolDeposit;
+                                                  setWithdrawAmountModal({
+                                                    poolAddress: request.poolAddress,
+                                                    poolType,
+                                                    useEarly: false,
+                                                    symbol: haSymbol,
+                                                    maxAmount: maxAmount || 0n,
+                                                  });
+                                                } else {
+                                                  setEarlyWithdrawModal({
+                                                    poolAddress: request.poolAddress,
+                                                    poolType,
+                                                    start: request.start,
+                                                    end: request.end,
+                                                    earlyWithdrawFee: request.earlyWithdrawFee,
+                                                    symbol: haSymbol,
+                                                    poolBalance:
+                                                      (poolType === "collateral"
+                                                        ? requestMarket?.collateralPoolDeposit
+                                                        : requestMarket?.sailPoolDeposit) || 0n,
+                                                  });
+                                                }
+                                              }}
+                                              className={`px-2 py-0.5 text-[10px] font-medium rounded-full ${
+                                                isWindowOpen
+                                                  ? "bg-[#1E4775] text-white hover:bg-[#17395F]"
+                                                  : "bg-orange-500 text-white hover:bg-orange-600"
+                                              } transition-colors whitespace-nowrap`}
+                                            >
+                                              Withdraw
+                                            </button>
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              )}
+                              
+                              {/* Your Positions - consolidated */}
+                              {hasGroupPositions && (
+                                <div className="bg-white border border-[#1E4775]/10 shadow-sm p-3 space-y-2">
+                                  <div className="text-[10px] text-[#1E4775]/70 font-semibold uppercase tracking-wide">
+                                    Your Positions
+                                  </div>
+                                  <div className="space-y-2">
+                                    {/* ha Tokens in Wallet */}
+                                    {haTokenBalance && haTokenBalance > 0n && (
+                                      <div className="flex justify-between items-center text-xs">
+                                        <span className="text-[#1E4775]/70">In Wallet:</span>
+                                        <div className="text-right">
+                                          <div className="font-semibold text-[#1E4775] font-mono">
+                                            {formatCompactUSD(haTokenBalanceUSD)}
+                                          </div>
+                                          <div className="text-[10px] text-[#1E4775]/50 font-mono">
+                                            {formatToken(haTokenBalance)} {haSymbol}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {/* Collateral Pool Deposit - aggregated */}
+                                    {totalCollateralPoolDeposit > 0n && (
+                                      <div className="flex justify-between items-center text-xs">
+                                        <span className="text-[#1E4775]/70">Collateral Pool:</span>
+                                        <div className="text-right">
+                                          <div className="font-semibold text-[#1E4775] font-mono">
+                                            {formatCompactUSD(totalCollateralPoolDepositUSD)}
+                                          </div>
+                                          <div className="text-[10px] text-[#1E4775]/50 font-mono">
+                                            {formatToken(totalCollateralPoolDeposit)} {haSymbol}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {/* Sail Pool Deposit - aggregated */}
+                                    {totalSailPoolDeposit > 0n && (
+                                      <div className="flex justify-between items-center text-xs">
+                                        <span className="text-[#1E4775]/70">Sail Pool:</span>
+                                        <div className="text-right">
+                                          <div className="font-semibold text-[#1E4775] font-mono">
+                                            {formatCompactUSD(totalSailPoolDepositUSD)}
+                                          </div>
+                                          <div className="text-[10px] text-[#1E4775]/50 font-mono">
+                                            {formatToken(totalSailPoolDeposit)} {haSymbol}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })()}
+                        
                         {marketsData.map((marketData) => {
                           // Get volatility protection from hook data
                           const minterAddr =
@@ -7307,286 +7539,6 @@ export default function AnchorPage() {
                                 );
                               })()}
 
-                              {(() => {
-                                const marketWithdrawalRequests =
-                                  withdrawalRequests.filter(
-                                    (req) =>
-                                      req.poolAddress.toLowerCase() ===
-                                        marketData.market.addresses?.stabilityPoolCollateral?.toLowerCase() ||
-                                      req.poolAddress.toLowerCase() ===
-                                        marketData.market.addresses?.stabilityPoolLeveraged?.toLowerCase()
-                                  );
-                                const hasPositions =
-                                  marketData.haTokenBalanceUSD > 0 ||
-                                  marketData.collateralPoolDepositUSD > 0 ||
-                                  marketData.sailPoolDepositUSD > 0 ||
-                                  (marketData.userDeposit &&
-                                    marketData.userDeposit > 0n) ||
-                                  (marketData.collateralPoolDeposit &&
-                                    marketData.collateralPoolDeposit > 0n) ||
-                                  (marketData.sailPoolDeposit &&
-                                    marketData.sailPoolDeposit > 0n);
-
-                                return (
-                                  <>
-                                    {/* Withdrawal requests */}
-                                    {marketWithdrawalRequests.length > 0 && (
-                                      <div className="mt-3 bg-white border border-[#1E4775]/10 shadow-sm p-3 space-y-2">
-                                        <div className="text-[10px] text-[#1E4775]/70 font-semibold uppercase tracking-wide">
-                                          Withdrawal requests
-                                        </div>
-                                        <div className="space-y-1.5">
-                                          {marketWithdrawalRequests.map(
-                                            (request) => {
-                                              const isCollateralPool =
-                                                request.poolAddress.toLowerCase() ===
-                                                marketData.market.addresses?.stabilityPoolCollateral?.toLowerCase();
-                                              const poolType = isCollateralPool
-                                                ? "collateral"
-                                                : "sail";
-                                              const startSec = Number(
-                                                request.start
-                                              );
-                                              const endSec = Number(
-                                                request.end
-                                              );
-                                              const isWindowOpen =
-                                                request.status === "window";
-                                              const countdownTarget =
-                                                request.status === "waiting"
-                                                  ? startSec
-                                                  : endSec;
-                                              const countdownLabel =
-                                                request.status === "waiting"
-                                                  ? "Window opens in"
-                                                  : request.status === "window"
-                                                  ? "Window closes in"
-                                                  : "Window expired";
-                                              const countdownText =
-                                                countdownTarget > 0
-                                                  ? formatTimeRemaining(
-                                                      new Date(
-                                                        countdownTarget * 1000
-                                                      ).toISOString(),
-                                                      request.currentTime
-                                                        ? new Date(
-                                                            Number(
-                                                              request.currentTime
-                                                            ) * 1000
-                                                          )
-                                                        : new Date()
-                                                    )
-                                                  : "Ended";
-
-                                              return (
-                                                <div
-                                                  key={`${
-                                                    request.poolAddress
-                                                  }-${request.start.toString()}`}
-                                                  className="p-2 bg-[#FF8A7A]/10 border border-[#FF8A7A]/30 text-xs flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between"
-                                                >
-                                                  <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2">
-                                                    <span className="text-[#1E4775] font-semibold">
-                                                      {poolType === "collateral"
-                                                        ? "Collateral"
-                                                        : "Sail"}
-                                                      {""}
-                                                      Pool
-                                                    </span>
-                                                    <span
-                                                      className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${
-                                                        request.status ===
-                                                        "window"
-                                                          ? "bg-green-200 text-green-800 border-green-500"
-                                                          : request.status ===
-                                                            "waiting"
-                                                          ? "bg-amber-200 text-amber-800 border-amber-500"
-                                                          : "bg-gray-200 text-gray-700 border-gray-400"
-                                                      }`}
-                                                    >
-                                                      {request.status ===
-                                                      "window"
-                                                        ? "Open"
-                                                        : request.status ===
-                                                          "waiting"
-                                                        ? "Waiting"
-                                                        : "Expired"}
-                                                    </span>
-                                                    <span className="text-[11px] text-[#1E4775]/70">
-                                                      {countdownLabel}:{""}
-                                                      {countdownText}
-                                                    </span>
-                                                  </div>
-                                                  <div className="flex gap-1.5">
-                                                    <button
-                                                      onClick={async () => {
-                                                        if (isWindowOpen) {
-                                                          setWithdrawAmountInput(
-                                                            ""
-                                                          );
-                                                          setWithdrawAmountError(
-                                                            null
-                                                          );
-                                                          const maxAmount =
-                                                            poolType ===
-                                                            "collateral"
-                                                              ? marketData.collateralPoolDeposit
-                                                              : marketData.sailPoolDeposit;
-                                                          setWithdrawAmountModal(
-                                                            {
-                                                              poolAddress:
-                                                                request.poolAddress,
-                                                              poolType,
-                                                              useEarly: false,
-                                                              symbol:
-                                                                marketData
-                                                                  .market
-                                                                  .peggedToken
-                                                                  ?.symbol ||
-                                                                "ha",
-                                                              maxAmount:
-                                                                maxAmount || 0n,
-                                                            }
-                                                          );
-                                                        } else {
-                                                          setEarlyWithdrawModal(
-                                                            {
-                                                              poolAddress:
-                                                                request.poolAddress,
-                                                              poolType,
-                                                              start:
-                                                                request.start,
-                                                              end: request.end,
-                                                              earlyWithdrawFee:
-                                                                request.earlyWithdrawFee,
-                                                              symbol:
-                                                                marketData
-                                                                  .market
-                                                                  .peggedToken
-                                                                  ?.symbol ||
-                                                                "ha",
-                                                              poolBalance:
-                                                                (poolType ===
-                                                                "collateral"
-                                                                  ? marketData.collateralPoolDeposit
-                                                                  : marketData.sailPoolDeposit) ||
-                                                                0n,
-                                                            }
-                                                          );
-                                                        }
-                                                      }}
-                                                      className={`px-2 py-0.5 text-[10px] font-medium rounded-full ${
-                                                        isWindowOpen
-                                                          ? "bg-[#1E4775] text-white hover:bg-[#17395F]"
-                                                          : "bg-orange-500 text-white hover:bg-orange-600"
-                                                      } transition-colors whitespace-nowrap`}
-                                                    >
-                                                      Withdraw
-                                                    </button>
-                                                  </div>
-                                                </div>
-                                              );
-                                            }
-                                          )}
-                                        </div>
-                                      </div>
-                                    )}
-
-                                    {/* Your Positions - Compact rows */}
-                                    {hasPositions && (
-                                      <div className="mt-3 bg-white border border-[#1E4775]/10 shadow-sm p-3 space-y-2">
-                                        <div className="text-[10px] text-[#1E4775]/70 font-semibold uppercase tracking-wide">
-                                          Your Positions
-                                        </div>
-                                        <div className="space-y-2">
-                                          {/* ha Tokens in Wallet */}
-                                          {marketData.userDeposit &&
-                                            marketData.userDeposit > 0n && (
-                                              <div className="flex justify-between items-center text-xs">
-                                                <span className="text-[#1E4775]/70">
-                                                  In Wallet:
-                                                </span>
-                                                <div className="text-right">
-                                                  <div className="font-semibold text-[#1E4775] font-mono">
-                                                    {formatCompactUSD(
-                                                      marketData.haTokenBalanceUSD
-                                                    )}
-                                                  </div>
-                                                  <div className="text-[10px] text-[#1E4775]/50 font-mono">
-                                                    {formatToken(
-                                                      marketData.userDeposit
-                                                    )}
-                                                    {""}
-                                                    {marketData.market
-                                                      .peggedToken?.symbol ||
-                                                      "ha"}
-                                                  </div>
-                                                </div>
-                                              </div>
-                                            )}
-
-                                          {/* Collateral Pool Deposit */}
-                                          {marketData.market.addresses
-                                            ?.stabilityPoolCollateral &&
-                                            marketData.collateralPoolDeposit &&
-                                            marketData.collateralPoolDeposit >
-                                              0n && (
-                                              <div className="flex justify-between items-center text-xs">
-                                                <span className="text-[#1E4775]/70">
-                                                  Collateral Pool:
-                                                </span>
-                                                <div className="text-right">
-                                                  <div className="font-semibold text-[#1E4775] font-mono">
-                                                    {formatCompactUSD(
-                                                      marketData.collateralPoolDepositUSD
-                                                    )}
-                                                  </div>
-                                                  <div className="text-[10px] text-[#1E4775]/50 font-mono">
-                                                    {formatToken(
-                                                      marketData.collateralPoolDeposit
-                                                    )}
-                                                    {""}
-                                                    {marketData.market
-                                                      .peggedToken?.symbol ||
-                                                      "ha"}
-                                                  </div>
-                                                </div>
-                                              </div>
-                                            )}
-
-                                          {/* Sail Pool Deposit */}
-                                          {marketData.market.addresses
-                                            ?.stabilityPoolLeveraged &&
-                                            marketData.sailPoolDeposit &&
-                                            marketData.sailPoolDeposit > 0n && (
-                                              <div className="flex justify-between items-center text-xs">
-                                                <span className="text-[#1E4775]/70">
-                                                  Sail Pool:
-                                                </span>
-                                                <div className="text-right">
-                                                  <div className="font-semibold text-[#1E4775] font-mono">
-                                                    {formatCompactUSD(
-                                                      marketData.sailPoolDepositUSD
-                                                    )}
-                                                  </div>
-                                                  <div className="text-[10px] text-[#1E4775]/50 font-mono">
-                                                    {formatToken(
-                                                      marketData.sailPoolDeposit
-                                                    )}
-                                                    {""}
-                                                    {marketData.market
-                                                      .peggedToken?.symbol ||
-                                                      "ha"}
-                                                  </div>
-                                                </div>
-                                              </div>
-                                            )}
-                                        </div>
-                                      </div>
-                                    )}
-                                  </>
-                                );
-                              })()}
                             </div>
                           );
                         })}
