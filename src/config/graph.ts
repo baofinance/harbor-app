@@ -1,7 +1,23 @@
-// GraphQL configuration for Harbor Marks subgraph
+// GraphQL configuration for Harbor subgraphs
 
 export const GRAPH_CONFIG = {
-  // Production (mainnet)
+  // Harbor Marks subgraph (for marks tracking)
+  marks: {
+    url:
+      process.env.NEXT_PUBLIC_GRAPH_URL ||
+      "https://api.studio.thegraph.com/query/1718836/harbor-marks/v0.0.5",
+    chainId: 1,
+    network: "mainnet",
+  },
+  // Sail Token Price subgraph (for price history and PnL)
+  sailPrice: {
+    url:
+      process.env.NEXT_PUBLIC_SAIL_PRICE_GRAPH_URL ||
+      "https://api.studio.thegraph.com/query/1718836/sail-token-price/v0.0.1",
+    chainId: 1,
+    network: "mainnet",
+  },
+  // Alias for backward compatibility
   production: {
     url:
       process.env.NEXT_PUBLIC_GRAPH_URL ||
@@ -35,7 +51,12 @@ export const CONTRACTS_WBTC = {
   stabilityPoolLeveraged: "0xfc2145de73ec53e34c4e6809b56a61321315e806",
 };
 
-// Get the Graph URL (always production/mainnet)
+// Get the Graph URL for marks (always production/mainnet)
 export const getGraphUrl = (): string => {
-  return process.env.NEXT_PUBLIC_GRAPH_URL || GRAPH_CONFIG.production.url;
+  return process.env.NEXT_PUBLIC_GRAPH_URL || GRAPH_CONFIG.marks.url;
+};
+
+// Get the Sail Price Graph URL (for price history and PnL)
+export const getSailPriceGraphUrl = (): string => {
+  return process.env.NEXT_PUBLIC_SAIL_PRICE_GRAPH_URL || GRAPH_CONFIG.sailPrice.url;
 };

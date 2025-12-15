@@ -10,7 +10,6 @@
 import { Transfer as TransferEvent } from "../generated/SailToken_hsPB/ERC20";
 import { ERC20 } from "../generated/SailToken_hsPB/ERC20";
 import { Minter } from "../generated/SailToken_hsPB/Minter";
-import { WrappedPriceOracle } from "../generated/SailToken_hsPB/WrappedPriceOracle";
 import {
   updateSailTokenMarksInTotal,
 } from "./marksAggregation";
@@ -19,9 +18,6 @@ import {
   MarksMultiplier,
   PriceFeed,
   UserTotalMarks,
-  UserSailPosition,
-  CostBasisLot,
-  SailTokenPricePoint,
 } from "../generated/schema";
 import { BigDecimal, BigInt, Bytes, Address, ethereum } from "@graphprotocol/graph-ts";
 
@@ -30,18 +26,6 @@ const SECONDS_PER_DAY = BigDecimal.fromString("86400");
 const DEFAULT_MULTIPLIER = BigDecimal.fromString("5.0"); // 5x for sail tokens (default)
 const DEFAULT_MARKS_PER_DOLLAR_PER_DAY = BigDecimal.fromString("1.0");
 const ONE_ETHER = BigDecimal.fromString("1000000000000000000");
-const ONE_ETHER_BI = BigInt.fromString("1000000000000000000");
-const ZERO_BI = BigInt.fromI32(0);
-const ZERO_BD = BigDecimal.fromString("0");
-const ZERO_ADDRESS = Address.fromHexString("0x0000000000000000000000000000000000000000");
-
-// Genesis contract addresses (mints from these indicate genesis distribution)
-const STETH_GENESIS = Address.fromString("0x1454707877cdb966e29cea8a190c2169eeca4b8c");
-const WBTC_GENESIS = Address.fromString("0x0569ebf818902e448235592f86e63255bbe64fd3");
-
-// Oracle addresses for price fetching
-const STETH_ORACLE = Address.fromString("0xa79191BbB7542805B30326165516a8fEd77ce92c");
-const WBTC_ORACLE = Address.fromString("0x7df29f02e6baf23fbd77940d78b158a66f1bd33c");
 
 // ============================================================================
 // TOKEN TO MINTER MAPPING
@@ -52,10 +36,6 @@ const WBTC_ORACLE = Address.fromString("0x7df29f02e6baf23fbd77940d78b158a66f1bd3
 const STETH_SAIL_TOKEN = Address.fromString("0x469ddfcfa98d0661b7efedc82aceeab84133f7fe");   // hsUSD-stETH
 const STETH_MINTER = Address.fromString("0x8b17b6e8f9ce3477ddaf372a4140ac6005787901");
 
-// WBTC Market (USD-pegged)
-const WBTC_SAIL_TOKEN = Address.fromString("0x03fd55f80277c13bb17739190b1e086b836c9f20");    // hsUSD-WBTC
-const WBTC_MINTER = Address.fromString("0xa9434313a4b9a4d624c6d67b1d61091b159f5a77");
-
 /**
  * Get the Minter address for a sail token
  */
@@ -63,169 +43,7 @@ function getMinterForSailToken(tokenAddress: Address): Address | null {
   if (tokenAddress.equals(STETH_SAIL_TOKEN)) {
     return STETH_MINTER;
   }
-  if (tokenAddress.equals(WBTC_SAIL_TOKEN)) {
-    return WBTC_MINTER;
-  }
   return null;
-}
-
-/**
- * Get the Oracle address for a sail token
- */
-function getOracleForSailToken(tokenAddress: Address): Address | null {
-  if (tokenAddress.equals(STETH_SAIL_TOKEN)) {
-    return STETH_ORACLE;
-  }
-  if (tokenAddress.equals(WBTC_SAIL_TOKEN)) {
-    return WBTC_ORACLE;
-  }
-  return null;
-}
-
-/**
- * Check if an address is a Genesis contract
- */
-function isGenesisContract(address: Address): boolean {
-  return address.equals(STETH_GENESIS) || address.equals(WBTC_GENESIS);
-}
-
-/**
- * Helper to convert BigInt to BigDecimal with 18 decimals
- */
-function toDecimal(value: BigInt): BigDecimal {
-  return value.toBigDecimal().div(ONE_ETHER);
-}
-
-/**
- * Fetch oracle prices (collateralPriceUSD, wrappedRate)
- */
-function fetchOraclePrices(tokenAddress: Address): BigDecimal[] {
-  const oracleAddress = getOracleForSailToken(tokenAddress);
-  if (oracleAddress === null) {
-    return [ZERO_BD, BigDecimal.fromString("1.0")];
-  }
-  
-  const oracle = WrappedPriceOracle.bind(oracleAddress);
-  const result = oracle.try_latestAnswer();
-  
-  if (result.reverted) {
-    return [ZERO_BD, BigDecimal.fromString("1.0")];
-  }
-  
-  const maxUnderlyingPrice = toDecimal(result.value.value1);
-  const maxWrappedRate = toDecimal(result.value.value3);
-  
-  return [maxUnderlyingPrice, maxWrappedRate];
-}
-
-/**
- * Get or create user sail position for PnL tracking
- */
-function getOrCreateUserSailPosition(
-  tokenAddress: Bytes,
-  userAddress: Bytes
-): UserSailPosition {
-  const id = tokenAddress.toHexString() + "-" + userAddress.toHexString();
-  let position = UserSailPosition.load(id);
-  
-  if (position === null) {
-    position = new UserSailPosition(id);
-    position.tokenAddress = tokenAddress;
-    position.user = userAddress;
-    position.balance = ZERO_BI;
-    position.balanceUSD = ZERO_BD;
-    position.totalCostBasisUSD = ZERO_BD;
-    position.averageCostPerToken = ZERO_BD;
-    position.realizedPnLUSD = ZERO_BD;
-    position.totalTokensBought = ZERO_BI;
-    position.totalTokensSold = ZERO_BI;
-    position.totalSpentUSD = ZERO_BD;
-    position.totalReceivedUSD = ZERO_BD;
-    position.firstAcquiredAt = ZERO_BI;
-    position.lastUpdated = ZERO_BI;
-    position.save();
-  }
-  
-  return position;
-}
-
-/**
- * Count existing lots for a position
- */
-function countLots(positionId: string): i32 {
-  let count = 0;
-  while (true) {
-    const lotId = positionId + "-" + count.toString();
-    const lot = CostBasisLot.load(lotId);
-    if (lot === null) break;
-    count++;
-  }
-  return count;
-}
-
-/**
- * Create a new cost basis lot
- */
-function createCostBasisLot(
-  position: UserSailPosition,
-  tokenAmount: BigInt,
-  costUSD: BigDecimal,
-  eventType: string,
-  timestamp: BigInt,
-  blockNumber: BigInt,
-  txHash: Bytes
-): void {
-  const lotIndex = countLots(position.id);
-  const lotId = position.id + "-" + lotIndex.toString();
-  
-  const lot = new CostBasisLot(lotId);
-  lot.position = position.id;
-  lot.lotIndex = lotIndex;
-  lot.tokenAmount = tokenAmount;
-  lot.originalAmount = tokenAmount;
-  lot.costUSD = costUSD;
-  lot.originalCostUSD = costUSD;
-  
-  const tokenAmountDecimal = toDecimal(tokenAmount);
-  lot.pricePerToken = tokenAmountDecimal.gt(ZERO_BD) 
-    ? costUSD.div(tokenAmountDecimal) 
-    : ZERO_BD;
-  
-  lot.eventType = eventType;
-  lot.timestamp = timestamp;
-  lot.blockNumber = blockNumber;
-  lot.txHash = txHash;
-  lot.isFullyRedeemed = false;
-  lot.save();
-}
-
-/**
- * Update position aggregates from lots
- */
-function updatePositionAggregates(position: UserSailPosition): void {
-  let totalCost = ZERO_BD;
-  let totalTokens = ZERO_BI;
-  let lotIndex = 0;
-  
-  while (true) {
-    const lotId = position.id + "-" + lotIndex.toString();
-    const lot = CostBasisLot.load(lotId);
-    if (lot === null) break;
-    
-    if (!lot.isFullyRedeemed) {
-      totalCost = totalCost.plus(lot.costUSD);
-      totalTokens = totalTokens.plus(lot.tokenAmount);
-    }
-    lotIndex++;
-  }
-  
-  position.balance = totalTokens;
-  position.totalCostBasisUSD = totalCost;
-  
-  const tokenAmountDecimal = toDecimal(totalTokens);
-  position.averageCostPerToken = tokenAmountDecimal.gt(ZERO_BD)
-    ? totalCost.div(tokenAmountDecimal)
-    : ZERO_BD;
 }
 
 /**
@@ -377,16 +195,10 @@ export function handleSailTokenTransfer(event: TransferEvent): void {
   const tokenAddress = event.address;
   const fromAddress = event.params.from;
   const toAddress = event.params.to;
-  const amount = event.params.value;
   const timestamp = event.block.timestamp;
-  const blockNumber = event.block.number;
-  const txHash = event.transaction.hash;
 
-  // Check if this is a mint from genesis (transfer from Genesis contract or 0 address to user)
-  const isGenesisMint = fromAddress.equals(ZERO_ADDRESS) || isGenesisContract(fromAddress);
-  
   // Handle sender (if not zero address)
-  if (!fromAddress.equals(ZERO_ADDRESS)) {
+  if (!fromAddress.equals(Address.fromHexString("0x0000000000000000000000000000000000000000"))) {
     const senderBalance = getOrCreateSailTokenBalance(tokenAddress, fromAddress);
     accumulateMarks(senderBalance, event.block);
     
@@ -415,7 +227,7 @@ export function handleSailTokenTransfer(event: TransferEvent): void {
   }
 
   // Handle receiver (if not zero address)
-  if (!toAddress.equals(ZERO_ADDRESS)) {
+  if (!toAddress.equals(Address.fromHexString("0x0000000000000000000000000000000000000000"))) {
     const receiverBalance = getOrCreateSailTokenBalance(tokenAddress, toAddress);
     accumulateMarks(receiverBalance, event.block);
     
@@ -435,67 +247,6 @@ export function handleSailTokenTransfer(event: TransferEvent): void {
     receiverBalance.lastUpdated = timestamp;
     receiverBalance.save();
     updateSailTokenMarksInTotal(toAddress, receiverBalance, timestamp);
-    
-    // ============================================================================
-    // COST BASIS TRACKING FOR GENESIS MINTS
-    // ============================================================================
-    // When tokens are minted from genesis, track cost basis for PnL
-    // Genesis gives 50% of deposit value in sail tokens, so cost = current token value
-    if (isGenesisMint && amount.gt(ZERO_BI)) {
-      const position = getOrCreateUserSailPosition(tokenAddress, toAddress);
-      
-      // Fetch current token price to calculate cost basis
-      const tokenPrice = fetchSailTokenPrice(Address.fromBytes(tokenAddress));
-      const tokenAmountDecimal = toDecimal(amount);
-      const costUSD = tokenAmountDecimal.times(tokenPrice);
-      
-      // Create cost basis lot
-      createCostBasisLot(
-        position,
-        amount,
-        costUSD,
-        "genesis",
-        timestamp,
-        blockNumber,
-        txHash
-      );
-      
-      // Update position stats
-      if (position.firstAcquiredAt.equals(ZERO_BI)) {
-        position.firstAcquiredAt = timestamp;
-      }
-      position.totalTokensBought = position.totalTokensBought.plus(amount);
-      position.totalSpentUSD = position.totalSpentUSD.plus(costUSD);
-      updatePositionAggregates(position);
-      position.balanceUSD = toDecimal(position.balance).times(tokenPrice);
-      position.lastUpdated = timestamp;
-      position.save();
-      
-      // Create price point for chart
-      const prices = fetchOraclePrices(Address.fromBytes(tokenAddress));
-      const collateralPriceUSD = prices[0];
-      const wrappedRate = prices[1];
-      
-      const pricePointId = tokenAddress.toHexString() + "-" + 
-        txHash.toHexString() + "-" + 
-        event.logIndex.toString();
-      
-      const pricePoint = new SailTokenPricePoint(pricePointId);
-      pricePoint.tokenAddress = tokenAddress;
-      const minter = getMinterForSailToken(Address.fromBytes(tokenAddress));
-      pricePoint.minterAddress = minter !== null ? minter : Address.zero();
-      pricePoint.blockNumber = blockNumber;
-      pricePoint.timestamp = timestamp;
-      pricePoint.txHash = txHash;
-      pricePoint.tokenPriceUSD = tokenPrice;
-      pricePoint.collateralPriceUSD = collateralPriceUSD;
-      pricePoint.wrappedRate = wrappedRate;
-      pricePoint.eventType = "genesis";
-      pricePoint.collateralAmount = ZERO_BI; // Not applicable for genesis
-      pricePoint.tokenAmount = amount;
-      pricePoint.impliedTokenPrice = tokenPrice;
-      pricePoint.save();
-    }
   }
 }
 

@@ -46,10 +46,6 @@ const STETH_ANCHOR_TOKEN = Address.fromString("0x6ff0fe773d4ad4ea923ba9ea9cc1c1b
 const STETH_SAIL_TOKEN = Address.fromString("0x469ddfcfa98d0661b7efedc82aceeab84133f7fe");   // hsUSD-stETH
 const STETH_MINTER = Address.fromString("0x8b17b6e8f9ce3477ddaf372a4140ac6005787901");
 
-// WBTC Market (USD-pegged)
-const WBTC_SAIL_TOKEN = Address.fromString("0x03fd55f80277c13bb17739190b1e086b836c9f20");    // hsUSD-WBTC
-const WBTC_MINTER = Address.fromString("0xa9434313a4b9a4d624c6d67b1d61091b159f5a77");
-
 // ============================================================================
 // TOKEN TYPE DETECTION
 // ============================================================================
@@ -74,7 +70,7 @@ function getTokenType(tokenAddress: Address): TokenType {
   }
   
   // Sail tokens
-  if (tokenAddress.equals(STETH_SAIL_TOKEN) || tokenAddress.equals(WBTC_SAIL_TOKEN)) {
+  if (tokenAddress.equals(STETH_SAIL_TOKEN)) {
     return TokenType.SAIL;
   }
   
@@ -84,8 +80,7 @@ function getTokenType(tokenAddress: Address): TokenType {
 function getPegType(tokenAddress: Address): PegType {
   // USD-pegged markets
   if (tokenAddress.equals(STETH_ANCHOR_TOKEN) || 
-      tokenAddress.equals(STETH_SAIL_TOKEN) ||
-      tokenAddress.equals(WBTC_SAIL_TOKEN)) {
+      tokenAddress.equals(STETH_SAIL_TOKEN)) {
     return PegType.USD;
   }
   
@@ -98,10 +93,6 @@ function getPegType(tokenAddress: Address): PegType {
 function getMinterForToken(tokenAddress: Address): Address | null {
   if (tokenAddress.equals(STETH_ANCHOR_TOKEN) || tokenAddress.equals(STETH_SAIL_TOKEN)) {
     return STETH_MINTER;
-  }
-  
-  if (tokenAddress.equals(WBTC_SAIL_TOKEN)) {
-    return WBTC_MINTER;
   }
   
   return null;

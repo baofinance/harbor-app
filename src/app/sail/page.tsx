@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo } from "react";
 import Head from "next/head";
-import { useAccount, useContractReads, usePublicClient } from "wagmi";
-import { formatEther, parseAbiItem } from "viem";
+import { useAccount, useContractReads } from "wagmi";
+import { formatEther } from "viem";
 import { markets } from "@/config/markets";
 import { useAnvilContractReads } from "@/hooks/useContractReads";
 import { shouldUseAnvil } from "@/config/environment";
@@ -26,36 +26,9 @@ import Image from "next/image";
 import PriceChart from "@/components/PriceChart";
 import InfoTooltip from "@/components/InfoTooltip";
 import { SailManageModal } from "@/components/SailManageModal";
+import { useSailPositionPnL } from "@/hooks/useSailPositionPnL";
 
-// Event ABIs for PnL calculation
-const MINT_LEVERAGED_TOKEN_EVENT = parseAbiItem(
-  "event MintLeveragedToken(address indexed sender, address indexed receiver, uint256 collateralIn, uint256 leveragedOut)"
-);
-
-const REDEEM_LEVERAGED_TOKEN_EVENT = parseAbiItem(
-  "event RedeemLeveragedToken(address indexed sender, address indexed receiver, uint256 leveragedTokenBurned, uint256 collateralOut)"
-);
-
-// Genesis deposit event - used for cost basis of tokens received from genesis
-const GENESIS_DEPOSIT_EVENT = parseAbiItem(
-  "event Deposit(address indexed sender, address indexed receiver, uint256 collateralIn)"
-);
-
-// Oracle ABI for historical price lookups
-const oracleABI = [
-  {
-    inputs: [],
-    name: "latestAnswer",
-    outputs: [
-      { type: "uint256", name: "minUnderlyingPrice" },
-      { type: "uint256", name: "maxUnderlyingPrice" },
-      { type: "uint256", name: "minWrappedRate" },
-      { type: "uint256", name: "maxWrappedRate" },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
+// PnL is now fetched from subgraph (useSailPositionPnL hook)
 
 interface PnLData {
   costBasis: number;
@@ -270,257 +243,6 @@ function getShortSide(market: any): string {
   return "Other";
 }
 
-// Helper to fetch logs in batches (max 1000 blocks per request for public RPCs)
-async function getLogsInBatches(
-  client: any,
-  params: {
-    address: `0x${string}`;
-    event: any;
-    args?: any;
-    fromBlock: bigint;
-    toBlock: bigint;
-  },
-  batchSize = 900n // Use 900 to stay under 1000 limit
-): Promise<any[]> {
-  const allLogs: any[] = [];
-  let currentFrom = params.fromBlock;
-
-  while (currentFrom <= params.toBlock) {
-    const currentTo =
-      currentFrom + batchSize > params.toBlock
-        ? params.toBlock
-        : currentFrom + batchSize;
-
-    try {
-      const logs = await client.getLogs({
-        ...params,
-        fromBlock: currentFrom,
-        toBlock: currentTo,
-      });
-      allLogs.push(...logs);
-    } catch (error) {
-      // If batch fails, skip this range
-      console.warn(`Failed to fetch logs from ${currentFrom} to ${currentTo}`);
-    }
-
-    currentFrom = currentTo + 1n;
-  }
-
-  return allLogs;
-}
-
-// Hook to calculate PnL from event logs (includes genesis deposits for cost basis)
-function usePnLCalculation(
-  userAddress: `0x${string}` | undefined,
-  minterAddress: `0x${string}` | undefined,
-  genesisAddress: `0x${string}` | undefined,
-  oracleAddress: `0x${string}` | undefined,
-  userBalance: bigint | undefined,
-  currentValueUSD: number | undefined,
-  currentCollateralPriceUSD: bigint | undefined,
-  currentWrappedRate: bigint | undefined,
-  enabled: boolean
-): PnLData {
-  const wagmiClient = usePublicClient();
-  const client = shouldUseAnvil() ? anvilPublicClient : wagmiClient;
-
-  const [pnlData, setPnlData] = useState<PnLData>({
-    costBasis: 0,
-    unrealizedPnL: 0,
-    unrealizedPnLPercent: 0,
-    realizedPnL: 0,
-    isLoading: false,
-  });
-  const [hasFetched, setHasFetched] = useState(false);
-
-  useEffect(() => {
-    if (
-      !enabled ||
-      !client ||
-      !userAddress ||
-      !minterAddress ||
-      !oracleAddress ||
-      !userBalance ||
-      userBalance === 0n ||
-      hasFetched
-    ) {
-      return;
-    }
-
-    const fetchPnL = async () => {
-      setPnlData((prev) => ({ ...prev, isLoading: true }));
-
-      try {
-        const currentBlock = await client.getBlockNumber();
-        // Start from deployment block (block 23993255 per subgraph docs)
-        // This avoids querying unnecessary blocks
-        const deploymentBlock = 23993255n;
-        const fromBlock = deploymentBlock;
-
-        // Fetch mint events where user is receiver (in batches)
-        const mintLogs = await getLogsInBatches(client, {
-          address: minterAddress,
-          event: MINT_LEVERAGED_TOKEN_EVENT,
-          args: { receiver: userAddress },
-          fromBlock,
-          toBlock: currentBlock,
-        });
-
-        // Fetch redeem events where user is sender (in batches)
-        const redeemLogs = await getLogsInBatches(client, {
-          address: minterAddress,
-          event: REDEEM_LEVERAGED_TOKEN_EVENT,
-          args: { sender: userAddress },
-          fromBlock,
-          toBlock: currentBlock,
-        });
-
-        // Fetch genesis deposit events if genesis address is available
-        // Genesis deposits result in 50% leveraged tokens, so cost basis = 50% of deposit
-        let genesisLogs: any[] = [];
-        if (genesisAddress) {
-          try {
-            genesisLogs = await getLogsInBatches(client, {
-              address: genesisAddress,
-              event: GENESIS_DEPOSIT_EVENT,
-              args: { receiver: userAddress },
-              fromBlock,
-              toBlock: currentBlock,
-            });
-          } catch {
-            // Genesis contract might not exist or have different event signature
-          }
-        }
-
-        // Sort all events by block number
-        const allEvents = [
-          ...genesisLogs.map((log) => ({ ...log, type: "genesis" as const })),
-          ...mintLogs.map((log) => ({ ...log, type: "mint" as const })),
-          ...redeemLogs.map((log) => ({ ...log, type: "redeem" as const })),
-        ].sort((a, b) => Number(a.blockNumber) - Number(b.blockNumber));
-
-        // Process events using FIFO for cost basis
-        interface Lot {
-          qty: bigint;
-          costUSD: number;
-        }
-        const lots: Lot[] = [];
-        let totalRealized = 0;
-
-        for (const event of allEvents) {
-          // Get oracle price at event block
-          let priceUSD = currentCollateralPriceUSD || 0n;
-          let rate = currentWrappedRate || BigInt("1000000000000000000");
-
-          try {
-            const oracleResult = await client.readContract({
-              address: oracleAddress,
-              abi: oracleABI,
-              functionName: "latestAnswer",
-              blockNumber: event.blockNumber,
-            });
-
-            if (Array.isArray(oracleResult)) {
-              priceUSD = oracleResult[1];
-              rate = oracleResult[3];
-            } else if (typeof oracleResult === "bigint") {
-              priceUSD = oracleResult;
-            } else if (typeof oracleResult === "object") {
-              const obj = oracleResult as any;
-              priceUSD = obj.maxUnderlyingPrice || priceUSD;
-              rate = obj.maxWrappedRate || rate;
-            }
-          } catch {
-            // Use current prices as fallback
-          }
-
-          const priceNum = Number(priceUSD) / 1e18;
-          const rateNum = Number(rate) / 1e18;
-
-          if (event.type === "genesis") {
-            // Genesis deposits: user receives 50% pegged, 50% leveraged tokens
-            // Cost basis for leveraged tokens = 50% of the deposit value
-            const collateralIn = event.args.collateralIn as bigint;
-            const totalDepositUSD = (Number(collateralIn) / 1e18) * priceNum * rateNum;
-            const leveragedCostUSD = totalDepositUSD * 0.5; // 50% allocation to leveraged
-            // Estimate leveraged tokens received (50% of deposit in collateral terms, at ~1:1 ratio)
-            // This is approximate since we don't have the exact leveraged amount from this event
-            const estimatedLeveragedTokens = collateralIn / 2n;
-            if (leveragedCostUSD > 0) {
-              lots.push({ qty: estimatedLeveragedTokens, costUSD: leveragedCostUSD });
-            }
-          } else if (event.type === "mint") {
-            const collateralIn = event.args.collateralIn as bigint;
-            const leveragedOut = event.args.leveragedOut as bigint;
-            const costUSD = (Number(collateralIn) / 1e18) * priceNum * rateNum;
-            lots.push({ qty: leveragedOut, costUSD });
-          } else if (event.type === "redeem") {
-            const leveragedBurned = event.args.leveragedTokenBurned as bigint;
-            const collateralOut = event.args.collateralOut as bigint;
-            const redeemValueUSD =
-              (Number(collateralOut) / 1e18) * priceNum * rateNum;
-
-            // FIFO: reduce lots
-            let remaining = leveragedBurned;
-            let matchedCost = 0;
-
-            while (remaining > 0n && lots.length > 0) {
-              const lot = lots[0];
-              if (lot.qty <= remaining) {
-                matchedCost += lot.costUSD;
-                remaining -= lot.qty;
-                lots.shift();
-              } else {
-                const fraction = Number(remaining) / Number(lot.qty);
-                matchedCost += lot.costUSD * fraction;
-                lot.qty -= remaining;
-                lot.costUSD *= 1 - fraction;
-                remaining = 0n;
-              }
-            }
-
-            totalRealized += redeemValueUSD - matchedCost;
-          }
-        }
-
-        // Calculate remaining cost basis
-        const costBasis = lots.reduce((sum, lot) => sum + lot.costUSD, 0);
-        const unrealizedPnL = (currentValueUSD || 0) - costBasis;
-        const unrealizedPnLPercent =
-          costBasis > 0 ? (unrealizedPnL / costBasis) * 100 : 0;
-
-        setPnlData({
-          costBasis,
-          unrealizedPnL,
-          unrealizedPnLPercent,
-          realizedPnL: totalRealized,
-          isLoading: false,
-        });
-        setHasFetched(true);
-      } catch (e) {
-        console.error("Error calculating PnL:", e);
-        setPnlData((prev) => ({ ...prev, isLoading: false }));
-      }
-    };
-
-    fetchPnL();
-  }, [
-    enabled,
-    client,
-    userAddress,
-    minterAddress,
-    genesisAddress,
-    oracleAddress,
-    userBalance,
-    currentValueUSD,
-    currentCollateralPriceUSD,
-    currentWrappedRate,
-    hasFetched,
-  ]);
-
-  return pnlData;
-}
-
 // Format PnL for display
 function formatPnL(value: number): { text: string; color: string } {
   const isPositive = value >= 0;
@@ -644,29 +366,10 @@ function SailMarketRow({
     currentValueUSD = balanceNum * hsPriceUSD;
   }
 
-  // Get addresses for PnL calculation
-  const minterAddress = market.addresses?.minter as `0x${string}` | undefined;
-  const genesisAddress = market.addresses?.genesis as `0x${string}` | undefined;
-  const oracleAddress = market.addresses?.collateralPrice as
+  // Get leveraged token address for PnL
+  const leveragedTokenAddress = market.addresses?.leveragedToken as
     | `0x${string}`
     | undefined;
-
-  // Calculate PnL - only when user has a position
-  // Includes genesis deposits in cost basis calculation
-  const pnlData = usePnLCalculation(
-    address,
-    minterAddress,
-    genesisAddress,
-    oracleAddress,
-    userDeposit,
-    currentValueUSD,
-    collateralPriceUSD,
-    wrappedRate,
-    !!userDeposit && userDeposit > 0n
-  );
-
-  const pnlFormatted =
-    pnlData.unrealizedPnL !== 0 ? formatPnL(pnlData.unrealizedPnL) : null;
 
   return (
     <div key={id}>
@@ -839,6 +542,25 @@ function SailMarketExpandedView({
       (computedTokenPrice * wrappedRate * collateralPriceUSD) / oneE36;
     return Number(tokenPriceUSD_18dec) / 1e18;
   }, [computedTokenPrice, collateralPriceUSD, wrappedRate]);
+
+  // Calculate PnL from subgraph - uses pre-computed cost basis
+  const pnlSubgraph = useSailPositionPnL({
+    tokenAddress: leveragedTokenAddress || "",
+    currentTokenPrice: computedTokenPriceUSD,
+    enabled: !!leveragedTokenAddress && !!userDeposit && userDeposit > 0n,
+  });
+
+  // Map subgraph data to PnLData format for compatibility
+  const pnlData: PnLData = {
+    costBasis: pnlSubgraph.position?.totalCostBasisUSD || 0,
+    unrealizedPnL: pnlSubgraph.unrealizedPnL,
+    unrealizedPnLPercent: pnlSubgraph.unrealizedPnLPercent,
+    realizedPnL: pnlSubgraph.position?.realizedPnLUSD || 0,
+    isLoading: pnlSubgraph.isLoading,
+  };
+
+  const pnlFormatted =
+    pnlData.unrealizedPnL !== 0 ? formatPnL(pnlData.unrealizedPnL) : null;
 
   return (
     <div className="bg-[rgb(var(--surface-selected-rgb))] p-4 border-t border-white/20">
