@@ -14,6 +14,16 @@ import { mainnet } from "wagmi/chains";
 import DecryptedText from "./DecryptedText";
 import { useSafeApp } from "./SafeAppProvider";
 
+// Sort connectors to show Safe first when in Safe mode
+function sortConnectors(connectors: any[], isSafeApp: boolean) {
+  if (!isSafeApp) return connectors;
+  return [...connectors].sort((a, b) => {
+    if (a.id === "safe" || a.type === "safe") return -1;
+    if (b.id === "safe" || b.type === "safe") return 1;
+    return 0;
+  });
+}
+
 function formatAddress(addr?: string) {
   if (!addr) return "";
  return `${addr.slice(0, 4)}...${addr.slice(-4)}`;
@@ -23,7 +33,7 @@ export default function WalletButton() {
  const { address, isConnected } = useAccount();
  const { connectors, connect, isPending } = useConnect();
  const { disconnect } = useDisconnect();
- const { isSafeApp, safeInfo } = useSafeApp();
+ const { isSafeApp } = useSafeApp();
  const chainId = useChainId();
  const { data: balance } = useBalance({
  address,
@@ -62,9 +72,10 @@ export default function WalletButton() {
   }, [connectors, isMounted]);
 
   // Filter to show all connectors, marking which are ready
+  // Sort to show Safe first when in Safe mode
  const available = useMemo(
-    () => connectors,
- [connectors]
+    () => sortConnectors(connectors, isSafeApp),
+ [connectors, isSafeApp]
  );
 
  const wrongNetwork = isConnected && chainId !== mainnet.id;
@@ -217,52 +228,11 @@ export default function WalletButton() {
 key={c.uid}
 onClick={async () => {
                           try {
-// If we're in Safe App mode and using injected connector,
-// ensure window.ethereum is Safe's provider before connecting
-if (isSafeApp && safeInfo && (c.type === "injected" || c.id === "injected" || c.name.toLowerCase().includes("injected"))) {
-  const safeProvider = (window as any).__SAFE_APP_PROVIDER__;
-  if (safeProvider) {
-    // Override window.ethereum to ensure Safe's provider is used
-    (window as any).ethereum = {
-      ...safeProvider,
-      isSafe: true,
-      isMetaMask: false,
-      isCoinbaseWallet: false,
-      request: safeProvider.request.bind(safeProvider),
-      send: safeProvider.send?.bind(safeProvider),
-      sendAsync: safeProvider.sendAsync?.bind(safeProvider),
-      selectedAddress: safeInfo.safeAddress,
-      chainId: `0x${safeInfo.chainId.toString(16)}`,
-      on: safeProvider.on?.bind(safeProvider),
-      removeListener: safeProvider.removeListener?.bind(safeProvider),
-    };
-    console.log("Set window.ethereum to Safe provider before connecting", {
-      address: safeInfo.safeAddress,
-    });
-  }
-}
-
-try {
-  const result = connect({ connector: c });
-  if (result && typeof result.then === 'function') {
-    await result;
-    console.log("Connection promise resolved");
-  } else {
-    // Handle synchronous case - wait and check if connected
-    await new Promise(resolve => setTimeout(resolve, 500));
-    // Check if we're now connected
-    if (!isConnected) {
-      console.warn("Connection may have failed - not connected after timeout");
-    }
-  }
-  
-  // Wait a bit more to ensure state updates
-  await new Promise(resolve => setTimeout(resolve, 300));
-  setOpen(false);
-} catch (error) {
-  console.error("Connection error:", error);
-  throw error;
-}
+                            console.log("Connecting with:", c.name, c.id);
+                            connect({ connector: c });
+                            // Close modal after initiating connection
+                            // wagmi will handle the state updates
+                            setTimeout(() => setOpen(false), 200);
                           } catch (error) {
                             console.error("Failed to connect:", error);
                           }
