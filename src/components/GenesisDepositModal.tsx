@@ -187,9 +187,13 @@ const selectedAssetPriceUSD = isWrappedToken && wrappedRate && maxUnderlyingPric
   ? (Number(maxUnderlyingPrice) / 1e18) * (Number(wrappedRate) / 1e18)
   : underlyingPriceUSD;
 
-// The collateral stored in Genesis is always the base collateral (fxUSD, wstETH)
-// So for displaying existing deposits, we use the underlying price
-const collateralPriceUSD = underlyingPriceUSD;
+// Deposits are stored in wrapped collateral tokens (fxSAVE, wstETH), not base collateral (fxUSD, stETH)
+// So we need to use the wrapped token price for displaying current deposits
+// Calculate wrapped token price: underlying price * wrapped rate
+const wrappedTokenPriceUSD = wrappedRate && underlyingPriceUSD > 0
+  ? underlyingPriceUSD * (Number(wrappedRate) / 1e18)
+  : underlyingPriceUSD; // Fallback to underlying price if no rate available
+const collateralPriceUSD = wrappedTokenPriceUSD;
 
 // Validate selected asset address
 const isValidSelectedAssetAddress = 
