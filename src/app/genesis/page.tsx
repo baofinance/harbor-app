@@ -502,7 +502,51 @@ export default function GenesisIndexPage() {
     data: allMarksData,
     isLoading: isLoadingMarks,
     refetch: refetchMarks,
+    error: marksError,
   } = useAllHarborMarks(genesisAddresses);
+
+  // Debug logging for marks query
+  useEffect(() => {
+    if (process.env.NODE_ENV === "development") {
+      console.log("[Genesis Page] Marks Query Debug:", {
+        address,
+        isConnected,
+        genesisAddresses,
+        allMarksData,
+        isLoadingMarks,
+        marksError,
+      });
+      
+      // Log detailed marks calculation
+      if (allMarksData && allMarksData.length > 0) {
+        allMarksData.forEach((marksData, idx) => {
+          const userMarks = Array.isArray(marksData.data?.userHarborMarks)
+            ? marksData.data?.userHarborMarks[0]
+            : marksData.data?.userHarborMarks;
+          if (userMarks) {
+            const lastUpdated = parseInt(userMarks.lastUpdated || "0");
+            const currentTime = Math.floor(Date.now() / 1000);
+            const timeElapsed = currentTime - lastUpdated;
+            const daysElapsed = Math.max(0, timeElapsed / 86400);
+            const currentDepositUSD = parseFloat(userMarks.currentDepositUSD || "0");
+            const expectedMarks = currentDepositUSD * 10 * daysElapsed;
+            
+            console.log(`[Genesis Page] Marks Calculation ${idx}:`, {
+              genesisAddress: marksData.genesisAddress,
+              currentMarks: userMarks.currentMarks,
+              marksPerDay: userMarks.marksPerDay,
+              currentDepositUSD,
+              lastUpdated,
+              currentTime,
+              timeElapsed,
+              daysElapsed,
+              expectedMarks,
+            });
+          }
+        });
+      }
+    }
+  }, [address, isConnected, genesisAddresses, allMarksData, isLoadingMarks, marksError]);
 
   const queryClient = useQueryClient();
 
@@ -1086,87 +1130,17 @@ export default function GenesisIndexPage() {
                 );
                 const lastUpdated = parseInt(marks.lastUpdated || "0");
 
-                // Get the actual USD value using the price oracle
+                // Use subgraph's USD value directly - it's already calculated correctly with real-time prices
                 // The subgraph stores:
                 // - currentDeposit: token amount in wei (e.g., "155000000000000000000" = 155 tokens)
-                // - currentDepositUSD: USD value (e.g., "310000" = $310,000)
+                // - currentDepositUSD: USD value calculated with real-time oracle prices (e.g., "0.267616772775666308")
                 // - marksPerDay: calculated marks per day based on USD value
-                const currentDepositWei = marks.currentDeposit || "0";
-                const currentDepositTokenAmount =
-                  parseFloat(currentDepositWei) / 1e18; // Convert from wei to tokens
-                let currentDepositUSD = parseFloat(
+                const currentDepositUSD = parseFloat(
                   marks.currentDepositUSD || "0"
-                ); // Use subgraph's USD value as fallback
+                );
+                // Use subgraph's marksPerDay directly - it's already calculated correctly
                 // If genesis has ended, marksPerDay should be 0 (no more marks accumulating)
-                let marksPerDay = genesisEnded ? 0 : marksPerDayFromSubgraph; // Use subgraph's value as fallback
-
-                // Try to get price from the price reads we already have
-                if (market) {
-                  const marketIndex = genesisMarkets.findIndex(
-                    ([id]) => id === market[0]
-                  );
-                  if (marketIndex >= 0) {
-                    const priceOffset = marketIndex * 2;
-                    const priceAnswerResult = priceReads?.[priceOffset + 1];
-                    const priceDecimalsResult = priceReads?.[priceOffset];
-
-                    // Try to get decimals from oracle, fallback to 8 (Chainlink standard)
-                    let priceDecimals = 8; // Default fallback (Chainlink standard)
-                    if (
-                      priceDecimalsResult?.status === "success" &&
-                      priceDecimalsResult?.result !== undefined
-                    ) {
-                      priceDecimals = Number(priceDecimalsResult.result);
-                    }
-
-                    // latestAnswer returns a tuple: (minUnderlyingPrice, maxUnderlyingPrice, minWrappedRate, maxWrappedRate)
-                    // Use maxUnderlyingPrice (index 1) as the price
-                    let priceRaw: bigint | undefined;
-                    if (
-                      priceAnswerResult?.status === "success" &&
-                      priceAnswerResult?.result !== undefined
-                    ) {
-                      const latestAnswerResult = priceAnswerResult.result as
-                        | [bigint, bigint, bigint, bigint]
-                        | undefined;
-                      if (Array.isArray(latestAnswerResult)) {
-                        priceRaw = latestAnswerResult[1]; // maxUnderlyingPrice is at index 1
-                      }
-                    }
-
-                    // Calculate price: handle negative values (convert to positive) and apply decimals
-                    let collateralPriceUSD: number = 0;
-                    const marketCoinGeckoId = (market?.[1] as any)
-                      ?.coinGeckoId as string | undefined;
-
-                    // Try CoinGecko price first if available
-                    if (
-                      marketCoinGeckoId &&
-                      coinGeckoPrices[marketCoinGeckoId]
-                    ) {
-                      collateralPriceUSD = coinGeckoPrices[marketCoinGeckoId]!;
-                    } else if (priceRaw !== undefined) {
-                      // Convert to positive if negative (some oracles return negative for error states)
-                      const priceValue = priceRaw < 0n ? -priceRaw : priceRaw;
-
-                      if (priceValue > 0n) {
-                        collateralPriceUSD =
-                          Number(priceValue) / 10 ** priceDecimals;
-                      }
-                    }
-
-                    if (collateralPriceUSD > 0) {
-                      // Calculate actual USD value: token amount * price per token
-                      currentDepositUSD =
-                        currentDepositTokenAmount * collateralPriceUSD;
-
-                      // Recalculate marksPerDay with correct USD value
-                      // marksPerDay should be: currentDepositUSD * 10 marks per dollar per day
-                      // But if genesis has ended, marksPerDay should be 0
-                      marksPerDay = genesisEnded ? 0 : currentDepositUSD * 10;
-                    }
-                  }
-                }
+                const marksPerDay = genesisEnded ? 0 : marksPerDayFromSubgraph;
 
                 // Calculate current marks dynamically based on time elapsed since last update
                 // Marks accumulate at 10 marks per dollar per day
@@ -1285,7 +1259,8 @@ export default function GenesisIndexPage() {
                     <span className="text-white/50">-</span>
                   ) : totalCurrentMarks > 0 ? (
                     totalCurrentMarks.toLocaleString(undefined, {
-                      maximumFractionDigits: 0,
+                      minimumFractionDigits: totalCurrentMarks < 1 ? 2 : 0,
+                      maximumFractionDigits: totalCurrentMarks < 1 ? 2 : 0,
                     })
                   ) : (
                     "0"

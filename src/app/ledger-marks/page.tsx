@@ -47,6 +47,8 @@ const USER_MARKS_QUERY = `
  totalMarksForfeited
  currentDepositUSD
  genesisEnded
+ lastUpdated
+ genesisStartDate
  }
  }
 `;
@@ -123,6 +125,8 @@ interface UserMarksEntry {
  totalMarksForfeited: string;
  currentDepositUSD: string;
  genesisEnded: boolean;
+ lastUpdated: string;
+ genesisStartDate: string;
 }
 
 interface UserMarksResponse {
@@ -709,8 +713,21 @@ export default function LedgerMarksLeaderboard() {
 
  const contractType = getContractType(entry.contractAddress);
  const currentMarksRaw = entry.currentMarks ||"0";
- const currentMarks = parseFloat(currentMarksRaw);
+ let currentMarks = parseFloat(currentMarksRaw);
  const marksPerDay = parseFloat(entry.marksPerDay ||"0");
+ const currentDepositUSD = parseFloat(entry.currentDepositUSD ||"0");
+ const genesisEnded = entry.genesisEnded || false;
+ const lastUpdated = parseInt(entry.lastUpdated ||"0");
+ const genesisStartDate = parseInt(entry.genesisStartDate ||"0");
+
+ // Accumulate marks since last update (same logic as Genesis page)
+ if (!genesisEnded && currentDepositUSD > 0 && genesisStartDate > 0 && lastUpdated > 0) {
+ const currentTime = currentChainTime || Math.floor(Date.now() / 1000);
+ const timeElapsed = currentTime - lastUpdated;
+ const daysElapsed = Math.max(0, timeElapsed / 86400); // Convert seconds to days
+ const marksAccumulated = currentDepositUSD * 10 * daysElapsed;
+ currentMarks = currentMarks + marksAccumulated;
+ }
 
  // Debug logging for known wallet
  if (userAddress ==="0xae7dbb17bc40d53a6363409c6b1ed88d3cfdc31e") {
@@ -720,15 +737,20 @@ export default function LedgerMarksLeaderboard() {
  currentMarks,
  contractType,
  contractAddress: entry.contractAddress,
+ currentDepositUSD,
+ lastUpdated,
+ genesisStartDate,
+ marksPerDay,
  });
  }
 
- // Skip entries with zero or invalid marks
- if (isNaN(currentMarks) || currentMarks === 0) {
+ // Skip entries with zero or invalid marks, but allow if marksPerDay > 0 (user is earning marks)
+ if (isNaN(currentMarks) || (currentMarks === 0 && marksPerDay === 0)) {
  if (userAddress ==="0xae7dbb17bc40d53a6363409c6b1ed88d3cfdc31e") {
  console.warn("[Leaderboard] Known wallet has zero/invalid marks", {
  currentMarksRaw,
  currentMarks,
+ marksPerDay,
  entry,
  });
  }
