@@ -1261,22 +1261,26 @@ export default function LedgerMarksLeaderboard() {
  </div>
  <div className="min-w-0 text-center font-bold font-mono">
  {user.totalMarks.toLocaleString(undefined, {
- maximumFractionDigits: 2,
+ minimumFractionDigits: user.totalMarks < 100 ? 2 : 0,
+ maximumFractionDigits: user.totalMarks < 100 ? 2 : 0,
  })}
  </div>
  <div className="min-w-0 text-center font-mono">
  {user.genesisMarks.toLocaleString(undefined, {
- maximumFractionDigits: 2,
+ minimumFractionDigits: user.genesisMarks < 100 ? 2 : 0,
+ maximumFractionDigits: user.genesisMarks < 100 ? 2 : 0,
  })}
  </div>
  <div className="min-w-0 text-center font-mono">
  {user.anchorMarks.toLocaleString(undefined, {
- maximumFractionDigits: 2,
+ minimumFractionDigits: user.anchorMarks < 100 ? 2 : 0,
+ maximumFractionDigits: user.anchorMarks < 100 ? 2 : 0,
  })}
  </div>
  <div className="min-w-0 text-center font-mono">
  {user.sailMarks.toLocaleString(undefined, {
- maximumFractionDigits: 2,
+ minimumFractionDigits: user.sailMarks < 100 ? 2 : 0,
+ maximumFractionDigits: user.sailMarks < 100 ? 2 : 0,
  })}
  </div>
  <div className="min-w-0 text-center font-mono">

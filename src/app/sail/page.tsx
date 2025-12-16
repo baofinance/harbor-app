@@ -1113,7 +1113,8 @@ export default function SailPage() {
                   ? "-"
                   : totalSailMarks > 0
                   ? totalSailMarks.toLocaleString(undefined, {
-                      maximumFractionDigits: 0,
+                      minimumFractionDigits: totalSailMarks < 100 ? 2 : 0,
+                      maximumFractionDigits: totalSailMarks < 100 ? 2 : 0,
                     })
                   : "0"}
               </div>

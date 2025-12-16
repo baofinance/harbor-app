@@ -5409,8 +5409,8 @@ export default function AnchorPage() {
                         <span className="text-white/50">-</span>
                       ) : totalAnchorMarks > 0 ? (
                         totalAnchorMarks.toLocaleString(undefined, {
-                          minimumFractionDigits: 0,
-                          maximumFractionDigits: 0,
+                          minimumFractionDigits: totalAnchorMarks < 100 ? 2 : 0,
+                          maximumFractionDigits: totalAnchorMarks < 100 ? 2 : 0,
                         })
                       ) : (
                         "0"

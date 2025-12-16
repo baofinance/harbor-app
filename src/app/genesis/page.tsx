@@ -1259,8 +1259,8 @@ export default function GenesisIndexPage() {
                     <span className="text-white/50">-</span>
                   ) : totalCurrentMarks > 0 ? (
                     totalCurrentMarks.toLocaleString(undefined, {
-                      minimumFractionDigits: totalCurrentMarks < 1 ? 2 : 0,
-                      maximumFractionDigits: totalCurrentMarks < 1 ? 2 : 0,
+                      minimumFractionDigits: totalCurrentMarks < 100 ? 2 : 0,
+                      maximumFractionDigits: totalCurrentMarks < 100 ? 2 : 0,
                     })
                   ) : (
                     "0"
