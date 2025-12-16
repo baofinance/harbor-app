@@ -20,6 +20,7 @@ export const markets = {
     acceptedAssets: [
       { symbol: "fxUSD", name: "f(x) USD" },
       { symbol: "fxSAVE", name: "f(x) USD Saving" },
+      { symbol: "USDC", name: "USD Coin" },
     ],
     rewardTokens: {
       default: ["fxSAVE"], // Wrapped collateral token is the primary reward token
@@ -91,6 +92,7 @@ export const markets = {
     acceptedAssets: [
       { symbol: "fxUSD", name: "f(x) USD" },
       { symbol: "fxSAVE", name: "f(x) USD Saving" },
+      { symbol: "USDC", name: "USD Coin" },
     ],
     rewardTokens: {
       default: ["fxSAVE"], // Wrapped collateral token is the primary reward token

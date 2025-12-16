@@ -569,7 +569,11 @@ export const AnchorDepositWithdrawModal = ({
   const activeMarketForFees = marketForDepositAsset || selectedMarket;
   const activeMinterAddress = activeMarketForFees?.addresses?.minter;
   const activeCollateralSymbol =
-    activeMarketForFees?.collateral?.symbol || collateralSymbol;
+    activeMarketForFees?.collateral?.symbol ||
+    selectedMarket?.collateral?.symbol ||
+    "ETH";
+  const activeWrappedCollateralSymbol =
+    activeMarketForFees?.collateral?.underlyingSymbol || activeCollateralSymbol;
 
   // Collect all unique deposit assets from all markets with their corresponding markets
   const allDepositAssetsWithMarkets = useMemo(() => {
@@ -999,17 +1003,37 @@ export const AnchorDepositWithdrawModal = ({
       return "0x0000000000000000000000000000000000000000" as `0x${string}`; // Marker for native ETH
     }
 
-    // Check if it's collateral token (wstETH)
+    // Check if it's collateral token (fxUSD, wstETH, etc.)
     const collateralSymbol = market?.collateral?.symbol || "";
     if (normalized === collateralSymbol.toLowerCase()) {
       return market?.addresses?.collateralToken as `0x${string}` | undefined;
     }
 
-    // Check if it's stETH (wrappedCollateralToken)
+    // Check if it's wrapped collateral token (fxSAVE, stETH, etc.)
+    const wrappedCollateralSymbol = market?.collateral?.underlyingSymbol || "";
+    if (normalized === wrappedCollateralSymbol.toLowerCase()) {
+      return market?.addresses?.wrappedCollateralToken as
+        | `0x${string}`
+        | undefined;
+    }
+
+    // Check if it's stETH (for backward compatibility with stETH markets)
     if (normalized === "steth") {
       return market?.addresses?.wrappedCollateralToken as
         | `0x${string}`
         | undefined;
+    }
+
+    // Check if it's fxSAVE (for backward compatibility)
+    if (normalized === "fxsave") {
+      return market?.addresses?.wrappedCollateralToken as
+        | `0x${string}`
+        | undefined;
+    }
+
+    // Check if it's USDC (standard USDC address on Ethereum mainnet)
+    if (normalized === "usdc") {
+      return "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" as `0x${string}`;
     }
 
     return null;
@@ -5006,12 +5030,14 @@ export const AnchorDepositWithdrawModal = ({
                         </select>
                         {selectedDepositAsset &&
                           selectedDepositAsset !== activeCollateralSymbol &&
+                          selectedDepositAsset !==
+                            activeWrappedCollateralSymbol &&
                           !isDirectPeggedDeposit && (
                             <p className="mt-2 text-xs text-[#1E4775]/60 flex items-center gap-1">
                               <span>ℹ️</span>
                               <span>
                                 This will be converted to{""}
-                                {activeCollateralSymbol} on deposit
+                                {activeWrappedCollateralSymbol} on deposit
                               </span>
                             </p>
                           )}

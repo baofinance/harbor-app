@@ -1427,6 +1427,7 @@ export default function GenesisIndexPage() {
               onChainCollateralAddress ||
               (mkt as any).addresses?.collateralToken;
             const collateralSymbol = (mkt as any).collateral?.symbol || "ETH";
+            const wrappedCollateralSymbol = (mkt as any).collateral?.underlyingSymbol || collateralSymbol;
 
             // Debug logging for collateral address
             const endDate = (mkt as any).genesis?.endDate;
@@ -1563,6 +1564,22 @@ export default function GenesisIndexPage() {
                             ? rowLeveragedSymbol.slice(2)
                             : rowLeveragedSymbol || (mkt as any).name}
                         </span>
+                        <div className="flex items-center gap-1">
+                          <Image
+                            src={getLogoPath(rowPeggedSymbol)}
+                            alt={rowPeggedSymbol}
+                            width={20}
+                            height={20}
+                            className="flex-shrink-0"
+                          />
+                          <Image
+                            src={getLogoPath(rowLeveragedSymbol)}
+                            alt={rowLeveragedSymbol}
+                            width={20}
+                            height={20}
+                            className="flex-shrink-0"
+                          />
+                        </div>
                         {isExpanded ? (
                           <ChevronUpIcon className="w-5 h-5 text-[#1E4775] flex-shrink-0" />
                         ) : (
@@ -1714,6 +1731,22 @@ export default function GenesisIndexPage() {
                             ? rowLeveragedSymbol.slice(2)
                             : rowLeveragedSymbol || (mkt as any).name}
                         </span>
+                        <div className="flex items-center gap-1">
+                          <Image
+                            src={getLogoPath(rowPeggedSymbol)}
+                            alt={rowPeggedSymbol}
+                            width={20}
+                            height={20}
+                            className="flex-shrink-0"
+                          />
+                          <Image
+                            src={getLogoPath(rowLeveragedSymbol)}
+                            alt={rowLeveragedSymbol}
+                            width={20}
+                            height={20}
+                            className="flex-shrink-0"
+                          />
+                        </div>
                         {isExpanded ? (
                           <ChevronUpIcon className="w-5 h-5 text-[#1E4775] flex-shrink-0" />
                         ) : (
@@ -1734,7 +1767,7 @@ export default function GenesisIndexPage() {
                                 {asset.name}
                               </div>
                               <div className="text-xs opacity-90">
-                                All assets are converted to {collateralSymbol}{" "}
+                                All assets are converted to {wrappedCollateralSymbol}{" "}
                                 on deposit
                               </div>
                             </div>
