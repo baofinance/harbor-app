@@ -46,7 +46,7 @@ function getFallbackPrice(genesisAddress: string): BigDecimal {
     return BigDecimal.fromString("1.07"); // fxSAVE ~$1.07
   }
   if (genesisAddress == "0x9ae0b57ceada0056dbe21edcd638476fcba3ccc0") {
-    return BigDecimal.fromString("4000"); // wstETH ~$4000
+    return BigDecimal.fromString("4400"); // wstETH ~$4400 (stETH ~$3600 * rate ~1.22)
   }
   if (genesisAddress == "0x1454707877cdb966e29cea8a190c2169eeca4b8c") {
     return BigDecimal.fromString("1.07"); // fxSAVE ~$1.07
@@ -65,11 +65,17 @@ function getFallbackPrice(genesisAddress: string): BigDecimal {
 function getWrappedTokenPriceUSD(genesisAddress: Bytes, block: ethereum.Block): BigDecimal {
   const genesisAddressStr = genesisAddress.toHexString();
   
-  // For fxUSD/fxSAVE markets, the oracle returns the pegged asset price (haETH/haBTC) instead of fxUSD
-  // We need to hardcode fxUSD to $1.00, just like the frontend does
+  // IMPORTANT: The oracle returns the pegged asset price (haETH/haBTC) instead of the underlying collateral
+  // For fxUSD/fxSAVE markets: Oracle returns haETH/haBTC price, but we need fxUSD price ($1.00)
+  // For wstETH markets: Oracle returns haBTC price, but we need wstETH price (~$3,600)
+  // Solution: Use CoinGecko or hardcoded prices for underlying, then multiply by wrapped rate
+  
   // ETH/fxUSD and BTC/fxUSD markets use fxUSD as underlying collateral
   const isFxUSDMarket = genesisAddressStr == "0x5f4398e1d3e33f93e3d7ee710d797e2a154cb073" || 
                         genesisAddressStr == "0x288c61c3b3684ff21adf38d878c81457b19bd2fe";
+  
+  // BTC/stETH market uses wstETH as collateral
+  const isWstETHMarket = genesisAddressStr == "0x9ae0b57ceada0056dbe21edcd638476fcba3ccc0";
   
   if (isFxUSDMarket) {
     // For fxUSD markets: hardcode underlying price to $1.00, then multiply by wrapped rate
@@ -106,7 +112,14 @@ function getWrappedTokenPriceUSD(genesisAddress: Bytes, block: ethereum.Block): 
     return wrappedTokenPriceUSD;
   }
   
-  // For other markets (BTC/stETH), use oracle normally
+  if (isWstETHMarket) {
+    // For wstETH markets: Oracle returns haBTC price (wrong!), we need wstETH price
+    // Use fallback price for now (wstETH ~$3,600-4,000)
+    // TODO: Integrate CoinGecko API in subgraph for real-time wstETH prices
+    return getFallbackPrice(genesisAddressStr);
+  }
+  
+  // For other markets, use oracle normally
   const oracleAddressStr = getPriceOracleAddress(genesisAddressStr);
   
   // If no oracle configured, use fallback
