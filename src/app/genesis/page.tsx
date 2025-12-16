@@ -464,18 +464,6 @@ export default function GenesisIndexPage() {
   const { writeContractAsync } = useWriteContract();
   const publicClient = usePublicClient();
 
-  // Fetch on-chain token metadata (symbol/name) from minter contract
-  const tokenMeta = useMinterTokenMeta(contracts.minter as `0x${string}`);
-
-  // Get token symbols with loading/error states
-  const getTokenDisplay = (type: "pegged" | "leveraged") => {
-    if (tokenMeta.isLoading) return "Loading...";
-    if (tokenMeta.error) return "⚠️ Error";
-
-    const token = type === "pegged" ? tokenMeta.pegged : tokenMeta.leveraged;
-    return token?.symbol || (type === "pegged" ? "ha" : "hs");
-  };
-
   // Prevent hydration mismatch by only rendering dynamic content after mount
   useEffect(() => {
     setMounted(true);
@@ -505,10 +493,6 @@ export default function GenesisIndexPage() {
         .filter((addr): addr is string => !!addr && typeof addr === "string"),
     [genesisMarkets]
   );
-
-  // On-chain token symbols from the useMinterTokenMeta hook
-  const peggedSymbol = getTokenDisplay("pegged");
-  const leveragedSymbol = getTokenDisplay("leveraged");
 
   // Fetch marks data from subgraph
   const {
@@ -1406,9 +1390,9 @@ export default function GenesisIndexPage() {
                 ? contractSaysEnded
                 : subgraphSaysEnded ?? false;
 
-            // On-chain token symbols (from useMinterTokenMeta hook)
-            const rowPeggedSymbol = peggedSymbol;
-            const rowLeveragedSymbol = leveragedSymbol;
+            // Get token symbols from market configuration
+            const rowPeggedSymbol = (mkt as any).peggedToken?.symbol || "ha";
+            const rowLeveragedSymbol = (mkt as any).leveragedToken?.symbol || "hs";
             const displayMarketName =
               rowLeveragedSymbol &&
               rowLeveragedSymbol.toLowerCase().startsWith("hs")
