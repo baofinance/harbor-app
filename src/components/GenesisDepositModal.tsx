@@ -1184,10 +1184,11 @@ const successFmt = formatTokenAmount(successAmountBigInt, collateralSymbol, coll
  <>
 {(() => {
   const depositAmt = (isNativeETH || isStETH || isUSDC || isFXUSD) ? actualCollateralDeposit : amountBigInt;
-  // For deposit display, show the amount being deposited with the selected asset's price
+  // For deposit display, show the amount being deposited
   // Display in wrapped collateral symbol since that's what gets stored
+  // Use wrapped token price (collateralPriceUSD) since depositAmt is in wrapped collateral tokens
   const displaySymbol = wrappedCollateralSymbol || collateralSymbol;
-  const depositFmt = formatTokenAmount(depositAmt, displaySymbol, selectedAssetPriceUSD);
+  const depositFmt = formatTokenAmount(depositAmt, displaySymbol, collateralPriceUSD);
   return (
     <div className="flex justify-between items-baseline">
       <span className="text-[#1E4775]/70">+ Deposit Amount:</span>
@@ -1212,13 +1213,15 @@ const successFmt = formatTokenAmount(successAmountBigInt, collateralSymbol, coll
  <div className="border-t border-[#1E4775]/30 pt-2">
 {(() => {
   // For total deposit, we need to calculate the USD value correctly
-  // Current deposit is in collateral (base token), new deposit amount is what we're adding
+  // Both current deposit and new deposit are in wrapped collateral tokens (fxSAVE, wstETH)
+  // So we use wrapped token price (collateralPriceUSD) for both
   const currentDepositUSD = userCurrentDeposit > 0n 
     ? (Number(userCurrentDeposit) / 1e18) * collateralPriceUSD 
     : 0;
   const depositAmt = (isNativeETH || isStETH || isUSDC || isFXUSD) ? actualCollateralDeposit : amountBigInt;
+  // depositAmt is in wrapped collateral tokens, so use wrapped token price
   const newDepositUSD = depositAmt > 0n 
-    ? (Number(depositAmt) / 1e18) * selectedAssetPriceUSD 
+    ? (Number(depositAmt) / 1e18) * collateralPriceUSD 
     : 0;
   const totalUSD = currentDepositUSD + newDepositUSD;
   
