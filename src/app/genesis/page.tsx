@@ -4,7 +4,7 @@ import React, { useMemo, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   useAccount,
-  useContractReads as wagmiUseContractReads,
+  useContractReads,
   useWriteContract,
   usePublicClient,
 } from "wagmi";
@@ -14,7 +14,6 @@ import { markets } from "../../config/markets";
 import { GenesisDepositModal } from "@/components/GenesisDepositModal";
 import { GenesisWithdrawModal } from "@/components/GenesisWithdrawModal";
 import { GENESIS_ABI, contracts } from "../../config/contracts";
-import { useContractReads } from "@/hooks/useContractReads";
 import {
   ArrowRightIcon,
   GiftIcon,
@@ -202,7 +201,7 @@ function MarketExpandedView({
 }) {
   // Fetch contract data for expanded view
   const { data: expandedReads, error: expandedReadsError } =
-    wagmiUseContractReads({
+    useContractReads({
       contracts:
         genesisAddress &&
         typeof genesisAddress === "string" &&
@@ -249,7 +248,7 @@ function MarketExpandedView({
 
   // Get token symbols
   const { data: tokenSymbols, error: tokenSymbolsError } =
-    wagmiUseContractReads({
+    useContractReads({
       contracts: [
         ...(peggedTokenAddress &&
         typeof peggedTokenAddress === "string" &&

@@ -5,7 +5,6 @@ import Head from "next/head";
 import { useAccount, useContractReads } from "wagmi";
 import { formatEther } from "viem";
 import { markets } from "@/config/markets";
-import { useContractReads } from "@/hooks/useContractReads";
 import { useAnchorLedgerMarks } from "@/hooks/useAnchorLedgerMarks";
 import {
   ChevronDownIcon,

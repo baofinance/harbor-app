@@ -9,7 +9,6 @@ import {
  useWriteContract,
  usePublicClient,
 } from "wagmi";
-import { useContractRead } from "@/hooks/useContractRead";
 import { BaseError, ContractFunctionRevertedError } from "viem";
 import { ERC20_ABI, MINTER_ABI } from "@/abis/shared";
 import SimpleTooltip from "@/components/SimpleTooltip";

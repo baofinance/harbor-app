@@ -10,8 +10,6 @@ import {
   useWriteContract,
   usePublicClient,
 } from "wagmi";
-import { useContractRead } from "@/hooks/useContractRead";
-import { useContractReads } from "@/hooks/useContractReads";
 import { BaseError, ContractFunctionRevertedError } from "viem";
 import { ERC20_ABI, STABILITY_POOL_ABI } from "@/abis/shared";
 import { aprABI } from "@/abis/apr";

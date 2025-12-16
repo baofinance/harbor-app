@@ -24,7 +24,6 @@ import {
   getLogoPath,
 } from "@/components/shared";
 import { useGenesisMarks } from "@/hooks/useGenesisMarks";
-import { useContractReads } from "@/hooks/useContractReads";
 import {
   ChevronDownIcon,
   ChevronUpIcon,
