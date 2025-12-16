@@ -2,8 +2,6 @@ import { useAccount, usePublicClient } from "wagmi";
 import { useQuery } from "@tanstack/react-query";
 import { formatEther } from "viem";
 import { STABILITY_POOL_ABI, ERC20_ABI } from "@/abis/shared";
-import { shouldUseAnvil } from "@/config/environment";
-import { publicClient as anvilPublicClient } from "@/config/rpc";
 
 interface UsePoolRewardAPRParams {
   poolAddress: `0x${string}` | undefined;
@@ -51,7 +49,7 @@ export function usePoolRewardAPR({
         return { totalAPR: 0, rewardTokenAPRs: [] };
       }
 
-      const client = shouldUseAnvil() ? anvilPublicClient : publicClient;
+      const client = false ? publicClient : publicClient;
       if (!client) {
         return { totalAPR: 0, rewardTokenAPRs: [] };
       }

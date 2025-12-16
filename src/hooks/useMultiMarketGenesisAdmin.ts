@@ -4,7 +4,7 @@ import {
   useWriteContract,
   useWaitForTransactionReceipt,
 } from "wagmi";
-import { useAnvilContractReads } from "./useContractReads";
+import { useContractReads } from "./useContractReads";
 import { markets, getGenesisStatus } from "../config/markets";
 import { GENESIS_ABI, ERC20_ABI } from "../config/contracts";
 
@@ -48,7 +48,7 @@ export function useMultiMarketGenesisAdmin() {
     data: contractData,
     isLoading,
     refetch,
-  } = useAnvilContractReads({
+  } = useContractReads({
     contracts: genesisMarkets.flatMap(([id, market]) => [
       // Genesis contract data
       {

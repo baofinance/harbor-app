@@ -2,8 +2,6 @@ import { usePublicClient } from "wagmi";
 import { useQuery } from "@tanstack/react-query";
 import { stabilityPoolABI } from "@/abis/stabilityPool";
 import { ERC20_ABI } from "@/config/contracts";
-import { shouldUseAnvil } from "@/config/environment";
-import { publicClient as anvilPublicClient } from "@/config/rpc";
 
 export interface RewardTokenInfo {
   address: `0x${string}`;
@@ -38,7 +36,7 @@ export function usePoolRewardTokens({
         return [];
       }
 
-      const client = shouldUseAnvil() ? anvilPublicClient : publicClient;
+      const client = false ? publicClient : publicClient;
       if (!client) {
         return [];
       }

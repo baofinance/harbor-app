@@ -1,8 +1,6 @@
 import { useAccount, usePublicClient } from "wagmi";
 import { useQuery } from "@tanstack/react-query";
 import { STABILITY_POOL_ABI } from "@/abis/shared";
-import { shouldUseAnvil } from "@/config/environment";
-import { publicClient as anvilPublicClient } from "@/config/rpc";
 
 export type WithdrawalStatus = "waiting" | "window" | "expired";
 
@@ -25,7 +23,7 @@ export function useWithdrawalRequests(poolAddresses: `0x${string}`[]) {
     queryFn: async () => {
       if (!address || !poolAddresses.length) return [];
 
-      const client = shouldUseAnvil() ? anvilPublicClient : publicClient;
+      const client = false ? publicClient : publicClient;
       if (!client) {
         console.debug("No client available for withdrawal requests");
         return [];

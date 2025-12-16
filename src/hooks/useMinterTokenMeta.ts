@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useAnvilContractReads } from "./useContractReads";
+import { useContractReads } from "./useContractReads";
 import { MINTER_ABI, ERC20_ABI } from "@/abis/shared";
 
 export interface MinterTokenMetaResult {
@@ -21,7 +21,7 @@ export function useMinterTokenMeta(
     data: addressReads,
     isLoading: isLoadingAddresses,
     error: addressErr,
-  } = useAnvilContractReads({
+  } = useContractReads({
     contracts: minterAddress
       ? ([
           {
@@ -69,7 +69,7 @@ export function useMinterTokenMeta(
     data: metaReads,
     isLoading: isLoadingMeta,
     error: metaErr,
-  } = useAnvilContractReads({
+  } = useContractReads({
     contracts: [
       ...(peggedAddr
         ? ([

@@ -4,8 +4,6 @@ import { useMemo } from "react";
 import { formatEther } from "viem";
 import { stabilityPoolABI } from "@/abis/stabilityPool";
 import { ERC20_ABI } from "@/config/contracts";
-import { shouldUseAnvil } from "@/config/environment";
-import { publicClient as anvilPublicClient } from "@/config/rpc";
 import { getPriceFeedAddress, queryChainlinkPrice } from "@/utils/priceFeeds";
 
 export interface PoolRewards {
@@ -73,7 +71,7 @@ export function useAllStabilityPoolRewards({
         return [];
       }
 
-      const client = shouldUseAnvil() ? anvilPublicClient : publicClient;
+      const client = false ? publicClient : publicClient;
       if (!client) {
         return [];
       }

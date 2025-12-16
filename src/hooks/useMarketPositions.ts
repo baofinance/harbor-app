@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { useAnvilContractReads } from "./useContractReads";
+import { useContractReads } from "./useContractReads";
 import { ERC20_ABI, STABILITY_POOL_ABI, MINTER_ABI } from "@/abis/shared";
 
 export type MarketPositionBreakdown = {
@@ -99,7 +99,7 @@ export function useMarketPositions(
 
   const hookEnabled = !!userAddress && contracts.length > 0;
 
-  const { data, isLoading, error, refetch } = useAnvilContractReads({
+  const { data, isLoading, error, refetch } = useContractReads({
     contracts,
     enabled: hookEnabled,
     refetchInterval: 15000, // 15 second refresh

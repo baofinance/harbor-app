@@ -1,6 +1,6 @@
 import { useMemo } from "react";
-import { useAnvilContractReads } from "./useContractReads";
-import { useAnvilContractRead } from "./useContractRead";
+import { useContractReads } from "./useContractReads";
+import { useContractRead } from "./useContractRead";
 import { formatEther } from "viem";
 import { markets } from "@/config/markets";
 import { contracts, GENESIS_ABI } from "@/config/contracts";
@@ -61,7 +61,7 @@ export function useProjectedAPR(
     market?.addresses?.collateralToken || contracts.wrappedCollateralToken;
 
   // Batch read: Basic contract data
-  const { data: basicReads, isLoading: isLoadingBasic } = useAnvilContractReads(
+  const { data: basicReads, isLoading: isLoadingBasic } = useContractReads(
     {
       contracts: [
         // Minter reads
@@ -127,7 +127,7 @@ export function useProjectedAPR(
 
   // Get wstETH balance on the minter and stEthPerToken rate
   const { data: wstETHReads, isLoading: isLoadingWstETH } =
-    useAnvilContractReads({
+    useContractReads({
       contracts: [
         {
           address: wstETHAddress as `0x${string}`,
@@ -151,7 +151,7 @@ export function useProjectedAPR(
     | undefined;
 
   const { data: rewardDataReads, isLoading: isLoadingRewardData } =
-    useAnvilContractReads({
+    useContractReads({
       contracts: [
         {
           address: collateralPoolAddress as `0x${string}`,
@@ -561,7 +561,7 @@ export function useUserProjectedAPR(
 
   // Get user's deposits
   const { data: userDeposits, isLoading: isLoadingUserDeposits } =
-    useAnvilContractReads({
+    useContractReads({
       contracts: [
         {
           address: collateralPoolAddress as `0x${string}`,

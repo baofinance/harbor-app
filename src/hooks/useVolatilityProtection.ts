@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { useAnvilContractReads } from "./useContractReads";
+import { useContractReads } from "./useContractReads";
 
 /**
  * Minter ABI for volatility protection calculation
@@ -224,7 +224,7 @@ export function useVolatilityProtection(
     data: reads,
     isLoading,
     error,
-  } = useAnvilContractReads({
+  } = useContractReads({
     contracts,
     enabled: enabled && !!minterAddress && contracts.length > 0,
     refetchInterval,
@@ -362,7 +362,7 @@ export function useMultipleVolatilityProtection(
     data: reads,
     isLoading,
     error,
-  } = useAnvilContractReads({
+  } = useContractReads({
     contracts,
     enabled: enabled && contracts.length > 0,
     refetchInterval,

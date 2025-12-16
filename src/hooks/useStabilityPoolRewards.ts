@@ -3,8 +3,6 @@ import { useQuery } from "@tanstack/react-query";
 import { formatEther } from "viem";
 import { stabilityPoolABI } from "@/abis/stabilityPool";
 import { ERC20_ABI } from "@/config/contracts";
-import { shouldUseAnvil } from "@/config/environment";
-import { publicClient as anvilPublicClient } from "@/config/rpc";
 
 export interface RewardTokenData {
   address: `0x${string}`;
@@ -62,7 +60,7 @@ export function useStabilityPoolRewards({
         };
       }
 
-      const client = shouldUseAnvil() ? anvilPublicClient : publicClient;
+      const client = false ? publicClient : publicClient;
       if (!client) {
         return {
           claimableValue: 0,

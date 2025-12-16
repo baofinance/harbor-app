@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { useAnvilContractReads } from "./useContractReads";
+import { useContractReads } from "./useContractReads";
 import { MINTER_ABI } from "@/abis/shared";
 
 export interface PeggedPriceConfig {
@@ -18,7 +18,7 @@ export interface PeggedPriceResult {
 
 /**
  * Fetch pegged token prices (peggedTokenPrice) for the provided markets.
- * This hook batches reads via useAnvilContractReads.
+ * This hook batches reads via useContractReads.
  */
 export function usePeggedTokenPrices(
   configs: PeggedPriceConfig[],
@@ -46,7 +46,7 @@ export function usePeggedTokenPrices(
     return { contracts: items, indexMap: map };
   }, [configs]);
 
-  const { data, isLoading, error, refetch } = useAnvilContractReads({
+  const { data, isLoading, error, refetch } = useContractReads({
     contracts,
     enabled: enabled && contracts.length > 0,
     refetchInterval: 15000,

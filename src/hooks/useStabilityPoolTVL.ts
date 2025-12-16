@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { useAnvilContractReads } from "./useContractReads";
+import { useContractReads } from "./useContractReads";
 import { POLLING_INTERVALS } from "@/config/polling";
 import {
   STABILITY_POOL_ABI,
@@ -91,7 +91,7 @@ export function useStabilityPoolTVLs(configs: TVLConfig[]) {
     return items;
   }, [configs]);
 
-  const { data, isLoading, error } = useAnvilContractReads({
+  const { data, isLoading, error } = useContractReads({
     contracts,
     enabled: configs.length > 0 && contracts.length > 0,
     refetchInterval: POLLING_INTERVALS.SLOW,

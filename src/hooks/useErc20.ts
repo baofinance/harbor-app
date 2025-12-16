@@ -1,5 +1,5 @@
-import { useAnvilContractRead } from "./useContractRead";
-import { useAnvilContractReads } from "./useContractReads";
+import { useContractRead } from "./useContractRead";
+import { useContractReads } from "./useContractReads";
 
 /**
  * Shared ERC20 ABI - minimal set for common operations
@@ -71,7 +71,7 @@ export function useErc20Balance({
   enabled = true,
   refetchInterval = 30000,
 }: UseErc20BalanceOptions) {
-  const { data, isLoading, error, refetch } = useAnvilContractRead({
+  const { data, isLoading, error, refetch } = useContractRead({
     address: tokenAddress,
     abi: ERC20_ABI,
     functionName: "balanceOf",
@@ -106,7 +106,7 @@ export function useErc20Allowance({
   enabled = true,
   refetchInterval = 30000,
 }: UseErc20AllowanceOptions) {
-  const { data, isLoading, error, refetch } = useAnvilContractRead({
+  const { data, isLoading, error, refetch } = useContractRead({
     address: tokenAddress,
     abi: ERC20_ABI,
     functionName: "allowance",
@@ -141,7 +141,7 @@ export function useErc20BalanceAndAllowance({
   enabled = true,
   refetchInterval = 30000,
 }: UseErc20BalanceAndAllowanceOptions) {
-  const { data, isLoading, error, refetch } = useAnvilContractReads({
+  const { data, isLoading, error, refetch } = useContractReads({
     contracts: [
       {
         address: tokenAddress!,
@@ -182,7 +182,7 @@ export function useTokenInfo({
   tokenAddress,
   enabled = true,
 }: UseTokenInfoOptions) {
-  const { data, isLoading, error } = useAnvilContractReads({
+  const { data, isLoading, error } = useContractReads({
     contracts: [
       {
         address: tokenAddress!,

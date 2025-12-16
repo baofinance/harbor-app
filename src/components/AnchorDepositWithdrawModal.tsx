@@ -10,10 +10,8 @@ import {
   useWriteContract,
   usePublicClient,
 } from "wagmi";
-import { useAnvilContractRead } from "@/hooks/useContractRead";
-import { useAnvilContractReads } from "@/hooks/useContractReads";
-import { shouldUseAnvil } from "@/config/environment";
-import { publicClient as anvilPublicClient } from "@/config/rpc";
+import { useContractRead } from "@/hooks/useContractRead";
+import { useContractReads } from "@/hooks/useContractReads";
 import { BaseError, ContractFunctionRevertedError } from "viem";
 import { ERC20_ABI, STABILITY_POOL_ABI } from "@/abis/shared";
 import { aprABI } from "@/abis/apr";
@@ -192,7 +190,12 @@ function getAcceptedDepositAssets(
   }
   // Fallback: return collateral token as the only accepted asset
   if (market?.collateral?.symbol) {
-    return [{ symbol: market.collateral.symbol, name: market.collateral.name || market.collateral.symbol }];
+    return [
+      {
+        symbol: market.collateral.symbol,
+        name: market.collateral.name || market.collateral.symbol,
+      },
+    ];
   }
   return [];
 }
@@ -1033,9 +1036,9 @@ export const AnchorDepositWithdrawModal = ({
 
   // Contract read hooks - balance for selected deposit asset
   // Use Anvil-specific read if in development, otherwise use wagmi
-  const useAnvilForBalance = shouldUseAnvil();
+  const useAnvilForBalance = false;
   const selectedAssetAddress = getSelectedAssetAddress;
-  const anvilSelectedAssetResult = useAnvilContractRead({
+  const anvilSelectedAssetResult = useContractRead({
     address:
       selectedAssetAddress &&
       selectedAssetAddress !== "0x0000000000000000000000000000000000000000"
@@ -1193,7 +1196,7 @@ export const AnchorDepositWithdrawModal = ({
     useAnvilForBalance,
   ]);
 
-  const anvilBalanceResult = useAnvilContractRead({
+  const anvilBalanceResult = useContractRead({
     address: peggedTokenAddressForBalance as `0x${string}`,
     abi: ERC20_ABI,
     functionName: "balanceOf",
@@ -1274,9 +1277,9 @@ export const AnchorDepositWithdrawModal = ({
   ]);
 
   // Read pegged token balance - use Anvil hook when on local chain
-  const useAnvilForPeggedBalance = shouldUseAnvil();
+  const useAnvilForPeggedBalance = false;
 
-  const anvilPeggedBalanceResult = useAnvilContractRead({
+  const anvilPeggedBalanceResult = useContractRead({
     address: peggedTokenAddress as `0x${string}`,
     abi: ERC20_ABI,
     functionName: "balanceOf",
@@ -1320,7 +1323,7 @@ export const AnchorDepositWithdrawModal = ({
     | undefined;
 
   // Collateral pool balance - use Anvil hook when on local chain
-  const anvilCollateralPoolResult = useAnvilContractRead({
+  const anvilCollateralPoolResult = useContractRead({
     address: collateralPoolAddress,
     abi: STABILITY_POOL_ABI,
     functionName: "assetBalanceOf",
@@ -1357,7 +1360,7 @@ export const AnchorDepositWithdrawModal = ({
     : wagmiCollateralPoolResult.data;
 
   // Sail pool balance - use Anvil hook when on local chain
-  const anvilSailPoolResult = useAnvilContractRead({
+  const anvilSailPoolResult = useContractRead({
     address: sailPoolAddress,
     abi: STABILITY_POOL_ABI,
     functionName: "assetBalanceOf",
@@ -1394,7 +1397,7 @@ export const AnchorDepositWithdrawModal = ({
     : wagmiSailPoolResult.data;
 
   // Early withdrawal fees - read from both pools
-  const anvilCollateralPoolFeeResult = useAnvilContractRead({
+  const anvilCollateralPoolFeeResult = useContractRead({
     address: collateralPoolAddress,
     abi: STABILITY_POOL_ABI,
     functionName: "getEarlyWithdrawalFee",
@@ -1417,7 +1420,7 @@ export const AnchorDepositWithdrawModal = ({
     ? anvilCollateralPoolFeeResult.data
     : wagmiCollateralPoolFeeResult.data;
 
-  const anvilSailPoolFeeResult = useAnvilContractRead({
+  const anvilSailPoolFeeResult = useContractRead({
     address: sailPoolAddress,
     abi: STABILITY_POOL_ABI,
     functionName: "getEarlyWithdrawalFee",
@@ -1441,7 +1444,7 @@ export const AnchorDepositWithdrawModal = ({
     : wagmiSailPoolFeeResult.data;
 
   // Read withdrawal window data from both pools
-  const anvilCollateralWindowResult = useAnvilContractRead({
+  const anvilCollateralWindowResult = useContractRead({
     address: collateralPoolAddress,
     abi: STABILITY_POOL_ABI,
     functionName: "getWithdrawalWindow",
@@ -1463,7 +1466,7 @@ export const AnchorDepositWithdrawModal = ({
     ? anvilCollateralWindowResult.data
     : wagmiCollateralWindowResult.data;
 
-  const anvilSailWindowResult = useAnvilContractRead({
+  const anvilSailWindowResult = useContractRead({
     address: sailPoolAddress,
     abi: STABILITY_POOL_ABI,
     functionName: "getWithdrawalWindow",
@@ -1964,12 +1967,12 @@ export const AnchorDepositWithdrawModal = ({
 
   // Check allowance for pegged token to stability pool (for mint tab if depositing to stability pool, or for deposit tab)
   // Use Anvil hook when on local chain
-  const useAnvilForPeggedAllowance = shouldUseAnvil();
+  const useAnvilForPeggedAllowance = false;
 
   const {
     data: anvilPeggedTokenAllowanceData,
     refetch: refetchAnvilPeggedTokenAllowance,
-  } = useAnvilContractRead({
+  } = useContractRead({
     address: peggedTokenAddress as `0x${string}`,
     abi: ERC20_ABI,
     functionName: "allowance",
@@ -2021,10 +2024,10 @@ export const AnchorDepositWithdrawModal = ({
     : refetchWagmiPeggedTokenAllowance;
 
   // Use Anvil hook flag (shared by redeem + mint fee dry-runs)
-  const shouldUseAnvilHook = shouldUseAnvil();
+  const shouldUseAnvilHook = false;
 
   // Calculate expected output based on active tab - use Anvil hook when on Anvil
-  const { data: anvilExpectedMintOutput } = useAnvilContractRead({
+  const { data: anvilExpectedMintOutput } = useContractRead({
     address: minterAddress as `0x${string}`,
     abi: minterABI,
     functionName: "mintPeggedTokenDryRun",
@@ -2171,7 +2174,7 @@ export const AnchorDepositWithdrawModal = ({
 
   // Prefer the anvil hook on local dev (matches mint-fee flow)
   const { data: anvilRedeemDryRunData, error: anvilRedeemDryRunError } =
-    useAnvilContractRead({
+    useContractRead({
       address: redeemDryRunAddress as `0x${string}`,
       abi: minterABI,
       functionName: "redeemPeggedTokenDryRun",
@@ -2261,7 +2264,7 @@ export const AnchorDepositWithdrawModal = ({
     redeemInputAmount > 0n &&
     isOpen &&
     activeTab === "withdraw" &&
-    !shouldUseAnvil();
+    !false;
 
   const { data: expectedRedeemOutput } = useContractRead({
     address: isValidRedeemMinterAddress
@@ -2281,7 +2284,7 @@ export const AnchorDepositWithdrawModal = ({
 
   // Calculate redeem fee: on Anvil prefer the dry-run feePercentage (same units), otherwise fall back to view ratio
   const redeemFeePercentage = useMemo(() => {
-    if (shouldUseAnvil() && redeemDryRun?.feePercentage !== undefined) {
+    if (false && redeemDryRun?.feePercentage !== undefined) {
       return redeemDryRun.feePercentage;
     }
 
@@ -2329,7 +2332,7 @@ export const AnchorDepositWithdrawModal = ({
 
   // Dry run query using Anvil hook for local development
   const { data: anvilDryRunData, error: anvilDryRunError } =
-    useAnvilContractRead({
+    useContractRead({
       address: feeMinterAddress as `0x${string}`,
       abi: minterABI,
       functionName: "mintPeggedTokenDryRun",
@@ -3143,8 +3146,8 @@ export const AnchorDepositWithdrawModal = ({
         }
 
         // Use Anvil client for local development, regular publicClient for production
-        const directDepositClient = shouldUseAnvil()
-          ? anvilPublicClient
+        const directDepositClient = false
+          ? publicClient
           : publicClient;
 
         // Check allowance for pegged token to stability pool
@@ -3153,7 +3156,7 @@ export const AnchorDepositWithdrawModal = ({
             tokenAddress: targetPeggedTokenAddress,
             poolAddress: targetPoolAddress,
             userAddress: address,
-            shouldUseAnvil: shouldUseAnvil(),
+            shouldUseAnvil: false,
           });
         }
 
@@ -3363,7 +3366,7 @@ export const AnchorDepositWithdrawModal = ({
         });
         setProgressModalOpen(true);
         // Use Anvil client for local development, regular publicClient for production
-        const txClient = shouldUseAnvil() ? anvilPublicClient : publicClient;
+        const txClient = false ? publicClient : publicClient;
 
         // Step 1: Approve collateral token for minter (if needed)
         if (needsApproval) {
@@ -3445,8 +3448,8 @@ export const AnchorDepositWithdrawModal = ({
           }
 
           // Use Anvil client for local development, regular publicClient for production
-          const readClient = shouldUseAnvil()
-            ? anvilPublicClient
+          const readClient = false
+            ? publicClient
             : publicClient;
 
           // Read actual pegged token balance after minting
@@ -4109,7 +4112,7 @@ export const AnchorDepositWithdrawModal = ({
         );
       }
 
-      const txClient = shouldUseAnvil() ? anvilPublicClient : publicClient;
+      const txClient = false ? publicClient : publicClient;
 
       setStep("withdrawing");
       setError(null);
@@ -4254,7 +4257,7 @@ export const AnchorDepositWithdrawModal = ({
       // Redeem pegged tokens for collateral (default behavior unless"Withdraw only" is checked)
       if (!withdrawOnly && peggedTokensReceived > 0n) {
         // Use the correct client based on environment
-        const client = shouldUseAnvil() ? anvilPublicClient : publicClient;
+        const client = false ? publicClient : publicClient;
 
         if (!client) {
           throw new Error("No client available for contract reads");
@@ -4455,7 +4458,7 @@ export const AnchorDepositWithdrawModal = ({
       // Check if we need to approve pegged token for minter (explicit RPC read, Anvil-aware)
       let currentAllowance = peggedTokenMinterAllowanceData || 0n;
       try {
-        const client = shouldUseAnvil() ? anvilPublicClient : publicClient;
+        const client = false ? publicClient : publicClient;
         if (client) {
           currentAllowance =
             (await client.readContract({
@@ -4559,7 +4562,7 @@ export const AnchorDepositWithdrawModal = ({
         });
       } catch (callErr: any) {
         // On Anvil, some view prechecks may revert; retry with zero floor to surface allowance/amount issues
-        if (shouldUseAnvil() && minCollateralOut > 0n) {
+        if (false && minCollateralOut > 0n) {
           if (process.env.NODE_ENV === "development") {
             console.warn(
               "[handleRedeem] redeemPeggedToken reverted with minCollateralOut, retrying with 0",

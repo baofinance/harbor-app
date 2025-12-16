@@ -24,9 +24,7 @@ import {
   getLogoPath,
 } from "@/components/shared";
 import { useGenesisMarks } from "@/hooks/useGenesisMarks";
-import { useAnvilContractReads } from "@/hooks/useContractReads";
-import { shouldUseAnvil } from "@/config/environment";
-import { publicClient as anvilPublicClient } from "@/config/rpc";
+import { useContractReads } from "@/hooks/useContractReads";
 import {
   ChevronDownIcon,
   ChevronUpIcon,
@@ -1457,7 +1455,7 @@ export default function AnchorPage() {
   );
 
   const queryClient = useQueryClient();
-  const useAnvil = shouldUseAnvil();
+  const useAnvil = false;
 
   // Get projected APR for the primary market (pb-steth)
   const projectedAPR = useProjectedAPR("pb-steth");
@@ -1899,7 +1897,7 @@ export default function AnchorPage() {
     },
   });
 
-  const anvilMarketReads = useAnvilContractReads({
+  const anvilMarketReads = useContractReads({
     contracts: allMarketContracts,
     enabled: anchorMarkets.length > 0 && useAnvil,
     refetchInterval: POLLING_INTERVALS.FAST,
@@ -2094,7 +2092,7 @@ export default function AnchorPage() {
     },
   });
 
-  const anvilUserDepositReads = useAnvilContractReads({
+  const anvilUserDepositReads = useContractReads({
     contracts: userDepositContractArray,
     enabled: anchorMarkets.length > 0 && !!address && useAnvil,
     refetchInterval: POLLING_INTERVALS.FAST,
@@ -2115,7 +2113,7 @@ export default function AnchorPage() {
     amount?: bigint
   ) => {
     if (!address) return;
-    const client = shouldUseAnvil() ? anvilPublicClient : publicClient;
+    const client = false ? publicClient : publicClient;
     if (!client) return;
 
     // For fee-free withdrawals, require an amount
@@ -3464,7 +3462,7 @@ export default function AnchorPage() {
         | undefined;
       if (priceOracleAddress && publicClient) {
         try {
-          const client = shouldUseAnvil() ? anvilPublicClient : publicClient;
+          const client = false ? publicClient : publicClient;
           const priceResult = await client?.readContract({
             address: priceOracleAddress,
             abi: wrappedPriceOracleABI,
@@ -3506,7 +3504,7 @@ export default function AnchorPage() {
         }
 
         // Use the appropriate client based on environment (same as deposit modal)
-        const client = shouldUseAnvil() ? anvilPublicClient : publicClient;
+        const client = false ? publicClient : publicClient;
         if (!client) {
           throw new Error("Public client not available");
         }
@@ -3637,7 +3635,7 @@ export default function AnchorPage() {
         }
 
         // Use the appropriate client based on environment (same as deposit modal)
-        const client = shouldUseAnvil() ? anvilPublicClient : publicClient;
+        const client = false ? publicClient : publicClient;
         if (!client) {
           throw new Error("Public client not available");
         }

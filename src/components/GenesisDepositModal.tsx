@@ -12,7 +12,6 @@ import {
 import { BaseError, ContractFunctionRevertedError } from "viem";
 import { GENESIS_ABI, ERC20_ABI, contracts } from "../config/contracts";
 import { ZAP_ABI, STETH_ABI, WSTETH_ABI } from "@/abis";
-import { publicClient as mainnetPublicClient } from "@/config/rpc";
 import { useContractRead as useCustomContractRead } from "@/hooks/useContractRead";
 import { useCollateralPrice } from "@/hooks/useCollateralPrice";
 import {

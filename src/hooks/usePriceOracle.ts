@@ -1,4 +1,4 @@
-import { useAnvilContractReads } from "./useContractReads";
+import { useContractReads } from "./useContractReads";
 
 /**
  * Standard Chainlink-style price oracle ABI
@@ -81,7 +81,7 @@ export function usePriceOracle({
 }: UsePriceOracleOptions): PriceOracleResult {
   const abi = isHarborOracle ? HARBOR_ORACLE_ABI : CHAINLINK_ORACLE_ABI;
 
-  const { data, isLoading, error, refetch } = useAnvilContractReads({
+  const { data, isLoading, error, refetch } = useContractReads({
     contracts: [
       {
         address: oracleAddress as `0x${string}`,
@@ -176,7 +176,7 @@ export function useMultiplePriceOracles(
     ];
   });
 
-  const { data, isLoading, refetch } = useAnvilContractReads({
+  const { data, isLoading, refetch } = useContractReads({
     contracts,
     enabled: enabled && contracts.length > 0,
     refetchInterval,

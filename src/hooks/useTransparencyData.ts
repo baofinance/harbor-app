@@ -1,4 +1,4 @@
-import { useAnvilContractReads } from "./useContractReads";
+import { useContractReads } from "./useContractReads";
 import { useAccount } from "wagmi";
 import { markets as marketsConfig } from "@/config/markets";
 import { minterABI } from "@/abis/minter";
@@ -173,7 +173,7 @@ export function useTransparencyData(): TransparencyData {
     ...allUserContracts,
   ] as const;
 
-  const { data, isLoading, error, refetch } = useAnvilContractReads({
+  const { data, isLoading, error, refetch } = useContractReads({
     contracts: allContracts as any,
     enabled: true,
   });

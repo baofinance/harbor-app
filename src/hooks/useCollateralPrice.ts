@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { useAnvilContractReads } from "./useContractReads";
+import { useContractReads } from "./useContractReads";
 
 /**
  * ABI for the IWrappedPriceOracle interface used by the Minter contract.
@@ -85,7 +85,7 @@ export function useCollateralPrice(
     data: reads,
     isLoading,
     error,
-  } = useAnvilContractReads({
+  } = useContractReads({
     contracts,
     enabled: enabled && !!priceOracleAddress && contracts.length > 0,
     refetchInterval,
@@ -206,7 +206,7 @@ export function useMultipleCollateralPrices(
     data: reads,
     isLoading,
     error,
-  } = useAnvilContractReads({
+  } = useContractReads({
     contracts,
     enabled: enabled && contracts.length > 0,
     refetchInterval,

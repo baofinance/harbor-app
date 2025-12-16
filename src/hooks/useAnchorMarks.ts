@@ -1,7 +1,7 @@
 "use client";
 
 import { useAccount } from "wagmi";
-import { useAnvilContractReads } from "./useContractReads";
+import { useContractReads } from "./useContractReads";
 import { markets } from "@/config/markets";
 import { useMemo } from "react";
 
@@ -152,7 +152,7 @@ export function useAnchorMarks() {
     isLoading,
     error,
     refetch,
-  } = useAnvilContractReads({
+  } = useContractReads({
     contracts,
     enabled: contracts.length > 0 && isConnected && !!address,
     refetchInterval: 30000,

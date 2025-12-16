@@ -9,8 +9,7 @@ import {
  useWriteContract,
  usePublicClient,
 } from "wagmi";
-import { useAnvilContractRead } from "@/hooks/useContractRead";
-import { shouldUseAnvil } from "@/config/environment";
+import { useContractRead } from "@/hooks/useContractRead";
 import { BaseError, ContractFunctionRevertedError } from "viem";
 import { ERC20_ABI, MINTER_ABI } from "@/abis/shared";
 import SimpleTooltip from "@/components/SimpleTooltip";
@@ -145,10 +144,8 @@ export const SailManageModal = ({
  },
  });
 
- // Get user balance for deposit asset (wstETH, stETH, etc.) - use useContractRead like anchor modal
- const useAnvilForBalance = shouldUseAnvil();
-
- const anvilDepositAssetBalance = useAnvilContractRead({
+ // Get user balance for deposit asset (wstETH, stETH, etc.)
+ const { data: depositAssetBalanceData } = useContractRead({
  address: depositAssetAddress as `0x${string}`,
  abi: ERC20_ABI,
  functionName:"balanceOf",
@@ -159,36 +156,14 @@ export const SailManageModal = ({
  !!address &&
  activeTab ==="mint" &&
  !!depositAssetAddress &&
- selectedDepositAsset !=="ETH" &&
- useAnvilForBalance,
- refetchInterval: 5000,
- },
- });
-
- const wagmiDepositAssetBalance = useContractRead({
- address: depositAssetAddress as `0x${string}`,
- abi: ERC20_ABI,
- functionName:"balanceOf",
- args: address ? [address] : undefined,
- query: {
- enabled:
- isOpen &&
- !!address &&
- activeTab ==="mint" &&
- !!depositAssetAddress &&
- selectedDepositAsset !=="ETH" &&
- !useAnvilForBalance,
+ selectedDepositAsset !=="ETH",
  refetchInterval: 5000,
  retry: 1,
  },
  });
 
- const depositAssetBalanceData = useAnvilForBalance
- ? anvilDepositAssetBalance.data
- : wagmiDepositAssetBalance.data;
-
- // Get user leveraged token balance - use Anvil for local dev
- const { data: leveragedTokenBalanceAnvil } = useAnvilContractRead({
+ // Get user leveraged token balance
+ const { data: leveragedTokenBalance } = useContractRead({
  address: leveragedTokenAddress,
  abi: ERC20_ABI,
  functionName:"balanceOf",
@@ -198,29 +173,9 @@ export const SailManageModal = ({
  isOpen &&
  !!address &&
  !!leveragedTokenAddress &&
- activeTab ==="redeem" &&
- shouldUseAnvil(),
+ activeTab ==="redeem",
  },
  });
-
- const { data: leveragedTokenBalanceWagmi } = useContractRead({
- address: leveragedTokenAddress,
- abi: ERC20_ABI,
- functionName:"balanceOf",
- args: address ? [address] : undefined,
- query: {
- enabled:
- isOpen &&
- !!address &&
- !!leveragedTokenAddress &&
- activeTab ==="redeem" &&
- !shouldUseAnvil(),
- },
- });
-
- const leveragedTokenBalance = shouldUseAnvil()
- ? leveragedTokenBalanceAnvil
- : leveragedTokenBalanceWagmi;
 
  // Get allowance for deposit asset
  const { data: depositAssetAllowance } = useContractRead({
@@ -277,35 +232,15 @@ export const SailManageModal = ({
  !!minterAddress &&
  parsedAmount > 0n;
 
- const { data: mintDryRunData, error: mintDryRunError } = useAnvilContractRead(
- {
+ const { data: mintDryRunResult, error: mintDryRunErr } = useContractRead({
  address: minterAddress,
  abi: MINTER_ABI,
  functionName:"mintLeveragedTokenDryRun",
  args: parsedAmount ? [parsedAmount] : undefined,
  query: {
- enabled: mintDryRunEnabled && shouldUseAnvil(),
- },
- }
- );
-
- const { data: mintDryRunDataProd, error: mintDryRunErrorProd } =
- useContractRead({
- address: minterAddress,
- abi: MINTER_ABI,
- functionName:"mintLeveragedTokenDryRun",
- args: parsedAmount ? [parsedAmount] : undefined,
- query: {
- enabled: mintDryRunEnabled && !shouldUseAnvil(),
+ enabled: mintDryRunEnabled,
  },
  });
-
- const mintDryRunResult = shouldUseAnvil()
- ? mintDryRunData
- : mintDryRunDataProd;
- const mintDryRunErr = shouldUseAnvil()
- ? mintDryRunError
- : mintDryRunErrorProd;
 
  // Dry run for redeem
  const redeemDryRunEnabled =
@@ -314,34 +249,16 @@ export const SailManageModal = ({
  !!minterAddress &&
  parsedAmount > 0n;
 
- const { data: redeemDryRunData, error: redeemDryRunError } =
- useAnvilContractRead({
- address: minterAddress,
- abi: MINTER_ABI,
- functionName:"redeemLeveragedTokenDryRun",
- args: parsedAmount ? [parsedAmount] : undefined,
- query: {
- enabled: redeemDryRunEnabled && shouldUseAnvil(),
- },
- });
-
- const { data: redeemDryRunDataProd, error: redeemDryRunErrorProd } =
+ const { data: redeemDryRunResult, error: redeemDryRunErr } =
  useContractRead({
  address: minterAddress,
  abi: MINTER_ABI,
  functionName:"redeemLeveragedTokenDryRun",
  args: parsedAmount ? [parsedAmount] : undefined,
  query: {
- enabled: redeemDryRunEnabled && !shouldUseAnvil(),
+ enabled: redeemDryRunEnabled,
  },
  });
-
- const redeemDryRunResult = shouldUseAnvil()
- ? redeemDryRunData
- : redeemDryRunDataProd;
- const redeemDryRunErr = shouldUseAnvil()
- ? redeemDryRunError
- : redeemDryRunErrorProd;
 
  // Calculate fees and outputs
  const mintFee = useMemo(() => {

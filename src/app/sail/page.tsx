@@ -5,9 +5,7 @@ import Head from "next/head";
 import { useAccount, useContractReads } from "wagmi";
 import { formatEther } from "viem";
 import { markets } from "@/config/markets";
-import { useAnvilContractReads } from "@/hooks/useContractReads";
-import { shouldUseAnvil } from "@/config/environment";
-import { publicClient as anvilPublicClient } from "@/config/rpc";
+import { useContractReads } from "@/hooks/useContractReads";
 import { useAnchorLedgerMarks } from "@/hooks/useAnchorLedgerMarks";
 import {
   ChevronDownIcon,
@@ -915,7 +913,7 @@ export default function SailPage() {
       .filter((c): c is NonNullable<typeof c> => c !== null);
   }, [sailMarkets, address]);
 
-  const useAnvil = shouldUseAnvil();
+  const useAnvil = false;
   const userDepositContractArray = useMemo(() => {
     return userDepositContracts.map((c) => c.contract);
   }, [userDepositContracts]);
@@ -929,7 +927,7 @@ export default function SailPage() {
     },
   });
 
-  const anvilUserDepositReads = useAnvilContractReads({
+  const anvilUserDepositReads = useContractReads({
     contracts: userDepositContractArray,
     enabled: sailMarkets.length > 0 && !!address && useAnvil,
     refetchInterval: 5000,

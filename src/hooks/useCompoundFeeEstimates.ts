@@ -1,8 +1,6 @@
 "use client";
 
 import { useCallback } from "react";
-import { shouldUseAnvil } from "@/config/environment";
-import { publicClient as anvilPublicClient } from "@/config/rpc";
 import { minterABI as fullMinterABI } from "@/abis/minter";
 
 export interface CompoundFeeEstimateParams {
@@ -62,7 +60,7 @@ const formatFeeAmount = (feeAmountNum: number): string => {
 };
 
 export function useCompoundFeeEstimates() {
-  const isAnvil = shouldUseAnvil();
+  const isAnvil = false;
 
   return useCallback(
     async ({
@@ -93,7 +91,7 @@ export function useCompoundFeeEstimates() {
         return { fees, totalCollateralForMinting, errors };
       }
 
-      const client = isAnvil ? anvilPublicClient : publicClient;
+      const client = isAnvil ? publicClient : publicClient;
       if (!client) {
         console.log("[useCompoundFeeEstimates] No client available");
         errors.push("No blockchain client available");

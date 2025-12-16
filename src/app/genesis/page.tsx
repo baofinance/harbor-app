@@ -14,7 +14,7 @@ import { markets } from "../../config/markets";
 import { GenesisDepositModal } from "@/components/GenesisDepositModal";
 import { GenesisWithdrawModal } from "@/components/GenesisWithdrawModal";
 import { GENESIS_ABI, contracts } from "../../config/contracts";
-import { useAnvilContractReads } from "@/hooks/useContractReads";
+import { useContractReads } from "@/hooks/useContractReads";
 import {
   ArrowRightIcon,
   GiftIcon,
@@ -557,7 +557,7 @@ export default function GenesisIndexPage() {
     });
   }, [genesisMarkets, isConnected, address]);
 
-  const { data: reads, refetch: refetchReads } = useAnvilContractReads({
+  const { data: reads, refetch: refetchReads } = useContractReads({
     contracts: genesisReadContracts,
     enabled: genesisMarkets.length > 0,
     refetchInterval: 5000, // Refetch every 5 seconds to catch genesis end
@@ -585,7 +585,7 @@ export default function GenesisIndexPage() {
   }, [genesisMarkets]);
 
   const { data: collateralTokenReads, refetch: refetchCollateralTokens } =
-    useAnvilContractReads({
+    useContractReads({
       contracts: collateralTokenContracts,
       enabled: genesisMarkets.length > 0,
     });
@@ -631,7 +631,7 @@ export default function GenesisIndexPage() {
   }, [genesisMarkets, collateralTokenReads]);
 
   const { data: totalDepositsReads, refetch: refetchTotalDeposits } =
-    useAnvilContractReads({
+    useContractReads({
       contracts: totalDepositsContracts,
       enabled:
         genesisMarkets.length > 0 &&
@@ -821,7 +821,7 @@ export default function GenesisIndexPage() {
     });
   }, [genesisMarkets]);
 
-  const { data: priceReads, refetch: refetchPrices } = useAnvilContractReads({
+  const { data: priceReads, refetch: refetchPrices } = useContractReads({
     contracts: priceContracts,
     enabled: genesisMarkets.length > 0,
   });
