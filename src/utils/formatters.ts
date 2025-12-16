@@ -173,11 +173,83 @@ export function truncateAddress(
   return `${address.slice(0, chars + 2)}...${address.slice(-chars)}`;
 }
 
+/**
+ * Format a token amount with symbol and optional USD value
+ * @param amount - Amount in wei (bigint)
+ * @param symbol - Token symbol
+ * @param priceUSD - Optional USD price per token
+ * @param maxDecimals - Maximum decimal places (default 6)
+ * @returns Object with formatted amount and optional USD value
+ */
+export function formatTokenAmount(
+  amount: bigint | undefined | null,
+  symbol: string,
+  priceUSD?: number,
+  maxDecimals: number = 6
+): { formatted: string; usd: string | null; display: string } {
+  if (!amount) {
+    return {
+      formatted: "0",
+      usd: null,
+      display: `0 ${symbol}`,
+    };
+  }
 
+  const numValue = Number(viemFormatEther(amount));
 
+  // Format with limited decimals, removing trailing zeros
+  let formatted: string;
+  if (numValue === 0) {
+    formatted = "0";
+  } else if (numValue < 0.000001) {
+    formatted = numValue.toExponential(2);
+  } else {
+    // Use toLocaleString for thousand separators
+    formatted = numValue.toLocaleString(undefined, {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: maxDecimals,
+    });
+  }
 
+  // Calculate USD value if price is available
+  let usd: string | null = null;
+  if (priceUSD && priceUSD > 0 && numValue > 0) {
+    const usdValue = numValue * priceUSD;
+    usd = formatUSD(usdValue);
+  }
 
+  // Display format with proper spacing: "1,234.56 ETH"
+  const display = `${formatted} ${symbol}`;
 
+  return { formatted, usd, display };
+}
 
+/**
+ * Format a balance display with proper spacing
+ * @param balance - Balance in wei
+ * @param symbol - Token symbol
+ * @param maxDecimals - Maximum decimal places
+ * @returns Formatted string like "1,234.56 ETH"
+ */
+export function formatBalance(
+  balance: bigint | undefined | null,
+  symbol: string,
+  maxDecimals: number = 4
+): string {
+  if (!balance) return `0 ${symbol}`;
 
+  const numValue = Number(viemFormatEther(balance));
 
+  if (numValue === 0) return `0 ${symbol}`;
+
+  if (numValue < 0.0001) {
+    return `<0.0001 ${symbol}`;
+  }
+
+  const formatted = numValue.toLocaleString(undefined, {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: maxDecimals,
+  });
+
+  return `${formatted} ${symbol}`;
+}

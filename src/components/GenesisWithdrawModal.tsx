@@ -15,6 +15,8 @@ import {
  TransactionStep,
 } from "./TransactionProgressModal";
 import { useCollateralPrice } from "@/hooks/useCollateralPrice";
+import { formatTokenAmount, formatBalance } from "@/utils/formatters";
+import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
 
 interface GenesisWithdrawalModalProps {
  isOpen: boolean;
@@ -23,44 +25,12 @@ interface GenesisWithdrawalModalProps {
  collateralSymbol: string;
  userDeposit: bigint;
 priceOracleAddress?: string;
+ coinGeckoId?: string;
  onSuccess?: () => void;
  embedded?: boolean;
 }
 
-// Format a bigint token amount with limited decimals and optional USD value
-function formatTokenAmount(
-  amount: bigint,
-  symbol: string,
-  priceUSD?: number,
-  maxDecimals: number = 6
-): { formatted: string; usd: string | null } {
-  const numValue = Number(formatEther(amount));
-  
-  // Format with limited decimals, removing trailing zeros
-  let formatted: string;
-  if (numValue === 0) {
-    formatted = "0";
-  } else if (numValue < 0.000001) {
-    formatted = numValue.toExponential(2);
-  } else {
-    formatted = numValue.toFixed(maxDecimals).replace(/\.?0+$/, "");
-  }
-  
-  // Calculate USD value if price is available
-  let usd: string | null = null;
-  if (priceUSD && priceUSD > 0 && numValue > 0) {
-    const usdValue = numValue * priceUSD;
-    if (usdValue < 0.01) {
-      usd = `$${usdValue.toFixed(4)}`;
-    } else if (usdValue < 1000) {
-      usd = `$${usdValue.toFixed(2)}`;
-    } else {
-      usd = `$${usdValue.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
-    }
-  }
-  
-  return { formatted, usd };
-}
+// formatTokenAmount is now imported from utils/formatters
 
 const genesisABI = [
  {
@@ -83,7 +53,8 @@ export const GenesisWithdrawModal = ({
  genesisAddress,
  collateralSymbol,
  userDeposit,
-priceOracleAddress,
+ priceOracleAddress,
+ coinGeckoId,
  onSuccess,
  embedded = false,
 }: GenesisWithdrawalModalProps) => {
@@ -97,11 +68,24 @@ priceOracleAddress,
  const [currentStepIndex, setCurrentStepIndex] = useState(0);
  const publicClient = usePublicClient();
 
-// Get collateral price for USD display
-const { priceUSD: collateralPriceUSD } = useCollateralPrice(
+// Fetch CoinGecko price (primary source)
+const { price: coinGeckoPrice } = useCoinGeckoPrice(
+  coinGeckoId || "",
+  60000 // Refresh every 60 seconds
+);
+
+// Get collateral price from oracle (fallback)
+const oraclePriceData = useCollateralPrice(
   priceOracleAddress as `0x${string}` | undefined,
   { enabled: isOpen && !!priceOracleAddress }
 );
+
+// Priority order: CoinGecko → fxUSD hardcoded $1 → Oracle
+const collateralPriceUSD = coinGeckoPrice 
+  ? coinGeckoPrice 
+  : collateralSymbol.toLowerCase() === "fxusd" 
+    ? 1.00 
+    : oraclePriceData.priceUSD;
 
  // Contract write hooks
  const { writeContractAsync } = useWriteContract();
@@ -316,7 +300,7 @@ const successUSD = successAmountNum > 0 && collateralPriceUSD > 0
  <div className="text-sm text-[#1E4775]/70">
       Your Deposit:{" "}
  <span className="font-medium text-[#1E4775]">
-        {depositFmt.formatted} {collateralSymbol}
+        {depositFmt.display}
         {depositFmt.usd && <span className="text-[#1E4775]/50 ml-1">({depositFmt.usd})</span>}
  </span>
  </div>
@@ -329,7 +313,7 @@ const successUSD = successAmountNum > 0 && collateralPriceUSD > 0
  <div className="flex justify-between items-center text-xs">
  <span className="text-[#1E4775]/70">Amount</span>
  <span className="text-[#1E4775]/70">
-Available: {formatTokenAmount(userDeposit, collateralSymbol).formatted} {collateralSymbol}
+Available: {formatTokenAmount(userDeposit, collateralSymbol).display}
  </span>
  </div>
  <div className="relative">
@@ -350,9 +334,6 @@ Available: {formatTokenAmount(userDeposit, collateralSymbol).formatted} {collate
  >
  MAX
  </button>
- </div>
- <div className="text-right text-xs text-[#1E4775]/50">
- {collateralSymbol}
  </div>
  </div>
 
@@ -389,7 +370,7 @@ Available: {formatTokenAmount(userDeposit, collateralSymbol).formatted} {collate
     <div className="flex justify-between items-baseline">
       <span className="text-[#1E4775]/70">Current Deposit:</span>
  <span className="text-[#1E4775]">
-        {currentFmt.formatted} {collateralSymbol}
+        {currentFmt.display}
         {currentFmt.usd && <span className="text-[#1E4775]/50 ml-1">({currentFmt.usd})</span>}
  </span>
  </div>
@@ -402,7 +383,7 @@ Available: {formatTokenAmount(userDeposit, collateralSymbol).formatted} {collate
     <div className="flex justify-between items-baseline">
       <span className="text-[#1E4775]/70">- Withdraw Amount:</span>
  <span className="text-red-600">
-        -{withdrawFmt.formatted} {collateralSymbol}
+        -{withdrawFmt.display}
         {withdrawFmt.usd && <span className="text-red-400 ml-1">(-{withdrawFmt.usd})</span>}
  </span>
  </div>
@@ -415,7 +396,7 @@ Available: {formatTokenAmount(userDeposit, collateralSymbol).formatted} {collate
     <div className="flex justify-between items-baseline font-medium">
       <span className="text-[#1E4775]">Remaining Deposit:</span>
       <span className={remainingDeposit === 0n ? "text-orange-600" : "text-[#1E4775]"}>
-        {remainingFmt.formatted} {collateralSymbol}
+        {remainingFmt.display}
         {remainingFmt.usd && <span className={`font-normal ml-1 ${remainingDeposit === 0n ? "text-orange-400" : "text-[#1E4775]/50"}`}>({remainingFmt.usd})</span>}
  </span>
  </div>
@@ -536,7 +517,10 @@ Available: {formatTokenAmount(userDeposit, collateralSymbol).formatted} {collate
             onClick={handleClose}
           />
 
-          <div className="relative bg-white shadow-2xl w-full max-w-md mx-2 sm:mx-4 animate-in fade-in-0 scale-in-95 duration-200 rounded-lg max-h-[95vh] sm:max-h-[90vh] overflow-y-auto">
+          <div
+            className="relative bg-white shadow-2xl w-full max-w-md mx-2 sm:mx-4 animate-in fade-in-0 scale-in-95 duration-200 rounded-none max-h-[95vh] sm:max-h-[90vh] overflow-y-auto"
+            style={{ borderRadius: 0 }}
+          >
             <div className="flex items-center justify-between p-3 sm:p-4 lg:p-6 border-b border-[#1E4775]/20">
               <h2 className="text-lg sm:text-2xl font-bold text-[#1E4775]">
                 Withdraw from Maiden Voyage

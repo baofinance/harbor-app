@@ -60,6 +60,19 @@ export const GenesisManageModal = ({
 }: GenesisManageModalProps) => {
   const { address } = useAccount();
   const [activeTab, setActiveTab] = useState<"deposit" | "withdraw">(initialTab);
+  
+  // Delay contract reads until modal is fully mounted to avoid fetch errors
+  const [mounted, setMounted] = useState(false);
+  
+  useEffect(() => {
+    if (isOpen) {
+      // Small delay to ensure modal is fully mounted
+      const timer = setTimeout(() => setMounted(true), 100);
+      return () => clearTimeout(timer);
+    } else {
+      setMounted(false);
+    }
+  }, [isOpen]);
 
   const genesisAddress = market?.addresses?.genesis as `0x${string}` | undefined;
   const collateralAddress = market?.addresses?.collateralToken as `0x${string}` | undefined;
@@ -81,26 +94,28 @@ export const GenesisManageModal = ({
 
   // Fetch user's deposit balance (with error handling)
   const { data: userDeposit, error: depositError, isLoading: depositLoading } = useContractRead({
-    address: genesisAddress,
+    address: isValidGenesisAddress ? genesisAddress : undefined,
     abi: genesisABI,
     functionName: "balanceOf",
     args: address ? [address] : undefined,
     query: {
-      enabled: !!address && isValidGenesisAddress && isOpen,
+      enabled: !!address && isValidGenesisAddress && isOpen && mounted,
       retry: 1,
       retryDelay: 1000,
+      allowFailure: true, // Don't throw on network errors
     },
   });
 
   // Check if genesis has ended (with error handling)
   const { data: isEnded, error: endedError, isLoading: endedLoading } = useContractRead({
-    address: genesisAddress,
+    address: isValidGenesisAddress ? genesisAddress : undefined,
     abi: genesisABI,
     functionName: "genesisIsEnded",
     query: {
-      enabled: isValidGenesisAddress && isOpen,
+      enabled: isValidGenesisAddress && isOpen && mounted,
       retry: 1,
       retryDelay: 1000,
+      allowFailure: true, // Don't throw on network errors
     },
   });
 
@@ -151,7 +166,10 @@ export const GenesisManageModal = ({
         onClick={handleClose}
       />
 
-      <div className="relative bg-white shadow-2xl w-full max-w-md mx-2 sm:mx-4 animate-in fade-in-0 scale-in-95 duration-200 rounded-lg max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col">
+      <div
+        className="relative bg-white shadow-2xl w-full max-w-md mx-2 sm:mx-4 animate-in fade-in-0 scale-in-95 duration-200 rounded-none max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col"
+        style={{ borderRadius: 0 }}
+      >
         {/* Header with tabs */}
         <div className="flex items-center justify-between p-0 pt-2 sm:pt-3 px-2 sm:px-3 border-b border-[#1E4775]/10">
           <div className="flex flex-1 mr-2 sm:mr-4 border border-[#1E4775]/20 border-b-0 overflow-hidden">
@@ -226,20 +244,27 @@ export const GenesisManageModal = ({
             <div className="text-center text-[#1E4775]/60 py-8">
               <div className="animate-pulse">Loading market data...</div>
             </div>
-          ) : activeTab === "deposit" && !isEnded ? (
+          ) : activeTab === "deposit" && !isEnded && isValidGenesisAddress && isValidCollateralAddress ? (
             <GenesisDepositModal
               isOpen={true}
               onClose={handleClose}
               genesisAddress={genesisAddress}
               collateralAddress={collateralAddress}
               collateralSymbol={collateralSymbol}
-              wrappedCollateralSymbol={market?.collateral?.underlyingSymbol}
+              wrappedCollateralSymbol={
+                // For stETH markets: wstETH is the wrapped collateral (same as collateral symbol)
+                // For fxUSD markets: fxSAVE is the wrapped collateral (underlyingSymbol)
+                market?.collateral?.symbol?.toLowerCase() === "wsteth"
+                  ? market?.collateral?.symbol
+                  : market?.collateral?.underlyingSymbol || collateralSymbol
+              }
               acceptedAssets={acceptedAssets}
               marketAddresses={{
                 collateralToken: market?.addresses?.collateralToken,
                 wrappedCollateralToken: market?.addresses?.wrappedCollateralToken,
                 priceOracle: market?.addresses?.collateralPrice,
               }}
+              coinGeckoId={market?.coinGeckoId}
               onSuccess={onSuccess}
               embedded={true}
             />
@@ -251,6 +276,7 @@ export const GenesisManageModal = ({
               collateralSymbol={collateralSymbol}
               userDeposit={userDeposit || 0n}
               priceOracleAddress={priceOracleAddress}
+              coinGeckoId={market?.coinGeckoId}
               onSuccess={onSuccess}
               embedded={true}
             />

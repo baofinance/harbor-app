@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { parseEther, formatEther } from "viem";
 import {
  useAccount,
@@ -18,6 +18,8 @@ import {
  TransactionProgressModal,
  TransactionStep,
 } from "./TransactionProgressModal";
+import { formatTokenAmount, formatBalance, formatUSD } from "@/utils/formatters";
+import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
 
 interface GenesisDepositModalProps {
  isOpen: boolean;
@@ -32,44 +34,12 @@ interface GenesisDepositModalProps {
  wrappedCollateralToken?: string;
 priceOracle?: string;
  };
+ coinGeckoId?: string;
  onSuccess?: () => void;
  embedded?: boolean;
 }
 
-// Format a bigint token amount with limited decimals and optional USD value
-function formatTokenAmount(
-  amount: bigint,
-  symbol: string,
-  priceUSD?: number,
-  maxDecimals: number = 6
-): { formatted: string; usd: string | null } {
-  const numValue = Number(formatEther(amount));
-  
-  // Format with limited decimals, removing trailing zeros
-  let formatted: string;
-  if (numValue === 0) {
-    formatted = "0";
-  } else if (numValue < 0.000001) {
-    formatted = numValue.toExponential(2);
-  } else {
-    formatted = numValue.toFixed(maxDecimals).replace(/\.?0+$/, "");
-  }
-  
-  // Calculate USD value if price is available
-  let usd: string | null = null;
-  if (priceUSD && priceUSD > 0 && numValue > 0) {
-    const usdValue = numValue * priceUSD;
-    if (usdValue < 0.01) {
-      usd = `$${usdValue.toFixed(4)}`;
-    } else if (usdValue < 1000) {
-      usd = `$${usdValue.toFixed(2)}`;
-    } else {
-      usd = `$${usdValue.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
-    }
-  }
-  
-  return { formatted, usd };
-}
+// formatTokenAmount is now imported from utils/formatters
 
 type ModalStep ="input" |"approving" |"depositing" |"success" |"error";
 
@@ -82,13 +52,14 @@ export const GenesisDepositModal = ({
  wrappedCollateralSymbol,
  acceptedAssets,
  marketAddresses,
+ coinGeckoId,
  onSuccess,
  embedded = false,
 }: GenesisDepositModalProps) => {
  const { address } = useAccount();
  const wagmiPublicClient = usePublicClient();
-  // Use mainnet public client as fallback if wagmi client is not available
-  const publicClient = wagmiPublicClient || mainnetPublicClient;
+  // Use wagmi public client
+  const publicClient = wagmiPublicClient;
  const [amount, setAmount] = useState("");
  const [selectedAsset, setSelectedAsset] = useState<string>(collateralSymbol);
  const [step, setStep] = useState<ModalStep>("input");
@@ -99,12 +70,46 @@ export const GenesisDepositModal = ({
  const [currentStepIndex, setCurrentStepIndex] = useState(0);
  const [successfulDepositAmount, setSuccessfulDepositAmount] =
  useState<string>("");
+ 
+ // Delay contract reads until modal is fully mounted to avoid fetch errors
+ const [mounted, setMounted] = useState(false);
+ 
+ React.useEffect(() => {
+   if (isOpen) {
+     // Small delay to ensure modal is fully mounted
+     const timer = setTimeout(() => setMounted(true), 100);
+     return () => clearTimeout(timer);
+   } else {
+     setMounted(false);
+   }
+ }, [isOpen]);
 
-// Get collateral price for USD display
-const { priceUSD: collateralPriceUSD } = useCollateralPrice(
+// Fetch CoinGecko price (primary source)
+const { price: coinGeckoPrice } = useCoinGeckoPrice(
+  coinGeckoId || "",
+  60000 // Refresh every 60 seconds
+);
+
+// Get collateral price from oracle (fallback)
+const oraclePriceData = useCollateralPrice(
   marketAddresses?.priceOracle as `0x${string}` | undefined,
   { enabled: isOpen && !!marketAddresses?.priceOracle }
 );
+
+// Priority order for underlying price: CoinGecko → fxUSD hardcoded $1 → Oracle
+// CoinGecko is the most reliable source for real-time prices
+const underlyingPriceUSD = coinGeckoPrice 
+  ? coinGeckoPrice 
+  : collateralSymbol.toLowerCase() === "fxusd" 
+    ? 1.00 
+    : oraclePriceData.priceUSD;
+
+const wrappedRate = oraclePriceData.maxRate;
+const maxUnderlyingPrice = coinGeckoPrice
+  ? BigInt(Math.floor(coinGeckoPrice * 1e18))
+  : collateralSymbol.toLowerCase() === "fxusd"
+    ? 1000000000000000000n // 1.0 in 18 decimals
+    : oraclePriceData.maxPrice;
 
  // Map asset symbol to its token address
  const getAssetAddress = (assetSymbol: string): string | null => {
@@ -150,11 +155,34 @@ const zapAddress = contracts.zap as `0x${string}`;
 const stETHAddress = contracts.wrappedCollateralToken as `0x${string}`; // stETH
 const wstETHAddress = contracts.collateralToken as `0x${string}`; // wstETH
 
+// Check if selected asset is a wrapped token (fxSAVE, wstETH)
+const isWrappedToken = selectedAsset.toLowerCase() === "fxsave" || 
+                       selectedAsset.toLowerCase() === "wsteth" ||
+                       (wrappedCollateralSymbol && selectedAsset.toLowerCase() === wrappedCollateralSymbol.toLowerCase());
+
+// Calculate the correct price for the selected asset
+// For wrapped tokens: multiply underlying price by wrapped rate
+// For other tokens: use underlying price directly
+const selectedAssetPriceUSD = isWrappedToken && wrappedRate && maxUnderlyingPrice
+  ? (Number(maxUnderlyingPrice) / 1e18) * (Number(wrappedRate) / 1e18)
+  : underlyingPriceUSD;
+
+// The collateral stored in Genesis is always the base collateral (fxUSD, wstETH)
+// So for displaying existing deposits, we use the underlying price
+const collateralPriceUSD = underlyingPriceUSD;
+
+// Validate selected asset address
+const isValidSelectedAssetAddress = 
+  selectedAssetAddress && 
+  selectedAssetAddress !== "0x0000000000000000000000000000000000000000" &&
+  selectedAssetAddress.startsWith("0x") &&
+  selectedAssetAddress.length === 42;
+
 // Get ETH balance for native ETH deposits
 const { data: ethBalance, isLoading: isEthBalanceLoading, isError: isEthBalanceError } = useBalance({
   address: address,
   query: {
-    enabled: !!address && isOpen && isNativeETH,
+    enabled: !!address && isOpen && mounted && isNativeETH,
   },
 });
 
@@ -163,10 +191,16 @@ const { data: ethBalance, isLoading: isEthBalanceLoading, isError: isEthBalanceE
 const assetBalanceContracts = acceptedAssets
   .filter(asset => {
     const assetAddress = getAssetAddress(asset.symbol);
-    return assetAddress && assetAddress !== "0x0000000000000000000000000000000000000000";
+    return assetAddress && 
+           assetAddress !== "0x0000000000000000000000000000000000000000" &&
+           assetAddress.startsWith("0x") &&
+           assetAddress.length === 42;
   })
   .map(asset => {
     const assetAddress = getAssetAddress(asset.symbol);
+    if (!assetAddress || assetAddress === "0x0000000000000000000000000000000000000000") {
+      return null;
+    }
     return {
       symbol: asset.symbol,
       address: assetAddress as `0x${string}`,
@@ -174,18 +208,30 @@ const assetBalanceContracts = acceptedAssets
       functionName: "balanceOf" as const,
       args: address ? [address] : undefined,
     };
-  });
+  })
+  .filter((c): c is NonNullable<typeof c> => c !== null);
 
-const { data: allAssetBalances } = useContractReads({
-  contracts: assetBalanceContracts.map(c => ({
-    address: c.address,
-    abi: c.abi,
-    functionName: c.functionName,
-    args: c.args,
-  })),
+// Only fetch balances if we have valid contracts and the modal is open and mounted
+const shouldFetchBalances = !!address && isOpen && mounted && assetBalanceContracts.length > 0;
+
+// Create the contracts array, ensuring it's never empty when the hook is enabled
+const balanceContractsForHook = shouldFetchBalances 
+  ? assetBalanceContracts.map(c => ({
+      address: c.address,
+      abi: c.abi,
+      functionName: c.functionName,
+      args: c.args,
+    }))
+  : []; // Empty array when disabled
+
+const { data: allAssetBalances, error: balancesError } = useContractReads({
+  contracts: balanceContractsForHook,
   query: {
-    enabled: !!address && isOpen && assetBalanceContracts.length > 0,
-    refetchInterval: 5000,
+    enabled: shouldFetchBalances && balanceContractsForHook.length > 0,
+    refetchInterval: shouldFetchBalances ? 5000 : false,
+    retry: 1,
+    retryDelay: 1000,
+    allowFailure: true, // Don't fail all reads if one fails
   },
 });
 
@@ -210,57 +256,55 @@ acceptedAssets.forEach((asset) => {
 // Get balance for selected asset
 const selectedAssetBalance = assetBalanceMap.get(selectedAsset) || 0n;
 
- // Debug logging
- if (process.env.NODE_ENV ==="development") {
- console.log("[GenesisDepositModal] Balance Debug:", {
- selectedAsset,
- selectedAssetAddress,
- collateralAddress,
- collateralSymbol,
- marketAddresses,
- address,
- isOpen,
- isNativeETH,
- assetBalanceMap: Object.fromEntries(assetBalanceMap),
- selectedAssetBalance: selectedAssetBalance.toString(),
- });
- }
-
 // For stETH, check allowance for zap contract; for other tokens, check allowance for genesis
 const allowanceTarget = isStETH ? zapAddress : genesisAddress;
- const { data: allowanceData, refetch: refetchAllowance } = useContractRead({
- address: selectedAssetAddress as `0x${string}`,
+ const { data: allowanceData, refetch: refetchAllowance, error: allowanceError } = useContractRead({
+ address: isValidSelectedAssetAddress ? (selectedAssetAddress as `0x${string}`) : undefined,
  abi: ERC20_ABI,
  functionName:"allowance",
-    args: address ? [address, allowanceTarget as `0x${string}`] : undefined,
- enabled:
- !!address &&
- isOpen &&
- !isNativeETH &&
- !!selectedAssetAddress &&
- selectedAssetAddress !=="0x0000000000000000000000000000000000000000",
- refetchInterval: 5000,
+    args: address && isValidSelectedAssetAddress ? [address, allowanceTarget as `0x${string}`] : undefined,
+ query: {
+   enabled:
+     !!address &&
+     isOpen &&
+     mounted &&
+     !isNativeETH &&
+     isValidSelectedAssetAddress,
+   refetchInterval: 5000,
+   retry: 1,
+   allowFailure: true,
+ },
  });
 
  // Check if genesis has ended
- const { data: genesisEnded } = useContractRead({
- address: genesisAddress as `0x${string}`,
+ const isValidGenesisAddress = 
+   genesisAddress && 
+   typeof genesisAddress === 'string' &&
+   genesisAddress.startsWith("0x") && 
+   genesisAddress.length === 42;
+
+ const { data: genesisEnded, error: genesisEndedError } = useContractRead({
+ address: isValidGenesisAddress ? (genesisAddress as `0x${string}`) : undefined,
  abi: GENESIS_ABI,
  functionName:"genesisIsEnded",
  query: {
-   enabled: !!genesisAddress && isOpen,
+   enabled: isValidGenesisAddress && isOpen && mounted,
+   retry: 1,
+   allowFailure: true,
  },
  });
 
  // Get current user deposit in Genesis
- const { data: currentDeposit } = useContractRead({
- address: genesisAddress as `0x${string}`,
+ const { data: currentDeposit, error: currentDepositError } = useContractRead({
+ address: isValidGenesisAddress ? (genesisAddress as `0x${string}`) : undefined,
  abi: GENESIS_ABI,
  functionName:"balanceOf",
  args: address ? [address] : undefined,
  query: {
-   enabled: !!address && !!genesisAddress && isOpen,
+   enabled: !!address && isValidGenesisAddress && isOpen && mounted,
    refetchInterval: 5000,
+   retry: 1,
+   allowFailure: true,
  },
  });
 
@@ -269,6 +313,51 @@ const allowanceTarget = isStETH ? zapAddress : genesisAddress;
 
   // Use the balance from the asset balance map
   const balance = selectedAssetBalance;
+
+// Debug logging (after all hooks are declared)
+if (process.env.NODE_ENV ==="development") {
+console.log("[GenesisDepositModal] Balance Debug:", {
+selectedAsset,
+selectedAssetAddress,
+isValidSelectedAssetAddress,
+collateralAddress,
+collateralSymbol,
+marketAddresses,
+address,
+isOpen,
+mounted,
+isNativeETH,
+assetBalanceContracts: assetBalanceContracts.length,
+shouldFetchBalances,
+assetBalanceMap: Object.fromEntries(assetBalanceMap),
+selectedAssetBalance: selectedAssetBalance.toString(),
+balancesError: balancesError?.message,
+allowanceError: allowanceError?.message,
+genesisEndedError: genesisEndedError?.message,
+currentDepositError: currentDepositError?.message,
+});
+
+console.log("[GenesisDepositModal] Price Debug:", {
+  selectedAsset,
+  coinGeckoId,
+  coinGeckoPrice,
+  oraclePriceUSD: oraclePriceData.priceUSD,
+  priceSource: coinGeckoPrice 
+    ? "CoinGecko" 
+    : collateralSymbol.toLowerCase() === "fxusd" 
+      ? "Hardcoded ($1.00)" 
+      : "Oracle",
+  isWrappedToken,
+  underlyingPriceUSD,
+  wrappedRate: wrappedRate ? Number(wrappedRate) / 1e18 : null,
+  maxUnderlyingPrice: maxUnderlyingPrice ? Number(maxUnderlyingPrice) / 1e18 : null,
+  selectedAssetPriceUSD,
+  collateralPriceUSD,
+  calculation: isWrappedToken && wrappedRate && maxUnderlyingPrice 
+    ? `${Number(maxUnderlyingPrice) / 1e18} * ${Number(wrappedRate) / 1e18} = ${selectedAssetPriceUSD}`
+    : "Using underlying price directly"
+});
+}
 const allowance = isNativeETH ? 0n : (typeof allowanceData === 'bigint' ? allowanceData : 0n);
  const amountBigInt = amount ? parseEther(amount) : 0n;
  const needsApproval =
@@ -284,7 +373,7 @@ const { data: expectedWstETHFromETH } = useContractRead({
   functionName: "getWstETHByStETH",
   args: amountBigInt > 0n && isNativeETH ? [amountBigInt] : undefined, // stETH.submit() gives 1:1 ETH→stETH
   query: {
-    enabled: !!address && isOpen && isNativeETH && amountBigInt > 0n,
+    enabled: !!address && isOpen && mounted && isNativeETH && amountBigInt > 0n,
   },
 });
 
@@ -295,7 +384,7 @@ const { data: expectedWstETHFromStETH } = useContractRead({
   functionName: "getWstETHByStETH",
   args: amountBigInt > 0n && isStETH ? [amountBigInt] : undefined,
   query: {
-    enabled: !!address && isOpen && isStETH && amountBigInt > 0n,
+    enabled: !!address && isOpen && mounted && isStETH && amountBigInt > 0n,
   },
 });
 
@@ -802,12 +891,8 @@ setSuccessfulDepositAmount(actualDepositedAmount);
  const renderSuccessContent = () => {
 // Format the success amount with USD
 const successAmountNum = parseFloat(successfulDepositAmount || "0");
-const successAmountFormatted = successAmountNum > 0 
-  ? successAmountNum.toFixed(6).replace(/\.?0+$/, "") 
-  : "0";
-const successUSD = successAmountNum > 0 && collateralPriceUSD > 0
-  ? successAmountNum * collateralPriceUSD
-  : null;
+const successAmountBigInt = successAmountNum > 0 ? parseEther(successfulDepositAmount) : 0n;
+const successFmt = formatTokenAmount(successAmountBigInt, collateralSymbol, collateralPriceUSD);
 
  return (
  <div className="space-y-4">
@@ -818,11 +903,11 @@ const successUSD = successAmountNum > 0 && collateralPriceUSD > 0
  {successfulDepositAmount && (
 <>
  <p className="text-lg font-bold text-[#1E4775] font-mono mt-2">
-{successAmountFormatted} {collateralSymbol}
+{successFmt.display}
  </p>
-{successUSD && (
+{successFmt.usd && (
 <p className="text-sm text-[#1E4775]/60">
-(≈ ${successUSD < 0.01 ? successUSD.toFixed(4) : successUSD.toFixed(2)})
+({successFmt.usd})
 </p>
 )}
 </>
@@ -867,21 +952,7 @@ const successUSD = successAmountNum > 0 && collateralPriceUSD > 0
  <div className="p-3 bg-red-50 border border-red-500/30 text-red-600 text-sm">
  ⚠️ Genesis period has ended. Deposits are no longer accepted.
  </div>
- )}
-
- {/* Current Deposit */}
-{(() => {
-  const currentFmt = formatTokenAmount(userCurrentDeposit, collateralSymbol, collateralPriceUSD);
-  return (
- <div className="text-sm text-[#1E4775]/70">
-      Current Deposit:{" "}
- <span className="font-medium text-[#1E4775]">
-        {currentFmt.formatted} {collateralSymbol}
-        {currentFmt.usd && <span className="text-[#1E4775]/50 ml-1">({currentFmt.usd})</span>}
- </span>
- </div>
-  );
-})()}
+            )}
 
  {/* Deposit Asset Selection */}
  <div className="space-y-2">
@@ -918,7 +989,7 @@ const successUSD = successAmountNum > 0 && collateralPriceUSD > 0
  <div className="flex justify-between items-center text-xs">
  <span className="text-[#1E4775]/70">Amount</span>
  <span className="text-[#1E4775]/70">
- Balance:{""}
+ Balance:{" "}
 {isNativeETH ? (
   // ETH balance display
   isEthBalanceError ? (
@@ -926,24 +997,23 @@ const successUSD = successAmountNum > 0 && collateralPriceUSD > 0
   ) : isEthBalanceLoading ? (
     <span className="text-[#1E4775]/50">Loading...</span>
   ) : (
-    formatEther(balance)
+    formatBalance(balance, selectedAsset)
   )
 ) : (
   // ERC20 balance display
-  balanceError ? (
+  balancesError ? (
  <span
  className="text-red-500"
- title={balanceError.message}
+ title={balancesError.message}
  >
  Error loading balance
  </span>
- ) : balanceStatus ==="pending" ? (
+ ) : !mounted ? (
  <span className="text-[#1E4775]/50">Loading...</span>
  ) : (
- formatEther(balance)
+ formatBalance(balance, selectedAsset)
   )
- )}{""}
- {selectedAsset}
+)}
  </span>
  </div>
  <div className="relative">
@@ -973,9 +1043,6 @@ const successUSD = successAmountNum > 0 && collateralPriceUSD > 0
  MAX
  </button>
  </div>
- <div className="text-right text-xs text-[#1E4775]/50">
- {selectedAsset}
- </div>
  </div>
 
  {/* Transaction Preview - Always visible */}
@@ -989,7 +1056,7 @@ const successUSD = successAmountNum > 0 && collateralPriceUSD > 0
     <div className="flex justify-between items-baseline">
  <span className="text-[#1E4775]/70">Current Deposit:</span>
  <span className="text-[#1E4775]">
-        {currentFmt.formatted} {collateralSymbol}
+        {currentFmt.display}
         {currentFmt.usd && <span className="text-[#1E4775]/50 ml-1">({currentFmt.usd})</span>}
  </span>
  </div>
@@ -999,14 +1066,16 @@ const successUSD = successAmountNum > 0 && collateralPriceUSD > 0
  <>
 {(() => {
   const depositAmt = isNativeETH || isStETH ? actualWstETHDeposit : amountBigInt;
-  const depositFmt = formatTokenAmount(depositAmt, collateralSymbol, collateralPriceUSD);
+  // For deposit display, show the amount being deposited with the selected asset's price
+  // But display in collateral symbol since that's what gets stored
+  const depositFmt = formatTokenAmount(depositAmt, collateralSymbol, selectedAssetPriceUSD);
   return (
     <div className="flex justify-between items-baseline">
       <span className="text-[#1E4775]/70">+ Deposit Amount:</span>
  <span className="text-[#1E4775]">
         {depositAmt > 0n ? (
           <>
-            +{depositFmt.formatted} {collateralSymbol}
+            +{depositFmt.display}
             {depositFmt.usd && <span className="text-[#1E4775]/50 ml-1">(+{depositFmt.usd})</span>}
           </>
         ) : (
@@ -1018,18 +1087,31 @@ const successUSD = successAmountNum > 0 && collateralPriceUSD > 0
 })()}
 {(isNativeETH || isStETH) && actualWstETHDeposit > 0n && (
 <div className="text-xs text-[#1E4775]/50 italic">
-({parseFloat(amount).toFixed(6)} {selectedAsset} ≈ {formatTokenAmount(actualWstETHDeposit, collateralSymbol).formatted} {collateralSymbol})
+({parseFloat(amount).toFixed(6)} {selectedAsset} ≈ {formatTokenAmount(actualWstETHDeposit, collateralSymbol).display})
 </div>
 )}
  <div className="border-t border-[#1E4775]/30 pt-2">
 {(() => {
-  const totalFmt = formatTokenAmount(newTotalDepositActual, collateralSymbol, collateralPriceUSD);
+  // For total deposit, we need to calculate the USD value correctly
+  // Current deposit is in collateral (base token), new deposit amount is what we're adding
+  const currentDepositUSD = userCurrentDeposit > 0n 
+    ? (Number(userCurrentDeposit) / 1e18) * collateralPriceUSD 
+    : 0;
+  const depositAmt = isNativeETH || isStETH ? actualWstETHDeposit : amountBigInt;
+  const newDepositUSD = depositAmt > 0n 
+    ? (Number(depositAmt) / 1e18) * selectedAssetPriceUSD 
+    : 0;
+  const totalUSD = currentDepositUSD + newDepositUSD;
+  
+  const totalFmt = formatTokenAmount(newTotalDepositActual, collateralSymbol);
+  const totalUSDFormatted = totalUSD > 0 ? formatUSD(totalUSD) : null;
+  
   return (
     <div className="flex justify-between items-baseline font-medium">
       <span className="text-[#1E4775]">New Total Deposit:</span>
  <span className="text-[#1E4775]">
-        {totalFmt.formatted} {collateralSymbol}
-        {totalFmt.usd && <span className="text-[#1E4775]/50 font-normal ml-1">({totalFmt.usd})</span>}
+        {totalFmt.display}
+        {totalUSDFormatted && <span className="text-[#1E4775]/50 font-normal ml-1">({totalUSDFormatted})</span>}
  </span>
  </div>
   );
@@ -1171,7 +1253,10 @@ const successUSD = successAmountNum > 0 && collateralPriceUSD > 0
             onClick={handleClose}
           />
 
-          <div className="relative bg-white shadow-2xl w-full max-w-md mx-2 sm:mx-4 animate-in fade-in-0 scale-in-95 duration-200 rounded-lg max-h-[95vh] sm:max-h-[90vh] overflow-y-auto">
+          <div
+            className="relative bg-white shadow-2xl w-full max-w-md mx-2 sm:mx-4 animate-in fade-in-0 scale-in-95 duration-200 rounded-none max-h-[95vh] sm:max-h-[90vh] overflow-y-auto"
+            style={{ borderRadius: 0 }}
+          >
             <div className="flex items-center justify-between p-3 sm:p-4 lg:p-6 border-b border-[#1E4775]/20">
               <h2 className="text-lg sm:text-2xl font-bold text-[#1E4775]">
                 Deposit in Maiden Voyage
