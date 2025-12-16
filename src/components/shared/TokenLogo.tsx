@@ -45,15 +45,32 @@ export function getLogoPath(symbol: string): string {
     return "/icons/btc.png"; // Use BTC icon for Aave WBTC variants
   }
 
-  // Harbor tokens
+  // Harbor tokens - ha (pegged) tokens
+  if (normalizedSymbol === "haeth") {
+    return "/icons/haETH.png";
+  }
+  if (normalizedSymbol === "habtc") {
+    return "/icons/haBTC.png";
+  }
   if (normalizedSymbol === "hapb") {
     return "/icons/haETH.png";
   }
   if (normalizedSymbol.startsWith("ha")) {
-    return "/icons/haUSD2.png";
+    return "/icons/haUSD2.png"; // Fallback for other ha tokens
+  }
+  
+  // Harbor tokens - hs (leveraged) tokens
+  if (normalizedSymbol === "hsfxusd-eth" || normalizedSymbol === "hsfxusdeth") {
+    return "/icons/hsUSDETH.png";
+  }
+  if (normalizedSymbol === "hsfxusd-btc" || normalizedSymbol === "hsfxusdbtc") {
+    return "/icons/hsUSDBTC.png";
+  }
+  if (normalizedSymbol === "hssteth-btc" || normalizedSymbol === "hsstethbtc") {
+    return "/icons/hsETHBTC.png";
   }
   if (normalizedSymbol.startsWith("hs")) {
-    return "/icons/hsUSDETH.png";
+    return "/icons/hsUSDETH.png"; // Fallback for other hs tokens
   }
 
   return "/icons/placeholder.svg";

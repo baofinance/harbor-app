@@ -405,15 +405,33 @@ function MarketExpandedView({
             </div>
             <div className="flex justify-between items-center">
               <span className="text-[#1E4775]/70">ha Token:</span>
-              <span className="text-[#1E4775] font-mono">
-                {peggedTokenSymbol}
-              </span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[#1E4775] font-mono">
+                  {peggedTokenSymbol}
+                </span>
+                <Image
+                  src={getLogoPath(peggedTokenSymbol)}
+                  alt={peggedTokenSymbol}
+                  width={24}
+                  height={24}
+                  className="flex-shrink-0"
+                />
+              </div>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-[#1E4775]/70">hs Token:</span>
-              <span className="text-[#1E4775] font-mono">
-                {leveragedTokenSymbol}
-              </span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[#1E4775] font-mono">
+                  {leveragedTokenSymbol}
+                </span>
+                <Image
+                  src={getLogoPath(leveragedTokenSymbol)}
+                  alt={leveragedTokenSymbol}
+                  width={24}
+                  height={24}
+                  className="flex-shrink-0"
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -911,7 +929,7 @@ export default function GenesisIndexPage() {
                 </h2>
               </div>
               <div className="space-y-2 text-sm text-white/80">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="text-center">
                     <div className="mb-1">During Genesis:</div>
                     <div className="flex justify-center">
@@ -1200,9 +1218,9 @@ export default function GenesisIndexPage() {
           }
 
           return (
-            <div className="grid grid-cols-4 gap-2 mb-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2 mb-2">
               {/* Header Box */}
-              <div className="bg-[#FF8A7A] p-3 flex items-center justify-center gap-2">
+              <div className="bg-[#FF8A7A] p-3 flex items-center justify-center gap-2 sm:col-span-2 md:col-span-1">
                 <h2 className="font-bold font-mono text-white text-2xl text-center">
                   Ledger Marks
                 </h2>
@@ -1325,8 +1343,8 @@ export default function GenesisIndexPage() {
         <div className="border-t border-white/10 mb-2"></div>
 
         <section className="space-y-2 overflow-visible">
-          {/* Header Row */}
-          <div className="bg-white p-3 overflow-x-auto">
+          {/* Header Row - Hidden on mobile, shown on md+ */}
+          <div className="hidden md:block bg-white p-3 overflow-x-auto">
             <div className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr_1fr] gap-4 items-center uppercase tracking-wider text-xs text-[#1E4775] font-bold">
               <div className="min-w-0 text-center">Market</div>
               <div className="text-center min-w-0">Deposit Assets</div>
@@ -1535,7 +1553,159 @@ export default function GenesisIndexPage() {
                   }`}
                   onClick={() => setExpandedMarket(isExpanded ? null : id)}
                 >
-                  <div className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr_1fr] gap-4 items-center text-sm">
+                  {/* Mobile Card Layout */}
+                  <div className="md:hidden space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[#1E4775] font-medium text-base">
+                          {rowLeveragedSymbol &&
+                          rowLeveragedSymbol.toLowerCase().startsWith("hs")
+                            ? rowLeveragedSymbol.slice(2)
+                            : rowLeveragedSymbol || (mkt as any).name}
+                        </span>
+                        {isExpanded ? (
+                          <ChevronUpIcon className="w-5 h-5 text-[#1E4775] flex-shrink-0" />
+                        ) : (
+                          <ChevronDownIcon className="w-5 h-5 text-[#1E4775] flex-shrink-0" />
+                        )}
+                      </div>
+                      <div
+                        onClick={(e) => e.stopPropagation()}
+                        className="flex-shrink-0"
+                      >
+                        {isEnded ? (
+                          hasClaimable ? (
+                            <button
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                if (genesisAddress && address && hasClaimable) {
+                                  try {
+                                    setClaimingMarket(id);
+                                    setClaimModal({
+                                      open: true,
+                                      status: "pending",
+                                      marketId: id,
+                                    });
+                                    const tx = await writeContractAsync({
+                                      address: genesisAddress as `0x${string}`,
+                                      abi: GENESIS_ABI,
+                                      functionName: "claim",
+                                      args: [address as `0x${string}`],
+                                    });
+                                    await publicClient?.waitForTransactionReceipt(
+                                      { hash: tx }
+                                    );
+                                    await refetchReads();
+                                    await refetchTotalDeposits();
+                                    queryClient.invalidateQueries({
+                                      queryKey: ["allHarborMarks"],
+                                    });
+                                    setClaimModal((prev) => ({
+                                      ...prev,
+                                      status: "success",
+                                    }));
+                                    setShareModal({
+                                      open: true,
+                                      marketName: displayMarketName,
+                                      peggedSymbol: peggedNoPrefix,
+                                    });
+                                  } catch (error) {
+                                    setClaimModal({
+                                      open: true,
+                                      status: "error",
+                                      marketId: id,
+                                      errorMessage:
+                                        (error as any)?.shortMessage ||
+                                        (error as any)?.message ||
+                                        "Claim failed",
+                                    });
+                                  } finally {
+                                    setClaimingMarket(null);
+                                  }
+                                }
+                              }}
+                              disabled={
+                                !genesisAddress ||
+                                !address ||
+                                !hasClaimable ||
+                                claimingMarket === id
+                              }
+                              className="px-4 py-2 text-xs font-medium bg-[#1E4775] text-white hover:bg-[#17395F] disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors rounded-full whitespace-nowrap touch-target"
+                            >
+                              {claimingMarket === id ? "Claiming..." : "Claim"}
+                            </button>
+                          ) : null
+                        ) : (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setManageModal({ open: true, marketId: id });
+                            }}
+                            className="px-4 py-2 text-xs font-medium bg-[#1E4775] text-white hover:bg-[#17395F] transition-colors rounded-full whitespace-nowrap touch-target"
+                          >
+                            Manage
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5">
+                        {acceptedAssets.map((asset) => (
+                          <Image
+                            key={asset.symbol}
+                            src={getLogoPath(asset.symbol)}
+                            alt={asset.name}
+                            width={20}
+                            height={20}
+                            className="flex-shrink-0 rounded-full"
+                          />
+                        ))}
+                      </div>
+                      <div className="flex-1 flex items-center justify-between text-xs">
+                        <div>
+                          <div className="text-[#1E4775]/70">Total</div>
+                          <div className="text-[#1E4775] font-semibold">
+                            {isEnded
+                              ? hasClaimable
+                                ? `${formatEther(claimablePegged)} ${rowPeggedSymbol || (mkt as any).peggedToken?.symbol || "ha"}`
+                                : "-"
+                              : totalDeposits && totalDeposits > 0n
+                              ? collateralPriceUSD > 0
+                                ? formatUSD(totalDepositsUSD)
+                                : `${formatToken(totalDeposits)} ${collateralSymbol}`
+                              : "$0"}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-[#1E4775]/70">Yours</div>
+                          <div className="text-[#1E4775] font-semibold">
+                            {userDeposit && userDeposit > 0n
+                              ? collateralPriceUSD > 0
+                                ? formatUSD(userDepositUSD)
+                                : `${formatToken(userDeposit)} ${collateralSymbol}`
+                              : "$0"}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-[#1E4775]/70">Status</div>
+                          <div>
+                            {isProcessing ? (
+                              <span className="text-[10px] uppercase px-2 py-1 bg-yellow-100 text-yellow-800">
+                                {statusText}
+                              </span>
+                            ) : (
+                              <span className="text-[10px] uppercase px-2 py-1 bg-[#1E4775]/10 text-[#1E4775]">
+                                {statusText}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Desktop Table Layout */}
+                  <div className="hidden md:grid grid-cols-[1fr_1fr_1fr_1fr_1fr_1fr] gap-4 items-center text-sm">
                     <div className="whitespace-nowrap min-w-0 overflow-hidden">
                       <div className="flex items-center justify-center gap-2">
                         <span className="text-[#1E4775] font-medium">
