@@ -1466,7 +1466,7 @@ export const AnchorDepositWithdrawModal = ({
     functionName: "getEarlyWithdrawalFee",
     enabled: !!collateralPoolAddress && isOpen && useAnvilForPeggedBalance,
     refetchInterval: getModalPollingInterval(isOpen, "poolAPR"),
-      staleTime: POLLING_INTERVALS.SLOW / 2,
+    staleTime: POLLING_INTERVALS.SLOW / 2,
   });
 
   const wagmiCollateralPoolFeeResult = useContractRead({
@@ -1491,7 +1491,7 @@ export const AnchorDepositWithdrawModal = ({
     functionName: "getEarlyWithdrawalFee",
     enabled: !!sailPoolAddress && isOpen && useAnvilForPeggedBalance,
     refetchInterval: getModalPollingInterval(isOpen, "poolAPR"),
-      staleTime: POLLING_INTERVALS.SLOW / 2,
+    staleTime: POLLING_INTERVALS.SLOW / 2,
   });
 
   const wagmiSailPoolFeeResult = useContractRead({
@@ -1517,7 +1517,7 @@ export const AnchorDepositWithdrawModal = ({
     functionName: "getWithdrawalWindow",
     enabled: !!collateralPoolAddress && isOpen && useAnvilForPeggedBalance,
     refetchInterval: getModalPollingInterval(isOpen, "poolAPR"),
-      staleTime: POLLING_INTERVALS.SLOW / 2,
+    staleTime: POLLING_INTERVALS.SLOW / 2,
   });
 
   const wagmiCollateralWindowResult = useContractRead({
@@ -1541,7 +1541,7 @@ export const AnchorDepositWithdrawModal = ({
     functionName: "getWithdrawalWindow",
     enabled: !!sailPoolAddress && isOpen && useAnvilForPeggedBalance,
     refetchInterval: getModalPollingInterval(isOpen, "poolAPR"),
-      staleTime: POLLING_INTERVALS.SLOW / 2,
+    staleTime: POLLING_INTERVALS.SLOW / 2,
   });
 
   const wagmiSailWindowResult = useContractRead({
@@ -2779,19 +2779,23 @@ export const AnchorDepositWithdrawModal = ({
   const currentLedgerMarksPerDay =
     marksPerDay > 0 ? marksPerDay : currentDepositUSD;
 
-  // Debug logging
-  if (process.env.NODE_ENV === "development" && isOpen) {
-    console.log("[AnchorModal] Marks Debug:", {
-      currentDeposit: currentDeposit.toString(),
-      currentDepositUSD,
-      marksPerDay,
-      estimatedMarks,
-      marksLoading,
-      marksError: marksError?.message,
-      haBalances: haBalances?.length || 0,
-      poolDeposits: poolDeposits?.length || 0,
-    });
-  }
+  // Debug logging (always enabled for debugging)
+  useEffect(() => {
+    if (isOpen) {
+      console.log("[AnchorModal] Marks Debug:", {
+        currentDeposit: currentDeposit.toString(),
+        currentDepositUSD,
+        marksPerDay,
+        estimatedMarks,
+        marksLoading,
+        marksError: marksError?.message,
+        haBalances: haBalances?.length || 0,
+        poolDeposits: poolDeposits?.length || 0,
+        haBalancesData: haBalances,
+        poolDepositsData: poolDeposits,
+      });
+    }
+  }, [isOpen, marksPerDay, estimatedMarks, marksLoading, marksError, haBalances, poolDeposits, currentDeposit, currentDepositUSD]);
 
   // Calculate expected ledger marks per day after deposit
   const expectedDepositUSD =

@@ -196,6 +196,13 @@ export function useAnchorLedgerMarks({
         throw new Error("Address required");
       }
 
+      console.log("[useAnchorLedgerMarks] Fetching marks:", {
+        address,
+        graphUrl,
+        enabled,
+        isConnected,
+      });
+
       const response = await fetch(graphUrl, {
         method: "POST",
         headers: {
@@ -216,15 +223,28 @@ export function useAnchorLedgerMarks({
       const result = await response.json();
 
       if (result.errors) {
-        console.error("GraphQL errors:", result.errors);
+        console.error("[useAnchorLedgerMarks] GraphQL errors:", result.errors);
         throw new Error(`GraphQL errors: ${JSON.stringify(result.errors)}`);
       }
 
-      return result.data || { haTokenBalances: [], stabilityPoolDeposits: [] };
+      // Debug logging
+      console.log("[useAnchorLedgerMarks] GraphQL response:", {
+        address,
+        graphUrl,
+        haTokenBalances: result.data?.haTokenBalances?.length || 0,
+        stabilityPoolDeposits: result.data?.stabilityPoolDeposits?.length || 0,
+        sailTokenBalances: result.data?.sailTokenBalances?.length || 0,
+        data: result.data,
+      });
+
+      return result.data || { haTokenBalances: [], stabilityPoolDeposits: [], sailTokenBalances: [] };
     },
     enabled: enabled && isConnected && !!address,
     refetchInterval: 60000, // Poll every 60 seconds for new events
     staleTime: 10000,
+    onError: (error) => {
+      console.error("[useAnchorLedgerMarks] Query error:", error);
+    },
   });
 
   // Calculate marks per day
