@@ -1484,9 +1484,19 @@ export default function GenesisIndexPage() {
 
             // Calculate wrapped token price: underlying price * wrapped rate
             // Deposits are stored in wrapped collateral tokens, so we need wrapped token price
-            const wrappedTokenPriceUSD = wrappedRate && underlyingPriceUSD > 0
-              ? underlyingPriceUSD * (Number(wrappedRate) / 1e18)
-              : underlyingPriceUSD; // Fallback to underlying price if no rate available
+            // IMPORTANT: If CoinGecko ID is for wrapped token (e.g., "wrapped-steth"), it already returns wrapped price
+            const coinGeckoId = (mkt as any)?.coinGeckoId as string | undefined;
+            const coinGeckoIsWrappedToken = coinGeckoId && (
+              (coinGeckoId.toLowerCase() === "wrapped-steth" && collateralSymbol.toLowerCase() === "wsteth") ||
+              (coinGeckoId.toLowerCase() === "fxsave" && collateralSymbol.toLowerCase() === "fxsave")
+            );
+            
+            // Don't multiply by wrapped rate if CoinGecko already returns wrapped token price
+            const wrappedTokenPriceUSD = coinGeckoIsWrappedToken && coinGeckoPriceForMarket
+              ? coinGeckoPriceForMarket // CoinGecko already returns wrapped token price
+              : wrappedRate && underlyingPriceUSD > 0
+                ? underlyingPriceUSD * (Number(wrappedRate) / 1e18)
+                : underlyingPriceUSD; // Fallback to underlying price if no rate available
 
             // Use wrapped token price for USD calculations since deposits are in wrapped collateral
             const collateralPriceUSD = wrappedTokenPriceUSD;
