@@ -113,12 +113,12 @@ const minterABI = [
     ],
     name: "mintPeggedTokenDryRun",
     outputs: [
-      { name: "incentiveRatio", type: "int256" },        // Net fee ratio (1e16 units, positive=fee, negative=discount)
-      { name: "wrappedFee", type: "uint256" },           // Fee amount in wrapped collateral wei
+      { name: "incentiveRatio", type: "int256" }, // Net fee ratio (1e16 units, positive=fee, negative=discount)
+      { name: "wrappedFee", type: "uint256" }, // Fee amount in wrapped collateral wei
       { name: "wrappedCollateralUsed", type: "uint256" }, // Collateral used (NOT discount for mint)
-      { name: "peggedMinted", type: "uint256" },         // haUSD tokens minted
-      { name: "price", type: "uint256" },                // Oracle price
-      { name: "rate", type: "uint256" },                  // wstETH/stETH rate
+      { name: "peggedMinted", type: "uint256" }, // haUSD tokens minted
+      { name: "price", type: "uint256" }, // Oracle price
+      { name: "rate", type: "uint256" }, // wstETH/stETH rate
     ],
     stateMutability: "view",
     type: "function",
@@ -233,8 +233,16 @@ export const AnchorDepositWithdrawModal = ({
   const [activeTab, setActiveTab] = useState<TabType>(getInitialTab());
 
   // Get positions from subgraph (same as expanded view)
-  const { poolDeposits, haBalances } = useAnchorLedgerMarks({
-    enabled: isOpen && activeTab === "withdraw",
+  // Enable for all tabs so marks are visible in deposit tab too
+  const {
+    poolDeposits,
+    haBalances,
+    estimatedMarks,
+    marksPerDay,
+    loading: marksLoading,
+    error: marksError,
+  } = useAnchorLedgerMarks({
+    enabled: isOpen,
   });
   const defaultProgressConfig = {
     mode: null as "collateral" | "direct" | "withdraw" | null,
@@ -824,19 +832,19 @@ export const AnchorDepositWithdrawModal = ({
       // Note: For MINT operations, index [2] is wrappedCollateralUsed, NOT discount
       // The incentiveRatio (index [0]) already represents the net fee/discount ratio
       if (resultData && Array.isArray(resultData) && resultData.length >= 3) {
-        const incentiveRatio = resultData[0] as bigint;  // Net fee ratio (already accounts for discounts)
-        const wrappedFee = resultData[1] as bigint;      // Fee in wrapped collateral units
+        const incentiveRatio = resultData[0] as bigint; // Net fee ratio (already accounts for discounts)
+        const wrappedFee = resultData[1] as bigint; // Fee in wrapped collateral units
         const wrappedCollateralUsed = resultData[2] as bigint; // Collateral used (NOT discount for mint)
-        
+
         // Check if minting is disallowed (incentiveRatio === 1e18)
         const isDisallowed = incentiveRatio === 1000000000000000000n;
-        
+
         if (!isDisallowed) {
           // Use incentiveRatio directly - it's already the net fee/discount percentage
           // incentiveRatio is in 1e16 units (e.g., 6.635e15 = 0.6635%)
           // Positive = fee, negative = discount/bonus
           feePercentage = Number(incentiveRatio) / 1e16;
-          
+
           console.log(`[Modal] Fee calculation for ${contract.assetSymbol}:`, {
             minterAddress: contract.address,
             function: "mintPeggedTokenDryRun",
@@ -849,9 +857,17 @@ export const AnchorDepositWithdrawModal = ({
           });
         } else {
           feePercentage = undefined;
-          console.log(`[Modal] Minting ${contract.assetSymbol} is DISALLOWED (incentiveRatio = 1e18)`);
+          console.log(
+            `[Modal] Minting ${contract.assetSymbol} is DISALLOWED (incentiveRatio = 1e18)`
+          );
         }
-      } else if (isOpen && simpleMode && activeTab === "deposit") {
+      } else if (
+        isOpen &&
+        simpleMode &&
+        activeTab === "deposit" &&
+        process.env.NODE_ENV === "development"
+      ) {
+        // Only log in development to reduce console noise
         console.warn(
           `[Modal] Fee result for ${contract.assetSymbol} is invalid:`,
           {
@@ -2206,7 +2222,10 @@ export const AnchorDepositWithdrawModal = ({
       address: redeemDryRunAddress as `0x${string}`,
       abi: minterABI,
       functionName: "redeemPeggedTokenDryRun",
-      args: redeemInputAmount ? [redeemInputAmount] : undefined,
+      args:
+        redeemDryRunEnabled && redeemInputAmount
+          ? [redeemInputAmount]
+          : undefined,
       enabled: shouldUseAnvilHook && redeemDryRunEnabled,
     });
 
@@ -2215,7 +2234,10 @@ export const AnchorDepositWithdrawModal = ({
       address: redeemDryRunAddress as `0x${string}`,
       abi: minterABI,
       functionName: "redeemPeggedTokenDryRun",
-      args: redeemInputAmount ? [redeemInputAmount] : undefined,
+      args:
+        redeemDryRunEnabled && redeemInputAmount
+          ? [redeemInputAmount]
+          : undefined,
       query: {
         enabled: !shouldUseAnvilHook && redeemDryRunEnabled,
         retry: 1,
@@ -2232,9 +2254,13 @@ export const AnchorDepositWithdrawModal = ({
   const redeemDryRunLoading =
     redeemDryRunEnabled && !redeemDryRunError && redeemDryRunData === undefined;
 
-  // Surface dry-run errors for debugging
+  // Surface dry-run errors for debugging (only log non-ABI encoding errors)
   useEffect(() => {
-    if (redeemDryRunError) {
+    if (
+      redeemDryRunError &&
+      !redeemDryRunError.message?.includes("ABI encoding") &&
+      !redeemDryRunError.shortMessage?.includes("ABI encoding")
+    ) {
       console.error("[redeemPeggedTokenDryRun] error", redeemDryRunError);
     }
   }, [redeemDryRunError]);
@@ -2706,7 +2732,25 @@ export const AnchorDepositWithdrawModal = ({
     peggedTokenPrice && currentDeposit
       ? (Number(currentDeposit) * Number(peggedTokenPrice)) / 1e36
       : 0;
-  const currentLedgerMarksPerDay = currentDepositUSD;
+
+  // Use subgraph marks data if available, otherwise fallback to USD calculation
+  // Marks per day = 1 mark per dollar per day for stability pool deposits
+  const currentLedgerMarksPerDay =
+    marksPerDay > 0 ? marksPerDay : currentDepositUSD;
+
+  // Debug logging
+  if (process.env.NODE_ENV === "development" && isOpen) {
+    console.log("[AnchorModal] Marks Debug:", {
+      currentDeposit: currentDeposit.toString(),
+      currentDepositUSD,
+      marksPerDay,
+      estimatedMarks,
+      marksLoading,
+      marksError: marksError?.message,
+      haBalances: haBalances?.length || 0,
+      poolDeposits: poolDeposits?.length || 0,
+    });
+  }
 
   // Calculate expected ledger marks per day after deposit
   const expectedDepositUSD =
@@ -5701,86 +5745,6 @@ export const AnchorDepositWithdrawModal = ({
                                   {feePercentage > 2 && " ⚠️"}
                                 </span>
                               </div>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Progress Steps Indicator */}
-                        <div className="flex items-center justify-between mb-3 bg-[#f3f6fb] border border-[#d1d7e5] p-3 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
-                          <div className="flex items-center flex-1">
-                            {/* Step 1 */}
-                            <div className="flex items-center flex-1">
-                              <div
-                                className={`flex items-center justify-center w-8 h-8 rounded-full border-2 ${
-                                  currentStep >= 1
-                                    ? "bg-[#1E4775] text-white border-[#1E4775]"
-                                    : "bg-white text-[#1E4775]/30 border-[#1E4775]/30"
-                                } font-semibold text-sm`}
-                              >
-                                {currentStep > 1 ? "✓" : "1"}
-                              </div>
-                              <div className="flex-1 h-0.5 mx-2 bg-[#1E4775]/20">
-                                <div
-                                  className={`h-full transition-all ${
-                                    currentStep >= 2
-                                      ? "bg-[#1E4775] w-full"
-                                      : "bg-transparent w-0"
-                                  }`}
-                                />
-                              </div>
-                            </div>
-                            {!mintOnly && !skipRewardStep && (
-                              <>
-                                {/* Step 2 */}
-                                <div className="flex items-center flex-1">
-                                  <div
-                                    className={`flex items-center justify-center w-8 h-8 rounded-full border-2 ${
-                                      currentStep >= 2
-                                        ? "bg-[#1E4775] text-white border-[#1E4775]"
-                                        : "bg-white text-[#1E4775]/30 border-[#1E4775]/30"
-                                    } font-semibold text-sm`}
-                                  >
-                                    {currentStep > 2 ? "✓" : "2"}
-                                  </div>
-                                  <div className="flex-1 h-0.5 mx-2 bg-[#1E4775]/20">
-                                    <div
-                                      className={`h-full transition-all ${
-                                        currentStep >= 3
-                                          ? "bg-[#1E4775] w-full"
-                                          : "bg-transparent w-0"
-                                      }`}
-                                    />
-                                  </div>
-                                </div>
-                                {/* Step 3 */}
-                                <div className="flex items-center">
-                                  <div
-                                    className={`flex items-center justify-center w-8 h-8 rounded-full border-2 ${
-                                      currentStep >= 3
-                                        ? "bg-[#1E4775] text-white border-[#1E4775]"
-                                        : "bg-white text-[#1E4775]/30 border-[#1E4775]/30"
-                                    } font-semibold text-sm`}
-                                  >
-                                    3
-                                  </div>
-                                </div>
-                              </>
-                            )}
-                            {!mintOnly && skipRewardStep && (
-                              <>
-                                {/* Step 2 becomes stability pool */}
-                                <div className="flex items-center">
-                                  <div
-                                    className={`flex items-center justify-center w-8 h-8 rounded-full border-2 ${
-                                      currentStep >= 2
-                                        ? "bg-[#1E4775] text-white border-[#1E4775]"
-                                        : "bg-white text-[#1E4775]/30 border-[#1E4775]/30"
-                                    } font-semibold text-sm`}
-                                  >
-                                    2
-                                  </div>
-                                </div>
-                              </>
                             )}
                           </div>
                         </div>

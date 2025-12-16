@@ -10,7 +10,7 @@ export const wagmi = createConfig({
   connectors: [injected(), metaMask(), safe()],
   transports: {
     [mainnet.id]: http(
-      process.env.NEXT_PUBLIC_MAINNET_RPC_URL || "https://eth.llamarpc.com"
+      process.env.NEXT_PUBLIC_MAINNET_RPC_URL || "https://eth-mainnet.g.alchemy.com/v2/uGl5kuD60tnGFHRmkevK1iYQuIQKmh1n"
     ),
     [base.id]: http(
       process.env.NEXT_PUBLIC_BASE_RPC_URL || "https://mainnet.base.org"
