@@ -47,6 +47,8 @@ dataSources:
           file: ./abis/ERC20.json
         - name: WrappedPriceOracle
           file: ./abis/WrappedPriceOracle.json
+        - name: ChainlinkAggregator
+          file: ./abis/ChainlinkAggregator.json
       eventHandlers:
         - event: Deposit(indexed address,indexed address,uint256)
           handler: handleDeposit
@@ -213,6 +215,8 @@ dataSources:
           file: ./abis/ERC20.json
         - name: WrappedPriceOracle
           file: ./abis/WrappedPriceOracle.json
+        - name: ChainlinkAggregator
+          file: ./abis/ChainlinkAggregator.json
       eventHandlers:
         - event: Deposit(indexed address,indexed address,uint256)
           handler: handleDeposit
@@ -379,6 +383,8 @@ dataSources:
           file: ./abis/ERC20.json
         - name: WrappedPriceOracle
           file: ./abis/WrappedPriceOracle.json
+        - name: ChainlinkAggregator
+          file: ./abis/ChainlinkAggregator.json
       eventHandlers:
         - event: Deposit(indexed address,indexed address,uint256)
           handler: handleDeposit
