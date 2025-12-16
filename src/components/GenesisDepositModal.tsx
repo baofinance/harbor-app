@@ -88,7 +88,7 @@ export const GenesisDepositModal = ({
  }, [isOpen]);
 
 // Fetch CoinGecko price (primary source)
-const { price: coinGeckoPrice } = useCoinGeckoPrice(
+const { price: coinGeckoPrice, isLoading: isCoinGeckoLoading } = useCoinGeckoPrice(
   coinGeckoId || "",
   60000 // Refresh every 60 seconds
 );
@@ -196,11 +196,36 @@ const coinGeckoIsWrappedToken = coinGeckoId && (
   (coinGeckoId.toLowerCase() === "wrapped-steth" && collateralSymbol.toLowerCase() === "wsteth") ||
   (coinGeckoId.toLowerCase() === "fxsave" && collateralSymbol.toLowerCase() === "fxsave")
 );
-const wrappedTokenPriceUSD = coinGeckoIsWrappedToken && coinGeckoPrice
-  ? coinGeckoPrice // CoinGecko already returns wrapped token price
-  : wrappedRate && underlyingPriceUSD > 0
-    ? underlyingPriceUSD * (Number(wrappedRate) / 1e18)
-    : underlyingPriceUSD; // Fallback to underlying price if no rate available
+
+// For wstETH: CoinGecko returns wstETH price directly (~$3,607), so use it as-is
+// For fxSAVE: CoinGecko returns fxUSD price ($1.00), so multiply by wrapped rate to get fxSAVE price
+// Only use oracle calculation if CoinGecko is not available
+// Priority: CoinGecko (if wrapped token) > CoinGecko (if underlying) > Oracle (with wrapped rate) > Oracle (underlying only)
+const wrappedTokenPriceUSD = (() => {
+  // If CoinGecko returns the wrapped token price directly (e.g., "wrapped-steth" for wstETH)
+  if (coinGeckoIsWrappedToken && coinGeckoPrice != null) {
+    return coinGeckoPrice; // Use CoinGecko price directly, no wrapped rate multiplication
+  }
+  
+  // If CoinGecko returns underlying price (e.g., "fxusd" for fxSAVE)
+  // For fxSAVE markets: CoinGecko returns fxUSD ($1.00), multiply by wrapped rate to get fxSAVE price
+  if (coinGeckoPrice != null && !coinGeckoIsWrappedToken && wrappedRate) {
+    return coinGeckoPrice * (Number(wrappedRate) / 1e18);
+  }
+  
+  // If CoinGecko returns underlying price but no wrapped rate available
+  if (coinGeckoPrice != null && !coinGeckoIsWrappedToken) {
+    return coinGeckoPrice; // Use CoinGecko price as-is
+  }
+  
+  // Fallback to oracle: underlying price * wrapped rate
+  if (wrappedRate && underlyingPriceUSD > 0) {
+    return underlyingPriceUSD * (Number(wrappedRate) / 1e18);
+  }
+  
+  // Final fallback: underlying price only
+  return underlyingPriceUSD;
+})();
 const collateralPriceUSD = wrappedTokenPriceUSD;
 
 // Validate selected asset address
