@@ -1,4 +1,4 @@
-import { formatEther as viemFormatEther } from "viem";
+import { formatEther as viemFormatEther, formatUnits } from "viem";
 
 /**
  * Format a number as USD currency with appropriate abbreviations
@@ -179,13 +179,15 @@ export function truncateAddress(
  * @param symbol - Token symbol
  * @param priceUSD - Optional USD price per token
  * @param maxDecimals - Maximum decimal places (default 6)
+ * @param tokenDecimals - Token decimals (default 18, use 6 for USDC)
  * @returns Object with formatted amount and optional USD value
  */
 export function formatTokenAmount(
   amount: bigint | undefined | null,
   symbol: string,
   priceUSD?: number,
-  maxDecimals: number = 6
+  maxDecimals: number = 6,
+  tokenDecimals: number = 18
 ): { formatted: string; usd: string | null; display: string } {
   if (!amount) {
     return {
@@ -195,7 +197,7 @@ export function formatTokenAmount(
     };
   }
 
-  const numValue = Number(viemFormatEther(amount));
+  const numValue = Number(formatUnits(amount, tokenDecimals));
 
   // Format with limited decimals, removing trailing zeros
   let formatted: string;
@@ -229,16 +231,18 @@ export function formatTokenAmount(
  * @param balance - Balance in wei
  * @param symbol - Token symbol
  * @param maxDecimals - Maximum decimal places
+ * @param tokenDecimals - Token decimals (default 18, use 6 for USDC)
  * @returns Formatted string like "1,234.56 ETH"
  */
 export function formatBalance(
   balance: bigint | undefined | null,
   symbol: string,
-  maxDecimals: number = 4
+  maxDecimals: number = 4,
+  tokenDecimals: number = 18
 ): string {
   if (!balance) return `0 ${symbol}`;
 
-  const numValue = Number(viemFormatEther(balance));
+  const numValue = Number(formatUnits(balance, tokenDecimals));
 
   if (numValue === 0) return `0 ${symbol}`;
 
