@@ -689,14 +689,17 @@ export const AnchorDepositWithdrawModal = ({
     return contracts;
   }, [marketsForToken, simpleMode, isOpen, activeTab]);
 
-  const { data: marketFeeData } = useAnvilContractReads({
+  // Use production-compatible contract reads for market fees
+  const { data: marketFeeData } = useContractReads({
     contracts: marketFeeContracts.map(({ marketId, ...contract }) => contract),
-    enabled:
-      marketFeeContracts.length > 0 &&
-      isOpen &&
-      simpleMode &&
-      activeTab === "deposit",
-    refetchInterval: 30000,
+    query: {
+      enabled:
+        marketFeeContracts.length > 0 &&
+        isOpen &&
+        simpleMode &&
+        activeTab === "deposit",
+      refetchInterval: 30000,
+    },
   });
 
   // Map fees to markets
@@ -751,18 +754,21 @@ export const AnchorDepositWithdrawModal = ({
     };
   }, [marketFeesMap]);
 
+  // Use production-compatible contract reads (works on both mainnet and Anvil)
   const {
     data: feeDataForAllAssets,
     isLoading: feeLoading,
     error: feeError,
-  } = useAnvilContractReads({
+  } = useContractReads({
     contracts: feeContracts.map(({ assetSymbol, ...contract }) => contract),
-    enabled:
-      feeContracts.length > 0 &&
-      isOpen &&
-      simpleMode &&
-      activeTab === "deposit",
-    refetchInterval: 30000, // Refetch every 30 seconds
+    query: {
+      enabled:
+        feeContracts.length > 0 &&
+        isOpen &&
+        simpleMode &&
+        activeTab === "deposit",
+      refetchInterval: 30000, // Refetch every 30 seconds
+    },
   });
 
   // Debug: Log fee data state changes
