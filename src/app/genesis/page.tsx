@@ -590,7 +590,7 @@ export default function GenesisIndexPage() {
   const { data: reads, refetch: refetchReads } = useContractReads({
     contracts: genesisReadContracts,
     enabled: genesisMarkets.length > 0,
-    refetchInterval: 5000, // Refetch every 5 seconds to catch genesis end
+    refetchInterval: 60000, // Refetch every 60 seconds - genesis doesn't end minute-to-minute
   });
 
   // Fetch collateral token addresses from genesis contracts

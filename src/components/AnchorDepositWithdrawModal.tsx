@@ -1052,7 +1052,7 @@ export const AnchorDepositWithdrawModal = ({
         activeTab === "deposit" &&
         isSelectedAssetNativeETH &&
         simpleMode,
-      refetchInterval: 5000,
+      refetchInterval: isOpen ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
     },
   });
 
@@ -1078,7 +1078,7 @@ export const AnchorDepositWithdrawModal = ({
       simpleMode &&
       !!selectedDepositAsset &&
       useAnvilForBalance,
-    refetchInterval: 5000,
+    refetchInterval: isOpen ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
   });
 
   const wagmiSelectedAssetResult = useContractRead({
@@ -1100,7 +1100,7 @@ export const AnchorDepositWithdrawModal = ({
         simpleMode &&
         !!selectedDepositAsset &&
         !useAnvilForBalance,
-      refetchInterval: 5000,
+      refetchInterval: isOpen ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
       retry: 1,
       allowFailure: true,
     },
@@ -1168,7 +1168,7 @@ export const AnchorDepositWithdrawModal = ({
         isOpen &&
         activeTab === "deposit" &&
         !simpleMode,
-      refetchInterval: 5000,
+      refetchInterval: isOpen ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
       retry: 1,
       allowFailure: true,
     },
@@ -1231,7 +1231,7 @@ export const AnchorDepositWithdrawModal = ({
       isDirectPeggedDeposit &&
       simpleMode &&
       useAnvilForBalance,
-    refetchInterval: 5000,
+    refetchInterval: isOpen ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
   });
 
   const wagmiBalanceResult = useContractRead({
@@ -1248,7 +1248,7 @@ export const AnchorDepositWithdrawModal = ({
         isDirectPeggedDeposit &&
         simpleMode &&
         !useAnvilForBalance,
-      refetchInterval: 5000,
+      refetchInterval: isOpen ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
       retry: 1,
       allowFailure: true,
     },
@@ -1312,7 +1312,7 @@ export const AnchorDepositWithdrawModal = ({
       isOpen &&
       (activeTab === "deposit" || activeTab === "withdraw") &&
       useAnvilForPeggedBalance,
-    refetchInterval: 5000,
+    refetchInterval: isOpen ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
   });
 
   const wagmiPeggedBalanceResult = useContractRead({
@@ -1327,7 +1327,7 @@ export const AnchorDepositWithdrawModal = ({
         isOpen &&
         (activeTab === "deposit" || activeTab === "withdraw") &&
         !useAnvilForPeggedBalance,
-      refetchInterval: 5000,
+      refetchInterval: isOpen ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
       retry: 1,
       allowFailure: true,
     },
@@ -1356,7 +1356,7 @@ export const AnchorDepositWithdrawModal = ({
       isOpen &&
       activeTab === "withdraw" &&
       useAnvilForPeggedBalance,
-    refetchInterval: 5000,
+    refetchInterval: isOpen ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
   });
 
   const wagmiCollateralPoolResult = useContractRead({
@@ -1371,7 +1371,7 @@ export const AnchorDepositWithdrawModal = ({
         isOpen &&
         activeTab === "withdraw" &&
         !useAnvilForPeggedBalance,
-      refetchInterval: 5000,
+      refetchInterval: isOpen ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
       retry: 1,
       allowFailure: true,
     },
@@ -1393,7 +1393,7 @@ export const AnchorDepositWithdrawModal = ({
       isOpen &&
       activeTab === "withdraw" &&
       useAnvilForPeggedBalance,
-    refetchInterval: 5000,
+    refetchInterval: isOpen ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
   });
 
   const wagmiSailPoolResult = useContractRead({
@@ -1408,7 +1408,7 @@ export const AnchorDepositWithdrawModal = ({
         isOpen &&
         activeTab === "withdraw" &&
         !useAnvilForPeggedBalance,
-      refetchInterval: 5000,
+      refetchInterval: isOpen ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
       retry: 1,
       allowFailure: true,
     },
@@ -1619,7 +1619,7 @@ export const AnchorDepositWithdrawModal = ({
     query: {
       enabled:
         !!address && !!peggedTokenAddress && isOpen && activeTab === "deposit",
-      refetchInterval: 5000,
+      refetchInterval: isOpen ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
       retry: 1,
       allowFailure: true,
     },
@@ -1981,7 +1981,7 @@ export const AnchorDepositWithdrawModal = ({
         isValidMinterAddress &&
         isOpen &&
         activeTab === "deposit",
-      refetchInterval: 5000,
+      refetchInterval: isOpen ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
       retry: 1,
       allowFailure: true,
     },
@@ -2009,7 +2009,7 @@ export const AnchorDepositWithdrawModal = ({
       !!stabilityPoolAddress &&
       isOpen &&
       activeTab === "deposit",
-    refetchInterval: 5000,
+    refetchInterval: isOpen ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
   });
 
   const {
@@ -2031,7 +2031,7 @@ export const AnchorDepositWithdrawModal = ({
         !!stabilityPoolAddress &&
         isOpen &&
         activeTab === "deposit",
-      refetchInterval: 5000,
+      refetchInterval: isOpen ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
       retry: 1,
       allowFailure: true,
     },
@@ -2139,7 +2139,7 @@ export const AnchorDepositWithdrawModal = ({
         !!redeemAllowanceMinterAddress &&
         isOpen &&
         activeTab === "withdraw",
-      refetchInterval: 5000,
+      refetchInterval: isOpen ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
       retry: 1,
       allowFailure: true,
     },

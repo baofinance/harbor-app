@@ -139,7 +139,7 @@ export const SailManageModal = ({
  !!address &&
  activeTab ==="mint" &&
  selectedDepositAsset ==="ETH",
- refetchInterval: 5000,
+ refetchInterval: isOpen ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
  },
  });
 
@@ -156,7 +156,7 @@ export const SailManageModal = ({
  activeTab ==="mint" &&
  !!depositAssetAddress &&
  selectedDepositAsset !=="ETH",
- refetchInterval: 5000,
+ refetchInterval: isOpen ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
  retry: 1,
  },
  });
