@@ -1,9 +1,11 @@
 # Harbor Marks Subgraph - Ethereum Mainnet Configuration
-# Deployment: stETH market
-# Last Updated: 2025-12-15
+# Deployment: test2 markets (ETH/fxUSD, BTC/fxUSD, BTC/stETH)
+# Last Updated: 2025-12-16
 #
 # Markets tracked:
-#   - stETH market (test1-USD-stETH) - block 23993255
+#   - ETH/fxUSD market (test2::ETH::fxUSD) - block 24025347
+#   - BTC/fxUSD market (test2::BTC::fxUSD) - block 24025557
+#   - BTC/stETH market (test2::BTC::stETH) - block 24025785
 #
 # To deploy:
 #   1. Copy this file to subgraph.yaml (or use: cp subgraph.mainnet.yaml subgraph.yaml)
@@ -15,17 +17,17 @@ schema:
   file: ./schema.graphql
 dataSources:
   # ============================================================================
-  # MARKET 1: stETH (test1-USD-stETH)
+  # MARKET 1: ETH/fxUSD (test2::ETH::fxUSD)
   # ============================================================================
   
-  # Genesis - stETH market
+  # Genesis - ETH/fxUSD market
   - kind: ethereum
-    name: Genesis
+    name: Genesis_ETH_fxUSD
     network: mainnet
     source:
-      address: "0x1454707877cdb966e29cea8a190c2169eeca4b8c"
+      address: "0x5f4398e1d3e33f93e3d7ee710d797e2a154cb073"
       abi: Genesis
-      startBlock: 23993255
+      startBlock: 24025347
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -43,6 +45,8 @@ dataSources:
           file: ./abis/Genesis.json
         - name: ERC20
           file: ./abis/ERC20.json
+        - name: WrappedPriceOracle
+          file: ./abis/WrappedPriceOracle.json
       eventHandlers:
         - event: Deposit(indexed address,indexed address,uint256)
           handler: handleDeposit
@@ -52,14 +56,14 @@ dataSources:
           handler: handleGenesisEnd
       file: ./src/genesis.ts
 
-  # Pegged Token (haUSD-stETH) - anchor token for stETH market
+  # Pegged Token (haETH) - anchor token for ETH/fxUSD market
   - kind: ethereum
-    name: HaToken_haPB
+    name: HaToken_haETH
     network: mainnet
     source:
-      address: "0x6ff0fe773d4ad4ea923ba9ea9cc1c1b42b70f5fc"
+      address: "0x8e7442020ba7debfd77e67491c51faa097d87478"
       abi: ERC20
-      startBlock: 23993255
+      startBlock: 24025347
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -79,14 +83,14 @@ dataSources:
           handler: handleHaTokenTransfer
       file: ./src/haToken.ts
 
-  # Leveraged Token (hsUSD-stETH) - sail token for stETH market (5x marks multiplier)
+  # Leveraged Token (hsFXUSD-ETH) - sail token for ETH/fxUSD market
   - kind: ethereum
-    name: SailToken_hsPB
+    name: SailToken_hsFXUSD_ETH
     network: mainnet
     source:
-      address: "0x469ddfcfa98d0661b7efedc82aceeab84133f7fe"
+      address: "0x8248849b83ae20b21fa561f97ee5835a063c1f9c"
       abi: ERC20
-      startBlock: 23993255
+      startBlock: 24025347
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -108,14 +112,14 @@ dataSources:
           handler: handleSailTokenTransfer
       file: ./src/sailToken.ts
 
-  # Stability Pool Collateral - stETH market (wstETH deposits)
+  # Stability Pool Collateral - ETH/fxUSD market (fxSAVE deposits)
   - kind: ethereum
-    name: StabilityPoolCollateral
+    name: StabilityPoolCollateral_ETH_fxUSD
     network: mainnet
     source:
-      address: "0xac8113ef28c8ef06064e8d78b69890d670273c73"
+      address: "0xfb9747b30ee1b1df2434255c7768c1ebfa7e89bb"
       abi: StabilityPool
-      startBlock: 23993255
+      startBlock: 24025347
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -132,6 +136,8 @@ dataSources:
           file: ./abis/ERC20.json
         - name: ChainlinkAggregator
           file: ./abis/ChainlinkAggregator.json
+        - name: WrappedPriceOracle
+          file: ./abis/WrappedPriceOracle.json
       eventHandlers:
         - event: Deposit(indexed address,indexed address,uint256)
           handler: handleStabilityPoolDeposit
@@ -141,14 +147,14 @@ dataSources:
           handler: handleStabilityPoolDepositChange
       file: ./src/stabilityPoolCollateral.ts
 
-  # Stability Pool Leveraged - stETH market (hsUSD-stETH deposits)
+  # Stability Pool Leveraged - ETH/fxUSD market (hsFXUSD-ETH deposits)
   - kind: ethereum
-    name: StabilityPoolLeveraged
+    name: StabilityPoolLeveraged_ETH_fxUSD
     network: mainnet
     source:
-      address: "0x6738c3ee945218fb80700e2f4c1a5f3022a28c8d"
+      address: "0x93d0472443d775e95bf1597c8c66dfe9093bfc48"
       abi: StabilityPool
-      startBlock: 23993255
+      startBlock: 24025347
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -165,6 +171,314 @@ dataSources:
           file: ./abis/ERC20.json
         - name: ChainlinkAggregator
           file: ./abis/ChainlinkAggregator.json
+        - name: Minter
+          file: ./abis/Minter.json
+      eventHandlers:
+        - event: Deposit(indexed address,indexed address,uint256)
+          handler: handleStabilityPoolDeposit
+        - event: Withdraw(indexed address,indexed address,uint256)
+          handler: handleStabilityPoolWithdraw
+        - event: UserDepositChange(indexed address,uint256,uint256)
+          handler: handleStabilityPoolDepositChange
+      file: ./src/stabilityPoolLeveraged.ts
+
+  # ============================================================================
+  # MARKET 2: BTC/fxUSD (test2::BTC::fxUSD)
+  # ============================================================================
+  
+  # Genesis - BTC/fxUSD market
+  - kind: ethereum
+    name: Genesis_BTC_fxUSD
+    network: mainnet
+    source:
+      address: "0x288c61c3b3684ff21adf38d878c81457b19bd2fe"
+      abi: Genesis
+      startBlock: 24025557
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - Deposit
+        - Withdrawal
+        - GenesisEnd
+        - UserHarborMarks
+        - UserList
+        - MarksMultiplier
+        - UserTotalMarks
+      abis:
+        - name: Genesis
+          file: ./abis/Genesis.json
+        - name: ERC20
+          file: ./abis/ERC20.json
+        - name: WrappedPriceOracle
+          file: ./abis/WrappedPriceOracle.json
+      eventHandlers:
+        - event: Deposit(indexed address,indexed address,uint256)
+          handler: handleDeposit
+        - event: Withdraw(indexed address,indexed address,uint256)
+          handler: handleWithdraw
+        - event: GenesisEnds()
+          handler: handleGenesisEnd
+      file: ./src/genesis.ts
+
+  # Pegged Token (haBTC) - anchor token for BTC/fxUSD market
+  - kind: ethereum
+    name: HaToken_haBTC
+    network: mainnet
+    source:
+      address: "0x1822bbe8fe313c4b53414f0b3e5ef8147d485530"
+      abi: ERC20
+      startBlock: 24025557
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - HaTokenBalance
+        - MarksMultiplier
+        - UserTotalMarks
+        - PriceFeed
+      abis:
+        - name: ERC20
+          file: ./abis/ERC20.json
+        - name: ChainlinkAggregator
+          file: ./abis/ChainlinkAggregator.json
+      eventHandlers:
+        - event: Transfer(indexed address,indexed address,uint256)
+          handler: handleHaTokenTransfer
+      file: ./src/haToken.ts
+
+  # Leveraged Token (hsFXUSD-BTC) - sail token for BTC/fxUSD market
+  - kind: ethereum
+    name: SailToken_hsFXUSD_BTC
+    network: mainnet
+    source:
+      address: "0x454f2c12ce62a4fd813e2e06fda5d46e358e7c70"
+      abi: ERC20
+      startBlock: 24025557
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - SailTokenBalance
+        - MarksMultiplier
+        - UserTotalMarks
+        - PriceFeed
+      abis:
+        - name: ERC20
+          file: ./abis/ERC20.json
+        - name: ChainlinkAggregator
+          file: ./abis/ChainlinkAggregator.json
+        - name: Minter
+          file: ./abis/Minter.json
+      eventHandlers:
+        - event: Transfer(indexed address,indexed address,uint256)
+          handler: handleSailTokenTransfer
+      file: ./src/sailToken.ts
+
+  # Stability Pool Collateral - BTC/fxUSD market (fxSAVE deposits)
+  - kind: ethereum
+    name: StabilityPoolCollateral_BTC_fxUSD
+    network: mainnet
+    source:
+      address: "0x5378fbf71627e352211779bd4cd09b0a791015ac"
+      abi: StabilityPool
+      startBlock: 24025557
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - StabilityPoolDeposit
+        - MarksMultiplier
+        - UserTotalMarks
+        - PriceFeed
+      abis:
+        - name: StabilityPool
+          file: ./abis/StabilityPool.json
+        - name: ERC20
+          file: ./abis/ERC20.json
+        - name: ChainlinkAggregator
+          file: ./abis/ChainlinkAggregator.json
+        - name: WrappedPriceOracle
+          file: ./abis/WrappedPriceOracle.json
+      eventHandlers:
+        - event: Deposit(indexed address,indexed address,uint256)
+          handler: handleStabilityPoolDeposit
+        - event: Withdraw(indexed address,indexed address,uint256)
+          handler: handleStabilityPoolWithdraw
+        - event: UserDepositChange(indexed address,uint256,uint256)
+          handler: handleStabilityPoolDepositChange
+      file: ./src/stabilityPoolCollateral.ts
+
+  # Stability Pool Leveraged - BTC/fxUSD market (hsFXUSD-BTC deposits)
+  - kind: ethereum
+    name: StabilityPoolLeveraged_BTC_fxUSD
+    network: mainnet
+    source:
+      address: "0x8667592f836a8e2d19ce7879b8ae557297514f48"
+      abi: StabilityPool
+      startBlock: 24025557
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - StabilityPoolDeposit
+        - MarksMultiplier
+        - UserTotalMarks
+        - PriceFeed
+      abis:
+        - name: StabilityPool
+          file: ./abis/StabilityPool.json
+        - name: ERC20
+          file: ./abis/ERC20.json
+        - name: ChainlinkAggregator
+          file: ./abis/ChainlinkAggregator.json
+        - name: Minter
+          file: ./abis/Minter.json
+      eventHandlers:
+        - event: Deposit(indexed address,indexed address,uint256)
+          handler: handleStabilityPoolDeposit
+        - event: Withdraw(indexed address,indexed address,uint256)
+          handler: handleStabilityPoolWithdraw
+        - event: UserDepositChange(indexed address,uint256,uint256)
+          handler: handleStabilityPoolDepositChange
+      file: ./src/stabilityPoolLeveraged.ts
+
+  # ============================================================================
+  # MARKET 3: BTC/stETH (test2::BTC::stETH)
+  # ============================================================================
+  
+  # Genesis - BTC/stETH market
+  - kind: ethereum
+    name: Genesis_BTC_stETH
+    network: mainnet
+    source:
+      address: "0x9ae0b57ceada0056dbe21edcd638476fcba3ccc0"
+      abi: Genesis
+      startBlock: 24025785
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - Deposit
+        - Withdrawal
+        - GenesisEnd
+        - UserHarborMarks
+        - UserList
+        - MarksMultiplier
+        - UserTotalMarks
+      abis:
+        - name: Genesis
+          file: ./abis/Genesis.json
+        - name: ERC20
+          file: ./abis/ERC20.json
+        - name: WrappedPriceOracle
+          file: ./abis/WrappedPriceOracle.json
+      eventHandlers:
+        - event: Deposit(indexed address,indexed address,uint256)
+          handler: handleDeposit
+        - event: Withdraw(indexed address,indexed address,uint256)
+          handler: handleWithdraw
+        - event: GenesisEnds()
+          handler: handleGenesisEnd
+      file: ./src/genesis.ts
+
+  # Leveraged Token (hsSTETH-BTC) - sail token for BTC/stETH market
+  # Note: haBTC is shared with BTC/fxUSD market, so we don't need to track it again
+  - kind: ethereum
+    name: SailToken_hsSTETH_BTC
+    network: mainnet
+    source:
+      address: "0x1df67ebd59db60a13ec783472aaf22e5b2b01f25"
+      abi: ERC20
+      startBlock: 24025785
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - SailTokenBalance
+        - MarksMultiplier
+        - UserTotalMarks
+        - PriceFeed
+      abis:
+        - name: ERC20
+          file: ./abis/ERC20.json
+        - name: ChainlinkAggregator
+          file: ./abis/ChainlinkAggregator.json
+        - name: Minter
+          file: ./abis/Minter.json
+      eventHandlers:
+        - event: Transfer(indexed address,indexed address,uint256)
+          handler: handleSailTokenTransfer
+      file: ./src/sailToken.ts
+
+  # Stability Pool Collateral - BTC/stETH market (wstETH deposits)
+  - kind: ethereum
+    name: StabilityPoolCollateral_BTC_stETH
+    network: mainnet
+    source:
+      address: "0x86297bd2de92e91486c7e3b32cb5bc18f0a363bc"
+      abi: StabilityPool
+      startBlock: 24025785
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - StabilityPoolDeposit
+        - MarksMultiplier
+        - UserTotalMarks
+        - PriceFeed
+      abis:
+        - name: StabilityPool
+          file: ./abis/StabilityPool.json
+        - name: ERC20
+          file: ./abis/ERC20.json
+        - name: ChainlinkAggregator
+          file: ./abis/ChainlinkAggregator.json
+        - name: WrappedPriceOracle
+          file: ./abis/WrappedPriceOracle.json
+      eventHandlers:
+        - event: Deposit(indexed address,indexed address,uint256)
+          handler: handleStabilityPoolDeposit
+        - event: Withdraw(indexed address,indexed address,uint256)
+          handler: handleStabilityPoolWithdraw
+        - event: UserDepositChange(indexed address,uint256,uint256)
+          handler: handleStabilityPoolDepositChange
+      file: ./src/stabilityPoolCollateral.ts
+
+  # Stability Pool Leveraged - BTC/stETH market (hsSTETH-BTC deposits)
+  - kind: ethereum
+    name: StabilityPoolLeveraged_BTC_stETH
+    network: mainnet
+    source:
+      address: "0x8d6307be018fcc42ad65e91b77c6b09c7ac9f0df"
+      abi: StabilityPool
+      startBlock: 24025785
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - StabilityPoolDeposit
+        - MarksMultiplier
+        - UserTotalMarks
+        - PriceFeed
+      abis:
+        - name: StabilityPool
+          file: ./abis/StabilityPool.json
+        - name: ERC20
+          file: ./abis/ERC20.json
+        - name: ChainlinkAggregator
+          file: ./abis/ChainlinkAggregator.json
+        - name: Minter
+          file: ./abis/Minter.json
       eventHandlers:
         - event: Deposit(indexed address,indexed address,uint256)
           handler: handleStabilityPoolDeposit

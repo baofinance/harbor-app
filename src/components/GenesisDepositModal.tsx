@@ -285,7 +285,7 @@ const { data: allAssetBalances, error: balancesError } = useContractReads({
   contracts: balanceContractsForHook,
   query: {
     enabled: shouldFetchBalances && balanceContractsForHook.length > 0,
-    refetchInterval: shouldFetchBalances ? 5000 : false,
+    refetchInterval: isOpen && shouldFetchBalances ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
     retry: 1,
     retryDelay: 1000,
     allowFailure: true, // Don't fail all reads if one fails
@@ -328,7 +328,7 @@ const allowanceTarget = (useETHZap || useUSDCZap) && genesisZapAddress ? genesis
      mounted &&
      !isNativeETH &&
      isValidSelectedAssetAddress,
-   refetchInterval: 5000,
+   refetchInterval: isOpen ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
    retry: 1,
    allowFailure: true,
  },
@@ -360,7 +360,7 @@ const allowanceTarget = (useETHZap || useUSDCZap) && genesisZapAddress ? genesis
  args: address ? [address] : undefined,
  query: {
    enabled: !!address && isValidGenesisAddress && isOpen && mounted,
-   refetchInterval: 5000,
+   refetchInterval: isOpen ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
    retry: 1,
    allowFailure: true,
  },

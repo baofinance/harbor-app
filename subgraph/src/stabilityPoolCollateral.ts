@@ -13,13 +13,93 @@ import {
   PriceFeed,
 } from "../generated/schema";
 import { BigDecimal, BigInt, Bytes, Address, ethereum } from "@graphprotocol/graph-ts";
-import { StabilityPool } from "../generated/StabilityPoolCollateral/StabilityPool";
+import { StabilityPool } from "../generated/StabilityPoolCollateral_ETH_fxUSD/StabilityPool";
+// Note: WrappedPriceOracle bindings are generated per data source, but we'll use a generic approach
+// Import from Genesis_ETH_fxUSD as a reference (same ABI structure)
+import { WrappedPriceOracle } from "../generated/Genesis_ETH_fxUSD/WrappedPriceOracle";
 
 // Constants
 const SECONDS_PER_DAY = BigDecimal.fromString("86400");
 const DEFAULT_MULTIPLIER = BigDecimal.fromString("1.0");
 const DEFAULT_MARKS_PER_DOLLAR_PER_DAY = BigDecimal.fromString("1.0");
 const POOL_TYPE = "collateral";
+const E18 = BigDecimal.fromString("1000000000000000000"); // 10^18
+
+// Price oracle addresses for each stability pool (collateral pools use wrapped collateral tokens)
+// Format: pool address -> price oracle address
+function getPriceOracleAddressForPool(poolAddress: string): string {
+  // ETH/fxUSD market - collateral pool (fxSAVE deposits)
+  if (poolAddress == "0xfb9747b30ee1b1df2434255c7768c1ebfa7e89bb") {
+    return "0x56d1a2fc199ba05f84d2eb8eab5858d3d954030c"; // Same oracle as ETH/fxUSD genesis
+  }
+  // BTC/fxUSD market - collateral pool (fxSAVE deposits)
+  if (poolAddress == "0x5378fbf71627e352211779bd4cd09b0a791015ac") {
+    return "0xf6e28853563db7f7e42f5db0e1f959743ac5b0e6"; // Same oracle as BTC/fxUSD genesis
+  }
+  // BTC/stETH market - collateral pool (wstETH deposits)
+  if (poolAddress == "0x86297bd2de92e91486c7e3b32cb5bc18f0a363bc") {
+    return "0xe370289af2145a5b2f0f7a4a900ebfd478a156db"; // Same oracle as BTC/stETH genesis
+  }
+  return "";
+}
+
+// Fallback prices if oracle fails (in USD)
+function getFallbackPriceForPool(poolAddress: string): BigDecimal {
+  // ETH/fxUSD and BTC/fxUSD collateral pools use fxSAVE
+  if (poolAddress == "0xfb9747b30ee1b1df2434255c7768c1ebfa7e89bb" || 
+      poolAddress == "0x5378fbf71627e352211779bd4cd09b0a791015ac") {
+    return BigDecimal.fromString("1.07"); // fxSAVE ~$1.07
+  }
+  // BTC/stETH collateral pool uses wstETH
+  if (poolAddress == "0x86297bd2de92e91486c7e3b32cb5bc18f0a363bc") {
+    return BigDecimal.fromString("4000"); // wstETH ~$4000
+  }
+  return BigDecimal.fromString("1.0"); // Default fallback
+}
+
+/**
+ * Fetch real-time price from the WrappedPriceOracle contract for stability pool deposits
+ * Returns the wrapped token price in USD (underlying price * wrapped rate)
+ */
+function getWrappedTokenPriceUSD(poolAddress: Bytes, block: ethereum.Block): BigDecimal {
+  const poolAddressStr = poolAddress.toHexString();
+  const oracleAddressStr = getPriceOracleAddressForPool(poolAddressStr);
+  
+  // If no oracle configured, use fallback
+  if (oracleAddressStr == "") {
+    return getFallbackPriceForPool(poolAddressStr);
+  }
+  
+  // Bind to the price oracle contract
+  const oracleAddress = Address.fromString(oracleAddressStr);
+  const oracle = WrappedPriceOracle.bind(oracleAddress);
+  
+  // Call latestAnswer() which returns (minUnderlyingPrice, maxUnderlyingPrice, minWrappedRate, maxWrappedRate)
+  const result = oracle.try_latestAnswer();
+  
+  if (result.reverted) {
+    // Oracle call failed, use fallback
+    return getFallbackPriceForPool(poolAddressStr);
+  }
+  
+  // Extract values (all in 18 decimals)
+  const maxUnderlyingPrice = result.value.value1; // maxUnderlyingPrice
+  const maxWrappedRate = result.value.value3; // maxWrappedRate
+  
+  // Convert from BigInt (18 decimals) to BigDecimal
+  const underlyingPriceUSD = maxUnderlyingPrice.toBigDecimal().div(E18);
+  const wrappedRate = maxWrappedRate.toBigDecimal().div(E18);
+  
+  // Calculate wrapped token price: underlying price * wrapped rate
+  const wrappedTokenPriceUSD = underlyingPriceUSD.times(wrappedRate);
+  
+  // Ensure we have a valid price
+  if (wrappedTokenPriceUSD.le(BigDecimal.fromString("0"))) {
+    return getFallbackPriceForPool(poolAddressStr);
+  }
+  
+  return wrappedTokenPriceUSD;
+}
 
 // Helper to get or create stability pool deposit
 function getOrCreateStabilityPoolDeposit(
@@ -122,8 +202,10 @@ export function handleStabilityPoolDeposit(event: StabilityPoolDepositEvent): vo
   const actualBalance = queryPoolDepositBalance(Address.fromBytes(poolAddress), Address.fromBytes(userAddress));
   deposit.balance = actualBalance;
   
-  // Calculate USD value (simplified: $1 per token)
-  deposit.balanceUSD = actualBalance.toBigDecimal().div(BigDecimal.fromString("1000000000000000000"));
+  // Calculate USD value using real-time oracle price
+  const wrappedTokenPriceUSD = getWrappedTokenPriceUSD(poolAddress, event.block);
+  const amountInTokens = actualBalance.toBigDecimal().div(E18);
+  deposit.balanceUSD = amountInTokens.times(wrappedTokenPriceUSD);
   
   // Update marks per day
   deposit.marksPerDay = deposit.balanceUSD.times(DEFAULT_MARKS_PER_DOLLAR_PER_DAY);
@@ -151,7 +233,11 @@ export function handleStabilityPoolWithdraw(event: StabilityPoolWithdrawEvent): 
   // Query actual balance from pool contract
   const actualBalance = queryPoolDepositBalance(Address.fromBytes(poolAddress), Address.fromBytes(userAddress));
   deposit.balance = actualBalance;
-  deposit.balanceUSD = actualBalance.toBigDecimal().div(BigDecimal.fromString("1000000000000000000"));
+  
+  // Calculate USD value using real-time oracle price
+  const wrappedTokenPriceUSD = getWrappedTokenPriceUSD(poolAddress, event.block);
+  const amountInTokens = actualBalance.toBigDecimal().div(E18);
+  deposit.balanceUSD = amountInTokens.times(wrappedTokenPriceUSD);
   deposit.marksPerDay = deposit.balanceUSD.times(DEFAULT_MARKS_PER_DOLLAR_PER_DAY);
   
   // Reset if balance is zero
@@ -178,7 +264,11 @@ export function handleStabilityPoolDepositChange(event: UserDepositChangeEvent):
   
   // Update balance directly from event
   deposit.balance = newDeposit;
-  deposit.balanceUSD = newDeposit.toBigDecimal().div(BigDecimal.fromString("1000000000000000000"));
+  
+  // Calculate USD value using real-time oracle price
+  const wrappedTokenPriceUSD = getWrappedTokenPriceUSD(poolAddress, event.block);
+  const amountInTokens = newDeposit.toBigDecimal().div(E18);
+  deposit.balanceUSD = amountInTokens.times(wrappedTokenPriceUSD);
   deposit.marksPerDay = deposit.balanceUSD.times(DEFAULT_MARKS_PER_DOLLAR_PER_DAY);
   
   // Reset if balance is zero

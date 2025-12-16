@@ -236,6 +236,16 @@ export function useAllHarborMarks(genesisAddresses: string[]) {
         const genesisId = `${genesisAddress.toLowerCase()}-${address.toLowerCase()}`;
         const userAddress = address.toLowerCase();
         const genesisAddressLower = genesisAddress.toLowerCase();
+        
+        if (process.env.NODE_ENV === "development") {
+          console.log("[useAllHarborMarks] Querying marks:", {
+            genesisAddress: genesisAddressLower,
+            userAddress,
+            genesisId,
+            graphUrl,
+          });
+        }
+        
         return fetch(graphUrl, {
           method: "POST",
           headers: {
@@ -249,7 +259,20 @@ export function useAllHarborMarks(genesisAddresses: string[]) {
               genesisId: genesisId,
             },
           }),
-        }).then((res) => res.json());
+        }).then(async (res) => {
+          const json = await res.json();
+          if (process.env.NODE_ENV === "development") {
+            console.log("[useAllHarborMarks] Query result:", {
+              genesisAddress: genesisAddressLower,
+              status: res.status,
+              hasData: !!json.data,
+              hasErrors: !!json.errors,
+              userHarborMarks: json.data?.userHarborMarks,
+              userTotalMarks: json.data?.userTotalMarks,
+            });
+          }
+          return json;
+        });
       });
 
       const results = await Promise.all(queries);

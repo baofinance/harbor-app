@@ -45,6 +45,8 @@ dataSources:
           file: ./abis/Genesis.json
         - name: ERC20
           file: ./abis/ERC20.json
+        - name: WrappedPriceOracle
+          file: ./abis/WrappedPriceOracle.json
       eventHandlers:
         - event: Deposit(indexed address,indexed address,uint256)
           handler: handleDeposit
@@ -134,6 +136,8 @@ dataSources:
           file: ./abis/ERC20.json
         - name: ChainlinkAggregator
           file: ./abis/ChainlinkAggregator.json
+        - name: WrappedPriceOracle
+          file: ./abis/WrappedPriceOracle.json
       eventHandlers:
         - event: Deposit(indexed address,indexed address,uint256)
           handler: handleStabilityPoolDeposit
@@ -167,6 +171,8 @@ dataSources:
           file: ./abis/ERC20.json
         - name: ChainlinkAggregator
           file: ./abis/ChainlinkAggregator.json
+        - name: Minter
+          file: ./abis/Minter.json
       eventHandlers:
         - event: Deposit(indexed address,indexed address,uint256)
           handler: handleStabilityPoolDeposit
@@ -205,6 +211,8 @@ dataSources:
           file: ./abis/Genesis.json
         - name: ERC20
           file: ./abis/ERC20.json
+        - name: WrappedPriceOracle
+          file: ./abis/WrappedPriceOracle.json
       eventHandlers:
         - event: Deposit(indexed address,indexed address,uint256)
           handler: handleDeposit
@@ -294,6 +302,8 @@ dataSources:
           file: ./abis/ERC20.json
         - name: ChainlinkAggregator
           file: ./abis/ChainlinkAggregator.json
+        - name: WrappedPriceOracle
+          file: ./abis/WrappedPriceOracle.json
       eventHandlers:
         - event: Deposit(indexed address,indexed address,uint256)
           handler: handleStabilityPoolDeposit
@@ -327,6 +337,8 @@ dataSources:
           file: ./abis/ERC20.json
         - name: ChainlinkAggregator
           file: ./abis/ChainlinkAggregator.json
+        - name: Minter
+          file: ./abis/Minter.json
       eventHandlers:
         - event: Deposit(indexed address,indexed address,uint256)
           handler: handleStabilityPoolDeposit
@@ -365,6 +377,8 @@ dataSources:
           file: ./abis/Genesis.json
         - name: ERC20
           file: ./abis/ERC20.json
+        - name: WrappedPriceOracle
+          file: ./abis/WrappedPriceOracle.json
       eventHandlers:
         - event: Deposit(indexed address,indexed address,uint256)
           handler: handleDeposit
@@ -428,6 +442,8 @@ dataSources:
           file: ./abis/ERC20.json
         - name: ChainlinkAggregator
           file: ./abis/ChainlinkAggregator.json
+        - name: WrappedPriceOracle
+          file: ./abis/WrappedPriceOracle.json
       eventHandlers:
         - event: Deposit(indexed address,indexed address,uint256)
           handler: handleStabilityPoolDeposit
@@ -461,6 +477,8 @@ dataSources:
           file: ./abis/ERC20.json
         - name: ChainlinkAggregator
           file: ./abis/ChainlinkAggregator.json
+        - name: Minter
+          file: ./abis/Minter.json
       eventHandlers:
         - event: Deposit(indexed address,indexed address,uint256)
           handler: handleStabilityPoolDeposit

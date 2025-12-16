@@ -10,24 +10,140 @@ import {
   UserHarborMarks,
   UserList,
 } from "../generated/schema";
-import { BigDecimal, BigInt, Bytes, ethereum } from "@graphprotocol/graph-ts";
+import { BigDecimal, BigInt, Bytes, ethereum, Address } from "@graphprotocol/graph-ts";
+import { WrappedPriceOracle } from "../generated/Genesis_ETH_fxUSD/WrappedPriceOracle";
 
 // Constants
 const MARKS_PER_DOLLAR_PER_DAY = BigDecimal.fromString("10");
 const BONUS_MARKS_PER_DOLLAR = BigDecimal.fromString("100"); // 100 marks per dollar bonus at genesis end
 const SECONDS_PER_DAY = BigDecimal.fromString("86400");
+const E18 = BigDecimal.fromString("1000000000000000000"); // 10^18
 
-// Oracle address for wstETH/USD (Chainlink Aggregator)
-const WSTETH_USD_ORACLE = "0x202CCe504e04bEd6fC0521238dDf04Bc9E8E15aB";
-// Mock oracle price: $2000 per wstETH (200000000000 with 8 decimals = 2000 * 10^8)
-const WSTETH_PRICE_USD = BigDecimal.fromString("2000");
+// Price oracle addresses for each genesis contract
+// Returns the price oracle address for a given genesis contract, or empty string if not found
+function getPriceOracleAddress(genesisAddress: string): string {
+  if (genesisAddress == "0x5f4398e1d3e33f93e3d7ee710d797e2a154cb073") {
+    return "0x56d1a2fc199ba05f84d2eb8eab5858d3d954030c"; // ETH/fxUSD
+  }
+  if (genesisAddress == "0x288c61c3b3684ff21adf38d878c81457b19bd2fe") {
+    return "0xf6e28853563db7f7e42f5db0e1f959743ac5b0e6"; // BTC/fxUSD
+  }
+  if (genesisAddress == "0x9ae0b57ceada0056dbe21edcd638476fcba3ccc0") {
+    return "0xe370289af2145a5b2f0f7a4a900ebfd478a156db"; // BTC/stETH
+  }
+  if (genesisAddress == "0x1454707877cdb966e29cea8a190c2169eeca4b8c") {
+    return "0x56d1a2fc199ba05f84d2eb8eab5858d3d954030c"; // ETH/fxUSD (alternative address)
+  }
+  return "";
+}
 
-// Helper function to get wstETH price from Chainlink oracle
-// For now, using fixed price. Can be enhanced to fetch from oracle dynamically
-function getWstETHPrice(block: ethereum.Block): BigDecimal {
-  // TODO: Implement dynamic oracle price fetching
-  // For now, return fixed price from mock oracle ($2000)
-  return WSTETH_PRICE_USD;
+// Fallback prices if oracle fails (in USD)
+function getFallbackPrice(genesisAddress: string): BigDecimal {
+  if (genesisAddress == "0x5f4398e1d3e33f93e3d7ee710d797e2a154cb073") {
+    return BigDecimal.fromString("1.07"); // fxSAVE ~$1.07
+  }
+  if (genesisAddress == "0x288c61c3b3684ff21adf38d878c81457b19bd2fe") {
+    return BigDecimal.fromString("1.07"); // fxSAVE ~$1.07
+  }
+  if (genesisAddress == "0x9ae0b57ceada0056dbe21edcd638476fcba3ccc0") {
+    return BigDecimal.fromString("4000"); // wstETH ~$4000
+  }
+  if (genesisAddress == "0x1454707877cdb966e29cea8a190c2169eeca4b8c") {
+    return BigDecimal.fromString("1.07"); // fxSAVE ~$1.07
+  }
+  return BigDecimal.fromString("1.0"); // Default fallback
+}
+
+/**
+ * Fetch real-time price from the WrappedPriceOracle contract
+ * Returns the wrapped token price in USD (underlying price * wrapped rate)
+ * 
+ * @param genesisAddress - The genesis contract address
+ * @param block - The current block
+ * @returns Wrapped token price in USD, or fallback price if oracle fails
+ */
+function getWrappedTokenPriceUSD(genesisAddress: Bytes, block: ethereum.Block): BigDecimal {
+  const genesisAddressStr = genesisAddress.toHexString();
+  
+  // For fxUSD/fxSAVE markets, the oracle returns the pegged asset price (haETH/haBTC) instead of fxUSD
+  // We need to hardcode fxUSD to $1.00, just like the frontend does
+  // ETH/fxUSD and BTC/fxUSD markets use fxUSD as underlying collateral
+  const isFxUSDMarket = genesisAddressStr == "0x5f4398e1d3e33f93e3d7ee710d797e2a154cb073" || 
+                        genesisAddressStr == "0x288c61c3b3684ff21adf38d878c81457b19bd2fe";
+  
+  if (isFxUSDMarket) {
+    // For fxUSD markets: hardcode underlying price to $1.00, then multiply by wrapped rate
+    const underlyingPriceUSD = BigDecimal.fromString("1.0"); // fxUSD = $1.00 (hardcoded)
+    
+    // Get wrapped rate from oracle
+    const oracleAddressStr = getPriceOracleAddress(genesisAddressStr);
+    if (oracleAddressStr == "") {
+      return getFallbackPrice(genesisAddressStr);
+    }
+    
+    const oracleAddress = Address.fromString(oracleAddressStr);
+    const oracle = WrappedPriceOracle.bind(oracleAddress);
+    const result = oracle.try_latestAnswer();
+    
+    if (result.reverted) {
+      // Oracle call failed, use fallback
+      return getFallbackPrice(genesisAddressStr);
+    }
+    
+    // Extract wrapped rate (18 decimals)
+    const maxWrappedRate = result.value.value3; // maxWrappedRate (e.g., fxSAVE rate = 1.07)
+    const wrappedRate = maxWrappedRate.toBigDecimal().div(E18);
+    
+    // Calculate wrapped token price: $1.00 * wrapped rate
+    // Example: fxSAVE = $1.00 * 1.07 = $1.07
+    const wrappedTokenPriceUSD = underlyingPriceUSD.times(wrappedRate);
+    
+    // Ensure we have a valid price
+    if (wrappedTokenPriceUSD.le(BigDecimal.fromString("0"))) {
+      return getFallbackPrice(genesisAddressStr);
+    }
+    
+    return wrappedTokenPriceUSD;
+  }
+  
+  // For other markets (BTC/stETH), use oracle normally
+  const oracleAddressStr = getPriceOracleAddress(genesisAddressStr);
+  
+  // If no oracle configured, use fallback
+  if (oracleAddressStr == "") {
+    return getFallbackPrice(genesisAddressStr);
+  }
+  
+  // Bind to the price oracle contract
+  const oracleAddress = Address.fromString(oracleAddressStr);
+  const oracle = WrappedPriceOracle.bind(oracleAddress);
+  
+  // Call latestAnswer() which returns (minUnderlyingPrice, maxUnderlyingPrice, minWrappedRate, maxWrappedRate)
+  const result = oracle.try_latestAnswer();
+  
+  if (result.reverted) {
+    // Oracle call failed, use fallback
+    return getFallbackPrice(genesisAddressStr);
+  }
+  
+  // Extract values (all in 18 decimals)
+  const maxUnderlyingPrice = result.value.value1; // maxUnderlyingPrice (e.g., wstETH = $4000)
+  const maxWrappedRate = result.value.value3; // maxWrappedRate (e.g., wstETH rate = 1.0)
+  
+  // Convert from BigInt (18 decimals) to BigDecimal
+  const underlyingPriceUSD = maxUnderlyingPrice.toBigDecimal().div(E18);
+  const wrappedRate = maxWrappedRate.toBigDecimal().div(E18);
+  
+  // Calculate wrapped token price: underlying price * wrapped rate
+  // Example: wstETH = $4000 * 1.0 = $4000
+  const wrappedTokenPriceUSD = underlyingPriceUSD.times(wrappedRate);
+  
+  // Ensure we have a valid price
+  if (wrappedTokenPriceUSD.le(BigDecimal.fromString("0"))) {
+    return getFallbackPrice(genesisAddressStr);
+  }
+  
+  return wrappedTokenPriceUSD;
 }
 
 // Helper to get or create user marks
@@ -77,12 +193,12 @@ export function handleDeposit(event: DepositEvent): void {
   deposit.txHash = txHash;
   deposit.blockNumber = blockNumber;
   
-  // Calculate amount in USD using oracle price
-  const wstETHPrice = getWstETHPrice(event.block);
-  // amount is in wei (18 decimals), price is in USD with 8 decimals from Chainlink
-  // amountUSD = (amount * price) / (10^18 * 10^8) * 10^8 = (amount * price) / 10^18
-  const amountInTokens = amount.toBigDecimal().div(BigDecimal.fromString("1000000000000000000"));
-  const amountUSD = amountInTokens.times(wstETHPrice);
+  // Calculate amount in USD using real-time oracle price
+  const wrappedTokenPriceUSD = getWrappedTokenPriceUSD(contractAddress, event.block);
+  // amount is in wei (18 decimals), price is in USD
+  // amountUSD = (amount / 10^18) * priceUSD
+  const amountInTokens = amount.toBigDecimal().div(E18);
+  const amountUSD = amountInTokens.times(wrappedTokenPriceUSD);
   deposit.amountUSD = amountUSD;
   deposit.marksPerDay = amountUSD.times(MARKS_PER_DOLLAR_PER_DAY);
   deposit.isActive = true;
@@ -187,11 +303,12 @@ export function handleWithdraw(event: WithdrawEvent): void {
   withdrawal.txHash = txHash;
   withdrawal.blockNumber = blockNumber;
   
-  // Calculate amount in USD using oracle price
-  const wstETHPrice = getWstETHPrice(event.block);
-  // amount is in wei (18 decimals), price is in USD with 8 decimals from Chainlink
-  const amountInTokens = amount.toBigDecimal().div(BigDecimal.fromString("1000000000000000000"));
-  const amountUSD = amountInTokens.times(wstETHPrice);
+  // Calculate amount in USD using real-time oracle price
+  const wrappedTokenPriceUSD = getWrappedTokenPriceUSD(contractAddress, event.block);
+  // amount is in wei (18 decimals), price is in USD
+  // amountUSD = (amount / 10^18) * priceUSD
+  const amountInTokens = amount.toBigDecimal().div(E18);
+  const amountUSD = amountInTokens.times(wrappedTokenPriceUSD);
   withdrawal.amountUSD = amountUSD;
   
   // Update user marks
