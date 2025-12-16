@@ -11,8 +11,7 @@ import {
 import { formatEther } from "viem";
 import { useQueryClient } from "@tanstack/react-query";
 import { markets } from "../../config/markets";
-import { GenesisDepositModal } from "@/components/GenesisDepositModal";
-import { GenesisWithdrawModal } from "@/components/GenesisWithdrawModal";
+import { GenesisManageModal } from "@/components/GenesisManageModal";
 import { GENESIS_ABI, contracts } from "../../config/contracts";
 import {
   ArrowRightIcon,
@@ -426,24 +425,10 @@ function MarketExpandedView({
 export default function GenesisIndexPage() {
   const { address, isConnected } = useAccount();
   const router = useRouter();
-  const [depositModal, setDepositModal] = useState<{
+  const [manageModal, setManageModal] = useState<{
     marketId: string;
-    genesisAddress: string;
-    collateralAddress: string;
-    collateralSymbol: string;
-    acceptedAssets: Array<{ symbol: string; name: string }>;
-    marketAddresses?: {
-      collateralToken?: string;
-      wrappedCollateralToken?: string;
-      priceOracle?: string;
-    };
-  } | null>(null);
-  const [withdrawModal, setWithdrawModal] = useState<{
-    marketId: string;
-    genesisAddress: string;
-    collateralSymbol: string;
-    userDeposit: bigint;
-    priceOracleAddress?: string;
+    market: any;
+    initialTab?: "deposit" | "withdraw";
   } | null>(null);
   const [now, setNow] = useState(new Date());
   const [expandedMarket, setExpandedMarket] = useState<string | null>(null);
@@ -1877,63 +1862,21 @@ export default function GenesisIndexPage() {
                           )}
                         </div>
                       ) : (
-                        // Before genesis ends, show deposit/withdraw buttons
-                        <div className="flex items-center justify-center gap-2">
+                        // Before genesis ends, show manage button
+                        <div className="flex items-center justify-center">
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              if (genesisAddress && collateralAddress) {
-                                setDepositModal({
-                                  marketId: id,
-                                  genesisAddress,
-                                  collateralAddress,
-                                  collateralSymbol,
-                                  acceptedAssets,
-                                  marketAddresses: {
-                                    collateralToken: (mkt as any).addresses
-                                      ?.collateralToken,
-                                    wrappedCollateralToken: (mkt as any)
-                                      .addresses?.wrappedCollateralToken,
-                                    priceOracle: (mkt as any).addresses
-                                      ?.collateralPrice,
-                                  },
-                                });
-                              }
+                              setManageModal({
+                                marketId: id,
+                                market: mkt,
+                                initialTab: userDeposit && userDeposit > 0n ? "withdraw" : "deposit",
+                              });
                             }}
-                            disabled={
-                              isEnded || !genesisAddress || !collateralAddress
-                            }
+                            disabled={isEnded || !genesisAddress}
                             className="px-4 py-2 text-xs font-medium bg-[#1E4775] text-white hover:bg-[#17395F] disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors rounded-full whitespace-nowrap"
                           >
-                            Deposit
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (
-                                genesisAddress &&
-                                userDeposit &&
-                                userDeposit > 0n
-                              ) {
-                                setWithdrawModal({
-                                  marketId: id,
-                                  genesisAddress,
-                                  collateralSymbol,
-                                  userDeposit,
-                                  priceOracleAddress: (mkt as any).addresses
-                                    ?.collateralPrice,
-                                });
-                              }
-                            }}
-                            disabled={
-                              !userDeposit ||
-                              userDeposit === 0n ||
-                              !genesisAddress ||
-                              isEnded
-                            }
-                            className="px-4 py-2 text-xs font-medium bg-white text-[#1E4775] border border-[#1E4775] hover:bg-[#1E4775]/5 disabled:bg-gray-100 disabled:text-gray-400 disabled:border-gray-300 disabled:cursor-not-allowed transition-colors rounded-full whitespace-nowrap"
-                          >
-                            Withdraw
+                            Manage
                           </button>
                         </div>
                       )}
@@ -1965,15 +1908,13 @@ export default function GenesisIndexPage() {
         </section>
       </main>
 
-      {depositModal && (
-        <GenesisDepositModal
-          isOpen={!!depositModal}
-          onClose={() => setDepositModal(null)}
-          genesisAddress={depositModal.genesisAddress}
-          collateralAddress={depositModal.collateralAddress}
-          collateralSymbol={depositModal.collateralSymbol}
-          acceptedAssets={depositModal.acceptedAssets}
-          marketAddresses={depositModal.marketAddresses}
+      {manageModal && (
+        <GenesisManageModal
+          isOpen={!!manageModal}
+          onClose={() => setManageModal(null)}
+          marketId={manageModal.marketId}
+          market={manageModal.market}
+          initialTab={manageModal.initialTab}
           onSuccess={async () => {
             // Wait for blockchain state to update
             await new Promise((resolve) => setTimeout(resolve, 2000));
@@ -2004,64 +1945,8 @@ export default function GenesisIndexPage() {
               refetchTotalDeposits(),
             ]);
 
-            // Wait longer for subgraph to index the deposit event
+            // Wait longer for subgraph to index the event
             // The subgraph needs time to process the event and update marks
-            await new Promise((resolve) => setTimeout(resolve, 5000));
-
-            // Invalidate and refetch harbor marks queries
-            queryClient.invalidateQueries({ queryKey: ["allHarborMarks"] });
-            queryClient.invalidateQueries({ queryKey: ["harborMarks"] });
-
-            // Force a refetch of marks data
-            await refetchMarks();
-
-            // Poll for marks update (subgraph might need more time)
-            let attempts = 0;
-            const maxAttempts = 6; // Try for up to 30 seconds (6 * 5 seconds)
-            const pollInterval = 5000; // 5 seconds
-
-            const pollForMarks = async () => {
-              if (attempts >= maxAttempts) return;
-              attempts++;
-              await new Promise((resolve) => setTimeout(resolve, pollInterval));
-              await refetchMarks();
-              // Continue polling if we haven't reached max attempts
-              if (attempts < maxAttempts) {
-                await pollForMarks();
-              }
-            };
-
-            // Start polling in background (don't await)
-            pollForMarks();
-
-            // Don't auto-close modal - let user see success state and close manually
-          }}
-        />
-      )}
-
-      {withdrawModal && (
-        <GenesisWithdrawModal
-          isOpen={!!withdrawModal}
-          onClose={() => setWithdrawModal(null)}
-          genesisAddress={withdrawModal.genesisAddress}
-          collateralSymbol={withdrawModal.collateralSymbol}
-          userDeposit={withdrawModal.userDeposit}
-          priceOracleAddress={withdrawModal.priceOracleAddress}
-          onSuccess={async () => {
-            // Wait for blockchain state to update
-            await new Promise((resolve) => setTimeout(resolve, 2000));
-            // Refetch contract data in order: collateral tokens first (needed for total deposits)
-            await refetchCollateralTokens();
-            // Wait a bit for collateral token reads to complete before refetching total deposits
-            await new Promise((resolve) => setTimeout(resolve, 500));
-            // Then refetch everything else
-            await Promise.all([
-              refetchReads(),
-              refetchTotalDeposits(),
-              refetchPrices(),
-            ]);
-
-            // Wait longer for subgraph to index the withdrawal event
             await new Promise((resolve) => setTimeout(resolve, 5000));
 
             // Invalidate and refetch harbor marks queries

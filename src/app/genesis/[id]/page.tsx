@@ -768,7 +768,7 @@ export default function GenesisMarketPage({ params }: PageProps) {
  </div>
 
  {/* Header */}
- <div className="mb-4 flex items-center justify-between">
+ <div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0">
  <div>
  <h1 className="text-2xl font-semibold font-mono text-white">
  {market?.name}
