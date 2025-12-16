@@ -12,6 +12,7 @@ import {
 } from "../generated/schema";
 import { BigDecimal, BigInt, Bytes, ethereum, Address } from "@graphprotocol/graph-ts";
 import { WrappedPriceOracle } from "../generated/Genesis_ETH_fxUSD/WrappedPriceOracle";
+import { ChainlinkAggregator } from "../generated/HaToken_haETH/ChainlinkAggregator";
 
 // Constants
 const MARKS_PER_DOLLAR_PER_DAY = BigDecimal.fromString("10");
@@ -113,10 +114,57 @@ function getWrappedTokenPriceUSD(genesisAddress: Bytes, block: ethereum.Block): 
   }
   
   if (isWstETHMarket) {
-    // For wstETH markets: Oracle returns haBTC price (wrong!), we need wstETH price
-    // Use fallback price for now (wstETH ~$3,600-4,000)
-    // TODO: Integrate CoinGecko API in subgraph for real-time wstETH prices
-    return getFallbackPrice(genesisAddressStr);
+    // For BTC/stETH market: Oracle returns wstETH/BTC cross-rate, not USD price!
+    // We need to multiply by BTC/USD to get wstETH price in USD
+    // Oracle value: maxUnderlyingPrice = wstETH/BTC rate (e.g., 0.041 BTC per wstETH)
+    // Calculation: wstETH USD = (wstETH/BTC rate) × (BTC/USD price)
+    
+    const oracleAddressStr = getPriceOracleAddress(genesisAddressStr);
+    if (oracleAddressStr == "") {
+      return getFallbackPrice(genesisAddressStr);
+    }
+    
+    // Get wstETH/BTC rate from the market's oracle
+    const oracleAddress = Address.fromString(oracleAddressStr);
+    const oracle = WrappedPriceOracle.bind(oracleAddress);
+    const result = oracle.try_latestAnswer();
+    
+    if (result.reverted) {
+      return getFallbackPrice(genesisAddressStr);
+    }
+    
+    // Extract wstETH/BTC rate (18 decimals)
+    const wstethBtcRate = result.value.value1; // maxUnderlyingPrice = wstETH/BTC rate
+    const wstethBtcRateDecimal = wstethBtcRate.toBigDecimal().div(E18);
+    
+    // Get wrapped rate (stETH <-> wstETH)
+    const maxWrappedRate = result.value.value3;
+    const wrappedRate = maxWrappedRate.toBigDecimal().div(E18);
+    
+    // Get BTC/USD price from Chainlink
+    // Standard Chainlink BTC/USD oracle: 0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c
+    const btcUsdOracleAddress = Address.fromString("0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c");
+    const btcUsdOracle = ChainlinkAggregator.bind(btcUsdOracleAddress);
+    const btcUsdResult = btcUsdOracle.try_latestAnswer();
+    
+    if (btcUsdResult.reverted) {
+      // If Chainlink fails, use fallback
+      return getFallbackPrice(genesisAddressStr);
+    }
+    
+    // Chainlink BTC/USD uses 8 decimals
+    const btcUsdPrice = btcUsdResult.value.toBigDecimal().div(BigDecimal.fromString("100000000")); // 10^8
+    
+    // Calculate wstETH price in USD: (wstETH/BTC rate) × (BTC/USD price)
+    // Example: 0.041 BTC/wstETH × $87,828/BTC = $3,607/wstETH
+    const wstethUsdPrice = wstethBtcRateDecimal.times(btcUsdPrice);
+    
+    // Ensure we have a valid price
+    if (wstethUsdPrice.le(BigDecimal.fromString("0"))) {
+      return getFallbackPrice(genesisAddressStr);
+    }
+    
+    return wstethUsdPrice;
   }
   
   // For other markets, use oracle normally
