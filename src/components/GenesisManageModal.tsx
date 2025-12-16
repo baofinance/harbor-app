@@ -273,7 +273,13 @@ export const GenesisManageModal = ({
               isOpen={true}
               onClose={handleClose}
               genesisAddress={genesisAddress}
-              collateralSymbol={collateralSymbol}
+              collateralSymbol={
+                // For stETH markets: wstETH is the wrapped collateral (same as collateral symbol)
+                // For fxUSD markets: fxSAVE is the wrapped collateral (underlyingSymbol)
+                market?.collateral?.symbol?.toLowerCase() === "wsteth"
+                  ? market?.collateral?.symbol
+                  : market?.collateral?.underlyingSymbol || collateralSymbol
+              }
               userDeposit={userDeposit || 0n}
               priceOracleAddress={priceOracleAddress}
               coinGeckoId={market?.coinGeckoId}

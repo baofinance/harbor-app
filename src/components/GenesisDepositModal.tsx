@@ -1051,7 +1051,8 @@ const successFmt = formatTokenAmount(successAmountBigInt, collateralSymbol, coll
  Transaction Preview:
  </div>
 {(() => {
-  const currentFmt = formatTokenAmount(userCurrentDeposit, collateralSymbol, collateralPriceUSD);
+  const displaySymbol = wrappedCollateralSymbol || collateralSymbol;
+  const currentFmt = formatTokenAmount(userCurrentDeposit, displaySymbol, collateralPriceUSD);
   return (
     <div className="flex justify-between items-baseline">
  <span className="text-[#1E4775]/70">Current Deposit:</span>
@@ -1067,8 +1068,9 @@ const successFmt = formatTokenAmount(successAmountBigInt, collateralSymbol, coll
 {(() => {
   const depositAmt = isNativeETH || isStETH ? actualWstETHDeposit : amountBigInt;
   // For deposit display, show the amount being deposited with the selected asset's price
-  // But display in collateral symbol since that's what gets stored
-  const depositFmt = formatTokenAmount(depositAmt, collateralSymbol, selectedAssetPriceUSD);
+  // Display in wrapped collateral symbol since that's what gets stored
+  const displaySymbol = wrappedCollateralSymbol || collateralSymbol;
+  const depositFmt = formatTokenAmount(depositAmt, displaySymbol, selectedAssetPriceUSD);
   return (
     <div className="flex justify-between items-baseline">
       <span className="text-[#1E4775]/70">+ Deposit Amount:</span>
@@ -1087,7 +1089,7 @@ const successFmt = formatTokenAmount(successAmountBigInt, collateralSymbol, coll
 })()}
 {(isNativeETH || isStETH) && actualWstETHDeposit > 0n && (
 <div className="text-xs text-[#1E4775]/50 italic">
-({parseFloat(amount).toFixed(6)} {selectedAsset} ≈ {formatTokenAmount(actualWstETHDeposit, collateralSymbol).display})
+({parseFloat(amount).toFixed(6)} {selectedAsset} ≈ {formatTokenAmount(actualWstETHDeposit, wrappedCollateralSymbol || collateralSymbol).display})
 </div>
 )}
  <div className="border-t border-[#1E4775]/30 pt-2">
@@ -1103,7 +1105,8 @@ const successFmt = formatTokenAmount(successAmountBigInt, collateralSymbol, coll
     : 0;
   const totalUSD = currentDepositUSD + newDepositUSD;
   
-  const totalFmt = formatTokenAmount(newTotalDepositActual, collateralSymbol);
+  const displaySymbol = wrappedCollateralSymbol || collateralSymbol;
+  const totalFmt = formatTokenAmount(newTotalDepositActual, displaySymbol);
   const totalUSDFormatted = totalUSD > 0 ? formatUSD(totalUSD) : null;
   
   return (

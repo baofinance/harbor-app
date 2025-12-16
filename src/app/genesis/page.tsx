@@ -1451,6 +1451,7 @@ export default function GenesisIndexPage() {
             // Standard Chainlink returns single int256
             // Note: We try tuple format first via chainlinkOracleABI, but handle both formats in result processing
             let priceRaw: bigint | undefined;
+            let wrappedRate: bigint | undefined;
             if (
               priceAnswerResult?.status === "success" &&
               priceAnswerResult?.result !== undefined
@@ -1458,8 +1459,9 @@ export default function GenesisIndexPage() {
               const result = priceAnswerResult.result;
               // Priority 2: Check if result is a tuple (array with 4 elements) - Harbor oracle format
               if (Array.isArray(result) && result.length === 4) {
-                // Harbor oracle format: use maxUnderlyingPrice (index 1)
+                // Harbor oracle format: use maxUnderlyingPrice (index 1) and maxWrappedRate (index 3)
                 priceRaw = result[1] as bigint;
+                wrappedRate = result[3] as bigint;
               } else if (typeof result === "bigint") {
                 // Priority 3: Standard Chainlink format - single int256 value
                 // Convert to positive if negative (some oracles return negative for error states)
@@ -1467,8 +1469,8 @@ export default function GenesisIndexPage() {
               }
             }
 
-            // Calculate price: Priority order: CoinGecko → Tuple answer → Single answer
-            let collateralPriceUSD: number = 0;
+            // Calculate price: Priority order: CoinGecko → Hardcoded $1 (fxUSD) → Oracle
+            let underlyingPriceUSD: number = 0;
             let priceError: string | null = null;
             const marketCoinGeckoId = (mkt as any)?.coinGeckoId as
               | string
@@ -1476,14 +1478,17 @@ export default function GenesisIndexPage() {
 
             // Priority 1: Try CoinGecko price first if available
             if (marketCoinGeckoId && coinGeckoPrices[marketCoinGeckoId]) {
-              collateralPriceUSD = coinGeckoPrices[marketCoinGeckoId]!;
+              underlyingPriceUSD = coinGeckoPrices[marketCoinGeckoId]!;
+            } else if (collateralSymbol.toLowerCase() === "fxusd") {
+              // For fxUSD, use hardcoded $1.00
+              underlyingPriceUSD = 1.00;
             } else if (priceRaw !== undefined) {
               // Priority 2 & 3: Use oracle price (tuple or single-value format)
               // Convert to positive if negative (some oracles return negative for error states)
               const priceValue = priceRaw < 0n ? -priceRaw : priceRaw;
 
               if (priceValue > 0n) {
-                collateralPriceUSD = Number(priceValue) / 10 ** priceDecimals;
+                underlyingPriceUSD = Number(priceValue) / 10 ** priceDecimals;
               } else {
                 priceError = "Price oracle returned zero or invalid value";
               }
@@ -1502,7 +1507,16 @@ export default function GenesisIndexPage() {
               }
             }
 
-            // Calculate USD values
+            // Calculate wrapped token price: underlying price * wrapped rate
+            // Deposits are stored in wrapped collateral tokens, so we need wrapped token price
+            const wrappedTokenPriceUSD = wrappedRate && underlyingPriceUSD > 0
+              ? underlyingPriceUSD * (Number(wrappedRate) / 1e18)
+              : underlyingPriceUSD; // Fallback to underlying price if no rate available
+
+            // Use wrapped token price for USD calculations since deposits are in wrapped collateral
+            const collateralPriceUSD = wrappedTokenPriceUSD;
+
+            // Calculate USD values using wrapped token price
             const totalDepositsAmount = totalDeposits
               ? Number(formatEther(totalDeposits))
               : 0;
@@ -1689,7 +1703,7 @@ export default function GenesisIndexPage() {
                               : totalDeposits && totalDeposits > 0n
                               ? collateralPriceUSD > 0
                                 ? formatUSD(totalDepositsUSD)
-                                : `${formatToken(totalDeposits)} ${collateralSymbol}`
+                                : `${formatToken(totalDeposits)} ${wrappedCollateralSymbol}`
                               : "$0"}
                           </div>
                         </div>
@@ -1699,7 +1713,7 @@ export default function GenesisIndexPage() {
                             {userDeposit && userDeposit > 0n
                               ? collateralPriceUSD > 0
                                 ? formatUSD(userDepositUSD)
-                                : `${formatToken(userDeposit)} ${collateralSymbol}`
+                                : `${formatToken(userDeposit)} ${wrappedCollateralSymbol}`
                               : "$0"}
                           </div>
                         </div>
@@ -1855,10 +1869,10 @@ export default function GenesisIndexPage() {
                                 ? priceError
                                   ? `${formatToken(
                                       totalDeposits
-                                    )} ${collateralSymbol}\n\nPrice Error: ${priceError}`
+                                    )} ${wrappedCollateralSymbol}\n\nPrice Error: ${priceError}`
                                   : `${formatToken(
                                       totalDeposits
-                                    )} ${collateralSymbol}`
+                                    )} ${wrappedCollateralSymbol}`
                                 : priceError
                                 ? `No deposits\n\nPrice Error: ${priceError}`
                                 : "No deposits"
@@ -1875,7 +1889,7 @@ export default function GenesisIndexPage() {
                                 ) : (
                                   `${formatToken(
                                     totalDeposits
-                                  )} ${collateralSymbol}`
+                                  )} ${wrappedCollateralSymbol}`
                                 )
                               ) : collateralPriceUSD > 0 ? (
                                 "$0"
@@ -1888,10 +1902,10 @@ export default function GenesisIndexPage() {
                               )}
                             </div>
                           </SimpleTooltip>
-                          <SimpleTooltip label={collateralSymbol}>
+                          <SimpleTooltip label={wrappedCollateralSymbol}>
                             <Image
-                              src={getLogoPath(collateralSymbol)}
-                              alt={collateralSymbol}
+                              src={getLogoPath(wrappedCollateralSymbol)}
+                              alt={wrappedCollateralSymbol}
                               width={24}
                               height={24}
                               className="flex-shrink-0 cursor-help rounded-full"
@@ -1908,10 +1922,10 @@ export default function GenesisIndexPage() {
                               ? priceError
                                 ? `${formatToken(
                                     userDeposit
-                                  )} ${collateralSymbol}\n\nPrice Error: ${priceError}`
+                                  )} ${wrappedCollateralSymbol}\n\nPrice Error: ${priceError}`
                                 : `${formatToken(
                                     userDeposit
-                                  )} ${collateralSymbol}`
+                                  )} ${wrappedCollateralSymbol}`
                               : priceError
                               ? `No deposit\n\nPrice Error: ${priceError}`
                               : "No deposit"
@@ -1928,7 +1942,7 @@ export default function GenesisIndexPage() {
                               ) : (
                                 `${formatToken(
                                   userDeposit
-                                )} ${collateralSymbol}`
+                                )} ${wrappedCollateralSymbol}`
                               )
                             ) : collateralPriceUSD > 0 ? (
                               "$0"
@@ -1941,10 +1955,10 @@ export default function GenesisIndexPage() {
                             )}
                           </div>
                         </SimpleTooltip>
-                        <SimpleTooltip label={collateralSymbol}>
+                        <SimpleTooltip label={wrappedCollateralSymbol}>
                           <Image
-                            src={getLogoPath(collateralSymbol)}
-                            alt={collateralSymbol}
+                            src={getLogoPath(wrappedCollateralSymbol)}
+                            alt={wrappedCollateralSymbol}
                             width={24}
                             height={24}
                             className="flex-shrink-0 cursor-help rounded-full"
@@ -2099,7 +2113,7 @@ export default function GenesisIndexPage() {
                     isConnected={isConnected}
                     address={address}
                     endDate={endDate}
-                    collateralSymbol={collateralSymbol}
+                    collateralSymbol={wrappedCollateralSymbol}
                     collateralPriceUSD={collateralPriceUSD}
                     peggedSymbol={rowPeggedSymbol}
                     leveragedSymbol={rowLeveragedSymbol}

@@ -80,12 +80,31 @@ const oraclePriceData = useCollateralPrice(
   { enabled: isOpen && !!priceOracleAddress }
 );
 
-// Priority order: CoinGecko → fxUSD hardcoded $1 → Oracle
-const collateralPriceUSD = coinGeckoPrice 
-  ? coinGeckoPrice 
-  : collateralSymbol.toLowerCase() === "fxusd" 
-    ? 1.00 
-    : oraclePriceData.priceUSD;
+// Determine if the collateral token is a wrapped asset (fxSAVE, wstETH)
+const isWrappedToken =
+  collateralSymbol.toLowerCase() === "fxsave" ||
+  collateralSymbol.toLowerCase() === "wsteth";
+
+// Priority order for UNDERLYING price: CoinGecko → Hardcoded $1 (for fxUSD/fxSAVE) → Oracle
+// For fxSAVE (wrapped fxUSD), we use $1.00 as the underlying price
+const underlyingPriceUSD = coinGeckoPrice
+  ? coinGeckoPrice
+  : collateralSymbol.toLowerCase() === "fxusd" || collateralSymbol.toLowerCase() === "fxsave"
+  ? 1.0
+  : oraclePriceData.priceUSD;
+
+// Get wrapped rate from oracle to calculate wrapped token price
+const wrappedRate =
+  oraclePriceData?.maxRate !== undefined
+    ? Number(oraclePriceData.maxRate) / 1e18
+    : undefined;
+
+// Calculate wrapped collateral price: underlying price * wrapped rate
+// This gives us the correct price for fxSAVE (~$1.07) and wstETH (~$4000)
+const collateralPriceUSD =
+  isWrappedToken && wrappedRate && wrappedRate > 0
+    ? underlyingPriceUSD * wrappedRate
+    : underlyingPriceUSD;
 
  // Contract write hooks
  const { writeContractAsync } = useWriteContract();
@@ -295,7 +314,11 @@ const successUSD = successAmountNum > 0 && collateralPriceUSD > 0
     <div className="space-y-4 sm:space-y-6">
       {/* Balance */}
       {(() => {
-  const depositFmt = formatTokenAmount(userDeposit, collateralSymbol, collateralPriceUSD);
+  const depositFmt = formatTokenAmount(
+    userDeposit,
+    collateralSymbol,
+    collateralPriceUSD
+  );
   return (
  <div className="text-sm text-[#1E4775]/70">
       Your Deposit:{" "}
@@ -365,7 +388,11 @@ Available: {formatTokenAmount(userDeposit, collateralSymbol).display}
  Transaction Preview:
  </div>
 {(() => {
-  const currentFmt = formatTokenAmount(userDeposit, collateralSymbol, collateralPriceUSD);
+  const currentFmt = formatTokenAmount(
+    userDeposit,
+    collateralSymbol,
+    collateralPriceUSD
+  );
   return (
     <div className="flex justify-between items-baseline">
       <span className="text-[#1E4775]/70">Current Deposit:</span>
@@ -378,7 +405,11 @@ Available: {formatTokenAmount(userDeposit, collateralSymbol).display}
 })()}
 {(() => {
   const withdrawAmt = isMaxWithdrawal ? userDeposit : amountBigInt;
-  const withdrawFmt = formatTokenAmount(withdrawAmt, collateralSymbol, collateralPriceUSD);
+  const withdrawFmt = formatTokenAmount(
+    withdrawAmt,
+    collateralSymbol,
+    collateralPriceUSD
+  );
   return (
     <div className="flex justify-between items-baseline">
       <span className="text-[#1E4775]/70">- Withdraw Amount:</span>
@@ -391,7 +422,11 @@ Available: {formatTokenAmount(userDeposit, collateralSymbol).display}
 })()}
  <div className="border-t border-[#1E4775]/20 pt-2">
 {(() => {
-  const remainingFmt = formatTokenAmount(remainingDeposit, collateralSymbol, collateralPriceUSD);
+  const remainingFmt = formatTokenAmount(
+    remainingDeposit,
+    collateralSymbol,
+    collateralPriceUSD
+  );
   return (
     <div className="flex justify-between items-baseline font-medium">
       <span className="text-[#1E4775]">Remaining Deposit:</span>
