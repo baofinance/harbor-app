@@ -437,20 +437,10 @@ Available: {formatTokenAmount(userDeposit, collateralSymbol).display}
  </div>
   );
 })()}
- </div>
- </div>
-
- {isMaxWithdrawal && (
- <div className="p-3 bg-orange-50 border border-orange-200 text-xs text-orange-700">
- <div className="font-medium mb-1">
- Additional Warning:
- </div>
- This will remove you from Maiden Voyage and forfeit all
- potential rewards.
- </div>
- )}
- </div>
- )}
+</div>
+</div>
+</div>
+)}
 
  {/* Error */}
  {error && (
