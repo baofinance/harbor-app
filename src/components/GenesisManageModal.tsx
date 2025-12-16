@@ -233,6 +233,7 @@ export const GenesisManageModal = ({
               genesisAddress={genesisAddress}
               collateralAddress={collateralAddress}
               collateralSymbol={collateralSymbol}
+              wrappedCollateralSymbol={market?.collateral?.underlyingSymbol}
               acceptedAssets={acceptedAssets}
               marketAddresses={{
                 collateralToken: market?.addresses?.collateralToken,

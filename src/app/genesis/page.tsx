@@ -1568,15 +1568,15 @@ export default function GenesisIndexPage() {
                           <Image
                             src={getLogoPath(rowPeggedSymbol)}
                             alt={rowPeggedSymbol}
-                            width={20}
-                            height={20}
+                            width={24}
+                            height={24}
                             className="flex-shrink-0"
                           />
                           <Image
                             src={getLogoPath(rowLeveragedSymbol)}
                             alt={rowLeveragedSymbol}
-                            width={20}
-                            height={20}
+                            width={24}
+                            height={24}
                             className="flex-shrink-0"
                           />
                         </div>
@@ -1735,15 +1735,15 @@ export default function GenesisIndexPage() {
                           <Image
                             src={getLogoPath(rowPeggedSymbol)}
                             alt={rowPeggedSymbol}
-                            width={20}
-                            height={20}
+                            width={24}
+                            height={24}
                             className="flex-shrink-0"
                           />
                           <Image
                             src={getLogoPath(rowLeveragedSymbol)}
                             alt={rowLeveragedSymbol}
-                            width={20}
-                            height={20}
+                            width={24}
+                            height={24}
                             className="flex-shrink-0"
                           />
                         </div>

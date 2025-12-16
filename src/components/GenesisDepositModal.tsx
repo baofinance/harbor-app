@@ -6,6 +6,7 @@ import {
  useAccount,
   useBalance,
  useContractRead,
+ useContractReads,
  useWriteContract,
  usePublicClient,
 } from "wagmi";
@@ -24,6 +25,7 @@ interface GenesisDepositModalProps {
  genesisAddress: string;
  collateralAddress: string;
  collateralSymbol: string;
+ wrappedCollateralSymbol?: string;
  acceptedAssets: Array<{ symbol: string; name: string }>;
  marketAddresses?: {
  collateralToken?: string;
@@ -77,6 +79,7 @@ export const GenesisDepositModal = ({
  genesisAddress,
  collateralAddress,
  collateralSymbol,
+ wrappedCollateralSymbol,
  acceptedAssets,
  marketAddresses,
  onSuccess,
@@ -103,24 +106,41 @@ const { priceUSD: collateralPriceUSD } = useCollateralPrice(
   { enabled: isOpen && !!marketAddresses?.priceOracle }
 );
 
- // Map selected asset to its token address
- const getAssetAddress = (assetSymbol: string): string => {
+ // Map asset symbol to its token address
+ const getAssetAddress = (assetSymbol: string): string | null => {
  const normalized = assetSymbol.toLowerCase();
- if (normalized === collateralSymbol.toLowerCase()) {
- // Collateral token (wstETH)
- return collateralAddress;
- } else if (
- normalized ==="steth" &&
- marketAddresses?.wrappedCollateralToken
- ) {
- // stETH (wrappedCollateralToken in config)
- return marketAddresses.wrappedCollateralToken;
- } else if (normalized ==="eth") {
- // Native ETH - return zero address as marker (will need special handling)
- return"0x0000000000000000000000000000000000000000";
+ 
+ // Native ETH
+ if (normalized === "eth") {
+   return "0x0000000000000000000000000000000000000000";
  }
- // Default to collateral address
- return collateralAddress;
+ 
+ // Collateral token (fxUSD, wstETH, etc.)
+ if (normalized === collateralSymbol.toLowerCase()) {
+   return collateralAddress;
+ }
+ 
+ // Wrapped collateral token (fxSAVE, stETH, etc.)
+ if (normalized === "fxsave" || normalized === "steth") {
+   return marketAddresses?.wrappedCollateralToken || null;
+ }
+ 
+ // USDC (standard mainnet address)
+ if (normalized === "usdc") {
+   return "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
+ }
+ 
+ // fxUSD - use collateralToken address
+ if (normalized === "fxusd") {
+   return marketAddresses?.collateralToken || collateralAddress;
+ }
+ 
+ // wstETH - use collateralToken address if it's wstETH
+ if (normalized === "wsteth") {
+   return marketAddresses?.collateralToken || collateralAddress;
+ }
+ 
+ return null;
  };
 
  const selectedAssetAddress = getAssetAddress(selectedAsset);
@@ -138,6 +158,58 @@ const { data: ethBalance, isLoading: isEthBalanceLoading, isError: isEthBalanceE
   },
 });
 
+// Fetch balances for all accepted assets individually
+// Create contracts array with asset symbol tracking
+const assetBalanceContracts = acceptedAssets
+  .filter(asset => {
+    const assetAddress = getAssetAddress(asset.symbol);
+    return assetAddress && assetAddress !== "0x0000000000000000000000000000000000000000";
+  })
+  .map(asset => {
+    const assetAddress = getAssetAddress(asset.symbol);
+    return {
+      symbol: asset.symbol,
+      address: assetAddress as `0x${string}`,
+      abi: ERC20_ABI,
+      functionName: "balanceOf" as const,
+      args: address ? [address] : undefined,
+    };
+  });
+
+const { data: allAssetBalances } = useContractReads({
+  contracts: assetBalanceContracts.map(c => ({
+    address: c.address,
+    abi: c.abi,
+    functionName: c.functionName,
+    args: c.args,
+  })),
+  query: {
+    enabled: !!address && isOpen && assetBalanceContracts.length > 0,
+    refetchInterval: 5000,
+  },
+});
+
+// Create a map of asset symbol to balance
+const assetBalanceMap = new Map<string, bigint>();
+acceptedAssets.forEach((asset) => {
+  if (asset.symbol.toLowerCase() === "eth") {
+    // Native ETH balance
+    assetBalanceMap.set(asset.symbol, ethBalance?.value || 0n);
+  } else {
+    const contractIndex = assetBalanceContracts.findIndex(
+      c => c.symbol.toLowerCase() === asset.symbol.toLowerCase()
+    );
+    if (contractIndex >= 0 && allAssetBalances?.[contractIndex]?.result) {
+      assetBalanceMap.set(asset.symbol, allAssetBalances[contractIndex].result as bigint);
+    } else {
+      assetBalanceMap.set(asset.symbol, 0n);
+    }
+  }
+});
+
+// Get balance for selected asset
+const selectedAssetBalance = assetBalanceMap.get(selectedAsset) || 0n;
+
  // Debug logging
  if (process.env.NODE_ENV ==="development") {
  console.log("[GenesisDepositModal] Balance Debug:", {
@@ -149,36 +221,8 @@ const { data: ethBalance, isLoading: isEthBalanceLoading, isError: isEthBalanceE
  address,
  isOpen,
  isNativeETH,
- });
- }
-
- // Contract read hooks - only for ERC20 tokens (not native ETH)
- // Use custom Anvil hook to bypass wagmi chain detection
- const {
- data: balanceData,
- error: balanceError,
- status: balanceStatus,
-  } = useContractRead({
- address: selectedAssetAddress as `0x${string}`,
- abi: ERC20_ABI,
- functionName:"balanceOf",
- args: address ? [address] : undefined,
- enabled:
- !!address &&
- isOpen &&
- !isNativeETH &&
- !!selectedAssetAddress &&
- selectedAssetAddress !=="0x0000000000000000000000000000000000000000",
- refetchInterval: 5000,
- });
-
- // Debug balance result
- if (process.env.NODE_ENV ==="development") {
- console.log("[GenesisDepositModal] Balance Result:", {
- balanceData,
- balanceError,
- balanceStatus,
- formattedBalance: balanceData ? formatEther(balanceData) :"N/A",
+ assetBalanceMap: Object.fromEntries(assetBalanceMap),
+ selectedAssetBalance: selectedAssetBalance.toString(),
  });
  }
 
@@ -223,13 +267,8 @@ const allowanceTarget = isStETH ? zapAddress : genesisAddress;
  // Contract write hooks
  const { writeContractAsync } = useWriteContract();
 
-  // For native ETH, use useBalance hook; for ERC20 tokens, use contract read
- // If there's an error or no data, default to 0
-  const balance = isNativeETH 
-    ? (ethBalance?.value || 0n)
-    : balanceError 
-    ? 0n 
-    : balanceData || 0n;
+  // Use the balance from the asset balance map
+  const balance = selectedAssetBalance;
 const allowance = isNativeETH ? 0n : (typeof allowanceData === 'bigint' ? allowanceData : 0n);
  const amountBigInt = amount ? parseEther(amount) : 0n;
  const needsApproval =
@@ -867,8 +906,8 @@ const successUSD = successAmountNum > 0 && collateralPriceUSD > 0
  </select>
  {isNonCollateralAsset && (
  <div className="p-3 bg-[rgb(var(--surface-selected-rgb))]/20 border border-[rgb(var(--surface-selected-border-rgb))]/30 text-[#1E4775] text-sm">
- ℹ️ Your deposit will be converted to {collateralSymbol} on
- deposit. Withdrawals will be in {collateralSymbol} only.
+ ℹ️ Your deposit will be converted to {wrappedCollateralSymbol || collateralSymbol} on
+ deposit. Withdrawals will be in {wrappedCollateralSymbol || collateralSymbol} only.
  </div>
  )}
  </div>
