@@ -22,6 +22,7 @@ import {
   TransactionProgressModal,
   TransactionStep,
 } from "@/components/TransactionProgressModal";
+import { POLLING_INTERVALS, getModalPollingInterval } from "@/config/polling";
 
 // Helper function to format numbers nicely
 const formatNumber = (
@@ -708,7 +709,8 @@ export const AnchorDepositWithdrawModal = ({
         isOpen &&
         simpleMode &&
         activeTab === "deposit",
-      refetchInterval: 30000,
+      refetchInterval: getModalPollingInterval(isOpen, "poolAPR"),
+      staleTime: POLLING_INTERVALS.SLOW / 2, // 15 seconds
     },
   });
 
@@ -1074,7 +1076,8 @@ export const AnchorDepositWithdrawModal = ({
         activeTab === "deposit" &&
         isSelectedAssetNativeETH &&
         simpleMode,
-      refetchInterval: 5000,
+      refetchInterval: getModalPollingInterval(isOpen, "tokenBalance"),
+      staleTime: POLLING_INTERVALS.NORMAL / 2, // 7.5 seconds
     },
   });
 
@@ -1100,7 +1103,7 @@ export const AnchorDepositWithdrawModal = ({
       simpleMode &&
       !!selectedDepositAsset &&
       useAnvilForBalance,
-    refetchInterval: 5000,
+    refetchInterval: getModalPollingInterval(isOpen, "tokenBalance"),
   });
 
   const wagmiSelectedAssetResult = useContractRead({
@@ -1122,7 +1125,8 @@ export const AnchorDepositWithdrawModal = ({
         simpleMode &&
         !!selectedDepositAsset &&
         !useAnvilForBalance,
-      refetchInterval: 5000,
+      refetchInterval: getModalPollingInterval(isOpen, "tokenBalance"),
+      staleTime: POLLING_INTERVALS.NORMAL / 2,
       retry: 1,
       allowFailure: true,
     },
@@ -1190,7 +1194,10 @@ export const AnchorDepositWithdrawModal = ({
         isOpen &&
         activeTab === "deposit" &&
         !simpleMode,
-      refetchInterval: 5000,
+      refetchInterval: getModalPollingInterval(isOpen, "tokenBalance"),
+
+      staleTime: POLLING_INTERVALS.NORMAL / 2,
+
       retry: 1,
       allowFailure: true,
     },
@@ -1253,7 +1260,7 @@ export const AnchorDepositWithdrawModal = ({
       isDirectPeggedDeposit &&
       simpleMode &&
       useAnvilForBalance,
-    refetchInterval: 5000,
+    refetchInterval: getModalPollingInterval(isOpen, "tokenBalance"),
   });
 
   const wagmiBalanceResult = useContractRead({
@@ -1270,7 +1277,10 @@ export const AnchorDepositWithdrawModal = ({
         isDirectPeggedDeposit &&
         simpleMode &&
         !useAnvilForBalance,
-      refetchInterval: 5000,
+      refetchInterval: getModalPollingInterval(isOpen, "tokenBalance"),
+
+      staleTime: POLLING_INTERVALS.NORMAL / 2,
+
       retry: 1,
       allowFailure: true,
     },
@@ -1334,7 +1344,7 @@ export const AnchorDepositWithdrawModal = ({
       isOpen &&
       (activeTab === "deposit" || activeTab === "withdraw") &&
       useAnvilForPeggedBalance,
-    refetchInterval: 5000,
+    refetchInterval: getModalPollingInterval(isOpen, "tokenBalance"),
   });
 
   const wagmiPeggedBalanceResult = useContractRead({
@@ -1349,7 +1359,10 @@ export const AnchorDepositWithdrawModal = ({
         isOpen &&
         (activeTab === "deposit" || activeTab === "withdraw") &&
         !useAnvilForPeggedBalance,
-      refetchInterval: 5000,
+      refetchInterval: getModalPollingInterval(isOpen, "tokenBalance"),
+
+      staleTime: POLLING_INTERVALS.NORMAL / 2,
+
       retry: 1,
       allowFailure: true,
     },
@@ -1378,7 +1391,7 @@ export const AnchorDepositWithdrawModal = ({
       isOpen &&
       activeTab === "withdraw" &&
       useAnvilForPeggedBalance,
-    refetchInterval: 5000,
+    refetchInterval: getModalPollingInterval(isOpen, "tokenBalance"),
   });
 
   const wagmiCollateralPoolResult = useContractRead({
@@ -1393,7 +1406,10 @@ export const AnchorDepositWithdrawModal = ({
         isOpen &&
         activeTab === "withdraw" &&
         !useAnvilForPeggedBalance,
-      refetchInterval: 5000,
+      refetchInterval: getModalPollingInterval(isOpen, "tokenBalance"),
+
+      staleTime: POLLING_INTERVALS.NORMAL / 2,
+
       retry: 1,
       allowFailure: true,
     },
@@ -1415,7 +1431,7 @@ export const AnchorDepositWithdrawModal = ({
       isOpen &&
       activeTab === "withdraw" &&
       useAnvilForPeggedBalance,
-    refetchInterval: 5000,
+    refetchInterval: getModalPollingInterval(isOpen, "tokenBalance"),
   });
 
   const wagmiSailPoolResult = useContractRead({
@@ -1430,7 +1446,10 @@ export const AnchorDepositWithdrawModal = ({
         isOpen &&
         activeTab === "withdraw" &&
         !useAnvilForPeggedBalance,
-      refetchInterval: 5000,
+      refetchInterval: getModalPollingInterval(isOpen, "tokenBalance"),
+
+      staleTime: POLLING_INTERVALS.NORMAL / 2,
+
       retry: 1,
       allowFailure: true,
     },
@@ -1446,7 +1465,8 @@ export const AnchorDepositWithdrawModal = ({
     abi: STABILITY_POOL_ABI,
     functionName: "getEarlyWithdrawalFee",
     enabled: !!collateralPoolAddress && isOpen && useAnvilForPeggedBalance,
-    refetchInterval: 30000,
+    refetchInterval: getModalPollingInterval(isOpen, "poolAPR"),
+      staleTime: POLLING_INTERVALS.SLOW / 2,
   });
 
   const wagmiCollateralPoolFeeResult = useContractRead({
@@ -1455,7 +1475,8 @@ export const AnchorDepositWithdrawModal = ({
     functionName: "getEarlyWithdrawalFee",
     query: {
       enabled: !!collateralPoolAddress && isOpen && !useAnvilForPeggedBalance,
-      refetchInterval: 30000,
+      refetchInterval: getModalPollingInterval(isOpen, "poolAPR"),
+      staleTime: POLLING_INTERVALS.SLOW / 2,
       allowFailure: true,
     },
   });
@@ -1469,7 +1490,8 @@ export const AnchorDepositWithdrawModal = ({
     abi: STABILITY_POOL_ABI,
     functionName: "getEarlyWithdrawalFee",
     enabled: !!sailPoolAddress && isOpen && useAnvilForPeggedBalance,
-    refetchInterval: 30000,
+    refetchInterval: getModalPollingInterval(isOpen, "poolAPR"),
+      staleTime: POLLING_INTERVALS.SLOW / 2,
   });
 
   const wagmiSailPoolFeeResult = useContractRead({
@@ -1478,7 +1500,8 @@ export const AnchorDepositWithdrawModal = ({
     functionName: "getEarlyWithdrawalFee",
     query: {
       enabled: !!sailPoolAddress && isOpen && !useAnvilForPeggedBalance,
-      refetchInterval: 30000,
+      refetchInterval: getModalPollingInterval(isOpen, "poolAPR"),
+      staleTime: POLLING_INTERVALS.SLOW / 2,
       allowFailure: true,
     },
   });
@@ -1493,7 +1516,8 @@ export const AnchorDepositWithdrawModal = ({
     abi: STABILITY_POOL_ABI,
     functionName: "getWithdrawalWindow",
     enabled: !!collateralPoolAddress && isOpen && useAnvilForPeggedBalance,
-    refetchInterval: 30000,
+    refetchInterval: getModalPollingInterval(isOpen, "poolAPR"),
+      staleTime: POLLING_INTERVALS.SLOW / 2,
   });
 
   const wagmiCollateralWindowResult = useContractRead({
@@ -1502,7 +1526,8 @@ export const AnchorDepositWithdrawModal = ({
     functionName: "getWithdrawalWindow",
     query: {
       enabled: !!collateralPoolAddress && isOpen && !useAnvilForPeggedBalance,
-      refetchInterval: 30000,
+      refetchInterval: getModalPollingInterval(isOpen, "poolAPR"),
+      staleTime: POLLING_INTERVALS.SLOW / 2,
     },
   });
 
@@ -1515,7 +1540,8 @@ export const AnchorDepositWithdrawModal = ({
     abi: STABILITY_POOL_ABI,
     functionName: "getWithdrawalWindow",
     enabled: !!sailPoolAddress && isOpen && useAnvilForPeggedBalance,
-    refetchInterval: 30000,
+    refetchInterval: getModalPollingInterval(isOpen, "poolAPR"),
+      staleTime: POLLING_INTERVALS.SLOW / 2,
   });
 
   const wagmiSailWindowResult = useContractRead({
@@ -1524,7 +1550,8 @@ export const AnchorDepositWithdrawModal = ({
     functionName: "getWithdrawalWindow",
     query: {
       enabled: !!sailPoolAddress && isOpen && !useAnvilForPeggedBalance,
-      refetchInterval: 30000,
+      refetchInterval: getModalPollingInterval(isOpen, "poolAPR"),
+      staleTime: POLLING_INTERVALS.SLOW / 2,
     },
   });
 
@@ -1641,7 +1668,10 @@ export const AnchorDepositWithdrawModal = ({
     query: {
       enabled:
         !!address && !!peggedTokenAddress && isOpen && activeTab === "deposit",
-      refetchInterval: 5000,
+      refetchInterval: getModalPollingInterval(isOpen, "tokenBalance"),
+
+      staleTime: POLLING_INTERVALS.NORMAL / 2,
+
       retry: 1,
       allowFailure: true,
     },
@@ -1727,7 +1757,8 @@ export const AnchorDepositWithdrawModal = ({
     contracts: poolContracts,
     query: {
       enabled: poolContracts.length > 0,
-      refetchInterval: 30000,
+      refetchInterval: getModalPollingInterval(isOpen, "poolAPR"),
+      staleTime: POLLING_INTERVALS.SLOW / 2,
       retry: 1,
       allowFailure: true,
     },
@@ -1966,7 +1997,8 @@ export const AnchorDepositWithdrawModal = ({
         !simpleMode &&
         ((activeTab === "deposit" && depositInStabilityPool) ||
           activeTab === "deposit"),
-      refetchInterval: 30000,
+      refetchInterval: getModalPollingInterval(isOpen, "poolAPR"),
+      staleTime: POLLING_INTERVALS.SLOW / 2,
       retry: 1,
       allowFailure: true,
     },
@@ -2003,7 +2035,10 @@ export const AnchorDepositWithdrawModal = ({
         isValidMinterAddress &&
         isOpen &&
         activeTab === "deposit",
-      refetchInterval: 5000,
+      refetchInterval: getModalPollingInterval(isOpen, "tokenBalance"),
+
+      staleTime: POLLING_INTERVALS.NORMAL / 2,
+
       retry: 1,
       allowFailure: true,
     },
@@ -2031,7 +2066,7 @@ export const AnchorDepositWithdrawModal = ({
       !!stabilityPoolAddress &&
       isOpen &&
       activeTab === "deposit",
-    refetchInterval: 5000,
+    refetchInterval: getModalPollingInterval(isOpen, "tokenBalance"),
   });
 
   const {
@@ -2053,7 +2088,10 @@ export const AnchorDepositWithdrawModal = ({
         !!stabilityPoolAddress &&
         isOpen &&
         activeTab === "deposit",
-      refetchInterval: 5000,
+      refetchInterval: getModalPollingInterval(isOpen, "tokenBalance"),
+
+      staleTime: POLLING_INTERVALS.NORMAL / 2,
+
       retry: 1,
       allowFailure: true,
     },
@@ -2161,7 +2199,10 @@ export const AnchorDepositWithdrawModal = ({
         !!redeemAllowanceMinterAddress &&
         isOpen &&
         activeTab === "withdraw",
-      refetchInterval: 5000,
+      refetchInterval: getModalPollingInterval(isOpen, "tokenBalance"),
+
+      staleTime: POLLING_INTERVALS.NORMAL / 2,
+
       retry: 1,
       allowFailure: true,
     },

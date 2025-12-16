@@ -111,10 +111,11 @@ export function useWithdrawalRequests(poolAddresses: `0x${string}`[]) {
         Array.isArray(query.state.data) &&
         query.state.data.length > 0
       ) {
-        return 1000; // Refetch every second to update timers
+        return 5000; // Refetch every 5 seconds (reduced from 1s)
       }
       return false; // Don't refetch if no requests
     },
+    staleTime: 3000, // Consider data stale after 3 seconds
     retry: false, // Don't retry on failure
     throwOnError: false, // Don't throw errors, just return empty array
   });
