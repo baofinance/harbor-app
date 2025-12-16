@@ -190,9 +190,17 @@ const selectedAssetPriceUSD = isWrappedToken && wrappedRate && maxUnderlyingPric
 // Deposits are stored in wrapped collateral tokens (fxSAVE, wstETH), not base collateral (fxUSD, stETH)
 // So we need to use the wrapped token price for displaying current deposits
 // Calculate wrapped token price: underlying price * wrapped rate
-const wrappedTokenPriceUSD = wrappedRate && underlyingPriceUSD > 0
-  ? underlyingPriceUSD * (Number(wrappedRate) / 1e18)
-  : underlyingPriceUSD; // Fallback to underlying price if no rate available
+// BUT: If CoinGecko ID is for the wrapped token itself (e.g., "wrapped-steth" for wstETH),
+// then CoinGecko already returns the wrapped token price, so don't multiply by wrapped rate
+const coinGeckoIsWrappedToken = coinGeckoId && (
+  (coinGeckoId.toLowerCase() === "wrapped-steth" && collateralSymbol.toLowerCase() === "wsteth") ||
+  (coinGeckoId.toLowerCase() === "fxsave" && collateralSymbol.toLowerCase() === "fxsave")
+);
+const wrappedTokenPriceUSD = coinGeckoIsWrappedToken && coinGeckoPrice
+  ? coinGeckoPrice // CoinGecko already returns wrapped token price
+  : wrappedRate && underlyingPriceUSD > 0
+    ? underlyingPriceUSD * (Number(wrappedRate) / 1e18)
+    : underlyingPriceUSD; // Fallback to underlying price if no rate available
 const collateralPriceUSD = wrappedTokenPriceUSD;
 
 // Validate selected asset address
