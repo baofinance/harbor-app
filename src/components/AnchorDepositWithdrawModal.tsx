@@ -113,12 +113,12 @@ const minterABI = [
     ],
     name: "mintPeggedTokenDryRun",
     outputs: [
-      { name: "incentiveRatio", type: "int256" },
-      { name: "fee", type: "uint256" },
-      { name: "discount", type: "uint256" },
-      { name: "peggedMinted", type: "uint256" },
-      { name: "price", type: "uint256" },
-      { name: "rate", type: "uint256" },
+      { name: "incentiveRatio", type: "int256" },        // Net fee ratio (1e16 units, positive=fee, negative=discount)
+      { name: "wrappedFee", type: "uint256" },           // Fee amount in wrapped collateral wei
+      { name: "wrappedCollateralUsed", type: "uint256" }, // Collateral used (NOT discount for mint)
+      { name: "peggedMinted", type: "uint256" },         // haUSD tokens minted
+      { name: "price", type: "uint256" },                // Oracle price
+      { name: "rate", type: "uint256" },                  // wstETH/stETH rate
     ],
     stateMutability: "view",
     type: "function",
@@ -623,8 +623,9 @@ export const AnchorDepositWithdrawModal = ({
     }));
   }, [allDepositAssetsWithMarkets]);
 
-  // Calculate fees for each deposit asset using a sample amount (1 token)
-  const sampleAmountForFeeCalc = "1.0";
+  // Calculate fees for each deposit asset using a sample amount (0.001 token)
+  // Using a small amount that's realistic given current collateral levels
+  const sampleAmountForFeeCalc = "0.001";
   const feeContracts = useMemo(() => {
     if (!simpleMode || !isOpen || activeTab !== "deposit") return [];
 
@@ -723,11 +724,16 @@ export const AnchorDepositWithdrawModal = ({
         }
       }
 
-      if (resultData && Array.isArray(resultData) && resultData.length >= 2) {
-        const wrappedFee = resultData[1] as bigint;
-        const inputAmount = parseEther(sampleAmountForFeeCalc);
-        if (inputAmount > 0n) {
-          feePercentage = (Number(wrappedFee) / Number(inputAmount)) * 100;
+      // mintPeggedTokenDryRun returns: [incentiveRatio, wrappedFee, wrappedCollateralUsed, ...]
+      // Use incentiveRatio directly (already net fee/discount percentage)
+      if (resultData && Array.isArray(resultData) && resultData.length >= 1) {
+        const incentiveRatio = resultData[0] as bigint;
+        // Check if disallowed
+        if (incentiveRatio === 1000000000000000000n) {
+          feePercentage = undefined; // Disallowed
+        } else {
+          // incentiveRatio is in 1e16 units (e.g., 6.635e15 = 0.6635%)
+          feePercentage = Number(incentiveRatio) / 1e16;
         }
       }
 
@@ -814,12 +820,36 @@ export const AnchorDepositWithdrawModal = ({
       }
 
       // Process the result data
-      if (resultData && Array.isArray(resultData) && resultData.length >= 2) {
-        const wrappedFee = resultData[1] as bigint;
-        const inputAmount = parseEther(sampleAmountForFeeCalc);
-        if (inputAmount > 0n) {
-          // Calculate fee percentage even if wrappedFee is 0 (to show 0%)
-          feePercentage = (Number(wrappedFee) / Number(inputAmount)) * 100;
+      // mintPeggedTokenDryRun returns: [incentiveRatio, wrappedFee, wrappedCollateralUsed, peggedMinted, price, rate]
+      // Note: For MINT operations, index [2] is wrappedCollateralUsed, NOT discount
+      // The incentiveRatio (index [0]) already represents the net fee/discount ratio
+      if (resultData && Array.isArray(resultData) && resultData.length >= 3) {
+        const incentiveRatio = resultData[0] as bigint;  // Net fee ratio (already accounts for discounts)
+        const wrappedFee = resultData[1] as bigint;      // Fee in wrapped collateral units
+        const wrappedCollateralUsed = resultData[2] as bigint; // Collateral used (NOT discount for mint)
+        
+        // Check if minting is disallowed (incentiveRatio === 1e18)
+        const isDisallowed = incentiveRatio === 1000000000000000000n;
+        
+        if (!isDisallowed) {
+          // Use incentiveRatio directly - it's already the net fee/discount percentage
+          // incentiveRatio is in 1e16 units (e.g., 6.635e15 = 0.6635%)
+          // Positive = fee, negative = discount/bonus
+          feePercentage = Number(incentiveRatio) / 1e16;
+          
+          console.log(`[Modal] Fee calculation for ${contract.assetSymbol}:`, {
+            minterAddress: contract.address,
+            function: "mintPeggedTokenDryRun",
+            inputAmount: parseEther(sampleAmountForFeeCalc).toString(),
+            incentiveRatio: incentiveRatio.toString(),
+            incentiveRatioPercent: feePercentage,
+            wrappedFee: wrappedFee.toString(),
+            wrappedCollateralUsed: wrappedCollateralUsed.toString(),
+            isDisallowed,
+          });
+        } else {
+          feePercentage = undefined;
+          console.log(`[Modal] Minting ${contract.assetSymbol} is DISALLOWED (incentiveRatio = 1e18)`);
         }
       } else if (isOpen && simpleMode && activeTab === "deposit") {
         console.warn(
@@ -2329,14 +2359,13 @@ export const AnchorDepositWithdrawModal = ({
     !isDirectPeggedDeposit; // Only run for collateral deposits
 
   // Dry run query using Anvil hook for local development
-  const { data: anvilDryRunData, error: anvilDryRunError } =
-    useContractRead({
-      address: feeMinterAddress as `0x${string}`,
-      abi: minterABI,
-      functionName: "mintPeggedTokenDryRun",
-      args: parsedAmount ? [parsedAmount] : undefined,
-      enabled: shouldUseAnvilHook && dryRunEnabled && !!parsedAmount,
-    });
+  const { data: anvilDryRunData, error: anvilDryRunError } = useContractRead({
+    address: feeMinterAddress as `0x${string}`,
+    abi: minterABI,
+    functionName: "mintPeggedTokenDryRun",
+    args: parsedAmount ? [parsedAmount] : undefined,
+    enabled: shouldUseAnvilHook && dryRunEnabled && !!parsedAmount,
+  });
 
   // Dry run query using regular hook for production
   const { data: regularDryRunData, error: regularDryRunError } =
@@ -3144,9 +3173,7 @@ export const AnchorDepositWithdrawModal = ({
         }
 
         // Use Anvil client for local development, regular publicClient for production
-        const directDepositClient = false
-          ? publicClient
-          : publicClient;
+        const directDepositClient = false ? publicClient : publicClient;
 
         // Check allowance for pegged token to stability pool
         if (process.env.NODE_ENV === "development") {
@@ -3446,9 +3473,7 @@ export const AnchorDepositWithdrawModal = ({
           }
 
           // Use Anvil client for local development, regular publicClient for production
-          const readClient = false
-            ? publicClient
-            : publicClient;
+          const readClient = false ? publicClient : publicClient;
 
           // Read actual pegged token balance after minting
           let actualPeggedBalance: bigint | undefined;
