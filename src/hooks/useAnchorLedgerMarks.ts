@@ -196,11 +196,23 @@ export function useAnchorLedgerMarks({
         throw new Error("Address required");
       }
 
+      const queryVariables = {
+        userAddress: address.toLowerCase(),
+      };
+      
+      const requestBody = {
+        query: ANCHOR_LEDGER_MARKS_QUERY,
+        variables: queryVariables,
+      };
+
       console.log("[useAnchorLedgerMarks] Fetching marks:", {
         address,
+        addressLowercase: address.toLowerCase(),
         graphUrl,
         enabled,
         isConnected,
+        query: ANCHOR_LEDGER_MARKS_QUERY,
+        variables: queryVariables,
       });
 
       const response = await fetch(graphUrl, {
@@ -208,16 +220,17 @@ export function useAnchorLedgerMarks({
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          query: ANCHOR_LEDGER_MARKS_QUERY,
-          variables: {
-            userAddress: address.toLowerCase(),
-          },
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       if (!response.ok) {
-        throw new Error(`GraphQL query failed: ${response.statusText}`);
+        const errorText = await response.text();
+        console.error("[useAnchorLedgerMarks] HTTP error:", {
+          status: response.status,
+          statusText: response.statusText,
+          body: errorText,
+        });
+        throw new Error(`GraphQL query failed: ${response.statusText} - ${errorText}`);
       }
 
       const result = await response.json();
@@ -230,12 +243,125 @@ export function useAnchorLedgerMarks({
       // Debug logging
       console.log("[useAnchorLedgerMarks] GraphQL response:", {
         address,
+        addressLowercase: address.toLowerCase(),
         graphUrl,
         haTokenBalances: result.data?.haTokenBalances?.length || 0,
         stabilityPoolDeposits: result.data?.stabilityPoolDeposits?.length || 0,
         sailTokenBalances: result.data?.sailTokenBalances?.length || 0,
-        data: result.data,
+        haTokenBalancesData: result.data?.haTokenBalances,
+        stabilityPoolDepositsData: result.data?.stabilityPoolDeposits,
+        sailTokenBalancesData: result.data?.sailTokenBalances,
+        fullData: result.data,
       });
+
+      // Test query: Check if subgraph has ANY data at all (first 5 entries)
+      if (process.env.NODE_ENV === "development") {
+        try {
+          const testQuery = `
+            query TestSubgraphData {
+              haTokenBalances(first: 5) {
+                id
+                user
+                tokenAddress
+                balance
+                balanceUSD
+              }
+              stabilityPoolDeposits(first: 5) {
+                id
+                user
+                poolAddress
+                poolType
+                balance
+                balanceUSD
+              }
+              sailTokenBalances(first: 5) {
+                id
+                user
+                tokenAddress
+                balance
+                balanceUSD
+              }
+              _meta {
+                block {
+                  number
+                  hash
+                }
+                deployment
+                hasIndexingErrors
+              }
+            }
+          `;
+          
+          const testResponse = await fetch(graphUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ query: testQuery }),
+          });
+          
+          if (testResponse.ok) {
+            const testResult = await testResponse.json();
+            console.log("[useAnchorLedgerMarks] Subgraph test query (first 5 entries):", {
+              haTokenBalancesCount: testResult.data?.haTokenBalances?.length || 0,
+              stabilityPoolDepositsCount: testResult.data?.stabilityPoolDeposits?.length || 0,
+              sailTokenBalancesCount: testResult.data?.sailTokenBalances?.length || 0,
+              sampleHaTokens: testResult.data?.haTokenBalances,
+              sampleDeposits: testResult.data?.stabilityPoolDeposits,
+              sampleSailTokens: testResult.data?.sailTokenBalances,
+              syncStatus: testResult.data?._meta,
+              errors: testResult.errors,
+            });
+            
+            // If we have data, check if any match our address
+            if (testResult.data) {
+              const allUsers = new Set<string>();
+              testResult.data.haTokenBalances?.forEach((b: any) => allUsers.add(b.user?.toLowerCase()));
+              testResult.data.stabilityPoolDeposits?.forEach((d: any) => allUsers.add(d.user?.toLowerCase()));
+              testResult.data.sailTokenBalances?.forEach((b: any) => allUsers.add(b.user?.toLowerCase()));
+              
+              console.log("[useAnchorLedgerMarks] Address comparison:", {
+                ourAddress: address.toLowerCase(),
+                addressesInSubgraph: Array.from(allUsers),
+                matchesOurAddress: Array.from(allUsers).includes(address.toLowerCase()),
+              });
+              
+              // Log sync status
+              if (testResult.data._meta) {
+                console.log("[useAnchorLedgerMarks] Subgraph sync status:", {
+                  currentBlock: testResult.data._meta.block?.number,
+                  hasIndexingErrors: testResult.data._meta.hasIndexingErrors,
+                  deployment: testResult.data._meta.deployment,
+                });
+                
+                // Check if subgraph is synced to a recent block
+                const currentBlock = testResult.data._meta.block?.number;
+                if (currentBlock) {
+                  // Get current block from chain to compare
+                  publicClient?.getBlock({ blockTag: "latest" }).then((latestBlock) => {
+                    const blocksBehind = latestBlock.number - BigInt(currentBlock);
+                    console.log("[useAnchorLedgerMarks] Subgraph sync comparison:", {
+                      subgraphBlock: currentBlock,
+                      chainBlock: latestBlock.number.toString(),
+                      blocksBehind: blocksBehind.toString(),
+                      isSynced: blocksBehind < 100n, // Consider synced if within 100 blocks
+                    });
+                  }).catch((err) => {
+                    console.warn("[useAnchorLedgerMarks] Failed to get latest block:", err);
+                  });
+                }
+              }
+            }
+          } else {
+            const errorText = await testResponse.text();
+            console.error("[useAnchorLedgerMarks] Test query HTTP error:", {
+              status: testResponse.status,
+              statusText: testResponse.statusText,
+              body: errorText,
+            });
+          }
+        } catch (testError) {
+          console.warn("[useAnchorLedgerMarks] Test query failed:", testError);
+        }
+      }
 
       return result.data || { haTokenBalances: [], stabilityPoolDeposits: [], sailTokenBalances: [] };
     },

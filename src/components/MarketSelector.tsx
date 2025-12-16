@@ -114,15 +114,15 @@ export default function MarketSelector({
  </span>
  {getStatusBadge(market.status)}
  </div>
- <div className="text-sm text-zinc-400">
- <div className="flex items-center gap-4">
- <span>wstETH</span>
- <span className="text-zinc-600">•</span>
- <span>{market.peggedToken.name}</span>
- <span className="text-zinc-600">•</span>
- <span>{market.leveragedToken.name}</span>
- </div>
- </div>
+                <div className="text-sm text-zinc-400">
+                  <div className="flex items-center gap-4">
+                    <span>{market.collateral.symbol}</span>
+                    <span className="text-zinc-600">•</span>
+                    <span>{market.peggedToken.symbol}</span>
+                    <span className="text-zinc-600">•</span>
+                    <span>{market.leveragedToken.symbol}</span>
+                  </div>
+                </div>
  </div>
 
  {selectedMarketId === market.id && (

@@ -31,6 +31,7 @@ interface GenesisDepositModalProps {
 priceOracle?: string;
  };
  onSuccess?: () => void;
+ embedded?: boolean;
 }
 
 // Format a bigint token amount with limited decimals and optional USD value
@@ -79,6 +80,7 @@ export const GenesisDepositModal = ({
  acceptedAssets,
  marketAddresses,
  onSuccess,
+ embedded = false,
 }: GenesisDepositModalProps) => {
  const { address } = useAccount();
  const wagmiPublicClient = usePublicClient();
@@ -156,7 +158,7 @@ const { data: ethBalance, isLoading: isEthBalanceLoading, isError: isEthBalanceE
  data: balanceData,
  error: balanceError,
  status: balanceStatus,
- } = useCustomContractRead({
+  } = useContractRead({
  address: selectedAssetAddress as `0x${string}`,
  abi: ERC20_ABI,
  functionName:"balanceOf",
@@ -182,8 +184,7 @@ const { data: ethBalance, isLoading: isEthBalanceLoading, isError: isEthBalanceE
 
 // For stETH, check allowance for zap contract; for other tokens, check allowance for genesis
 const allowanceTarget = isStETH ? zapAddress : genesisAddress;
- const { data: allowanceData, refetch: refetchAllowance } =
-  useCustomContractRead({
+ const { data: allowanceData, refetch: refetchAllowance } = useContractRead({
  address: selectedAssetAddress as `0x${string}`,
  abi: ERC20_ABI,
  functionName:"allowance",
@@ -198,21 +199,25 @@ const allowanceTarget = isStETH ? zapAddress : genesisAddress;
  });
 
  // Check if genesis has ended
- const { data: genesisEnded } = useCustomContractRead({
+ const { data: genesisEnded } = useContractRead({
  address: genesisAddress as `0x${string}`,
  abi: GENESIS_ABI,
  functionName:"genesisIsEnded",
- enabled: !!genesisAddress && isOpen,
+ query: {
+   enabled: !!genesisAddress && isOpen,
+ },
  });
 
  // Get current user deposit in Genesis
- const { data: currentDeposit } = useCustomContractRead({
+ const { data: currentDeposit } = useContractRead({
  address: genesisAddress as `0x${string}`,
  abi: GENESIS_ABI,
  functionName:"balanceOf",
  args: address ? [address] : undefined,
- enabled: !!address && !!genesisAddress && isOpen,
- refetchInterval: 5000,
+ query: {
+   enabled: !!address && !!genesisAddress && isOpen,
+   refetchInterval: 5000,
+ },
  });
 
  // Contract write hooks
@@ -234,21 +239,25 @@ const userCurrentDeposit: bigint = typeof currentDeposit === 'bigint' ? currentD
 // Calculate expected wstETH output for ETH deposits (for preview)
 // Contract flow: ETH → stETH (via submit, 1:1) → wstETH (via wrap)
 // For preview: ETH amount = stETH amount (1:1), then convert to wstETH
-const { data: expectedWstETHFromETH } = useCustomContractRead({
+const { data: expectedWstETHFromETH } = useContractRead({
   address: wstETHAddress,
   abi: WSTETH_ABI,
   functionName: "getWstETHByStETH",
   args: amountBigInt > 0n && isNativeETH ? [amountBigInt] : undefined, // stETH.submit() gives 1:1 ETH→stETH
-  enabled: !!address && isOpen && isNativeETH && amountBigInt > 0n,
+  query: {
+    enabled: !!address && isOpen && isNativeETH && amountBigInt > 0n,
+  },
 });
 
 // Calculate expected wstETH output for stETH deposits (for preview)
-const { data: expectedWstETHFromStETH } = useCustomContractRead({
+const { data: expectedWstETHFromStETH } = useContractRead({
   address: wstETHAddress,
   abi: WSTETH_ABI,
   functionName: "getWstETHByStETH",
   args: amountBigInt > 0n && isStETH ? [amountBigInt] : undefined,
-  enabled: !!address && isOpen && isStETH && amountBigInt > 0n,
+  query: {
+    enabled: !!address && isOpen && isStETH && amountBigInt > 0n,
+  },
 });
 
 // Helper to safely extract bigint from hook result
@@ -789,7 +798,7 @@ const successUSD = successAmountNum > 0 && collateralPriceUSD > 0
  </p>
  <button
  onClick={handleShareOnX}
- className="w-full py-3 px-4 bg-black hover:bg-gray-800 text-white font-medium rounded-full transition-colors flex items-center justify-center gap-2"
+                className="w-full py-2.5 sm:py-3 px-3 sm:px-4 bg-black hover:bg-gray-800 text-white font-medium rounded-full transition-colors flex items-center justify-center gap-2 text-sm sm:text-base touch-target"
  >
  <svg
  viewBox="0 0 24 24"
@@ -809,63 +818,13 @@ const successUSD = successAmountNum > 0 && collateralPriceUSD > 0
  );
  };
 
- if (!isOpen && !progressModalOpen) return null;
+  if (!isOpen && !progressModalOpen) return null;
 
- return (
- <>
- {progressModalOpen && (
- <TransactionProgressModal
- isOpen={progressModalOpen}
- onClose={handleClose}
- title="Processing Deposit"
- steps={progressSteps}
- currentStepIndex={currentStepIndex}
- canCancel={false}
- errorMessage={error || undefined}
- renderSuccessContent={renderSuccessContent}
- />
- )}
-
- {!progressModalOpen && isOpen && (
- <div className="fixed inset-0 z-50 flex items-center justify-center">
- {/* Backdrop */}
- <div
- className="absolute inset-0 bg-black/40 backdrop-blur-sm"
- onClick={handleClose}
- />
-
- {/* Modal */}
- <div className="relative bg-white shadow-2xl w-full max-w-md mx-4 animate-in fade-in-0 scale-in-95 duration-200">
- {/* Header */}
- <div className="flex items-center justify-between p-6 border-b border-[#1E4775]/20">
- <h2 className="text-2xl font-bold text-[#1E4775]">
- Deposit in Maiden Voyage
- </h2>
- <button
- onClick={handleClose}
- className="text-[#1E4775]/50 hover:text-[#1E4775] transition-colors"
- disabled={step ==="approving" || step ==="depositing"}
- >
- <svg
- className="w-6 h-6"
- fill="none"
- viewBox="0 0 24 24"
- stroke="currentColor"
- >
- <path
- strokeLinecap="round"
- strokeLinejoin="round"
- strokeWidth={2}
- d="M6 18L18 6M6 6l12 12"
- />
- </svg>
- </button>
- </div>
-
- {/* Content */}
- <div className="p-6 space-y-6">
- {/* Genesis Status Warning */}
- {genesisEnded && (
+  // Deposit form content
+  const formContent = (
+    <div className="space-y-4 sm:space-y-6">
+      {/* Genesis Status Warning */}
+      {genesisEnded && (
  <div className="p-3 bg-red-50 border border-red-500/30 text-red-600 text-sm">
  ⚠️ Genesis period has ended. Deposits are no longer accepted.
  </div>
@@ -1108,35 +1067,103 @@ const successUSD = successAmountNum > 0 && collateralPriceUSD > 0
  className="underline hover:text-[#1E4775]"
  >
  {txHash.slice(0, 10)}...{txHash.slice(-8)}
- </a>
- </div>
- )}
- </div>
+        </a>
+        </div>
+      )}
 
- {/* Footer */}
- <div className="flex gap-4 p-6 border-t border-[#1E4775]/20">
- <button
- onClick={handleClose}
- className="flex-1 py-2 px-4 text-[#1E4775]/70 hover:text-[#1E4775] transition-colors rounded-full"
- disabled={step ==="approving" || step ==="depositing"}
- >
- {step ==="success" ?"Close" :"Cancel"}
- </button>
- <button
- onClick={handleMainButtonClick}
- disabled={isButtonDisabled()}
- className={`flex-1 py-2 px-4 font-medium transition-colors rounded-full ${
- step ==="success"
- ?"bg-[#1E4775] hover:bg-[#17395F] text-white"
- :"bg-[#1E4775] hover:bg-[#17395F] text-white disabled:bg-gray-300 disabled:text-gray-500"
- }`}
- >
- {getButtonText()}
- </button>
- </div>
- </div>
- </div>
- )}
- </>
- );
+      {/* Submit Button */}
+      <div>
+        <button
+          onClick={handleMainButtonClick}
+          disabled={isButtonDisabled()}
+          className={`w-full py-3 px-4 font-medium transition-colors rounded-full ${
+            step === "success"
+              ? "bg-[#1E4775] hover:bg-[#17395F] text-white"
+              : "bg-[#1E4775] hover:bg-[#17395F] text-white disabled:bg-gray-300 disabled:text-gray-500"
+          }`}
+        >
+          {getButtonText()}
+        </button>
+      </div>
+    </div>
+  );
+
+  // If embedded, return just the content + progress modal
+  if (embedded) {
+    return (
+      <>
+        {progressModalOpen && (
+          <TransactionProgressModal
+            isOpen={progressModalOpen}
+            onClose={handleClose}
+            title="Processing Deposit"
+            steps={progressSteps}
+            currentStepIndex={currentStepIndex}
+            canCancel={false}
+            errorMessage={error || undefined}
+            renderSuccessContent={renderSuccessContent}
+          />
+        )}
+        {!progressModalOpen && formContent}
+      </>
+    );
+  }
+
+  // Full standalone modal
+  return (
+    <>
+      {progressModalOpen && (
+        <TransactionProgressModal
+          isOpen={progressModalOpen}
+          onClose={handleClose}
+          title="Processing Deposit"
+          steps={progressSteps}
+          currentStepIndex={currentStepIndex}
+          canCancel={false}
+          errorMessage={error || undefined}
+          renderSuccessContent={renderSuccessContent}
+        />
+      )}
+
+      {!progressModalOpen && isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            onClick={handleClose}
+          />
+
+          <div className="relative bg-white shadow-2xl w-full max-w-md mx-2 sm:mx-4 animate-in fade-in-0 scale-in-95 duration-200 rounded-lg max-h-[95vh] sm:max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-3 sm:p-4 lg:p-6 border-b border-[#1E4775]/20">
+              <h2 className="text-lg sm:text-2xl font-bold text-[#1E4775]">
+                Deposit in Maiden Voyage
+              </h2>
+              <button
+                onClick={handleClose}
+                className="text-[#1E4775]/50 hover:text-[#1E4775] transition-colors"
+                disabled={step === "approving" || step === "depositing"}
+              >
+                <svg
+                  className="w-5 h-5 sm:w-6 sm:h-6"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+
+            <div className="p-3 sm:p-4 lg:p-6">
+              {formContent}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
 };

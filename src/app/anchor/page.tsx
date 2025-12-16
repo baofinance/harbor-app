@@ -1927,19 +1927,8 @@ export default function AnchorPage() {
       });
     }
 
-    // Debug logging
-    console.log("[AnchorPage] Marks Debug:", {
-      haBalances: haBalances?.length || 0,
-      poolDeposits: poolDeposits?.length || 0,
-      haBalancesData: haBalances,
-      poolDepositsData: poolDeposits,
-      totalMarks,
-      isLoadingAnchorMarks,
-      address,
-    });
-
     setTotalAnchorMarksState(totalMarks);
-  }, [haBalances, poolDeposits, isLoadingAnchorMarks, address]);
+  }, [haBalances, poolDeposits]);
 
   const { totalAnchorMarks, totalAnchorMarksPerDay } = useMemo(() => {
     const totalMarks = totalAnchorMarksState;

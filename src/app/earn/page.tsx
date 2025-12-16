@@ -20,8 +20,8 @@ export default function Earn() {
  }, {} as Record<string, typeof pools>);
 
  return (
- <div className="min-h-screen text-white max-w-[1300px] mx-auto font-sans relative">
- <main className="container mx-auto px-4 sm:px-10 pb-6">
+ <div className="min-h-screen text-white max-w-[1300px] mx-auto font-sans relative overflow-x-hidden">
+ <main className="container mx-auto px-3 sm:px-4 lg:px-10 pb-6">
  <section className="mb-6">
  <div className="p-4">
  <h1 className="font-semibold font-mono text-white text-2xl mb-2">
@@ -38,7 +38,7 @@ export default function Earn() {
  {Object.entries(poolsByGroup).map(([groupName, groupPools]) => {
  const firstPool = groupPools[0];
  return (
- <div key={groupName} className="bg-[#17395F] p-6">
+ <div key={groupName} className="bg-[#17395F] p-3 sm:p-4 lg:p-6">
  <div className="flex items-center gap-3 mb-4">
  <span className="text-2xl">{firstPool.groupIcon}</span>
  <h2 className="font-semibold font-mono text-white text-xl">

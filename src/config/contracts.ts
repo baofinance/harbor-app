@@ -1,43 +1,35 @@
-// Contract addresses for mainnet deployment (test1-USD-stETH)
+// Contract addresses for mainnet deployment (test2)
+// Updated from DeployLog/mainnet-test2__*.json files
+// Legacy contracts object - kept for backward compatibility but deprecated
+// Use markets["eth-fxusd"] or markets["btc-fxusd"] instead
 export const contracts = {
-  minter: "0x8b17b6e8f9ce3477ddaf372a4140ac6005787901",
-  peggedToken: "0x6ff0fe773d4ad4ea923ba9ea9cc1c1b42b70f5fc", // haUSD-stETH
-  leveragedToken: "0x469ddfcfa98d0661b7efedc82aceeab84133f7fe", // hsUSD-stETH
-  steam: "0x5f9dD176ea5282d392225ceC5c2E7A24d5d02672",
-  veSteam: "0x819F9213cE51Adac4C1c2EF7D4Cba563727C1206",
-  reservePool: "0xa63b31f3551a151d75fa43fa653ef37b5f7f1ad6",
-  stabilityPoolManager: "0x7b1514d2422f7567047d7cd1b8531e48f22c1dcf",
-  genesis: "0x1454707877cdb966e29cea8a190c2169eeca4b8c",
-  zap: "0xc199605a723d21fd597ac206fe650be4191333de",
-  priceOracle: "0xbb12a263bda971a64f9573ceab4fa689eb93daff",
-  feeReceiver: "0xa041d36bb18ae1660ff3a684aa2eaff77786f55c", // minterFeeReceiver
-  gaugeController: "0x3860B063928436F548c3A58A40c4d1d171E78838",
-  steamMinter: "0x14835B093D320AA5c9806BBC64C17F0F2546D9EE",
-  collateralToken: "0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0", // wstETH (mainnet)
-  wrappedCollateralToken: "0xae7ab96520de3a18e5e111b5eaab095312d7fe84", // stETH (mainnet)
+  minter: "0x565f90dc7c022e7857734352c7bf645852d8d4e7", // ETH/fxUSD minter (default)
+  peggedToken: "0x8e7442020ba7debfd77e67491c51faa097d87478", // haETH (default)
+  leveragedToken: "0x8248849b83ae20b21fa561f97ee5835a063c1f9c", // hsFXUSD-ETH (default)
+  reservePool: "0xb196bd963474fabb8201658c9257249e55912dda", // ETH/fxUSD reservePool (default)
+  stabilityPoolManager: "0x4f96d6fcf24339633275fd069798fd7fe246a5d5", // ETH/fxUSD (default)
+  genesis: "0x5f4398e1d3e33f93e3d7ee710d797e2a154cb073", // ETH/fxUSD genesis (default)
+  priceOracle: "0x56d1a2fc199ba05f84d2eb8eab5858d3d954030c", // ETH/fxUSD priceOracle (default)
+  feeReceiver: "0x33db0dafda15ac936dbea37a2342cd45dfe2d3d2", // ETH/fxUSD minterFeeReceiver (default)
+  collateralToken: "0x085780639cc2cacd35e474e71f4d000e2405d8f6", // fxUSD
+  wrappedCollateralToken: "0x7743e50f534a7f9f1791dde7dcd89f7783eefc39", // fxSAVE
 } as const;
 
-// Legacy CONTRACTS constant for backward compatibility
+// Legacy CONTRACTS constant for backward compatibility (DEPRECATED - use markets config instead)
 export const CONTRACTS = {
-  MINTER: "0x8b17b6e8f9ce3477ddaf372a4140ac6005787901",
-  PEGGED_TOKEN: "0x6ff0fe773d4ad4ea923ba9ea9cc1c1b42b70f5fc",
-  LEVERAGED_TOKEN: "0x469ddfcfa98d0661b7efedc82aceeab84133f7fe",
-  GENESIS: "0x1454707877cdb966e29cea8a190c2169eeca4b8c",
-  STABILITY_POOL_MANAGER: "0x7b1514d2422f7567047d7cd1b8531e48f22c1dcf",
-  STABILITY_POOL_COLLATERAL: "0xac8113ef28c8ef06064e8d78b69890d670273c73",
-  STABILITY_POOL_PEGGED: "0x6738c3ee945218fb80700e2f4c1a5f3022a28c8d",
-  STABILITY_POOL_COLLATERAL_STAKE: "0xe828215EB5A61a5cB62fB980288B835689af4091",
-  STABILITY_POOL_STEAMED_STAKE: "0xd3873FDF150b3fFFb447d3701DFD234DF452f367",
-  PRICE_ORACLE: "0xbb12a263bda971a64f9573ceab4fa689eb93daff",
-  TOKEN_DISTRIBUTOR: "0xa041d36bb18ae1660ff3a684aa2eaff77786f55c",
-  RESERVE_POOL: "0xa63b31f3551a151d75fa43fa653ef37b5f7f1ad6",
-  CONFIG: "0x1ca477fbb6dd0300719880486264dcb87473ef4f",
-  GAUGE_CONTROLLER: "0x3860B063928436F548c3A58A40c4d1d171E78838",
-  STEAM_MINTER: "0x14835B093D320AA5c9806BBC64C17F0F2546D9EE",
-  WSTETH: "0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0",
-  STETH: "0xae7ab96520de3a18e5e111b5eaab095312d7fe84",
+  MINTER: "0x565f90dc7c022e7857734352c7bf645852d8d4e7",
+  PEGGED_TOKEN: "0x8e7442020ba7debfd77e67491c51faa097d87478",
+  LEVERAGED_TOKEN: "0x8248849b83ae20b21fa561f97ee5835a063c1f9c",
+  GENESIS: "0x5f4398e1d3e33f93e3d7ee710d797e2a154cb073",
+  STABILITY_POOL_MANAGER: "0x4f96d6fcf24339633275fd069798fd7fe246a5d5",
+  STABILITY_POOL_COLLATERAL: "0xfb9747b30ee1b1df2434255c7768c1ebfa7e89bb",
+  STABILITY_POOL_PEGGED: "0x93d0472443d775e95bf1597c8c66dfe9093bfc48",
+  PRICE_ORACLE: "0x56d1a2fc199ba05f84d2eb8eab5858d3d954030c",
+  TOKEN_DISTRIBUTOR: "0x33db0dafda15ac936dbea37a2342cd45dfe2d3d2",
+  RESERVE_POOL: "0xb196bd963474fabb8201658c9257249e55912dda",
   CHAIN_ID: 1, // Mainnet
-  RPC_URL: "https://eth.llamarpc.com", // Mainnet RPC
+  RPC_URL:
+    "https://eth-mainnet.g.alchemy.com/v2/uGl5kuD60tnGFHRmkevK1iYQuIQKmh1n", // Mainnet RPC
 } as const;
 
 export type MarketConfig = {
@@ -95,40 +87,41 @@ export type Markets = {
 
 export const markets: Markets = {
   // ============================================================================
-  // USD-stETH Market (wstETH collateral) - Primary mainnet deployment
-  // Backing: haUSD-stETH (anchor) and hsUSD-stETH (sail)
+  // ETH/fxUSD Market (test2 deployment) - Mainnet deployment Dec 2025
+  // Backing: haETH (anchor) and hsFXUSD-ETH (sail)
+  // Deployment: mainnet-test2__ETH__fxUSD.json, startBlock: 24025347
   // ============================================================================
-  "usd-steth": {
-    id: "usd-steth",
-    name: "USD/stETH",
-    description: "USD pegged to wstETH collateral",
+  "eth-fxusd": {
+    id: "eth-fxusd",
+    name: "ETH/fxUSD",
+    description: "ETH pegged to fxUSD collateral",
     addresses: {
-      collateralToken: "0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0", // wstETH
-      underlyingCollateralToken: "0xae7ab96520de3a18e5e111b5eaab095312d7fe84", // stETH
-      feeReceiver: "0xa041d36bb18ae1660ff3a684aa2eaff77786f55c",
-      genesis: "0x1454707877cdb966e29cea8a190c2169eeca4b8c",
-      leveragedToken: "0x469ddfcfa98d0661b7efedc82aceeab84133f7fe", // hsUSD-stETH
-      minter: "0x8b17b6e8f9ce3477ddaf372a4140ac6005787901",
-      owner: "0xa041d36bb18ae1660ff3a684aa2eaff77786f55c", // Same as feeReceiver
-      peggedToken: "0x6ff0fe773d4ad4ea923ba9ea9cc1c1b42b70f5fc", // haUSD-stETH
-      priceOracle: "0xbb12a263bda971a64f9573ceab4fa689eb93daff",
-      stabilityPoolCollateral: "0xac8113ef28c8ef06064e8d78b69890d670273c73",
-      stabilityPoolLeveraged: "0x6738c3ee945218fb80700e2f4c1a5f3022a28c8d",
-      reservePool: "0xa63b31f3551a151d75fa43fa653ef37b5f7f1ad6",
-      rebalancePoolCollateral: "0xe828215EB5A61a5cB62fB980288B835689af4091",
-      rebalancePoolLeveraged: "0xd3873FDF150b3fFFb447d3701DFD234DF452f367",
-      collateralPrice: "0xCfE54B5cD566aB89272946F602D76Ea879CAb4a8", // stETH/USD Chainlink
+      collateralToken: "0x085780639cc2cacd35e474e71f4d000e2405d8f6", // fxUSD
+      underlyingCollateralToken: "0x7743e50f534a7f9f1791dde7dcd89f7783eefc39", // fxSAVE
+      feeReceiver: "0x33db0dafda15ac936dbea37a2342cd45dfe2d3d2", // minterFeeReceiver
+      genesis: "0x5f4398e1d3e33f93e3d7ee710d797e2a154cb073",
+      leveragedToken: "0x8248849b83ae20b21fa561f97ee5835a063c1f9c", // hsFXUSD-ETH
+      minter: "0x565f90dc7c022e7857734352c7bf645852d8d4e7",
+      owner: "0x9babfc1a1952a6ed2cac1922bffe80c0506364a2",
+      peggedToken: "0x8e7442020ba7debfd77e67491c51faa097d87478", // haETH
+      priceOracle: "0x56d1a2fc199ba05f84d2eb8eab5858d3d954030c",
+      stabilityPoolCollateral: "0xfb9747b30ee1b1df2434255c7768c1ebfa7e89bb",
+      stabilityPoolLeveraged: "0x93d0472443d775e95bf1597c8c66dfe9093bfc48",
+      reservePool: "0xb196bd963474fabb8201658c9257249e55912dda",
+      rebalancePoolCollateral: "0x0000000000000000000000000000000000000000", // Not deployed yet
+      rebalancePoolLeveraged: "0x0000000000000000000000000000000000000000", // Not deployed yet
+      collateralPrice: "0x56d1a2fc199ba05f84d2eb8eab5858d3d954030c", // Using priceOracle
     },
     genesis: {
-      startDate: "2024-03-21T00:00:00Z",
-      endDate: "2026-03-21T00:00:00Z",
+      startDate: "2025-12-16T13:04:35Z", // From deployment timestamp
+      endDate: "2026-01-16T23:59:59Z", // ~1 month genesis period
       rewards: {
         pegged: {
-          symbol: "haUSD-stETH",
+          symbol: "haETH",
           amount: "1000000",
         },
         leveraged: {
-          symbol: "hsUSD-stETH",
+          symbol: "hsFXUSD-ETH",
           amount: "1000000",
         },
       },
@@ -137,40 +130,84 @@ export const markets: Markets = {
     },
   },
   // ============================================================================
-  // USD-WBTC Market (aWBTC collateral) - Mainnet deployment Dec 2025
-  // Backing: hsUSD-WBTC (sail) and haUSD-stETH (shared anchor)
+  // BTC/fxUSD Market (test2 deployment) - Mainnet deployment Dec 2025
+  // Backing: haBTC (anchor) and hsFXUSD-BTC (sail)
+  // Deployment: mainnet-test2__BTC__fxUSD.json, startBlock: 24025557
   // ============================================================================
-  "usd-wbtc": {
-    id: "usd-wbtc",
-    name: "USD/WBTC",
-    description: "USD pegged to WBTC collateral",
+  "btc-fxusd": {
+    id: "btc-fxusd",
+    name: "BTC/fxUSD",
+    description: "BTC pegged to fxUSD collateral",
     addresses: {
-      collateralToken: "0x5ee5bf7ae06d1be5997a1a72006fe6c607ec6de8", // aWBTC (Aave WBTC) - what users deposit
-      underlyingCollateralToken: "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599", // WBTC - underlying
-      feeReceiver: "0x1ca04526fa156fd18a182ab436c3ff2f306af907",
-      genesis: "0x0569ebf818902e448235592f86e63255bbe64fd3",
-      leveragedToken: "0x03fd55f80277c13bb17739190b1e086b836c9f20", // hsUSD-WBTC
-      minter: "0xa9434313a4b9a4d624c6d67b1d61091b159f5a77",
+      collateralToken: "0x085780639cc2cacd35e474e71f4d000e2405d8f6", // fxUSD
+      underlyingCollateralToken: "0x7743e50f534a7f9f1791dde7dcd89f7783eefc39", // fxSAVE
+      feeReceiver: "0x0a35acb0e0f70ecea717f8ad6e3c7d90bcc92efd", // minterFeeReceiver
+      genesis: "0x288c61c3b3684ff21adf38d878c81457b19bd2fe",
+      leveragedToken: "0x454f2c12ce62a4fd813e2e06fda5d46e358e7c70", // hsFXUSD-BTC
+      minter: "0x7ffe3acb524fb40207709ba597d39c085d258f15",
       owner: "0x9babfc1a1952a6ed2cac1922bffe80c0506364a2",
-      peggedToken: "0x6ff0fe773d4ad4ea923ba9ea9cc1c1b42b70f5fc", // haUSD-stETH (shared)
-      priceOracle: "0x7df29f02e6baf23fbd77940d78b158a66f1bd33c",
-      stabilityPoolCollateral: "0x39613a4c9582dea56f9ee8ad0351011421c3593a",
-      stabilityPoolLeveraged: "0xfc2145de73ec53e34c4e6809b56a61321315e806",
-      reservePool: "0x17cbf88764bd47d6c2105b782bf9b7615f7b2d9e",
+      peggedToken: "0x1822bbe8fe313c4b53414f0b3e5ef8147d485530", // haBTC
+      priceOracle: "0xf6e28853563db7f7e42f5db0e1f959743ac5b0e6",
+      stabilityPoolCollateral: "0x5378fbf71627e352211779bd4cd09b0a791015ac",
+      stabilityPoolLeveraged: "0x8667592f836a8e2d19ce7879b8ae557297514f48",
+      reservePool: "0xf9b5fb7de24971bc7e3006691e6272c77ee2b3e7",
       rebalancePoolCollateral: "0x0000000000000000000000000000000000000000", // Not deployed yet
       rebalancePoolLeveraged: "0x0000000000000000000000000000000000000000", // Not deployed yet
-      collateralPrice: "0x7df29f02e6baf23fbd77940d78b158a66f1bd33c",
+      collateralPrice: "0xf6e28853563db7f7e42f5db0e1f959743ac5b0e6", // Using priceOracle
     },
     genesis: {
-      startDate: "2025-12-12T22:35:47Z",
-      endDate: "2026-01-12T23:59:59Z",
+      startDate: "2025-12-16T13:46:35Z", // From deployment timestamp
+      endDate: "2026-01-16T23:59:59Z", // ~1 month genesis period
       rewards: {
         pegged: {
-          symbol: "haUSD",
+          symbol: "haBTC",
           amount: "1000000",
         },
         leveraged: {
-          symbol: "hsUSD-WBTC",
+          symbol: "hsFXUSD-BTC",
+          amount: "1000000",
+        },
+      },
+      collateralRatio: 1.0,
+      leverageRatio: 2 * 1e18,
+    },
+  },
+  // ============================================================================
+  // BTC/stETH Market (test2 deployment) - Mainnet deployment Dec 2025
+  // Backing: haBTC (shared anchor) and hsSTETH-BTC (sail)
+  // Deployment: mainnet-test2__BTC__stETH.json, startBlock: 24025785
+  // ============================================================================
+  "btc-steth": {
+    id: "btc-steth",
+    name: "BTC/stETH",
+    description: "BTC pegged to stETH collateral",
+    addresses: {
+      collateralToken: "0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0", // wstETH
+      underlyingCollateralToken: "0xae7ab96520de3a18e5e111b5eaab095312d7fe84", // stETH
+      feeReceiver: "0xc780d822fc50fdf802c813422bac5aa7aca8c84c", // minterFeeReceiver
+      genesis: "0x9ae0b57ceada0056dbe21edcd638476fcba3ccc0",
+      leveragedToken: "0x1df67ebd59db60a13ec783472aaf22e5b2b01f25", // hsSTETH-BTC
+      minter: "0x042e7cb5b993312490ea07fb89f360a65b8a9056",
+      owner: "0x9babfc1a1952a6ed2cac1922bffe80c0506364a2",
+      peggedToken: "0x1822bbe8fe313c4b53414f0b3e5ef8147d485530", // haBTC (shared with BTC/fxUSD)
+      priceOracle: "0xe370289af2145a5b2f0f7a4a900ebfd478a156db",
+      stabilityPoolCollateral: "0x86297bd2de92e91486c7e3b32cb5bc18f0a363bc",
+      stabilityPoolLeveraged: "0x8d6307be018fcc42ad65e91b77c6b09c7ac9f0df",
+      reservePool: "0x18aef82111b673d99b4fbbcf7a4bd1e06734cc3d",
+      rebalancePoolCollateral: "0x0000000000000000000000000000000000000000", // Not deployed yet
+      rebalancePoolLeveraged: "0x0000000000000000000000000000000000000000", // Not deployed yet
+      collateralPrice: "0xe370289af2145a5b2f0f7a4a900ebfd478a156db", // Using priceOracle
+    },
+    genesis: {
+      startDate: "2025-12-16T14:32:11Z", // From deployment timestamp
+      endDate: "2026-01-16T23:59:59Z", // ~1 month genesis period
+      rewards: {
+        pegged: {
+          symbol: "haBTC",
+          amount: "1000000",
+        },
+        leveraged: {
+          symbol: "hsSTETH-BTC",
           amount: "1000000",
         },
       },
@@ -181,8 +218,9 @@ export const markets: Markets = {
 };
 
 // For backward compatibility and convenience
-export const marketConfig = markets["usd-steth"];
-export const contractAddresses = markets["usd-steth"].addresses;
+// Default to ETH/fxUSD market (primary new deployment)
+export const marketConfig = markets["eth-fxusd"];
+export const contractAddresses = markets["eth-fxusd"].addresses;
 
 // ============================================================================
 // Contract ABIs and Types

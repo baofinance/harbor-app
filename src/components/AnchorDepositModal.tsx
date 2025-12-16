@@ -472,7 +472,7 @@ export const AnchorDepositModal = ({
  onClick={handleClose}
  />
 
- <div className="relative bg-white shadow-2xl w-full max-w-md mx-4 animate-in fade-in-0 scale-in-95 duration-200">
+        <div className="relative bg-white shadow-2xl w-full max-w-md mx-2 sm:mx-4 animate-in fade-in-0 scale-in-95 duration-200 rounded-lg max-h-[95vh] sm:max-h-[90vh] overflow-y-auto">
  <div className="flex items-center justify-between p-6 border-b border-[#1E4775]/20">
  <h2 className="text-2xl font-bold text-[#1E4775]">Deposit</h2>
  <button

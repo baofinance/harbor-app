@@ -38,7 +38,7 @@ https://www.harborfinance.io/`;
  />
 
  {/* Modal */}
- <div className="relative bg-white shadow-2xl w-full max-w-md mx-4 animate-in fade-in-0 scale-in-95 duration-200 overflow-hidden">
+        <div className="relative bg-white shadow-2xl w-full max-w-md mx-2 sm:mx-4 animate-in fade-in-0 scale-in-95 duration-200 overflow-hidden rounded-lg max-h-[95vh] sm:max-h-[90vh] overflow-y-auto">
  {/* Decorative header wave */}
  <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-br from-[#1E4775] via-[#2A5A8C] to-[#17395F]">
  <div className="absolute bottom-0 left-0 right-0">

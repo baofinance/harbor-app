@@ -24,6 +24,7 @@ interface GenesisWithdrawalModalProps {
  userDeposit: bigint;
 priceOracleAddress?: string;
  onSuccess?: () => void;
+ embedded?: boolean;
 }
 
 // Format a bigint token amount with limited decimals and optional USD value
@@ -84,6 +85,7 @@ export const GenesisWithdrawModal = ({
  userDeposit,
 priceOracleAddress,
  onSuccess,
+ embedded = false,
 }: GenesisWithdrawalModalProps) => {
  const { address } = useAccount();
  const [amount, setAmount] = useState("");
@@ -302,63 +304,13 @@ const successUSD = successAmountNum > 0 && collateralPriceUSD > 0
  );
  };
 
- if (!isOpen && !progressModalOpen) return null;
+  if (!isOpen && !progressModalOpen) return null;
 
- return (
- <>
- {progressModalOpen && (
- <TransactionProgressModal
- isOpen={progressModalOpen}
- onClose={handleClose}
- title="Processing Withdrawal"
- steps={progressSteps}
- currentStepIndex={currentStepIndex}
- canCancel={false}
- errorMessage={error || undefined}
- renderSuccessContent={renderSuccessContent}
- />
- )}
-
- {!progressModalOpen && isOpen && (
- <div className="fixed inset-0 z-50 flex items-center justify-center">
- {/* Backdrop */}
- <div
- className="absolute inset-0 bg-black/40 backdrop-blur-sm"
- onClick={handleClose}
- />
-
- {/* Modal */}
- <div className="relative bg-white shadow-2xl w-full max-w-md mx-4 animate-in fade-in-0 scale-in-95 duration-200">
- {/* Header */}
- <div className="flex items-center justify-between p-6 border-b border-[#1E4775]/20">
- <h2 className="text-2xl font-bold text-[#1E4775]">
- Withdraw from Maiden Voyage
- </h2>
- <button
- onClick={handleClose}
- className="text-[#1E4775]/50 hover:text-[#1E4775] transition-colors"
- disabled={step ==="withdrawing"}
- >
- <svg
- className="w-6 h-6"
- fill="none"
- viewBox="0 0 24 24"
- stroke="currentColor"
- >
- <path
- strokeLinecap="round"
- strokeLinejoin="round"
- strokeWidth={2}
- d="M6 18L18 6M6 6l12 12"
- />
- </svg>
- </button>
- </div>
-
- {/* Content */}
- <div className="p-6 space-y-6">
- {/* Balance */}
-{(() => {
+  // Withdraw form content
+  const formContent = (
+    <div className="space-y-4 sm:space-y-6">
+      {/* Balance */}
+      {(() => {
   const depositFmt = formatTokenAmount(userDeposit, collateralSymbol, collateralPriceUSD);
   return (
  <div className="text-sm text-[#1E4775]/70">
@@ -509,45 +461,113 @@ Available: {formatTokenAmount(userDeposit, collateralSymbol).formatted} {collate
  {/* Success Message */}
  {step ==="success" && (
  <div className="p-3 bg-[rgb(var(--surface-selected-rgb))]/30 border border-[rgb(var(--surface-selected-border-rgb))]/50 text-[#1E4775] text-sm text-center">
- ✅ Withdrawal successful!
- </div>
- )}
- </div>
+        ✅ Withdrawal successful!
+        </div>
+      )}
 
- {/* Footer */}
- <div className="flex gap-4 p-6 border-t border-[#1E4775]/20">
- <button
- onClick={handleClose}
- className="flex-1 py-2 px-4 text-[#1E4775]/70 hover:text-[#1E4775] transition-colors rounded-full"
- disabled={step ==="withdrawing"}
- >
- {step ==="success" ?"Close" :"Cancel"}
- </button>
- <button
- onClick={handleWithdraw}
- disabled={
- step ==="withdrawing" ||
- !amount ||
- parseFloat(amount) <= 0 ||
- userDeposit === 0n ||
- !!simulateError
- }
- className={`flex-1 py-2 px-4 font-medium transition-colors rounded-full ${
- step ==="success"
- ?"bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white"
- :"bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white disabled:bg-gray-300 disabled:text-gray-500"
- }`}
- >
- {step ==="withdrawing"
- ?"Withdrawing..."
- : step ==="error"
- ?"Try Again"
- :"Withdraw"}
- </button>
- </div>
- </div>
- </div>
- )}
- </>
- );
+      {/* Submit Button */}
+      <div>
+        <button
+          onClick={handleWithdraw}
+          disabled={
+            step === "withdrawing" ||
+            !amount ||
+            parseFloat(amount) <= 0 ||
+            userDeposit === 0n ||
+            !!simulateError
+          }
+          className={`w-full py-3 px-4 font-medium transition-colors rounded-full ${
+            step === "success"
+              ? "bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white"
+              : "bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white disabled:bg-gray-300 disabled:text-gray-500"
+          }`}
+        >
+          {step === "withdrawing"
+            ? "Withdrawing..."
+            : step === "error"
+            ? "Try Again"
+            : "Withdraw"}
+        </button>
+      </div>
+    </div>
+  );
+
+  // If embedded, return just the content + progress modal
+  if (embedded) {
+    return (
+      <>
+        {progressModalOpen && (
+          <TransactionProgressModal
+            isOpen={progressModalOpen}
+            onClose={handleClose}
+            title="Processing Withdrawal"
+            steps={progressSteps}
+            currentStepIndex={currentStepIndex}
+            canCancel={false}
+            errorMessage={error || undefined}
+            renderSuccessContent={renderSuccessContent}
+          />
+        )}
+        {!progressModalOpen && formContent}
+      </>
+    );
+  }
+
+  // Full standalone modal
+  return (
+    <>
+      {progressModalOpen && (
+        <TransactionProgressModal
+          isOpen={progressModalOpen}
+          onClose={handleClose}
+          title="Processing Withdrawal"
+          steps={progressSteps}
+          currentStepIndex={currentStepIndex}
+          canCancel={false}
+          errorMessage={error || undefined}
+          renderSuccessContent={renderSuccessContent}
+        />
+      )}
+
+      {!progressModalOpen && isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            onClick={handleClose}
+          />
+
+          <div className="relative bg-white shadow-2xl w-full max-w-md mx-2 sm:mx-4 animate-in fade-in-0 scale-in-95 duration-200 rounded-lg max-h-[95vh] sm:max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-3 sm:p-4 lg:p-6 border-b border-[#1E4775]/20">
+              <h2 className="text-lg sm:text-2xl font-bold text-[#1E4775]">
+                Withdraw from Maiden Voyage
+              </h2>
+              <button
+                onClick={handleClose}
+                className="text-[#1E4775]/50 hover:text-[#1E4775] transition-colors"
+                disabled={step === "withdrawing"}
+              >
+                <svg
+                  className="w-5 h-5 sm:w-6 sm:h-6"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+
+            <div className="p-3 sm:p-4 lg:p-6">
+              {formContent}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
 };

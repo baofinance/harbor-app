@@ -241,7 +241,7 @@ function MarketCard({
  onClick={() => setIsExpanded(!isExpanded)}
  >
  <div className="p-3">
- <div className="grid grid-cols-[1.5fr_1fr_1fr_1fr_1fr_1fr_auto] gap-3 items-center">
+ <div className="hidden lg:grid grid-cols-[1.5fr_1fr_1fr_1fr_1fr_1fr_auto] gap-3 items-center">
  {/* Market Name */}
  <div className="flex items-center gap-2">
  {isExpanded ? (
@@ -568,8 +568,8 @@ export default function TransparencyPage() {
  } = useTransparencyData();
 
  return (
- <div className="min-h-screen text-white max-w-[1300px] mx-auto font-sans relative">
- <main className="container mx-auto px-4 sm:px-10 pb-6">
+ <div className="min-h-screen text-white max-w-[1300px] mx-auto font-sans relative overflow-x-hidden">
+ <main className="container mx-auto px-3 sm:px-4 lg:px-10 pb-6">
  {/* Header */}
  <div className="mb-2">
  {/* Title - Full Row */}

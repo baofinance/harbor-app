@@ -189,7 +189,7 @@ export default function FlowPage() {
  <title>Map Room | Harbor</title>
  </Head>
  <div className="min-h-screen bg-[#1E4775] max-w-[1300px] mx-auto font-sans relative">
- <main className="container mx-auto px-4 sm:px-10 pb-6">
+ <main className="container mx-auto px-3 sm:px-4 lg:px-10 pb-6">
  {/* Header */}
  <div className="mb-2 relative py-2">
  <div className="p-2 flex items-center justify-center mb-0">
@@ -421,7 +421,7 @@ function FeedGroupSection({
 
  return (
  <div
- className={`p-3 overflow-x-auto overflow-y-visible transition ${
+ className={`p-2 sm:p-3 overflow-x-auto overflow-y-visible transition ${
  sectionExpanded ?"bg-[rgb(var(--surface-selected-rgb))]" :"bg-white hover:bg-[rgb(var(--surface-selected-rgb))]"
  }`}
  >
@@ -857,7 +857,7 @@ function FeedDetails({
  </div>
 
  {/* Contract Address */}
- <div className="md:col-span-3 bg-white p-4 border border-[#1E4775]/10">
+ <div className="md:col-span-3 bg-white p-3 sm:p-4 border border-[#1E4775]/10">
  <div className="text-[#1E4775]/60 text-xs mb-1">Contract</div>
  <a
  href={getExplorerUrl(feed.address)}
@@ -871,7 +871,7 @@ function FeedDetails({
  </div>
 
  {/* Feed Details Table */}
- <div className="md:col-span-3 bg-white p-3 sm:p-4 overflow-x-auto border border-[#1E4775]/10">
+ <div className="md:col-span-3 bg-white p-2 sm:p-3 lg:p-4 overflow-x-auto border border-[#1E4775]/10">
  <table className="min-w-full text-left text-sm table-fixed">
  <thead>
  <tr className="border-b border-[#1E4775]/20 uppercase tracking-wider text-[10px] text-[#1E4775]/60">

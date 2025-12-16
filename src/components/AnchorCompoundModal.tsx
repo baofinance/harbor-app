@@ -41,8 +41,8 @@ export const AnchorCompoundModal = ({
  onClick={onClose}
  />
 
- <div className="relative bg-white shadow-2xl w-full max-w-md mx-4 animate-in fade-in-0 scale-in-95 duration-200">
- <div className="flex items-center justify-between p-6 border-b border-[#1E4775]/20">
+        <div className="relative bg-white shadow-2xl w-full max-w-md mx-2 sm:mx-4 animate-in fade-in-0 scale-in-95 duration-200 rounded-lg max-h-[95vh] sm:max-h-[90vh] overflow-y-auto">
+          <div className="flex items-center justify-between p-3 sm:p-4 lg:p-6 border-b border-[#1E4775]/20">
  <h2 className="text-2xl font-bold text-[#1E4775]">Compound Rewards</h2>
  <button
  onClick={onClose}
@@ -65,7 +65,7 @@ export const AnchorCompoundModal = ({
  </button>
  </div>
 
- <div className="p-6 space-y-6">
+          <div className="p-3 sm:p-4 lg:p-6 space-y-4 sm:space-y-6">
  <div className="text-sm text-[#1E4775]/70">
  {poolType ==="collateral" ? (
  <p>
@@ -169,7 +169,7 @@ export const AnchorCompoundModal = ({
  </div>
  </div>
 
- <div className="flex gap-4 p-6 border-t border-[#1E4775]/20">
+          <div className="flex gap-2 sm:gap-4 p-3 sm:p-4 lg:p-6 border-t border-[#1E4775]/20">
  <button
  onClick={onClose}
  className="flex-1 py-2 px-4 text-[#1E4775]/70 hover:text-[#1E4775] transition-colors rounded-full"
@@ -193,6 +193,9 @@ export const AnchorCompoundModal = ({
  </div>
  );
 };
+
+
+
 
 
 

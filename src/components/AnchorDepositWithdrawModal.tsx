@@ -22,7 +22,6 @@ import {
   TransactionProgressModal,
   TransactionStep,
 } from "@/components/TransactionProgressModal";
-import { POLLING_INTERVALS, getModalPollingInterval } from "@/config/polling";
 
 // Helper function to format numbers nicely
 const formatNumber = (
@@ -114,12 +113,12 @@ const minterABI = [
     ],
     name: "mintPeggedTokenDryRun",
     outputs: [
-      { name: "incentiveRatio", type: "int256" }, // Net fee ratio (1e16 units, positive=fee, negative=discount)
-      { name: "wrappedFee", type: "uint256" }, // Fee amount in wrapped collateral wei
-      { name: "wrappedCollateralUsed", type: "uint256" }, // Collateral used (NOT discount for mint)
-      { name: "peggedMinted", type: "uint256" }, // haUSD tokens minted
-      { name: "price", type: "uint256" }, // Oracle price
-      { name: "rate", type: "uint256" }, // wstETH/stETH rate
+      { name: "incentiveRatio", type: "int256" },
+      { name: "fee", type: "uint256" },
+      { name: "discount", type: "uint256" },
+      { name: "peggedMinted", type: "uint256" },
+      { name: "price", type: "uint256" },
+      { name: "rate", type: "uint256" },
     ],
     stateMutability: "view",
     type: "function",
@@ -234,16 +233,8 @@ export const AnchorDepositWithdrawModal = ({
   const [activeTab, setActiveTab] = useState<TabType>(getInitialTab());
 
   // Get positions from subgraph (same as expanded view)
-  // Enable for all tabs so marks are visible in deposit tab too
-  const {
-    poolDeposits,
-    haBalances,
-    estimatedMarks,
-    marksPerDay,
-    loading: marksLoading,
-    error: marksError,
-  } = useAnchorLedgerMarks({
-    enabled: isOpen,
+  const { poolDeposits, haBalances } = useAnchorLedgerMarks({
+    enabled: isOpen && activeTab === "withdraw",
   });
   const defaultProgressConfig = {
     mode: null as "collateral" | "direct" | "withdraw" | null,
@@ -632,9 +623,8 @@ export const AnchorDepositWithdrawModal = ({
     }));
   }, [allDepositAssetsWithMarkets]);
 
-  // Calculate fees for each deposit asset using a sample amount (0.001 token)
-  // Using a small amount that's realistic given current collateral levels
-  const sampleAmountForFeeCalc = "0.001";
+  // Calculate fees for each deposit asset using a sample amount (1 token)
+  const sampleAmountForFeeCalc = "1.0";
   const feeContracts = useMemo(() => {
     if (!simpleMode || !isOpen || activeTab !== "deposit") return [];
 
@@ -709,8 +699,7 @@ export const AnchorDepositWithdrawModal = ({
         isOpen &&
         simpleMode &&
         activeTab === "deposit",
-      refetchInterval: getModalPollingInterval(isOpen, "poolAPR"),
-      staleTime: POLLING_INTERVALS.SLOW / 2, // 15 seconds
+      refetchInterval: 30000,
     },
   });
 
@@ -734,16 +723,11 @@ export const AnchorDepositWithdrawModal = ({
         }
       }
 
-      // mintPeggedTokenDryRun returns: [incentiveRatio, wrappedFee, wrappedCollateralUsed, ...]
-      // Use incentiveRatio directly (already net fee/discount percentage)
-      if (resultData && Array.isArray(resultData) && resultData.length >= 1) {
-        const incentiveRatio = resultData[0] as bigint;
-        // Check if disallowed
-        if (incentiveRatio === 1000000000000000000n) {
-          feePercentage = undefined; // Disallowed
-        } else {
-          // incentiveRatio is in 1e16 units (e.g., 6.635e15 = 0.6635%)
-          feePercentage = Number(incentiveRatio) / 1e16;
+      if (resultData && Array.isArray(resultData) && resultData.length >= 2) {
+        const wrappedFee = resultData[1] as bigint;
+        const inputAmount = parseEther(sampleAmountForFeeCalc);
+        if (inputAmount > 0n) {
+          feePercentage = (Number(wrappedFee) / Number(inputAmount)) * 100;
         }
       }
 
@@ -830,46 +814,14 @@ export const AnchorDepositWithdrawModal = ({
       }
 
       // Process the result data
-      // mintPeggedTokenDryRun returns: [incentiveRatio, wrappedFee, wrappedCollateralUsed, peggedMinted, price, rate]
-      // Note: For MINT operations, index [2] is wrappedCollateralUsed, NOT discount
-      // The incentiveRatio (index [0]) already represents the net fee/discount ratio
-      if (resultData && Array.isArray(resultData) && resultData.length >= 3) {
-        const incentiveRatio = resultData[0] as bigint; // Net fee ratio (already accounts for discounts)
-        const wrappedFee = resultData[1] as bigint; // Fee in wrapped collateral units
-        const wrappedCollateralUsed = resultData[2] as bigint; // Collateral used (NOT discount for mint)
-
-        // Check if minting is disallowed (incentiveRatio === 1e18)
-        const isDisallowed = incentiveRatio === 1000000000000000000n;
-
-        if (!isDisallowed) {
-          // Use incentiveRatio directly - it's already the net fee/discount percentage
-          // incentiveRatio is in 1e16 units (e.g., 6.635e15 = 0.6635%)
-          // Positive = fee, negative = discount/bonus
-          feePercentage = Number(incentiveRatio) / 1e16;
-
-          console.log(`[Modal] Fee calculation for ${contract.assetSymbol}:`, {
-            minterAddress: contract.address,
-            function: "mintPeggedTokenDryRun",
-            inputAmount: parseEther(sampleAmountForFeeCalc).toString(),
-            incentiveRatio: incentiveRatio.toString(),
-            incentiveRatioPercent: feePercentage,
-            wrappedFee: wrappedFee.toString(),
-            wrappedCollateralUsed: wrappedCollateralUsed.toString(),
-            isDisallowed,
-          });
-        } else {
-          feePercentage = undefined;
-          console.log(
-            `[Modal] Minting ${contract.assetSymbol} is DISALLOWED (incentiveRatio = 1e18)`
-          );
+      if (resultData && Array.isArray(resultData) && resultData.length >= 2) {
+        const wrappedFee = resultData[1] as bigint;
+        const inputAmount = parseEther(sampleAmountForFeeCalc);
+        if (inputAmount > 0n) {
+          // Calculate fee percentage even if wrappedFee is 0 (to show 0%)
+          feePercentage = (Number(wrappedFee) / Number(inputAmount)) * 100;
         }
-      } else if (
-        isOpen &&
-        simpleMode &&
-        activeTab === "deposit" &&
-        process.env.NODE_ENV === "development"
-      ) {
-        // Only log in development to reduce console noise
+      } else if (isOpen && simpleMode && activeTab === "deposit") {
         console.warn(
           `[Modal] Fee result for ${contract.assetSymbol} is invalid:`,
           {
@@ -1076,8 +1028,7 @@ export const AnchorDepositWithdrawModal = ({
         activeTab === "deposit" &&
         isSelectedAssetNativeETH &&
         simpleMode,
-      refetchInterval: getModalPollingInterval(isOpen, "tokenBalance"),
-      staleTime: POLLING_INTERVALS.NORMAL / 2, // 7.5 seconds
+      refetchInterval: 5000,
     },
   });
 
@@ -1103,7 +1054,7 @@ export const AnchorDepositWithdrawModal = ({
       simpleMode &&
       !!selectedDepositAsset &&
       useAnvilForBalance,
-    refetchInterval: getModalPollingInterval(isOpen, "tokenBalance"),
+    refetchInterval: 5000,
   });
 
   const wagmiSelectedAssetResult = useContractRead({
@@ -1125,8 +1076,7 @@ export const AnchorDepositWithdrawModal = ({
         simpleMode &&
         !!selectedDepositAsset &&
         !useAnvilForBalance,
-      refetchInterval: getModalPollingInterval(isOpen, "tokenBalance"),
-      staleTime: POLLING_INTERVALS.NORMAL / 2,
+      refetchInterval: 5000,
       retry: 1,
       allowFailure: true,
     },
@@ -1194,10 +1144,7 @@ export const AnchorDepositWithdrawModal = ({
         isOpen &&
         activeTab === "deposit" &&
         !simpleMode,
-      refetchInterval: getModalPollingInterval(isOpen, "tokenBalance"),
-
-      staleTime: POLLING_INTERVALS.NORMAL / 2,
-
+      refetchInterval: 5000,
       retry: 1,
       allowFailure: true,
     },
@@ -1260,7 +1207,7 @@ export const AnchorDepositWithdrawModal = ({
       isDirectPeggedDeposit &&
       simpleMode &&
       useAnvilForBalance,
-    refetchInterval: getModalPollingInterval(isOpen, "tokenBalance"),
+    refetchInterval: 5000,
   });
 
   const wagmiBalanceResult = useContractRead({
@@ -1277,10 +1224,7 @@ export const AnchorDepositWithdrawModal = ({
         isDirectPeggedDeposit &&
         simpleMode &&
         !useAnvilForBalance,
-      refetchInterval: getModalPollingInterval(isOpen, "tokenBalance"),
-
-      staleTime: POLLING_INTERVALS.NORMAL / 2,
-
+      refetchInterval: 5000,
       retry: 1,
       allowFailure: true,
     },
@@ -1344,7 +1288,7 @@ export const AnchorDepositWithdrawModal = ({
       isOpen &&
       (activeTab === "deposit" || activeTab === "withdraw") &&
       useAnvilForPeggedBalance,
-    refetchInterval: getModalPollingInterval(isOpen, "tokenBalance"),
+    refetchInterval: 5000,
   });
 
   const wagmiPeggedBalanceResult = useContractRead({
@@ -1359,10 +1303,7 @@ export const AnchorDepositWithdrawModal = ({
         isOpen &&
         (activeTab === "deposit" || activeTab === "withdraw") &&
         !useAnvilForPeggedBalance,
-      refetchInterval: getModalPollingInterval(isOpen, "tokenBalance"),
-
-      staleTime: POLLING_INTERVALS.NORMAL / 2,
-
+      refetchInterval: 5000,
       retry: 1,
       allowFailure: true,
     },
@@ -1391,7 +1332,7 @@ export const AnchorDepositWithdrawModal = ({
       isOpen &&
       activeTab === "withdraw" &&
       useAnvilForPeggedBalance,
-    refetchInterval: getModalPollingInterval(isOpen, "tokenBalance"),
+    refetchInterval: 5000,
   });
 
   const wagmiCollateralPoolResult = useContractRead({
@@ -1406,10 +1347,7 @@ export const AnchorDepositWithdrawModal = ({
         isOpen &&
         activeTab === "withdraw" &&
         !useAnvilForPeggedBalance,
-      refetchInterval: getModalPollingInterval(isOpen, "tokenBalance"),
-
-      staleTime: POLLING_INTERVALS.NORMAL / 2,
-
+      refetchInterval: 5000,
       retry: 1,
       allowFailure: true,
     },
@@ -1431,7 +1369,7 @@ export const AnchorDepositWithdrawModal = ({
       isOpen &&
       activeTab === "withdraw" &&
       useAnvilForPeggedBalance,
-    refetchInterval: getModalPollingInterval(isOpen, "tokenBalance"),
+    refetchInterval: 5000,
   });
 
   const wagmiSailPoolResult = useContractRead({
@@ -1446,10 +1384,7 @@ export const AnchorDepositWithdrawModal = ({
         isOpen &&
         activeTab === "withdraw" &&
         !useAnvilForPeggedBalance,
-      refetchInterval: getModalPollingInterval(isOpen, "tokenBalance"),
-
-      staleTime: POLLING_INTERVALS.NORMAL / 2,
-
+      refetchInterval: 5000,
       retry: 1,
       allowFailure: true,
     },
@@ -1465,8 +1400,7 @@ export const AnchorDepositWithdrawModal = ({
     abi: STABILITY_POOL_ABI,
     functionName: "getEarlyWithdrawalFee",
     enabled: !!collateralPoolAddress && isOpen && useAnvilForPeggedBalance,
-    refetchInterval: getModalPollingInterval(isOpen, "poolAPR"),
-    staleTime: POLLING_INTERVALS.SLOW / 2,
+    refetchInterval: 30000,
   });
 
   const wagmiCollateralPoolFeeResult = useContractRead({
@@ -1475,8 +1409,7 @@ export const AnchorDepositWithdrawModal = ({
     functionName: "getEarlyWithdrawalFee",
     query: {
       enabled: !!collateralPoolAddress && isOpen && !useAnvilForPeggedBalance,
-      refetchInterval: getModalPollingInterval(isOpen, "poolAPR"),
-      staleTime: POLLING_INTERVALS.SLOW / 2,
+      refetchInterval: 30000,
       allowFailure: true,
     },
   });
@@ -1490,8 +1423,7 @@ export const AnchorDepositWithdrawModal = ({
     abi: STABILITY_POOL_ABI,
     functionName: "getEarlyWithdrawalFee",
     enabled: !!sailPoolAddress && isOpen && useAnvilForPeggedBalance,
-    refetchInterval: getModalPollingInterval(isOpen, "poolAPR"),
-    staleTime: POLLING_INTERVALS.SLOW / 2,
+    refetchInterval: 30000,
   });
 
   const wagmiSailPoolFeeResult = useContractRead({
@@ -1500,8 +1432,7 @@ export const AnchorDepositWithdrawModal = ({
     functionName: "getEarlyWithdrawalFee",
     query: {
       enabled: !!sailPoolAddress && isOpen && !useAnvilForPeggedBalance,
-      refetchInterval: getModalPollingInterval(isOpen, "poolAPR"),
-      staleTime: POLLING_INTERVALS.SLOW / 2,
+      refetchInterval: 30000,
       allowFailure: true,
     },
   });
@@ -1516,8 +1447,7 @@ export const AnchorDepositWithdrawModal = ({
     abi: STABILITY_POOL_ABI,
     functionName: "getWithdrawalWindow",
     enabled: !!collateralPoolAddress && isOpen && useAnvilForPeggedBalance,
-    refetchInterval: getModalPollingInterval(isOpen, "poolAPR"),
-    staleTime: POLLING_INTERVALS.SLOW / 2,
+    refetchInterval: 30000,
   });
 
   const wagmiCollateralWindowResult = useContractRead({
@@ -1526,8 +1456,7 @@ export const AnchorDepositWithdrawModal = ({
     functionName: "getWithdrawalWindow",
     query: {
       enabled: !!collateralPoolAddress && isOpen && !useAnvilForPeggedBalance,
-      refetchInterval: getModalPollingInterval(isOpen, "poolAPR"),
-      staleTime: POLLING_INTERVALS.SLOW / 2,
+      refetchInterval: 30000,
     },
   });
 
@@ -1540,8 +1469,7 @@ export const AnchorDepositWithdrawModal = ({
     abi: STABILITY_POOL_ABI,
     functionName: "getWithdrawalWindow",
     enabled: !!sailPoolAddress && isOpen && useAnvilForPeggedBalance,
-    refetchInterval: getModalPollingInterval(isOpen, "poolAPR"),
-    staleTime: POLLING_INTERVALS.SLOW / 2,
+    refetchInterval: 30000,
   });
 
   const wagmiSailWindowResult = useContractRead({
@@ -1550,8 +1478,7 @@ export const AnchorDepositWithdrawModal = ({
     functionName: "getWithdrawalWindow",
     query: {
       enabled: !!sailPoolAddress && isOpen && !useAnvilForPeggedBalance,
-      refetchInterval: getModalPollingInterval(isOpen, "poolAPR"),
-      staleTime: POLLING_INTERVALS.SLOW / 2,
+      refetchInterval: 30000,
     },
   });
 
@@ -1668,10 +1595,7 @@ export const AnchorDepositWithdrawModal = ({
     query: {
       enabled:
         !!address && !!peggedTokenAddress && isOpen && activeTab === "deposit",
-      refetchInterval: getModalPollingInterval(isOpen, "tokenBalance"),
-
-      staleTime: POLLING_INTERVALS.NORMAL / 2,
-
+      refetchInterval: 5000,
       retry: 1,
       allowFailure: true,
     },
@@ -1757,8 +1681,7 @@ export const AnchorDepositWithdrawModal = ({
     contracts: poolContracts,
     query: {
       enabled: poolContracts.length > 0,
-      refetchInterval: getModalPollingInterval(isOpen, "poolAPR"),
-      staleTime: POLLING_INTERVALS.SLOW / 2,
+      refetchInterval: 30000,
       retry: 1,
       allowFailure: true,
     },
@@ -1997,8 +1920,7 @@ export const AnchorDepositWithdrawModal = ({
         !simpleMode &&
         ((activeTab === "deposit" && depositInStabilityPool) ||
           activeTab === "deposit"),
-      refetchInterval: getModalPollingInterval(isOpen, "poolAPR"),
-      staleTime: POLLING_INTERVALS.SLOW / 2,
+      refetchInterval: 30000,
       retry: 1,
       allowFailure: true,
     },
@@ -2035,10 +1957,7 @@ export const AnchorDepositWithdrawModal = ({
         isValidMinterAddress &&
         isOpen &&
         activeTab === "deposit",
-      refetchInterval: getModalPollingInterval(isOpen, "tokenBalance"),
-
-      staleTime: POLLING_INTERVALS.NORMAL / 2,
-
+      refetchInterval: 5000,
       retry: 1,
       allowFailure: true,
     },
@@ -2066,7 +1985,7 @@ export const AnchorDepositWithdrawModal = ({
       !!stabilityPoolAddress &&
       isOpen &&
       activeTab === "deposit",
-    refetchInterval: getModalPollingInterval(isOpen, "tokenBalance"),
+    refetchInterval: 5000,
   });
 
   const {
@@ -2088,10 +2007,7 @@ export const AnchorDepositWithdrawModal = ({
         !!stabilityPoolAddress &&
         isOpen &&
         activeTab === "deposit",
-      refetchInterval: getModalPollingInterval(isOpen, "tokenBalance"),
-
-      staleTime: POLLING_INTERVALS.NORMAL / 2,
-
+      refetchInterval: 5000,
       retry: 1,
       allowFailure: true,
     },
@@ -2199,10 +2115,7 @@ export const AnchorDepositWithdrawModal = ({
         !!redeemAllowanceMinterAddress &&
         isOpen &&
         activeTab === "withdraw",
-      refetchInterval: getModalPollingInterval(isOpen, "tokenBalance"),
-
-      staleTime: POLLING_INTERVALS.NORMAL / 2,
-
+      refetchInterval: 5000,
       retry: 1,
       allowFailure: true,
     },
@@ -2263,10 +2176,7 @@ export const AnchorDepositWithdrawModal = ({
       address: redeemDryRunAddress as `0x${string}`,
       abi: minterABI,
       functionName: "redeemPeggedTokenDryRun",
-      args:
-        redeemDryRunEnabled && redeemInputAmount
-          ? [redeemInputAmount]
-          : undefined,
+      args: redeemInputAmount ? [redeemInputAmount] : undefined,
       enabled: shouldUseAnvilHook && redeemDryRunEnabled,
     });
 
@@ -2275,10 +2185,7 @@ export const AnchorDepositWithdrawModal = ({
       address: redeemDryRunAddress as `0x${string}`,
       abi: minterABI,
       functionName: "redeemPeggedTokenDryRun",
-      args:
-        redeemDryRunEnabled && redeemInputAmount
-          ? [redeemInputAmount]
-          : undefined,
+      args: redeemInputAmount ? [redeemInputAmount] : undefined,
       query: {
         enabled: !shouldUseAnvilHook && redeemDryRunEnabled,
         retry: 1,
@@ -2295,13 +2202,9 @@ export const AnchorDepositWithdrawModal = ({
   const redeemDryRunLoading =
     redeemDryRunEnabled && !redeemDryRunError && redeemDryRunData === undefined;
 
-  // Surface dry-run errors for debugging (only log non-ABI encoding errors)
+  // Surface dry-run errors for debugging
   useEffect(() => {
-    if (
-      redeemDryRunError &&
-      !redeemDryRunError.message?.includes("ABI encoding") &&
-      !redeemDryRunError.shortMessage?.includes("ABI encoding")
-    ) {
+    if (redeemDryRunError) {
       console.error("[redeemPeggedTokenDryRun] error", redeemDryRunError);
     }
   }, [redeemDryRunError]);
@@ -2773,29 +2676,7 @@ export const AnchorDepositWithdrawModal = ({
     peggedTokenPrice && currentDeposit
       ? (Number(currentDeposit) * Number(peggedTokenPrice)) / 1e36
       : 0;
-
-  // Use subgraph marks data if available, otherwise fallback to USD calculation
-  // Marks per day = 1 mark per dollar per day for stability pool deposits
-  const currentLedgerMarksPerDay =
-    marksPerDay > 0 ? marksPerDay : currentDepositUSD;
-
-  // Debug logging (always enabled for debugging)
-  useEffect(() => {
-    if (isOpen) {
-      console.log("[AnchorModal] Marks Debug:", {
-        currentDeposit: currentDeposit.toString(),
-        currentDepositUSD,
-        marksPerDay,
-        estimatedMarks,
-        marksLoading,
-        marksError: marksError?.message,
-        haBalances: haBalances?.length || 0,
-        poolDeposits: poolDeposits?.length || 0,
-        haBalancesData: haBalances,
-        poolDepositsData: poolDeposits,
-      });
-    }
-  }, [isOpen, marksPerDay, estimatedMarks, marksLoading, marksError, haBalances, poolDeposits, currentDeposit, currentDepositUSD]);
+  const currentLedgerMarksPerDay = currentDepositUSD;
 
   // Calculate expected ledger marks per day after deposit
   const expectedDepositUSD =
@@ -5790,6 +5671,86 @@ export const AnchorDepositWithdrawModal = ({
                                   {feePercentage > 2 && " ⚠️"}
                                 </span>
                               </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Progress Steps Indicator */}
+                        <div className="flex items-center justify-between mb-3 bg-[#f3f6fb] border border-[#d1d7e5] p-3 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+                          <div className="flex items-center flex-1">
+                            {/* Step 1 */}
+                            <div className="flex items-center flex-1">
+                              <div
+                                className={`flex items-center justify-center w-8 h-8 rounded-full border-2 ${
+                                  currentStep >= 1
+                                    ? "bg-[#1E4775] text-white border-[#1E4775]"
+                                    : "bg-white text-[#1E4775]/30 border-[#1E4775]/30"
+                                } font-semibold text-sm`}
+                              >
+                                {currentStep > 1 ? "✓" : "1"}
+                              </div>
+                              <div className="flex-1 h-0.5 mx-2 bg-[#1E4775]/20">
+                                <div
+                                  className={`h-full transition-all ${
+                                    currentStep >= 2
+                                      ? "bg-[#1E4775] w-full"
+                                      : "bg-transparent w-0"
+                                  }`}
+                                />
+                              </div>
+                            </div>
+                            {!mintOnly && !skipRewardStep && (
+                              <>
+                                {/* Step 2 */}
+                                <div className="flex items-center flex-1">
+                                  <div
+                                    className={`flex items-center justify-center w-8 h-8 rounded-full border-2 ${
+                                      currentStep >= 2
+                                        ? "bg-[#1E4775] text-white border-[#1E4775]"
+                                        : "bg-white text-[#1E4775]/30 border-[#1E4775]/30"
+                                    } font-semibold text-sm`}
+                                  >
+                                    {currentStep > 2 ? "✓" : "2"}
+                                  </div>
+                                  <div className="flex-1 h-0.5 mx-2 bg-[#1E4775]/20">
+                                    <div
+                                      className={`h-full transition-all ${
+                                        currentStep >= 3
+                                          ? "bg-[#1E4775] w-full"
+                                          : "bg-transparent w-0"
+                                      }`}
+                                    />
+                                  </div>
+                                </div>
+                                {/* Step 3 */}
+                                <div className="flex items-center">
+                                  <div
+                                    className={`flex items-center justify-center w-8 h-8 rounded-full border-2 ${
+                                      currentStep >= 3
+                                        ? "bg-[#1E4775] text-white border-[#1E4775]"
+                                        : "bg-white text-[#1E4775]/30 border-[#1E4775]/30"
+                                    } font-semibold text-sm`}
+                                  >
+                                    3
+                                  </div>
+                                </div>
+                              </>
+                            )}
+                            {!mintOnly && skipRewardStep && (
+                              <>
+                                {/* Step 2 becomes stability pool */}
+                                <div className="flex items-center">
+                                  <div
+                                    className={`flex items-center justify-center w-8 h-8 rounded-full border-2 ${
+                                      currentStep >= 2
+                                        ? "bg-[#1E4775] text-white border-[#1E4775]"
+                                        : "bg-white text-[#1E4775]/30 border-[#1E4775]/30"
+                                    } font-semibold text-sm`}
+                                  >
+                                    2
+                                  </div>
+                                </div>
+                              </>
                             )}
                           </div>
                         </div>

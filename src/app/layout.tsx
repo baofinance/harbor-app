@@ -14,6 +14,12 @@ export const metadata: Metadata = {
  metadataBase: new URL(siteUrl),
  title,
  description,
+ viewport: {
+ width: "device-width",
+ initialScale: 1,
+ maximumScale: 5,
+ userScalable: true,
+ },
  keywords: [
 "Harbor",
 "DeFi",
@@ -69,7 +75,7 @@ export default async function RootLayout({
  return (
  <html lang="en">
  <body
- className={`antialiased font-sans bg-[#1E4775] text-white relative`}
+ className={`antialiased font-sans bg-[#1E4775] text-white relative overflow-x-hidden`}
  >
  <div className="relative z-10">
  <ContextProvider cookies={cookies}>

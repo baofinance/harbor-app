@@ -167,3 +167,68 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Mobile-first responsive utilities */
+@layer utilities {
+  /* Ensure modals don't overflow on mobile */
+  .modal-safe-width {
+    @apply w-full max-w-[calc(100vw-2rem)] sm:max-w-md;
+  }
+
+  /* Responsive padding for containers */
+  .container-padding {
+    @apply px-4 sm:px-6 lg:px-8;
+  }
+
+  /* Responsive text sizes */
+  .text-responsive-xl {
+    @apply text-xl sm:text-2xl lg:text-3xl;
+  }
+
+  .text-responsive-lg {
+    @apply text-lg sm:text-xl lg:text-2xl;
+  }
+
+  .text-responsive-base {
+    @apply text-sm sm:text-base;
+  }
+
+  /* Table container for mobile scrolling */
+  .table-container {
+    @apply overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0;
+  }
+
+  /* Card spacing responsive */
+  .card-padding {
+    @apply p-3 sm:p-4 lg:p-6;
+  }
+
+  /* Button responsive sizing */
+  .btn-responsive {
+    @apply px-3 py-2 text-sm sm:px-4 sm:py-2.5 sm:text-base;
+  }
+
+  /* Grid responsive gap */
+  .grid-gap-responsive {
+    @apply gap-2 sm:gap-3 lg:gap-4;
+  }
+
+  /* Prevent horizontal scroll */
+  .no-scroll-x {
+    @apply overflow-x-hidden;
+  }
+
+  /* Safe area for mobile devices (notch/camera cutout) */
+  .safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* Touch-friendly targets (minimum 44x44px) */
+  .touch-target {
+    @apply min-h-[44px] min-w-[44px];
+  }
+}

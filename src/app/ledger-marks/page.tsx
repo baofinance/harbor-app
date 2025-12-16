@@ -984,8 +984,8 @@ export default function LedgerMarksLeaderboard() {
  };
 
  return (
- <div className="min-h-screen bg-[#1E4775]">
- <main className="container mx-auto px-4 py-8 max-w-7xl">
+ <div className="min-h-screen bg-[#1E4775] overflow-x-hidden">
+ <main className="container mx-auto px-3 sm:px-4 lg:px-8 py-4 sm:py-8 max-w-7xl">
  {/* Header */}
  <div className="mb-4">
  <h1 className="font-bold font-mono text-white text-7xl text-center mb-1">
@@ -1067,7 +1067,7 @@ export default function LedgerMarksLeaderboard() {
  isLoadingGenesisMarks ? (
  <p className="text-[#1E4775]/70">Loading your marks...</p>
  ) : (
- <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+ <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
  <div className="bg-white p-3">
  <div className="text-xs text-[#1E4775]/70 mb-1">
  Maiden Voyage Marks per Day
@@ -1125,7 +1125,7 @@ export default function LedgerMarksLeaderboard() {
  {/* Leaderboard */}
  <section className="space-y-2 overflow-visible">
  {/* Header Row */}
- <div className="bg-white p-3 overflow-x-auto">
+ <div className="hidden lg:block bg-white p-2 sm:p-3 overflow-x-auto">
  <div className="grid grid-cols-[auto_1fr_1fr_1fr_1fr_1fr_1fr] gap-4 items-center uppercase tracking-wider text-xs text-[#1E4775] font-bold">
  <div className="min-w-0 text-center">Rank</div>
  <div className="min-w-0 text-center">Wallet Address</div>
@@ -1216,7 +1216,7 @@ export default function LedgerMarksLeaderboard() {
  leaderboardData.map((user, index) => (
  <div
  key={`${user.address.toLowerCase()}-${index}`}
- className="bg-white p-3 overflow-x-auto"
+ className="bg-white p-2 sm:p-3 overflow-x-auto"
  >
  <div className="grid grid-cols-[auto_1fr_1fr_1fr_1fr_1fr_1fr] gap-4 items-center text-sm text-[#1E4775]">
  <div className="min-w-0 text-center font-medium">
