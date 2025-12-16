@@ -1492,8 +1492,8 @@ export default function GenesisIndexPage() {
             );
             
             // Don't multiply by wrapped rate if CoinGecko already returns wrapped token price
-            const wrappedTokenPriceUSD = coinGeckoIsWrappedToken && coinGeckoPriceForMarket
-              ? coinGeckoPriceForMarket // CoinGecko already returns wrapped token price
+            const wrappedTokenPriceUSD = coinGeckoIsWrappedToken && underlyingPriceUSD > 0
+              ? underlyingPriceUSD // CoinGecko already returns wrapped token price (from line 1456)
               : wrappedRate && underlyingPriceUSD > 0
                 ? underlyingPriceUSD * (Number(wrappedRate) / 1e18)
                 : underlyingPriceUSD; // Fallback to underlying price if no rate available
