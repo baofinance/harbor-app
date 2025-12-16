@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { parseEther, formatEther } from "viem";
+import { parseEther, formatEther, parseUnits, formatUnits } from "viem";
 import {
  useAccount,
   useBalance,
@@ -12,7 +12,7 @@ import {
 } from "wagmi";
 import { BaseError, ContractFunctionRevertedError } from "viem";
 import { GENESIS_ABI, ERC20_ABI, contracts } from "../config/contracts";
-import { ZAP_ABI, STETH_ABI, WSTETH_ABI } from "@/abis";
+import { ZAP_ABI, STETH_ABI, WSTETH_ABI, USDC_ZAP_ABI } from "@/abis";
 import { useCollateralPrice } from "@/hooks/useCollateralPrice";
 import {
  TransactionProgressModal,
@@ -29,11 +29,14 @@ interface GenesisDepositModalProps {
  collateralSymbol: string;
  wrappedCollateralSymbol?: string;
  acceptedAssets: Array<{ symbol: string; name: string }>;
- marketAddresses?: {
- collateralToken?: string;
- wrappedCollateralToken?: string;
-priceOracle?: string;
- };
+  marketAddresses?: {
+    collateralToken?: string;
+    wrappedCollateralToken?: string;
+    priceOracle?: string;
+    genesisZap?: string; // Genesis zap contract address for this market
+    peggedTokenZap?: string; // Pegged token zap contract address (future)
+    leveragedTokenZap?: string; // Leveraged token zap contract address (future)
+  };
  coinGeckoId?: string;
  onSuccess?: () => void;
  embedded?: boolean;
@@ -151,9 +154,26 @@ const maxUnderlyingPrice = coinGeckoPrice
  const selectedAssetAddress = getAssetAddress(selectedAsset);
  const isNativeETH = selectedAsset.toLowerCase() ==="eth";
 const isStETH = selectedAsset.toLowerCase() ==="steth";
-const zapAddress = contracts.zap as `0x${string}`;
-const stETHAddress = contracts.wrappedCollateralToken as `0x${string}`; // stETH
-const wstETHAddress = contracts.collateralToken as `0x${string}`; // wstETH
+const isUSDC = selectedAsset.toLowerCase() ==="usdc";
+const isFXUSD = selectedAsset.toLowerCase() ==="fxusd";
+const isFXSAVE = selectedAsset.toLowerCase() ==="fxsave";
+
+// Get genesis zap address from marketAddresses prop
+// Note: Legacy contracts object doesn't have genesisZap, use market config instead
+const genesisZapAddress = marketAddresses?.genesisZap as `0x${string}` | undefined;
+
+// Determine which zap contract type to use based on collateral and selected asset
+// ETH/STETH markets use GenesisETHZap_v3, USDC/FXUSD markets use GenesisUSDCZap_v2
+const isETHStETHMarket = collateralSymbol.toLowerCase() === "wsteth";
+const useETHZap = isETHStETHMarket && (isNativeETH || isStETH);
+const useUSDCZap = !isETHStETHMarket && (isUSDC || isFXUSD);
+
+const stETHAddress = isETHStETHMarket 
+  ? (marketAddresses?.wrappedCollateralToken || contracts.wrappedCollateralToken) as `0x${string}` | undefined
+  : undefined; // stETH
+const wstETHAddress = isETHStETHMarket
+  ? (marketAddresses?.collateralToken || contracts.collateralToken) as `0x${string}` | undefined
+  : undefined; // wstETH
 
 // Check if selected asset is a wrapped token (fxSAVE, wstETH)
 const isWrappedToken = selectedAsset.toLowerCase() === "fxsave" || 
@@ -256,8 +276,9 @@ acceptedAssets.forEach((asset) => {
 // Get balance for selected asset
 const selectedAssetBalance = assetBalanceMap.get(selectedAsset) || 0n;
 
-// For stETH, check allowance for zap contract; for other tokens, check allowance for genesis
-const allowanceTarget = isStETH ? zapAddress : genesisAddress;
+// For assets that use genesis zap contracts (ETH, stETH, USDC, FXUSD), check allowance for genesis zap contract
+// For other tokens (wstETH, fxSAVE), check allowance for genesis
+const allowanceTarget = (useETHZap || useUSDCZap) && genesisZapAddress ? genesisZapAddress : genesisAddress;
  const { data: allowanceData, refetch: refetchAllowance, error: allowanceError } = useContractRead({
  address: isValidSelectedAssetAddress ? (selectedAssetAddress as `0x${string}`) : undefined,
  abi: ERC20_ABI,
@@ -309,7 +330,7 @@ const allowanceTarget = isStETH ? zapAddress : genesisAddress;
  });
 
  // Contract write hooks
- const { writeContractAsync } = useWriteContract();
+ const { writeContractAsync, isPending: isWritePending } = useWriteContract();
 
   // Use the balance from the asset balance map
   const balance = selectedAssetBalance;
@@ -359,7 +380,10 @@ console.log("[GenesisDepositModal] Price Debug:", {
 });
 }
 const allowance = isNativeETH ? 0n : (typeof allowanceData === 'bigint' ? allowanceData : 0n);
- const amountBigInt = amount ? parseEther(amount) : 0n;
+// USDC uses 6 decimals, other tokens use 18 decimals
+const amountBigInt = amount 
+  ? (isUSDC ? parseUnits(amount, 6) : parseEther(amount))
+  : 0n;
  const needsApproval =
  !isNativeETH && amountBigInt > 0 && amountBigInt > allowance;
 const userCurrentDeposit: bigint = typeof currentDeposit === 'bigint' ? currentDeposit : 0n;
@@ -384,7 +408,36 @@ const { data: expectedWstETHFromStETH } = useContractRead({
   functionName: "getWstETHByStETH",
   args: amountBigInt > 0n && isStETH ? [amountBigInt] : undefined,
   query: {
-    enabled: !!address && isOpen && mounted && isStETH && amountBigInt > 0n,
+    enabled: !!address && isOpen && mounted && isStETH && amountBigInt > 0n && !!wstETHAddress,
+  },
+});
+
+// Calculate expected fxSAVE output for USDC deposits (for preview)
+// Note: previewZapUsdc expects USDC amount in 6 decimals (native USDC format)
+// amountBigInt is already in 6 decimals for USDC (e.g., 1 USDC = 1000000n)
+// The contract returns fxSAVE amount in 18 decimals
+// If the contract expects 18 decimals, we need to scale: amountBigInt * 10^12
+const usdcAmountForPreview = isUSDC && amountBigInt > 0n 
+  ? amountBigInt * 10n ** 12n // Scale from 6 to 18 decimals
+  : amountBigInt;
+const { data: expectedFxSaveFromUSDC } = useContractRead({
+  address: genesisZapAddress,
+  abi: USDC_ZAP_ABI,
+  functionName: "previewZapUsdc",
+  args: usdcAmountForPreview > 0n && isUSDC ? [usdcAmountForPreview] : undefined,
+  query: {
+    enabled: !!address && isOpen && mounted && isUSDC && amountBigInt > 0n && !!genesisZapAddress && useUSDCZap,
+  },
+});
+
+// Calculate expected fxSAVE output for FXUSD deposits (for preview)
+const { data: expectedFxSaveFromFXUSD } = useContractRead({
+  address: genesisZapAddress,
+  abi: USDC_ZAP_ABI,
+  functionName: "previewZapFxUsd",
+  args: amountBigInt > 0n && isFXUSD ? [amountBigInt] : undefined,
+  query: {
+    enabled: !!address && isOpen && mounted && isFXUSD && amountBigInt > 0n && !!genesisZapAddress && useUSDCZap,
   },
 });
 
@@ -394,15 +447,22 @@ const toBigInt = (value: unknown): bigint => {
   return 0n;
 };
 
-// Calculate the actual wstETH amount that will be deposited
-const actualWstETHDeposit: bigint = isNativeETH
+// Calculate the actual collateral amount that will be deposited
+// For ETH/stETH markets: convert to wstETH
+// For USDC/FXUSD markets: convert to fxSAVE
+// For other tokens: use amount directly
+const actualCollateralDeposit: bigint = isNativeETH && isETHStETHMarket
   ? toBigInt(expectedWstETHFromETH)
-  : isStETH
+  : isStETH && isETHStETHMarket
   ? toBigInt(expectedWstETHFromStETH)
-  : amountBigInt; // For wstETH, use the amount directly
+  : isUSDC && useUSDCZap
+  ? toBigInt(expectedFxSaveFromUSDC)
+  : isFXUSD && useUSDCZap
+  ? toBigInt(expectedFxSaveFromFXUSD)
+  : amountBigInt; // For wstETH, fxSAVE, or direct deposits, use the amount directly
 
-// Calculate new total deposit using actual wstETH amount
-const newTotalDepositActual: bigint = userCurrentDeposit + actualWstETHDeposit;
+// Calculate new total deposit using actual collateral amount
+const newTotalDepositActual: bigint = userCurrentDeposit + actualCollateralDeposit;
 
  const isNonCollateralAsset =
  selectedAsset.toLowerCase() !== collateralSymbol.toLowerCase();
@@ -434,7 +494,8 @@ https://www.harborfinance.io/`;
 
  const handleMaxClick = () => {
  if (balance) {
- setAmount(formatEther(balance));
+ // USDC uses 6 decimals, other tokens use 18 decimals
+ setAmount(isUSDC ? formatUnits(balance, 6) : formatEther(balance));
  }
  };
 
@@ -444,9 +505,10 @@ https://www.harborfinance.io/`;
  // Cap at balance if value exceeds it
  if (value && balance) {
  try {
- const parsed = parseEther(value);
+ // USDC uses 6 decimals, other tokens use 18 decimals
+ const parsed = isUSDC ? parseUnits(value, 6) : parseEther(value);
  if (parsed > balance) {
- setAmount(formatEther(balance));
+ setAmount(isUSDC ? formatUnits(balance, 6) : formatEther(balance));
  setError(null);
  return;
  }
@@ -477,6 +539,13 @@ https://www.harborfinance.io/`;
 
  const handleDeposit = async () => {
  if (!validateAmount()) return;
+ 
+ // Prevent double-clicks and concurrent transactions
+ if (step === "approving" || step === "depositing" || isWritePending) {
+   setError("Transaction already in progress. Please wait.");
+   return;
+ }
+ 
  try {
 // Capture the current deposit balance BEFORE any transactions
 // This prevents race conditions with the refetching hook
@@ -548,9 +617,9 @@ const preDepositBalance = userCurrentDeposit;
  setError(null);
  setTxHash(null);
 
-    // Use zap contract for ETH and stETH deposits
+    // Use genesis zap contract for ETH, stETH, USDC, and FXUSD deposits
     let depositHash: `0x${string}`;
-    if (isNativeETH) {
+    if (isNativeETH && useETHZap && genesisZapAddress && wstETHAddress) {
       // Use zapEth for ETH deposits with slippage protection
       // Contract flow: ETH → stETH (via submit, 1:1) → wstETH (via wrap) → Genesis
       // stETH.submit() returns stETH tokens 1:1 with ETH (not shares)
@@ -568,13 +637,13 @@ const preDepositBalance = userCurrentDeposit;
       const minWstETHOut = (expectedWstETH * 99n) / 100n;
       
       depositHash = await writeContractAsync({
-        address: zapAddress,
+        address: genesisZapAddress,
         abi: ZAP_ABI,
         functionName:"zapEth",
         args: [address as `0x${string}`, minWstETHOut],
         value: amountBigInt,
       });
-    } else if (isStETH) {
+    } else if (isStETH && useETHZap && genesisZapAddress && wstETHAddress) {
       // Use zapStEth for stETH deposits with slippage protection
       // Get expected wstETH from stETH amount
       const expectedWstETH = await publicClient.readContract({
@@ -588,13 +657,53 @@ const preDepositBalance = userCurrentDeposit;
       const minWstETHOut = (expectedWstETH * 99n) / 100n;
       
       depositHash = await writeContractAsync({
-        address: zapAddress,
+        address: genesisZapAddress,
         abi: ZAP_ABI,
         functionName:"zapStEth",
         args: [amountBigInt, address as `0x${string}`, minWstETHOut],
       });
+    } else if (isUSDC && useUSDCZap && genesisZapAddress) {
+      // Use zapUsdcToGenesis for USDC deposits with slippage protection
+      // Get expected fxSAVE output from USDC amount
+      // Contract expects USDC in 18 decimals, so scale from 6 to 18
+      const usdcAmountScaled = amountBigInt * 10n ** 12n;
+      const expectedFxSaveOut = await publicClient.readContract({
+        address: genesisZapAddress,
+        abi: USDC_ZAP_ABI,
+        functionName: "previewZapUsdc",
+        args: [usdcAmountScaled],
+      });
+      
+      // Apply 1% slippage buffer (99% of expected)
+      const minFxSaveOut = (expectedFxSaveOut * 99n) / 100n;
+      
+      depositHash = await writeContractAsync({
+        address: genesisZapAddress,
+        abi: USDC_ZAP_ABI,
+        functionName: "zapUsdcToGenesis",
+        args: [amountBigInt, minFxSaveOut, address as `0x${string}`],
+      });
+    } else if (isFXUSD && useUSDCZap && genesisZapAddress) {
+      // Use zapFxUsdToGenesis for FXUSD deposits with slippage protection
+      // Get expected fxSAVE output from FXUSD amount
+      const expectedFxSaveOut = await publicClient.readContract({
+        address: genesisZapAddress,
+        abi: USDC_ZAP_ABI,
+        functionName: "previewZapFxUsd",
+        args: [amountBigInt],
+      });
+      
+      // Apply 1% slippage buffer (99% of expected)
+      const minFxSaveOut = (expectedFxSaveOut * 99n) / 100n;
+      
+      depositHash = await writeContractAsync({
+        address: genesisZapAddress,
+        abi: USDC_ZAP_ABI,
+        functionName: "zapFxUsdToGenesis",
+        args: [amountBigInt, minFxSaveOut, address as `0x${string}`],
+      });
     } else {
-      // For other tokens (wstETH), use standard genesis deposit
+      // For other tokens (wstETH, fxSAVE), use standard genesis deposit
       depositHash = await writeContractAsync({
  address: genesisAddress as `0x${string}`,
  abi: GENESIS_ABI,
@@ -605,10 +714,10 @@ const preDepositBalance = userCurrentDeposit;
  setTxHash(depositHash);
 const receipt = await publicClient?.waitForTransactionReceipt({ hash: depositHash });
 
-// For zap transactions (stETH or ETH), get the actual wstETH deposited from transaction
+// For zap transactions (ETH, stETH, USDC, FXUSD), get the actual amount deposited from transaction
 // by reading the user's new balance in the Genesis contract
 let actualDepositedAmount = amount;
-if (isNativeETH || isStETH) {
+if (isNativeETH || isStETH || isUSDC || isFXUSD) {
   try {
     // Read the user's new deposit balance from Genesis
     const newBalance = await publicClient.readContract({
@@ -619,15 +728,19 @@ if (isNativeETH || isStETH) {
     });
     // Calculate the difference (new balance - old balance = amount deposited)
     // Use preDepositBalance captured at start of transaction to avoid race conditions
-    const depositedWstETH = (newBalance as bigint) - preDepositBalance;
-    if (depositedWstETH > 0n) {
-      actualDepositedAmount = formatEther(depositedWstETH);
+    const depositedAmount = (newBalance as bigint) - preDepositBalance;
+    if (depositedAmount > 0n) {
+      actualDepositedAmount = formatEther(depositedAmount);
     }
   } catch (err) {
     console.error("Failed to read actual deposit amount:", err);
     // Fall back to the expected amount
-    if (actualWstETHDeposit > 0n) {
-      actualDepositedAmount = formatEther(actualWstETHDeposit);
+    // Use actualCollateralDeposit if available, otherwise use amountBigInt
+    const fallbackAmount = actualCollateralDeposit > 0n 
+      ? actualCollateralDeposit 
+      : amountBigInt;
+    if (fallbackAmount > 0n) {
+      actualDepositedAmount = formatEther(fallbackAmount);
     }
   }
 }
@@ -997,7 +1110,7 @@ const successFmt = formatTokenAmount(successAmountBigInt, collateralSymbol, coll
   ) : isEthBalanceLoading ? (
     <span className="text-[#1E4775]/50">Loading...</span>
   ) : (
-    formatBalance(balance, selectedAsset)
+    formatBalance(balance, selectedAsset, 4, isUSDC ? 6 : 18)
   )
 ) : (
   // ERC20 balance display
@@ -1011,7 +1124,7 @@ const successFmt = formatTokenAmount(successAmountBigInt, collateralSymbol, coll
  ) : !mounted ? (
  <span className="text-[#1E4775]/50">Loading...</span>
  ) : (
- formatBalance(balance, selectedAsset)
+ formatBalance(balance, selectedAsset, 4, isUSDC ? 6 : 18)
   )
 )}
  </span>
@@ -1066,7 +1179,7 @@ const successFmt = formatTokenAmount(successAmountBigInt, collateralSymbol, coll
  {amount && parseFloat(amount) > 0 ? (
  <>
 {(() => {
-  const depositAmt = isNativeETH || isStETH ? actualWstETHDeposit : amountBigInt;
+  const depositAmt = (isNativeETH || isStETH || isUSDC || isFXUSD) ? actualCollateralDeposit : amountBigInt;
   // For deposit display, show the amount being deposited with the selected asset's price
   // Display in wrapped collateral symbol since that's what gets stored
   const displaySymbol = wrappedCollateralSymbol || collateralSymbol;
@@ -1087,9 +1200,9 @@ const successFmt = formatTokenAmount(successAmountBigInt, collateralSymbol, coll
  </div>
   );
 })()}
-{(isNativeETH || isStETH) && actualWstETHDeposit > 0n && (
+{((isNativeETH || isStETH || isUSDC || isFXUSD) && actualCollateralDeposit > 0n) && (
 <div className="text-xs text-[#1E4775]/50 italic">
-({parseFloat(amount).toFixed(6)} {selectedAsset} ≈ {formatTokenAmount(actualWstETHDeposit, wrappedCollateralSymbol || collateralSymbol).display})
+({isUSDC ? parseFloat(amount).toFixed(2) : parseFloat(amount).toFixed(6)} {selectedAsset} ≈ {formatTokenAmount(actualCollateralDeposit, wrappedCollateralSymbol || collateralSymbol, undefined, 6, 18).display})
 </div>
 )}
  <div className="border-t border-[#1E4775]/30 pt-2">
@@ -1099,7 +1212,7 @@ const successFmt = formatTokenAmount(successAmountBigInt, collateralSymbol, coll
   const currentDepositUSD = userCurrentDeposit > 0n 
     ? (Number(userCurrentDeposit) / 1e18) * collateralPriceUSD 
     : 0;
-  const depositAmt = isNativeETH || isStETH ? actualWstETHDeposit : amountBigInt;
+  const depositAmt = (isNativeETH || isStETH || isUSDC || isFXUSD) ? actualCollateralDeposit : amountBigInt;
   const newDepositUSD = depositAmt > 0n 
     ? (Number(depositAmt) / 1e18) * selectedAssetPriceUSD 
     : 0;
@@ -1267,7 +1380,7 @@ const successFmt = formatTokenAmount(successAmountBigInt, collateralSymbol, coll
               <button
                 onClick={handleClose}
                 className="text-[#1E4775]/50 hover:text-[#1E4775] transition-colors"
-                disabled={step === "approving" || step === "depositing"}
+                disabled={step === "approving" || step === "depositing" || isWritePending}
               >
                 <svg
                   className="w-5 h-5 sm:w-6 sm:h-6"

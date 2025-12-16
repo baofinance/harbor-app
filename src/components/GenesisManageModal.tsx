@@ -263,6 +263,9 @@ export const GenesisManageModal = ({
                 collateralToken: market?.addresses?.collateralToken,
                 wrappedCollateralToken: market?.addresses?.wrappedCollateralToken,
                 priceOracle: market?.addresses?.collateralPrice,
+                genesisZap: market?.addresses?.genesisZap,
+                peggedTokenZap: market?.addresses?.peggedTokenZap,
+                leveragedTokenZap: market?.addresses?.leveragedTokenZap,
               }}
               coinGeckoId={market?.coinGeckoId}
               onSuccess={onSuccess}

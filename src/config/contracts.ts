@@ -52,6 +52,9 @@ export type MarketConfig = {
     rebalancePoolCollateral: `0x${string}`;
     rebalancePoolLeveraged: `0x${string}`;
     collateralPrice: `0x${string}`;
+    genesisZap?: `0x${string}`; // Optional genesis zap contract address
+    peggedTokenZap?: `0x${string}`; // Optional pegged token zap contract address
+    leveragedTokenZap?: `0x${string}`; // Optional leveraged token zap contract address
   };
   genesis: {
     startDate: string;
@@ -111,6 +114,7 @@ export const markets: Markets = {
       rebalancePoolCollateral: "0x0000000000000000000000000000000000000000", // Not deployed yet
       rebalancePoolLeveraged: "0x0000000000000000000000000000000000000000", // Not deployed yet
       collateralPrice: "0x56d1a2fc199ba05f84d2eb8eab5858d3d954030c", // Using priceOracle
+      genesisZap: "0xE34bf6Cbd0a1a6588328ba059392a75974bEc23B", // GenesisUSDCZap_v2 for ETH/fxUSD
     },
     genesis: {
       startDate: "2025-12-16T13:04:35Z", // From deployment timestamp
@@ -154,6 +158,7 @@ export const markets: Markets = {
       rebalancePoolCollateral: "0x0000000000000000000000000000000000000000", // Not deployed yet
       rebalancePoolLeveraged: "0x0000000000000000000000000000000000000000", // Not deployed yet
       collateralPrice: "0xf6e28853563db7f7e42f5db0e1f959743ac5b0e6", // Using priceOracle
+      genesisZap: "0x1166110B541200E5A07A41AC55Eaf6676a9E9A2E", // GenesisUSDCZap_v2 for BTC/fxUSD
     },
     genesis: {
       startDate: "2025-12-16T13:46:35Z", // From deployment timestamp
@@ -197,6 +202,7 @@ export const markets: Markets = {
       rebalancePoolCollateral: "0x0000000000000000000000000000000000000000", // Not deployed yet
       rebalancePoolLeveraged: "0x0000000000000000000000000000000000000000", // Not deployed yet
       collateralPrice: "0xe370289af2145a5b2f0f7a4a900ebfd478a156db", // Using priceOracle
+      genesisZap: "0xF0E4Aa35B33c0847e3bAe3C2F4E49846B46F685e", // GenesisETHZap_v3 for BTC/stETH
     },
     genesis: {
       startDate: "2025-12-16T14:32:11Z", // From deployment timestamp
