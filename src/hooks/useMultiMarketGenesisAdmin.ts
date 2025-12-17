@@ -78,21 +78,35 @@ export function useMultiMarketGenesisAdmin() {
       const baseIndex = index * 3;
       const contractWrappedToken = genesisData[baseIndex + 2]?.result as `0x${string}` | undefined;
       
-      // Use on-chain wrapped collateral token address from genesis contract, fallback to config
-      // This matches the logic in the main genesis page
-      const tokenAddress = contractWrappedToken || market.addresses.collateralToken;
+      // Determine the actual deposited token address
+      // If contract read succeeded, use that. Otherwise, need to determine from config:
+      // - If wrappedCollateralToken exists AND is different from collateralToken, use wrappedCollateralToken (fxSAVE case)
+      // - Otherwise use collateralToken (wstETH case where they're the same or no wrapped variant)
+      let tokenAddress: `0x${string}`;
+      
+      if (contractWrappedToken) {
+        tokenAddress = contractWrappedToken;
+      } else {
+        // Check if this market has a separate wrapped collateral token
+        const hasWrapped = market.addresses.wrappedCollateralToken && 
+                          market.addresses.wrappedCollateralToken.toLowerCase() !== market.addresses.collateralToken.toLowerCase();
+        
+        tokenAddress = hasWrapped 
+          ? market.addresses.wrappedCollateralToken!
+          : market.addresses.collateralToken;
+      }
       
       return [
         // Wrapped collateral balance in Genesis contract
         {
-          address: tokenAddress as `0x${string}`,
+          address: tokenAddress,
           abi: ERC20_ABI,
           functionName: "balanceOf" as const,
           args: [market.addresses.genesis as `0x${string}`],
         },
         // Wrapped collateral token symbol
         {
-          address: tokenAddress as `0x${string}`,
+          address: tokenAddress,
           abi: ERC20_ABI,
           functionName: "symbol" as const,
         },
