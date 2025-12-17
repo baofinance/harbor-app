@@ -670,8 +670,13 @@ if (process.env.NODE_ENV === "development") {
       toAmount: swapQuote.toAmount.toString(),
       toAmountUSDC: formatUnits(swapQuote.toAmount, 6),
     } : null,
+    usdcFromSwap: usdcFromSwap.toString(),
+    usdcAmountForSwapPreview: usdcAmountForSwapPreview.toString(),
+    usdcAmountForSwapPreviewFormatted: usdcAmountForSwapPreview > 0n ? formatUnits(usdcAmountForSwapPreview, 18) : "0",
     expectedFxSaveFromSwap: expectedFxSaveFromSwap ? expectedFxSaveFromSwap.toString() : null,
+    expectedFxSaveFromSwapFormatted: expectedFxSaveFromSwap ? formatUnits(expectedFxSaveFromSwap as bigint, 18) : null,
     actualCollateralDeposit: actualCollateralDeposit.toString(),
+    actualCollateralDepositFormatted: formatUnits(actualCollateralDeposit, 18),
     isLoadingSwapQuote,
     swapQuoteError: swapQuoteError?.message,
   });
