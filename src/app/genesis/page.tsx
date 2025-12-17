@@ -1527,18 +1527,14 @@ export default function GenesisIndexPage() {
                   {/* Mobile Card Layout */}
                   <div className="md:hidden space-y-3">
                     <div className="flex items-center justify-between">
-                      <div className="flex flex-col gap-0.5">
+                      <div className="flex items-center gap-2">
                         <span className="text-[#1E4775] font-bold text-base">
                           {rowLeveragedSymbol &&
                           rowLeveragedSymbol.toLowerCase().startsWith("hs")
                             ? rowLeveragedSymbol.slice(2)
                             : rowLeveragedSymbol || (mkt as any).name}
                         </span>
-                        <div className="text-[10px] text-[#1E4775]/60 font-mono">
-                          {wrappedCollateralSymbol} → {rowPeggedSymbol} + {rowLeveragedSymbol}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1.5">
+                        <span className="text-[#1E4775]/60">:</span>
                         <div className="flex items-center gap-1">
                           <Image
                             src={getLogoPath(wrappedCollateralSymbol)}
@@ -1564,12 +1560,12 @@ export default function GenesisIndexPage() {
                             className="flex-shrink-0"
                           />
                         </div>
-                        {isExpanded ? (
-                          <ChevronUpIcon className="w-5 h-5 text-[#1E4775] flex-shrink-0" />
-                        ) : (
-                          <ChevronDownIcon className="w-5 h-5 text-[#1E4775] flex-shrink-0" />
-                        )}
                       </div>
+                      {isExpanded ? (
+                        <ChevronUpIcon className="w-5 h-5 text-[#1E4775] flex-shrink-0" />
+                      ) : (
+                        <ChevronDownIcon className="w-5 h-5 text-[#1E4775] flex-shrink-0" />
+                      )}
                     </div>
                       <div
                         onClick={(e) => e.stopPropagation()}
@@ -1713,18 +1709,14 @@ export default function GenesisIndexPage() {
                   <div className="hidden md:grid grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr] gap-4 items-center text-sm">
                     <div className="min-w-0 overflow-hidden">
                       <div className="flex items-center justify-between gap-2">
-                        <div className="flex flex-col gap-0.5">
+                        <div className="flex items-center gap-2">
                           <span className="text-[#1E4775] font-bold text-base">
                             {rowLeveragedSymbol &&
                             rowLeveragedSymbol.toLowerCase().startsWith("hs")
                               ? rowLeveragedSymbol.slice(2)
                               : rowLeveragedSymbol || (mkt as any).name}
                           </span>
-                          <div className="text-[10px] text-[#1E4775]/60 font-mono">
-                            {wrappedCollateralSymbol} → {rowPeggedSymbol} + {rowLeveragedSymbol}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                          <span className="text-[#1E4775]/60">:</span>
                           <div className="flex items-center gap-1">
                             <Image
                               src={getLogoPath(wrappedCollateralSymbol)}
@@ -1750,12 +1742,12 @@ export default function GenesisIndexPage() {
                               className="flex-shrink-0"
                             />
                           </div>
-                          {isExpanded ? (
-                            <ChevronUpIcon className="w-5 h-5 text-[#1E4775] flex-shrink-0" />
-                          ) : (
-                            <ChevronDownIcon className="w-5 h-5 text-[#1E4775] flex-shrink-0" />
-                          )}
                         </div>
+                        {isExpanded ? (
+                          <ChevronUpIcon className="w-5 h-5 text-[#1E4775] flex-shrink-0" />
+                        ) : (
+                          <ChevronDownIcon className="w-5 h-5 text-[#1E4775] flex-shrink-0" />
+                        )}
                       </div>
                     </div>
                     <div
