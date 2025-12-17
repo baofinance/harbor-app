@@ -74,28 +74,33 @@ export function useMultiMarketGenesisAdmin() {
   // Step 2: Read wrapped collateral token balances and symbols
   const collateralContracts = useMemo(() => {
     if (!genesisData) return [];
-    return genesisMarkets.flatMap(([id, market], index) => {
+    return genesisMarkets.map(([id, market], index) => {
       const baseIndex = index * 3;
       const wrappedCollateralToken = genesisData[baseIndex + 2]?.result as `0x${string}` | undefined;
       
-      if (!wrappedCollateralToken) return [];
+      // Fallback to config if contract read fails
+      // Try wrappedCollateralToken first (for fxUSD markets where it's fxSAVE), 
+      // then collateralToken (for stETH markets where it's wstETH)
+      const tokenAddress = wrappedCollateralToken || 
+                          market.addresses.wrappedCollateralToken || 
+                          market.addresses.collateralToken;
       
       return [
         // Wrapped collateral balance in Genesis contract
         {
-          address: wrappedCollateralToken,
+          address: tokenAddress as `0x${string}`,
           abi: ERC20_ABI,
           functionName: "balanceOf" as const,
           args: [market.addresses.genesis as `0x${string}`],
         },
         // Wrapped collateral token symbol
         {
-          address: wrappedCollateralToken,
+          address: tokenAddress as `0x${string}`,
           abi: ERC20_ABI,
           functionName: "symbol" as const,
         },
       ];
-    });
+    }).flat();
   }, [genesisData, genesisMarkets]);
 
   const {
