@@ -616,6 +616,19 @@ const expectedFxSaveFromSwap = (() => {
 // For tokens that need swapping to ETH (wstETH markets): calculate expected wstETH from ETH swap output
 const ethFromSwap = needsSwap && isETHStETHMarket && swapQuote ? swapQuote.toAmount : 0n;
 
+console.log("[wstETH Preview] Swap quote data:", {
+  needsSwap,
+  isETHStETHMarket,
+  hasSwapQuote: !!swapQuote,
+  swapQuote: swapQuote ? {
+    fromAmount: swapQuote.fromAmount.toString(),
+    toAmount: swapQuote.toAmount.toString(),
+    toAmountFormatted: formatUnits(swapQuote.toAmount, 18),
+  } : null,
+  ethFromSwap: ethFromSwap.toString(),
+  ethFromSwapFormatted: ethFromSwap > 0n ? formatUnits(ethFromSwap, 18) : "0",
+});
+
 // Query wstETH contract to get expected output from swapped ETH
 const { data: expectedWstETHFromSwap } = useContractRead({
   address: wstETHAddress,
@@ -625,6 +638,11 @@ const { data: expectedWstETHFromSwap } = useContractRead({
   query: {
     enabled: !!address && isOpen && mounted && needsSwap && isETHStETHMarket && ethFromSwap > 0n && !!wstETHAddress,
   },
+});
+
+console.log("[wstETH Preview] Contract query result:", {
+  expectedWstETHFromSwap: expectedWstETHFromSwap ? expectedWstETHFromSwap.toString() : "undefined",
+  formatted: expectedWstETHFromSwap ? formatUnits(expectedWstETHFromSwap as bigint, 18) : "N/A",
 });
 
 // Helper to safely extract bigint from hook result
