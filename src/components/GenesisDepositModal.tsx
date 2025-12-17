@@ -846,8 +846,20 @@ const preDepositBalance = userCurrentDeposit;
    setTxHash(null);
    
    try {
+     // Get USDC balance BEFORE swap to calculate the difference after
+     const usdcBalanceBefore = await publicClient.readContract({
+       address: USDC_ADDRESS,
+       abi: ERC20_ABI,
+       functionName: "balanceOf",
+       args: [address],
+     });
+     
+     console.log("[Swap] USDC balance before swap:", {
+       balance: usdcBalanceBefore ? usdcBalanceBefore.toString() : "0",
+       formatted: usdcBalanceBefore ? formatUnits(usdcBalanceBefore as bigint, 6) : "0",
+     });
+     
      // Get swap transaction data from ParaSwap
-     // Note: getDefiLlamaSwapTx expects amount in token's native decimals
      const swapTx = await getDefiLlamaSwapTx(
        fromTokenForSwap,
        USDC_ADDRESS,
@@ -860,7 +872,7 @@ const preDepositBalance = userCurrentDeposit;
      const swapHash = await sendTransactionAsync({
        to: swapTx.to,
        data: swapTx.data,
-       value: swapTx.value, // Use value from ParaSwap, not amountBigInt
+       value: swapTx.value, // Use value from ParaSwap
        gas: swapTx.gas,
      });
      
@@ -871,12 +883,12 @@ const preDepositBalance = userCurrentDeposit;
      // Wait for transaction confirmation
      await publicClient?.waitForTransactionReceipt({ hash: swapHash });
      
-     console.log("[Swap] Transaction confirmed, getting USDC balance before...");
+     console.log("[Swap] Transaction confirmed, waiting for balance update...");
      
-     // Get USDC balance - note: we didn't check before because we're swapping FROM ETH
-     // So we can just check the current balance
-     await new Promise((resolve) => setTimeout(resolve, 3000)); // Wait 3 seconds for state to update
+     // Wait for balance to update (3 seconds should be enough)
+     await new Promise((resolve) => setTimeout(resolve, 3000));
      
+     // Get USDC balance AFTER swap
      const usdcBalanceAfter = await publicClient.readContract({
        address: USDC_ADDRESS,
        abi: ERC20_ABI,
@@ -886,18 +898,21 @@ const preDepositBalance = userCurrentDeposit;
      });
      
      console.log("[Swap] USDC balance after swap:", {
-       balance: usdcBalanceAfter ? usdcBalanceAfter.toString() : "0",
-       formatted: usdcBalanceAfter ? formatUnits(usdcBalanceAfter as bigint, 6) : "0",
+       balanceBefore: usdcBalanceBefore ? usdcBalanceBefore.toString() : "0",
+       balanceAfter: usdcBalanceAfter ? usdcBalanceAfter.toString() : "0",
+       difference: ((usdcBalanceAfter as bigint) - (usdcBalanceBefore as bigint)).toString(),
+       formattedBefore: usdcBalanceBefore ? formatUnits(usdcBalanceBefore as bigint, 6) : "0",
+       formattedAfter: usdcBalanceAfter ? formatUnits(usdcBalanceAfter as bigint, 6) : "0",
+       formattedDifference: formatUnits((usdcBalanceAfter as bigint) - (usdcBalanceBefore as bigint), 6),
      });
      
-     const usdcReceived = usdcBalanceAfter as bigint;
+     const usdcReceived = (usdcBalanceAfter as bigint) - (usdcBalanceBefore as bigint);
      
      if (usdcReceived <= 0n) {
-       throw new Error("No USDC received from swap. Balance may still be updating - please wait a moment and try depositing again.");
+       throw new Error(`No USDC received from swap. Balance may still be updating. Current USDC: ${formatUnits(usdcBalanceAfter as bigint, 6)}`);
      }
      
-     // Update amount to USDC amount for deposit
-     // Store USDC amount for deposit step
+     // Store USDC amount received from swap for deposit step
      (window as any).__swapUsdcAmount = usdcReceived;
      
      setProgressSteps((prev) =>
