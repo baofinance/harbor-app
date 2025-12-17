@@ -501,6 +501,7 @@ const allowanceTarget = (useETHZap || useUSDCZap) && genesisZapAddress ? genesis
 
  // Contract write hooks
  const { writeContractAsync, isPending: isWritePending } = useWriteContract();
+ const { sendTransactionAsync } = useSendTransaction();
 
   // Use the balance from the asset balance map or custom token balance
   const balance = selectedAssetBalance;
@@ -844,7 +845,7 @@ const preDepositBalance = userCurrentDeposit;
    setTxHash(null);
    
    try {
-     // Get swap transaction data from DefiLlama
+     // Get swap transaction data from ParaSwap
      // Note: getDefiLlamaSwapTx expects amount in token's native decimals
      const swapTx = await getDefiLlamaSwapTx(
        fromTokenForSwap,
@@ -854,11 +855,12 @@ const preDepositBalance = userCurrentDeposit;
        1.0 // 1% slippage tolerance
      );
      
-     // Execute swap
-     const swapHash = await writeContractAsync({
+     // Execute swap using sendTransaction (ParaSwap gives raw tx data, not contract call)
+     const swapHash = await sendTransactionAsync({
        to: swapTx.to,
        data: swapTx.data,
-       value: isNativeETH ? amountBigInt : 0n,
+       value: swapTx.value, // Use value from ParaSwap, not amountBigInt
+       gas: swapTx.gas,
      });
      
      setTxHash(swapHash);
