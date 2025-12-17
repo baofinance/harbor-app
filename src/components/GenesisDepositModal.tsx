@@ -192,7 +192,8 @@ const useUSDCZap = !isETHStETHMarket && (isUSDC || isFXUSD);
 const isFxSAVEMarket = !isETHStETHMarket; // fxSAVE backed markets (ETH/fxUSD, BTC/fxUSD)
 const isDirectlyAccepted = isUSDC || isFXUSD || isFXSAVE || 
   (isETHStETHMarket && (isNativeETH || isStETH || selectedAsset.toLowerCase() === "wsteth"));
-const needsSwap = isFxSAVEMarket && !isDirectlyAccepted && selectedAssetAddress && selectedAssetAddress !== "0x0000000000000000000000000000000000000000";
+// For ETH, check isNativeETH instead of selectedAssetAddress since ETH uses zero address
+const needsSwap = isFxSAVEMarket && !isDirectlyAccepted && (isNativeETH || (selectedAssetAddress && selectedAssetAddress !== "0x0000000000000000000000000000000000000000"));
 
 // USDC address for swaps
 const USDC_ADDRESS = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" as `0x${string}`;
@@ -546,6 +547,23 @@ console.log("[GenesisDepositModal] Price Debug:", {
   calculation: isWrappedToken && wrappedRate && maxUnderlyingPrice 
     ? `${Number(maxUnderlyingPrice) / 1e18} * ${Number(wrappedRate) / 1e18} = ${selectedAssetPriceUSD}`
     : "Using underlying price directly"
+});
+
+console.log("[GenesisDepositModal] Swap Debug:", {
+  needsSwap,
+  isFxSAVEMarket,
+  isDirectlyAccepted,
+  isNativeETH,
+  selectedAssetAddress,
+  swapQuote: swapQuote ? {
+    fromAmount: swapQuote.fromAmount.toString(),
+    toAmount: swapQuote.toAmount.toString(),
+    toAmountUSDC: formatUnits(swapQuote.toAmount, 6),
+  } : null,
+  expectedFxSaveFromSwap: expectedFxSaveFromSwap ? expectedFxSaveFromSwap.toString() : null,
+  actualCollateralDeposit: actualCollateralDeposit.toString(),
+  isLoadingSwapQuote,
+  swapQuoteError: swapQuoteError?.message,
 });
 }
 const allowance = isNativeETH ? 0n : (typeof allowanceData === 'bigint' ? allowanceData : 0n);
