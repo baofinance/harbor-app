@@ -614,6 +614,22 @@ const { data: expectedFxSaveFromFXUSD } = useContractRead({
   },
 });
 
+// Calculate expected fxSAVE output for swapped tokens (for preview)
+// For tokens that need swapping: swap to USDC, then convert USDC to fxSAVE
+const usdcFromSwap = needsSwap && swapQuote ? swapQuote.toAmount : 0n;
+const usdcAmountForSwapPreview = usdcFromSwap > 0n 
+  ? usdcFromSwap * 10n ** 12n // Scale from 6 to 18 decimals
+  : 0n;
+const { data: expectedFxSaveFromSwap } = useContractRead({
+  address: genesisZapAddress,
+  abi: USDC_ZAP_ABI,
+  functionName: "previewZapUsdc",
+  args: usdcAmountForSwapPreview > 0n && needsSwap ? [usdcAmountForSwapPreview] : undefined,
+  query: {
+    enabled: !!address && isOpen && mounted && needsSwap && usdcAmountForSwapPreview > 0n && !!genesisZapAddress && useUSDCZap,
+  },
+});
+
 // Helper to safely extract bigint from hook result
 const toBigInt = (value: unknown): bigint => {
   if (typeof value === 'bigint') return value;
@@ -623,6 +639,7 @@ const toBigInt = (value: unknown): bigint => {
 // Calculate the actual collateral amount that will be deposited
 // For ETH/stETH markets: convert to wstETH
 // For USDC/FXUSD markets: convert to fxSAVE
+// For tokens that need swapping: swap to USDC, then convert to fxSAVE
 // For other tokens: use amount directly
 const actualCollateralDeposit: bigint = isNativeETH && isETHStETHMarket
   ? toBigInt(expectedWstETHFromETH)
@@ -632,6 +649,8 @@ const actualCollateralDeposit: bigint = isNativeETH && isETHStETHMarket
   ? toBigInt(expectedFxSaveFromUSDC)
   : isFXUSD && useUSDCZap
   ? toBigInt(expectedFxSaveFromFXUSD)
+  : needsSwap && useUSDCZap
+  ? toBigInt(expectedFxSaveFromSwap)
   : amountBigInt; // For wstETH, fxSAVE, or direct deposits, use the amount directly
 
 // Calculate new total deposit using actual collateral amount
@@ -882,8 +901,9 @@ const preDepositBalance = userCurrentDeposit;
  setTxHash(null);
 
     // Use genesis zap contract for ETH, stETH, USDC, and FXUSD deposits
+    // IMPORTANT: For ETH in fxSAVE markets, we need to swap first, so skip this branch
     let depositHash: `0x${string}`;
-    if (isNativeETH && useETHZap && genesisZapAddress && wstETHAddress) {
+    if (isNativeETH && useETHZap && genesisZapAddress && wstETHAddress && !needsSwap) {
       // Use zapEth for ETH deposits with slippage protection
       // Contract flow: ETH → stETH (via submit, 1:1) → wstETH (via wrap) → Genesis
       // stETH.submit() returns stETH tokens 1:1 with ETH (not shares)
@@ -1640,9 +1660,17 @@ const successFmt = formatTokenAmount(successAmountBigInt, collateralSymbol, coll
  </div>
   );
 })()}
-{((isNativeETH || isStETH || isUSDC || isFXUSD) && actualCollateralDeposit > 0n) && (
+{((isNativeETH || isStETH || isUSDC || isFXUSD || needsSwap) && actualCollateralDeposit > 0n) && (
 <div className="text-xs text-[#1E4775]/50 italic">
-({isUSDC ? parseFloat(amount).toFixed(2) : parseFloat(amount).toFixed(6)} {selectedAsset} ≈ {formatTokenAmount(actualCollateralDeposit, wrappedCollateralSymbol || collateralSymbol, undefined, 6, 18).display})
+{needsSwap && swapQuote ? (
+  <>
+    {parseFloat(amount).toFixed(6)} {selectedAsset} → {formatUnits(swapQuote.toAmount, 6)} USDC (after swap fees) → {formatTokenAmount(actualCollateralDeposit, wrappedCollateralSymbol || collateralSymbol, undefined, 6, 18).display}
+  </>
+) : (
+  <>
+    ({isUSDC ? parseFloat(amount).toFixed(2) : parseFloat(amount).toFixed(6)} {selectedAsset} ≈ {formatTokenAmount(actualCollateralDeposit, wrappedCollateralSymbol || collateralSymbol, undefined, 6, 18).display})
+  </>
+)}
 </div>
 )}
  <div className="border-t border-[#1E4775]/30 pt-2">
