@@ -418,6 +418,7 @@ console.log("[GenesisDepositModal] Price Debug:", {
 }
 const allowance = isNativeETH ? 0n : (typeof allowanceData === 'bigint' ? allowanceData : 0n);
 // USDC uses 6 decimals, other tokens use 18 decimals
+// Parse amount with correct decimals: USDC uses 6, others use 18
 const amountBigInt = amount 
   ? (isUSDC ? parseUnits(amount, 6) : parseEther(amount))
   : 0n;
@@ -563,7 +564,11 @@ https://www.harborfinance.io/`;
  setError("Please enter a valid amount");
  return false;
  }
- if (amountBigInt > balance) {
+ // Compare amounts with correct decimals - both should be in same decimal format
+ // amountBigInt is already correctly parsed (6 decimals for USDC, 18 for others)
+ // selectedAssetBalance is the raw balance from contract (6 decimals for USDC, 18 for others)
+ // Both are already in the same decimal format, so we can compare directly
+ if (amountBigInt > selectedAssetBalance) {
  setError("Insufficient balance");
  return false;
  }
