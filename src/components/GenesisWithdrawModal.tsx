@@ -53,7 +53,7 @@ export const GenesisWithdrawModal = ({
  genesisAddress,
  collateralSymbol,
  userDeposit,
- priceOracleAddress,
+priceOracleAddress,
  coinGeckoId,
  onSuccess,
  embedded = false,
@@ -307,13 +307,13 @@ const successUSD = successAmountNum > 0 && collateralPriceUSD > 0
  );
  };
 
-  if (!isOpen && !progressModalOpen) return null;
+ if (!isOpen && !progressModalOpen) return null;
 
   // Withdraw form content
   const formContent = (
     <div className="space-y-4 sm:space-y-6">
-      {/* Balance */}
-      {(() => {
+ {/* Balance */}
+{(() => {
   const depositFmt = formatTokenAmount(
     userDeposit,
     collateralSymbol,
@@ -437,10 +437,10 @@ Available: {formatTokenAmount(userDeposit, collateralSymbol).display}
  </div>
   );
 })()}
-</div>
-</div>
-</div>
-)}
+ </div>
+ </div>
+ </div>
+ )}
 
  {/* Error */}
  {error && (
@@ -467,33 +467,33 @@ Available: {formatTokenAmount(userDeposit, collateralSymbol).display}
  {/* Success Message */}
  {step ==="success" && (
  <div className="p-3 bg-[rgb(var(--surface-selected-rgb))]/30 border border-[rgb(var(--surface-selected-border-rgb))]/50 text-[#1E4775] text-sm text-center">
-        ✅ Withdrawal successful!
-        </div>
-      )}
+ ✅ Withdrawal successful!
+ </div>
+ )}
 
       {/* Submit Button */}
       <div>
-        <button
-          onClick={handleWithdraw}
-          disabled={
+ <button
+ onClick={handleWithdraw}
+ disabled={
             step === "withdrawing" ||
-            !amount ||
-            parseFloat(amount) <= 0 ||
-            userDeposit === 0n ||
-            !!simulateError
-          }
+ !amount ||
+ parseFloat(amount) <= 0 ||
+ userDeposit === 0n ||
+ !!simulateError
+ }
           className={`w-full py-3 px-4 font-medium transition-colors rounded-full ${
             step === "success"
               ? "bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white"
               : "bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white disabled:bg-gray-300 disabled:text-gray-500"
-          }`}
-        >
+ }`}
+ >
           {step === "withdrawing"
             ? "Withdrawing..."
             : step === "error"
             ? "Try Again"
             : "Withdraw"}
-        </button>
+ </button>
       </div>
     </div>
   );
@@ -573,10 +573,10 @@ Available: {formatTokenAmount(userDeposit, collateralSymbol).display}
 
             <div className="p-3 sm:p-4 lg:p-6">
               {formContent}
-            </div>
-          </div>
-        </div>
-      )}
-    </>
-  );
+ </div>
+ </div>
+ </div>
+ )}
+ </>
+ );
 };

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { parseEther, formatEther, parseUnits, formatUnits } from "viem";
+import { ArrowPathIcon } from "@heroicons/react/24/outline";
 import {
  useAccount,
   useBalance,
@@ -1744,6 +1745,18 @@ const successFmt = formatTokenAmount(successAmountBigInt, collateralSymbol, coll
    </div>
  )}
  
+ {/* Multi-token support notice */}
+ {!needsSwap && (
+   <div className="p-2.5 bg-blue-50 border border-blue-200 text-xs text-blue-700">
+     <div className="flex items-start gap-2">
+       <ArrowPathIcon className="w-4 h-4 flex-shrink-0 mt-0.5" />
+       <div>
+         <span className="font-semibold">Tip:</span> You can deposit any ERC20 token! Non-collateral tokens will be automatically swapped via ParaSwap.
+       </div>
+     </div>
+   </div>
+ )}
+ 
  {isNonCollateralAsset && (
  <div className="p-3 bg-[rgb(var(--surface-selected-rgb))]/20 border border-[rgb(var(--surface-selected-border-rgb))]/30 text-[#1E4775] text-sm">
  ℹ️ Your deposit will be converted to {wrappedCollateralSymbol || collateralSymbol} on
@@ -2124,9 +2137,20 @@ const successFmt = formatTokenAmount(successAmountBigInt, collateralSymbol, coll
             style={{ borderRadius: 0 }}
           >
             <div className="flex items-center justify-between p-3 sm:p-4 lg:p-6 border-b border-[#1E4775]/20">
-              <h2 className="text-lg sm:text-2xl font-bold text-[#1E4775]">
-                Deposit in Maiden Voyage
-              </h2>
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <h2 className="text-lg sm:text-2xl font-bold text-[#1E4775]">
+                    Deposit in Maiden Voyage
+                  </h2>
+                  <div className="flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] font-semibold uppercase tracking-wide">
+                    <ArrowPathIcon className="w-3 h-3" />
+                    <span>Any Token</span>
+                  </div>
+                </div>
+                <p className="text-xs text-[#1E4775]/70">
+                  Deposit any ERC20 token via ParaSwap integration
+                </p>
+              </div>
               <button
                 onClick={handleClose}
                 className="text-[#1E4775]/50 hover:text-[#1E4775] transition-colors"

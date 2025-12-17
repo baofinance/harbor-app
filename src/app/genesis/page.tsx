@@ -917,8 +917,7 @@ export default function GenesisIndexPage() {
                 </h2>
               </div>
               <p className="text-sm text-white/80 text-center">
-                Deposit a supported asset to provide resources for a markets
-                maiden voyage
+                Deposit <span className="font-semibold text-white">any token</span> via ParaSwap to provide resources for a market's maiden voyage
               </p>
             </div>
 
@@ -1273,14 +1272,43 @@ export default function GenesisIndexPage() {
         })()}
 
         {/* Divider */}
-        <div className="border-t border-white/10 mb-2"></div>
+        <div className="border-t border-white/10 my-2"></div>
+
+        {/* Multi-Token Deposit Banner */}
+        <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-4 mb-4 border border-blue-500/30">
+          <div className="flex items-center gap-3">
+            <ArrowPathIcon className="w-6 h-6 text-white flex-shrink-0" />
+            <div className="flex-1">
+              <h3 className="text-white font-bold text-sm mb-1">
+                Deposit Any Token via ParaSwap
+              </h3>
+              <p className="text-white/90 text-xs">
+                Don't have the required collateral? No problem! Deposit any ERC20 token (ETH, WBTC, USDC, etc.) and we'll automatically swap it to the required collateral using ParaSwap's DEX aggregator.
+              </p>
+            </div>
+          </div>
+        </div>
 
         <section className="space-y-2 overflow-visible">
           {/* Header Row - Hidden on mobile, shown on md+ */}
           <div className="hidden md:block bg-white p-3 overflow-x-auto">
             <div className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr_1fr] gap-4 items-center uppercase tracking-wider text-xs text-[#1E4775] font-bold">
               <div className="min-w-0 text-center">Market</div>
-              <div className="text-center min-w-0">Deposit Assets</div>
+              <div className="text-center min-w-0 flex items-center justify-center gap-1.5">
+                <span>Deposit Assets</span>
+                <SimpleTooltip
+                  label={
+                    <div>
+                      <div className="font-semibold mb-1">Multi-Token Support</div>
+                      <div className="text-xs opacity-90">
+                        Deposit any ERC20 token via ParaSwap. Non-collateral tokens will be automatically swapped.
+                      </div>
+                    </div>
+                  }
+                >
+                  <ArrowPathIcon className="w-3.5 h-3.5 text-[#1E4775] cursor-help" />
+                </SimpleTooltip>
+              </div>
               <div className="text-center min-w-0">
                 {genesisMarkets.some(([_, mkt], mi) => {
                   const baseOffset = mi * (isConnected ? 3 : 1);
@@ -1635,6 +1663,10 @@ export default function GenesisIndexPage() {
                           />
                         ))}
                       </div>
+                      <div className="flex items-center gap-1 px-1.5 py-0.5 bg-blue-100 text-blue-700 text-[9px] font-semibold uppercase tracking-wide">
+                        <ArrowPathIcon className="w-2.5 h-2.5" />
+                        <span>Any Token</span>
+                      </div>
                       <div className="flex-1 flex items-center justify-between text-xs">
                         <div>
                           <div className="text-[#1E4775]/70">Total</div>
@@ -1739,6 +1771,21 @@ export default function GenesisIndexPage() {
                           />
                         </SimpleTooltip>
                       ))}
+                      <SimpleTooltip
+                        label={
+                          <div>
+                            <div className="font-semibold mb-1">Any Token Supported</div>
+                            <div className="text-xs opacity-90">
+                              Deposit any ERC20 token via ParaSwap. It will be automatically swapped to {wrappedCollateralSymbol}.
+                            </div>
+                          </div>
+                        }
+                      >
+                        <div className="flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] font-semibold uppercase tracking-wide cursor-help">
+                          <ArrowPathIcon className="w-3 h-3" />
+                          <span>Any Token</span>
+                        </div>
+                      </SimpleTooltip>
                     </div>
                     <div className="text-center min-w-0">
                       {isEnded ? (

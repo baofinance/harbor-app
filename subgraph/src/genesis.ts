@@ -155,9 +155,10 @@ function getWrappedTokenPriceUSD(genesisAddress: Bytes, block: ethereum.Block): 
     // Chainlink BTC/USD uses 8 decimals
     const btcUsdPrice = btcUsdResult.value.toBigDecimal().div(BigDecimal.fromString("100000000")); // 10^8
     
-    // Calculate wstETH price in USD: (wstETH/BTC rate) × (BTC/USD price)
-    // Example: 0.041 BTC/wstETH × $87,828/BTC = $3,607/wstETH
-    const wstethUsdPrice = wstethBtcRateDecimal.times(btcUsdPrice);
+    // Calculate wstETH price in USD: (wstETH/BTC rate) × (BTC/USD price) × (wrapped rate)
+    // The wrapped rate accounts for the stETH <-> wstETH conversion (~1.22)
+    // Example: 0.041 BTC/wstETH × $87,828/BTC × 1.22 = $4,400/wstETH
+    const wstethUsdPrice = wstethBtcRateDecimal.times(btcUsdPrice).times(wrappedRate);
     
     // Ensure we have a valid price
     if (wstethUsdPrice.le(BigDecimal.fromString("0"))) {
