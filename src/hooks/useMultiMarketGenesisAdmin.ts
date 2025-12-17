@@ -76,14 +76,11 @@ export function useMultiMarketGenesisAdmin() {
     if (!genesisData) return [];
     return genesisMarkets.map(([id, market], index) => {
       const baseIndex = index * 3;
-      const wrappedCollateralToken = genesisData[baseIndex + 2]?.result as `0x${string}` | undefined;
+      const contractWrappedToken = genesisData[baseIndex + 2]?.result as `0x${string}` | undefined;
       
-      // Fallback to config if contract read fails
-      // Try wrappedCollateralToken first (for fxUSD markets where it's fxSAVE), 
-      // then collateralToken (for stETH markets where it's wstETH)
-      const tokenAddress = wrappedCollateralToken || 
-                          market.addresses.wrappedCollateralToken || 
-                          market.addresses.collateralToken;
+      // Use on-chain wrapped collateral token address from genesis contract, fallback to config
+      // This matches the logic in the main genesis page
+      const tokenAddress = contractWrappedToken || market.addresses.collateralToken;
       
       return [
         // Wrapped collateral balance in Genesis contract
