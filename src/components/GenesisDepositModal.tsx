@@ -190,8 +190,9 @@ const useETHZap = isETHStETHMarket && (isNativeETH || isStETH);
 // fxSAVE markets: Directly accept USDC, fxUSD, fxSAVE → swap everything else to USDC
 // wstETH markets: Directly accept ETH, stETH, wstETH → swap everything else to ETH
 const isFxSAVEMarket = !isETHStETHMarket; // fxSAVE backed markets (ETH/fxUSD, BTC/fxUSD)
-const isDirectlyAccepted = isUSDC || isFXUSD || isFXSAVE || 
-  (isETHStETHMarket && (isNativeETH || isStETH || selectedAsset.toLowerCase() === "wsteth"));
+const isDirectlyAccepted = 
+  (isFxSAVEMarket && (isUSDC || isFXUSD || isFXSAVE)) || // fxSAVE markets: USDC, fxUSD, fxSAVE accepted
+  (isETHStETHMarket && (isNativeETH || isStETH || selectedAsset.toLowerCase() === "wsteth")); // wstETH markets: ETH, stETH, wstETH accepted
 
 // Check if we need to swap: token is not directly accepted AND has a valid address
 // For ETH, check isNativeETH; for other tokens, check selectedAssetAddress exists
