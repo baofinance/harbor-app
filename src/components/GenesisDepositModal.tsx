@@ -912,30 +912,68 @@ const preDepositBalance = userCurrentDeposit;
        throw new Error(`No USDC received from swap. Balance may still be updating. Current USDC: ${formatUnits(usdcBalanceAfter as bigint, 6)}`);
      }
      
-     // Store USDC amount received from swap for deposit step
-     (window as any).__swapUsdcAmount = usdcReceived;
-     
-     setProgressSteps((prev) =>
-       prev.map((s) =>
-         s.id === "swap" ? { ...s, status: "completed", txHash: swapHash } : s
-       )
-     );
-     setCurrentStepIndex(steps.findIndex((s) => s.id === "deposit"));
-   } catch (err: any) {
-     console.error("Swap error:", err);
-     setError(err.message || "Swap failed. Please try again.");
-     setStep("error");
-     setProgressSteps((prev) =>
-       prev.map((s) =>
-         s.id === "swap" ? { ...s, status: "error", error: err.message } : s
-       )
-     );
-     return;
-   }
- }
+    // Store USDC amount received from swap for deposit step
+    (window as any).__swapUsdcAmount = usdcReceived;
+    
+    setProgressSteps((prev) =>
+      prev.map((s) =>
+        s.id === "swap" ? { ...s, status: "completed", txHash: swapHash } : s
+      )
+    );
+    setCurrentStepIndex(steps.findIndex((s) => s.id === "approve"));
+    
+    // After swap, we need to approve the USDC for the zapper contract
+    console.log("[Swap] Swap complete, now approving USDC for zapper...");
+    
+    setStep("approving");
+    setProgressSteps((prev) =>
+      prev.map((s) =>
+        s.id === "approve" ? { ...s, status: "in_progress" } : s
+      )
+    );
+    setError(null);
+    setTxHash(null);
+    
+    // Approve USDC for zapper contract
+    const approveHash = await writeContractAsync({
+      address: USDC_ADDRESS,
+      abi: ERC20_ABI,
+      functionName: "approve",
+      args: [genesisZapAddress as `0x${string}`, usdcReceived],
+    });
+    
+    setTxHash(approveHash);
+    console.log("[Approval] USDC approval transaction sent:", approveHash);
+    
+    await publicClient?.waitForTransactionReceipt({ hash: approveHash });
+    console.log("[Approval] USDC approval confirmed");
+    
+    // Give a moment for the blockchain state to update
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    
+    setProgressSteps((prev) =>
+      prev.map((s) =>
+        s.id === "approve"
+          ? { ...s, status: "completed", txHash: approveHash }
+          : s
+      )
+    );
+    setCurrentStepIndex(steps.findIndex((s) => s.id === "deposit"));
+  } catch (err: any) {
+    console.error("Swap error:", err);
+    setError(err.message || "Swap failed. Please try again.");
+    setStep("error");
+    setProgressSteps((prev) =>
+      prev.map((s) =>
+        s.id === "swap" ? { ...s, status: "error", error: err.message } : s
+      )
+    );
+    return;
+  }
+}
 
- // For non-native tokens, check and approve if needed
- if (!isNativeETH && needsApproval && !needsSwap) {
+// For non-native tokens, check and approve if needed (only for direct deposits, not swaps)
+if (!isNativeETH && needsApproval && !needsSwap) {
  setStep("approving");
  setProgressSteps((prev) =>
  prev.map((s) =>
