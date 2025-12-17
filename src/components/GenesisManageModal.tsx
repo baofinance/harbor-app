@@ -119,26 +119,6 @@ export const GenesisManageModal = ({
     },
   });
 
-  // Debug logging
-  useEffect(() => {
-    if (isOpen && process.env.NODE_ENV === 'development') {
-      console.log('[GenesisManageModal] Debug:', {
-        marketId,
-        genesisAddress,
-        collateralAddress,
-        isValidGenesisAddress,
-        isValidCollateralAddress,
-        depositError: depositError?.message,
-        endedError: endedError?.message,
-        depositLoading,
-        endedLoading,
-        userDeposit: userDeposit?.toString(),
-        isEnded,
-        hasDeposit: userDeposit && userDeposit > 0n,
-      });
-    }
-  }, [isOpen, genesisAddress, collateralAddress, depositError, endedError, depositLoading, endedLoading, userDeposit, isEnded, marketId, isValidGenesisAddress, isValidCollateralAddress]);
-
   const acceptedAssets = getAcceptedDepositAssets(market);
   const hasDeposit = userDeposit && userDeposit > 0n;
 
