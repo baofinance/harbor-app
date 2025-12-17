@@ -100,14 +100,26 @@ export function useDefiLlamaSwap(
       url.searchParams.set("fromAddress", "0x0000000000000000000000000000000000000000");
       url.searchParams.set("slippage", "1"); // 1% default slippage tolerance
 
+      console.log("[DefiLlama] Fetching swap quote:", {
+        fromToken: fromTokenAddress,
+        toToken,
+        amount,
+        amountInWei: amountInWei.toString(),
+        decimals,
+        url: url.toString(),
+      });
+
       const response = await fetch(url.toString());
 
       if (!response.ok) {
         const errorText = await response.text();
+        console.error("[DefiLlama] API error:", errorText);
         throw new Error(`Failed to fetch swap quote: ${errorText}`);
       }
 
       const data: DefiLlamaQuoteResponse = await response.json();
+      
+      console.log("[DefiLlama] Swap quote received:", data);
 
       // Calculate slippage: difference between spot price and estimated price
       const spotPrice = parseFloat(data.spotPrice);
