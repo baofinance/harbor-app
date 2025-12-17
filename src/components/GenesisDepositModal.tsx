@@ -1074,9 +1074,20 @@ if (!isNativeETH && needsApproval && !needsSwap) {
         throw new Error("Invalid USDC amount for deposit");
       }
       
+      console.log("[Deposit] USDC amount for zap:", {
+        raw: usdcAmount.toString(),
+        formatted: formatUnits(usdcAmount, 6),
+      });
+      
       // Get expected fxSAVE output from USDC amount
       // Contract expects USDC in 18 decimals, so scale from 6 to 18
       const usdcAmountScaled = usdcAmount * 10n ** 12n;
+      
+      console.log("[Deposit] USDC amount scaled to 18 decimals:", {
+        raw: usdcAmountScaled.toString(),
+        formatted: formatUnits(usdcAmountScaled, 18),
+      });
+      
       const expectedFxSaveOut = await publicClient.readContract({
         address: genesisZapAddress,
         abi: USDC_ZAP_ABI,
@@ -1084,14 +1095,25 @@ if (!isNativeETH && needsApproval && !needsSwap) {
         args: [usdcAmountScaled],
       });
       
+      console.log("[Deposit] Expected fxSAVE output:", {
+        raw: expectedFxSaveOut.toString(),
+        formatted: formatUnits(expectedFxSaveOut as bigint, 18),
+      });
+      
       // Apply 1% slippage buffer (99% of expected)
       const minFxSaveOut = (expectedFxSaveOut * 99n) / 100n;
       
+      console.log("[Deposit] Minimum fxSAVE output (99%):", {
+        raw: minFxSaveOut.toString(),
+        formatted: formatUnits(minFxSaveOut, 18),
+      });
+      
+      // IMPORTANT: Contract expects USDC in 18 decimals (scaled), not 6
       depositHash = await writeContractAsync({
         address: genesisZapAddress,
         abi: USDC_ZAP_ABI,
         functionName: "zapUsdcToGenesis",
-        args: [usdcAmount, minFxSaveOut, address as `0x${string}`],
+        args: [usdcAmountScaled, minFxSaveOut, address as `0x${string}`],
       });
       
       // Clean up swap amount
