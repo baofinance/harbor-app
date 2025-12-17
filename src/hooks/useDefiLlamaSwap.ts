@@ -278,6 +278,12 @@ export async function getDefiLlamaSwapTx(
   
   console.log("[ParaSwap] Transaction built:", txData);
 
+  // Validate response structure
+  if (!txData || !txData.to || !txData.data) {
+    console.error("[ParaSwap] Invalid transaction response:", txData);
+    throw new Error(`Invalid transaction data from ParaSwap: ${JSON.stringify(txData)}`);
+  }
+
   return {
     to: txData.to as Address,
     data: txData.data as `0x${string}`,
