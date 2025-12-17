@@ -1054,12 +1054,14 @@ if (!isNativeETH && needsApproval && !needsSwap) {
         formatted: formatUnits(minFxSaveOut, 18),
       });
       
-      // IMPORTANT: Contract expects USDC in 18 decimals (scaled), not 6
+      // IMPORTANT: Pass USDC in native 6 decimals (usdcAmount), not scaled
+      // The preview function uses 18 decimals for calculation, but the actual
+      // zap function expects native USDC decimals and does internal scaling
       depositHash = await writeContractAsync({
         address: genesisZapAddress,
         abi: USDC_ZAP_ABI,
         functionName: "zapUsdcToGenesis",
-        args: [usdcAmountScaled, minFxSaveOut, address as `0x${string}`],
+        args: [usdcAmount, minFxSaveOut, address as `0x${string}`],
       });
       
       // Clean up swap amount
