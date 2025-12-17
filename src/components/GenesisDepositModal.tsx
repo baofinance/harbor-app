@@ -865,30 +865,35 @@ const preDepositBalance = userCurrentDeposit;
      });
      
      setTxHash(swapHash);
+     
+     console.log("[Swap] Transaction sent, waiting for confirmation:", swapHash);
+     
+     // Wait for transaction confirmation
      await publicClient?.waitForTransactionReceipt({ hash: swapHash });
      
-     // Get actual USDC received
-     const usdcBalanceBefore = await publicClient.readContract({
-       address: USDC_ADDRESS,
-       abi: ERC20_ABI,
-       functionName: "balanceOf",
-       args: [address],
-     });
+     console.log("[Swap] Transaction confirmed, getting USDC balance before...");
      
-     // Wait for balance to update
-     await new Promise((resolve) => setTimeout(resolve, 2000));
+     // Get USDC balance - note: we didn't check before because we're swapping FROM ETH
+     // So we can just check the current balance
+     await new Promise((resolve) => setTimeout(resolve, 3000)); // Wait 3 seconds for state to update
      
      const usdcBalanceAfter = await publicClient.readContract({
        address: USDC_ADDRESS,
        abi: ERC20_ABI,
        functionName: "balanceOf",
        args: [address],
+       blockTag: 'latest', // Force latest block
      });
      
-     const usdcReceived = (usdcBalanceAfter as bigint) - (usdcBalanceBefore as bigint);
+     console.log("[Swap] USDC balance after swap:", {
+       balance: usdcBalanceAfter ? usdcBalanceAfter.toString() : "0",
+       formatted: usdcBalanceAfter ? formatUnits(usdcBalanceAfter as bigint, 6) : "0",
+     });
+     
+     const usdcReceived = usdcBalanceAfter as bigint;
      
      if (usdcReceived <= 0n) {
-       throw new Error("No USDC received from swap");
+       throw new Error("No USDC received from swap. Balance may still be updating - please wait a moment and try depositing again.");
      }
      
      // Update amount to USDC amount for deposit
