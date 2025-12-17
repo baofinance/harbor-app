@@ -613,22 +613,19 @@ const expectedFxSaveFromSwap = (() => {
   return fallbackResult;
 })();
 
-// For tokens that need swapping to ETH (wstETH markets): calculate expected wstETH from ETH
+// For tokens that need swapping to ETH (wstETH markets): calculate expected wstETH from ETH swap output
 const ethFromSwap = needsSwap && isETHStETHMarket && swapQuote ? swapQuote.toAmount : 0n;
 
-const expectedWstETHFromSwap = (() => {
-  if (!needsSwap || !isETHStETHMarket || ethFromSwap === 0n || !wstETHAddress) {
-    return 0n;
-  }
-  
-  // ETH is already in 18 decimals
-  // ETH → stETH is 1:1, then convert stETH to wstETH
-  // We can't use async contract calls here, so estimate using a typical rate
-  // Or return 0 and rely on the actual contract call during deposit
-  // For now, estimate: 1 ETH ≈ 0.88 wstETH (approximate current rate)
-  const estimatedWstETH = (ethFromSwap * 88n) / 100n;
-  return estimatedWstETH;
-})();
+// Query wstETH contract to get expected output from swapped ETH
+const { data: expectedWstETHFromSwap } = useContractRead({
+  address: wstETHAddress,
+  abi: WSTETH_ABI,
+  functionName: "getWstETHByStETH",
+  args: ethFromSwap > 0n ? [ethFromSwap] : undefined, // ETH → stETH is 1:1, so use ethFromSwap as stETH amount
+  query: {
+    enabled: !!address && isOpen && mounted && needsSwap && isETHStETHMarket && ethFromSwap > 0n && !!wstETHAddress,
+  },
+});
 
 // Helper to safely extract bigint from hook result
 const toBigInt = (value: unknown): bigint => {
@@ -651,7 +648,7 @@ const actualCollateralDeposit: bigint = isNativeETH && isETHStETHMarket && !need
   : needsSwap && isFxSAVEMarket
   ? expectedFxSaveFromSwap // For swapped tokens in fxSAVE markets, use calculated fxSAVE
   : needsSwap && isETHStETHMarket
-  ? expectedWstETHFromSwap // For swapped tokens in wstETH markets, use calculated wstETH
+  ? toBigInt(expectedWstETHFromSwap) // For swapped tokens in wstETH markets, use wstETH from contract
   : amountBigInt; // For wstETH, fxSAVE, or direct deposits, use the amount directly
 
 // Calculate new total deposit using actual collateral amount
