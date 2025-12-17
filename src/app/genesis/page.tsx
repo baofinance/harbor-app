@@ -406,9 +406,9 @@ function MarketExpandedView({
             <div className="flex justify-between items-center">
               <span className="text-[#1E4775]/70">ha Token:</span>
               <div className="flex items-center gap-1.5">
-                <span className="text-[#1E4775] font-mono">
-                  {peggedTokenSymbol}
-                </span>
+              <span className="text-[#1E4775] font-mono">
+                {peggedTokenSymbol}
+              </span>
                 <Image
                   src={getLogoPath(peggedTokenSymbol)}
                   alt={peggedTokenSymbol}
@@ -421,9 +421,9 @@ function MarketExpandedView({
             <div className="flex justify-between items-center">
               <span className="text-[#1E4775]/70">hs Token:</span>
               <div className="flex items-center gap-1.5">
-                <span className="text-[#1E4775] font-mono">
-                  {leveragedTokenSymbol}
-                </span>
+              <span className="text-[#1E4775] font-mono">
+                {leveragedTokenSymbol}
+              </span>
                 <Image
                   src={getLogoPath(leveragedTokenSymbol)}
                   alt={leveragedTokenSymbol}
@@ -505,48 +505,6 @@ export default function GenesisIndexPage() {
     error: marksError,
   } = useAllHarborMarks(genesisAddresses);
 
-  // Debug logging for marks query
-  useEffect(() => {
-    if (process.env.NODE_ENV === "development") {
-      console.log("[Genesis Page] Marks Query Debug:", {
-        address,
-        isConnected,
-        genesisAddresses,
-        allMarksData,
-        isLoadingMarks,
-        marksError,
-      });
-      
-      // Log detailed marks calculation
-      if (allMarksData && allMarksData.length > 0) {
-        allMarksData.forEach((marksData, idx) => {
-          const userMarks = Array.isArray(marksData.data?.userHarborMarks)
-            ? marksData.data?.userHarborMarks[0]
-            : marksData.data?.userHarborMarks;
-          if (userMarks) {
-            const lastUpdated = parseInt(userMarks.lastUpdated || "0");
-            const currentTime = Math.floor(Date.now() / 1000);
-            const timeElapsed = currentTime - lastUpdated;
-            const daysElapsed = Math.max(0, timeElapsed / 86400);
-            const currentDepositUSD = parseFloat(userMarks.currentDepositUSD || "0");
-            const expectedMarks = currentDepositUSD * 10 * daysElapsed;
-            
-            console.log(`[Genesis Page] Marks Calculation ${idx}:`, {
-              genesisAddress: marksData.genesisAddress,
-              currentMarks: userMarks.currentMarks,
-              marksPerDay: userMarks.marksPerDay,
-              currentDepositUSD,
-              lastUpdated,
-              currentTime,
-              timeElapsed,
-              daysElapsed,
-              expectedMarks,
-            });
-          }
-        });
-      }
-    }
-  }, [address, isConnected, genesisAddresses, allMarksData, isLoadingMarks, marksError]);
 
   const queryClient = useQueryClient();
 
@@ -2070,10 +2028,10 @@ export default function GenesisIndexPage() {
                             onClick={(e) => {
                               e.stopPropagation();
                               setManageModal({
-                                marketId: id,
+                                  marketId: id,
                                 market: mkt,
                                 initialTab: userDeposit && userDeposit > 0n ? "withdraw" : "deposit",
-                              });
+                                });
                             }}
                             disabled={isEnded || !genesisAddress}
                             className="px-4 py-2 text-xs font-medium bg-[#1E4775] text-white hover:bg-[#17395F] disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors rounded-full whitespace-nowrap"
