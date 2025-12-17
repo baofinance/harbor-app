@@ -675,6 +675,21 @@ if (process.env.NODE_ENV === "development") {
     usdcAmountForSwapPreview: usdcAmountForSwapPreview.toString(),
     usdcAmountForSwapPreviewFormatted: usdcAmountForSwapPreview > 0n ? formatUnits(usdcAmountForSwapPreview, 18) : "0",
     wrappedRate: wrappedRate ? Number(wrappedRate) / 1e18 : null,
+    
+    // Contract call details
+    genesisZapAddress,
+    useUSDCZap,
+    contractCallEnabled: !!address && isOpen && mounted && needsSwap && usdcAmountForSwapPreview > 0n && !!genesisZapAddress && useUSDCZap,
+    contractCallConditions: {
+      address: !!address,
+      isOpen,
+      mounted,
+      needsSwap,
+      usdcAmountForSwapPreview_gt_0: usdcAmountForSwapPreview > 0n,
+      genesisZapAddress: !!genesisZapAddress,
+      useUSDCZap,
+    },
+    
     expectedFxSaveFromSwap: expectedFxSaveFromSwap ? expectedFxSaveFromSwap.toString() : null,
     expectedFxSaveFromSwapFormatted: expectedFxSaveFromSwap ? formatUnits(expectedFxSaveFromSwap as bigint, 18) : "0",
     actualCollateralDeposit: actualCollateralDeposit.toString(),
