@@ -1,7 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { Address, formatUnits, parseUnits } from "viem";
 
-const DEFILLAMA_SWAP_API = "https://api.llama.fi/swap/v1/quote";
+// Try different API endpoints - DefiLlama's swap API might be at different URL
+const DEFILLAMA_SWAP_API = "https://swap.defillama.com/api/quote";
+// Alternative: const DEFILLAMA_SWAP_API = "https://swap-api.defillama.com/quote";
 const ETH_ADDRESS = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeeEeE" as Address;
 
 // Helper to fetch token decimals (with caching)
@@ -175,7 +177,7 @@ export async function getDefiLlamaSwapTx(
 }> {
   const fromTokenAddress = fromToken === "ETH" ? ETH_ADDRESS : fromToken;
   
-  const url = new URL("https://api.llama.fi/swap/v1/swap");
+  const url = new URL("https://swap.defillama.com/api/swap");
   url.searchParams.set("fromTokenAddress", fromTokenAddress);
   url.searchParams.set("toTokenAddress", toToken);
   url.searchParams.set("amount", amount.toString());
