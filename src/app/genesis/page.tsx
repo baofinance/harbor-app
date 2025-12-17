@@ -1553,15 +1553,15 @@ export default function GenesisIndexPage() {
                           </div>
                         </div>
                         <div className="text-[10px] text-[#1E4775]/60 font-mono">
-                          [{wrappedCollateralSymbol}] → [{rowPeggedSymbol}] + [{rowLeveragedSymbol}]
+                          {wrappedCollateralSymbol} → {rowPeggedSymbol} + {rowLeveragedSymbol}
                         </div>
                       </div>
-                        {isExpanded ? (
-                          <ChevronUpIcon className="w-5 h-5 text-[#1E4775] flex-shrink-0" />
-                        ) : (
-                          <ChevronDownIcon className="w-5 h-5 text-[#1E4775] flex-shrink-0" />
-                        )}
-                      </div>
+                      {isExpanded ? (
+                        <ChevronUpIcon className="w-5 h-5 text-[#1E4775] flex-shrink-0" />
+                      ) : (
+                        <ChevronDownIcon className="w-5 h-5 text-[#1E4775] flex-shrink-0" />
+                      )}
+                    </div>
                       <div
                         onClick={(e) => e.stopPropagation()}
                         className="flex-shrink-0"
@@ -1640,7 +1640,6 @@ export default function GenesisIndexPage() {
                           </button>
                         )}
                       </div>
-                    </div>
                     <div className="flex items-center gap-2">
                       <div className="flex items-center gap-1.5">
                         {acceptedAssets.map((asset) => (
@@ -1735,7 +1734,7 @@ export default function GenesisIndexPage() {
                           )}
                         </div>
                         <div className="text-[10px] text-[#1E4775]/60 font-mono text-center">
-                          [{wrappedCollateralSymbol}] → [{rowPeggedSymbol}] + [{rowLeveragedSymbol}]
+                          {wrappedCollateralSymbol} → {rowPeggedSymbol} + {rowLeveragedSymbol}
                         </div>
                       </div>
                     </div>
