@@ -9,6 +9,7 @@ import {
  useContractReads,
  useWriteContract,
  usePublicClient,
+ useSendTransaction,
 } from "wagmi";
 import { BaseError, ContractFunctionRevertedError } from "viem";
 import { GENESIS_ABI, ERC20_ABI, contracts } from "../config/contracts";
