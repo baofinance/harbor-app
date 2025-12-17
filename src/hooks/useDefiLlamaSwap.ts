@@ -52,7 +52,7 @@ export async function fetchTokenDecimals(
 
 export interface SwapQuote {
   fromToken: Address | "ETH";
-  toToken: Address;
+  toToken: Address | "ETH";
   fromAmount: bigint;
   toAmount: bigint;
   estimatedGas: bigint;
@@ -90,13 +90,14 @@ interface ParaSwapPriceResponse {
 
 export function useDefiLlamaSwap(
   fromToken: Address | "ETH",
-  toToken: Address,
+  toToken: Address | "ETH",
   amount: string,
   enabled: boolean = true,
-  fromTokenDecimals?: number // Optional: pass decimals if already known
+  fromTokenDecimals?: number, // Optional: pass decimals if already known
+  toTokenDecimals?: number // Optional: pass destination token decimals
 ) {
   return useQuery({
-    queryKey: ["paraswapQuote", fromToken, toToken, amount, fromTokenDecimals],
+    queryKey: ["paraswapQuote", fromToken, toToken, amount, fromTokenDecimals, toTokenDecimals],
     queryFn: async (): Promise<SwapQuote> => {
       if (!amount || parseFloat(amount) <= 0) {
         throw new Error("Invalid amount");
@@ -104,11 +105,13 @@ export function useDefiLlamaSwap(
 
       // ParaSwap uses lowercase ETH address
       const fromTokenAddress = fromToken === "ETH" ? PARASWAP_ETH_ADDRESS : fromToken.toLowerCase();
-      const toTokenAddress = toToken.toLowerCase();
+      const toTokenAddress = toToken === "ETH" ? PARASWAP_ETH_ADDRESS : toToken.toLowerCase();
       
-      // Use provided decimals or default to 18
-      const decimals = fromTokenDecimals ?? 18;
-      const amountInWei = parseUnits(amount, decimals);
+      // Use provided decimals or default to 18 for source token
+      const srcDecimals = fromTokenDecimals ?? 18;
+      // Determine destination decimals: ETH=18, USDC=6, or provided value
+      const destDecimals = toTokenDecimals ?? (toToken === "ETH" ? 18 : 6);
+      const amountInWei = parseUnits(amount, srcDecimals);
 
       // ParaSwap API endpoint for price quotes
       const url = `${PARASWAP_API_URL}/prices`;
@@ -116,18 +119,19 @@ export function useDefiLlamaSwap(
         srcToken: fromTokenAddress,
         destToken: toTokenAddress,
         amount: amountInWei.toString(),
-        srcDecimals: decimals.toString(),
-        destDecimals: "6", // USDC has 6 decimals
+        srcDecimals: srcDecimals.toString(),
+        destDecimals: destDecimals.toString(),
         side: "SELL",
         network: ETHEREUM_CHAIN_ID.toString(),
       });
 
       console.log("[ParaSwap] Fetching swap quote:", {
         fromToken: fromTokenAddress,
-        toToken,
+        toToken: toTokenAddress,
         amount,
         amountInWei: amountInWei.toString(),
-        decimals,
+        srcDecimals,
+        destDecimals,
         url: `${url}?${params.toString()}`,
       });
 
@@ -196,10 +200,12 @@ export function useDefiLlamaSwap(
 // Helper to get swap transaction data for execution using ParaSwap
 export async function getDefiLlamaSwapTx(
   fromToken: Address | "ETH",
-  toToken: Address,
+  toToken: Address | "ETH",
   amount: bigint,
   fromAddress: Address,
-  slippage: number = 1.0
+  slippage: number = 1.0,
+  fromTokenDecimals: number = 18,
+  toTokenDecimals?: number
 ): Promise<{
   to: Address;
   data: `0x${string}`;
@@ -208,7 +214,10 @@ export async function getDefiLlamaSwapTx(
 }> {
   // ParaSwap uses lowercase ETH address
   const fromTokenAddress = fromToken === "ETH" ? PARASWAP_ETH_ADDRESS : fromToken.toLowerCase();
-  const toTokenAddress = toToken.toLowerCase();
+  const toTokenAddress = toToken === "ETH" ? PARASWAP_ETH_ADDRESS : toToken.toLowerCase();
+  
+  // Determine destination decimals
+  const destDecimals = toTokenDecimals ?? (toToken === "ETH" ? 18 : 6);
   
   // First, get the price route
   const priceUrl = `${PARASWAP_API_URL}/prices`;
@@ -216,8 +225,8 @@ export async function getDefiLlamaSwapTx(
     srcToken: fromTokenAddress,
     destToken: toTokenAddress,
     amount: amount.toString(),
-    srcDecimals: "18", // Assume 18 for most tokens, USDC is 6 but we're swapping TO USDC
-    destDecimals: "6", // USDC decimals
+    srcDecimals: fromTokenDecimals.toString(),
+    destDecimals: destDecimals.toString(),
     side: "SELL",
     network: ETHEREUM_CHAIN_ID.toString(),
   });

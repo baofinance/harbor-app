@@ -186,21 +186,29 @@ const genesisZapAddress = marketAddresses?.genesisZap as `0x${string}` | undefin
 const isETHStETHMarket = collateralSymbol.toLowerCase() === "wsteth";
 const useETHZap = isETHStETHMarket && (isNativeETH || isStETH);
 
-// Determine if selected asset needs to be swapped to USDC (for fxSAVE markets)
-// For fxSAVE markets: only USDC, fxUSD, and fxSAVE are accepted directly
-// All other tokens need to be swapped to USDC first
+// Determine if selected asset needs to be swapped
+// fxSAVE markets: Directly accept USDC, fxUSD, fxSAVE → swap everything else to USDC
+// wstETH markets: Directly accept ETH, stETH, wstETH → swap everything else to ETH
 const isFxSAVEMarket = !isETHStETHMarket; // fxSAVE backed markets (ETH/fxUSD, BTC/fxUSD)
 const isDirectlyAccepted = isUSDC || isFXUSD || isFXSAVE || 
   (isETHStETHMarket && (isNativeETH || isStETH || selectedAsset.toLowerCase() === "wsteth"));
-// For ETH, check isNativeETH instead of selectedAssetAddress since ETH uses zero address
-const needsSwap = isFxSAVEMarket && !isDirectlyAccepted && (isNativeETH || (selectedAssetAddress && selectedAssetAddress !== "0x0000000000000000000000000000000000000000"));
 
-// Now that needsSwap is defined, determine if we should use USDC zap
-// USDC zap is used for: direct USDC/FXUSD deposits OR tokens that need to be swapped to USDC
-const useUSDCZap = !isETHStETHMarket && (isUSDC || isFXUSD || needsSwap);
+// Check if we need to swap: token is not directly accepted AND has a valid address
+// For ETH, check isNativeETH; for other tokens, check selectedAssetAddress exists
+const hasValidTokenAddress = isNativeETH || (selectedAssetAddress && selectedAssetAddress !== "0x0000000000000000000000000000000000000000");
+const needsSwap = !isDirectlyAccepted && hasValidTokenAddress;
 
-// USDC address for swaps
+// Determine swap target token
+// fxSAVE markets: swap to USDC, wstETH markets: swap to ETH
 const USDC_ADDRESS = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" as `0x${string}`;
+const ETH_ADDRESS = "ETH" as const;
+const swapTargetToken = isFxSAVEMarket ? USDC_ADDRESS : ETH_ADDRESS;
+
+// Now that needsSwap is defined, determine if we should use USDC zap or ETH zap
+// USDC zap: direct USDC/FXUSD deposits OR swaps in fxSAVE markets
+// ETH zap: direct ETH/stETH deposits OR swaps in wstETH markets  
+const useUSDCZap = !isETHStETHMarket && (isUSDC || isFXUSD || needsSwap);
+const needsETHZapAfterSwap = isETHStETHMarket && needsSwap;
 
 // Determine if custom token is selected (needed for hooks below)
 const isCustomToken = selectedAsset === "custom" && customTokenAddress && 
@@ -237,12 +245,15 @@ const { data: customTokenName } = useContractRead({
 
 // Get swap quote if token needs swapping
 const fromTokenForSwap = isNativeETH ? "ETH" : (selectedAssetAddress as `0x${string}`);
+const toTokenForSwap = swapTargetToken;
+const toTokenDecimals = swapTargetToken === "ETH" ? 18 : 6; // ETH=18, USDC=6
 const { data: swapQuote, isLoading: isLoadingSwapQuote, error: swapQuoteError } = useDefiLlamaSwap(
   fromTokenForSwap,
-  USDC_ADDRESS,
+  toTokenForSwap as any, // Type assertion needed due to const type
   amount,
   needsSwap && !!amount && parseFloat(amount) > 0 && !!fromTokenForSwap,
-  tokenDecimals
+  tokenDecimals,
+  toTokenDecimals
 );
 
 // Merge accepted assets with user tokens (avoid duplicates)
@@ -575,12 +586,11 @@ const { data: expectedFxSaveFromFXUSD } = useContractRead({
   },
 });
 
-// For tokens that need swapping: calculate expected fxSAVE from the USDC amount
-// Use the same logic as direct USDC deposits
-const usdcFromSwap = needsSwap && swapQuote ? swapQuote.toAmount : 0n;
+// For tokens that need swapping to USDC (fxSAVE markets): calculate expected fxSAVE from USDC
+const usdcFromSwap = needsSwap && isFxSAVEMarket && swapQuote ? swapQuote.toAmount : 0n;
 
 const expectedFxSaveFromSwap = (() => {
-  if (!needsSwap || usdcFromSwap === 0n) {
+  if (!needsSwap || !isFxSAVEMarket || usdcFromSwap === 0n) {
     return 0n;
   }
   
@@ -601,6 +611,23 @@ const expectedFxSaveFromSwap = (() => {
   return fallbackResult;
 })();
 
+// For tokens that need swapping to ETH (wstETH markets): calculate expected wstETH from ETH
+const ethFromSwap = needsSwap && isETHStETHMarket && swapQuote ? swapQuote.toAmount : 0n;
+
+const expectedWstETHFromSwap = (() => {
+  if (!needsSwap || !isETHStETHMarket || ethFromSwap === 0n || !wstETHAddress) {
+    return 0n;
+  }
+  
+  // ETH is already in 18 decimals
+  // ETH → stETH is 1:1, then convert stETH to wstETH
+  // We can't use async contract calls here, so estimate using a typical rate
+  // Or return 0 and rely on the actual contract call during deposit
+  // For now, estimate: 1 ETH ≈ 0.88 wstETH (approximate current rate)
+  const estimatedWstETH = (ethFromSwap * 88n) / 100n;
+  return estimatedWstETH;
+})();
+
 // Helper to safely extract bigint from hook result
 const toBigInt = (value: unknown): bigint => {
   if (typeof value === 'bigint') return value;
@@ -610,18 +637,19 @@ const toBigInt = (value: unknown): bigint => {
 // Calculate the actual collateral amount that will be deposited
 // For ETH/stETH markets: convert to wstETH
 // For USDC/FXUSD markets: convert to fxSAVE
-// For tokens that need swapping: use calculated fxSAVE from USDC (swaps always go to USDC, then zapper converts)
-// For other tokens: use amount directly
-const actualCollateralDeposit: bigint = isNativeETH && isETHStETHMarket
+// For tokens that need swapping: calculate based on swap output
+const actualCollateralDeposit: bigint = isNativeETH && isETHStETHMarket && !needsSwap
   ? toBigInt(expectedWstETHFromETH)
   : isStETH && isETHStETHMarket
   ? toBigInt(expectedWstETHFromStETH)
-  : isUSDC && useUSDCZap
+  : isUSDC && useUSDCZap && !needsSwap
   ? toBigInt(expectedFxSaveFromUSDC)
   : isFXUSD && useUSDCZap
   ? toBigInt(expectedFxSaveFromFXUSD)
   : needsSwap && isFxSAVEMarket
   ? expectedFxSaveFromSwap // For swapped tokens in fxSAVE markets, use calculated fxSAVE
+  : needsSwap && isETHStETHMarket
+  ? expectedWstETHFromSwap // For swapped tokens in wstETH markets, use calculated wstETH
   : amountBigInt; // For wstETH, fxSAVE, or direct deposits, use the amount directly
 
 // Calculate new total deposit using actual collateral amount
@@ -730,9 +758,10 @@ const preDepositBalance = userCurrentDeposit;
  });
  }
  if (includeSwap) {
+ const swapTarget = isFxSAVEMarket ? "USDC" : "ETH";
  steps.push({
  id:"swap",
- label: `Swap ${selectedAsset} → USDC`,
+ label: `Swap ${selectedAsset} → ${swapTarget}`,
  status:"pending",
  });
  }
@@ -758,26 +787,41 @@ const preDepositBalance = userCurrentDeposit;
    setTxHash(null);
    
    try {
-     // Get USDC balance BEFORE swap to calculate the difference after
-     const usdcBalanceBefore = await publicClient.readContract({
-       address: USDC_ADDRESS,
-       abi: ERC20_ABI,
-       functionName: "balanceOf",
-       args: [address],
-     });
+     const targetTokenSymbol = isFxSAVEMarket ? "USDC" : "ETH";
+     const targetTokenDecimals = isFxSAVEMarket ? 6 : 18;
      
-     console.log("[Swap] USDC balance before swap:", {
-       balance: usdcBalanceBefore ? usdcBalanceBefore.toString() : "0",
-       formatted: usdcBalanceBefore ? formatUnits(usdcBalanceBefore as bigint, 6) : "0",
-     });
+     // Get balance BEFORE swap to calculate the difference after
+     let balanceBefore: bigint;
+     if (isFxSAVEMarket) {
+       // For fxSAVE markets: track USDC balance
+       balanceBefore = await publicClient.readContract({
+         address: USDC_ADDRESS,
+         abi: ERC20_ABI,
+         functionName: "balanceOf",
+         args: [address],
+       }) as bigint;
+       console.log(`[Swap] ${targetTokenSymbol} balance before swap:`, {
+         balance: balanceBefore.toString(),
+         formatted: formatUnits(balanceBefore, targetTokenDecimals),
+       });
+     } else {
+       // For wstETH markets: track ETH balance
+       balanceBefore = (await publicClient.getBalance({ address })) as bigint;
+       console.log(`[Swap] ${targetTokenSymbol} balance before swap:`, {
+         balance: balanceBefore.toString(),
+         formatted: formatUnits(balanceBefore, targetTokenDecimals),
+       });
+     }
      
      // Get swap transaction data from ParaSwap
      const swapTx = await getDefiLlamaSwapTx(
        fromTokenForSwap,
-       USDC_ADDRESS,
-       amountBigInt, // Already in correct decimals from parseUnits
+       swapTargetToken as any,
+       amountBigInt,
        address,
-       1.0 // 1% slippage tolerance
+       1.0, // 1% slippage tolerance
+       selectedTokenDecimals,
+       targetTokenDecimals
      );
      
      // Execute swap using sendTransaction (ParaSwap gives raw tx data, not contract call)
@@ -789,105 +833,119 @@ const preDepositBalance = userCurrentDeposit;
      });
      
      setTxHash(swapHash);
-     
      console.log("[Swap] Transaction sent, waiting for confirmation:", swapHash);
      
      // Wait for transaction confirmation
      await publicClient?.waitForTransactionReceipt({ hash: swapHash });
-     
      console.log("[Swap] Transaction confirmed, waiting for balance update...");
      
      // Wait for balance to update (3 seconds should be enough)
      await new Promise((resolve) => setTimeout(resolve, 3000));
      
-     // Get USDC balance AFTER swap
-     const usdcBalanceAfter = await publicClient.readContract({
-       address: USDC_ADDRESS,
-       abi: ERC20_ABI,
-       functionName: "balanceOf",
-       args: [address],
-       blockTag: 'latest', // Force latest block
-     });
-     
-     console.log("[Swap] USDC balance after swap:", {
-       balanceBefore: usdcBalanceBefore ? usdcBalanceBefore.toString() : "0",
-       balanceAfter: usdcBalanceAfter ? usdcBalanceAfter.toString() : "0",
-       difference: ((usdcBalanceAfter as bigint) - (usdcBalanceBefore as bigint)).toString(),
-       formattedBefore: usdcBalanceBefore ? formatUnits(usdcBalanceBefore as bigint, 6) : "0",
-       formattedAfter: usdcBalanceAfter ? formatUnits(usdcBalanceAfter as bigint, 6) : "0",
-       formattedDifference: formatUnits((usdcBalanceAfter as bigint) - (usdcBalanceBefore as bigint), 6),
-     });
-     
-     const usdcReceived = (usdcBalanceAfter as bigint) - (usdcBalanceBefore as bigint);
-     
-     if (usdcReceived <= 0n) {
-       throw new Error(`No USDC received from swap. Balance may still be updating. Current USDC: ${formatUnits(usdcBalanceAfter as bigint, 6)}`);
+     // Get balance AFTER swap
+     let balanceAfter: bigint;
+     if (isFxSAVEMarket) {
+       balanceAfter = await publicClient.readContract({
+         address: USDC_ADDRESS,
+         abi: ERC20_ABI,
+         functionName: "balanceOf",
+         args: [address],
+         blockTag: 'latest',
+       }) as bigint;
+     } else {
+       balanceAfter = (await publicClient.getBalance({ address })) as bigint;
      }
      
-    // Store USDC amount received from swap for deposit step
-    (window as any).__swapUsdcAmount = usdcReceived;
+     console.log(`[Swap] ${targetTokenSymbol} balance after swap:`, {
+       balanceBefore: balanceBefore.toString(),
+       balanceAfter: balanceAfter.toString(),
+       difference: (balanceAfter - balanceBefore).toString(),
+       formattedBefore: formatUnits(balanceBefore, targetTokenDecimals),
+       formattedAfter: formatUnits(balanceAfter, targetTokenDecimals),
+       formattedDifference: formatUnits(balanceAfter - balanceBefore, targetTokenDecimals),
+     });
+     
+     const received = balanceAfter - balanceBefore;
+     
+     if (received <= 0n) {
+       throw new Error(`No ${targetTokenSymbol} received from swap. Balance may still be updating.`);
+     }
+     
+    // Store received amount for deposit step
+    if (isFxSAVEMarket) {
+      (window as any).__swapUsdcAmount = received;
+    } else {
+      (window as any).__swapEthAmount = received;
+    }
     
     setProgressSteps((prev) =>
       prev.map((s) =>
         s.id === "swap" ? { ...s, status: "completed", txHash: swapHash } : s
       )
     );
-    setCurrentStepIndex(steps.findIndex((s) => s.id === "approve"));
     
-    // After swap, we need to approve the USDC for the zapper contract
-    console.log("[Swap] Swap complete, now approving USDC for zapper...");
-    
-    setStep("approving");
-    setProgressSteps((prev) =>
-      prev.map((s) =>
-        s.id === "approve" ? { ...s, status: "in_progress" } : s
-      )
-    );
-    setError(null);
-    setTxHash(null);
-    
-    // Approve USDC for zapper contract
-    const approveHash = await writeContractAsync({
-      address: USDC_ADDRESS,
-      abi: ERC20_ABI,
-      functionName: "approve",
-      args: [genesisZapAddress as `0x${string}`, usdcReceived],
-    });
-    
-    setTxHash(approveHash);
-    console.log("[Approval] USDC approval transaction sent:", approveHash);
-    
-    await publicClient?.waitForTransactionReceipt({ hash: approveHash });
-    console.log("[Approval] USDC approval confirmed");
-    
-    // Give a moment for the blockchain state to update
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    
-    // Verify the approval was successful
-    const allowanceAfterApproval = await publicClient.readContract({
-      address: USDC_ADDRESS,
-      abi: ERC20_ABI,
-      functionName: "allowance",
-      args: [address, genesisZapAddress as `0x${string}`],
-    });
-    
-    console.log("[Approval] USDC allowance after approval:", {
-      raw: allowanceAfterApproval.toString(),
-      formatted: formatUnits(allowanceAfterApproval as bigint, 6),
-      required: formatUnits(usdcReceived, 6),
-    });
-    
-    if ((allowanceAfterApproval as bigint) < usdcReceived) {
-      throw new Error(`Approval failed: allowance ${formatUnits(allowanceAfterApproval as bigint, 6)} < required ${formatUnits(usdcReceived, 6)}`);
+    // For fxSAVE markets (USDC swap), we need to approve USDC for the zapper
+    // For wstETH markets (ETH swap), no approval needed - ETH is native
+    if (isFxSAVEMarket) {
+      setCurrentStepIndex(steps.findIndex((s) => s.id === "approve"));
+      console.log("[Swap] Swap complete, now approving USDC for zapper...");
+      
+      setStep("approving");
+      setProgressSteps((prev) =>
+        prev.map((s) =>
+          s.id === "approve" ? { ...s, status: "in_progress" } : s
+        )
+      );
+      setError(null);
+      setTxHash(null);
+      
+      // Approve USDC for zapper contract
+      const approveHash = await writeContractAsync({
+        address: USDC_ADDRESS,
+        abi: ERC20_ABI,
+        functionName: "approve",
+        args: [genesisZapAddress as `0x${string}`, received],
+      });
+      
+      setTxHash(approveHash);
+      console.log("[Approval] USDC approval transaction sent:", approveHash);
+      
+      await publicClient?.waitForTransactionReceipt({ hash: approveHash });
+      console.log("[Approval] USDC approval confirmed");
+      
+      // Give a moment for the blockchain state to update
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      
+      // Verify the approval was successful
+      const allowanceAfterApproval = await publicClient.readContract({
+        address: USDC_ADDRESS,
+        abi: ERC20_ABI,
+        functionName: "allowance",
+        args: [address, genesisZapAddress as `0x${string}`],
+      });
+      
+      console.log("[Approval] USDC allowance after approval:", {
+        raw: allowanceAfterApproval.toString(),
+        formatted: formatUnits(allowanceAfterApproval as bigint, 6),
+        required: formatUnits(received, 6),
+      });
+      
+      if ((allowanceAfterApproval as bigint) < received) {
+        throw new Error(`Approval failed: allowance ${formatUnits(allowanceAfterApproval as bigint, 6)} < required ${formatUnits(received, 6)}`);
+      }
+      
+      setProgressSteps((prev) =>
+        prev.map((s) =>
+          s.id === "approve"
+            ? { ...s, status: "completed", txHash: approveHash }
+            : s
+        )
+      );
+    } else {
+      // For ETH swaps, no approval needed - go straight to deposit
+      console.log("[Swap] Swap complete (ETH received, no approval needed)");
     }
     
-    setProgressSteps((prev) =>
-      prev.map((s) =>
-        s.id === "approve"
-          ? { ...s, status: "completed", txHash: approveHash }
-          : s
-      )
-    );
     setCurrentStepIndex(steps.findIndex((s) => s.id === "deposit"));
   } catch (err: any) {
     console.error("Swap error:", err);
@@ -957,20 +1015,39 @@ if (!isNativeETH && needsApproval && !needsSwap) {
       needsSwap,
       useETHZap,
       useUSDCZap,
+      needsETHZapAfterSwap,
       genesisZapAddress,
       wstETHAddress,
       swapUsdcAmount: (window as any).__swapUsdcAmount?.toString(),
+      swapEthAmount: (window as any).__swapEthAmount?.toString(),
     });
 
     // Use genesis zap contract for ETH, stETH, USDC, and FXUSD deposits
-    // IMPORTANT: For ETH in fxSAVE markets, we need to swap first, so skip this branch
     let depositHash: `0x${string}`;
-    if (isNativeETH && useETHZap && genesisZapAddress && wstETHAddress && !needsSwap) {
+    
+    // ETH zap: direct ETH deposits OR swapped tokens to ETH (for wstETH markets)
+    if ((isNativeETH || needsETHZapAfterSwap) && genesisZapAddress && wstETHAddress) {
       console.log("[Deposit] Taking ETH zap branch");
+      
+      // Determine ETH amount: direct deposit or from swap
+      const ethAmount = needsETHZapAfterSwap 
+        ? ((window as any).__swapEthAmount as bigint)
+        : amountBigInt;
+      
+      if (!ethAmount || ethAmount <= 0n) {
+        throw new Error("Invalid ETH amount for deposit");
+      }
+      
+      console.log("[Deposit] ETH amount for zap:", {
+        raw: ethAmount.toString(),
+        formatted: formatUnits(ethAmount, 18),
+        source: needsETHZapAfterSwap ? "swap" : "direct",
+      });
+      
       // Use zapEth for ETH deposits with slippage protection
       // Contract flow: ETH → stETH (via submit, 1:1) → wstETH (via wrap) → Genesis
       // stETH.submit() returns stETH tokens 1:1 with ETH (not shares)
-      const stETHAmount = amountBigInt; // ETH amount = stETH amount (1:1 from submit)
+      const stETHAmount = ethAmount; // ETH amount = stETH amount (1:1 from submit)
       
       // Get expected wstETH from stETH amount
       const expectedWstETH = await publicClient.readContract({
@@ -980,16 +1057,31 @@ if (!isNativeETH && needsApproval && !needsSwap) {
         args: [stETHAmount],
       });
       
+      console.log("[Deposit] Expected wstETH output:", {
+        raw: expectedWstETH.toString(),
+        formatted: formatUnits(expectedWstETH as bigint, 18),
+      });
+      
       // Apply 1% slippage buffer (99% of expected)
       const minWstETHOut = (expectedWstETH * 99n) / 100n;
+      
+      console.log("[Deposit] Minimum wstETH output (99%):", {
+        raw: minWstETHOut.toString(),
+        formatted: formatUnits(minWstETHOut, 18),
+      });
       
       depositHash = await writeContractAsync({
         address: genesisZapAddress,
         abi: ZAP_ABI,
         functionName:"zapEth",
         args: [address as `0x${string}`, minWstETHOut],
-        value: amountBigInt,
+        value: ethAmount,
       });
+      
+      // Clean up swap amount if used
+      if (needsETHZapAfterSwap) {
+        delete (window as any).__swapEthAmount;
+      }
     } else if (isStETH && useETHZap && genesisZapAddress && wstETHAddress) {
       console.log("[Deposit] Taking stETH zap branch");
       // Use zapStEth for stETH deposits with slippage protection
@@ -1619,11 +1711,14 @@ const successFmt = formatTokenAmount(successAmountBigInt, collateralSymbol, coll
  </div>
  
  {/* Swap details - show when swapping */}
- {needsSwap && swapQuote && swapQuote.toAmount > 0n && (
+ {needsSwap && swapQuote && swapQuote.toAmount > 0n && (() => {
+   const targetToken = isFxSAVEMarket ? "USDC" : "ETH";
+   const targetDecimals = isFxSAVEMarket ? 6 : 18;
+   return (
    <div className="p-2 bg-blue-50 border border-blue-200 rounded space-y-1 text-xs">
      <div className="flex items-center justify-between">
        <span className="text-blue-700">Swap via ParaSwap:</span>
-       <span className="font-mono text-blue-900">{formatUnits(swapQuote.toAmount, 6)} USDC</span>
+       <span className="font-mono text-blue-900">{formatUnits(swapQuote.toAmount, targetDecimals)} {targetToken}</span>
      </div>
      <div className="flex items-center justify-between">
        <span className="text-blue-700">Slippage:</span>
@@ -1638,7 +1733,8 @@ const successFmt = formatTokenAmount(successAmountBigInt, collateralSymbol, coll
        </span>
      </div>
    </div>
- )}
+   );
+ })()}
  
 {(() => {
   const displaySymbol = wrappedCollateralSymbol || collateralSymbol;
