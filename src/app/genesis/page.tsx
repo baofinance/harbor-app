@@ -1528,32 +1528,32 @@ export default function GenesisIndexPage() {
                   <div className="md:hidden space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <span className="text-[#1E4775] font-medium text-base">
+                        <span className="text-[#1E4775] font-medium text-base flex-1 min-w-0 truncate">
                           {rowLeveragedSymbol &&
                           rowLeveragedSymbol.toLowerCase().startsWith("hs")
                             ? rowLeveragedSymbol.slice(2)
                             : rowLeveragedSymbol || (mkt as any).name}
                         </span>
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-0.5 flex-shrink-0">
                           <Image
                             src={getLogoPath(rowPeggedSymbol)}
                             alt={rowPeggedSymbol}
-                            width={24}
-                            height={24}
+                            width={20}
+                            height={20}
                             className="flex-shrink-0"
                           />
                           <Image
                             src={getLogoPath(rowLeveragedSymbol)}
                             alt={rowLeveragedSymbol}
-                            width={24}
-                            height={24}
+                            width={20}
+                            height={20}
                             className="flex-shrink-0"
                           />
                         </div>
                         {isExpanded ? (
-                          <ChevronUpIcon className="w-5 h-5 text-[#1E4775] flex-shrink-0" />
+                          <ChevronUpIcon className="w-4 h-4 text-[#1E4775] flex-shrink-0" />
                         ) : (
-                          <ChevronDownIcon className="w-5 h-5 text-[#1E4775] flex-shrink-0" />
+                          <ChevronDownIcon className="w-4 h-4 text-[#1E4775] flex-shrink-0" />
                         )}
                       </div>
                       <div
