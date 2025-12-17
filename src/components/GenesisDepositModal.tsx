@@ -20,6 +20,8 @@ import {
 } from "./TransactionProgressModal";
 import { formatTokenAmount, formatBalance, formatUSD } from "@/utils/formatters";
 import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
+import { useDefiLlamaSwap, getDefiLlamaSwapTx } from "@/hooks/useDefiLlamaSwap";
+import { useUserTokens, getTokenAddress, getTokenInfo } from "@/hooks/useUserTokens";
 
 interface GenesisDepositModalProps {
  isOpen: boolean;
@@ -167,6 +169,26 @@ const genesisZapAddress = marketAddresses?.genesisZap as `0x${string}` | undefin
 const isETHStETHMarket = collateralSymbol.toLowerCase() === "wsteth";
 const useETHZap = isETHStETHMarket && (isNativeETH || isStETH);
 const useUSDCZap = !isETHStETHMarket && (isUSDC || isFXUSD);
+
+// Determine if selected asset needs to be swapped to USDC (for fxSAVE markets)
+// For fxSAVE markets: only USDC, fxUSD, and fxSAVE are accepted directly
+// All other tokens need to be swapped to USDC first
+const isFxSAVEMarket = !isETHStETHMarket; // fxSAVE backed markets (ETH/fxUSD, BTC/fxUSD)
+const isDirectlyAccepted = isUSDC || isFXUSD || isFXSAVE || 
+  (isETHStETHMarket && (isNativeETH || isStETH || selectedAsset.toLowerCase() === "wsteth"));
+const needsSwap = isFxSAVEMarket && !isDirectlyAccepted && selectedAssetAddress && selectedAssetAddress !== "0x0000000000000000000000000000000000000000";
+
+// USDC address for swaps
+const USDC_ADDRESS = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" as `0x${string}`;
+
+// Get swap quote if token needs swapping
+const fromTokenForSwap = isNativeETH ? "ETH" : (selectedAssetAddress as `0x${string}`);
+const { data: swapQuote, isLoading: isLoadingSwapQuote, error: swapQuoteError } = useDefiLlamaSwap(
+  fromTokenForSwap,
+  USDC_ADDRESS,
+  amount,
+  needsSwap && !!amount && parseFloat(amount) > 0 && !!fromTokenForSwap
+);
 
 const stETHAddress = isETHStETHMarket 
   ? (marketAddresses?.wrappedCollateralToken || contracts.wrappedCollateralToken) as `0x${string}` | undefined
@@ -590,11 +612,20 @@ const preDepositBalance = userCurrentDeposit;
 
  // Initialize progress modal steps
  const steps: TransactionStep[] = [];
- const includeApproval = !isNativeETH && needsApproval;
+ const includeApproval = !isNativeETH && needsApproval && !needsSwap; // Don't approve if we're swapping (swap will handle it)
+ const includeSwap = needsSwap && swapQuote;
+ 
  if (includeApproval) {
  steps.push({
  id:"approve",
  label: `Approve ${selectedAsset}`,
+ status:"pending",
+ });
+ }
+ if (includeSwap) {
+ steps.push({
+ id:"swap",
+ label: `Swap ${selectedAsset} → USDC`,
  status:"pending",
  });
  }
@@ -607,8 +638,87 @@ const preDepositBalance = userCurrentDeposit;
  setCurrentStepIndex(0);
  setProgressModalOpen(true);
 
+ // Execute swap if needed
+ if (includeSwap && swapQuote && address) {
+   setStep("depositing"); // Use depositing step for swap
+   setProgressSteps((prev) =>
+     prev.map((s) =>
+       s.id === "swap" ? { ...s, status: "in_progress" } : s
+     )
+   );
+   setCurrentStepIndex(steps.findIndex((s) => s.id === "swap"));
+   setError(null);
+   setTxHash(null);
+   
+   try {
+     // Get swap transaction data from DefiLlama
+     const swapTx = await getDefiLlamaSwapTx(
+       fromTokenForSwap,
+       USDC_ADDRESS,
+       amountBigInt,
+       address,
+       1.0 // 1% slippage tolerance
+     );
+     
+     // Execute swap
+     const swapHash = await writeContractAsync({
+       to: swapTx.to,
+       data: swapTx.data,
+       value: isNativeETH ? amountBigInt : 0n,
+     });
+     
+     setTxHash(swapHash);
+     await publicClient?.waitForTransactionReceipt({ hash: swapHash });
+     
+     // Get actual USDC received
+     const usdcBalanceBefore = await publicClient.readContract({
+       address: USDC_ADDRESS,
+       abi: ERC20_ABI,
+       functionName: "balanceOf",
+       args: [address],
+     });
+     
+     // Wait for balance to update
+     await new Promise((resolve) => setTimeout(resolve, 2000));
+     
+     const usdcBalanceAfter = await publicClient.readContract({
+       address: USDC_ADDRESS,
+       abi: ERC20_ABI,
+       functionName: "balanceOf",
+       args: [address],
+     });
+     
+     const usdcReceived = (usdcBalanceAfter as bigint) - (usdcBalanceBefore as bigint);
+     
+     if (usdcReceived <= 0n) {
+       throw new Error("No USDC received from swap");
+     }
+     
+     // Update amount to USDC amount for deposit
+     // Store USDC amount for deposit step
+     (window as any).__swapUsdcAmount = usdcReceived;
+     
+     setProgressSteps((prev) =>
+       prev.map((s) =>
+         s.id === "swap" ? { ...s, status: "completed", txHash: swapHash } : s
+       )
+     );
+     setCurrentStepIndex(steps.findIndex((s) => s.id === "deposit"));
+   } catch (err: any) {
+     console.error("Swap error:", err);
+     setError(err.message || "Swap failed. Please try again.");
+     setStep("error");
+     setProgressSteps((prev) =>
+       prev.map((s) =>
+         s.id === "swap" ? { ...s, status: "error", error: err.message } : s
+       )
+     );
+     return;
+   }
+ }
+
  // For non-native tokens, check and approve if needed
- if (!isNativeETH && needsApproval) {
+ if (!isNativeETH && needsApproval && !needsSwap) {
  setStep("approving");
  setProgressSteps((prev) =>
  prev.map((s) =>
@@ -699,11 +809,18 @@ const preDepositBalance = userCurrentDeposit;
         functionName:"zapStEth",
         args: [amountBigInt, address as `0x${string}`, minWstETHOut],
       });
-    } else if (isUSDC && useUSDCZap && genesisZapAddress) {
+    } else if ((isUSDC || needsSwap) && useUSDCZap && genesisZapAddress) {
       // Use zapUsdcToGenesis for USDC deposits with slippage protection
+      // If this is after a swap, use the USDC amount from swap
+      const usdcAmount = needsSwap ? ((window as any).__swapUsdcAmount as bigint) : amountBigInt;
+      
+      if (!usdcAmount || usdcAmount <= 0n) {
+        throw new Error("Invalid USDC amount for deposit");
+      }
+      
       // Get expected fxSAVE output from USDC amount
       // Contract expects USDC in 18 decimals, so scale from 6 to 18
-      const usdcAmountScaled = amountBigInt * 10n ** 12n;
+      const usdcAmountScaled = usdcAmount * 10n ** 12n;
       const expectedFxSaveOut = await publicClient.readContract({
         address: genesisZapAddress,
         abi: USDC_ZAP_ABI,
@@ -718,8 +835,13 @@ const preDepositBalance = userCurrentDeposit;
         address: genesisZapAddress,
         abi: USDC_ZAP_ABI,
         functionName: "zapUsdcToGenesis",
-        args: [amountBigInt, minFxSaveOut, address as `0x${string}`],
+        args: [usdcAmount, minFxSaveOut, address as `0x${string}`],
       });
+      
+      // Clean up swap amount
+      if (needsSwap) {
+        delete (window as any).__swapUsdcAmount;
+      }
     } else if (isFXUSD && useUSDCZap && genesisZapAddress) {
       // Use zapFxUsdToGenesis for FXUSD deposits with slippage protection
       // Get expected fxSAVE output from FXUSD amount
@@ -1002,12 +1124,15 @@ setSuccessfulDepositAmount(actualDepositedAmount);
  case"approving":
  return"Approving...";
  case"depositing":
- return"Depositing...";
+ return needsSwap ? "Swapping..." : "Depositing...";
  case"success":
  return"Deposit";
  case"error":
  return"Try Again";
  default:
+ if (needsSwap) {
+   return needsApproval ? "Approve, Swap & Deposit" : "Swap & Deposit";
+ }
  return needsApproval ?"Approve & Deposit" :"Deposit";
  }
  };
@@ -1194,6 +1319,99 @@ const successFmt = formatTokenAmount(successAmountBigInt, collateralSymbol, coll
  </button>
  </div>
  </div>
+
+ {/* Swap Preview - Show when token needs swapping */}
+ {needsSwap && amount && parseFloat(amount) > 0 && (
+   <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg space-y-3">
+     <div className="font-semibold text-blue-900 text-sm">Swap Preview</div>
+     
+     {isLoadingSwapQuote ? (
+       <div className="text-sm text-blue-700">Loading swap quote...</div>
+     ) : swapQuoteError ? (
+       <div className="p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700">
+         Failed to fetch swap quote. Please try again or use a different token.
+       </div>
+     ) : swapQuote ? (
+       <>
+         <div className="space-y-2 text-sm">
+           <div className="flex items-center justify-between">
+             <span className="text-blue-800">You'll swap:</span>
+             <span className="font-mono text-blue-900">{amount} {selectedAsset}</span>
+           </div>
+           
+           <div className="flex items-center justify-center text-blue-600">
+             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+             </svg>
+           </div>
+           
+           <div className="flex items-center justify-between">
+             <span className="text-blue-800">You'll receive:</span>
+             <span className="font-mono text-blue-900">
+               {formatUnits(swapQuote.toAmount, 6)} USDC
+             </span>
+           </div>
+           
+           <div className="flex items-center justify-between text-xs">
+             <span className="text-blue-700">Slippage:</span>
+             <span className={`font-mono ${swapQuote.slippage > 2 ? "text-orange-600 font-semibold" : "text-green-600"}`}>
+               {swapQuote.slippage.toFixed(2)}%
+             </span>
+           </div>
+           
+           <div className="flex items-center justify-between text-xs">
+             <span className="text-blue-700">Fee:</span>
+             <span className="font-mono text-blue-700">
+               {swapQuote.fee.toFixed(2)}% ({formatUSD(Number(swapQuote.feeAmount) / 1e6)})
+             </span>
+           </div>
+           
+           {swapQuote.priceImpact > 5 && (
+             <div className="p-2 bg-orange-100 border border-orange-300 rounded text-xs text-orange-800">
+               ⚠️ High price impact ({swapQuote.priceImpact.toFixed(2)}%). 
+               Consider splitting into smaller transactions.
+             </div>
+           )}
+           
+           {/* Calculate total cost (slippage + fee) and warn if > 2% */}
+           {(() => {
+             const totalCostPercent = swapQuote.slippage + swapQuote.fee;
+             const totalCostUSD = (Number(swapQuote.fromAmount) / 1e18) * (totalCostPercent / 100) * (selectedAssetPriceUSD || 0);
+             
+             if (totalCostPercent > 2) {
+               return (
+                 <div className="p-2 bg-red-100 border border-red-300 rounded text-xs text-red-800 font-semibold">
+                   ⚠️ Warning: Total cost (slippage + fees) is {totalCostPercent.toFixed(2)}% ({formatUSD(totalCostUSD)}). 
+                   This exceeds 2% of your deposit value.
+                 </div>
+               );
+             }
+             return null;
+           })()}
+           
+           {/* Show final fxSAVE amount after swap + zap */}
+           {swapQuote.toAmount > 0n && genesisZapAddress && (
+             <div className="pt-2 border-t border-blue-200">
+               <div className="flex items-center justify-between text-sm font-semibold">
+                 <span className="text-blue-900">Final deposit (fxSAVE):</span>
+                 <span className="font-mono text-blue-900">
+                   {(() => {
+                     // Estimate fxSAVE from USDC (will be calculated more accurately in actual deposit)
+                     // For preview, we can show approximate amount
+                     const usdcAmount = Number(swapQuote.toAmount) / 1e6;
+                     // fxSAVE is typically ~1.07x USDC, but this is approximate
+                     const estimatedFxSave = usdcAmount * 1.07;
+                     return estimatedFxSave.toFixed(4);
+                   })()} fxSAVE (approx.)
+                 </span>
+               </div>
+             </div>
+           )}
+         </div>
+       </>
+     ) : null}
+   </div>
+ )}
 
  {/* Transaction Preview - Always visible */}
  <div className="p-3 bg-[#17395F]/10 border border-[#1E4775]/20 space-y-2 text-sm">
