@@ -70,6 +70,8 @@ export const GenesisDepositModal = ({
  const [selectedAsset, setSelectedAsset] = useState<string>(collateralSymbol);
  const [customTokenAddress, setCustomTokenAddress] = useState<string>("");
  const [showCustomTokenInput, setShowCustomTokenInput] = useState(false);
+ const [slippageTolerance, setSlippageTolerance] = useState<number>(1.0); // Default 1% slippage
+ const [showSlippageInput, setShowSlippageInput] = useState(false);
  const [step, setStep] = useState<ModalStep>("input");
  const [error, setError] = useState<string | null>(null);
  const [txHash, setTxHash] = useState<string | null>(null);
@@ -683,6 +685,8 @@ const newTotalDepositActual: bigint = userCurrentDeposit + actualCollateralDepos
  setSelectedAsset(collateralSymbol);
  setCustomTokenAddress("");
  setShowCustomTokenInput(false);
+ setSlippageTolerance(1.0);
+ setShowSlippageInput(false);
  setStep("input");
  setError(null);
  setTxHash(null);
@@ -890,7 +894,7 @@ const preDepositBalance = userCurrentDeposit;
        swapTargetToken as any,
        amountBigInt,
        address,
-       1.0, // 1% slippage tolerance
+       slippageTolerance, // User's selected slippage tolerance
        selectedTokenDecimals,
        targetTokenDecimals
      );
@@ -1820,19 +1824,49 @@ const successFmt = formatTokenAmount(successAmountBigInt, collateralSymbol, coll
    const targetToken = isFxSAVEMarket ? "USDC" : "ETH";
    const targetDecimals = isFxSAVEMarket ? 6 : 18;
    return (
-   <div className="p-2 bg-blue-50 border border-blue-200 rounded space-y-1 text-xs">
+   <div className="p-2 bg-blue-50 border border-blue-200 space-y-1 text-xs">
      <div className="flex items-center justify-between">
        <span className="text-blue-700">Swap via ParaSwap:</span>
        <span className="font-mono text-blue-900">{formatUnits(swapQuote.toAmount, targetDecimals)} {targetToken}</span>
      </div>
      <div className="flex items-center justify-between">
-       <span className="text-blue-700">Slippage:</span>
-       <span className={`font-mono ${swapQuote.slippage > 2 ? "text-orange-600" : "text-green-600"}`}>
-         {swapQuote.slippage.toFixed(2)}%
-       </span>
+       <span className="text-blue-700">Slippage Tolerance:</span>
+       {showSlippageInput ? (
+         <div className="flex items-center gap-1">
+           <input
+             type="number"
+             step="0.1"
+             min="0.1"
+             max="50"
+             value={slippageTolerance}
+             onChange={(e) => {
+               const val = parseFloat(e.target.value);
+               if (!isNaN(val) && val >= 0.1 && val <= 50) {
+                 setSlippageTolerance(val);
+               }
+             }}
+             onBlur={() => setShowSlippageInput(false)}
+             onKeyDown={(e) => {
+               if (e.key === 'Enter' || e.key === 'Escape') {
+                 setShowSlippageInput(false);
+               }
+             }}
+             autoFocus
+             className="w-16 px-1 py-0.5 text-right font-mono text-blue-900 border border-blue-300 focus:outline-none focus:border-blue-500"
+           />
+           <span className="text-blue-900">%</span>
+         </div>
+       ) : (
+         <button
+           onClick={() => setShowSlippageInput(true)}
+           className="font-mono text-blue-900 hover:text-blue-600 underline decoration-dotted cursor-pointer"
+         >
+           {slippageTolerance.toFixed(1)}%
+         </button>
+       )}
      </div>
      <div className="flex items-center justify-between">
-       <span className="text-blue-700">Fee:</span>
+       <span className="text-blue-700">ParaSwap Fee:</span>
        <span className="font-mono text-blue-700">
          {swapQuote.fee.toFixed(2)}%
        </span>
