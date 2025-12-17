@@ -951,6 +951,24 @@ const preDepositBalance = userCurrentDeposit;
     // Give a moment for the blockchain state to update
     await new Promise((resolve) => setTimeout(resolve, 1000));
     
+    // Verify the approval was successful
+    const allowanceAfterApproval = await publicClient.readContract({
+      address: USDC_ADDRESS,
+      abi: ERC20_ABI,
+      functionName: "allowance",
+      args: [address, genesisZapAddress as `0x${string}`],
+    });
+    
+    console.log("[Approval] USDC allowance after approval:", {
+      raw: allowanceAfterApproval.toString(),
+      formatted: formatUnits(allowanceAfterApproval as bigint, 6),
+      required: formatUnits(usdcReceived, 6),
+    });
+    
+    if ((allowanceAfterApproval as bigint) < usdcReceived) {
+      throw new Error(`Approval failed: allowance ${formatUnits(allowanceAfterApproval as bigint, 6)} < required ${formatUnits(usdcReceived, 6)}`);
+    }
+    
     setProgressSteps((prev) =>
       prev.map((s) =>
         s.id === "approve"
