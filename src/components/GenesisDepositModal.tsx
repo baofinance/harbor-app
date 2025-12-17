@@ -33,14 +33,14 @@ interface GenesisDepositModalProps {
  collateralSymbol: string;
  wrappedCollateralSymbol?: string;
  acceptedAssets: Array<{ symbol: string; name: string }>;
-  marketAddresses?: {
-    collateralToken?: string;
-    wrappedCollateralToken?: string;
-    priceOracle?: string;
+ marketAddresses?: {
+ collateralToken?: string;
+ wrappedCollateralToken?: string;
+priceOracle?: string;
     genesisZap?: string; // Genesis zap contract address for this market
     peggedTokenZap?: string; // Pegged token zap contract address (future)
     leveragedTokenZap?: string; // Leveraged token zap contract address (future)
-  };
+ };
  coinGeckoId?: string;
  onSuccess?: () => void;
  embedded?: boolean;
@@ -82,7 +82,7 @@ export const GenesisDepositModal = ({
  const [currentStepIndex, setCurrentStepIndex] = useState(0);
  const [successfulDepositAmount, setSuccessfulDepositAmount] =
  useState<string>("");
- 
+
  // Delay contract reads until modal is fully mounted to avoid fetch errors
  const [mounted, setMounted] = useState(false);
  
@@ -146,30 +146,35 @@ const { tokens: userTokens, isLoading: isLoadingUserTokens } = useUserTokens();
    return userToken.address;
  }
  
- // Collateral token (fxUSD, wstETH, etc.)
- if (normalized === collateralSymbol.toLowerCase()) {
-   return collateralAddress;
- }
- 
- // Wrapped collateral token (fxSAVE, stETH, etc.)
- if (normalized === "fxsave" || normalized === "steth") {
-   return marketAddresses?.wrappedCollateralToken || null;
- }
- 
- // USDC (standard mainnet address)
- if (normalized === "usdc") {
-   return "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
- }
- 
- // fxUSD - use collateralToken address
- if (normalized === "fxusd") {
-   return marketAddresses?.collateralToken || collateralAddress;
- }
- 
- // wstETH - use collateralToken address if it's wstETH
- if (normalized === "wsteth") {
-   return marketAddresses?.collateralToken || collateralAddress;
- }
+// Collateral token (fxUSD, wstETH, etc.)
+if (normalized === collateralSymbol.toLowerCase()) {
+return collateralAddress;
+}
+
+// fxSAVE - wrapped collateral for fxUSD markets
+if (normalized === "fxsave") {
+  return marketAddresses?.wrappedCollateralToken || null;
+}
+
+// stETH - underlying token for wstETH markets (from contracts.ts underlyingCollateralToken)
+if (normalized === "steth") {
+  return "0xae7ab96520de3a18e5e111b5eaab095312d7fe84"; // stETH mainnet address
+}
+
+// USDC (standard mainnet address)
+if (normalized === "usdc") {
+  return "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
+}
+
+// fxUSD - use collateralToken address
+if (normalized === "fxusd") {
+  return marketAddresses?.collateralToken || collateralAddress;
+}
+
+// wstETH - use wrappedCollateralToken (now correctly points to wstETH)
+if (normalized === "wsteth") {
+  return marketAddresses?.wrappedCollateralToken || marketAddresses?.collateralToken || collateralAddress;
+}
  
  return null;
  };
@@ -293,12 +298,13 @@ const allAvailableAssets = React.useMemo(() => {
   });
 }, [acceptedAssets, userTokens]);
 
+// For stETH markets: stETH is the underlying rebasing token, wstETH is the wrapped version
 const stETHAddress = isETHStETHMarket 
-  ? (marketAddresses?.wrappedCollateralToken || contracts.wrappedCollateralToken) as `0x${string}` | undefined
-  : undefined; // stETH
+  ? "0xae7ab96520de3a18e5e111b5eaab095312d7fe84" as `0x${string}` // stETH mainnet address
+  : undefined;
 const wstETHAddress = isETHStETHMarket
-  ? (marketAddresses?.collateralToken || contracts.collateralToken) as `0x${string}` | undefined
-  : undefined; // wstETH
+  ? (marketAddresses?.wrappedCollateralToken || marketAddresses?.collateralToken) as `0x${string}` | undefined
+  : undefined; // wstETH (0x7f39...)
 
 // Check if selected asset is a wrapped token (fxSAVE, wstETH)
 const isWrappedToken = selectedAsset.toLowerCase() === "fxsave" || 
@@ -386,9 +392,9 @@ const assetBalanceContracts = acceptedAssets
     return {
       symbol: asset.symbol,
       address: assetAddress as `0x${string}`,
-      abi: ERC20_ABI,
+ abi: ERC20_ABI,
       functionName: "balanceOf" as const,
-      args: address ? [address] : undefined,
+ args: address ? [address] : undefined,
     };
   })
   .filter((c): c is NonNullable<typeof c> => c !== null);
@@ -415,7 +421,7 @@ const { data: allAssetBalances, error: balancesError } = useContractReads({
     retryDelay: 1000,
     allowFailure: true, // Don't fail all reads if one fails
   },
-});
+ });
 
 // Create a map of asset symbol to balance
 const assetBalanceMap = new Map<string, bigint>();
@@ -461,7 +467,7 @@ const { data: customTokenBalance } = useContractRead({
     retry: 1,
     allowFailure: true,
   },
-});
+ });
 
 // Get balance for selected asset (including custom tokens and user tokens)
 const selectedAssetBalance = isCustomToken || isUserTokenNotInAccepted
@@ -477,11 +483,11 @@ const allowanceTarget = (useETHZap || useUSDCZap) && genesisZapAddress ? genesis
  functionName:"allowance",
     args: address && isValidSelectedAssetAddress ? [address, allowanceTarget as `0x${string}`] : undefined,
  query: {
-   enabled:
-     !!address &&
-     isOpen &&
+ enabled:
+ !!address &&
+ isOpen &&
      mounted &&
-     !isNativeETH &&
+ !isNativeETH &&
      isValidSelectedAssetAddress,
    refetchInterval: isOpen ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
    retry: 1,
@@ -721,22 +727,22 @@ https://www.harborfinance.io/`;
  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
  const value = e.target.value;
  if (value ==="" || /^\d*\.?\d*$/.test(value)) {
-   // Cap at balance if value exceeds it
-   if (value && balance) {
-     try {
+ // Cap at balance if value exceeds it
+ if (value && balance) {
+ try {
        // Use token decimals dynamically
        const parsed = parseUnits(value, selectedTokenDecimals);
-       if (parsed > balance) {
+ if (parsed > balance) {
          setAmount(formatUnits(balance, selectedTokenDecimals));
-         setError(null);
-         return;
-       }
-     } catch {
-       // Allow partial input (e.g., trailing decimal)
-     }
-   }
-   setAmount(value);
-   setError(null);
+ setError(null);
+ return;
+ }
+ } catch {
+ // Allow partial input (e.g., trailing decimal)
+ }
+ }
+ setAmount(value);
+ setError(null);
  }
  };
 
@@ -1649,17 +1655,17 @@ const successFmt = formatTokenAmount(successAmountBigInt, collateralSymbol, coll
  );
  };
 
-  if (!isOpen && !progressModalOpen) return null;
+ if (!isOpen && !progressModalOpen) return null;
 
   // Deposit form content
   const formContent = (
     <div className="space-y-4 sm:space-y-6">
-      {/* Genesis Status Warning */}
-      {genesisEnded && (
+ {/* Genesis Status Warning */}
+ {genesisEnded && (
  <div className="p-3 bg-red-50 border border-red-500/30 text-red-600 text-sm">
  ⚠️ Genesis period has ended. Deposits are no longer accepted.
  </div>
-            )}
+ )}
 
  {/* Deposit Asset Selection */}
  <div className="space-y-2">
@@ -1681,17 +1687,17 @@ const successFmt = formatTokenAmount(successAmountBigInt, collateralSymbol, coll
  }}
  className="w-full h-12 px-4 bg-white text-[#1E4775] border border-[#1E4775]/30 focus:border-[#1E4775] focus:ring-2 focus:ring-[#1E4775]/20 focus:outline-none transition-all text-lg font-mono"
  disabled={
-   step ==="approving" ||
-   step ==="depositing" ||
-   genesisEnded
+ step ==="approving" ||
+ step ==="depositing" ||
+ genesisEnded
  }
  >
    {/* Accepted assets */}
-   {acceptedAssets.map((asset) => (
-     <option key={asset.symbol} value={asset.symbol}>
-       {asset.name} ({asset.symbol})
-     </option>
-   ))}
+ {acceptedAssets.map((asset) => (
+ <option key={asset.symbol} value={asset.symbol}>
+ {asset.name} ({asset.symbol})
+ </option>
+ ))}
    
    {/* User tokens (if any) */}
    {userTokens.length > 0 && (
@@ -2067,23 +2073,23 @@ const successFmt = formatTokenAmount(successAmountBigInt, collateralSymbol, coll
  className="underline hover:text-[#1E4775]"
  >
  {txHash.slice(0, 10)}...{txHash.slice(-8)}
-        </a>
-        </div>
-      )}
+ </a>
+ </div>
+ )}
 
       {/* Submit Button */}
       <div>
-        <button
-          onClick={handleMainButtonClick}
-          disabled={isButtonDisabled()}
+ <button
+ onClick={handleMainButtonClick}
+ disabled={isButtonDisabled()}
           className={`w-full py-3 px-4 font-medium transition-colors rounded-full ${
             step === "success"
               ? "bg-[#1E4775] hover:bg-[#17395F] text-white"
               : "bg-[#1E4775] hover:bg-[#17395F] text-white disabled:bg-gray-300 disabled:text-gray-500"
-          }`}
-        >
-          {getButtonText()}
-        </button>
+ }`}
+ >
+ {getButtonText()}
+ </button>
       </div>
     </div>
   );
@@ -2174,10 +2180,10 @@ const successFmt = formatTokenAmount(successAmountBigInt, collateralSymbol, coll
 
             <div className="p-3 sm:p-4 lg:p-6">
               {formContent}
-            </div>
-          </div>
-        </div>
-      )}
-    </>
-  );
+ </div>
+ </div>
+ </div>
+ )}
+ </>
+ );
 };

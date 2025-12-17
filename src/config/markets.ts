@@ -185,7 +185,7 @@ export const markets = {
       collateralPrice: contractsMarkets["btc-steth"].addresses.collateralPrice,
       feeReceiver: contractsMarkets["btc-steth"].addresses.feeReceiver,
       collateralToken: contractsMarkets["btc-steth"].addresses.collateralToken, // wstETH (what's deposited in genesis)
-      wrappedCollateralToken: contractsMarkets["btc-steth"].addresses.underlyingCollateralToken, // stETH (kept for deposit modal compatibility)
+      wrappedCollateralToken: contractsMarkets["btc-steth"].addresses.collateralToken, // wstETH (matches deployment logs)
       genesisZap: contractsMarkets["btc-steth"].addresses.genesisZap, // GenesisETHZap_v3 for BTC/stETH
     },
     peggedToken: {
