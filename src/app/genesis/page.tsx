@@ -1528,7 +1528,7 @@ export default function GenesisIndexPage() {
                   <div className="md:hidden space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <span className="text-[#1E4775] font-medium text-base">
+                        <span className="text-[#1E4775] font-bold text-lg">
                           {rowLeveragedSymbol &&
                           rowLeveragedSymbol.toLowerCase().startsWith("hs")
                             ? rowLeveragedSymbol.slice(2)
@@ -1648,7 +1648,7 @@ export default function GenesisIndexPage() {
                           />
                         ))}
                       </div>
-                      <div className="flex items-center gap-1 px-1.5 py-0.5 bg-blue-100 text-blue-700 text-[9px] font-semibold uppercase tracking-wide">
+                      <div className="flex items-center gap-1 px-1.5 py-0.5 bg-blue-100 text-blue-700 text-[9px] font-semibold uppercase tracking-wide whitespace-nowrap">
                         <ArrowPathIcon className="w-2.5 h-2.5" />
                         <span>Any Token</span>
                       </div>
@@ -1699,7 +1699,7 @@ export default function GenesisIndexPage() {
                   <div className="hidden md:grid grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr] gap-4 items-center text-sm">
                     <div className="whitespace-nowrap min-w-0 overflow-hidden">
                       <div className="flex items-center justify-center gap-2">
-                        <span className="text-[#1E4775] font-medium">
+                        <span className="text-[#1E4775] font-bold text-lg">
                           {rowLeveragedSymbol &&
                           rowLeveragedSymbol.toLowerCase().startsWith("hs")
                             ? rowLeveragedSymbol.slice(2)
@@ -1766,7 +1766,7 @@ export default function GenesisIndexPage() {
                           </div>
                         }
                       >
-                        <div className="flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] font-semibold uppercase tracking-wide cursor-help">
+                        <div className="flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] font-semibold uppercase tracking-wide cursor-help whitespace-nowrap">
                           <ArrowPathIcon className="w-3 h-3" />
                           <span>Any Token</span>
                         </div>
