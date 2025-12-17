@@ -1,9 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { Address, formatUnits, parseUnits } from "viem";
 
-// Try different API endpoints - DefiLlama's swap API might be at different URL
-const DEFILLAMA_SWAP_API = "https://swap.defillama.com/api/quote";
-// Alternative: const DEFILLAMA_SWAP_API = "https://swap-api.defillama.com/quote";
+// Use 1inch API for swap quotes - more reliable and well-documented
+const ONEINCH_API_URL = "https://api.1inch.dev/swap/v6.0/1"; // Chain ID 1 = Ethereum Mainnet
 const ETH_ADDRESS = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeeEeE" as Address;
 
 // Helper to fetch token decimals (with caching)
@@ -59,19 +58,16 @@ export interface SwapQuote {
   feeAmount: bigint; // Fee in output token
 }
 
-interface DefiLlamaQuoteResponse {
-  fromTokenAmount: string;
-  toTokenAmount: string;
-  estimatedGas: string;
-  estimatedPrice: string;
-  spotPrice: string;
-  priceImpact: string;
-  route: Array<{
+interface OneInchQuoteResponse {
+  dstAmount: string; // Output amount
+  srcAmount: string; // Input amount (may differ from requested due to rounding)
+  gas: string;
+  protocols: Array<Array<Array<{
     name: string;
     part: number;
     fromTokenAddress: string;
     toTokenAddress: string;
-  }>;
+  }>>>;
 }
 
 export function useDefiLlamaSwap(
@@ -95,61 +91,71 @@ export function useDefiLlamaSwap(
       const decimals = fromTokenDecimals ?? 18;
       const amountInWei = parseUnits(amount, decimals);
 
-      const url = new URL(DEFILLAMA_SWAP_API);
-      url.searchParams.set("fromTokenAddress", fromTokenAddress);
-      url.searchParams.set("toTokenAddress", toToken);
-      url.searchParams.set("amount", amountInWei.toString());
-      url.searchParams.set("fromAddress", "0x0000000000000000000000000000000000000000");
-      url.searchParams.set("slippage", "1"); // 1% default slippage tolerance
+      const url = `${ONEINCH_API_URL}/quote`;
+      const params = new URLSearchParams({
+        src: fromTokenAddress,
+        dst: toToken,
+        amount: amountInWei.toString(),
+      });
 
-      console.log("[DefiLlama] Fetching swap quote:", {
+      console.log("[1inch] Fetching swap quote:", {
         fromToken: fromTokenAddress,
         toToken,
         amount,
         amountInWei: amountInWei.toString(),
         decimals,
-        url: url.toString(),
+        url: `${url}?${params.toString()}`,
       });
 
-      const response = await fetch(url.toString());
+      const response = await fetch(`${url}?${params.toString()}`, {
+        headers: {
+          'Accept': 'application/json',
+        },
+      });
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error("[DefiLlama] API error:", errorText);
+        console.error("[1inch] API error:", errorText);
         throw new Error(`Failed to fetch swap quote: ${errorText}`);
       }
 
-      const data: DefiLlamaQuoteResponse = await response.json();
+      const data: OneInchQuoteResponse = await response.json();
       
-      console.log("[DefiLlama] Swap quote received:", data);
+      console.log("[1inch] Swap quote received:", data);
 
-      // Calculate slippage: difference between spot price and estimated price
-      const spotPrice = parseFloat(data.spotPrice);
-      const estimatedPrice = parseFloat(data.estimatedPrice);
-      const slippage = spotPrice > 0 
-        ? Math.abs(((spotPrice - estimatedPrice) / spotPrice) * 100)
-        : 0;
+      // Calculate slippage and price impact
+      const fromAmount = BigInt(data.srcAmount);
+      const toAmount = BigInt(data.dstAmount);
+      
+      // Estimate price impact and slippage (1inch doesn't provide these directly in quote endpoint)
+      // Typical slippage is 0.3-1%, we'll estimate 0.5%
+      const estimatedSlippage = 0.5;
+      const estimatedPriceImpact = 0.1;
+      
+      // Extract route from protocols
+      const route: string[] = [];
+      if (data.protocols && data.protocols.length > 0) {
+        data.protocols[0]?.forEach(pathPart => {
+          pathPart.forEach(protocol => {
+            if (protocol.name && !route.includes(protocol.name)) {
+              route.push(protocol.name);
+            }
+          });
+        });
+      }
 
-      // Price impact from API
-      const priceImpact = parseFloat(data.priceImpact || "0");
-
-      // Extract route
-      const route = data.route?.map(r => r.name) || [];
-
-      // Calculate fee (typically 0.3% for most DEXs, but can vary)
-      // DefiLlama doesn't always provide fee directly, so we estimate
-      // Fee is usually embedded in the price difference
-      const fee = Math.max(0, slippage - priceImpact); // Fee is slippage minus price impact
-      const feeAmount = (BigInt(data.toTokenAmount) * BigInt(Math.round(fee * 100))) / 10000n;
+      // Calculate fee (typically 0.3-1% for DEXs)
+      const fee = 0.5; // Estimate 0.5% average fee
+      const feeAmount = (toAmount * BigInt(Math.round(fee * 100))) / 10000n;
 
       return {
         fromToken,
         toToken,
-        fromAmount: BigInt(data.fromTokenAmount),
-        toAmount: BigInt(data.toTokenAmount),
-        estimatedGas: BigInt(data.estimatedGas || "0"),
-        slippage,
-        priceImpact,
+        fromAmount,
+        toAmount,
+        estimatedGas: BigInt(data.gas || "150000"),
+        slippage: estimatedSlippage,
+        priceImpact: estimatedPriceImpact,
         route,
         fee,
         feeAmount,
@@ -177,14 +183,20 @@ export async function getDefiLlamaSwapTx(
 }> {
   const fromTokenAddress = fromToken === "ETH" ? ETH_ADDRESS : fromToken;
   
-  const url = new URL("https://swap.defillama.com/api/swap");
-  url.searchParams.set("fromTokenAddress", fromTokenAddress);
-  url.searchParams.set("toTokenAddress", toToken);
-  url.searchParams.set("amount", amount.toString());
-  url.searchParams.set("fromAddress", fromAddress);
-  url.searchParams.set("slippage", slippage.toString());
+  const url = `${ONEINCH_API_URL}/swap`;
+  const params = new URLSearchParams({
+    src: fromTokenAddress,
+    dst: toToken,
+    amount: amount.toString(),
+    from: fromAddress,
+    slippage: slippage.toString(),
+  });
 
-  const response = await fetch(url.toString());
+  const response = await fetch(`${url}?${params.toString()}`, {
+    headers: {
+      'Accept': 'application/json',
+    },
+  });
 
   if (!response.ok) {
     const errorText = await response.text();
@@ -197,7 +209,7 @@ export async function getDefiLlamaSwapTx(
     to: data.tx.to as Address,
     data: data.tx.data as `0x${string}`,
     value: BigInt(data.tx.value || "0"),
-    gas: BigInt(data.tx.gas || "21000"),
+    gas: BigInt(data.tx.gas || "150000"),
   };
 }
 
