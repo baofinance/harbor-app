@@ -1526,46 +1526,50 @@ export default function GenesisIndexPage() {
                 >
                   {/* Mobile Card Layout */}
                   <div className="md:hidden space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[#1E4775] font-bold text-base">
-                          {rowLeveragedSymbol &&
-                          rowLeveragedSymbol.toLowerCase().startsWith("hs")
-                            ? rowLeveragedSymbol.slice(2)
-                            : rowLeveragedSymbol || (mkt as any).name}
-                        </span>
-                        <span className="text-[#1E4775]/60">:</span>
-                        <div className="flex items-center gap-1">
+                    <div className="flex items-center justify-center gap-2">
+                      <span className="text-[#1E4775] font-bold text-base">
+                        {rowLeveragedSymbol &&
+                        rowLeveragedSymbol.toLowerCase().startsWith("hs")
+                          ? rowLeveragedSymbol.slice(2)
+                          : rowLeveragedSymbol || (mkt as any).name}
+                      </span>
+                      <span className="text-[#1E4775]/60">:</span>
+                      <div className="flex items-center gap-1">
+                        <SimpleTooltip label={wrappedCollateralSymbol}>
                           <Image
                             src={getLogoPath(wrappedCollateralSymbol)}
                             alt={wrappedCollateralSymbol}
                             width={24}
                             height={24}
-                            className="flex-shrink-0"
+                            className="flex-shrink-0 cursor-help"
                           />
-                          <span className="text-[#1E4775]/60 text-xs">=</span>
+                        </SimpleTooltip>
+                        <span className="text-[#1E4775]/60 text-xs">=</span>
+                        <SimpleTooltip label={rowPeggedSymbol}>
                           <Image
                             src={getLogoPath(rowPeggedSymbol)}
                             alt={rowPeggedSymbol}
                             width={24}
                             height={24}
-                            className="flex-shrink-0"
+                            className="flex-shrink-0 cursor-help"
                           />
-                          <span className="text-[#1E4775]/60 text-xs">+</span>
+                        </SimpleTooltip>
+                        <span className="text-[#1E4775]/60 text-xs">+</span>
+                        <SimpleTooltip label={rowLeveragedSymbol}>
                           <Image
                             src={getLogoPath(rowLeveragedSymbol)}
                             alt={rowLeveragedSymbol}
                             width={24}
                             height={24}
-                            className="flex-shrink-0"
+                            className="flex-shrink-0 cursor-help"
                           />
-                        </div>
+                        </SimpleTooltip>
+                        {isExpanded ? (
+                          <ChevronUpIcon className="w-5 h-5 text-[#1E4775] flex-shrink-0 ml-1" />
+                        ) : (
+                          <ChevronDownIcon className="w-5 h-5 text-[#1E4775] flex-shrink-0 ml-1" />
+                        )}
                       </div>
-                      {isExpanded ? (
-                        <ChevronUpIcon className="w-5 h-5 text-[#1E4775] flex-shrink-0" />
-                      ) : (
-                        <ChevronDownIcon className="w-5 h-5 text-[#1E4775] flex-shrink-0" />
-                      )}
                     </div>
                       <div
                         onClick={(e) => e.stopPropagation()}
@@ -1708,46 +1712,50 @@ export default function GenesisIndexPage() {
                   {/* Desktop Table Layout */}
                   <div className="hidden md:grid grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr] gap-4 items-center text-sm">
                     <div className="min-w-0 overflow-hidden">
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2">
-                          <span className="text-[#1E4775] font-bold text-base">
-                            {rowLeveragedSymbol &&
-                            rowLeveragedSymbol.toLowerCase().startsWith("hs")
-                              ? rowLeveragedSymbol.slice(2)
-                              : rowLeveragedSymbol || (mkt as any).name}
-                          </span>
-                          <span className="text-[#1E4775]/60">:</span>
-                          <div className="flex items-center gap-1">
+                      <div className="flex items-center justify-center gap-2">
+                        <span className="text-[#1E4775] font-bold text-base">
+                          {rowLeveragedSymbol &&
+                          rowLeveragedSymbol.toLowerCase().startsWith("hs")
+                            ? rowLeveragedSymbol.slice(2)
+                            : rowLeveragedSymbol || (mkt as any).name}
+                        </span>
+                        <span className="text-[#1E4775]/60">:</span>
+                        <div className="flex items-center gap-1">
+                          <SimpleTooltip label={wrappedCollateralSymbol}>
                             <Image
                               src={getLogoPath(wrappedCollateralSymbol)}
                               alt={wrappedCollateralSymbol}
                               width={24}
                               height={24}
-                              className="flex-shrink-0"
+                              className="flex-shrink-0 cursor-help"
                             />
-                            <span className="text-[#1E4775]/60 text-xs">=</span>
+                          </SimpleTooltip>
+                          <span className="text-[#1E4775]/60 text-xs">=</span>
+                          <SimpleTooltip label={rowPeggedSymbol}>
                             <Image
                               src={getLogoPath(rowPeggedSymbol)}
                               alt={rowPeggedSymbol}
                               width={24}
                               height={24}
-                              className="flex-shrink-0"
+                              className="flex-shrink-0 cursor-help"
                             />
-                            <span className="text-[#1E4775]/60 text-xs">+</span>
+                          </SimpleTooltip>
+                          <span className="text-[#1E4775]/60 text-xs">+</span>
+                          <SimpleTooltip label={rowLeveragedSymbol}>
                             <Image
                               src={getLogoPath(rowLeveragedSymbol)}
                               alt={rowLeveragedSymbol}
                               width={24}
                               height={24}
-                              className="flex-shrink-0"
+                              className="flex-shrink-0 cursor-help"
                             />
-                          </div>
+                          </SimpleTooltip>
+                          {isExpanded ? (
+                            <ChevronUpIcon className="w-5 h-5 text-[#1E4775] flex-shrink-0 ml-1" />
+                          ) : (
+                            <ChevronDownIcon className="w-5 h-5 text-[#1E4775] flex-shrink-0 ml-1" />
+                          )}
                         </div>
-                        {isExpanded ? (
-                          <ChevronUpIcon className="w-5 h-5 text-[#1E4775] flex-shrink-0" />
-                        ) : (
-                          <ChevronDownIcon className="w-5 h-5 text-[#1E4775] flex-shrink-0" />
-                        )}
                       </div>
                     </div>
                     <div
