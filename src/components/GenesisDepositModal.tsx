@@ -185,7 +185,7 @@ const genesisZapAddress = marketAddresses?.genesisZap as `0x${string}` | undefin
 // ETH/STETH markets use GenesisETHZap_v3, USDC/FXUSD markets use GenesisUSDCZap_v2
 const isETHStETHMarket = collateralSymbol.toLowerCase() === "wsteth";
 const useETHZap = isETHStETHMarket && (isNativeETH || isStETH);
-const useUSDCZap = !isETHStETHMarket && (isUSDC || isFXUSD);
+const useUSDCZap = !isETHStETHMarket && (isUSDC || isFXUSD || needsSwap);
 
 // Determine if selected asset needs to be swapped to USDC (for fxSAVE markets)
 // For fxSAVE markets: only USDC, fxUSD, and fxSAVE are accepted directly
