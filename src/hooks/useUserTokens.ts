@@ -1,7 +1,7 @@
 import { useAccount, useBalance } from "wagmi";
 import { useQuery } from "@tanstack/react-query";
 import { Address, formatUnits, parseUnits } from "viem";
-import { useContractReads } from "wagmi";
+import { useContractReads, useContractRead } from "wagmi";
 import { ERC20_ABI } from "@/abis";
 
 export interface TokenInfo {
@@ -143,6 +143,26 @@ export function getTokenInfo(addressOrSymbol: Address | "ETH" | string): TokenIn
     balance: 0n,
     balanceFormatted: "0",
     decimals: token.decimals,
+  };
+}
+
+// Hook to fetch token decimals dynamically
+export function useTokenDecimals(tokenAddress: Address | "ETH" | undefined) {
+  const { data: decimals, isLoading, error } = useContractRead({
+    address: tokenAddress && tokenAddress !== "ETH" ? tokenAddress : undefined,
+    abi: ERC20_ABI,
+    functionName: "decimals",
+    query: {
+      enabled: !!tokenAddress && tokenAddress !== "ETH",
+      retry: 1,
+      allowFailure: true,
+    },
+  });
+
+  return {
+    decimals: tokenAddress === "ETH" ? 18 : (decimals ? Number(decimals) : 18), // Default to 18 if not available
+    isLoading,
+    error,
   };
 }
 

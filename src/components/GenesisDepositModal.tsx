@@ -21,7 +21,7 @@ import {
 import { formatTokenAmount, formatBalance, formatUSD } from "@/utils/formatters";
 import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
 import { useDefiLlamaSwap, getDefiLlamaSwapTx } from "@/hooks/useDefiLlamaSwap";
-import { useUserTokens, getTokenAddress, getTokenInfo } from "@/hooks/useUserTokens";
+import { useUserTokens, getTokenAddress, getTokenInfo, useTokenDecimals } from "@/hooks/useUserTokens";
 
 interface GenesisDepositModalProps {
  isOpen: boolean;
@@ -67,6 +67,8 @@ export const GenesisDepositModal = ({
   const publicClient = wagmiPublicClient;
  const [amount, setAmount] = useState("");
  const [selectedAsset, setSelectedAsset] = useState<string>(collateralSymbol);
+ const [customTokenAddress, setCustomTokenAddress] = useState<string>("");
+ const [showCustomTokenInput, setShowCustomTokenInput] = useState(false);
  const [step, setStep] = useState<ModalStep>("input");
  const [error, setError] = useState<string | null>(null);
  const [txHash, setTxHash] = useState<string | null>(null);
@@ -125,6 +127,17 @@ const maxUnderlyingPrice = coinGeckoPrice
    return "0x0000000000000000000000000000000000000000";
  }
  
+ // Custom token address (if user pasted one)
+ if (normalized === "custom" && customTokenAddress) {
+   return customTokenAddress;
+ }
+ 
+ // Check user tokens first
+ const userToken = userTokens.find(t => t.symbol.toUpperCase() === assetSymbol.toUpperCase());
+ if (userToken && userToken.address !== "ETH") {
+   return userToken.address;
+ }
+ 
  // Collateral token (fxUSD, wstETH, etc.)
  if (normalized === collateralSymbol.toLowerCase()) {
    return collateralAddress;
@@ -181,14 +194,77 @@ const needsSwap = isFxSAVEMarket && !isDirectlyAccepted && selectedAssetAddress 
 // USDC address for swaps
 const USDC_ADDRESS = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" as `0x${string}`;
 
+// Get token decimals for swap quote
+const tokenAddressForDecimals = isNativeETH 
+  ? undefined 
+  : (isCustomToken ? (customTokenAddress as `0x${string}` | undefined) : (selectedAssetAddress as `0x${string}` | undefined));
+const { decimals: tokenDecimals } = useTokenDecimals(tokenAddressForDecimals);
+
+// Fetch token metadata (symbol, name) for custom tokens
+const { data: customTokenSymbol } = useContractRead({
+  address: isCustomToken ? (customTokenAddress as `0x${string}`) : undefined,
+  abi: ERC20_ABI,
+  functionName: "symbol",
+  query: {
+    enabled: isCustomToken && !!customTokenAddress,
+    retry: 1,
+    allowFailure: true,
+  },
+});
+
+const { data: customTokenName } = useContractRead({
+  address: isCustomToken ? (customTokenAddress as `0x${string}`) : undefined,
+  abi: ERC20_ABI,
+  functionName: "name",
+  query: {
+    enabled: isCustomToken && !!customTokenAddress,
+    retry: 1,
+    allowFailure: true,
+  },
+});
+
 // Get swap quote if token needs swapping
 const fromTokenForSwap = isNativeETH ? "ETH" : (selectedAssetAddress as `0x${string}`);
 const { data: swapQuote, isLoading: isLoadingSwapQuote, error: swapQuoteError } = useDefiLlamaSwap(
   fromTokenForSwap,
   USDC_ADDRESS,
   amount,
-  needsSwap && !!amount && parseFloat(amount) > 0 && !!fromTokenForSwap
+  needsSwap && !!amount && parseFloat(amount) > 0 && !!fromTokenForSwap,
+  tokenDecimals
 );
+
+// Get user's tokens and merge with accepted assets
+const { tokens: userTokens, isLoading: isLoadingUserTokens } = useUserTokens();
+
+// Merge accepted assets with user tokens (avoid duplicates)
+const allAvailableAssets = React.useMemo(() => {
+  const assetMap = new Map<string, { symbol: string; name: string; isUserToken?: boolean }>();
+  
+  // Add accepted assets first
+  acceptedAssets.forEach(asset => {
+    assetMap.set(asset.symbol.toUpperCase(), { ...asset, isUserToken: false });
+  });
+  
+  // Add user tokens (only if they have balance > 0)
+  userTokens.forEach(token => {
+    const symbol = token.symbol.toUpperCase();
+    if (!assetMap.has(symbol) && token.balance > 0n) {
+      assetMap.set(symbol, {
+        symbol: token.symbol,
+        name: token.name,
+        isUserToken: true,
+      });
+    }
+  });
+  
+  return Array.from(assetMap.values()).sort((a, b) => {
+    // Accepted assets first, then user tokens
+    if (a.isUserToken !== b.isUserToken) {
+      return a.isUserToken ? 1 : -1;
+    }
+    return a.symbol.localeCompare(b.symbol);
+  });
+}, [acceptedAssets, userTokens]);
 
 const stETHAddress = isETHStETHMarket 
   ? (marketAddresses?.wrappedCollateralToken || contracts.wrappedCollateralToken) as `0x${string}` | undefined
@@ -332,8 +408,42 @@ acceptedAssets.forEach((asset) => {
   }
 });
 
+// Also add user token balances to the map
+userTokens.forEach((token) => {
+  if (!assetBalanceMap.has(token.symbol)) {
+    assetBalanceMap.set(token.symbol, token.balance);
+  }
+});
+
 // Get balance for selected asset
-const selectedAssetBalance = assetBalanceMap.get(selectedAsset) || 0n;
+// For custom tokens, we need to fetch balance separately
+const isCustomToken = selectedAsset === "custom" && customTokenAddress && 
+  customTokenAddress.startsWith("0x") && customTokenAddress.length === 42;
+
+// For user tokens not in acceptedAssets, fetch balance separately
+const selectedUserToken = userTokens.find(t => t.symbol.toUpperCase() === selectedAsset.toUpperCase());
+const isUserTokenNotInAccepted = selectedUserToken && 
+  !acceptedAssets.some(a => a.symbol.toUpperCase() === selectedAsset.toUpperCase());
+
+// Fetch balance for custom token or user token not in accepted assets
+const { data: customTokenBalance } = useContractRead({
+  address: (isCustomToken ? customTokenAddress : (isUserTokenNotInAccepted ? selectedUserToken.address : undefined)) as `0x${string}` | undefined,
+  abi: ERC20_ABI,
+  functionName: "balanceOf",
+  args: address ? [address] : undefined,
+  query: {
+    enabled: (isCustomToken || isUserTokenNotInAccepted) && !!address && isOpen && mounted && 
+            ((isCustomToken && customTokenAddress) || (isUserTokenNotInAccepted && selectedUserToken?.address !== "ETH")),
+    refetchInterval: isOpen ? 15000 : false,
+    retry: 1,
+    allowFailure: true,
+  },
+});
+
+// Get balance for selected asset (including custom tokens and user tokens)
+const selectedAssetBalance = isCustomToken || isUserTokenNotInAccepted
+  ? (typeof customTokenBalance === 'bigint' ? customTokenBalance : (selectedUserToken?.balance || 0n))
+  : (assetBalanceMap.get(selectedAsset) || 0n);
 
 // For assets that use genesis zap contracts (ETH, stETH, USDC, FXUSD), check allowance for genesis zap contract
 // For other tokens (wstETH, fxSAVE), check allowance for genesis
@@ -391,7 +501,7 @@ const allowanceTarget = (useETHZap || useUSDCZap) && genesisZapAddress ? genesis
  // Contract write hooks
  const { writeContractAsync, isPending: isWritePending } = useWriteContract();
 
-  // Use the balance from the asset balance map
+  // Use the balance from the asset balance map or custom token balance
   const balance = selectedAssetBalance;
 
 // Debug logging (after all hooks are declared)
@@ -439,9 +549,13 @@ console.log("[GenesisDepositModal] Price Debug:", {
 });
 }
 const allowance = isNativeETH ? 0n : (typeof allowanceData === 'bigint' ? allowanceData : 0n);
-// USDC uses 6 decimals, other tokens use 18 decimals
+ // Use token decimals dynamically, fallback to 18 (or 6 for USDC)
+ // For user tokens, use their known decimals
+const selectedTokenDecimals = isUSDC 
+  ? 6 
+  : (selectedUserToken?.decimals || tokenDecimals || 18);
 const amountBigInt = amount 
-  ? (isUSDC ? parseUnits(amount, 6) : parseEther(amount))
+  ? parseUnits(amount, selectedTokenDecimals)
   : 0n;
  const needsApproval =
  !isNativeETH && amountBigInt > 0 && amountBigInt > allowance;
@@ -530,6 +644,8 @@ const newTotalDepositActual: bigint = userCurrentDeposit + actualCollateralDepos
  if (step ==="approving" || step ==="depositing") return; // Prevent closing during transactions
  setAmount("");
  setSelectedAsset(collateralSymbol);
+ setCustomTokenAddress("");
+ setShowCustomTokenInput(false);
  setStep("input");
  setError(null);
  setTxHash(null);
@@ -553,30 +669,30 @@ https://www.harborfinance.io/`;
 
  const handleMaxClick = () => {
  if (balance) {
- // USDC uses 6 decimals, other tokens use 18 decimals
- setAmount(isUSDC ? formatUnits(balance, 6) : formatEther(balance));
+   // Use token decimals dynamically
+   setAmount(formatUnits(balance, selectedTokenDecimals));
  }
  };
 
  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
  const value = e.target.value;
  if (value ==="" || /^\d*\.?\d*$/.test(value)) {
- // Cap at balance if value exceeds it
- if (value && balance) {
- try {
- // USDC uses 6 decimals, other tokens use 18 decimals
- const parsed = isUSDC ? parseUnits(value, 6) : parseEther(value);
- if (parsed > balance) {
- setAmount(isUSDC ? formatUnits(balance, 6) : formatEther(balance));
- setError(null);
- return;
- }
- } catch {
- // Allow partial input (e.g., trailing decimal)
- }
- }
- setAmount(value);
- setError(null);
+   // Cap at balance if value exceeds it
+   if (value && balance) {
+     try {
+       // Use token decimals dynamically
+       const parsed = parseUnits(value, selectedTokenDecimals);
+       if (parsed > balance) {
+         setAmount(formatUnits(balance, selectedTokenDecimals));
+         setError(null);
+         return;
+       }
+     } catch {
+       // Allow partial input (e.g., trailing decimal)
+     }
+   }
+   setAmount(value);
+   setError(null);
  }
  };
 
@@ -652,10 +768,11 @@ const preDepositBalance = userCurrentDeposit;
    
    try {
      // Get swap transaction data from DefiLlama
+     // Note: getDefiLlamaSwapTx expects amount in token's native decimals
      const swapTx = await getDefiLlamaSwapTx(
        fromTokenForSwap,
        USDC_ADDRESS,
-       amountBigInt,
+       amountBigInt, // Already in correct decimals from parseUnits
        address,
        1.0 // 1% slippage tolerance
      );
@@ -1236,20 +1353,83 @@ const successFmt = formatTokenAmount(successAmountBigInt, collateralSymbol, coll
  </label>
  <select
  value={selectedAsset}
- onChange={(e) => setSelectedAsset(e.target.value)}
+ onChange={(e) => {
+   const newValue = e.target.value;
+   if (newValue === "custom") {
+     setShowCustomTokenInput(true);
+     setSelectedAsset("custom");
+   } else {
+     setShowCustomTokenInput(false);
+     setSelectedAsset(newValue);
+     setCustomTokenAddress("");
+   }
+ }}
  className="w-full h-12 px-4 bg-white text-[#1E4775] border border-[#1E4775]/30 focus:border-[#1E4775] focus:ring-2 focus:ring-[#1E4775]/20 focus:outline-none transition-all text-lg font-mono"
  disabled={
- step ==="approving" ||
- step ==="depositing" ||
- genesisEnded
+   step ==="approving" ||
+   step ==="depositing" ||
+   genesisEnded
  }
  >
- {acceptedAssets.map((asset) => (
- <option key={asset.symbol} value={asset.symbol}>
- {asset.name} ({asset.symbol})
- </option>
- ))}
+   {/* Accepted assets */}
+   {acceptedAssets.map((asset) => (
+     <option key={asset.symbol} value={asset.symbol}>
+       {asset.name} ({asset.symbol})
+     </option>
+   ))}
+   
+   {/* User tokens (if any) */}
+   {userTokens.length > 0 && (
+     <>
+       <option disabled>--- Your Tokens ---</option>
+       {userTokens
+         .filter(token => !acceptedAssets.some(a => a.symbol.toUpperCase() === token.symbol.toUpperCase()))
+         .map((token) => (
+           <option key={token.symbol} value={token.symbol}>
+             {token.name} ({token.symbol}) - {token.balanceFormatted}
+           </option>
+         ))}
+     </>
+   )}
+   
+   {/* Custom token option */}
+   <option value="custom">+ Add Custom Token Address</option>
  </select>
+ 
+ {/* Custom token address input */}
+ {showCustomTokenInput && (
+   <div className="space-y-2">
+     <input
+       type="text"
+       value={customTokenAddress}
+       onChange={(e) => {
+         const addr = e.target.value.trim();
+         setCustomTokenAddress(addr);
+         if (addr && addr.startsWith("0x") && addr.length === 42) {
+           // Valid address, update selectedAssetAddress will be handled by getAssetAddress
+         }
+       }}
+       placeholder="0x..."
+       className="w-full h-10 px-3 bg-white text-[#1E4775] border border-[#1E4775]/30 focus:border-[#1E4775] focus:ring-2 focus:ring-[#1E4775]/20 focus:outline-none transition-all text-sm font-mono"
+       disabled={
+         step ==="approving" ||
+         step ==="depositing" ||
+         genesisEnded
+       }
+     />
+     {customTokenAddress && (!customTokenAddress.startsWith("0x") || customTokenAddress.length !== 42) && (
+       <div className="text-xs text-red-600">
+         Invalid address format. Must start with 0x and be 42 characters.
+       </div>
+     )}
+     {isCustomToken && customTokenSymbol && (
+       <div className="text-xs text-green-600">
+         ✓ Token found: {customTokenName || customTokenSymbol} ({customTokenSymbol})
+       </div>
+     )}
+   </div>
+ )}
+ 
  {isNonCollateralAsset && (
  <div className="p-3 bg-[rgb(var(--surface-selected-rgb))]/20 border border-[rgb(var(--surface-selected-border-rgb))]/30 text-[#1E4775] text-sm">
  ℹ️ Your deposit will be converted to {wrappedCollateralSymbol || collateralSymbol} on
@@ -1272,7 +1452,7 @@ const successFmt = formatTokenAmount(successAmountBigInt, collateralSymbol, coll
   ) : isEthBalanceLoading ? (
     <span className="text-[#1E4775]/50">Loading...</span>
   ) : (
-    formatBalance(balance, selectedAsset, 4, isUSDC ? 6 : 18)
+     formatBalance(balance, selectedAsset, 4, selectedTokenDecimals)
   )
 ) : (
   // ERC20 balance display
@@ -1286,7 +1466,7 @@ const successFmt = formatTokenAmount(successAmountBigInt, collateralSymbol, coll
  ) : !mounted ? (
  <span className="text-[#1E4775]/50">Loading...</span>
  ) : (
- formatBalance(balance, selectedAsset, 4, isUSDC ? 6 : 18)
+     formatBalance(balance, selectedAsset, 4, selectedTokenDecimals)
   )
 )}
  </span>
@@ -1336,7 +1516,9 @@ const successFmt = formatTokenAmount(successAmountBigInt, collateralSymbol, coll
          <div className="space-y-2 text-sm">
            <div className="flex items-center justify-between">
              <span className="text-blue-800">You'll swap:</span>
-             <span className="font-mono text-blue-900">{amount} {selectedAsset}</span>
+             <span className="font-mono text-blue-900">
+               {amount} {isCustomToken && customTokenSymbol ? customTokenSymbol : selectedAsset}
+             </span>
            </div>
            
            <div className="flex items-center justify-center text-blue-600">
@@ -1376,7 +1558,9 @@ const successFmt = formatTokenAmount(successAmountBigInt, collateralSymbol, coll
            {/* Calculate total cost (slippage + fee) and warn if > 2% */}
            {(() => {
              const totalCostPercent = swapQuote.slippage + swapQuote.fee;
-             const totalCostUSD = (Number(swapQuote.fromAmount) / 1e18) * (totalCostPercent / 100) * (selectedAssetPriceUSD || 0);
+             // Use correct decimals for fromAmount
+             const fromAmountInTokens = Number(swapQuote.fromAmount) / (10 ** selectedTokenDecimals);
+             const totalCostUSD = fromAmountInTokens * (totalCostPercent / 100) * (selectedAssetPriceUSD || 0);
              
              if (totalCostPercent > 2) {
                return (

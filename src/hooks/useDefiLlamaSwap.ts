@@ -4,6 +4,46 @@ import { Address, formatUnits, parseUnits } from "viem";
 const DEFILLAMA_SWAP_API = "https://api.llama.fi/swap/v1/quote";
 const ETH_ADDRESS = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeeEeE" as Address;
 
+// Helper to fetch token decimals (with caching)
+const tokenDecimalsCache = new Map<string, number>();
+
+export async function fetchTokenDecimals(
+  tokenAddress: Address | "ETH",
+  publicClient: any
+): Promise<number> {
+  if (tokenAddress === "ETH") return 18;
+  
+  const cacheKey = tokenAddress.toLowerCase();
+  if (tokenDecimalsCache.has(cacheKey)) {
+    return tokenDecimalsCache.get(cacheKey)!;
+  }
+  
+  try {
+    const decimals = await publicClient.readContract({
+      address: tokenAddress,
+      abi: [
+        {
+          inputs: [],
+          name: "decimals",
+          outputs: [{ internalType: "uint8", name: "", type: "uint8" }],
+          stateMutability: "view",
+          type: "function",
+        },
+      ],
+      functionName: "decimals",
+    });
+    
+    const decimalsNum = Number(decimals);
+    tokenDecimalsCache.set(cacheKey, decimalsNum);
+    return decimalsNum;
+  } catch (error) {
+    // Default to 18 if we can't fetch decimals
+    console.warn(`Failed to fetch decimals for ${tokenAddress}, defaulting to 18`);
+    tokenDecimalsCache.set(cacheKey, 18);
+    return 18;
+  }
+}
+
 export interface SwapQuote {
   fromToken: Address | "ETH";
   toToken: Address;
@@ -36,25 +76,22 @@ export function useDefiLlamaSwap(
   fromToken: Address | "ETH",
   toToken: Address,
   amount: string,
-  enabled: boolean = true
+  enabled: boolean = true,
+  fromTokenDecimals?: number // Optional: pass decimals if already known
 ) {
   return useQuery({
-    queryKey: ["defillamaSwap", fromToken, toToken, amount],
+    queryKey: ["defillamaSwap", fromToken, toToken, amount, fromTokenDecimals],
     queryFn: async (): Promise<SwapQuote> => {
       if (!amount || parseFloat(amount) <= 0) {
         throw new Error("Invalid amount");
       }
 
-      // Convert amount to wei
-      // DefiLlama expects amount in the token's native decimals
-      // For now, we'll use 18 decimals (most tokens) and let DefiLlama handle conversion
-      // In a production environment, you'd fetch token decimals first
       const fromTokenAddress = fromToken === "ETH" ? ETH_ADDRESS : fromToken;
       
-      // Parse amount - DefiLlama API expects the amount as a string in the token's native format
-      // We'll pass it as a decimal string and let DefiLlama parse it
-      // For ETH and most ERC20s, this is 18 decimals
-      const amountInWei = parseUnits(amount, 18);
+      // Use provided decimals or default to 18
+      // DefiLlama API expects amount as a string in wei (token's native decimals)
+      const decimals = fromTokenDecimals ?? 18;
+      const amountInWei = parseUnits(amount, decimals);
 
       const url = new URL(DEFILLAMA_SWAP_API);
       url.searchParams.set("fromTokenAddress", fromTokenAddress);
