@@ -946,10 +946,24 @@ if (!isNativeETH && needsApproval && !needsSwap) {
  setError(null);
  setTxHash(null);
 
+    console.log("[Deposit] Starting deposit, checking conditions:", {
+      isNativeETH,
+      isStETH,
+      isUSDC,
+      isFXUSD,
+      needsSwap,
+      useETHZap,
+      useUSDCZap,
+      genesisZapAddress,
+      wstETHAddress,
+      swapUsdcAmount: (window as any).__swapUsdcAmount?.toString(),
+    });
+
     // Use genesis zap contract for ETH, stETH, USDC, and FXUSD deposits
     // IMPORTANT: For ETH in fxSAVE markets, we need to swap first, so skip this branch
     let depositHash: `0x${string}`;
     if (isNativeETH && useETHZap && genesisZapAddress && wstETHAddress && !needsSwap) {
+      console.log("[Deposit] Taking ETH zap branch");
       // Use zapEth for ETH deposits with slippage protection
       // Contract flow: ETH → stETH (via submit, 1:1) → wstETH (via wrap) → Genesis
       // stETH.submit() returns stETH tokens 1:1 with ETH (not shares)
@@ -974,6 +988,7 @@ if (!isNativeETH && needsApproval && !needsSwap) {
         value: amountBigInt,
       });
     } else if (isStETH && useETHZap && genesisZapAddress && wstETHAddress) {
+      console.log("[Deposit] Taking stETH zap branch");
       // Use zapStEth for stETH deposits with slippage protection
       // Get expected wstETH from stETH amount
       const expectedWstETH = await publicClient.readContract({
@@ -993,6 +1008,7 @@ if (!isNativeETH && needsApproval && !needsSwap) {
         args: [amountBigInt, address as `0x${string}`, minWstETHOut],
       });
     } else if ((isUSDC || needsSwap) && useUSDCZap && genesisZapAddress) {
+      console.log("[Deposit] Taking USDC zap branch");
       // Use zapUsdcToGenesis for USDC deposits with slippage protection
       // If this is after a swap, use the USDC amount from swap
       const usdcAmount = needsSwap ? ((window as any).__swapUsdcAmount as bigint) : amountBigInt;
@@ -1048,6 +1064,7 @@ if (!isNativeETH && needsApproval && !needsSwap) {
         delete (window as any).__swapUsdcAmount;
       }
     } else if (isFXUSD && useUSDCZap && genesisZapAddress) {
+      console.log("[Deposit] Taking FXUSD zap branch");
       // Use zapFxUsdToGenesis for FXUSD deposits with slippage protection
       // Get expected fxSAVE output from FXUSD amount
       const expectedFxSaveOut = await publicClient.readContract({
@@ -1067,6 +1084,7 @@ if (!isNativeETH && needsApproval && !needsSwap) {
         args: [amountBigInt, minFxSaveOut, address as `0x${string}`],
       });
     } else {
+      console.log("[Deposit] Taking standard genesis deposit branch");
       // For other tokens (wstETH, fxSAVE), use standard genesis deposit
       depositHash = await writeContractAsync({
  address: genesisAddress as `0x${string}`,
