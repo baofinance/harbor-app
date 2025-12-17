@@ -185,7 +185,6 @@ const genesisZapAddress = marketAddresses?.genesisZap as `0x${string}` | undefin
 // ETH/STETH markets use GenesisETHZap_v3, USDC/FXUSD markets use GenesisUSDCZap_v2
 const isETHStETHMarket = collateralSymbol.toLowerCase() === "wsteth";
 const useETHZap = isETHStETHMarket && (isNativeETH || isStETH);
-const useUSDCZap = !isETHStETHMarket && (isUSDC || isFXUSD || needsSwap);
 
 // Determine if selected asset needs to be swapped to USDC (for fxSAVE markets)
 // For fxSAVE markets: only USDC, fxUSD, and fxSAVE are accepted directly
@@ -195,6 +194,10 @@ const isDirectlyAccepted = isUSDC || isFXUSD || isFXSAVE ||
   (isETHStETHMarket && (isNativeETH || isStETH || selectedAsset.toLowerCase() === "wsteth"));
 // For ETH, check isNativeETH instead of selectedAssetAddress since ETH uses zero address
 const needsSwap = isFxSAVEMarket && !isDirectlyAccepted && (isNativeETH || (selectedAssetAddress && selectedAssetAddress !== "0x0000000000000000000000000000000000000000"));
+
+// Now that needsSwap is defined, determine if we should use USDC zap
+// USDC zap is used for: direct USDC/FXUSD deposits OR tokens that need to be swapped to USDC
+const useUSDCZap = !isETHStETHMarket && (isUSDC || isFXUSD || needsSwap);
 
 // USDC address for swaps
 const USDC_ADDRESS = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" as `0x${string}`;
