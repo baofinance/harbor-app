@@ -70,7 +70,8 @@ export const GenesisDepositModal = ({
  const [selectedAsset, setSelectedAsset] = useState<string>(collateralSymbol);
  const [customTokenAddress, setCustomTokenAddress] = useState<string>("");
  const [showCustomTokenInput, setShowCustomTokenInput] = useState(false);
- const [slippageTolerance, setSlippageTolerance] = useState<number>(1.0); // Default 1% slippage
+ const [slippageTolerance, setSlippageTolerance] = useState<number>(0.5); // Default 0.5% slippage
+ const [slippageInputValue, setSlippageInputValue] = useState<string>("0.5"); // String for input to allow typing "0"
  const [showSlippageInput, setShowSlippageInput] = useState(false);
  const [step, setStep] = useState<ModalStep>("input");
  const [error, setError] = useState<string | null>(null);
@@ -685,7 +686,8 @@ const newTotalDepositActual: bigint = userCurrentDeposit + actualCollateralDepos
  setSelectedAsset(collateralSymbol);
  setCustomTokenAddress("");
  setShowCustomTokenInput(false);
- setSlippageTolerance(1.0);
+ setSlippageTolerance(0.5);
+ setSlippageInputValue("0.5");
  setShowSlippageInput(false);
  setStep("input");
  setError(null);
@@ -1834,20 +1836,36 @@ const successFmt = formatTokenAmount(successAmountBigInt, collateralSymbol, coll
        {showSlippageInput ? (
          <div className="flex items-center gap-1">
            <input
-             type="number"
-             step="0.1"
-             min="0.1"
-             max="50"
-             value={slippageTolerance}
+             type="text"
+             value={slippageInputValue}
              onChange={(e) => {
-               const val = parseFloat(e.target.value);
-               if (!isNaN(val) && val >= 0.1 && val <= 50) {
-                 setSlippageTolerance(val);
+               const input = e.target.value;
+               // Allow empty, numbers, and decimal point
+               if (input === "" || /^\d*\.?\d*$/.test(input)) {
+                 setSlippageInputValue(input);
                }
              }}
-             onBlur={() => setShowSlippageInput(false)}
+             onBlur={() => {
+               const val = parseFloat(slippageInputValue);
+               if (!isNaN(val) && val >= 0.1 && val <= 50) {
+                 setSlippageTolerance(val);
+               } else {
+                 // Reset to current valid value if invalid
+                 setSlippageInputValue(slippageTolerance.toFixed(1));
+               }
+               setShowSlippageInput(false);
+             }}
              onKeyDown={(e) => {
-               if (e.key === 'Enter' || e.key === 'Escape') {
+               if (e.key === 'Enter') {
+                 const val = parseFloat(slippageInputValue);
+                 if (!isNaN(val) && val >= 0.1 && val <= 50) {
+                   setSlippageTolerance(val);
+                 } else {
+                   setSlippageInputValue(slippageTolerance.toFixed(1));
+                 }
+                 setShowSlippageInput(false);
+               } else if (e.key === 'Escape') {
+                 setSlippageInputValue(slippageTolerance.toFixed(1));
                  setShowSlippageInput(false);
                }
              }}
@@ -1858,7 +1876,10 @@ const successFmt = formatTokenAmount(successAmountBigInt, collateralSymbol, coll
          </div>
        ) : (
          <button
-           onClick={() => setShowSlippageInput(true)}
+           onClick={() => {
+             setSlippageInputValue(slippageTolerance.toFixed(1));
+             setShowSlippageInput(true);
+           }}
            className="font-mono text-blue-900 hover:text-blue-600 underline decoration-dotted cursor-pointer"
          >
            {slippageTolerance.toFixed(1)}%
