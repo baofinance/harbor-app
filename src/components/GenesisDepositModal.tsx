@@ -747,13 +747,15 @@ const preDepositBalance = userCurrentDeposit;
 
  // Initialize progress modal steps
  const steps: TransactionStep[] = [];
- const includeApproval = !isNativeETH && needsApproval && !needsSwap; // Don't approve if we're swapping (swap will handle it)
+ const includeApproval = !isNativeETH && needsApproval && !needsSwap; // For direct deposits only
  const includeSwap = needsSwap && swapQuote;
+ const needsSwapApproval = includeSwap && !isNativeETH; // Approve source token for swap (unless it's ETH)
  
- if (includeApproval) {
+ // For swaps: first approve source token for ParaSwap, then swap
+ if (needsSwapApproval) {
  steps.push({
- id:"approve",
- label: `Approve ${selectedAsset}`,
+ id:"approveSwap",
+ label: `Approve ${selectedAsset} for swap`,
  status:"pending",
  });
  }
@@ -762,6 +764,22 @@ const preDepositBalance = userCurrentDeposit;
  steps.push({
  id:"swap",
  label: `Swap ${selectedAsset} → ${swapTarget}`,
+ status:"pending",
+ });
+ }
+ // For direct deposits: approve after swap (if needed)
+ if (includeApproval) {
+ steps.push({
+ id:"approve",
+ label: `Approve ${selectedAsset}`,
+ status:"pending",
+ });
+ }
+ // For fxSAVE market swaps: approve USDC after swap
+ if (includeSwap && isFxSAVEMarket) {
+ steps.push({
+ id:"approveUSDC",
+ label: `Approve USDC for deposit`,
  status:"pending",
  });
  }
@@ -776,19 +794,101 @@ const preDepositBalance = userCurrentDeposit;
 
  // Execute swap if needed
  if (includeSwap && swapQuote && address) {
-   setStep("depositing"); // Use depositing step for swap
-   setProgressSteps((prev) =>
-     prev.map((s) =>
-       s.id === "swap" ? { ...s, status: "in_progress" } : s
-     )
-   );
-   setCurrentStepIndex(steps.findIndex((s) => s.id === "swap"));
-   setError(null);
-   setTxHash(null);
-   
    try {
      const targetTokenSymbol = isFxSAVEMarket ? "USDC" : "ETH";
      const targetTokenDecimals = isFxSAVEMarket ? 6 : 18;
+     
+     // Step 1: Get swap transaction data from ParaSwap to find the spender address
+     const swapTx = await getDefiLlamaSwapTx(
+       fromTokenForSwap,
+       swapTargetToken as any,
+       amountBigInt,
+       address,
+       1.0, // 1% slippage tolerance
+       selectedTokenDecimals,
+       targetTokenDecimals
+     );
+     
+     // Step 2: For ERC20 tokens, approve ParaSwap router before swapping
+     if (!isNativeETH) {
+       setStep("approving");
+       setProgressSteps((prev) =>
+         prev.map((s) =>
+           s.id === "approveSwap" ? { ...s, status: "in_progress" } : s
+         )
+       );
+       setCurrentStepIndex(steps.findIndex((s) => s.id === "approveSwap"));
+       setError(null);
+       setTxHash(null);
+       
+       // ParaSwap router address (the 'to' address from swap tx)
+       const paraswapRouter = swapTx.to;
+       
+       console.log(`[Swap Approval] Checking ${selectedAsset} allowance for ParaSwap:`, {
+         token: selectedAssetAddress,
+         spender: paraswapRouter,
+         amount: formatUnits(amountBigInt, selectedTokenDecimals),
+       });
+       
+       // Check current allowance
+       const currentAllowance = await publicClient.readContract({
+         address: selectedAssetAddress as `0x${string}`,
+         abi: ERC20_ABI,
+         functionName: "allowance",
+         args: [address, paraswapRouter],
+       }) as bigint;
+       
+       console.log(`[Swap Approval] Current allowance:`, {
+         raw: currentAllowance.toString(),
+         formatted: formatUnits(currentAllowance, selectedTokenDecimals),
+         required: formatUnits(amountBigInt, selectedTokenDecimals),
+       });
+       
+       // Approve if needed
+       if (currentAllowance < amountBigInt) {
+         console.log(`[Swap Approval] Insufficient allowance, approving ${selectedAsset}...`);
+         
+         const approveHash = await writeContractAsync({
+           address: selectedAssetAddress as `0x${string}`,
+           abi: ERC20_ABI,
+           functionName: "approve",
+           args: [paraswapRouter, amountBigInt],
+         });
+         
+         setTxHash(approveHash);
+         console.log("[Swap Approval] Approval transaction sent:", approveHash);
+         
+         await publicClient?.waitForTransactionReceipt({ hash: approveHash });
+         console.log("[Swap Approval] Approval confirmed");
+         
+         // Wait for state update
+         await new Promise((resolve) => setTimeout(resolve, 1000));
+         
+         setProgressSteps((prev) =>
+           prev.map((s) =>
+             s.id === "approveSwap" ? { ...s, status: "completed", txHash: approveHash } : s
+           )
+         );
+       } else {
+         console.log(`[Swap Approval] Sufficient allowance already exists, skipping approval`);
+         setProgressSteps((prev) =>
+           prev.map((s) =>
+             s.id === "approveSwap" ? { ...s, status: "completed" } : s
+           )
+         );
+       }
+     }
+     
+     // Step 3: Execute the swap
+     setStep("depositing"); // Use depositing step for swap
+     setProgressSteps((prev) =>
+       prev.map((s) =>
+         s.id === "swap" ? { ...s, status: "in_progress" } : s
+       )
+     );
+     setCurrentStepIndex(steps.findIndex((s) => s.id === "swap"));
+     setError(null);
+     setTxHash(null);
      
      // Get balance BEFORE swap to calculate the difference after
      let balanceBefore: bigint;
@@ -812,17 +912,6 @@ const preDepositBalance = userCurrentDeposit;
          formatted: formatUnits(balanceBefore, targetTokenDecimals),
        });
      }
-     
-     // Get swap transaction data from ParaSwap
-     const swapTx = await getDefiLlamaSwapTx(
-       fromTokenForSwap,
-       swapTargetToken as any,
-       amountBigInt,
-       address,
-       1.0, // 1% slippage tolerance
-       selectedTokenDecimals,
-       targetTokenDecimals
-     );
      
      // Execute swap using sendTransaction (ParaSwap gives raw tx data, not contract call)
      const swapHash = await sendTransactionAsync({
@@ -887,13 +976,13 @@ const preDepositBalance = userCurrentDeposit;
     // For fxSAVE markets (USDC swap), we need to approve USDC for the zapper
     // For wstETH markets (ETH swap), no approval needed - ETH is native
     if (isFxSAVEMarket) {
-      setCurrentStepIndex(steps.findIndex((s) => s.id === "approve"));
+      setCurrentStepIndex(steps.findIndex((s) => s.id === "approveUSDC"));
       console.log("[Swap] Swap complete, now approving USDC for zapper...");
       
       setStep("approving");
       setProgressSteps((prev) =>
         prev.map((s) =>
-          s.id === "approve" ? { ...s, status: "in_progress" } : s
+          s.id === "approveUSDC" ? { ...s, status: "in_progress" } : s
         )
       );
       setError(null);
@@ -908,10 +997,10 @@ const preDepositBalance = userCurrentDeposit;
       });
       
       setTxHash(approveHash);
-      console.log("[Approval] USDC approval transaction sent:", approveHash);
+      console.log("[USDC Approval] Approval transaction sent:", approveHash);
       
       await publicClient?.waitForTransactionReceipt({ hash: approveHash });
-      console.log("[Approval] USDC approval confirmed");
+      console.log("[USDC Approval] Approval confirmed");
       
       // Give a moment for the blockchain state to update
       await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -924,7 +1013,7 @@ const preDepositBalance = userCurrentDeposit;
         args: [address, genesisZapAddress as `0x${string}`],
       });
       
-      console.log("[Approval] USDC allowance after approval:", {
+      console.log("[USDC Approval] Allowance after approval:", {
         raw: allowanceAfterApproval.toString(),
         formatted: formatUnits(allowanceAfterApproval as bigint, 6),
         required: formatUnits(received, 6),
@@ -936,7 +1025,7 @@ const preDepositBalance = userCurrentDeposit;
       
       setProgressSteps((prev) =>
         prev.map((s) =>
-          s.id === "approve"
+          s.id === "approveUSDC"
             ? { ...s, status: "completed", txHash: approveHash }
             : s
         )
