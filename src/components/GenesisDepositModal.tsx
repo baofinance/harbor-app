@@ -118,6 +118,9 @@ const maxUnderlyingPrice = coinGeckoPrice
     ? 1000000000000000000n // 1.0 in 18 decimals
     : oraclePriceData.maxPrice;
 
+// Get user's tokens early (before getAssetAddress uses it)
+const { tokens: userTokens, isLoading: isLoadingUserTokens } = useUserTokens();
+
  // Map asset symbol to its token address
  const getAssetAddress = (assetSymbol: string): string | null => {
  const normalized = assetSymbol.toLowerCase();
@@ -194,6 +197,10 @@ const needsSwap = isFxSAVEMarket && !isDirectlyAccepted && selectedAssetAddress 
 // USDC address for swaps
 const USDC_ADDRESS = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" as `0x${string}`;
 
+// Determine if custom token is selected (needed for hooks below)
+const isCustomToken = selectedAsset === "custom" && customTokenAddress && 
+  customTokenAddress.startsWith("0x") && customTokenAddress.length === 42;
+
 // Get token decimals for swap quote
 const tokenAddressForDecimals = isNativeETH 
   ? undefined 
@@ -232,9 +239,6 @@ const { data: swapQuote, isLoading: isLoadingSwapQuote, error: swapQuoteError } 
   needsSwap && !!amount && parseFloat(amount) > 0 && !!fromTokenForSwap,
   tokenDecimals
 );
-
-// Get user's tokens and merge with accepted assets
-const { tokens: userTokens, isLoading: isLoadingUserTokens } = useUserTokens();
 
 // Merge accepted assets with user tokens (avoid duplicates)
 const allAvailableAssets = React.useMemo(() => {
@@ -416,10 +420,6 @@ userTokens.forEach((token) => {
 });
 
 // Get balance for selected asset
-// For custom tokens, we need to fetch balance separately
-const isCustomToken = selectedAsset === "custom" && customTokenAddress && 
-  customTokenAddress.startsWith("0x") && customTokenAddress.length === 42;
-
 // For user tokens not in acceptedAssets, fetch balance separately
 const selectedUserToken = userTokens.find(t => t.symbol.toUpperCase() === selectedAsset.toUpperCase());
 const isUserTokenNotInAccepted = selectedUserToken && 
