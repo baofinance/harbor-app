@@ -1277,7 +1277,7 @@ export default function GenesisIndexPage() {
         <section className="space-y-2 overflow-visible">
           {/* Header Row - Hidden on mobile, shown on md+ */}
           <div className="hidden md:block bg-white p-3 overflow-x-auto">
-            <div className="grid grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr] gap-4 items-center uppercase tracking-wider text-xs text-[#1E4775] font-bold">
+            <div className="grid grid-cols-[1.5fr_1fr_1fr_1fr_0.5fr_1fr] gap-4 items-center uppercase tracking-wider text-xs text-[#1E4775] font-bold">
               <div className="min-w-0 text-center">Market</div>
               <div className="text-center min-w-0 flex items-center justify-center gap-1.5">
                 <span>Deposit Assets</span>
@@ -1526,15 +1526,15 @@ export default function GenesisIndexPage() {
                 >
                   {/* Mobile Card Layout */}
                   <div className="md:hidden space-y-3">
-                    <div className="flex items-center justify-center gap-2">
-                      <span className="text-[#1E4775] font-bold text-base">
+                    <div className="flex items-center justify-center gap-1.5">
+                      <span className="text-[#1E4775] font-bold text-sm">
                         {rowLeveragedSymbol &&
                         rowLeveragedSymbol.toLowerCase().startsWith("hs")
                           ? rowLeveragedSymbol.slice(2)
                           : rowLeveragedSymbol || (mkt as any).name}
                       </span>
                       <span className="text-[#1E4775]/60">:</span>
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-0.5">
                         <SimpleTooltip label={wrappedCollateralSymbol}>
                           <Image
                             src={getLogoPath(wrappedCollateralSymbol)}
@@ -1695,11 +1695,11 @@ export default function GenesisIndexPage() {
                           <div className="text-[#1E4775]/70">Status</div>
                           <div>
                             {isProcessing ? (
-                              <span className="text-[10px] uppercase px-2 py-1 bg-yellow-100 text-yellow-800">
+                              <span className="text-[10px] uppercase px-2 py-1 bg-yellow-100 text-yellow-800 whitespace-nowrap">
                                 {statusText}
                               </span>
                             ) : (
-                              <span className="text-[10px] uppercase px-2 py-1 bg-[#1E4775]/10 text-[#1E4775]">
+                              <span className="text-[10px] uppercase px-2 py-1 bg-[#1E4775]/10 text-[#1E4775] whitespace-nowrap">
                                 {statusText}
                               </span>
                             )}
@@ -1710,17 +1710,17 @@ export default function GenesisIndexPage() {
                   </div>
 
                   {/* Desktop Table Layout */}
-                  <div className="hidden md:grid grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr] gap-4 items-center text-sm">
+                  <div className="hidden md:grid grid-cols-[1.5fr_1fr_1fr_1fr_0.5fr_1fr] gap-4 items-center text-sm">
                     <div className="min-w-0 overflow-hidden">
-                      <div className="flex items-center justify-center gap-2">
-                        <span className="text-[#1E4775] font-bold text-base">
+                      <div className="flex items-center justify-center gap-1.5">
+                        <span className="text-[#1E4775] font-bold text-sm">
                           {rowLeveragedSymbol &&
                           rowLeveragedSymbol.toLowerCase().startsWith("hs")
                             ? rowLeveragedSymbol.slice(2)
                             : rowLeveragedSymbol || (mkt as any).name}
                         </span>
                         <span className="text-[#1E4775]/60">:</span>
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-0.5">
                           <SimpleTooltip label={wrappedCollateralSymbol}>
                             <Image
                               src={getLogoPath(wrappedCollateralSymbol)}
@@ -1998,13 +1998,13 @@ export default function GenesisIndexPage() {
                             </div>
                           }
                         >
-                          <span className="text-[10px] uppercase px-2 py-1 bg-yellow-100 text-yellow-800 cursor-help flex items-center gap-1 justify-center">
+                          <span className="text-[10px] uppercase px-2 py-1 bg-yellow-100 text-yellow-800 cursor-help flex items-center gap-1 justify-center whitespace-nowrap">
                             <ClockIcon className="w-3 h-3" />
                             {statusText}
                           </span>
                         </SimpleTooltip>
                       ) : (
-                        <span className="text-[10px] uppercase px-2 py-1 bg-[#1E4775]/10 text-[#1E4775]">
+                        <span className="text-[10px] uppercase px-2 py-1 bg-[#1E4775]/10 text-[#1E4775] whitespace-nowrap">
                           {statusText}
                         </span>
                       )}
