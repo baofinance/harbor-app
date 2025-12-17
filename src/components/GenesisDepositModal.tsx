@@ -615,28 +615,21 @@ const { data: expectedFxSaveFromFXUSD } = useContractRead({
   },
 });
 
-// For tokens that need swapping: estimate fxSAVE based on USDC amount and wrapped rate
-// The zapper contract will handle the actual USDC → fxSAVE conversion at deposit time
+// For tokens that need swapping: get expected fxSAVE from the USDC amount using the zapper contract preview
+// This uses the same contract call as direct USDC deposits for consistency
 const usdcFromSwap = needsSwap && swapQuote ? swapQuote.toAmount : 0n;
-const estimatedFxSaveFromSwap = (() => {
-  if (!needsSwap || usdcFromSwap === 0n) return 0n;
-  
-  // Convert USDC (6 decimals) to fxSAVE (18 decimals)
-  // Estimate: 1 USDC ≈ 0.93 fxSAVE (since fxSAVE ≈ $1.07)
-  // Or use wrapped rate if available
-  const usdcInEther = (usdcFromSwap * 10n ** 12n); // Scale from 6 to 18 decimals
-  
-  // If we have the wrapped rate, use it to estimate more accurately
-  // fxSAVE = USDC / wrapped rate (e.g., USDC / 1.07)
-  if (wrappedRate && wrappedRate > 0n) {
-    // wrappedRate is in 18 decimals (e.g., 1.07e18)
-    // fxSAVE = USDC * 1e18 / wrappedRate
-    return (usdcInEther * 1000000000000000000n) / wrappedRate;
-  }
-  
-  // Fallback: rough estimate (1 USDC ≈ 0.93 fxSAVE)
-  return (usdcInEther * 93n) / 100n;
-})();
+const usdcAmountForSwapPreview = usdcFromSwap > 0n 
+  ? usdcFromSwap * 10n ** 12n // Scale from 6 to 18 decimals
+  : 0n;
+const { data: expectedFxSaveFromSwap } = useContractRead({
+  address: genesisZapAddress,
+  abi: USDC_ZAP_ABI,
+  functionName: "previewZapUsdc",
+  args: usdcAmountForSwapPreview > 0n && needsSwap ? [usdcAmountForSwapPreview] : undefined,
+  query: {
+    enabled: !!address && isOpen && mounted && needsSwap && usdcAmountForSwapPreview > 0n && !!genesisZapAddress && useUSDCZap,
+  },
+});
 
 // Helper to safely extract bigint from hook result
 const toBigInt = (value: unknown): bigint => {
@@ -647,7 +640,7 @@ const toBigInt = (value: unknown): bigint => {
 // Calculate the actual collateral amount that will be deposited
 // For ETH/stETH markets: convert to wstETH
 // For USDC/FXUSD markets: convert to fxSAVE
-// For tokens that need swapping: estimate based on swap output (actual conversion happens in zapper)
+// For tokens that need swapping: use contract preview with USDC from swap (same as direct USDC deposits)
 // For other tokens: use amount directly
 const actualCollateralDeposit: bigint = isNativeETH && isETHStETHMarket
   ? toBigInt(expectedWstETHFromETH)
@@ -658,7 +651,7 @@ const actualCollateralDeposit: bigint = isNativeETH && isETHStETHMarket
   : isFXUSD && useUSDCZap
   ? toBigInt(expectedFxSaveFromFXUSD)
   : needsSwap && useUSDCZap
-  ? estimatedFxSaveFromSwap // Use estimated value, zapper will do actual conversion
+  ? toBigInt(expectedFxSaveFromSwap) // Use contract preview with USDC from swap
   : amountBigInt; // For wstETH, fxSAVE, or direct deposits, use the amount directly
 
 // Calculate new total deposit using actual collateral amount
@@ -679,9 +672,11 @@ if (process.env.NODE_ENV === "development") {
     } : null,
     usdcFromSwap: usdcFromSwap.toString(),
     usdcFromSwapFormatted: usdcFromSwap > 0n ? formatUnits(usdcFromSwap, 6) : "0",
+    usdcAmountForSwapPreview: usdcAmountForSwapPreview.toString(),
+    usdcAmountForSwapPreviewFormatted: usdcAmountForSwapPreview > 0n ? formatUnits(usdcAmountForSwapPreview, 18) : "0",
     wrappedRate: wrappedRate ? Number(wrappedRate) / 1e18 : null,
-    estimatedFxSaveFromSwap: estimatedFxSaveFromSwap.toString(),
-    estimatedFxSaveFromSwapFormatted: estimatedFxSaveFromSwap > 0n ? formatUnits(estimatedFxSaveFromSwap, 18) : "0",
+    expectedFxSaveFromSwap: expectedFxSaveFromSwap ? expectedFxSaveFromSwap.toString() : null,
+    expectedFxSaveFromSwapFormatted: expectedFxSaveFromSwap ? formatUnits(expectedFxSaveFromSwap as bigint, 18) : "0",
     actualCollateralDeposit: actualCollateralDeposit.toString(),
     actualCollateralDepositFormatted: formatUnits(actualCollateralDeposit, 18),
     isLoadingSwapQuote,
