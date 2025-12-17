@@ -1277,7 +1277,7 @@ export default function GenesisIndexPage() {
         <section className="space-y-2 overflow-visible">
           {/* Header Row - Hidden on mobile, shown on md+ */}
           <div className="hidden md:block bg-white p-3 overflow-x-auto">
-            <div className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr_1fr] gap-4 items-center uppercase tracking-wider text-xs text-[#1E4775] font-bold">
+            <div className="grid grid-cols-[1.5fr_1fr_1fr_1fr_1fr_1fr] gap-4 items-center uppercase tracking-wider text-xs text-[#1E4775] font-bold">
               <div className="min-w-0 text-center">Market</div>
               <div className="text-center min-w-0 flex items-center justify-center gap-1.5">
                 <span>Deposit Assets</span>
@@ -1696,35 +1696,35 @@ export default function GenesisIndexPage() {
                   </div>
 
                   {/* Desktop Table Layout */}
-                  <div className="hidden md:grid grid-cols-[1fr_1fr_1fr_1fr_1fr_1fr] gap-4 items-center text-sm">
-                    <div className="whitespace-nowrap min-w-0 overflow-hidden">
-                      <div className="flex items-center justify-center gap-2">
-                        <span className="text-[#1E4775] font-medium">
+                  <div className="hidden md:grid grid-cols-[1.5fr_1fr_1fr_1fr_1fr_1fr] gap-4 items-center text-sm">
+                    <div className="min-w-0">
+                      <div className="flex items-center justify-start gap-2">
+                        <span className="text-[#1E4775] font-medium flex-1 min-w-0 truncate">
                           {rowLeveragedSymbol &&
                           rowLeveragedSymbol.toLowerCase().startsWith("hs")
                             ? rowLeveragedSymbol.slice(2)
                             : rowLeveragedSymbol || (mkt as any).name}
                         </span>
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-0.5 flex-shrink-0">
                           <Image
                             src={getLogoPath(rowPeggedSymbol)}
                             alt={rowPeggedSymbol}
-                            width={24}
-                            height={24}
+                            width={18}
+                            height={18}
                             className="flex-shrink-0"
                           />
                           <Image
                             src={getLogoPath(rowLeveragedSymbol)}
                             alt={rowLeveragedSymbol}
-                            width={24}
-                            height={24}
+                            width={18}
+                            height={18}
                             className="flex-shrink-0"
                           />
                         </div>
                         {isExpanded ? (
-                          <ChevronUpIcon className="w-5 h-5 text-[#1E4775] flex-shrink-0" />
+                          <ChevronUpIcon className="w-4 h-4 text-[#1E4775] flex-shrink-0 ml-1" />
                         ) : (
-                          <ChevronDownIcon className="w-5 h-5 text-[#1E4775] flex-shrink-0" />
+                          <ChevronDownIcon className="w-4 h-4 text-[#1E4775] flex-shrink-0 ml-1" />
                         )}
                       </div>
                     </div>
