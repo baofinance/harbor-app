@@ -548,23 +548,6 @@ console.log("[GenesisDepositModal] Price Debug:", {
     ? `${Number(maxUnderlyingPrice) / 1e18} * ${Number(wrappedRate) / 1e18} = ${selectedAssetPriceUSD}`
     : "Using underlying price directly"
 });
-
-console.log("[GenesisDepositModal] Swap Debug:", {
-  needsSwap,
-  isFxSAVEMarket,
-  isDirectlyAccepted,
-  isNativeETH,
-  selectedAssetAddress,
-  swapQuote: swapQuote ? {
-    fromAmount: swapQuote.fromAmount.toString(),
-    toAmount: swapQuote.toAmount.toString(),
-    toAmountUSDC: formatUnits(swapQuote.toAmount, 6),
-  } : null,
-  expectedFxSaveFromSwap: expectedFxSaveFromSwap ? expectedFxSaveFromSwap.toString() : null,
-  actualCollateralDeposit: actualCollateralDeposit.toString(),
-  isLoadingSwapQuote,
-  swapQuoteError: swapQuoteError?.message,
-});
 }
 const allowance = isNativeETH ? 0n : (typeof allowanceData === 'bigint' ? allowanceData : 0n);
  // Use token decimals dynamically, fallback to 18 (or 6 for USDC)
@@ -673,6 +656,26 @@ const actualCollateralDeposit: bigint = isNativeETH && isETHStETHMarket
 
 // Calculate new total deposit using actual collateral amount
 const newTotalDepositActual: bigint = userCurrentDeposit + actualCollateralDeposit;
+
+// Debug logging for swap state (after all variables are defined)
+if (process.env.NODE_ENV === "development") {
+  console.log("[GenesisDepositModal] Swap Debug:", {
+    needsSwap,
+    isFxSAVEMarket,
+    isDirectlyAccepted,
+    isNativeETH,
+    selectedAssetAddress,
+    swapQuote: swapQuote ? {
+      fromAmount: swapQuote.fromAmount.toString(),
+      toAmount: swapQuote.toAmount.toString(),
+      toAmountUSDC: formatUnits(swapQuote.toAmount, 6),
+    } : null,
+    expectedFxSaveFromSwap: expectedFxSaveFromSwap ? expectedFxSaveFromSwap.toString() : null,
+    actualCollateralDeposit: actualCollateralDeposit.toString(),
+    isLoadingSwapQuote,
+    swapQuoteError: swapQuoteError?.message,
+  });
+}
 
  const isNonCollateralAsset =
  selectedAsset.toLowerCase() !== collateralSymbol.toLowerCase();
