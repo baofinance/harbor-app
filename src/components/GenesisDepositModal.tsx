@@ -507,50 +507,6 @@ const allowanceTarget = (useETHZap || useUSDCZap) && genesisZapAddress ? genesis
   // Use the balance from the asset balance map or custom token balance
   const balance = selectedAssetBalance;
 
-// Debug logging (after all hooks are declared)
-if (process.env.NODE_ENV ==="development") {
-console.log("[GenesisDepositModal] Balance Debug:", {
-selectedAsset,
-selectedAssetAddress,
-isValidSelectedAssetAddress,
-collateralAddress,
-collateralSymbol,
-marketAddresses,
-address,
-isOpen,
-mounted,
-isNativeETH,
-assetBalanceContracts: assetBalanceContracts.length,
-shouldFetchBalances,
-assetBalanceMap: Object.fromEntries(assetBalanceMap),
-selectedAssetBalance: selectedAssetBalance.toString(),
-balancesError: balancesError?.message,
-allowanceError: allowanceError?.message,
-genesisEndedError: genesisEndedError?.message,
-currentDepositError: currentDepositError?.message,
-});
-
-console.log("[GenesisDepositModal] Price Debug:", {
-  selectedAsset,
-  coinGeckoId,
-  coinGeckoPrice,
-  oraclePriceUSD: oraclePriceData.priceUSD,
-  priceSource: coinGeckoPrice 
-    ? "CoinGecko" 
-    : collateralSymbol.toLowerCase() === "fxusd" 
-      ? "Hardcoded ($1.00)" 
-      : "Oracle",
-  isWrappedToken,
-  underlyingPriceUSD,
-  wrappedRate: wrappedRate ? Number(wrappedRate) / 1e18 : null,
-  maxUnderlyingPrice: maxUnderlyingPrice ? Number(maxUnderlyingPrice) / 1e18 : null,
-  selectedAssetPriceUSD,
-  collateralPriceUSD,
-  calculation: isWrappedToken && wrappedRate && maxUnderlyingPrice 
-    ? `${Number(maxUnderlyingPrice) / 1e18} * ${Number(wrappedRate) / 1e18} = ${selectedAssetPriceUSD}`
-    : "Using underlying price directly"
-});
-}
 const allowance = isNativeETH ? 0n : (typeof allowanceData === 'bigint' ? allowanceData : 0n);
  // Use token decimals dynamically, fallback to 18 (or 6 for USDC)
  // For user tokens, use their known decimals
@@ -620,17 +576,8 @@ const { data: expectedFxSaveFromFXUSD } = useContractRead({
 // Use the same logic as direct USDC deposits
 const usdcFromSwap = needsSwap && swapQuote ? swapQuote.toAmount : 0n;
 
-console.log("[fxSAVE Calculation Debug]", {
-  needsSwap,
-  usdcFromSwap: usdcFromSwap.toString(),
-  usdcFromSwapFormatted: usdcFromSwap > 0n ? formatUnits(usdcFromSwap, 6) : "0",
-  wrappedRate: wrappedRate ? wrappedRate.toString() : null,
-  wrappedRateFormatted: wrappedRate ? Number(wrappedRate) / 1e18 : null,
-});
-
 const expectedFxSaveFromSwap = (() => {
   if (!needsSwap || usdcFromSwap === 0n) {
-    console.log("[fxSAVE Calculation] Returning 0 - needsSwap or usdcFromSwap is 0");
     return 0n;
   }
   
@@ -638,30 +585,16 @@ const expectedFxSaveFromSwap = (() => {
   // Scale USDC to 18 decimals first
   const usdcIn18Decimals = usdcFromSwap * 10n ** 12n;
   
-  console.log("[fxSAVE Calculation] usdcIn18Decimals:", {
-    value: usdcIn18Decimals.toString(),
-    formatted: formatUnits(usdcIn18Decimals, 18),
-  });
-  
   // If we have wrapped rate, use it: fxSAVE = USDC / wrappedRate
   // When both numbers are in 18 decimals, to divide: (a * 1e18) / b
   if (wrappedRate && wrappedRate > 0n) {
     const result = (usdcIn18Decimals * 1000000000000000000n) / wrappedRate;
-    console.log("[fxSAVE Calculation] Using wrappedRate:", {
-      calculation: `(${formatUnits(usdcIn18Decimals, 18)} * 1e18) / ${formatUnits(wrappedRate, 18)}`,
-      result: result.toString(),
-      resultFormatted: formatUnits(result, 18),
-    });
     return result;
   }
   
   // Fallback: Estimate 1 USDC ≈ 0.935 fxSAVE (if wrappedRate = 1.07)
   // fxSAVE = USDC * 0.935
   const fallbackResult = (usdcIn18Decimals * 935n) / 1000n;
-  console.log("[fxSAVE Calculation] Using fallback (0.935):", {
-    result: fallbackResult.toString(),
-    resultFormatted: formatUnits(fallbackResult, 18),
-  });
   return fallbackResult;
 })();
 
@@ -691,30 +624,6 @@ const actualCollateralDeposit: bigint = isNativeETH && isETHStETHMarket
 // Calculate new total deposit using actual collateral amount
 const newTotalDepositActual: bigint = userCurrentDeposit + actualCollateralDeposit;
 
-// Debug logging for swap state (after all variables are defined)
-if (process.env.NODE_ENV === "development") {
-  console.log("[GenesisDepositModal] Swap Debug:", {
-    needsSwap,
-    isFxSAVEMarket,
-    isDirectlyAccepted,
-    isNativeETH,
-    selectedAssetAddress,
-    swapQuote: swapQuote ? {
-      fromAmount: swapQuote.fromAmount.toString(),
-      toAmount: swapQuote.toAmount.toString(),
-      toAmountUSDC: formatUnits(swapQuote.toAmount, 6),
-    } : null,
-    usdcFromSwap: usdcFromSwap.toString(),
-    usdcFromSwapFormatted: usdcFromSwap > 0n ? formatUnits(usdcFromSwap, 6) : "0",
-    wrappedRate: wrappedRate ? Number(wrappedRate) / 1e18 : null,
-    expectedFxSaveFromSwap: expectedFxSaveFromSwap.toString(),
-    expectedFxSaveFromSwapFormatted: expectedFxSaveFromSwap > 0n ? formatUnits(expectedFxSaveFromSwap, 18) : "0",
-    actualCollateralDeposit: actualCollateralDeposit.toString(),
-    actualCollateralDepositFormatted: formatUnits(actualCollateralDeposit, 18),
-    isLoadingSwapQuote,
-    swapQuoteError: swapQuoteError?.message,
-  });
-}
 
  const isNonCollateralAsset =
  selectedAsset.toLowerCase() !== collateralSymbol.toLowerCase();
