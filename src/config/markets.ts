@@ -184,8 +184,8 @@ export const markets = {
       priceOracle: contractsMarkets["btc-steth"].addresses.priceOracle,
       collateralPrice: contractsMarkets["btc-steth"].addresses.collateralPrice,
       feeReceiver: contractsMarkets["btc-steth"].addresses.feeReceiver,
-      collateralToken: contractsMarkets["btc-steth"].addresses.collateralToken, // wstETH
-      wrappedCollateralToken: contractsMarkets["btc-steth"].addresses.underlyingCollateralToken, // stETH
+      collateralToken: contractsMarkets["btc-steth"].addresses.collateralToken, // wstETH (what's deposited in genesis)
+      wrappedCollateralToken: contractsMarkets["btc-steth"].addresses.collateralToken, // wstETH (same as collateralToken for this market)
       genesisZap: contractsMarkets["btc-steth"].addresses.genesisZap, // GenesisETHZap_v3 for BTC/stETH
     },
     peggedToken: {
