@@ -56,7 +56,13 @@ export function useUserTokens() {
   });
 
   const tokens = useQuery({
-    queryKey: ["userTokens", address, tokenBalances, ethBalance],
+    queryKey: [
+      "userTokens", 
+      address,
+      // Convert BigInt values to strings for query key serialization
+      tokenBalances?.map(b => b.status === "success" && b.result ? b.result.toString() : null),
+      ethBalance?.value ? ethBalance.value.toString() : null,
+    ],
     queryFn: (): TokenInfo[] => {
       const result: TokenInfo[] = [];
 
