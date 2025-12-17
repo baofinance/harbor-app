@@ -1,9 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { Address, formatUnits, parseUnits } from "viem";
+import { useCoinGeckoPrices } from "./useCoinGeckoPrice";
 
-// Use 1inch API for swap quotes - more reliable and well-documented
-const ONEINCH_API_URL = "https://api.1inch.dev/swap/v6.0/1"; // Chain ID 1 = Ethereum Mainnet
+// Note: External swap APIs (DefiLlama, 1inch) require authentication or have CORS issues
+// We'll estimate the swap using CoinGecko prices instead
 const ETH_ADDRESS = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeeEeE" as Address;
+const USDC_ADDRESS = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" as Address;
 
 // Helper to fetch token decimals (with caching)
 const tokenDecimalsCache = new Map<string, number>();
@@ -70,6 +72,16 @@ interface OneInchQuoteResponse {
   }>>>;
 }
 
+// Map token addresses to CoinGecko IDs
+const TOKEN_TO_COINGECKO_ID: Record<string, string> = {
+  [ETH_ADDRESS.toLowerCase()]: "ethereum",
+  [USDC_ADDRESS.toLowerCase()]: "usd-coin",
+  "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2": "weth", // WETH
+  "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599": "wrapped-bitcoin", // WBTC
+  "0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0": "wrapped-steth", // wstETH
+  "0xae78736cd615f374d3085123a210448e74fc6393": "rocket-pool-eth", // rETH
+};
+
 export function useDefiLlamaSwap(
   fromToken: Address | "ETH",
   toToken: Address,
@@ -77,98 +89,91 @@ export function useDefiLlamaSwap(
   enabled: boolean = true,
   fromTokenDecimals?: number // Optional: pass decimals if already known
 ) {
+  const fromTokenAddress = fromToken === "ETH" ? ETH_ADDRESS : fromToken;
+  
+  // Get CoinGecko IDs for both tokens
+  const fromCoinGeckoId = TOKEN_TO_COINGECKO_ID[fromTokenAddress.toLowerCase()] || "ethereum";
+  const toCoinGeckoId = TOKEN_TO_COINGECKO_ID[toToken.toLowerCase()] || "usd-coin";
+  
+  // Fetch prices for both tokens
+  const { prices, isLoading: isPricesLoading } = useCoinGeckoPrices(
+    [fromCoinGeckoId, toCoinGeckoId],
+    30000 // 30 second refresh
+  );
+  
   return useQuery({
-    queryKey: ["defillamaSwap", fromToken, toToken, amount, fromTokenDecimals],
+    queryKey: ["estimatedSwap", fromToken, toToken, amount, fromTokenDecimals, prices],
     queryFn: async (): Promise<SwapQuote> => {
       if (!amount || parseFloat(amount) <= 0) {
         throw new Error("Invalid amount");
       }
 
-      const fromTokenAddress = fromToken === "ETH" ? ETH_ADDRESS : fromToken;
+      if (!prices || !prices[fromCoinGeckoId] || !prices[toCoinGeckoId]) {
+        throw new Error("Prices not available");
+      }
+
+      const fromPriceUSD = prices[fromCoinGeckoId];
+      const toPriceUSD = prices[toCoinGeckoId];
       
       // Use provided decimals or default to 18
-      // DefiLlama API expects amount as a string in wei (token's native decimals)
       const decimals = fromTokenDecimals ?? 18;
       const amountInWei = parseUnits(amount, decimals);
-
-      const url = `${ONEINCH_API_URL}/quote`;
-      const params = new URLSearchParams({
-        src: fromTokenAddress,
-        dst: toToken,
-        amount: amountInWei.toString(),
-      });
-
-      console.log("[1inch] Fetching swap quote:", {
+      
+      // Calculate conversion using USD prices
+      const fromAmountUSD = (Number(amountInWei) / (10 ** decimals)) * fromPriceUSD;
+      
+      // USDC has 6 decimals
+      const toDecimals = toToken.toLowerCase() === USDC_ADDRESS.toLowerCase() ? 6 : 18;
+      const toAmountRaw = (fromAmountUSD / toPriceUSD) * (10 ** toDecimals);
+      
+      // Apply estimated slippage and fees (typically 0.5-1%)
+      const slippage = 0.5; // 0.5% slippage
+      const fee = 0.3; // 0.3% DEX fee
+      const totalCost = slippage + fee; // 0.8% total
+      
+      const toAmountAfterCosts = toAmountRaw * (1 - totalCost / 100);
+      const toAmount = BigInt(Math.floor(toAmountAfterCosts));
+      
+      const feeAmount = BigInt(Math.floor(toAmountRaw * (fee / 100)));
+      
+      console.log("[EstimatedSwap] Calculated swap:", {
         fromToken: fromTokenAddress,
         toToken,
         amount,
         amountInWei: amountInWei.toString(),
-        decimals,
-        url: `${url}?${params.toString()}`,
+        fromPriceUSD,
+        toPriceUSD,
+        fromAmountUSD,
+        toAmountRaw,
+        toAmountAfterCosts,
+        toAmount: toAmount.toString(),
+        slippage,
+        fee,
       });
-
-      const response = await fetch(`${url}?${params.toString()}`, {
-        headers: {
-          'Accept': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("[1inch] API error:", errorText);
-        throw new Error(`Failed to fetch swap quote: ${errorText}`);
-      }
-
-      const data: OneInchQuoteResponse = await response.json();
-      
-      console.log("[1inch] Swap quote received:", data);
-
-      // Calculate slippage and price impact
-      const fromAmount = BigInt(data.srcAmount);
-      const toAmount = BigInt(data.dstAmount);
-      
-      // Estimate price impact and slippage (1inch doesn't provide these directly in quote endpoint)
-      // Typical slippage is 0.3-1%, we'll estimate 0.5%
-      const estimatedSlippage = 0.5;
-      const estimatedPriceImpact = 0.1;
-      
-      // Extract route from protocols
-      const route: string[] = [];
-      if (data.protocols && data.protocols.length > 0) {
-        data.protocols[0]?.forEach(pathPart => {
-          pathPart.forEach(protocol => {
-            if (protocol.name && !route.includes(protocol.name)) {
-              route.push(protocol.name);
-            }
-          });
-        });
-      }
-
-      // Calculate fee (typically 0.3-1% for DEXs)
-      const fee = 0.5; // Estimate 0.5% average fee
-      const feeAmount = (toAmount * BigInt(Math.round(fee * 100))) / 10000n;
 
       return {
         fromToken,
         toToken,
-        fromAmount,
+        fromAmount: amountInWei,
         toAmount,
-        estimatedGas: BigInt(data.gas || "150000"),
-        slippage: estimatedSlippage,
-        priceImpact: estimatedPriceImpact,
-        route,
+        estimatedGas: BigInt("150000"), // Estimated gas
+        slippage,
+        priceImpact: 0.1, // Estimated price impact
+        route: ["Estimated via CoinGecko prices"],
         fee,
         feeAmount,
       };
     },
-    enabled: enabled && !!amount && parseFloat(amount) > 0 && !!fromToken && !!toToken,
+    enabled: enabled && !!amount && parseFloat(amount) > 0 && !!fromToken && !!toToken && !isPricesLoading && !!prices,
     staleTime: 10000, // Quotes expire quickly (10 seconds)
-    refetchInterval: 5000, // Refresh every 5 seconds
+    refetchInterval: 30000, // Refresh every 30 seconds (matching CoinGecko refresh)
     retry: 2,
   });
 }
 
 // Helper to get swap transaction data for execution
+// Note: This requires server-side implementation or a DEX aggregator that supports client-side calls
+// For now, this is a placeholder that should be replaced with actual swap routing
 export async function getDefiLlamaSwapTx(
   fromToken: Address | "ETH",
   toToken: Address,
@@ -181,35 +186,12 @@ export async function getDefiLlamaSwapTx(
   value: bigint;
   gas: bigint;
 }> {
-  const fromTokenAddress = fromToken === "ETH" ? ETH_ADDRESS : fromToken;
+  // This function needs to be implemented with a proper DEX aggregator
+  // Options:
+  // 1. Use 1inch API with server-side proxy
+  // 2. Use Uniswap SDK to build swap transaction
+  // 3. Use ParaSwap or other aggregator with client support
   
-  const url = `${ONEINCH_API_URL}/swap`;
-  const params = new URLSearchParams({
-    src: fromTokenAddress,
-    dst: toToken,
-    amount: amount.toString(),
-    from: fromAddress,
-    slippage: slippage.toString(),
-  });
-
-  const response = await fetch(`${url}?${params.toString()}`, {
-    headers: {
-      'Accept': 'application/json',
-    },
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Failed to get swap transaction: ${errorText}`);
-  }
-
-  const data = await response.json();
-
-  return {
-    to: data.tx.to as Address,
-    data: data.tx.data as `0x${string}`,
-    value: BigInt(data.tx.value || "0"),
-    gas: BigInt(data.tx.gas || "150000"),
-  };
+  throw new Error("Swap execution not yet implemented. Please use a supported token (USDC, fxUSD, or fxSAVE) for now.");
 }
 
