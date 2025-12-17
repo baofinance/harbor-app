@@ -78,35 +78,31 @@ export function useMultiMarketGenesisAdmin() {
       const baseIndex = index * 3;
       const contractWrappedToken = genesisData[baseIndex + 2]?.result as `0x${string}` | undefined;
       
-      // Determine the actual deposited token address
-      // If contract read succeeded, use that. Otherwise, need to determine from config:
-      // - If wrappedCollateralToken exists AND is different from collateralToken, use wrappedCollateralToken (fxSAVE case)
-      // - Otherwise use collateralToken (wstETH case where they're the same or no wrapped variant)
-      let tokenAddress: `0x${string}`;
-      
-      if (contractWrappedToken) {
-        tokenAddress = contractWrappedToken;
-      } else {
-        // Check if this market has a separate wrapped collateral token
-        const hasWrapped = market.addresses.wrappedCollateralToken && 
-                          market.addresses.wrappedCollateralToken.toLowerCase() !== market.addresses.collateralToken.toLowerCase();
-        
-        tokenAddress = hasWrapped 
-          ? market.addresses.wrappedCollateralToken!
-          : market.addresses.collateralToken;
-      }
+      // Use on-chain WRAPPED_COLLATERAL_TOKEN from genesis contract (primary source)
+      // Fallback to collateralToken from config
+      // 
+      // Contract WRAPPED_COLLATERAL_TOKEN should return:
+      //   - fxSAVE (0x7743...eefc39) for fxUSD markets
+      //   - wstETH (0x7f39...2ca0) for stETH market
+      // 
+      // Config collateralToken (fallback, only works for wstETH):
+      //   - fxUSD for fxUSD markets (WRONG - would show 0 balance)
+      //   - wstETH for stETH market (CORRECT)
+      // 
+      // The contract read should always succeed. Fallback is just a safety net.
+      const tokenAddress = contractWrappedToken || market.addresses.collateralToken;
       
       return [
         // Wrapped collateral balance in Genesis contract
         {
-          address: tokenAddress,
+          address: tokenAddress as `0x${string}`,
           abi: ERC20_ABI,
           functionName: "balanceOf" as const,
           args: [market.addresses.genesis as `0x${string}`],
         },
         // Wrapped collateral token symbol
         {
-          address: tokenAddress,
+          address: tokenAddress as `0x${string}`,
           abi: ERC20_ABI,
           functionName: "symbol" as const,
         },
