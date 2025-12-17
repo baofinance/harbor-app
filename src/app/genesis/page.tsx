@@ -1272,22 +1272,7 @@ export default function GenesisIndexPage() {
         })()}
 
         {/* Divider */}
-        <div className="border-t border-white/10 my-2"></div>
-
-        {/* Multi-Token Deposit Banner */}
-        <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-4 mb-4 border border-blue-500/30">
-          <div className="flex items-center gap-3">
-            <ArrowPathIcon className="w-6 h-6 text-white flex-shrink-0" />
-            <div className="flex-1">
-              <h3 className="text-white font-bold text-sm mb-1">
-                Deposit Any Token via ParaSwap
-              </h3>
-              <p className="text-white/90 text-xs">
-                Don't have the required collateral? No problem! Deposit any ERC20 token (ETH, WBTC, USDC, etc.) and we'll automatically swap it to the required collateral using ParaSwap's DEX aggregator.
-              </p>
-            </div>
-          </div>
-        </div>
+        <div className="border-t border-white/10 mb-2"></div>
 
         <section className="space-y-2 overflow-visible">
           {/* Header Row - Hidden on mobile, shown on md+ */}
