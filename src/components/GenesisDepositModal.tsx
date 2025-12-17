@@ -203,6 +203,8 @@ const needsSwap = !isDirectlyAccepted && hasValidTokenAddress;
 const USDC_ADDRESS = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" as `0x${string}`;
 const ETH_ADDRESS = "ETH" as const;
 const swapTargetToken = isFxSAVEMarket ? USDC_ADDRESS : ETH_ADDRESS;
+// ParaSwap TokenTransferProxy address (needs approval for ERC20 swaps)
+const PARASWAP_TOKEN_TRANSFER_PROXY = "0x216b4b4ba9f3e719726886d34a177484278bfcae" as `0x${string}`;
 
 // Now that needsSwap is defined, determine if we should use USDC zap or ETH zap
 // USDC zap: direct USDC/FXUSD deposits OR swaps in fxSAVE markets
@@ -798,18 +800,8 @@ const preDepositBalance = userCurrentDeposit;
      const targetTokenSymbol = isFxSAVEMarket ? "USDC" : "ETH";
      const targetTokenDecimals = isFxSAVEMarket ? 6 : 18;
      
-     // Step 1: Get swap transaction data from ParaSwap to find the spender address
-     const swapTx = await getDefiLlamaSwapTx(
-       fromTokenForSwap,
-       swapTargetToken as any,
-       amountBigInt,
-       address,
-       1.0, // 1% slippage tolerance
-       selectedTokenDecimals,
-       targetTokenDecimals
-     );
-     
-     // Step 2: For ERC20 tokens, approve ParaSwap router before swapping
+     // Step 1: For ERC20 tokens, approve ParaSwap TokenTransferProxy BEFORE getting swap tx
+     // (ParaSwap API checks allowance when building transaction and will fail if insufficient)
      if (!isNativeETH) {
        setStep("approving");
        setProgressSteps((prev) =>
@@ -821,12 +813,9 @@ const preDepositBalance = userCurrentDeposit;
        setError(null);
        setTxHash(null);
        
-       // ParaSwap router address (the 'to' address from swap tx)
-       const paraswapRouter = swapTx.to;
-       
        console.log(`[Swap Approval] Checking ${selectedAsset} allowance for ParaSwap:`, {
          token: selectedAssetAddress,
-         spender: paraswapRouter,
+         spender: PARASWAP_TOKEN_TRANSFER_PROXY,
          amount: formatUnits(amountBigInt, selectedTokenDecimals),
        });
        
@@ -835,7 +824,7 @@ const preDepositBalance = userCurrentDeposit;
          address: selectedAssetAddress as `0x${string}`,
          abi: ERC20_ABI,
          functionName: "allowance",
-         args: [address, paraswapRouter],
+         args: [address, PARASWAP_TOKEN_TRANSFER_PROXY],
        }) as bigint;
        
        console.log(`[Swap Approval] Current allowance:`, {
@@ -852,7 +841,7 @@ const preDepositBalance = userCurrentDeposit;
            address: selectedAssetAddress as `0x${string}`,
            abi: ERC20_ABI,
            functionName: "approve",
-           args: [paraswapRouter, amountBigInt],
+           args: [PARASWAP_TOKEN_TRANSFER_PROXY, amountBigInt],
          });
          
          setTxHash(approveHash);
@@ -878,6 +867,17 @@ const preDepositBalance = userCurrentDeposit;
          );
        }
      }
+     
+     // Step 2: Now get swap transaction data from ParaSwap (allowance is now sufficient)
+     const swapTx = await getDefiLlamaSwapTx(
+       fromTokenForSwap,
+       swapTargetToken as any,
+       amountBigInt,
+       address,
+       1.0, // 1% slippage tolerance
+       selectedTokenDecimals,
+       targetTokenDecimals
+     );
      
      // Step 3: Execute the swap
      setStep("depositing"); // Use depositing step for swap
