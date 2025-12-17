@@ -672,7 +672,7 @@ const toBigInt = (value: unknown): bigint => {
 // Calculate the actual collateral amount that will be deposited
 // For ETH/stETH markets: convert to wstETH
 // For USDC/FXUSD markets: convert to fxSAVE
-// For tokens that need swapping: use contract preview with USDC from swap (same as direct USDC deposits)
+// For tokens that need swapping: use calculated fxSAVE from USDC (swaps always go to USDC, then zapper converts)
 // For other tokens: use amount directly
 const actualCollateralDeposit: bigint = isNativeETH && isETHStETHMarket
   ? toBigInt(expectedWstETHFromETH)
@@ -682,8 +682,8 @@ const actualCollateralDeposit: bigint = isNativeETH && isETHStETHMarket
   ? toBigInt(expectedFxSaveFromUSDC)
   : isFXUSD && useUSDCZap
   ? toBigInt(expectedFxSaveFromFXUSD)
-  : needsSwap && useUSDCZap
-  ? toBigInt(expectedFxSaveFromSwap) // Use contract preview with USDC from swap
+  : needsSwap && isFxSAVEMarket
+  ? expectedFxSaveFromSwap // For swapped tokens in fxSAVE markets, use calculated fxSAVE
   : amountBigInt; // For wstETH, fxSAVE, or direct deposits, use the amount directly
 
 // Calculate new total deposit using actual collateral amount
