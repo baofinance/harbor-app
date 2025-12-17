@@ -4,7 +4,10 @@ import { Address, formatUnits, parseUnits } from "viem";
 // Use ParaSwap API - has good client-side support without requiring authentication
 const PARASWAP_API_URL = "https://apiv5.paraswap.io";
 const ETHEREUM_CHAIN_ID = 1;
+// ParaSwap uses lowercase addresses with checksumming
 const ETH_ADDRESS = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeeEeE" as Address;
+// ParaSwap's ETH token address (all lowercase or specific format)
+const PARASWAP_ETH_ADDRESS = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"; // Lowercase for ParaSwap
 const USDC_ADDRESS = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" as Address;
 
 // Helper to fetch token decimals (with caching)
@@ -99,7 +102,9 @@ export function useDefiLlamaSwap(
         throw new Error("Invalid amount");
       }
 
-      const fromTokenAddress = fromToken === "ETH" ? ETH_ADDRESS : fromToken;
+      // ParaSwap uses lowercase ETH address
+      const fromTokenAddress = fromToken === "ETH" ? PARASWAP_ETH_ADDRESS : fromToken.toLowerCase();
+      const toTokenAddress = toToken.toLowerCase();
       
       // Use provided decimals or default to 18
       const decimals = fromTokenDecimals ?? 18;
@@ -109,7 +114,7 @@ export function useDefiLlamaSwap(
       const url = `${PARASWAP_API_URL}/prices`;
       const params = new URLSearchParams({
         srcToken: fromTokenAddress,
-        destToken: toToken,
+        destToken: toTokenAddress,
         amount: amountInWei.toString(),
         srcDecimals: decimals.toString(),
         destDecimals: "6", // USDC has 6 decimals
@@ -201,13 +206,15 @@ export async function getDefiLlamaSwapTx(
   value: bigint;
   gas: bigint;
 }> {
-  const fromTokenAddress = fromToken === "ETH" ? ETH_ADDRESS : fromToken;
+  // ParaSwap uses lowercase ETH address
+  const fromTokenAddress = fromToken === "ETH" ? PARASWAP_ETH_ADDRESS : fromToken.toLowerCase();
+  const toTokenAddress = toToken.toLowerCase();
   
   // First, get the price route
   const priceUrl = `${PARASWAP_API_URL}/prices`;
   const priceParams = new URLSearchParams({
     srcToken: fromTokenAddress,
-    destToken: toToken,
+    destToken: toTokenAddress,
     amount: amount.toString(),
     srcDecimals: "18", // Assume 18 for most tokens, USDC is 6 but we're swapping TO USDC
     destDecimals: "6", // USDC decimals
@@ -241,11 +248,11 @@ export async function getDefiLlamaSwapTx(
   const txUrl = `${PARASWAP_API_URL}/transactions/${ETHEREUM_CHAIN_ID}`;
   const txPayload = {
     srcToken: fromTokenAddress,
-    destToken: toToken,
+    destToken: toTokenAddress,
     srcAmount: priceData.priceRoute.srcAmount,
     destAmount: priceData.priceRoute.destAmount,
     priceRoute: priceData.priceRoute,
-    userAddress: fromAddress,
+    userAddress: fromAddress.toLowerCase(),
     slippage: Math.floor(slippage * 100), // ParaSwap expects slippage in basis points (100 = 1%)
   };
 
