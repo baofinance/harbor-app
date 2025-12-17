@@ -1541,108 +1541,35 @@ const successFmt = formatTokenAmount(successAmountBigInt, collateralSymbol, coll
  </div>
  </div>
 
- {/* Swap Preview - Show when token needs swapping */}
- {needsSwap && amount && parseFloat(amount) > 0 && (
-   <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg space-y-3">
-     <div className="font-semibold text-blue-900 text-sm">Swap Preview</div>
-     
-     {isLoadingSwapQuote ? (
-       <div className="text-sm text-blue-700">Loading swap quote...</div>
-     ) : swapQuoteError ? (
-       <div className="p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700">
-         Failed to fetch swap quote. Please try again or use a different token.
-       </div>
-     ) : swapQuote ? (
-       <>
-         <div className="space-y-2 text-sm">
-           <div className="flex items-center justify-between">
-             <span className="text-blue-800">You'll swap:</span>
-             <span className="font-mono text-blue-900">
-               {amount} {isCustomToken && customTokenSymbol ? customTokenSymbol : selectedAsset}
-             </span>
-           </div>
-           
-           <div className="flex items-center justify-center text-blue-600">
-             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-             </svg>
-           </div>
-           
-           <div className="flex items-center justify-between">
-             <span className="text-blue-800">You'll receive:</span>
-             <span className="font-mono text-blue-900">
-               {formatUnits(swapQuote.toAmount, 6)} USDC
-             </span>
-           </div>
-           
-           <div className="flex items-center justify-between text-xs">
-             <span className="text-blue-700">Slippage:</span>
-             <span className={`font-mono ${swapQuote.slippage > 2 ? "text-orange-600 font-semibold" : "text-green-600"}`}>
-               {swapQuote.slippage.toFixed(2)}%
-             </span>
-           </div>
-           
-           <div className="flex items-center justify-between text-xs">
-             <span className="text-blue-700">Fee:</span>
-             <span className="font-mono text-blue-700">
-               {swapQuote.fee.toFixed(2)}% ({formatUSD(Number(swapQuote.feeAmount) / 1e6)})
-             </span>
-           </div>
-           
-           {swapQuote.priceImpact > 5 && (
-             <div className="p-2 bg-orange-100 border border-orange-300 rounded text-xs text-orange-800">
-               ⚠️ High price impact ({swapQuote.priceImpact.toFixed(2)}%). 
-               Consider splitting into smaller transactions.
-             </div>
-           )}
-           
-           {/* Calculate total cost (slippage + fee) and warn if > 2% */}
-           {(() => {
-             const totalCostPercent = swapQuote.slippage + swapQuote.fee;
-             // Use correct decimals for fromAmount
-             const fromAmountInTokens = Number(swapQuote.fromAmount) / (10 ** selectedTokenDecimals);
-             const totalCostUSD = fromAmountInTokens * (totalCostPercent / 100) * (selectedAssetPriceUSD || 0);
-             
-             if (totalCostPercent > 2) {
-               return (
-                 <div className="p-2 bg-red-100 border border-red-300 rounded text-xs text-red-800 font-semibold">
-                   ⚠️ Warning: Total cost (slippage + fees) is {totalCostPercent.toFixed(2)}% ({formatUSD(totalCostUSD)}). 
-                   This exceeds 2% of your deposit value.
-                 </div>
-               );
-             }
-             return null;
-           })()}
-           
-           {/* Show final fxSAVE amount after swap + zap */}
-           {swapQuote.toAmount > 0n && genesisZapAddress && (
-             <div className="pt-2 border-t border-blue-200">
-               <div className="flex items-center justify-between text-sm font-semibold">
-                 <span className="text-blue-900">Final deposit (fxSAVE):</span>
-                 <span className="font-mono text-blue-900">
-                   {(() => {
-                     // Estimate fxSAVE from USDC (will be calculated more accurately in actual deposit)
-                     // For preview, we can show approximate amount
-                     const usdcAmount = Number(swapQuote.toAmount) / 1e6;
-                     // fxSAVE is typically ~1.07x USDC, but this is approximate
-                     const estimatedFxSave = usdcAmount * 1.07;
-                     return estimatedFxSave.toFixed(4);
-                   })()} fxSAVE (approx.)
-                 </span>
-               </div>
-             </div>
-           )}
-         </div>
-       </>
-     ) : null}
-   </div>
- )}
 
  {/* Transaction Preview - Always visible */}
  <div className="p-3 bg-[#17395F]/10 border border-[#1E4775]/20 space-y-2 text-sm">
  <div className="font-medium text-[#1E4775]">
  Transaction Preview:
  </div>
+ 
+ {/* Swap details - show when swapping */}
+ {needsSwap && swapQuote && swapQuote.toAmount > 0n && (
+   <div className="p-2 bg-blue-50 border border-blue-200 rounded space-y-1 text-xs">
+     <div className="flex items-center justify-between">
+       <span className="text-blue-700">Swap via ParaSwap:</span>
+       <span className="font-mono text-blue-900">{formatUnits(swapQuote.toAmount, 6)} USDC</span>
+     </div>
+     <div className="flex items-center justify-between">
+       <span className="text-blue-700">Slippage:</span>
+       <span className={`font-mono ${swapQuote.slippage > 2 ? "text-orange-600" : "text-green-600"}`}>
+         {swapQuote.slippage.toFixed(2)}%
+       </span>
+     </div>
+     <div className="flex items-center justify-between">
+       <span className="text-blue-700">Fee:</span>
+       <span className="font-mono text-blue-700">
+         {swapQuote.fee.toFixed(2)}%
+       </span>
+     </div>
+   </div>
+ )}
+ 
 {(() => {
   const displaySymbol = wrappedCollateralSymbol || collateralSymbol;
   const currentFmt = formatTokenAmount(userCurrentDeposit, displaySymbol, collateralPriceUSD);
@@ -1687,20 +1614,7 @@ const successFmt = formatTokenAmount(successAmountBigInt, collateralSymbol, coll
 <div className="text-xs text-[#1E4775]/50 italic">
 {needsSwap && swapQuote && swapQuote.toAmount > 0n ? (
   <>
-    {parseFloat(amount).toFixed(6)} {selectedAsset} → {(() => {
-      const usdcAmount = formatUnits(swapQuote.toAmount, 6);
-      // Validate that the USDC amount is reasonable (at least 0.01 USDC for 0.001 ETH)
-      // If it's too small, it's likely an error - show "Calculating..." instead
-      const usdcNum = parseFloat(usdcAmount);
-      const ethNum = parseFloat(amount);
-      // Rough check: 0.001 ETH should be at least ~$2-3 worth of USDC
-      // If USDC amount is less than 1% of ETH value in USD, it's likely wrong
-      const minExpectedUSDC = ethNum * (selectedAssetPriceUSD || 3000) * 0.01; // At least 1% of ETH value
-      if (usdcNum < minExpectedUSDC) {
-        return "Calculating...";
-      }
-      return `${usdcAmount} USDC (after swap fees)`;
-    })()} → {formatTokenAmount(actualCollateralDeposit, wrappedCollateralSymbol || collateralSymbol, undefined, 6, 18).display}
+    {parseFloat(amount).toFixed(6)} {selectedAsset} → {formatUnits(swapQuote.toAmount, 6)} USDC → {formatTokenAmount(actualCollateralDeposit, wrappedCollateralSymbol || collateralSymbol, undefined, 6, 18).display}
   </>
 ) : needsSwap && isLoadingSwapQuote ? (
   <>
