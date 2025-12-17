@@ -587,10 +587,9 @@ const { data: expectedWstETHFromStETH } = useContractRead({
 });
 
 // Calculate expected fxSAVE output for USDC deposits (for preview)
-// Note: previewZapUsdc expects USDC amount in 6 decimals (native USDC format)
-// amountBigInt is already in 6 decimals for USDC (e.g., 1 USDC = 1000000n)
+// Note: previewZapUsdc expects USDC amount in 18 decimals (scaled from 6)
+// amountBigInt is in 6 decimals for USDC (e.g., 1 USDC = 1000000n)
 // The contract returns fxSAVE amount in 18 decimals
-// If the contract expects 18 decimals, we need to scale: amountBigInt * 10^12
 const usdcAmountForPreview = isUSDC && amountBigInt > 0n 
   ? amountBigInt * 10n ** 12n // Scale from 6 to 18 decimals
   : amountBigInt;
@@ -615,21 +614,27 @@ const { data: expectedFxSaveFromFXUSD } = useContractRead({
   },
 });
 
-// For tokens that need swapping: get expected fxSAVE from the USDC amount using the zapper contract preview
-// This uses the same contract call as direct USDC deposits for consistency
+// For tokens that need swapping: calculate expected fxSAVE from the USDC amount
+// Simple approach: Use the same conversion ratio as direct USDC deposits
+// Formula: fxSAVE ≈ USDC / 1.07 (or use wrapped rate if available)
 const usdcFromSwap = needsSwap && swapQuote ? swapQuote.toAmount : 0n;
-const usdcAmountForSwapPreview = usdcFromSwap > 0n 
-  ? usdcFromSwap * 10n ** 12n // Scale from 6 to 18 decimals
-  : 0n;
-const { data: expectedFxSaveFromSwap } = useContractRead({
-  address: genesisZapAddress,
-  abi: USDC_ZAP_ABI,
-  functionName: "previewZapUsdc",
-  args: usdcAmountForSwapPreview > 0n && needsSwap ? [usdcAmountForSwapPreview] : undefined,
-  query: {
-    enabled: !!address && isOpen && mounted && needsSwap && usdcAmountForSwapPreview > 0n && !!genesisZapAddress && useUSDCZap,
-  },
-});
+const expectedFxSaveFromSwap = (() => {
+  if (!needsSwap || usdcFromSwap === 0n) return 0n;
+  
+  // USDC is in 6 decimals, fxSAVE is in 18 decimals
+  // Scale USDC to 18 decimals first
+  const usdcIn18Decimals = usdcFromSwap * 10n ** 12n;
+  
+  // If we have wrapped rate, use it: fxSAVE = USDC / wrappedRate
+  // Both are now in 18 decimals, so: fxSAVE = usdcIn18Decimals * 1e18 / wrappedRate
+  if (wrappedRate && wrappedRate > 0n) {
+    return (usdcIn18Decimals * 1000000000000000000n) / wrappedRate;
+  }
+  
+  // Fallback: Estimate 1 USDC ≈ 0.935 fxSAVE (if wrappedRate = 1.07)
+  // fxSAVE = USDC * 0.935
+  return (usdcIn18Decimals * 935n) / 1000n;
+})();
 
 // Helper to safely extract bigint from hook result
 const toBigInt = (value: unknown): bigint => {
