@@ -250,7 +250,8 @@ export async function getDefiLlamaSwapTx(
     srcToken: fromTokenAddress,
     destToken: toTokenAddress,
     srcAmount: priceData.priceRoute.srcAmount,
-    destAmount: priceData.priceRoute.destAmount,
+    // Don't include destAmount - ParaSwap will calculate it based on slippage
+    // destAmount: priceData.priceRoute.destAmount, // ← Can't specify both destAmount and slippage
     priceRoute: priceData.priceRoute,
     userAddress: fromAddress.toLowerCase(),
     slippage: Math.floor(slippage * 100), // ParaSwap expects slippage in basis points (100 = 1%)
