@@ -1666,7 +1666,20 @@ const successFmt = formatTokenAmount(successAmountBigInt, collateralSymbol, coll
 <div className="text-xs text-[#1E4775]/50 italic">
 {needsSwap && swapQuote && swapQuote.toAmount > 0n ? (
   <>
-    {parseFloat(amount).toFixed(6)} {selectedAsset} → {formatUnits(swapQuote.toAmount, 6)} USDC (after swap fees) → {formatTokenAmount(actualCollateralDeposit, wrappedCollateralSymbol || collateralSymbol, undefined, 6, 18).display}
+    {parseFloat(amount).toFixed(6)} {selectedAsset} → {(() => {
+      const usdcAmount = formatUnits(swapQuote.toAmount, 6);
+      // Validate that the USDC amount is reasonable (at least 0.01 USDC for 0.001 ETH)
+      // If it's too small, it's likely an error - show "Calculating..." instead
+      const usdcNum = parseFloat(usdcAmount);
+      const ethNum = parseFloat(amount);
+      // Rough check: 0.001 ETH should be at least ~$2-3 worth of USDC
+      // If USDC amount is less than 1% of ETH value in USD, it's likely wrong
+      const minExpectedUSDC = ethNum * (selectedAssetPriceUSD || 3000) * 0.01; // At least 1% of ETH value
+      if (usdcNum < minExpectedUSDC) {
+        return "Calculating...";
+      }
+      return `${usdcAmount} USDC (after swap fees)`;
+    })()} → {formatTokenAmount(actualCollateralDeposit, wrappedCollateralSymbol || collateralSymbol, undefined, 6, 18).display}
   </>
 ) : needsSwap && isLoadingSwapQuote ? (
   <>
