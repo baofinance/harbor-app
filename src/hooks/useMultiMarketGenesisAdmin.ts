@@ -79,18 +79,18 @@ export function useMultiMarketGenesisAdmin() {
       const contractWrappedToken = genesisData[baseIndex + 2]?.result as `0x${string}` | undefined;
       
       // Use on-chain WRAPPED_COLLATERAL_TOKEN from genesis contract (primary source)
-      // Fallback to collateralToken from config
+      // Fallback to wrappedCollateralToken from config (now correctly matches deployment logs)
       // 
-      // Contract WRAPPED_COLLATERAL_TOKEN should return:
+      // Contract WRAPPED_COLLATERAL_TOKEN returns:
       //   - fxSAVE (0x7743...eefc39) for fxUSD markets
       //   - wstETH (0x7f39...2ca0) for stETH market
       // 
-      // Config collateralToken (fallback, only works for wstETH):
-      //   - fxUSD for fxUSD markets (WRONG - would show 0 balance)
-      //   - wstETH for stETH market (CORRECT)
+      // Config wrappedCollateralToken (fallback, now correctly set for all markets):
+      //   - fxSAVE for fxUSD markets (what's deposited in genesis)
+      //   - wstETH for stETH market (what's deposited in genesis)
       // 
-      // The contract read should always succeed. Fallback is just a safety net.
-      const tokenAddress = contractWrappedToken || market.addresses.collateralToken;
+      // The contract read should always succeed. This fallback works for all markets now.
+      const tokenAddress = contractWrappedToken || market.addresses.wrappedCollateralToken;
       
       return [
         // Wrapped collateral balance in Genesis contract
