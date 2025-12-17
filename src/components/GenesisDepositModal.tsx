@@ -1664,9 +1664,13 @@ const successFmt = formatTokenAmount(successAmountBigInt, collateralSymbol, coll
 })()}
 {((isNativeETH || isStETH || isUSDC || isFXUSD || needsSwap) && actualCollateralDeposit > 0n) && (
 <div className="text-xs text-[#1E4775]/50 italic">
-{needsSwap && swapQuote ? (
+{needsSwap && swapQuote && swapQuote.toAmount > 0n ? (
   <>
     {parseFloat(amount).toFixed(6)} {selectedAsset} → {formatUnits(swapQuote.toAmount, 6)} USDC (after swap fees) → {formatTokenAmount(actualCollateralDeposit, wrappedCollateralSymbol || collateralSymbol, undefined, 6, 18).display}
+  </>
+) : needsSwap && isLoadingSwapQuote ? (
+  <>
+    {parseFloat(amount).toFixed(6)} {selectedAsset} → Calculating swap... → {formatTokenAmount(actualCollateralDeposit, wrappedCollateralSymbol || collateralSymbol, undefined, 6, 18).display}
   </>
 ) : (
   <>
