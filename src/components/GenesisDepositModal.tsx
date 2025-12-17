@@ -615,25 +615,52 @@ const { data: expectedFxSaveFromFXUSD } = useContractRead({
 });
 
 // For tokens that need swapping: calculate expected fxSAVE from the USDC amount
-// Simple approach: Use the same conversion ratio as direct USDC deposits
-// Formula: fxSAVE ≈ USDC / 1.07 (or use wrapped rate if available)
+// Use the same logic as direct USDC deposits
 const usdcFromSwap = needsSwap && swapQuote ? swapQuote.toAmount : 0n;
+
+console.log("[fxSAVE Calculation Debug]", {
+  needsSwap,
+  usdcFromSwap: usdcFromSwap.toString(),
+  usdcFromSwapFormatted: usdcFromSwap > 0n ? formatUnits(usdcFromSwap, 6) : "0",
+  wrappedRate: wrappedRate ? wrappedRate.toString() : null,
+  wrappedRateFormatted: wrappedRate ? Number(wrappedRate) / 1e18 : null,
+});
+
 const expectedFxSaveFromSwap = (() => {
-  if (!needsSwap || usdcFromSwap === 0n) return 0n;
+  if (!needsSwap || usdcFromSwap === 0n) {
+    console.log("[fxSAVE Calculation] Returning 0 - needsSwap or usdcFromSwap is 0");
+    return 0n;
+  }
   
   // USDC is in 6 decimals, fxSAVE is in 18 decimals
   // Scale USDC to 18 decimals first
   const usdcIn18Decimals = usdcFromSwap * 10n ** 12n;
   
+  console.log("[fxSAVE Calculation] usdcIn18Decimals:", {
+    value: usdcIn18Decimals.toString(),
+    formatted: formatUnits(usdcIn18Decimals, 18),
+  });
+  
   // If we have wrapped rate, use it: fxSAVE = USDC / wrappedRate
-  // Both are now in 18 decimals, so: fxSAVE = usdcIn18Decimals * 1e18 / wrappedRate
+  // When both numbers are in 18 decimals, to divide: (a * 1e18) / b
   if (wrappedRate && wrappedRate > 0n) {
-    return (usdcIn18Decimals * 1000000000000000000n) / wrappedRate;
+    const result = (usdcIn18Decimals * 1000000000000000000n) / wrappedRate;
+    console.log("[fxSAVE Calculation] Using wrappedRate:", {
+      calculation: `(${formatUnits(usdcIn18Decimals, 18)} * 1e18) / ${formatUnits(wrappedRate, 18)}`,
+      result: result.toString(),
+      resultFormatted: formatUnits(result, 18),
+    });
+    return result;
   }
   
   // Fallback: Estimate 1 USDC ≈ 0.935 fxSAVE (if wrappedRate = 1.07)
   // fxSAVE = USDC * 0.935
-  return (usdcIn18Decimals * 935n) / 1000n;
+  const fallbackResult = (usdcIn18Decimals * 935n) / 1000n;
+  console.log("[fxSAVE Calculation] Using fallback (0.935):", {
+    result: fallbackResult.toString(),
+    resultFormatted: formatUnits(fallbackResult, 18),
+  });
+  return fallbackResult;
 })();
 
 // Helper to safely extract bigint from hook result
