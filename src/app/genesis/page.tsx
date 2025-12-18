@@ -751,15 +751,6 @@ export default function GenesisIndexPage() {
                     Discord to be included in the community marketing airdrop.
                   </p>
                 </div>
-
-                <div className="flex justify-end">
-                  <button
-                    onClick={onClose}
-                    className="text-xs font-semibold text-[#1E4775] border border-[#1E4775] rounded-full py-2 px-4 hover:bg-[#1E4775]/10 transition"
-                  >
-                    Close
-                  </button>
-                </div>
               </div>
             )}
 
@@ -772,14 +763,6 @@ export default function GenesisIndexPage() {
                   <p className="text-xs text-[#1E4775]/80 break-words mt-1">
                     {errorMessage || "Something went wrong. Please try again."}
                   </p>
-                </div>
-                <div className="flex justify-end">
-                  <button
-                    onClick={onClose}
-                    className="text-xs font-semibold text-[#1E4775] border border-[#1E4775] rounded-full py-2 px-4 hover:bg-[#1E4775]/10 transition"
-                  >
-                    Close
-                  </button>
                 </div>
               </div>
             )}
@@ -1338,7 +1321,9 @@ export default function GenesisIndexPage() {
               const baseOffset = mi * (isConnected ? 3 : 1);
               return !((reads?.[baseOffset]?.result as boolean) ?? false);
             });
-            const showHeaders = hasEndedMarkets && hasLiveMarkets;
+            // Show headers if we have both types, OR if we have live markets (always show active header)
+            const showHeaders =
+              (hasEndedMarkets && hasLiveMarkets) || hasLiveMarkets;
 
             let lastWasEnded: boolean | null = null;
 
@@ -1374,53 +1359,51 @@ export default function GenesisIndexPage() {
               // Add section header when transitioning from ended to live markets
               const sectionHeader =
                 showHeaders &&
-                lastWasEnded !== isEnded &&
-                lastWasEnded !== null ? (
-                  isEnded ? null : (
-                    <>
-                      <div key={`section-live`} className="pt-4 mt-40 mb-3">
+                !isEnded &&
+                (lastWasEnded === null || lastWasEnded !== isEnded) ? (
+                  <>
+                    {hasEndedMarkets && (
+                      <div key={`section-live`} className="pt-4 mb-3">
                         <h2 className="text-xs font-medium text-white/70 uppercase tracking-wider">
                           Active Genesis Events
                         </h2>
                       </div>
-                      <div
-                        key={`header-live`}
-                        className="hidden md:block bg-white py-1.5 px-2 overflow-x-auto"
-                      >
-                        <div className="grid lg:grid-cols-[1.5fr_1fr_1fr_1fr_0.5fr_1fr] md:grid-cols-[120px_140px_1fr_1fr_90px_80px] gap-4 items-center uppercase tracking-wider text-[10px] lg:text-[11px] text-[#1E4775] font-semibold">
-                          <div className="min-w-0 text-center">Market</div>
-                          <div className="text-center min-w-0 flex items-center justify-center gap-1.5">
-                            <span>Deposit Assets</span>
-                            <SimpleTooltip
-                              label={
-                                <div>
-                                  <div className="font-semibold mb-1">
-                                    Multi-Token Support
-                                  </div>
-                                  <div className="text-xs opacity-90">
-                                    Deposit any ERC20 token via ParaSwap.
-                                    Non-collateral tokens will be automatically
-                                    swapped.
-                                  </div>
+                    )}
+                    <div
+                      key={`header-live`}
+                      className="hidden md:block bg-white py-1.5 px-2 overflow-x-auto"
+                    >
+                      <div className="grid lg:grid-cols-[1.5fr_1fr_1fr_1fr_0.5fr_1fr] md:grid-cols-[120px_140px_1fr_1fr_90px_80px] gap-4 items-center uppercase tracking-wider text-[10px] lg:text-[11px] text-[#1E4775] font-semibold">
+                        <div className="min-w-0 text-center">Market</div>
+                        <div className="text-center min-w-0 flex items-center justify-center gap-1.5">
+                          <span>Deposit Assets</span>
+                          <SimpleTooltip
+                            label={
+                              <div>
+                                <div className="font-semibold mb-1">
+                                  Multi-Token Support
                                 </div>
-                              }
-                            >
-                              <ArrowPathIcon className="w-3.5 h-3.5 text-[#1E4775] cursor-help" />
-                            </SimpleTooltip>
-                          </div>
-                          <div className="text-center min-w-0">
-                            Total
-                            <span className="hidden lg:inline"> Deposits</span>
-                          </div>
-                          <div className="text-center min-w-0">
-                            Your Deposit
-                          </div>
-                          <div className="text-center min-w-0">Status</div>
-                          <div className="text-center min-w-0">Action</div>
+                                <div className="text-xs opacity-90">
+                                  Deposit any ERC20 token via ParaSwap.
+                                  Non-collateral tokens will be automatically
+                                  swapped.
+                                </div>
+                              </div>
+                            }
+                          >
+                            <ArrowPathIcon className="w-3.5 h-3.5 text-[#1E4775] cursor-help" />
+                          </SimpleTooltip>
                         </div>
+                        <div className="text-center min-w-0">
+                          Total
+                          <span className="hidden lg:inline"> Deposits</span>
+                        </div>
+                        <div className="text-center min-w-0">Your Deposit</div>
+                        <div className="text-center min-w-0">Status</div>
+                        <div className="text-center min-w-0">Action</div>
                       </div>
-                    </>
-                  )
+                    </div>
+                  </>
                 ) : null;
 
               // Add header for ended markets at the start

@@ -66,7 +66,7 @@ import { useStabilityPoolRewards } from "@/hooks/useStabilityPoolRewards";
 import { useAllStabilityPoolRewards } from "@/hooks/useAllStabilityPoolRewards";
 import { useMultipleVolatilityProtection } from "@/hooks/useVolatilityProtection";
 import { useMarketPositions } from "@/hooks/useMarketPositions";
-import { usePeggedTokenPrices } from "@/hooks/usePeggedTokenPrices";
+import { useMultipleTokenPrices } from "@/hooks/useTokenPrices";
 import { useContractReads as useWagmiContractReads } from "wagmi";
 
 // ---------------------------------------------------------------------------
@@ -2501,27 +2501,59 @@ export default function AnchorPage() {
     return map;
   }, [anchorMarkets, reads]);
 
-  // Fetch pegged token prices (shared) then positions
-  const { priceMap: peggedPriceMap } = usePeggedTokenPrices(
-    marketPositionConfigs.map((c) => ({
-      marketId: c.marketId,
-      minterAddress: c.minterAddress,
-    })),
-    anchorMarkets.length > 0
-  );
+  // Fetch pegged token prices using the new unified hook
+  const tokenPriceInputs = useMemo(() => {
+    return marketPositionConfigs.map((c) => {
+      // Find the market to get pegTarget
+      const market = anchorMarkets.find(([id]) => id === c.marketId)?.[1];
+      return {
+        marketId: c.marketId,
+        minterAddress: c.minterAddress!,
+        pegTarget: (market as any)?.pegTarget || "USD",
+      };
+    }).filter((c) => c.minterAddress); // Filter out markets without minter
+  }, [marketPositionConfigs, anchorMarkets]);
+  
+  const tokenPricesByMarket = useMultipleTokenPrices(tokenPriceInputs);
 
   const mergedPeggedPriceMap = useMemo(() => {
-    const out: Record<string, bigint | undefined> = {
-      ...peggedPricesFromReads,
-    };
-    // Only overwrite when we have a defined price from the shared hook
-    Object.entries(peggedPriceMap).forEach(([id, price]) => {
-      if (price !== undefined) {
+    const out: Record<string, bigint | undefined> = {};
+    
+    Object.entries(tokenPricesByMarket).forEach(([id, priceData]) => {
+      if (!priceData.isLoading && !priceData.error && priceData.peggedBackingRatio > 0) {
+        // Try to use the full USD price if CoinGecko worked
+        if (priceData.peggedPriceUSD > 0) {
+          out[id] = BigInt(Math.floor(priceData.peggedPriceUSD * 1e18));
+        } else {
+          // CoinGecko failed - calculate using collateral price oracle instead
+          // Find the market to get collateral info
+          const market = anchorMarkets.find(([marketId]) => marketId === id)?.[1];
+          const collateralAddress = (market as any)?.collateral?.address?.toLowerCase();
+          
+          if (collateralAddress && globalTokenPriceMap.has(collateralAddress)) {
+            const collateralPriceUSD = globalTokenPriceMap.get(collateralAddress) || 0;
+            
+            if (collateralPriceUSD > 0) {
+              // haTokenPriceUSD = peggedBackingRatio × collateralPriceUSD
+              // For haETH: 1.0 × $3500 = $3500
+              // For haBTC: 1.0 × $100000 = $100000
+              const haTokenPriceUSD = priceData.peggedBackingRatio * collateralPriceUSD;
+              out[id] = BigInt(Math.floor(haTokenPriceUSD * 1e18));
+            }
+          }
+        }
+      }
+    });
+    
+    // Fall back to prices from contract reads for any markets still missing prices
+    Object.entries(peggedPricesFromReads).forEach(([id, price]) => {
+      if (!out[id] && price) {
         out[id] = price;
       }
     });
+    
     return out;
-  }, [peggedPricesFromReads, peggedPriceMap]);
+  }, [peggedPricesFromReads, tokenPricesByMarket, anchorMarkets, globalTokenPriceMap]);
 
   // Fetch all positions using the unified hook, passing shared prices
   const {
@@ -5891,8 +5923,8 @@ export default function AnchorPage() {
           {/* Markets List */}
           <section className="space-y-2 overflow-visible">
             {/* Header Row */}
-            <div className="bg-white p-3 overflow-x-auto">
-              <div className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr_1fr_1fr] gap-4 items-center uppercase tracking-wider text-xs text-[#1E4775] font-bold">
+            <div className="bg-white py-1.5 px-2 overflow-x-auto">
+              <div className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr_1fr_1fr] gap-4 items-center uppercase tracking-wider text-[10px] lg:text-[11px] text-[#1E4775] font-semibold">
                 <div className="min-w-0 text-center">Token</div>
                 <div className="text-center min-w-0">Deposit Assets</div>
                 <div className="text-center min-w-0">APR</div>
@@ -6690,8 +6722,17 @@ export default function AnchorPage() {
                     >
                       <div className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr_1fr_1fr] gap-4 items-center text-sm">
                         <div className="whitespace-nowrap min-w-0 overflow-hidden">
-                          <div className="flex items-center justify-center gap-2">
-                            <span className="text-[#1E4775] font-medium">
+                          <div className="flex items-center justify-center gap-1.5">
+                            <SimpleTooltip label={peggedTokenSymbol || symbol}>
+                              <Image
+                                src={getLogoPath(peggedTokenSymbol || symbol)}
+                                alt={peggedTokenSymbol || symbol}
+                                width={20}
+                                height={20}
+                                className="flex-shrink-0 cursor-help"
+                              />
+                            </SimpleTooltip>
+                            <span className="text-[#1E4775] font-medium text-sm lg:text-base">
                               {symbol}
                             </span>
                             {isExpanded ? (
@@ -6741,8 +6782,8 @@ export default function AnchorPage() {
                                 <Image
                                   src={getLogoPath(asset.symbol)}
                                   alt={asset.name}
-                                  width={24}
-                                  height={24}
+                                  width={20}
+                                  height={20}
                                   className="flex-shrink-0 cursor-help rounded-full"
                                 />
                               </SimpleTooltip>

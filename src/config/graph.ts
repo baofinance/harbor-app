@@ -1,11 +1,13 @@
 // GraphQL configuration for Harbor subgraphs
 
+const GRAPH_API_KEY = process.env.NEXT_PUBLIC_GRAPH_API_KEY || "247d3c7824af808d9ba8a671c7bddfdf";
+
 export const GRAPH_CONFIG = {
   // Harbor Marks subgraph (for marks tracking)
   marks: {
     url:
       process.env.NEXT_PUBLIC_GRAPH_URL ||
-      "https://api.studio.thegraph.com/query/1718836/harbor-marks/v0.0.14",
+      `https://gateway-arbitrum.network.thegraph.com/api/${GRAPH_API_KEY}/subgraphs/id/DRLGm3gfh4RNxYjjv9YyMKXoK3bnQN2w1YkZ48U3Lqti`,
     chainId: 1,
     network: "mainnet",
   },
@@ -13,7 +15,7 @@ export const GRAPH_CONFIG = {
   sailPrice: {
     url:
       process.env.NEXT_PUBLIC_SAIL_PRICE_GRAPH_URL ||
-      "https://api.studio.thegraph.com/query/1718836/sail-token-price/v0.0.1",
+      `https://gateway-arbitrum.network.thegraph.com/api/${GRAPH_API_KEY}/subgraphs/id/DRLGm3gfh4RNxYjjv9YyMKXoK3bnQN2w1YkZ48U3Lqti`,
     chainId: 1,
     network: "mainnet",
   },
@@ -21,7 +23,7 @@ export const GRAPH_CONFIG = {
   production: {
     url:
       process.env.NEXT_PUBLIC_GRAPH_URL ||
-      "https://api.studio.thegraph.com/query/1718836/harbor-marks/v0.0.14",
+      `https://gateway-arbitrum.network.thegraph.com/api/${GRAPH_API_KEY}/subgraphs/id/DRLGm3gfh4RNxYjjv9YyMKXoK3bnQN2w1YkZ48U3Lqti`,
     chainId: 1,
     network: "mainnet",
   },
