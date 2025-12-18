@@ -7318,13 +7318,21 @@ export default function AnchorPage() {
                           // Calculate total debt in USD (use correct USD price, not backing ratio)
                           const totalDebtUSD = totalHaTokens * peggedPriceUSD;
 
-                          // For collateral value: get the underlying collateral price from globalTokenPriceMap
-                          // Oracle returns UNDERLYING price (e.g., stETH for wstETH, fxUSD for fxSAVE)
-                          // We need to look up the UNDERLYING token address, not the wrapped one
-                          const underlyingCollateralAddress = marketData.market?.addresses?.collateralToken as string | undefined;
-                          const underlyingCollateralPriceUSD = underlyingCollateralAddress
-                            ? globalTokenPriceMap.get(underlyingCollateralAddress.toLowerCase()) || 0
-                            : 0;
+                          // For collateral value: get the underlying collateral price
+                          // Special case: fxUSD is always $1.00 (oracle returns price in peg target units, not USD)
+                          const collateralSymbol = marketData.market?.collateral?.underlyingSymbol || marketData.market?.collateral?.symbol || "";
+                          const isFxUSD = collateralSymbol.toLowerCase() === "fxusd";
+                          
+                          let underlyingCollateralPriceUSD = 0;
+                          if (isFxUSD) {
+                            underlyingCollateralPriceUSD = 1.0; // fxUSD is always $1.00
+                          } else {
+                            // For other collateral (stETH, etc.), get price from globalTokenPriceMap
+                            const underlyingCollateralAddress = marketData.market?.addresses?.collateralToken as string | undefined;
+                            underlyingCollateralPriceUSD = underlyingCollateralAddress
+                              ? globalTokenPriceMap.get(underlyingCollateralAddress.toLowerCase()) || 0
+                              : 0;
+                          }
                           
                           // collateralValue is in wrapped tokens (e.g., wstETH) - 18 decimals raw
                           // wrappedRate converts wrapped to underlying (e.g., wstETH to stETH) - 18 decimals raw
@@ -7337,14 +7345,13 @@ export default function AnchorPage() {
                             : 1; // Default 1:1 if no rate
                           
                           console.log(`[Collateral Value Debug ${marketData.marketId}]`, {
-                            underlyingCollateralAddress,
+                            collateralSymbol,
+                            isFxUSD,
                             underlyingCollateralPriceUSD,
                             collateralTokens,
                             collateralValueRaw: marketData.collateralValue,
                             wrappedRate: marketData.wrappedRate,
                             wrappedRateNum,
-                            globalTokenPriceMapSize: globalTokenPriceMap.size,
-                            globalTokenPriceMapKeys: Array.from(globalTokenPriceMap.keys()),
                           });
                           
                           // Formula: collateralUSD = collateralTokens * wrappedRate * underlyingPriceUSD
