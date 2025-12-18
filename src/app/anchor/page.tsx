@@ -2536,6 +2536,21 @@ export default function AnchorPage() {
   
   const tokenPricesByMarket = useMultipleTokenPrices(tokenPriceInputs);
 
+  // Get CoinGecko IDs for underlying collateral (e.g., fxUSD) to detect depeg
+  const underlyingCoinGeckoIds = useMemo(() => {
+    const ids = new Set<string>();
+    anchorMarkets.forEach(([id, m]) => {
+      const underlyingCoinGeckoId = (m as any).underlyingCoinGeckoId as string | undefined;
+      if (underlyingCoinGeckoId) {
+        ids.add(underlyingCoinGeckoId);
+      }
+    });
+    return Array.from(ids);
+  }, [anchorMarkets]);
+
+  // Fetch underlying collateral prices from CoinGecko (for depeg detection)
+  const underlyingCoinGeckoPrices = useCoinGeckoPrices(underlyingCoinGeckoIds);
+
   const mergedPeggedPriceMap = useMemo(() => {
     const out: Record<string, bigint | undefined> = {};
     
@@ -7320,29 +7335,39 @@ export default function AnchorPage() {
 
                           // For collateral value: determine the underlying collateral price in USD
                           const collateralSymbol = (marketData.market?.collateral?.underlyingSymbol || marketData.market?.collateral?.symbol || "").toLowerCase();
-                          
-                          // USD stablecoins are always $1.00 by definition (fxUSD, USDC, USDT, DAI, etc.)
-                          const isUSDStablecoin = ["fxusd", "usdc", "usdt", "dai", "frax", "lusd", "tusd", "usdp"].includes(collateralSymbol);
+                          const underlyingCoinGeckoId = marketData.market?.underlyingCoinGeckoId as string | undefined;
                           
                           let underlyingCollateralPriceUSD = 0;
+                          let priceSource = "unknown";
                           
-                          if (isUSDStablecoin) {
-                            // USD stablecoins are pegged to $1.00
-                            underlyingCollateralPriceUSD = 1.0;
-                          } else {
-                            // For other collateral (ETH, BTC, etc.): oracle returns price in peg target units
-                            // We convert to USD by multiplying by the peg target USD price
-                            const underlyingCollateralAddress = marketData.market?.addresses?.collateralToken as string | undefined;
-                            const collateralPriceInPegUnits = underlyingCollateralAddress
-                              ? globalTokenPriceMap.get(underlyingCollateralAddress.toLowerCase()) || 0
-                              : 0;
+                          // Priority 1: Try CoinGecko for direct USD price (works for all assets including stablecoins)
+                          // This allows detection of depegs for fxUSD, USDC, etc.
+                          if (underlyingCoinGeckoId && underlyingCoinGeckoPrices.prices?.[underlyingCoinGeckoId]) {
+                            underlyingCollateralPriceUSD = underlyingCoinGeckoPrices.prices[underlyingCoinGeckoId];
+                            priceSource = "coingecko";
+                          }
+                          // Priority 2: For USD stablecoins without CoinGecko, assume $1.00 (safe fallback)
+                          else {
+                            const isUSDStablecoin = ["fxusd", "usdc", "usdt", "dai", "frax", "lusd", "tusd", "usdp"].includes(collateralSymbol);
                             
-                            // Get peg target USD price (e.g., ETH price in USD from CoinGecko/Chainlink)
-                            const tokenPriceData = tokenPricesByMarket[marketData.marketId];
-                            const pegTargetUSD = tokenPriceData?.pegTargetUSD || 1;
-                            
-                            // Convert collateral price from peg units to USD
-                            underlyingCollateralPriceUSD = collateralPriceInPegUnits * pegTargetUSD;
+                            if (isUSDStablecoin) {
+                              underlyingCollateralPriceUSD = 1.0;
+                              priceSource = "assumed_peg";
+                            } else {
+                              // Priority 3: For non-stablecoins (ETH, BTC, etc.): convert oracle price from peg units to USD
+                              const underlyingCollateralAddress = marketData.market?.addresses?.collateralToken as string | undefined;
+                              const collateralPriceInPegUnits = underlyingCollateralAddress
+                                ? globalTokenPriceMap.get(underlyingCollateralAddress.toLowerCase()) || 0
+                                : 0;
+                              
+                              // Get peg target USD price (e.g., ETH price in USD from CoinGecko/Chainlink)
+                              const tokenPriceData = tokenPricesByMarket[marketData.marketId];
+                              const pegTargetUSD = tokenPriceData?.pegTargetUSD || 1;
+                              
+                              // Convert collateral price from peg units to USD
+                              underlyingCollateralPriceUSD = collateralPriceInPegUnits * pegTargetUSD;
+                              priceSource = "oracle_converted";
+                            }
                           }
                           
                           // collateralValue is in wrapped tokens (e.g., wstETH) - 18 decimals raw
@@ -7357,7 +7382,8 @@ export default function AnchorPage() {
                           
                           console.log(`[Collateral Value Debug ${marketData.marketId}]`, {
                             collateralSymbol,
-                            isUSDStablecoin,
+                            underlyingCoinGeckoId,
+                            priceSource,
                             underlyingCollateralPriceUSD,
                             collateralTokens,
                             wrappedRateNum,

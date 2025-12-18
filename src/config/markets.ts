@@ -17,6 +17,7 @@ export const markets = {
       name: "f(x) USD Saving",
       underlyingSymbol: "fxUSD", // The underlying/base token
     },
+    underlyingCoinGeckoId: "fx-protocol-fxusd", // CoinGecko ID for fxUSD price detection
     // Accepted deposit assets for this market
     acceptedAssets: [
       { symbol: "fxUSD", name: "f(x) USD" },
@@ -91,6 +92,7 @@ export const markets = {
       name: "f(x) USD Saving",
       underlyingSymbol: "fxUSD", // The underlying/base token
     },
+    underlyingCoinGeckoId: "fx-protocol-fxusd", // CoinGecko ID for fxUSD price detection
     // Accepted deposit assets for this market
     acceptedAssets: [
       { symbol: "fxUSD", name: "f(x) USD" },
