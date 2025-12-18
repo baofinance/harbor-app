@@ -67,6 +67,7 @@ import { useAllStabilityPoolRewards } from "@/hooks/useAllStabilityPoolRewards";
 import { useMultipleVolatilityProtection } from "@/hooks/useVolatilityProtection";
 import { useMarketPositions } from "@/hooks/useMarketPositions";
 import { useMultipleTokenPrices } from "@/hooks/useTokenPrices";
+import { useCoinGeckoPrices } from "@/hooks/useCoinGeckoPrice";
 import { useContractReads as useWagmiContractReads } from "wagmi";
 
 // ---------------------------------------------------------------------------
