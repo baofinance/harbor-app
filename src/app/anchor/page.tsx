@@ -6552,6 +6552,13 @@ export default function AnchorPage() {
                       tokenPriceData && !tokenPriceData.isLoading && !tokenPriceData.error && tokenPriceData.peggedPriceUSD > 0
                         ? tokenPriceData.peggedPriceUSD
                         : 1; // Fallback to $1
+                    
+                    console.log(`[Anchor Market ${marketId}] Token price data:`, {
+                      tokenPriceData,
+                      peggedTokenPriceUSD,
+                      totalDebt,
+                      collateralValue,
+                    });
 
                     return {
                       marketId,
@@ -7333,10 +7340,24 @@ export default function AnchorPage() {
                             collateralTokens > 0 && collateralPriceUSD > 0
                               ? collateralTokens * wrappedRateNum * collateralPriceUSD
                               : 0;
+                          
+                          console.log(`[Anchor Display ${marketData.marketId}] Collateral calc:`, {
+                            collateralTokens,
+                            wrappedRateNum,
+                            collateralPriceUSD,
+                            collateralValueUSD,
+                          });
 
                           // Calculate total debt in USD (use correct USD price, not backing ratio)
                           const peggedPriceUSD = marketData.peggedTokenPriceUSD || 1;
                           const totalDebtUSD = totalHaTokens * peggedPriceUSD;
+                          
+                          console.log(`[Anchor Display ${marketData.marketId}] Total debt calc:`, {
+                            totalHaTokens,
+                            peggedPriceUSD,
+                            totalDebtUSD,
+                            marketDataPeggedPrice: marketData.peggedTokenPriceUSD,
+                          });
 
                           return (
                             <div
