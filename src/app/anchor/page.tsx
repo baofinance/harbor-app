@@ -2528,7 +2528,7 @@ export default function AnchorPage() {
           // CoinGecko failed - calculate using collateral price oracle instead
           // Find the market to get collateral info
           const market = anchorMarkets.find(([marketId]) => marketId === id)?.[1];
-          const collateralAddress = (market as any)?.collateral?.address?.toLowerCase();
+          const collateralAddress = ((market as any)?.addresses?.wrappedCollateralToken as string)?.toLowerCase();
           
           if (collateralAddress && globalTokenPriceMap.has(collateralAddress)) {
             const collateralPriceUSD = globalTokenPriceMap.get(collateralAddress) || 0;
