@@ -213,8 +213,9 @@ export function useHarborMarks({
       return data.data;
     },
     enabled: enabled && isConnected && !!address && !!genesisAddress,
-    refetchInterval: 30000, // Refetch every 30 seconds
-    staleTime: 10000, // Consider data stale after 10 seconds
+    refetchInterval: 180000, // Refetch every 3 minutes
+    staleTime: 170000, // Consider data stale after ~3 minutes
+    refetchOnWindowFocus: false, // Don't refetch when user returns to tab
   });
 }
 
@@ -265,8 +266,9 @@ export function useAllHarborMarks(genesisAddresses: string[]) {
       }));
     },
     enabled: isConnected && !!address && genesisAddresses.length > 0,
-    refetchInterval: 30000,
-    staleTime: 10000,
+    refetchInterval: 180000, // Refetch every 3 minutes
+    staleTime: 170000, // Consider data stale after ~3 minutes
+    refetchOnWindowFocus: false, // Don't refetch when user returns to tab
   });
 }
 

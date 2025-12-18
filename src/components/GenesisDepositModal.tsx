@@ -28,22 +28,23 @@ import { useUserTokens, getTokenAddress, getTokenInfo, useTokenDecimals } from "
 interface GenesisDepositModalProps {
  isOpen: boolean;
  onClose: () => void;
- genesisAddress: string;
- collateralAddress: string;
- collateralSymbol: string;
- wrappedCollateralSymbol?: string;
- acceptedAssets: Array<{ symbol: string; name: string }>;
- marketAddresses?: {
- collateralToken?: string;
- wrappedCollateralToken?: string;
-priceOracle?: string;
+  genesisAddress: string;
+  collateralAddress: string;
+  collateralSymbol: string;
+  wrappedCollateralSymbol?: string;
+  underlyingSymbol?: string; // e.g., "fxUSD" for fxSAVE markets, "stETH" for wstETH markets
+  acceptedAssets: Array<{ symbol: string; name: string }>;
+  marketAddresses?: {
+    collateralToken?: string;
+    wrappedCollateralToken?: string;
+    priceOracle?: string;
     genesisZap?: string; // Genesis zap contract address for this market
     peggedTokenZap?: string; // Pegged token zap contract address (future)
     leveragedTokenZap?: string; // Leveraged token zap contract address (future)
- };
- coinGeckoId?: string;
- onSuccess?: () => void;
- embedded?: boolean;
+  };
+  coinGeckoId?: string;
+  onSuccess?: () => void;
+  embedded?: boolean;
 }
 
 // formatTokenAmount is now imported from utils/formatters
@@ -53,15 +54,16 @@ type ModalStep ="input" |"approving" |"depositing" |"success" |"error";
 export const GenesisDepositModal = ({
  isOpen,
  onClose,
- genesisAddress,
- collateralAddress,
- collateralSymbol,
- wrappedCollateralSymbol,
- acceptedAssets,
- marketAddresses,
- coinGeckoId,
- onSuccess,
- embedded = false,
+  genesisAddress,
+  collateralAddress,
+  collateralSymbol,
+  wrappedCollateralSymbol,
+  underlyingSymbol,
+  acceptedAssets,
+  marketAddresses,
+  coinGeckoId,
+  onSuccess,
+  embedded = false,
 }: GenesisDepositModalProps) => {
  const { address } = useAccount();
  const wagmiPublicClient = usePublicClient();
@@ -110,16 +112,17 @@ const oraclePriceData = useCollateralPrice(
 
 // Priority order for underlying price: CoinGecko → fxUSD hardcoded $1 → Oracle
 // CoinGecko is the most reliable source for real-time prices
+// For fxSAVE markets: underlyingSymbol is "fxUSD", so check that
 const underlyingPriceUSD = coinGeckoPrice 
   ? coinGeckoPrice 
-  : collateralSymbol.toLowerCase() === "fxusd" 
+  : (underlyingSymbol?.toLowerCase() === "fxusd" || collateralSymbol.toLowerCase() === "fxusd")
     ? 1.00 
     : oraclePriceData.priceUSD;
 
 const wrappedRate = oraclePriceData.maxRate;
 const maxUnderlyingPrice = coinGeckoPrice
   ? BigInt(Math.floor(coinGeckoPrice * 1e18))
-  : collateralSymbol.toLowerCase() === "fxusd"
+  : (underlyingSymbol?.toLowerCase() === "fxusd" || collateralSymbol.toLowerCase() === "fxusd")
     ? 1000000000000000000n // 1.0 in 18 decimals
     : oraclePriceData.maxPrice;
 
