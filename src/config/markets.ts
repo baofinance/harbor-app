@@ -7,14 +7,15 @@ export const markets = {
   "eth-fxusd": {
     name: "ETH/fxUSD",
     status: "genesis" as const,
+    pegTarget: "ETH", // haETH is pegged to ETH
     chain: {
       name: "Ethereum",
       logo: "icons/eth.png",
     },
     collateral: {
-      symbol: "fxUSD",
-      name: "f(x) USD",
-      underlyingSymbol: "fxSAVE", // The wrapped collateral
+      symbol: "fxSAVE", // The wrapped collateral (what's deposited)
+      name: "f(x) USD Saving",
+      underlyingSymbol: "fxUSD", // The underlying/base token
     },
     // Accepted deposit assets for this market
     acceptedAssets: [
@@ -57,7 +58,7 @@ export const markets = {
       description:
         "100 ledger marks per dollar deposited at the end of genesis",
     },
-    coinGeckoId: "fxusd", // CoinGecko ID for fxUSD (if available)
+    coinGeckoId: "fxsave", // CoinGecko ID for fxSAVE (the deposited token)
     genesis: {
       startDate: contractsMarkets["eth-fxusd"].genesis.startDate,
       endDate: contractsMarkets["eth-fxusd"].genesis.endDate,
@@ -80,14 +81,15 @@ export const markets = {
   "btc-fxusd": {
     name: "BTC/fxUSD",
     status: "genesis" as const,
+    pegTarget: "BTC", // haBTC is pegged to BTC
     chain: {
       name: "Ethereum",
       logo: "icons/eth.png",
     },
     collateral: {
-      symbol: "fxUSD",
-      name: "f(x) USD",
-      underlyingSymbol: "fxSAVE", // The wrapped collateral
+      symbol: "fxSAVE", // The wrapped collateral (what's deposited)
+      name: "f(x) USD Saving",
+      underlyingSymbol: "fxUSD", // The underlying/base token
     },
     // Accepted deposit assets for this market
     acceptedAssets: [
@@ -130,7 +132,7 @@ export const markets = {
       description:
         "100 ledger marks per dollar deposited at the end of genesis",
     },
-    coinGeckoId: "fxusd", // CoinGecko ID for fxUSD (if available)
+    coinGeckoId: "fxsave", // CoinGecko ID for fxSAVE (the deposited token)
     genesis: {
       startDate: contractsMarkets["btc-fxusd"].genesis.startDate,
       endDate: contractsMarkets["btc-fxusd"].genesis.endDate,
@@ -153,6 +155,7 @@ export const markets = {
   "btc-steth": {
     name: "BTC/stETH",
     status: "genesis" as const,
+    pegTarget: "BTC", // haBTC is pegged to BTC
     chain: {
       name: "Ethereum",
       logo: "icons/eth.png",

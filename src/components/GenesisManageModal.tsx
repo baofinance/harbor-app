@@ -75,7 +75,8 @@ export const GenesisManageModal = ({
   }, [isOpen]);
 
   const genesisAddress = market?.addresses?.genesis as `0x${string}` | undefined;
-  const collateralAddress = market?.addresses?.collateralToken as `0x${string}` | undefined;
+  // Use wrappedCollateralToken as it points to the deposited token for all markets
+  const collateralAddress = market?.addresses?.wrappedCollateralToken as `0x${string}` | undefined;
   const collateralSymbol = market?.collateral?.symbol || "TOKEN";
   const priceOracleAddress = market?.addresses?.collateralPrice as string | undefined;
 
@@ -232,12 +233,10 @@ export const GenesisManageModal = ({
               collateralAddress={collateralAddress}
               collateralSymbol={collateralSymbol}
               wrappedCollateralSymbol={
-                // For stETH markets: wstETH is the wrapped collateral (same as collateral symbol)
-                // For fxUSD markets: fxSAVE is the wrapped collateral (underlyingSymbol)
-                market?.collateral?.symbol?.toLowerCase() === "wsteth"
-                  ? market?.collateral?.symbol
-                  : market?.collateral?.underlyingSymbol || collateralSymbol
+                // collateral.symbol is now always the wrapped/deposited token (fxSAVE or wstETH)
+                collateralSymbol
               }
+              underlyingSymbol={market?.collateral?.underlyingSymbol}
               acceptedAssets={acceptedAssets}
               marketAddresses={{
                 collateralToken: market?.addresses?.collateralToken,
@@ -257,11 +256,8 @@ export const GenesisManageModal = ({
               onClose={handleClose}
               genesisAddress={genesisAddress}
               collateralSymbol={
-                // For stETH markets: wstETH is the wrapped collateral (same as collateral symbol)
-                // For fxUSD markets: fxSAVE is the wrapped collateral (underlyingSymbol)
-                market?.collateral?.symbol?.toLowerCase() === "wsteth"
-                  ? market?.collateral?.symbol
-                  : market?.collateral?.underlyingSymbol || collateralSymbol
+                // collateral.symbol is now always the wrapped/deposited token (fxSAVE or wstETH)
+                collateralSymbol
               }
               userDeposit={userDeposit || 0n}
               priceOracleAddress={priceOracleAddress}
