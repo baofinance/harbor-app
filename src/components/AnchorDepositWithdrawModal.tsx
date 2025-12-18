@@ -3442,6 +3442,50 @@ export const AnchorDepositWithdrawModal = ({
           });
         }
 
+        // Simulate the mint transaction to catch errors before submitting
+        try {
+          await publicClient?.simulateContract({
+            address: minterAddress as `0x${string}`,
+            abi: minterABI,
+            functionName: "mintPeggedToken",
+            args: [amountBigInt, address as `0x${string}`, minPeggedOut],
+            account: address as `0x${string}`,
+          });
+        } catch (simErr: any) {
+          console.error("[handleMint] Simulation error:", simErr);
+          
+          // Check if it's a contract revert error
+          if (simErr instanceof BaseError) {
+            const revertError = simErr.walk(
+              (err) => err instanceof ContractFunctionRevertedError
+            );
+            if (revertError instanceof ContractFunctionRevertedError) {
+              const errorName = revertError.data?.errorName || "";
+              
+              // Check for common errors that indicate collateral ratio issues
+              if (
+                errorName.includes("InvalidRatio") ||
+                errorName.includes("InsufficientCollateral") ||
+                errorName.includes("Collateral") ||
+                simErr.message?.includes("collateral ratio") ||
+                simErr.message?.includes("min ratio")
+              ) {
+                throw new Error(
+                  "This deposit would bring the collateral ratio below the minimum allowed. Please deposit a smaller amount or try again later when market conditions improve."
+                );
+              }
+              
+              // Generic contract error
+              throw new Error(
+                `Contract error: ${errorName || "The transaction would fail"}`
+              );
+            }
+          }
+          
+          // Re-throw simulation error to be caught by outer catch
+          throw simErr;
+        }
+
         const mintHash = await writeContractAsync({
           address: minterAddress as `0x${string}`,
           abi: minterABI,
@@ -3839,9 +3883,28 @@ export const AnchorDepositWithdrawModal = ({
           (err) => err instanceof ContractFunctionRevertedError
         );
         if (revertError instanceof ContractFunctionRevertedError) {
-          errorMessage = `Contract error: ${
-            revertError.data?.errorName || "Unknown error"
-          }`;
+          const errorName = revertError.data?.errorName || "";
+          
+          // Check for collateral ratio errors
+          if (
+            errorName.includes("InvalidRatio") ||
+            errorName.includes("InsufficientCollateral") ||
+            errorName === "ActionPaused"
+          ) {
+            if (errorName === "ActionPaused") {
+              errorMessage = "Minting is currently paused. Please try again later.";
+            } else {
+              errorMessage = "This deposit would bring the collateral ratio below the minimum allowed. Please deposit a smaller amount or try again later when market conditions improve.";
+            }
+          } else if (errorName === "MintInsufficientAmount") {
+            errorMessage = "The minted amount would be too small. Please deposit a larger amount.";
+          } else if (errorName === "MintZeroAmount") {
+            errorMessage = "Invalid deposit amount. Please check your input.";
+          } else if (errorName === "InvalidOraclePrice" || errorName === "ZeroOraclePrice") {
+            errorMessage = "Oracle price unavailable. Please try again in a few moments.";
+          } else {
+            errorMessage = `Contract error: ${errorName || "Unknown error"}`;
+          }
         } else {
           errorMessage = err.shortMessage || err.message;
         }
