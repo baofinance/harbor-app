@@ -7318,20 +7318,32 @@ export default function AnchorPage() {
                           // Calculate total debt in USD (use correct USD price, not backing ratio)
                           const totalDebtUSD = totalHaTokens * peggedPriceUSD;
 
-                          // For collateral value: get the underlying collateral price
-                          // Oracle returns prices in PEG TARGET units (e.g., fxUSD price in ETH for ETH-pegged markets)
-                          // We need to convert to USD by multiplying by the peg target USD price
-                          const underlyingCollateralAddress = marketData.market?.addresses?.collateralToken as string | undefined;
-                          const collateralPriceInPegUnits = underlyingCollateralAddress
-                            ? globalTokenPriceMap.get(underlyingCollateralAddress.toLowerCase()) || 0
-                            : 0;
+                          // For collateral value: determine the underlying collateral price in USD
+                          const collateralSymbol = (marketData.market?.collateral?.underlyingSymbol || marketData.market?.collateral?.symbol || "").toLowerCase();
                           
-                          // Get peg target USD price (e.g., ETH price in USD)
-                          const tokenPriceData = tokenPricesByMarket[marketData.marketId];
-                          const pegTargetUSD = tokenPriceData?.pegTargetUSD || 1;
+                          // USD stablecoins are always $1.00 by definition (fxUSD, USDC, USDT, DAI, etc.)
+                          const isUSDStablecoin = ["fxusd", "usdc", "usdt", "dai", "frax", "lusd", "tusd", "usdp"].includes(collateralSymbol);
                           
-                          // Convert collateral price from peg units to USD
-                          const underlyingCollateralPriceUSD = collateralPriceInPegUnits * pegTargetUSD;
+                          let underlyingCollateralPriceUSD = 0;
+                          
+                          if (isUSDStablecoin) {
+                            // USD stablecoins are pegged to $1.00
+                            underlyingCollateralPriceUSD = 1.0;
+                          } else {
+                            // For other collateral (ETH, BTC, etc.): oracle returns price in peg target units
+                            // We convert to USD by multiplying by the peg target USD price
+                            const underlyingCollateralAddress = marketData.market?.addresses?.collateralToken as string | undefined;
+                            const collateralPriceInPegUnits = underlyingCollateralAddress
+                              ? globalTokenPriceMap.get(underlyingCollateralAddress.toLowerCase()) || 0
+                              : 0;
+                            
+                            // Get peg target USD price (e.g., ETH price in USD from CoinGecko/Chainlink)
+                            const tokenPriceData = tokenPricesByMarket[marketData.marketId];
+                            const pegTargetUSD = tokenPriceData?.pegTargetUSD || 1;
+                            
+                            // Convert collateral price from peg units to USD
+                            underlyingCollateralPriceUSD = collateralPriceInPegUnits * pegTargetUSD;
+                          }
                           
                           // collateralValue is in wrapped tokens (e.g., wstETH) - 18 decimals raw
                           // wrappedRate converts wrapped to underlying (e.g., wstETH to stETH) - 18 decimals raw
@@ -7344,11 +7356,9 @@ export default function AnchorPage() {
                             : 1; // Default 1:1 if no rate
                           
                           console.log(`[Collateral Value Debug ${marketData.marketId}]`, {
-                            underlyingCollateralAddress,
-                            collateralPriceInPegUnits,
-                            pegTargetUSD,
+                            collateralSymbol,
+                            isUSDStablecoin,
                             underlyingCollateralPriceUSD,
-                            calculation: `${collateralPriceInPegUnits} × ${pegTargetUSD} = ${underlyingCollateralPriceUSD}`,
                             collateralTokens,
                             wrappedRateNum,
                           });
