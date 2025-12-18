@@ -6552,13 +6552,6 @@ export default function AnchorPage() {
                       tokenPriceData && !tokenPriceData.isLoading && !tokenPriceData.error && tokenPriceData.peggedPriceUSD > 0
                         ? tokenPriceData.peggedPriceUSD
                         : 1; // Fallback to $1
-                    
-                    console.log(`[Anchor Market ${marketId}] Token price data:`, {
-                      tokenPriceData,
-                      peggedTokenPriceUSD,
-                      totalDebt,
-                      collateralValue,
-                    });
 
                     return {
                       marketId,
@@ -7305,14 +7298,6 @@ export default function AnchorPage() {
                               : "-";
 
                           // Calculate USD values for inline display
-                          // Default to 18 decimals if collateralPriceDecimals is undefined
-                          const priceDecimals =
-                            marketData.collateralPriceDecimals ?? 18;
-                          const collateralPriceUSD = marketData.collateralPrice
-                            ? Number(marketData.collateralPrice) /
-                              10 ** priceDecimals
-                            : 0;
-
                           // Total ha tokens (totalDebt is the supply of pegged tokens)
                           const totalHaTokens =
                             marketData.totalDebt !== undefined
@@ -7324,10 +7309,13 @@ export default function AnchorPage() {
                             ? Number(marketData.collateralRatio) / 1e18
                             : 0;
 
-                          // Collateral value from collateralTokenBalance * wrappedRate * underlyingPrice
+                          // For collateral value, use the peg target USD price (since collateral is typically the same asset as peg target)
+                          // E.g., for ETH/fxUSD market: collateral is stETH/wstETH, peg target is ETH, they have same USD price
+                          // E.g., for BTC/stETH market: collateral is stETH, peg target is BTC, need to use CR to derive value
+                          const peggedPriceUSD = marketData.peggedTokenPriceUSD || 1;
+                          
                           // collateralValue is in wrapped tokens (e.g., wstETH) - 18 decimals raw
                           // wrappedRate converts wrapped to underlying (e.g., wstETH to stETH) - 18 decimals raw
-                          // collateralPriceUSD is already normalized (e.g., 4400 for $4400)
                           const collateralTokens =
                             marketData.collateralValue !== undefined
                               ? Number(marketData.collateralValue) / 1e18
@@ -7335,29 +7323,20 @@ export default function AnchorPage() {
                           const wrappedRateNum = marketData.wrappedRate
                             ? Number(marketData.wrappedRate) / 1e18
                             : 1; // Default 1:1 if no rate
-                          // Formula: collateralUSD = collateralTokens * wrappedRate * underlyingPriceUSD
-                          const collateralValueUSD =
-                            collateralTokens > 0 && collateralPriceUSD > 0
-                              ? collateralTokens * wrappedRateNum * collateralPriceUSD
-                              : 0;
                           
-                          console.log(`[Anchor Display ${marketData.marketId}] Collateral calc:`, {
-                            collateralTokens,
-                            wrappedRateNum,
-                            collateralPriceUSD,
-                            collateralValueUSD,
-                          });
+                          // Get peg target price from tokenPriceData
+                          const tokenPriceData = tokenPricesByMarket[marketData.marketId];
+                          const pegTargetUSD = tokenPriceData?.pegTargetUSD || 1;
+                          
+                          // For most markets, collateral is the same asset as peg target (stETH ≈ ETH)
+                          // Formula: collateralUSD = collateralTokens * wrappedRate * pegTargetUSD
+                          const collateralValueUSD =
+                            collateralTokens > 0 && pegTargetUSD > 0
+                              ? collateralTokens * wrappedRateNum * pegTargetUSD
+                              : 0;
 
                           // Calculate total debt in USD (use correct USD price, not backing ratio)
-                          const peggedPriceUSD = marketData.peggedTokenPriceUSD || 1;
                           const totalDebtUSD = totalHaTokens * peggedPriceUSD;
-                          
-                          console.log(`[Anchor Display ${marketData.marketId}] Total debt calc:`, {
-                            totalHaTokens,
-                            peggedPriceUSD,
-                            totalDebtUSD,
-                            marketDataPeggedPrice: marketData.peggedTokenPriceUSD,
-                          });
 
                           return (
                             <div
