@@ -6546,6 +6546,13 @@ export default function AnchorPage() {
                         ? Math.max(...projectedAprValues)
                         : null;
 
+                    // Get correct ha token USD price from useMultipleTokenPrices
+                    const tokenPriceData = tokenPricesByMarket[marketId];
+                    const peggedTokenPriceUSD =
+                      tokenPriceData && !tokenPriceData.isLoading && !tokenPriceData.error && tokenPriceData.peggedPriceUSD > 0
+                        ? tokenPriceData.peggedPriceUSD
+                        : 1; // Fallback to $1
+
                     return {
                       marketId,
                       market,
@@ -6554,6 +6561,7 @@ export default function AnchorPage() {
                       collateralValue,
                       totalDebt,
                       peggedTokenPrice,
+                      peggedTokenPriceUSD,
                       collateralPoolTVL,
                       collateralPoolAPR,
                       collateralPoolRewards,
@@ -7326,12 +7334,8 @@ export default function AnchorPage() {
                               ? collateralTokens * wrappedRateNum * collateralPriceUSD
                               : 0;
 
-                          // Calculate total debt in USD
-                          const peggedPriceUSD =
-                            marketData.peggedTokenPrice &&
-                            marketData.peggedTokenPrice > 0n
-                              ? Number(marketData.peggedTokenPrice) / 1e18
-                              : 1; // Default to $1 peg
+                          // Calculate total debt in USD (use correct USD price, not backing ratio)
+                          const peggedPriceUSD = marketData.peggedTokenPriceUSD || 1;
                           const totalDebtUSD = totalHaTokens * peggedPriceUSD;
 
                           return (
@@ -7355,12 +7359,8 @@ export default function AnchorPage() {
                                 </button>
                               </div>
                               {(() => {
-                                // Calculate TVL in USD for both pools
-                                const peggedPriceUSD =
-                                  marketData.peggedTokenPrice &&
-                                  marketData.peggedTokenPrice > 0n
-                                    ? Number(marketData.peggedTokenPrice) / 1e18
-                                    : 1; // fallback to $1 peg if price missing
+                                // Calculate TVL in USD for both pools (use correct USD price, not backing ratio)
+                                const peggedPriceUSD = marketData.peggedTokenPriceUSD || 1;
 
                                 const collateralPoolTVLTokens =
                                   marketData.collateralPoolTVL
