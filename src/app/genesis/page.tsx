@@ -210,17 +210,17 @@ function MarketExpandedView({
             {
               address: genesisAddress as `0x${string}`,
               abi: genesisABI,
-              functionName: "peggedToken" as const,
+              functionName: "PEGGED_TOKEN" as const,
             },
             {
               address: genesisAddress as `0x${string}`,
               abi: genesisABI,
-              functionName: "leveragedToken" as const,
+              functionName: "LEVERAGED_TOKEN" as const,
             },
             {
               address: genesisAddress as `0x${string}`,
               abi: genesisABI,
-              functionName: "collateralToken" as const,
+              functionName: "WRAPPED_COLLATERAL_TOKEN" as const,
             },
           ]
         : [],
