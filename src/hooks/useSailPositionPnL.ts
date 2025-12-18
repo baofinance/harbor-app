@@ -134,7 +134,12 @@ export function useSailPositionPnL({
     queryKey: ["sailPositionPnL", tokenAddress, address],
     queryFn: async () => {
       if (!tokenAddress || !address) {
-        return null;
+        // Return empty data structure instead of null
+        return {
+          userSailPosition: null,
+          sailTokenMintEvents: [],
+          sailTokenRedeemEvents: [],
+        };
       }
 
       const response = await fetch(graphUrl, {
@@ -162,7 +167,12 @@ export function useSailPositionPnL({
         throw new Error(`GraphQL errors: ${JSON.stringify(result.errors)}`);
       }
 
-      return result.data;
+      // Ensure we always return a valid data structure
+      return result.data || {
+        userSailPosition: null,
+        sailTokenMintEvents: [],
+        sailTokenRedeemEvents: [],
+      };
     },
     enabled: enabled && !!tokenAddress && !!address,
     refetchInterval: 30000, // Refetch every 30 seconds

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
-import { parseEther, formatEther, parseUnits } from "viem";
+import { parseEther, formatEther, parseUnits, formatUnits } from "viem";
 import {
   useAccount,
   useBalance,
@@ -235,8 +235,9 @@ export const AnchorDepositWithdrawModal = ({
   const [activeTab, setActiveTab] = useState<TabType>(getInitialTab());
 
   // Get positions from subgraph (same as expanded view)
+  // Disabled - subgraph ran out of funds
   const { poolDeposits, haBalances } = useAnchorLedgerMarks({
-    enabled: isOpen && activeTab === "withdraw",
+    enabled: false, // Subgraph ran out of funds
   });
   const defaultProgressConfig = {
     mode: null as "collateral" | "direct" | "withdraw" | null,
@@ -2638,12 +2639,16 @@ export const AnchorDepositWithdrawModal = ({
   // Get market info for the selected deposit asset
   const depositAssetMarket = marketForDepositAsset;
   const depositAssetCollateralSymbol = depositAssetMarket?.collateral?.symbol?.toLowerCase() || "";
+  const depositAssetWrappedCollateralSymbol = depositAssetMarket?.collateral?.underlyingSymbol?.toLowerCase() || "";
   const isWstETHMarket = depositAssetCollateralSymbol === "wsteth";
   const isFxUSDMarket = depositAssetCollateralSymbol === "fxusd" || depositAssetCollateralSymbol === "fxsave";
   
   // Check if selected asset is wrapped collateral (fxSAVE, wstETH) - these don't need zaps
+  // Note: fxUSD is NOT wrapped collateral (it's the underlying collateral that needs zap)
+  // Only fxSAVE (the wrapped version) should skip zaps
+  // We check against wrappedCollateralSymbol (underlyingSymbol) not collateralSymbol
   const isWrappedCollateral = isFxSAVE || isWstETH || 
-    (depositAssetMarket && selectedDepositAsset?.toLowerCase() === depositAssetCollateralSymbol);
+    (depositAssetMarket && depositAssetWrappedCollateralSymbol && selectedDepositAsset?.toLowerCase() === depositAssetWrappedCollateralSymbol);
   
   // Get zap contract address - use peggedTokenZap for minting pegged tokens
   const zapAddress = depositAssetMarket?.addresses?.peggedTokenZap as `0x${string}` | undefined;
@@ -2892,7 +2897,7 @@ export const AnchorDepositWithdrawModal = ({
   const handleMaxClick = () => {
     if (activeTab === "deposit") {
       if (simpleMode && selectedAssetBalance !== null) {
-        setAmount(formatEther(selectedAssetBalance));
+        setAmount(isUSDC ? formatUnits(selectedAssetBalance, 6) : formatEther(selectedAssetBalance));
       } else if (isDirectPeggedDeposit && directPeggedBalance) {
         setAmount(formatEther(directPeggedBalance));
       } else if (collateralBalance) {
@@ -3573,11 +3578,18 @@ export const AnchorDepositWithdrawModal = ({
         let minPeggedOut: bigint;
         
         if (useUSDCZap && fxSAVERate && fxSAVERate > 0n) {
-          // For USDC zap: minPeggedOut = (USDC amount * 1e12) / fxSAVE rate
-          // USDC has 6 decimals, we need to convert to 18 decimals, then divide by rate
+          // For USDC/fxUSD zap: minPeggedOut = amount / fxSAVE rate
+          // USDC has 6 decimals, fxUSD has 18 decimals
           // Apply 0.5% slippage tolerance (99.5%)
-          const usdcIn18Decimals = amountBigInt * 10n ** 12n; // Convert 6 decimals to 18 decimals
-          const peggedOutBeforeSlippage = usdcIn18Decimals / fxSAVERate;
+          let amountIn18Decimals: bigint;
+          if (isUSDC) {
+            // USDC: convert from 6 decimals to 18 decimals
+            amountIn18Decimals = amountBigInt * 10n ** 12n;
+          } else {
+            // fxUSD: already in 18 decimals
+            amountIn18Decimals = amountBigInt;
+          }
+          const peggedOutBeforeSlippage = amountIn18Decimals / fxSAVERate;
           minPeggedOut = (peggedOutBeforeSlippage * 995n) / 1000n; // 0.5% slippage
         } else {
           // For direct minting or ETH zap: use expectedMintOutput with 1% slippage
@@ -5437,8 +5449,12 @@ export const AnchorDepositWithdrawModal = ({
                           <span className="text-sm text-[#1E4775]/70">
                             Balance:{""}
                             {selectedAssetBalance !== null
-                              ? formatEther(selectedAssetBalance)
-                              : formatEther(collateralBalance)}
+                              ? (isUSDC 
+                                  ? formatUnits(selectedAssetBalance, 6)
+                                  : formatEther(selectedAssetBalance))
+                              : (isUSDC
+                                  ? formatUnits(collateralBalance, 6)
+                                  : formatEther(collateralBalance))}
                             {""}
                             {selectedDepositAsset || activeCollateralSymbol}
                           </span>

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
-import { parseEther, formatEther } from "viem";
+import { parseEther, formatEther, parseUnits, formatUnits } from "viem";
 import {
  useAccount,
  useBalance,
@@ -11,6 +11,8 @@ import {
 } from "wagmi";
 import { BaseError, ContractFunctionRevertedError } from "viem";
 import { ERC20_ABI, MINTER_ABI } from "@/abis/shared";
+import { MINTER_ETH_ZAP_V2_ABI, MINTER_USDC_ZAP_V2_ABI } from "@/config/contracts";
+import { useCollateralPrice } from "@/hooks/useCollateralPrice";
 import SimpleTooltip from "@/components/SimpleTooltip";
 import {
  TransactionProgressModal,
@@ -70,19 +72,6 @@ export const SailManageModal = ({
  const [error, setError] = useState<string | null>(null);
  const [txHash, setTxHash] = useState<string | null>(null);
 
- const formatDisplay = (
- value?: bigint | null,
- maximumFractionDigits: number = 4
- ) => {
- if (!value || value === 0n) return"0.00";
- const num = Number(formatEther(value));
- if (!Number.isFinite(num)) return"0.00";
- return new Intl.NumberFormat("en-US", {
- minimumFractionDigits: 0,
- maximumFractionDigits,
- }).format(num);
- };
-
  // Progress modal state
  const [progressModal, setProgressModal] = useState<{
  isOpen: boolean;
@@ -104,12 +93,66 @@ export const SailManageModal = ({
 
  const collateralSymbol = market.collateral?.symbol ||"ETH";
  const leveragedTokenSymbol = market.leveragedToken?.symbol ||"hs";
+ const collateralSymbolLower = collateralSymbol.toLowerCase();
+ const wrappedCollateralSymbol = market.collateral?.underlyingSymbol || "";
+ const wrappedCollateralSymbolLower = wrappedCollateralSymbol.toLowerCase();
+
+ // Determine market type
+ const isWstETHMarket = collateralSymbolLower === "wsteth";
+ const isFxUSDMarket = collateralSymbolLower === "fxusd" || collateralSymbolLower === "fxsave";
 
  // Get accepted deposit assets
  const acceptedAssets = useMemo(
- () => getAcceptedDepositAssets(market),
- [market]
+   () => getAcceptedDepositAssets(market),
+   [market]
  );
+
+ // Determine asset types
+ const isUSDC = selectedDepositAsset?.toLowerCase() === "usdc";
+ const isFxUSD = selectedDepositAsset?.toLowerCase() === "fxusd";
+ const isNativeETH = selectedDepositAsset?.toLowerCase() === "eth";
+ const isStETH = selectedDepositAsset?.toLowerCase() === "steth";
+ const isFxSAVE = selectedDepositAsset?.toLowerCase() === "fxsave";
+ const isWstETH = selectedDepositAsset?.toLowerCase() === "wsteth";
+ 
+ // Check if selected asset is wrapped collateral (fxSAVE, wstETH) - these don't need zaps
+ // Note: fxUSD is NOT wrapped collateral (it's the underlying collateral that needs zap)
+ // Only fxSAVE (the wrapped version) should skip zaps
+ // We check against wrappedCollateralSymbol (underlyingSymbol) not collateralSymbol
+ const isWrappedCollateral = isFxSAVE || isWstETH || 
+   (wrappedCollateralSymbolLower && selectedDepositAsset?.toLowerCase() === wrappedCollateralSymbolLower);
+
+ // Get zap contract address - use leveragedTokenZap for minting leveraged tokens
+ const zapAddress = market.addresses?.leveragedTokenZap as `0x${string}` | undefined;
+ 
+ // Determine which zap to use
+ const useZap = !!zapAddress && !isWrappedCollateral && activeTab === "mint";
+ const useETHZap = useZap && isWstETHMarket && (isNativeETH || isStETH);
+ const useUSDCZap = useZap && isFxUSDMarket && (isUSDC || isFxUSD);
+ 
+ // Get fxSAVE rate for USDC zap calculations
+ const priceOracleAddress = market.addresses?.collateralPrice as `0x${string}` | undefined;
+ const { maxRate: fxSAVERate } = useCollateralPrice(
+   priceOracleAddress,
+   { enabled: useUSDCZap && !!priceOracleAddress }
+ );
+
+ // Format display helper (after isUSDC is defined)
+ const formatDisplay = (
+   value?: bigint | null,
+   maximumFractionDigits: number = 4
+ ) => {
+   if (!value || value === 0n) return"0.00";
+   // USDC uses 6 decimals, others use 18 decimals
+   const num = isUSDC 
+     ? Number(formatUnits(value, 6))
+     : Number(formatEther(value));
+   if (!Number.isFinite(num)) return"0.00";
+   return new Intl.NumberFormat("en-US", {
+     minimumFractionDigits: 0,
+     maximumFractionDigits,
+   }).format(num);
+ };
 
  // Set default deposit asset
  useEffect(() => {
@@ -120,14 +163,17 @@ export const SailManageModal = ({
 
  // Get deposit asset address
  const depositAssetAddress = useMemo(() => {
- if (!selectedDepositAsset) return undefined;
- const normalized = selectedDepositAsset.toLowerCase();
- if (normalized ==="eth") return undefined; // Native ETH
- // wstETH is the collateral token
- if (normalized ==="wsteth") return market.addresses?.collateralToken;
- // stETH is the wrapped collateral token
- if (normalized ==="steth") return market.addresses?.wrappedCollateralToken;
- return market.addresses?.collateralToken; // Default
+   if (!selectedDepositAsset) return undefined;
+   const normalized = selectedDepositAsset.toLowerCase();
+   if (normalized ==="eth") return undefined; // Native ETH
+   if (normalized ==="usdc") return "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" as `0x${string}`; // USDC
+   // wstETH is the collateral token
+   if (normalized ==="wsteth") return market.addresses?.collateralToken;
+   // stETH is the wrapped collateral token
+   if (normalized ==="steth") return market.addresses?.wrappedCollateralToken;
+   // fxUSD uses collateral token address
+   if (normalized ==="fxusd") return market.addresses?.collateralToken;
+   return market.addresses?.collateralToken; // Default
  }, [selectedDepositAsset, market.addresses]);
 
  // Get native ETH balance (when ETH is selected) - use useBalance
@@ -143,22 +189,42 @@ export const SailManageModal = ({
  },
  });
 
- // Get user balance for deposit asset (wstETH, stETH, etc.)
+ // Get user balance for deposit asset (wstETH, stETH, USDC, fxUSD, etc.)
  const { data: depositAssetBalanceData } = useContractRead({
- address: depositAssetAddress as `0x${string}`,
- abi: ERC20_ABI,
- functionName:"balanceOf",
- args: address ? [address] : undefined,
- query: {
- enabled:
- isOpen &&
- !!address &&
- activeTab ==="mint" &&
- !!depositAssetAddress &&
- selectedDepositAsset !=="ETH",
- refetchInterval: isOpen ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
- retry: 1,
- },
+   address: depositAssetAddress as `0x${string}`,
+   abi: ERC20_ABI,
+   functionName:"balanceOf",
+   args: address ? [address] : undefined,
+   query: {
+     enabled:
+       isOpen &&
+       !!address &&
+       activeTab ==="mint" &&
+       !!depositAssetAddress &&
+       selectedDepositAsset !=="ETH",
+     refetchInterval: isOpen ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
+     retry: 1,
+   },
+ });
+
+ // Get allowance for zap contract (if using zap)
+ const { data: zapAllowanceData } = useContractRead({
+   address: depositAssetAddress as `0x${string}`,
+   abi: ERC20_ABI,
+   functionName:"allowance",
+   args: address && zapAddress && depositAssetAddress ? [address, zapAddress] : undefined,
+   query: {
+     enabled:
+       isOpen &&
+       !!address &&
+       !!zapAddress &&
+       !!depositAssetAddress &&
+       activeTab ==="mint" &&
+       useZap &&
+       (useETHZap || useUSDCZap) &&
+       !isNativeETH,
+     retry: 1,
+   },
  });
 
  // Get user leveraged token balance
@@ -176,23 +242,25 @@ export const SailManageModal = ({
  },
  });
 
- // Get allowance for deposit asset
+ // Get allowance for deposit asset (for direct minting or zap)
+ const allowanceTarget = useZap && zapAddress ? zapAddress : minterAddress;
  const { data: depositAssetAllowance } = useContractRead({
- address: depositAssetAddress,
- abi: ERC20_ABI,
- functionName:"allowance",
- args:
- address && minterAddress && depositAssetAddress
- ? [address, minterAddress]
- : undefined,
- query: {
- enabled:
- isOpen &&
- !!address &&
- !!minterAddress &&
- !!depositAssetAddress &&
- activeTab ==="mint",
- },
+   address: depositAssetAddress,
+   abi: ERC20_ABI,
+   functionName:"allowance",
+   args:
+     address && allowanceTarget && depositAssetAddress
+       ? [address, allowanceTarget]
+       : undefined,
+   query: {
+     enabled:
+       isOpen &&
+       !!address &&
+       !!allowanceTarget &&
+       !!depositAssetAddress &&
+       activeTab ==="mint" &&
+       !isNativeETH,
+   },
  });
 
  // Get allowance for leveraged token
@@ -214,15 +282,16 @@ export const SailManageModal = ({
  },
  });
 
- // Parse amount safely
+ // Parse amount safely with correct decimals
  const parsedAmount = useMemo(() => {
- if (!amount || amount ==="") return undefined;
- try {
- return parseEther(amount);
- } catch {
- return undefined;
- }
- }, [amount]);
+   if (!amount || amount ==="") return undefined;
+   try {
+     // USDC uses 6 decimals, others use 18 decimals
+     return isUSDC ? parseUnits(amount, 6) : parseEther(amount);
+   } catch {
+     return undefined;
+   }
+ }, [amount, isUSDC]);
 
  // Dry run for mint
  const mintDryRunEnabled =
@@ -453,32 +522,51 @@ export const SailManageModal = ({
  return;
  }
 
- // Determine if approval is needed
- const needsApproval = depositAssetAddress
- ? ((depositAssetAllowance as bigint) || 0n) < parsedAmount
- : false;
+ // Determine if approval is needed (for zap or direct minting)
+ const needsZapApproval = useZap && zapAddress && depositAssetAddress && !isNativeETH
+   ? ((depositAssetAllowance as bigint) || 0n) < parsedAmount
+   : false;
+ const needsDirectApproval = !useZap && depositAssetAddress
+   ? ((depositAssetAllowance as bigint) || 0n) < parsedAmount
+   : false;
+ const needsApproval = needsZapApproval || needsDirectApproval;
+
+ // Determine zap asset name for labels
+ let zapAssetName: string | null = null;
+ if (useZap) {
+   if (isNativeETH) zapAssetName = "ETH";
+   else if (isStETH) zapAssetName = "stETH";
+   else if (isUSDC) zapAssetName = "USDC";
+   else if (isFxUSD) zapAssetName = "fxUSD";
+ }
 
  // Build steps
  const steps: TransactionStep[] = [];
  if (needsApproval) {
- steps.push({
- id:"approve",
- label: `Approve ${selectedDepositAsset || collateralSymbol}`,
- status:"pending",
- details: `Approve ${
- selectedDepositAsset || collateralSymbol
- } for minting`,
- });
+   const approveLabel = useZap && zapAssetName
+     ? `Approve ${zapAssetName} for zap`
+     : `Approve ${selectedDepositAsset || collateralSymbol}`;
+   steps.push({
+     id:"approve",
+     label: approveLabel,
+     status:"pending",
+     details: `Approve ${
+       useZap && zapAssetName ? zapAssetName : (selectedDepositAsset || collateralSymbol)
+     } for minting`,
+   });
  }
+ const mintLabel = useZap && zapAssetName
+   ? `Zap ${zapAssetName} to ${leveragedTokenSymbol}`
+   : `Mint ${leveragedTokenSymbol}`;
  steps.push({
- id:"mint",
- label: `Mint ${leveragedTokenSymbol}`,
- status:"pending",
- details: `Mint ${
- expectedMintOutput
- ? Number(formatEther(expectedMintOutput)).toFixed(4)
- :"..."
- } ${leveragedTokenSymbol}`,
+   id:"mint",
+   label: mintLabel,
+   status:"pending",
+   details: `Mint ${
+     expectedMintOutput
+     ? Number(formatEther(expectedMintOutput)).toFixed(4)
+     :"..."
+   } ${leveragedTokenSymbol}`,
  });
 
  // Open progress modal
@@ -490,36 +578,115 @@ export const SailManageModal = ({
  });
 
  try {
- // Step 1: Approve (if needed)
- if (needsApproval && depositAssetAddress) {
- updateProgressStep("approve", { status:"in_progress" });
- const approveHash = await writeContractAsync({
- address: depositAssetAddress,
- abi: ERC20_ABI,
- functionName:"approve",
- args: [minterAddress, parsedAmount],
- });
- await publicClient?.waitForTransactionReceipt({ hash: approveHash });
- updateProgressStep("approve", {
- status:"completed",
- txHash: approveHash,
- });
- }
+   // Step 1: Approve (if needed)
+   if (needsApproval && depositAssetAddress) {
+     updateProgressStep("approve", { status:"in_progress" });
+     const approveTarget = useZap && zapAddress ? zapAddress : minterAddress;
+     const approveHash = await writeContractAsync({
+       address: depositAssetAddress,
+       abi: ERC20_ABI,
+       functionName:"approve",
+       args: [approveTarget, parsedAmount],
+     });
+     await publicClient?.waitForTransactionReceipt({ hash: approveHash });
+     updateProgressStep("approve", {
+       status:"completed",
+       txHash: approveHash,
+     });
+   }
 
- // Step 2: Mint
- updateProgressStep("mint", { status:"in_progress" });
- const minOutput = expectedMintOutput
- ? (expectedMintOutput * 99n) / 100n
- : 0n;
+   // Step 2: Mint (via zap or direct)
+   updateProgressStep("mint", { status:"in_progress" });
+   
+   // Calculate minimum output based on zap type or direct minting
+   let minOutput: bigint;
+   
+   if (useUSDCZap && fxSAVERate && fxSAVERate > 0n) {
+     // For USDC/fxUSD zap: minOutput = amount / fxSAVE rate
+     let amountIn18Decimals: bigint;
+     if (isUSDC) {
+       // USDC: convert from 6 decimals to 18 decimals
+       amountIn18Decimals = parsedAmount * 10n ** 12n;
+     } else {
+       // fxUSD: already in 18 decimals
+       amountIn18Decimals = parsedAmount;
+     }
+     const leveragedOutBeforeSlippage = amountIn18Decimals / fxSAVERate;
+     minOutput = (leveragedOutBeforeSlippage * 995n) / 1000n; // 0.5% slippage
+   } else {
+     // For direct minting or ETH zap: use expectedMintOutput with 1% slippage
+     minOutput = expectedMintOutput
+       ? (expectedMintOutput * 99n) / 100n
+       : 0n;
+   }
 
- const mintHash = await writeContractAsync({
- address: minterAddress,
- abi: MINTER_ABI,
- functionName:"mintLeveragedToken",
- args: [parsedAmount, address, minOutput],
- });
- await publicClient?.waitForTransactionReceipt({ hash: mintHash });
- updateProgressStep("mint", { status:"completed", txHash: mintHash });
+   let mintHash: `0x${string}`;
+
+   if (useZap && zapAddress) {
+     // Use zap contract to mint
+     if (useETHZap) {
+       // ETH/stETH zap for wstETH markets
+       const minWstEthOut = (parsedAmount * 995n) / 1000n; // 0.5% slippage
+       
+       if (isNativeETH) {
+         mintHash = await writeContractAsync({
+           address: zapAddress,
+           abi: MINTER_ETH_ZAP_V2_ABI,
+           functionName: "zapEthToLeveraged",
+           args: [address as `0x${string}`, minOutput, minWstEthOut],
+           value: parsedAmount,
+         });
+       } else if (isStETH) {
+         const stETHAddress = market.addresses?.wrappedCollateralToken as `0x${string}` | undefined;
+         if (!stETHAddress) throw new Error("stETH address not found");
+         
+         mintHash = await writeContractAsync({
+           address: zapAddress,
+           abi: MINTER_ETH_ZAP_V2_ABI,
+           functionName: "zapStEthToLeveraged",
+           args: [parsedAmount, address as `0x${string}`, minOutput, minWstEthOut],
+         });
+       } else {
+         throw new Error("Invalid asset for ETH zap");
+       }
+     } else if (useUSDCZap) {
+       // USDC/fxUSD zap for fxSAVE markets
+       if (!fxSAVERate || fxSAVERate === 0n) {
+         throw new Error("fxSAVE rate not available");
+       }
+       
+       if (isUSDC) {
+         mintHash = await writeContractAsync({
+           address: zapAddress,
+           abi: MINTER_USDC_ZAP_V2_ABI,
+           functionName: "zapUsdcToLeveraged",
+           args: [parsedAmount, address as `0x${string}`, minOutput],
+         });
+       } else if (isFxUSD) {
+         mintHash = await writeContractAsync({
+           address: zapAddress,
+           abi: MINTER_USDC_ZAP_V2_ABI,
+           functionName: "zapFxUsdToLeveraged",
+           args: [parsedAmount, address as `0x${string}`, minOutput],
+         });
+       } else {
+         throw new Error("Invalid asset for USDC zap");
+       }
+     } else {
+       throw new Error("Invalid zap configuration");
+     }
+   } else {
+     // Direct minting (no zap)
+     mintHash = await writeContractAsync({
+       address: minterAddress,
+       abi: MINTER_ABI,
+       functionName:"mintLeveragedToken",
+       args: [parsedAmount, address, minOutput],
+     });
+   }
+   
+   await publicClient?.waitForTransactionReceipt({ hash: mintHash });
+   updateProgressStep("mint", { status:"completed", txHash: mintHash });
 
  setTxHash(mintHash);
  if (onSuccess) onSuccess();
@@ -861,9 +1028,9 @@ export const SailManageModal = ({
  // Cap at balance if value exceeds it
  if (value && currentBalance) {
  try {
- const parsed = parseEther(value);
- if (parsed > currentBalance) {
- setAmount(formatEther(currentBalance));
+         const parsed = isUSDC ? parseUnits(value, 6) : parseEther(value);
+         if (parsed > currentBalance) {
+           setAmount(isUSDC ? formatUnits(currentBalance, 6) : formatEther(currentBalance));
  setError(null);
  return;
  }
@@ -887,10 +1054,10 @@ export const SailManageModal = ({
  />
  <button
  onClick={() => {
- if (currentBalance) {
- setAmount(formatEther(currentBalance));
- setError(null);
- }
+   if (currentBalance) {
+     setAmount(isUSDC ? formatUnits(currentBalance, 6) : formatEther(currentBalance));
+     setError(null);
+   }
  }}
  disabled={isProcessing || !currentBalance}
  className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1.5 text-sm bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white transition-colors disabled:bg-gray-300 disabled:text-gray-500 rounded-full font-medium"
