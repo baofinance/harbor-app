@@ -4801,12 +4801,16 @@ export const AnchorDepositWithdrawModal = ({
     if (step === "success") return false;
     if (step === "error") return false; // Allow retry when in error state
     if (activeTab === "deposit") {
+      // Check if fee is excessively high (>50% means you'd lose more than half your deposit)
+      const hasExcessiveFee = feePercentage !== undefined && feePercentage > 50;
+      
       return (
         step === "approving" ||
         step === "minting" ||
         step === "depositing" ||
         !amount ||
-        parseFloat(amount) <= 0
+        parseFloat(amount) <= 0 ||
+        hasExcessiveFee
       );
     } else if (activeTab === "withdraw") {
       // Check if at least one position is selected with a valid amount
@@ -5773,6 +5777,30 @@ export const AnchorDepositWithdrawModal = ({
                           </div>
                         </div>
 
+                        {/* Fee Warning */}
+                        {feePercentage !== undefined && feePercentage > 2 && (
+                          <div className={`mt-2 p-2 border text-xs ${
+                            feePercentage > 50 
+                              ? "bg-red-100 border-red-400 text-red-800" 
+                              : "bg-red-50 border-red-200 text-red-700"
+                          }`}>
+                            {feePercentage > 50 ? (
+                              <>
+                                <div className="font-semibold mb-1">🚫 Deposit amount too large</div>
+                                <div>
+                                  This deposit would bring the collateral ratio too low, resulting in a {feePercentage.toFixed(1)}% fee. 
+                                  Please reduce your deposit amount to continue.
+                                </div>
+                              </>
+                            ) : (
+                              <>
+                                ⚠️ High fee warning: Fees above 2% may
+                                significantly impact your returns
+                              </>
+                            )}
+                          </div>
+                        )}
+
                         {/* Progress Steps Indicator */}
                         <div className="flex items-center justify-between mb-3 bg-[#f3f6fb] border border-[#d1d7e5] p-3 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
                           <div className="flex items-center flex-1">
@@ -5971,9 +5999,25 @@ export const AnchorDepositWithdrawModal = ({
                             )}
                           </div>
                           {feePercentage !== undefined && feePercentage > 2 && (
-                            <div className="mt-2 p-2 bg-red-50 border border-red-200 text-xs text-red-700">
-                              ⚠️ High fee warning: Fees above 2% may
-                              significantly impact your returns
+                            <div className={`mt-2 p-2 border text-xs ${
+                              feePercentage > 50 
+                                ? "bg-red-100 border-red-400 text-red-800" 
+                                : "bg-red-50 border-red-200 text-red-700"
+                            }`}>
+                              {feePercentage > 50 ? (
+                                <>
+                                  <div className="font-semibold mb-1">🚫 Deposit amount too large</div>
+                                  <div>
+                                    This deposit would bring the collateral ratio too low, resulting in a {feePercentage.toFixed(1)}% fee. 
+                                    Please reduce your deposit amount to continue.
+                                  </div>
+                                </>
+                              ) : (
+                                <>
+                                  ⚠️ High fee warning: Fees above 2% may
+                                  significantly impact your returns
+                                </>
+                              )}
                             </div>
                           )}
                         </div>
