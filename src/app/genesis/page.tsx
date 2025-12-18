@@ -1471,7 +1471,7 @@ export default function GenesisIndexPage() {
                 ?.result as `0x${string}` | undefined;
               const collateralAddress =
                 onChainCollateralAddress ||
-                (mkt as any).addresses?.collateralToken;
+                (mkt as any).addresses?.wrappedCollateralToken;
               const collateralSymbol = (mkt as any).collateral?.symbol || "ETH"; // What's deposited (wrapped collateral)
               const underlyingSymbol =
                 (mkt as any).collateral?.underlyingSymbol || collateralSymbol; // The underlying/base token
