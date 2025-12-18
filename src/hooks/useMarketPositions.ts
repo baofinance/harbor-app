@@ -112,17 +112,18 @@ export function useMarketPositions(
     // First pass: collect prices from minter reads, merge with external map
     const priceMap = new Map<string, bigint | undefined>();
     if (externalPriceMap) {
-      console.log('[useMarketPositions] externalPriceMap:', externalPriceMap);
       Object.entries(externalPriceMap).forEach(([marketId, price]) => {
         priceMap.set(marketId, price);
-        console.log(`[useMarketPositions] Set price for ${marketId}:`, price);
       });
     }
     if (data) {
       data.forEach((result, idx) => {
         const meta = indexMap.get(idx);
         if (meta?.kind === "price" && result?.result !== undefined && result?.result !== null) {
-          priceMap.set(meta.marketId, BigInt(result.result as bigint));
+          // Only use minter price if no external price was provided
+          if (!priceMap.has(meta.marketId)) {
+            priceMap.set(meta.marketId, BigInt(result.result as bigint));
+          }
         }
       });
     }
@@ -169,38 +170,21 @@ export function useMarketPositions(
       const peggedTokenPrice = priceMap.get(config.marketId);
       pos.peggedTokenPrice = peggedTokenPrice;
 
-      console.log(`[useMarketPositions] ${config.marketId}:`, {
-        walletHa: pos.walletHa.toString(),
-        collateralPool: pos.collateralPool.toString(),
-        sailPool: pos.sailPool.toString(),
-        peggedTokenPrice: peggedTokenPrice?.toString(),
-      });
-
       if (peggedTokenPrice !== undefined) {
         const priceUSD = Number(peggedTokenPrice) / 1e18;
         pos.walletHaUSD = (Number(pos.walletHa) / 1e18) * priceUSD;
         pos.collateralPoolUSD = (Number(pos.collateralPool) / 1e18) * priceUSD;
         pos.sailPoolUSD = (Number(pos.sailPool) / 1e18) * priceUSD;
         pos.totalUSD = pos.walletHaUSD + pos.collateralPoolUSD + pos.sailPoolUSD;
-        
-        console.log(`[useMarketPositions] ${config.marketId} USD:`, {
-          priceUSD,
-          walletHaUSD: pos.walletHaUSD,
-          collateralPoolUSD: pos.collateralPoolUSD,
-          sailPoolUSD: pos.sailPoolUSD,
-          totalUSD: pos.totalUSD,
-        });
       } else {
         // If price missing, keep USD as 0 to signal unavailable
         pos.walletHaUSD = 0;
         pos.collateralPoolUSD = 0;
         pos.sailPoolUSD = 0;
         pos.totalUSD = 0;
-        console.log(`[useMarketPositions] ${config.marketId}: NO PRICE AVAILABLE`);
       }
     });
 
-    console.log('[useMarketPositions] Final positionsMap:', map);
     return map;
   }, [data, indexMap, marketConfigs, externalPriceMap]);
 
