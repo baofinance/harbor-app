@@ -735,8 +735,16 @@ function AnchorMarketExpandedView({
       ? (Number(totalDebt) / 1e18) * peggedTokenPriceUSD
       : 0;
 
-  // Collateral value in USD = collateralRatio * totalDebtUSD
-  // collateralRatio is in 18 decimals (e.g., 2e18 = 200% = 2.0)
+  // Collateral value in USD: use the actual collateral price from oracle
+  // Get underlying collateral price (e.g., stETH price for wstETH)
+  const underlyingCollateralPriceUSD = collateralPrice && collateralPriceDecimals
+    ? Number(collateralPrice) / 10 ** collateralPriceDecimals
+    : 0;
+  
+  // collateralValue is in wrapped tokens (e.g., wstETH)
+  // We need to multiply by wrapped rate to get underlying, then by price
+  // For now, use the simpler formula: collateralRatio * totalDebtUSD
+  // TODO: Get wrapped rate to calculate: collateralTokens * wrappedRate * underlyingPrice
   const collateralValueUSD =
     collateralRatio && totalDebtUSD > 0
       ? (Number(collateralRatio) / 1e18) * totalDebtUSD
@@ -7304,15 +7312,18 @@ export default function AnchorPage() {
                               ? Number(marketData.totalDebt) / 1e18
                               : 0;
 
-                          // Get collateral ratio
-                          const collateralRatioNum = marketData.collateralRatio
-                            ? Number(marketData.collateralRatio) / 1e18
-                            : 0;
-
-                          // For collateral value, use the peg target USD price (since collateral is typically the same asset as peg target)
-                          // E.g., for ETH/fxUSD market: collateral is stETH/wstETH, peg target is ETH, they have same USD price
-                          // E.g., for BTC/stETH market: collateral is stETH, peg target is BTC, need to use CR to derive value
+                          // Get correct ha token USD price
                           const peggedPriceUSD = marketData.peggedTokenPriceUSD || 1;
+                          
+                          // Calculate total debt in USD (use correct USD price, not backing ratio)
+                          const totalDebtUSD = totalHaTokens * peggedPriceUSD;
+
+                          // For collateral value: get the underlying collateral price from globalTokenPriceMap
+                          // E.g., for wstETH, get stETH price, then multiply by wrapped rate
+                          const wrappedCollateralAddress = marketData.market?.addresses?.wrappedCollateralToken as string | undefined;
+                          const underlyingCollateralPriceUSD = wrappedCollateralAddress
+                            ? globalTokenPriceMap.get(wrappedCollateralAddress.toLowerCase()) || 0
+                            : 0;
                           
                           // collateralValue is in wrapped tokens (e.g., wstETH) - 18 decimals raw
                           // wrappedRate converts wrapped to underlying (e.g., wstETH to stETH) - 18 decimals raw
@@ -7324,19 +7335,12 @@ export default function AnchorPage() {
                             ? Number(marketData.wrappedRate) / 1e18
                             : 1; // Default 1:1 if no rate
                           
-                          // Get peg target price from tokenPriceData
-                          const tokenPriceData = tokenPricesByMarket[marketData.marketId];
-                          const pegTargetUSD = tokenPriceData?.pegTargetUSD || 1;
-                          
-                          // For most markets, collateral is the same asset as peg target (stETH ≈ ETH)
-                          // Formula: collateralUSD = collateralTokens * wrappedRate * pegTargetUSD
+                          // Formula: collateralUSD = collateralTokens * wrappedRate * underlyingPriceUSD
+                          // This matches the genesis page calculation
                           const collateralValueUSD =
-                            collateralTokens > 0 && pegTargetUSD > 0
-                              ? collateralTokens * wrappedRateNum * pegTargetUSD
+                            collateralTokens > 0 && underlyingCollateralPriceUSD > 0
+                              ? collateralTokens * wrappedRateNum * underlyingCollateralPriceUSD
                               : 0;
-
-                          // Calculate total debt in USD (use correct USD price, not backing ratio)
-                          const totalDebtUSD = totalHaTokens * peggedPriceUSD;
 
                           return (
                             <div
