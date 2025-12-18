@@ -201,6 +201,13 @@ export function useMultipleTokenPrices(
   return useMemo(() => {
     const result: Record<string, TokenPricesResult> = {};
 
+    console.log('[useMultipleTokenPrices] Debug:', {
+      marketsCount: markets.length,
+      coinGeckoPrices: coinGeckoPrices.prices,
+      chainlinkPrices,
+      tokenPriceDataLength: tokenPriceData?.length,
+    });
+
     markets.forEach((market, idx) => {
       const baseOffset = idx * 2;
       const peggedResult = tokenPriceData?.[baseOffset];
@@ -225,6 +232,13 @@ export function useMultipleTokenPrices(
           chainlinkPrices.eth || 
           0;
       }
+
+      console.log(`[useMultipleTokenPrices] ${market.marketId}:`, {
+        target,
+        pegTargetUSD,
+        peggedResult: peggedResult?.result ? 'success' : 'missing',
+        leveragedResult: leveragedResult?.result ? 'success' : 'missing',
+      });
 
       // Check if minter data is available
       if (!peggedResult?.result || !leveragedResult?.result) {
