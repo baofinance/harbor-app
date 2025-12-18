@@ -2469,7 +2469,7 @@ export const AnchorDepositWithdrawModal = ({
     return `${(Number(ratio) / 1e16).toFixed(2)}%`;
   };
 
-  // Calculate fee percentage from dry run result
+  // Calculate fee percentage from dry run result and detect mint cap
   const feePercentage = useMemo(() => {
     // Don't calculate fee for direct pegged token deposits (no minting)
     if (isDirectPeggedDeposit) return undefined;
@@ -2492,6 +2492,28 @@ export const AnchorDepositWithdrawModal = ({
     const feePercent = (Number(wrappedFee) / Number(parsedAmount)) * 100;
     return feePercent;
   }, [dryRunData, dryRunError, parsedAmount, isDirectPeggedDeposit]);
+
+  // Detect if we're hitting the mint cap (output doesn't scale with input)
+  const isMintCapped = useMemo(() => {
+    if (isDirectPeggedDeposit || !dryRunData || !parsedAmount) return false;
+
+    const dryRunResult = dryRunData as
+      | [bigint, bigint, bigint, bigint, bigint, bigint]
+      | undefined;
+    if (!dryRunResult || dryRunResult.length < 4) return false;
+
+    const peggedMinted = dryRunResult[3];
+    const expectedRatio = Number(peggedMinted) / Number(parsedAmount);
+
+    // If output/input ratio is very low (<0.0005), we're likely hitting a cap
+    // Normal ratio for ETH markets should be around 0.0003-0.0004
+    // If input is large but output is tiny, that's the cap
+    if (Number(parsedAmount) > parseEther("5") && expectedRatio < 0.0003) {
+      return true;
+    }
+
+    return false;
+  }, [dryRunData, parsedAmount, isDirectPeggedDeposit]);
 
   // Contract write hooks
   const { writeContractAsync } = useWriteContract();
@@ -4810,7 +4832,8 @@ export const AnchorDepositWithdrawModal = ({
         step === "depositing" ||
         !amount ||
         parseFloat(amount) <= 0 ||
-        hasExcessiveFee
+        hasExcessiveFee ||
+        isMintCapped
       );
     } else if (activeTab === "withdraw") {
       // Check if at least one position is selected with a valid amount
@@ -5777,14 +5800,22 @@ export const AnchorDepositWithdrawModal = ({
                           </div>
                         </div>
 
-                        {/* Fee Warning */}
-                        {feePercentage !== undefined && feePercentage > 2 && (
+                        {/* Fee Warning / Mint Cap Warning */}
+                        {(isMintCapped || (feePercentage !== undefined && feePercentage > 2)) && (
                           <div className={`mt-2 p-2 border text-xs ${
-                            feePercentage > 50 
+                            isMintCapped || (feePercentage !== undefined && feePercentage > 50)
                               ? "bg-red-100 border-red-400 text-red-800" 
                               : "bg-red-50 border-red-200 text-red-700"
                           }`}>
-                            {feePercentage > 50 ? (
+                            {isMintCapped ? (
+                              <>
+                                <div className="font-semibold mb-1">🚫 Market capacity reached</div>
+                                <div>
+                                  This market has reached its minting capacity. Additional deposits beyond ~{parseFloat(amount) > 3 ? "3" : Math.floor(parseFloat(amount || "0"))} {selectedDepositAsset || activeCollateralSymbol} won't mint more tokens. 
+                                  Please reduce your deposit amount or try again later when capacity increases.
+                                </div>
+                              </>
+                            ) : feePercentage !== undefined && feePercentage > 50 ? (
                               <>
                                 <div className="font-semibold mb-1">🚫 Deposit amount too large</div>
                                 <div>
@@ -5998,13 +6029,21 @@ export const AnchorDepositWithdrawModal = ({
                               </div>
                             )}
                           </div>
-                          {feePercentage !== undefined && feePercentage > 2 && (
+                          {(isMintCapped || (feePercentage !== undefined && feePercentage > 2)) && (
                             <div className={`mt-2 p-2 border text-xs ${
-                              feePercentage > 50 
+                              isMintCapped || (feePercentage !== undefined && feePercentage > 50)
                                 ? "bg-red-100 border-red-400 text-red-800" 
                                 : "bg-red-50 border-red-200 text-red-700"
                             }`}>
-                              {feePercentage > 50 ? (
+                              {isMintCapped ? (
+                                <>
+                                  <div className="font-semibold mb-1">🚫 Market capacity reached</div>
+                                  <div>
+                                    This market has reached its minting capacity. Additional deposits beyond ~{parseFloat(amount) > 3 ? "3" : Math.floor(parseFloat(amount || "0"))} {selectedDepositAsset || activeCollateralSymbol} won't mint more tokens. 
+                                    Please reduce your deposit amount or try again later when capacity increases.
+                                  </div>
+                                </>
+                              ) : feePercentage !== undefined && feePercentage > 50 ? (
                                 <>
                                   <div className="font-semibold mb-1">🚫 Deposit amount too large</div>
                                   <div>
