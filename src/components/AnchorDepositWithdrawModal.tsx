@@ -1003,32 +1003,48 @@ export const AnchorDepositWithdrawModal = ({
       return "0x0000000000000000000000000000000000000000" as `0x${string}`; // Marker for native ETH
     }
 
-    // Check if it's collateral token (fxUSD, wstETH, etc.)
-    const collateralSymbol = market?.collateral?.symbol || "";
-    if (normalized === collateralSymbol.toLowerCase()) {
-      return market?.addresses?.collateralToken as `0x${string}` | undefined;
-    }
-
-    // Check if it's wrapped collateral token (fxSAVE, stETH, etc.)
-    const wrappedCollateralSymbol = market?.collateral?.underlyingSymbol || "";
+    // Check if it's wrapped collateral token (fxSAVE, wstETH, etc.)
+    // collateral.symbol is the wrapped version (what's actually deposited)
+    const wrappedCollateralSymbol = market?.collateral?.symbol || "";
     if (normalized === wrappedCollateralSymbol.toLowerCase()) {
       return market?.addresses?.wrappedCollateralToken as
         | `0x${string}`
         | undefined;
     }
 
-    // Check if it's stETH (for backward compatibility with stETH markets)
+    // Check if it's underlying collateral token (fxUSD, stETH, etc.)
+    // collateral.underlyingSymbol is the base token
+    const underlyingCollateralSymbol = market?.collateral?.underlyingSymbol || "";
+    if (normalized === underlyingCollateralSymbol.toLowerCase()) {
+      return market?.addresses?.collateralToken as `0x${string}` | undefined;
+    }
+
+    // Backward compatibility fallbacks
+    // stETH can be either wrapped (wstETH deposit) or underlying (BTC/stETH market)
     if (normalized === "steth") {
+      // For BTC/stETH market, stETH is the wrapped collateral
       return market?.addresses?.wrappedCollateralToken as
         | `0x${string}`
         | undefined;
     }
 
-    // Check if it's fxSAVE (for backward compatibility)
+    // wstETH is wrapped, stETH is underlying
+    if (normalized === "wsteth") {
+      return market?.addresses?.wrappedCollateralToken as
+        | `0x${string}`
+        | undefined;
+    }
+
+    // fxSAVE is wrapped, fxUSD is underlying
     if (normalized === "fxsave") {
       return market?.addresses?.wrappedCollateralToken as
         | `0x${string}`
         | undefined;
+    }
+
+    // fxUSD is the underlying token
+    if (normalized === "fxusd") {
+      return market?.addresses?.collateralToken as `0x${string}` | undefined;
     }
 
     // Check if it's USDC (standard USDC address on Ethereum mainnet)
