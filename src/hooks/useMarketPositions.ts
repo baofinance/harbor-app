@@ -183,7 +183,7 @@ export function useMarketPositions(
     });
 
     return map;
-  }, [data, indexMap, marketConfigs]);
+  }, [data, indexMap, marketConfigs, externalPriceMap]);
 
   // Get total position across all markets
   const totalPositionUSD = useMemo(() => {

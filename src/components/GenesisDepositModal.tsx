@@ -28,23 +28,23 @@ import { useUserTokens, getTokenAddress, getTokenInfo, useTokenDecimals } from "
 interface GenesisDepositModalProps {
  isOpen: boolean;
  onClose: () => void;
-  genesisAddress: string;
-  collateralAddress: string;
-  collateralSymbol: string;
-  wrappedCollateralSymbol?: string;
+ genesisAddress: string;
+ collateralAddress: string;
+ collateralSymbol: string;
+ wrappedCollateralSymbol?: string;
   underlyingSymbol?: string; // e.g., "fxUSD" for fxSAVE markets, "stETH" for wstETH markets
-  acceptedAssets: Array<{ symbol: string; name: string }>;
-  marketAddresses?: {
-    collateralToken?: string;
-    wrappedCollateralToken?: string;
-    priceOracle?: string;
+ acceptedAssets: Array<{ symbol: string; name: string }>;
+ marketAddresses?: {
+ collateralToken?: string;
+ wrappedCollateralToken?: string;
+priceOracle?: string;
     genesisZap?: string; // Genesis zap contract address for this market
     peggedTokenZap?: string; // Pegged token zap contract address (future)
     leveragedTokenZap?: string; // Leveraged token zap contract address (future)
-  };
-  coinGeckoId?: string;
-  onSuccess?: () => void;
-  embedded?: boolean;
+ };
+ coinGeckoId?: string;
+ onSuccess?: () => void;
+ embedded?: boolean;
 }
 
 // formatTokenAmount is now imported from utils/formatters
@@ -54,16 +54,16 @@ type ModalStep ="input" |"approving" |"depositing" |"success" |"error";
 export const GenesisDepositModal = ({
  isOpen,
  onClose,
-  genesisAddress,
-  collateralAddress,
-  collateralSymbol,
-  wrappedCollateralSymbol,
+ genesisAddress,
+ collateralAddress,
+ collateralSymbol,
+ wrappedCollateralSymbol,
   underlyingSymbol,
-  acceptedAssets,
-  marketAddresses,
-  coinGeckoId,
-  onSuccess,
-  embedded = false,
+ acceptedAssets,
+ marketAddresses,
+ coinGeckoId,
+ onSuccess,
+ embedded = false,
 }: GenesisDepositModalProps) => {
  const { address } = useAccount();
  const wagmiPublicClient = usePublicClient();
@@ -149,35 +149,35 @@ const { tokens: userTokens, isLoading: isLoadingUserTokens } = useUserTokens();
    return userToken.address;
  }
  
-// Collateral token (fxUSD, wstETH, etc.)
-if (normalized === collateralSymbol.toLowerCase()) {
-return collateralAddress;
-}
-
+ // Collateral token (fxUSD, wstETH, etc.)
+ if (normalized === collateralSymbol.toLowerCase()) {
+ return collateralAddress;
+ }
+ 
 // fxSAVE - wrapped collateral for fxUSD markets
 if (normalized === "fxsave") {
-  return marketAddresses?.wrappedCollateralToken || null;
-}
+   return marketAddresses?.wrappedCollateralToken || null;
+ }
 
 // stETH - underlying token for wstETH markets (from contracts.ts underlyingCollateralToken)
 if (normalized === "steth") {
   return "0xae7ab96520de3a18e5e111b5eaab095312d7fe84"; // stETH mainnet address
 }
-
-// USDC (standard mainnet address)
-if (normalized === "usdc") {
-  return "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
-}
-
-// fxUSD - use collateralToken address
-if (normalized === "fxusd") {
-  return marketAddresses?.collateralToken || collateralAddress;
-}
-
+ 
+ // USDC (standard mainnet address)
+ if (normalized === "usdc") {
+   return "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
+ }
+ 
+ // fxUSD - use collateralToken address
+ if (normalized === "fxusd") {
+   return marketAddresses?.collateralToken || collateralAddress;
+ }
+ 
 // wstETH - use wrappedCollateralToken (now correctly points to wstETH)
-if (normalized === "wsteth") {
+ if (normalized === "wsteth") {
   return marketAddresses?.wrappedCollateralToken || marketAddresses?.collateralToken || collateralAddress;
-}
+ }
  
  return null;
  };
