@@ -602,6 +602,19 @@ function AnchorMarketExpandedView({
     tvl?: bigint;
   }>;
 }) {
+  // Get ha token price from useMultipleTokenPrices hook
+  const tokenPricesInput = useMemo(() => {
+    if (!minterAddress || !market.pegTarget) return [];
+    return [{
+      marketId,
+      minterAddress: minterAddress as `0x${string}`,
+      pegTarget: market.pegTarget,
+    }];
+  }, [marketId, minterAddress, market.pegTarget]);
+
+  const tokenPricesByMarket = useMultipleTokenPrices(tokenPricesInput);
+  const tokenPriceData = tokenPricesByMarket[marketId];
+
   const volatilityProtection = calculateVolatilityProtection(
     collateralRatio,
     totalDebt,
@@ -659,11 +672,10 @@ function AnchorMarketExpandedView({
   const estimatedDailyEarnings = estimatedAnnualYield / 365;
   const estimatedWeeklyEarnings = estimatedAnnualYield / 52;
 
-  // Pegged token price in USD
+  // Pegged token price in USD - use the correct price from useMultipleTokenPrices
   const peggedTokenPriceUSD =
-    peggedTokenPrice && collateralPrice && collateralPriceDecimals !== undefined
-      ? (Number(peggedTokenPrice) / 1e18) *
-        (Number(collateralPrice) / 10 ** collateralPriceDecimals)
+    tokenPriceData && !tokenPriceData.isLoading && !tokenPriceData.error && tokenPriceData.peggedPriceUSD > 0
+      ? tokenPriceData.peggedPriceUSD
       : 1; // Default to $1 if price unavailable
 
   // Build token price map for reward calculations
