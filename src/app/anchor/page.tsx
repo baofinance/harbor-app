@@ -7335,12 +7335,28 @@ export default function AnchorPage() {
                             ? Number(marketData.wrappedRate) / 1e18
                             : 1; // Default 1:1 if no rate
                           
+                          console.log(`[Collateral Value Debug ${marketData.marketId}]`, {
+                            wrappedCollateralAddress,
+                            underlyingCollateralPriceUSD,
+                            collateralTokens,
+                            collateralValueRaw: marketData.collateralValue,
+                            wrappedRate: marketData.wrappedRate,
+                            wrappedRateNum,
+                            globalTokenPriceMapSize: globalTokenPriceMap.size,
+                            globalTokenPriceMapKeys: Array.from(globalTokenPriceMap.keys()),
+                          });
+                          
                           // Formula: collateralUSD = collateralTokens * wrappedRate * underlyingPriceUSD
                           // This matches the genesis page calculation
                           const collateralValueUSD =
                             collateralTokens > 0 && underlyingCollateralPriceUSD > 0
                               ? collateralTokens * wrappedRateNum * underlyingCollateralPriceUSD
                               : 0;
+                          
+                          console.log(`[Collateral Value Result ${marketData.marketId}]`, {
+                            collateralValueUSD,
+                            calculation: `${collateralTokens} × ${wrappedRateNum} × ${underlyingCollateralPriceUSD}`,
+                          });
 
                           return (
                             <div
