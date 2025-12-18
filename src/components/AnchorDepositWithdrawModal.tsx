@@ -2213,21 +2213,21 @@ export const AnchorDepositWithdrawModal = ({
   // Prefer the anvil hook on local dev (matches mint-fee flow)
   const { data: anvilRedeemDryRunData, error: anvilRedeemDryRunError } =
     useContractRead({
-      address: redeemDryRunAddress as `0x${string}`,
+      address: redeemDryRunAddress,
       abi: minterABI,
       functionName: "redeemPeggedTokenDryRun",
-      args: redeemInputAmount ? [redeemInputAmount] : undefined,
-      enabled: shouldUseAnvilHook && redeemDryRunEnabled,
+      args: redeemInputAmount && redeemInputAmount > 0n ? [redeemInputAmount] : undefined,
+      enabled: shouldUseAnvilHook && redeemDryRunEnabled && !!redeemInputAmount && redeemInputAmount > 0n,
     });
 
   const { data: regularRedeemDryRunData, error: regularRedeemDryRunError } =
     useContractRead({
-      address: redeemDryRunAddress as `0x${string}`,
+      address: redeemDryRunAddress,
       abi: minterABI,
       functionName: "redeemPeggedTokenDryRun",
-      args: redeemInputAmount ? [redeemInputAmount] : undefined,
+      args: redeemInputAmount && redeemInputAmount > 0n ? [redeemInputAmount] : undefined,
       query: {
-        enabled: !shouldUseAnvilHook && redeemDryRunEnabled,
+        enabled: !shouldUseAnvilHook && redeemDryRunEnabled && !!redeemInputAmount && redeemInputAmount > 0n,
         retry: 1,
         allowFailure: true,
       },
@@ -2241,13 +2241,6 @@ export const AnchorDepositWithdrawModal = ({
     : regularRedeemDryRunError;
   const redeemDryRunLoading =
     redeemDryRunEnabled && !redeemDryRunError && redeemDryRunData === undefined;
-
-  // Surface dry-run errors for debugging
-  useEffect(() => {
-    if (redeemDryRunError) {
-      console.error("[redeemPeggedTokenDryRun] error", redeemDryRunError);
-    }
-  }, [redeemDryRunError]);
 
   const redeemDryRun = useMemo(() => {
     if (!redeemDryRunData || !Array.isArray(redeemDryRunData)) return null;
