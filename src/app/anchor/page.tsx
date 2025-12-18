@@ -2519,29 +2519,11 @@ export default function AnchorPage() {
   const mergedPeggedPriceMap = useMemo(() => {
     const out: Record<string, bigint | undefined> = {};
     
+    // Use tokenPricesByMarket from useMultipleTokenPrices hook
+    // It already calculates: haTokenPriceUSD = peggedBackingRatio × pegTargetUSD
     Object.entries(tokenPricesByMarket).forEach(([id, priceData]) => {
-      if (!priceData.isLoading && !priceData.error && priceData.peggedBackingRatio > 0) {
-        // Try to use the full USD price if CoinGecko worked
-        if (priceData.peggedPriceUSD > 0) {
-          out[id] = BigInt(Math.floor(priceData.peggedPriceUSD * 1e18));
-        } else {
-          // CoinGecko failed - calculate using collateral price oracle instead
-          // Find the market to get collateral info
-          const market = anchorMarkets.find(([marketId]) => marketId === id)?.[1];
-          const collateralAddress = ((market as any)?.addresses?.wrappedCollateralToken as string)?.toLowerCase();
-          
-          if (collateralAddress && globalTokenPriceMap.has(collateralAddress)) {
-            const collateralPriceUSD = globalTokenPriceMap.get(collateralAddress) || 0;
-            
-            if (collateralPriceUSD > 0) {
-              // haTokenPriceUSD = peggedBackingRatio × collateralPriceUSD
-              // For haETH: 1.0 × $3500 = $3500
-              // For haBTC: 1.0 × $100000 = $100000
-              const haTokenPriceUSD = priceData.peggedBackingRatio * collateralPriceUSD;
-              out[id] = BigInt(Math.floor(haTokenPriceUSD * 1e18));
-            }
-          }
-        }
+      if (!priceData.isLoading && !priceData.error && priceData.peggedPriceUSD > 0) {
+        out[id] = BigInt(Math.floor(priceData.peggedPriceUSD * 1e18));
       }
     });
     
@@ -2553,7 +2535,7 @@ export default function AnchorPage() {
     });
     
     return out;
-  }, [peggedPricesFromReads, tokenPricesByMarket, anchorMarkets, globalTokenPriceMap]);
+  }, [peggedPricesFromReads, tokenPricesByMarket]);
 
   // Fetch all positions using the unified hook, passing shared prices
   const {
