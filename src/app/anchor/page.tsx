@@ -7319,20 +7319,19 @@ export default function AnchorPage() {
                           const totalDebtUSD = totalHaTokens * peggedPriceUSD;
 
                           // For collateral value: get the underlying collateral price
-                          // Special case: fxUSD is always $1.00 (oracle returns price in peg target units, not USD)
-                          const collateralSymbol = marketData.market?.collateral?.underlyingSymbol || marketData.market?.collateral?.symbol || "";
-                          const isFxUSD = collateralSymbol.toLowerCase() === "fxusd";
+                          // Oracle returns prices in PEG TARGET units (e.g., fxUSD price in ETH for ETH-pegged markets)
+                          // We need to convert to USD by multiplying by the peg target USD price
+                          const underlyingCollateralAddress = marketData.market?.addresses?.collateralToken as string | undefined;
+                          const collateralPriceInPegUnits = underlyingCollateralAddress
+                            ? globalTokenPriceMap.get(underlyingCollateralAddress.toLowerCase()) || 0
+                            : 0;
                           
-                          let underlyingCollateralPriceUSD = 0;
-                          if (isFxUSD) {
-                            underlyingCollateralPriceUSD = 1.0; // fxUSD is always $1.00
-                          } else {
-                            // For other collateral (stETH, etc.), get price from globalTokenPriceMap
-                            const underlyingCollateralAddress = marketData.market?.addresses?.collateralToken as string | undefined;
-                            underlyingCollateralPriceUSD = underlyingCollateralAddress
-                              ? globalTokenPriceMap.get(underlyingCollateralAddress.toLowerCase()) || 0
-                              : 0;
-                          }
+                          // Get peg target USD price (e.g., ETH price in USD)
+                          const tokenPriceData = tokenPricesByMarket[marketData.marketId];
+                          const pegTargetUSD = tokenPriceData?.pegTargetUSD || 1;
+                          
+                          // Convert collateral price from peg units to USD
+                          const underlyingCollateralPriceUSD = collateralPriceInPegUnits * pegTargetUSD;
                           
                           // collateralValue is in wrapped tokens (e.g., wstETH) - 18 decimals raw
                           // wrappedRate converts wrapped to underlying (e.g., wstETH to stETH) - 18 decimals raw
@@ -7345,12 +7344,12 @@ export default function AnchorPage() {
                             : 1; // Default 1:1 if no rate
                           
                           console.log(`[Collateral Value Debug ${marketData.marketId}]`, {
-                            collateralSymbol,
-                            isFxUSD,
+                            underlyingCollateralAddress,
+                            collateralPriceInPegUnits,
+                            pegTargetUSD,
                             underlyingCollateralPriceUSD,
+                            calculation: `${collateralPriceInPegUnits} × ${pegTargetUSD} = ${underlyingCollateralPriceUSD}`,
                             collateralTokens,
-                            collateralValueRaw: marketData.collateralValue,
-                            wrappedRate: marketData.wrappedRate,
                             wrappedRateNum,
                           });
                           
