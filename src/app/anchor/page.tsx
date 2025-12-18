@@ -2519,11 +2519,16 @@ export default function AnchorPage() {
   const mergedPeggedPriceMap = useMemo(() => {
     const out: Record<string, bigint | undefined> = {};
     
+    console.log('[mergedPeggedPriceMap] tokenPricesByMarket:', tokenPricesByMarket);
+    
     // Use tokenPricesByMarket from useMultipleTokenPrices hook
     // It already calculates: haTokenPriceUSD = peggedBackingRatio × pegTargetUSD
     Object.entries(tokenPricesByMarket).forEach(([id, priceData]) => {
       if (!priceData.isLoading && !priceData.error && priceData.peggedPriceUSD > 0) {
         out[id] = BigInt(Math.floor(priceData.peggedPriceUSD * 1e18));
+        console.log(`[mergedPeggedPriceMap] ${id}: $${priceData.peggedPriceUSD.toFixed(2)} → ${out[id]}`);
+      } else {
+        console.log(`[mergedPeggedPriceMap] ${id}: SKIPPED (loading: ${priceData.isLoading}, error: ${priceData.error}, price: ${priceData.peggedPriceUSD})`);
       }
     });
     
@@ -2531,8 +2536,11 @@ export default function AnchorPage() {
     Object.entries(peggedPricesFromReads).forEach(([id, price]) => {
       if (!out[id] && price) {
         out[id] = price;
+        console.log(`[mergedPeggedPriceMap] ${id}: FALLBACK → ${price}`);
       }
     });
+    
+    console.log('[mergedPeggedPriceMap] Final map:', out);
     
     return out;
   }, [peggedPricesFromReads, tokenPricesByMarket]);
