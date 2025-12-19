@@ -45,6 +45,7 @@ import { MINTER_ABI } from "@/abis/shared";
 import Link from "next/link";
 import { useCoinGeckoPrices } from "@/hooks/useCoinGeckoPrice";
 import { useMultipleTokenPrices } from "@/hooks/useTokenPrices";
+import { useMultipleCollateralPrices } from "@/hooks/useCollateralPrice";
 
 // Helper function to get accepted deposit assets for a market
 // Now reads from market config instead of hardcoding
@@ -804,37 +805,22 @@ export default function GenesisIndexPage() {
     );
   };
 
-  // Fetch collateral price oracles for each market (for USD calculations)
-  // Priority order: CoinGecko → Tuple answer → Single answer
-  // We'll make this conditional after CoinGecko loads (see needsOraclePrices below)
-  const priceContractsBase = useMemo(() => {
-    return genesisMarkets.flatMap(([_, mkt]) => {
-      // Use collateralPrice for calculating USD value of deposits
-      const oracleAddress = (mkt as any).addresses?.collateralPrice as
-        | `0x${string}`
-        | undefined;
-      if (
-        !oracleAddress ||
-        typeof oracleAddress !== "string" ||
-        !oracleAddress.startsWith("0x") ||
-        oracleAddress.length !== 42
-      )
-        return [];
-      // Try tuple format first (Harbor oracle), fallback to single-value handled in result processing
-      return [
-        {
-          address: oracleAddress,
-          abi: chainlinkOracleABI,
-          functionName: "decimals" as const,
-        },
-        {
-          address: oracleAddress,
-          abi: chainlinkOracleABI,
-          functionName: "latestAnswer" as const,
-        },
-      ];
-    });
+  // Fetch collateral price oracles using the dedicated hook
+  // This hook properly handles the Harbor oracle format (tuple with wrapped rates)
+  const collateralOracleAddresses = useMemo(() => {
+    return genesisMarkets.map(([_, mkt]) => 
+      (mkt as any).addresses?.collateralPrice as `0x${string}` | undefined
+    );
   }, [genesisMarkets]);
+
+  const {
+    prices: collateralPricesMap,
+    isLoading: collateralPricesLoading,
+    error: collateralPricesError,
+  } = useMultipleCollateralPrices(collateralOracleAddresses, {
+    refetchInterval: 120000, // 2 minutes
+    enabled: true, // Always fetch oracle data (we'll use it as fallback)
+  });
 
   // Fetch CoinGecko prices for markets that have coinGeckoId
   const coinGeckoIds = useMemo(() => {
@@ -869,83 +855,16 @@ export default function GenesisIndexPage() {
     }
   }, [coinGeckoPrices, coinGeckoLoading, coinGeckoIds]);
 
-  // Determine if we need oracle prices (only when CoinGecko fails or doesn't have prices)
-  // This must be after CoinGecko hook since it depends on coinGeckoLoading, coinGeckoError, coinGeckoPrices
-  const needsOraclePrices = useMemo(() => {
-    // If CoinGecko is still loading, wait a bit before falling back to oracle
-    if (coinGeckoLoading) {
-      return false; // Wait for CoinGecko to finish loading first
-    }
-
-    // If CoinGecko has an error, we need oracle prices
-    if (coinGeckoError) {
-      console.log(
-        `[Genesis Price] CoinGecko error detected, enabling oracle reads: ${coinGeckoError}`
-      );
-      return true;
-    }
-
-    // Check if any market doesn't have a valid CoinGecko price
-    const hasMissingPrices = genesisMarkets.some(([_, mkt]) => {
-      const marketCoinGeckoId = (mkt as any)?.coinGeckoId as string | undefined;
-      const underlyingSymbol =
-        (mkt as any)?.collateral?.underlyingSymbol ||
-        (mkt as any)?.collateral?.symbol ||
-        "";
-
-      // fxUSD markets always have hardcoded price, so they don't need oracle
-      if (underlyingSymbol.toLowerCase() === "fxusd") {
-        return false;
-      }
-
-      // Check if CoinGecko has a valid price for this market
-      if (marketCoinGeckoId) {
-        const price = coinGeckoPrices[marketCoinGeckoId];
-        // Need oracle if no price or price is invalid (0 or negative)
-        return !price || price <= 0;
-      }
-
-      // If no CoinGecko ID, we need oracle
-      return true;
-    });
-
-    if (hasMissingPrices) {
-      console.log(
-        `[Genesis Price] Some markets missing CoinGecko prices, enabling oracle reads`
-      );
-    }
-
-    return hasMissingPrices;
-  }, [coinGeckoLoading, coinGeckoError, coinGeckoPrices, genesisMarkets]);
-
-  // Conditionally build price contracts based on whether we need oracle prices
-  const priceContracts = useMemo(() => {
-    if (!needsOraclePrices) {
-      return []; // Don't fetch oracle prices if CoinGecko has valid prices
-    }
-    return priceContractsBase;
-  }, [needsOraclePrices, priceContractsBase]);
-
-  const {
-    data: priceReads,
-    refetch: refetchPrices,
-    isLoading: priceReadsLoading,
-  } = useContractReads({
-    contracts: priceContracts,
-    enabled: genesisMarkets.length > 0 && needsOraclePrices, // Only enable when we actually need oracle prices
-  });
-
-  // Log when oracle reads complete
+  // Log when collateral prices update
   useEffect(() => {
-    if (priceReads && !priceReadsLoading) {
-      console.log(`[Genesis Price] Oracle reads completed:`, {
-        totalReads: priceReads.length,
-        successfulReads: priceReads.filter((r) => r?.status === "success")
-          .length,
-        failedReads: priceReads.filter((r) => r?.status === "failure").length,
+    if (collateralPricesMap.size > 0) {
+      console.log(`[Genesis Price] Collateral prices updated:`, {
+        totalPrices: collateralPricesMap.size,
+        isLoading: collateralPricesLoading,
+        error: collateralPricesError,
       });
     }
-  }, [priceReads, priceReadsLoading]);
+  }, [collateralPricesMap, collateralPricesLoading, collateralPricesError]);
 
   // Refetch marks when genesis ends to get bonus marks
   useEffect(() => {
@@ -1728,51 +1647,17 @@ export default function GenesisIndexPage() {
                 // Debug logging for collateral address
                 const endDate = (mkt as any).genesis?.endDate;
 
-                // Get price from oracle
-                const priceOffset = mi * 2;
-                const priceDecimalsResult = priceReads?.[priceOffset];
-                const priceAnswerResult = priceReads?.[priceOffset + 1];
-                console.log(
-                  `[Genesis Price] Market ${id} (${collateralSymbol}):`,
-                  {
-                    priceDecimalsResult: priceDecimalsResult?.status,
-                    priceDecimals: priceDecimalsResult?.result,
-                    priceAnswerResult: priceAnswerResult?.status,
-                    priceAnswer: priceAnswerResult?.result,
-                  }
-                );
-                // Try to get decimals from oracle; default to 18 (wstETH-style feeds) if unavailable
-                let priceDecimals = 18;
-                if (
-                  priceDecimalsResult?.status === "success" &&
-                  priceDecimalsResult?.result !== undefined
-                ) {
-                  priceDecimals = Number(priceDecimalsResult.result);
-                }
-
-                // Price priority order: CoinGecko → Tuple answer → Single answer
-                // Handle both tuple and single-value oracle formats
-                // Harbor oracle returns tuple: (minUnderlyingPrice, maxUnderlyingPrice, minWrappedRate, maxWrappedRate)
-                // Standard Chainlink returns single int256
-                // Note: We try tuple format first via chainlinkOracleABI, but handle both formats in result processing
-                let priceRaw: bigint | undefined;
-                let wrappedRate: bigint | undefined;
-                if (
-                  priceAnswerResult?.status === "success" &&
-                  priceAnswerResult?.result !== undefined
-                ) {
-                  const result = priceAnswerResult.result;
-                  // Priority 2: Check if result is a tuple (array with 4 elements) - Harbor oracle format
-                  if (Array.isArray(result) && result.length === 4) {
-                    // Harbor oracle format: use maxUnderlyingPrice (index 1) and maxWrappedRate (index 3)
-                    priceRaw = result[1] as bigint;
-                    wrappedRate = result[3] as bigint;
-                  } else if (typeof result === "bigint") {
-                    // Priority 3: Standard Chainlink format - single int256 value
-                    // Convert to positive if negative (some oracles return negative for error states)
-                    priceRaw = result < 0n ? -result : result;
-                  }
-                }
+                // Get price data from the collateral prices hook
+                const oracleAddress = (mkt as any).addresses?.collateralPrice as
+                  | `0x${string}`
+                  | undefined;
+                const collateralPriceData = oracleAddress
+                  ? collateralPricesMap.get(oracleAddress.toLowerCase())
+                  : undefined;
+                
+                // Extract wrapped rate and underlying price from hook data (if available)
+                const wrappedRate = collateralPriceData?.maxRate;
+                const underlyingPriceFromOracle = collateralPriceData?.priceUSD || 0;
 
                 // Calculate price: Priority order: Hardcoded $1 (fxUSD) → CoinGecko → Oracle
                 let underlyingPriceUSD: number = 0;
@@ -1789,8 +1674,13 @@ export default function GenesisIndexPage() {
                   coinGeckoPrice: marketCoinGeckoId
                     ? coinGeckoPrices[marketCoinGeckoId]
                     : undefined,
-                  priceRaw: priceRaw?.toString(),
+                  oraclePrice: underlyingPriceFromOracle,
                   wrappedRate: wrappedRate?.toString(),
+                  collateralPriceData: collateralPriceData ? {
+                    priceUSD: collateralPriceData.priceUSD,
+                    maxRate: collateralPriceData.maxRate?.toString(),
+                    isLoading: collateralPriceData.isLoading,
+                  } : null,
                 });
 
                 // Priority 1: For fxUSD underlying (fxSAVE markets), always use hardcoded $1.00
@@ -1810,74 +1700,54 @@ export default function GenesisIndexPage() {
                   console.log(
                     `[Genesis Price] Market ${id}: Using CoinGecko price for ${marketCoinGeckoId}: $${underlyingPriceUSD}`
                   );
-                } else if (priceRaw !== undefined) {
-                  // Priority 3: Use oracle price (tuple or single-value format) as fallback
-                  // Use oracle if CoinGecko doesn't have price (while loading, after failure, or never fetched)
-                  // Convert to positive if negative (some oracles return negative for error states)
-                  const priceValue = priceRaw < 0n ? -priceRaw : priceRaw;
-
-                  if (priceValue > 0n) {
-                    let oraclePriceUSD =
-                      Number(priceValue) / 10 ** priceDecimals;
-                    
-                    // For BTC/stETH markets, oracle might return price in BTC terms, need to convert to USD
-                    const pegTarget = (mkt as any)?.pegTarget?.toLowerCase();
-                    const isBTCMarket = pegTarget === "btc" || pegTarget === "bitcoin";
-                    if (isBTCMarket && oraclePriceUSD > 0 && oraclePriceUSD < 1) {
-                      // If price is less than $1, it's likely in BTC terms (e.g., 0.05 BTC per stETH)
-                      // Get BTC price in USD and convert
-                      const btcPriceUSD = coinGeckoPrices["bitcoin"] || 0;
-                      if (btcPriceUSD > 0) {
-                        oraclePriceUSD = oraclePriceUSD * btcPriceUSD;
-                        console.log(
-                          `[Genesis Price] Market ${id}: Converted BTC-denominated oracle price to USD: ${Number(priceValue) / 10 ** priceDecimals} BTC × $${btcPriceUSD} = $${oraclePriceUSD}`
-                        );
-                      }
-                    }
-                    
-                    // Only use oracle price if it's reasonable (not zero or extremely small)
-                    // This prevents showing <0.01 when oracle returns invalid data
-                    if (oraclePriceUSD > 0.01) {
-                      underlyingPriceUSD = oraclePriceUSD;
+                } else if (underlyingPriceFromOracle > 0) {
+                  // Priority 3: Use oracle price from hook as fallback
+                  let oraclePriceUSD = underlyingPriceFromOracle;
+                  
+                  // For BTC/stETH markets, oracle might return price in BTC terms, need to convert to USD
+                  const pegTarget = (mkt as any)?.pegTarget?.toLowerCase();
+                  const isBTCMarket = pegTarget === "btc" || pegTarget === "bitcoin";
+                  if (isBTCMarket && oraclePriceUSD > 0 && oraclePriceUSD < 1) {
+                    // If price is less than $1, it's likely in BTC terms (e.g., 0.05 BTC per stETH)
+                    // Get BTC price in USD and convert
+                    const btcPriceUSD = coinGeckoPrices["bitcoin"] || 0;
+                    if (btcPriceUSD > 0) {
+                      oraclePriceUSD = oraclePriceUSD * btcPriceUSD;
                       console.log(
-                        `[Genesis Price] Market ${id}: Using oracle price: $${underlyingPriceUSD} (raw: ${priceValue.toString()}, decimals: ${priceDecimals})${
-                          coinGeckoLoading
-                            ? " (CoinGecko loading)"
-                            : coinGeckoError
-                            ? " (CoinGecko failed)"
-                            : ""
-                        }`
-                      );
-                    } else {
-                      priceError =
-                        "Price oracle returned value too small (<0.01)";
-                      console.warn(
-                        `[Genesis Price] Market ${id}: Oracle returned value too small: $${oraclePriceUSD}`
+                        `[Genesis Price] Market ${id}: Converted BTC-denominated oracle price to USD: ${underlyingPriceFromOracle} BTC × $${btcPriceUSD} = $${oraclePriceUSD}`
                       );
                     }
+                  }
+                  
+                  // Only use oracle price if it's reasonable (not zero or extremely small)
+                  // This prevents showing <0.01 when oracle returns invalid data
+                  if (oraclePriceUSD > 0.01) {
+                    underlyingPriceUSD = oraclePriceUSD;
+                    console.log(
+                      `[Genesis Price] Market ${id}: Using oracle price: $${underlyingPriceUSD}${
+                        coinGeckoLoading
+                          ? " (CoinGecko loading)"
+                          : coinGeckoError
+                          ? " (CoinGecko failed)"
+                          : ""
+                      }`
+                    );
                   } else {
-                    priceError = "Price oracle returned zero or invalid value";
+                    priceError =
+                      "Price oracle returned value too small (<0.01)";
                     console.warn(
-                      `[Genesis Price] Market ${id}: Oracle returned zero or invalid value`
+                      `[Genesis Price] Market ${id}: Oracle returned value too small: $${oraclePriceUSD}`
                     );
                   }
                 } else {
                   // Check if there was an error reading the oracle
-                  if (priceAnswerResult?.status === "failure") {
+                  if (collateralPriceData?.error) {
                     priceError = `Failed to read price oracle: ${
-                      priceAnswerResult.error?.message || "Unknown error"
+                      collateralPriceData.error.message || "Unknown error"
                     }`;
                     console.warn(
                       `[Genesis Price] Market ${id}: Oracle read failed:`,
-                      priceAnswerResult.error
-                    );
-                  } else if (priceDecimalsResult?.status === "failure") {
-                    priceError = `Failed to read price oracle decimals: ${
-                      priceDecimalsResult.error?.message || "Unknown error"
-                    }`;
-                    console.warn(
-                      `[Genesis Price] Market ${id}: Oracle decimals read failed:`,
-                      priceDecimalsResult.error
+                      collateralPriceData.error
                     );
                   } else {
                     priceError = "Price oracle not available";
