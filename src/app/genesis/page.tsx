@@ -1894,6 +1894,7 @@ export default function GenesisIndexPage() {
                 // If CoinGecko has finished and returned a price, use that (it's already wrapped)
                 // Otherwise, apply wrapped rate to underlying price
                 const isWstETH = collateralSymbol.toLowerCase() === "wsteth";
+                const isFxSAVE = collateralSymbol.toLowerCase() === "fxsave";
 
                 // Fallback: Use stETH price from CoinGecko if wstETH price isn't available yet
                 // This provides immediate price while wstETH-specific price is loading
@@ -1913,12 +1914,12 @@ export default function GenesisIndexPage() {
                     ? coinGeckoReturnedPrice // CoinGecko already returns wrapped token price (e.g., wstETH, fxSAVE)
                     : useStETHFallback
                     ? stETHPrice * (Number(wrappedRate) / 1e18) // Use stETH price * wrapped rate as fallback while wstETH loads
-                    : isWstETH &&
+                    : (isWstETH || isFxSAVE) &&
                       coinGeckoLoading &&
                       marketCoinGeckoId &&
                       underlyingPriceUSD > 0 &&
                       wrappedRate
-                    ? underlyingPriceUSD * (Number(wrappedRate) / 1e18) // While CoinGecko loads, use oracle * wrapped rate for wstETH
+                    ? underlyingPriceUSD * (Number(wrappedRate) / 1e18) // While CoinGecko loads, use oracle * wrapped rate for wstETH or fxSAVE
                     : wrappedRate && underlyingPriceUSD > 0
                     ? underlyingPriceUSD * (Number(wrappedRate) / 1e18) // Multiply underlying by rate (e.g., fxUSD -> fxSAVE)
                     : underlyingPriceUSD; // Fallback to underlying price if no rate available
