@@ -3873,12 +3873,6 @@ export default function AnchorPage() {
                               ? Number(marketData.totalDebt) / 1e18
                               : 0;
 
-                          // Get correct ha token USD price
-                          const peggedPriceUSD = marketData.peggedTokenPriceUSD || 1;
-                          
-                          // Calculate total debt in USD (use correct USD price, not backing ratio)
-                          const totalDebtUSD = totalHaTokens * peggedPriceUSD;
-
                           // Collateral value calculation
                           // collateralTokenBalance returns wrapped collateral (fxUSD for fxUSD markets, wstETH for wstETH markets)
                           const collateralTokensWrapped =
