@@ -3090,17 +3090,17 @@ export default function GenesisIndexPage() {
                         const earlyBonusEligibleUSD = parseFloat(marks?.earlyBonusEligibleDepositUSD || "0");
                         
                         return (
-                          <div className="px-2 pt-1.5 pb-0.5 border-t border-[#1E4775]/10">
+                          <div className={`px-2 pt-1.5 pb-0.5 border-t ${marketBonusStatus.thresholdReached ? 'bg-white border-[#1E4775]/10' : 'bg-[#FF8A7A]/10 border-[#FF8A7A]/20'}`}>
                             <div className="space-y-0.5">
                               {/* Progress Bar - label and bar on one line */}
                               <div className="flex items-center gap-2">
                                 <span className="text-[10px] text-[#1E4775] font-semibold whitespace-nowrap">Early Deposit Bonus</span>
-                                <div className="flex-1 bg-gray-200 rounded-full h-1.5">
+                                <div className={`flex-1 rounded-full h-1.5 ${marketBonusStatus.thresholdReached ? 'bg-gray-200' : 'bg-white/50'}`}>
                                   <div
                                     className={`h-1.5 rounded-full transition-all ${
                                       marketBonusStatus.thresholdReached
                                         ? "bg-gray-400"
-                                        : "bg-green-500"
+                                        : "bg-teal-400"
                                     }`}
                                     style={{ width: `${bonusProgress}%` }}
                                   />
