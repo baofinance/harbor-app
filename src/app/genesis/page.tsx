@@ -1100,17 +1100,17 @@ export default function GenesisIndexPage() {
           // Only show banner if there's an active bonus and active genesis
           // if (!hasActiveBonus || !hasActiveGenesis) return null;
 
-          // Get threshold info from first market with active bonus
+          // Get threshold info from first market with active bonus, or fallback to any market
           const activeBonusMarket = allMarketBonusStatus?.find((status) => {
             const bonusData = status.data;
             return bonusData && !bonusData.thresholdReached;
-          });
-          const thresholdToken = activeBonusMarket?.data?.thresholdToken || "";
+          }) || allMarketBonusStatus?.[0]; // Fallback to first market if all thresholds reached
+          const thresholdToken = activeBonusMarket?.data?.thresholdToken || "fxUSD";
           const thresholdAmount = activeBonusMarket?.data?.thresholdAmount
             ? Number(activeBonusMarket.data.thresholdAmount).toLocaleString(undefined, {
                 maximumFractionDigits: 0,
               })
-            : "";
+            : "250,000";
 
           return (
             <div className="bg-gradient-to-r from-[#FF8A7A]/20 to-[#FF8A7A]/10 border border-[#FF8A7A]/30 rounded-lg p-4 mb-4">
