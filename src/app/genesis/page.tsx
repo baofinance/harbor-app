@@ -1266,6 +1266,17 @@ export default function GenesisIndexPage() {
           let totalBonusAtEnd = 0;
           let totalEarlyBonusMarks = 0;
           let totalEarlyBonusEstimate = 0;
+
+          // MOCK DATA: Add mock bonus data for testing UI
+          // TODO: Remove this once testing is complete
+          const hasRealData = allMarksDataEnhanced && allMarksDataEnhanced.length > 0 && allMarksDataEnhanced.some(m => m.data?.userHarborMarks);
+          if (!hasRealData && address) {
+            // Show mock data when no real data available
+            totalCurrentMarks = 125000;
+            totalMarksPerDay = 1500;
+            totalBonusAtEnd = 107000; // $1,070 deposit * 100 marks/dollar
+            totalEarlyBonusEstimate = 107000; // Same amount for early bonus estimate
+          }
           let anyGenesisStillActive = false;
 
           // Check if ALL genesis contracts have ended based on contract reads
