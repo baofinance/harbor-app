@@ -39,7 +39,7 @@ export type MarketData = {
 
 /**
  * Hook to process market data from contract reads
- * 
+ *
  * @param anchorMarkets - Array of [marketId, market] tuples
  * @param reads - Contract read results
  * @param marketPositions - Map of marketId -> position data
@@ -91,7 +91,8 @@ export function useAnchorMarketData(
         ({ marketId, market, marketIndex: mi }) => {
           const hasCollateralPool = !!(market as any).addresses
             ?.stabilityPoolCollateral;
-          const hasSailPool = !!(market as any).addresses?.stabilityPoolLeveraged;
+          const hasSailPool = !!(market as any).addresses
+            ?.stabilityPoolLeveraged;
 
           // Match subgraph deposits to this market by pool address
           const collateralPoolAddress = (
@@ -106,8 +107,7 @@ export function useAnchorMarketData(
             (d) =>
               collateralPoolAddress &&
               d.poolAddress.toLowerCase() === collateralPoolAddress &&
-              (d.poolType === "collateral" ||
-                d.poolType === "Collateral")
+              (d.poolType === "collateral" || d.poolType === "Collateral")
           );
           const subgraphSailDeposit = poolDeposits?.find(
             (d) =>
@@ -119,9 +119,11 @@ export function useAnchorMarketData(
           );
 
           // Detect if this is an fxUSD market
-          const collateralSymbol = market.collateral?.symbol?.toLowerCase() || "";
-          const isFxUSDMarket = collateralSymbol === "fxusd" || collateralSymbol === "fxsave";
-          
+          const collateralSymbol =
+            market.collateral?.symbol?.toLowerCase() || "";
+          const isFxUSDMarket =
+            collateralSymbol === "fxusd" || collateralSymbol === "fxsave";
+
           // Calculate offset
           let offset = 0;
           for (let i = 0; i < mi; i++) {
@@ -132,12 +134,15 @@ export function useAnchorMarketData(
               ?.stabilityPoolLeveraged;
             const prevHasPriceOracle = !!(prevMarket as any).addresses
               ?.collateralPrice;
-            const prevHasStabilityPoolManager = !!(prevMarket as any)
-              .addresses?.stabilityPoolManager;
-            const prevPeggedTokenAddress = (prevMarket as any)
-              ?.addresses?.peggedToken;
-            const prevCollateralSymbol = prevMarket.collateral?.symbol?.toLowerCase() || "";
-            const prevIsFxUSDMarket = prevCollateralSymbol === "fxusd" || prevCollateralSymbol === "fxsave";
+            const prevHasStabilityPoolManager = !!(prevMarket as any).addresses
+              ?.stabilityPoolManager;
+            const prevPeggedTokenAddress = (prevMarket as any)?.addresses
+              ?.peggedToken;
+            const prevCollateralSymbol =
+              prevMarket.collateral?.symbol?.toLowerCase() || "";
+            const prevIsFxUSDMarket =
+              prevCollateralSymbol === "fxusd" ||
+              prevCollateralSymbol === "fxsave";
             offset += 5; // 4 minter calls + 1 config call
             if (prevHasStabilityPoolManager) offset += 1; // rebalanceThreshold
             if (prevHasCollateral) {
@@ -164,9 +169,7 @@ export function useAnchorMarketData(
           const collateralValue = collateralValueRead?.result as
             | bigint
             | undefined;
-          const totalDebt = totalDebtRead?.result as
-            | bigint
-            | undefined;
+          const totalDebt = totalDebtRead?.result as bigint | undefined;
 
           // Get collateralRatio from direct read, or calculate from collateralValue and totalDebt
           let collateralRatio: bigint | undefined;
@@ -183,8 +186,7 @@ export function useAnchorMarketData(
           ) {
             // Calculate collateral ratio: CR = (collateralValue / totalDebt) * 1e18
             // Both are in 18 decimals, so result is in 18 decimals
-            collateralRatio =
-              (collateralValue * 10n ** 18n) / totalDebt;
+            collateralRatio = (collateralValue * 10n ** 18n) / totalDebt;
           }
           const positionData = marketPositions[marketId];
           const peggedTokenPriceRead = reads?.[baseOffset + 3];
@@ -192,7 +194,7 @@ export function useAnchorMarketData(
             peggedTokenPriceRead?.status === "success"
               ? (peggedTokenPriceRead.result as bigint | undefined)
               : positionData?.peggedTokenPrice;
-          
+
           // Read leveraged token balance and price from minter
           const leveragedTokenBalanceRead = reads?.[baseOffset + 4];
           const leveragedTokenBalance =
@@ -204,7 +206,7 @@ export function useAnchorMarketData(
             leveragedTokenPriceRead?.status === "success"
               ? (leveragedTokenPriceRead.result as bigint | undefined)
               : undefined;
-          
+
           const minterConfig = reads?.[baseOffset + 6]?.result as
             | any
             | undefined;
@@ -218,8 +220,7 @@ export function useAnchorMarketData(
             rebalanceThresholdResult?.status === "success" &&
             rebalanceThresholdResult.result
           ) {
-            minCollateralRatio =
-              rebalanceThresholdResult.result as bigint;
+            minCollateralRatio = rebalanceThresholdResult.result as bigint;
           } else {
             // Fallback: Calculate from config as the lowest first boundary across all incentive configs
             // The first boundary in each config must be >= 1.0x (1 ether = 1000000000000000000)
@@ -264,8 +265,8 @@ export function useAnchorMarketData(
 
             if (allFirstBounds.length > 0) {
               // Find the minimum (lowest) first boundary
-              minCollateralRatio = allFirstBounds.reduce(
-                (min, current) => (current < min ? current : min)
+              minCollateralRatio = allFirstBounds.reduce((min, current) =>
+                current < min ? current : min
               );
             }
           }
@@ -277,9 +278,7 @@ export function useAnchorMarketData(
           let collateralPoolRewards: bigint | undefined;
           let collateralPoolDeposit: bigint | undefined;
           let sailPoolTVL: bigint | undefined;
-          let sailPoolAPR:
-            | { collateral: number; steam: number }
-            | undefined;
+          let sailPoolAPR: { collateral: number; steam: number } | undefined;
           let sailPoolRewards: bigint | undefined;
           let sailPoolDeposit: bigint | undefined;
 
@@ -295,14 +294,13 @@ export function useAnchorMarketData(
             // Read TVL from stability pool contract
             const tvlRead = reads?.[currentOffset];
             collateralPoolTVL = tvlRead?.result as bigint | undefined;
-            const collateralAPRResult = reads?.[currentOffset + 1]
-              ?.result as [bigint, bigint] | undefined;
+            const collateralAPRResult = reads?.[currentOffset + 1]?.result as
+              | [bigint, bigint]
+              | undefined;
             collateralPoolAPR = collateralAPRResult
               ? {
-                  collateral:
-                    (Number(collateralAPRResult[0]) / 1e16) * 100,
-                  steam:
-                    (Number(collateralAPRResult[1]) / 1e16) * 100,
+                  collateral: (Number(collateralAPRResult[0]) / 1e16) * 100,
+                  steam: (Number(collateralAPRResult[1]) / 1e16) * 100,
                 }
               : undefined;
             const collateralRewardsRead = reads?.[currentOffset + 2];
@@ -319,8 +317,7 @@ export function useAnchorMarketData(
               collateralDepositRead.result !== undefined &&
               collateralDepositRead.result !== null
             ) {
-              collateralPoolDeposit =
-                collateralDepositRead.result as bigint;
+              collateralPoolDeposit = collateralDepositRead.result as bigint;
             } else {
               collateralPoolDeposit = 0n;
             }
@@ -359,15 +356,12 @@ export function useAnchorMarketData(
                   Number(collateralPoolTVL) *
                   SECONDS_PER_YEAR;
 
-                const rewardTokenPrice =
-                  Number(peggedTokenPrice) / 1e18; // pegged token price in USD
-                const depositTokenPrice =
-                  Number(peggedTokenPrice) / 1e18; // same for collateral pool
+                const rewardTokenPrice = Number(peggedTokenPrice) / 1e18; // pegged token price in USD
+                const depositTokenPrice = Number(peggedTokenPrice) / 1e18; // same for collateral pool
                 const annualRewardsValueUSD =
                   (annualRewards * rewardTokenPrice) / 1e18;
                 const depositValueUSD =
-                  (Number(collateralPoolTVL) * depositTokenPrice) /
-                  1e18;
+                  (Number(collateralPoolTVL) * depositTokenPrice) / 1e18;
 
                 if (depositValueUSD > 0) {
                   peggedTokenAPRForCollateral =
@@ -397,15 +391,12 @@ export function useAnchorMarketData(
             // Use total APR from all reward tokens (including wstETH, etc.)
             // This replaces the contract APR with the more accurate total from all tokens
             const collateralPoolAddress = hasCollateralPool
-              ? ((market as any).addresses
-                  ?.stabilityPoolCollateral as
+              ? ((market as any).addresses?.stabilityPoolCollateral as
                   | `0x${string}`
                   | undefined)
               : undefined;
             if (collateralPoolAddress) {
-              const poolReward = poolRewardsMap.get(
-                collateralPoolAddress
-              );
+              const poolReward = poolRewardsMap.get(collateralPoolAddress);
               const contractAPRTotal = collateralPoolAPR
                 ? (collateralPoolAPR.collateral || 0) +
                   (collateralPoolAPR.steam || 0)
@@ -431,8 +422,9 @@ export function useAnchorMarketData(
             // Read TVL from stability pool contract
             const sailTvlRead = reads?.[currentOffset];
             sailPoolTVL = sailTvlRead?.result as bigint | undefined;
-            const sailAPRResult = reads?.[currentOffset + 1]
-              ?.result as [bigint, bigint] | undefined;
+            const sailAPRResult = reads?.[currentOffset + 1]?.result as
+              | [bigint, bigint]
+              | undefined;
             sailPoolAPR = sailAPRResult
               ? {
                   collateral: (Number(sailAPRResult[0]) / 1e16) * 100,
@@ -491,10 +483,8 @@ export function useAnchorMarketData(
                   Number(sailPoolTVL) *
                   SECONDS_PER_YEAR;
 
-                const rewardTokenPrice =
-                  Number(peggedTokenPrice) / 1e18; // pegged token price in USD
-                const depositTokenPrice =
-                  Number(peggedTokenPrice) / 1e18; // same for sail pool
+                const rewardTokenPrice = Number(peggedTokenPrice) / 1e18; // pegged token price in USD
+                const depositTokenPrice = Number(peggedTokenPrice) / 1e18; // same for sail pool
                 const annualRewardsValueUSD =
                   (annualRewards * rewardTokenPrice) / 1e18;
                 const depositValueUSD =
@@ -515,8 +505,7 @@ export function useAnchorMarketData(
                       // Add to existing APR
                       sailPoolAPR = {
                         collateral:
-                          (sailPoolAPR.collateral || 0) +
-                          calculatedAPR,
+                          (sailPoolAPR.collateral || 0) + calculatedAPR,
                         steam: sailPoolAPR.steam || 0,
                       };
                     }
@@ -535,8 +524,7 @@ export function useAnchorMarketData(
             if (sailPoolAddress) {
               const poolReward = poolRewardsMap.get(sailPoolAddress);
               const contractAPRTotal = sailPoolAPR
-                ? (sailPoolAPR.collateral || 0) +
-                  (sailPoolAPR.steam || 0)
+                ? (sailPoolAPR.collateral || 0) + (sailPoolAPR.steam || 0)
                 : 0;
               if (
                 poolReward?.totalRewardAPR !== undefined &&
@@ -555,8 +543,7 @@ export function useAnchorMarketData(
             if (currentPeggedTokenAddress) currentOffset += 1; // rewardData (if pegged token exists)
           }
 
-          const hasPriceOracle = !!(market as any).addresses
-            ?.collateralPrice;
+          const hasPriceOracle = !!(market as any).addresses?.collateralPrice;
           const collateralPriceDecimals = 18;
           let collateralPrice: bigint | undefined;
           let wrappedRate: bigint | undefined;
@@ -582,7 +569,7 @@ export function useAnchorMarketData(
                 wrappedRate = BigInt("1000000000000000000"); // Default 1:1 ratio
               }
             }
-            
+
             // For fxUSD markets, also read getPrice() to get fxSAVE price in ETH
             if (isFxUSDMarket) {
               const getPriceResult = reads?.[currentOffset + 1]?.result;
@@ -599,15 +586,12 @@ export function useAnchorMarketData(
           const userDeposit = positionData?.walletHa || 0n;
           // Override pool deposits from hook for consistent display
           const finalCollateralPoolDeposit =
-            positionData?.collateralPool ||
-            collateralPoolDeposit ||
-            0n;
+            positionData?.collateralPool || collateralPoolDeposit || 0n;
           const finalSailPoolDeposit =
             positionData?.sailPool || sailPoolDeposit || 0n;
 
           // Use position data from hook for USD values
-          const collateralPoolDepositUSD =
-            positionData?.collateralPoolUSD || 0;
+          const collateralPoolDepositUSD = positionData?.collateralPoolUSD || 0;
           const sailPoolDepositUSD = positionData?.sailPoolUSD || 0;
           const haTokenBalanceUSD = positionData?.walletHaUSD || 0;
           let collateralRewardsUSD = 0;
@@ -635,9 +619,7 @@ export function useAnchorMarketData(
                 | undefined)
             : undefined;
           if (sailPoolAddressForRewards) {
-            const poolReward = poolRewardsMap.get(
-              sailPoolAddressForRewards
-            );
+            const poolReward = poolRewardsMap.get(sailPoolAddressForRewards);
             if (poolReward) {
               sailRewardsUSD = poolReward.claimableValue;
             }
@@ -653,13 +635,11 @@ export function useAnchorMarketData(
 
           // Get projected APRs for this market
           const projectedCollateralAPR =
-            marketId === "pb-steth" &&
-            projectedAPR.collateralPoolAPR !== null
+            marketId === "pb-steth" && projectedAPR.collateralPoolAPR !== null
               ? projectedAPR.collateralPoolAPR
               : null;
           const projectedSailAPR =
-            marketId === "pb-steth" &&
-            projectedAPR.leveragedPoolAPR !== null
+            marketId === "pb-steth" && projectedAPR.leveragedPoolAPR !== null
               ? projectedAPR.leveragedPoolAPR
               : null;
 
@@ -667,10 +647,8 @@ export function useAnchorMarketData(
           const aprValues = [collateralTotalAPR, sailTotalAPR].filter(
             (v) => v > 0
           );
-          const minAPR =
-            aprValues.length > 0 ? Math.min(...aprValues) : 0;
-          const maxAPR =
-            aprValues.length > 0 ? Math.max(...aprValues) : 0;
+          const minAPR = aprValues.length > 0 ? Math.min(...aprValues) : 0;
+          const maxAPR = aprValues.length > 0 ? Math.max(...aprValues) : 0;
 
           // Calculate projected APR range
           const projectedAprValues = [
@@ -743,5 +721,3 @@ export function useAnchorMarketData(
     projectedAPR,
   ]);
 }
-
-

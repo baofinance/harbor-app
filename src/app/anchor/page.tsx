@@ -57,9 +57,9 @@ import SimpleTooltip from "@/components/SimpleTooltip";
 import InfoTooltip from "@/components/InfoTooltip";
 import { aprABI } from "@/abis/apr";
 import { rewardsABI } from "@/abis/rewards";
-import { 
-  STABILITY_POOL_ABI, 
-  ERC20_ABI, 
+import {
+  STABILITY_POOL_ABI,
+  ERC20_ABI,
   MINTER_ABI,
   MINTER_ABI_EXTENDED,
   STABILITY_POOL_MANAGER_ABI,
@@ -77,12 +77,12 @@ import { useMultipleTokenPrices } from "@/hooks/useTokenPrices";
 import { useCoinGeckoPrices } from "@/hooks/useCoinGeckoPrice";
 import { useContractReads as useWagmiContractReads } from "wagmi";
 import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
-import { 
-  formatRatio, 
-  formatAPR, 
-  formatCompactUSD, 
+import {
+  formatRatio,
+  formatAPR,
+  formatCompactUSD,
   calculateVolatilityProtection,
-  getAcceptedDepositAssets 
+  getAcceptedDepositAssets,
 } from "@/utils/anchor";
 import { useAnchorPrices } from "@/hooks/anchor/useAnchorPrices";
 import { useGroupedMarkets } from "@/hooks/anchor/useGroupedMarkets";
@@ -122,7 +122,7 @@ export default function AnchorPage() {
   const { address, isConnected } = useAccount();
   const { writeContractAsync } = useWriteContract();
   const publicClient = usePublicClient();
-  
+
   // CoinGecko prices are now provided by useAnchorPrices hook (see below)
   const [expandedMarket, setExpandedMarket] = useState<string | null>(null);
   const [manageModal, setManageModal] = useState<{
@@ -289,7 +289,10 @@ export default function AnchorPage() {
   useAnchorTokenMetadata(anchorMarkets);
 
   // Use extracted hook for contract reads
-  const { reads, refetchReads } = useAnchorContractReads(anchorMarkets, useAnvil);
+  const { reads, refetchReads } = useAnchorContractReads(
+    anchorMarkets,
+    useAnvil
+  );
 
   // Use extracted hook for marks calculations
   const {
@@ -304,19 +307,19 @@ export default function AnchorPage() {
     isLoading: isLoadingAnchorMarks,
     error: anchorMarksError,
   } = useAnchorMarks(anchorMarkets, allMarketContracts, reads);
-  
+
   // Keep for backward compatibility
   const maidenVoyageMarksPerDay = maidenVoyageMarksPerDayFromHook;
 
   // Use extracted hook for user deposits
-  const { userDepositMap, refetchUserDeposits } = useAnchorUserDeposits(anchorMarkets, useAnvil);
+  const { userDepositMap, refetchUserDeposits } = useAnchorUserDeposits(
+    anchorMarkets,
+    useAnvil
+  );
 
   // Use extracted hook for rewards calculations
-  const {
-    allPoolRewards,
-    poolRewardsMap,
-    isLoadingAllRewards,
-  } = useAnchorRewards(anchorMarkets, reads);
+  const { allPoolRewards, poolRewardsMap, isLoadingAllRewards } =
+    useAnchorRewards(anchorMarkets, reads);
 
   // Build market configs for positions hook
   const marketPositionConfigs = useMemo(() => {
@@ -366,24 +369,28 @@ export default function AnchorPage() {
 
   // Fetch pegged token prices using the new unified hook
   const tokenPriceInputs = useMemo(() => {
-    return marketPositionConfigs.map((c) => {
-      // Find the market to get pegTarget
-      const market = anchorMarkets.find(([id]) => id === c.marketId)?.[1];
-      return {
-        marketId: c.marketId,
-        minterAddress: c.minterAddress!,
-        pegTarget: (market as any)?.pegTarget || "USD",
-      };
-    }).filter((c) => c.minterAddress); // Filter out markets without minter
+    return marketPositionConfigs
+      .map((c) => {
+        // Find the market to get pegTarget
+        const market = anchorMarkets.find(([id]) => id === c.marketId)?.[1];
+        return {
+          marketId: c.marketId,
+          minterAddress: c.minterAddress!,
+          pegTarget: (market as any)?.pegTarget || "USD",
+        };
+      })
+      .filter((c) => c.minterAddress); // Filter out markets without minter
   }, [marketPositionConfigs, anchorMarkets]);
-  
+
   const tokenPricesByMarket = useMultipleTokenPrices(tokenPriceInputs);
 
   // Get CoinGecko IDs for underlying collateral (e.g., fxUSD) to detect depeg
   const underlyingCoinGeckoIds = useMemo(() => {
     const ids = new Set<string>();
     anchorMarkets.forEach(([id, m]) => {
-      const underlyingCoinGeckoId = (m as any).underlyingCoinGeckoId as string | undefined;
+      const underlyingCoinGeckoId = (m as any).underlyingCoinGeckoId as
+        | string
+        | undefined;
       if (underlyingCoinGeckoId) {
         ids.add(underlyingCoinGeckoId);
       }
@@ -405,7 +412,12 @@ export default function AnchorPage() {
   } = useAnchorPrices(anchorMarkets, reads, peggedPricesFromReads);
 
   // Fetch all positions using the unified hook, passing shared prices
-  console.log("[AnchorPage] Calling useMarketPositions with address:", address, "isConnected:", isConnected);
+  console.log(
+    "[AnchorPage] Calling useMarketPositions with address:",
+    address,
+    "isConnected:",
+    isConnected
+  );
   const {
     positionsMap: marketPositions,
     totalPositionUSD: allMarketsTotalPositionUSD,
@@ -414,7 +426,11 @@ export default function AnchorPage() {
   } = useMarketPositions(marketPositionConfigs, address, mergedPeggedPriceMap);
 
   // Group markets by peggedToken.symbol (for grouping ha tokens)
-  const groupedMarkets = useGroupedMarkets(anchorMarkets, reads, marketPositions);
+  const groupedMarkets = useGroupedMarkets(
+    anchorMarkets,
+    reads,
+    marketPositions
+  );
 
   // Process all market data using hook
   const allMarketsData = useAnchorMarketData(
@@ -428,7 +444,7 @@ export default function AnchorPage() {
 
   // Create a map for quick lookup: marketId -> marketData
   const marketsDataMap = useMemo(() => {
-    const map = new Map<string, typeof allMarketsData[0]>();
+    const map = new Map<string, (typeof allMarketsData)[0]>();
     allMarketsData.forEach((marketData) => {
       map.set(marketData.marketId, marketData);
     });
@@ -1645,7 +1661,7 @@ export default function AnchorPage() {
 
   // Claim all, compound all, and buy $TIDE handlers
   // handleClaimAll, handleCompoundAll are now provided by useAnchorTransactions hook
-  
+
   const handleBuyTide = async (
     selectedPools: Array<{
       marketId: string;
@@ -1860,8 +1876,9 @@ export default function AnchorPage() {
                     Harbor Marks Subgraph Error
                   </p>
                   <p className="text-white/70 text-xs">
-                    Unable to load Harbor Marks data. This may be due to rate limiting or service issues. 
-                    Your positions and core functionality remain unaffected.
+                    Unable to load Harbor Marks data. This may be due to rate
+                    limiting or service issues. Your positions and core
+                    functionality remain unaffected.
                   </p>
                 </div>
               </div>
@@ -2594,17 +2611,15 @@ export default function AnchorPage() {
                       )}
                     </div>
                     <div className="text-[10px] text-white/50 text-center mt-0.5">
-                      {!ANCHOR_MARKS_ENABLED ? (
-                        "0 marks/day"
-                      ) : !mounted || isLoadingAnchorMarks ? (
-                        ""
-                      ) : totalAnchorMarksPerDay > 0 ? (
-                        `${totalAnchorMarksPerDay.toLocaleString(undefined, {
-                          maximumFractionDigits: 2,
-                        })} marks/day`
-                      ) : (
-                        "0 marks/day"
-                      )}
+                      {!ANCHOR_MARKS_ENABLED
+                        ? "0 marks/day"
+                        : !mounted || isLoadingAnchorMarks
+                        ? ""
+                        : totalAnchorMarksPerDay > 0
+                        ? `${totalAnchorMarksPerDay.toLocaleString(undefined, {
+                            maximumFractionDigits: 2,
+                          })} marks/day`
+                        : "0 marks/day"}
                     </div>
                   </div>
                 </div>
@@ -3116,12 +3131,11 @@ export default function AnchorPage() {
                   .map(({ marketId }) => marketsDataMap.get(marketId))
                   .filter((m): m is NonNullable<typeof m> => m !== undefined);
 
-                // Filter to only show markets where genesis has completed (has collateral deposited)
-                const activeMarketsData = marketsData.filter(
-                  (m) => m.collateralValue !== undefined && m.collateralValue > 0n
-                );
+                // Use all markets in the group (not just those with collateral > 0)
+                // This ensures all markets are displayed in the expanded view
+                const activeMarketsData = marketsData;
 
-                // Skip this group if no markets have completed genesis
+                // Skip this group if no markets exist
                 if (activeMarketsData.length === 0) {
                   return null;
                 }
@@ -3207,27 +3221,65 @@ export default function AnchorPage() {
                     ? Math.max(...allMaxProjectedAPRs)
                     : null;
 
-                // Collect all unique deposit assets
+                // Collect all unique wrapped collateral assets (only show wrapped collateral, not all accepted assets)
                 const assetMap = new Map<
                   string,
                   { symbol: string; name: string }
                 >();
                 marketList.forEach(({ market }) => {
-                  const peggedTokenSymbol = market?.peggedToken?.symbol;
-                  const assets = getAcceptedDepositAssets(
-                    market,
-                    peggedTokenSymbol
-                  );
-                  assets.forEach((asset) => {
-                    if (!assetMap.has(asset.symbol)) {
-                      assetMap.set(asset.symbol, asset);
+                  // Only show wrapped collateral (fxSAVE, wstETH)
+                  if (market?.collateral?.symbol) {
+                    const wrappedCollateral = {
+                      symbol: market.collateral.symbol,
+                      name: market.collateral.name || market.collateral.symbol,
+                    };
+                    if (!assetMap.has(wrappedCollateral.symbol)) {
+                      assetMap.set(wrappedCollateral.symbol, wrappedCollateral);
                     }
-                  });
+                  }
                 });
                 const allDepositAssets = Array.from(assetMap.values());
 
                 // Collect all unique reward tokens from pools for markets in this group
                 const firstMarket = marketList[0]?.market;
+                
+                // Helper function to get directly zappable assets (no slippage)
+                // Excludes wrapped collateral since it's already shown in the main deposit assets view
+                const getDirectlyZappableAssets = (market: any): Array<{ symbol: string; name: string }> => {
+                  const collateralSymbol = market?.collateral?.symbol?.toLowerCase() || "";
+                  const isFxSAVEMarket = collateralSymbol === "fxsave";
+                  const isWstETHMarket = collateralSymbol === "wsteth";
+                  
+                  if (isFxSAVEMarket) {
+                    // Exclude fxSAVE (wrapped collateral) - only show USDC and fxUSD
+                    return [
+                      { symbol: "USDC", name: "USD Coin" },
+                      { symbol: "fxUSD", name: "f(x) USD" },
+                    ];
+                  } else if (isWstETHMarket) {
+                    // Exclude wstETH (wrapped collateral) - only show ETH and stETH
+                    return [
+                      { symbol: "ETH", name: "Ethereum" },
+                      { symbol: "stETH", name: "Lido Staked ETH" },
+                    ];
+                  }
+                  return [];
+                };
+                
+                // Collect zappable assets from all markets in the group
+                const zappableAssetsMap = new Map<
+                  string,
+                  { symbol: string; name: string }
+                >();
+                marketList.forEach(({ market }) => {
+                  const zappableAssets = getDirectlyZappableAssets(market);
+                  zappableAssets.forEach((asset) => {
+                    if (!zappableAssetsMap.has(asset.symbol)) {
+                      zappableAssetsMap.set(asset.symbol, asset);
+                    }
+                  });
+                });
+                const directlyZappableAssets = Array.from(zappableAssetsMap.values());
                 const collateralPoolAddress = firstMarket?.addresses
                   ?.stabilityPoolCollateral as `0x${string}` | undefined;
                 const sailPoolAddress = firstMarket?.addresses
@@ -3276,11 +3328,6 @@ export default function AnchorPage() {
                           onClick={(e) => e.stopPropagation()}
                         >
                           {allDepositAssets.map((asset) => {
-                            // Check if this asset is a ha token (pegged token)
-                            const isHaToken =
-                              peggedTokenSymbol &&
-                              asset.symbol === peggedTokenSymbol;
-
                             return (
                               <SimpleTooltip
                                 key={asset.symbol}
@@ -3290,20 +3337,9 @@ export default function AnchorPage() {
                                       {asset.name}
                                     </div>
                                     <div className="text-xs opacity-90">
-                                      {isHaToken ? (
-                                        <>
-                                          {asset.name} tokens are deposited
-                                          directly into the chosen stability
-                                          pool. The collateral backing these
-                                          tokens is already in the market.
-                                        </>
-                                      ) : (
-                                        <>
-                                          Collateral is owned by the market and
-                                          your position is swapped for{""}
-                                          {peggedTokenSymbol || "haTOKENS"}.
-                                        </>
-                                      )}
+                                      Collateral is owned by the market and
+                                      your position is swapped for{" "}
+                                      {peggedTokenSymbol || "haTOKENS"}.
                                     </div>
                                   </div>
                                 }
@@ -3318,6 +3354,51 @@ export default function AnchorPage() {
                               </SimpleTooltip>
                             );
                           })}
+                          <SimpleTooltip
+                            label={
+                              <div>
+                                <div className="font-semibold mb-1">
+                                  Any Token Supported
+                                </div>
+                                <div className="text-xs opacity-90 space-y-2">
+                                  {directlyZappableAssets.length > 0 && (
+                                    <div>
+                                      <div className="font-semibold mb-1">
+                                        Direct zap (no slippage):
+                                      </div>
+                                      <div className="flex items-center gap-1.5 flex-wrap">
+                                        {directlyZappableAssets.map((asset) => (
+                                          <div
+                                            key={asset.symbol}
+                                            className="flex items-center gap-1"
+                                          >
+                                            <Image
+                                              src={getLogoPath(asset.symbol)}
+                                              alt={asset.name}
+                                              width={16}
+                                              height={16}
+                                              className="flex-shrink-0 rounded-full"
+                                            />
+                                            <span>{asset.symbol}</span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+                                  <div>
+                                    Other ERC20 tokens can be deposited via
+                                    ParaSwap and will be automatically swapped to{" "}
+                                    {collateralSymbol}.
+                                  </div>
+                                </div>
+                              </div>
+                            }
+                          >
+                            <div className="flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] font-semibold uppercase tracking-wide cursor-help whitespace-nowrap">
+                              <ArrowPathIcon className="w-3 h-3" />
+                              <span>Any Token</span>
+                            </div>
+                          </SimpleTooltip>
                         </div>
                         <div
                           className="text-center min-w-0"
@@ -3564,13 +3645,14 @@ export default function AnchorPage() {
                                   },
                                 };
                               });
-                              
+
                               setManageModal({
                                 marketId: marketList[0].marketId,
                                 market: {
                                   ...marketList[0].market,
                                   wrappedRate: marketsData.find(
-                                    (md) => md.marketId === marketList[0].marketId
+                                    (md) =>
+                                      md.marketId === marketList[0].marketId
                                   )?.wrappedRate,
                                 },
                                 initialTab: "deposit",
@@ -3596,26 +3678,35 @@ export default function AnchorPage() {
                           // ha token balance is the same for all markets (same token)
                           const firstMarket = activeMarketsData[0];
                           const haTokenBalance = firstMarket?.userDeposit;
-                          const haTokenBalanceUSD = firstMarket?.haTokenBalanceUSD || 0;
-                          const haSymbol = firstMarket?.market?.peggedToken?.symbol || "ha";
-                          
+                          const haTokenBalanceUSD =
+                            firstMarket?.haTokenBalanceUSD || 0;
+                          const haSymbol =
+                            firstMarket?.market?.peggedToken?.symbol || "ha";
+
                           // Aggregate pool deposits across all markets
                           let totalCollateralPoolDeposit = 0n;
                           let totalCollateralPoolDepositUSD = 0;
                           let totalSailPoolDeposit = 0n;
                           let totalSailPoolDepositUSD = 0;
-                          
+
                           // Collect all withdrawal requests for this group
-                          const groupWithdrawalRequests: typeof withdrawalRequests = [];
-                          
+                          const groupWithdrawalRequests: typeof withdrawalRequests =
+                            [];
+
                           activeMarketsData.forEach((md) => {
-                            if (md.collateralPoolDeposit && md.collateralPoolDeposit > 0n) {
-                              totalCollateralPoolDeposit += md.collateralPoolDeposit;
-                              totalCollateralPoolDepositUSD += md.collateralPoolDepositUSD || 0;
+                            if (
+                              md.collateralPoolDeposit &&
+                              md.collateralPoolDeposit > 0n
+                            ) {
+                              totalCollateralPoolDeposit +=
+                                md.collateralPoolDeposit;
+                              totalCollateralPoolDepositUSD +=
+                                md.collateralPoolDepositUSD || 0;
                             }
                             if (md.sailPoolDeposit && md.sailPoolDeposit > 0n) {
                               totalSailPoolDeposit += md.sailPoolDeposit;
-                              totalSailPoolDepositUSD += md.sailPoolDepositUSD || 0;
+                              totalSailPoolDepositUSD +=
+                                md.sailPoolDepositUSD || 0;
                             }
                             // Collect withdrawal requests for this market
                             const marketRequests = withdrawalRequests.filter(
@@ -3627,7 +3718,7 @@ export default function AnchorPage() {
                             );
                             groupWithdrawalRequests.push(...marketRequests);
                           });
-                          
+
                           const hasGroupPositions =
                             haTokenBalanceUSD > 0 ||
                             totalCollateralPoolDepositUSD > 0 ||
@@ -3635,11 +3726,14 @@ export default function AnchorPage() {
                             (haTokenBalance && haTokenBalance > 0n) ||
                             totalCollateralPoolDeposit > 0n ||
                             totalSailPoolDeposit > 0n;
-                          
-                          if (!hasGroupPositions && groupWithdrawalRequests.length === 0) {
+
+                          if (
+                            !hasGroupPositions &&
+                            groupWithdrawalRequests.length === 0
+                          ) {
                             return null;
                           }
-                          
+
                           return (
                             <div className="mb-4">
                               {/* Withdrawal requests for the group */}
@@ -3651,22 +3745,28 @@ export default function AnchorPage() {
                                   <div className="space-y-1.5">
                                     {groupWithdrawalRequests.map((request) => {
                                       // Find the market this request belongs to
-                                      const requestMarket = activeMarketsData.find(
-                                        (md) =>
-                                          request.poolAddress.toLowerCase() ===
-                                            md.market.addresses?.stabilityPoolCollateral?.toLowerCase() ||
-                                          request.poolAddress.toLowerCase() ===
-                                            md.market.addresses?.stabilityPoolLeveraged?.toLowerCase()
-                                      );
+                                      const requestMarket =
+                                        activeMarketsData.find(
+                                          (md) =>
+                                            request.poolAddress.toLowerCase() ===
+                                              md.market.addresses?.stabilityPoolCollateral?.toLowerCase() ||
+                                            request.poolAddress.toLowerCase() ===
+                                              md.market.addresses?.stabilityPoolLeveraged?.toLowerCase()
+                                        );
                                       const isCollateralPool =
                                         request.poolAddress.toLowerCase() ===
                                         requestMarket?.market.addresses?.stabilityPoolCollateral?.toLowerCase();
-                                      const poolType = isCollateralPool ? "collateral" : "sail";
+                                      const poolType = isCollateralPool
+                                        ? "collateral"
+                                        : "sail";
                                       const startSec = Number(request.start);
                                       const endSec = Number(request.end);
-                                      const isWindowOpen = request.status === "window";
+                                      const isWindowOpen =
+                                        request.status === "window";
                                       const countdownTarget =
-                                        request.status === "waiting" ? startSec : endSec;
+                                        request.status === "waiting"
+                                          ? startSec
+                                          : endSec;
                                       const countdownLabel =
                                         request.status === "waiting"
                                           ? "Window opens in"
@@ -3676,26 +3776,43 @@ export default function AnchorPage() {
                                       const countdownText =
                                         countdownTarget > 0
                                           ? formatTimeRemaining(
-                                              new Date(countdownTarget * 1000).toISOString(),
+                                              new Date(
+                                                countdownTarget * 1000
+                                              ).toISOString(),
                                               request.currentTime
-                                                ? new Date(Number(request.currentTime) * 1000)
+                                                ? new Date(
+                                                    Number(
+                                                      request.currentTime
+                                                    ) * 1000
+                                                  )
                                                 : new Date()
                                             )
                                           : "Ended";
 
                                       return (
                                         <div
-                                          key={`${request.poolAddress}-${request.start.toString()}`}
+                                          key={`${
+                                            request.poolAddress
+                                          }-${request.start.toString()}`}
                                           className="p-2 bg-[#FF8A7A]/10 border border-[#FF8A7A]/30 text-xs flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between"
                                         >
                                           <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2">
                                             <span className="text-[#1E4775] font-semibold">
-                                              {poolType === "collateral" ? "Collateral" : "Sail"} Pool
-                                              {requestMarket && activeMarketsData.length > 1 && (
-                                                <span className="text-[#1E4775]/50 ml-1">
-                                                  ({requestMarket.market.collateral?.symbol || "?"})
-                                                </span>
-                                              )}
+                                              {poolType === "collateral"
+                                                ? "Collateral"
+                                                : "Sail"}{" "}
+                                              Pool
+                                              {requestMarket &&
+                                                activeMarketsData.length >
+                                                  1 && (
+                                                  <span className="text-[#1E4775]/50 ml-1">
+                                                    (
+                                                    {requestMarket.market
+                                                      .collateral?.symbol ||
+                                                      "?"}
+                                                    )
+                                                  </span>
+                                                )}
                                             </span>
                                             <span
                                               className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${
@@ -3727,7 +3844,8 @@ export default function AnchorPage() {
                                                       ? requestMarket?.collateralPoolDeposit
                                                       : requestMarket?.sailPoolDeposit;
                                                   setWithdrawAmountModal({
-                                                    poolAddress: request.poolAddress,
+                                                    poolAddress:
+                                                      request.poolAddress,
                                                     poolType,
                                                     useEarly: false,
                                                     symbol: haSymbol,
@@ -3735,16 +3853,19 @@ export default function AnchorPage() {
                                                   });
                                                 } else {
                                                   setEarlyWithdrawModal({
-                                                    poolAddress: request.poolAddress,
+                                                    poolAddress:
+                                                      request.poolAddress,
                                                     poolType,
                                                     start: request.start,
                                                     end: request.end,
-                                                    earlyWithdrawFee: request.earlyWithdrawFee,
+                                                    earlyWithdrawFee:
+                                                      request.earlyWithdrawFee,
                                                     symbol: haSymbol,
                                                     poolBalance:
                                                       (poolType === "collateral"
                                                         ? requestMarket?.collateralPoolDeposit
-                                                        : requestMarket?.sailPoolDeposit) || 0n,
+                                                        : requestMarket?.sailPoolDeposit) ||
+                                                      0n,
                                                   });
                                                 }
                                               }}
@@ -3763,7 +3884,7 @@ export default function AnchorPage() {
                                   </div>
                                 </div>
                               )}
-                              
+
                               {/* Your Positions - consolidated */}
                               {hasGroupPositions && (
                                 <div className="bg-white border border-[#1E4775]/10 shadow-sm p-3 space-y-2">
@@ -3774,13 +3895,18 @@ export default function AnchorPage() {
                                     {/* ha Tokens in Wallet */}
                                     {haTokenBalance && haTokenBalance > 0n && (
                                       <div className="flex justify-between items-center text-xs">
-                                        <span className="text-[#1E4775]/70">In Wallet:</span>
+                                        <span className="text-[#1E4775]/70">
+                                          In Wallet:
+                                        </span>
                                         <div className="text-right">
                                           <div className="font-semibold text-[#1E4775] font-mono">
-                                            {formatCompactUSD(haTokenBalanceUSD)}
+                                            {formatCompactUSD(
+                                              haTokenBalanceUSD
+                                            )}
                                           </div>
                                           <div className="text-[10px] text-[#1E4775]/50 font-mono">
-                                            {formatToken(haTokenBalance)} {haSymbol}
+                                            {formatToken(haTokenBalance)}{" "}
+                                            {haSymbol}
                                           </div>
                                         </div>
                                       </div>
@@ -3789,13 +3915,20 @@ export default function AnchorPage() {
                                     {/* Collateral Pool Deposit - aggregated */}
                                     {totalCollateralPoolDeposit > 0n && (
                                       <div className="flex justify-between items-center text-xs">
-                                        <span className="text-[#1E4775]/70">Collateral Pool:</span>
+                                        <span className="text-[#1E4775]/70">
+                                          Collateral Pool:
+                                        </span>
                                         <div className="text-right">
                                           <div className="font-semibold text-[#1E4775] font-mono">
-                                            {formatCompactUSD(totalCollateralPoolDepositUSD)}
+                                            {formatCompactUSD(
+                                              totalCollateralPoolDepositUSD
+                                            )}
                                           </div>
                                           <div className="text-[10px] text-[#1E4775]/50 font-mono">
-                                            {formatToken(totalCollateralPoolDeposit)} {haSymbol}
+                                            {formatToken(
+                                              totalCollateralPoolDeposit
+                                            )}{" "}
+                                            {haSymbol}
                                           </div>
                                         </div>
                                       </div>
@@ -3804,13 +3937,18 @@ export default function AnchorPage() {
                                     {/* Sail Pool Deposit - aggregated */}
                                     {totalSailPoolDeposit > 0n && (
                                       <div className="flex justify-between items-center text-xs">
-                                        <span className="text-[#1E4775]/70">Sail Pool:</span>
+                                        <span className="text-[#1E4775]/70">
+                                          Sail Pool:
+                                        </span>
                                         <div className="text-right">
                                           <div className="font-semibold text-[#1E4775] font-mono">
-                                            {formatCompactUSD(totalSailPoolDepositUSD)}
+                                            {formatCompactUSD(
+                                              totalSailPoolDepositUSD
+                                            )}
                                           </div>
                                           <div className="text-[10px] text-[#1E4775]/50 font-mono">
-                                            {formatToken(totalSailPoolDeposit)} {haSymbol}
+                                            {formatToken(totalSailPoolDeposit)}{" "}
+                                            {haSymbol}
                                           </div>
                                         </div>
                                       </div>
@@ -3821,7 +3959,7 @@ export default function AnchorPage() {
                             </div>
                           );
                         })()}
-                        
+
                         {activeMarketsData.map((marketData) => {
                           // Get volatility protection from hook data
                           const minterAddr =
@@ -3841,9 +3979,13 @@ export default function AnchorPage() {
                               : "-";
 
                           // Detect if this is an fxUSD market
-                          const collateralSymbol = marketData.market.collateral?.symbol?.toLowerCase() || "";
-                          const isFxUSDMarket = collateralSymbol === "fxusd" || collateralSymbol === "fxsave";
-                          
+                          const collateralSymbol =
+                            marketData.market.collateral?.symbol?.toLowerCase() ||
+                            "";
+                          const isFxUSDMarket =
+                            collateralSymbol === "fxusd" ||
+                            collateralSymbol === "fxsave";
+
                           // Calculate USD values for inline display
                           // Default to 18 decimals if collateralPriceDecimals is undefined
                           const priceDecimals =
@@ -3852,22 +3994,26 @@ export default function AnchorPage() {
                             ? Number(marketData.collateralPrice) /
                               10 ** priceDecimals
                             : 0;
-                          
+
                           // For fxUSD markets, calculate fxSAVE price USD (same as collateral value calculation)
                           if (isFxUSDMarket) {
                             if (marketData.fxSAVEPriceInETH && ethPrice) {
                               // fxSAVE price in ETH (from getPrice())
-                              const fxSAVEPriceInETHNum = Number(marketData.fxSAVEPriceInETH) / 1e18;
+                              const fxSAVEPriceInETHNum =
+                                Number(marketData.fxSAVEPriceInETH) / 1e18;
                               // ETH price in USD (from CoinGecko)
                               const ethPriceUSD = ethPrice;
                               // fxSAVE price in USD = fxSAVE price in ETH * ETH price in USD
-                              collateralPriceUSD = fxSAVEPriceInETHNum * ethPriceUSD;
+                              collateralPriceUSD =
+                                fxSAVEPriceInETHNum * ethPriceUSD;
                             } else if (collateralPriceUSD === 0) {
                               // Fallback to CoinGecko prices if oracle price is missing/0
                               if (collateralSymbol === "fxusd") {
-                                collateralPriceUSD = fxUSDPrice || usdcPrice || 1.0;
+                                collateralPriceUSD =
+                                  fxUSDPrice || usdcPrice || 1.0;
                               } else if (collateralSymbol === "fxsave") {
-                                collateralPriceUSD = fxSAVEPrice || usdcPrice || 1.0;
+                                collateralPriceUSD =
+                                  fxSAVEPrice || usdcPrice || 1.0;
                               } else {
                                 collateralPriceUSD = usdcPrice || 1.0;
                               }
@@ -3875,8 +4021,9 @@ export default function AnchorPage() {
                           }
 
                           // Get user's position data for price calculation
-                          const positionData = marketPositions[marketData.marketId];
-                          
+                          const positionData =
+                            marketPositions[marketData.marketId];
+
                           // Total ha tokens: Use totalDebt (total supply, matches peggedTokenBalance from minter)
                           const totalHaTokens =
                             marketData.totalDebt !== undefined
@@ -3892,36 +4039,52 @@ export default function AnchorPage() {
                           const wrappedRateNum = marketData.wrappedRate
                             ? Number(marketData.wrappedRate) / 1e18
                             : 1; // Default 1:1 if no rate
-                          
+
                           let collateralValueUSD = 0;
                           if (collateralTokensWrapped > 0) {
                             if (isFxUSDMarket) {
                               // For fxUSD markets: collateralValue is fxUSD (wrapped), convert to fxSAVE (underlying)
                               // wrappedRate = fxSAVE/fxUSD rate, so fxSAVE = fxUSD / rate
-                              const fxSAVEBalance = wrappedRateNum > 0 ? collateralTokensWrapped / wrappedRateNum : 0;
-                              
+                              const fxSAVEBalance =
+                                wrappedRateNum > 0
+                                  ? collateralTokensWrapped / wrappedRateNum
+                                  : 0;
+
                               // Calculate fxSAVE price in USD
                               let fxSAVEPriceUSD = 0;
-                              if (marketData.fxSAVEPriceInETH && ethPrice && wrappedRateNum > 0) {
+                              if (
+                                marketData.fxSAVEPriceInETH &&
+                                ethPrice &&
+                                wrappedRateNum > 0
+                              ) {
                                 // fxSAVE price in ETH (from getPrice())
-                                const fxSAVEPriceInETHNum = Number(marketData.fxSAVEPriceInETH) / 1e18;
+                                const fxSAVEPriceInETHNum =
+                                  Number(marketData.fxSAVEPriceInETH) / 1e18;
                                 // ETH price in USD (from CoinGecko)
                                 const ethPriceUSD = ethPrice;
                                 // fxSAVE price in USD = fxSAVE price in ETH * ETH price in USD
-                                fxSAVEPriceUSD = fxSAVEPriceInETHNum * ethPriceUSD;
+                                fxSAVEPriceUSD =
+                                  fxSAVEPriceInETHNum * ethPriceUSD;
                               } else {
                                 // Fallback to CoinGecko fxSAVE price
-                                fxSAVEPriceUSD = fxSAVEPrice || usdcPrice || 1.0;
+                                fxSAVEPriceUSD =
+                                  fxSAVEPrice || usdcPrice || 1.0;
                               }
-                              
+
                               // Collateral USD = fxSAVE balance * fxSAVE price USD
-                              collateralValueUSD = fxSAVEBalance * fxSAVEPriceUSD;
-                              
-                              console.log(`[Collateral USD] Market ${marketData.marketId}: fxUSD=${collateralTokensWrapped}, rate=${wrappedRateNum}, fxSAVE=${fxSAVEBalance}, fxSAVEPriceUSD=$${fxSAVEPriceUSD}, collateralValueUSD=$${collateralValueUSD}`);
+                              collateralValueUSD =
+                                fxSAVEBalance * fxSAVEPriceUSD;
+
+                              console.log(
+                                `[Collateral USD] Market ${marketData.marketId}: fxUSD=${collateralTokensWrapped}, rate=${wrappedRateNum}, fxSAVE=${fxSAVEBalance}, fxSAVEPriceUSD=$${fxSAVEPriceUSD}, collateralValueUSD=$${collateralValueUSD}`
+                              );
                             } else {
                               // wstETH markets: collateralValue is in wrapped (wstETH), need wrappedRate
                               if (collateralPriceUSD > 0) {
-                                collateralValueUSD = collateralTokensWrapped * wrappedRateNum * collateralPriceUSD;
+                                collateralValueUSD =
+                                  collateralTokensWrapped *
+                                  wrappedRateNum *
+                                  collateralPriceUSD;
                               }
                             }
                           }
@@ -3929,21 +4092,24 @@ export default function AnchorPage() {
                           // Calculate total debt in USD (same calculation as market position)
                           // Use peggedPriceUSDMap which contains USD prices (already converted)
                           // This matches how useMarketPositions calculates walletHaUSD
-                          const usdPriceFromMap = peggedPriceUSDMap[marketData.marketId];
+                          const usdPriceFromMap =
+                            peggedPriceUSDMap[marketData.marketId];
                           const peggedPriceUSD =
                             usdPriceFromMap && usdPriceFromMap > 0n
                               ? Number(usdPriceFromMap) / 1e18
-                              : positionData?.peggedTokenPrice && positionData.peggedTokenPrice > 0n
+                              : positionData?.peggedTokenPrice &&
+                                positionData.peggedTokenPrice > 0n
                               ? Number(positionData.peggedTokenPrice) / 1e18
-                              : marketData.peggedTokenPrice && marketData.peggedTokenPrice > 0n
+                              : marketData.peggedTokenPrice &&
+                                marketData.peggedTokenPrice > 0n
                               ? Number(marketData.peggedTokenPrice) / 1e18
                               : 1; // Default to $1 peg
                           // Use same calculation as positionData.walletHaUSD
                           const totalDebtUSD = totalHaTokens * peggedPriceUSD;
 
                           return (
+                            <React.Fragment key={marketData.marketId}>
                             <div
-                              key={marketData.marketId}
                               className="bg-white p-2 mb-2 border border-[#1E4775]/10"
                             >
                               <div className="flex items-center justify-end mb-2">
@@ -4080,15 +4246,17 @@ export default function AnchorPage() {
                                       >
                                         <div className="text-xs font-semibold text-[#1E4775] cursor-help">
                                           {collateralValueUSD > 0
-                                            ? `$${collateralValueUSD.toLocaleString(
-                                                undefined,
-                                                {
-                                                  minimumFractionDigits: 0,
-                                                  maximumFractionDigits: 0,
-                                                }
-                                              )}`
+                                            ? `$${collateralValueUSD < 100
+                                                ? collateralValueUSD.toFixed(2)
+                                                : collateralValueUSD.toLocaleString(
+                                                    undefined,
+                                                    {
+                                                      minimumFractionDigits: 0,
+                                                      maximumFractionDigits: 0,
+                                                    }
+                                                  )}`
                                             : collateralValueUSD === 0
-                                            ? "$0"
+                                            ? "$0.00"
                                             : "-"}
                                         </div>
                                       </SimpleTooltip>
@@ -4149,11 +4317,11 @@ export default function AnchorPage() {
                                       >
                                         <div className="text-xs font-semibold text-[#1E4775] cursor-help">
                                           {collateralPoolTVLUSD > 0
-                                            ? formatCompactUSD(
-                                                collateralPoolTVLUSD
-                                              )
+                                            ? collateralPoolTVLUSD < 100
+                                              ? `$${collateralPoolTVLUSD.toFixed(2)}`
+                                              : formatCompactUSD(collateralPoolTVLUSD)
                                             : collateralPoolTVLUSD === 0
-                                            ? "$0"
+                                            ? "$0.00"
                                             : "-"}
                                         </div>
                                       </SimpleTooltip>
@@ -4180,9 +4348,11 @@ export default function AnchorPage() {
                                       >
                                         <div className="text-xs font-semibold text-[#1E4775] cursor-help">
                                           {sailPoolTVLUSD > 0
-                                            ? formatCompactUSD(sailPoolTVLUSD)
+                                            ? sailPoolTVLUSD < 100
+                                              ? `$${sailPoolTVLUSD.toFixed(2)}`
+                                              : formatCompactUSD(sailPoolTVLUSD)
                                             : sailPoolTVLUSD === 0
-                                            ? "$0"
+                                            ? "$0.00"
                                             : "-"}
                                         </div>
                                       </SimpleTooltip>
@@ -4190,8 +4360,8 @@ export default function AnchorPage() {
                                   </div>
                                 );
                               })()}
-
                             </div>
+                            </React.Fragment>
                           );
                         })}
                       </div>

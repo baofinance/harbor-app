@@ -5,12 +5,12 @@ import SimpleTooltip from "@/components/SimpleTooltip";
 import { EtherscanLink as SharedEtherscanLink } from "@/components/shared";
 import { useStabilityPoolRewards } from "@/hooks/useStabilityPoolRewards";
 import {
-  formatToken,
   formatRatio,
   formatAPR,
   formatCompactUSD,
   calculateVolatilityProtection,
 } from "@/utils/anchor";
+import { formatToken } from "@/utils/formatters";
 
 interface AnchorMarketExpandedViewProps {
   marketId: string;
@@ -166,6 +166,14 @@ export function AnchorMarketExpandedView({
   const estimatedDailyEarnings = estimatedAnnualYield / 365;
   const estimatedWeeklyEarnings = estimatedAnnualYield / 52;
 
+  // Helper function to format numbers with 2 decimals when below 100
+  const formatNumberWithDecimals = (value: number, defaultDecimals: number = 2): string => {
+    if (value < 100) {
+      return value.toFixed(2);
+    }
+    return value.toFixed(defaultDecimals);
+  };
+
   // Pegged token price in USD
   const peggedTokenPriceUSD =
     peggedTokenPrice && collateralPrice && collateralPriceDecimals !== undefined
@@ -299,7 +307,7 @@ export function AnchorMarketExpandedView({
             {minCollateralRatio}%
           </p>
           <p className="text-xs text-[#1E4775]/70 mt-0.5">
-            Safety: {safetyBuffer.toFixed(1)}%
+            Safety: {formatNumberWithDecimals(safetyBuffer, 1)}%
           </p>
         </div>
 
@@ -361,7 +369,7 @@ export function AnchorMarketExpandedView({
             Pegged Token Price
           </h3>
           <p className="text-sm font-bold text-[#1E4775]">
-            ${peggedTokenPriceUSD > 0 ? peggedTokenPriceUSD.toFixed(4) : "-"}
+            ${peggedTokenPriceUSD > 0 ? formatNumberWithDecimals(peggedTokenPriceUSD, 4) : "-"}
           </p>
           <p className="text-xs text-[#1E4775]/70 mt-0.5">
             NAV per {market.peggedToken?.symbol || "ha"}
@@ -399,10 +407,12 @@ export function AnchorMarketExpandedView({
           </h3>
           <p className="text-sm font-bold text-[#1E4775]">
             {collateralValueUSD > 0
-              ? `$${collateralValueUSD.toLocaleString(undefined, {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}`
+              ? `$${collateralValueUSD < 100 
+                  ? formatNumberWithDecimals(collateralValueUSD, 2)
+                  : collateralValueUSD.toLocaleString(undefined, {
+                      minimumFractionDigits: 0,
+                      maximumFractionDigits: 2,
+                    })}`
               : "-"}
           </p>
           <p className="text-xs text-[#1E4775]/70 mt-0.5">
@@ -416,10 +426,12 @@ export function AnchorMarketExpandedView({
           </h3>
           <p className="text-sm font-bold text-[#1E4775]">
             {peggedTokensValueUSD > 0
-              ? `$${peggedTokensValueUSD.toLocaleString(undefined, {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}`
+              ? `$${peggedTokensValueUSD < 100 
+                  ? formatNumberWithDecimals(peggedTokensValueUSD, 2)
+                  : peggedTokensValueUSD.toLocaleString(undefined, {
+                      minimumFractionDigits: 0,
+                      maximumFractionDigits: 2,
+                    })}`
               : "-"}
           </p>
           <p className="text-xs text-[#1E4775]/70 mt-0.5">
@@ -459,7 +471,7 @@ export function AnchorMarketExpandedView({
             </p>
             {collateralPoolDepositUSD > 0 && (
               <p className="text-xs text-[#1E4775]/70 mt-0.5">
-                Your share: {collateralPoolShare.toFixed(2)}%
+                Your share: {formatNumberWithDecimals(collateralPoolShare, 2)}%
               </p>
             )}
             {projectedCollateralPoolAPR !== null && (
@@ -497,7 +509,7 @@ export function AnchorMarketExpandedView({
             </p>
             {sailPoolDepositUSD > 0 && (
               <p className="text-xs text-[#1E4775]/70 mt-0.5">
-                Your share: {sailPoolShare.toFixed(2)}%
+                Your share: {formatNumberWithDecimals(sailPoolShare, 2)}%
               </p>
             )}
             {projectedSailPoolAPR !== null && (
@@ -519,19 +531,19 @@ export function AnchorMarketExpandedView({
             <div>
               <p className="text-xs text-[#1E4775]/70">Annual Yield</p>
               <p className="text-sm font-bold text-[#1E4775]">
-                ${estimatedAnnualYield.toFixed(2)}
+                ${formatNumberWithDecimals(estimatedAnnualYield, 2)}
               </p>
             </div>
             <div>
               <p className="text-xs text-[#1E4775]/70">Weekly Earnings</p>
               <p className="text-sm font-bold text-[#1E4775]">
-                ${estimatedWeeklyEarnings.toFixed(2)}
+                ${formatNumberWithDecimals(estimatedWeeklyEarnings, 2)}
               </p>
             </div>
             <div>
               <p className="text-xs text-[#1E4775]/70">Daily Earnings</p>
               <p className="text-sm font-bold text-[#1E4775]">
-                ${estimatedDailyEarnings.toFixed(2)}
+                ${formatNumberWithDecimals(estimatedDailyEarnings, 2)}
               </p>
             </div>
             <div>
@@ -556,7 +568,7 @@ export function AnchorMarketExpandedView({
               <div className="text-xs text-[#1E4775]/50">
                 Loading rewards...
               </div>
-            ) : collateralPoolRewardsData.rewardTokens.length > 0 ? (
+            ) : collateralPoolRewardsData.rewardTokens && collateralPoolRewardsData.rewardTokens.length > 0 ? (
               <div className="space-y-2">
                 <div className="space-y-1.5">
                   {collateralPoolRewardsData.rewardTokens.map((reward) => (
@@ -569,13 +581,16 @@ export function AnchorMarketExpandedView({
                           {reward.symbol}
                         </div>
                         <div className="text-sm font-bold text-[#1E4775] font-mono">
-                          {parseFloat(reward.claimableFormatted).toFixed(6)}
+                          {(() => {
+                            const amount = parseFloat(reward.claimableFormatted);
+                            return amount < 100 ? amount.toFixed(2) : amount.toFixed(6);
+                          })()}
                           {""}
                           {reward.symbol}
                         </div>
                         {reward.claimableUSD > 0 && (
                           <div className="text-[10px] text-[#1E4775]/50">
-                            ${reward.claimableUSD.toFixed(2)} USD
+                            ${formatNumberWithDecimals(reward.claimableUSD, 2)} USD
                           </div>
                         )}
                       </div>
@@ -588,7 +603,7 @@ export function AnchorMarketExpandedView({
                       Total Claimable:
                     </span>
                     <span className="text-sm font-bold text-[#1E4775] font-mono">
-                      ${collateralPoolRewardsData.claimableValue.toFixed(2)}
+                      ${formatNumberWithDecimals(collateralPoolRewardsData.claimableValue, 2)}
                     </span>
                   </div>
                   <div className="flex gap-2">
@@ -669,7 +684,7 @@ export function AnchorMarketExpandedView({
               <div className="text-xs text-[#1E4775]/50">
                 Loading rewards...
               </div>
-            ) : sailPoolRewardsData.rewardTokens.length > 0 ? (
+            ) : sailPoolRewardsData.rewardTokens && sailPoolRewardsData.rewardTokens.length > 0 ? (
               <div className="space-y-2">
                 <div className="space-y-1.5">
                   {sailPoolRewardsData.rewardTokens.map((reward) => (
@@ -682,13 +697,16 @@ export function AnchorMarketExpandedView({
                           {reward.symbol}
                         </div>
                         <div className="text-sm font-bold text-[#1E4775] font-mono">
-                          {parseFloat(reward.claimableFormatted).toFixed(6)}
+                          {(() => {
+                            const amount = parseFloat(reward.claimableFormatted);
+                            return amount < 100 ? amount.toFixed(2) : amount.toFixed(6);
+                          })()}
                           {""}
                           {reward.symbol}
                         </div>
                         {reward.claimableUSD > 0 && (
                           <div className="text-[10px] text-[#1E4775]/50">
-                            ${reward.claimableUSD.toFixed(2)} USD
+                            ${formatNumberWithDecimals(reward.claimableUSD, 2)} USD
                           </div>
                         )}
                       </div>
@@ -701,7 +719,7 @@ export function AnchorMarketExpandedView({
                       Total Claimable:
                     </span>
                     <span className="text-sm font-bold text-[#1E4775] font-mono">
-                      ${sailPoolRewardsData.claimableValue.toFixed(2)}
+                      ${formatNumberWithDecimals(sailPoolRewardsData.claimableValue, 2)}
                     </span>
                   </div>
                   <div className="flex gap-2">

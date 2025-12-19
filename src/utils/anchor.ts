@@ -100,7 +100,13 @@ export function calculateVolatilityProtection(
   // Calculate collateral value from CR and debt
   // collateralRatio is in 18 decimals (e.g., 2e18 = 200% CR)
   // collateralValue = CR * debt / 1e18
-  const collateralValue = (collateralRatio * totalDebt) / 10n ** 18n;
+  // Convert each BigInt to Number first, then multiply and divide
+  const collateralValueNum = (Number(collateralRatio) * Number(totalDebt)) / 1e18;
+  // Handle NaN case - return early if calculation is invalid
+  if (isNaN(collateralValueNum) || !isFinite(collateralValueNum)) {
+    return "-";
+  }
+  const collateralValue = BigInt(Math.floor(collateralValueNum));
 
   // Pool TVLs (in pegged tokens)
   const collateralPoolAbsorption = collateralPoolTVL || 0n;

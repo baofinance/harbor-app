@@ -354,8 +354,34 @@ function MarketExpandedView({
 
   const addresses = market.addresses as Record<string, string | undefined>;
 
+  // Get market name for description - use leveraged token symbol without "hs" prefix
+  // This gives us "FXUSD-BTC" from "hsFXUSD-BTC", etc.
+  const marketName =
+    leveragedTokenSymbol &&
+    leveragedTokenSymbol.toLowerCase().startsWith("hs")
+      ? leveragedTokenSymbol.slice(2)
+      : leveragedTokenSymbol || (market as any).name || "Market";
+
   return (
     <div className="bg-[rgb(var(--surface-selected-rgb))] p-4 border-t border-white/20">
+      {/* Description Box */}
+      <div className="bg-white p-4 mb-2 border border-[#1E4775]/10">
+        <p className="text-xs text-[#1E4775] leading-relaxed">
+          Earn ledger marks for providing liquidity to the{" "}
+          <span className="font-semibold">{marketName}</span> market.{" "}
+          <span className="font-semibold">{collateralTokenSymbol}</span> is
+          split into equal portions of{" "}
+          <span className="font-semibold">{peggedTokenSymbol}</span> and{" "}
+          <span className="font-semibold">{leveragedTokenSymbol}</span>, which
+          are minted on claim. Until you claim, you have{" "}
+          <span className="font-semibold">{collateralTokenSymbol}</span>{" "}
+          exposure. After you claim your net exposure depends on the balance of
+          the market compared to your balance of{" "}
+          <span className="font-semibold">{peggedTokenSymbol}</span> and{" "}
+          <span className="font-semibold">{leveragedTokenSymbol}</span> tokens.
+        </p>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
         {/* Genesis Info */}
         <div className="bg-white p-2 flex flex-col justify-center">
@@ -774,7 +800,8 @@ export default function GenesisIndexPage() {
 
   // Fetch collateral price oracles for each market (for USD calculations)
   // Priority order: CoinGecko → Tuple answer → Single answer
-  const priceContracts = useMemo(() => {
+  // We'll make this conditional after CoinGecko loads (see needsOraclePrices below)
+  const priceContractsBase = useMemo(() => {
     return genesisMarkets.flatMap(([_, mkt]) => {
       // Use collateralPrice for calculating USD value of deposits
       const oracleAddress = (mkt as any).addresses?.collateralPrice as
@@ -803,20 +830,116 @@ export default function GenesisIndexPage() {
     });
   }, [genesisMarkets]);
 
-  const { data: priceReads, refetch: refetchPrices } = useContractReads({
+  // Fetch CoinGecko prices for markets that have coinGeckoId
+  const coinGeckoIds = useMemo(() => {
+    const ids = genesisMarkets
+      .map(([_, mkt]) => (mkt as any)?.coinGeckoId)
+      .filter((id): id is string => !!id);
+    // Add steth as fallback for wstETH markets
+    const hasWstETH = genesisMarkets.some(
+      ([_, mkt]) => (mkt as any)?.collateral?.symbol?.toLowerCase() === "wsteth"
+    );
+    if (hasWstETH && !ids.includes("lido-staked-ethereum-steth")) {
+      ids.push("lido-staked-ethereum-steth");
+    }
+    return ids;
+  }, [genesisMarkets]);
+  // Refresh interval set to 2 minutes to balance API calls and price freshness
+  const {
+    prices: coinGeckoPrices,
+    isLoading: coinGeckoLoading,
+    error: coinGeckoError,
+  } = useCoinGeckoPrices(coinGeckoIds, 120000); // 2 minutes
+
+  // Log when CoinGecko prices update
+  useEffect(() => {
+    if (coinGeckoIds.length > 0) {
+      console.log(`[Genesis Price] CoinGecko state:`, {
+        loading: coinGeckoLoading,
+        prices: coinGeckoPrices,
+        requestedIds: coinGeckoIds,
+        timestamp: new Date().toISOString(),
+      });
+    }
+  }, [coinGeckoPrices, coinGeckoLoading, coinGeckoIds]);
+
+  // Determine if we need oracle prices (only when CoinGecko fails or doesn't have prices)
+  // This must be after CoinGecko hook since it depends on coinGeckoLoading, coinGeckoError, coinGeckoPrices
+  const needsOraclePrices = useMemo(() => {
+    // If CoinGecko is still loading, wait a bit before falling back to oracle
+    if (coinGeckoLoading) {
+      return false; // Wait for CoinGecko to finish loading first
+    }
+
+    // If CoinGecko has an error, we need oracle prices
+    if (coinGeckoError) {
+      console.log(
+        `[Genesis Price] CoinGecko error detected, enabling oracle reads: ${coinGeckoError}`
+      );
+      return true;
+    }
+
+    // Check if any market doesn't have a valid CoinGecko price
+    const hasMissingPrices = genesisMarkets.some(([_, mkt]) => {
+      const marketCoinGeckoId = (mkt as any)?.coinGeckoId as string | undefined;
+      const underlyingSymbol =
+        (mkt as any)?.collateral?.underlyingSymbol ||
+        (mkt as any)?.collateral?.symbol ||
+        "";
+
+      // fxUSD markets always have hardcoded price, so they don't need oracle
+      if (underlyingSymbol.toLowerCase() === "fxusd") {
+        return false;
+      }
+
+      // Check if CoinGecko has a valid price for this market
+      if (marketCoinGeckoId) {
+        const price = coinGeckoPrices[marketCoinGeckoId];
+        // Need oracle if no price or price is invalid (0 or negative)
+        return !price || price <= 0;
+      }
+
+      // If no CoinGecko ID, we need oracle
+      return true;
+    });
+
+    if (hasMissingPrices) {
+      console.log(
+        `[Genesis Price] Some markets missing CoinGecko prices, enabling oracle reads`
+      );
+    }
+
+    return hasMissingPrices;
+  }, [coinGeckoLoading, coinGeckoError, coinGeckoPrices, genesisMarkets]);
+
+  // Conditionally build price contracts based on whether we need oracle prices
+  const priceContracts = useMemo(() => {
+    if (!needsOraclePrices) {
+      return []; // Don't fetch oracle prices if CoinGecko has valid prices
+    }
+    return priceContractsBase;
+  }, [needsOraclePrices, priceContractsBase]);
+
+  const {
+    data: priceReads,
+    refetch: refetchPrices,
+    isLoading: priceReadsLoading,
+  } = useContractReads({
     contracts: priceContracts,
-    enabled: genesisMarkets.length > 0,
+    enabled: genesisMarkets.length > 0 && needsOraclePrices, // Only enable when we actually need oracle prices
   });
 
-  // Fetch CoinGecko prices for markets that have coinGeckoId
-  const coinGeckoIds = useMemo(
-    () =>
-      genesisMarkets
-        .map(([_, mkt]) => (mkt as any)?.coinGeckoId)
-        .filter((id): id is string => !!id),
-    [genesisMarkets]
-  );
-  const { prices: coinGeckoPrices } = useCoinGeckoPrices(coinGeckoIds, 60000);
+  // Log when oracle reads complete
+  useEffect(() => {
+    if (priceReads && !priceReadsLoading) {
+      console.log(`[Genesis Price] Oracle reads completed:`, {
+        totalReads: priceReads.length,
+        successfulReads: priceReads.filter((r) => r?.status === "success")
+          .length,
+        failedReads: priceReads.filter((r) => r?.status === "failure").length,
+      });
+    }
+  }, [priceReads, priceReadsLoading]);
 
   // Refetch marks when genesis ends to get bonus marks
   useEffect(() => {
@@ -1573,6 +1696,15 @@ export default function GenesisIndexPage() {
                 const priceOffset = mi * 2;
                 const priceDecimalsResult = priceReads?.[priceOffset];
                 const priceAnswerResult = priceReads?.[priceOffset + 1];
+                console.log(
+                  `[Genesis Price] Market ${id} (${collateralSymbol}):`,
+                  {
+                    priceDecimalsResult: priceDecimalsResult?.status,
+                    priceDecimals: priceDecimalsResult?.result,
+                    priceAnswerResult: priceAnswerResult?.status,
+                    priceAnswer: priceAnswerResult?.result,
+                  }
+                );
                 // Try to get decimals from oracle; default to 18 (wstETH-style feeds) if unavailable
                 let priceDecimals = 18;
                 if (
@@ -1613,25 +1745,69 @@ export default function GenesisIndexPage() {
                   | string
                   | undefined;
 
+                console.log(`[Genesis Price] Market ${id} price calculation:`, {
+                  collateralSymbol,
+                  underlyingSymbol,
+                  marketCoinGeckoId,
+                  coinGeckoLoading,
+                  coinGeckoPrice: marketCoinGeckoId
+                    ? coinGeckoPrices[marketCoinGeckoId]
+                    : undefined,
+                  priceRaw: priceRaw?.toString(),
+                  wrappedRate: wrappedRate?.toString(),
+                });
+
                 // Priority 1: For fxUSD underlying (fxSAVE markets), always use hardcoded $1.00
                 if (underlyingSymbol.toLowerCase() === "fxusd") {
                   underlyingPriceUSD = 1.0;
+                  console.log(
+                    `[Genesis Price] Market ${id}: Using hardcoded fxUSD price: $1.00`
+                  );
                 } else if (
                   marketCoinGeckoId &&
-                  coinGeckoPrices[marketCoinGeckoId]
+                  coinGeckoPrices[marketCoinGeckoId] &&
+                  coinGeckoPrices[marketCoinGeckoId]! > 0
                 ) {
-                  // Priority 2: Try CoinGecko price for other markets
+                  // Priority 2: Try CoinGecko price for other markets (preferred when available)
+                  // Only use if price is valid (> 0)
                   underlyingPriceUSD = coinGeckoPrices[marketCoinGeckoId]!;
+                  console.log(
+                    `[Genesis Price] Market ${id}: Using CoinGecko price for ${marketCoinGeckoId}: $${underlyingPriceUSD}`
+                  );
                 } else if (priceRaw !== undefined) {
-                  // Priority 2 & 3: Use oracle price (tuple or single-value format)
+                  // Priority 3: Use oracle price (tuple or single-value format) as fallback
+                  // Use oracle if CoinGecko doesn't have price (while loading, after failure, or never fetched)
                   // Convert to positive if negative (some oracles return negative for error states)
                   const priceValue = priceRaw < 0n ? -priceRaw : priceRaw;
 
                   if (priceValue > 0n) {
-                    underlyingPriceUSD =
+                    const oraclePriceUSD =
                       Number(priceValue) / 10 ** priceDecimals;
+                    // Only use oracle price if it's reasonable (not zero or extremely small)
+                    // This prevents showing <0.01 when oracle returns invalid data
+                    if (oraclePriceUSD > 0.01) {
+                      underlyingPriceUSD = oraclePriceUSD;
+                      console.log(
+                        `[Genesis Price] Market ${id}: Using oracle price: $${underlyingPriceUSD} (raw: ${priceValue.toString()}, decimals: ${priceDecimals})${
+                          coinGeckoLoading
+                            ? " (CoinGecko loading)"
+                            : coinGeckoError
+                            ? " (CoinGecko failed)"
+                            : ""
+                        }`
+                      );
+                    } else {
+                      priceError =
+                        "Price oracle returned value too small (<0.01)";
+                      console.warn(
+                        `[Genesis Price] Market ${id}: Oracle returned value too small: $${oraclePriceUSD}`
+                      );
+                    }
                   } else {
                     priceError = "Price oracle returned zero or invalid value";
+                    console.warn(
+                      `[Genesis Price] Market ${id}: Oracle returned zero or invalid value`
+                    );
                   }
                 } else {
                   // Check if there was an error reading the oracle
@@ -1639,12 +1815,25 @@ export default function GenesisIndexPage() {
                     priceError = `Failed to read price oracle: ${
                       priceAnswerResult.error?.message || "Unknown error"
                     }`;
+                    console.warn(
+                      `[Genesis Price] Market ${id}: Oracle read failed:`,
+                      priceAnswerResult.error
+                    );
                   } else if (priceDecimalsResult?.status === "failure") {
                     priceError = `Failed to read price oracle decimals: ${
                       priceDecimalsResult.error?.message || "Unknown error"
                     }`;
+                    console.warn(
+                      `[Genesis Price] Market ${id}: Oracle decimals read failed:`,
+                      priceDecimalsResult.error
+                    );
                   } else {
                     priceError = "Price oracle not available";
+                    console.warn(
+                      `[Genesis Price] Market ${id}: Oracle not available, CoinGecko loading: ${coinGeckoLoading}, CoinGecko error: ${
+                        coinGeckoError ? String(coinGeckoError) : "none"
+                      }`
+                    );
                   }
                 }
 
@@ -1663,13 +1852,59 @@ export default function GenesisIndexPage() {
                   collateralSymbol.toLowerCase() === "wsteth";
                 // Note: We don't include fxsave here because we prioritize hardcoded fxUSD price + rate
 
-                // Don't multiply by wrapped rate if CoinGecko already returns wrapped token price
+                // For wstETH: If CoinGecko is still loading, use oracle price with wrapped rate
+                // If CoinGecko has finished and returned a price, use that (it's already wrapped)
+                // Otherwise, apply wrapped rate to underlying price
+                const isWstETH = collateralSymbol.toLowerCase() === "wsteth";
+
+                // Fallback: Use stETH price from CoinGecko if wstETH price isn't available yet
+                // This provides immediate price while wstETH-specific price is loading
+                const stETHPrice =
+                  coinGeckoPrices["lido-staked-ethereum-steth"];
+                const useStETHFallback =
+                  isWstETH &&
+                  !coinGeckoIsWrappedToken &&
+                  underlyingPriceUSD === 0 &&
+                  stETHPrice &&
+                  stETHPrice > 0 &&
+                  wrappedRate &&
+                  wrappedRate > 0n;
+
                 const wrappedTokenPriceUSD =
                   coinGeckoIsWrappedToken && underlyingPriceUSD > 0
                     ? underlyingPriceUSD // CoinGecko already returns wrapped token price (e.g., wstETH)
+                    : useStETHFallback
+                    ? stETHPrice * (Number(wrappedRate) / 1e18) // Use stETH price * wrapped rate as fallback while wstETH loads
+                    : isWstETH &&
+                      coinGeckoLoading &&
+                      marketCoinGeckoId &&
+                      underlyingPriceUSD > 0 &&
+                      wrappedRate
+                    ? underlyingPriceUSD * (Number(wrappedRate) / 1e18) // While CoinGecko loads, use oracle * wrapped rate for wstETH
                     : wrappedRate && underlyingPriceUSD > 0
                     ? underlyingPriceUSD * (Number(wrappedRate) / 1e18) // Multiply underlying by rate (e.g., fxUSD -> fxSAVE)
                     : underlyingPriceUSD; // Fallback to underlying price if no rate available
+
+                console.log(
+                  `[Genesis Price] Market ${id} wrapped token price calculation:`,
+                  {
+                    isWstETH,
+                    coinGeckoIsWrappedToken,
+                    underlyingPriceUSD,
+                    coinGeckoLoading,
+                    stETHPrice,
+                    useStETHFallback,
+                    wrappedRate: wrappedRate?.toString(),
+                    wrappedTokenPriceUSD,
+                    source: coinGeckoIsWrappedToken
+                      ? "CoinGecko (wrapped)"
+                      : useStETHFallback
+                      ? "stETH fallback"
+                      : underlyingPriceUSD > 0
+                      ? "Oracle"
+                      : "None (0)",
+                  }
+                );
 
                 // Use wrapped token price for USD calculations since deposits are in wrapped collateral
                 const collateralPriceUSD = wrappedTokenPriceUSD;
