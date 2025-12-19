@@ -1096,8 +1096,9 @@ export default function GenesisIndexPage() {
             return contractSaysEnded !== true;
           });
 
+          // TEMPORARY: Always show banner for testing (remove this condition later)
           // Only show banner if there's an active bonus and active genesis
-          if (!hasActiveBonus || !hasActiveGenesis) return null;
+          // if (!hasActiveBonus || !hasActiveGenesis) return null;
 
           // Get threshold info from first market with active bonus
           const activeBonusMarket = allMarketBonusStatus?.find((status) => {
