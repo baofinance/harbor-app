@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAccount } from "wagmi";
 import { formatEther } from "viem";
-import { getGraphUrl } from "@/config/graph";
+import { getGraphUrl, getGraphHeaders } from "@/config/graph";
 
 // GraphQL query for Harbor Marks (v0.0.5 schema)
 // Note: UserHarborMarks id format is {genesisAddress}-{userAddress}
@@ -187,9 +187,7 @@ export function useHarborMarks({
 
       const response = await fetch(graphUrl, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: getGraphHeaders(),
         body: JSON.stringify({
           query: HARBOR_MARKS_QUERY,
           variables: {
@@ -246,9 +244,7 @@ export function useAllHarborMarks(genesisAddresses: string[]) {
         
         return fetch(graphUrl, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: getGraphHeaders(),
           body: JSON.stringify({
             query: HARBOR_MARKS_QUERY,
             variables: {

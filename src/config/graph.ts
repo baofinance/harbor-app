@@ -58,6 +58,24 @@ export const getGraphUrl = (): string => {
   return process.env.NEXT_PUBLIC_GRAPH_URL || GRAPH_CONFIG.marks.url;
 };
 
+// Get headers for GraphQL requests (includes API key if needed)
+export const getGraphHeaders = (): Record<string, string> => {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  
+  // If using Graph Network gateway, add API key in Authorization header
+  const graphUrl = getGraphUrl();
+  const graphApiKey = process.env.NEXT_PUBLIC_GRAPH_API_KEY || GRAPH_API_KEY;
+  
+  // Check if URL is a Graph Network gateway (requires auth)
+  if (graphUrl.includes("gateway.thegraph.com") || graphUrl.includes("gateway-arbitrum.network.thegraph.com")) {
+    headers["Authorization"] = `Bearer ${graphApiKey}`;
+  }
+  
+  return headers;
+};
+
 // Get the Sail Price Graph URL (for price history and PnL)
 export const getSailPriceGraphUrl = (): string => {
   return process.env.NEXT_PUBLIC_SAIL_PRICE_GRAPH_URL || GRAPH_CONFIG.sailPrice.url;

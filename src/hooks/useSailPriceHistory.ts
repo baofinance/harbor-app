@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { getSailPriceGraphUrl } from "@/config/graph";
+import { getSailPriceGraphUrl, getGraphHeaders } from "@/config/graph";
 
 // GraphQL query for sail token price history
 const PRICE_HISTORY_QUERY = `
@@ -90,9 +90,7 @@ export function useSailPriceHistory({
 
       const response = await fetch(graphUrl, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: getGraphHeaders(),
         body: JSON.stringify({
           query: PRICE_HISTORY_QUERY,
           variables: {

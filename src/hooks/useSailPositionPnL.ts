@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useAccount } from "wagmi";
-import { getSailPriceGraphUrl } from "@/config/graph";
+import { getSailPriceGraphUrl, getGraphHeaders } from "@/config/graph";
 
 // GraphQL query for user position and PnL
 const USER_POSITION_QUERY = `
@@ -144,9 +144,7 @@ export function useSailPositionPnL({
 
       const response = await fetch(graphUrl, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: getGraphHeaders(),
         body: JSON.stringify({
           query: USER_POSITION_QUERY,
           variables: {

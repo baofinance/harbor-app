@@ -9,7 +9,7 @@ import {
  WalletIcon,
 } from "@heroicons/react/24/outline";
 import { markets } from "@/config/markets";
-import { getGraphUrl } from "@/config/graph";
+import { getGraphUrl, getGraphHeaders } from "@/config/graph";
 import { useAnchorMarks } from "@/hooks/useAnchorMarks";
 import {
  calculateEstimatedMarks,
@@ -328,7 +328,7 @@ export default function LedgerMarksLeaderboard() {
  // First, get all deposits to find unique user-contract pairs
  const depositsResponse = await fetch(graphUrl, {
  method:"POST",
- headers: {"Content-Type":"application/json" },
+ headers: getGraphHeaders(),
  body: JSON.stringify({
  query: `
  query GetUserDeposits($userAddress: Bytes!) {
@@ -367,7 +367,7 @@ export default function LedgerMarksLeaderboard() {
  const id = `${contractAddr}-${address.toLowerCase()}`;
  const marksResponse = await fetch(graphUrl, {
  method:"POST",
- headers: {"Content-Type":"application/json" },
+ headers: getGraphHeaders(),
  body: JSON.stringify({
  query: `
  query GetUserMarks($id: ID!) {

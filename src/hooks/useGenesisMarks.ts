@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { getGraphUrl } from "@/config/graph";
+import { getGraphUrl, getGraphHeaders } from "@/config/graph";
 import { POLLING_INTERVALS } from "@/config/polling";
 
 type UserHarborMarks = {
@@ -23,7 +23,7 @@ export function useGenesisMarks(address?: string) {
       // Get all deposits for the user to discover relevant contracts
       const depositsResponse = await fetch(graphUrl, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getGraphHeaders(),
         body: JSON.stringify({
           query: `
             query GetUserDeposits($userAddress: Bytes!) {
@@ -62,7 +62,7 @@ export function useGenesisMarks(address?: string) {
           const id = `${contractAddr}-${address.toLowerCase()}`;
           const marksResponse = await fetch(graphUrl, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: getGraphHeaders(),
             body: JSON.stringify({
               query: `
                 query GetUserMarks($id: ID!) {

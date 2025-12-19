@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAccount, usePublicClient } from "wagmi";
 import { formatEther } from "viem";
-import { getGraphUrl } from "@/config/graph";
+import { getGraphUrl, getGraphHeaders } from "@/config/graph";
 import { useState, useEffect, useMemo } from "react";
 
 // GraphQL query for Anchor Ledger Marks (Ha Tokens + Stability Pools + Sail Tokens)
@@ -219,9 +219,7 @@ export function useAnchorLedgerMarks({
 
       const response = await fetch(graphUrl, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: getGraphHeaders(),
         body: JSON.stringify(requestBody),
       });
 
@@ -305,7 +303,7 @@ export function useAnchorLedgerMarks({
           
           const testResponse = await fetch(graphUrl, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: getGraphHeaders(),
             body: JSON.stringify({ query: testQuery }),
           });
           
