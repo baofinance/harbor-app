@@ -924,62 +924,10 @@ export default function GenesisIndexPage() {
       <main className="container mx-auto px-4 sm:px-10 pb-6">
         {/* Header */}
         <div className="mb-2">
-          {/* Title Row with Early Bonus Banner and Social Buttons */}
+          {/* Title Row with Social Buttons */}
           <div className="p-4 flex items-center justify-between mb-0">
-            {/* Early Deposit Bonus Banner - Compact */}
-            {(() => {
-              // Check if any market has an active early deposit bonus (threshold not reached)
-              const hasActiveBonus = allMarketBonusStatus?.some((status) => {
-                const bonusData = status.data;
-                return bonusData && !bonusData.thresholdReached;
-              });
-
-              // Check if any genesis is still active (not ended)
-              const hasActiveGenesis = genesisMarkets.some(([_, mkt], mi) => {
-                const baseOffset = mi * (isConnected ? 3 : 1);
-                const contractSaysEnded = reads?.[baseOffset]?.result as
-                  | boolean
-                  | undefined;
-                return contractSaysEnded !== true;
-              });
-
-              // TEMPORARY: Always show banner for testing (remove this condition later)
-              // Only show banner if there's an active bonus and active genesis
-              // if (!hasActiveBonus || !hasActiveGenesis) return null;
-
-              // Get threshold info from first market with active bonus, or fallback to any market
-              const activeBonusMarket = allMarketBonusStatus?.find((status) => {
-                const bonusData = status.data;
-                return bonusData && !bonusData.thresholdReached;
-              }) || allMarketBonusStatus?.[0]; // Fallback to first market if all thresholds reached
-              const thresholdToken = activeBonusMarket?.data?.thresholdToken || "fxUSD";
-              const thresholdAmount = activeBonusMarket?.data?.thresholdAmount
-                ? Number(activeBonusMarket.data.thresholdAmount).toLocaleString(undefined, {
-                    maximumFractionDigits: 0,
-                  })
-                : "250,000";
-
-              return (
-                <div className="bg-gradient-to-r from-[#FF8A7A]/20 to-[#FF8A7A]/10 border border-[#FF8A7A]/30 rounded-lg px-3 py-2 max-w-[280px]">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-[#FF8A7A] text-sm">🎁</span>
-                    <p className="text-[#FF8A7A] font-bold text-xs">
-                      Early Deposit Bonus
-                    </p>
-                    <span className="bg-[#FF8A7A] text-white text-[10px] font-semibold px-1.5 py-0.5 rounded">
-                      LIMITED
-                    </span>
-                  </div>
-                  <p className="text-white/90 text-[10px] leading-tight mb-1">
-                    First {thresholdAmount} {thresholdToken} earn <span className="font-semibold text-white">100 extra marks/$</span> at genesis end
-                  </p>
-                  <p className="text-white/70 text-[9px] leading-tight">
-                    Withdrawals before end forfeit bonus
-                  </p>
-                </div>
-              );
-            })()}
-            <h1 className="font-bold font-mono text-white text-7xl text-center flex-1">
+            <div className="w-[120px]" /> {/* Spacer for centering */}
+            <h1 className="font-bold font-mono text-white text-7xl text-center">
               Maiden Voyage
             </h1>
             {/* Compact Social Buttons */}
@@ -1125,6 +1073,66 @@ export default function GenesisIndexPage() {
                 </div>
               </div>
             </div>
+
+            {/* Early Deposit Bonus Box */}
+            {(() => {
+              // Check if any market has an active early deposit bonus (threshold not reached)
+              const hasActiveBonus = allMarketBonusStatus?.some((status) => {
+                const bonusData = status.data;
+                return bonusData && !bonusData.thresholdReached;
+              });
+
+              // Check if any genesis is still active (not ended)
+              const hasActiveGenesis = genesisMarkets.some(([_, mkt], mi) => {
+                const baseOffset = mi * (isConnected ? 3 : 1);
+                const contractSaysEnded = reads?.[baseOffset]?.result as
+                  | boolean
+                  | undefined;
+                return contractSaysEnded !== true;
+              });
+
+              // TEMPORARY: Always show banner for testing (remove this condition later)
+              // Only show banner if there's an active bonus and active genesis
+              // if (!hasActiveBonus || !hasActiveGenesis) return null;
+
+              // Get threshold info from first market with active bonus, or fallback to any market
+              const activeBonusMarket = allMarketBonusStatus?.find((status) => {
+                const bonusData = status.data;
+                return bonusData && !bonusData.thresholdReached;
+              }) || allMarketBonusStatus?.[0]; // Fallback to first market if all thresholds reached
+              const thresholdToken = activeBonusMarket?.data?.thresholdToken || "fxUSD";
+              const thresholdAmount = activeBonusMarket?.data?.thresholdAmount
+                ? Number(activeBonusMarket.data.thresholdAmount).toLocaleString(undefined, {
+                    maximumFractionDigits: 0,
+                  })
+                : "250,000";
+
+              return (
+                <div className="bg-gradient-to-r from-[#FF8A7A]/20 to-[#FF8A7A]/10 border border-[#FF8A7A]/30 p-4 sm:p-3 md:p-4 flex flex-col">
+                  <div className="flex items-center justify-center mb-2">
+                    <GiftIcon className="w-5 h-5 sm:w-4 sm:h-4 md:w-6 md:h-6 text-[#FF8A7A] mr-1.5 sm:mr-1 md:mr-2 flex-shrink-0" />
+                    <h2 className="font-bold text-[#FF8A7A] text-lg sm:text-sm md:text-base lg:text-lg text-center">
+                      Early Bonus
+                    </h2>
+                  </div>
+                  <div className="flex-1 flex flex-col justify-between">
+                    <p className="text-sm sm:text-xs md:text-sm text-white/90 text-center mb-2">
+                      First {thresholdAmount} {thresholdToken} earn <span className="font-semibold text-white">100 extra marks/$</span> at genesis end
+                    </p>
+                    <div className="text-center">
+                      <div className="flex items-center justify-center mb-1">
+                        <span className="inline-flex items-center gap-0.5 sm:gap-0.5 md:gap-1 px-1.5 sm:px-1 md:px-2 py-1 bg-[#FF8A7A] text-white text-xs sm:text-[10px] md:text-xs font-semibold w-fit">
+                          LIMITED TIME
+                        </span>
+                      </div>
+                      <p className="text-xs sm:text-[10px] md:text-xs text-white/70 text-center">
+                        Withdrawals forfeit bonus
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </div>
 
