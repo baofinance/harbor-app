@@ -26,6 +26,9 @@ const HARBOR_MARKS_QUERY = `
       genesisStartDate
       genesisEndDate
       genesisEnded
+      qualifiesForEarlyBonus
+      earlyBonusMarks
+      earlyBonusEligibleDepositUSD
       lastUpdated
     }
     
@@ -96,6 +99,22 @@ const HARBOR_MARKS_QUERY = `
       amountUSD
       timestamp
       marksForfeited
+    }
+  }
+`;
+
+// Query for market bonus status (early deposit bonus tracking)
+const MARKET_BONUS_STATUS_QUERY = `
+  query GetMarketBonusStatus($contractAddress: Bytes!) {
+    marketBonusStatus(id: $contractAddress) {
+      id
+      contractAddress
+      thresholdReached
+      thresholdReachedAt
+      cumulativeDeposits
+      thresholdAmount
+      thresholdToken
+      lastUpdated
     }
   }
 `;
@@ -283,6 +302,51 @@ export function useAllHarborMarks(genesisAddresses: string[]) {
     refetchOnWindowFocus: false, // Don't refetch when user returns to tab
     retry: false, // Don't retry on failure to avoid hammering rate-limited API
     throwOnError: false, // Don't throw errors - allow page to load with empty data
+  });
+}
+
+// Hook to get market bonus status (early deposit bonus tracking)
+export function useMarketBonusStatus(genesisAddress: string | undefined) {
+  const graphUrl = getGraphUrl();
+
+  return useQuery({
+    queryKey: ["marketBonusStatus", genesisAddress],
+    queryFn: async () => {
+      if (!genesisAddress) {
+        return null;
+      }
+
+      const response = await fetch(graphUrl, {
+        method: "POST",
+        headers: getGraphHeaders(),
+        body: JSON.stringify({
+          query: MARKET_BONUS_STATUS_QUERY,
+          variables: {
+            contractAddress: genesisAddress.toLowerCase(),
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        console.warn(`[useMarketBonusStatus] Query failed for ${genesisAddress}`);
+        return null;
+      }
+
+      const result = await response.json();
+
+      if (result.errors) {
+        console.warn(`[useMarketBonusStatus] GraphQL errors for ${genesisAddress}`);
+        return null;
+      }
+
+      return result.data?.marketBonusStatus || null;
+    },
+    enabled: !!genesisAddress,
+    refetchInterval: 30000, // Refetch every 30 seconds to show real-time progress
+    staleTime: 20000,
+    refetchOnWindowFocus: false,
+    retry: false,
+    throwOnError: false,
   });
 }
 
