@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState, useEffect } from "react";
 import Head from "next/head";
-import { useAccount, useContractReads } from "wagmi";
+import { useAccount, useContractReads, useContractRead } from "wagmi";
 import { formatEther } from "viem";
 import { markets } from "@/config/markets";
 import { useAnchorLedgerMarks } from "@/hooks/useAnchorLedgerMarks";
@@ -22,8 +22,13 @@ import {
 import Image from "next/image";
 import PriceChart from "@/components/PriceChart";
 import InfoTooltip from "@/components/InfoTooltip";
+import SimpleTooltip from "@/components/SimpleTooltip";
+import { getLogoPath } from "@/components/shared";
 import { SailManageModal } from "@/components/SailManageModal";
 import { useSailPositionPnL } from "@/hooks/useSailPositionPnL";
+import { useMultipleTokenPrices } from "@/hooks/useTokenPrices";
+import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
+import { useCollateralPrice } from "@/hooks/useCollateralPrice";
 
 // PnL is now fetched from subgraph (useSailPositionPnL hook)
 
@@ -61,6 +66,52 @@ const minterABI = [
     inputs: [],
     name: "collateralTokenBalance",
     outputs: [{ type: "uint256", name: "" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "config",
+    outputs: [
+      {
+        components: [
+          {
+            components: [
+              { name: "collateralRatioBandUpperBounds", type: "uint256[]" },
+              { name: "incentiveRates", type: "uint256[]" },
+            ],
+            name: "mintPeggedIncentiveConfig",
+            type: "tuple",
+          },
+          {
+            components: [
+              { name: "collateralRatioBandUpperBounds", type: "uint256[]" },
+              { name: "incentiveRates", type: "uint256[]" },
+            ],
+            name: "redeemPeggedIncentiveConfig",
+            type: "tuple",
+          },
+          {
+            components: [
+              { name: "collateralRatioBandUpperBounds", type: "uint256[]" },
+              { name: "incentiveRates", type: "uint256[]" },
+            ],
+            name: "mintLeveragedIncentiveConfig",
+            type: "tuple",
+          },
+          {
+            components: [
+              { name: "collateralRatioBandUpperBounds", type: "uint256[]" },
+              { name: "incentiveRates", type: "uint256[]" },
+            ],
+            name: "redeemLeveragedIncentiveConfig",
+            type: "tuple",
+          },
+        ],
+        name: "",
+        type: "tuple",
+      },
+    ],
     stateMutability: "view",
     type: "function",
   },
@@ -103,6 +154,7 @@ const erc20MetadataABI = [
 
 // IWrappedPriceOracle ABI - returns prices in 18 decimals
 // latestAnswer() returns (minUnderlyingPrice, maxUnderlyingPrice, minWrappedRate, maxWrappedRate)
+// getPrice() returns fxSAVE price in ETH (for fxUSD markets)
 const wrappedPriceOracleABI = [
   {
     inputs: [],
@@ -113,6 +165,13 @@ const wrappedPriceOracleABI = [
       { type: "uint256", name: "minWrappedRate" },
       { type: "uint256", name: "maxWrappedRate" },
     ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "getPrice",
+    outputs: [{ type: "uint256", name: "" }],
     stateMutability: "view",
     type: "function",
   },
@@ -267,6 +326,7 @@ function SailMarketRow({
   onToggleExpand,
   onManageClick,
   isConnected,
+  tokenPrices,
 }: {
   id: string;
   market: any;
@@ -279,6 +339,15 @@ function SailMarketRow({
   onToggleExpand: () => void;
   onManageClick: () => void;
   isConnected: boolean;
+  tokenPrices?: {
+    peggedBackingRatio: number;
+    peggedPriceUSD: number;
+    leveragedPriceUSD: number;
+    pegTargetUSD: number;
+    isDepegged: boolean;
+    isLoading: boolean;
+    error: boolean;
+  };
 }) {
   const { address } = useAccount();
 
@@ -295,10 +364,15 @@ function SailMarketRow({
   let oracleOffset = 4;
   let collateralPriceUSD: bigint | undefined;
   let wrappedRate: bigint | undefined;
+  let fxSAVEPriceInETH: bigint | undefined;
+  const collateralSymbol = market.collateral?.symbol?.toLowerCase() || "";
+  const isFxUSDMarket =
+    collateralSymbol === "fxusd" || collateralSymbol === "fxsave";
+
   if (hasOracle) {
     const oracleRead = reads?.[baseOffset + oracleOffset];
     const oracleResult = oracleRead?.result;
-    
+
     if (oracleResult !== undefined && oracleResult !== null) {
       if (Array.isArray(oracleResult)) {
         // latestAnswer returns [minUnderlyingPrice, maxUnderlyingPrice, minWrappedRate, maxWrappedRate]
@@ -316,60 +390,31 @@ function SailMarketRow({
         wrappedRate = BigInt("1000000000000000000");
       }
     }
+
+    // For fxUSD markets, also read getPrice() to get fxSAVE price in ETH
+    if (isFxUSDMarket) {
+      const getPriceRead = reads?.[baseOffset + oracleOffset + 1];
+      if (getPriceRead?.result !== undefined && getPriceRead?.result !== null) {
+        fxSAVEPriceInETH = getPriceRead.result as bigint;
+      }
+    }
   }
 
-  // Get token name and total supply (after oracle if it exists)
-  const tokenOffset = hasOracle ? 5 : 4;
-  const tokenName = hasToken ? reads?.[baseOffset + tokenOffset]?.result as string | undefined : undefined;
-  const totalSupply = hasToken ? reads?.[baseOffset + tokenOffset + 1]?.result as bigint | undefined : undefined;
+  // Get token name and total supply (after oracle if it exists, +1 if fxUSD market for getPrice)
+  const tokenOffset = hasOracle ? (isFxUSDMarket ? 6 : 5) : 4;
+  const tokenName = hasToken
+    ? (reads?.[baseOffset + tokenOffset]?.result as string | undefined)
+    : undefined;
+  const totalSupply = hasToken
+    ? (reads?.[baseOffset + tokenOffset + 1]?.result as bigint | undefined)
+    : undefined;
   const shortSide = parseShortSide(tokenName, market);
 
-  // Calculate current value in USD using collateral value and collateral ratio
-  // HS token value = Total Collateral Value - HA token claims
-  // HA claims = Collateral Value / Collateral Ratio
-  // HS value = Collateral Value * (1 - 1/CR)
-  const collateralSymbol = market.collateral?.symbol?.toLowerCase() || "";
-  const isFxUSDMarket = collateralSymbol === "fxusd" || collateralSymbol === "fxsave";
-  
+  // Calculate current value in USD using token price from hook
   let currentValueUSD: number | undefined;
-  if (
-    userDeposit &&
-    collateralValue &&
-    collateralRatio &&
-    collateralPriceUSD &&
-    totalSupply &&
-    totalSupply > 0n
-  ) {
-    // Calculate total collateral value in USD
-    const collateralValueNum = Number(collateralValue) / 1e18;
-    const usdNum = Number(collateralPriceUSD) / 1e18;
-    
-    let totalCollateralUSD: number;
-    if (isFxUSDMarket) {
-      // For fxUSD markets: collateralValue is already in underlying (fxUSD)
-      // No need to multiply by wrappedRate
-      totalCollateralUSD = collateralValueNum * usdNum;
-    } else {
-      // For wstETH markets: collateralValue is in wrapped collateral (wstETH)
-      // Need to convert to underlying using wrappedRate
-      const rate = wrappedRate || BigInt("1000000000000000000");
-      const rateNum = Number(rate) / 1e18;
-      totalCollateralUSD = collateralValueNum * usdNum * rateNum;
-    }
-
-    // Calculate HS token total value
-    // Collateral ratio is in 18 decimals (e.g., 1.5e18 = 150%)
-    const crNum = Number(collateralRatio) / 1e18;
-    const haClaimsUSD = totalCollateralUSD / crNum;
-    const hsValueTotalUSD = totalCollateralUSD - haClaimsUSD;
-
-    // Calculate HS price per token
-    const totalSupplyNum = Number(totalSupply) / 1e18;
-    const hsPriceUSD = hsValueTotalUSD / totalSupplyNum;
-
-    // Calculate user's position value
+  if (userDeposit && tokenPrices && tokenPrices.leveragedPriceUSD > 0) {
     const balanceNum = Number(userDeposit) / 1e18;
-    currentValueUSD = balanceNum * hsPriceUSD;
+    currentValueUSD = balanceNum * tokenPrices.leveragedPriceUSD;
   }
 
   // Get leveraged token address for PnL
@@ -380,9 +425,7 @@ function SailMarketRow({
   // Calculate PnL from subgraph - uses pre-computed cost basis
   const pnlSubgraph = useSailPositionPnL({
     tokenAddress: leveragedTokenAddress || "",
-    currentTokenPrice: currentValueUSD && userDeposit && userDeposit > 0n 
-      ? currentValueUSD / (Number(userDeposit) / 1e18)
-      : undefined,
+    currentTokenPrice: tokenPrices?.leveragedPriceUSD,
     enabled: !!leveragedTokenAddress && !!userDeposit && userDeposit > 0n,
   });
 
@@ -410,8 +453,17 @@ function SailMarketRow({
       >
         <div className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr] gap-4 items-center text-sm">
           <div className="whitespace-nowrap min-w-0 overflow-hidden">
-            <div className="flex items-center justify-center gap-2">
-              <span className="text-[#1E4775] font-medium">
+            <div className="flex items-center justify-center gap-1.5">
+              <SimpleTooltip label={market.leveragedToken.symbol}>
+                <Image
+                  src={getLogoPath(market.leveragedToken.symbol)}
+                  alt={market.leveragedToken.symbol}
+                  width={20}
+                  height={20}
+                  className="flex-shrink-0 cursor-help"
+                />
+              </SimpleTooltip>
+              <span className="text-[#1E4775] font-medium text-sm lg:text-base">
                 Short {shortSide}
               </span>
               {isExpanded ? (
@@ -419,9 +471,6 @@ function SailMarketRow({
               ) : (
                 <ChevronDownIcon className="w-5 h-5 text-[#1E4775] flex-shrink-0" />
               )}
-            </div>
-            <div className="text-xs text-[#1E4775]/50 font-mono text-center mt-0.5">
-              {market.leveragedToken.symbol}
             </div>
           </div>
           <div className="text-center min-w-0">
@@ -449,11 +498,6 @@ function SailMarketRow({
                 {pnlFormatted.text} (
                 {pnlData.unrealizedPnLPercent >= 0 ? "+" : ""}
                 {pnlData.unrealizedPnLPercent.toFixed(1)}%)
-              </div>
-            )}
-            {userDeposit && pnlData.isLoading && (
-              <div className="text-[10px] text-[#1E4775]/50">
-                Loading PnL...
               </div>
             )}
           </div>
@@ -487,9 +531,11 @@ function SailMarketRow({
           totalSupply={totalSupply}
           collateralPriceUSD={collateralPriceUSD}
           wrappedRate={wrappedRate}
+          fxSAVEPriceInETH={fxSAVEPriceInETH}
           pnlData={pnlData}
           currentValueUSD={currentValueUSD}
           userDeposit={userDeposit}
+          tokenPrices={tokenPrices}
         />
       )}
     </div>
@@ -506,9 +552,11 @@ function SailMarketExpandedView({
   totalSupply,
   collateralPriceUSD,
   wrappedRate,
+  fxSAVEPriceInETH,
   pnlData,
   currentValueUSD,
   userDeposit,
+  tokenPrices,
 }: {
   marketId: string;
   market: any;
@@ -519,31 +567,246 @@ function SailMarketExpandedView({
   totalSupply: bigint | undefined;
   collateralPriceUSD: bigint | undefined;
   wrappedRate: bigint | undefined;
+  fxSAVEPriceInETH?: bigint;
   pnlData?: PnLData;
   currentValueUSD?: number;
   userDeposit?: bigint;
+  tokenPrices?: {
+    peggedBackingRatio: number;
+    peggedPriceUSD: number;
+    leveragedPriceUSD: number;
+    pegTargetUSD: number;
+    isDepegged: boolean;
+    isLoading: boolean;
+    error: boolean;
+  };
 }) {
-  // Detect if this is an fxUSD market (collateralValue is in underlying, not wrapped)
+  // Get ETH price from CoinGecko (same as anchor page)
+  const { price: ethPrice, isLoading: isEthPriceLoading } =
+    useCoinGeckoPrice("ethereum");
+
+  // Get CoinGecko prices for fxUSD markets fallback
+  const { price: fxSAVEPrice, isLoading: isFxSAVEPriceLoading } =
+    useCoinGeckoPrice("fx-saving-usd");
+  const { price: usdcPrice, isLoading: isUSDCPriceLoading } =
+    useCoinGeckoPrice("usd-coin");
+
+  // Get wstETH price from CoinGecko for fallback
+  const { price: wstETHPrice, isLoading: isWstETHPriceLoading } =
+    useCoinGeckoPrice("wrapped-steth");
+
+  // Check if any CoinGecko prices are still loading
+  const isCoinGeckoLoading =
+    isEthPriceLoading ||
+    isFxSAVEPriceLoading ||
+    isUSDCPriceLoading ||
+    isWstETHPriceLoading;
+
+  // Get collateral price using the hook
+  const priceOracleAddress = (market as any).addresses?.collateralPrice as
+    | `0x${string}`
+    | undefined;
+  const {
+    priceUSD: collateralPriceUSDFromHook,
+    maxRate: wrappedRateFromHook,
+    isLoading: isCollateralPriceLoading,
+  } = useCollateralPrice(priceOracleAddress);
+
+  // Fetch minter config and rebalanceThreshold to get min collateral ratio
+  const minterAddress = (market as any).addresses?.minter as
+    | `0x${string}`
+    | undefined;
+  const stabilityPoolManagerAddress = (market as any).addresses
+    ?.stabilityPoolManager as `0x${string}` | undefined;
+
+  const { data: minterConfigData } = useContractRead({
+    address: minterAddress,
+    abi: minterABI,
+    functionName: "config",
+    query: {
+      enabled: !!minterAddress,
+    },
+  });
+
+  // Import STABILITY_POOL_MANAGER_ABI dynamically to avoid adding to top-level imports
+  const stabilityPoolManagerABI = [
+    {
+      inputs: [],
+      name: "rebalanceThreshold",
+      outputs: [{ type: "uint256", name: "" }],
+      stateMutability: "view",
+      type: "function",
+    },
+  ] as const;
+
+  const { data: rebalanceThresholdData } = useContractRead({
+    address: stabilityPoolManagerAddress,
+    abi: stabilityPoolManagerABI,
+    functionName: "rebalanceThreshold",
+    query: {
+      enabled: !!stabilityPoolManagerAddress,
+    },
+  });
+
+  // Calculate min collateral ratio and max leverage (same method as anchor page)
+  const minCollateralRatio = useMemo(() => {
+    // First, try to get from rebalanceThreshold (preferred method)
+    if (
+      rebalanceThresholdData !== undefined &&
+      rebalanceThresholdData !== null
+    ) {
+      return rebalanceThresholdData as bigint;
+    }
+
+    // Fallback: Calculate from config as the lowest first boundary across all incentive configs
+    if (!minterConfigData) return undefined;
+    const config = minterConfigData as any;
+    const allFirstBounds: bigint[] = [];
+
+    if (
+      config?.mintPeggedIncentiveConfig?.collateralRatioBandUpperBounds?.[0]
+    ) {
+      allFirstBounds.push(
+        config.mintPeggedIncentiveConfig
+          .collateralRatioBandUpperBounds[0] as bigint
+      );
+    }
+    if (
+      config?.redeemPeggedIncentiveConfig?.collateralRatioBandUpperBounds?.[0]
+    ) {
+      allFirstBounds.push(
+        config.redeemPeggedIncentiveConfig
+          .collateralRatioBandUpperBounds[0] as bigint
+      );
+    }
+    if (
+      config?.mintLeveragedIncentiveConfig?.collateralRatioBandUpperBounds?.[0]
+    ) {
+      allFirstBounds.push(
+        config.mintLeveragedIncentiveConfig
+          .collateralRatioBandUpperBounds[0] as bigint
+      );
+    }
+    if (
+      config?.redeemLeveragedIncentiveConfig
+        ?.collateralRatioBandUpperBounds?.[0]
+    ) {
+      allFirstBounds.push(
+        config.redeemLeveragedIncentiveConfig
+          .collateralRatioBandUpperBounds[0] as bigint
+      );
+    }
+
+    if (allFirstBounds.length > 0) {
+      // Find the minimum (lowest) first boundary
+      return allFirstBounds.reduce((min, current) =>
+        current < min ? current : min
+      );
+    }
+    return undefined;
+  }, [rebalanceThresholdData, minterConfigData]);
+
+  // Calculate max leverage: leverage = collateral ratio / (collateral ratio - 1)
+  // Example: 130% CR = 1.3 means $130 collateral, $100 debt, $30 leveraged tokens
+  // Leverage = $130 / $30 = 1.3 / 0.3 = 4.33x
+  // Collateral ratio is in 18 decimals (e.g., 1.3e18 = 130% = 1.3)
+  const maxLeverage = useMemo(() => {
+    if (!minCollateralRatio) return undefined;
+    // Convert from 18 decimals to decimal (e.g., 1.3e18 -> 1.3)
+    const minCR = Number(minCollateralRatio) / 1e18;
+    // Leverage = CR / (CR - 1)
+    // For 130% (1.3): 1.3 / (1.3 - 1) = 1.3 / 0.3 = 4.33x
+    return minCR / (minCR - 1);
+  }, [minCollateralRatio]);
+
+  // Get peg target and underlying token for description
+  const pegTarget = (market as any).pegTarget || "USD";
+  const underlyingToken =
+    (market as any).collateral?.underlyingSymbol ||
+    (market as any).collateral?.symbol ||
+    "USD";
+
+  // Calculate TVL in USD using collateral value and price from hook
+  // Match the anchor page calculation logic
   const collateralSymbol = market.collateral?.symbol?.toLowerCase() || "";
-  const isFxUSDMarket = collateralSymbol === "fxusd" || collateralSymbol === "fxsave";
-  
-  // Calculate TVL in USD
+  const isFxUSDMarket =
+    collateralSymbol === "fxusd" || collateralSymbol === "fxsave";
+
   let tvlUSD: number | undefined;
-  if (collateralValue && collateralPriceUSD) {
-    const valueNum = Number(collateralValue) / 1e18;
-    const priceNum = Number(collateralPriceUSD) / 1e18;
-    
-    if (isFxUSDMarket) {
-      // For fxUSD markets: collateralValue is already in underlying (fxUSD)
-      // collateralPriceUSD is USD per underlying (fxUSD = $1.00)
-      // No need to multiply by wrappedRate
-      tvlUSD = valueNum * priceNum;
-    } else {
-      // For wstETH markets: collateralValue is in wrapped collateral (wstETH)
-      // Need to convert to underlying (stETH) using wrappedRate
-      const rate = wrappedRate || BigInt("1000000000000000000");
-      const rateNum = Number(rate) / 1e18;
-      tvlUSD = valueNum * priceNum * rateNum;
+  if (collateralValue) {
+    // collateralValue is in underlying tokens (fxUSD for fxUSD markets, stETH for wstETH markets)
+    // Need to convert to wrapped tokens (fxSAVE for fxUSD markets, wstETH for wstETH markets)
+    const collateralTokensUnderlying = Number(collateralValue) / 1e18;
+    const wrappedRateNum =
+      wrappedRateFromHook !== undefined
+        ? Number(wrappedRateFromHook) / 1e18
+        : 1.0; // Default 1:1 if no rate
+
+    if (isFxUSDMarket && collateralTokensUnderlying > 0) {
+      // For fxUSD markets: collateralValue is in fxUSD (underlying)
+      // Convert to fxSAVE (wrapped) by multiplying by wrappedRate
+      // wrappedRate = fxSAVE/fxUSD rate, so fxSAVE = fxUSD * rate
+      const fxSAVEBalance = collateralTokensUnderlying * wrappedRateNum;
+
+      // Calculate fxSAVE price in USD
+      // Priority: getPrice() * ETH price > CoinGecko fxSAVE price > USDC price > $1.00
+      // Only calculate when all price sources are loaded
+      let fxSAVEPriceUSD = 0;
+      if (!isCollateralPriceLoading && !isCoinGeckoLoading) {
+        if (fxSAVEPriceInETH && ethPrice) {
+          // fxSAVE price in ETH (from getPrice())
+          const fxSAVEPriceInETHNum = Number(fxSAVEPriceInETH) / 1e18;
+          // ETH price in USD (from CoinGecko)
+          const ethPriceUSD = ethPrice;
+          // fxSAVE price in USD = fxSAVE price in ETH * ETH price in USD
+          fxSAVEPriceUSD = fxSAVEPriceInETHNum * ethPriceUSD;
+        } else if (fxSAVEPrice) {
+          // Fallback to CoinGecko fxSAVE price (same as anchor page)
+          fxSAVEPriceUSD = fxSAVEPrice;
+        } else if (usdcPrice) {
+          // Fallback to USDC price
+          fxSAVEPriceUSD = usdcPrice;
+        } else {
+          // Final fallback to $1.00
+          fxSAVEPriceUSD = 1.0;
+        }
+      }
+
+      // Collateral USD = fxSAVE balance * fxSAVE price USD
+      // Only calculate if we have a valid price (not loading)
+      if (
+        fxSAVEPriceUSD > 0 &&
+        !isCollateralPriceLoading &&
+        !isCoinGeckoLoading
+      ) {
+        tvlUSD = fxSAVEBalance * fxSAVEPriceUSD;
+      }
+    } else if (!isFxUSDMarket && collateralTokensUnderlying > 0) {
+      // For wstETH markets: collateralValue is in underlying (stETH)
+      // Convert to wrapped (wstETH) by multiplying by wrappedRate
+      // Use price from hook if available and loaded, otherwise fallback to CoinGecko wstETH price
+      // Only calculate when all price sources are loaded
+      let effectivePrice = 0;
+      if (!isCollateralPriceLoading && !isCoinGeckoLoading) {
+        if (collateralPriceUSDFromHook > 0) {
+          // Use hook price (underlying stETH price, which equals wstETH price)
+          effectivePrice = collateralPriceUSDFromHook;
+        } else if (wstETHPrice) {
+          // Fallback to CoinGecko wstETH price (same as anchor page logic)
+          effectivePrice = wstETHPrice;
+        }
+      }
+
+      // Only calculate if we have a valid price (not loading)
+      if (
+        effectivePrice > 0 &&
+        !isCollateralPriceLoading &&
+        !isCoinGeckoLoading
+      ) {
+        // TVL = underlying tokens * wrappedRate * price
+        // This gives: (stETH * wrappedRate) * price = wstETH * wstETH_price
+        tvlUSD = collateralTokensUnderlying * wrappedRateNum * effectivePrice;
+      }
     }
   }
 
@@ -551,58 +814,31 @@ function SailMarketExpandedView({
   const totalPnL = pnlData ? pnlData.realizedPnL + pnlData.unrealizedPnL : 0;
   const totalPnLFormatted = totalPnL !== 0 ? formatPnL(totalPnL) : null;
 
-  const computedTokenPrice = useMemo(() => {
-    if (
-      !collateralValue ||
-      !leverageRatio ||
-      leverageRatio === 0n ||
-      !totalSupply ||
-      totalSupply === 0n
-    ) {
-      return undefined;
-    }
-    const oneEther = BigInt("1000000000000000000");
-    const totalLeveragedValue = (collateralValue * oneEther) / leverageRatio;
-    return totalLeveragedValue / totalSupply;
-  }, [collateralValue, leverageRatio, totalSupply]);
-
-  // Calculate token price in USD
-  const computedTokenPriceUSD = useMemo(() => {
-    if (!computedTokenPrice || !collateralPriceUSD) {
-      return undefined;
-    }
-    
-    // Detect if this is an fxUSD market
-    const collateralSymbol = market.collateral?.symbol?.toLowerCase() || "";
-    const isFxUSDMarket = collateralSymbol === "fxusd" || collateralSymbol === "fxsave";
-    
-    if (isFxUSDMarket) {
-      // For fxUSD markets: computedTokenPrice is already in underlying (fxUSD)
-      // collateralPriceUSD is USD per underlying (fxUSD = $1.00)
-      // Formula: tokenPrice * underlyingPriceUSD / 1e18
-      const oneE18 = BigInt("1000000000000000000");
-      const tokenPriceUSD_18dec = (computedTokenPrice * collateralPriceUSD) / oneE18;
-      return Number(tokenPriceUSD_18dec) / 1e18;
-    } else {
-      // For wstETH markets: computedTokenPrice is in wrapped collateral (wstETH)
-      // Need wrappedRate to convert to underlying
-      if (!wrappedRate) return undefined;
-      // Formula: tokenPrice * wrappedRate * underlyingPriceUSD / 1e36
-      const oneE18 = BigInt("1000000000000000000");
-      const oneE36 = oneE18 * oneE18;
-      const tokenPriceUSD_18dec =
-        (computedTokenPrice * wrappedRate * collateralPriceUSD) / oneE36;
-      return Number(tokenPriceUSD_18dec) / 1e18;
-    }
-  }, [computedTokenPrice, collateralPriceUSD, wrappedRate, market]);
+  // Use token price from hook instead of manual calculation
+  const computedTokenPriceUSD = tokenPrices?.leveragedPriceUSD;
 
   return (
-    <div className="bg-[rgb(var(--surface-selected-rgb))] p-4 border-t border-white/20">
+    <div className="bg-[rgb(var(--surface-selected-rgb))] p-4 border-t border-white/20 mt-2">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
         {/* Left: Market Info & PnL */}
         <div className="space-y-2 flex flex-col">
+          {/* Description Box */}
+          <div className="bg-white p-4">
+            <p className="text-xs text-[#1E4775]/80 leading-relaxed">
+              Composable short {pegTarget} against {underlyingToken} with
+              variable, rebalancing leverage and no funding fees.
+              {minCollateralRatio !== undefined && (
+                <>
+                  {" "}
+                  Rebalances at{" "}
+                  {((Number(minCollateralRatio) / 1e18) * 100).toFixed(0)}%
+                </>
+              )}
+            </p>
+          </div>
+
           {/* PnL Details - only show if user has position */}
-          {hasPosition && pnlData && !pnlData.isLoading && (
+          {hasPosition && pnlData && (
             <div className="bg-white p-4 flex-1">
               <h3 className="text-[#1E4775] font-semibold mb-3 text-xs">
                 Position Details
@@ -610,7 +846,7 @@ function SailMarketExpandedView({
               <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
                 <div className="text-[#1E4775]/70">Cost Basis:</div>
                 <div className="text-[#1E4775] font-mono text-right">
-                  {formatUSD(pnlData.costBasis)}
+                  {pnlData.isLoading ? "-" : formatUSD(pnlData.costBasis)}
                 </div>
                 <div className="text-[#1E4775]/70">Current Value:</div>
                 <div className="text-[#1E4775] font-mono text-right">
@@ -619,14 +855,18 @@ function SailMarketExpandedView({
                 <div className="text-[#1E4775]/70">Unrealized PnL:</div>
                 <div
                   className={`font-mono text-right ${
-                    formatPnL(pnlData.unrealizedPnL).color
+                    pnlData.isLoading
+                      ? "text-[#1E4775]/50"
+                      : formatPnL(pnlData.unrealizedPnL).color
                   }`}
                 >
-                  {formatPnL(pnlData.unrealizedPnL).text} (
-                  {pnlData.unrealizedPnLPercent >= 0 ? "+" : ""}
-                  {pnlData.unrealizedPnLPercent.toFixed(1)}%)
+                  {pnlData.isLoading
+                    ? "-"
+                    : `${formatPnL(pnlData.unrealizedPnL).text} (${
+                        pnlData.unrealizedPnLPercent >= 0 ? "+" : ""
+                      }${pnlData.unrealizedPnLPercent.toFixed(1)}%)`}
                 </div>
-                {pnlData.realizedPnL !== 0 && (
+                {!pnlData.isLoading && pnlData.realizedPnL !== 0 && (
                   <>
                     <div className="text-[#1E4775]/70">Realized PnL:</div>
                     <div
@@ -643,10 +883,12 @@ function SailMarketExpandedView({
                 </div>
                 <div
                   className={`font-mono text-right font-semibold pt-1 border-t border-[#1E4775]/10 ${
-                    totalPnLFormatted?.color || ""
+                    pnlData.isLoading
+                      ? "text-[#1E4775]/50"
+                      : totalPnLFormatted?.color || ""
                   }`}
                 >
-                  {totalPnLFormatted?.text || "-"}
+                  {pnlData.isLoading ? "-" : totalPnLFormatted?.text || "-"}
                 </div>
               </div>
             </div>
@@ -657,9 +899,21 @@ function SailMarketExpandedView({
             <div className="bg-white p-3 h-full flex flex-col">
               <h3 className="text-[#1E4775] font-semibold mb-2 text-xs">TVL</h3>
               <p className="text-sm font-bold text-[#1E4775]">
-                {formatToken(collateralValue)}
-                {""}
-                {market.collateral?.symbol || "ETH"}
+                {(() => {
+                  // collateralValue is in underlying tokens, convert to wrapped for display
+                  if (collateralValue) {
+                    const underlyingAmount = Number(collateralValue) / 1e18;
+                    const wrappedRateNum =
+                      wrappedRateFromHook !== undefined
+                        ? Number(wrappedRateFromHook) / 1e18
+                        : 1.0;
+                    const wrappedAmount = underlyingAmount * wrappedRateNum;
+                    return `${formatToken(
+                      BigInt(Math.floor(wrappedAmount * 1e18))
+                    )} ${market.collateral?.symbol || "ETH"}`;
+                  }
+                  return `- ${market.collateral?.symbol || "ETH"}`;
+                })()}
               </p>
               {tvlUSD !== undefined && (
                 <p className="text-xs text-[#1E4775]/70 mt-0.5">
@@ -728,7 +982,11 @@ export default function SailPage() {
   );
 
   // Get sail marks from subgraph
-  const { sailBalances, loading: isLoadingSailMarks, error: sailMarksError } = useAnchorLedgerMarks();
+  const {
+    sailBalances,
+    loading: isLoadingSailMarks,
+    error: sailMarksError,
+  } = useAnchorLedgerMarks();
 
   // Calculate total sail marks and marks per day from sail balances
   // Use useState + useEffect to ensure component re-renders when marks change every second
@@ -857,6 +1115,19 @@ export default function SailPage() {
           abi: wrappedPriceOracleABI,
           functionName: "latestAnswer" as const,
         });
+
+        // For fxUSD markets, also call getPrice() to get fxSAVE price in ETH
+        const collateralSymbol =
+          (m as any).collateral?.symbol?.toLowerCase() || "";
+        const isFxUSDMarket =
+          collateralSymbol === "fxusd" || collateralSymbol === "fxsave";
+        if (isFxUSDMarket) {
+          contracts.push({
+            address: priceOracle,
+            abi: wrappedPriceOracleABI,
+            functionName: "getPrice" as const,
+          });
+        }
       }
 
       // 5 & 6: name and totalSupply (leveraged token) - always add if valid
@@ -886,38 +1157,76 @@ export default function SailPage() {
   const marketOffsets = useMemo(() => {
     const offsets = new Map<number, number>();
     let currentOffset = 0;
-    
+
     sailMarkets.forEach(([_, m], index) => {
       offsets.set(index, currentOffset);
-      
+
       const minter = (m as any).addresses?.minter as `0x${string}` | undefined;
-      const priceOracle = (m as any).addresses?.collateralPrice as `0x${string}` | undefined;
-      const leveragedTokenAddress = (m as any).addresses?.leveragedToken as `0x${string}` | undefined;
-      
+      const priceOracle = (m as any).addresses?.collateralPrice as
+        | `0x${string}`
+        | undefined;
+      const leveragedTokenAddress = (m as any).addresses?.leveragedToken as
+        | `0x${string}`
+        | undefined;
+
       const isValidAddress = (addr: any): boolean =>
-        addr && typeof addr === "string" && addr.startsWith("0x") && addr.length === 42;
-      
+        addr &&
+        typeof addr === "string" &&
+        addr.startsWith("0x") &&
+        addr.length === 42;
+
       if (!isValidAddress(minter)) {
         // No reads for invalid minter
         return;
       }
-      
+
       // Always 4 minter reads
       currentOffset += 4;
-      
+
       // Oracle read if valid
       if (isValidAddress(priceOracle)) {
-        currentOffset += 1;
+        currentOffset += 1; // latestAnswer
+
+        // For fxUSD markets, also add getPrice() call
+        const collateralSymbol =
+          (m as any).collateral?.symbol?.toLowerCase() || "";
+        const isFxUSDMarket =
+          collateralSymbol === "fxusd" || collateralSymbol === "fxsave";
+        if (isFxUSDMarket) {
+          currentOffset += 1; // getPrice
+        }
       }
-      
+
       // Token reads if valid
       if (isValidAddress(leveragedTokenAddress)) {
         currentOffset += 2; // name + totalSupply
       }
     });
-    
+
     return offsets;
   }, [sailMarkets]);
+
+  // Fetch token prices using the hook
+  const tokenPriceInputs = useMemo(() => {
+    return sailMarkets
+      .map(([id, m]) => {
+        const minter = (m as any).addresses?.minter as
+          | `0x${string}`
+          | undefined;
+        const pegTarget = (m as any).pegTarget || "USD";
+        if (!minter || typeof minter !== "string" || !minter.startsWith("0x")) {
+          return null;
+        }
+        return {
+          marketId: id,
+          minterAddress: minter,
+          pegTarget: pegTarget,
+        };
+      })
+      .filter((input): input is NonNullable<typeof input> => input !== null);
+  }, [sailMarkets]);
+
+  const tokenPricesByMarket = useMultipleTokenPrices(tokenPriceInputs);
 
   // Fetch user's leveraged token balances for all markets
   const userDepositContracts = useMemo(() => {
@@ -1100,8 +1409,9 @@ export default function SailPage() {
                     Harbor Marks Subgraph Error
                   </p>
                   <p className="text-white/70 text-xs">
-                    Unable to load Harbor Marks data. This may be due to rate limiting or service issues. 
-                    Your positions and core functionality remain unaffected.
+                    Unable to load Harbor Marks data. This may be due to rate
+                    limiting or service issues. Your positions and core
+                    functionality remain unaffected.
                   </p>
                 </div>
               </div>
@@ -1202,75 +1512,87 @@ export default function SailPage() {
                   ([marketId]) => marketId === id
                 );
                 const baseOffset = marketOffsets.get(globalIndex) ?? 0;
-                const collateralValue = reads?.[baseOffset + 3]?.result as bigint | undefined;
+                const collateralValue = reads?.[baseOffset + 3]?.result as
+                  | bigint
+                  | undefined;
                 return collateralValue !== undefined && collateralValue > 0n;
               });
-              
+
               // Skip this group if no markets have completed genesis
               if (activeMarkets.length === 0) {
                 return null;
               }
-              
-              return (
-              <div key={longSide}>
-                <h2 className="text-xl font-semibold text-white mb-2">
-                  Long {longSide}
-                </h2>
 
-                {/* Header Row */}
-                <div className="bg-white p-3 overflow-x-auto mb-2">
-                  <div className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr] gap-4 items-center uppercase tracking-wider text-xs text-[#1E4775] font-bold">
-                    <div className="min-w-0 text-center">Token</div>
-                    <div className="text-center min-w-0">Leverage</div>
-                    <div className="text-center min-w-0">Your Position</div>
-                    <div className="text-center min-w-0">Current Value</div>
-                    <div className="text-center min-w-0">Action</div>
+              return (
+                <div key={longSide}>
+                  <div className="pt-4 mb-3">
+                    <h2 className="text-xs font-medium text-white/70 uppercase tracking-wider">
+                      Long {longSide}
+                    </h2>
+                  </div>
+
+                  {/* Header Row */}
+                  <div className="hidden md:block bg-white py-1.5 px-2 overflow-x-auto mb-2">
+                    <div className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr] gap-4 items-center uppercase tracking-wider text-[10px] lg:text-[11px] text-[#1E4775] font-semibold">
+                      <div className="min-w-0 text-center">Token</div>
+                      <div className="text-center min-w-0">Leverage</div>
+                      <div className="text-center min-w-0">Your Position</div>
+                      <div className="text-center min-w-0">Current Value</div>
+                      <div className="text-center min-w-0">Action</div>
+                    </div>
+                  </div>
+
+                  {/* Market Rows */}
+                  <div className="space-y-2">
+                    {activeMarkets.map(([id, m]) => {
+                      const globalIndex = sailMarkets.findIndex(
+                        ([marketId]) => marketId === id
+                      );
+                      const userDeposit = userDepositMap.get(globalIndex);
+                      const baseOffset = marketOffsets.get(globalIndex) ?? 0;
+
+                      // Check if this market has oracle and token addresses
+                      const priceOracle = (m as any).addresses
+                        ?.collateralPrice as `0x${string}` | undefined;
+                      const leveragedTokenAddress = (m as any).addresses
+                        ?.leveragedToken as `0x${string}` | undefined;
+                      const isValidAddress = (addr: any): boolean =>
+                        addr &&
+                        typeof addr === "string" &&
+                        addr.startsWith("0x") &&
+                        addr.length === 42;
+                      const hasOracle = isValidAddress(priceOracle);
+                      const hasToken = isValidAddress(leveragedTokenAddress);
+
+                      const tokenPrices = tokenPricesByMarket[id];
+
+                      return (
+                        <SailMarketRow
+                          key={id}
+                          id={id}
+                          market={m}
+                          baseOffset={baseOffset}
+                          hasOracle={hasOracle}
+                          hasToken={hasToken}
+                          reads={reads}
+                          userDeposit={userDeposit}
+                          isExpanded={expandedMarket === id}
+                          onToggleExpand={() =>
+                            setExpandedMarket(expandedMarket === id ? null : id)
+                          }
+                          onManageClick={() => {
+                            setSelectedMarketId(id);
+                            setSelectedMarket(m);
+                            setManageModalTab("mint");
+                            setManageModalOpen(true);
+                          }}
+                          isConnected={isConnected}
+                          tokenPrices={tokenPrices}
+                        />
+                      );
+                    })}
                   </div>
                 </div>
-
-                {/* Market Rows */}
-                <div className="space-y-2">
-                  {activeMarkets.map(([id, m]) => {
-                    const globalIndex = sailMarkets.findIndex(
-                      ([marketId]) => marketId === id
-                    );
-                    const userDeposit = userDepositMap.get(globalIndex);
-                    const baseOffset = marketOffsets.get(globalIndex) ?? 0;
-                    
-                    // Check if this market has oracle and token addresses
-                    const priceOracle = (m as any).addresses?.collateralPrice as `0x${string}` | undefined;
-                    const leveragedTokenAddress = (m as any).addresses?.leveragedToken as `0x${string}` | undefined;
-                    const isValidAddress = (addr: any): boolean =>
-                      addr && typeof addr === "string" && addr.startsWith("0x") && addr.length === 42;
-                    const hasOracle = isValidAddress(priceOracle);
-                    const hasToken = isValidAddress(leveragedTokenAddress);
-
-                    return (
-                      <SailMarketRow
-                        key={id}
-                        id={id}
-                        market={m}
-                        baseOffset={baseOffset}
-                        hasOracle={hasOracle}
-                        hasToken={hasToken}
-                        reads={reads}
-                        userDeposit={userDeposit}
-                        isExpanded={expandedMarket === id}
-                        onToggleExpand={() =>
-                          setExpandedMarket(expandedMarket === id ? null : id)
-                        }
-                        onManageClick={() => {
-                          setSelectedMarketId(id);
-                          setSelectedMarket(m);
-                          setManageModalTab("mint");
-                          setManageModalOpen(true);
-                        }}
-                        isConnected={isConnected}
-                      />
-                    );
-                  })}
-                </div>
-              </div>
               );
             })}
           </section>
