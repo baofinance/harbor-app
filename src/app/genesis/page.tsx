@@ -1981,9 +1981,24 @@ export default function GenesisIndexPage() {
                 // balanceOf returns underlying tokens (fxUSD for fxSAVE, stETH for wstETH)
                 // Multiply by wrapped rate to convert underlying to wrapped, then by price for USD
                 // This applies to all markets that use wrapped collateral
+                const wrappedRateNum = wrappedRate ? Number(wrappedRate) / 1e18 : 1;
                 const userDepositUSD = wrappedRate && wrappedRate > 0n
-                  ? userDepositAmount * (Number(wrappedRate) / 1e18) * collateralPriceUSD
+                  ? userDepositAmount * wrappedRateNum * collateralPriceUSD
                   : userDepositAmount * collateralPriceUSD;
+                
+                console.log(
+                  `[Genesis Deposit] Market ${id} user deposit calculation:`,
+                  {
+                    userDepositAmount,
+                    wrappedRate: wrappedRate?.toString(),
+                    wrappedRateNum,
+                    collateralPriceUSD,
+                    userDepositUSD,
+                    calculation: wrappedRate && wrappedRate > 0n
+                      ? `${userDepositAmount} * ${wrappedRateNum} * ${collateralPriceUSD} = ${userDepositUSD}`
+                      : `${userDepositAmount} * ${collateralPriceUSD} = ${userDepositUSD} (no wrapped rate)`,
+                  }
+                );
 
                 // Get anchor and sail token prices from the hook
                 const tokenPrices = tokenPricesByMarket[id];
