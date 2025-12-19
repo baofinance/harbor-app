@@ -2554,10 +2554,10 @@ export default function GenesisIndexPage() {
                               :
                             </span>
                             <div className="flex items-center gap-0.5 hidden xl:flex">
-                              <SimpleTooltip label={collateralSymbol}>
+                              <SimpleTooltip label={underlyingSymbol}>
                                 <Image
-                                  src={getLogoPath(collateralSymbol)}
-                                  alt={collateralSymbol}
+                                  src={getLogoPath(underlyingSymbol)}
+                                  alt={underlyingSymbol}
                                   width={20}
                                   height={20}
                                   className="flex-shrink-0 cursor-help"
@@ -2770,10 +2770,10 @@ export default function GenesisIndexPage() {
                                 )}
                               </div>
                             </SimpleTooltip>
-                            <SimpleTooltip label={collateralSymbol}>
+                            <SimpleTooltip label={underlyingSymbol}>
                               <Image
-                                src={getLogoPath(collateralSymbol)}
-                                alt={collateralSymbol}
+                                src={getLogoPath(underlyingSymbol)}
+                                alt={underlyingSymbol}
                                 width={20}
                                 height={20}
                                 className="flex-shrink-0 cursor-help rounded-full"
@@ -2821,10 +2821,10 @@ export default function GenesisIndexPage() {
                               )}
                             </div>
                           </SimpleTooltip>
-                          <SimpleTooltip label={collateralSymbol}>
+                          <SimpleTooltip label={underlyingSymbol}>
                             <Image
-                              src={getLogoPath(collateralSymbol)}
-                              alt={collateralSymbol}
+                              src={getLogoPath(underlyingSymbol)}
+                              alt={underlyingSymbol}
                               width={20}
                               height={20}
                               className="flex-shrink-0 cursor-help rounded-full"
