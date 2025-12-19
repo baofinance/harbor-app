@@ -1972,36 +1972,23 @@ export default function GenesisIndexPage() {
                 const totalDepositsUSD =
                   totalDepositsAmount * collateralPriceUSD;
 
-                // balanceOf returns wrapped collateral tokens (e.g., fxSAVE, wstETH)
-                // For fxSAVE markets: balanceOf returns underlying tokens (fxUSD), need to multiply by wrapped rate
-                // For wstETH markets: balanceOf returns wrapped tokens (wstETH) directly, no rate multiplication needed
+                // balanceOf returns wrapped collateral tokens (fxSAVE, wstETH) - confirmed from contract
+                // In the Genesis contract, shares are stored in WRAPPED_COLLATERAL_TOKEN units
+                // So balanceOf returns the amount in wrapped tokens, not underlying tokens
+                // We just need to multiply by the wrapped token price to get USD value
                 const userDepositAmount = userDeposit
                   ? Number(formatEther(userDeposit))
                   : 0;
-                // balanceOf returns underlying tokens (fxUSD for fxSAVE, stETH for wstETH)
-                // Multiply by wrapped rate to convert underlying to wrapped, then by price for USD
-                // This applies to all markets that use wrapped collateral
-                // If wrapped rate is not available from oracle, we still need to apply a rate
-                // For fxSAVE: typical rate is ~1.07 (fxSAVE per fxUSD)
-                // For wstETH: typical rate is ~1.22 (wstETH per stETH)
-                // Use a default rate if oracle doesn't provide one
-                const defaultWrappedRate = isFxSAVE ? 1.07 : isWstETH ? 1.22 : 1.0;
-                const wrappedRateNum = wrappedRate && wrappedRate > 0n
-                  ? Number(wrappedRate) / 1e18
-                  : defaultWrappedRate;
-                const userDepositUSD = userDepositAmount * wrappedRateNum * collateralPriceUSD;
+                // userDepositAmount is already in wrapped tokens, so just multiply by wrapped token price
+                const userDepositUSD = userDepositAmount * collateralPriceUSD;
                 
                 console.log(
                   `[Genesis Deposit] Market ${id} user deposit calculation:`,
                   {
                     userDepositAmount,
-                    wrappedRate: wrappedRate?.toString(),
-                    wrappedRateNum,
-                    usingDefaultRate: !wrappedRate || wrappedRate === 0n,
-                    defaultWrappedRate,
                     collateralPriceUSD,
                     userDepositUSD,
-                    calculation: `${userDepositAmount} * ${wrappedRateNum} * ${collateralPriceUSD} = ${userDepositUSD}`,
+                    calculation: `${userDepositAmount} wrapped tokens * $${collateralPriceUSD} = $${userDepositUSD}`,
                   }
                 );
 
