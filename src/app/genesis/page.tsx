@@ -3013,10 +3013,10 @@ export default function GenesisIndexPage() {
                         return (
                           <div className="px-2 pt-1.5 pb-0.5 border-t border-[#1E4775]/10">
                             <div className="space-y-0.5">
-                              {/* Progress Bar - label and bar on one line */}
-                              <div className="flex items-center gap-2">
+                              {/* Progress Bar - label, bar, amounts, and qualification on one line */}
+                              <div className="flex items-center gap-2 flex-wrap">
                                 <span className="text-[10px] text-[#1E4775] font-semibold whitespace-nowrap">Early Deposit Bonus</span>
-                                <div className="flex-1 bg-gray-200 rounded-full h-1.5">
+                                <div className="flex-1 bg-gray-200 rounded-full h-1.5 min-w-[100px]">
                                   <div
                                     className={`h-1.5 rounded-full transition-all ${
                                       marketBonusStatus.thresholdReached
@@ -3029,21 +3029,16 @@ export default function GenesisIndexPage() {
                                 <span className="text-[10px] text-[#1E4775]/70 whitespace-nowrap">
                                   {`${Number(marketBonusStatus.cumulativeDeposits).toLocaleString(undefined, { maximumFractionDigits: 0 })} / ${Number(marketBonusStatus.thresholdAmount).toLocaleString(undefined, { maximumFractionDigits: 0 })} ${marketBonusStatus.thresholdToken}`}
                                 </span>
-                              </div>
-
-                              {/* User Qualification Status */}
-                              {userQualifies && earlyBonusEligibleUSD > 0 && (
-                                <div className="bg-blue-50 border border-blue-200 rounded px-2 py-1">
-                                  <div className="text-[10px] text-blue-800 font-semibold">
-                                    ✓ You qualify for Early Deposit Bonus
+                                
+                                {/* User Qualification Status - on same line */}
+                                {userQualifies && earlyBonusEligibleUSD > 0 && (
+                                  <div className="bg-blue-50 border border-blue-200 rounded px-1.5 py-0.5 whitespace-nowrap">
+                                    <span className="text-[10px] text-blue-800 font-semibold">
+                                      ✓ {formatUSD(earlyBonusEligibleUSD)} qualified
+                                    </span>
                                   </div>
-                                  {!isEnded && (
-                                    <div className="text-[10px] text-blue-600 mt-0.5">
-                                      Estimated: +{(earlyBonusEligibleUSD * 100).toLocaleString(undefined, { maximumFractionDigits: 0 })} marks
-                                    </div>
-                                  )}
-                                </div>
-                              )}
+                                )}
+                              </div>
                             </div>
                           </div>
                         );
