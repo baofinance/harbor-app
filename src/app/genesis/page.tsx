@@ -1430,7 +1430,7 @@ export default function GenesisIndexPage() {
                 <div className="text-base font-bold text-white font-mono text-center">
                   {!mounted || isLoadingMarks ? (
                     <span className="text-white/50">-</span>
-                  ) : allContractsEnded ? (
+                  ) : allContractsEnded && isConnected && totalCurrentMarks > 0 ? (
                     <span className="text-white/50">Applied</span>
                   ) : totalBonusAtEnd > 0 ? (
                     totalBonusAtEnd.toLocaleString(undefined, {
