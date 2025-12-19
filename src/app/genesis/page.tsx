@@ -1114,10 +1114,25 @@ export default function GenesisIndexPage() {
                       Early Bonus
                     </h2>
                   </div>
-                  <div className="flex-1 flex items-center">
-                    <p className="text-sm sm:text-xs md:text-sm text-white/80 text-center w-full">
-                      Be one of our first depositors to earn <span className="font-semibold text-white">100 extra marks/$</span> at genesis end
+                  <div className="flex-1 flex flex-col justify-between">
+                    <p className="text-sm sm:text-xs md:text-sm text-white/80 text-center mb-2">
+                      Earn a huge bonus for being one of our first depositors!
                     </p>
+                    <div className="text-center">
+                      <div className="flex items-center justify-center">
+                        <span className="inline-flex items-center gap-0.5 sm:gap-0.5 md:gap-1 px-1.5 sm:px-1 md:px-2 py-1 bg-white text-[#1E4775] text-xs sm:text-[10px] md:text-xs font-mono w-fit">
+                          <span>100x</span>
+                          <Image
+                            src="/icons/marks.png"
+                            alt="Marks"
+                            width={24}
+                            height={24}
+                            className="flex-shrink-0 w-4 h-4 sm:w-3 sm:h-3 md:w-5 md:h-5"
+                          />
+                          <span>/$</span>
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               );
