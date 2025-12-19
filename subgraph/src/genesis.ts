@@ -9,6 +9,7 @@ import {
   GenesisEnd,
   UserHarborMarks,
   UserList,
+  MarketBonusStatus,
 } from "../generated/schema";
 import { BigDecimal, BigInt, Bytes, ethereum, Address } from "@graphprotocol/graph-ts";
 import { WrappedPriceOracle } from "../generated/Genesis_ETH_fxUSD/WrappedPriceOracle";
@@ -17,6 +18,9 @@ import { ChainlinkAggregator } from "../generated/HaToken_haETH/ChainlinkAggrega
 // Constants
 const MARKS_PER_DOLLAR_PER_DAY = BigDecimal.fromString("10");
 const BONUS_MARKS_PER_DOLLAR = BigDecimal.fromString("100"); // 100 marks per dollar bonus at genesis end
+const EARLY_BONUS_MARKS_PER_DOLLAR = BigDecimal.fromString("100"); // 100 marks per dollar for early depositors
+const EARLY_BONUS_THRESHOLD_FXSAVE_USD = BigDecimal.fromString("250000"); // 250k fxSAVE in USD (~$267,500 at $1.07)
+const EARLY_BONUS_THRESHOLD_WSTETH_USD = BigDecimal.fromString("308000"); // 70 wstETH in USD (~$308,000 at $4,400)
 const SECONDS_PER_DAY = BigDecimal.fromString("86400");
 const E18 = BigDecimal.fromString("1000000000000000000"); // 10^18
 
@@ -231,9 +235,52 @@ function getOrCreateUserMarks(
     userMarks.genesisStartDate = BigInt.fromI32(0);
     userMarks.genesisEndDate = null;
     userMarks.genesisEnded = false;
+    userMarks.qualifiesForEarlyBonus = false;
+    userMarks.earlyBonusMarks = BigDecimal.fromString("0");
+    userMarks.earlyBonusEligibleDepositUSD = BigDecimal.fromString("0");
     userMarks.lastUpdated = BigInt.fromI32(0);
   }
   return userMarks;
+}
+
+// Helper to get collateral symbol for a genesis contract
+function getCollateralSymbol(genesisAddress: string): string {
+  // ETH/fxUSD and BTC/fxUSD markets use fxSAVE
+  if (genesisAddress == "0x5f4398e1d3e33f93e3d7ee710d797e2a154cb073" ||
+      genesisAddress == "0x288c61c3b3684ff21adf38d878c81457b19bd2fe" ||
+      genesisAddress == "0x1454707877cdb966e29cea8a190c2169eeca4b8c") {
+    return "fxSAVE";
+  }
+  // BTC/stETH market uses wstETH
+  if (genesisAddress == "0x9ae0b57ceada0056dbe21edcd638476fcba3ccc0") {
+    return "wstETH";
+  }
+  return "unknown";
+}
+
+// Helper to get or create market bonus status
+function getOrCreateMarketBonusStatus(
+  contractAddress: Bytes
+): MarketBonusStatus {
+  const id = contractAddress.toHexString();
+  let marketBonus = MarketBonusStatus.load(id);
+  if (marketBonus == null) {
+    marketBonus = new MarketBonusStatus(id);
+    marketBonus.contractAddress = contractAddress;
+    marketBonus.thresholdReached = false;
+    marketBonus.thresholdReachedAt = null;
+    marketBonus.cumulativeDeposits = BigDecimal.fromString("0");
+    
+    // Determine collateral type and set threshold
+    const collateralSymbol = getCollateralSymbol(contractAddress.toHexString());
+    const isFxSAVE = collateralSymbol == "fxSAVE";
+    marketBonus.thresholdAmount = isFxSAVE 
+      ? EARLY_BONUS_THRESHOLD_FXSAVE_USD 
+      : EARLY_BONUS_THRESHOLD_WSTETH_USD;
+    marketBonus.thresholdToken = collateralSymbol;
+    marketBonus.lastUpdated = BigInt.fromI32(0);
+  }
+  return marketBonus;
 }
 
 export function handleDeposit(event: DepositEvent): void {
@@ -266,7 +313,33 @@ export function handleDeposit(event: DepositEvent): void {
   deposit.isActive = true;
   deposit.withdrawnAmount = BigInt.fromI32(0);
   deposit.withdrawnAt = null;
+  
+  // Early deposit bonus tracking
+  // Get market bonus status to check if threshold has been reached
+  const marketBonus = getOrCreateMarketBonusStatus(contractAddress);
+  
+  // Check if threshold already reached before this deposit
+  const qualifiesForBonus = !marketBonus.thresholdReached;
+  deposit.qualifiesForEarlyBonus = qualifiesForBonus;
+  deposit.earlyBonusAmount = qualifiesForBonus 
+    ? amountUSD.times(EARLY_BONUS_MARKS_PER_DOLLAR)
+    : BigDecimal.fromString("0");
+  
   deposit.save();
+  
+  // Update market bonus status with this deposit
+  if (!marketBonus.thresholdReached) {
+    marketBonus.cumulativeDeposits = marketBonus.cumulativeDeposits.plus(amountUSD);
+    
+    // Check if threshold is reached with this deposit
+    if (marketBonus.cumulativeDeposits.ge(marketBonus.thresholdAmount)) {
+      marketBonus.thresholdReached = true;
+      marketBonus.thresholdReachedAt = timestamp;
+    }
+    
+    marketBonus.lastUpdated = timestamp;
+    marketBonus.save();
+  }
   
   // Update user marks
   let userMarks = getOrCreateUserMarks(contractAddress, userAddress);
@@ -340,6 +413,12 @@ export function handleDeposit(event: DepositEvent): void {
     
     // Calculate marks per day
     userMarks.marksPerDay = userMarks.currentDepositUSD.times(MARKS_PER_DOLLAR_PER_DAY);
+  }
+  
+  // Update early bonus eligibility
+  if (deposit.qualifiesForEarlyBonus) {
+    userMarks.qualifiesForEarlyBonus = true;
+    userMarks.earlyBonusEligibleDepositUSD = userMarks.earlyBonusEligibleDepositUSD.plus(amountUSD);
   }
   
   userMarks.lastUpdated = timestamp;
@@ -458,6 +537,20 @@ export function handleWithdraw(event: WithdrawEvent): void {
     userMarks.marksPerDay = BigDecimal.fromString("0");
   }
   
+  // Reduce early bonus eligible deposit proportionally
+  // If user withdraws, they lose early bonus eligibility for the withdrawn portion
+  if (userMarks.earlyBonusEligibleDepositUSD.gt(BigDecimal.fromString("0")) && depositUSDBeforeWithdrawal.gt(BigDecimal.fromString("0"))) {
+    const withdrawalPercentage = amountUSD.div(depositUSDBeforeWithdrawal);
+    const earlyBonusReduction = userMarks.earlyBonusEligibleDepositUSD.times(withdrawalPercentage);
+    userMarks.earlyBonusEligibleDepositUSD = userMarks.earlyBonusEligibleDepositUSD.minus(earlyBonusReduction);
+    
+    // If no more eligible deposit, mark as not qualifying
+    if (userMarks.earlyBonusEligibleDepositUSD.le(BigDecimal.fromString("0"))) {
+      userMarks.qualifiesForEarlyBonus = false;
+      userMarks.earlyBonusEligibleDepositUSD = BigDecimal.fromString("0");
+    }
+  }
+  
   userMarks.lastUpdated = timestamp;
   userMarks.save();
 }
@@ -532,6 +625,14 @@ function updateUserMarksForGenesisEnd(
     userMarks.currentMarks = userMarks.currentMarks.plus(bonusMarks);
     userMarks.bonusMarks = bonusMarks;
     userMarks.totalMarksEarned = userMarks.totalMarksEarned.plus(bonusMarks);
+  }
+  
+  // Calculate early deposit bonus (100 marks per dollar for early depositors)
+  if (userMarks.qualifiesForEarlyBonus && userMarks.earlyBonusEligibleDepositUSD.gt(BigDecimal.fromString("0"))) {
+    const earlyBonus = userMarks.earlyBonusEligibleDepositUSD.times(EARLY_BONUS_MARKS_PER_DOLLAR);
+    userMarks.earlyBonusMarks = earlyBonus;
+    userMarks.currentMarks = userMarks.currentMarks.plus(earlyBonus);
+    userMarks.totalMarksEarned = userMarks.totalMarksEarned.plus(earlyBonus);
   }
   
   // No more marks per day after genesis ends

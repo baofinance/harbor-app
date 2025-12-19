@@ -13,6 +13,9 @@ type Deposit @entity(immutable: true) {
   # Withdrawal tracking
   withdrawnAmount: BigInt! # Amount withdrawn (0 if not withdrawn)
   withdrawnAt: BigInt # Timestamp when withdrawn (null if not withdrawn)
+  # Early deposit bonus tracking
+  qualifiesForEarlyBonus: Boolean! # Whether this deposit qualifies for early bonus (deposited before threshold)
+  earlyBonusAmount: BigDecimal! # Bonus marks this deposit would earn (100 marks per dollar)
 }
 
 type Withdrawal @entity(immutable: true) {
@@ -56,6 +59,10 @@ type UserHarborMarks @entity(immutable: false) {
   genesisStartDate: BigInt! # Genesis start timestamp
   genesisEndDate: BigInt # Genesis end timestamp (null if not ended)
   genesisEnded: Boolean! # Whether genesis has ended
+  # Early deposit bonus
+  qualifiesForEarlyBonus: Boolean! # Whether user has any qualifying deposits
+  earlyBonusMarks: BigDecimal! # Early bonus marks earned (calculated at genesis end)
+  earlyBonusEligibleDepositUSD: BigDecimal! # USD value of deposits that qualify for bonus (reduces on withdrawal)
   # Last updated
   lastUpdated: BigInt! # Last block timestamp when updated
 }
@@ -64,6 +71,18 @@ type UserList @entity(immutable: false) {
   id: ID! # {contractAddress}
   contractAddress: Bytes! # Contract address
   users: [Bytes!]! # Array of user addresses who have deposits
+}
+
+# Market-level early deposit bonus tracking
+type MarketBonusStatus @entity(immutable: false) {
+  id: ID! # {contractAddress}
+  contractAddress: Bytes! # Genesis contract address
+  thresholdReached: Boolean! # Whether threshold has been reached
+  thresholdReachedAt: BigInt # Block timestamp when threshold was reached (null if not reached)
+  cumulativeDeposits: BigDecimal! # Cumulative deposits in USD
+  thresholdAmount: BigDecimal! # 250000 for fxSAVE, 70 for wstETH
+  thresholdToken: String! # "fxSAVE" or "wstETH"
+  lastUpdated: BigInt! # Last update timestamp
 }
 
 # ============ Entities for Multi-Market Marks Tracking ============
