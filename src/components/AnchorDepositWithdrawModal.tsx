@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { parseEther, formatEther, formatUnits } from "viem";
+import React, { useState, useEffect, useMemo } from "react";
+import { parseEther, formatEther, parseUnits, formatUnits } from "viem";
 import {
   useAccount,
   useBalance,
@@ -15,6 +17,7 @@ import { BaseError, ContractFunctionRevertedError } from "viem";
 import { ERC20_ABI, STABILITY_POOL_ABI } from "@/abis/shared";
 import { aprABI } from "@/abis/apr";
 import { ZAP_ABI, USDC_ZAP_ABI, WSTETH_ABI } from "@/abis";
+import { MINTER_ETH_ZAP_V2_ABI, MINTER_USDC_ZAP_V2_ABI } from "@/config/contracts";
 import Image from "next/image";
 import SimpleTooltip from "@/components/SimpleTooltip";
 import InfoTooltip from "@/components/InfoTooltip";
@@ -22,6 +25,7 @@ import { ArrowPathIcon } from "@heroicons/react/24/outline";
 import { useAnchorLedgerMarks } from "@/hooks/useAnchorLedgerMarks";
 import { useAnyTokenDeposit } from "@/hooks/useAnyTokenDeposit";
 import { getDefiLlamaSwapTx } from "@/hooks/useDefiLlamaSwap";
+import { useCollateralPrice } from "@/hooks/useCollateralPrice";
 import {
   TransactionProgressModal,
   TransactionStep,
@@ -250,6 +254,8 @@ export const AnchorDepositWithdrawModal = ({
     includeDirectDeposit: false,
     includeWithdrawCollateral: false,
     includeWithdrawSail: false,
+    useZap: false,
+    zapAsset: null as string | null,
     includeApproveRedeem: false,
     includeRedeem: false,
     withdrawCollateralLabel: "Withdraw from collateral pool",
@@ -377,14 +383,22 @@ export const AnchorDepositWithdrawModal = ({
 
     if (progressConfig.mode === "collateral") {
       if (progressConfig.includeApproveCollateral) {
+        // Use zap-specific label if using zap
+        const approveLabel = progressConfig.useZap && progressConfig.zapAsset
+          ? `Approve ${progressConfig.zapAsset.toUpperCase()} for zap`
+          : "Approve collateral token";
         addStep(
           "approve-collateral",
-          "Approve collateral token",
+          approveLabel,
           txHashes.approveCollateral
         );
       }
       if (progressConfig.includeMint) {
-        addStep("mint", "Mint pegged token", txHashes.mint);
+        // Use zap-specific label if using zap
+        const mintLabel = progressConfig.useZap && progressConfig.zapAsset
+          ? `Zap ${progressConfig.zapAsset.toUpperCase()} to pegged token`
+          : "Mint pegged token";
+        addStep("mint", mintLabel, txHashes.mint);
       }
       if (progressConfig.includeApprovePegged) {
         addStep(
@@ -3310,7 +3324,47 @@ export const AnchorDepositWithdrawModal = ({
   const totalStabilityPoolBalance = collateralPoolBalance + sailPoolBalance;
   const allowance = allowanceData || 0n;
   const peggedTokenAllowance = peggedTokenAllowanceData || 0n;
-  const amountBigInt = amount ? parseEther(amount) : 0n;
+  // Parse amount with correct decimals: USDC uses 6 decimals, others use 18 decimals
+  const isUSDC = selectedDepositAsset?.toLowerCase() === "usdc";
+  const isFxUSD = selectedDepositAsset?.toLowerCase() === "fxusd";
+  const isNativeETH = selectedDepositAsset?.toLowerCase() === "eth";
+  const isStETH = selectedDepositAsset?.toLowerCase() === "steth";
+  const isFxSAVE = selectedDepositAsset?.toLowerCase() === "fxsave";
+  const isWstETH = selectedDepositAsset?.toLowerCase() === "wsteth";
+  
+  // Determine if we should use zap contracts
+  // Get market info for the selected deposit asset
+  const depositAssetMarket = marketForDepositAsset;
+  const depositAssetCollateralSymbol = depositAssetMarket?.collateral?.symbol?.toLowerCase() || "";
+  const depositAssetWrappedCollateralSymbol = depositAssetMarket?.collateral?.underlyingSymbol?.toLowerCase() || "";
+  const isWstETHMarket = depositAssetCollateralSymbol === "wsteth";
+  const isFxUSDMarket = depositAssetCollateralSymbol === "fxusd" || depositAssetCollateralSymbol === "fxsave";
+  
+  // Check if selected asset is wrapped collateral (fxSAVE, wstETH) - these don't need zaps
+  // Note: fxUSD is NOT wrapped collateral (it's the underlying collateral that needs zap)
+  // Only fxSAVE (the wrapped version) should skip zaps
+  // We check against wrappedCollateralSymbol (underlyingSymbol) not collateralSymbol
+  const isWrappedCollateral = isFxSAVE || isWstETH || 
+    (depositAssetMarket && depositAssetWrappedCollateralSymbol && selectedDepositAsset?.toLowerCase() === depositAssetWrappedCollateralSymbol);
+  
+  // Get zap contract address - use peggedTokenZap for minting pegged tokens
+  const zapAddress = depositAssetMarket?.addresses?.peggedTokenZap as `0x${string}` | undefined;
+  
+  // Determine which zap to use
+  const useZap = !!zapAddress && !isDirectPeggedDeposit && !isWrappedCollateral && activeTab === "deposit";
+  const useETHZap = useZap && isWstETHMarket && (isNativeETH || isStETH);
+  const useUSDCZap = useZap && isFxUSDMarket && (isUSDC || isFxUSD);
+  
+  // Get fxSAVE rate for USDC zap calculations
+  const priceOracleAddress = depositAssetMarket?.addresses?.collateralPrice as `0x${string}` | undefined;
+  const { maxRate: fxSAVERate } = useCollateralPrice(
+    priceOracleAddress,
+    { enabled: useUSDCZap && !!priceOracleAddress }
+  );
+  
+  const amountBigInt = amount 
+    ? (isUSDC ? parseUnits(amount, 6) : parseEther(amount))
+    : 0n;
   const needsApproval =
     activeTab === "deposit" && amountBigInt > 0 && amountBigInt > allowance;
   const needsPeggedTokenApproval =
@@ -3560,6 +3614,7 @@ export const AnchorDepositWithdrawModal = ({
         if (process.env.NODE_ENV === "development") {
           console.log("[handleMaxClick] Set amount to balance:", balanceAmount, "useEffect will adjust if needed");
         }
+        setAmount(isUSDC ? formatUnits(selectedAssetBalance, 6) : formatEther(selectedAssetBalance));
       } else if (isDirectPeggedDeposit && directPeggedBalance) {
         setAmount(formatEther(directPeggedBalance));
       } else if (collateralBalance) {
@@ -4237,14 +4292,32 @@ export const AnchorDepositWithdrawModal = ({
         const includeApprovePegged =
           shouldDepositToPool && needsPeggedTokenApproval;
         const includeDeposit = shouldDepositToPool;
+        // Determine if we need approval (for zap or direct minting)
+        const needsZapApproval = useZap && zapAddress && (
+          (useETHZap && isStETH) || 
+          (useUSDCZap && (isUSDC || isFxUSD))
+        );
+        const needsDirectApproval = !useZap && needsApproval;
+        
+        // Determine zap asset name for labels
+        let zapAssetName: string | null = null;
+        if (useZap) {
+          if (isNativeETH) zapAssetName = "ETH";
+          else if (isStETH) zapAssetName = "stETH";
+          else if (isUSDC) zapAssetName = "USDC";
+          else if (isFxUSD) zapAssetName = "fxUSD";
+        }
+        
         setProgressConfig({
           mode: "collateral",
-          includeApproveCollateral: needsApproval,
+          includeApproveCollateral: needsZapApproval || needsDirectApproval,
           includeMint: true,
           includeApprovePegged,
           includeDeposit,
           includeDirectApprove: false,
           includeDirectDeposit: false,
+          useZap: !!useZap,
+          zapAsset: zapAssetName,
           title: includeDeposit ? "Mint & Deposit" : "Mint pegged token",
         });
         // Close modal so user can interact with wallet
@@ -4252,8 +4325,80 @@ export const AnchorDepositWithdrawModal = ({
         // Use Anvil client for local development, regular publicClient for production
         const txClient = false ? publicClient : publicClient;
 
-        // Step 1: Approve collateral token for minter (if needed)
-        if (needsApproval) {
+        // Step 1: Handle approvals - for zap contracts or direct minting
+        if (useZap && zapAddress) {
+          // Handle approvals for zap contracts
+          if (useETHZap && isStETH) {
+            // Approve stETH to zap contract
+            const stETHAddress = depositAssetMarket?.addresses?.wrappedCollateralToken as `0x${string}` | undefined;
+            if (!stETHAddress) throw new Error("stETH address not found");
+            
+            // Read allowance for zap contract
+            const allowance = await publicClient?.readContract({
+              address: stETHAddress,
+              abi: ERC20_ABI,
+              functionName: "allowance",
+              args: [address as `0x${string}`, zapAddress],
+            });
+            
+            const currentAllowance = (allowance as bigint) || 0n;
+            if (currentAllowance < amountBigInt) {
+              setStep("approving");
+              setError(null);
+              setTxHash(null);
+              const approveHash = await writeContractAsync({
+                address: stETHAddress,
+                abi: ERC20_ABI,
+                functionName: "approve",
+                args: [zapAddress, amountBigInt],
+              });
+              setTxHash(approveHash);
+              setTxHashes((prev) => ({ ...prev, approveCollateral: approveHash }));
+              await txClient?.waitForTransactionReceipt({ hash: approveHash });
+              await new Promise((resolve) => setTimeout(resolve, 1000));
+            } else {
+              // Already approved - mark step as completed
+              setTxHashes((prev) => ({ ...prev, approveCollateral: undefined }));
+            }
+          } else if (useUSDCZap && (isUSDC || isFxUSD)) {
+            // Approve USDC or fxUSD to zap contract
+            const assetAddress = isUSDC 
+              ? "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" as `0x${string}`
+              : (depositAssetMarket?.addresses?.collateralToken as `0x${string}` | undefined);
+            
+            if (!assetAddress) throw new Error("Asset address not found");
+            
+            // Read allowance for zap contract
+            const allowance = await publicClient?.readContract({
+              address: assetAddress,
+              abi: ERC20_ABI,
+              functionName: "allowance",
+              args: [address as `0x${string}`, zapAddress],
+            });
+            
+            const currentAllowance = (allowance as bigint) || 0n;
+            if (currentAllowance < amountBigInt) {
+              setStep("approving");
+              setError(null);
+              setTxHash(null);
+              const approveHash = await writeContractAsync({
+                address: assetAddress,
+                abi: ERC20_ABI,
+                functionName: "approve",
+                args: [zapAddress, amountBigInt],
+              });
+              setTxHash(approveHash);
+              setTxHashes((prev) => ({ ...prev, approveCollateral: approveHash }));
+              await txClient?.waitForTransactionReceipt({ hash: approveHash });
+              await new Promise((resolve) => setTimeout(resolve, 1000));
+            } else {
+              // Already approved - mark step as completed
+              setTxHashes((prev) => ({ ...prev, approveCollateral: undefined }));
+            }
+          }
+          // ETH doesn't need approval (native token) - if approval step is shown, it will be auto-completed
+        } else if (needsApproval) {
+          // Direct minting - approve wrapped collateral to minter
           setStep("approving");
           setError(null);
           setTxHash(null);
@@ -4271,7 +4416,7 @@ export const AnchorDepositWithdrawModal = ({
           await refetchAllowance();
         }
 
-        // Step 2: Mint pegged token
+        // Step 2: Mint pegged token (via zap or direct)
         setStep("minting");
         setError(null);
         setTxHash(null);
@@ -4280,70 +4425,129 @@ export const AnchorDepositWithdrawModal = ({
         const minPeggedOut = expectedMintOutput
           ? (expectedMintOutput * BigInt(Math.floor((100 - slippageTolerance) * 10))) / 1000n
           : 0n;
-
-        if (process.env.NODE_ENV === "development") {
-          console.log("[handleMint] About to mint pegged token:", {
-            minterAddress,
-            amountBigInt: amountBigInt.toString(),
-            receiver: address,
-            minPeggedOut: minPeggedOut.toString(),
-            expectedMintOutput: expectedMintOutput?.toString(),
-          });
+        // For zap transactions, capture balance before minting to calculate actual minted amount
+        let balanceBeforeZap: bigint | undefined;
+        if (useZap && zapAddress && peggedTokenAddress) {
+          try {
+            balanceBeforeZap = await publicClient?.readContract({
+              address: peggedTokenAddress as `0x${string}`,
+              abi: ERC20_ABI,
+              functionName: "balanceOf",
+              args: [address as `0x${string}`],
+            }) as bigint | undefined;
+            if (process.env.NODE_ENV === "development") {
+              console.log("[handleMint] Balance before zap:", balanceBeforeZap?.toString());
+            }
+          } catch (err) {
+            if (process.env.NODE_ENV === "development") {
+              console.warn("[handleMint] Failed to read balance before zap:", err);
+            }
+          }
         }
 
-        // Simulate the mint transaction to catch errors before submitting
-        try {
-          await publicClient?.simulateContract({
+        // Calculate minimum output based on zap type or direct minting
+        let minPeggedOut: bigint;
+        
+        if (useUSDCZap && fxSAVERate && fxSAVERate > 0n) {
+          // For USDC/fxUSD zap: minPeggedOut = amount / fxSAVE rate
+          // USDC has 6 decimals, fxUSD has 18 decimals
+          // Apply 0.5% slippage tolerance (99.5%)
+          let amountIn18Decimals: bigint;
+          if (isUSDC) {
+            // USDC: convert from 6 decimals to 18 decimals
+            amountIn18Decimals = amountBigInt * 10n ** 12n;
+          } else {
+            // fxUSD: already in 18 decimals
+            amountIn18Decimals = amountBigInt;
+          }
+          const peggedOutBeforeSlippage = amountIn18Decimals / fxSAVERate;
+          minPeggedOut = (peggedOutBeforeSlippage * 995n) / 1000n; // 0.5% slippage
+        } else {
+          // For direct minting or ETH zap: use expectedMintOutput with 1% slippage
+          minPeggedOut = expectedMintOutput
+            ? (expectedMintOutput * 99n) / 100n
+            : 0n;
+        }
+
+        let mintHash: `0x${string}`;
+
+        if (useZap && zapAddress) {
+          // Use zap contract to mint
+          if (useETHZap) {
+            // ETH/stETH zap for wstETH markets
+            const minWstEthOut = (amountBigInt * 995n) / 1000n; // 0.5% slippage
+            
+            if (isNativeETH) {
+              mintHash = await writeContractAsync({
+                address: zapAddress,
+                abi: MINTER_ETH_ZAP_V2_ABI,
+                functionName: "zapEthToPegged",
+                args: [address as `0x${string}`, minPeggedOut, minWstEthOut],
+                value: amountBigInt,
+              });
+            } else if (isStETH) {
+              mintHash = await writeContractAsync({
+                address: zapAddress,
+                abi: MINTER_ETH_ZAP_V2_ABI,
+                functionName: "zapStEthToPegged",
+                args: [amountBigInt, address as `0x${string}`, minPeggedOut, minWstEthOut],
+              });
+            } else {
+              throw new Error("Invalid asset for ETH zap");
+            }
+          } else if (useUSDCZap) {
+            // USDC/fxUSD zap for fxSAVE markets
+            if (!fxSAVERate || fxSAVERate === 0n) {
+              throw new Error("fxSAVE rate not available");
+            }
+            
+            if (isUSDC) {
+              mintHash = await writeContractAsync({
+                address: zapAddress,
+                abi: MINTER_USDC_ZAP_V2_ABI,
+                functionName: "zapUsdcToPegged",
+                args: [amountBigInt, address as `0x${string}`, minPeggedOut],
+              });
+            } else if (isFxUSD) {
+              mintHash = await writeContractAsync({
+                address: zapAddress,
+                abi: MINTER_USDC_ZAP_V2_ABI,
+                functionName: "zapFxUsdToPegged",
+                args: [amountBigInt, address as `0x${string}`, minPeggedOut],
+              });
+            } else {
+              throw new Error("Invalid asset for USDC zap");
+            }
+          } else {
+            throw new Error("Invalid zap configuration");
+          }
+        } else {
+          // Direct minting (no zap)
+          if (process.env.NODE_ENV === "development") {
+            console.log("[handleMint] About to mint pegged token:", {
+              minterAddress,
+              amountBigInt: amountBigInt.toString(),
+              receiver: address,
+              minPeggedOut: minPeggedOut.toString(),
+              expectedMintOutput: expectedMintOutput?.toString(),
+            });
+          }
+
+          mintHash = await writeContractAsync({
             address: minterAddress as `0x${string}`,
             abi: minterABI,
             functionName: "mintPeggedToken",
             args: [amountBigInt, address as `0x${string}`, minPeggedOut],
-            account: address as `0x${string}`,
           });
-        } catch (simErr: any) {
-          console.error("[handleMint] Simulation error:", simErr);
-          
-          // Check if it's a contract revert error
-          if (simErr instanceof BaseError) {
-            const revertError = simErr.walk(
-              (err) => err instanceof ContractFunctionRevertedError
-            );
-            if (revertError instanceof ContractFunctionRevertedError) {
-              const errorName = revertError.data?.errorName || "";
-              
-              // Check for common errors that indicate collateral ratio issues
-              if (
-                errorName.includes("InvalidRatio") ||
-                errorName.includes("InsufficientCollateral") ||
-                errorName.includes("Collateral") ||
-                simErr.message?.includes("collateral ratio") ||
-                simErr.message?.includes("min ratio")
-              ) {
-                throw new Error(
-                  "This deposit would bring the collateral ratio below the minimum allowed. Please deposit a smaller amount or try again later when market conditions improve."
-                );
-              }
-              
-              // Generic contract error
-              throw new Error(
-                `Contract error: ${errorName || "The transaction would fail"}`
-              );
-            }
-          }
-          
-          // Re-throw simulation error to be caught by outer catch
-          throw simErr;
         }
 
-        const mintHash = await writeContractAsync({
-          address: minterAddress as `0x${string}`,
-          abi: minterABI,
-          functionName: "mintPeggedToken",
-          args: [amountBigInt, address as `0x${string}`, minPeggedOut],
-        });
-
         if (process.env.NODE_ENV === "development") {
-          console.log("[handleMint] Mint transaction hash:", mintHash);
+          console.log("[handleMint] Mint transaction hash:", mintHash, {
+            useZap,
+            zapAddress,
+            useETHZap,
+            useUSDCZap,
+          });
         }
 
         setTxHash(mintHash);
@@ -4352,6 +4556,35 @@ export const AnchorDepositWithdrawModal = ({
 
         // Refetch to get updated pegged token balance
         await new Promise((resolve) => setTimeout(resolve, 1000));
+        
+        // For zap transactions, calculate the actual minted amount from balance change
+        let actualMintedAmount: bigint | undefined;
+        if (useZap && zapAddress && peggedTokenAddress && balanceBeforeZap !== undefined) {
+          try {
+            // Wait a bit for state to update after transaction
+            await new Promise((resolve) => setTimeout(resolve, 2000));
+            const balanceAfter = await publicClient?.readContract({
+              address: peggedTokenAddress as `0x${string}`,
+              abi: ERC20_ABI,
+              functionName: "balanceOf",
+              args: [address as `0x${string}`],
+            }) as bigint | undefined;
+            if (balanceAfter !== undefined) {
+              actualMintedAmount = balanceAfter - balanceBeforeZap;
+              if (process.env.NODE_ENV === "development") {
+                console.log("[handleMint] Actual minted amount from zap:", {
+                  balanceBefore: balanceBeforeZap.toString(),
+                  balanceAfter: balanceAfter.toString(),
+                  actualMintedAmount: actualMintedAmount.toString(),
+                });
+              }
+            }
+          } catch (err) {
+            if (process.env.NODE_ENV === "development") {
+              console.warn("[handleMint] Failed to read actual minted amount:", err);
+            }
+          }
+        }
 
         // Step 3: If depositing to stability pool (and not mint only), approve and deposit
         if (process.env.NODE_ENV === "development") {
@@ -4396,31 +4629,49 @@ export const AnchorDepositWithdrawModal = ({
             }
           }
 
-          // Use expectedMintOutput for the deposit (what was just minted)
-          // If expectedMintOutput is undefined (contract call failed), use the amount we sent to mint
-          // as the fallback - this is what the user input as the deposit amount
-          let depositAmount = expectedMintOutput;
-
-          // Fallback 1: If expectedMintOutput is undefined, try using amountBigInt
-          // This is reasonable because mint typically returns ~1:1 with collateral (adjusted for oracle price)
-          if (!depositAmount || depositAmount === 0n) {
-            if (process.env.NODE_ENV === "development") {
-              console.log(
-                "[handleMint] expectedMintOutput unavailable, using amountBigInt as fallback"
-              );
+          // Determine deposit amount based on whether we used zap or direct minting
+          let depositAmount: bigint | undefined;
+          
+          if (useZap && zapAddress) {
+            // For zap transactions, use the actual minted amount we calculated from balance change
+            // This is more accurate than expectedMintOutput which assumes wrapped collateral input
+            depositAmount = actualMintedAmount;
+            
+            // Fallback: if we couldn't calculate actualMintedAmount, use the actual balance
+            if (!depositAmount || depositAmount === 0n) {
+              if (actualPeggedBalance && actualPeggedBalance > 0n) {
+                if (process.env.NODE_ENV === "development") {
+                  console.log(
+                    "[handleMint] Using actualPeggedBalance for zap deposit (actualMintedAmount unavailable)"
+                  );
+                }
+                depositAmount = actualPeggedBalance;
+              }
             }
-            depositAmount = amountBigInt;
-          }
+          } else {
+            // For direct minting, use expectedMintOutput (from dry run)
+            depositAmount = expectedMintOutput;
 
-          // Fallback 2: If we still don't have a valid amount, try the actual balance
-          if (!depositAmount || depositAmount === 0n) {
-            if (actualPeggedBalance && actualPeggedBalance > 0n) {
+            // Fallback 1: If expectedMintOutput is undefined, try using amountBigInt
+            if (!depositAmount || depositAmount === 0n) {
               if (process.env.NODE_ENV === "development") {
                 console.log(
-                  "[handleMint] Using actualPeggedBalance as last resort fallback"
+                  "[handleMint] expectedMintOutput unavailable, using amountBigInt as fallback"
                 );
               }
-              depositAmount = actualPeggedBalance;
+              depositAmount = amountBigInt;
+            }
+
+            // Fallback 2: If we still don't have a valid amount, try the actual balance
+            if (!depositAmount || depositAmount === 0n) {
+              if (actualPeggedBalance && actualPeggedBalance > 0n) {
+                if (process.env.NODE_ENV === "development") {
+                  console.log(
+                    "[handleMint] Using actualPeggedBalance as last resort fallback"
+                  );
+                }
+                depositAmount = actualPeggedBalance;
+              }
             }
           }
 
@@ -6123,12 +6374,12 @@ export const AnchorDepositWithdrawModal = ({
                           <span className="text-sm text-[#1E4775]/70">
                             Balance:{""}
                             {selectedAssetBalance !== null
-                              ? (() => {
-                                  // Use correct decimals for the selected asset
-                                  const decimals = anyTokenDeposit.tokenDecimals || 18;
-                                  return formatUnits(selectedAssetBalance, decimals);
-                                })()
-                              : formatEther(collateralBalance)}
+                              ? (isUSDC 
+                                  ? formatUnits(selectedAssetBalance, 6)
+                                  : formatEther(selectedAssetBalance))
+                              : (isUSDC
+                                  ? formatUnits(collateralBalance, 6)
+                                  : formatEther(collateralBalance))}
                             {""}
                             {selectedDepositAsset || activeCollateralSymbol}
                           </span>

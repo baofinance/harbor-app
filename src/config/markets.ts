@@ -43,6 +43,8 @@ export const markets = {
       collateralToken: contractsMarkets["eth-fxusd"].addresses.collateralToken, // fxUSD
       wrappedCollateralToken: contractsMarkets["eth-fxusd"].addresses.underlyingCollateralToken, // fxSAVE
       genesisZap: contractsMarkets["eth-fxusd"].addresses.genesisZap, // GenesisUSDCZap_v2 for ETH/fxUSD
+      peggedTokenZap: contractsMarkets["eth-fxusd"].addresses.peggedTokenZap, // MinterUSDCZap_v2 for ETH/fxUSD
+      leveragedTokenZap: contractsMarkets["eth-fxusd"].addresses.leveragedTokenZap, // MinterUSDCZap_v2 for ETH/fxUSD
     },
     peggedToken: {
       name: "Harbor Anchored ETH",
@@ -118,6 +120,8 @@ export const markets = {
       collateralToken: contractsMarkets["btc-fxusd"].addresses.collateralToken, // fxUSD
       wrappedCollateralToken: contractsMarkets["btc-fxusd"].addresses.underlyingCollateralToken, // fxSAVE
       genesisZap: contractsMarkets["btc-fxusd"].addresses.genesisZap, // GenesisUSDCZap_v2 for BTC/fxUSD
+      peggedTokenZap: contractsMarkets["btc-fxusd"].addresses.peggedTokenZap, // MinterUSDCZap_v2 for BTC/fxUSD
+      leveragedTokenZap: contractsMarkets["btc-fxusd"].addresses.leveragedTokenZap, // MinterUSDCZap_v2 for BTC/fxUSD
     },
     peggedToken: {
       name: "Harbor Anchored BTC",
@@ -192,6 +196,8 @@ export const markets = {
       collateralToken: contractsMarkets["btc-steth"].addresses.collateralToken, // wstETH (what's deposited in genesis)
       wrappedCollateralToken: contractsMarkets["btc-steth"].addresses.collateralToken, // wstETH (matches deployment logs)
       genesisZap: contractsMarkets["btc-steth"].addresses.genesisZap, // GenesisETHZap_v3 for BTC/stETH
+      peggedTokenZap: contractsMarkets["btc-steth"].addresses.peggedTokenZap, // MinterETHZap_v2 for BTC/stETH
+      leveragedTokenZap: contractsMarkets["btc-steth"].addresses.leveragedTokenZap, // MinterETHZap_v2 for BTC/stETH
     },
     peggedToken: {
       name: "Harbor Anchored BTC",

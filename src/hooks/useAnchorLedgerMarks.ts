@@ -140,7 +140,7 @@ interface UseAnchorLedgerMarksOptions {
 }
 
 export function useAnchorLedgerMarks({
-  enabled = true,
+  enabled = false, // Disabled by default - subgraph ran out of funds
   graphUrl = getGraphUrl(),
 }: UseAnchorLedgerMarksOptions = {}) {
   const { address, isConnected } = useAccount();
@@ -189,8 +189,10 @@ export function useAnchorLedgerMarks({
   }, [publicClient]);
 
   // Fetch from subgraph (poll every 60s for new events)
+  // Disabled by default - subgraph ran out of funds
   const { data, isLoading, error } = useQuery<AnchorLedgerMarksData>({
     queryKey: ["anchorLedgerMarks", address],
+    enabled: enabled && !!address && isConnected,
     queryFn: async () => {
       if (!address) {
         throw new Error("Address required");

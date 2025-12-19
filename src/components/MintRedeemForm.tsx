@@ -20,6 +20,8 @@ import MintRedeemStatusModal from "./MintRedeemStatusModal";
 import type { Market as MarketCfg } from "../config/markets";
 import { minterABI } from "@/abis/minter";
 import { ERC20_ABI } from "@/abis/shared";
+import { MINTER_ETH_ZAP_V2_ABI, MINTER_USDC_ZAP_V2_ABI } from "@/config/contracts";
+import { parseUnits } from "viem";
 
 // Constants (to be moved from page.tsx)
 const tokens = {
@@ -141,6 +143,32 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
   const [inputAmount, setInputAmount] = useState<string>("");
   const [outputAmount, setOutputAmount] = useState<string>("");
   const [isPending, setIsPending] = useState(false);
+  // Asset selection for zap functionality - default to wrapped collateral
+  const collateralSymbol = marketInfo?.collateral?.symbol?.toLowerCase() || "";
+  const isWstETHMarket = collateralSymbol === "wsteth";
+  const isFxUSDMarket = collateralSymbol === "fxusd" || collateralSymbol === "fxsave";
+  
+  // Determine default asset based on market type
+  const defaultAsset = isWstETHMarket ? "wstETH" : isFxUSDMarket ? "fxSAVE" : "collateral";
+  const [selectedAsset, setSelectedAsset] = useState<string>(defaultAsset);
+  
+  // Get zap contract addresses from market config
+  const zapAddress = selectedType === "LONG" 
+    ? (marketInfo?.addresses?.peggedTokenZap as `0x${string}` | undefined)
+    : (marketInfo?.addresses?.leveragedTokenZap as `0x${string}` | undefined);
+  
+  // Determine which zap to use and which asset
+  const isNativeETH = selectedAsset.toLowerCase() === "eth";
+  const isStETH = selectedAsset.toLowerCase() === "steth";
+  const isUSDC = selectedAsset.toLowerCase() === "usdc";
+  const isFxUSD = selectedAsset.toLowerCase() === "fxusd";
+  const isWrappedCollateral = selectedAsset.toLowerCase() === collateralSymbol.toLowerCase() || 
+                              (isWstETHMarket && selectedAsset.toLowerCase() === "wsteth") ||
+                              (isFxUSDMarket && selectedAsset.toLowerCase() === "fxsave");
+  
+  const useZap = !!zapAddress && !isWrappedCollateral && isCollateralAtTop;
+  const useETHZap = useZap && isWstETHMarket && (isNativeETH || isStETH);
+  const useUSDCZap = useZap && isFxUSDMarket && (isUSDC || isFxUSD);
   const [shakeCollateralNeeded, setShakeCollateralNeeded] = useState(false);
   const [inputAdjusted, setInputAdjusted] = useState(false);
   const [adjustmentReason, setAdjustmentReason] = useState("");
@@ -1042,26 +1070,91 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
     setIsPending(true);
     setPendingStep(null);
     try {
-      const parsedAmount = parseEther(inputAmount);
+      // Parse amount with correct decimals based on selected asset
+      // USDC uses 6 decimals, fxSAVE/fxUSD/ETH/stETH/wstETH use 18 decimals
+      const parsedAmount = isUSDC 
+        ? parseUnits(inputAmount, 6)
+        : parseEther(inputAmount);
       let approveFn,
         currentAllowanceBigInt: bigint = BigInt(0);
       let needsApproval = false;
 
       if (isCollateralAtTop) {
-        currentAllowanceBigInt =
-          (collateralBalance?.[1]?.result as bigint) ?? BigInt(0);
-        needsApproval = currentAllowanceBigInt < parsedAmount;
-        if (needsApproval) {
-          setPendingStep("approval");
-          await writeContractAsync({
-            address: currentMarket.addresses.collateralToken as `0x${string}`,
-            abi: ERC20_ABI,
-            functionName: "approve",
-            args: [
-              currentMarket.addresses.minter as `0x${string}`,
-              parsedAmount,
-            ],
-          });
+        // Handle approvals for zap contracts or direct minting
+        if (useZap && zapAddress) {
+          if (useETHZap && isStETH) {
+            // Approve stETH to zap contract - need to read allowance first
+            const stETHAddress = marketInfo?.addresses?.wrappedCollateralToken as `0x${string}` | undefined;
+            if (!stETHAddress) throw new Error("stETH address not found");
+            
+            // Read allowance using publicClient
+            const allowance = await publicClient.readContract({
+              address: stETHAddress,
+              abi: ERC20_ABI,
+              functionName: "allowance",
+              args: [userAddress as `0x${string}`, zapAddress],
+            });
+            
+            const currentAllowance = allowance as bigint;
+            needsApproval = currentAllowance < parsedAmount;
+            if (needsApproval) {
+              setPendingStep("approval");
+              await writeContractAsync({
+                address: stETHAddress,
+                abi: ERC20_ABI,
+                functionName: "approve",
+                args: [zapAddress, parsedAmount],
+              });
+            }
+          } else if (useUSDCZap && (isUSDC || isFxUSD)) {
+            // Approve USDC or fxUSD to zap contract
+            const assetAddress = isUSDC 
+              ? "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" as `0x${string}`
+              : (marketInfo?.addresses?.collateralToken as `0x${string}` | undefined);
+            
+            if (!assetAddress) throw new Error("Asset address not found");
+            
+            // parsedAmount already has correct decimals (6 for USDC, 18 for fxUSD)
+            const amountForApproval = parsedAmount;
+            
+            // Read allowance using publicClient
+            const allowance = await publicClient.readContract({
+              address: assetAddress,
+              abi: ERC20_ABI,
+              functionName: "allowance",
+              args: [userAddress as `0x${string}`, zapAddress],
+            });
+            
+            const currentAllowance = allowance as bigint;
+            needsApproval = currentAllowance < amountForApproval;
+            if (needsApproval) {
+              setPendingStep("approval");
+              await writeContractAsync({
+                address: assetAddress,
+                abi: ERC20_ABI,
+                functionName: "approve",
+                args: [zapAddress, amountForApproval],
+              });
+            }
+          }
+          // ETH doesn't need approval (native token)
+        } else {
+          // Direct minting - approve wrapped collateral to minter
+          currentAllowanceBigInt =
+            (collateralBalance?.[1]?.result as bigint) ?? BigInt(0);
+          needsApproval = currentAllowanceBigInt < parsedAmount;
+          if (needsApproval) {
+            setPendingStep("approval");
+            await writeContractAsync({
+              address: currentMarket.addresses.collateralToken as `0x${string}`,
+              abi: ERC20_ABI,
+              functionName: "approve",
+              args: [
+                currentMarket.addresses.minter as `0x${string}`,
+                parsedAmount,
+              ],
+            });
+          }
         }
       } else if (selectedType === "LONG") {
         currentAllowanceBigInt =
@@ -1100,73 +1193,213 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
       // 2. Proceed with mint/redeem
       setPendingStep("mintOrRedeem");
       if (isCollateralAtTop) {
-        if (selectedType === "LONG") {
-          let minPeggedOut = parsedAmount;
-          if (
-            Array.isArray(mintPeggedDryRunResult) &&
-            mintPeggedDryRunResult.length > 2 &&
-            typeof mintPeggedDryRunResult[3] === "bigint"
-          ) {
-            minPeggedOut = mintPeggedDryRunResult[3] as bigint; // peggedMinted
+        // Check if we should use zap contract
+        if (useZap && zapAddress) {
+          if (useETHZap) {
+            // ETH/stETH zap for wstETH markets
+            if (selectedType === "LONG") {
+              // Mint pegged token via zap
+              let minPeggedOut = parsedAmount;
+              if (
+                Array.isArray(mintPeggedDryRunResult) &&
+                mintPeggedDryRunResult.length > 2 &&
+                typeof mintPeggedDryRunResult[3] === "bigint"
+              ) {
+                minPeggedOut = mintPeggedDryRunResult[3] as bigint;
+              }
+              // Calculate minWstEthOut with 0.5% slippage
+              const minWstEthOut = (parsedAmount * 995n) / 1000n;
+              
+              if (isNativeETH) {
+                const hash = await writeContractAsync({
+                  address: zapAddress,
+                  abi: MINTER_ETH_ZAP_V2_ABI,
+                  functionName: "zapEthToPegged",
+                  args: [userAddress as `0x${string}`, minPeggedOut, minWstEthOut],
+                  value: parsedAmount,
+                });
+                setTransactionHash(hash);
+              } else if (isStETH) {
+                // Need approval for stETH first
+                const stETHAddress = marketInfo?.addresses?.wrappedCollateralToken as `0x${string}` | undefined;
+                if (!stETHAddress) throw new Error("stETH address not found");
+                
+                const hash = await writeContractAsync({
+                  address: zapAddress,
+                  abi: MINTER_ETH_ZAP_V2_ABI,
+                  functionName: "zapStEthToPegged",
+                  args: [parsedAmount, userAddress as `0x${string}`, minPeggedOut, minWstEthOut],
+                });
+                setTransactionHash(hash);
+              }
+            } else {
+              // Mint leveraged token via zap
+              let minLeveragedOut = parsedAmount;
+              if (
+                Array.isArray(mintLeveragedDryRunResult) &&
+                mintLeveragedDryRunResult.length > 4 &&
+                typeof mintLeveragedDryRunResult[4] === "bigint"
+              ) {
+                minLeveragedOut = mintLeveragedDryRunResult[4] as bigint;
+              }
+              const minWstEthOut = (parsedAmount * 995n) / 1000n;
+              
+              if (isNativeETH) {
+                const hash = await writeContractAsync({
+                  address: zapAddress,
+                  abi: MINTER_ETH_ZAP_V2_ABI,
+                  functionName: "zapEthToLeveraged",
+                  args: [userAddress as `0x${string}`, minLeveragedOut, minWstEthOut],
+                  value: parsedAmount,
+                });
+                setTransactionHash(hash);
+              } else if (isStETH) {
+                const stETHAddress = marketInfo?.addresses?.wrappedCollateralToken as `0x${string}` | undefined;
+                if (!stETHAddress) throw new Error("stETH address not found");
+                
+                const hash = await writeContractAsync({
+                  address: zapAddress,
+                  abi: MINTER_ETH_ZAP_V2_ABI,
+                  functionName: "zapStEthToLeveraged",
+                  args: [parsedAmount, userAddress as `0x${string}`, minLeveragedOut, minWstEthOut],
+                });
+                setTransactionHash(hash);
+              }
+            }
+          } else if (useUSDCZap) {
+            // USDC/fxUSD zap for fxSAVE markets
+            // USDC uses 6 decimals, fxUSD uses 18 decimals
+            // parsedAmount already has correct decimals from above (6 for USDC, 18 for fxUSD)
+            const amountForZap = parsedAmount;
+            
+            if (selectedType === "LONG") {
+              // Mint pegged token via zap
+              let minPeggedOut = parsedAmount;
+              if (
+                Array.isArray(mintPeggedDryRunResult) &&
+                mintPeggedDryRunResult.length > 2 &&
+                typeof mintPeggedDryRunResult[3] === "bigint"
+              ) {
+                minPeggedOut = mintPeggedDryRunResult[3] as bigint;
+              }
+              
+              if (isUSDC) {
+                const hash = await writeContractAsync({
+                  address: zapAddress,
+                  abi: MINTER_USDC_ZAP_V2_ABI,
+                  functionName: "zapUsdcToPegged",
+                  args: [amountForZap, userAddress as `0x${string}`, minPeggedOut],
+                });
+                setTransactionHash(hash);
+              } else if (isFxUSD) {
+                const hash = await writeContractAsync({
+                  address: zapAddress,
+                  abi: MINTER_USDC_ZAP_V2_ABI,
+                  functionName: "zapFxUsdToPegged",
+                  args: [amountForZap, userAddress as `0x${string}`, minPeggedOut],
+                });
+                setTransactionHash(hash);
+              }
+            } else {
+              // Mint leveraged token via zap
+              let minLeveragedOut = parsedAmount;
+              if (
+                Array.isArray(mintLeveragedDryRunResult) &&
+                mintLeveragedDryRunResult.length > 4 &&
+                typeof mintLeveragedDryRunResult[4] === "bigint"
+              ) {
+                minLeveragedOut = mintLeveragedDryRunResult[4] as bigint;
+              }
+              
+              if (isUSDC) {
+                const hash = await writeContractAsync({
+                  address: zapAddress,
+                  abi: MINTER_USDC_ZAP_V2_ABI,
+                  functionName: "zapUsdcToLeveraged",
+                  args: [amountForZap, userAddress as `0x${string}`, minLeveragedOut],
+                });
+                setTransactionHash(hash);
+              } else if (isFxUSD) {
+                const hash = await writeContractAsync({
+                  address: zapAddress,
+                  abi: MINTER_USDC_ZAP_V2_ABI,
+                  functionName: "zapFxUsdToLeveraged",
+                  args: [amountForZap, userAddress as `0x${string}`, minLeveragedOut],
+                });
+                setTransactionHash(hash);
+              }
+            }
           }
-          const hash = await writeContractAsync({
-            address: currentMarket.addresses.minter as `0x${string}`,
-            abi: minterABI,
-            functionName: "mintPeggedToken",
-            args: [parsedAmount, userAddress as `0x${string}`, minPeggedOut],
-          });
-          setTransactionHash(hash);
         } else {
-          // Minting Leveraged Token
-          let minLeveragedOut = parsedAmount; // Default to input amount
-          console.log("💰 Preparing mintLeveragedToken transaction:", {
-            inputAmount,
-            parsedAmount: parsedAmount.toString(),
-            mintLeveragedDryRunResult,
-            mintLeveragedDryRunResultLength: Array.isArray(
-              mintLeveragedDryRunResult
-            )
-              ? mintLeveragedDryRunResult.length
-              : 0,
-          });
-          if (
-            // Prefer dry run result if available
-            Array.isArray(mintLeveragedDryRunResult) &&
-            mintLeveragedDryRunResult.length > 4 &&
-            typeof mintLeveragedDryRunResult[4] === "bigint"
-          ) {
-            minLeveragedOut = mintLeveragedDryRunResult[4] as bigint;
-            console.log(
-              "✅ Using dry-run result for minLeveragedOut:",
-              formatEther(minLeveragedOut)
-            );
-          } else if (outputAmount && parseFloat(outputAmount) > 0) {
-            // Fallback to calculated outputAmount
-            try {
-              minLeveragedOut = parseEther(outputAmount);
+          // Direct minting (no zap)
+          if (selectedType === "LONG") {
+            let minPeggedOut = parsedAmount;
+            if (
+              Array.isArray(mintPeggedDryRunResult) &&
+              mintPeggedDryRunResult.length > 2 &&
+              typeof mintPeggedDryRunResult[3] === "bigint"
+            ) {
+              minPeggedOut = mintPeggedDryRunResult[3] as bigint; // peggedMinted
+            }
+            const hash = await writeContractAsync({
+              address: currentMarket.addresses.minter as `0x${string}`,
+              abi: minterABI,
+              functionName: "mintPeggedToken",
+              args: [parsedAmount, userAddress as `0x${string}`, minPeggedOut],
+            });
+            setTransactionHash(hash);
+          } else {
+            // Minting Leveraged Token
+            let minLeveragedOut = parsedAmount; // Default to input amount
+            console.log("💰 Preparing mintLeveragedToken transaction:", {
+              inputAmount,
+              parsedAmount: parsedAmount.toString(),
+              mintLeveragedDryRunResult,
+              mintLeveragedDryRunResultLength: Array.isArray(
+                mintLeveragedDryRunResult
+              )
+                ? mintLeveragedDryRunResult.length
+                : 0,
+            });
+            if (
+              // Prefer dry run result if available
+              Array.isArray(mintLeveragedDryRunResult) &&
+              mintLeveragedDryRunResult.length > 4 &&
+              typeof mintLeveragedDryRunResult[4] === "bigint"
+            ) {
+              minLeveragedOut = mintLeveragedDryRunResult[4] as bigint;
               console.log(
-                "📊 Using outputAmount for minLeveragedOut:",
+                "✅ Using dry-run result for minLeveragedOut:",
                 formatEther(minLeveragedOut)
               );
-            } catch (e) {
-              console.error(
-                "Error parsing outputAmount for minLeveragedOut:",
-                e
+            } else if (outputAmount && parseFloat(outputAmount) > 0) {
+              // Fallback to calculated outputAmount
+              try {
+                minLeveragedOut = parseEther(outputAmount);
+                console.log(
+                  "📊 Using outputAmount for minLeveragedOut:",
+                  formatEther(minLeveragedOut)
+                );
+              } catch (e) {
+                console.error(
+                  "Error parsing outputAmount for minLeveragedOut:",
+                  e
+                );
+              }
+            } else {
+              console.log(
+                "⚠️ Using default parsedAmount for minLeveragedOut:",
+                formatEther(minLeveragedOut)
               );
             }
-          } else {
-            console.log(
-              "⚠️ Using default parsedAmount for minLeveragedOut:",
-              formatEther(minLeveragedOut)
-            );
+            const hash = await writeContractAsync({
+              address: currentMarket.addresses.minter as `0x${string}`,
+              abi: minterABI,
+              functionName: "mintLeveragedToken",
+              args: [parsedAmount, userAddress as `0x${string}`, minLeveragedOut],
+            });
+            setTransactionHash(hash);
           }
-          const hash = await writeContractAsync({
-            address: currentMarket.addresses.minter as `0x${string}`,
-            abi: minterABI,
-            functionName: "mintLeveragedToken",
-            args: [parsedAmount, userAddress as `0x${string}`, minLeveragedOut],
-          });
-          setTransactionHash(hash);
         }
       } else {
         if (selectedType === "LONG") {

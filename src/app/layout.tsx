@@ -72,8 +72,8 @@ export default async function RootLayout({
  const headersObj = await headers();
  const cookies = headersObj.get("cookie");
 
- return (
- <html lang="en">
+  return (
+    <html lang="en" suppressHydrationWarning>
  <body
  className={`antialiased font-sans bg-[#1E4775] text-white relative overflow-x-hidden`}
  >

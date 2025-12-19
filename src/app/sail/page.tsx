@@ -328,6 +328,9 @@ function SailMarketRow({
   // HS token value = Total Collateral Value - HA token claims
   // HA claims = Collateral Value / Collateral Ratio
   // HS value = Collateral Value * (1 - 1/CR)
+  const collateralSymbol = market.collateral?.symbol?.toLowerCase() || "";
+  const isFxUSDMarket = collateralSymbol === "fxusd" || collateralSymbol === "fxsave";
+  
   let currentValueUSD: number | undefined;
   if (
     userDeposit &&
@@ -337,16 +340,22 @@ function SailMarketRow({
     totalSupply &&
     totalSupply > 0n
   ) {
-    const rate = wrappedRate || BigInt("1000000000000000000");
-
     // Calculate total collateral value in USD
-    // collateralValue is in wrapped collateral (18 decimals)
-    // collateralPriceUSD is USD per underlying (18 decimals)
-    // rate is wrapped to underlying conversion (18 decimals)
     const collateralValueNum = Number(collateralValue) / 1e18;
     const usdNum = Number(collateralPriceUSD) / 1e18;
-    const rateNum = Number(rate) / 1e18;
-    const totalCollateralUSD = collateralValueNum * usdNum * rateNum;
+    
+    let totalCollateralUSD: number;
+    if (isFxUSDMarket) {
+      // For fxUSD markets: collateralValue is already in underlying (fxUSD)
+      // No need to multiply by wrappedRate
+      totalCollateralUSD = collateralValueNum * usdNum;
+    } else {
+      // For wstETH markets: collateralValue is in wrapped collateral (wstETH)
+      // Need to convert to underlying using wrappedRate
+      const rate = wrappedRate || BigInt("1000000000000000000");
+      const rateNum = Number(rate) / 1e18;
+      totalCollateralUSD = collateralValueNum * usdNum * rateNum;
+    }
 
     // Calculate HS token total value
     // Collateral ratio is in 18 decimals (e.g., 1.5e18 = 150%)
@@ -514,14 +523,28 @@ function SailMarketExpandedView({
   currentValueUSD?: number;
   userDeposit?: bigint;
 }) {
+  // Detect if this is an fxUSD market (collateralValue is in underlying, not wrapped)
+  const collateralSymbol = market.collateral?.symbol?.toLowerCase() || "";
+  const isFxUSDMarket = collateralSymbol === "fxusd" || collateralSymbol === "fxsave";
+  
   // Calculate TVL in USD
   let tvlUSD: number | undefined;
   if (collateralValue && collateralPriceUSD) {
-    const rate = wrappedRate || BigInt("1000000000000000000");
     const valueNum = Number(collateralValue) / 1e18;
     const priceNum = Number(collateralPriceUSD) / 1e18;
-    const rateNum = Number(rate) / 1e18;
-    tvlUSD = valueNum * priceNum * rateNum;
+    
+    if (isFxUSDMarket) {
+      // For fxUSD markets: collateralValue is already in underlying (fxUSD)
+      // collateralPriceUSD is USD per underlying (fxUSD = $1.00)
+      // No need to multiply by wrappedRate
+      tvlUSD = valueNum * priceNum;
+    } else {
+      // For wstETH markets: collateralValue is in wrapped collateral (wstETH)
+      // Need to convert to underlying (stETH) using wrappedRate
+      const rate = wrappedRate || BigInt("1000000000000000000");
+      const rateNum = Number(rate) / 1e18;
+      tvlUSD = valueNum * priceNum * rateNum;
+    }
   }
 
   const hasPosition = userDeposit && userDeposit > 0n;
@@ -545,21 +568,33 @@ function SailMarketExpandedView({
 
   // Calculate token price in USD
   const computedTokenPriceUSD = useMemo(() => {
-    if (!computedTokenPrice || !collateralPriceUSD || !wrappedRate) {
+    if (!computedTokenPrice || !collateralPriceUSD) {
       return undefined;
     }
-    // Convert token price from collateral units to USD
-    // computedTokenPrice is in wrapped collateral units (18 decimals)
-    // collateralPriceUSD is USD per underlying (18 decimals)
-    // wrappedRate is wrapped to underlying conversion (18 decimals)
-    // Formula: tokenPrice * wrappedRate * underlyingPriceUSD / 1e36
-    // This gives us USD value with 18 decimals
-    const oneE18 = BigInt("1000000000000000000");
-    const oneE36 = oneE18 * oneE18;
-    const tokenPriceUSD_18dec =
-      (computedTokenPrice * wrappedRate * collateralPriceUSD) / oneE36;
-    return Number(tokenPriceUSD_18dec) / 1e18;
-  }, [computedTokenPrice, collateralPriceUSD, wrappedRate]);
+    
+    // Detect if this is an fxUSD market
+    const collateralSymbol = market.collateral?.symbol?.toLowerCase() || "";
+    const isFxUSDMarket = collateralSymbol === "fxusd" || collateralSymbol === "fxsave";
+    
+    if (isFxUSDMarket) {
+      // For fxUSD markets: computedTokenPrice is already in underlying (fxUSD)
+      // collateralPriceUSD is USD per underlying (fxUSD = $1.00)
+      // Formula: tokenPrice * underlyingPriceUSD / 1e18
+      const oneE18 = BigInt("1000000000000000000");
+      const tokenPriceUSD_18dec = (computedTokenPrice * collateralPriceUSD) / oneE18;
+      return Number(tokenPriceUSD_18dec) / 1e18;
+    } else {
+      // For wstETH markets: computedTokenPrice is in wrapped collateral (wstETH)
+      // Need wrappedRate to convert to underlying
+      if (!wrappedRate) return undefined;
+      // Formula: tokenPrice * wrappedRate * underlyingPriceUSD / 1e36
+      const oneE18 = BigInt("1000000000000000000");
+      const oneE36 = oneE18 * oneE18;
+      const tokenPriceUSD_18dec =
+        (computedTokenPrice * wrappedRate * collateralPriceUSD) / oneE36;
+      return Number(tokenPriceUSD_18dec) / 1e18;
+    }
+  }, [computedTokenPrice, collateralPriceUSD, wrappedRate, market]);
 
   return (
     <div className="bg-[rgb(var(--surface-selected-rgb))] p-4 border-t border-white/20">

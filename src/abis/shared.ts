@@ -568,3 +568,152 @@ export const MINTER_ABI = [
     type: "function",
   },
 ] as const;
+
+/**
+ * Extended Minter ABI for anchor page operations (mint/redeem functions)
+ * This extends the base MINTER_ABI with additional functions needed for transactions
+ */
+export const MINTER_ABI_EXTENDED = [
+  ...MINTER_ABI,
+  {
+    inputs: [],
+    name: "leveragedTokenBalance",
+    outputs: [{ type: "uint256", name: "" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "leveragedTokenPrice",
+    outputs: [{ type: "uint256", name: "nav", internalType: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "config",
+    outputs: [
+      {
+        components: [
+          {
+            components: [
+              { name: "collateralRatioBandUpperBounds", type: "uint256[]" },
+              { name: "incentiveRates", type: "uint256[]" },
+            ],
+            name: "mintPeggedIncentiveConfig",
+            type: "tuple",
+          },
+          {
+            components: [
+              { name: "collateralRatioBandUpperBounds", type: "uint256[]" },
+              { name: "incentiveRates", type: "uint256[]" },
+            ],
+            name: "redeemPeggedIncentiveConfig",
+            type: "tuple",
+          },
+          {
+            components: [
+              { name: "collateralRatioBandUpperBounds", type: "uint256[]" },
+              { name: "incentiveRates", type: "uint256[]" },
+            ],
+            name: "mintLeveragedIncentiveConfig",
+            type: "tuple",
+          },
+          {
+            components: [
+              { name: "collateralRatioBandUpperBounds", type: "uint256[]" },
+              { name: "incentiveRates", type: "uint256[]" },
+            ],
+            name: "redeemLeveragedIncentiveConfig",
+            type: "tuple",
+          },
+        ],
+        name: "",
+        type: "tuple",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
+      { name: "collateralIn", type: "uint256" },
+      { name: "receiver", type: "address" },
+      { name: "minPeggedOut", type: "uint256" },
+    ],
+    name: "mintPeggedToken",
+    outputs: [{ type: "uint256", name: "peggedAmount" }],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [{ name: "collateralAmount", type: "uint256" }],
+    name: "calculateMintPeggedTokenOutput",
+    outputs: [{ type: "uint256", name: "peggedAmount" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [{ name: "wrappedCollateralIn", type: "uint256" }],
+    name: "mintPeggedTokenDryRun",
+    outputs: [
+      { name: "incentiveRatio", type: "int256" },
+      { name: "wrappedFee", type: "uint256" },
+      { name: "wrappedCollateralTaken", type: "uint256" },
+      { name: "peggedMinted", type: "uint256" },
+      { name: "price", type: "uint256" },
+      { name: "rate", type: "uint256" },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
+      { name: "leveragedIn", type: "uint256" },
+      { name: "receiver", type: "address" },
+      { name: "minCollateralOut", type: "uint256" },
+    ],
+    name: "redeemLeveragedToken",
+    outputs: [{ type: "uint256", name: "collateralAmount" }],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [{ name: "leveragedAmount", type: "uint256" }],
+    name: "calculateRedeemLeveragedTokenOutput",
+    outputs: [{ type: "uint256", name: "collateralAmount" }],
+    stateMutability: "view",
+    type: "function",
+  },
+] as const;
+
+/**
+ * Wrapped Price Oracle ABI (IWrappedPriceOracle)
+ * Used for fxUSD and other wrapped collateral price feeds
+ */
+export const WRAPPED_PRICE_ORACLE_ABI = [
+  {
+    inputs: [],
+    name: "latestAnswer",
+    outputs: [
+      { type: "uint256", name: "minUnderlyingPrice" },
+      { type: "uint256", name: "maxUnderlyingPrice" },
+      { type: "uint256", name: "minWrappedRate" },
+      { type: "uint256", name: "maxWrappedRate" },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "getPrice",
+    outputs: [{ type: "uint256", name: "" }],
+    stateMutability: "view",
+    type: "function",
+  },
+] as const;
+
+/**
+ * Alias for backwards compatibility
+ */
+export const CHAINLINK_ORACLE_ABI_EXTENDED = WRAPPED_PRICE_ORACLE_ABI;
