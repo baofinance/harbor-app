@@ -1108,7 +1108,7 @@ export default function GenesisIndexPage() {
                 : "250,000";
 
               return (
-                <div className="bg-gradient-to-r from-[#FF8A7A]/20 to-[#FF8A7A]/10 border border-[#FF8A7A]/30 p-4 sm:p-3 md:p-4 flex flex-col">
+                <div className="bg-[#17395F] p-4 sm:p-3 md:p-4 flex flex-col">
                   <div className="flex items-center justify-center mb-2">
                     <GiftIcon className="w-5 h-5 sm:w-4 sm:h-4 md:w-6 md:h-6 text-[#FF8A7A] mr-1.5 sm:mr-1 md:mr-2 flex-shrink-0" />
                     <h2 className="font-bold text-[#FF8A7A] text-lg sm:text-sm md:text-base lg:text-lg text-center">
@@ -1116,7 +1116,7 @@ export default function GenesisIndexPage() {
                     </h2>
                   </div>
                   <div className="flex-1 flex flex-col justify-between">
-                    <p className="text-sm sm:text-xs md:text-sm text-white/90 text-center mb-2">
+                    <p className="text-sm sm:text-xs md:text-sm text-white/80 text-center mb-2">
                       First {thresholdAmount} {thresholdToken} earn <span className="font-semibold text-white">100 extra marks/$</span> at genesis end
                     </p>
                     <div className="text-center">
