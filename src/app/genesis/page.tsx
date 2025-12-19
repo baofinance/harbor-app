@@ -3100,7 +3100,7 @@ export default function GenesisIndexPage() {
                                     className={`h-1.5 rounded-full transition-all ${
                                       marketBonusStatus.thresholdReached
                                         ? "bg-gray-400"
-                                        : "bg-green-500"
+                                        : "bg-[#FF8A7A]"
                                     }`}
                                     style={{ width: `${bonusProgress}%` }}
                                   />
