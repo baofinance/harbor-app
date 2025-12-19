@@ -1108,7 +1108,7 @@ export default function GenesisIndexPage() {
                 : "250,000";
 
               return (
-                <div className="bg-[#17395F] p-4 sm:p-3 md:p-4 flex flex-col relative border-2 border-[#FF8A7A] animate-pulse">
+                <div className="bg-[#17395F] p-4 sm:p-3 md:p-4 flex flex-col relative border-2 border-[#FF8A7A] coral-outline">
                   <style jsx>{`
                     @keyframes border-glow {
                       0%, 100% {
