@@ -3090,7 +3090,7 @@ export default function GenesisIndexPage() {
                         const earlyBonusEligibleUSD = parseFloat(marks?.earlyBonusEligibleDepositUSD || "0");
                         
                         return (
-                          <div className="px-2 py-1 border-t border-[#1E4775]/10">
+                          <div className="px-2 pt-1.5 pb-1 border-t border-[#1E4775]/10">
                             <div className="space-y-1">
                               {/* Progress Bar */}
                               <div className="space-y-0.5">
