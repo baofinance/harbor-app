@@ -305,43 +305,53 @@ export function useAllHarborMarks(genesisAddresses: string[]) {
   });
 }
 
-// Hook to get market bonus status (early deposit bonus tracking)
-export function useMarketBonusStatus(genesisAddress: string | undefined) {
+// Hook to get all market bonus statuses (early deposit bonus tracking)
+export function useAllMarketBonusStatus(genesisAddresses: string[]) {
   const graphUrl = getGraphUrl();
 
   return useQuery({
-    queryKey: ["marketBonusStatus", genesisAddress],
+    queryKey: ["allMarketBonusStatus", genesisAddresses],
     queryFn: async () => {
-      if (!genesisAddress) {
-        return null;
+      if (genesisAddresses.length === 0) {
+        return [];
       }
 
-      const response = await fetch(graphUrl, {
-        method: "POST",
-        headers: getGraphHeaders(),
-        body: JSON.stringify({
-          query: MARKET_BONUS_STATUS_QUERY,
-          variables: {
-            contractAddress: genesisAddress.toLowerCase(),
-          },
-        }),
+      // Query all markets in parallel
+      const queries = genesisAddresses.map((genesisAddress) => {
+        return fetch(graphUrl, {
+          method: "POST",
+          headers: getGraphHeaders(),
+          body: JSON.stringify({
+            query: MARKET_BONUS_STATUS_QUERY,
+            variables: {
+              contractAddress: genesisAddress.toLowerCase(),
+            },
+          }),
+        }).then(async (res) => {
+          if (!res.ok) {
+            console.warn(`[useAllMarketBonusStatus] Query failed for ${genesisAddress}`);
+            return { data: null, errors: [{ message: res.statusText }] };
+          }
+          const json = await res.json();
+          if (json.errors) {
+            console.warn(`[useAllMarketBonusStatus] GraphQL errors for ${genesisAddress}`);
+          }
+          return json;
+        }).catch((error) => {
+          console.warn(`[useAllMarketBonusStatus] Fetch error for ${genesisAddress}`);
+          return { data: null, errors: [{ message: error.message }] };
+        });
       });
 
-      if (!response.ok) {
-        console.warn(`[useMarketBonusStatus] Query failed for ${genesisAddress}`);
-        return null;
-      }
+      const results = await Promise.all(queries);
 
-      const result = await response.json();
-
-      if (result.errors) {
-        console.warn(`[useMarketBonusStatus] GraphQL errors for ${genesisAddress}`);
-        return null;
-      }
-
-      return result.data?.marketBonusStatus || null;
+      return results.map((result, index) => ({
+        genesisAddress: genesisAddresses[index],
+        data: result.data?.marketBonusStatus || null,
+        errors: result.errors,
+      }));
     },
-    enabled: !!genesisAddress,
+    enabled: genesisAddresses.length > 0,
     refetchInterval: 30000, // Refetch every 30 seconds to show real-time progress
     staleTime: 20000,
     refetchOnWindowFocus: false,

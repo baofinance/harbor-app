@@ -32,7 +32,7 @@ import {
 import InfoTooltip from "@/components/InfoTooltip";
 import SimpleTooltip from "@/components/SimpleTooltip";
 import Image from "next/image";
-import { useAllHarborMarks, useMarketBonusStatus } from "@/hooks/useHarborMarks";
+import { useAllHarborMarks, useAllMarketBonusStatus } from "@/hooks/useHarborMarks";
 import { useMinterTokenMeta } from "@/hooks/useMinterTokenMeta";
 import {
   formatUSD,
@@ -529,6 +529,12 @@ export default function GenesisIndexPage() {
     refetch: refetchMarks,
     error: marksError,
   } = useAllHarborMarks(genesisAddresses);
+
+  // Fetch market bonus status for all markets (early deposit bonus tracking)
+  const {
+    data: allMarketBonusStatus,
+    isLoading: isLoadingBonusStatus,
+  } = useAllMarketBonusStatus(genesisAddresses);
 
   const queryClient = useQueryClient();
 
@@ -2976,10 +2982,15 @@ export default function GenesisIndexPage() {
 
                     {/* Early Deposit Bonus Progress Bar - shown for all markets */}
                     {(() => {
-                      // Use the hook to get market bonus status
-                      const { data: marketBonusStatus } = useMarketBonusStatus(genesisAddress);
+                      // Get market bonus status from the hook called at top level
+                      const marketBonusData = allMarketBonusStatus?.find(
+                        (status) =>
+                          status.genesisAddress?.toLowerCase() ===
+                          genesisAddress?.toLowerCase()
+                      );
+                      const marketBonusStatus = marketBonusData?.data;
                       
-                      if (!marketBonusStatus) return null;
+                      if (!marketBonusStatus || isLoadingBonusStatus) return null;
                       
                       const bonusProgress = Math.min(
                         100,
