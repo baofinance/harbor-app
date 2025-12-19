@@ -97,6 +97,9 @@ import { useAnchorTokenMetadata } from "@/hooks/anchor/useAnchorTokenMetadata";
 import { useAnchorUserDeposits } from "@/hooks/anchor/useAnchorUserDeposits";
 import { calculateReadOffset } from "@/utils/anchor/calculateReadOffset";
 
+// Flag to temporarily disable anchor marks (set to false to pause marks)
+const ANCHOR_MARKS_ENABLED = false;
+
 // Token metadata types are now in useAnchorTokenMetadata hook
 import { usePoolRewardAPR } from "@/hooks/usePoolRewardAPR";
 import { usePoolRewardTokens } from "@/hooks/usePoolRewardTokens";
@@ -299,6 +302,7 @@ export default function AnchorPage() {
     poolDeposits,
     sailBalances,
     isLoading: isLoadingAnchorMarks,
+    error: anchorMarksError,
   } = useAnchorMarks(anchorMarkets, allMarketContracts, reads);
   
   // Keep for backward compatibility
@@ -398,7 +402,7 @@ export default function AnchorPage() {
     fxUSDPrice,
     fxSAVEPrice,
     usdcPrice,
-  } = useAnchorPrices(anchorMarkets, reads, peggedPriceMap);
+  } = useAnchorPrices(anchorMarkets, reads, peggedPricesFromReads);
 
   // Fetch all positions using the unified hook, passing shared prices
   console.log("[AnchorPage] Calling useMarketPositions with address:", address, "isConnected:", isConnected);
@@ -2576,7 +2580,9 @@ export default function AnchorPage() {
                       Anchor Ledger Marks
                     </div>
                     <div className="text-base font-bold text-white font-mono text-center tabular-nums">
-                      {!mounted || isLoadingAnchorMarks ? (
+                      {!ANCHOR_MARKS_ENABLED ? (
+                        "0"
+                      ) : !mounted || isLoadingAnchorMarks ? (
                         <span className="text-white/50">-</span>
                       ) : totalAnchorMarks > 0 ? (
                         totalAnchorMarks.toLocaleString(undefined, {
@@ -2588,13 +2594,17 @@ export default function AnchorPage() {
                       )}
                     </div>
                     <div className="text-[10px] text-white/50 text-center mt-0.5">
-                      {!mounted || isLoadingAnchorMarks
-                        ? ""
-                        : totalAnchorMarksPerDay > 0
-                        ? `${totalAnchorMarksPerDay.toLocaleString(undefined, {
-                            maximumFractionDigits: 2,
-                          })} marks/day`
-                        : "0 marks/day"}
+                      {!ANCHOR_MARKS_ENABLED ? (
+                        "0 marks/day"
+                      ) : !mounted || isLoadingAnchorMarks ? (
+                        ""
+                      ) : totalAnchorMarksPerDay > 0 ? (
+                        `${totalAnchorMarksPerDay.toLocaleString(undefined, {
+                          maximumFractionDigits: 2,
+                        })} marks/day`
+                      ) : (
+                        "0 marks/day"
+                      )}
                     </div>
                   </div>
                 </div>

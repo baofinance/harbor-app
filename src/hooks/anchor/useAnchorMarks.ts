@@ -24,6 +24,7 @@ export function useAnchorMarks(
     poolDeposits,
     sailBalances,
     loading: isLoadingAnchorMarks,
+    error: anchorLedgerMarksError,
   } = useAnchorLedgerMarks();
 
   // Calculate sail marks per day
@@ -186,6 +187,7 @@ export function useAnchorMarks(
     sailMarksPerDay,
     maidenVoyageMarksPerDay,
     isLoading: isLoadingAnchorMarks || isLoadingGenesisMarks,
+    error: anchorLedgerMarksError,
     haBalances,
     poolDeposits,
     sailBalances,

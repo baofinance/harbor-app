@@ -842,6 +842,22 @@ export default function GenesisIndexPage() {
     }
   }, [reads, isConnected, genesisMarkets, queryClient, refetchMarks]);
 
+  // Check if there are any active or pending maiden voyages
+  // Only used to conditionally show/hide the market table section
+  const hasActiveOrPendingMarkets = useMemo(() => {
+    if (genesisMarkets.length === 0) return false;
+    if (!reads) return false; // Wait for reads to load
+    
+    return genesisMarkets.some(([_, mkt], mi) => {
+      const baseOffset = mi * (isConnected ? 3 : 1);
+      const contractSaysEnded = reads?.[baseOffset]?.result as boolean | undefined;
+      
+      // Market is active if contract hasn't ended
+      // Market is pending if time expired but contract not ended (processing state)
+      return contractSaysEnded !== true;
+    });
+  }, [reads, isConnected, genesisMarkets]);
+
   return (
     <div className="min-h-screen text-white max-w-[1300px] mx-auto font-sans relative">
       <main className="container mx-auto px-4 sm:px-10 pb-6">
@@ -1290,14 +1306,13 @@ export default function GenesisIndexPage() {
           );
         })()}
 
-        {/* Divider */}
-        <div className="border-t border-white/10 mb-2"></div>
-
-        <section className="space-y-2 overflow-visible">
-          {/* Market Rows - sorted with ended markets first, then live markets */}
-          {(() => {
-            // Sort markets: ended first, then live
-            const sortedMarkets = [...genesisMarkets].sort((a, b) => {
+        {/* Only show market rows section if there are active/pending markets or ended markets with claimable tokens */}
+        {hasActiveOrPendingMarkets && (
+          <section className="space-y-2 overflow-visible">
+            {/* Market Rows - sorted with ended markets first, then live markets */}
+            {(() => {
+              // Sort markets: ended first, then live
+              const sortedMarkets = [...genesisMarkets].sort((a, b) => {
               const [_, mktA] = a;
               const [__, mktB] = b;
               const miA = genesisMarkets.findIndex((m) => m[0] === a[0]);
@@ -2649,7 +2664,8 @@ export default function GenesisIndexPage() {
               );
             });
           })()}
-        </section>
+          </section>
+        )}
       </main>
 
       {manageModal && (
