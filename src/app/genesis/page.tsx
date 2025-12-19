@@ -1938,7 +1938,9 @@ export default function GenesisIndexPage() {
                     ? underlyingPriceUSD * (Number(wrappedRate) / 1e18) // While CoinGecko loads, use oracle * wrapped rate for wstETH or fxSAVE
                     : wrappedRate && underlyingPriceUSD > 0
                     ? underlyingPriceUSD * (Number(wrappedRate) / 1e18) // Multiply underlying by rate (e.g., fxUSD -> fxSAVE)
-                    : underlyingPriceUSD; // Fallback to underlying price if no rate available
+                    : coinGeckoLoading && marketCoinGeckoId
+                    ? 0 // Still loading CoinGecko, don't use fallback price yet
+                    : underlyingPriceUSD; // Fallback to underlying price if no rate available and CoinGecko not loading
 
                 console.log(
                   `[Genesis Price] Market ${id} wrapped token price calculation:`,
