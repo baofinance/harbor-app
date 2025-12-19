@@ -1903,7 +1903,7 @@ export default function GenesisIndexPage() {
                   coinGeckoId &&
                   ((coinGeckoId.toLowerCase() === "wrapped-steth" &&
                     collateralSymbol.toLowerCase() === "wsteth") ||
-                    (coinGeckoId.toLowerCase() === "fxsave" &&
+                    ((coinGeckoId.toLowerCase() === "fx-saving-usd" || coinGeckoId.toLowerCase() === "fxsave") &&
                       collateralSymbol.toLowerCase() === "fxsave"));
 
                 // For wstETH: If CoinGecko is still loading, use oracle price with wrapped rate
