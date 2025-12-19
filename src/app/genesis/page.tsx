@@ -1462,12 +1462,12 @@ export default function GenesisIndexPage() {
                 {mounted && !isLoadingMarks && (
                   <>
                     {!allContractsEnded && totalEarlyBonusEstimate > 0 && (
-                      <div className="text-[10px] text-green-300 mt-1 text-center bg-green-900/30 px-2 py-0.5 rounded">
+                      <div className="text-[10px] text-green-300 mt-1 text-center bg-green-900/30 px-2 py-0.5">
                         Early deposit bonus: +{totalEarlyBonusEstimate.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                       </div>
                     )}
                     {allContractsEnded && totalEarlyBonusMarks > 0 && (
-                      <div className="text-[10px] text-green-300 mt-1 text-center bg-green-900/30 px-2 py-0.5 rounded">
+                      <div className="text-[10px] text-green-300 mt-1 text-center bg-green-900/30 px-2 py-0.5">
                         Early deposit bonus: {totalEarlyBonusMarks.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                       </div>
                     )}
