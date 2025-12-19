@@ -19,8 +19,8 @@ import { ChainlinkAggregator } from "../generated/HaToken_haETH/ChainlinkAggrega
 const MARKS_PER_DOLLAR_PER_DAY = BigDecimal.fromString("10");
 const BONUS_MARKS_PER_DOLLAR = BigDecimal.fromString("100"); // 100 marks per dollar bonus at genesis end
 const EARLY_BONUS_MARKS_PER_DOLLAR = BigDecimal.fromString("100"); // 100 marks per dollar for early depositors
-const EARLY_BONUS_THRESHOLD_FXSAVE_USD = BigDecimal.fromString("250000"); // 250k fxSAVE in USD (~$267,500 at $1.07)
-const EARLY_BONUS_THRESHOLD_WSTETH_USD = BigDecimal.fromString("308000"); // 70 wstETH in USD (~$308,000 at $4,400)
+const EARLY_BONUS_THRESHOLD_FXSAVE = BigDecimal.fromString("250000"); // 250k fxUSD tokens (not USD)
+const EARLY_BONUS_THRESHOLD_WSTETH = BigDecimal.fromString("70"); // 70 wstETH tokens (not USD)
 const SECONDS_PER_DAY = BigDecimal.fromString("86400");
 const E18 = BigDecimal.fromString("1000000000000000000"); // 10^18
 
@@ -271,12 +271,12 @@ function getOrCreateMarketBonusStatus(
     marketBonus.thresholdReachedAt = null;
     marketBonus.cumulativeDeposits = BigDecimal.fromString("0");
     
-    // Determine collateral type and set threshold
+    // Determine collateral type and set threshold (in token amounts, not USD)
     const collateralSymbol = getCollateralSymbol(contractAddress.toHexString());
     const isFxSAVE = collateralSymbol == "fxSAVE";
     marketBonus.thresholdAmount = isFxSAVE 
-      ? EARLY_BONUS_THRESHOLD_FXSAVE_USD 
-      : EARLY_BONUS_THRESHOLD_WSTETH_USD;
+      ? EARLY_BONUS_THRESHOLD_FXSAVE 
+      : EARLY_BONUS_THRESHOLD_WSTETH;
     marketBonus.thresholdToken = collateralSymbol;
     marketBonus.lastUpdated = BigInt.fromI32(0);
   }
@@ -327,9 +327,9 @@ export function handleDeposit(event: DepositEvent): void {
   
   deposit.save();
   
-  // Update market bonus status with this deposit
+  // Update market bonus status with this deposit (track token amounts, not USD)
   if (!marketBonus.thresholdReached) {
-    marketBonus.cumulativeDeposits = marketBonus.cumulativeDeposits.plus(amountUSD);
+    marketBonus.cumulativeDeposits = marketBonus.cumulativeDeposits.plus(amountInTokens);
     
     // Check if threshold is reached with this deposit
     if (marketBonus.cumulativeDeposits.ge(marketBonus.thresholdAmount)) {

@@ -548,9 +548,9 @@ export default function GenesisIndexPage() {
           contractAddress: addr.toLowerCase(),
           thresholdReached: idx === 1, // Second market threshold reached (for variety)
           thresholdReachedAt: idx === 1 ? Math.floor(Date.now() / 1000).toString() : null,
-          cumulativeDeposits: idx === 0 ? "120000" : idx === 1 ? "260000" : "85000", // Different progress for each
-          thresholdAmount: addr.toLowerCase().includes("9ae0b57c") ? "308000" : "250000", // wstETH or fxSAVE
-          thresholdToken: addr.toLowerCase().includes("9ae0b57c") ? "wstETH" : "fxSAVE",
+          cumulativeDeposits: idx === 0 ? "120000" : idx === 1 ? "260000" : "50", // Different progress for each (token amounts)
+          thresholdAmount: addr.toLowerCase().includes("9ae0b57c") ? "70" : "250000", // 70 wstETH tokens or 250k fxUSD tokens
+          thresholdToken: addr.toLowerCase().includes("9ae0b57c") ? "wstETH" : "fxUSD",
           lastUpdated: Math.floor(Date.now() / 1000).toString(),
         },
         errors: null,
@@ -3106,7 +3106,7 @@ export default function GenesisIndexPage() {
                                   />
                                 </div>
                                 <span className="text-[10px] text-[#1E4775]/70 whitespace-nowrap">
-                                  {`${Number(marketBonusStatus.cumulativeDeposits).toLocaleString(undefined, { maximumFractionDigits: 0 })} / ${Number(marketBonusStatus.thresholdAmount).toLocaleString(undefined, { maximumFractionDigits: 0 })} USD`}
+                                  {`${Number(marketBonusStatus.cumulativeDeposits).toLocaleString(undefined, { maximumFractionDigits: 0 })} / ${Number(marketBonusStatus.thresholdAmount).toLocaleString(undefined, { maximumFractionDigits: 0 })} ${marketBonusStatus.thresholdToken}`}
                                 </span>
                               </div>
 

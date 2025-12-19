@@ -79,8 +79,8 @@ type MarketBonusStatus @entity(immutable: false) {
   contractAddress: Bytes! # Genesis contract address
   thresholdReached: Boolean! # Whether threshold has been reached
   thresholdReachedAt: BigInt # Block timestamp when threshold was reached (null if not reached)
-  cumulativeDeposits: BigDecimal! # Cumulative deposits in USD
-  thresholdAmount: BigDecimal! # 250000 for fxSAVE, 70 for wstETH
+  cumulativeDeposits: BigDecimal! # Cumulative deposits in token amounts (fxUSD or wstETH)
+  thresholdAmount: BigDecimal! # 250000 fxUSD tokens for fxSAVE markets, 70 wstETH tokens for wstETH markets
   thresholdToken: String! # "fxSAVE" or "wstETH"
   lastUpdated: BigInt! # Last update timestamp
 }
