@@ -1956,18 +1956,20 @@ export default function GenesisIndexPage() {
                 const totalDepositsUSD =
                   totalDepositsAmount * collateralPriceUSD;
 
-                // balanceOf returns the user's share
-                // If balanceOf returns underlying tokens (fxUSD), we should use underlying price
-                // If balanceOf returns wrapped tokens (fxSAVE), we should use wrapped price
-                // Based on user feedback that we're "off by the wrapped rate", balanceOf likely returns underlying tokens
+                // balanceOf returns wrapped collateral tokens (e.g., fxSAVE)
+                // To get USD value, we need to multiply by wrapped rate then by wrapped price
+                // OR: if balanceOf returns underlying tokens, multiply by wrapped rate to get wrapped amount, then by price
+                // Based on user feedback: multiply by wrapped rate to get deposit value
                 const userDepositAmount = userDeposit
                   ? Number(formatEther(userDeposit))
                   : 0;
-                // Use underlying price for user deposit if balanceOf returns underlying tokens
-                // Otherwise use wrapped price if balanceOf returns wrapped tokens
-                const userDepositUSD = underlyingSymbol.toLowerCase() === "fxusd" && underlyingPriceUSD > 0
-                  ? userDepositAmount * underlyingPriceUSD  // balanceOf returns underlying tokens, use underlying price
-                  : userDepositAmount * collateralPriceUSD;  // balanceOf returns wrapped tokens, use wrapped price
+                // If balanceOf returns underlying tokens, convert to wrapped then to USD:
+                // userDepositUSD = userDepositAmount * wrappedRate * wrappedPrice
+                // If balanceOf returns wrapped tokens, we should just multiply by wrapped price
+                // But user says we need to multiply by wrapped rate, so balanceOf likely returns underlying
+                const userDepositUSD = wrappedRate && wrappedRate > 0n
+                  ? userDepositAmount * (Number(wrappedRate) / 1e18) * collateralPriceUSD
+                  : userDepositAmount * collateralPriceUSD;
 
                 // Get anchor and sail token prices from the hook
                 const tokenPrices = tokenPricesByMarket[id];
