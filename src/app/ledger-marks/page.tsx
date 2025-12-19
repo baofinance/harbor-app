@@ -422,9 +422,7 @@ export default function LedgerMarksLeaderboard() {
  // Step 1: Query all deposits to find unique user-contract pairs
  const depositsResponse = await fetch(graphUrl, {
  method:"POST",
- headers: {
-"Content-Type":"application/json",
- },
+ headers: getGraphHeaders(),
  body: JSON.stringify({
  query: ALL_DEPOSITS_QUERY,
  }),
@@ -475,9 +473,7 @@ export default function LedgerMarksLeaderboard() {
  const id = `${pair.contractAddress}-${pair.user}`;
  const marksResponse = await fetch(graphUrl, {
  method:"POST",
- headers: {
-"Content-Type":"application/json",
- },
+ headers: getGraphHeaders(),
  body: JSON.stringify({
  query: USER_MARKS_QUERY,
  variables: { id },
@@ -533,9 +529,7 @@ export default function LedgerMarksLeaderboard() {
  queryFn: async () => {
  const response = await fetch(graphUrl, {
  method:"POST",
- headers: {
-"Content-Type":"application/json",
- },
+ headers: getGraphHeaders(),
  body: JSON.stringify({
  query: ALL_HA_TOKEN_BALANCES_QUERY,
  }),
@@ -570,9 +564,7 @@ export default function LedgerMarksLeaderboard() {
  queryFn: async () => {
  const response = await fetch(graphUrl, {
  method:"POST",
- headers: {
-"Content-Type":"application/json",
- },
+ headers: getGraphHeaders(),
  body: JSON.stringify({
  query: ALL_STABILITY_POOL_DEPOSITS_QUERY,
  }),
@@ -605,9 +597,7 @@ export default function LedgerMarksLeaderboard() {
  queryFn: async () => {
  const response = await fetch(graphUrl, {
  method:"POST",
- headers: {
-"Content-Type":"application/json",
- },
+ headers: getGraphHeaders(),
  body: JSON.stringify({
  query: ALL_SAIL_TOKEN_BALANCES_QUERY,
  }),
