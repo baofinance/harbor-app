@@ -631,11 +631,34 @@ export default function GenesisIndexPage() {
     });
   }, [genesisMarkets, isConnected, address]);
 
-  const { data: reads, refetch: refetchReads } = useContractReads({
+  const { data: readsRaw, refetch: refetchReads } = useContractReads({
     contracts: genesisReadContracts,
     enabled: genesisMarkets.length > 0,
     refetchInterval: 60000, // Refetch every 60 seconds - genesis doesn't end minute-to-minute
   });
+
+  // MOCK DATA: Override contract reads to show genesis NOT ended (for testing UI)
+  // TODO: Remove this once you want to see real genesis end status
+  const reads = useMemo(() => {
+    if (!readsRaw) return readsRaw;
+    
+    // Mock: Set first market's genesisIsEnded to false
+    return readsRaw.map((read, idx) => {
+      // Every 3rd read (or 1st if not connected) is genesisIsEnded
+      const isEndedRead = isConnected ? idx % 3 === 0 : true;
+      
+      if (isEndedRead && idx === 0) {
+        // First market - set to NOT ended for testing
+        return {
+          ...read,
+          result: false, // Genesis NOT ended
+          status: "success" as const,
+        };
+      }
+      
+      return read;
+    });
+  }, [readsRaw, isConnected]);
 
   // Fetch collateral token addresses from genesis contracts
   const collateralTokenContracts = useMemo(() => {
