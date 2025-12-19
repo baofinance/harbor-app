@@ -1381,11 +1381,11 @@ export default function GenesisIndexPage() {
               </div>
 
               {/* Current Marks Box */}
-              <div className="bg-[#17395F] p-3">
+              <div className="bg-[#17395F] p-3 flex flex-col">
                 <div className="text-xs text-white/70 mb-0.5 text-center">
                   Current Maiden Voyage Marks
                 </div>
-                <div className="text-base font-bold text-white font-mono text-center">
+                <div className="text-base font-bold text-white font-mono text-center flex-1 flex items-center justify-center">
                   {!mounted || isLoadingMarks ? (
                     <span className="text-white/50">-</span>
                   ) : totalCurrentMarks > 0 ? (
@@ -1400,11 +1400,11 @@ export default function GenesisIndexPage() {
               </div>
 
               {/* Marks per Day Box */}
-              <div className="bg-[#17395F] p-3">
+              <div className="bg-[#17395F] p-3 flex flex-col">
                 <div className="text-xs text-white/70 mb-0.5 text-center">
                   Marks per Day
                 </div>
-                <div className="text-base font-bold text-white font-mono text-center">
+                <div className="text-base font-bold text-white font-mono text-center flex-1 flex items-center justify-center">
                   {!mounted || isLoadingMarks ? (
                     <span className="text-white/50">-</span>
                   ) : totalMarksPerDay > 0 ? (
@@ -1418,7 +1418,7 @@ export default function GenesisIndexPage() {
               </div>
 
               {/* Bonus at End of Genesis Marks Box */}
-              <div className="bg-[#17395F] p-3">
+              <div className="bg-[#17395F] p-3 flex flex-col">
                 <div className="text-xs text-white/70 mb-0.5 text-center flex items-center justify-center gap-1">
                   Bonus at End of Genesis
                   {anyInProcessing && (
@@ -1427,7 +1427,7 @@ export default function GenesisIndexPage() {
                     </SimpleTooltip>
                   )}
                 </div>
-                <div className="text-base font-bold text-white font-mono text-center">
+                <div className="text-base font-bold text-white font-mono text-center flex-1 flex items-center justify-center min-h-[1.5rem]">
                   {!mounted || isLoadingMarks ? (
                     <span className="text-white/50">-</span>
                   ) : allContractsEnded && isConnected && totalCurrentMarks > 0 ? (
