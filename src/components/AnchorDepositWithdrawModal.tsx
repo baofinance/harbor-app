@@ -1,8 +1,6 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import { parseEther, formatEther, formatUnits } from "viem";
-import React, { useState, useEffect, useMemo } from "react";
 import { parseEther, formatEther, parseUnits, formatUnits } from "viem";
 import {
   useAccount,
