@@ -3092,15 +3092,10 @@ export default function GenesisIndexPage() {
                         return (
                           <div className="px-2 pt-1.5 pb-1 border-t border-[#1E4775]/10">
                             <div className="space-y-1">
-                              {/* Progress Bar */}
-                              <div className="space-y-0.5">
-                                <div className="flex items-center justify-between text-[10px]">
-                                  <span className="text-[#1E4775] font-semibold">Early Deposit Bonus</span>
-                                  <span className="text-[#1E4775]/70">
-                                    {`${Number(marketBonusStatus.cumulativeDeposits).toLocaleString(undefined, { maximumFractionDigits: 0 })} / ${Number(marketBonusStatus.thresholdAmount).toLocaleString(undefined, { maximumFractionDigits: 0 })} USD`}
-                                  </span>
-                                </div>
-                                <div className="w-full bg-gray-200 rounded-full h-1.5">
+                              {/* Progress Bar - label and bar on one line */}
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] text-[#1E4775] font-semibold whitespace-nowrap">Early Deposit Bonus</span>
+                                <div className="flex-1 bg-gray-200 rounded-full h-1.5">
                                   <div
                                     className={`h-1.5 rounded-full transition-all ${
                                       marketBonusStatus.thresholdReached
@@ -3110,6 +3105,9 @@ export default function GenesisIndexPage() {
                                     style={{ width: `${bonusProgress}%` }}
                                   />
                                 </div>
+                                <span className="text-[10px] text-[#1E4775]/70 whitespace-nowrap">
+                                  {`${Number(marketBonusStatus.cumulativeDeposits).toLocaleString(undefined, { maximumFractionDigits: 0 })} / ${Number(marketBonusStatus.thresholdAmount).toLocaleString(undefined, { maximumFractionDigits: 0 })} USD`}
+                                </span>
                               </div>
 
                               {/* User Qualification Status */}
