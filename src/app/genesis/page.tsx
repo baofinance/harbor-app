@@ -1956,18 +1956,15 @@ export default function GenesisIndexPage() {
                 const totalDepositsUSD =
                   totalDepositsAmount * collateralPriceUSD;
 
-                // balanceOf returns wrapped collateral tokens (e.g., fxSAVE)
-                // To get USD value, we need to multiply by wrapped rate then by wrapped price
-                // OR: if balanceOf returns underlying tokens, multiply by wrapped rate to get wrapped amount, then by price
-                // Based on user feedback: multiply by wrapped rate to get deposit value
+                // balanceOf returns wrapped collateral tokens (e.g., fxSAVE, wstETH)
+                // For fxSAVE markets: balanceOf returns underlying tokens (fxUSD), need to multiply by wrapped rate
+                // For wstETH markets: balanceOf returns wrapped tokens (wstETH) directly, no rate multiplication needed
                 const userDepositAmount = userDeposit
                   ? Number(formatEther(userDeposit))
                   : 0;
-                // If balanceOf returns underlying tokens, convert to wrapped then to USD:
-                // userDepositUSD = userDepositAmount * wrappedRate * wrappedPrice
-                // If balanceOf returns wrapped tokens, we should just multiply by wrapped price
-                // But user says we need to multiply by wrapped rate, so balanceOf likely returns underlying
-                const userDepositUSD = wrappedRate && wrappedRate > 0n
+                // Only multiply by wrapped rate for fxSAVE markets (where balanceOf returns underlying)
+                // For wstETH markets, balanceOf returns wstETH directly, so just multiply by price
+                const userDepositUSD = isFxSAVE && wrappedRate && wrappedRate > 0n
                   ? userDepositAmount * (Number(wrappedRate) / 1e18) * collateralPriceUSD
                   : userDepositAmount * collateralPriceUSD;
 
