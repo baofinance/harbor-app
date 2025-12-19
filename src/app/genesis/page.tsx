@@ -1029,8 +1029,8 @@ export default function GenesisIndexPage() {
             </p>
           </div>
 
-          {/* Three Boxes */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          {/* Four Boxes */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
             {/* Deposit Box */}
             <div className="bg-[#17395F] p-4 sm:p-3 md:p-4 flex flex-col">
               <div className="flex items-center justify-center mb-2">
