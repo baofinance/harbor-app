@@ -3090,8 +3090,8 @@ export default function GenesisIndexPage() {
                         const earlyBonusEligibleUSD = parseFloat(marks?.earlyBonusEligibleDepositUSD || "0");
                         
                         return (
-                          <div className="px-2 pt-1.5 pb-1 border-t border-[#1E4775]/10">
-                            <div className="space-y-1">
+                          <div className="px-2 pt-1.5 pb-0.5 border-t border-[#1E4775]/10">
+                            <div className="space-y-0.5">
                               {/* Progress Bar - label and bar on one line */}
                               <div className="flex items-center gap-2">
                                 <span className="text-[10px] text-[#1E4775] font-semibold whitespace-nowrap">Early Deposit Bonus</span>
