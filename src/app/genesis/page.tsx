@@ -3057,83 +3057,83 @@ export default function GenesisIndexPage() {
                           )}
                         </div>
                       </div>
-                    </div>
 
-                    {/* Early Deposit Bonus Progress Bar - shown for all markets */}
-                    {(() => {
-                      // Get market bonus status from the hook called at top level
-                      const marketBonusData = allMarketBonusStatus?.find(
-                        (status) =>
-                          status.genesisAddress?.toLowerCase() ===
-                          genesisAddress?.toLowerCase()
-                      );
-                      const marketBonusStatus = marketBonusData?.data;
-                      
-                      if (!marketBonusStatus || isLoadingBonusStatus) return null;
-                      
-                      const bonusProgress = Math.min(
-                        100,
-                        (Number(marketBonusStatus.cumulativeDeposits) / Number(marketBonusStatus.thresholdAmount)) * 100
-                      );
-                      
-                      // Get user's marks for this market
-                      const marksForMarket = allMarksDataEnhanced?.find(
-                        (marks) =>
-                          marks.genesisAddress?.toLowerCase() ===
-                          genesisAddress?.toLowerCase()
-                      );
-                      const userMarksData = marksForMarket?.data?.userHarborMarks;
-                      const marks = Array.isArray(userMarksData)
-                        ? userMarksData[0]
-                        : userMarksData;
-                      
-                      const userQualifies = marks?.qualifiesForEarlyBonus || false;
-                      const earlyBonusEligibleUSD = parseFloat(marks?.earlyBonusEligibleDepositUSD || "0");
-                      
-                      return (
-                        <div className="bg-white border-t border-[#1E4775]/10 px-4 py-2">
-                          <div className="space-y-1.5">
-                            {/* Progress Bar */}
-                            <div className="space-y-1">
-                              <div className="flex items-center justify-between text-[10px]">
-                                <span className="text-[#1E4775] font-semibold">Early Deposit Bonus</span>
-                                <span className="text-[#1E4775]/70">
-                                  {marketBonusStatus.thresholdReached ? (
-                                    "Threshold Reached"
-                                  ) : (
-                                    `${Number(marketBonusStatus.cumulativeDeposits).toLocaleString(undefined, { maximumFractionDigits: 0 })} / ${Number(marketBonusStatus.thresholdAmount).toLocaleString(undefined, { maximumFractionDigits: 0 })} USD`
-                                  )}
-                                </span>
-                              </div>
-                              <div className="w-full bg-gray-200 rounded-full h-1.5">
-                                <div
-                                  className={`h-1.5 rounded-full transition-all ${
-                                    marketBonusStatus.thresholdReached
-                                      ? "bg-gray-400"
-                                      : "bg-green-500"
-                                  }`}
-                                  style={{ width: `${bonusProgress}%` }}
-                                />
-                              </div>
-                            </div>
-
-                            {/* User Qualification Status */}
-                            {userQualifies && earlyBonusEligibleUSD > 0 && (
-                              <div className="bg-blue-50 border border-blue-200 rounded px-2 py-1">
-                                <div className="text-[10px] text-blue-800 font-semibold">
-                                  ✓ You qualify for Early Deposit Bonus
+                      {/* Early Deposit Bonus Progress Bar - inside main market row */}
+                      {(() => {
+                        // Get market bonus status from the hook called at top level
+                        const marketBonusData = allMarketBonusStatus?.find(
+                          (status) =>
+                            status.genesisAddress?.toLowerCase() ===
+                            genesisAddress?.toLowerCase()
+                        );
+                        const marketBonusStatus = marketBonusData?.data;
+                        
+                        if (!marketBonusStatus || isLoadingBonusStatus) return null;
+                        
+                        const bonusProgress = Math.min(
+                          100,
+                          (Number(marketBonusStatus.cumulativeDeposits) / Number(marketBonusStatus.thresholdAmount)) * 100
+                        );
+                        
+                        // Get user's marks for this market
+                        const marksForMarket = allMarksDataEnhanced?.find(
+                          (marks) =>
+                            marks.genesisAddress?.toLowerCase() ===
+                            genesisAddress?.toLowerCase()
+                        );
+                        const userMarksData = marksForMarket?.data?.userHarborMarks;
+                        const marks = Array.isArray(userMarksData)
+                          ? userMarksData[0]
+                          : userMarksData;
+                        
+                        const userQualifies = marks?.qualifiesForEarlyBonus || false;
+                        const earlyBonusEligibleUSD = parseFloat(marks?.earlyBonusEligibleDepositUSD || "0");
+                        
+                        return (
+                          <div className="px-2 py-2 border-t border-[#1E4775]/10">
+                            <div className="space-y-1.5">
+                              {/* Progress Bar */}
+                              <div className="space-y-1">
+                                <div className="flex items-center justify-between text-[10px]">
+                                  <span className="text-[#1E4775] font-semibold">Early Deposit Bonus</span>
+                                  <span className="text-[#1E4775]/70">
+                                    {marketBonusStatus.thresholdReached ? (
+                                      "Threshold Reached"
+                                    ) : (
+                                      `${Number(marketBonusStatus.cumulativeDeposits).toLocaleString(undefined, { maximumFractionDigits: 0 })} / ${Number(marketBonusStatus.thresholdAmount).toLocaleString(undefined, { maximumFractionDigits: 0 })} USD`
+                                    )}
+                                  </span>
                                 </div>
-                                {!isEnded && (
-                                  <div className="text-[10px] text-blue-600 mt-0.5">
-                                    Estimated: +{(earlyBonusEligibleUSD * 100).toLocaleString(undefined, { maximumFractionDigits: 0 })} marks
-                                  </div>
-                                )}
+                                <div className="w-full bg-gray-200 rounded-full h-1.5">
+                                  <div
+                                    className={`h-1.5 rounded-full transition-all ${
+                                      marketBonusStatus.thresholdReached
+                                        ? "bg-gray-400"
+                                        : "bg-green-500"
+                                    }`}
+                                    style={{ width: `${bonusProgress}%` }}
+                                  />
+                                </div>
                               </div>
-                            )}
+
+                              {/* User Qualification Status */}
+                              {userQualifies && earlyBonusEligibleUSD > 0 && (
+                                <div className="bg-blue-50 border border-blue-200 rounded px-2 py-1">
+                                  <div className="text-[10px] text-blue-800 font-semibold">
+                                    ✓ You qualify for Early Deposit Bonus
+                                  </div>
+                                  {!isEnded && (
+                                    <div className="text-[10px] text-blue-600 mt-0.5">
+                                      Estimated: +{(earlyBonusEligibleUSD * 100).toLocaleString(undefined, { maximumFractionDigits: 0 })} marks
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })()}
+                        );
+                      })()}
+                    </div>
 
                     {/* Expanded View */}
                     {isExpanded && (
