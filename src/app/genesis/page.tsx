@@ -1108,10 +1108,23 @@ export default function GenesisIndexPage() {
                 : "250,000";
 
               return (
-                <div className="bg-[#17395F] p-4 sm:p-3 md:p-4 flex flex-col">
+                <div className="bg-[#17395F] p-4 sm:p-3 md:p-4 flex flex-col relative border-2 border-[#FF8A7A] animate-pulse">
+                  <style jsx>{`
+                    @keyframes border-glow {
+                      0%, 100% {
+                        box-shadow: 0 0 0 0 rgba(255, 138, 122, 0.7);
+                      }
+                      50% {
+                        box-shadow: 0 0 0 4px rgba(255, 138, 122, 0.3);
+                      }
+                    }
+                    .coral-outline {
+                      animation: border-glow 2s ease-in-out infinite;
+                    }
+                  `}</style>
                   <div className="flex items-center justify-center mb-2">
-                    <h2 className="font-bold text-[#FF8A7A] text-lg sm:text-sm md:text-base lg:text-lg text-center">
-                      Early Bonus
+                    <h2 className="font-bold text-white text-lg sm:text-sm md:text-base lg:text-lg text-center">
+                      Early Bird Bonus
                     </h2>
                   </div>
                   <div className="flex-1 flex flex-col justify-between">
