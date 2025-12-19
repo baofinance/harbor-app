@@ -2915,7 +2915,13 @@ export default function GenesisIndexPage() {
                           : userMarksData;
                         
                         const userQualifies = marks?.qualifiesForEarlyBonus || false;
-                        const earlyBonusEligibleUSD = parseFloat(marks?.earlyBonusEligibleDepositUSD || "0");
+                        // The subgraph stores earlyBonusEligibleDepositUSD at deposit time, but prices change.
+                        // We need to recalculate using the current price. Since we don't have the token amount,
+                        // we'll use the current deposit USD as the qualified amount if the user qualifies.
+                        // This assumes all current deposits qualify (which should be true if userQualifies is true).
+                        const earlyBonusEligibleUSD = userQualifies && userDepositUSD > 0
+                          ? userDepositUSD // Use current deposit USD (calculated with current price)
+                          : 0; // If user doesn't qualify or has no deposit, show 0
                         
                         return (
                           <div className="px-2 pt-1.5 pb-0 border-t border-[#1E4775]/10">
