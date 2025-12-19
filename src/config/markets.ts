@@ -61,7 +61,7 @@ export const markets = {
       description:
         "100 ledger marks per dollar deposited at the end of genesis",
     },
-    coinGeckoId: "fxsave", // CoinGecko ID for fxSAVE (the deposited token)
+    coinGeckoId: "fx-saving-usd", // CoinGecko ID for fxSAVE (the deposited token)
     genesis: {
       startDate: contractsMarkets["eth-fxusd"].genesis.startDate,
       endDate: contractsMarkets["eth-fxusd"].genesis.endDate,
@@ -138,7 +138,7 @@ export const markets = {
       description:
         "100 ledger marks per dollar deposited at the end of genesis",
     },
-    coinGeckoId: "fxsave", // CoinGecko ID for fxSAVE (the deposited token)
+    coinGeckoId: "fx-saving-usd", // CoinGecko ID for fxSAVE (the deposited token)
     genesis: {
       startDate: contractsMarkets["btc-fxusd"].genesis.startDate,
       endDate: contractsMarkets["btc-fxusd"].genesis.endDate,
