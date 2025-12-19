@@ -1981,10 +1981,15 @@ export default function GenesisIndexPage() {
                 // balanceOf returns underlying tokens (fxUSD for fxSAVE, stETH for wstETH)
                 // Multiply by wrapped rate to convert underlying to wrapped, then by price for USD
                 // This applies to all markets that use wrapped collateral
-                const wrappedRateNum = wrappedRate ? Number(wrappedRate) / 1e18 : 1;
-                const userDepositUSD = wrappedRate && wrappedRate > 0n
-                  ? userDepositAmount * wrappedRateNum * collateralPriceUSD
-                  : userDepositAmount * collateralPriceUSD;
+                // If wrapped rate is not available from oracle, we still need to apply a rate
+                // For fxSAVE: typical rate is ~1.07 (fxSAVE per fxUSD)
+                // For wstETH: typical rate is ~1.22 (wstETH per stETH)
+                // Use a default rate if oracle doesn't provide one
+                const defaultWrappedRate = isFxSAVE ? 1.07 : isWstETH ? 1.22 : 1.0;
+                const wrappedRateNum = wrappedRate && wrappedRate > 0n
+                  ? Number(wrappedRate) / 1e18
+                  : defaultWrappedRate;
+                const userDepositUSD = userDepositAmount * wrappedRateNum * collateralPriceUSD;
                 
                 console.log(
                   `[Genesis Deposit] Market ${id} user deposit calculation:`,
@@ -1992,11 +1997,11 @@ export default function GenesisIndexPage() {
                     userDepositAmount,
                     wrappedRate: wrappedRate?.toString(),
                     wrappedRateNum,
+                    usingDefaultRate: !wrappedRate || wrappedRate === 0n,
+                    defaultWrappedRate,
                     collateralPriceUSD,
                     userDepositUSD,
-                    calculation: wrappedRate && wrappedRate > 0n
-                      ? `${userDepositAmount} * ${wrappedRateNum} * ${collateralPriceUSD} = ${userDepositUSD}`
-                      : `${userDepositAmount} * ${collateralPriceUSD} = ${userDepositUSD} (no wrapped rate)`,
+                    calculation: `${userDepositAmount} * ${wrappedRateNum} * ${collateralPriceUSD} = ${userDepositUSD}`,
                   }
                 );
 
