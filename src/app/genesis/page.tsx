@@ -2953,7 +2953,7 @@ export default function GenesisIndexPage() {
                           </div>
                         )}
                         <div
-                          className="text-center min-w-0"
+                          className="text-center min-w-0 pb-2"
                           onClick={(e) => e.stopPropagation()}
                         >
                           {isEnded ? (
