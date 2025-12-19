@@ -96,6 +96,9 @@ export function useDefiLlamaSwap(
   fromTokenDecimals?: number, // Optional: pass decimals if already known
   toTokenDecimals?: number // Optional: pass destination token decimals
 ) {
+  // Ensure enabled is a boolean
+  const isEnabled = Boolean(enabled && !!amount && parseFloat(amount || "0") > 0 && !!fromToken && !!toToken);
+  
   return useQuery({
     queryKey: ["paraswapQuote", fromToken, toToken, amount, fromTokenDecimals, toTokenDecimals],
     queryFn: async (): Promise<SwapQuote> => {
@@ -190,7 +193,7 @@ export function useDefiLlamaSwap(
         feeAmount,
       };
     },
-    enabled: enabled && !!amount && parseFloat(amount) > 0 && !!fromToken && !!toToken,
+    enabled: isEnabled,
     staleTime: 10000, // Quotes expire quickly (10 seconds)
     refetchInterval: 15000, // Refresh every 15 seconds
     retry: 2,

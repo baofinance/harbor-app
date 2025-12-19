@@ -225,19 +225,28 @@ export function useAnchorLedgerMarks({
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error("[useAnchorLedgerMarks] HTTP error:", {
+        console.warn("[useAnchorLedgerMarks] HTTP error (subgraph may be rate limited or unavailable):", {
           status: response.status,
           statusText: response.statusText,
-          body: errorText,
         });
-        throw new Error(`GraphQL query failed: ${response.statusText} - ${errorText}`);
+        // Don't throw - return empty data to allow page to continue loading
+        return {
+          haBalances: [],
+          poolDeposits: [],
+          sailBalances: [],
+        };
       }
 
       const result = await response.json();
 
       if (result.errors) {
-        console.error("[useAnchorLedgerMarks] GraphQL errors:", result.errors);
-        throw new Error(`GraphQL errors: ${JSON.stringify(result.errors)}`);
+        console.warn("[useAnchorLedgerMarks] GraphQL errors (subgraph may be rate limited or unavailable). Data will be empty.");
+        // Don't throw - return empty data to allow page to continue loading
+        return {
+          haBalances: [],
+          poolDeposits: [],
+          sailBalances: [],
+        };
       }
 
       // Debug logging
@@ -368,8 +377,10 @@ export function useAnchorLedgerMarks({
     enabled: enabled && isConnected && !!address,
     refetchInterval: 60000, // Poll every 60 seconds for new events
     staleTime: 10000,
+    retry: false, // Don't retry on failure to avoid hammering rate-limited API
+    throwOnError: false, // Don't throw errors - allow page to load with empty data
     onError: (error) => {
-      console.error("[useAnchorLedgerMarks] Query error:", error);
+      console.warn("[useAnchorLedgerMarks] Query error (page will continue with empty data)");
     },
   });
 

@@ -280,12 +280,13 @@ export default function LedgerMarksLeaderboard() {
  useAnchorMarks();
 
  // Get anchor ledger marks (includes sail token balances)
- const {
- haBalances,
- poolDeposits,
- sailBalances,
- loading: isLoadingAnchorLedgerMarks,
- } = useAnchorLedgerMarks();
+  const {
+    haBalances,
+    poolDeposits,
+    sailBalances,
+    loading: isLoadingAnchorLedgerMarks,
+    error: anchorLedgerMarksError,
+  } = useAnchorLedgerMarks();
 
  // Calculate anchor marks per day (ha tokens + collateral stability pools)
  const anchorMarksPerDay = useMemo(() => {
@@ -1072,11 +1073,29 @@ export default function LedgerMarksLeaderboard() {
  </p>
  </div>
  </div>
- </div>
- </div>
+        </div>
+        </div>
 
- {/* Ledger Marks Summary */}
- {isConnected && (
+        {/* Subgraph Error Banner */}
+        {anchorLedgerMarksError && (
+          <div className="bg-[#FF8A7A]/10 border border-[#FF8A7A]/30 rounded p-3 mb-4">
+            <div className="flex items-start gap-3">
+              <div className="text-[#FF8A7A] text-xl mt-0.5">⚠️</div>
+              <div className="flex-1">
+                <p className="text-[#FF8A7A] font-semibold text-sm mb-1">
+                  Harbor Marks Subgraph Error
+                </p>
+                <p className="text-white/70 text-xs">
+                  Unable to load Harbor Marks data. This may be due to rate limiting or service issues. 
+                  Your positions and core functionality remain unaffected.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Ledger Marks Summary */}
+        {isConnected && (
  <div className="bg-[rgb(var(--surface-selected-rgb))] p-4 mb-2">
  <div className="flex items-start gap-3">
  <WalletIcon className="w-6 h-6 text-[#1E4775] flex-shrink-0 mt-0.5" />

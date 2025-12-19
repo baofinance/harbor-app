@@ -24,6 +24,7 @@ import { formatTokenAmount, formatBalance, formatUSD } from "@/utils/formatters"
 import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
 import { useDefiLlamaSwap, getDefiLlamaSwapTx } from "@/hooks/useDefiLlamaSwap";
 import { useUserTokens, getTokenAddress, getTokenInfo, useTokenDecimals } from "@/hooks/useUserTokens";
+import { useAnyTokenDeposit } from "@/hooks/useAnyTokenDeposit";
 
 interface GenesisDepositModalProps {
  isOpen: boolean;
@@ -1694,31 +1695,40 @@ const successFmt = formatTokenAmount(successAmountBigInt, collateralSymbol, coll
  step ==="depositing" ||
  genesisEnded
  }
- >
-   {/* Accepted assets */}
- {acceptedAssets.map((asset) => (
- <option key={asset.symbol} value={asset.symbol}>
- {asset.name} ({asset.symbol})
- </option>
- ))}
-   
-   {/* User tokens (if any) */}
-   {userTokens.length > 0 && (
-     <>
-       <option disabled>--- Your Tokens ---</option>
-       {userTokens
-         .filter(token => !acceptedAssets.some(a => a.symbol.toUpperCase() === token.symbol.toUpperCase()))
-         .map((token) => (
-           <option key={token.symbol} value={token.symbol}>
-             {token.name} ({token.symbol}) - {token.balanceFormatted}
-           </option>
-         ))}
-     </>
-   )}
-   
-   {/* Custom token option */}
-   <option value="custom">+ Add Custom Token Address</option>
- </select>
+                        >
+                          {/* Accepted assets */}
+                          {acceptedAssets.length > 0 && (
+                            <optgroup label="Supported Assets">
+                              {acceptedAssets.map((asset) => (
+                                <option key={asset.symbol} value={asset.symbol}>
+                                  {asset.name} ({asset.symbol})
+                                </option>
+                              ))}
+                            </optgroup>
+                          )}
+                          
+                          {/* User tokens (if any) */}
+                          {userTokens.length > 0 && (() => {
+                            const filteredUserTokens = userTokens.filter(token => 
+                              !acceptedAssets.some(a => a.symbol.toUpperCase() === token.symbol.toUpperCase())
+                            );
+                            
+                            if (filteredUserTokens.length === 0) return null;
+                            
+                            return (
+                              <optgroup label="Other Tokens (via Swap)">
+                                {filteredUserTokens.map((token) => (
+                                  <option key={token.symbol} value={token.symbol}>
+                                    {token.name} ({token.symbol}) - {token.balanceFormatted}
+                                  </option>
+                                ))}
+                              </optgroup>
+                            );
+                          })()}
+                          
+                          {/* Custom token option */}
+                          <option value="custom">+ Add Custom Token Address</option>
+                        </select>
  
  {/* Custom token address input */}
  {showCustomTokenInput && (

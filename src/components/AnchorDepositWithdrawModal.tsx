@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
-import { parseEther, formatEther } from "viem";
+import React, { useState, useEffect, useMemo, useRef } from "react";
+import { parseEther, formatEther, formatUnits } from "viem";
 import {
   useAccount,
   useBalance,
@@ -9,15 +9,19 @@ import {
   useContractReads,
   useWriteContract,
   usePublicClient,
+  useSendTransaction,
 } from "wagmi";
 import { BaseError, ContractFunctionRevertedError } from "viem";
 import { ERC20_ABI, STABILITY_POOL_ABI } from "@/abis/shared";
 import { aprABI } from "@/abis/apr";
+import { ZAP_ABI, USDC_ZAP_ABI, WSTETH_ABI } from "@/abis";
 import Image from "next/image";
 import SimpleTooltip from "@/components/SimpleTooltip";
 import InfoTooltip from "@/components/InfoTooltip";
 import { ArrowPathIcon } from "@heroicons/react/24/outline";
 import { useAnchorLedgerMarks } from "@/hooks/useAnchorLedgerMarks";
+import { useAnyTokenDeposit } from "@/hooks/useAnyTokenDeposit";
+import { getDefiLlamaSwapTx } from "@/hooks/useDefiLlamaSwap";
 import {
   TransactionProgressModal,
   TransactionStep,
@@ -233,7 +237,7 @@ export const AnchorDepositWithdrawModal = ({
   const [activeTab, setActiveTab] = useState<TabType>(getInitialTab());
 
   // Get positions from subgraph (same as expanded view)
-  const { poolDeposits, haBalances } = useAnchorLedgerMarks({
+  const { poolDeposits, haBalances, error: marksError } = useAnchorLedgerMarks({
     enabled: isOpen && activeTab === "withdraw",
   });
   const defaultProgressConfig = {
@@ -274,6 +278,20 @@ export const AnchorDepositWithdrawModal = ({
 
   const [progressConfig, setProgressConfig] = useState(defaultProgressConfig);
   const [progressModalOpen, setProgressModalOpen] = useState(false);
+
+  // Slippage input state for swap preview
+  const [slippageTolerance, setSlippageTolerance] = useState<number>(0.5); // Default 0.5% slippage
+  const [showSlippageInput, setShowSlippageInput] = useState(false);
+  const [slippageInputValue, setSlippageInputValue] = useState("0.5");
+
+  // Debounced amount for dry runs (reduces unnecessary contract calls)
+  const [debouncedAmount, setDebouncedAmount] = useState("");
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedAmount(amount);
+    }, 500); // 500ms debounce
+    return () => clearTimeout(timer);
+  }, [amount]);
 
   // Deposit/Mint tab options
   const [mintOnly, setMintOnly] = useState(false);
@@ -540,6 +558,35 @@ export const AnchorDepositWithdrawModal = ({
     marketsForToken.find((m) => m.marketId === selectedMarketId)?.market ||
     market;
 
+  // Extract key addresses and symbols from selected market (needed for anyTokenDeposit hook)
+  const minterAddress = selectedMarket?.addresses?.minter;
+  const collateralAddress = selectedMarket?.addresses?.collateralToken;
+  const peggedTokenAddress = selectedMarket?.addresses?.peggedToken;
+  const collateralSymbol = selectedMarket?.collateral?.symbol || "ETH";
+  const peggedTokenSymbol = selectedMarket?.peggedToken?.symbol || "ha";
+
+  // Get accepted deposit assets for "any token" functionality
+  const acceptedDepositAssets = React.useMemo(
+    () => getAcceptedDepositAssets(selectedMarket),
+    [selectedMarket]
+  );
+
+  // "Any token" deposit hook - allows deposits from any token in user's wallet
+  const anyTokenDeposit = useAnyTokenDeposit({
+    collateralSymbol,
+    marketAddresses: selectedMarket?.addresses,
+    acceptedAssets: acceptedDepositAssets,
+    depositTarget: {
+      type: "minter",
+      address: minterAddress || "",
+      minterParams: {
+        minPeggedOut: 0n, // Will be calculated based on slippage
+        receiver: (address as `0x${string}`) || "0x0000000000000000000000000000000000000000",
+      },
+    },
+    enabled: isOpen && activeTab === "deposit",
+  });
+
   // Find market for selected deposit asset (in simple mode, deposit asset determines which market to use)
   const marketForDepositAsset = useMemo(() => {
     if (!simpleMode || !selectedDepositAsset) return null;
@@ -573,7 +620,7 @@ export const AnchorDepositWithdrawModal = ({
     selectedMarket?.collateral?.symbol ||
     "ETH";
   const activeWrappedCollateralSymbol =
-    activeMarketForFees?.collateral?.underlyingSymbol || activeCollateralSymbol;
+    activeMarketForFees?.wrappedCollateral?.symbol || activeCollateralSymbol;
 
   // Collect all unique deposit assets from all markets with their corresponding markets
   const allDepositAssetsWithMarkets = useMemo(() => {
@@ -628,6 +675,7 @@ export const AnchorDepositWithdrawModal = ({
   }, [allDepositAssetsWithMarkets]);
 
   // Calculate fees for each deposit asset using a sample amount (1 token)
+  // Only run when modal is open and user is on deposit tab to reduce unnecessary calls
   const sampleAmountForFeeCalc = "1.0";
   const feeContracts = useMemo(() => {
     if (!simpleMode || !isOpen || activeTab !== "deposit") return [];
@@ -648,11 +696,39 @@ export const AnchorDepositWithdrawModal = ({
         asset.minterAddress.startsWith("0x") &&
         asset.minterAddress.length === 42
       ) {
+        // Convert sample amount to wrapped collateral units
+        let wrappedAmount: bigint;
+        const sampleAmount = parseEther(sampleAmountForFeeCalc);
+        
+        // Get market data for conversions
+        const wrappedCollateralSymbol = asset.market?.wrappedCollateral?.symbol;
+        const peggedTokenSymbol = asset.market?.peggedToken?.symbol;
+        const wrappedRate = asset.market?.wrappedRate || 10n**18n;
+        
+        // Check if this asset is the wrapped collateral for its market
+        const isWrappedCollateral = asset.symbol === wrappedCollateralSymbol;
+        
+        if (isWrappedCollateral) {
+          // Already in wrapped collateral units
+          wrappedAmount = sampleAmount;
+        } else if (asset.symbol === peggedTokenSymbol) {
+          // Pegged token (fxUSD) -> wrapped collateral (fxSAVE)
+          wrappedAmount = (sampleAmount * 10n**18n) / wrappedRate;
+        } else if (asset.symbol === "USDC") {
+          // USDC (6 decimals) -> fxUSD (18 decimals) -> fxSAVE
+          const usdcAmount = BigInt(Math.floor(parseFloat(sampleAmountForFeeCalc) * 10**6));
+          const usdcIn18Decimals = usdcAmount * 10n**12n;
+          wrappedAmount = (usdcIn18Decimals * 10n**18n) / wrappedRate;
+        } else {
+          // Unknown asset type, use as-is (should not happen for native deposits)
+          wrappedAmount = sampleAmount;
+        }
+        
         contracts.push({
           address: asset.minterAddress as `0x${string}`,
           abi: minterABI,
           functionName: "mintPeggedTokenDryRun" as const,
-          args: [parseEther(sampleAmountForFeeCalc)] as const,
+          args: [wrappedAmount] as const,
           assetSymbol: asset.symbol,
         });
       }
@@ -681,11 +757,15 @@ export const AnchorDepositWithdrawModal = ({
         minterAddr.startsWith("0x") &&
         minterAddr.length === 42
       ) {
+        // For market fees, we use wrapped collateral directly since we're comparing across markets
+        // The sample amount should already be in wrapped collateral units
+        const wrappedAmount = parseEther(sampleAmountForFeeCalc);
+        
         contracts.push({
           address: minterAddr as `0x${string}`,
           abi: minterABI,
           functionName: "mintPeggedTokenDryRun" as const,
-          args: [parseEther(sampleAmountForFeeCalc)] as const,
+          args: [wrappedAmount] as const,
           marketId,
         });
       }
@@ -697,6 +777,7 @@ export const AnchorDepositWithdrawModal = ({
   // Use production-compatible contract reads for market fees
   const { data: marketFeeData } = useContractReads({
     contracts: marketFeeContracts.map(({ marketId, ...contract }) => contract),
+    allowFailure: true, // Allow individual contract reads to fail without breaking the whole batch
     query: {
       enabled:
         marketFeeContracts.length > 0 &&
@@ -766,6 +847,7 @@ export const AnchorDepositWithdrawModal = ({
     error: feeError,
   } = useContractReads({
     contracts: feeContracts.map(({ assetSymbol, ...contract }) => contract),
+    allowFailure: true, // Allow individual contract reads to fail without breaking the whole batch
     query: {
       enabled:
         feeContracts.length > 0 &&
@@ -843,10 +925,29 @@ export const AnchorDepositWithdrawModal = ({
     });
 
     // Map fees back to assets
-    const result = allDepositAssetsWithMarkets.map((asset) => ({
+    let result = allDepositAssetsWithMarkets.map((asset) => ({
       ...asset,
       feePercentage: feeMap.get(asset.symbol),
     }));
+
+    // Merge with "any token" assets from user's wallet
+    if (anyTokenDeposit.allAvailableAssets.length > 0) {
+      const existingSymbols = new Set(result.map((a) => a.symbol.toUpperCase()));
+      
+      anyTokenDeposit.allAvailableAssets.forEach((token) => {
+        if (!existingSymbols.has(token.symbol.toUpperCase())) {
+          result.push({
+            symbol: token.symbol,
+            name: token.name,
+            marketId: selectedMarketId, // Use selected market for "any token" deposits
+            market: selectedMarket,
+            minterAddress: selectedMarket?.addresses?.minter,
+            isUserToken: token.isUserToken,
+            feePercentage: undefined, // Will need swap, so no direct mint fee
+          });
+        }
+      });
+    }
 
     return result;
   }, [
@@ -856,6 +957,9 @@ export const AnchorDepositWithdrawModal = ({
     isOpen,
     simpleMode,
     activeTab,
+    anyTokenDeposit.allAvailableAssets,
+    selectedMarketId,
+    selectedMarket,
   ]);
 
   // Collect all stability pools from all markets
@@ -893,12 +997,6 @@ export const AnchorDepositWithdrawModal = ({
 
     return pools;
   }, [marketsForToken, isOpen, simpleMode]);
-
-  const minterAddress = selectedMarket?.addresses?.minter;
-  const collateralAddress = selectedMarket?.addresses?.collateralToken;
-  const peggedTokenAddress = selectedMarket?.addresses?.peggedToken;
-  const collateralSymbol = selectedMarket?.collateral?.symbol || "ETH";
-  const peggedTokenSymbol = selectedMarket?.peggedToken?.symbol || "ha";
 
   // Validate minter address
   const isValidMinterAddress =
@@ -2064,18 +2162,67 @@ export const AnchorDepositWithdrawModal = ({
   // Use Anvil hook flag (shared by redeem + mint fee dry-runs)
   const shouldUseAnvilHook = false;
 
+  // Convert deposit amount to wrapped collateral units for dry run
+  // Use debounced amount to reduce unnecessary contract calls
+  const depositAmountInWrappedCollateral = useMemo(() => {
+    if (!debouncedAmount || parseFloat(debouncedAmount) === 0 || activeTab !== "deposit") return undefined;
+    
+    // Skip dry run for very small amounts (< 0.0001) to reduce calls
+    if (parseFloat(debouncedAmount) < 0.0001) return undefined;
+    
+    const depositAsset = selectedDepositAsset || collateralSymbol;
+    const inputAmount = parseEther(debouncedAmount);
+    
+    // Determine which market we're depositing into
+    const isFxSAVEMarket = activeWrappedCollateralSymbol === "fxSAVE";
+    const isWstETHMarket = activeWrappedCollateralSymbol === "wstETH";
+    
+    // If depositing wrapped collateral directly (fxSAVE or wstETH), no conversion needed
+    if (depositAsset === activeWrappedCollateralSymbol) {
+      return inputAmount;
+    }
+    
+    // If depositing pegged token (fxUSD or haETH), convert to wrapped collateral
+    if (depositAsset === peggedTokenSymbol) {
+      // fxSAVE = fxUSD / rate OR wstETH = haETH / rate
+      const wrappedRate = marketForDepositAsset?.wrappedRate || selectedMarket?.wrappedRate || 10n**18n;
+      return (inputAmount * 10n**18n) / wrappedRate;
+    }
+    
+    // If depositing USDC (for USD market), convert USDC → fxUSD → fxSAVE
+    if (depositAsset === "USDC" && isFxSAVEMarket) {
+      // Parse USDC with 6 decimals
+      const usdcAmount = BigInt(Math.floor(parseFloat(amount) * 10**6));
+      // Convert to 18 decimals
+      const usdcIn18Decimals = usdcAmount * 10n**12n;
+      // Convert fxUSD to fxSAVE
+      const wrappedRate = marketForDepositAsset?.wrappedRate || selectedMarket?.wrappedRate || 10n**18n;
+      return (usdcIn18Decimals * 10n**18n) / wrappedRate;
+    }
+    
+    // If depositing ETH (for ETH market), convert ETH → wstETH
+    if ((depositAsset === "ETH" || depositAsset === collateralSymbol) && isWstETHMarket) {
+      // ETH → stETH (1:1) → wstETH (using rate)
+      const wrappedRate = marketForDepositAsset?.wrappedRate || selectedMarket?.wrappedRate || 10n**18n;
+      return (inputAmount * 10n**18n) / wrappedRate;
+    }
+    
+    // For other assets (swap assets handled separately), return undefined
+    return undefined;
+  }, [debouncedAmount, activeTab, selectedDepositAsset, collateralSymbol, activeWrappedCollateralSymbol, peggedTokenSymbol, marketForDepositAsset, selectedMarket]);
+
   // Calculate expected output based on active tab - use Anvil hook when on Anvil
   const { data: anvilExpectedMintOutput } = useContractRead({
     address: minterAddress as `0x${string}`,
     abi: minterABI,
     functionName: "mintPeggedTokenDryRun",
-    args: amount && activeTab === "deposit" ? [parseEther(amount)] : undefined,
+    args: depositAmountInWrappedCollateral ? [depositAmountInWrappedCollateral] : undefined,
     enabled:
       shouldUseAnvilHook &&
       !!minterAddress &&
       isValidMinterAddress &&
-      !!amount &&
-      parseFloat(amount) > 0 &&
+      !!depositAmountInWrappedCollateral &&
+      depositAmountInWrappedCollateral > 0n &&
       isOpen &&
       activeTab === "deposit",
   });
@@ -2084,14 +2231,14 @@ export const AnchorDepositWithdrawModal = ({
     address: minterAddress as `0x${string}`,
     abi: minterABI,
     functionName: "mintPeggedTokenDryRun",
-    args: amount && activeTab === "deposit" ? [parseEther(amount)] : undefined,
+    args: depositAmountInWrappedCollateral ? [depositAmountInWrappedCollateral] : undefined,
     query: {
       enabled:
         !shouldUseAnvilHook &&
         !!minterAddress &&
         isValidMinterAddress &&
-        !!amount &&
-        parseFloat(amount) > 0 &&
+        !!depositAmountInWrappedCollateral &&
+        depositAmountInWrappedCollateral > 0n &&
         isOpen &&
         activeTab === "deposit",
       retry: 1,
@@ -2112,6 +2259,88 @@ export const AnchorDepositWithdrawModal = ({
     }
     return undefined;
   }, [anvilExpectedMintOutput, regularExpectedMintOutput, shouldUseAnvilHook]);
+
+  // For swap deposits, convert ParaSwap's estimated output to wrapped collateral for dry run
+  // NOTE: We use the swap quote's actual toAmount (not a manual estimation)
+  const swappedAmountForDryRun = useMemo(() => {
+    if (!anyTokenDeposit.needsSwap || !anyTokenDeposit.swapQuote) return undefined;
+    
+    // Use ParaSwap's estimated output directly (already in smallest units: 6 for USDC, 18 for ETH)
+    const swapEstimatedOutput = BigInt(anyTokenDeposit.swapQuote.toAmount);
+    
+    // Determine target market
+    const isFxSAVEMarket = activeWrappedCollateralSymbol === "fxSAVE";
+    const isWstETHMarket = activeWrappedCollateralSymbol === "wstETH";
+    const isSwappingToUSDC = anyTokenDeposit.swapTargetToken !== "ETH";
+    
+    // Convert swap output to wrapped collateral (what minter expects)
+    if (isSwappingToUSDC && isFxSAVEMarket) {
+      // Swap gives us: USDC (6 decimals) → Need: fxSAVE (18 decimals)
+      const usdcIn18Decimals = swapEstimatedOutput * 10n**12n; // Scale to 18 decimals
+      const wrappedRate = marketForDepositAsset?.wrappedRate || selectedMarket?.wrappedRate || 10n**18n;
+      const fxSaveAmount = (usdcIn18Decimals * 10n**18n) / wrappedRate; // USDC → fxUSD (1:1) → fxSAVE
+      
+      if (process.env.NODE_ENV === "development") {
+        console.log("[Dry Run] Using ParaSwap quote output:", {
+          fromSwapQuote_USDC: swapEstimatedOutput.toString(),
+          convertedTo_fxSAVE: fxSaveAmount.toString(),
+          wrappedRate: wrappedRate.toString(),
+        });
+      }
+      
+      return fxSaveAmount;
+    }
+    
+    if (!isSwappingToUSDC && isWstETHMarket) {
+      // Swap gives us: ETH (18 decimals) → Need: wstETH (18 decimals)
+      const wrappedRate = marketForDepositAsset?.wrappedRate || selectedMarket?.wrappedRate || 10n**18n;
+      const wstEthAmount = (swapEstimatedOutput * 10n**18n) / wrappedRate; // ETH → stETH (1:1) → wstETH
+      
+      if (process.env.NODE_ENV === "development") {
+        console.log("[Dry Run] Using ParaSwap quote output:", {
+          fromSwapQuote_ETH: swapEstimatedOutput.toString(),
+          convertedTo_wstETH: wstEthAmount.toString(),
+          wrappedRate: wrappedRate.toString(),
+        });
+      }
+      
+      return wstEthAmount;
+    }
+    
+    // Invalid configuration
+    if (process.env.NODE_ENV === "development") {
+      console.error("[Dry Run] Cannot convert swap output - unknown market:", {
+        isSwappingToUSDC,
+        isFxSAVEMarket,
+        isWstETHMarket,
+      });
+    }
+    return undefined;
+  }, [anyTokenDeposit.needsSwap, anyTokenDeposit.swapQuote, anyTokenDeposit.swapTargetToken, marketForDepositAsset, selectedMarket, activeWrappedCollateralSymbol]);
+
+  // Dry run for swapped amounts to check if minter will accept full amount
+  // Only run when swap quote is ready and amount is debounced
+  const { data: swapDryRunOutput } = useContractRead({
+    address: minterAddress as `0x${string}`,
+    abi: minterABI,
+    functionName: "mintPeggedTokenDryRun",
+    args: swappedAmountForDryRun ? [swappedAmountForDryRun] : undefined,
+    query: {
+      enabled:
+        !!minterAddress &&
+        isValidMinterAddress &&
+        !!swappedAmountForDryRun &&
+        swappedAmountForDryRun > 0n &&
+        anyTokenDeposit.needsSwap &&
+        !anyTokenDeposit.isLoadingSwapQuote && // Don't run while swap quote is loading
+        !!anyTokenDeposit.swapQuote && // Swap quote must be ready
+        parseFloat(debouncedAmount) >= 0.00001 && // Lower threshold for swap assets (0.00001 instead of 0.0001)
+        isOpen &&
+        activeTab === "deposit",
+      retry: 1,
+      allowFailure: true,
+    },
+  });
 
   // Calculate expected redeem output - need to check if withdrawing from stability pool or ha tokens
   // If from stability pool, we need to withdraw first to get pegged tokens, then redeem
@@ -2344,15 +2573,44 @@ export const AnchorDepositWithdrawModal = ({
     feeMinterAddress.startsWith("0x") &&
     feeMinterAddress.length === 42;
 
-  // Parse amount to BigInt, handling invalid inputs
+  // Parse amount to BigInt, converting to wrapped collateral (fxSAVE) if needed
+  // Use debounced amount to reduce unnecessary contract calls
   const parsedAmount = useMemo(() => {
-    if (!amount || parseFloat(amount) <= 0) return undefined;
+    if (!debouncedAmount || parseFloat(debouncedAmount) <= 0) return undefined;
+    
+    // Skip dry run for very small amounts (< 0.0001) to reduce calls
+    if (parseFloat(debouncedAmount) < 0.0001) return undefined;
+    
     try {
-      return parseEther(amount);
+      const inputAmount = parseEther(debouncedAmount);
+      
+      // If user selected wrapped collateral (fxSAVE), use amount as-is
+      const wrappedCollateralSymbol = marketForDepositAsset?.collateral?.symbol || "";
+      const underlyingCollateralSymbol = marketForDepositAsset?.collateral?.underlyingSymbol || "";
+      
+      if (selectedDepositAsset?.toLowerCase() === wrappedCollateralSymbol.toLowerCase()) {
+        // User selected fxSAVE directly
+        return inputAmount;
+      } else if (selectedDepositAsset?.toLowerCase() === underlyingCollateralSymbol.toLowerCase()) {
+        // User selected fxUSD - need to convert to fxSAVE for dry run
+        // fxSAVE = fxUSD / rate (where rate is fxSAVE:fxUSD ratio, e.g., 1.07 means 1 fxSAVE = 1.07 fxUSD)
+        const wrappedRate = marketForDepositAsset?.wrappedRate;
+        if (wrappedRate && wrappedRate > 0n) {
+          // Convert: amountInFxSAVE = amountInFxUSD * 1e18 / rate
+          const amountInWrapped = (inputAmount * BigInt(1e18)) / wrappedRate;
+          return amountInWrapped;
+        }
+        // Fallback: 1:1 if no rate available
+        return inputAmount;
+      } else {
+        // For other assets (USDC, ETH), use amount as-is
+        // The actual conversion will happen in the contract
+        return inputAmount;
+      }
     } catch (error) {
       return undefined;
     }
-  }, [amount]);
+  }, [debouncedAmount, selectedDepositAsset, marketForDepositAsset]);
 
   const dryRunEnabled =
     !!isValidFeeMinterAddress &&
@@ -2392,13 +2650,34 @@ export const AnchorDepositWithdrawModal = ({
   // Use dry run data's peggedMinted as fallback when calculateMintPeggedTokenOutput fails
   // dryRunData is an array: [incentiveRatio, fee, discount, peggedMinted, price, rate]
   const expectedMintOutput = useMemo(() => {
+    // For swap deposits, use swapDryRunOutput
+    if (anyTokenDeposit.needsSwap && swapDryRunOutput && Array.isArray(swapDryRunOutput) && swapDryRunOutput.length >= 4) {
+      return swapDryRunOutput[3] as bigint;
+    }
+    
+    // For swap deposits without dry run, estimate from swap quote
+    // This provides a rough estimate when dry run isn't available (e.g., very small amounts)
+    if (anyTokenDeposit.needsSwap && anyTokenDeposit.swapQuote && swappedAmountForDryRun && amount && parseFloat(amount) > 0) {
+      // Use swappedAmountForDryRun as an estimate - it's the wrapped collateral amount
+      // The minter typically mints close to 1:1 with wrapped collateral (minus fees)
+      // This is a rough estimate, but better than showing 0
+      const estimatedOutput = swappedAmountForDryRun * 95n / 100n; // Estimate 5% fee
+      if (estimatedOutput > 0n) {
+        if (process.env.NODE_ENV === "development") {
+          console.log("[expectedMintOutput] Using estimated output from swap quote:", estimatedOutput.toString());
+        }
+        return estimatedOutput;
+      }
+    }
+    
+    // For regular deposits, use rawExpectedMintOutput
     if (rawExpectedMintOutput) return rawExpectedMintOutput;
     // Fallback to dry run data's peggedMinted (index 3)
     if (dryRunData && Array.isArray(dryRunData) && dryRunData.length >= 4) {
       return dryRunData[3] as bigint;
     }
     return undefined;
-  }, [rawExpectedMintOutput, dryRunData]);
+  }, [anyTokenDeposit.needsSwap, swapDryRunOutput, rawExpectedMintOutput, dryRunData, anyTokenDeposit.swapQuote, swappedAmountForDryRun, amount]);
 
   // Get minter address for the selected stability pool's market (for collateral ratio display)
   const stabilityPoolMarket = useMemo(() => {
@@ -2474,6 +2753,20 @@ export const AnchorDepositWithdrawModal = ({
     // Don't calculate fee for direct pegged token deposits (no minting)
     if (isDirectPeggedDeposit) return undefined;
 
+    // For swap deposits, use swapDryRunOutput
+    if (anyTokenDeposit.needsSwap) {
+      if (!swapDryRunOutput || !swappedAmountForDryRun || swappedAmountForDryRun === 0n) return undefined;
+      
+      const dryRunResult = swapDryRunOutput as [bigint, bigint, bigint, bigint, bigint, bigint] | undefined;
+      if (!dryRunResult || dryRunResult.length < 2) return undefined;
+
+      const wrappedFee = dryRunResult[1];
+      // Calculate fee as percentage: (fee / swapped input) * 100
+      const feePercent = (Number(wrappedFee) / Number(swappedAmountForDryRun)) * 100;
+      return feePercent;
+    }
+
+    // For regular deposits, use dryRunData
     // If there's an error, return undefined (will show fallback fee)
     if (dryRunError) {
       return undefined;
@@ -2491,32 +2784,376 @@ export const AnchorDepositWithdrawModal = ({
     // Calculate fee as percentage: (fee / input) * 100
     const feePercent = (Number(wrappedFee) / Number(parsedAmount)) * 100;
     return feePercent;
-  }, [dryRunData, dryRunError, parsedAmount, isDirectPeggedDeposit]);
+  }, [anyTokenDeposit.needsSwap, swapDryRunOutput, swappedAmountForDryRun, dryRunData, dryRunError, parsedAmount, isDirectPeggedDeposit]);
 
-  // Detect if we're hitting the mint cap (output doesn't scale with input)
-  const isMintCapped = useMemo(() => {
-    if (isDirectPeggedDeposit || !dryRunData || !parsedAmount) return false;
+  // Auto-adjust amount when minter refuses full deposit
+  const [depositLimitWarning, setDepositLimitWarning] = useState<string | null>(null);
+  const [tempMaxWarning, setTempMaxWarning] = useState<string | null>(null);
+  const tempWarningTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Helper function to calculate max acceptable amount for swap deposits
+  const calculateMaxSwapAmount = useMemo(() => {
+    if (!anyTokenDeposit.needsSwap || !swapDryRunOutput || !swappedAmountForDryRun || !anyTokenDeposit.swapQuote) {
+      return null;
+    }
+
+    const dryRunResult = swapDryRunOutput as [bigint, bigint, bigint, bigint, bigint, bigint] | undefined;
+    if (!dryRunResult || dryRunResult.length < 3) return null;
+
+    const wrappedCollateralTaken = dryRunResult[2];
+    const takenRatio = Number(wrappedCollateralTaken) / Number(swappedAmountForDryRun);
+
+    // If minter is taking less than 99.5% of swap output, there's a limit
+    if (takenRatio >= 0.995 || wrappedCollateralTaken === 0n) {
+      return null;
+    }
+
+    // Work backwards: wrappedCollateral → intermediate token (USDC/ETH) → input token
+    const isFxSAVEMarket = activeWrappedCollateralSymbol === "fxSAVE";
+    const isWstETHMarket = activeWrappedCollateralSymbol === "wstETH";
+    let maxIntermediateAmount: bigint;
+    const isSwappingToUSDC = anyTokenDeposit.swapTargetToken !== "ETH";
+    
+    if (isSwappingToUSDC && isFxSAVEMarket) {
+      const wrappedRate = marketForDepositAsset?.wrappedRate || selectedMarket?.wrappedRate || 10n**18n;
+      const fxUsdAmount = (wrappedCollateralTaken * wrappedRate) / 10n**18n;
+      maxIntermediateAmount = fxUsdAmount / 10n**12n;
+    } else if (!isSwappingToUSDC && isWstETHMarket) {
+      const wrappedRate = marketForDepositAsset?.wrappedRate || selectedMarket?.wrappedRate || 10n**18n;
+      const stEthAmount = (wrappedCollateralTaken * wrappedRate) / 10n**18n;
+      maxIntermediateAmount = stEthAmount;
+    } else {
+      return null;
+    }
+    
+    const swapFromAmount = BigInt(anyTokenDeposit.swapQuote.fromAmount);
+    const swapToAmount = BigInt(anyTokenDeposit.swapQuote.toAmount);
+    const maxInputAmount = (swapFromAmount * maxIntermediateAmount) / swapToAmount;
+    const formattedMax = (Number(maxInputAmount) / (10 ** anyTokenDeposit.tokenDecimals)).toString();
+    
+    return formattedMax;
+  }, [
+    anyTokenDeposit.needsSwap,
+    anyTokenDeposit.swapQuote,
+    anyTokenDeposit.swapTargetToken,
+    anyTokenDeposit.tokenDecimals,
+    swapDryRunOutput,
+    swappedAmountForDryRun,
+    activeWrappedCollateralSymbol,
+    marketForDepositAsset,
+    selectedMarket,
+  ]);
+
+  // Check swap dry run for max acceptable amount and auto-adjust
+  useEffect(() => {
+    if (!anyTokenDeposit.needsSwap || activeTab !== "deposit") {
+      setDepositLimitWarning(null);
+      return;
+    }
+
+    // If calculateMaxSwapAmount is not available yet, preserve existing warning
+    // This prevents the warning from disappearing during recalculation
+    if (!calculateMaxSwapAmount) {
+      // Only clear warning if amount is 0 or empty - otherwise preserve it during recalculation
+      if (!amount || parseFloat(amount) === 0) {
+        setDepositLimitWarning(null);
+        return;
+      }
+      // If we have an amount but no calculateMaxSwapAmount yet, preserve the warning
+      // and wait for calculateMaxSwapAmount to become available
+      // This ensures the warning doesn't disappear during recalculation
+      if (process.env.NODE_ENV === "development") {
+        console.log("[Swap Dry Run] calculateMaxSwapAmount not available yet, preserving warning for amount:", amount);
+      }
+      return;
+    }
+
+    const currentInputAmount = parseFloat(amount || "0");
+    const maxInputAmountFloat = parseFloat(calculateMaxSwapAmount);
+    const difference = currentInputAmount - maxInputAmountFloat;
+
+    if (process.env.NODE_ENV === "development") {
+      console.log("[Swap Dry Run Check]", {
+        currentAmount: amount,
+        maxAmount: calculateMaxSwapAmount,
+        currentInputAmount,
+        maxInputAmountFloat,
+        difference,
+        exceedsMax: currentInputAmount > maxInputAmountFloat,
+        willAutoAdjust: currentInputAmount > maxInputAmountFloat,
+      });
+    }
+
+    // Tolerance for comparing amounts (accounts for floating point precision)
+    // Use a small tolerance only for "at max" detection, but adjust immediately if above max
+    const tolerance = 0.0001; // Small tolerance for "at max" detection
+    // Consider "at max" if within tolerance (either slightly above or at the max)
+    // This ensures the warning persists even if calculateMaxSwapAmount is recalculated
+    const isAtMax = Math.abs(difference) <= tolerance || currentInputAmount <= maxInputAmountFloat + tolerance;
+    // If amount is greater than max (even slightly), always adjust it down
+    // Use a very small threshold to account for floating point precision, but be aggressive about adjusting
+    const exceedsMax = difference > 0.00001; // Adjust if more than 0.00001 above max
+
+    if (process.env.NODE_ENV === "development") {
+      console.log("[Swap Dry Run Check] Comparison:", {
+        currentInputAmount,
+        maxInputAmountFloat,
+        difference,
+        isAtMax,
+        exceedsMax,
+        willAdjust: exceedsMax,
+      });
+    }
+
+    // If amount exceeds the max, always adjust it down
+    if (exceedsMax) {
+      if (process.env.NODE_ENV === "development") {
+        console.log("[Swap Dry Run] Adjusting amount from", currentInputAmount, "to", calculateMaxSwapAmount, "difference:", difference);
+      }
+      // Always adjust - use the calculated max
+      const adjustedAmount = calculateMaxSwapAmount;
+      setAmount(adjustedAmount);
+      anyTokenDeposit.setAmount(adjustedAmount); // Sync with hook
+      
+      if (process.env.NODE_ENV === "development") {
+        console.log("[Swap Dry Run] Amount adjusted successfully to:", adjustedAmount);
+      }
+      
+      // Show warning message
+      const warningMessage = `Maximum deposit limited to ${calculateMaxSwapAmount} ${selectedDepositAsset || ""} (after swap) to maintain collateral ratio.`;
+      setDepositLimitWarning(warningMessage);
+
+      // Set temporary warning near Max button
+      const warningText = `Max: ${parseFloat(calculateMaxSwapAmount).toFixed(4)} ${selectedDepositAsset || ""}`;
+      setTempMaxWarning(warningText);
+
+      if (process.env.NODE_ENV === "development") {
+        console.log("[Swap Dry Run] Setting warning:", {
+          warningMessage,
+          warningText,
+        });
+      }
+
+      // Clear any existing timer
+      if (tempWarningTimerRef.current) {
+        clearTimeout(tempWarningTimerRef.current);
+      }
+
+      // Set new timer to clear temp warning after 5 seconds (keep depositLimitWarning visible)
+      tempWarningTimerRef.current = setTimeout(() => {
+        setTempMaxWarning(null);
+        tempWarningTimerRef.current = null;
+      }, 5000);
+    } else if (isAtMax) {
+      // Amount is at the max - show warning but don't adjust
+
+      // Show warning message
+      const warningMessage = `Maximum deposit limited to ${calculateMaxSwapAmount} ${selectedDepositAsset || ""} (after swap) to maintain collateral ratio.`;
+      setDepositLimitWarning(warningMessage);
+
+      // Set temporary warning near Max button
+      const warningText = `Max: ${parseFloat(calculateMaxSwapAmount).toFixed(4)} ${selectedDepositAsset || ""}`;
+      setTempMaxWarning(warningText);
+
+      if (process.env.NODE_ENV === "development") {
+        console.log("[Swap Dry Run] Setting warning:", {
+          warningMessage,
+          warningText,
+          isAtMax,
+          exceedsMax,
+        });
+      }
+
+      // Clear any existing timer
+      if (tempWarningTimerRef.current) {
+        clearTimeout(tempWarningTimerRef.current);
+      }
+
+      // Set new timer to clear temp warning after 5 seconds (keep depositLimitWarning visible)
+      tempWarningTimerRef.current = setTimeout(() => {
+        setTempMaxWarning(null);
+        tempWarningTimerRef.current = null;
+      }, 5000);
+    } else {
+      // Input is below the max, clear warnings
+      // Only clear if the amount is significantly below the max (not just slightly)
+      // Use a larger threshold (1% of max) to ensure warnings persist when near the max
+      // This prevents the warning from disappearing when calculateMaxSwapAmount is recalculated
+      const clearThreshold = Math.max(0.001, maxInputAmountFloat * 0.01); // At least 0.001 or 1% of max
+      const significantDifference = currentInputAmount < maxInputAmountFloat - clearThreshold;
+      if (significantDifference) {
+        if (process.env.NODE_ENV === "development") {
+          console.log("[Swap Dry Run] Clearing warning - amount significantly below max:", {
+            currentInputAmount,
+            maxInputAmountFloat,
+            difference: currentInputAmount - maxInputAmountFloat,
+            clearThreshold,
+          });
+        }
+        setDepositLimitWarning(null);
+        if (tempWarningTimerRef.current) {
+          clearTimeout(tempWarningTimerRef.current);
+          tempWarningTimerRef.current = null;
+        }
+        setTempMaxWarning(null);
+      } else {
+        // Amount is very close to max but not quite at it - keep warning visible
+        // This ensures the warning doesn't flicker when the amount is near the max
+        // or when calculateMaxSwapAmount is recalculated
+        if (process.env.NODE_ENV === "development") {
+          console.log("[Swap Dry Run] Keeping warning - amount very close to max:", {
+            currentInputAmount,
+            maxInputAmountFloat,
+            difference: currentInputAmount - maxInputAmountFloat,
+            clearThreshold,
+          });
+        }
+        // Always set the warning if we're near the max - don't check if it already exists
+        // This ensures it persists even if calculateMaxSwapAmount changes slightly
+        const warningMessage = `Maximum deposit limited to ${calculateMaxSwapAmount} ${selectedDepositAsset || ""} (after swap) to maintain collateral ratio.`;
+        setDepositLimitWarning(warningMessage);
+        
+        // Also set temporary warning if not already set
+        if (!tempMaxWarning) {
+          const warningText = `Max: ${parseFloat(calculateMaxSwapAmount).toFixed(4)} ${selectedDepositAsset || ""}`;
+          setTempMaxWarning(warningText);
+          
+          // Clear any existing timer
+          if (tempWarningTimerRef.current) {
+            clearTimeout(tempWarningTimerRef.current);
+          }
+          
+          // Set new timer to clear temp warning after 5 seconds (keep depositLimitWarning visible)
+          tempWarningTimerRef.current = setTimeout(() => {
+            setTempMaxWarning(null);
+            tempWarningTimerRef.current = null;
+          }, 5000);
+        }
+      }
+    }
+  }, [
+    anyTokenDeposit.needsSwap,
+    calculateMaxSwapAmount,
+    amount,
+    selectedDepositAsset,
+    activeTab,
+    anyTokenDeposit.setAmount,
+  ]);
+
+  // Check direct deposit dry run for max acceptable amount
+  useEffect(() => {
+    // For swap deposits, this useEffect should not run - handled by swap dry run useEffect
+    if (anyTokenDeposit.needsSwap) {
+      return; // Don't clear warning - it's managed by the swap dry run useEffect
+    }
+    
+    if (isDirectPeggedDeposit || !dryRunData || !parsedAmount || activeTab !== "deposit") {
+      setDepositLimitWarning(null);
+      // Clear any pending timer
+      if (tempWarningTimerRef.current) {
+        clearTimeout(tempWarningTimerRef.current);
+        tempWarningTimerRef.current = null;
+      }
+      setTempMaxWarning(null);
+      return;
+    }
 
     const dryRunResult = dryRunData as
       | [bigint, bigint, bigint, bigint, bigint, bigint]
       | undefined;
-    if (!dryRunResult || dryRunResult.length < 4) return false;
-
-    const peggedMinted = dryRunResult[3];
-    const expectedRatio = Number(peggedMinted) / Number(parsedAmount);
-
-    // If output/input ratio is very low (<0.0005), we're likely hitting a cap
-    // Normal ratio for ETH markets should be around 0.0003-0.0004
-    // If input is large but output is tiny, that's the cap
-    if (Number(parsedAmount) > parseEther("5") && expectedRatio < 0.0003) {
-      return true;
+    
+    if (!dryRunResult || dryRunResult.length < 3) {
+      setDepositLimitWarning(null);
+      // Clear any pending timer
+      if (tempWarningTimerRef.current) {
+        clearTimeout(tempWarningTimerRef.current);
+        tempWarningTimerRef.current = null;
+      }
+      setTempMaxWarning(null);
+      return;
     }
 
-    return false;
-  }, [dryRunData, parsedAmount, isDirectPeggedDeposit]);
+    // result[2] = wrappedCollateralTaken (actual amount minter will accept in fxSAVE)
+    const wrappedCollateralTaken = dryRunResult[2];
+    const takenRatio = Number(wrappedCollateralTaken) / Number(parsedAmount);
+
+    // If minter is taking less than 99.5% of input, there's a limit
+    if (takenRatio < 0.995 && wrappedCollateralTaken > 0n) {
+      // Convert back to user's selected asset for display
+      const wrappedCollateralSymbol = marketForDepositAsset?.collateral?.symbol || "";
+      const underlyingCollateralSymbol = marketForDepositAsset?.collateral?.underlyingSymbol || "";
+      const wrappedRate = marketForDepositAsset?.wrappedRate;
+      
+      let maxAcceptableInUserAsset: number;
+      
+      if (selectedDepositAsset?.toLowerCase() === wrappedCollateralSymbol.toLowerCase()) {
+        // User selected fxSAVE - use amount directly
+        maxAcceptableInUserAsset = Number(formatEther(wrappedCollateralTaken));
+      } else if (selectedDepositAsset?.toLowerCase() === underlyingCollateralSymbol.toLowerCase()) {
+        // User selected fxUSD - convert fxSAVE back to fxUSD
+        // fxUSD = fxSAVE * rate
+        if (wrappedRate && wrappedRate > 0n) {
+          const amountInUnderlying = (wrappedCollateralTaken * wrappedRate) / BigInt(1e18);
+          maxAcceptableInUserAsset = Number(formatEther(amountInUnderlying));
+        } else {
+          // Fallback: 1:1
+          maxAcceptableInUserAsset = Number(formatEther(wrappedCollateralTaken));
+        }
+      } else {
+        // For USDC, ETH, etc. - use wrapped amount
+        maxAcceptableInUserAsset = Number(formatEther(wrappedCollateralTaken));
+      }
+      
+      const formattedMax = maxAcceptableInUserAsset.toFixed(4);
+      const currentInputAmount = parseFloat(amount || "0");
+      const maxInputAmountFloat = parseFloat(formattedMax);
+      
+      // Only auto-adjust if user's input EXCEEDS the max
+      if (currentInputAmount > maxInputAmountFloat) {
+        setAmount(formattedMax);
+        setDepositLimitWarning(
+          `Maximum deposit limited to ${formattedMax} ${selectedDepositAsset || activeCollateralSymbol} to maintain collateral ratio.`
+        );
+        
+        // Set temporary warning near Max button
+        const warningText = `Max: ${formattedMax} ${selectedDepositAsset || activeCollateralSymbol}`;
+        setTempMaxWarning(warningText);
+        
+        // Clear any existing timer
+        if (tempWarningTimerRef.current) {
+          clearTimeout(tempWarningTimerRef.current);
+        }
+        
+        // Set new timer to clear warning after 3 seconds
+        tempWarningTimerRef.current = setTimeout(() => {
+          setTempMaxWarning(null);
+          tempWarningTimerRef.current = null;
+        }, 3000);
+      } else {
+        // Input is within limits, just clear any previous warning
+        setDepositLimitWarning(null);
+      }
+    } else {
+      // No limit detected, clear warnings if no temp warning is active
+      if (!tempMaxWarning) {
+        setDepositLimitWarning(null);
+      }
+    }
+  }, [
+    dryRunData,
+    parsedAmount,
+    isDirectPeggedDeposit,
+    activeTab,
+    selectedDepositAsset,
+    activeCollateralSymbol,
+    marketForDepositAsset,
+    tempMaxWarning,
+  ]);
+
 
   // Contract write hooks
   const { writeContractAsync } = useWriteContract();
+  const { sendTransactionAsync } = useSendTransaction();
 
   const collateralBalance = collateralBalanceData || 0n;
 
@@ -2543,6 +3180,18 @@ export const AnchorDepositWithdrawModal = ({
 
     if (isSelectedAssetNativeETH) {
       return nativeBalanceData?.value || 0n;
+    }
+
+    // For swap assets (user tokens), prefer anyTokenDeposit.balance which is already fetched
+    if (anyTokenDeposit.needsSwap && anyTokenDeposit.balance !== undefined) {
+      if (process.env.NODE_ENV === "development") {
+        console.log("[AnchorDepositModal] Swap asset balance from anyTokenDeposit:", {
+          asset: selectedDepositAsset,
+          address: anyTokenDeposit.selectedAssetAddress,
+          balance: anyTokenDeposit.balance.toString(),
+        });
+      }
+      return anyTokenDeposit.balance;
     }
 
     // For ha token, prefer the balance from Genesis contract's pegged token
@@ -2583,6 +3232,19 @@ export const AnchorDepositWithdrawModal = ({
       return 0n;
     }
 
+    // For other assets, try anyTokenDeposit.balance first (for user tokens that don't need swap)
+    if (anyTokenDeposit.balance !== undefined && anyTokenDeposit.balance > 0n) {
+      if (process.env.NODE_ENV === "development") {
+        console.log("[AnchorDepositModal] Asset balance from anyTokenDeposit:", {
+          asset: selectedDepositAsset,
+          address: anyTokenDeposit.selectedAssetAddress,
+          balance: anyTokenDeposit.balance.toString(),
+        });
+      }
+      return anyTokenDeposit.balance;
+    }
+
+    // Fallback to selectedAssetBalanceData from contract read
     if (selectedAssetBalanceData !== undefined) {
       if (process.env.NODE_ENV === "development") {
         console.log("[AnchorDepositModal] Selected asset balance:", {
@@ -2608,6 +3270,9 @@ export const AnchorDepositWithdrawModal = ({
     genesisPeggedTokenAddress,
     marketForDepositAsset,
     selectedAssetAddress,
+    anyTokenDeposit.needsSwap,
+    anyTokenDeposit.balance,
+    anyTokenDeposit.selectedAssetAddress,
   ]);
 
   // Get symbol for selected deposit asset
@@ -2866,6 +3531,14 @@ export const AnchorDepositWithdrawModal = ({
     setStep("input");
     setError(null);
     setTxHash(null);
+    // Clear temp warning when switching tabs
+    if (tempMaxWarning) {
+      setTempMaxWarning(null);
+      if (tempWarningTimerRef.current) {
+        clearTimeout(tempWarningTimerRef.current);
+        tempWarningTimerRef.current = null;
+      }
+    }
     if (tab === "deposit") {
       setDepositInStabilityPool(!mintOnly);
       setStabilityPoolType("collateral");
@@ -2875,7 +3548,18 @@ export const AnchorDepositWithdrawModal = ({
   const handleMaxClick = () => {
     if (activeTab === "deposit") {
       if (simpleMode && selectedAssetBalance !== null) {
-        setAmount(formatEther(selectedAssetBalance));
+        // Use correct decimals for the selected asset
+        const decimals = anyTokenDeposit.tokenDecimals || 18;
+        const balanceAmount = formatUnits(selectedAssetBalance, decimals);
+        
+        // Simply set the amount to balance
+        // The useEffect will adjust it to the calculated max once the dry run completes with this amount
+        setAmount(balanceAmount);
+        anyTokenDeposit.setAmount(balanceAmount); // Sync with hook
+        
+        if (process.env.NODE_ENV === "development") {
+          console.log("[handleMaxClick] Set amount to balance:", balanceAmount, "useEffect will adjust if needed");
+        }
       } else if (isDirectPeggedDeposit && directPeggedBalance) {
         setAmount(formatEther(directPeggedBalance));
       } else if (collateralBalance) {
@@ -2895,6 +3579,16 @@ export const AnchorDepositWithdrawModal = ({
 
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
+    
+    // Clear temp warning immediately when user manually changes input
+    if (tempMaxWarning) {
+      setTempMaxWarning(null);
+      if (tempWarningTimerRef.current) {
+        clearTimeout(tempWarningTimerRef.current);
+        tempWarningTimerRef.current = null;
+      }
+    }
+    
     if (value === "" || /^\d*\.?\d*$/.test(value)) {
       // Cap at balance if value exceeds it (for deposit tab)
       if (value && activeTab === "deposit" && balance > 0n) {
@@ -2902,6 +3596,7 @@ export const AnchorDepositWithdrawModal = ({
           const parsed = parseEther(value);
           if (parsed > balance) {
             setAmount(formatEther(balance));
+            anyTokenDeposit.setAmount(formatEther(balance)); // Sync with hook
             setError(null);
             return;
           }
@@ -2910,6 +3605,7 @@ export const AnchorDepositWithdrawModal = ({
         }
       }
       setAmount(value);
+      anyTokenDeposit.setAmount(value); // Sync with hook
       setError(null);
     }
   };
@@ -3260,7 +3956,8 @@ export const AnchorDepositWithdrawModal = ({
           includeDirectDeposit: true,
           title: "Deposit ha token",
         });
-        setProgressModalOpen(true);
+        // Close modal so user can interact with wallet
+        onClose();
 
         // Step 1: Approve pegged token for stability pool (if needed)
         if (needsDirectApproval) {
@@ -3395,6 +4092,142 @@ export const AnchorDepositWithdrawModal = ({
         }
       } else {
         // Collateral deposit flow: mint then optionally deposit to stability pool
+        
+        // Check if we need to swap the selected token first
+        let swappedAmount = amountBigInt;
+        let swappedTokenIsETH = anyTokenDeposit.isNativeETH;
+        
+        if (anyTokenDeposit.needsSwap && anyTokenDeposit.swapQuote) {
+          // Step 0: Swap token to intermediate token (ETH or USDC)
+          setStep("approving");
+          setError(null);
+          setTxHash(null);
+          
+          // Approve token for ParaSwap (if not ETH)
+          if (!anyTokenDeposit.isNativeETH && anyTokenDeposit.needsSwapApproval) {
+            const swapApproveHash = await writeContractAsync({
+              address: anyTokenDeposit.selectedAssetAddress as `0x${string}`,
+              abi: ERC20_ABI,
+              functionName: "approve",
+              args: [
+                "0x216b4b4ba9f3e719726886d34a177484278bfcae" as `0x${string}`, // ParaSwap TokenTransferProxy
+                anyTokenDeposit.amountBigInt,
+              ],
+            });
+            await publicClient?.waitForTransactionReceipt({ hash: swapApproveHash });
+            await anyTokenDeposit.refetchSwapAllowance();
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+          }
+          
+          // Execute swap
+          setStep("minting"); // Reusing "minting" step for swap
+          const fromTokenForSwap = anyTokenDeposit.isNativeETH ? "ETH" : (anyTokenDeposit.selectedAssetAddress as `0x${string}`);
+          const toTokenForSwap = anyTokenDeposit.swapTargetToken as any;
+          const swapTxData = await getDefiLlamaSwapTx(
+            fromTokenForSwap,
+            toTokenForSwap,
+            anyTokenDeposit.amountBigInt,
+            address as `0x${string}`,
+            slippageTolerance,
+            anyTokenDeposit.tokenDecimals,
+            anyTokenDeposit.swapTargetToken === "ETH" ? 18 : 6
+          );
+          
+          if (!swapTxData) {
+            throw new Error("Failed to get swap transaction data");
+          }
+          
+          const swapHash = await sendTransactionAsync({
+            to: swapTxData.to,
+            data: swapTxData.data,
+            value: swapTxData.value,
+            gas: swapTxData.gas,
+          });
+          
+          await publicClient?.waitForTransactionReceipt({ hash: swapHash });
+          
+          // Update swapped amount (ParaSwap returns in smallest units already)
+          const isSwappedToUSDC = anyTokenDeposit.swapTargetToken !== "ETH";
+          swappedAmount = BigInt(anyTokenDeposit.swapQuote.toAmount);
+          swappedTokenIsETH = !isSwappedToUSDC;
+        }
+        
+        // Check if we should use zap contracts (for ETH/USDC deposits)
+        const useZap = anyTokenDeposit.useETHZap || anyTokenDeposit.useUSDCZap;
+        const zapAddress = anyTokenDeposit.zapAddress;
+        
+        if (useZap && zapAddress) {
+          // Use zap contract for efficient ETH → collateral or USDC → collateral conversion
+          setStep("minting");
+          setError(null);
+          setTxHash(null);
+          
+          if (anyTokenDeposit.useETHZap) {
+            // ETH Zap: ETH → stETH → wstETH → Minter
+            const wstETHAddress = selectedMarket?.addresses?.wrappedCollateralToken as `0x${string}` | undefined;
+            if (!wstETHAddress) {
+              throw new Error("wstETH address not found");
+            }
+            
+            // Get expected wstETH output for slippage calculation
+            const stETHAmount = swappedAmount; // ETH → stETH is 1:1
+            const expectedWstETH = await publicClient?.readContract({
+              address: wstETHAddress,
+              abi: WSTETH_ABI,
+              functionName: "getWstETHByStETH",
+              args: [stETHAmount],
+            });
+            
+            const minWstETH = expectedWstETH ? (expectedWstETH * BigInt(Math.floor((100 - slippageTolerance) * 10))) / 1000n : 0n;
+            
+            // Call zapEth on Genesis zap (we're reusing for Minter)
+            const zapHash = await writeContractAsync({
+              address: zapAddress,
+              abi: ZAP_ABI,
+              functionName: "zapEth",
+              args: [minWstETH, address as `0x${string}`],
+              value: swappedAmount,
+            });
+            
+            await publicClient?.waitForTransactionReceipt({ hash: zapHash });
+            setTxHashes((prev) => ({ ...prev, mint: zapHash }));
+            
+            // Skip normal mint flow
+            setStep("success");
+            if (onSuccess) onSuccess();
+            return;
+          } else if (anyTokenDeposit.useUSDCZap) {
+            // USDC Zap: USDC → fxUSD → fxSAVE → Minter
+            // Approve USDC for zap
+            if (anyTokenDeposit.needsZapApproval) {
+              const zapApproveHash = await writeContractAsync({
+                address: anyTokenDeposit.selectedAssetAddress as `0x${string}`,
+                abi: ERC20_ABI,
+                functionName: "approve",
+                args: [zapAddress, swappedAmount],
+              });
+              await publicClient?.waitForTransactionReceipt({ hash: zapApproveHash });
+            }
+            
+            // Call zapUsdc
+            const minFxSAVEOut = (swappedAmount * BigInt(Math.floor((100 - slippageTolerance) * 10))) / 1000n;
+            const zapHash = await writeContractAsync({
+              address: zapAddress,
+              abi: USDC_ZAP_ABI,
+              functionName: "zapUsdc",
+              args: [swappedAmount, minFxSAVEOut, address as `0x${string}`],
+            });
+            
+            await publicClient?.waitForTransactionReceipt({ hash: zapHash });
+            setTxHashes((prev) => ({ ...prev, mint: zapHash }));
+            
+            // Skip normal mint flow
+            setStep("success");
+            if (onSuccess) onSuccess();
+            return;
+          }
+        }
+        
         // In simple mode, check if a stability pool is selected; in advanced mode, use depositInStabilityPool
         const shouldDepositToPool = simpleMode
           ? selectedStabilityPool &&
@@ -3414,7 +4247,8 @@ export const AnchorDepositWithdrawModal = ({
           includeDirectDeposit: false,
           title: includeDeposit ? "Mint & Deposit" : "Mint pegged token",
         });
-        setProgressModalOpen(true);
+        // Close modal so user can interact with wallet
+        onClose();
         // Use Anvil client for local development, regular publicClient for production
         const txClient = false ? publicClient : publicClient;
 
@@ -3442,9 +4276,9 @@ export const AnchorDepositWithdrawModal = ({
         setError(null);
         setTxHash(null);
 
-        // Calculate minimum output (with 1% slippage tolerance)
+        // Calculate minimum output (with slippage tolerance)
         const minPeggedOut = expectedMintOutput
-          ? (expectedMintOutput * 99n) / 100n
+          ? (expectedMintOutput * BigInt(Math.floor((100 - slippageTolerance) * 10))) / 1000n
           : 0n;
 
         if (process.env.NODE_ENV === "development") {
@@ -4161,7 +4995,8 @@ export const AnchorDepositWithdrawModal = ({
             : "Withdraw from sail pool",
         title: withdrawOnly ? "Withdraw" : "Withdraw & Redeem",
       });
-      setProgressModalOpen(true);
+      // Close modal so user can interact with wallet
+      onClose();
 
       // Validate wallet amount
       if (walletAmount > 0n) {
@@ -4606,7 +5441,8 @@ export const AnchorDepositWithdrawModal = ({
         includeRedeem: true,
         title: "Redeem",
       });
-      setProgressModalOpen(true);
+      // Close modal so user can interact with wallet
+      onClose();
 
       if (process.env.NODE_ENV === "development") {
         console.log("[handleRedeem] Starting redeem flow:", {
@@ -4832,8 +5668,7 @@ export const AnchorDepositWithdrawModal = ({
         step === "depositing" ||
         !amount ||
         parseFloat(amount) <= 0 ||
-        hasExcessiveFee ||
-        isMintCapped
+        hasExcessiveFee
       );
     } else if (activeTab === "withdraw") {
       // Check if at least one position is selected with a valid amount
@@ -4907,7 +5742,7 @@ export const AnchorDepositWithdrawModal = ({
       : undefined;
   const outputSymbol =
     activeTab === "deposit"
-      ? peggedTokenSymbol
+      ? peggedTokenSymbol // Always use selected market's pegged token
       : activeTab === "withdraw" && (!withdrawOnly || redeemOnly)
       ? selectedRedeemAsset || collateralSymbol
       : activeTab === "withdraw"
@@ -4921,34 +5756,6 @@ export const AnchorDepositWithdrawModal = ({
     (selectedPositions.collateralPool &&
       withdrawalMethods.collateralPool === "request") ||
     (selectedPositions.sailPool && withdrawalMethods.sailPool === "request");
-
-  // When progress modal is showing, hide the main manage modal
-  if (showProgressModal) {
-    return (
-      <TransactionProgressModal
-        isOpen={showProgressModal}
-        onClose={handleProgressClose}
-        title={progressConfig.title}
-        steps={progressSteps}
-        currentStepIndex={currentProgressIndex}
-        onRetry={step === "error" ? handleProgressRetry : undefined}
-        errorMessage={error || undefined}
-        renderSuccessContent={
-          hasRequestWithdrawals
-            ? () => (
-                <div className="p-3 bg-blue-50 border border-blue-200">
-                  <p className="text-sm text-blue-800">
-                    <strong>💡 Tip:</strong> You can view and manage your
-                    withdrawal requests by expanding the market card on the
-                    Anchor page.
-                  </p>
-                </div>
-              )
-            : undefined
-        }
-      />
-    );
-  }
 
   return (
     <>
@@ -5109,25 +5916,82 @@ export const AnchorDepositWithdrawModal = ({
                         <select
                           value={selectedDepositAsset}
                           onChange={(e) => {
-                            setSelectedDepositAsset(e.target.value);
+                            const newAsset = e.target.value;
+                            setSelectedDepositAsset(newAsset);
+                            anyTokenDeposit.setSelectedAsset(newAsset); // Sync with hook
                             setAmount(""); // Reset amount when changing asset
                             setError(null); // Clear any errors
+                            // Clear temp warning when changing asset
+                            if (tempMaxWarning) {
+                              setTempMaxWarning(null);
+                              if (tempWarningTimerRef.current) {
+                                clearTimeout(tempWarningTimerRef.current);
+                                tempWarningTimerRef.current = null;
+                              }
+                            }
                           }}
                           disabled={isProcessing}
                           className="w-full px-4 py-3 bg-white text-[#1E4775] border-2 border-[#1E4775]/30 focus:border-[#1E4775] focus:ring-2 focus:ring-[#1E4775]/20 focus:outline-none text-base"
                         >
-                          {depositAssetsWithFees.map((asset) => (
-                            <option key={asset.symbol} value={asset.symbol}>
-                              {asset.name} ({asset.symbol})
-                              {asset.feePercentage !== undefined
-                                ? ` - ${asset.feePercentage.toFixed(
-                                    2
-                                  )}% estimated fee`
-                                : " - Fee: -"}
-                            </option>
-                          ))}
+                          {(() => {
+                            const nativeAssets = depositAssetsWithFees.filter(a => !a.isUserToken);
+                            const userTokens = depositAssetsWithFees.filter(a => a.isUserToken);
+                            
+                            return (
+                              <>
+                                {nativeAssets.length > 0 && (
+                                  <optgroup label="Supported Assets">
+                                    {nativeAssets.map((asset) => (
+                                      <option key={asset.symbol} value={asset.symbol}>
+                                        {asset.name} ({asset.symbol})
+                                        {asset.feePercentage !== undefined
+                                          ? ` - ${asset.feePercentage.toFixed(2)}% estimated fee`
+                                          : " - Fee: -"}
+                                      </option>
+                                    ))}
+                                  </optgroup>
+                                )}
+                                {userTokens.length > 0 && (
+                                  <optgroup label="Other Tokens (via Swap)">
+                                    {userTokens.map((asset) => (
+                                      <option key={asset.symbol} value={asset.symbol}>
+                                        {asset.name} ({asset.symbol}) - Will be swapped
+                                      </option>
+                                    ))}
+                                  </optgroup>
+                                )}
+                              </>
+                            );
+                          })()}
                         </select>
+                        {/* Swap info for "any token" deposits */}
+                        {anyTokenDeposit.needsSwap && selectedDepositAsset && amount && parseFloat(amount) > 0 && (() => {
+                          const isSwappingToUSDC = anyTokenDeposit.swapTargetToken !== "ETH";
+                          const targetToken = isSwappingToUSDC ? "USDC" : "ETH";
+                          const targetDecimals = isSwappingToUSDC ? 2 : 6;
+                          
+                          // ParaSwap returns toAmount in smallest units, need to convert to decimal
+                          const toAmountDecimals = isSwappingToUSDC ? 6 : 18; // USDC=6, ETH=18
+                          const toAmountFormatted = anyTokenDeposit.swapQuote 
+                            ? (parseFloat(anyTokenDeposit.swapQuote.toAmount) / (10 ** toAmountDecimals)).toFixed(targetDecimals)
+                            : "0";
+                          
+                          return (
+                            <div className="mt-2 text-xs text-[#1E4775]/50 italic">
+                              {anyTokenDeposit.isLoadingSwapQuote ? (
+                                <>
+                                  {parseFloat(amount).toFixed(6)} {selectedDepositAsset} → Calculating swap... → {activeWrappedCollateralSymbol}
+                                </>
+                              ) : anyTokenDeposit.swapQuote ? (
+                                <>
+                                  {parseFloat(amount).toFixed(6)} {selectedDepositAsset} → {toAmountFormatted} {targetToken} → {activeWrappedCollateralSymbol}
+                                </>
+                              ) : null}
+                            </div>
+                          );
+                        })()}
                         {selectedDepositAsset &&
+                          !anyTokenDeposit.needsSwap &&
                           selectedDepositAsset !== activeCollateralSymbol &&
                           selectedDepositAsset !==
                             activeWrappedCollateralSymbol &&
@@ -5259,7 +6123,11 @@ export const AnchorDepositWithdrawModal = ({
                           <span className="text-sm text-[#1E4775]/70">
                             Balance:{""}
                             {selectedAssetBalance !== null
-                              ? formatEther(selectedAssetBalance)
+                              ? (() => {
+                                  // Use correct decimals for the selected asset
+                                  const decimals = anyTokenDeposit.tokenDecimals || 18;
+                                  return formatUnits(selectedAssetBalance, decimals);
+                                })()
                               : formatEther(collateralBalance)}
                             {""}
                             {selectedDepositAsset || activeCollateralSymbol}
@@ -5276,6 +6144,19 @@ export const AnchorDepositWithdrawModal = ({
                             } focus:border-[#1E4775] focus:ring-2 focus:ring-[#1E4775]/20 focus:outline-none transition-all text-xl font-mono `}
                             disabled={isProcessing}
                           />
+                          {/* Warning - always reserve space to prevent layout shift */}
+                          <div className="absolute right-20 top-1/2 -translate-y-1/2 z-10 pointer-events-none">
+                            {tempMaxWarning ? (
+                              <div className="px-2.5 py-1 text-xs bg-[#FF8A7A]/90 border border-[#FF8A7A] text-white rounded-md font-semibold whitespace-nowrap shadow-lg animate-pulse-once">
+                                ⚠️ {tempMaxWarning}
+                              </div>
+                            ) : (
+                              <div className="px-2.5 py-1 text-xs invisible whitespace-nowrap">
+                                {/* Invisible placeholder to reserve space */}
+                                ⚠️ Max: 0.0000
+                              </div>
+                            )}
+                          </div>
                           <button
                             onClick={handleMaxClick}
                             className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1.5 text-sm bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white transition-colors disabled:bg-gray-300 disabled:text-gray-500 rounded-full font-medium"
@@ -5320,24 +6201,106 @@ export const AnchorDepositWithdrawModal = ({
                         </div>
                       )}
 
-                      {/* Expected Output Preview - only for collateral deposits */}
-                      {!isDirectPeggedDeposit &&
-                        expectedMintOutput &&
-                        amount &&
-                        parseFloat(amount) > 0 && (
-                          <div className="bg-[rgb(var(--surface-selected-rgb))]/30 border border-[rgb(var(--surface-selected-border-rgb))]/50 p-2.5">
-                            <div className="flex justify-between items-center">
-                              <span className="text-sm font-medium text-[#1E4775]/70">
-                                You will receive:
+                      {/* Swap Preview - show when using any token deposit (always visible when swap asset is selected) */}
+                      {anyTokenDeposit.needsSwap && (() => {
+                        const targetToken = anyTokenDeposit.swapTargetToken === "ETH" ? "ETH" : "USDC";
+                        const targetDecimals = targetToken === "USDC" ? 6 : 18;
+                        const toAmountFormatted = anyTokenDeposit.swapQuote && anyTokenDeposit.swapQuote.toAmount > 0n
+                          ? Number(anyTokenDeposit.swapQuote.toAmount) / (10 ** targetDecimals)
+                          : 0;
+                        
+                        return (
+                          <div className="p-2 bg-blue-50 border border-blue-200 space-y-1 text-xs">
+                            <div className="flex items-center justify-between">
+                              <span className="text-blue-700">Swap via ParaSwap:</span>
+                              <span className="font-mono text-blue-900">
+                                {toAmountFormatted > 0 
+                                  ? `${toAmountFormatted.toFixed(targetDecimals === 6 ? 2 : 6)} ${targetToken}`
+                                  : `0.${'0'.repeat(targetDecimals === 6 ? 2 : 6)} ${targetToken}`}
                               </span>
-                              <span className="text-xl font-bold text-[#1E4775] font-mono">
-                                {formatEther(expectedMintOutput)}
-                                {""}
-                                {peggedTokenSymbol}
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-blue-700">Slippage Tolerance:</span>
+                              {showSlippageInput ? (
+                                <div className="flex items-center gap-1">
+                                  <input
+                                    type="text"
+                                    value={slippageInputValue}
+                                    onChange={(e) => {
+                                      const input = e.target.value;
+                                      // Allow empty, numbers, and decimal point
+                                      if (input === "" || /^\d*\.?\d*$/.test(input)) {
+                                        setSlippageInputValue(input);
+                                      }
+                                    }}
+                                    onBlur={() => {
+                                      const val = parseFloat(slippageInputValue);
+                                      if (!isNaN(val) && val >= 0.1 && val <= 50) {
+                                        setSlippageTolerance(val);
+                                      } else {
+                                        // Reset to current valid value if invalid
+                                        setSlippageInputValue(slippageTolerance.toFixed(1));
+                                      }
+                                      setShowSlippageInput(false);
+                                    }}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') {
+                                        const val = parseFloat(slippageInputValue);
+                                        if (!isNaN(val) && val >= 0.1 && val <= 50) {
+                                          setSlippageTolerance(val);
+                                        } else {
+                                          setSlippageInputValue(slippageTolerance.toFixed(1));
+                                        }
+                                        setShowSlippageInput(false);
+                                      } else if (e.key === 'Escape') {
+                                        setSlippageInputValue(slippageTolerance.toFixed(1));
+                                        setShowSlippageInput(false);
+                                      }
+                                    }}
+                                    autoFocus
+                                    className="w-16 px-1 py-0.5 text-right font-mono text-blue-900 border border-blue-300 focus:outline-none focus:border-blue-500"
+                                  />
+                                  <span className="text-blue-900">%</span>
+                                </div>
+                              ) : (
+                                <button
+                                  onClick={() => {
+                                    setSlippageInputValue(slippageTolerance.toFixed(1));
+                                    setShowSlippageInput(true);
+                                  }}
+                                  className="font-mono text-blue-900 hover:text-blue-600 underline decoration-dotted cursor-pointer"
+                                >
+                                  {slippageTolerance.toFixed(1)}%
+                                </button>
+                              )}
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-blue-700">ParaSwap Fee:</span>
+                              <span className="font-mono text-blue-700">
+                                {anyTokenDeposit.swapQuote?.fee ? anyTokenDeposit.swapQuote.fee.toFixed(2) : "0.00"}%
                               </span>
                             </div>
                           </div>
-                        )}
+                        );
+                      })()}
+
+                      {/* Expected Output Preview - always show for all non-direct pegged deposits, even if 0 */}
+                      {!isDirectPeggedDeposit && (
+                        <div className="bg-[rgb(var(--surface-selected-rgb))]/30 border border-[rgb(var(--surface-selected-border-rgb))]/50 p-2.5">
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm font-medium text-[#1E4775]/70">
+                              You will receive:
+                            </span>
+                            <span className="text-xl font-bold text-[#1E4775] font-mono">
+                              {expectedMintOutput && amount && parseFloat(amount) > 0
+                                ? Number(formatEther(expectedMintOutput)).toFixed(6)
+                                : "0.000000"}
+                              {" "}
+                              {peggedTokenSymbol}
+                            </span>
+                          </div>
+                        </div>
+                      )}
 
                       {/* Direct ha deposit preview */}
                       {isDirectPeggedDeposit &&
@@ -5349,8 +6312,8 @@ export const AnchorDepositWithdrawModal = ({
                                 You will deposit:
                               </span>
                               <span className="text-xl font-bold text-[#1E4775] font-mono">
-                                {amount}
-                                {""}
+                                {parseFloat(amount).toFixed(6)}
+                                {" "}
                                 {marketForDepositAsset?.peggedToken?.symbol ||
                                   peggedTokenSymbol}
                               </span>
@@ -5800,22 +6763,22 @@ export const AnchorDepositWithdrawModal = ({
                           </div>
                         </div>
 
-                        {/* Fee Warning / Mint Cap Warning */}
-                        {(isMintCapped || (feePercentage !== undefined && feePercentage > 2)) && (
+                        {/* Deposit Limit Warning */}
+                        {depositLimitWarning && (
+                          <div className="mt-2 p-2 border text-xs bg-yellow-50 border-yellow-300 text-yellow-800">
+                            <div className="font-semibold mb-1">ℹ️ Deposit amount adjusted</div>
+                            <div>{depositLimitWarning}</div>
+                          </div>
+                        )}
+
+                        {/* Fee Warning */}
+                        {!depositLimitWarning && feePercentage !== undefined && feePercentage > 2 && (
                           <div className={`mt-2 p-2 border text-xs ${
-                            isMintCapped || (feePercentage !== undefined && feePercentage > 50)
+                            feePercentage > 50
                               ? "bg-red-100 border-red-400 text-red-800" 
                               : "bg-red-50 border-red-200 text-red-700"
                           }`}>
-                            {isMintCapped ? (
-                              <>
-                                <div className="font-semibold mb-1">🚫 Market capacity reached</div>
-                                <div>
-                                  This market has reached its minting capacity. Additional deposits beyond ~{parseFloat(amount) > 3 ? "3" : Math.floor(parseFloat(amount || "0"))} {selectedDepositAsset || activeCollateralSymbol} won't mint more tokens. 
-                                  Please reduce your deposit amount or try again later when capacity increases.
-                                </div>
-                              </>
-                            ) : feePercentage !== undefined && feePercentage > 50 ? (
+                            {feePercentage > 50 ? (
                               <>
                                 <div className="font-semibold mb-1">🚫 Deposit amount too large</div>
                                 <div>
@@ -5825,92 +6788,12 @@ export const AnchorDepositWithdrawModal = ({
                               </>
                             ) : (
                               <>
-                                ⚠️ High fee warning: Fees above 2% may
-                                significantly impact your returns
+                                ⚠️ High fee warning: Fees above 2% may significantly impact your returns
                               </>
                             )}
                           </div>
                         )}
 
-                        {/* Progress Steps Indicator */}
-                        <div className="flex items-center justify-between mb-3 bg-[#f3f6fb] border border-[#d1d7e5] p-3 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
-                          <div className="flex items-center flex-1">
-                            {/* Step 1 */}
-                            <div className="flex items-center flex-1">
-                              <div
-                                className={`flex items-center justify-center w-8 h-8 rounded-full border-2 ${
-                                  currentStep >= 1
-                                    ? "bg-[#1E4775] text-white border-[#1E4775]"
-                                    : "bg-white text-[#1E4775]/30 border-[#1E4775]/30"
-                                } font-semibold text-sm`}
-                              >
-                                {currentStep > 1 ? "✓" : "1"}
-                              </div>
-                              <div className="flex-1 h-0.5 mx-2 bg-[#1E4775]/20">
-                                <div
-                                  className={`h-full transition-all ${
-                                    currentStep >= 2
-                                      ? "bg-[#1E4775] w-full"
-                                      : "bg-transparent w-0"
-                                  }`}
-                                />
-                              </div>
-                            </div>
-                            {!mintOnly && !skipRewardStep && (
-                              <>
-                                {/* Step 2 */}
-                                <div className="flex items-center flex-1">
-                                  <div
-                                    className={`flex items-center justify-center w-8 h-8 rounded-full border-2 ${
-                                      currentStep >= 2
-                                        ? "bg-[#1E4775] text-white border-[#1E4775]"
-                                        : "bg-white text-[#1E4775]/30 border-[#1E4775]/30"
-                                    } font-semibold text-sm`}
-                                  >
-                                    {currentStep > 2 ? "✓" : "2"}
-                                  </div>
-                                  <div className="flex-1 h-0.5 mx-2 bg-[#1E4775]/20">
-                                    <div
-                                      className={`h-full transition-all ${
-                                        currentStep >= 3
-                                          ? "bg-[#1E4775] w-full"
-                                          : "bg-transparent w-0"
-                                      }`}
-                                    />
-                                  </div>
-                                </div>
-                                {/* Step 3 */}
-                                <div className="flex items-center">
-                                  <div
-                                    className={`flex items-center justify-center w-8 h-8 rounded-full border-2 ${
-                                      currentStep >= 3
-                                        ? "bg-[#1E4775] text-white border-[#1E4775]"
-                                        : "bg-white text-[#1E4775]/30 border-[#1E4775]/30"
-                                    } font-semibold text-sm`}
-                                  >
-                                    3
-                                  </div>
-                                </div>
-                              </>
-                            )}
-                            {!mintOnly && skipRewardStep && (
-                              <>
-                                {/* Step 2 becomes stability pool */}
-                                <div className="flex items-center">
-                                  <div
-                                    className={`flex items-center justify-center w-8 h-8 rounded-full border-2 ${
-                                      currentStep >= 2
-                                        ? "bg-[#1E4775] text-white border-[#1E4775]"
-                                        : "bg-white text-[#1E4775]/30 border-[#1E4775]/30"
-                                    } font-semibold text-sm`}
-                                  >
-                                    2
-                                  </div>
-                                </div>
-                              </>
-                            )}
-                          </div>
-                        </div>
 
                         <div className="flex gap-3">
                           {isProcessing ? (
@@ -6029,21 +6912,22 @@ export const AnchorDepositWithdrawModal = ({
                               </div>
                             )}
                           </div>
-                          {(isMintCapped || (feePercentage !== undefined && feePercentage > 2)) && (
+                          {/* Deposit Limit Warning */}
+                          {depositLimitWarning && (
+                            <div className="mt-2 p-2 border text-xs bg-yellow-50 border-yellow-300 text-yellow-800">
+                              <div className="font-semibold mb-1">ℹ️ Deposit amount adjusted</div>
+                              <div>{depositLimitWarning}</div>
+                            </div>
+                          )}
+
+                          {/* Fee Warning */}
+                          {!depositLimitWarning && feePercentage !== undefined && feePercentage > 2 && (
                             <div className={`mt-2 p-2 border text-xs ${
-                              isMintCapped || (feePercentage !== undefined && feePercentage > 50)
+                              feePercentage > 50
                                 ? "bg-red-100 border-red-400 text-red-800" 
                                 : "bg-red-50 border-red-200 text-red-700"
                             }`}>
-                              {isMintCapped ? (
-                                <>
-                                  <div className="font-semibold mb-1">🚫 Market capacity reached</div>
-                                  <div>
-                                    This market has reached its minting capacity. Additional deposits beyond ~{parseFloat(amount) > 3 ? "3" : Math.floor(parseFloat(amount || "0"))} {selectedDepositAsset || activeCollateralSymbol} won't mint more tokens. 
-                                    Please reduce your deposit amount or try again later when capacity increases.
-                                  </div>
-                                </>
-                              ) : feePercentage !== undefined && feePercentage > 50 ? (
+                              {feePercentage > 50 ? (
                                 <>
                                   <div className="font-semibold mb-1">🚫 Deposit amount too large</div>
                                   <div>
@@ -6053,8 +6937,7 @@ export const AnchorDepositWithdrawModal = ({
                                 </>
                               ) : (
                                 <>
-                                  ⚠️ High fee warning: Fees above 2% may
-                                  significantly impact your returns
+                                  ⚠️ High fee warning: Fees above 2% may significantly impact your returns
                                 </>
                               )}
                             </div>
@@ -6672,8 +7555,8 @@ export const AnchorDepositWithdrawModal = ({
                                   </span>
                                 </div>
                                 <div className="text-sm font-bold text-[#1E4775] font-mono">
-                                  {formatEther(collateralPoolBalance)}
-                                  {""}
+                                  {Number(formatEther(collateralPoolBalance)).toFixed(6)}
+                                  {" "}
                                   {peggedTokenSymbol}
                                 </div>
                               </div>
@@ -6692,8 +7575,8 @@ export const AnchorDepositWithdrawModal = ({
                                   </span>
                                 </div>
                                 <div className="text-sm font-bold text-[#1E4775] font-mono">
-                                  {formatEther(sailPoolBalance)}
-                                  {""}
+                                  {Number(formatEther(sailPoolBalance)).toFixed(6)}
+                                  {" "}
                                   {peggedTokenSymbol}
                                 </div>
                               </div>
@@ -6771,10 +7654,10 @@ export const AnchorDepositWithdrawModal = ({
                                   You will receive:
                                 </span>
                                 <span className="text-lg font-bold text-[#1E4775] font-mono">
-                                  {formatEther(
+                                  {Number(formatEther(
                                     redeemDryRun.netCollateralReturned || 0n
-                                  )}
-                                  {""}
+                                  )).toFixed(6)}
+                                  {" "}
                                   {selectedRedeemAsset || collateralSymbol}
                                 </span>
                               </div>
@@ -6793,7 +7676,7 @@ export const AnchorDepositWithdrawModal = ({
                                       }`}
                                     >
                                       {redeemDryRun.feePercentage.toFixed(2)}% (
-                                      {formatEther(redeemDryRun.fee)} wstETH)
+                                      {Number(formatEther(redeemDryRun.fee)).toFixed(6)} wstETH)
                                       {redeemDryRun.feePercentage > 2 && " ⚠️"}
                                     </span>
                                   </div>
@@ -6806,8 +7689,8 @@ export const AnchorDepositWithdrawModal = ({
                                       {redeemDryRun.discountPercentage.toFixed(
                                         2
                                       )}
-                                      % ({formatEther(redeemDryRun.discount)}
-                                      {""}
+                                      % ({Number(formatEther(redeemDryRun.discount)).toFixed(6)}
+                                      {" "}
                                       wstETH)
                                     </span>
                                   </div>
@@ -6869,6 +7752,19 @@ export const AnchorDepositWithdrawModal = ({
                         } focus:border-[#1E4775] focus:ring-2 focus:ring-[#1E4775]/20 focus:outline-none transition-all text-lg font-mono`}
                         disabled={isProcessing}
                       />
+                      {/* Warning - always reserve space to prevent layout shift */}
+                      <div className="absolute right-16 top-1/2 -translate-y-1/2 z-10 pointer-events-none">
+                        {tempMaxWarning ? (
+                          <div className="px-2.5 py-1 text-xs bg-[#FF8A7A]/90 border border-[#FF8A7A] text-white rounded-md font-semibold whitespace-nowrap shadow-lg animate-pulse-once">
+                            ⚠️ {tempMaxWarning}
+                          </div>
+                        ) : (
+                          <div className="px-2.5 py-1 text-xs invisible whitespace-nowrap">
+                            {/* Invisible placeholder to reserve space */}
+                            ⚠️ Max: 0.0000
+                          </div>
+                        )}
+                      </div>
                       <button
                         onClick={handleMaxClick}
                         className="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 text-xs bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white transition-colors disabled:bg-gray-300 disabled:text-gray-500 rounded-full"
@@ -6897,7 +7793,7 @@ export const AnchorDepositWithdrawModal = ({
                                 : "You will receive:"}
                             </span>
                             <span className="text-lg font-bold text-[#1E4775]">
-                              {formatEther(expectedOutput)} {outputSymbol}
+                              {Number(formatEther(expectedOutput)).toFixed(6)} {outputSymbol}
                             </span>
                           </div>
                           {simpleMode &&
@@ -7018,10 +7914,10 @@ export const AnchorDepositWithdrawModal = ({
                               You will receive:
                             </span>
                             <span className="text-lg font-bold text-[#1E4775] font-mono">
-                              {formatEther(
+                              {Number(formatEther(
                                 redeemDryRun.netCollateralReturned || 0n
-                              )}
-                              {""}
+                              )).toFixed(6)}
+                              {" "}
                               {selectedRedeemAsset || collateralSymbol}
                             </span>
                           </div>
@@ -7067,8 +7963,8 @@ export const AnchorDepositWithdrawModal = ({
                                   }`}
                                 >
                                   {redeemDryRun.feePercentage.toFixed(2)}% (
-                                  {formatEther(redeemDryRun.fee)}
-                                  {""}
+                                  {Number(formatEther(redeemDryRun.fee)).toFixed(6)}
+                                  {" "}
                                   {selectedRedeemAsset || collateralSymbol})
                                   {redeemDryRun.feePercentage > 2 && " ⚠️"}
                                 </span>
@@ -7080,8 +7976,8 @@ export const AnchorDepositWithdrawModal = ({
                                 <span>Bonus:</span>
                                 <span className="font-bold font-mono">
                                   {redeemDryRun.discountPercentage.toFixed(2)}%
-                                  ({formatEther(redeemDryRun.discount)}
-                                  {""}
+                                  ({Number(formatEther(redeemDryRun.discount)).toFixed(6)}
+                                  {" "}
                                   {selectedRedeemAsset || collateralSymbol})
                                 </span>
                               </div>
@@ -7442,134 +8338,6 @@ export const AnchorDepositWithdrawModal = ({
                   </div>
                 )}
 
-                {/* Step Progress Indicator */}
-                {isProcessing &&
-                  activeTab === "deposit" &&
-                  !isDirectPeggedDeposit && (
-                    <div className="p-3 bg-[rgb(var(--surface-selected-rgb))]/20 border border-[rgb(var(--surface-selected-border-rgb))]/40">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-semibold text-[#1E4775]">
-                          Transaction Progress
-                        </span>
-                        <span className="text-xs text-[#1E4775]/70">
-                          {step === "approving"
-                            ? "Step 1 of 3"
-                            : step === "minting"
-                            ? "Step 2 of 3"
-                            : step === "depositing"
-                            ? "Step 3 of 3"
-                            : ""}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {/* Step 1: Approve */}
-                        <div className="flex-1 flex items-center gap-2">
-                          <div
-                            className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold ${
-                              step === "approving"
-                                ? "bg-[#1E4775] text-white"
-                                : step === "minting" ||
-                                  step === "depositing" ||
-                                  step === "success"
-                                ? "bg-[rgb(var(--surface-selected-rgb))] text-[#1E4775]"
-                                : "bg-[#1E4775]/20 text-[#1E4775]/50"
-                            }`}
-                          >
-                            {step === "approving" ? (
-                              <ArrowPathIcon className="w-4 h-4 animate-spin" />
-                            ) : step === "minting" ||
-                              step === "depositing" ||
-                              step === "success" ? (
-                              "✓"
-                            ) : (
-                              "1"
-                            )}
-                          </div>
-                          <span
-                            className={`text-xs ${
-                              step === "approving"
-                                ? "font-semibold text-[#1E4775]"
-                                : step === "minting" ||
-                                  step === "depositing" ||
-                                  step === "success"
-                                ? "text-[#1E4775]/70"
-                                : "text-[#1E4775]/50"
-                            }`}
-                          >
-                            Approve
-                          </span>
-                        </div>
-                        <div className="h-0.5 flex-1 bg-[#1E4775]/20" />
-                        {/* Step 2: Mint */}
-                        <div className="flex-1 flex items-center gap-2">
-                          <div
-                            className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold ${
-                              step === "minting"
-                                ? "bg-[#1E4775] text-white"
-                                : step === "depositing" || step === "success"
-                                ? "bg-[rgb(var(--surface-selected-rgb))] text-[#1E4775]"
-                                : "bg-[#1E4775]/20 text-[#1E4775]/50"
-                            }`}
-                          >
-                            {step === "minting" ? (
-                              <ArrowPathIcon className="w-4 h-4 animate-spin" />
-                            ) : step === "depositing" || step === "success" ? (
-                              "✓"
-                            ) : (
-                              "2"
-                            )}
-                          </div>
-                          <span
-                            className={`text-xs ${
-                              step === "minting"
-                                ? "font-semibold text-[#1E4775]"
-                                : step === "depositing" || step === "success"
-                                ? "text-[#1E4775]/70"
-                                : "text-[#1E4775]/50"
-                            }`}
-                          >
-                            Mint
-                          </span>
-                        </div>
-                        <div className="h-0.5 flex-1 bg-[#1E4775]/20" />
-                        {/* Step 3: Deposit */}
-                        {depositInStabilityPool && (
-                          <>
-                            <div className="flex-1 flex items-center gap-2">
-                              <div
-                                className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold ${
-                                  step === "depositing"
-                                    ? "bg-[#1E4775] text-white"
-                                    : step === "success"
-                                    ? "bg-[rgb(var(--surface-selected-rgb))] text-[#1E4775]"
-                                    : "bg-[#1E4775]/20 text-[#1E4775]/50"
-                                }`}
-                              >
-                                {step === "depositing" ? (
-                                  <ArrowPathIcon className="w-4 h-4 animate-spin" />
-                                ) : step === "success" ? (
-                                  "✓"
-                                ) : (
-                                  "3"
-                                )}
-                              </div>
-                              <span
-                                className={`text-xs ${
-                                  step === "depositing"
-                                    ? "font-semibold text-[#1E4775]"
-                                    : step === "success"
-                                    ? "text-[#1E4775]/70"
-                                    : "text-[#1E4775]/50"
-                                }`}
-                              >
-                                Deposit
-                              </span>
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  )}
 
                 {error && (
                   <div className="p-3 bg-red-50 border border-red-500/30 text-red-600 text-sm">

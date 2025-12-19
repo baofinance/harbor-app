@@ -122,7 +122,7 @@ export function useMarketPositions(
         if (meta?.kind === "price" && result?.result !== undefined && result?.result !== null) {
           // Only use minter price if no external price was provided
           if (!priceMap.has(meta.marketId)) {
-            priceMap.set(meta.marketId, BigInt(result.result as bigint));
+          priceMap.set(meta.marketId, BigInt(result.result as bigint));
           }
         }
       });

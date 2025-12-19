@@ -201,13 +201,17 @@ export function useHarborMarks({
       });
 
       if (!response.ok) {
-        throw new Error(`GraphQL query failed: ${response.statusText}`);
+        console.warn(`[useHarborMarks] GraphQL query failed (subgraph may be rate limited). Data will be empty.`);
+        // Return empty data instead of throwing
+        return { userHarborMarks: null };
       }
 
       const data = await response.json();
 
       if (data.errors) {
-        throw new Error(`GraphQL errors: ${JSON.stringify(data.errors)}`);
+        console.warn(`[useHarborMarks] GraphQL errors (subgraph may be rate limited). Data will be empty.`);
+        // Return empty data instead of throwing
+        return { userHarborMarks: null };
       }
 
       return data.data;
@@ -216,6 +220,8 @@ export function useHarborMarks({
     refetchInterval: 180000, // Refetch every 3 minutes
     staleTime: 170000, // Consider data stale after ~3 minutes
     refetchOnWindowFocus: false, // Don't refetch when user returns to tab
+    retry: false, // Don't retry on failure to avoid hammering rate-limited API
+    throwOnError: false, // Don't throw errors - allow page to load with empty data
   });
 }
 
@@ -252,8 +258,18 @@ export function useAllHarborMarks(genesisAddresses: string[]) {
             },
           }),
         }).then(async (res) => {
+          if (!res.ok) {
+            console.warn(`[useAllHarborMarks] Query failed for ${genesisAddress} (subgraph may be rate limited). Data will be empty.`);
+            return { data: null, errors: [{ message: res.statusText }] };
+          }
           const json = await res.json();
+          if (json.errors) {
+            console.warn(`[useAllHarborMarks] GraphQL errors for ${genesisAddress}. Data will be empty.`);
+          }
           return json;
+        }).catch((error) => {
+          console.warn(`[useAllHarborMarks] Fetch error for ${genesisAddress}. Data will be empty.`);
+          return { data: null, errors: [{ message: error.message }] };
         });
       });
 
@@ -269,6 +285,8 @@ export function useAllHarborMarks(genesisAddresses: string[]) {
     refetchInterval: 180000, // Refetch every 3 minutes
     staleTime: 170000, // Consider data stale after ~3 minutes
     refetchOnWindowFocus: false, // Don't refetch when user returns to tab
+    retry: false, // Don't retry on failure to avoid hammering rate-limited API
+    throwOnError: false, // Don't throw errors - allow page to load with empty data
   });
 }
 
