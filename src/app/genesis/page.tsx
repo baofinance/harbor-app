@@ -3032,7 +3032,7 @@ export default function GenesisIndexPage() {
                                 
                                 {/* User Qualification Status - on same line */}
                                 {userQualifies && earlyBonusEligibleUSD > 0 && (
-                                  <div className="bg-[#1E4775]/10 border border-[#1E4775]/20 rounded px-1.5 py-0.5 whitespace-nowrap">
+                                  <div className="bg-[#1E4775]/10 border border-[#1E4775]/20 px-1.5 py-0.5 whitespace-nowrap">
                                     <span className="text-[10px] text-[#1E4775] font-semibold">
                                       ✓ {formatUSD(earlyBonusEligibleUSD)} qualified
                                     </span>
