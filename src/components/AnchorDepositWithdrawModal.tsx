@@ -4419,10 +4419,6 @@ export const AnchorDepositWithdrawModal = ({
         setError(null);
         setTxHash(null);
 
-        // Calculate minimum output (with slippage tolerance)
-        const minPeggedOut = expectedMintOutput
-          ? (expectedMintOutput * BigInt(Math.floor((100 - slippageTolerance) * 10))) / 1000n
-          : 0n;
         // For zap transactions, capture balance before minting to calculate actual minted amount
         let balanceBeforeZap: bigint | undefined;
         if (useZap && zapAddress && peggedTokenAddress) {
