@@ -7,15 +7,17 @@ export const markets = {
   "eth-fxusd": {
     name: "ETH/fxUSD",
     status: "genesis" as const,
+    pegTarget: "ETH", // haETH is pegged to ETH
     chain: {
       name: "Ethereum",
       logo: "icons/eth.png",
     },
     collateral: {
-      symbol: "fxUSD",
-      name: "f(x) USD",
-      underlyingSymbol: "fxSAVE", // The wrapped collateral
+      symbol: "fxSAVE", // The wrapped collateral (what's deposited)
+      name: "f(x) USD Saving",
+      underlyingSymbol: "fxUSD", // The underlying/base token
     },
+    underlyingCoinGeckoId: "fx-protocol-fxusd", // CoinGecko ID for fxUSD price detection
     // Accepted deposit assets for this market
     acceptedAssets: [
       { symbol: "fxUSD", name: "f(x) USD" },
@@ -59,7 +61,7 @@ export const markets = {
       description:
         "100 ledger marks per dollar deposited at the end of genesis",
     },
-    coinGeckoId: "fxusd", // CoinGecko ID for fxUSD (if available)
+    coinGeckoId: "fxsave", // CoinGecko ID for fxSAVE (the deposited token)
     genesis: {
       startDate: contractsMarkets["eth-fxusd"].genesis.startDate,
       endDate: contractsMarkets["eth-fxusd"].genesis.endDate,
@@ -82,15 +84,17 @@ export const markets = {
   "btc-fxusd": {
     name: "BTC/fxUSD",
     status: "genesis" as const,
+    pegTarget: "BTC", // haBTC is pegged to BTC
     chain: {
       name: "Ethereum",
       logo: "icons/eth.png",
     },
     collateral: {
-      symbol: "fxUSD",
-      name: "f(x) USD",
-      underlyingSymbol: "fxSAVE", // The wrapped collateral
+      symbol: "fxSAVE", // The wrapped collateral (what's deposited)
+      name: "f(x) USD Saving",
+      underlyingSymbol: "fxUSD", // The underlying/base token
     },
+    underlyingCoinGeckoId: "fx-protocol-fxusd", // CoinGecko ID for fxUSD price detection
     // Accepted deposit assets for this market
     acceptedAssets: [
       { symbol: "fxUSD", name: "f(x) USD" },
@@ -134,7 +138,7 @@ export const markets = {
       description:
         "100 ledger marks per dollar deposited at the end of genesis",
     },
-    coinGeckoId: "fxusd", // CoinGecko ID for fxUSD (if available)
+    coinGeckoId: "fxsave", // CoinGecko ID for fxSAVE (the deposited token)
     genesis: {
       startDate: contractsMarkets["btc-fxusd"].genesis.startDate,
       endDate: contractsMarkets["btc-fxusd"].genesis.endDate,
@@ -157,6 +161,7 @@ export const markets = {
   "btc-steth": {
     name: "BTC/stETH",
     status: "genesis" as const,
+    pegTarget: "BTC", // haBTC is pegged to BTC
     chain: {
       name: "Ethereum",
       logo: "icons/eth.png",
@@ -188,8 +193,8 @@ export const markets = {
       priceOracle: contractsMarkets["btc-steth"].addresses.priceOracle,
       collateralPrice: contractsMarkets["btc-steth"].addresses.collateralPrice,
       feeReceiver: contractsMarkets["btc-steth"].addresses.feeReceiver,
-      collateralToken: contractsMarkets["btc-steth"].addresses.collateralToken, // wstETH
-      wrappedCollateralToken: contractsMarkets["btc-steth"].addresses.underlyingCollateralToken, // stETH
+      collateralToken: contractsMarkets["btc-steth"].addresses.collateralToken, // wstETH (what's deposited in genesis)
+      wrappedCollateralToken: contractsMarkets["btc-steth"].addresses.collateralToken, // wstETH (matches deployment logs)
       genesisZap: contractsMarkets["btc-steth"].addresses.genesisZap, // GenesisETHZap_v3 for BTC/stETH
       peggedTokenZap: contractsMarkets["btc-steth"].addresses.peggedTokenZap, // MinterETHZap_v2 for BTC/stETH
       leveragedTokenZap: contractsMarkets["btc-steth"].addresses.leveragedTokenZap, // MinterETHZap_v2 for BTC/stETH

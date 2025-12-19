@@ -25,24 +25,24 @@ export default function SimpleTooltip({
  const rect = triggerRef.current.getBoundingClientRect();
  if (side ==="right") {
  setPosition({
- top: rect.top + window.scrollY + rect.height / 2,
- left: rect.right + window.scrollX + 8,
+     top: rect.top + rect.height / 2,
+     left: rect.right + 8,
  });
  } else if (side ==="left") {
  setPosition({
- top: rect.top + window.scrollY + rect.height / 2,
- left: rect.left + window.scrollX - 8,
+     top: rect.top + rect.height / 2,
+     left: rect.left - 8,
  });
  } else if (side ==="top") {
  setPosition({
- top: rect.top + window.scrollY - 4,
- left: rect.left + window.scrollX + rect.width / 2,
+     top: rect.top - 4,
+     left: rect.left + rect.width / 2,
  });
  } else {
  // bottom (default)
  setPosition({
- top: rect.bottom + window.scrollY + 4,
- left: rect.left + window.scrollX + rect.width / 2,
+     top: rect.bottom + 4,
+     left: rect.left + rect.width / 2,
  });
  }
  }

@@ -73,7 +73,8 @@ import { useStabilityPoolRewards } from "@/hooks/useStabilityPoolRewards";
 import { useAllStabilityPoolRewards } from "@/hooks/useAllStabilityPoolRewards";
 import { useMultipleVolatilityProtection } from "@/hooks/useVolatilityProtection";
 import { useMarketPositions } from "@/hooks/useMarketPositions";
-import { usePeggedTokenPrices } from "@/hooks/usePeggedTokenPrices";
+import { useMultipleTokenPrices } from "@/hooks/useTokenPrices";
+import { useCoinGeckoPrices } from "@/hooks/useCoinGeckoPrice";
 import { useContractReads as useWagmiContractReads } from "wagmi";
 import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
 import { 
@@ -359,14 +360,35 @@ export default function AnchorPage() {
     return map;
   }, [anchorMarkets, reads]);
 
-  // Fetch pegged token prices (shared) then positions
-  const { priceMap: peggedPriceMap } = usePeggedTokenPrices(
-    marketPositionConfigs.map((c) => ({
-      marketId: c.marketId,
-      minterAddress: c.minterAddress,
-    })),
-    anchorMarkets.length > 0
-  );
+  // Fetch pegged token prices using the new unified hook
+  const tokenPriceInputs = useMemo(() => {
+    return marketPositionConfigs.map((c) => {
+      // Find the market to get pegTarget
+      const market = anchorMarkets.find(([id]) => id === c.marketId)?.[1];
+      return {
+        marketId: c.marketId,
+        minterAddress: c.minterAddress!,
+        pegTarget: (market as any)?.pegTarget || "USD",
+      };
+    }).filter((c) => c.minterAddress); // Filter out markets without minter
+  }, [marketPositionConfigs, anchorMarkets]);
+  
+  const tokenPricesByMarket = useMultipleTokenPrices(tokenPriceInputs);
+
+  // Get CoinGecko IDs for underlying collateral (e.g., fxUSD) to detect depeg
+  const underlyingCoinGeckoIds = useMemo(() => {
+    const ids = new Set<string>();
+    anchorMarkets.forEach(([id, m]) => {
+      const underlyingCoinGeckoId = (m as any).underlyingCoinGeckoId as string | undefined;
+      if (underlyingCoinGeckoId) {
+        ids.add(underlyingCoinGeckoId);
+      }
+    });
+    return Array.from(ids);
+  }, [anchorMarkets]);
+
+  // Fetch underlying collateral prices from CoinGecko (for depeg detection)
+  const underlyingCoinGeckoPrices = useCoinGeckoPrices(underlyingCoinGeckoIds);
 
   // Calculate USD prices using hook
   const {
@@ -1824,6 +1846,24 @@ export default function AnchorPage() {
           {/* Divider */}
           <div className="border-t border-white/10 my-2"></div>
 
+          {/* Subgraph Error Banner */}
+          {anchorMarksError && (
+            <div className="bg-[#FF8A7A]/10 border border-[#FF8A7A]/30 rounded p-3 mb-4">
+              <div className="flex items-start gap-3">
+                <div className="text-[#FF8A7A] text-xl mt-0.5">⚠️</div>
+                <div className="flex-1">
+                  <p className="text-[#FF8A7A] font-semibold text-sm mb-1">
+                    Harbor Marks Subgraph Error
+                  </p>
+                  <p className="text-white/70 text-xs">
+                    Unable to load Harbor Marks data. This may be due to rate limiting or service issues. 
+                    Your positions and core functionality remain unaffected.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Rewards Bar - Under Title Boxes */}
           {(() => {
             // Calculate total rewards for the bar
@@ -3022,8 +3062,8 @@ export default function AnchorPage() {
           {/* Markets List */}
           <section className="space-y-2 overflow-visible">
             {/* Header Row */}
-            <div className="bg-white p-3 overflow-x-auto">
-              <div className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr_1fr_1fr] gap-4 items-center uppercase tracking-wider text-xs text-[#1E4775] font-bold">
+            <div className="bg-white py-1.5 px-2 overflow-x-auto">
+              <div className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr_1fr_1fr] gap-4 items-center uppercase tracking-wider text-[10px] lg:text-[11px] text-[#1E4775] font-semibold">
                 <div className="min-w-0 text-center">Token</div>
                 <div className="text-center min-w-0">Deposit Assets</div>
                 <div className="text-center min-w-0">APR</div>
@@ -3201,8 +3241,17 @@ export default function AnchorPage() {
                     >
                       <div className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr_1fr_1fr] gap-4 items-center text-sm">
                         <div className="whitespace-nowrap min-w-0 overflow-hidden">
-                          <div className="flex items-center justify-center gap-2">
-                            <span className="text-[#1E4775] font-medium">
+                          <div className="flex items-center justify-center gap-1.5">
+                            <SimpleTooltip label={peggedTokenSymbol || symbol}>
+                              <Image
+                                src={getLogoPath(peggedTokenSymbol || symbol)}
+                                alt={peggedTokenSymbol || symbol}
+                                width={20}
+                                height={20}
+                                className="flex-shrink-0 cursor-help"
+                              />
+                            </SimpleTooltip>
+                            <span className="text-[#1E4775] font-medium text-sm lg:text-base">
                               {symbol}
                             </span>
                             {isExpanded ? (
@@ -3252,8 +3301,8 @@ export default function AnchorPage() {
                                 <Image
                                   src={getLogoPath(asset.symbol)}
                                   alt={asset.name}
-                                  width={24}
-                                  height={24}
+                                  width={20}
+                                  height={20}
                                   className="flex-shrink-0 cursor-help rounded-full"
                                 />
                               </SimpleTooltip>
@@ -3492,16 +3541,32 @@ export default function AnchorPage() {
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
+                              // Find the wrappedRate from marketsData for each market
+                              const enrichedAllMarkets = marketList.map((m) => {
+                                const marketData = marketsData.find(
+                                  (md) => md.marketId === m.marketId
+                                );
+                                return {
+                                  marketId: m.marketId,
+                                  market: {
+                                    ...m.market,
+                                    wrappedRate: marketData?.wrappedRate,
+                                  },
+                                };
+                              });
+                              
                               setManageModal({
                                 marketId: marketList[0].marketId,
-                                market: marketList[0].market,
+                                market: {
+                                  ...marketList[0].market,
+                                  wrappedRate: marketsData.find(
+                                    (md) => md.marketId === marketList[0].marketId
+                                  )?.wrappedRate,
+                                },
                                 initialTab: "deposit",
                                 simpleMode: true,
                                 bestPoolType: "collateral",
-                                allMarkets: marketList.map((m) => ({
-                                  marketId: m.marketId,
-                                  market: m.market,
-                                })),
+                                allMarkets: enrichedAllMarkets,
                               });
                             }}
                             className="px-3 py-1.5 text-xs font-medium bg-[#1E4775] text-white hover:bg-[#17395F] transition-colors rounded-full whitespace-nowrap"
@@ -3807,11 +3872,6 @@ export default function AnchorPage() {
                             marketData.totalDebt !== undefined
                               ? Number(marketData.totalDebt) / 1e18
                               : 0;
-
-                          // Get collateral ratio
-                          const collateralRatioNum = marketData.collateralRatio
-                            ? Number(marketData.collateralRatio) / 1e18
-                            : 0;
 
                           // Collateral value calculation
                           // collateralTokenBalance returns wrapped collateral (fxUSD for fxUSD markets, wstETH for wstETH markets)

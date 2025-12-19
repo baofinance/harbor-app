@@ -43,11 +43,11 @@ export function useMultiMarketGenesisAdmin() {
     ([_, market]) => market.status === "genesis" || market.status === "live"
   );
 
-  // Contract reads for all markets - use Anvil-specific reads to ensure we read from Anvil network
+  // Step 1: Read genesis contract data and wrapped collateral token addresses
   const {
-    data: contractData,
-    isLoading,
-    refetch,
+    data: genesisData,
+    isLoading: isLoadingGenesis,
+    refetch: refetchGenesis,
   } = useContractReads({
     contracts: genesisMarkets.flatMap(([id, market]) => [
       // Genesis contract data
@@ -61,22 +61,69 @@ export function useMultiMarketGenesisAdmin() {
         abi: GENESIS_ABI,
         functionName: "owner",
       },
-      // Collateral balance in Genesis contract
+      // Get wrapped collateral token address from genesis contract
       {
-        address: market.addresses.collateralToken as `0x${string}`,
-        abi: ERC20_ABI,
-        functionName: "balanceOf",
-        args: [market.addresses.genesis as `0x${string}`],
-      },
-      // Collateral token symbol
-      {
-        address: market.addresses.collateralToken as `0x${string}`,
-        abi: ERC20_ABI,
-        functionName: "symbol",
+        address: market.addresses.genesis as `0x${string}`,
+        abi: GENESIS_ABI,
+        functionName: "WRAPPED_COLLATERAL_TOKEN",
       },
     ]),
     enabled: genesisMarkets.length > 0,
   });
+
+  // Step 2: Read wrapped collateral token balances and symbols
+  const collateralContracts = useMemo(() => {
+    if (!genesisData) return [];
+    return genesisMarkets.map(([id, market], index) => {
+      const baseIndex = index * 3;
+      const contractWrappedToken = genesisData[baseIndex + 2]?.result as `0x${string}` | undefined;
+      
+      // Use on-chain WRAPPED_COLLATERAL_TOKEN from genesis contract (primary source)
+      // Fallback to wrappedCollateralToken from config (now correctly matches deployment logs)
+      // 
+      // Contract WRAPPED_COLLATERAL_TOKEN returns:
+      //   - fxSAVE (0x7743...eefc39) for fxUSD markets
+      //   - wstETH (0x7f39...2ca0) for stETH market
+      // 
+      // Config wrappedCollateralToken (fallback, now correctly set for all markets):
+      //   - fxSAVE for fxUSD markets (what's deposited in genesis)
+      //   - wstETH for stETH market (what's deposited in genesis)
+      // 
+      // The contract read should always succeed. This fallback works for all markets now.
+      const tokenAddress = contractWrappedToken || market.addresses.wrappedCollateralToken;
+      
+      return [
+        // Wrapped collateral balance in Genesis contract
+        {
+          address: tokenAddress as `0x${string}`,
+          abi: ERC20_ABI,
+          functionName: "balanceOf" as const,
+          args: [market.addresses.genesis as `0x${string}`],
+        },
+        // Wrapped collateral token symbol
+        {
+          address: tokenAddress as `0x${string}`,
+          abi: ERC20_ABI,
+          functionName: "symbol" as const,
+        },
+      ];
+    }).flat();
+  }, [genesisData, genesisMarkets]);
+
+  const {
+    data: collateralData,
+    isLoading: isLoadingCollateral,
+    refetch: refetchCollateral,
+  } = useContractReads({
+    contracts: collateralContracts,
+    enabled: collateralContracts.length > 0,
+  });
+
+  const isLoading = isLoadingGenesis || isLoadingCollateral;
+  const refetch = () => {
+    refetchGenesis();
+    refetchCollateral();
+  };
 
   // Wait for transaction receipt to trigger refetch
   const { isLoading: isConfirming, isSuccess: isConfirmed } =
@@ -93,17 +140,19 @@ export function useMultiMarketGenesisAdmin() {
 
   // Process market data
   const marketsAdminData: MarketAdminData[] = useMemo(() => {
-    if (!contractData || contractData.length === 0) return [];
+    if (!genesisData || genesisData.length === 0) return [];
 
     return genesisMarkets.map(([marketId, market], index) => {
-      const baseIndex = index * 4;
+      const genesisBaseIndex = index * 3;
+      const collateralBaseIndex = index * 2;
+      
       const genesisEnded =
-        (contractData[baseIndex]?.result as boolean) || false;
-      const owner = (contractData[baseIndex + 1]?.result as string) || "";
+        (genesisData[genesisBaseIndex]?.result as boolean) || false;
+      const owner = (genesisData[genesisBaseIndex + 1]?.result as string) || "";
       const totalCollateral =
-        (contractData[baseIndex + 2]?.result as bigint) || 0n;
+        (collateralData?.[collateralBaseIndex]?.result as bigint) || 0n;
       const collateralSymbol =
-        (contractData[baseIndex + 3]?.result as string) || "TOKEN";
+        (collateralData?.[collateralBaseIndex + 1]?.result as string) || "TOKEN";
 
       const isOwner =
         address && owner && address.toLowerCase() === owner.toLowerCase();
@@ -126,7 +175,7 @@ export function useMultiMarketGenesisAdmin() {
         genesisStatus,
       };
     });
-  }, [contractData, genesisMarkets, address]);
+  }, [genesisData, collateralData, genesisMarkets, address]);
 
   // Group markets by status
   const groupedMarkets: GroupedMarkets = useMemo(() => {
