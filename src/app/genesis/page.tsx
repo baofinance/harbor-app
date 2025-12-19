@@ -532,65 +532,9 @@ export default function GenesisIndexPage() {
 
   // Fetch market bonus status for all markets (early deposit bonus tracking)
   const {
-    data: allMarketBonusStatusRaw,
+    data: allMarketBonusStatus,
     isLoading: isLoadingBonusStatus,
   } = useAllMarketBonusStatus(genesisAddresses);
-
-  // MOCK DATA: Use mock data if no real data is available (for testing UI)
-  // TODO: Remove this once subgraph v0.0.15 is deployed
-  const allMarketBonusStatus = useMemo(() => {
-    if (!allMarketBonusStatusRaw || allMarketBonusStatusRaw.length === 0 || !allMarketBonusStatusRaw.some(s => s.data)) {
-      // Create mock data for all genesis addresses to show early bonus UI
-      return genesisAddresses.map((addr, idx) => ({
-        genesisAddress: addr,
-        data: {
-          id: addr.toLowerCase(),
-          contractAddress: addr.toLowerCase(),
-          thresholdReached: idx === 1, // Second market threshold reached (for variety)
-          thresholdReachedAt: idx === 1 ? Math.floor(Date.now() / 1000).toString() : null,
-          cumulativeDeposits: idx === 0 ? "120000" : idx === 1 ? "260000" : "50", // Different progress for each (token amounts)
-          thresholdAmount: addr.toLowerCase().includes("9ae0b57c") ? "70" : "250000", // 70 wstETH tokens or 250k fxUSD tokens
-          thresholdToken: addr.toLowerCase().includes("9ae0b57c") ? "wstETH" : "fxUSD",
-          lastUpdated: Math.floor(Date.now() / 1000).toString(),
-        },
-        errors: null,
-      }));
-    }
-    return allMarketBonusStatusRaw;
-  }, [allMarketBonusStatusRaw, genesisAddresses]);
-
-  // MOCK DATA: Enhance marks data with early bonus info if connected
-  // TODO: Remove this once subgraph v0.0.15 is deployed
-  const allMarksDataEnhanced = useMemo(() => {
-    if (!allMarksData || !address) return allMarksData;
-    
-    // Add early bonus fields to existing marks data if they're missing
-    return allMarksData.map((marksResult, idx) => {
-      const marks = marksResult.data?.userHarborMarks;
-      if (!marks) return marksResult;
-      
-      // Check if early bonus fields exist
-      const hasEarlyBonusFields = 'qualifiesForEarlyBonus' in marks;
-      
-      if (!hasEarlyBonusFields && idx === 0) {
-        // Add mock early bonus data to first market
-        return {
-          ...marksResult,
-          data: {
-            ...marksResult.data,
-            userHarborMarks: {
-              ...marks,
-              qualifiesForEarlyBonus: true,
-              earlyBonusMarks: "0",
-              earlyBonusEligibleDepositUSD: marks.currentDepositUSD || "0",
-            },
-          },
-        };
-      }
-      
-      return marksResult;
-    });
-  }, [allMarksData, address]);
 
   const queryClient = useQueryClient();
 
@@ -1266,17 +1210,6 @@ export default function GenesisIndexPage() {
           let totalBonusAtEnd = 0;
           let totalEarlyBonusMarks = 0;
           let totalEarlyBonusEstimate = 0;
-
-          // MOCK DATA: Add mock bonus data for testing UI
-          // TODO: Remove this once testing is complete
-          const hasRealData = allMarksDataEnhanced && allMarksDataEnhanced.length > 0 && allMarksDataEnhanced.some(m => m.data?.userHarborMarks);
-          if (!hasRealData && address) {
-            // Show mock data when no real data available
-            totalCurrentMarks = 125000;
-            totalMarksPerDay = 1500;
-            totalBonusAtEnd = 107000; // $1,070 deposit * 100 marks/dollar
-            totalEarlyBonusEstimate = 107000; // Same amount for early bonus estimate
-          }
           let anyGenesisStillActive = false;
 
           // Check if ALL genesis contracts have ended based on contract reads
@@ -1302,10 +1235,10 @@ export default function GenesisIndexPage() {
             return timeHasExpired && !contractSaysEnded;
           });
 
-          if (allMarksDataEnhanced && !isLoadingMarks) {
+          if (allMarksData && !isLoadingMarks) {
             const currentTime = Math.floor(Date.now() / 1000); // Current Unix timestamp in seconds
 
-            allMarksDataEnhanced?.forEach((result) => {
+            allMarksData.forEach((result) => {
               // Handle both array and single object responses from GraphQL
               const userMarksData = result.data?.userHarborMarks;
               const marks = Array.isArray(userMarksData)
@@ -1647,7 +1580,7 @@ export default function GenesisIndexPage() {
                     : undefined;
 
                 // Fallback to subgraph data if contract read fails
-                const marksForMarket = allMarksDataEnhanced?.find(
+                const marksForMarket = allMarksData?.find(
                   (marks) =>
                     marks.genesisAddress?.toLowerCase() ===
                     (mkt as any).addresses?.genesis?.toLowerCase()
@@ -3086,8 +3019,8 @@ export default function GenesisIndexPage() {
                           (Number(marketBonusStatus.cumulativeDeposits) / Number(marketBonusStatus.thresholdAmount)) * 100
                         );
                         
-                        // Get user's marks for this market
-                        const marksForMarket = allMarksDataEnhanced?.find(
+                      // Get user's marks for this market
+                      const marksForMarket = allMarksData?.find(
                           (marks) =>
                             marks.genesisAddress?.toLowerCase() ===
                             genesisAddress?.toLowerCase()
