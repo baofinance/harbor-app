@@ -1110,25 +1110,14 @@ export default function GenesisIndexPage() {
               return (
                 <div className="bg-[#17395F] p-4 sm:p-3 md:p-4 flex flex-col">
                   <div className="flex items-center justify-center mb-2">
-                    <GiftIcon className="w-5 h-5 sm:w-4 sm:h-4 md:w-6 md:h-6 text-[#FF8A7A] mr-1.5 sm:mr-1 md:mr-2 flex-shrink-0" />
                     <h2 className="font-bold text-[#FF8A7A] text-lg sm:text-sm md:text-base lg:text-lg text-center">
                       Early Bonus
                     </h2>
                   </div>
-                  <div className="flex-1 flex flex-col justify-between">
-                    <p className="text-sm sm:text-xs md:text-sm text-white/80 text-center mb-2">
-                      First {thresholdAmount} {thresholdToken} earn <span className="font-semibold text-white">100 extra marks/$</span> at genesis end
+                  <div className="flex-1 flex items-center">
+                    <p className="text-sm sm:text-xs md:text-sm text-white/80 text-center w-full">
+                      Be one of our first depositors to earn <span className="font-semibold text-white">100 extra marks/$</span> at genesis end
                     </p>
-                    <div className="text-center">
-                      <div className="flex items-center justify-center mb-1">
-                        <span className="inline-flex items-center gap-0.5 sm:gap-0.5 md:gap-1 px-1.5 sm:px-1 md:px-2 py-1 bg-[#FF8A7A] text-white text-xs sm:text-[10px] md:text-xs font-semibold w-fit">
-                          LIMITED TIME
-                        </span>
-                      </div>
-                      <p className="text-xs sm:text-[10px] md:text-xs text-white/70 text-center">
-                        Withdrawals forfeit bonus
-                      </p>
-                    </div>
                   </div>
                 </div>
               );
