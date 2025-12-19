@@ -34,4 +34,11 @@ export const proxyAbi = [
         stateMutability: "view",
         type: "function",
     },
+    {
+        inputs: [],
+        name: "priceDivisor",
+        outputs: [{ type: "uint256" }],
+        stateMutability: "view",
+        type: "function",
+    },
 ] as const;

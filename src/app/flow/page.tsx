@@ -486,14 +486,24 @@ function FeedGroupSection({
  height={20}
  className="rounded-full flex-shrink-0 -ml-2"
  />
- <span className="text-[#1E4775] font-medium">
- {feed.label}
- </span>
- </div>
- </td>
- <td className="py-2 px-4 text-[#1E4775] whitespace-nowrap">
- Chainlink
- </td>
+                <span className="text-[#1E4775] font-medium">
+                  {feed.label}
+                  {feed.divisor && feed.divisor > 1 && (
+                    <span className="ml-2 text-xs text-[#1E4775]/60 italic">
+                      (price normalized)
+                    </span>
+                  )}
+                </span>
+              </div>
+            </td>
+            <td className="py-2 px-4 text-[#1E4775] whitespace-nowrap">
+              Chainlink
+              {feed.divisor && feed.divisor > 1 && (
+                <span className="block text-xs text-[#1E4775]/60">
+                  divisor: {feed.divisor}
+                </span>
+              )}
+            </td>
  <td className="py-2 px-4 font-mono text-[#1E4775]">
  {loading
  ?"Loading..."
@@ -541,11 +551,12 @@ function FeedDetails({
  const feed = feedEntries[feedIndex];
  const rpcClient = getRpcClient(network, publicClient);
 
- const [price, setPrice] = useState<bigint | undefined>(undefined);
- const [latestAnswer, setLatestAnswer] = useState<
- [bigint, bigint, bigint, bigint] | undefined
- >(undefined);
- const [feedTable, setFeedTable] = useState<
+  const [price, setPrice] = useState<bigint | undefined>(undefined);
+  const [latestAnswer, setLatestAnswer] = useState<
+    [bigint, bigint, bigint, bigint] | undefined
+  >(undefined);
+  const [priceDivisor, setPriceDivisor] = useState<bigint | undefined>(undefined);
+  const [feedTable, setFeedTable] = useState<
  Array<{
  id: number;
  name: string;
@@ -579,8 +590,8 @@ function FeedDetails({
  `FeedDetails: Fetching data for ${feed.label} at ${feed.address} on ${network}`
  );
 
- // Fetch price and latestAnswer
- const [priceResult, latestResult] = await Promise.all([
+// Fetch price, latestAnswer, and priceDivisor
+const [priceResult, latestResult, divisorResult] = await Promise.all([
  rpcClient
  .readContract({
  address: feed.address,
@@ -598,20 +609,32 @@ function FeedDetails({
  functionName:"latestAnswer",
  })
  .catch((err: any) => {
- console.error(
- `Error fetching latestAnswer for ${feed.label}:`,
- err
- );
- return null;
- }),
- ]);
+    console.error(
+      `Error fetching latestAnswer for ${feed.label}:`,
+      err
+    );
+    return null;
+  }),
+  rpcClient
+    .readContract({
+      address: feed.address,
+      abi: proxyAbi,
+      functionName: "priceDivisor",
+    })
+    .catch((err: any) => {
+      // priceDivisor might not exist on all contracts, so we silently fail
+      console.log(`priceDivisor not available for ${feed.label}:`, err);
+      return null;
+    }),
+]);
 
- if (cancelled) return;
+      if (cancelled) return;
 
- setPrice(priceResult as bigint | undefined);
- setLatestAnswer(
- latestResult as [bigint, bigint, bigint, bigint] | undefined
- );
+      setPrice(priceResult as bigint | undefined);
+      setLatestAnswer(
+        latestResult as [bigint, bigint, bigint, bigint] | undefined
+      );
+      setPriceDivisor(divisorResult as bigint | undefined);
 
  // Check if this is a HarborCustomFeedAndRateAggregator_v1 contract
  let isCustomFeedAggregator = false;
@@ -824,16 +847,26 @@ function FeedDetails({
  <XMarkIcon className="w-5 h-5 text-[#1E4775]" />
  </button>
 
- {/* Price Display */}
- <div className="md:col-span-2 bg-white p-4 border border-[#1E4775]/10">
- <div className="text-[#1E4775]/60 text-xs mb-1">
- {feed.label} - Price
- </div>
- <div className="text-2xl font-mono text-[#1E4775]">
- {format18(price)}
- </div>
- <div className="text-[#1E4775]/40 text-xs">18 decimals</div>
- </div>
+        {/* Price Display */}
+        <div className="md:col-span-2 bg-white p-4 border border-[#1E4775]/10">
+          <div className="text-[#1E4775]/60 text-xs mb-1">
+            {feed.label} - Price
+            {((priceDivisor && priceDivisor > 1n) || (feed.divisor && feed.divisor > 1)) && (
+              <span className="ml-2 text-[#1E4775]/40 italic">
+                (price normalized{priceDivisor && priceDivisor > 1n ? `, divisor: ${priceDivisor.toString()}` : feed.divisor ? `, divisor: ${feed.divisor}` : ''})
+              </span>
+            )}
+          </div>
+          <div className="text-2xl font-mono text-[#1E4775]">
+            {format18(price)}
+          </div>
+          <div className="text-[#1E4775]/40 text-xs">18 decimals</div>
+          {priceDivisor && priceDivisor > 1n && (
+            <div className="text-[#1E4775]/40 text-xs mt-1">
+              Price divisor: {priceDivisor.toString()}
+            </div>
+          )}
+        </div>
 
  {/* Latest Answer Display */}
  <div className="bg-white p-4 border border-[#1E4775]/10">
