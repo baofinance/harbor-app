@@ -1817,8 +1817,24 @@ export default function GenesisIndexPage() {
                   const priceValue = priceRaw < 0n ? -priceRaw : priceRaw;
 
                   if (priceValue > 0n) {
-                    const oraclePriceUSD =
+                    let oraclePriceUSD =
                       Number(priceValue) / 10 ** priceDecimals;
+                    
+                    // For BTC/stETH markets, oracle might return price in BTC terms, need to convert to USD
+                    const pegTarget = (mkt as any)?.pegTarget?.toLowerCase();
+                    const isBTCMarket = pegTarget === "btc" || pegTarget === "bitcoin";
+                    if (isBTCMarket && oraclePriceUSD > 0 && oraclePriceUSD < 1) {
+                      // If price is less than $1, it's likely in BTC terms (e.g., 0.05 BTC per stETH)
+                      // Get BTC price in USD and convert
+                      const btcPriceUSD = coinGeckoPrices["bitcoin"] || 0;
+                      if (btcPriceUSD > 0) {
+                        oraclePriceUSD = oraclePriceUSD * btcPriceUSD;
+                        console.log(
+                          `[Genesis Price] Market ${id}: Converted BTC-denominated oracle price to USD: ${Number(priceValue) / 10 ** priceDecimals} BTC × $${btcPriceUSD} = $${oraclePriceUSD}`
+                        );
+                      }
+                    }
+                    
                     // Only use oracle price if it's reasonable (not zero or extremely small)
                     // This prevents showing <0.01 when oracle returns invalid data
                     if (oraclePriceUSD > 0.01) {
