@@ -1949,16 +1949,25 @@ export default function GenesisIndexPage() {
                 const collateralPriceUSD = wrappedTokenPriceUSD;
 
                 // Calculate USD values using wrapped token price
+                // Note: totalDeposits is the balance of wrapped collateral token in the genesis contract
                 const totalDepositsAmount = totalDeposits
                   ? Number(formatEther(totalDeposits))
                   : 0;
                 const totalDepositsUSD =
                   totalDepositsAmount * collateralPriceUSD;
 
+                // balanceOf returns the user's share
+                // If balanceOf returns underlying tokens (fxUSD), we should use underlying price
+                // If balanceOf returns wrapped tokens (fxSAVE), we should use wrapped price
+                // Based on user feedback that we're "off by the wrapped rate", balanceOf likely returns underlying tokens
                 const userDepositAmount = userDeposit
                   ? Number(formatEther(userDeposit))
                   : 0;
-                const userDepositUSD = userDepositAmount * collateralPriceUSD;
+                // Use underlying price for user deposit if balanceOf returns underlying tokens
+                // Otherwise use wrapped price if balanceOf returns wrapped tokens
+                const userDepositUSD = underlyingSymbol.toLowerCase() === "fxusd" && underlyingPriceUSD > 0
+                  ? userDepositAmount * underlyingPriceUSD  // balanceOf returns underlying tokens, use underlying price
+                  : userDepositAmount * collateralPriceUSD;  // balanceOf returns wrapped tokens, use wrapped price
 
                 // Get anchor and sail token prices from the hook
                 const tokenPrices = tokenPricesByMarket[id];
