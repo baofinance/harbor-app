@@ -85,6 +85,13 @@ const isWrappedToken =
   collateralSymbol.toLowerCase() === "fxsave" ||
   collateralSymbol.toLowerCase() === "wsteth";
 
+// Check if CoinGecko ID is for the wrapped token itself (e.g., "wrapped-steth" for wstETH, "fx-usd-saving" for fxSAVE)
+// If so, CoinGecko already returns the wrapped token price, so we shouldn't multiply by wrapped rate
+const coinGeckoIsWrappedToken = coinGeckoId && (
+  (coinGeckoId.toLowerCase() === "wrapped-steth" && collateralSymbol.toLowerCase() === "wsteth") ||
+  ((coinGeckoId.toLowerCase() === "fxsave" || coinGeckoId.toLowerCase() === "fx-usd-saving") && collateralSymbol.toLowerCase() === "fxsave")
+);
+
 // Priority order for UNDERLYING price: CoinGecko → Hardcoded $1 (for fxUSD/fxSAVE) → Oracle
 // For fxSAVE (wrapped fxUSD), we use $1.00 as the underlying price
 const underlyingPriceUSD = coinGeckoPrice
@@ -99,10 +106,21 @@ const wrappedRate =
     ? Number(oraclePriceData.maxRate) / 1e18
     : undefined;
 
-// Calculate wrapped collateral price: underlying price * wrapped rate
-// This gives us the correct price for fxSAVE (~$1.07) and wstETH (~$4000)
+// Calculate wrapped collateral price
+// IMPORTANT: If CoinGecko returns the wrapped token price directly, use it without multiplying by wrapped rate
+// Otherwise, multiply underlying price by wrapped rate
 const collateralPriceUSD =
-  isWrappedToken && wrappedRate && wrappedRate > 0
+  // If CoinGecko returns the wrapped token price directly (e.g., "wrapped-steth" for wstETH)
+  coinGeckoIsWrappedToken && coinGeckoPrice != null
+    ? coinGeckoPrice // Use CoinGecko price directly (already wrapped)
+    // If CoinGecko returns underlying price and we have wrapped rate, multiply
+    : coinGeckoPrice != null && !coinGeckoIsWrappedToken && wrappedRate
+    ? underlyingPriceUSD * wrappedRate
+    // If CoinGecko returns underlying price but no wrapped rate, use underlying price
+    : coinGeckoPrice != null && !coinGeckoIsWrappedToken
+    ? underlyingPriceUSD
+    // Fallback: use oracle price with wrapped rate if available
+    : isWrappedToken && wrappedRate && wrappedRate > 0
     ? underlyingPriceUSD * wrappedRate
     : underlyingPriceUSD;
 
