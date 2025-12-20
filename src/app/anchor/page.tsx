@@ -3999,7 +3999,7 @@ export default function AnchorPage() {
                             collateralSymbol === "fxusd" ||
                             collateralSymbol === "fxsave";
 
-                          // Get collateral price from the hook
+                          // Get collateral price from the hook (same logic as genesis page)
                           const collateralPriceOracleAddress = marketData.market.addresses?.collateralPrice as
                             | `0x${string}`
                             | undefined;
@@ -4007,25 +4007,40 @@ export default function AnchorPage() {
                             ? collateralPricesMap.get(collateralPriceOracleAddress.toLowerCase())
                             : undefined;
                           
-                          // Use priceUSD from hook (already converted from 18 decimals)
-                          let collateralPriceUSD = collateralPriceData?.priceUSD || 0;
+                          // Get underlying price from hook (this is the underlying token price, e.g., fxUSD or stETH)
+                          const underlyingPriceUSD = collateralPriceData?.priceUSD || 0;
+                          const wrappedRate = collateralPriceData?.maxRate || marketData.wrappedRate;
+                          const wrappedRateNum = wrappedRate ? Number(wrappedRate) / 1e18 : 1;
                           
-                          // For fxUSD markets, the hook returns underlying (fxUSD) price
-                          // We need wrapped (fxSAVE) price, so multiply by wrapped rate
-                          if (isFxUSDMarket && collateralPriceData) {
-                            const wrappedRateNum = collateralPriceData.maxRate
-                              ? Number(collateralPriceData.maxRate) / 1e18
-                              : marketData.wrappedRate
-                              ? Number(marketData.wrappedRate) / 1e18
-                              : 1;
-                            // fxSAVE price = fxUSD price * wrapped rate
-                            if (wrappedRateNum > 0 && collateralPriceUSD > 0) {
-                              collateralPriceUSD = collateralPriceUSD * wrappedRateNum;
-                            } else if (collateralPriceUSD === 0) {
-                              // Fallback to CoinGecko if hook price is 0
-                              collateralPriceUSD = fxSAVEPrice || usdcPrice || 1.0;
-                            }
+                          // Check if CoinGecko has the wrapped token price directly
+                          const marketCoinGeckoId = (marketData.market as any)?.coinGeckoId as string | undefined;
+                          const coinGeckoReturnedPrice = marketCoinGeckoId && coinGeckoPrices[marketCoinGeckoId];
+                          
+                          // Check if CoinGecko returned a price for the wrapped token (fxSAVE or wstETH)
+                          const isWstETH = collateralSymbol.toLowerCase() === "wsteth";
+                          const isFxSAVE = collateralSymbol.toLowerCase() === "fxsave";
+                          const coinGeckoIsWrappedToken =
+                            coinGeckoReturnedPrice &&
+                            marketCoinGeckoId &&
+                            ((marketCoinGeckoId.toLowerCase() === "wrapped-steth" && isWstETH) ||
+                              ((marketCoinGeckoId.toLowerCase() === "fx-saving-usd" || marketCoinGeckoId.toLowerCase() === "fxsave") && isFxSAVE));
+                          
+                          // Calculate wrapped token price (same logic as genesis page)
+                          // collateralValue is in wrapped tokens, so we need wrapped token price
+                          let wrappedTokenPriceUSD = 0;
+                          if (coinGeckoIsWrappedToken && coinGeckoReturnedPrice && coinGeckoReturnedPrice > 0) {
+                            // CoinGecko already returns wrapped token price (e.g., wstETH, fxSAVE)
+                            wrappedTokenPriceUSD = coinGeckoReturnedPrice;
+                          } else if (wrappedRate && underlyingPriceUSD > 0) {
+                            // Multiply underlying by wrapped rate (e.g., fxUSD -> fxSAVE, stETH -> wstETH)
+                            wrappedTokenPriceUSD = underlyingPriceUSD * wrappedRateNum;
+                          } else if (underlyingPriceUSD > 0) {
+                            // Fallback to underlying price if no wrapped rate
+                            wrappedTokenPriceUSD = underlyingPriceUSD;
                           }
+                          
+                          // Use wrapped token price for collateral value calculation (same as genesis page)
+                          const collateralPriceUSD = wrappedTokenPriceUSD;
 
                           // Get user's position data for price calculation
                           const positionData =
