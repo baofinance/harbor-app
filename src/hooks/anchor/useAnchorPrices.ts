@@ -25,7 +25,6 @@ export function useAnchorPrices(
   const { price: usdcPrice } = useCoinGeckoPrice("usd-coin");
   const { price: ethPriceCoinGecko } = useCoinGeckoPrice("ethereum");
   const { price: btcPrice } = useCoinGeckoPrice("bitcoin", 120000);
-  const { price: btcPrice } = useCoinGeckoPrice("bitcoin", 120000);
 
   // Fetch Chainlink ETH/USD as fallback
   const { data: chainlinkEthPriceData } = useContractRead({
