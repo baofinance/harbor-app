@@ -1437,6 +1437,9 @@ export default function GenesisIndexPage() {
           );
         })()}
 
+        {/* Divider */}
+        <div className="border-t border-white/10 mt-2 mb-1"></div>
+
         {/* Only show market rows section if there are active/pending markets or ended markets with claimable tokens */}
         {hasActiveOrPendingMarkets && (
           <section className="space-y-2 overflow-visible">
@@ -2553,7 +2556,7 @@ export default function GenesisIndexPage() {
                                 label={
                                   <div>
                                     <div className="font-semibold mb-1">
-                                      {asset.name}
+                                      {asset.symbol}
                                     </div>
                                     <div className="text-xs opacity-90">
                                       All assets are converted to{" "}
