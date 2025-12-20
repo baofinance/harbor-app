@@ -886,8 +886,8 @@ const preDepositBalance = userCurrentDeposit;
          await publicClient?.waitForTransactionReceipt({ hash: approveHash });
          console.log("[Swap Approval] Approval confirmed");
          
-         // Wait for state update
-         await new Promise((resolve) => setTimeout(resolve, 1000));
+         // Wait for state update and ensure nonce is updated
+         await new Promise((resolve) => setTimeout(resolve, 2000));
          
          setProgressSteps((prev) =>
            prev.map((s) =>
@@ -905,6 +905,7 @@ const preDepositBalance = userCurrentDeposit;
      }
      
      // Step 2: Now get swap transaction data from ParaSwap (allowance is now sufficient)
+     // Get fresh transaction data right before sending to ensure nonce is current
      const swapTx = await getDefiLlamaSwapTx(
        fromTokenForSwap,
        swapTargetToken as any,
@@ -950,11 +951,13 @@ const preDepositBalance = userCurrentDeposit;
      }
      
      // Execute swap using sendTransaction (ParaSwap gives raw tx data, not contract call)
+     // Let wagmi handle nonce automatically - don't pass gas explicitly to avoid nonce conflicts
      const swapHash = await sendTransactionAsync({
        to: swapTx.to,
        data: swapTx.data,
        value: swapTx.value, // Use value from ParaSwap
-       gas: swapTx.gas,
+       // Don't pass gas explicitly - let wagmi estimate it to ensure proper nonce handling
+       // gas: swapTx.gas, // Removed to let wagmi handle nonce properly
      });
      
      setTxHash(swapHash);
