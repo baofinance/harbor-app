@@ -3987,37 +3987,31 @@ export default function AnchorPage() {
                             collateralSymbol === "fxusd" ||
                             collateralSymbol === "fxsave";
 
-                          // Calculate USD values for inline display
-                          // Default to 18 decimals if collateralPriceDecimals is undefined
-                          const priceDecimals =
-                            marketData.collateralPriceDecimals ?? 18;
-                          let collateralPriceUSD = marketData.collateralPrice
-                            ? Number(marketData.collateralPrice) /
-                              10 ** priceDecimals
-                            : 0;
-
-                          // For fxUSD markets, calculate fxSAVE price USD (same as collateral value calculation)
-                          if (isFxUSDMarket) {
-                            if (marketData.fxSAVEPriceInETH && ethPrice) {
-                              // fxSAVE price in ETH (from getPrice())
-                              const fxSAVEPriceInETHNum =
-                                Number(marketData.fxSAVEPriceInETH) / 1e18;
-                              // ETH price in USD (from CoinGecko)
-                              const ethPriceUSD = ethPrice;
-                              // fxSAVE price in USD = fxSAVE price in ETH * ETH price in USD
-                              collateralPriceUSD =
-                                fxSAVEPriceInETHNum * ethPriceUSD;
+                          // Get collateral price from the hook
+                          const collateralPriceOracleAddress = marketData.market.addresses?.collateralPrice as
+                            | `0x${string}`
+                            | undefined;
+                          const collateralPriceData = collateralPriceOracleAddress
+                            ? collateralPricesMap.get(collateralPriceOracleAddress.toLowerCase())
+                            : undefined;
+                          
+                          // Use priceUSD from hook (already converted from 18 decimals)
+                          let collateralPriceUSD = collateralPriceData?.priceUSD || 0;
+                          
+                          // For fxUSD markets, the hook returns underlying (fxUSD) price
+                          // We need wrapped (fxSAVE) price, so multiply by wrapped rate
+                          if (isFxUSDMarket && collateralPriceData) {
+                            const wrappedRateNum = collateralPriceData.maxRate
+                              ? Number(collateralPriceData.maxRate) / 1e18
+                              : marketData.wrappedRate
+                              ? Number(marketData.wrappedRate) / 1e18
+                              : 1;
+                            // fxSAVE price = fxUSD price * wrapped rate
+                            if (wrappedRateNum > 0 && collateralPriceUSD > 0) {
+                              collateralPriceUSD = collateralPriceUSD * wrappedRateNum;
                             } else if (collateralPriceUSD === 0) {
-                              // Fallback to CoinGecko prices if oracle price is missing/0
-                              if (collateralSymbol === "fxusd") {
-                                collateralPriceUSD =
-                                  fxUSDPrice || usdcPrice || 1.0;
-                              } else if (collateralSymbol === "fxsave") {
-                                collateralPriceUSD =
-                                  fxSAVEPrice || usdcPrice || 1.0;
-                              } else {
-                                collateralPriceUSD = usdcPrice || 1.0;
-                              }
+                              // Fallback to CoinGecko if hook price is 0
+                              collateralPriceUSD = fxSAVEPrice || usdcPrice || 1.0;
                             }
                           }
 
