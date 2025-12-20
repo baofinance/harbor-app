@@ -258,6 +258,20 @@ export function useAnchorLedgerMarks({
         };
       }
 
+      // Debug logging to see what the subgraph returns
+      console.log("[useAnchorLedgerMarks] GraphQL response:", {
+        userTotalMarks: result.data?.userTotalMarks,
+        haTokenBalancesCount: result.data?.haTokenBalances?.length || 0,
+        stabilityPoolDepositsCount: result.data?.stabilityPoolDeposits?.length || 0,
+        sailTokenBalancesCount: result.data?.sailTokenBalances?.length || 0,
+        haTokenBalances: result.data?.haTokenBalances?.map((b: any) => ({
+          tokenAddress: b.tokenAddress,
+          balance: b.balance,
+          accumulatedMarks: b.accumulatedMarks,
+          marksPerDay: b.marksPerDay,
+        })),
+      });
+
       return result.data || { 
         userTotalMarks: null,
         haTokenBalances: [], 

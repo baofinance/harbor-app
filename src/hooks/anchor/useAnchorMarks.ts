@@ -67,12 +67,12 @@ export function useAnchorMarks(
       totalMarks += marksFromPools;
     }
     
-    // Fallback to userTotalMarks if individual entities are empty but we have aggregated data
-    if (totalMarks === 0 && userTotalMarks) {
+    // Use userTotalMarks if available (it's the aggregated value from subgraph)
+    // Prefer it over individual entities if it has a higher value, or if individual entities are empty
+    if (userTotalMarks) {
       const haTokenMarks = parseFloat(userTotalMarks.haTokenMarks || "0");
       const stabilityPoolMarks = parseFloat(userTotalMarks.stabilityPoolMarks || "0");
       marksFromUserTotal = haTokenMarks + stabilityPoolMarks;
-      totalMarks = marksFromUserTotal;
       
       // If we have a lastUpdated timestamp, estimate additional marks since then
       const lastUpdated = parseInt(userTotalMarks.lastUpdated || "0");
@@ -82,8 +82,14 @@ export function useAnchorMarks(
         const secondsSinceUpdate = currentTime - lastUpdated;
         if (secondsSinceUpdate > 0) {
           const daysSinceUpdate = secondsSinceUpdate / 86400;
-          totalMarks += totalMarksPerDay * daysSinceUpdate;
+          marksFromUserTotal += totalMarksPerDay * daysSinceUpdate;
         }
+      }
+      
+      // Use userTotalMarks if individual entities are empty OR if userTotalMarks is significantly higher
+      // (This handles cases where individual entities might have stale/incorrect data)
+      if (totalMarks === 0 || marksFromUserTotal > totalMarks * 1.1) {
+        totalMarks = marksFromUserTotal;
       }
     }
 
