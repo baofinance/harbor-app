@@ -32,7 +32,40 @@ This guide will help you deploy the Harbor app from the `main` branch to `app.ha
 
 After the initial deployment, configure environment variables. **You should copy all environment variables from your staging Vercel project.**
 
-### Option A: Copy from Staging (Recommended)
+### Option A: Use Vercel CLI to Copy (Easiest - Recommended)
+
+If you have Vercel CLI installed, you can use the provided script:
+
+1. **Run the copy script:**
+   ```bash
+   ./copy-env-vars.sh
+   ```
+
+2. **Follow the prompts:**
+   - Select your **staging** project when prompted
+   - Review the variables
+   - Select your **production** project when prompted
+   - Confirm to push
+
+3. **Manually update one variable:**
+   - Go to Vercel → Production Project → Settings → Environment Variables
+   - Find `NEXT_PUBLIC_APP_ENV`
+   - Change value from `staging` to `production`
+   - Save
+
+**Alternative: Manual CLI commands:**
+
+```bash
+# Pull from staging
+vercel env pull .env.staging --environment=production
+
+# Review/edit .env.staging if needed (change NEXT_PUBLIC_APP_ENV to production)
+
+# Push to production (requires vercel-env-push)
+npx vercel-env-push .env.staging production
+```
+
+### Option B: Copy from Staging Dashboard (Manual)
 
 1. Go to your **staging Vercel project** → **Settings** → **Environment Variables**
 2. Copy all the environment variables you see there
@@ -106,6 +139,7 @@ NEXT_PUBLIC_USE_BASEPATH = false (or leave unset)
    - **TTL**: 600 (or default)
 
 **Copy the exact CNAME value from Vercel** - it might be something like:
+
 - `cname.vercel-dns.com`
 - Or a specific Vercel domain like `cname-xyz.vercel-dns.com`
 
@@ -122,6 +156,7 @@ NEXT_PUBLIC_USE_BASEPATH = false (or leave unset)
 5. Click **"Save"** or **"Add Record"**
 
 ### Important Notes:
+
 - The **Name** field should be just `app` (not `app.harborfinance.io`)
 - GoDaddy will automatically append `harborfinance.io` to create `app.harborfinance.io`
 - If you see an existing `app` record, you may need to edit or delete it first
@@ -173,6 +208,7 @@ git push origin main
 ```
 
 Vercel will:
+
 1. Detect the push to `main`
 2. Start a new build
 3. Deploy automatically
@@ -181,32 +217,38 @@ Vercel will:
 ## Troubleshooting
 
 ### "Domain not found" or "DNS not configured"
+
 - Wait longer for DNS propagation (can take up to 48 hours)
 - Double-check the CNAME record in GoDaddy matches Vercel's instructions exactly
 - Verify the Name field is just `app` (not `app.harborfinance.io`)
 
 ### "SSL certificate pending"
+
 - Wait 5-10 minutes after DNS resolves
 - Make sure DNS is pointing to Vercel correctly
 - Check Vercel → Settings → Domains for status
 
 ### "Build failed"
+
 - Check Vercel build logs: Project → Deployments → Click on failed deployment
 - Verify environment variables are set correctly
 - Make sure `main` branch builds successfully locally: `npm run build`
 
 ### "Site loads but shows wrong content"
+
 - Check that Vercel is deploying from `main` branch
 - Verify environment variables are set for Production environment
 - Clear browser cache and try again
 
 ### GoDaddy doesn't allow `app` as subdomain
+
 - Some GoDaddy configurations require using `app-harbor` or similar
 - If needed, use a different subdomain name and update Vercel accordingly
 
 ## DNS Record Summary
 
 **In GoDaddy:**
+
 ```
 Type: CNAME
 Name: app
@@ -215,6 +257,7 @@ TTL: 600
 ```
 
 **Result:**
+
 - `app.harborfinance.io` → Points to Vercel
 - Vercel handles SSL and routing
 
@@ -231,4 +274,3 @@ TTL: 600
 - Vercel Docs: [vercel.com/docs](https://vercel.com/docs)
 - GoDaddy DNS Help: [godaddy.com/help](https://www.godaddy.com/help)
 - Check Vercel deployment logs for build errors
-
