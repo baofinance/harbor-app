@@ -3162,12 +3162,22 @@ export default function AnchorPage() {
                 }
 
                 // Calculate combined values
+                // Track ha token addresses to avoid double-counting wallet balances
+                // (multiple markets can share the same ha token, e.g., btc-fxusd and btc-steth both use haBTC)
+                const haTokenAddressesSeen = new Set<string>();
                 const combinedPositionUSD = activeMarketsData.reduce(
-                  (sum, m) =>
-                    sum +
-                    m.collateralPoolDepositUSD +
-                    m.sailPoolDepositUSD +
-                    m.haTokenBalanceUSD,
+                  (sum, m) => {
+                    let marketSum = m.collateralPoolDepositUSD + m.sailPoolDepositUSD;
+                    
+                    // Only count haTokenBalanceUSD once per unique ha token address
+                    const peggedTokenAddress = (m.market as any)?.addresses?.peggedToken as string | undefined;
+                    if (peggedTokenAddress && !haTokenAddressesSeen.has(peggedTokenAddress.toLowerCase())) {
+                      haTokenAddressesSeen.add(peggedTokenAddress.toLowerCase());
+                      marketSum += m.haTokenBalanceUSD;
+                    }
+                    
+                    return sum + marketSum;
+                  },
                   0
                 );
                 // Also track total token amounts (for display when USD isn't available)
