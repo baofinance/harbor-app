@@ -227,7 +227,7 @@ export function useAnchorPrices(
     });
     
     return map;
-  }, [anchorMarkets, reads, peggedPriceMap, fxUSDPrice, fxSAVEPrice, usdcPrice, ethPrice]);
+  }, [anchorMarkets, reads, peggedPriceMap, fxUSDPrice, fxSAVEPrice, usdcPrice, ethPrice, btcPrice]);
 
   const mergedPeggedPriceMap = useMemo(() => {
     // Use USD prices (peggedPriceUSDMap) instead of raw collateral prices
