@@ -571,6 +571,27 @@ export function useAnchorLedgerMarks({
   // Extract userTotalMarks from data
   const userTotalMarks = data?.userTotalMarks || null;
 
+  // Debug logging
+  useEffect(() => {
+    console.log("[useAnchorLedgerMarks] Hook return values:", {
+      haBalancesCount: haBalances?.length || 0,
+      poolDepositsCount: poolDeposits?.length || 0,
+      sailBalancesCount: sailBalances?.length || 0,
+      estimatedMarks,
+      marksPerDay,
+      userTotalMarks: userTotalMarks ? {
+        haTokenMarks: userTotalMarks.haTokenMarks,
+        sailTokenMarks: userTotalMarks.sailTokenMarks,
+        stabilityPoolMarks: userTotalMarks.stabilityPoolMarks,
+        totalMarks: userTotalMarks.totalMarks,
+        totalMarksPerDay: userTotalMarks.totalMarksPerDay,
+        lastUpdated: userTotalMarks.lastUpdated,
+      } : null,
+      isLoading,
+      error: error?.message || null,
+    });
+  }, [haBalances, poolDeposits, sailBalances, estimatedMarks, marksPerDay, userTotalMarks, isLoading, error]);
+
   return {
     haBalances,
     poolDeposits,

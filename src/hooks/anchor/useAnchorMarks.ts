@@ -28,6 +28,20 @@ export function useAnchorMarks(
     userTotalMarks,
   } = useAnchorLedgerMarks({ enabled: true }); // Enable subgraph queries
 
+  // Debug logging
+  useEffect(() => {
+    console.log("[useAnchorMarks] Data received:", {
+      haBalances: haBalances?.length || 0,
+      poolDeposits: poolDeposits?.length || 0,
+      sailBalances: sailBalances?.length || 0,
+      userTotalMarks,
+      isLoadingAnchorMarks,
+      anchorLedgerMarksError,
+      haBalancesData: haBalances,
+      poolDepositsData: poolDeposits,
+    });
+  }, [haBalances, poolDeposits, sailBalances, userTotalMarks, isLoadingAnchorMarks, anchorLedgerMarksError]);
+
   // Calculate sail marks per day
   const sailMarksPerDay = useMemo(() => {
     if (!sailBalances) return 0;
