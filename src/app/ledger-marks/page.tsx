@@ -3,10 +3,10 @@
 import React, { useMemo, useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAccount, usePublicClient } from "wagmi";
+import Image from "next/image";
 import {
- TrophyIcon,
- QuestionMarkCircleIcon,
- WalletIcon,
+  TrophyIcon,
+  WalletIcon,
 } from "@heroicons/react/24/outline";
 import { markets } from "@/config/markets";
 import { getGraphUrl, getGraphHeaders } from "@/config/graph";
@@ -1055,24 +1055,30 @@ export default function LedgerMarksLeaderboard() {
           </div>
         </div>
 
- {/* Explainer Section */}
- <div className="bg-[#17395F] p-4 mb-2">
- <div className="flex items-start gap-3">
- <QuestionMarkCircleIcon className="w-6 h-6 text-white flex-shrink-0 mt-0.5" />
- <div className="flex-1">
- <h3 className="font-bold text-lg text-white mb-2">
- What are Ledger Marks?
- </h3>
- <div className="space-y-3 text-white/90 leading-relaxed text-sm">
- <p>
- A ledger is both a record of truth and a core DeFi symbol —
- and a mark is what every sailor leaves behind on a voyage.
- </p>
- <p>
- Each Ledger Mark is proof that you were here early, helping
- stabilize the first Harbor markets and guide them through calm
- launch conditions.
- </p>
+          {/* Explainer Section */}
+          <div className="bg-[#17395F] p-4 mb-2">
+            <div className="flex items-start gap-3">
+              <Image
+                src="/icons/marks.png"
+                alt="Ledger Marks"
+                width={24}
+                height={24}
+                className="flex-shrink-0 mt-0.5"
+              />
+              <div className="flex-1">
+                <h3 className="font-bold text-lg text-white mb-2">
+                  What are Ledger Marks?
+                </h3>
+                <div className="space-y-3 text-white/90 leading-relaxed text-sm">
+                  <p>
+                    A ledger is both a record of truth and a core DeFi symbol —
+                    and a mark is what every sailor leaves behind on a voyage.
+                  </p>
+                  <p>
+                    Each Ledger Mark is proof that you were here early, helping
+                    stabilize the first Harbor markets and guide them through calm
+                    launch conditions.
+                  </p>
  <div className="space-y-2 mt-3">
  <div className="flex items-start gap-2">
  <span className="text-white/70 mt-0.5">•</span>
@@ -1085,23 +1091,15 @@ export default function LedgerMarksLeaderboard() {
                 <div className="flex items-start gap-2">
                   <span className="text-white/70 mt-0.5">•</span>
                   <p>
-                    <strong>Holding ha Tokens:</strong> Earn 1 mark per dollar
-                    per day for ha tokens in your wallet.
+                    <strong>Holding Anchor Tokens:</strong> Earn 1 mark per dollar
+                    per day.
                   </p>
                 </div>
                 <div className="flex items-start gap-2">
                   <span className="text-white/70 mt-0.5">•</span>
                   <p>
-                    <strong>Holding Sail Tokens:</strong> Earn 1 mark per dollar
-                    per day for sail tokens in your wallet.
-                  </p>
-                </div>
-                <div className="flex items-start gap-2">
-                  <span className="text-white/70 mt-0.5">•</span>
-                  <p>
-                    <strong>Stability Pool Deposits:</strong> Earn 1 mark per
-                    dollar per day for deposits in Anchor or Sail stability
-                    pools.
+                    <strong>Holding Sail Tokens:</strong> Earn 5 marks per dollar
+                    per day.
                   </p>
                 </div>
  <div className="flex items-start gap-2">
