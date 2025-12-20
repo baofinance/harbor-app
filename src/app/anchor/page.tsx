@@ -4014,7 +4014,7 @@ export default function AnchorPage() {
                           
                           // Check if CoinGecko has the wrapped token price directly
                           const marketCoinGeckoId = (marketData.market as any)?.coinGeckoId as string | undefined;
-                          const coinGeckoReturnedPrice = marketCoinGeckoId && coinGeckoPrices[marketCoinGeckoId];
+                          const coinGeckoReturnedPrice = marketCoinGeckoId && coinGeckoPrices?.[marketCoinGeckoId];
                           
                           // Check if CoinGecko returned a price for the wrapped token (fxSAVE or wstETH)
                           const isWstETH = collateralSymbol.toLowerCase() === "wsteth";
@@ -4025,12 +4025,26 @@ export default function AnchorPage() {
                             ((marketCoinGeckoId.toLowerCase() === "wrapped-steth" && isWstETH) ||
                               ((marketCoinGeckoId.toLowerCase() === "fx-saving-usd" || marketCoinGeckoId.toLowerCase() === "fxsave") && isFxSAVE));
                           
+                          // Fallback: Use stETH price from CoinGecko if wstETH price isn't available yet
+                          const stETHPrice = coinGeckoPrices?.["lido-staked-ethereum-steth"];
+                          const useStETHFallback =
+                            isWstETH &&
+                            !coinGeckoIsWrappedToken &&
+                            underlyingPriceUSD === 0 &&
+                            stETHPrice &&
+                            stETHPrice > 0 &&
+                            wrappedRate &&
+                            wrappedRate > 0n;
+                          
                           // Calculate wrapped token price (same logic as genesis page)
                           // collateralValue is in wrapped tokens, so we need wrapped token price
                           let wrappedTokenPriceUSD = 0;
                           if (coinGeckoIsWrappedToken && coinGeckoReturnedPrice && coinGeckoReturnedPrice > 0) {
                             // CoinGecko already returns wrapped token price (e.g., wstETH, fxSAVE)
                             wrappedTokenPriceUSD = coinGeckoReturnedPrice;
+                          } else if (useStETHFallback) {
+                            // Use stETH price * wrapped rate as fallback while wstETH loads
+                            wrappedTokenPriceUSD = stETHPrice * wrappedRateNum;
                           } else if (wrappedRate && underlyingPriceUSD > 0) {
                             // Multiply underlying by wrapped rate (e.g., fxUSD -> fxSAVE, stETH -> wstETH)
                             wrappedTokenPriceUSD = underlyingPriceUSD * wrappedRateNum;
