@@ -1038,6 +1038,16 @@ export function AnchorMarketExpandedView({
         </div>
       </div>
 
+      {/* Harvest Section */}
+      {(market as any).addresses?.stabilityPoolManager && minterAddress && (
+        <HarvestSection
+          minterAddress={minterAddress as `0x${string}`}
+          stabilityPoolManagerAddress={(market as any).addresses
+            ?.stabilityPoolManager as `0x${string}`}
+          wrappedCollateralSymbol={market.collateral?.symbol || "wstETH"}
+        />
+      )}
+
       {/* Contract Information */}
       <div className="bg-white p-3 mt-0">
         <h3 className="text-[#1E4775] font-semibold mb-2 text-xs">
