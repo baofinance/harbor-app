@@ -24,6 +24,7 @@ export function useAnchorPrices(
   const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-saving-usd");
   const { price: usdcPrice } = useCoinGeckoPrice("usd-coin");
   const { price: ethPriceCoinGecko } = useCoinGeckoPrice("ethereum");
+  const { price: btcPrice } = useCoinGeckoPrice("bitcoin", 120000);
 
   // Fetch Chainlink ETH/USD as fallback
   const { data: chainlinkEthPriceData } = useContractRead({
@@ -189,16 +190,24 @@ export function useAnchorPrices(
       }
       
       // For ETH-pegged tokens (e.g., haETH), use ETH price directly
+      // For BTC-pegged tokens (e.g., haBTC), use BTC price directly
       const peggedTokenSymbol = m.peggedToken?.symbol?.toLowerCase() || "";
-      const isETHPegged = peggedTokenSymbol.includes("eth") || peggedTokenSymbol === "haeth";
+      const pegTarget = (m as any)?.pegTarget?.toLowerCase() || "";
+      const isETHPegged = pegTarget === "eth" || pegTarget === "ethereum" || peggedTokenSymbol.includes("eth") || peggedTokenSymbol === "haeth";
+      const isBTCPegged = pegTarget === "btc" || pegTarget === "bitcoin" || peggedTokenSymbol.includes("btc") || peggedTokenSymbol === "habtc";
       
-      console.log(`[peggedPriceUSDMap] Market ${id}: symbol="${peggedTokenSymbol}", isETHPegged=${isETHPegged}, ethPrice=${ethPrice}`);
+      console.log(`[peggedPriceUSDMap] Market ${id}: symbol="${peggedTokenSymbol}", pegTarget="${pegTarget}", isETHPegged=${isETHPegged}, isBTCPegged=${isBTCPegged}, ethPrice=${ethPrice}, btcPrice=${btcPrice}`);
       
       if (isETHPegged && ethPrice) {
         // haETH is pegged to ETH, so price = ETH price in USD
         const ethPriceInWei = BigInt(Math.floor(ethPrice * 1e18));
         map[id] = ethPriceInWei;
         console.log(`[peggedPriceUSDMap] Market ${id} (${peggedTokenSymbol}): Using ETH price directly: $${ethPrice} = ${ethPriceInWei.toString()}`);
+      } else if (isBTCPegged && btcPrice) {
+        // haBTC is pegged to BTC, so price = BTC price in USD
+        const btcPriceInWei = BigInt(Math.floor(btcPrice * 1e18));
+        map[id] = btcPriceInWei;
+        console.log(`[peggedPriceUSDMap] Market ${id} (${peggedTokenSymbol}): Using BTC price directly: $${btcPrice} = ${btcPriceInWei.toString()}`);
       } else if (peggedTokenPrice && collateralPriceUSD > 0) {
         // For other tokens, calculate USD price: peggedTokenPrice (in collateral units) * collateralPriceUSD
         const peggedPriceInCollateral = Number(peggedTokenPrice) / 1e18;
