@@ -4067,26 +4067,6 @@ export default function AnchorPage() {
                             wrappedTokenPriceUSD = underlyingPriceUSD;
                           }
                           
-                          // Debug logging for price calculation
-                          if (process.env.NODE_ENV === "development" && collateralTokensWrapped > 0) {
-                            console.log(`[Anchor Collateral Price] Market ${marketData.marketId}:`, {
-                              collateralSymbol,
-                              collateralTokensWrapped,
-                              marketCoinGeckoId,
-                              coinGeckoReturnedPrice,
-                              coinGeckoIsWrappedToken,
-                              coinGeckoLoading,
-                              underlyingPriceUSD,
-                              wrappedRate: wrappedRate?.toString(),
-                              wrappedRateNum,
-                              stETHPrice,
-                              useStETHFallback,
-                              wrappedTokenPriceUSD,
-                              collateralPriceUSD: wrappedTokenPriceUSD,
-                              collateralValueUSD: collateralTokensWrapped * wrappedTokenPriceUSD,
-                            });
-                          }
-                          
                           // Use wrapped token price for collateral value calculation (same as genesis page)
                           const collateralPriceUSD = wrappedTokenPriceUSD;
 
@@ -4106,6 +4086,26 @@ export default function AnchorPage() {
                             marketData.collateralValue !== undefined
                               ? Number(marketData.collateralValue) / 1e18
                               : 0;
+                          
+                          // Debug logging for price calculation (after collateralTokensWrapped is defined)
+                          if (process.env.NODE_ENV === "development" && collateralTokensWrapped > 0) {
+                            console.log(`[Anchor Collateral Price] Market ${marketData.marketId}:`, {
+                              collateralSymbol,
+                              collateralTokensWrapped,
+                              marketCoinGeckoId,
+                              coinGeckoReturnedPrice,
+                              coinGeckoIsWrappedToken,
+                              coinGeckoLoading,
+                              underlyingPriceUSD,
+                              wrappedRate: wrappedRate?.toString(),
+                              wrappedRateNum,
+                              stETHPrice,
+                              useStETHFallback,
+                              wrappedTokenPriceUSD,
+                              collateralPriceUSD: wrappedTokenPriceUSD,
+                              collateralValueUSD: collateralTokensWrapped * wrappedTokenPriceUSD,
+                            });
+                          }
 
                           // Calculate collateral value USD using the price from the hook
                           // For fxUSD markets: collateralValue is already in fxSAVE (wrapped), use fxSAVE price
