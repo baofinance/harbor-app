@@ -3055,10 +3055,10 @@ export default function GenesisIndexPage() {
             await new Promise((resolve) => setTimeout(resolve, 1000));
 
             // Then refetch everything else
+            // Note: Prices refresh automatically via their refetch intervals
             await Promise.all([
               refetchReads(),
               refetchTotalDeposits(),
-              refetchPrices(),
             ]);
 
             // Force another refetch after a short delay to ensure everything is updated

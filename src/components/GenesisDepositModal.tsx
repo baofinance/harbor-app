@@ -236,6 +236,9 @@ const tokenAddressForDecimals = isNativeETH
   : (isCustomToken ? (customTokenAddress as `0x${string}` | undefined) : (selectedAssetAddress as `0x${string}` | undefined));
 const { decimals: tokenDecimals } = useTokenDecimals(tokenAddressForDecimals);
 
+// Determine selected token decimals (handle special cases)
+const selectedTokenDecimals = isUSDC ? 6 : (isNativeETH ? 18 : tokenDecimals);
+
 // Fetch token metadata (symbol, name) for custom tokens
 const { data: customTokenSymbol } = useContractRead({
   address: isCustomToken ? (customTokenAddress as `0x${string}`) : undefined,
@@ -539,9 +542,7 @@ const allowanceTarget = (useETHZap || useUSDCZap) && genesisZapAddress ? genesis
   const balance = selectedAssetBalance;
 
 const allowance = isNativeETH ? 0n : (typeof allowanceData === 'bigint' ? allowanceData : 0n);
-// USDC uses 6 decimals, other tokens use 18 decimals
-// Parse amount with correct decimals: USDC uses 6, others use 18
-const selectedTokenDecimals = isUSDC ? 6 : (isNativeETH ? 18 : tokenDecimals);
+// Parse amount with correct decimals (selectedTokenDecimals is defined above)
 const amountBigInt = amount 
   ? parseUnits(amount, selectedTokenDecimals)
   : 0n;
@@ -574,32 +575,27 @@ const { data: expectedWstETHFromStETH } = useContractRead({
 });
 
 // Calculate expected fxSAVE output for USDC deposits (for preview)
-// Note: previewZapUsdc expects USDC amount in 18 decimals (scaled from 6)
-// amountBigInt is in 6 decimals for USDC (e.g., 1 USDC = 1000000n)
-// The contract returns fxSAVE amount in 18 decimals
-const usdcAmountForPreview = isUSDC && amountBigInt > 0n 
-  ? amountBigInt * 10n ** 12n // Scale from 6 to 18 decimals
-  : amountBigInt;
-const { data: expectedFxSaveFromUSDC } = useContractRead({
-  address: genesisZapAddress,
-  abi: USDC_ZAP_ABI,
-  functionName: "previewZapUsdc",
-  args: usdcAmountForPreview > 0n && isUSDC ? [usdcAmountForPreview] : undefined,
-  query: {
-    enabled: !!address && isOpen && mounted && isUSDC && amountBigInt > 0n && !!genesisZapAddress && useUSDCZap,
-  },
-});
+// Note: previewZapUsdc doesn't exist on contract, so we calculate using wrappedRate
+// USDC is in 6 decimals, fxSAVE is in 18 decimals
+// First scale USDC to 18 decimals, then divide by wrappedRate
+const expectedFxSaveFromUSDC = (() => {
+  if (!isUSDC || amountBigInt === 0n || !wrappedRate || wrappedRate === 0n) {
+    return 0n;
+  }
+  // Scale USDC from 6 to 18 decimals, then divide by wrappedRate
+  const usdcIn18Decimals = amountBigInt * 10n ** 12n;
+  return (usdcIn18Decimals * 1000000000000000000n) / wrappedRate;
+})();
 
 // Calculate expected fxSAVE output for FXUSD deposits (for preview)
-const { data: expectedFxSaveFromFXUSD } = useContractRead({
-  address: genesisZapAddress,
-  abi: USDC_ZAP_ABI,
-  functionName: "previewZapFxUsd",
-  args: amountBigInt > 0n && isFXUSD ? [amountBigInt] : undefined,
-  query: {
-    enabled: !!address && isOpen && mounted && isFXUSD && amountBigInt > 0n && !!genesisZapAddress && useUSDCZap,
-  },
-});
+// fxSAVE = FXUSD / wrappedRate (when both are in 18 decimals)
+const expectedFxSaveFromFXUSD = (() => {
+  if (!isFXUSD || amountBigInt === 0n || !wrappedRate || wrappedRate === 0n) {
+    return 0n;
+  }
+  // Both FXUSD and wrappedRate are in 18 decimals, so: (amount * 1e18) / wrappedRate
+  return (amountBigInt * 1000000000000000000n) / wrappedRate;
+})();
 
 // For tokens that need swapping to USDC (fxSAVE markets): calculate expected fxSAVE from USDC
 const usdcFromSwap = needsSwap && isFxSAVEMarket && swapQuote ? swapQuote.toAmount : 0n;
@@ -673,9 +669,9 @@ const actualCollateralDeposit: bigint = isNativeETH && isETHStETHMarket && !need
   : isStETH && isETHStETHMarket
   ? toBigInt(expectedWstETHFromStETH)
   : isUSDC && useUSDCZap && !needsSwap
-  ? toBigInt(expectedFxSaveFromUSDC)
+  ? expectedFxSaveFromUSDC // Already calculated as bigint
   : isFXUSD && useUSDCZap
-  ? toBigInt(expectedFxSaveFromFXUSD)
+  ? expectedFxSaveFromFXUSD // Already calculated as bigint
   : needsSwap && isFxSAVEMarket
   ? expectedFxSaveFromSwap // For swapped tokens in fxSAVE markets, use calculated fxSAVE
   : needsSwap && isETHStETHMarket
@@ -1241,25 +1237,23 @@ if (!isNativeETH && needsApproval && !needsSwap) {
         formatted: formatUnits(usdcAmount, 6),
       });
       
-      // Get expected fxSAVE output from USDC amount
-      // Contract expects USDC in 18 decimals, so scale from 6 to 18
-      const usdcAmountScaled = usdcAmount * 10n ** 12n;
+      // Calculate expected fxSAVE output from USDC amount
+      // Note: previewZapUsdc doesn't exist on contract, so we calculate using wrappedRate
+      // USDC is in 6 decimals, fxSAVE is in 18 decimals
+      if (!wrappedRate || wrappedRate === 0n) {
+        throw new Error("Unable to calculate expected output: wrappedRate not available");
+      }
       
-      console.log("[Deposit] USDC amount scaled to 18 decimals:", {
-        raw: usdcAmountScaled.toString(),
-        formatted: formatUnits(usdcAmountScaled, 18),
-      });
-      
-      const expectedFxSaveOut = await publicClient.readContract({
-        address: genesisZapAddress,
-        abi: USDC_ZAP_ABI,
-        functionName: "previewZapUsdc",
-        args: [usdcAmountScaled],
-      });
+      // Scale USDC from 6 to 18 decimals, then divide by wrappedRate
+      const usdcIn18Decimals = usdcAmount * 10n ** 12n;
+      const expectedFxSaveOut = (usdcIn18Decimals * 1000000000000000000n) / wrappedRate;
       
       console.log("[Deposit] Expected fxSAVE output:", {
         raw: expectedFxSaveOut.toString(),
-        formatted: formatUnits(expectedFxSaveOut as bigint, 18),
+        formatted: formatUnits(expectedFxSaveOut, 18),
+        usdcAmount: formatUnits(usdcAmount, 6),
+        usdcIn18Decimals: formatUnits(usdcIn18Decimals, 18),
+        wrappedRate: formatUnits(wrappedRate, 18),
       });
       
       // Apply 1% slippage buffer (99% of expected)
@@ -1287,16 +1281,27 @@ if (!isNativeETH && needsApproval && !needsSwap) {
     } else if (isFXUSD && useUSDCZap && genesisZapAddress) {
       console.log("[Deposit] Taking FXUSD zap branch");
       // Use zapFxUsdToGenesis for FXUSD deposits with slippage protection
-      // Get expected fxSAVE output from FXUSD amount
-      const expectedFxSaveOut = await publicClient.readContract({
-        address: genesisZapAddress,
-        abi: USDC_ZAP_ABI,
-        functionName: "previewZapFxUsd",
-        args: [amountBigInt],
+      // Calculate expected fxSAVE output: fxSAVE = FXUSD / wrappedRate
+      // Both FXUSD and wrappedRate are in 18 decimals
+      if (!wrappedRate || wrappedRate === 0n) {
+        throw new Error("Unable to calculate expected output: wrappedRate not available");
+      }
+      const expectedFxSaveOut = (amountBigInt * 1000000000000000000n) / wrappedRate;
+      
+      console.log("[Deposit] Expected fxSAVE output:", {
+        raw: expectedFxSaveOut.toString(),
+        formatted: formatUnits(expectedFxSaveOut, 18),
+        fxUsdAmount: formatUnits(amountBigInt, 18),
+        wrappedRate: formatUnits(wrappedRate, 18),
       });
       
       // Apply 1% slippage buffer (99% of expected)
       const minFxSaveOut = (expectedFxSaveOut * 99n) / 100n;
+      
+      console.log("[Deposit] Minimum fxSAVE output (99%):", {
+        raw: minFxSaveOut.toString(),
+        formatted: formatUnits(minFxSaveOut, 18),
+      });
       
       depositHash = await writeContractAsync({
         address: genesisZapAddress,

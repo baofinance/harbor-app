@@ -14,6 +14,11 @@ export const USDC_ZAP_ABI = [
   },
   {
     inputs: [],
+    name: "DepositFailed",
+    type: "error",
+  },
+  {
+    inputs: [],
     name: "FunctionNotFound",
     type: "error",
   },
@@ -132,20 +137,6 @@ export const USDC_ZAP_ABI = [
     inputs: [],
     name: "owner",
     outputs: [{ internalType: "address", name: "", type: "address" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [{ internalType: "uint256", name: "fxUsdAmount", type: "uint256" }],
-    name: "previewZapFxUsd",
-    outputs: [{ internalType: "uint256", name: "expectedFxSaveOut", type: "uint256" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [{ internalType: "uint256", name: "usdcAmount", type: "uint256" }],
-    name: "previewZapUsdc",
-    outputs: [{ internalType: "uint256", name: "expectedFxSaveOut", type: "uint256" }],
     stateMutability: "view",
     type: "function",
   },

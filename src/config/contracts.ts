@@ -547,8 +547,6 @@ export const MINTER_USDC_ZAP_V2_ABI = [
   { inputs: [], name: "owner", outputs: [{ internalType: "address", name: "", type: "address" }], stateMutability: "view", type: "function" },
   { inputs: [{ internalType: "uint256", name: "fxSaveAmount", type: "uint256" }], name: "previewMintLeveraged", outputs: [{ internalType: "uint256", name: "expectedLeveragedOut", type: "uint256" }], stateMutability: "view", type: "function" },
   { inputs: [{ internalType: "uint256", name: "fxSaveAmount", type: "uint256" }], name: "previewMintPegged", outputs: [{ internalType: "uint256", name: "expectedPeggedOut", type: "uint256" }], stateMutability: "view", type: "function" },
-  { inputs: [{ internalType: "uint256", name: "fxUsdAmount", type: "uint256" }], name: "previewZapFxUsd", outputs: [{ internalType: "uint256", name: "expectedFxSaveOut", type: "uint256" }], stateMutability: "view", type: "function" },
-  { inputs: [{ internalType: "uint256", name: "usdcAmount", type: "uint256" }], name: "previewZapUsdc", outputs: [{ internalType: "uint256", name: "expectedFxSaveOut", type: "uint256" }], stateMutability: "view", type: "function" },
   { inputs: [], name: "rescueEth", outputs: [], stateMutability: "nonpayable", type: "function" },
   { inputs: [{ internalType: "address", name: "token", type: "address" }], name: "rescueToken", outputs: [], stateMutability: "nonpayable", type: "function" },
   { inputs: [{ internalType: "address", name: "newOwner", type: "address" }], name: "transferOwnership", outputs: [], stateMutability: "nonpayable", type: "function" },
