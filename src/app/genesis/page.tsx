@@ -1004,41 +1004,30 @@ export default function GenesisIndexPage() {
                   Earn Ledger Marks
                 </h2>
               </div>
-              <div className="flex-1 flex items-end">
-                <div className="w-full space-y-2 text-sm sm:text-xs md:text-sm text-white/80">
-                  <div className="grid grid-cols-2 gap-2 sm:gap-1 md:gap-2">
-                    <div className="text-center">
-                      <div className="mb-1">During Genesis:</div>
-                      <div className="flex justify-center">
-                        <span className="inline-flex items-center gap-0.5 sm:gap-0.5 md:gap-1 px-1.5 sm:px-1 md:px-2 py-1 bg-white text-[#1E4775] text-xs sm:text-[10px] md:text-xs font-mono w-fit">
-                          <span>10x</span>
-                          <Image
-                            src="/icons/marks.png"
-                            alt="Marks"
-                            width={24}
-                            height={24}
-                            className="flex-shrink-0 w-4 h-4 sm:w-3 sm:h-3 md:w-5 md:h-5"
-                          />
-                          <span>/$/day</span>
-                        </span>
-                      </div>
-                    </div>
-                    <div className="text-center">
-                      <div className="mb-1">End Bonus:</div>
-                      <div className="flex justify-center">
-                        <span className="inline-flex items-center gap-0.5 sm:gap-0.5 md:gap-1 px-1.5 sm:px-1 md:px-2 py-1 bg-white text-[#1E4775] text-xs sm:text-[10px] md:text-xs font-mono w-fit">
-                          <span>100x</span>
-                          <Image
-                            src="/icons/marks.png"
-                            alt="Marks"
-                            width={24}
-                            height={24}
-                            className="flex-shrink-0 w-4 h-4 sm:w-3 sm:h-3 md:w-5 md:h-5"
-                          />
-                          <span>/$</span>
-                        </span>
-                      </div>
-                    </div>
+              <div className="flex-1 flex items-center">
+                <div className="text-sm sm:text-xs md:text-sm text-white/80 text-center leading-relaxed space-y-1">
+                  <div className="inline-flex items-center gap-1 justify-center flex-wrap">
+                    <span className="font-bold text-white">10x</span>
+                    <Image
+                      src="/icons/marks.png"
+                      alt="Marks"
+                      width={20}
+                      height={20}
+                      className="flex-shrink-0 w-4 h-4 sm:w-3 sm:h-3 md:w-4 md:h-4"
+                    />
+                    <span>per dollar per day</span>
+                  </div>
+                  <div className="border-t border-white/20 w-full my-1"></div>
+                  <div className="text-center">
+                    <span className="font-bold text-white">100</span>{" "}
+                    <Image
+                      src="/icons/marks.png"
+                      alt="Marks"
+                      width={20}
+                      height={20}
+                      className="inline-flex align-middle w-4 h-4 sm:w-3 sm:h-3 md:w-4 md:h-4"
+                    />{" "}
+                    <span>bonus / $ deposited at the end of maiden voyage</span>
                   </div>
                 </div>
               </div>
@@ -1053,24 +1042,12 @@ export default function GenesisIndexPage() {
                 </h2>
               </div>
               <div className="flex-1 flex flex-col justify-between">
-                <p className="text-sm sm:text-xs md:text-sm text-white/80 text-center mb-2">
+                <p className="text-sm sm:text-xs md:text-sm text-white/80 text-center mb-1">
                   Claim ha + hs tokens. Value = deposit value.
                 </p>
-                <div className="text-center">
-                  <div className="flex items-center justify-center">
-                    <span className="inline-flex items-center gap-0.5 sm:gap-0.5 md:gap-1 px-1.5 sm:px-1 md:px-2 py-1 bg-white text-[#1E4775] text-xs sm:text-[10px] md:text-xs font-mono w-fit">
-                      <span>1-10x</span>
-                      <Image
-                        src="/icons/marks.png"
-                        alt="Marks"
-                        width={24}
-                        height={24}
-                        className="flex-shrink-0 w-4 h-4 sm:w-3 sm:h-3 md:w-5 md:h-5"
-                      />
-                      <span>/$/day</span>
-                    </span>
-                  </div>
-                </div>
+                <p className="text-sm sm:text-xs md:text-sm text-white/80 text-center font-semibold">
+                  Earn real yield and more marks!
+                </p>
               </div>
             </div>
 
@@ -1108,30 +1085,29 @@ export default function GenesisIndexPage() {
                 : "250,000";
 
               return (
-                <div className="bg-[#17395F] p-4 sm:p-3 md:p-4 flex flex-col relative border-2 border-[#FF8A7A]">
-                  <div className="flex items-center justify-center mb-2">
-                    <h2 className="font-bold text-white text-lg sm:text-sm md:text-base lg:text-lg text-center">
-                      Early Bird Bonus
+                <div className="bg-white p-4 sm:p-3 md:p-4 flex flex-col relative border border-[#1E4775]/10">
+                  <div className="flex items-center justify-center mb-2 gap-2">
+                    <GiftIcon className="w-5 h-5 sm:w-4 sm:h-4 md:w-5 md:h-5 text-[#1E4775] flex-shrink-0" />
+                    <h2 className="font-bold text-[#1E4775] text-lg sm:text-sm md:text-base lg:text-lg text-center">
+                      Early Deposit Bonus
                     </h2>
                   </div>
-                  <div className="flex-1 flex flex-col justify-between">
-                    <p className="text-sm sm:text-xs md:text-sm text-white/80 text-center mb-2">
-                      Earn a huge bonus for being one of our first depositors!
-                    </p>
-                    <div className="text-center">
-                      <div className="flex items-center justify-center">
-                        <span className="inline-flex items-center gap-0.5 sm:gap-0.5 md:gap-1 px-1.5 sm:px-1 md:px-2 py-1 bg-white text-[#1E4775] text-xs sm:text-[10px] md:text-xs font-mono w-fit">
-                          <span>100x</span>
-                          <Image
-                            src="/icons/marks.png"
-                            alt="Marks"
-                            width={24}
-                            height={24}
-                            className="flex-shrink-0 w-4 h-4 sm:w-3 sm:h-3 md:w-5 md:h-5"
-                          />
-                          <span>/$</span>
-                        </span>
+                  <div className="flex-1 flex flex-col justify-center">
+                    <div className="text-center space-y-1">
+                      <div className="inline-flex items-center gap-1 text-[#1E4775] text-sm sm:text-xs md:text-sm">
+                        <span className="font-bold">100</span>
+                        <Image
+                          src="/icons/marks.png"
+                          alt="Marks"
+                          width={20}
+                          height={20}
+                          className="flex-shrink-0 w-4 h-4 sm:w-3 sm:h-3 md:w-4 md:h-4"
+                        />
+                        <span>/ $ for depositing early!</span>
                       </div>
+                      <p className="text-[10px] sm:text-[9px] md:text-[10px] text-[#1E4775]/70 text-center">
+                        *applied at the end of maiden voyage
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -1420,7 +1396,7 @@ export default function GenesisIndexPage() {
               {/* Bonus at End of Genesis Marks Box */}
               <div className="bg-[#17395F] p-3 flex flex-col">
                 <div className="text-xs text-white/70 mb-0.5 text-center flex items-center justify-center gap-1">
-                  Bonus at End of Genesis
+                  Bonus at the end of Maiden Voyage
                   {anyInProcessing && (
                     <SimpleTooltip label="Bonus marks will be applied once processing is complete and tokens are claimable.">
                       <ClockIcon className="w-3 h-3 text-yellow-400 cursor-help" />
@@ -2989,8 +2965,8 @@ export default function GenesisIndexPage() {
                           : earlyBonusEligibleDepositUSDFromSubgraph; // Use subgraph value if no current deposit
                         
                         return (
-                          <div className="px-2 pt-1.5 pb-0 border-t border-[#1E4775]/10">
-                            <div>
+                          <div className="px-2 pt-2 pb-0 border-t border-[#1E4775]/10 -mb-1 mt-1.5">
+                            <div className="mb-0 -mt-1">
                               {/* Progress Bar - label, bar, amounts, and qualification on one line */}
                               <div className="flex items-center gap-2 flex-wrap">
                                 <span className="text-[10px] text-[#1E4775] font-semibold whitespace-nowrap">Early Deposit Bonus</span>
@@ -3010,8 +2986,8 @@ export default function GenesisIndexPage() {
                                 
                                 {/* User Qualification Status - on same line */}
                                 {userQualifies && earlyBonusEligibleUSD > 0 && (
-                                  <div className="bg-[#1E4775]/10 border border-[#1E4775]/20 px-1.5 py-0.25 whitespace-nowrap">
-                                    <span className="text-[10px] text-[#1E4775] font-semibold">
+                                  <div className="bg-[#1E4775]/10 border border-[#1E4775]/20 px-1.5 py-0 whitespace-nowrap">
+                                    <span className="text-[10px] text-[#1E4775] font-semibold leading-tight">
                                       ✓ {formatUSD(earlyBonusEligibleUSD)} qualified
                                     </span>
                                   </div>
