@@ -408,7 +408,7 @@ export default function AnchorPage() {
   }, [anchorMarkets]);
 
   // Fetch collateral prices from CoinGecko (for depeg detection and wrapped token prices)
-  const { prices: coinGeckoPrices, loading: coinGeckoLoading, error: coinGeckoError } = useCoinGeckoPrices(coinGeckoIds);
+  const { prices: coinGeckoPrices, isLoading: coinGeckoLoading, error: coinGeckoError } = useCoinGeckoPrices(coinGeckoIds);
 
   // Calculate USD prices using hook
   const {
