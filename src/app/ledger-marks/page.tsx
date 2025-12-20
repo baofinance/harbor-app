@@ -1082,21 +1082,28 @@ export default function LedgerMarksLeaderboard() {
  bonus at genesis end.
  </p>
  </div>
- <div className="flex items-start gap-2">
- <span className="text-white/70 mt-0.5">•</span>
- <p>
- <strong>Holding ha Tokens:</strong> Earn 1 mark per dollar
- per day for ha tokens in your wallet.
- </p>
- </div>
- <div className="flex items-start gap-2">
- <span className="text-white/70 mt-0.5">•</span>
- <p>
- <strong>Stability Pool Deposits:</strong> Earn 1 mark per
- dollar per day for deposits in Anchor or Sail stability
- pools.
- </p>
- </div>
+                <div className="flex items-start gap-2">
+                  <span className="text-white/70 mt-0.5">•</span>
+                  <p>
+                    <strong>Holding ha Tokens:</strong> Earn 1 mark per dollar
+                    per day for ha tokens in your wallet.
+                  </p>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="text-white/70 mt-0.5">•</span>
+                  <p>
+                    <strong>Holding Sail Tokens:</strong> Earn 1 mark per dollar
+                    per day for sail tokens in your wallet.
+                  </p>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="text-white/70 mt-0.5">•</span>
+                  <p>
+                    <strong>Stability Pool Deposits:</strong> Earn 1 mark per
+                    dollar per day for deposits in Anchor or Sail stability
+                    pools.
+                  </p>
+                </div>
  <div className="flex items-start gap-2">
  <span className="text-white/70 mt-0.5">•</span>
  <p>
