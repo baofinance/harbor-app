@@ -120,7 +120,7 @@ export const markets: Markets = {
     },
     genesis: {
       startDate: "2025-12-19T22:00:59Z", // From deployment timestamp
-      endDate: "2026-01-19T23:59:59Z", // ~1 month genesis period
+      endDate: "2025-12-30T20:00:00Z", // December 30th at 8pm GMT
       rewards: {
         pegged: {
           symbol: "haETH",
@@ -166,7 +166,7 @@ export const markets: Markets = {
     },
     genesis: {
       startDate: "2025-12-19T21:38:23Z", // From deployment timestamp
-      endDate: "2026-01-19T23:59:59Z", // ~1 month genesis period
+      endDate: "2025-12-30T20:00:00Z", // December 30th at 8pm GMT
       rewards: {
         pegged: {
           symbol: "haBTC",
@@ -212,7 +212,7 @@ export const markets: Markets = {
     },
     genesis: {
       startDate: "2025-12-19T21:17:47Z", // From deployment timestamp
-      endDate: "2026-01-19T23:59:59Z", // ~1 month genesis period
+      endDate: "2025-12-30T20:00:00Z", // December 30th at 8pm GMT
       rewards: {
         pegged: {
           symbol: "haBTC",
