@@ -4610,14 +4610,12 @@ export default function AnchorPage() {
                             
                             {/* Harvest Section for this market */}
                             {(marketData.market as any).addresses?.stabilityPoolManager && marketData.minterAddress && (
-                              <div className="bg-white p-3 mt-2 border border-[#1E4775]/10">
-                                <HarvestSection
-                                  minterAddress={marketData.minterAddress as `0x${string}`}
-                                  stabilityPoolManagerAddress={(marketData.market as any).addresses
-                                    ?.stabilityPoolManager as `0x${string}`}
-                                  wrappedCollateralSymbol={marketData.market.collateral?.symbol || "wstETH"}
-                                />
-                              </div>
+                              <HarvestSectionInline
+                                minterAddress={marketData.minterAddress as `0x${string}`}
+                                stabilityPoolManagerAddress={(marketData.market as any).addresses
+                                  ?.stabilityPoolManager as `0x${string}`}
+                                wrappedCollateralSymbol={marketData.market.collateral?.symbol || "wstETH"}
+                              />
                             )}
                             
                             </React.Fragment>
