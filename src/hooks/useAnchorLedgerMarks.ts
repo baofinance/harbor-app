@@ -215,6 +215,9 @@ export function useAnchorLedgerMarks({
         throw new Error("Address required");
       }
 
+      // Debug: Log which subgraph URL we're using
+      console.log("[useAnchorLedgerMarks] Using subgraph URL:", graphUrl);
+
       const queryVariables = {
         userAddress: address.toLowerCase(),
       };
@@ -259,16 +262,30 @@ export function useAnchorLedgerMarks({
       }
 
       // Debug logging to see what the subgraph returns
+      const userTotalMarks = result.data?.userTotalMarks;
       console.log("[useAnchorLedgerMarks] GraphQL response:", {
-        userTotalMarks: result.data?.userTotalMarks,
+        userTotalMarks: userTotalMarks ? {
+          haTokenMarks: userTotalMarks.haTokenMarks,
+          haTokenMarksNum: parseFloat(userTotalMarks.haTokenMarks || "0"),
+          stabilityPoolMarks: userTotalMarks.stabilityPoolMarks,
+          stabilityPoolMarksNum: parseFloat(userTotalMarks.stabilityPoolMarks || "0"),
+          totalMarks: userTotalMarks.totalMarks,
+          totalMarksNum: parseFloat(userTotalMarks.totalMarks || "0"),
+          totalMarksPerDay: userTotalMarks.totalMarksPerDay,
+          totalMarksPerDayNum: parseFloat(userTotalMarks.totalMarksPerDay || "0"),
+          lastUpdated: userTotalMarks.lastUpdated,
+        } : null,
         haTokenBalancesCount: result.data?.haTokenBalances?.length || 0,
         stabilityPoolDepositsCount: result.data?.stabilityPoolDeposits?.length || 0,
         sailTokenBalancesCount: result.data?.sailTokenBalances?.length || 0,
         haTokenBalances: result.data?.haTokenBalances?.map((b: any) => ({
           tokenAddress: b.tokenAddress,
           balance: b.balance,
+          balanceNum: parseFloat(b.balance || "0"),
           accumulatedMarks: b.accumulatedMarks,
+          accumulatedMarksNum: parseFloat(b.accumulatedMarks || "0"),
           marksPerDay: b.marksPerDay,
+          marksPerDayNum: parseFloat(b.marksPerDay || "0"),
         })),
       });
 

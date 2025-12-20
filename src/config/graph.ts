@@ -7,7 +7,7 @@ export const GRAPH_CONFIG = {
   marks: {
     url:
       process.env.NEXT_PUBLIC_GRAPH_URL ||
-      `https://gateway-arbitrum.network.thegraph.com/api/${GRAPH_API_KEY}/subgraphs/id/DRLGm3gfh4RNxYjjv9YyMKXoK3bnQN2w1YkZ48U3Lqti`,
+      `https://gateway.thegraph.com/api/subgraphs/id/6XgXZkgr2SL1UWeriY6MsJV9aB2BUfemtMbsfuRq6uP1`,
     chainId: 1,
     network: "mainnet",
   },
@@ -15,7 +15,7 @@ export const GRAPH_CONFIG = {
   sailPrice: {
     url:
       process.env.NEXT_PUBLIC_SAIL_PRICE_GRAPH_URL ||
-      `https://gateway-arbitrum.network.thegraph.com/api/${GRAPH_API_KEY}/subgraphs/id/DRLGm3gfh4RNxYjjv9YyMKXoK3bnQN2w1YkZ48U3Lqti`,
+      `https://gateway.thegraph.com/api/subgraphs/id/6XgXZkgr2SL1UWeriY6MsJV9aB2BUfemtMbsfuRq6uP1`,
     chainId: 1,
     network: "mainnet",
   },
@@ -23,7 +23,7 @@ export const GRAPH_CONFIG = {
   production: {
     url:
       process.env.NEXT_PUBLIC_GRAPH_URL ||
-      `https://gateway-arbitrum.network.thegraph.com/api/${GRAPH_API_KEY}/subgraphs/id/DRLGm3gfh4RNxYjjv9YyMKXoK3bnQN2w1YkZ48U3Lqti`,
+      `https://gateway.thegraph.com/api/subgraphs/id/6XgXZkgr2SL1UWeriY6MsJV9aB2BUfemtMbsfuRq6uP1`,
     chainId: 1,
     network: "mainnet",
   },
@@ -69,7 +69,13 @@ export const getGraphHeaders = (): Record<string, string> => {
   const graphApiKey = process.env.NEXT_PUBLIC_GRAPH_API_KEY || GRAPH_API_KEY;
   
   // Check if URL is a Graph Network gateway (requires auth)
-  if (graphUrl.includes("gateway.thegraph.com") || graphUrl.includes("gateway-arbitrum.network.thegraph.com")) {
+  // gateway.thegraph.com uses Bearer token in Authorization header
+  // gateway-arbitrum.network.thegraph.com uses API key in URL path
+  if (graphUrl.includes("gateway.thegraph.com")) {
+    headers["Authorization"] = `Bearer ${graphApiKey}`;
+  } else if (graphUrl.includes("gateway-arbitrum.network.thegraph.com")) {
+    // API key is already in the URL path for this gateway
+    // But we can also add it as Authorization header for extra security
     headers["Authorization"] = `Bearer ${graphApiKey}`;
   }
   
