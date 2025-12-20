@@ -28,20 +28,6 @@ export function useAnchorMarks(
     userTotalMarks,
   } = useAnchorLedgerMarks({ enabled: true }); // Enable subgraph queries
 
-  // Debug logging
-  useEffect(() => {
-    console.log("[useAnchorMarks] Data received:", {
-      haBalances: haBalances?.length || 0,
-      poolDeposits: poolDeposits?.length || 0,
-      sailBalances: sailBalances?.length || 0,
-      userTotalMarks,
-      isLoadingAnchorMarks,
-      anchorLedgerMarksError,
-      haBalancesData: haBalances,
-      poolDepositsData: poolDeposits,
-    });
-  }, [haBalances, poolDeposits, sailBalances, userTotalMarks, isLoadingAnchorMarks, anchorLedgerMarksError]);
-
   // Calculate sail marks per day
   const sailMarksPerDay = useMemo(() => {
     if (!sailBalances) return 0;
@@ -61,26 +47,42 @@ export function useAnchorMarks(
 
   // Update marks state whenever arrays change (they update every second via currentTime in the hook)
   useEffect(() => {
+    console.log("[useAnchorMarks] Calculating total marks:", {
+      haBalancesLength: haBalances?.length || 0,
+      poolDepositsLength: poolDeposits?.length || 0,
+      haBalances: haBalances,
+      poolDeposits: poolDeposits,
+      userTotalMarks: userTotalMarks,
+    });
+    
     // Recalculate total marks directly from arrays (which update every second)
     let totalMarks = 0;
+    let marksFromHa = 0;
+    let marksFromPools = 0;
+    let marksFromUserTotal = 0;
     
     // If we have individual entity data, use it (more accurate, real-time)
     if (haBalances && haBalances.length > 0) {
       haBalances.forEach((balance) => {
-        totalMarks += balance.estimatedMarks;
+        marksFromHa += balance.estimatedMarks;
       });
+      totalMarks += marksFromHa;
+      console.log("[useAnchorMarks] Marks from haBalances:", marksFromHa, haBalances);
     }
     if (poolDeposits && poolDeposits.length > 0) {
       poolDeposits.forEach((deposit) => {
-        totalMarks += deposit.estimatedMarks;
+        marksFromPools += deposit.estimatedMarks;
       });
+      totalMarks += marksFromPools;
+      console.log("[useAnchorMarks] Marks from poolDeposits:", marksFromPools, poolDeposits);
     }
     
     // Fallback to userTotalMarks if individual entities are empty but we have aggregated data
     if (totalMarks === 0 && userTotalMarks) {
       const haTokenMarks = parseFloat(userTotalMarks.haTokenMarks || "0");
       const stabilityPoolMarks = parseFloat(userTotalMarks.stabilityPoolMarks || "0");
-      totalMarks = haTokenMarks + stabilityPoolMarks;
+      marksFromUserTotal = haTokenMarks + stabilityPoolMarks;
+      totalMarks = marksFromUserTotal;
       
       // If we have a lastUpdated timestamp, estimate additional marks since then
       const lastUpdated = parseInt(userTotalMarks.lastUpdated || "0");
@@ -90,15 +92,46 @@ export function useAnchorMarks(
         const secondsSinceUpdate = currentTime - lastUpdated;
         if (secondsSinceUpdate > 0) {
           const daysSinceUpdate = secondsSinceUpdate / 86400;
-          totalMarks += totalMarksPerDay * daysSinceUpdate;
+          const additionalMarks = totalMarksPerDay * daysSinceUpdate;
+          totalMarks += additionalMarks;
+          console.log("[useAnchorMarks] Additional marks from time elapsed:", {
+            lastUpdated,
+            currentTime,
+            secondsSinceUpdate,
+            daysSinceUpdate,
+            totalMarksPerDay,
+            additionalMarks,
+          });
         }
       }
+      console.log("[useAnchorMarks] Marks from userTotalMarks:", {
+        haTokenMarks,
+        stabilityPoolMarks,
+        marksFromUserTotal,
+        finalTotalMarks: totalMarks,
+      });
     }
+
+    console.log("[useAnchorMarks] Final total marks calculation:", {
+      marksFromHa,
+      marksFromPools,
+      marksFromUserTotal,
+      totalMarks,
+    });
 
     setTotalAnchorMarksState(totalMarks);
   }, [haBalances, poolDeposits, userTotalMarks]);
 
   const { totalAnchorMarks, totalAnchorMarksPerDay } = useMemo(() => {
+    console.log("[useAnchorMarks] Calculating marks per day:", {
+      totalAnchorMarksState,
+      haBalancesLength: haBalances?.length || 0,
+      poolDepositsLength: poolDeposits?.length || 0,
+      userTotalMarks: userTotalMarks,
+      allMarketContractsLength: allMarketContracts?.length || 0,
+      readsLength: reads?.length || 0,
+    });
+    
     const totalMarks = totalAnchorMarksState;
     let totalPerDay = 0;
 
@@ -135,7 +168,7 @@ export function useAnchorMarks(
     }
 
     // Add ha token marks - recalculate marksPerDay using actual peggedTokenPrice
-    if (haBalances) {
+    if (haBalances && haBalances.length > 0) {
       haBalances.forEach((balance) => {
         // Recalculate marksPerDay using actual peggedTokenPrice
         const peggedTokenPrice = tokenToPriceMap.get(
@@ -148,12 +181,25 @@ export function useAnchorMarks(
           const balanceNum = parseFloat(balance.balance);
           const balanceUSD = balanceNum * peggedPriceUSD;
           // 1 mark per dollar per day
-          totalPerDay += balanceUSD;
+          perDayFromHaBalances += balanceUSD;
+          console.log("[useAnchorMarks] haBalance marksPerDay calculation:", {
+            tokenAddress: balance.tokenAddress,
+            balance: balance.balance,
+            peggedTokenPrice: peggedTokenPrice.toString(),
+            peggedPriceUSD,
+            balanceUSD,
+            marksPerDay: balanceUSD,
+          });
         } else {
           // Fallback to subgraph value if we can't find the price
-          totalPerDay += balance.marksPerDay;
+          perDayFromHaBalances += balance.marksPerDay;
+          console.log("[useAnchorMarks] haBalance using subgraph marksPerDay:", {
+            tokenAddress: balance.tokenAddress,
+            marksPerDay: balance.marksPerDay,
+          });
         }
       });
+      totalPerDay += perDayFromHaBalances;
     }
 
     // Add stability pool marks - recalculate marksPerDay using actual peggedTokenPrice
@@ -198,6 +244,12 @@ export function useAnchorMarks(
       });
     }
 
+    console.log("[useAnchorMarks] Final calculation result:", {
+      totalAnchorMarks: totalMarks,
+      totalAnchorMarksPerDay: totalPerDay,
+      usedFallback: totalMarks === 0 && userTotalMarks !== null,
+    });
+    
     return {
       totalAnchorMarks: totalMarks,
       totalAnchorMarksPerDay: totalPerDay,

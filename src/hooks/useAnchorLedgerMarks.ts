@@ -146,7 +146,7 @@ function calculateEstimatedMarks(entity: MarksEntity, currentTime?: number): num
   const result = Math.max(estimated, storedMarks);
   
   if (process.env.NODE_ENV === "development" && result < storedMarks) {
-    console.warn("[calculateEstimatedMarks] Estimated marks less than stored, using stored", {
+    // Estimated marks less than stored, using stored
       storedMarks,
       estimated,
       result,
@@ -191,7 +191,6 @@ export function useAnchorLedgerMarks({
           const systemTime = Math.floor(Date.now() / 1000);
           setCurrentTime(systemTime);
           if (process.env.NODE_ENV === "development") {
-            console.error("[useAnchorLedgerMarks] Failed to get block, using system time", error);
           }
         }
       } else {
@@ -199,7 +198,6 @@ export function useAnchorLedgerMarks({
         const systemTime = Math.floor(Date.now() / 1000);
         setCurrentTime(systemTime);
         if (process.env.NODE_ENV === "development") {
-          console.warn("[useAnchorLedgerMarks] No publicClient, using system time");
         }
       }
     };
@@ -230,16 +228,6 @@ export function useAnchorLedgerMarks({
         query: ANCHOR_LEDGER_MARKS_QUERY,
         variables: queryVariables,
       };
-
-      console.log("[useAnchorLedgerMarks] Fetching marks:", {
-        address,
-        addressLowercase: address.toLowerCase(),
-        graphUrl,
-        enabled,
-        isConnected,
-        query: ANCHOR_LEDGER_MARKS_QUERY,
-        variables: queryVariables,
-      });
 
       const response = await fetch(graphUrl, {
         method: "POST",
@@ -273,130 +261,6 @@ export function useAnchorLedgerMarks({
           stabilityPoolDeposits: [],
           sailTokenBalances: [],
         };
-      }
-
-      // Debug logging
-      console.log("[useAnchorLedgerMarks] GraphQL response:", {
-        address,
-        addressLowercase: address.toLowerCase(),
-        graphUrl,
-        userTotalMarks: result.data?.userTotalMarks,
-        haTokenBalances: result.data?.haTokenBalances?.length || 0,
-        stabilityPoolDeposits: result.data?.stabilityPoolDeposits?.length || 0,
-        sailTokenBalances: result.data?.sailTokenBalances?.length || 0,
-        haTokenBalancesData: result.data?.haTokenBalances,
-        stabilityPoolDepositsData: result.data?.stabilityPoolDeposits,
-        sailTokenBalancesData: result.data?.sailTokenBalances,
-        fullData: result.data,
-      });
-
-      // Test query: Check if subgraph has ANY data at all (first 5 entries)
-      if (process.env.NODE_ENV === "development") {
-        try {
-          const testQuery = `
-            query TestSubgraphData {
-              haTokenBalances(first: 5) {
-                id
-                user
-                tokenAddress
-                balance
-                balanceUSD
-              }
-              stabilityPoolDeposits(first: 5) {
-                id
-                user
-                poolAddress
-                poolType
-                balance
-                balanceUSD
-              }
-              sailTokenBalances(first: 5) {
-                id
-                user
-                tokenAddress
-                balance
-                balanceUSD
-              }
-              _meta {
-                block {
-                  number
-                  hash
-                }
-                deployment
-                hasIndexingErrors
-              }
-            }
-          `;
-          
-          const testResponse = await fetch(graphUrl, {
-            method: "POST",
-            headers: getGraphHeaders(),
-            body: JSON.stringify({ query: testQuery }),
-          });
-          
-          if (testResponse.ok) {
-            const testResult = await testResponse.json();
-            console.log("[useAnchorLedgerMarks] Subgraph test query (first 5 entries):", {
-              haTokenBalancesCount: testResult.data?.haTokenBalances?.length || 0,
-              stabilityPoolDepositsCount: testResult.data?.stabilityPoolDeposits?.length || 0,
-              sailTokenBalancesCount: testResult.data?.sailTokenBalances?.length || 0,
-              sampleHaTokens: testResult.data?.haTokenBalances,
-              sampleDeposits: testResult.data?.stabilityPoolDeposits,
-              sampleSailTokens: testResult.data?.sailTokenBalances,
-              syncStatus: testResult.data?._meta,
-              errors: testResult.errors,
-            });
-            
-            // If we have data, check if any match our address
-            if (testResult.data) {
-              const allUsers = new Set<string>();
-              testResult.data.haTokenBalances?.forEach((b: any) => allUsers.add(b.user?.toLowerCase()));
-              testResult.data.stabilityPoolDeposits?.forEach((d: any) => allUsers.add(d.user?.toLowerCase()));
-              testResult.data.sailTokenBalances?.forEach((b: any) => allUsers.add(b.user?.toLowerCase()));
-              
-              console.log("[useAnchorLedgerMarks] Address comparison:", {
-                ourAddress: address.toLowerCase(),
-                addressesInSubgraph: Array.from(allUsers),
-                matchesOurAddress: Array.from(allUsers).includes(address.toLowerCase()),
-              });
-              
-              // Log sync status
-              if (testResult.data._meta) {
-                console.log("[useAnchorLedgerMarks] Subgraph sync status:", {
-                  currentBlock: testResult.data._meta.block?.number,
-                  hasIndexingErrors: testResult.data._meta.hasIndexingErrors,
-                  deployment: testResult.data._meta.deployment,
-                });
-                
-                // Check if subgraph is synced to a recent block
-                const currentBlock = testResult.data._meta.block?.number;
-                if (currentBlock) {
-                  // Get current block from chain to compare
-                  publicClient?.getBlock({ blockTag: "latest" }).then((latestBlock) => {
-                    const blocksBehind = latestBlock.number - BigInt(currentBlock);
-                    console.log("[useAnchorLedgerMarks] Subgraph sync comparison:", {
-                      subgraphBlock: currentBlock,
-                      chainBlock: latestBlock.number.toString(),
-                      blocksBehind: blocksBehind.toString(),
-                      isSynced: blocksBehind < 100n, // Consider synced if within 100 blocks
-                    });
-                  }).catch((err) => {
-                    console.warn("[useAnchorLedgerMarks] Failed to get latest block:", err);
-                  });
-                }
-              }
-            }
-          } else {
-            const errorText = await testResponse.text();
-            console.error("[useAnchorLedgerMarks] Test query HTTP error:", {
-              status: testResponse.status,
-              statusText: testResponse.statusText,
-              body: errorText,
-            });
-          }
-        } catch (testError) {
-          console.warn("[useAnchorLedgerMarks] Test query failed:", testError);
-        }
       }
 
       return result.data || { 
@@ -571,26 +435,32 @@ export function useAnchorLedgerMarks({
   // Extract userTotalMarks from data
   const userTotalMarks = data?.userTotalMarks || null;
 
-  // Debug logging
-  useEffect(() => {
-    console.log("[useAnchorLedgerMarks] Hook return values:", {
-      haBalancesCount: haBalances?.length || 0,
-      poolDepositsCount: poolDeposits?.length || 0,
-      sailBalancesCount: sailBalances?.length || 0,
-      estimatedMarks,
-      marksPerDay,
-      userTotalMarks: userTotalMarks ? {
-        haTokenMarks: userTotalMarks.haTokenMarks,
-        sailTokenMarks: userTotalMarks.sailTokenMarks,
-        stabilityPoolMarks: userTotalMarks.stabilityPoolMarks,
-        totalMarks: userTotalMarks.totalMarks,
-        totalMarksPerDay: userTotalMarks.totalMarksPerDay,
-        lastUpdated: userTotalMarks.lastUpdated,
-      } : null,
-      isLoading,
-      error: error?.message || null,
-    });
-  }, [haBalances, poolDeposits, sailBalances, estimatedMarks, marksPerDay, userTotalMarks, isLoading, error]);
+  return {
+    haBalances,
+    poolDeposits,
+    sailBalances,
+    estimatedMarks, // Live counter - updates every second
+    marksPerDay, // Current earning rate
+    loading: isLoading,
+    error,
+    userTotalMarks, // Aggregated marks from subgraph (fallback when individual entities are empty)
+  };
+}
+
+// Export the calculation function for use in leaderboard
+export { calculateEstimatedMarks };
+
+
+
+      return total;
+    };
+
+    // Calculate total from formatted arrays (which update every second)
+    setEstimatedMarks(calculateTotal());
+  }, [haBalances, poolDeposits, sailBalances, currentTime]);
+
+  // Extract userTotalMarks from data
+  const userTotalMarks = data?.userTotalMarks || null;
 
   return {
     haBalances,
