@@ -4062,7 +4062,7 @@ export default function AnchorPage() {
                             coinGeckoReturnedPrice &&
                             marketCoinGeckoId &&
                             ((marketCoinGeckoId.toLowerCase() === "wrapped-steth" && isWstETH) ||
-                              ((marketCoinGeckoId.toLowerCase() === "fx-saving-usd" || marketCoinGeckoId.toLowerCase() === "fxsave") && isFxSAVE));
+                              ((marketCoinGeckoId.toLowerCase() === "fx-usd-saving" || marketCoinGeckoId.toLowerCase() === "fxsave") && isFxSAVE));
                           
                           // Fallback: Use stETH price from CoinGecko if wstETH price isn't available yet
                           const stETHPrice = coinGeckoPrices?.["lido-staked-ethereum-steth"];
@@ -4093,6 +4093,9 @@ export default function AnchorPage() {
                           } else if (coinGeckoLoading && marketCoinGeckoId) {
                             // Still loading CoinGecko, don't use fallback price yet
                             wrappedTokenPriceUSD = 0;
+                          } else if (isFxSAVE) {
+                            // Hardcoded fallback for fxSAVE if everything fails
+                            wrappedTokenPriceUSD = 1.07;
                           } else if (underlyingPriceUSD > 0) {
                             // Fallback to underlying price if no wrapped rate
                             wrappedTokenPriceUSD = underlyingPriceUSD;

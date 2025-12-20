@@ -587,7 +587,7 @@ function SailMarketExpandedView({
 
   // Get CoinGecko prices for fxUSD markets fallback
   const { price: fxSAVEPrice, isLoading: isFxSAVEPriceLoading } =
-    useCoinGeckoPrice("fx-saving-usd");
+    useCoinGeckoPrice("fx-usd-saving");
   const { price: usdcPrice, isLoading: isUSDCPriceLoading } =
     useCoinGeckoPrice("usd-coin");
 

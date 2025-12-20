@@ -541,6 +541,7 @@ const allowanceTarget = (useETHZap || useUSDCZap) && genesisZapAddress ? genesis
 const allowance = isNativeETH ? 0n : (typeof allowanceData === 'bigint' ? allowanceData : 0n);
 // USDC uses 6 decimals, other tokens use 18 decimals
 // Parse amount with correct decimals: USDC uses 6, others use 18
+const selectedTokenDecimals = isUSDC ? 6 : (isNativeETH ? 18 : tokenDecimals);
 const amountBigInt = amount 
   ? parseUnits(amount, selectedTokenDecimals)
   : 0n;

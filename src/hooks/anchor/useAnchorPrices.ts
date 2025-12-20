@@ -21,7 +21,7 @@ export function useAnchorPrices(
 ) {
   // Fetch CoinGecko prices
   const { price: fxUSDPrice } = useCoinGeckoPrice("f-x-protocol-fxusd");
-  const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-saving-usd");
+  const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving");
   const { price: usdcPrice } = useCoinGeckoPrice("usd-coin");
   const { price: ethPriceCoinGecko } = useCoinGeckoPrice("ethereum");
   const { price: btcPriceCoinGecko } = useCoinGeckoPrice("bitcoin", 120000);
