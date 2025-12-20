@@ -83,7 +83,9 @@ function getWrappedTokenPriceUSD(genesisAddress: Bytes, block: ethereum.Block): 
   const isWstETHMarket = genesisAddressStr == "0x9ae0b57ceada0056dbe21edcd638476fcba3ccc0";
   
   if (isFxUSDMarket) {
-    // For fxUSD markets: hardcode underlying price to $1.00, then multiply by wrapped rate
+    // For fxUSD markets: fxSAVE price should be calculated from fxUSD ($1.00) * wrapped rate
+    // However, if the wrapped rate is 1.0 or invalid, use the fallback price directly
+    // The wrapped rate should be around 1.07 (meaning 1 fxSAVE = 1.07 fxUSD)
     const underlyingPriceUSD = BigDecimal.fromString("1.0"); // fxUSD = $1.00 (hardcoded)
     
     // Get wrapped rate from oracle
@@ -105,12 +107,23 @@ function getWrappedTokenPriceUSD(genesisAddress: Bytes, block: ethereum.Block): 
     const maxWrappedRate = result.value.value3; // maxWrappedRate (e.g., fxSAVE rate = 1.07)
     const wrappedRate = maxWrappedRate.toBigDecimal().div(E18);
     
+    // Check if wrapped rate is valid and reasonable (should be > 1.0 for fxSAVE)
+    // If rate is 1.0 or less, it means 1 fxSAVE = 1 fxUSD, which is incorrect
+    // Use fallback price if rate seems invalid
+    if (wrappedRate.le(BigDecimal.fromString("1.0"))) {
+      // Wrapped rate is 1.0 or less, which would give us $1.00 for fxSAVE
+      // This is incorrect - use fallback price instead
+      return getFallbackPrice(genesisAddressStr);
+    }
+    
     // Calculate wrapped token price: $1.00 * wrapped rate
     // Example: fxSAVE = $1.00 * 1.07 = $1.07
     const wrappedTokenPriceUSD = underlyingPriceUSD.times(wrappedRate);
     
-    // Ensure we have a valid price
-    if (wrappedTokenPriceUSD.le(BigDecimal.fromString("0"))) {
+    // Ensure we have a valid price (should be > $1.00 for fxSAVE)
+    if (wrappedTokenPriceUSD.le(BigDecimal.fromString("1.0"))) {
+      // Price is $1.00 or less, which is incorrect for fxSAVE
+      // Use fallback price instead
       return getFallbackPrice(genesisAddressStr);
     }
     
