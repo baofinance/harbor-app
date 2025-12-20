@@ -445,6 +445,3 @@ export function useAnchorLedgerMarks({
 // Export the calculation function for use in leaderboard
 export { calculateEstimatedMarks };
 
-// Export the calculation function for use in leaderboard
-export { calculateEstimatedMarks };
-
