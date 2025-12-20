@@ -445,30 +445,6 @@ export function useAnchorLedgerMarks({
 // Export the calculation function for use in leaderboard
 export { calculateEstimatedMarks };
 
-
-
-      return total;
-    };
-
-    // Calculate total from formatted arrays (which update every second)
-    setEstimatedMarks(calculateTotal());
-  }, [haBalances, poolDeposits, sailBalances, currentTime]);
-
-  // Extract userTotalMarks from data
-  const userTotalMarks = data?.userTotalMarks || null;
-
-  return {
-    haBalances,
-    poolDeposits,
-    sailBalances,
-    estimatedMarks, // Live counter - updates every second
-    marksPerDay, // Current earning rate
-    loading: isLoading,
-    error,
-    userTotalMarks, // Aggregated marks from subgraph (fallback when individual entities are empty)
-  };
-}
-
 // Export the calculation function for use in leaderboard
 export { calculateEstimatedMarks };
 
