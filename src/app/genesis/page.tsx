@@ -1948,7 +1948,7 @@ export default function GenesisIndexPage() {
                     {activeHeader}
                     {endedHeader}
                     <div
-                      className={`py-1.5 px-2 overflow-x-auto overflow-y-visible transition cursor-pointer ${
+                      className={`py-2.5 px-2 overflow-x-auto overflow-y-visible transition cursor-pointer ${
                         isExpanded
                           ? "bg-[rgb(var(--surface-selected-rgb))]"
                           : "bg-white hover:bg-[rgb(var(--surface-selected-rgb))]"
@@ -2826,7 +2826,7 @@ export default function GenesisIndexPage() {
                           </div>
                         )}
                         <div
-                          className="text-center min-w-0 pb-2"
+                          className="text-center min-w-0 flex items-center justify-center pb-1"
                           onClick={(e) => e.stopPropagation()}
                         >
                           {isEnded ? (
@@ -2970,7 +2970,7 @@ export default function GenesisIndexPage() {
                           : earlyBonusEligibleDepositUSDFromSubgraph; // Use subgraph value if no current deposit
                         
                         return (
-                          <div className="px-2 pt-2.5 pb-1.5 border-t border-[#1E4775]/10 -mb-1 mt-1">
+                          <div className="px-2 pt-2.5 pb-0.5 border-t border-[#1E4775]/10 -mb-1 mt-1">
                             <div className="mb-0 -mt-1">
                               {/* Progress Bar - label, bar, amounts, and qualification on one line */}
                               <div className="flex items-center gap-2 flex-wrap">
@@ -2991,11 +2991,9 @@ export default function GenesisIndexPage() {
                                 
                                 {/* User Qualification Status - on same line */}
                                 {userQualifies && earlyBonusEligibleUSD > 0 && (
-                                  <div className="bg-[#1E4775]/10 border border-[#1E4775]/20 px-1.5 py-0 whitespace-nowrap">
-                                    <span className="text-[10px] text-[#1E4775] font-semibold leading-tight">
-                                      ✓ {formatUSD(earlyBonusEligibleUSD)} qualified
-                                    </span>
-                                  </div>
+                                  <span className="text-[10px] text-[#1E4775] font-semibold leading-none whitespace-nowrap">
+                                    ✓ {formatUSD(earlyBonusEligibleUSD)} qualified
+                                  </span>
                                 )}
                               </div>
                             </div>

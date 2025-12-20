@@ -6191,7 +6191,7 @@ export const AnchorDepositWithdrawModal = ({
                             }
                           }}
                           disabled={isProcessing}
-                          className="w-full px-4 py-3 bg-white text-[#1E4775] border-2 border-[#1E4775]/30 focus:border-[#1E4775] focus:ring-2 focus:ring-[#1E4775]/20 focus:outline-none text-base"
+                          className="w-full px-3 py-2 bg-white text-[#1E4775] border border-[#1E4775]/20 focus:border-[#1E4775]/40 focus:ring-1 focus:ring-[#1E4775]/20 focus:outline-none text-sm transition-all"
                         >
                           {(() => {
                             const nativeAssets = depositAssetsWithFees.filter(a => !a.isUserToken);
@@ -8007,7 +8007,7 @@ export const AnchorDepositWithdrawModal = ({
                         value={amount}
                         onChange={handleAmountChange}
                         placeholder="0.0"
-                        className={`w-full h-12 px-4 pr-20 bg-white text-[#1E4775] border ${
+                        className={`w-full px-3 pr-20 py-2 bg-white text-[#1E4775] border ${
                           error ? "border-red-500" : "border-[#1E4775]/30"
                         } focus:border-[#1E4775] focus:ring-2 focus:ring-[#1E4775]/20 focus:outline-none transition-all text-lg font-mono`}
                         disabled={isProcessing}

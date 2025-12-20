@@ -3356,9 +3356,9 @@ export default function AnchorPage() {
                                       {asset.name}
                                     </div>
                                     <div className="text-xs opacity-90">
-                                      Collateral is owned by the market and
+                                          Collateral is owned by the market and
                                       your position is swapped for{" "}
-                                      {peggedTokenSymbol || "haTOKENS"}.
+                                          {peggedTokenSymbol || "haTOKENS"}.
                                     </div>
                                   </div>
                                 }
@@ -4012,7 +4012,7 @@ export default function AnchorPage() {
                           const collateralPriceData = collateralPriceOracleAddress
                             ? collateralPricesMap.get(collateralPriceOracleAddress.toLowerCase())
                             : undefined;
-                          
+
                           // Get underlying price from hook (this is the underlying token price, e.g., fxUSD or stETH)
                           // NOTE: The oracle returns price in peg token units (ETH or BTC), not USD
                           let underlyingPriceUSD = collateralPriceData?.priceUSD || 0;
@@ -4291,12 +4291,12 @@ export default function AnchorPage() {
                                             ? `$${collateralValueUSD < 100
                                                 ? collateralValueUSD.toFixed(2)
                                                 : collateralValueUSD.toLocaleString(
-                                                    undefined,
-                                                    {
-                                                      minimumFractionDigits: 0,
-                                                      maximumFractionDigits: 0,
-                                                    }
-                                                  )}`
+                                                undefined,
+                                                {
+                                                  minimumFractionDigits: 0,
+                                                  maximumFractionDigits: 0,
+                                                }
+                                              )}`
                                             : collateralValueUSD === 0
                                             ? "$0.00"
                                             : "-"}

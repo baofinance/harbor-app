@@ -240,7 +240,7 @@ export const TransactionProgressModal = ({
  </div>
 
  <div className="p-6">
- <div className="space-y-4">
+ <div className="space-y-2">
  {steps.map((step, index) => {
  const isActive = index === currentStepIndex;
  const isCompleted = step.status ==="completed";
@@ -248,7 +248,7 @@ export const TransactionProgressModal = ({
  const isPending = step.status ==="pending";
 
  return (
- <div key={step.id} className="flex items-start gap-4">
+ <div key={step.id} className="flex items-start gap-2">
  {/* Status Icon */}
  <div className="flex-shrink-0 mt-0.5">
  {isCompleted ? (
@@ -390,45 +390,8 @@ export const TransactionProgressModal = ({
  </div>
  )}
 
- {allCompleted && steps.some((s) => s.txHash) && (
- <div className="mt-4 space-y-2">
- <div className="text-sm font-semibold text-[#1E4775]">
- Transactions
- </div>
- {steps
- .filter((s) => s.txHash)
- .map((s) => (
- <div
- key={s.id}
- className="text-xs text-[#1E4775]/80 flex items-center gap-2"
- >
- <span className="font-medium">{s.label}:</span>
- <a
- href={`https://etherscan.io/tx/${s.txHash}`}
- target="_blank"
- rel="noopener noreferrer"
- className="underline hover:text-[#1E4775]"
- >
- {s.txHash?.slice(0, 10)}...{s.txHash?.slice(-8)}
- </a>
- </div>
- ))}
- </div>
- )}
-
  {allCompleted && renderSuccessContent && (
  <div className="mt-6">{renderSuccessContent()}</div>
- )}
-
- {allCompleted && (
- <div className="mt-6 flex justify-end">
- <button
- onClick={onClose}
- className="px-4 py-2 text-sm font-medium bg-[#1E4775] text-white rounded-full hover:bg-[#17395F] transition-colors"
- >
- Close
- </button>
- </div>
  )}
 
  {/* Cancel button - only show if canCancel is true and not all steps are completed */}
