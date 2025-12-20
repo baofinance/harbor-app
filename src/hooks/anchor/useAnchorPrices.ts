@@ -24,11 +24,26 @@ export function useAnchorPrices(
   const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-saving-usd");
   const { price: usdcPrice } = useCoinGeckoPrice("usd-coin");
   const { price: ethPriceCoinGecko } = useCoinGeckoPrice("ethereum");
-  const { price: btcPrice } = useCoinGeckoPrice("bitcoin", 120000);
+  const { price: btcPriceCoinGecko } = useCoinGeckoPrice("bitcoin", 120000);
 
   // Fetch Chainlink ETH/USD as fallback
   const { data: chainlinkEthPriceData } = useContractRead({
     address: CHAINLINK_ETH_USD_ORACLE,
+    abi: CHAINLINK_ORACLE_ABI,
+    functionName: "latestAnswer",
+    query: {
+      enabled: true,
+      staleTime: 60_000, // 1 minute - Chainlink updates less frequently
+      gcTime: 300_000, // 5 minutes
+    },
+  });
+
+  // Chainlink BTC/USD Oracle on Mainnet
+  const CHAINLINK_BTC_USD_ORACLE = "0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c" as `0x${string}`;
+
+  // Fetch Chainlink BTC/USD as fallback
+  const { data: chainlinkBtcPriceData } = useContractRead({
+    address: CHAINLINK_BTC_USD_ORACLE,
     abi: CHAINLINK_ORACLE_ABI,
     functionName: "latestAnswer",
     query: {
@@ -46,6 +61,14 @@ export function useAnchorPrices(
     return price > 0 ? price : null;
   }, [chainlinkEthPriceData]);
 
+  // Calculate Chainlink BTC price in USD (8 decimals)
+  const chainlinkBtcPrice = useMemo(() => {
+    if (!chainlinkBtcPriceData) return null;
+    // Chainlink BTC/USD uses 8 decimals
+    const price = Number(chainlinkBtcPriceData as bigint) / 1e8;
+    return price > 0 ? price : null;
+  }, [chainlinkBtcPriceData]);
+
   // Use Chainlink as fallback if CoinGecko fails or returns 0
   // This ensures position USD values are calculated even when CoinGecko is down
   const ethPrice = useMemo(() => {
@@ -59,6 +82,19 @@ export function useAnchorPrices(
     console.warn(`[useAnchorPrices] Both CoinGecko and Chainlink ETH prices unavailable`);
     return null;
   }, [ethPriceCoinGecko, chainlinkEthPrice]);
+
+  // Use Chainlink as fallback if CoinGecko fails or returns 0
+  const btcPrice = useMemo(() => {
+    if (btcPriceCoinGecko && btcPriceCoinGecko > 0) {
+      return btcPriceCoinGecko;
+    }
+    if (chainlinkBtcPrice && chainlinkBtcPrice > 0) {
+      console.log(`[useAnchorPrices] CoinGecko BTC price unavailable (${btcPriceCoinGecko}), using Chainlink fallback: $${chainlinkBtcPrice}`);
+      return chainlinkBtcPrice;
+    }
+    console.warn(`[useAnchorPrices] Both CoinGecko and Chainlink BTC prices unavailable`);
+    return null;
+  }, [btcPriceCoinGecko, chainlinkBtcPrice]);
 
   // Build USD price map for useMarketPositions (peggedTokenPrice * collateralPriceUSD)
   const peggedPriceUSDMap = useMemo(() => {
