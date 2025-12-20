@@ -377,6 +377,16 @@ export const STABILITY_POOL_MANAGER_ABI = [
     type: "function",
   },
   {
+    inputs: [
+      { name: "bountyReceiver", type: "address" },
+      { name: "minBounty", type: "uint256" },
+    ],
+    name: "harvest",
+    outputs: [{ name: "harvestedAmount", type: "uint256" }],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
     inputs: [],
     name: "rebalanceThreshold",
     outputs: [{ type: "uint256", name: "" }],

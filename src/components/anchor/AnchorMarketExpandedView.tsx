@@ -4,6 +4,8 @@ import React, { useMemo } from "react";
 import SimpleTooltip from "@/components/SimpleTooltip";
 import { EtherscanLink as SharedEtherscanLink } from "@/components/shared";
 import { useStabilityPoolRewards } from "@/hooks/useStabilityPoolRewards";
+import { useHarvest } from "@/hooks/useHarvest";
+import { useHarvestAction } from "@/hooks/useHarvestAction";
 import {
   formatRatio,
   formatAPR,
@@ -11,6 +13,181 @@ import {
   calculateVolatilityProtection,
 } from "@/utils/anchor";
 import { formatToken } from "@/utils/formatters";
+
+// Harvest Section Component
+function HarvestSection({
+  minterAddress,
+  stabilityPoolManagerAddress,
+  wrappedCollateralSymbol,
+}: {
+  minterAddress: `0x${string}`;
+  stabilityPoolManagerAddress: `0x${string}`;
+  wrappedCollateralSymbol: string;
+}) {
+  const harvestData = useHarvest(
+    minterAddress,
+    stabilityPoolManagerAddress,
+    18
+  );
+
+  const { harvest, isPending, isSuccess, error } = useHarvestAction(
+    stabilityPoolManagerAddress,
+    BigInt(0)
+  );
+
+  const hasHarvestable = harvestData.harvestableAmount > BigInt(0);
+  const bountyPercent = harvestData.bountyRatio
+    ? Number(harvestData.bountyAmountFormatted) /
+      Number(harvestData.harvestableAmountFormatted) *
+      100
+    : 0;
+
+  if (harvestData.isLoading) {
+    return (
+      <div className="bg-white p-3 mt-0">
+        <h3 className="text-[#1E4775] font-semibold mb-2 text-xs">
+          Harvest Rewards
+        </h3>
+        <div className="text-xs text-[#1E4775]/50">Loading harvest data...</div>
+      </div>
+    );
+  }
+
+  if (!hasHarvestable) {
+    return (
+      <div className="bg-white p-3 mt-0">
+        <h3 className="text-[#1E4775] font-semibold mb-2 text-xs">
+          Harvest Rewards
+        </h3>
+        <div className="text-xs text-[#1E4775]/50">
+          No harvestable amount available
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white p-3 mt-0">
+      <h3 className="text-[#1E4775] font-semibold mb-2 text-xs">
+        Harvest Rewards
+      </h3>
+      <div className="space-y-2">
+        {/* Harvestable Amount */}
+        <div className="bg-[#1E4775]/5 p-2 rounded">
+          <div className="flex justify-between items-center">
+            <span className="text-xs text-[#1E4775]/70">Available to Harvest:</span>
+            <span className="text-sm font-bold text-[#1E4775] font-mono">
+              {parseFloat(harvestData.harvestableAmountFormatted).toLocaleString(
+                undefined,
+                {
+                  minimumFractionDigits: 4,
+                  maximumFractionDigits: 6,
+                }
+              )}{" "}
+              {wrappedCollateralSymbol}
+            </span>
+          </div>
+        </div>
+
+        {/* Breakdown */}
+        <div className="space-y-1.5 text-xs">
+          {/* Bounty (Your Reward) */}
+          <div className="flex justify-between items-center bg-green-50 dark:bg-green-950/20 p-2 rounded">
+            <span className="text-[#1E4775]/70 font-medium">
+              Your Bounty ({bountyPercent.toFixed(1)}%)
+            </span>
+            <span className="font-semibold text-green-600 dark:text-green-400 font-mono">
+              {parseFloat(harvestData.bountyAmountFormatted).toLocaleString(
+                undefined,
+                {
+                  minimumFractionDigits: 4,
+                  maximumFractionDigits: 6,
+                }
+              )}{" "}
+              {wrappedCollateralSymbol}
+            </span>
+          </div>
+
+          {/* Protocol Cut */}
+          <div className="flex justify-between items-center text-[#1E4775]/70">
+            <span>Protocol Fee:</span>
+            <span className="font-mono">
+              {parseFloat(harvestData.cutAmountFormatted).toLocaleString(
+                undefined,
+                {
+                  minimumFractionDigits: 4,
+                  maximumFractionDigits: 6,
+                }
+              )}{" "}
+              {wrappedCollateralSymbol}
+            </span>
+          </div>
+
+          {/* Pool Distribution */}
+          <div className="flex justify-between items-center text-[#1E4775]/70">
+            <span>To Stability Pools:</span>
+            <span className="font-mono">
+              {parseFloat(harvestData.poolAmountFormatted).toLocaleString(
+                undefined,
+                {
+                  minimumFractionDigits: 4,
+                  maximumFractionDigits: 6,
+                }
+              )}{" "}
+              {wrappedCollateralSymbol}
+            </span>
+          </div>
+        </div>
+
+        {/* Harvest Button */}
+        <button
+          onClick={harvest}
+          disabled={isPending || !hasHarvestable}
+          className="w-full px-4 py-2 text-sm font-medium bg-[#1E4775] text-white hover:bg-[#17395F] disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors rounded-full"
+        >
+          {isPending
+            ? "Harvesting..."
+            : isSuccess
+            ? "Harvested!"
+            : `Harvest & Earn ${parseFloat(
+                harvestData.bountyAmountFormatted
+              ).toLocaleString(undefined, {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 4,
+              })} ${wrappedCollateralSymbol}`}
+        </button>
+
+        {/* Success Message */}
+        {isSuccess && (
+          <div className="text-xs text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-950/20 p-2 rounded">
+            ✅ Harvest successful! You received{" "}
+            {parseFloat(harvestData.bountyAmountFormatted).toLocaleString(
+              undefined,
+              {
+                minimumFractionDigits: 4,
+                maximumFractionDigits: 6,
+              }
+            )}{" "}
+            {wrappedCollateralSymbol} as bounty.
+          </div>
+        )}
+
+        {/* Error Message */}
+        {error && (
+          <div className="text-xs text-red-600 bg-red-50 dark:bg-red-950/20 p-2 rounded">
+            Harvest failed: {error.message || "Unknown error"}
+          </div>
+        )}
+
+        {/* Info Note */}
+        <p className="text-[10px] text-[#1E4775]/50">
+          💡 Anyone can call harvest. The bounty is automatically sent to your
+          wallet. The remaining amount is distributed to stability pools.
+        </p>
+      </div>
+    </div>
+  );
+}
 
 interface AnchorMarketExpandedViewProps {
   marketId: string;
