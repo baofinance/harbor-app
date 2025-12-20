@@ -408,7 +408,7 @@ export default function AnchorPage() {
   }, [anchorMarkets]);
 
   // Fetch collateral prices from CoinGecko (for depeg detection and wrapped token prices)
-  const coinGeckoPrices = useCoinGeckoPrices(coinGeckoIds);
+  const { prices: coinGeckoPrices, loading: coinGeckoLoading, error: coinGeckoError } = useCoinGeckoPrices(coinGeckoIds);
 
   // Calculate USD prices using hook
   const {
@@ -4053,12 +4053,38 @@ export default function AnchorPage() {
                           } else if (useStETHFallback) {
                             // Use stETH price * wrapped rate as fallback while wstETH loads
                             wrappedTokenPriceUSD = stETHPrice * wrappedRateNum;
+                          } else if ((isWstETH || isFxSAVE) && coinGeckoLoading && marketCoinGeckoId && underlyingPriceUSD > 0 && wrappedRate) {
+                            // While CoinGecko loads, use oracle * wrapped rate for wstETH or fxSAVE
+                            wrappedTokenPriceUSD = underlyingPriceUSD * wrappedRateNum;
                           } else if (wrappedRate && underlyingPriceUSD > 0) {
                             // Multiply underlying by wrapped rate (e.g., fxUSD -> fxSAVE, stETH -> wstETH)
                             wrappedTokenPriceUSD = underlyingPriceUSD * wrappedRateNum;
+                          } else if (coinGeckoLoading && marketCoinGeckoId) {
+                            // Still loading CoinGecko, don't use fallback price yet
+                            wrappedTokenPriceUSD = 0;
                           } else if (underlyingPriceUSD > 0) {
                             // Fallback to underlying price if no wrapped rate
                             wrappedTokenPriceUSD = underlyingPriceUSD;
+                          }
+                          
+                          // Debug logging for price calculation
+                          if (process.env.NODE_ENV === "development" && collateralTokensWrapped > 0) {
+                            console.log(`[Anchor Collateral Price] Market ${marketData.marketId}:`, {
+                              collateralSymbol,
+                              collateralTokensWrapped,
+                              marketCoinGeckoId,
+                              coinGeckoReturnedPrice,
+                              coinGeckoIsWrappedToken,
+                              coinGeckoLoading,
+                              underlyingPriceUSD,
+                              wrappedRate: wrappedRate?.toString(),
+                              wrappedRateNum,
+                              stETHPrice,
+                              useStETHFallback,
+                              wrappedTokenPriceUSD,
+                              collateralPriceUSD: wrappedTokenPriceUSD,
+                              collateralValueUSD: collateralTokensWrapped * wrappedTokenPriceUSD,
+                            });
                           }
                           
                           // Use wrapped token price for collateral value calculation (same as genesis page)
