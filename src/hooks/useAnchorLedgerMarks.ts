@@ -80,7 +80,19 @@ interface SailTokenBalance extends MarksEntity {
   balanceUSD: string;
 }
 
+interface UserTotalMarks {
+  id: string;
+  user: string;
+  haTokenMarks: string;
+  sailTokenMarks: string;
+  stabilityPoolMarks: string;
+  totalMarks: string;
+  totalMarksPerDay: string;
+  lastUpdated: string;
+}
+
 interface AnchorLedgerMarksData {
+  userTotalMarks: UserTotalMarks | null;
   haTokenBalances: HaTokenBalance[];
   stabilityPoolDeposits: StabilityPoolDeposit[];
   sailTokenBalances: SailTokenBalance[];
