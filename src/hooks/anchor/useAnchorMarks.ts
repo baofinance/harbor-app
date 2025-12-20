@@ -203,7 +203,7 @@ export function useAnchorMarks(
     }
 
     // Add stability pool marks - recalculate marksPerDay using actual peggedTokenPrice
-    if (poolDeposits) {
+    if (poolDeposits && poolDeposits.length > 0) {
       poolDeposits.forEach((deposit) => {
         // For stability pools, we need to find which market this pool belongs to
         // and get the peggedTokenPrice for that market
@@ -236,12 +236,27 @@ export function useAnchorMarks(
           const balanceNum = parseFloat(deposit.balance);
           const balanceUSD = balanceNum * peggedPriceUSD;
           // 1 mark per dollar per day
-          totalPerDay += balanceUSD;
+          perDayFromPoolDeposits += balanceUSD;
+          console.log("[useAnchorMarks] poolDeposit marksPerDay calculation:", {
+            poolAddress: deposit.poolAddress,
+            poolType: deposit.poolType,
+            balance: deposit.balance,
+            peggedTokenPrice: poolPeggedTokenPrice.toString(),
+            peggedPriceUSD,
+            balanceUSD,
+            marksPerDay: balanceUSD,
+          });
         } else {
           // Fallback to subgraph value if we can't find the price
-          totalPerDay += deposit.marksPerDay;
+          perDayFromPoolDeposits += deposit.marksPerDay;
+          console.log("[useAnchorMarks] poolDeposit using subgraph marksPerDay:", {
+            poolAddress: deposit.poolAddress,
+            poolType: deposit.poolType,
+            marksPerDay: deposit.marksPerDay,
+          });
         }
       });
+      totalPerDay += perDayFromPoolDeposits;
     }
 
     console.log("[useAnchorMarks] Final calculation result:", {
