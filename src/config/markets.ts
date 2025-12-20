@@ -33,7 +33,7 @@ export const markets = {
       peggedToken: contractsMarkets["eth-fxusd"].addresses.peggedToken, // haETH
       leveragedToken: contractsMarkets["eth-fxusd"].addresses.leveragedToken, // hsFXUSD-ETH
       reservePool: contractsMarkets["eth-fxusd"].addresses.reservePool,
-      stabilityPoolManager: "0x4f96d6fcf24339633275fd069798fd7fe246a5d5" as `0x${string}`,
+      stabilityPoolManager: "0xE39165aDE355988EFb24dA4f2403971101134CAB" as `0x${string}`,
       stabilityPoolCollateral: contractsMarkets["eth-fxusd"].addresses.stabilityPoolCollateral,
       stabilityPoolLeveraged: contractsMarkets["eth-fxusd"].addresses.stabilityPoolLeveraged,
       genesis: contractsMarkets["eth-fxusd"].addresses.genesis,
@@ -110,7 +110,7 @@ export const markets = {
       peggedToken: contractsMarkets["btc-fxusd"].addresses.peggedToken, // haBTC
       leveragedToken: contractsMarkets["btc-fxusd"].addresses.leveragedToken, // hsFXUSD-BTC
       reservePool: contractsMarkets["btc-fxusd"].addresses.reservePool,
-      stabilityPoolManager: "0xe583aa00029cb680b4857e07469b37996e026b5d" as `0x${string}`,
+      stabilityPoolManager: "0x768E0a386e1972eB5995429Fe21E7aC0f22F516e" as `0x${string}`,
       stabilityPoolCollateral: contractsMarkets["btc-fxusd"].addresses.stabilityPoolCollateral,
       stabilityPoolLeveraged: contractsMarkets["btc-fxusd"].addresses.stabilityPoolLeveraged,
       genesis: contractsMarkets["btc-fxusd"].addresses.genesis,
@@ -186,7 +186,7 @@ export const markets = {
       peggedToken: contractsMarkets["btc-steth"].addresses.peggedToken, // haBTC (shared)
       leveragedToken: contractsMarkets["btc-steth"].addresses.leveragedToken, // hsSTETH-BTC
       reservePool: contractsMarkets["btc-steth"].addresses.reservePool,
-      stabilityPoolManager: "0x97803311470d6ce713ad70d720d33876c4a98efb" as `0x${string}`,
+      stabilityPoolManager: "0x5e9Bcaa1EDfD665c09a9e6693B447581d61A85A1" as `0x${string}`,
       stabilityPoolCollateral: contractsMarkets["btc-steth"].addresses.stabilityPoolCollateral,
       stabilityPoolLeveraged: contractsMarkets["btc-steth"].addresses.stabilityPoolLeveraged,
       genesis: contractsMarkets["btc-steth"].addresses.genesis,
