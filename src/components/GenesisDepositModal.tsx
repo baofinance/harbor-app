@@ -234,10 +234,13 @@ const isCustomToken = selectedAsset === "custom" && customTokenAddress &&
 const tokenAddressForDecimals = isNativeETH 
   ? undefined 
   : (isCustomToken ? (customTokenAddress as `0x${string}` | undefined) : (selectedAssetAddress as `0x${string}` | undefined));
-const { decimals: tokenDecimals } = useTokenDecimals(tokenAddressForDecimals);
+const { decimals: tokenDecimals, isLoading: isLoadingTokenDecimals } = useTokenDecimals(tokenAddressForDecimals);
 
 // Determine selected token decimals (handle special cases)
+// For USDC and ETH, we know the decimals, so no loading needed
+// For other tokens, wait for decimals to load to avoid incorrect calculations
 const selectedTokenDecimals = isUSDC ? 6 : (isNativeETH ? 18 : tokenDecimals);
+const hasValidDecimals = isUSDC || isNativeETH || !isLoadingTokenDecimals;
 
 // Fetch token metadata (symbol, name) for custom tokens
 const { data: customTokenSymbol } = useContractRead({
@@ -543,7 +546,8 @@ const allowanceTarget = (useETHZap || useUSDCZap) && genesisZapAddress ? genesis
 
 const allowance = isNativeETH ? 0n : (typeof allowanceData === 'bigint' ? allowanceData : 0n);
 // Parse amount with correct decimals (selectedTokenDecimals is defined above)
-const amountBigInt = amount 
+// Only parse if we have valid decimals to avoid incorrect calculations during loading
+const amountBigInt = amount && hasValidDecimals
   ? parseUnits(amount, selectedTokenDecimals)
   : 0n;
  const needsApproval =
@@ -1960,12 +1964,19 @@ const successFmt = formatTokenAmount(successAmountBigInt, collateralSymbol, coll
   // Display in wrapped collateral symbol since that's what gets stored
   // Use wrapped token price (collateralPriceUSD) since depositAmt is in wrapped collateral tokens
   const displaySymbol = wrappedCollateralSymbol || collateralSymbol;
+  
+  // Don't show deposit amount if we're still loading token decimals (to avoid showing incorrect values)
+  // For USDC and ETH, we know the decimals, so no loading check needed
+  const isCalculating = !hasValidDecimals && amount && parseFloat(amount) > 0;
+  
   const depositFmt = formatTokenAmount(depositAmt, displaySymbol, collateralPriceUSD);
   return (
     <div className="flex justify-between items-baseline">
       <span className="text-[#1E4775]/70">+ Deposit Amount:</span>
  <span className="text-[#1E4775]">
-        {depositAmt > 0n ? (
+        {isCalculating ? (
+          "Calculating..."
+        ) : depositAmt > 0n ? (
           <>
             +{depositFmt.display}
             {depositFmt.usd && <span className="text-[#1E4775]/50 ml-1">(+{depositFmt.usd})</span>}
