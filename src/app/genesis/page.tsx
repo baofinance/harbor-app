@@ -1225,17 +1225,70 @@ export default function GenesisIndexPage() {
                 );
                 const lastUpdated = parseInt(marks.lastUpdated || "0");
 
-                // Use subgraph's USD value directly - it's already calculated correctly with real-time prices
-                // The subgraph stores:
-                // - currentDeposit: token amount in wei (e.g., "155000000000000000000" = 155 tokens)
-                // - currentDepositUSD: USD value calculated with real-time oracle prices (e.g., "0.267616772775666308")
-                // - marksPerDay: calculated marks per day based on USD value
-                const currentDepositUSD = parseFloat(
-                  marks.currentDepositUSD || "0"
-                );
-                // Use subgraph's marksPerDay directly - it's already calculated correctly
-                // If genesis has ended, marksPerDay should be 0 (no more marks accumulating)
-                const marksPerDay = genesisEnded ? 0 : marksPerDayFromSubgraph;
+                // Recalculate USD value using correct price from market data
+                // The subgraph's currentDepositUSD may be incorrect (e.g., treating 1 fxSAVE as $1)
+                // We need to use the correct wrapped token price (e.g., fxSAVE at ~$1.073)
+                const currentDepositWei = marks.currentDeposit || "0";
+                const currentDepositAmount = currentDepositWei ? Number(formatEther(BigInt(currentDepositWei))) : 0;
+                
+                // Find the market to get the correct price
+                let currentDepositUSD = parseFloat(marks.currentDepositUSD || "0");
+                let marksPerDay = genesisEnded ? 0 : marksPerDayFromSubgraph;
+                
+                if (market && currentDepositAmount > 0) {
+                  // Calculate the correct price using the same logic as in market processing
+                  const mkt = market[1];
+                  const collateralSymbol = (mkt as any).collateral?.symbol || "ETH";
+                  const underlyingSymbol = (mkt as any).collateral?.underlyingSymbol || collateralSymbol;
+                  const marketCoinGeckoId = (mkt as any)?.coinGeckoId as string | undefined;
+                  const oracleAddress = (mkt as any).addresses?.collateralPrice as `0x${string}` | undefined;
+                  const collateralPriceData = oracleAddress
+                    ? collateralPricesMap.get(oracleAddress.toLowerCase())
+                    : undefined;
+                  const wrappedRate = collateralPriceData?.maxRate;
+                  const underlyingPriceFromOracle = collateralPriceData?.priceUSD || 0;
+                  
+                  // Calculate underlying price (same logic as market processing)
+                  let underlyingPriceUSD = 0;
+                  if (underlyingSymbol.toLowerCase() === "fxusd") {
+                    underlyingPriceUSD = 1.0;
+                  } else if (marketCoinGeckoId && coinGeckoPrices[marketCoinGeckoId] && coinGeckoPrices[marketCoinGeckoId]! > 0) {
+                    underlyingPriceUSD = coinGeckoPrices[marketCoinGeckoId]!;
+                  } else if (underlyingPriceFromOracle > 0.01) {
+                    underlyingPriceUSD = underlyingPriceFromOracle;
+                  }
+                  
+                  // Calculate wrapped token price (same logic as market processing)
+                  const coinGeckoReturnedPrice = marketCoinGeckoId && coinGeckoPrices[marketCoinGeckoId];
+                  const coinGeckoIsWrappedToken =
+                    coinGeckoReturnedPrice &&
+                    marketCoinGeckoId &&
+                    ((marketCoinGeckoId.toLowerCase() === "wrapped-steth" &&
+                      collateralSymbol.toLowerCase() === "wsteth") ||
+                      ((marketCoinGeckoId.toLowerCase() === "fx-usd-saving" || marketCoinGeckoId.toLowerCase() === "fxsave") &&
+                        collateralSymbol.toLowerCase() === "fxsave"));
+                  
+                  const isWstETH = collateralSymbol.toLowerCase() === "wsteth";
+                  const isFxSAVE = collateralSymbol.toLowerCase() === "fxsave";
+                  
+                  const wrappedTokenPriceUSD =
+                    coinGeckoIsWrappedToken && coinGeckoReturnedPrice && coinGeckoReturnedPrice > 0
+                      ? coinGeckoReturnedPrice
+                      : wrappedRate && underlyingPriceUSD > 0
+                      ? underlyingPriceUSD * (Number(wrappedRate) / 1e18)
+                      : isFxSAVE
+                      ? 1.07
+                      : underlyingPriceUSD;
+                  
+                  if (wrappedTokenPriceUSD > 0) {
+                    // Recalculate USD value using correct price
+                    const recalculatedUSD = currentDepositAmount * wrappedTokenPriceUSD;
+                    currentDepositUSD = recalculatedUSD;
+                    
+                    // Recalculate marksPerDay using correct USD value (10 marks per dollar per day)
+                    marksPerDay = genesisEnded ? 0 : currentDepositUSD * 10;
+                  }
+                }
 
                 // Calculate current marks dynamically based on time elapsed since last update
                 // Marks accumulate at 10 marks per dollar per day
