@@ -702,9 +702,17 @@ export function useAnchorMarketData(
         }
       );
 
-      // Include all markets in the group, regardless of collateral value
-      // This ensures all markets are displayed for each token
-      allMarketsData.push(...marketsData);
+      // Filter to only show markets where genesis has completed (has collateral deposited)
+      // Check both collateralValue and totalDebt to ensure market is active
+      // A market is active if it has collateral OR debt (meaning it's been used)
+      const activeMarketsData = marketsData.filter(
+        (m) => 
+          (m.collateralValue !== undefined && m.collateralValue > 0n) ||
+          (m.totalDebt !== undefined && m.totalDebt > 0n)
+      );
+
+      // Add all active markets to the result
+      allMarketsData.push(...activeMarketsData);
     });
 
     return allMarketsData;
