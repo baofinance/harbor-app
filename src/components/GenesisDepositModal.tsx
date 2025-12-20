@@ -335,7 +335,7 @@ const selectedAssetPriceUSD = isWrappedToken && wrappedRate && maxUnderlyingPric
 // then CoinGecko already returns the wrapped token price, so don't multiply by wrapped rate
 const coinGeckoIsWrappedToken = coinGeckoId && (
   (coinGeckoId.toLowerCase() === "wrapped-steth" && collateralSymbol.toLowerCase() === "wsteth") ||
-  (coinGeckoId.toLowerCase() === "fxsave" && collateralSymbol.toLowerCase() === "fxsave")
+  ((coinGeckoId.toLowerCase() === "fxsave" || coinGeckoId.toLowerCase() === "fx-usd-saving") && collateralSymbol.toLowerCase() === "fxsave")
 );
 
 // For wstETH: CoinGecko returns wstETH price directly (~$3,607), so use it as-is
@@ -367,6 +367,7 @@ const wrappedTokenPriceUSD = (() => {
   // Final fallback: underlying price only
   return underlyingPriceUSD;
 })();
+
 const collateralPriceUSD = wrappedTokenPriceUSD;
 
 // Validate selected asset address
