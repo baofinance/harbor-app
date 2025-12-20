@@ -192,6 +192,7 @@ export function useAnchorMarks(
     totalAnchorMarksState,
     haBalances,
     poolDeposits,
+    userTotalMarks,
     anchorMarkets,
     allMarketContracts,
     reads,
