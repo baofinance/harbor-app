@@ -265,6 +265,21 @@ export function useAnchorMarks(
       usedFallback: totalMarks === 0 && userTotalMarks !== null,
     });
     
+    // Debug logging for marks per day calculation
+    console.log("[useAnchorMarks] Marks per day calculation:", {
+      totalMarks,
+      totalPerDay,
+      haBalancesLength: haBalances?.length || 0,
+      poolDepositsLength: poolDeposits?.length || 0,
+      userTotalMarks: userTotalMarks ? {
+        totalMarksPerDay: userTotalMarks.totalMarksPerDay,
+        haTokenMarks: userTotalMarks.haTokenMarks,
+        stabilityPoolMarks: userTotalMarks.stabilityPoolMarks,
+      } : null,
+      tokenToPriceMapSize: tokenToPriceMap.size,
+      anchorMarketsLength: anchorMarkets.length,
+    });
+
     return {
       totalAnchorMarks: totalMarks,
       totalAnchorMarksPerDay: totalPerDay,
