@@ -117,41 +117,77 @@ function getWrappedTokenPriceUSD(genesisAddress: Bytes, block: ethereum.Block): 
                           genesisAddressStr == "0x9ae0b57ceada0056dbe21edcd638476fcba3ccc0"; // Legacy test
   
   if (isFxUSDMarket) {
-    // For fxUSD markets: fxSAVE price should be calculated from fxUSD ($1.00) * wrapped rate
-    // However, if the wrapped rate is 1.0 or invalid, use the fallback price directly
-    // The wrapped rate should be around 1.07 (meaning 1 fxSAVE = 1.07 fxUSD)
-    const underlyingPriceUSD = BigDecimal.fromString("1.0"); // fxUSD = $1.00 (hardcoded)
+    // For fxUSD markets: Use same calculation pattern as wstETH
+    // Determine if market is ETH-pegged (haETH) or BTC-pegged (haBTC)
+    // Oracle returns fxSAVE/ETH or fxSAVE/BTC rate depending on pegged token
+    // We need to multiply by ETH/USD or BTC/USD to get fxSAVE price in USD
     
-    // Get wrapped rate from oracle
     const oracleAddressStr = getPriceOracleAddress(genesisAddressStr);
     if (oracleAddressStr == "") {
       return getFallbackPrice(genesisAddressStr);
     }
     
+    // Get fxSAVE rate from the market's oracle
     const oracleAddress = Address.fromString(oracleAddressStr);
     const oracle = WrappedPriceOracle.bind(oracleAddress);
     const result = oracle.try_latestAnswer();
     
     if (result.reverted) {
-      // Oracle call failed, use fallback
       return getFallbackPrice(genesisAddressStr);
     }
     
-    // Extract wrapped rate (18 decimals)
-    const maxWrappedRate = result.value.value3; // maxWrappedRate (e.g., fxSAVE rate = 1.07)
-    const wrappedRate = maxWrappedRate.toBigDecimal().div(E18);
+    // Extract fxSAVE rate (18 decimals)
+    // For ETH-pegged markets: maxUnderlyingPrice = fxSAVE/ETH rate
+    // For BTC-pegged markets: maxUnderlyingPrice = fxSAVE/BTC rate
+    const fxsaveRate = result.value.value1; // maxUnderlyingPrice
+    const fxsaveRateDecimal = fxsaveRate.toBigDecimal().div(E18);
     
-    // Calculate wrapped token price: $1.00 * wrapped rate
-    // Example: fxSAVE = $1.00 * 1.07 = $1.07
-    // Trust the oracle - it will return the correct wrapped rate
-    const wrappedTokenPriceUSD = underlyingPriceUSD.times(wrappedRate);
+    // Determine if this is an ETH-pegged or BTC-pegged market
+    const isETHMarket = genesisAddressStr == "0xc9df4f62474cf6cde6c064db29416a9f4f27ebdc" || // ETH/fxUSD (production v1)
+                        genesisAddressStr == "0x5f4398e1d3e33f93e3d7ee710d797e2a154cb073" || // Legacy test
+                        genesisAddressStr == "0x1454707877cdb966e29cea8a190c2169eeca4b8c"; // Legacy test
+    
+    let peggedTokenUsdPrice: BigDecimal;
+    
+    if (isETHMarket) {
+      // ETH-pegged market: Get ETH/USD price from Chainlink
+      // Standard Chainlink ETH/USD oracle: 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419
+      const ethUsdOracleAddress = Address.fromString("0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419");
+      const ethUsdOracle = ChainlinkAggregator.bind(ethUsdOracleAddress);
+      const ethUsdResult = ethUsdOracle.try_latestAnswer();
+      
+      if (ethUsdResult.reverted) {
+        // If Chainlink fails, use fallback
+        return getFallbackPrice(genesisAddressStr);
+      }
+      
+      // Chainlink ETH/USD uses 8 decimals
+      peggedTokenUsdPrice = ethUsdResult.value.toBigDecimal().div(BigDecimal.fromString("100000000")); // 10^8
+    } else {
+      // BTC-pegged market: Get BTC/USD price from Chainlink
+      // Standard Chainlink BTC/USD oracle: 0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c
+      const btcUsdOracleAddress = Address.fromString("0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c");
+      const btcUsdOracle = ChainlinkAggregator.bind(btcUsdOracleAddress);
+      const btcUsdResult = btcUsdOracle.try_latestAnswer();
+      
+      if (btcUsdResult.reverted) {
+        // If Chainlink fails, use fallback
+        return getFallbackPrice(genesisAddressStr);
+      }
+      
+      // Chainlink BTC/USD uses 8 decimals
+      peggedTokenUsdPrice = btcUsdResult.value.toBigDecimal().div(BigDecimal.fromString("100000000")); // 10^8
+    }
+    
+    // Calculate fxSAVE price in USD: (fxSAVE/ETH or fxSAVE/BTC rate) × (ETH/USD or BTC/USD price)
+    const fxsaveUsdPrice = fxsaveRateDecimal.times(peggedTokenUsdPrice);
     
     // Ensure we have a valid price
-    if (wrappedTokenPriceUSD.le(BigDecimal.fromString("0"))) {
+    if (fxsaveUsdPrice.le(BigDecimal.fromString("0"))) {
       return getFallbackPrice(genesisAddressStr);
     }
     
-    return wrappedTokenPriceUSD;
+    return fxsaveUsdPrice;
   }
   
   if (isWstETHMarket) {
