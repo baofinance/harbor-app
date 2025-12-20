@@ -245,14 +245,22 @@ function getOrCreateUserMarks(
 
 // Helper to get collateral symbol for a genesis contract
 function getCollateralSymbol(genesisAddress: string): string {
-  // ETH/fxUSD and BTC/fxUSD markets use fxSAVE
-  if (genesisAddress == "0x5f4398e1d3e33f93e3d7ee710d797e2a154cb073" ||
-      genesisAddress == "0x288c61c3b3684ff21adf38d878c81457b19bd2fe" ||
-      genesisAddress == "0x1454707877cdb966e29cea8a190c2169eeca4b8c") {
+  // Normalize address to lowercase for comparison
+  const addr = genesisAddress.toLowerCase();
+  
+  // Production v1: ETH/fxUSD and BTC/fxUSD markets use fxSAVE
+  if (addr == "0xc9df4f62474cf6cde6c064db29416a9f4f27ebdc" || // ETH/fxUSD (production v1)
+      addr == "0x42cc9a19b358a2a918f891d8a6199d8b05f0bc1c" || // BTC/fxUSD (production v1)
+      // Legacy test contracts (for backward compatibility)
+      addr == "0x5f4398e1d3e33f93e3d7ee710d797e2a154cb073" ||
+      addr == "0x288c61c3b3684ff21adf38d878c81457b19bd2fe" ||
+      addr == "0x1454707877cdb966e29cea8a190c2169eeca4b8c") {
     return "fxSAVE";
   }
-  // BTC/stETH market uses wstETH
-  if (genesisAddress == "0x9ae0b57ceada0056dbe21edcd638476fcba3ccc0") {
+  // Production v1: BTC/stETH market uses wstETH
+  if (addr == "0xc64fc46eed431e92c1b5e24dc296b5985ce6cc00" || // BTC/stETH (production v1)
+      // Legacy test contract (for backward compatibility)
+      addr == "0x9ae0b57ceada0056dbe21edcd638476fcba3ccc0") {
     return "wstETH";
   }
   return "unknown";
@@ -270,16 +278,18 @@ function getOrCreateMarketBonusStatus(
     marketBonus.thresholdReached = false;
     marketBonus.thresholdReachedAt = null;
     marketBonus.cumulativeDeposits = BigDecimal.fromString("0");
-    
-    // Determine collateral type and set threshold (in token amounts, not USD)
-    const collateralSymbol = getCollateralSymbol(contractAddress.toHexString());
-    const isFxSAVE = collateralSymbol == "fxSAVE";
-    marketBonus.thresholdAmount = isFxSAVE 
-      ? EARLY_BONUS_THRESHOLD_FXSAVE 
-      : EARLY_BONUS_THRESHOLD_WSTETH;
-    marketBonus.thresholdToken = collateralSymbol;
     marketBonus.lastUpdated = BigInt.fromI32(0);
   }
+  
+  // Determine collateral type and set threshold (in token amounts, not USD)
+  // Update even if entity exists (fixes entities created with "unknown")
+  const collateralSymbol = getCollateralSymbol(contractAddress.toHexString());
+  const isFxSAVE = collateralSymbol == "fxSAVE";
+  marketBonus.thresholdAmount = isFxSAVE 
+    ? EARLY_BONUS_THRESHOLD_FXSAVE 
+    : EARLY_BONUS_THRESHOLD_WSTETH;
+  marketBonus.thresholdToken = collateralSymbol;
+  
   return marketBonus;
 }
 
@@ -328,6 +338,7 @@ export function handleDeposit(event: DepositEvent): void {
   deposit.save();
   
   // Update market bonus status with this deposit (track token amounts, not USD)
+  // Always update and save to ensure entity exists (fixes entities created with "unknown")
   if (!marketBonus.thresholdReached) {
     marketBonus.cumulativeDeposits = marketBonus.cumulativeDeposits.plus(amountInTokens);
     
@@ -336,10 +347,11 @@ export function handleDeposit(event: DepositEvent): void {
       marketBonus.thresholdReached = true;
       marketBonus.thresholdReachedAt = timestamp;
     }
-    
-    marketBonus.lastUpdated = timestamp;
-    marketBonus.save();
   }
+  
+  // Always update lastUpdated and save to ensure entity exists
+  marketBonus.lastUpdated = timestamp;
+  marketBonus.save();
   
   // Update user marks
   let userMarks = getOrCreateUserMarks(contractAddress, userAddress);

@@ -1559,14 +1559,14 @@ export default function GenesisIndexPage() {
                 const activeHeader =
                   showHeaders && !activeHeaderRendered && !isEnded ? (
                     <>
-                      <div key={`section-active`} className="pt-4 mb-3">
+                      <div key={`section-active`} className="pt-4 mb-1">
                         <h2 className="text-xs font-medium text-white/70 uppercase tracking-wider">
                           Active Genesis Events
                         </h2>
                       </div>
                       <div
                         key={`header-active`}
-                        className="hidden md:block bg-white py-1.5 px-2 overflow-x-auto"
+                        className="hidden md:block bg-white py-1.5 px-2 overflow-x-auto mb-0"
                       >
                         <div className="grid lg:grid-cols-[1.5fr_1fr_1fr_1fr_0.5fr_1fr] md:grid-cols-[120px_140px_1fr_1fr_90px_80px] gap-4 items-center uppercase tracking-wider text-[10px] lg:text-[11px] text-[#1E4775] font-semibold">
                           <div className="min-w-0 text-center">Market</div>
@@ -1610,7 +1610,7 @@ export default function GenesisIndexPage() {
                   isEnded &&
                   (lastWasEnded === null || lastWasEnded !== isEnded) ? (
                     <>
-                      <div key={`section-ended`} className="pt-4 mb-3">
+                      <div key={`section-ended`} className="pt-4 mb-1">
                         <h2 className="text-xs font-medium text-white/70 uppercase tracking-wider">
                           Completed Genesis Events
                         </h2>
@@ -1948,7 +1948,7 @@ export default function GenesisIndexPage() {
                     {activeHeader}
                     {endedHeader}
                     <div
-                      className={`py-2.5 px-2 overflow-x-auto overflow-y-visible transition cursor-pointer ${
+                      className={`py-1.5 px-2 overflow-x-auto overflow-y-visible transition cursor-pointer ${
                         isExpanded
                           ? "bg-[rgb(var(--surface-selected-rgb))]"
                           : "bg-white hover:bg-[rgb(var(--surface-selected-rgb))]"
@@ -2970,7 +2970,7 @@ export default function GenesisIndexPage() {
                           : earlyBonusEligibleDepositUSDFromSubgraph; // Use subgraph value if no current deposit
                         
                         return (
-                          <div className="px-2 pt-2 pb-0 border-t border-[#1E4775]/10 -mb-1 mt-1.5">
+                          <div className="px-2 pt-2.5 pb-1.5 border-t border-[#1E4775]/10 -mb-1 mt-1">
                             <div className="mb-0 -mt-1">
                               {/* Progress Bar - label, bar, amounts, and qualification on one line */}
                               <div className="flex items-center gap-2 flex-wrap">

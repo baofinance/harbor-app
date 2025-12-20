@@ -234,20 +234,20 @@ export function handleHaTokenTransfer(event: TransferEvent): void {
 const LAST_UPDATE_KEY = "lastHourlyPriceUpdate";
 const ONE_HOUR = BigInt.fromI32(3600);
 
-// List of all token addresses that need price updates
+// List of all token addresses that need price updates (PRODUCTION v1 addresses)
 function getTokensToUpdate(): Address[] {
   return [
-    // ha tokens
-    Address.fromString("0x8e7442020ba7debfd77e67491c51faa097d87478"), // haETH
-    Address.fromString("0x1822bbe8fe313c4b53414f0b3e5ef8147d485530"), // haBTC
-    // sail tokens
-    Address.fromString("0x8248849b83ae20b21fa561f97ee5835a063c1f9c"), // hsFXUSD-ETH
-    Address.fromString("0x454f2c12ce62a4fd813e2e06fda5d46e358e7c70"), // hsFXUSD-BTC
-    Address.fromString("0x1df67ebd59db60a13ec783472aaf22e5b2b01f25"), // hsSTETH-BTC
-    // collateral tokens (for stability pools)
-    Address.fromString("0xfb9747b30ee1b1df2434255c7768c1ebfa7e89bb"), // fxSAVE (ETH/fxUSD collateral pool)
-    Address.fromString("0x5378fbf71627e352211779bd4cd09b0a791015ac"), // fxSAVE (BTC/fxUSD collateral pool)
-    Address.fromString("0x86297bd2de92e91486c7e3b32cb5bc18f0a363bc"), // wstETH (BTC/stETH collateral pool)
+    // ha tokens (production v1)
+    Address.fromString("0x7A53EBc85453DD006824084c4f4bE758FcF8a5B5"), // haETH
+    Address.fromString("0x25bA4A826E1A1346dcA2Ab530831dbFF9C08bEA7"), // haBTC
+    // sail tokens (production v1)
+    Address.fromString("0x0Cd6BB1a0cfD95e2779EDC6D17b664B481f2EB4C"), // hsFXUSD-ETH
+    Address.fromString("0x9567c243F647f9Ac37efb7Fc26BD9551Dce0BE1B"), // hsFXUSD-BTC
+    Address.fromString("0x817ADaE288eD46B8618AAEffE75ACD26A0a1b0FD"), // hsSTETH-BTC
+    // collateral tokens (for stability pools - production v1)
+    Address.fromString("0x1F985CF7C10A81DE1940da581208D2855D263D72"), // fxSAVE (ETH/fxUSD collateral pool)
+    Address.fromString("0x86561cdB34ebe8B9abAbb0DD7bEA299fA8532a49"), // fxSAVE (BTC/fxUSD collateral pool)
+    Address.fromString("0x667Ceb303193996697A5938cD6e17255EeAcef51"), // wstETH (BTC/stETH collateral pool)
   ];
 }
 
@@ -276,15 +276,15 @@ function setLastUpdateTimestamp(timestamp: BigInt): void {
 }
 
 /**
- * Block handler that runs on every block
+ * Block handler that runs periodically
  * Checks if an hour has passed since last update, and if so, updates all PriceFeed prices
  * 
- * Optimization: Only check every ~100 blocks to reduce overhead during sync
+ * Optimization: Only check every ~1000 blocks to reduce overhead during sync
  */
 export function handleBlock(block: ethereum.Block): void {
-  // Handler is configured to run every 100 blocks in subgraph.yaml
+  // Handler is configured to run every 1000 blocks in subgraph.yaml
   // This check is a safety measure in case the config doesn't work as expected
-  if (block.number.mod(BigInt.fromI32(100)).gt(BigInt.fromI32(0))) {
+  if (block.number.mod(BigInt.fromI32(1000)).gt(BigInt.fromI32(0))) {
     return; // Skip this block
   }
   
