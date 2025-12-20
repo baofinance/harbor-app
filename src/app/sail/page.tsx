@@ -1505,23 +1505,50 @@ export default function SailPage() {
 
           {/* Markets List - Grouped by Long Side */}
           <section className="space-y-4">
-            {Object.entries(groupedMarkets).map(([longSide, markets]) => {
-              // Filter to only show markets where genesis has completed (has collateral)
-              const activeMarkets = markets.filter(([id]) => {
-                const globalIndex = sailMarkets.findIndex(
-                  ([marketId]) => marketId === id
-                );
-                const baseOffset = marketOffsets.get(globalIndex) ?? 0;
-                const collateralValue = reads?.[baseOffset + 3]?.result as
-                  | bigint
-                  | undefined;
-                return collateralValue !== undefined && collateralValue > 0n;
+            {(() => {
+              // Check if any markets have finished genesis (have collateral)
+              const hasAnyFinishedMarkets = Object.entries(groupedMarkets).some(([_, markets]) => {
+                return markets.some(([id]) => {
+                  const globalIndex = sailMarkets.findIndex(
+                    ([marketId]) => marketId === id
+                  );
+                  const baseOffset = marketOffsets.get(globalIndex) ?? 0;
+                  const collateralValue = reads?.[baseOffset + 3]?.result as
+                    | bigint
+                    | undefined;
+                  return collateralValue !== undefined && collateralValue > 0n;
+                });
               });
 
-              // Skip this group if no markets have completed genesis
-              if (activeMarkets.length === 0) {
-                return null;
+              // If no markets have finished genesis, show banner
+              if (!hasAnyFinishedMarkets) {
+                return (
+                  <div className="bg-[#17395F] border border-white/10 p-6 rounded-lg text-center">
+                    <p className="text-white text-lg font-medium">
+                      Maiden Voyage in progress for Harbor's first markets - coming soon!
+                    </p>
+                  </div>
+                );
               }
+
+              // Otherwise, show markets as usual
+              return Object.entries(groupedMarkets).map(([longSide, markets]) => {
+                // Filter to only show markets where genesis has completed (has collateral)
+                const activeMarkets = markets.filter(([id]) => {
+                  const globalIndex = sailMarkets.findIndex(
+                    ([marketId]) => marketId === id
+                  );
+                  const baseOffset = marketOffsets.get(globalIndex) ?? 0;
+                  const collateralValue = reads?.[baseOffset + 3]?.result as
+                    | bigint
+                    | undefined;
+                  return collateralValue !== undefined && collateralValue > 0n;
+                });
+
+                // Skip this group if no markets have completed genesis
+                if (activeMarkets.length === 0) {
+                  return null;
+                }
 
               return (
                 <div key={longSide}>
@@ -1594,7 +1621,8 @@ export default function SailPage() {
                   </div>
                 </div>
               );
-            })}
+              });
+            })()}
           </section>
         </main>
 

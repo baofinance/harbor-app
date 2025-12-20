@@ -670,6 +670,12 @@ export default function TransparencyPage() {
  <div key={i} className="animate-pulse h-14 bg-white/10" />
  ))}
  </div>
+ ) : markets.length === 0 ? (
+ <div className="bg-[#17395F] border border-white/10 p-6 rounded-lg text-center">
+ <p className="text-white text-lg font-medium">
+ Maiden Voyage in progress for Harbor's first markets - coming soon!
+ </p>
+ </div>
  ) : (
  <div className="space-y-2">
  {markets.map((market) => (
