@@ -1200,10 +1200,7 @@ export default function AnchorPage() {
               lastError.message || "Unknown error"
             }`
           );
-          console.error(
-            "[handleCompoundConfirm] Mint fee estimation failed:",
-            lastError
-          );
+          // Removed debug logging
         }
       }
 
