@@ -887,6 +887,9 @@ const preDepositBalance = userCurrentDeposit;
          console.log("[Swap Approval] Approval confirmed");
          
          // Wait for state update and ensure nonce is updated
+         // Get current nonce to verify it's updated after approval
+         const nonceAfterApproval = await publicClient?.getTransactionCount({ address });
+         console.log("[Swap Approval] Nonce after approval:", nonceAfterApproval);
          await new Promise((resolve) => setTimeout(resolve, 2000));
          
          setProgressSteps((prev) =>
@@ -904,30 +907,7 @@ const preDepositBalance = userCurrentDeposit;
        }
      }
      
-     // Step 2: Now get swap transaction data from ParaSwap (allowance is now sufficient)
-     // Get fresh transaction data right before sending to ensure nonce is current
-     const swapTx = await getDefiLlamaSwapTx(
-       fromTokenForSwap,
-       swapTargetToken as any,
-       amountBigInt,
-       address,
-       slippageTolerance, // User's selected slippage tolerance
-       selectedTokenDecimals,
-       targetTokenDecimals
-     );
-     
-     // Step 3: Execute the swap
-     setStep("depositing"); // Use depositing step for swap
-     setProgressSteps((prev) =>
-       prev.map((s) =>
-         s.id === "swap" ? { ...s, status: "in_progress" } : s
-       )
-     );
-     setCurrentStepIndex(steps.findIndex((s) => s.id === "swap"));
-     setError(null);
-     setTxHash(null);
-     
-     // Get balance BEFORE swap to calculate the difference after
+     // Step 2: Get balance BEFORE swap to calculate the difference after
      let balanceBefore: bigint;
      if (isFxSAVEMarket) {
        // For fxSAVE markets: track USDC balance
@@ -950,14 +930,55 @@ const preDepositBalance = userCurrentDeposit;
        });
      }
      
+     // Step 3: Get fresh swap transaction data from ParaSwap RIGHT BEFORE sending
+     // This ensures the transaction data is current and nonce will be handled correctly
+     // Important: Get this AFTER approval is confirmed to ensure nonce is updated
+     console.log("[Swap] Getting fresh swap transaction data from ParaSwap (after approval confirmed)...");
+     const currentNonce = await publicClient?.getTransactionCount({ address });
+     console.log("[Swap] Current nonce before getting swap tx:", currentNonce);
+     
+     const swapTx = await getDefiLlamaSwapTx(
+       fromTokenForSwap,
+       swapTargetToken as any,
+       amountBigInt,
+       address,
+       slippageTolerance, // User's selected slippage tolerance
+       selectedTokenDecimals,
+       targetTokenDecimals
+     );
+     
+     // Verify nonce hasn't changed (shouldn't, but good to check)
+     const nonceAfterSwapTx = await publicClient?.getTransactionCount({ address });
+     console.log("[Swap] Nonce after getting swap tx:", nonceAfterSwapTx);
+     if (currentNonce !== nonceAfterSwapTx) {
+       console.warn("[Swap] Nonce changed between getting swap tx and sending - this might cause issues");
+     }
+     
+     // Step 4: Execute the swap
+     setStep("depositing"); // Use depositing step for swap
+     setProgressSteps((prev) =>
+       prev.map((s) =>
+         s.id === "swap" ? { ...s, status: "in_progress" } : s
+       )
+     );
+     setCurrentStepIndex(steps.findIndex((s) => s.id === "swap"));
+     setError(null);
+     setTxHash(null);
+     
      // Execute swap using sendTransaction (ParaSwap gives raw tx data, not contract call)
      // Let wagmi handle nonce automatically - don't pass gas explicitly to avoid nonce conflicts
+     // Wagmi will automatically get the current nonce and estimate gas
+     // Add a small delay before sending to ensure wallet/provider has updated nonce
+     await new Promise((resolve) => setTimeout(resolve, 500));
+     
+     console.log("[Swap] Sending swap transaction (wagmi will handle nonce automatically)...");
      const swapHash = await sendTransactionAsync({
        to: swapTx.to,
        data: swapTx.data,
        value: swapTx.value, // Use value from ParaSwap
+       account: address, // Explicitly pass account to ensure wagmi uses correct nonce
        // Don't pass gas explicitly - let wagmi estimate it to ensure proper nonce handling
-       // gas: swapTx.gas, // Removed to let wagmi handle nonce properly
+       // This prevents nonce conflicts when multiple transactions are sent in sequence
      });
      
      setTxHash(swapHash);
