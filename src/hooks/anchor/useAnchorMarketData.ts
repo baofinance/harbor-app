@@ -143,7 +143,7 @@ export function useAnchorMarketData(
             const prevIsFxUSDMarket =
               prevCollateralSymbol === "fxusd" ||
               prevCollateralSymbol === "fxsave";
-            offset += 5; // 4 minter calls + 1 config call
+            offset += 7; // 6 minter calls (collateralRatio, collateralTokenBalance, peggedTokenBalance, peggedTokenPrice, leveragedTokenBalance, leveragedTokenPrice) + 1 config call
             if (prevHasStabilityPoolManager) offset += 1; // rebalanceThreshold
             if (prevHasCollateral) {
               offset += 4; // 4 pool reads
@@ -216,9 +216,12 @@ export function useAnchorMarketData(
             | any
             | undefined;
 
-          // Get rebalanceThreshold from StabilityPoolManager (index 7)
+          // Get rebalanceThreshold from StabilityPoolManager
           // This is the collateral ratio below which rebalancing can occur
-          const rebalanceThresholdResult = reads?.[baseOffset + 7];
+          // It's at baseOffset + 7 if the market has a StabilityPoolManager
+          const rebalanceThresholdResult = hasStabilityPoolManager 
+            ? reads?.[baseOffset + 7]
+            : undefined;
           let minCollateralRatio: bigint | undefined;
 
           if (
