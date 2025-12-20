@@ -3115,10 +3115,13 @@ export default function AnchorPage() {
                       <div className="text-center min-w-0">Actions</div>
                     </div>
                   </div>
+                </>
+              );
+            }
 
-                  // Show grouped markets by ha token
-                  // Group markets by pegged token symbol
-                  const groups: Record<
+            // Show grouped markets by ha token
+            // Group markets by pegged token symbol
+            const groups: Record<
                 string,
                 Array<{
                   marketId: string;
