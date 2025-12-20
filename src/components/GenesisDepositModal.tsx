@@ -1696,7 +1696,7 @@ const successFmt = formatTokenAmount(successAmountBigInt, collateralSymbol, coll
      setCustomTokenAddress("");
    }
  }}
- className="w-full h-12 px-4 bg-white text-[#1E4775] border border-[#1E4775]/30 focus:border-[#1E4775] focus:ring-2 focus:ring-[#1E4775]/20 focus:outline-none transition-all text-lg font-mono"
+                        className="w-full h-12 px-4 bg-white text-[#1E4775] border border-[#1E4775]/20 focus:border-[#1E4775]/40 focus:ring-1 focus:ring-[#1E4775]/20 focus:outline-none transition-all text-sm"
  disabled={
  step ==="approving" ||
  step ==="depositing" ||
@@ -1830,7 +1830,7 @@ const successFmt = formatTokenAmount(successAmountBigInt, collateralSymbol, coll
  value={amount}
  onChange={handleAmountChange}
  placeholder="0.0"
- className={`w-full h-12 px-4 pr-20 bg-white text-[#1E4775] border ${
+ className={`w-full px-3 pr-20 py-2 bg-white text-[#1E4775] border ${
  error ?"border-red-500" :"border-[#1E4775]/30"
  } focus:border-[#1E4775] focus:ring-2 focus:ring-[#1E4775]/20 focus:outline-none transition-all text-lg font-mono`}
  disabled={
@@ -1951,9 +1951,11 @@ const successFmt = formatTokenAmount(successAmountBigInt, collateralSymbol, coll
  {amount && parseFloat(amount) > 0 ? (
  <>
 {(() => {
-  // For tokens that need conversion (ETH, stETH, USDC, FXUSD) or swapping, use actualCollateralDeposit
-  // For direct deposits (wstETH, fxSAVE), use amountBigInt
-  const depositAmt = (isNativeETH || isStETH || isUSDC || isFXUSD || needsSwap) ? actualCollateralDeposit : amountBigInt;
+  // Always use actualCollateralDeposit - this is the canonical value that represents what will actually be deposited
+  // For direct deposits (wstETH, fxSAVE), actualCollateralDeposit = amountBigInt
+  // For converted deposits (ETH→wstETH, USDC→fxSAVE), actualCollateralDeposit = converted amount
+  // For swapped deposits, actualCollateralDeposit = amount after swap and conversion
+  const depositAmt = actualCollateralDeposit;
   // For deposit display, show the amount being deposited
   // Display in wrapped collateral symbol since that's what gets stored
   // Use wrapped token price (collateralPriceUSD) since depositAmt is in wrapped collateral tokens
@@ -2000,7 +2002,8 @@ const successFmt = formatTokenAmount(successAmountBigInt, collateralSymbol, coll
   const currentDepositUSD = userCurrentDeposit > 0n 
     ? (Number(userCurrentDeposit) / 1e18) * collateralPriceUSD 
     : 0;
-  const depositAmt = (isNativeETH || isStETH || isUSDC || isFXUSD || needsSwap) ? actualCollateralDeposit : amountBigInt;
+  // Always use actualCollateralDeposit for consistency
+  const depositAmt = actualCollateralDeposit;
   // depositAmt is in wrapped collateral tokens, so use wrapped token price
   const newDepositUSD = depositAmt > 0n 
     ? (Number(depositAmt) / 1e18) * collateralPriceUSD 
