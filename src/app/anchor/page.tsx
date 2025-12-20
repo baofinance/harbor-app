@@ -4016,33 +4016,41 @@ export default function AnchorPage() {
                             : undefined;
                           
                           // Get underlying price from hook (this is the underlying token price, e.g., fxUSD or stETH)
-                          // NOTE: The oracle may return price in peg token units (ETH or BTC), not USD
+                          // NOTE: The oracle returns price in peg token units (ETH or BTC), not USD
                           let underlyingPriceUSD = collateralPriceData?.priceUSD || 0;
                           const wrappedRate = collateralPriceData?.maxRate || marketData.wrappedRate;
                           const wrappedRateNum = wrappedRate ? Number(wrappedRate) / 1e18 : 1;
                           
-                          // For fxUSD markets, hardcode $1.00 (same as genesis page)
-                          // The oracle might return price in ETH terms, but we know fxUSD = $1
-                          if (isFxUSDMarket) {
-                            underlyingPriceUSD = 1.0;
-                          } else {
-                            // For other markets, check if oracle price is in peg token units
-                            // If price is very small (< 1), it might be in peg token terms (e.g., ETH or BTC)
-                            const pegTarget = (marketData.market as any)?.pegTarget?.toLowerCase();
-                            const isBTCMarket = pegTarget === "btc" || pegTarget === "bitcoin";
-                            const isETHMarket = pegTarget === "eth" || pegTarget === "ethereum";
-                            
-                            if (underlyingPriceUSD > 0 && underlyingPriceUSD < 1) {
-                              // Price might be in peg token units, need to convert to USD
-                              if (isBTCMarket) {
-                                const btcPriceUSD = coinGeckoPrices?.["bitcoin"] || 0;
-                                if (btcPriceUSD > 0) {
-                                  underlyingPriceUSD = underlyingPriceUSD * btcPriceUSD;
-                                }
-                              } else if (isETHMarket && ethPrice) {
+                          // Convert oracle price from peg token units to USD
+                          // The oracle returns price in the peg token (ETH for ETH/fxUSD, BTC for BTC/fxUSD, etc.)
+                          const pegTarget = (marketData.market as any)?.pegTarget?.toLowerCase();
+                          const isBTCMarket = pegTarget === "btc" || pegTarget === "bitcoin";
+                          const isETHMarket = pegTarget === "eth" || pegTarget === "ethereum";
+                          
+                          if (underlyingPriceUSD > 0) {
+                            // Oracle price is in peg token units, convert to USD
+                            if (isBTCMarket) {
+                              const btcPriceUSD = coinGeckoPrices?.["bitcoin"] || 0;
+                              if (btcPriceUSD > 0) {
+                                underlyingPriceUSD = underlyingPriceUSD * btcPriceUSD;
+                              } else {
+                                // Can't convert, use 0
+                                underlyingPriceUSD = 0;
+                              }
+                            } else if (isETHMarket) {
+                              if (ethPrice && ethPrice > 0) {
                                 underlyingPriceUSD = underlyingPriceUSD * ethPrice;
+                              } else {
+                                // Can't convert, use 0
+                                underlyingPriceUSD = 0;
                               }
                             }
+                            // For other markets, assume oracle already returns USD price
+                          }
+                          
+                          // Fallback: For fxUSD markets, if we couldn't calculate from oracle, use $1.00
+                          if (isFxUSDMarket && underlyingPriceUSD === 0) {
+                            underlyingPriceUSD = 1.0;
                           }
                           
                           // Check if CoinGecko has the wrapped token price directly
@@ -5163,3 +5171,4 @@ export default function AnchorPage() {
     </>
   );
 }
+
