@@ -650,48 +650,68 @@ export default function TransparencyPage() {
  </div>
  )}
 
- {/* Header Row */}
- <div className="bg-white p-2 mb-2">
- <div className="grid grid-cols-[1.5fr_1fr_1fr_1fr_1fr_1fr_auto] gap-3 items-center uppercase tracking-wider text-[10px] text-[#1E4775] font-bold">
- <div>Market</div>
- <div className="text-center">Collateral Ratio</div>
- <div className="text-center">Leverage</div>
- <div className="text-center">TVL</div>
- <div className="text-center">Threshold</div>
- <div className="text-center">Health</div>
- <div className="w-4"></div>
- </div>
- </div>
+ {/* Check if any markets have finished genesis (have collateral) */}
+ {(() => {
+   // Filter markets to only those with finished genesis (have collateral)
+   const finishedMarkets = markets.filter(
+     (market) => market.collateralTokenBalance > 0n
+   );
 
- {/* Loading state */}
- {isLoading && markets.length === 0 ? (
- <div className="space-y-2">
- {[1, 2].map((i) => (
- <div key={i} className="animate-pulse h-14 bg-white/10" />
- ))}
- </div>
- ) : markets.length === 0 ? (
- <div className="bg-[#17395F] border border-white/10 p-6 rounded-lg text-center">
- <p className="text-white text-lg font-medium">
- Maiden Voyage in progress for Harbor's first markets - coming soon!
- </p>
- </div>
- ) : (
- <div className="space-y-2">
- {markets.map((market) => (
- <MarketCard
- key={market.marketId}
- market={market}
- pools={pools.filter(
- (p) =>
- p.address === market.stabilityPoolCollateralAddress ||
- p.address === market.stabilityPoolLeveragedAddress
- )}
- userPools={userPools}
- />
- ))}
- </div>
- )}
+   // If no markets have finished genesis, show banner
+   if (!isLoading && finishedMarkets.length === 0) {
+     return (
+       <div className="bg-[#17395F] border border-white/10 p-6 rounded-lg text-center">
+         <p className="text-white text-lg font-medium">
+           Maiden Voyage in progress for Harbor's first markets - coming soon!
+         </p>
+       </div>
+     );
+   }
+
+   // Otherwise, show markets as usual
+   return (
+     <>
+       {/* Header Row - only show if there are finished markets */}
+       {finishedMarkets.length > 0 && (
+         <div className="bg-white p-2 mb-2">
+           <div className="grid grid-cols-[1.5fr_1fr_1fr_1fr_1fr_1fr_auto] gap-3 items-center uppercase tracking-wider text-[10px] text-[#1E4775] font-bold">
+             <div>Market</div>
+             <div className="text-center">Collateral Ratio</div>
+             <div className="text-center">Leverage</div>
+             <div className="text-center">TVL</div>
+             <div className="text-center">Threshold</div>
+             <div className="text-center">Health</div>
+             <div className="w-4"></div>
+           </div>
+         </div>
+       )}
+
+       {/* Loading state */}
+       {isLoading && finishedMarkets.length === 0 ? (
+         <div className="space-y-2">
+           {[1, 2].map((i) => (
+             <div key={i} className="animate-pulse h-14 bg-white/10" />
+           ))}
+         </div>
+       ) : (
+         <div className="space-y-2">
+           {finishedMarkets.map((market) => (
+             <MarketCard
+               key={market.marketId}
+               market={market}
+               pools={pools.filter(
+                 (p) =>
+                   p.address === market.stabilityPoolCollateralAddress ||
+                   p.address === market.stabilityPoolLeveragedAddress
+               )}
+               userPools={userPools}
+             />
+           ))}
+         </div>
+       )}
+     </>
+   );
+ })()}
  </main>
  </div>
  );
