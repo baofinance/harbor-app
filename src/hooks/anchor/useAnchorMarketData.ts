@@ -218,10 +218,8 @@ export function useAnchorMarketData(
 
           // Get rebalanceThreshold from StabilityPoolManager
           // This is the collateral ratio below which rebalancing can occur
-          // It's at baseOffset + 7 if the market has a StabilityPoolManager
-          const rebalanceThresholdResult = hasStabilityPoolManager 
-            ? reads?.[baseOffset + 7]
-            : undefined;
+          // All markets have a StabilityPoolManager, so it's always at baseOffset + 7
+          const rebalanceThresholdResult = reads?.[baseOffset + 7];
           let minCollateralRatio: bigint | undefined;
 
           if (
