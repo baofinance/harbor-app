@@ -30,27 +30,68 @@ This guide will help you deploy the Harbor app from the `main` branch to `app.ha
 
 ## Step 2: Configure Environment Variables
 
-After the initial deployment, configure environment variables:
+After the initial deployment, configure environment variables. **You should copy all environment variables from your staging Vercel project.**
 
-1. In your Vercel project, go to **Settings** → **Environment Variables**
-2. Add the following variables:
+### Option A: Copy from Staging (Recommended)
 
-### Required Environment Variables:
+1. Go to your **staging Vercel project** → **Settings** → **Environment Variables**
+2. Copy all the environment variables you see there
+3. Go to your **production Vercel project** → **Settings** → **Environment Variables**
+4. Add each variable, making sure to:
+   - Change `NEXT_PUBLIC_APP_ENV` from `staging` to `production`
+   - Select **"Production"** environment for each variable
+   - Keep all other values the same (unless you need production-specific URLs)
+
+### Option B: Manual Setup
+
+If you don't have staging set up, add these variables manually:
+
+#### Required Environment Variables:
 
 ```
 NEXT_PUBLIC_APP_ENV = production
 ```
 
-### Optional (if you have custom configurations):
+#### Important Environment Variables (copy from staging if available):
 
 ```
-NEXT_PUBLIC_GRAPH_URL = [your subgraph URL]
-NEXT_PUBLIC_MAINNET_RPC_URL = [your RPC URL]
-NEXT_PUBLIC_BASE_RPC_URL = [your RPC URL]
+NEXT_PUBLIC_GRAPH_URL = [your subgraph URL - same as staging]
+NEXT_PUBLIC_GRAPH_API_KEY = [your Graph API key - same as staging]
+NEXT_PUBLIC_SAIL_PRICE_GRAPH_URL = [sail price subgraph URL - if used]
+NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID = [WalletConnect project ID - same as staging]
 ```
 
-3. Make sure to select **"Production"** environment for each variable
-4. Click **"Save"**
+#### Optional RPC URLs (for better performance):
+
+```
+NEXT_PUBLIC_MAINNET_RPC_URL = [your mainnet RPC URL]
+NEXT_PUBLIC_BASE_RPC_URL = [your Base RPC URL]
+NEXT_PUBLIC_ARBITRUM_RPC_URL = [your Arbitrum RPC URL]
+```
+
+#### Optional Configuration:
+
+```
+NEXT_PUBLIC_USE_BASEPATH = false (or leave unset)
+```
+
+### How to Add Variables in Vercel:
+
+1. In your Vercel project, go to **Settings** → **Environment Variables**
+2. Click **"Add New"**
+3. Enter the **Key** (e.g., `NEXT_PUBLIC_GRAPH_URL`)
+4. Enter the **Value** (copy from staging)
+5. Select **"Production"** environment (and optionally "Preview" and "Development" if you want them everywhere)
+6. Click **"Save"**
+7. Repeat for each variable
+
+### Important Notes:
+
+- ✅ **Copy all variables from staging** - they're likely all needed
+- ✅ **Only change `NEXT_PUBLIC_APP_ENV`** from `staging` to `production`
+- ✅ **Keep subgraph URLs the same** unless you have separate production subgraphs
+- ✅ **Keep WalletConnect Project ID the same** (it's usually shared)
+- ✅ **RPC URLs can be the same** or use production-optimized ones
 
 ## Step 3: Add Custom Domain in Vercel
 
