@@ -385,8 +385,8 @@ export default function AnchorPage() {
 
   const tokenPricesByMarket = useMultipleTokenPrices(tokenPriceInputs);
 
-  // Get CoinGecko IDs for underlying collateral (e.g., fxUSD) to detect depeg
-  const underlyingCoinGeckoIds = useMemo(() => {
+  // Get CoinGecko IDs for underlying collateral (e.g., fxUSD) and wrapped tokens (e.g., fxSAVE, wstETH)
+  const coinGeckoIds = useMemo(() => {
     const ids = new Set<string>();
     anchorMarkets.forEach(([id, m]) => {
       const underlyingCoinGeckoId = (m as any).underlyingCoinGeckoId as
@@ -395,12 +395,20 @@ export default function AnchorPage() {
       if (underlyingCoinGeckoId) {
         ids.add(underlyingCoinGeckoId);
       }
+      // Also add wrapped token CoinGecko IDs
+      const coinGeckoId = (m as any).coinGeckoId as string | undefined;
+      if (coinGeckoId) {
+        ids.add(coinGeckoId);
+      }
     });
+    // Add wstETH and stETH for fallback
+    ids.add("wrapped-steth");
+    ids.add("lido-staked-ethereum-steth");
     return Array.from(ids);
   }, [anchorMarkets]);
 
-  // Fetch underlying collateral prices from CoinGecko (for depeg detection)
-  const underlyingCoinGeckoPrices = useCoinGeckoPrices(underlyingCoinGeckoIds);
+  // Fetch collateral prices from CoinGecko (for depeg detection and wrapped token prices)
+  const coinGeckoPrices = useCoinGeckoPrices(coinGeckoIds);
 
   // Calculate USD prices using hook
   const {
