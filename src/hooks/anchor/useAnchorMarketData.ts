@@ -708,12 +708,20 @@ export function useAnchorMarketData(
       );
 
       // Filter to only show markets where genesis has completed (has collateral deposited)
-      // Check both collateralValue and totalDebt to ensure market is active
-      // A market is active if it has collateral OR debt (meaning it's been used)
+      // A market is active if it has:
+      // - collateralValue > 0 (direct collateral in minter), OR
+      // - totalDebt > 0 (market has been used), OR
+      // - pool TVL > 0 (collateral in stability pools), OR
+      // - pool deposits > 0 (user has deposited in pools)
+      // This ensures all markets with any form of collateral are shown
       const activeMarketsData = marketsData.filter(
         (m) => 
           (m.collateralValue !== undefined && m.collateralValue > 0n) ||
-          (m.totalDebt !== undefined && m.totalDebt > 0n)
+          (m.totalDebt !== undefined && m.totalDebt > 0n) ||
+          (m.collateralPoolTVL !== undefined && m.collateralPoolTVL > 0n) ||
+          (m.sailPoolTVL !== undefined && m.sailPoolTVL > 0n) ||
+          (m.collateralPoolDeposit > 0n) ||
+          (m.sailPoolDeposit > 0n)
       );
 
       // Add all active markets to the result
