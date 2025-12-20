@@ -94,19 +94,27 @@ export function useAnchorMarks(
     }
 
     // Debug logging to track why marks are 0
+    const userTotalMarksDebug = userTotalMarks ? {
+      haTokenMarks: userTotalMarks.haTokenMarks,
+      haTokenMarksNum: parseFloat(userTotalMarks.haTokenMarks || "0"),
+      stabilityPoolMarks: userTotalMarks.stabilityPoolMarks,
+      stabilityPoolMarksNum: parseFloat(userTotalMarks.stabilityPoolMarks || "0"),
+      totalMarks: userTotalMarks.totalMarks,
+      totalMarksNum: parseFloat(userTotalMarks.totalMarks || "0"),
+      totalMarksPerDay: userTotalMarks.totalMarksPerDay,
+      totalMarksPerDayNum: parseFloat(userTotalMarks.totalMarksPerDay || "0"),
+      lastUpdated: userTotalMarks.lastUpdated,
+      lastUpdatedNum: parseInt(userTotalMarks.lastUpdated || "0"),
+    } : null;
+    
     console.log("[useAnchorMarks] Total marks calculation:", {
       haBalancesLength: haBalances?.length || 0,
       poolDepositsLength: poolDeposits?.length || 0,
       marksFromHa,
       marksFromPools,
       marksFromUserTotal,
-      userTotalMarks: userTotalMarks ? {
-        haTokenMarks: userTotalMarks.haTokenMarks,
-        stabilityPoolMarks: userTotalMarks.stabilityPoolMarks,
-        totalMarks: userTotalMarks.totalMarks,
-        totalMarksPerDay: userTotalMarks.totalMarksPerDay,
-        lastUpdated: userTotalMarks.lastUpdated,
-      } : null,
+      userTotalMarks: userTotalMarksDebug,
+      finalTotalMarks: totalMarks,
       haBalances: haBalances?.map(b => ({
         tokenAddress: b.tokenAddress,
         balance: b.balance,
@@ -127,119 +135,39 @@ export function useAnchorMarks(
     setTotalAnchorMarksState(totalMarks);
   }, [haBalances, poolDeposits, userTotalMarks]);
 
-  const { totalAnchorMarks, totalAnchorMarksPerDay } = useMemo(() => {
+    const { totalAnchorMarks, totalAnchorMarksPerDay } = useMemo(() => {
     const totalMarks = totalAnchorMarksState;
     let totalPerDay = 0;
     let perDayFromHaBalances = 0;
     let perDayFromPoolDeposits = 0;
 
-    // Create a map of pegged token address to peggedTokenPrice
-    // Find peggedTokenPrice by matching contract address and functionName in allMarketContracts
-    const tokenToPriceMap = new Map<string, bigint | undefined>();
-    if (allMarketContracts && reads) {
-      anchorMarkets.forEach(([_, m]) => {
-        const peggedTokenAddress = (m as any).addresses?.peggedToken as
-          | string
-          | undefined;
-        const minterAddress = (m as any).addresses?.minter as
-          | string
-          | undefined;
-        if (peggedTokenAddress && minterAddress) {
-          // Find the peggedTokenPrice read by matching minter address and functionName
-          const peggedTokenPriceIndex = allMarketContracts.findIndex(
-            (contract, index) =>
-              contract.address?.toLowerCase() === minterAddress.toLowerCase() &&
-              contract.functionName === "peggedTokenPrice" &&
-              reads[index]?.status === "success"
-          );
-          const peggedTokenPrice =
-            peggedTokenPriceIndex >= 0 &&
-            reads[peggedTokenPriceIndex]?.status === "success"
-              ? (reads[peggedTokenPriceIndex].result as bigint)
-              : undefined;
-          tokenToPriceMap.set(
-            peggedTokenAddress.toLowerCase(),
-            peggedTokenPrice
-          );
-        }
-      });
-    }
-
-    // Add ha token marks - recalculate marksPerDay using actual peggedTokenPrice
+    // Add ha token marks - use balanceUSD from subgraph (1 mark per dollar per day)
     if (haBalances && haBalances.length > 0) {
       haBalances.forEach((balance) => {
-        // Recalculate marksPerDay using actual peggedTokenPrice
-        const peggedTokenPrice = tokenToPriceMap.get(
-          balance.tokenAddress.toLowerCase()
-        );
-        if (peggedTokenPrice) {
-          // peggedTokenPrice is in 18 decimals, where 1e18 = $1.00 normally
-          // But for tokens pegged to ETH/BTC, it will be different
-          const peggedPriceUSD = Number(peggedTokenPrice) / 1e18;
-          const balanceNum = parseFloat(balance.balance);
-          const balanceUSD = balanceNum * peggedPriceUSD;
-          // 1 mark per dollar per day
+        // Use balanceUSD directly from subgraph - it's already calculated correctly
+        // Marks per day = 1 mark per dollar per day, so balanceUSD = marks per day
+        const balanceUSD = parseFloat(balance.balanceUSD || "0");
+        if (balanceUSD > 0) {
           perDayFromHaBalances += balanceUSD;
         } else {
-          // Fallback to subgraph value if we can't find the price
-          perDayFromHaBalances += balance.marksPerDay;
+          // Fallback to subgraph marksPerDay if balanceUSD is not available
+          perDayFromHaBalances += parseFloat(balance.marksPerDay || "0");
         }
       });
       totalPerDay += perDayFromHaBalances;
     }
 
-    // Add stability pool marks - recalculate marksPerDay using actual peggedTokenPrice
+    // Add stability pool marks - use balanceUSD from subgraph (1 mark per dollar per day)
     if (poolDeposits && poolDeposits.length > 0) {
       poolDeposits.forEach((deposit) => {
-        // For stability pools, we need to find which market this pool belongs to
-        // and get the peggedTokenPrice for that market
-        let poolPeggedTokenPrice: bigint | undefined;
-        anchorMarkets.forEach(([_, m]) => {
-          const collateralPool = (
-            m as any
-          ).addresses?.stabilityPoolCollateral?.toLowerCase();
-          const sailPool = (
-            m as any
-          ).addresses?.stabilityPoolLeveraged?.toLowerCase();
-          if (
-            deposit.poolAddress.toLowerCase() === collateralPool ||
-            deposit.poolAddress.toLowerCase() === sailPool
-          ) {
-            const peggedTokenAddress = (m as any).addresses?.peggedToken as
-              | string
-              | undefined;
-            if (peggedTokenAddress) {
-              poolPeggedTokenPrice = tokenToPriceMap.get(
-                peggedTokenAddress.toLowerCase()
-              );
-            }
-          }
-        });
-
-        if (poolPeggedTokenPrice) {
-          // Stability pool deposits are in ha tokens, so use peggedTokenPrice
-          const peggedPriceUSD = Number(poolPeggedTokenPrice) / 1e18;
-          const balanceNum = parseFloat(deposit.balance);
-          const balanceUSD = balanceNum * peggedPriceUSD;
-          // 1 mark per dollar per day
+        // Use balanceUSD directly from subgraph - it's already calculated correctly
+        // Marks per day = 1 mark per dollar per day, so balanceUSD = marks per day
+        const balanceUSD = parseFloat(deposit.balanceUSD || "0");
+        if (balanceUSD > 0) {
           perDayFromPoolDeposits += balanceUSD;
-          console.log("[useAnchorMarks] poolDeposit marksPerDay calculation:", {
-            poolAddress: deposit.poolAddress,
-            poolType: deposit.poolType,
-            balance: deposit.balance,
-            peggedTokenPrice: poolPeggedTokenPrice.toString(),
-            peggedPriceUSD,
-            balanceUSD,
-            marksPerDay: balanceUSD,
-          });
         } else {
-          // Fallback to subgraph value if we can't find the price
-          perDayFromPoolDeposits += deposit.marksPerDay;
-          console.log("[useAnchorMarks] poolDeposit using subgraph marksPerDay:", {
-            poolAddress: deposit.poolAddress,
-            poolType: deposit.poolType,
-            marksPerDay: deposit.marksPerDay,
-          });
+          // Fallback to subgraph marksPerDay if balanceUSD is not available
+          perDayFromPoolDeposits += parseFloat(deposit.marksPerDay || "0");
         }
       });
       totalPerDay += perDayFromPoolDeposits;
@@ -251,13 +179,23 @@ export function useAnchorMarks(
       totalPerDay,
       haBalancesLength: haBalances?.length || 0,
       poolDepositsLength: poolDeposits?.length || 0,
+      perDayFromHaBalances,
+      perDayFromPoolDeposits,
       userTotalMarks: userTotalMarks ? {
         totalMarksPerDay: userTotalMarks.totalMarksPerDay,
         haTokenMarks: userTotalMarks.haTokenMarks,
         stabilityPoolMarks: userTotalMarks.stabilityPoolMarks,
       } : null,
-      tokenToPriceMapSize: tokenToPriceMap.size,
-      anchorMarketsLength: anchorMarkets.length,
+      haBalances: haBalances?.map(b => ({
+        tokenAddress: b.tokenAddress,
+        balanceUSD: b.balanceUSD,
+        marksPerDay: b.marksPerDay,
+      })),
+      poolDeposits: poolDeposits?.map(d => ({
+        poolAddress: d.poolAddress,
+        balanceUSD: d.balanceUSD,
+        marksPerDay: d.marksPerDay,
+      })),
     });
 
     return {
@@ -269,9 +207,6 @@ export function useAnchorMarks(
     haBalances,
     poolDeposits,
     userTotalMarks,
-    anchorMarkets,
-    allMarketContracts,
-    reads,
   ]);
 
   // Calculate total marks per day (after totalAnchorMarksPerDay is defined)
