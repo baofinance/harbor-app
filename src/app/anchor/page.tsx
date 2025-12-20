@@ -452,6 +452,18 @@ export default function AnchorPage() {
     return map;
   }, [allMarketsData]);
 
+  // Fetch collateral prices for all markets using the hook
+  const collateralPriceOracleAddresses = useMemo(() => {
+    return anchorMarkets.map(([_, market]) => 
+      (market as any).addresses?.collateralPrice as `0x${string}` | undefined
+    );
+  }, [anchorMarkets]);
+
+  const { prices: collateralPricesMap } = useMultipleCollateralPrices(
+    collateralPriceOracleAddresses,
+    { refetchInterval: 30000 }
+  );
+
   // Use extracted hook for transaction handlers
   const {
     handlePendingWithdraw,
