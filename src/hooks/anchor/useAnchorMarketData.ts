@@ -166,10 +166,15 @@ export function useAnchorMarketData(
 
           const collateralValueRead = reads?.[baseOffset + 1];
           const totalDebtRead = reads?.[baseOffset + 2];
-          const collateralValue = collateralValueRead?.result as
-            | bigint
-            | undefined;
-          const totalDebt = totalDebtRead?.result as bigint | undefined;
+          // Only use result if read was successful
+          const collateralValue = 
+            collateralValueRead?.status === "success" && collateralValueRead?.result !== undefined && collateralValueRead?.result !== null
+              ? (collateralValueRead.result as bigint)
+              : undefined;
+          const totalDebt = 
+            totalDebtRead?.status === "success" && totalDebtRead?.result !== undefined && totalDebtRead?.result !== null
+              ? (totalDebtRead.result as bigint)
+              : undefined;
 
           // Get collateralRatio from direct read, or calculate from collateralValue and totalDebt
           let collateralRatio: bigint | undefined;
