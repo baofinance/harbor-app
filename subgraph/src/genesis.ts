@@ -97,6 +97,14 @@ function getWrappedTokenPriceUSD(genesisAddress: Bytes, block: ethereum.Block): 
   // For wstETH markets: Oracle returns haBTC price, but we need wstETH price (~$3,600)
   // Solution: Use CoinGecko or hardcoded prices for underlying, then multiply by wrapped rate
   
+  // Determine if market is BTC-pegged (uses haBTC) or ETH-pegged (uses haETH)
+  // BTC-pegged markets: BTC/fxUSD, BTC/stETH
+  // ETH-pegged markets: ETH/fxUSD
+  const isBTCPeggedMarket = genesisAddressStr == "0x42cc9a19b358a2a918f891d8a6199d8b05f0bc1c" || // BTC/fxUSD (production v1)
+                             genesisAddressStr == "0xc64fc46eed431e92c1b5e24dc296b5985ce6cc00" || // BTC/stETH (production v1)
+                             genesisAddressStr == "0x288c61c3b3684ff21adf38d878c81457b19bd2fe" || // BTC/fxUSD (legacy test)
+                             genesisAddressStr == "0x9ae0b57ceada0056dbe21edcd638476fcba3ccc0"; // BTC/stETH (legacy test)
+  
   // ETH/fxUSD and BTC/fxUSD markets use fxUSD as underlying collateral
   const isFxUSDMarket = genesisAddressStr == "0xc9df4f62474cf6cde6c064db29416a9f4f27ebdc" || // ETH/fxUSD (production v1)
                         genesisAddressStr == "0x42cc9a19b358a2a918f891d8a6199d8b05f0bc1c" || // BTC/fxUSD (production v1)
@@ -133,23 +141,13 @@ function getWrappedTokenPriceUSD(genesisAddress: Bytes, block: ethereum.Block): 
     const maxWrappedRate = result.value.value3; // maxWrappedRate (e.g., fxSAVE rate = 1.07)
     const wrappedRate = maxWrappedRate.toBigDecimal().div(E18);
     
-    // Check if wrapped rate is valid and reasonable (should be > 1.0 for fxSAVE, typically ~1.07)
-    // If rate is 1.0 or less, or too close to 1.0 (< 1.05), it's likely incorrect
-    // Use fallback price if rate seems invalid
-    if (wrappedRate.le(BigDecimal.fromString("1.05"))) {
-      // Wrapped rate is too low (should be ~1.07 for fxSAVE)
-      // This would give us an incorrect price - use fallback price instead
-      return getFallbackPrice(genesisAddressStr);
-    }
-    
     // Calculate wrapped token price: $1.00 * wrapped rate
     // Example: fxSAVE = $1.00 * 1.07 = $1.07
+    // Trust the oracle - it will return the correct wrapped rate
     const wrappedTokenPriceUSD = underlyingPriceUSD.times(wrappedRate);
     
-    // Ensure we have a valid price (should be > $1.05 for fxSAVE, typically ~$1.07)
-    if (wrappedTokenPriceUSD.le(BigDecimal.fromString("1.05"))) {
-      // Price is too low, which is incorrect for fxSAVE
-      // Use fallback price instead
+    // Ensure we have a valid price
+    if (wrappedTokenPriceUSD.le(BigDecimal.fromString("0"))) {
       return getFallbackPrice(genesisAddressStr);
     }
     
@@ -157,9 +155,9 @@ function getWrappedTokenPriceUSD(genesisAddress: Bytes, block: ethereum.Block): 
   }
   
   if (isWstETHMarket) {
-    // For BTC/stETH market: Oracle returns wstETH/BTC cross-rate, not USD price!
-    // We need to multiply by BTC/USD to get wstETH price in USD
+    // For BTC/stETH market: This market uses haBTC (BTC-pegged), so oracle returns BTC-denominated prices
     // Oracle value: maxUnderlyingPrice = wstETH/BTC rate (e.g., 0.041 BTC per wstETH)
+    // We need to multiply by BTC/USD to get wstETH price in USD
     // Calculation: wstETH USD = (wstETH/BTC rate) × (BTC/USD price)
     
     const oracleAddressStr = getPriceOracleAddress(genesisAddressStr);
@@ -176,11 +174,10 @@ function getWrappedTokenPriceUSD(genesisAddress: Bytes, block: ethereum.Block): 
       return getFallbackPrice(genesisAddressStr);
     }
     
-    // Extract underlying/BTC rate (18 decimals)
-    // NOTE: The oracle may return stETH/BTC or wstETH/BTC depending on implementation
-    // We need to check if it's already wstETH/BTC or if it's stETH/BTC
-    const underlyingBtcRate = result.value.value1; // maxUnderlyingPrice
-    const underlyingBtcRateDecimal = underlyingBtcRate.toBigDecimal().div(E18);
+    // Extract wstETH/BTC rate (18 decimals)
+    // Since this is a BTC-pegged market (haBTC), the oracle returns BTC-denominated prices
+    const wstethBtcRate = result.value.value1; // maxUnderlyingPrice = wstETH/BTC rate
+    const wstethBtcRateDecimal = wstethBtcRate.toBigDecimal().div(E18);
     
     // Get wrapped rate (stETH <-> wstETH conversion, typically ~1.22)
     const maxWrappedRate = result.value.value3;
@@ -200,17 +197,9 @@ function getWrappedTokenPriceUSD(genesisAddress: Bytes, block: ethereum.Block): 
     // Chainlink BTC/USD uses 8 decimals
     const btcUsdPrice = btcUsdResult.value.toBigDecimal().div(BigDecimal.fromString("100000000")); // 10^8
     
-    // Calculate wstETH price in USD
-    // If oracle returns stETH/BTC: (stETH/BTC) × (BTC/USD) × (wrapped rate) = wstETH/USD
-    // If oracle returns wstETH/BTC: (wstETH/BTC) × (BTC/USD) = wstETH/USD (no wrapped rate needed)
-    // Based on the comment saying "wstETH/BTC rate", we assume it's already wstETH/BTC
-    // So we should NOT multiply by wrapped rate
-    // However, if the rate seems too low (indicating it might be stETH/BTC), we multiply by wrapped rate
-    // Check: if underlyingBtcRate * btcUsdPrice < 2000, it's likely stETH/BTC, so multiply by wrapped rate
-    const priceWithoutWrappedRate = underlyingBtcRateDecimal.times(btcUsdPrice);
-    const wstethUsdPrice = priceWithoutWrappedRate.lt(BigDecimal.fromString("2000"))
-      ? priceWithoutWrappedRate.times(wrappedRate) // Likely stETH/BTC, multiply by wrapped rate
-      : priceWithoutWrappedRate; // Likely wstETH/BTC, use directly
+    // Calculate wstETH price in USD: (wstETH/BTC rate) × (BTC/USD price)
+    // The oracle returns wstETH/BTC directly (since market is BTC-pegged), so no wrapped rate multiplication needed
+    const wstethUsdPrice = wstethBtcRateDecimal.times(btcUsdPrice);
     
     // Ensure we have a valid price
     if (wstethUsdPrice.le(BigDecimal.fromString("0"))) {
