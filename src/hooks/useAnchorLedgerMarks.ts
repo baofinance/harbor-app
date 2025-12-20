@@ -568,6 +568,9 @@ export function useAnchorLedgerMarks({
     setEstimatedMarks(calculateTotal());
   }, [haBalances, poolDeposits, sailBalances, currentTime]);
 
+  // Extract userTotalMarks from data
+  const userTotalMarks = data?.userTotalMarks || null;
+
   return {
     haBalances,
     poolDeposits,
@@ -576,6 +579,7 @@ export function useAnchorLedgerMarks({
     marksPerDay, // Current earning rate
     loading: isLoading,
     error,
+    userTotalMarks, // Aggregated marks from subgraph (fallback when individual entities are empty)
   };
 }
 

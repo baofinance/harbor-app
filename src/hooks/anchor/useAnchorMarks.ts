@@ -25,6 +25,7 @@ export function useAnchorMarks(
     sailBalances,
     loading: isLoadingAnchorMarks,
     error: anchorLedgerMarksError,
+    userTotalMarks,
   } = useAnchorLedgerMarks({ enabled: true }); // Enable subgraph queries
 
   // Calculate sail marks per day
@@ -48,19 +49,40 @@ export function useAnchorMarks(
   useEffect(() => {
     // Recalculate total marks directly from arrays (which update every second)
     let totalMarks = 0;
-    if (haBalances) {
+    
+    // If we have individual entity data, use it (more accurate, real-time)
+    if (haBalances && haBalances.length > 0) {
       haBalances.forEach((balance) => {
         totalMarks += balance.estimatedMarks;
       });
     }
-    if (poolDeposits) {
+    if (poolDeposits && poolDeposits.length > 0) {
       poolDeposits.forEach((deposit) => {
         totalMarks += deposit.estimatedMarks;
       });
     }
+    
+    // Fallback to userTotalMarks if individual entities are empty but we have aggregated data
+    if (totalMarks === 0 && userTotalMarks) {
+      const haTokenMarks = parseFloat(userTotalMarks.haTokenMarks || "0");
+      const stabilityPoolMarks = parseFloat(userTotalMarks.stabilityPoolMarks || "0");
+      totalMarks = haTokenMarks + stabilityPoolMarks;
+      
+      // If we have a lastUpdated timestamp, estimate additional marks since then
+      const lastUpdated = parseInt(userTotalMarks.lastUpdated || "0");
+      if (lastUpdated > 0) {
+        const totalMarksPerDay = parseFloat(userTotalMarks.totalMarksPerDay || "0");
+        const currentTime = Math.floor(Date.now() / 1000);
+        const secondsSinceUpdate = currentTime - lastUpdated;
+        if (secondsSinceUpdate > 0) {
+          const daysSinceUpdate = secondsSinceUpdate / 86400;
+          totalMarks += totalMarksPerDay * daysSinceUpdate;
+        }
+      }
+    }
 
     setTotalAnchorMarksState(totalMarks);
-  }, [haBalances, poolDeposits]);
+  }, [haBalances, poolDeposits, userTotalMarks]);
 
   const { totalAnchorMarks, totalAnchorMarksPerDay } = useMemo(() => {
     const totalMarks = totalAnchorMarksState;
