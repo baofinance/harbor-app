@@ -180,8 +180,8 @@ export default function FlowPage() {
  const publicClient = usePublicClient();
  const [expanded, setExpanded] = useState<ExpandedState>(null);
 
- // All networks are visible (no anvil)
- const visibleNetworks = useMemo(() => NETWORKS, []);
+ // All networks are visible (no anvil), but hide Arbitrum
+ const visibleNetworks = useMemo(() => NETWORKS.filter(n => n !== "arbitrum"), []);
 
  return (
  <>

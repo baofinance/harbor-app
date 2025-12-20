@@ -154,7 +154,7 @@ const collateralPriceUSD =
  },
  });
  const handleClose = () => {
- if (step ==="withdrawing") return; // Prevent closing during transaction
+ // Allow closing even during transaction - transaction will continue in background
  setAmount("");
  setStep("input");
  setError(null);
@@ -547,7 +547,7 @@ Available: {formatTokenAmount(userDeposit, collateralSymbol).display}
           title="Processing Withdrawal"
           steps={progressSteps}
           currentStepIndex={currentStepIndex}
-          canCancel={false}
+          canCancel={true}
           errorMessage={error || undefined}
           renderSuccessContent={renderSuccessContent}
         />
@@ -571,7 +571,6 @@ Available: {formatTokenAmount(userDeposit, collateralSymbol).display}
               <button
                 onClick={handleClose}
                 className="text-[#1E4775]/50 hover:text-[#1E4775] transition-colors"
-                disabled={step === "withdrawing"}
               >
                 <svg
                   className="w-5 h-5 sm:w-6 sm:h-6"

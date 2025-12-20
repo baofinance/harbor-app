@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   useAccount,
   useContractReads,
+  useContractRead,
   useWriteContract,
   usePublicClient,
 } from "wagmi";
@@ -865,6 +866,29 @@ export default function GenesisIndexPage() {
       });
     }
   }, [collateralPricesMap, collateralPricesLoading, collateralPricesError]);
+
+  // Chainlink BTC/USD Oracle on Mainnet (fallback when CoinGecko fails)
+  const CHAINLINK_BTC_USD_ORACLE = "0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c" as `0x${string}`;
+  
+  // Fetch Chainlink BTC/USD as fallback for BTC-pegged markets
+  const { data: chainlinkBtcPriceData } = useContractRead({
+    address: CHAINLINK_BTC_USD_ORACLE,
+    abi: chainlinkOracleSingleValueABI,
+    functionName: "latestAnswer",
+    query: {
+      enabled: true,
+      staleTime: 60_000, // 1 minute - Chainlink updates less frequently
+      gcTime: 300_000, // 5 minutes
+    },
+  });
+
+  // Calculate Chainlink BTC price in USD (8 decimals)
+  const chainlinkBtcPrice = useMemo(() => {
+    if (!chainlinkBtcPriceData) return null;
+    // Chainlink BTC/USD uses 8 decimals
+    const price = Number(chainlinkBtcPriceData as bigint) / 1e8;
+    return price > 0 ? price : null;
+  }, [chainlinkBtcPriceData]);
 
   // Refetch marks when genesis ends to get bonus marks
   useEffect(() => {
@@ -1751,13 +1775,19 @@ export default function GenesisIndexPage() {
                   const pegTarget = (mkt as any)?.pegTarget?.toLowerCase();
                   const isBTCMarket = pegTarget === "btc" || pegTarget === "bitcoin";
                   if (isBTCMarket && oraclePriceUSD > 0 && oraclePriceUSD < 1) {
-                    // If price is less than $1, it's likely in BTC terms (e.g., 0.05 BTC per stETH)
-                    // Get BTC price in USD and convert
-                    const btcPriceUSD = coinGeckoPrices["bitcoin"] || 0;
+                    // If price is less than $1, it's likely in BTC terms (e.g., 0.041 BTC per wstETH)
+                    // Get BTC price in USD: Priority: CoinGecko → Chainlink
+                    const btcPriceUSD = coinGeckoPrices["bitcoin"] || chainlinkBtcPrice || 0;
                     if (btcPriceUSD > 0) {
                       oraclePriceUSD = oraclePriceUSD * btcPriceUSD;
+                      const priceSource = coinGeckoPrices["bitcoin"] ? "CoinGecko" : "Chainlink";
                       console.log(
-                        `[Genesis Price] Market ${id}: Converted BTC-denominated oracle price to USD: ${underlyingPriceFromOracle} BTC × $${btcPriceUSD} = $${oraclePriceUSD}`
+                        `[Genesis Price] Market ${id}: Converted BTC-denominated oracle price to USD: ${underlyingPriceFromOracle} BTC × $${btcPriceUSD} (${priceSource}) = $${oraclePriceUSD}`
+                      );
+                    } else {
+                      // Both CoinGecko and Chainlink failed - log warning
+                      console.warn(
+                        `[Genesis Price] Market ${id}: Cannot convert BTC-denominated price to USD - both CoinGecko and Chainlink BTC prices unavailable`
                       );
                     }
                   }
