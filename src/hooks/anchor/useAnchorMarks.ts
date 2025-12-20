@@ -25,7 +25,7 @@ export function useAnchorMarks(
     sailBalances,
     loading: isLoadingAnchorMarks,
     error: anchorLedgerMarksError,
-  } = useAnchorLedgerMarks();
+  } = useAnchorLedgerMarks({ enabled: true }); // Enable subgraph queries
 
   // Calculate sail marks per day
   const sailMarksPerDay = useMemo(() => {

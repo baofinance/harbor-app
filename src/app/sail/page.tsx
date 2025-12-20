@@ -986,7 +986,7 @@ export default function SailPage() {
     sailBalances,
     loading: isLoadingSailMarks,
     error: sailMarksError,
-  } = useAnchorLedgerMarks();
+  } = useAnchorLedgerMarks({ enabled: true }); // Enable subgraph queries
 
   // Calculate total sail marks and marks per day from sail balances
   // Use useState + useEffect to ensure component re-renders when marks change every second

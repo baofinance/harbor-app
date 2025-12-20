@@ -286,7 +286,7 @@ export default function LedgerMarksLeaderboard() {
     sailBalances,
     loading: isLoadingAnchorLedgerMarks,
     error: anchorLedgerMarksError,
-  } = useAnchorLedgerMarks();
+  } = useAnchorLedgerMarks({ enabled: true }); // Enable subgraph queries
 
  // Calculate anchor marks per day (ha tokens + collateral stability pools)
  const anchorMarksPerDay = useMemo(() => {
