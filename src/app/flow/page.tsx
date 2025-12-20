@@ -28,10 +28,10 @@ import {
  pairEstimateLabel,
 } from "@/lib/utils";
 import {
- MAINNET_RPC_URL,
- ARBITRUM_RPC_URL,
- getMainnetRpcClient,
- getArbitrumRpcClient,
+  MAINNET_RPC_URL,
+  ARBITRUM_RPC_URL,
+  getMainnetRpcClient,
+  getArbitrumRpcClient,
 } from "@/config/rpc";
 
 // Create mainnet public client - ensure it's always available
@@ -180,8 +180,8 @@ export default function FlowPage() {
  const publicClient = usePublicClient();
  const [expanded, setExpanded] = useState<ExpandedState>(null);
 
- // All networks are visible (no anvil), but hide Arbitrum
- const visibleNetworks = useMemo(() => NETWORKS.filter(n => n !== "arbitrum"), []);
+ // All networks are visible (no anvil)
+ const visibleNetworks = useMemo(() => NETWORKS.filter(n => n !== "anvil"), []);
 
  return (
  <>
@@ -458,7 +458,7 @@ function FeedGroupSection({
  const pair = parsePair(feed.label);
  const price = prices[idx] ??"-";
  const isFeedExpanded = isExpanded && expanded?.feedIndex === idx;
- const status = feed.status ||"possible";
+ const status = feed.status ||"available";
 
  return (
  <tr
@@ -519,7 +519,7 @@ function FeedGroupSection({
  :"bg-gray-100 text-gray-600"
  }`}
  >
- {status ==="active" ?"Active" :"Possible"}
+ {status ==="active" ?"Active" :"Available"}
  </span>
  </td>
  </tr>
