@@ -122,15 +122,6 @@ export function useAnchorMarks(
   }, [haBalances, poolDeposits, userTotalMarks]);
 
   const { totalAnchorMarks, totalAnchorMarksPerDay } = useMemo(() => {
-    console.log("[useAnchorMarks] Calculating marks per day:", {
-      totalAnchorMarksState,
-      haBalancesLength: haBalances?.length || 0,
-      poolDepositsLength: poolDeposits?.length || 0,
-      userTotalMarks: userTotalMarks,
-      allMarketContractsLength: allMarketContracts?.length || 0,
-      readsLength: reads?.length || 0,
-    });
-    
     const totalMarks = totalAnchorMarksState;
     let totalPerDay = 0;
 
@@ -181,21 +172,9 @@ export function useAnchorMarks(
           const balanceUSD = balanceNum * peggedPriceUSD;
           // 1 mark per dollar per day
           perDayFromHaBalances += balanceUSD;
-          console.log("[useAnchorMarks] haBalance marksPerDay calculation:", {
-            tokenAddress: balance.tokenAddress,
-            balance: balance.balance,
-            peggedTokenPrice: peggedTokenPrice.toString(),
-            peggedPriceUSD,
-            balanceUSD,
-            marksPerDay: balanceUSD,
-          });
         } else {
           // Fallback to subgraph value if we can't find the price
           perDayFromHaBalances += balance.marksPerDay;
-          console.log("[useAnchorMarks] haBalance using subgraph marksPerDay:", {
-            tokenAddress: balance.tokenAddress,
-            marksPerDay: balance.marksPerDay,
-          });
         }
       });
       totalPerDay += perDayFromHaBalances;
