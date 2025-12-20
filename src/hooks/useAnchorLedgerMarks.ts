@@ -147,12 +147,7 @@ function calculateEstimatedMarks(entity: MarksEntity, currentTime?: number): num
   
   if (process.env.NODE_ENV === "development" && result < storedMarks) {
     // Estimated marks less than stored, using stored
-      storedMarks,
-      estimated,
-      result,
-      daysSinceUpdate,
-      secondsSinceUpdate,
-    });
+    // This shouldn't happen, but if it does, we use the stored value
   }
   
   return result;
