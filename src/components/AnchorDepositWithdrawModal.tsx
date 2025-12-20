@@ -699,6 +699,7 @@ export const AnchorDepositWithdrawModal = ({
       functionName: "mintPeggedTokenDryRun";
       args: [bigint];
       assetSymbol: string;
+      wrappedAmount: bigint; // Store the wrapped amount for fee calculation
     }> = [];
 
     allDepositAssetsWithMarkets.forEach((asset) => {
@@ -728,8 +729,19 @@ export const AnchorDepositWithdrawModal = ({
           wrappedAmount = (sampleAmount * 10n**18n) / wrappedRate;
         } else if (asset.symbol === "USDC") {
           // USDC (6 decimals) -> fxUSD (18 decimals) -> fxSAVE
+          // 1 USDC = 1e6 in USDC units
+          // Convert to 18 decimals: 1e6 * 1e12 = 1e18 (1 USDC in 18 decimals)
+          // Convert to fxSAVE: (1e18 * 1e18) / wrappedRate
+          // But wait - we should compare fees on the same basis. For USDC, we deposit 1 USDC,
+          // which equals 1 fxUSD (since USDC and fxUSD are both $1), so we should use the same wrappedAmount
+          // as fxUSD to get a fair fee comparison.
+          // Actually, the fee is calculated on the wrapped collateral amount, so:
+          // 1 USDC = 1 fxUSD (in value) = 1e18 in 18 decimals
+          // fxSAVE = fxUSD / wrappedRate = 1e18 / wrappedRate
           const usdcAmount = BigInt(Math.floor(parseFloat(sampleAmountForFeeCalc) * 10**6));
-          const usdcIn18Decimals = usdcAmount * 10n**12n;
+          const usdcIn18Decimals = usdcAmount * 10n**12n; // 1 USDC = 1e18 in 18 decimals
+          // For fee comparison, we want to know the fee for depositing 1 USDC worth of wrapped collateral
+          // Since 1 USDC = 1 fxUSD, we use the same conversion as fxUSD
           wrappedAmount = (usdcIn18Decimals * 10n**18n) / wrappedRate;
         } else {
           // Unknown asset type, use as-is (should not happen for native deposits)
@@ -742,6 +754,7 @@ export const AnchorDepositWithdrawModal = ({
           functionName: "mintPeggedTokenDryRun" as const,
           args: [wrappedAmount] as const,
           assetSymbol: asset.symbol,
+          wrappedAmount: wrappedAmount, // Store for fee calculation
         });
       }
     });
@@ -914,7 +927,9 @@ export const AnchorDepositWithdrawModal = ({
       // Process the result data
       if (resultData && Array.isArray(resultData) && resultData.length >= 2) {
         const wrappedFee = resultData[1] as bigint;
-        const inputAmount = parseEther(sampleAmountForFeeCalc);
+        // Use the actual wrappedAmount that was passed to the contract, not a fixed amount
+        // This ensures fees are calculated correctly for assets with different conversions (e.g., USDC)
+        const inputAmount = contract.wrappedAmount;
         if (inputAmount > 0n) {
           // Calculate fee percentage even if wrappedFee is 0 (to show 0%)
           feePercentage = (Number(wrappedFee) / Number(inputAmount)) * 100;
