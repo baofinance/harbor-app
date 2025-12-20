@@ -124,6 +124,8 @@ export function useAnchorMarks(
   const { totalAnchorMarks, totalAnchorMarksPerDay } = useMemo(() => {
     const totalMarks = totalAnchorMarksState;
     let totalPerDay = 0;
+    let perDayFromHaBalances = 0;
+    let perDayFromPoolDeposits = 0;
 
     // Create a map of pegged token address to peggedTokenPrice
     // Find peggedTokenPrice by matching contract address and functionName in allMarketContracts
