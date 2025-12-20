@@ -208,6 +208,9 @@ export function useAnchorPrices(
         const btcPriceInWei = BigInt(Math.floor(btcPrice * 1e18));
         map[id] = btcPriceInWei;
         console.log(`[peggedPriceUSDMap] Market ${id} (${peggedTokenSymbol}): Using BTC price directly: $${btcPrice} = ${btcPriceInWei.toString()}`);
+      } else if (isBTCPegged && !btcPrice) {
+        // BTC-pegged token but BTC price not loaded yet - log warning
+        console.warn(`[peggedPriceUSDMap] Market ${id} (${peggedTokenSymbol}): BTC price not available yet (btcPrice=${btcPrice})`);
       } else if (peggedTokenPrice && collateralPriceUSD > 0) {
         // For other tokens, calculate USD price: peggedTokenPrice (in collateral units) * collateralPriceUSD
         const peggedPriceInCollateral = Number(peggedTokenPrice) / 1e18;
