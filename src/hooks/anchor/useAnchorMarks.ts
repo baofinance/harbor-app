@@ -237,12 +237,6 @@ export function useAnchorMarks(
       totalPerDay += perDayFromPoolDeposits;
     }
 
-    console.log("[useAnchorMarks] Final calculation result:", {
-      totalAnchorMarks: totalMarks,
-      totalAnchorMarksPerDay: totalPerDay,
-      usedFallback: totalMarks === 0 && userTotalMarks !== null,
-    });
-    
     // Debug logging for marks per day calculation
     console.log("[useAnchorMarks] Marks per day calculation:", {
       totalMarks,
