@@ -3100,28 +3100,9 @@ export default function AnchorPage() {
                 );
               }
 
-              // Show header row only if there are finished markets
-              return (
-                <>
-                  {/* Header Row */}
-                  <div className="bg-white py-1.5 px-2 overflow-x-auto">
-                    <div className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr_1fr_1fr] gap-4 items-center uppercase tracking-wider text-[10px] lg:text-[11px] text-[#1E4775] font-semibold">
-                      <div className="min-w-0 text-center">Token</div>
-                      <div className="text-center min-w-0">Deposit Assets</div>
-                      <div className="text-center min-w-0">APR</div>
-                      <div className="text-center min-w-0">Earnings</div>
-                      <div className="text-center min-w-0">Reward Assets</div>
-                      <div className="text-center min-w-0">Position</div>
-                      <div className="text-center min-w-0">Actions</div>
-                    </div>
-                  </div>
-                </>
-              );
-            }
-
-            // Show grouped markets by ha token
-            // Group markets by pegged token symbol
-            const groups: Record<
+              // Show grouped markets by ha token
+              // Group markets by pegged token symbol
+              const groups: Record<
                 string,
                 Array<{
                   marketId: string;
@@ -3143,7 +3124,21 @@ export default function AnchorPage() {
               });
 
               // Process each group
-              return Object.entries(groups).map(([symbol, marketList]) => {
+              return (
+                <>
+                  {/* Header Row */}
+                  <div className="bg-white py-1.5 px-2 overflow-x-auto">
+                    <div className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr_1fr_1fr] gap-4 items-center uppercase tracking-wider text-[10px] lg:text-[11px] text-[#1E4775] font-semibold">
+                      <div className="min-w-0 text-center">Token</div>
+                      <div className="text-center min-w-0">Deposit Assets</div>
+                      <div className="text-center min-w-0">APR</div>
+                      <div className="text-center min-w-0">Earnings</div>
+                      <div className="text-center min-w-0">Reward Assets</div>
+                      <div className="text-center min-w-0">Position</div>
+                      <div className="text-center min-w-0">Actions</div>
+                    </div>
+                  </div>
+                  {Object.entries(groups).map(([symbol, marketList]) => {
                 // Collect all data for markets in this group from the hook
                 const marketsData = marketList
                   .map(({ marketId }) => marketsDataMap.get(marketId))
@@ -4427,8 +4422,10 @@ export default function AnchorPage() {
                     )}
                   </React.Fragment>
                 );
-              });
-                })()}
+              })}
+                </>
+              );
+            })()}
           </section>
         </main>
 
