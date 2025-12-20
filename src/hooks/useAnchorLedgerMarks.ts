@@ -7,8 +7,20 @@ import { getGraphUrl, getGraphHeaders } from "@/config/graph";
 import { useState, useEffect, useMemo } from "react";
 
 // GraphQL query for Anchor Ledger Marks (Ha Tokens + Stability Pools + Sail Tokens)
+// Also includes userTotalMarks which aggregates all marks sources
 const ANCHOR_LEDGER_MARKS_QUERY = `
   query GetAnchorLedgerMarks($userAddress: Bytes!) {
+    # Aggregated marks across all sources (includes anchor marks)
+    userTotalMarks(id: $userAddress) {
+      id
+      user
+      haTokenMarks
+      sailTokenMarks
+      stabilityPoolMarks
+      totalMarks
+      totalMarksPerDay
+      lastUpdated
+    }
     haTokenBalances(where: { user: $userAddress }) {
       id
       tokenAddress
@@ -231,21 +243,23 @@ export function useAnchorLedgerMarks({
         });
         // Don't throw - return empty data to allow page to continue loading
         return {
-          haBalances: [],
-          poolDeposits: [],
-          sailBalances: [],
+          userTotalMarks: null,
+          haTokenBalances: [],
+          stabilityPoolDeposits: [],
+          sailTokenBalances: [],
         };
       }
 
       const result = await response.json();
 
       if (result.errors) {
-        console.warn("[useAnchorLedgerMarks] GraphQL errors (subgraph may be rate limited or unavailable). Data will be empty.");
+        console.warn("[useAnchorLedgerMarks] GraphQL errors (subgraph may be rate limited or unavailable):", result.errors);
         // Don't throw - return empty data to allow page to continue loading
         return {
-          haBalances: [],
-          poolDeposits: [],
-          sailBalances: [],
+          userTotalMarks: null,
+          haTokenBalances: [],
+          stabilityPoolDeposits: [],
+          sailTokenBalances: [],
         };
       }
 
@@ -254,6 +268,7 @@ export function useAnchorLedgerMarks({
         address,
         addressLowercase: address.toLowerCase(),
         graphUrl,
+        userTotalMarks: result.data?.userTotalMarks,
         haTokenBalances: result.data?.haTokenBalances?.length || 0,
         stabilityPoolDeposits: result.data?.stabilityPoolDeposits?.length || 0,
         sailTokenBalances: result.data?.sailTokenBalances?.length || 0,
@@ -372,7 +387,12 @@ export function useAnchorLedgerMarks({
         }
       }
 
-      return result.data || { haTokenBalances: [], stabilityPoolDeposits: [], sailTokenBalances: [] };
+      return result.data || { 
+        userTotalMarks: null,
+        haTokenBalances: [], 
+        stabilityPoolDeposits: [], 
+        sailTokenBalances: [] 
+      };
     },
     enabled: enabled && isConnected && !!address,
     refetchInterval: 60000, // Poll every 60 seconds for new events
