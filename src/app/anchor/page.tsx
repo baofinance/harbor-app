@@ -99,7 +99,7 @@ import { calculateReadOffset } from "@/utils/anchor/calculateReadOffset";
 import { useMultipleCollateralPrices } from "@/hooks/useCollateralPrice";
 
 // Flag to temporarily disable anchor marks (set to false to pause marks)
-const ANCHOR_MARKS_ENABLED = false;
+const ANCHOR_MARKS_ENABLED = true;
 
 // Token metadata types are now in useAnchorTokenMetadata hook
 import { usePoolRewardAPR } from "@/hooks/usePoolRewardAPR";
@@ -295,6 +295,62 @@ export default function AnchorPage() {
     useAnvil
   );
 
+  // Build a fallback price map from the existing reads (per-market peggedTokenPrice)
+  const peggedPricesFromReads = useMemo(() => {
+    const map: Record<string, bigint | undefined> = {};
+    if (!reads) return map;
+
+    anchorMarkets.forEach(([id, m], mi) => {
+      // Use utility function to calculate offset
+      const baseOffset = calculateReadOffset(anchorMarkets, mi);
+      const priceRead = reads?.[baseOffset + 3];
+      if (
+        priceRead &&
+        priceRead.result !== undefined &&
+        priceRead.result !== null
+      ) {
+        map[id] = priceRead.result as bigint;
+      }
+    });
+
+    return map;
+  }, [anchorMarkets, reads]);
+
+  // Get CoinGecko IDs for underlying collateral (e.g., fxUSD) and wrapped tokens (e.g., fxSAVE, wstETH)
+  const coinGeckoIds = useMemo(() => {
+    const ids = new Set<string>();
+    anchorMarkets.forEach(([id, m]) => {
+      const underlyingCoinGeckoId = (m as any).underlyingCoinGeckoId as
+        | string
+        | undefined;
+      if (underlyingCoinGeckoId) {
+        ids.add(underlyingCoinGeckoId);
+      }
+      // Also add wrapped token CoinGecko IDs
+      const coinGeckoId = (m as any).coinGeckoId as string | undefined;
+      if (coinGeckoId) {
+        ids.add(coinGeckoId);
+      }
+    });
+    // Add wstETH and stETH for fallback
+    ids.add("wrapped-steth");
+    ids.add("lido-staked-ethereum-steth");
+    return Array.from(ids);
+  }, [anchorMarkets]);
+
+  // Fetch collateral prices from CoinGecko (for depeg detection and wrapped token prices)
+  const { prices: coinGeckoPrices, isLoading: coinGeckoLoading, error: coinGeckoError } = useCoinGeckoPrices(coinGeckoIds);
+
+  // Calculate USD prices using hook (needed for marks calculation)
+  const {
+    peggedPriceUSDMap,
+    mergedPeggedPriceMap,
+    ethPrice,
+    fxUSDPrice,
+    fxSAVEPrice,
+    usdcPrice,
+  } = useAnchorPrices(anchorMarkets, reads, peggedPricesFromReads);
+
   // Use extracted hook for marks calculations
   const {
     totalAnchorMarks,
@@ -347,27 +403,6 @@ export default function AnchorPage() {
     });
   }, [anchorMarkets]);
 
-  // Build a fallback price map from the existing reads (per-market peggedTokenPrice)
-  const peggedPricesFromReads = useMemo(() => {
-    const map: Record<string, bigint | undefined> = {};
-    if (!reads) return map;
-
-    anchorMarkets.forEach(([id, m], mi) => {
-      // Use utility function to calculate offset
-      const baseOffset = calculateReadOffset(anchorMarkets, mi);
-      const priceRead = reads?.[baseOffset + 3];
-      if (
-        priceRead &&
-        priceRead.result !== undefined &&
-        priceRead.result !== null
-      ) {
-        map[id] = priceRead.result as bigint;
-      }
-    });
-
-    return map;
-  }, [anchorMarkets, reads]);
-
   // Fetch pegged token prices using the new unified hook
   const tokenPriceInputs = useMemo(() => {
     return marketPositionConfigs
@@ -384,41 +419,6 @@ export default function AnchorPage() {
   }, [marketPositionConfigs, anchorMarkets]);
 
   const tokenPricesByMarket = useMultipleTokenPrices(tokenPriceInputs);
-
-  // Get CoinGecko IDs for underlying collateral (e.g., fxUSD) and wrapped tokens (e.g., fxSAVE, wstETH)
-  const coinGeckoIds = useMemo(() => {
-    const ids = new Set<string>();
-    anchorMarkets.forEach(([id, m]) => {
-      const underlyingCoinGeckoId = (m as any).underlyingCoinGeckoId as
-        | string
-        | undefined;
-      if (underlyingCoinGeckoId) {
-        ids.add(underlyingCoinGeckoId);
-      }
-      // Also add wrapped token CoinGecko IDs
-      const coinGeckoId = (m as any).coinGeckoId as string | undefined;
-      if (coinGeckoId) {
-        ids.add(coinGeckoId);
-      }
-    });
-    // Add wstETH and stETH for fallback
-    ids.add("wrapped-steth");
-    ids.add("lido-staked-ethereum-steth");
-    return Array.from(ids);
-  }, [anchorMarkets]);
-
-  // Fetch collateral prices from CoinGecko (for depeg detection and wrapped token prices)
-  const { prices: coinGeckoPrices, isLoading: coinGeckoLoading, error: coinGeckoError } = useCoinGeckoPrices(coinGeckoIds);
-
-  // Calculate USD prices using hook
-  const {
-    peggedPriceUSDMap,
-    mergedPeggedPriceMap,
-    ethPrice,
-    fxUSDPrice,
-    fxSAVEPrice,
-    usdcPrice,
-  } = useAnchorPrices(anchorMarkets, reads, peggedPricesFromReads);
 
   // Fetch all positions using the unified hook, passing shared prices
   const {
@@ -1879,9 +1879,7 @@ export default function AnchorPage() {
                     Harbor Marks Subgraph Error
                   </p>
                   <p className="text-white/70 text-xs">
-                    Unable to load Harbor Marks data. This may be due to rate
-                    limiting or service issues. Your positions and core
-                    functionality remain unaffected.
+                    {anchorMarksError.message || "Unable to load Harbor Marks data. This may be due to rate limiting or service issues. Your positions and core functionality remain unaffected."}
                   </p>
                 </div>
               </div>
@@ -3156,12 +3154,20 @@ export default function AnchorPage() {
                     if (peggedTokenAddress && !haTokenAddressesSeen.has(peggedTokenAddress.toLowerCase())) {
                       haTokenAddressesSeen.add(peggedTokenAddress.toLowerCase());
                       marketSum += m.haTokenBalanceUSD;
+                      // Debug: Log frontend position USD for comparison with subgraph
+                      if (m.haTokenBalanceUSD > 0) {
+                        console.log(`[AnchorPage] Frontend haTokenBalanceUSD for token ${peggedTokenAddress}: $${m.haTokenBalanceUSD.toFixed(4)} (market: ${m.marketId})`);
+                      }
                     }
                     
                     return sum + marketSum;
                   },
                   0
                 );
+                // Debug: Log total combined position USD
+                if (combinedPositionUSD > 0) {
+                  console.log(`[AnchorPage] Combined position USD: $${combinedPositionUSD.toFixed(4)}`);
+                }
                 // Also track total token amounts (for display when USD isn't available)
                 const combinedPositionTokens = activeMarketsData.reduce(
                   (sum, m) =>

@@ -596,7 +596,7 @@ export function useAnchorMarketData(
           const finalSailPoolDeposit =
             positionData?.sailPool || sailPoolDeposit || 0n;
 
-          // Use position data from hook for USD values
+          // Use position data from hook for USD values (real-time prices)
           const collateralPoolDepositUSD = positionData?.collateralPoolUSD || 0;
           const sailPoolDepositUSD = positionData?.sailPoolUSD || 0;
           const haTokenBalanceUSD = positionData?.walletHaUSD || 0;

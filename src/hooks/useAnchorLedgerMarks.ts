@@ -217,6 +217,7 @@ export function useAnchorLedgerMarks({
 
       // Debug: Log which subgraph URL we're using
       console.log("[useAnchorLedgerMarks] Using subgraph URL:", graphUrl);
+      console.log("[useAnchorLedgerMarks] Querying for user address:", address.toLowerCase());
 
       const queryVariables = {
         userAddress: address.toLowerCase(),
@@ -251,7 +252,7 @@ export function useAnchorLedgerMarks({
       const result = await response.json();
 
       if (result.errors) {
-        console.warn("[useAnchorLedgerMarks] GraphQL errors (subgraph may be rate limited or unavailable):", result.errors);
+        console.error("[useAnchorLedgerMarks] GraphQL errors:", JSON.stringify(result.errors, null, 2));
         // Don't throw - return empty data to allow page to continue loading
         return {
           userTotalMarks: null,
@@ -260,10 +261,17 @@ export function useAnchorLedgerMarks({
           sailTokenBalances: [],
         };
       }
+      
+      // Log raw response to see what we're getting
+      console.log("[useAnchorLedgerMarks] Raw GraphQL response:", JSON.stringify(result, null, 2));
 
       // Debug logging to see what the subgraph returns
       const userTotalMarks = result.data?.userTotalMarks;
-      console.log("[useAnchorLedgerMarks] GraphQL response:", {
+      const haTokenBalances = result.data?.haTokenBalances || [];
+      const stabilityPoolDeposits = result.data?.stabilityPoolDeposits || [];
+      
+      console.log("[useAnchorLedgerMarks] GraphQL response details:", {
+        hasUserTotalMarks: !!userTotalMarks,
         userTotalMarks: userTotalMarks ? {
           haTokenMarks: userTotalMarks.haTokenMarks,
           haTokenMarksNum: parseFloat(userTotalMarks.haTokenMarks || "0"),
@@ -275,19 +283,35 @@ export function useAnchorLedgerMarks({
           totalMarksPerDayNum: parseFloat(userTotalMarks.totalMarksPerDay || "0"),
           lastUpdated: userTotalMarks.lastUpdated,
         } : null,
-        haTokenBalancesCount: result.data?.haTokenBalances?.length || 0,
-        stabilityPoolDepositsCount: result.data?.stabilityPoolDeposits?.length || 0,
-        sailTokenBalancesCount: result.data?.sailTokenBalances?.length || 0,
-        haTokenBalances: result.data?.haTokenBalances?.map((b: any) => ({
+        haTokenBalancesCount: haTokenBalances.length,
+        haTokenBalances: haTokenBalances.map((b: any) => ({
           tokenAddress: b.tokenAddress,
           balance: b.balance,
           balanceNum: parseFloat(b.balance || "0"),
+          balanceUSD: b.balanceUSD,
+          balanceUSDNum: parseFloat(b.balanceUSD || "0"),
           accumulatedMarks: b.accumulatedMarks,
           accumulatedMarksNum: parseFloat(b.accumulatedMarks || "0"),
           marksPerDay: b.marksPerDay,
           marksPerDayNum: parseFloat(b.marksPerDay || "0"),
         })),
+        stabilityPoolDepositsCount: stabilityPoolDeposits.length,
+        stabilityPoolDeposits: stabilityPoolDeposits.map((d: any) => ({
+          poolAddress: d.poolAddress,
+          balance: d.balance,
+          balanceNum: parseFloat(d.balance || "0"),
+          balanceUSD: d.balanceUSD,
+          balanceUSDNum: parseFloat(d.balanceUSD || "0"),
+          marksPerDay: d.marksPerDay,
+          marksPerDayNum: parseFloat(d.marksPerDay || "0"),
+        })),
+        sailTokenBalancesCount: result.data?.sailTokenBalances?.length || 0,
       });
+      
+      // Log if we have positions but no marks data
+      if (haTokenBalances.length === 0 && stabilityPoolDeposits.length === 0 && !userTotalMarks) {
+        console.warn("[useAnchorLedgerMarks] No marks data found in subgraph response. Subgraph may still be syncing or user has no positions.");
+      }
 
       return result.data || { 
         userTotalMarks: null,

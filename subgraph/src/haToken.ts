@@ -12,6 +12,11 @@ import {
 } from "./marksAggregation";
 import {
   calculateBalanceUSD,
+  fetchPriceUSD,
+  getTokenType,
+  getPegType,
+  TokenType,
+  PegType,
 } from "./priceOracle";
 import {
   HaTokenBalance,
@@ -219,4 +224,117 @@ export function handleHaTokenTransfer(event: TransferEvent): void {
     toBalance.save();
     updateHaTokenMarksInTotal(to, toBalance, timestamp);
   }
+}
+
+// ============================================================================
+// Hourly Price Update Block Handler
+// Updates PriceFeed prices every hour to ensure marks are calculated with current prices
+// ============================================================================
+
+const LAST_UPDATE_KEY = "lastHourlyPriceUpdate";
+const ONE_HOUR = BigInt.fromI32(3600);
+
+// List of all token addresses that need price updates
+function getTokensToUpdate(): Address[] {
+  return [
+    // ha tokens
+    Address.fromString("0x8e7442020ba7debfd77e67491c51faa097d87478"), // haETH
+    Address.fromString("0x1822bbe8fe313c4b53414f0b3e5ef8147d485530"), // haBTC
+    // sail tokens
+    Address.fromString("0x8248849b83ae20b21fa561f97ee5835a063c1f9c"), // hsFXUSD-ETH
+    Address.fromString("0x454f2c12ce62a4fd813e2e06fda5d46e358e7c70"), // hsFXUSD-BTC
+    Address.fromString("0x1df67ebd59db60a13ec783472aaf22e5b2b01f25"), // hsSTETH-BTC
+    // collateral tokens (for stability pools)
+    Address.fromString("0xfb9747b30ee1b1df2434255c7768c1ebfa7e89bb"), // fxSAVE (ETH/fxUSD collateral pool)
+    Address.fromString("0x5378fbf71627e352211779bd4cd09b0a791015ac"), // fxSAVE (BTC/fxUSD collateral pool)
+    Address.fromString("0x86297bd2de92e91486c7e3b32cb5bc18f0a363bc"), // wstETH (BTC/stETH collateral pool)
+  ];
+}
+
+function getLastUpdateTimestamp(): BigInt {
+  let tracker = PriceFeed.load(LAST_UPDATE_KEY);
+  if (tracker == null) {
+    return BigInt.fromI32(0);
+  }
+  return tracker.lastUpdated;
+}
+
+function setLastUpdateTimestamp(timestamp: BigInt): void {
+  let tracker = PriceFeed.load(LAST_UPDATE_KEY);
+  if (tracker == null) {
+    tracker = new PriceFeed(LAST_UPDATE_KEY);
+    tracker.tokenAddress = Bytes.fromHexString("0x0000000000000000000000000000000000000000");
+    tracker.priceFeedAddress = Bytes.fromHexString("0x0000000000000000000000000000000000000000");
+    tracker.priceUSD = fetchPriceUSD(
+      Address.fromString("0x0000000000000000000000000000000000000000"),
+      timestamp
+    );
+    tracker.decimals = 18;
+  }
+  tracker.lastUpdated = timestamp;
+  tracker.save();
+}
+
+/**
+ * Block handler that runs on every block
+ * Checks if an hour has passed since last update, and if so, updates all PriceFeed prices
+ * 
+ * Optimization: Only check every ~100 blocks to reduce overhead during sync
+ */
+export function handleBlock(block: ethereum.Block): void {
+  // Handler is configured to run every 100 blocks in subgraph.yaml
+  // This check is a safety measure in case the config doesn't work as expected
+  if (block.number.mod(BigInt.fromI32(100)).gt(BigInt.fromI32(0))) {
+    return; // Skip this block
+  }
+  
+  const currentTimestamp = block.timestamp;
+  const lastUpdate = getLastUpdateTimestamp();
+  
+  // Check if an hour has passed
+  if (currentTimestamp.minus(lastUpdate).lt(ONE_HOUR)) {
+    return; // Not time to update yet
+  }
+  
+  // Update all PriceFeed prices
+  const tokensToUpdate = getTokensToUpdate();
+  for (let i = 0; i < tokensToUpdate.length; i++) {
+    const tokenAddress = tokensToUpdate[i];
+    const tokenAddressBytes = tokenAddress as Bytes;
+    
+    // Get or create PriceFeed
+    let priceFeed = PriceFeed.load(tokenAddressBytes.toHexString());
+    if (priceFeed == null) {
+      // Create new PriceFeed if it doesn't exist
+      priceFeed = new PriceFeed(tokenAddressBytes.toHexString());
+      priceFeed.tokenAddress = tokenAddressBytes;
+      
+      // Determine price feed address based on token type
+      const tokenType = getTokenType(tokenAddress);
+      const pegType = getPegType(tokenAddress);
+      
+      if (tokenType == TokenType.ANCHOR && (pegType == PegType.ETH || pegType == PegType.BTC)) {
+        // Use Chainlink for ETH/BTC pegged tokens
+        if (pegType == PegType.ETH) {
+          priceFeed.priceFeedAddress = Bytes.fromHexString("0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419"); // ETH/USD
+        } else {
+          priceFeed.priceFeedAddress = Bytes.fromHexString("0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c"); // BTC/USD
+        }
+        priceFeed.decimals = 8; // Chainlink feeds use 8 decimals
+      } else {
+        // Default price feed (will be set by priceOracle)
+        priceFeed.priceFeedAddress = Bytes.fromHexString("0x0000000000000000000000000000000000000000");
+        priceFeed.decimals = 18;
+      }
+    }
+    
+    // Fetch and update price
+    const newPrice = fetchPriceUSD(tokenAddress, currentTimestamp);
+    priceFeed.priceUSD = newPrice;
+    priceFeed.lastUpdated = currentTimestamp;
+    priceFeed.save();
+  }
+  
+  // Update last update timestamp
+  setLastUpdateTimestamp(currentTimestamp);
 }

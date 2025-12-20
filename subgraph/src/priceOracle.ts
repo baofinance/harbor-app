@@ -46,26 +46,34 @@ const STETH_ANCHOR_TOKEN = Address.fromString("0x6ff0fe773d4ad4ea923ba9ea9cc1c1b
 const STETH_SAIL_TOKEN = Address.fromString("0x469ddfcfa98d0661b7efedc82aceeab84133f7fe");   // hsUSD-stETH
 const STETH_MINTER = Address.fromString("0x8b17b6e8f9ce3477ddaf372a4140ac6005787901");
 
+// ETH-pegged tokens
+const HAETH_TOKEN = Address.fromString("0x8e7442020ba7debfd77e67491c51faa097d87478"); // haETH (ETH/fxUSD market)
+
+// BTC-pegged tokens
+const HABTC_TOKEN = Address.fromString("0x1822bbe8fe313c4b53414f0b3e5ef8147d485530"); // haBTC (BTC/fxUSD and BTC/stETH markets)
+
 // ============================================================================
 // TOKEN TYPE DETECTION
 // ============================================================================
 
-enum TokenType {
+export enum TokenType {
   ANCHOR,    // Pegged token (haUSD, haETH, haBTC)
   SAIL,      // Leveraged token (hsUSD, hsETH, hsBTC)
   UNKNOWN
 }
 
-enum PegType {
+export enum PegType {
   USD,       // Pegged to USD ($1 per token for anchor)
   ETH,       // Pegged to ETH (need ETH/USD conversion)
   BTC,       // Pegged to BTC (need BTC/USD conversion)
   UNKNOWN
 }
 
-function getTokenType(tokenAddress: Address): TokenType {
+export function getTokenType(tokenAddress: Address): TokenType {
   // Anchor tokens
-  if (tokenAddress.equals(STETH_ANCHOR_TOKEN)) {
+  if (tokenAddress.equals(STETH_ANCHOR_TOKEN) ||
+      tokenAddress.equals(HAETH_TOKEN) ||
+      tokenAddress.equals(HABTC_TOKEN)) {
     return TokenType.ANCHOR;
   }
   
@@ -77,15 +85,22 @@ function getTokenType(tokenAddress: Address): TokenType {
   return TokenType.UNKNOWN;
 }
 
-function getPegType(tokenAddress: Address): PegType {
+export function getPegType(tokenAddress: Address): PegType {
   // USD-pegged markets
   if (tokenAddress.equals(STETH_ANCHOR_TOKEN) || 
       tokenAddress.equals(STETH_SAIL_TOKEN)) {
     return PegType.USD;
   }
   
-  // Future: ETH-pegged markets (haETH, hsETH)
-  // Future: BTC-pegged markets (haBTC, hsBTC)
+  // ETH-pegged markets
+  if (tokenAddress.equals(HAETH_TOKEN)) {
+    return PegType.ETH;
+  }
+  
+  // BTC-pegged markets
+  if (tokenAddress.equals(HABTC_TOKEN)) {
+    return PegType.BTC;
+  }
   
   return PegType.UNKNOWN;
 }
@@ -212,9 +227,23 @@ export function getOrCreatePriceFeed(tokenAddress: Bytes, blockTimestamp: BigInt
     priceFeed.lastUpdated = blockTimestamp;
     priceFeed.save();
   } else {
-    // Update price if stale (more than 1 hour old)
+    // Update price if stale (more than 1 hour old) OR if price is $1.0 (indicates fallback/default)
+    // For ETH/BTC pegged tokens, always update to ensure we have correct Chainlink prices
+    const tokenAddr = Address.fromBytes(tokenAddress);
+    const pegType = getPegType(tokenAddr);
     const ONE_HOUR = BigInt.fromI32(3600);
-    if (blockTimestamp.minus(priceFeed.lastUpdated).gt(ONE_HOUR)) {
+    const isStale = blockTimestamp.minus(priceFeed.lastUpdated).gt(ONE_HOUR);
+    const isDefaultPrice = priceFeed.priceUSD.equals(BigDecimal.fromString("1.0"));
+    const needsChainlink = (pegType == PegType.ETH || pegType == PegType.BTC);
+    
+    // Always update if:
+    // 1. Price is stale (more than 1 hour old), OR
+    // 2. Price is $1.0 (indicates fallback/default), OR
+    // 3. Token needs Chainlink and we haven't updated recently (every 5 minutes for ETH/BTC)
+    const FIVE_MINUTES = BigInt.fromI32(300);
+    const needsFrequentUpdate = needsChainlink && blockTimestamp.minus(priceFeed.lastUpdated).gt(FIVE_MINUTES);
+    
+    if (isStale || isDefaultPrice || needsFrequentUpdate) {
       priceFeed.priceUSD = fetchPriceUSD(tokenAddress, blockTimestamp);
       priceFeed.lastUpdated = blockTimestamp;
       priceFeed.save();

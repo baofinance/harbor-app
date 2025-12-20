@@ -33,34 +33,12 @@ import { StabilityPool } from "../generated/StabilityPoolCollateral/StabilityPoo
 import { ERC20 } from "../generated/StabilityPoolCollateral/ERC20";
 import { ChainlinkAggregator } from "../generated/StabilityPoolCollateral/ChainlinkAggregator";
 // Note: We use StabilityPoolCollateral imports for both pools since they share the same ABI
+import { calculateBalanceUSD } from "./priceOracle";
 
 // Constants
 const SECONDS_PER_DAY = BigDecimal.fromString("86400");
 const DEFAULT_MULTIPLIER = BigDecimal.fromString("1.0"); // 1 mark per dollar per day
 const DEFAULT_MARKS_PER_DOLLAR_PER_DAY = BigDecimal.fromString("1.0");
-
-// Simplified price feed - just return $1 for ha tokens (pegged tokens)
-function getOrCreatePriceFeed(
-  tokenAddress: Bytes,
-  block: ethereum.Block
-): PriceFeed {
-  const id = tokenAddress.toHexString();
-  let priceFeed = PriceFeed.load(id);
-
-  if (priceFeed == null) {
-    priceFeed = new PriceFeed(id);
-    priceFeed.tokenAddress = tokenAddress;
-    priceFeed.priceFeedAddress = Bytes.fromHexString(
-      "0x0000000000000000000000000000000000000000"
-    );
-    priceFeed.priceUSD = BigDecimal.fromString("1.0"); // Default to $1 for ha tokens
-    priceFeed.decimals = 8;
-    priceFeed.lastUpdated = block.timestamp;
-    priceFeed.save();
-  }
-
-  return priceFeed;
-}
 
 // Helper to determine pool type from address
 // Maps known pool addresses to their types
@@ -204,16 +182,15 @@ function getPeggedTokenAddress(poolAddress: Address): Bytes | null {
 }
 
 // Helper to calculate deposit value in USD (with price feed update)
+// Uses priceOracle module to fetch prices from Chainlink oracles
 function calculateDepositUSD(
   deposit: BigInt,
   peggedTokenAddress: Bytes,
   block: ethereum.Block
 ): BigDecimal {
-  const priceFeed = getOrCreatePriceFeed(peggedTokenAddress, block);
-  const depositDecimal = deposit
-    .toBigDecimal()
-    .div(BigDecimal.fromString("1000000000000000000")); // 18 decimals
-  return depositDecimal.times(priceFeed.priceUSD);
+  // Use priceOracle module's calculateBalanceUSD which handles Chainlink price fetching
+  // Assumes 18 decimals for pegged tokens (haETH, haBTC, haUSD)
+  return calculateBalanceUSD(deposit, peggedTokenAddress, block.timestamp, 18);
 }
 
 // Helper to query actual deposit balance from pool contract

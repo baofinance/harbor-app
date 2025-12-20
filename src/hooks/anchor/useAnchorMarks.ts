@@ -142,16 +142,22 @@ export function useAnchorMarks(
     let perDayFromPoolDeposits = 0;
 
     // Add ha token marks - use balanceUSD from subgraph (1 mark per dollar per day)
+    // If balanceUSD is suspiciously low but user has positions, this indicates a subgraph issue
     if (haBalances && haBalances.length > 0) {
       haBalances.forEach((balance) => {
-        // Use balanceUSD directly from subgraph - it's already calculated correctly
-        // Marks per day = 1 mark per dollar per day, so balanceUSD = marks per day
         const balanceUSD = parseFloat(balance.balanceUSD || "0");
+        const balanceNum = parseFloat(balance.balance || "0");
+        
+        // Check if user has a position but subgraph balanceUSD is suspiciously low
+        // This indicates the subgraph doesn't have proper prices for this token
+        if (balanceNum > 0 && balanceUSD < 0.01) {
+          console.warn(`[useAnchorMarks] Subgraph data issue: User has ${balanceNum} tokens but balanceUSD is only $${balanceUSD}. Subgraph may not have proper prices for token ${balance.tokenAddress}`);
+        }
+        
+        // Debug: Log subgraph balanceUSD for comparison with frontend
         if (balanceUSD > 0) {
+          console.log(`[useAnchorMarks] Subgraph balanceUSD for token ${balance.tokenAddress}: $${balanceUSD.toFixed(4)} (balance: ${balanceNum})`);
           perDayFromHaBalances += balanceUSD;
-        } else {
-          // Fallback to subgraph marksPerDay if balanceUSD is not available
-          perDayFromHaBalances += parseFloat(balance.marksPerDay || "0");
         }
       });
       totalPerDay += perDayFromHaBalances;
@@ -160,14 +166,17 @@ export function useAnchorMarks(
     // Add stability pool marks - use balanceUSD from subgraph (1 mark per dollar per day)
     if (poolDeposits && poolDeposits.length > 0) {
       poolDeposits.forEach((deposit) => {
-        // Use balanceUSD directly from subgraph - it's already calculated correctly
-        // Marks per day = 1 mark per dollar per day, so balanceUSD = marks per day
         const balanceUSD = parseFloat(deposit.balanceUSD || "0");
+        const balanceNum = parseFloat(deposit.balance || "0");
+        
+        // Check if user has a deposit but subgraph balanceUSD is suspiciously low
+        if (balanceNum > 0 && balanceUSD < 0.01) {
+          console.warn(`[useAnchorMarks] Subgraph data issue: User has ${balanceNum} deposit but balanceUSD is only $${balanceUSD}. Subgraph may not have proper prices for pool ${deposit.poolAddress}`);
+        }
+        
+        // Marks per day = 1 mark per dollar per day, so balanceUSD = marks per day
         if (balanceUSD > 0) {
           perDayFromPoolDeposits += balanceUSD;
-        } else {
-          // Fallback to subgraph marksPerDay if balanceUSD is not available
-          perDayFromPoolDeposits += parseFloat(deposit.marksPerDay || "0");
         }
       });
       totalPerDay += perDayFromPoolDeposits;
@@ -214,6 +223,43 @@ export function useAnchorMarks(
     return totalAnchorMarksPerDay + sailMarksPerDay + maidenVoyageMarksPerDay;
   }, [totalAnchorMarksPerDay, sailMarksPerDay, maidenVoyageMarksPerDay]);
 
+  // Detect if user has positions but subgraph data is incorrect
+  const subgraphDataError = useMemo(() => {
+    // Check if user has ha token positions but balanceUSD is suspiciously low
+    const hasHaTokenPositions = haBalances && haBalances.some(b => {
+      const balanceNum = parseFloat(b.balance || "0");
+      return balanceNum > 0;
+    });
+    
+    const hasLowHaTokenUSD = haBalances && haBalances.some(b => {
+      const balanceNum = parseFloat(b.balance || "0");
+      const balanceUSD = parseFloat(b.balanceUSD || "0");
+      return balanceNum > 0 && balanceUSD < 0.01;
+    });
+    
+    // Check if user has pool deposits but balanceUSD is suspiciously low
+    const hasPoolDeposits = poolDeposits && poolDeposits.some(d => {
+      const balanceNum = parseFloat(d.balance || "0");
+      return balanceNum > 0;
+    });
+    
+    const hasLowPoolUSD = poolDeposits && poolDeposits.some(d => {
+      const balanceNum = parseFloat(d.balance || "0");
+      const balanceUSD = parseFloat(d.balanceUSD || "0");
+      return balanceNum > 0 && balanceUSD < 0.01;
+    });
+    
+    // If user has positions but subgraph balanceUSD is suspiciously low, there's a data issue
+    if ((hasHaTokenPositions && hasLowHaTokenUSD) || (hasPoolDeposits && hasLowPoolUSD)) {
+      return new Error("Subgraph is returning incorrect price data. Your positions are detected but USD values are missing or incorrect. Please try refreshing the page.");
+    }
+    
+    return null;
+  }, [haBalances, poolDeposits]);
+
+  // Combine subgraph data error with any existing errors
+  const combinedError = anchorLedgerMarksError || subgraphDataError;
+
   return {
     totalAnchorMarks,
     totalAnchorMarksPerDay,
@@ -221,7 +267,7 @@ export function useAnchorMarks(
     sailMarksPerDay,
     maidenVoyageMarksPerDay,
     isLoading: isLoadingAnchorMarks || isLoadingGenesisMarks,
-    error: anchorLedgerMarksError,
+    error: combinedError,
     haBalances,
     poolDeposits,
     sailBalances,

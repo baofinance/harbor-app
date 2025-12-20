@@ -12,7 +12,7 @@
 #   2. Run: graph codegen && graph build
 #   3. Deploy to The Graph Studio: npm run deploy:mainnet
 
-specVersion: 0.0.5
+specVersion: 0.0.8
 schema:
   file: ./schema.graphql
 dataSources:
@@ -83,6 +83,11 @@ dataSources:
       eventHandlers:
         - event: Transfer(indexed address,indexed address,uint256)
           handler: handleHaTokenTransfer
+      blockHandlers:
+        - handler: handleBlock
+          filter:
+            kind: polling
+            every: 100
       file: ./src/haToken.ts
 
   # Leveraged Token (hsFXUSD-ETH) - sail token for ETH/fxUSD market
