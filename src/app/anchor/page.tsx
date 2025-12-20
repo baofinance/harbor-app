@@ -96,6 +96,7 @@ import { AnchorMarketExpandedView } from "@/components/anchor/AnchorMarketExpand
 import { useAnchorTokenMetadata } from "@/hooks/anchor/useAnchorTokenMetadata";
 import { useAnchorUserDeposits } from "@/hooks/anchor/useAnchorUserDeposits";
 import { calculateReadOffset } from "@/utils/anchor/calculateReadOffset";
+import { useMultipleCollateralPrices } from "@/hooks/useCollateralPrice";
 
 // Flag to temporarily disable anchor marks (set to false to pause marks)
 const ANCHOR_MARKS_ENABLED = false;
@@ -4031,62 +4032,18 @@ export default function AnchorPage() {
                               : 0;
 
                           // Collateral value calculation
-                          // collateralTokenBalance returns wrapped collateral (fxUSD for fxUSD markets, wstETH for wstETH markets)
+                          // collateralTokenBalance returns wrapped collateral (fxSAVE for fxUSD markets, wstETH for wstETH markets)
                           const collateralTokensWrapped =
                             marketData.collateralValue !== undefined
                               ? Number(marketData.collateralValue) / 1e18
                               : 0;
-                          const wrappedRateNum = marketData.wrappedRate
-                            ? Number(marketData.wrappedRate) / 1e18
-                            : 1; // Default 1:1 if no rate
 
+                          // Calculate collateral value USD using the price from the hook
+                          // For fxUSD markets: collateralValue is already in fxSAVE (wrapped), use fxSAVE price
+                          // For wstETH markets: collateralValue is in wstETH (wrapped), use wstETH price
                           let collateralValueUSD = 0;
-                          if (collateralTokensWrapped > 0) {
-                            if (isFxUSDMarket) {
-                              // For fxUSD markets: collateralValue is fxUSD (wrapped), convert to fxSAVE (underlying)
-                              // wrappedRate = fxSAVE/fxUSD rate, so fxSAVE = fxUSD / rate
-                              const fxSAVEBalance =
-                                wrappedRateNum > 0
-                                  ? collateralTokensWrapped / wrappedRateNum
-                                  : 0;
-
-                              // Calculate fxSAVE price in USD
-                              let fxSAVEPriceUSD = 0;
-                              if (
-                                marketData.fxSAVEPriceInETH &&
-                                ethPrice &&
-                                wrappedRateNum > 0
-                              ) {
-                                // fxSAVE price in ETH (from getPrice())
-                                const fxSAVEPriceInETHNum =
-                                  Number(marketData.fxSAVEPriceInETH) / 1e18;
-                                // ETH price in USD (from CoinGecko)
-                                const ethPriceUSD = ethPrice;
-                                // fxSAVE price in USD = fxSAVE price in ETH * ETH price in USD
-                                fxSAVEPriceUSD =
-                                  fxSAVEPriceInETHNum * ethPriceUSD;
-                              } else {
-                                // Fallback to CoinGecko fxSAVE price
-                                fxSAVEPriceUSD =
-                                  fxSAVEPrice || usdcPrice || 1.0;
-                              }
-
-                              // Collateral USD = fxSAVE balance * fxSAVE price USD
-                              collateralValueUSD =
-                                fxSAVEBalance * fxSAVEPriceUSD;
-
-                              console.log(
-                                `[Collateral USD] Market ${marketData.marketId}: fxUSD=${collateralTokensWrapped}, rate=${wrappedRateNum}, fxSAVE=${fxSAVEBalance}, fxSAVEPriceUSD=$${fxSAVEPriceUSD}, collateralValueUSD=$${collateralValueUSD}`
-                              );
-                            } else {
-                              // wstETH markets: collateralValue is in wrapped (wstETH), need wrappedRate
-                              if (collateralPriceUSD > 0) {
-                                collateralValueUSD =
-                                  collateralTokensWrapped *
-                                  wrappedRateNum *
-                                  collateralPriceUSD;
-                              }
-                            }
+                          if (collateralTokensWrapped > 0 && collateralPriceUSD > 0) {
+                            collateralValueUSD = collateralTokensWrapped * collateralPriceUSD;
                           }
 
                           // Calculate total debt in USD (same calculation as market position)
