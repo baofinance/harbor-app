@@ -152,7 +152,7 @@ export default function Example() {
             <DisclosureButton
               as={Link}
               href="/genesis"
-              className={`w-full max-w-sm px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 ${
+              className={`w-full max-w-sm px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 text-center ${
                 isActive("/genesis")
                   ? "text-[#1E4775] bg-white"
                   : "text-white bg-white/10 hover:bg-white/20"
@@ -164,7 +164,7 @@ export default function Example() {
             <DisclosureButton
               as={Link}
               href="/anchor"
-              className={`w-full max-w-sm px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 ${
+              className={`w-full max-w-sm px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 text-center ${
                 isActive("/anchor")
                   ? "text-[#1E4775] bg-white"
                   : "text-white bg-white/10 hover:bg-white/20"
@@ -176,7 +176,7 @@ export default function Example() {
             <DisclosureButton
               as={Link}
               href="/sail"
-              className={`w-full max-w-sm px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 ${
+              className={`w-full max-w-sm px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 text-center ${
                 isActive("/sail")
                   ? "text-[#1E4775] bg-white"
                   : "text-white bg-white/10 hover:bg-white/20"
@@ -188,7 +188,7 @@ export default function Example() {
             <DisclosureButton
               as={Link}
               href="/flow"
-              className={`w-full max-w-sm px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 ${
+              className={`w-full max-w-sm px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 text-center ${
                 isActive("/flow")
                   ? "text-[#1E4775] bg-white"
                   : "text-white bg-white/10 hover:bg-white/20"
@@ -200,7 +200,7 @@ export default function Example() {
             <DisclosureButton
               as={Link}
               href="/ledger-marks"
-              className={`w-full max-w-sm px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 ${
+              className={`w-full max-w-sm px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 text-center ${
                 isActive("/ledger-marks")
                   ? "text-[#1E4775] bg-white"
                   : "text-white bg-white/10 hover:bg-white/20"
@@ -212,7 +212,7 @@ export default function Example() {
             <DisclosureButton
               as={Link}
               href="/transparency"
-              className={`w-full max-w-sm px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 ${
+              className={`w-full max-w-sm px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 text-center ${
                 isActive("/transparency")
                   ? "text-[#1E4775] bg-white"
                   : "text-white bg-white/10 hover:bg-white/20"
