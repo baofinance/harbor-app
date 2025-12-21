@@ -48,7 +48,7 @@ export default function Example() {
       <div className="w-full px-3 sm:px-4 lg:px-8">
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center">
-            <Link href="/genesis" className="h-10 w-auto relative mr-4">
+            <a href="https://harborfinance.io" className="h-10 w-auto relative mr-4">
               <Image
                 src="/logo.svg"
                 alt="Logo"
@@ -57,7 +57,7 @@ export default function Example() {
                 className="object-contain h-full w-auto"
                 priority
               />
-            </Link>
+            </a>
             <div className="hidden sm:block">
               <div className="flex space-x-2">
                 <Link
@@ -102,6 +102,14 @@ export default function Example() {
                 >
                   Transparency
                 </Link>
+                <a
+                  href="https://docs.harborfinance.io/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3 py-2 text-sm font-medium text-white hover:bg-white/20 hover:text-white"
+                >
+                  Docs
+                </a>
               </div>
             </div>
           </div>
@@ -213,6 +221,14 @@ export default function Example() {
             >
               Transparency
             </DisclosureButton>
+            <a
+              href="https://docs.harborfinance.io/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full max-w-sm px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 text-white bg-white/10 hover:bg-white/20 text-center"
+            >
+              Docs
+            </a>
           </div>
         </div>
       </DisclosurePanel>
