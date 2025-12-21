@@ -15,6 +15,11 @@ export const ARBITRUM_RPC_URL =
   process.env.NEXT_PUBLIC_ARBITRUM_RPC_URL ||
   "https://arb-mainnet.g.alchemy.com/v2/uGl5kuD60tnGFHRmkevK1iYQuIQKmh1n";
 
+// Base RPC URL - defaults to Base public RPC if not set in environment
+export const BASE_RPC_URL =
+  process.env.NEXT_PUBLIC_BASE_RPC_URL ||
+  "https://mainnet.base.org";
+
 // Define mainnet chain
 const mainnetChain = defineChain({
   id: 1,
@@ -61,6 +66,32 @@ const arbitrumChain = defineChain({
   },
 });
 
+// Define Base chain
+const baseChain = defineChain({
+  id: 8453,
+  name: "Base",
+  network: "base",
+  nativeCurrency: {
+    decimals: 18,
+    name: "Ether",
+    symbol: "ETH",
+  },
+  rpcUrls: {
+    default: {
+      http: [BASE_RPC_URL],
+    },
+    public: {
+      http: [BASE_RPC_URL],
+    },
+  },
+  blockExplorers: {
+    default: {
+      name: "Basescan",
+      url: "https://basescan.org",
+    },
+  },
+});
+
 /**
  * Get the mainnet RPC client
  */
@@ -85,6 +116,16 @@ export function getArbitrumRpcClient() {
   return createPublicClient({
     chain: arbitrumChain,
     transport: http(ARBITRUM_RPC_URL),
+  });
+}
+
+/**
+ * Get Base RPC client
+ */
+export function getBaseRpcClient() {
+  return createPublicClient({
+    chain: baseChain,
+    transport: http(BASE_RPC_URL),
   });
 }
 

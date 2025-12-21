@@ -12,6 +12,7 @@ import {
  XMarkIcon,
 } from "@heroicons/react/24/outline";
 import TokenIcon from "@/components/TokenIcon";
+import SimpleTooltip from "@/components/SimpleTooltip";
 import { NETWORKS, type Network } from "@/config/networks";
 import { feeds, type TokenSymbol, type FeedStatus } from "@/config/feeds";
 import { proxyAbi } from "@/abis/proxy";
@@ -28,10 +29,12 @@ import {
  pairEstimateLabel,
 } from "@/lib/utils";
 import {
- MAINNET_RPC_URL,
- ARBITRUM_RPC_URL,
- getMainnetRpcClient,
- getArbitrumRpcClient,
+  MAINNET_RPC_URL,
+  ARBITRUM_RPC_URL,
+  BASE_RPC_URL,
+  getMainnetRpcClient,
+  getArbitrumRpcClient,
+  getBaseRpcClient,
 } from "@/config/rpc";
 
 // Create mainnet public client - ensure it's always available
@@ -60,6 +63,20 @@ try {
 } catch (error) {
  console.error("[FlowPage] Failed to initialize Arbitrum client:", error);
  arbitrumClient = null as any;
+}
+
+// Create Base public client - always available for fetching Base feeds
+let baseClient: ReturnType<typeof createPublicClient>;
+
+try {
+ baseClient = getBaseRpcClient();
+ console.log(
+"[FlowPage] Base client initialized with RPC:",
+ BASE_RPC_URL
+ );
+} catch (error) {
+ console.error("[FlowPage] Failed to initialize Base client:", error);
+ baseClient = null as any;
 }
 
 function formatBytes32(b?: `0x${string}`) {
@@ -99,6 +116,44 @@ function arbitrumAddressUrl(
 ): string | undefined {
  if (!address) return undefined;
  return `https://arbiscan.io/address/${address}`;
+}
+
+function baseAddressUrl(
+ address?: `0x${string}` | string
+): string | undefined {
+ if (!address) return undefined;
+ return `https://basescan.org/address/${address}`;
+}
+
+// Token name mapping for tooltips
+function getTokenFullName(symbol: string): string {
+ const tokenNames: Record<string, string> = {
+   ETH: "Ethereum",
+   BTC: "Bitcoin",
+   USD: "US Dollar",
+   EUR: "Euro",
+   XAU: "Gold",
+   MCAP: "Market Cap",
+   AAPL: "Apple",
+   AMZN: "Amazon",
+   GOOGL: "Google",
+   META: "Meta",
+   MSFT: "Microsoft",
+   NVDA: "NVIDIA",
+   SPY: "S&P 500",
+   TSLA: "Tesla",
+   MAG7: "Magnificent 7",
+   BAGM: "Bag of Memes",
+   fxUSD: "fxUSD",
+   stETH: "Lido Staked Ether",
+   USDE: "Ethena USDe",
+   Shib: "Shiba Inu",
+   Doge: "Dogecoin",
+   PEPE: "Pepe",
+   TRUMP: "Trump",
+   WIF: "dogwifhat",
+ };
+ return tokenNames[symbol.toUpperCase()] || symbol;
 }
 
 function ExternalLinkIcon({
@@ -162,6 +217,14 @@ function getRpcClient(network: Network, publicClient?: any) {
  console.log("[getRpcClient] Returning Arbitrum client for", network);
  return arbitrumClient;
  }
+ // Always use dedicated Base client for Base feeds (regardless of connected chain)
+ if (network ==="base") {
+ if (!baseClient) {
+ baseClient = getBaseRpcClient();
+ }
+ console.log("[getRpcClient] Returning Base client for", network);
+ return baseClient;
+ }
  // Default to mainnet client as fallback
  console.log(
 "[getRpcClient] Returning mainnet client as fallback for",
@@ -180,8 +243,8 @@ export default function FlowPage() {
  const publicClient = usePublicClient();
  const [expanded, setExpanded] = useState<ExpandedState>(null);
 
- // All networks are visible (no anvil), but hide Arbitrum
- const visibleNetworks = useMemo(() => NETWORKS.filter(n => n !== "arbitrum"), []);
+ // All networks are visible
+ const visibleNetworks = useMemo(() => NETWORKS, []);
 
  return (
  <>
@@ -458,7 +521,7 @@ function FeedGroupSection({
  const pair = parsePair(feed.label);
  const price = prices[idx] ??"-";
  const isFeedExpanded = isExpanded && expanded?.feedIndex === idx;
- const status = feed.status ||"possible";
+ const status = feed.status ||"available";
 
  return (
  <tr
@@ -486,14 +549,18 @@ function FeedGroupSection({
  height={20}
  className="rounded-full flex-shrink-0 -ml-2"
  />
-                <span className="text-[#1E4775] font-medium">
-                  {feed.label}
-                  {feed.divisor && feed.divisor > 1 && (
-                    <span className="ml-2 text-xs text-[#1E4775]/60 italic">
-                      (price normalized)
-                    </span>
-                  )}
-                </span>
+                <SimpleTooltip
+                  label={`${getTokenFullName(pair.base)} / ${getTokenFullName(pair.quote)}`}
+                >
+                  <span className="text-[#1E4775] font-medium">
+                    {feed.label}
+                    {feed.divisor && feed.divisor > 1 && (
+                      <span className="ml-2 text-xs text-[#1E4775]/60 italic">
+                        (price normalized)
+                      </span>
+                    )}
+                  </span>
+                </SimpleTooltip>
               </div>
             </td>
             <td className="py-2 px-4 text-[#1E4775] whitespace-nowrap">
@@ -504,13 +571,19 @@ function FeedGroupSection({
                 </span>
               )}
             </td>
- <td className="py-2 px-4 font-mono text-[#1E4775]">
- {loading
- ?"Loading..."
- : price ==="-"
- ?"-"
- : `1 ${pair.base} = ${price} ${pair.quote}`}
- </td>
+            <td className="py-2 px-4 font-mono text-[#1E4775]">
+{loading ? (
+  "Loading..."
+) : price === "-" ? (
+  "-"
+) : (
+  <SimpleTooltip
+    label={`1 ${getTokenFullName(pair.base)} = ${price} ${getTokenFullName(pair.quote)}`}
+  >
+    <span>{`1 ${pair.base} = ${price} ${pair.quote}`}</span>
+  </SimpleTooltip>
+)}
+</td>
  <td className="py-2 px-4 w-24">
  <span
  className={`inline-block px-2 py-1 text-xs font-medium rounded ${
@@ -519,7 +592,7 @@ function FeedGroupSection({
  :"bg-gray-100 text-gray-600"
  }`}
  >
- {status ==="active" ?"Active" :"Possible"}
+ {status ==="active" ?"Active" :"Available"}
  </span>
  </td>
  </tr>
@@ -832,6 +905,9 @@ const [priceResult, latestResult, divisorResult] = await Promise.all([
  const getExplorerUrl = (address: string) => {
  if (network ==="arbitrum") {
  return arbitrumAddressUrl(address);
+ }
+ if (network ==="base") {
+ return baseAddressUrl(address);
  }
  return etherscanAddressUrl(address);
  };
