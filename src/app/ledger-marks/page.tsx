@@ -1003,12 +1003,12 @@ export default function LedgerMarksLeaderboard() {
         <div className="mb-2">
           {/* Title Row with Social Buttons */}
           <div className="p-4 flex items-center justify-between mb-0">
-            <div className="w-[120px]" /> {/* Spacer for centering */}
+            <div className="hidden md:block w-[120px]" /> {/* Spacer for centering */}
             <h1 className="font-bold font-mono text-white text-7xl text-center">
               Ledger Marks
             </h1>
             {/* Compact Social Buttons */}
-            <div className="flex flex-col items-end gap-2 border border-white/30  px-3 py-2">
+            <div className="hidden md:flex flex-col items-end gap-2 border border-white/30  px-3 py-2">
               <div className="text-white text-xs font-medium whitespace-nowrap">
                 follow to stay up to date
               </div>

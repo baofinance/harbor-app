@@ -126,59 +126,92 @@ export default function Example() {
         </div>
       </div>
 
-      <DisclosurePanel className="sm:hidden">
-        <div className="px-2 pt-2 pb-3 space-y-1">
-          <DisclosureButton
-            as={Link}
-            href="/genesis"
-            className={linkClass("/genesis")}
-            aria-current={isActive("/genesis") ? "page" : undefined}
-          >
-            Maiden Voyage
-          </DisclosureButton>
-          <DisclosureButton
-            as={Link}
-            href="/anchor"
-            className={linkClass("/anchor")}
-            aria-current={isActive("/anchor") ? "page" : undefined}
-          >
-            Anchor
-          </DisclosureButton>
-          <DisclosureButton
-            as={Link}
-            href="/sail"
-            className={linkClass("/sail")}
-            aria-current={isActive("/sail") ? "page" : undefined}
-          >
-            Sail
-          </DisclosureButton>
-          <DisclosureButton
-            as={Link}
-            href="/flow"
-            className={linkClass("/flow")}
-            aria-current={isActive("/flow") ? "page" : undefined}
-          >
-            Map Room
-          </DisclosureButton>
-          <DisclosureButton
-            as={Link}
-            href="/ledger-marks"
-            className={linkClass("/ledger-marks")}
-            aria-current={isActive("/ledger-marks") ? "page" : undefined}
-          >
-            Marks Leaderboard
-          </DisclosureButton>
-          <DisclosureButton
-            as={Link}
-            href="/transparency"
-            className={linkClass("/transparency")}
-            aria-current={isActive("/transparency") ? "page" : undefined}
-          >
-            Transparency
-          </DisclosureButton>
-        </div>
-        <div className="border-t border-white/10 px-4 py-3">
-          <div className="flex items-center justify-end">
+      <DisclosurePanel className="sm:hidden fixed inset-0 z-50 bg-[#1E4775]">
+        <div className="flex flex-col h-full px-6 py-8 space-y-4">
+          <div className="flex justify-end mb-8">
+            <DisclosureButton className="inline-flex items-center justify-center p-2 text-gray-200 hover:bg-[#FF8A7A]/20 hover:text-white focus:outline-2 focus:-outline-offset-1 focus:outline-[#FF8A7A] rounded-full">
+              <span className="sr-only">Close main menu</span>
+              <XMarkIcon
+                aria-hidden="true"
+                className="size-6"
+              />
+            </DisclosureButton>
+          </div>
+          <div className="flex flex-col items-center justify-center flex-1 space-y-4">
+            <DisclosureButton
+              as={Link}
+              href="/genesis"
+              className={`w-full max-w-sm px-6 py-4 text-base font-medium rounded-full transition-colors ${
+                isActive("/genesis")
+                  ? "text-[#1E4775] bg-white"
+                  : "text-white bg-white/10 hover:bg-white/20"
+              }`}
+              aria-current={isActive("/genesis") ? "page" : undefined}
+            >
+              Maiden Voyage
+            </DisclosureButton>
+            <DisclosureButton
+              as={Link}
+              href="/anchor"
+              className={`w-full max-w-sm px-6 py-4 text-base font-medium rounded-full transition-colors ${
+                isActive("/anchor")
+                  ? "text-[#1E4775] bg-white"
+                  : "text-white bg-white/10 hover:bg-white/20"
+              }`}
+              aria-current={isActive("/anchor") ? "page" : undefined}
+            >
+              Anchor
+            </DisclosureButton>
+            <DisclosureButton
+              as={Link}
+              href="/sail"
+              className={`w-full max-w-sm px-6 py-4 text-base font-medium rounded-full transition-colors ${
+                isActive("/sail")
+                  ? "text-[#1E4775] bg-white"
+                  : "text-white bg-white/10 hover:bg-white/20"
+              }`}
+              aria-current={isActive("/sail") ? "page" : undefined}
+            >
+              Sail
+            </DisclosureButton>
+            <DisclosureButton
+              as={Link}
+              href="/flow"
+              className={`w-full max-w-sm px-6 py-4 text-base font-medium rounded-full transition-colors ${
+                isActive("/flow")
+                  ? "text-[#1E4775] bg-white"
+                  : "text-white bg-white/10 hover:bg-white/20"
+              }`}
+              aria-current={isActive("/flow") ? "page" : undefined}
+            >
+              Map Room
+            </DisclosureButton>
+            <DisclosureButton
+              as={Link}
+              href="/ledger-marks"
+              className={`w-full max-w-sm px-6 py-4 text-base font-medium rounded-full transition-colors ${
+                isActive("/ledger-marks")
+                  ? "text-[#1E4775] bg-white"
+                  : "text-white bg-white/10 hover:bg-white/20"
+              }`}
+              aria-current={isActive("/ledger-marks") ? "page" : undefined}
+            >
+              Marks Leaderboard
+            </DisclosureButton>
+            <DisclosureButton
+              as={Link}
+              href="/transparency"
+              className={`w-full max-w-sm px-6 py-4 text-base font-medium rounded-full transition-colors ${
+                isActive("/transparency")
+                  ? "text-[#1E4775] bg-white"
+                  : "text-white bg-white/10 hover:bg-white/20"
+              }`}
+              aria-current={isActive("/transparency") ? "page" : undefined}
+            >
+              Transparency
+            </DisclosureButton>
+          </div>
+          <div className="flex items-center justify-center pt-4">
             <WalletButton />
           </div>
         </div>
