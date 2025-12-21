@@ -126,9 +126,9 @@ export default function Example() {
         </div>
       </div>
 
-      <DisclosurePanel className="sm:hidden fixed inset-0 z-50 bg-[#1E4775]">
-        <div className="flex flex-col h-full px-6 py-8 space-y-4">
-          <div className="flex justify-end mb-8">
+      <DisclosurePanel className="sm:hidden fixed inset-0 z-50 bg-[#1E4775] overflow-y-auto" style={{ height: '100dvh', maxHeight: '100dvh' }}>
+        <div className="flex flex-col min-h-full px-6 py-4 pb-24 space-y-2">
+          <div className="flex justify-end mb-2 flex-shrink-0">
             <DisclosureButton className="inline-flex items-center justify-center p-2 text-gray-200 hover:bg-[#FF8A7A]/20 hover:text-white focus:outline-2 focus:-outline-offset-1 focus:outline-[#FF8A7A] rounded-full">
               <span className="sr-only">Close main menu</span>
               <XMarkIcon
@@ -137,11 +137,14 @@ export default function Example() {
               />
             </DisclosureButton>
           </div>
-          <div className="flex flex-col items-center justify-center flex-1 space-y-4">
+          <div className="flex items-center justify-center mb-4 flex-shrink-0">
+            <WalletButton />
+          </div>
+          <div className="flex flex-col items-center justify-center space-y-2.5 py-2">
             <DisclosureButton
               as={Link}
               href="/genesis"
-              className={`w-full max-w-sm px-6 py-4 text-base font-medium rounded-full transition-colors ${
+              className={`w-full max-w-sm px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 ${
                 isActive("/genesis")
                   ? "text-[#1E4775] bg-white"
                   : "text-white bg-white/10 hover:bg-white/20"
@@ -153,7 +156,7 @@ export default function Example() {
             <DisclosureButton
               as={Link}
               href="/anchor"
-              className={`w-full max-w-sm px-6 py-4 text-base font-medium rounded-full transition-colors ${
+              className={`w-full max-w-sm px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 ${
                 isActive("/anchor")
                   ? "text-[#1E4775] bg-white"
                   : "text-white bg-white/10 hover:bg-white/20"
@@ -165,7 +168,7 @@ export default function Example() {
             <DisclosureButton
               as={Link}
               href="/sail"
-              className={`w-full max-w-sm px-6 py-4 text-base font-medium rounded-full transition-colors ${
+              className={`w-full max-w-sm px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 ${
                 isActive("/sail")
                   ? "text-[#1E4775] bg-white"
                   : "text-white bg-white/10 hover:bg-white/20"
@@ -177,7 +180,7 @@ export default function Example() {
             <DisclosureButton
               as={Link}
               href="/flow"
-              className={`w-full max-w-sm px-6 py-4 text-base font-medium rounded-full transition-colors ${
+              className={`w-full max-w-sm px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 ${
                 isActive("/flow")
                   ? "text-[#1E4775] bg-white"
                   : "text-white bg-white/10 hover:bg-white/20"
@@ -189,7 +192,7 @@ export default function Example() {
             <DisclosureButton
               as={Link}
               href="/ledger-marks"
-              className={`w-full max-w-sm px-6 py-4 text-base font-medium rounded-full transition-colors ${
+              className={`w-full max-w-sm px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 ${
                 isActive("/ledger-marks")
                   ? "text-[#1E4775] bg-white"
                   : "text-white bg-white/10 hover:bg-white/20"
@@ -201,7 +204,7 @@ export default function Example() {
             <DisclosureButton
               as={Link}
               href="/transparency"
-              className={`w-full max-w-sm px-6 py-4 text-base font-medium rounded-full transition-colors ${
+              className={`w-full max-w-sm px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 ${
                 isActive("/transparency")
                   ? "text-[#1E4775] bg-white"
                   : "text-white bg-white/10 hover:bg-white/20"
@@ -210,9 +213,6 @@ export default function Example() {
             >
               Transparency
             </DisclosureButton>
-          </div>
-          <div className="flex items-center justify-center pt-4">
-            <WalletButton />
           </div>
         </div>
       </DisclosurePanel>
