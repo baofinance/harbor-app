@@ -5,7 +5,6 @@ import { useQuery } from "@tanstack/react-query";
 import { useAccount, usePublicClient } from "wagmi";
 import Image from "next/image";
 import {
-  TrophyIcon,
   WalletIcon,
 } from "@heroicons/react/24/outline";
 import { markets } from "@/config/markets";
@@ -1344,9 +1343,6 @@ export default function LedgerMarksLeaderboard() {
  <div className="md:hidden grid grid-cols-[auto_1fr_1fr_1fr] gap-2 sm:gap-4 items-center text-sm text-[#1E4775]">
    <div className="min-w-0 text-center font-medium pl-2">
      <div className="flex items-center justify-center gap-1">
-       {index === 0 && (
-         <TrophyIcon className="w-4 h-4 text-yellow-500" />
-       )}
        <span>{index + 1}</span>
      </div>
    </div>
@@ -1378,9 +1374,6 @@ export default function LedgerMarksLeaderboard() {
  <div className="hidden md:grid grid-cols-[auto_1fr_1fr_1fr_1fr_1fr_1fr] gap-4 items-center text-sm text-[#1E4775]">
  <div className="min-w-0 text-center font-medium pl-6">
  <div className="flex items-center justify-center gap-2">
- {index === 0 && (
- <TrophyIcon className="w-5 h-5 text-yellow-500" />
- )}
  <span>{index + 1}</span>
  </div>
  </div>
