@@ -1216,7 +1216,37 @@ export default function LedgerMarksLeaderboard() {
 
  {/* Leaderboard */}
  <section className="space-y-2 overflow-visible">
-        {/* Header Row */}
+        {/* Mobile Header Row */}
+        <div className="md:hidden bg-white py-1.5 px-2 overflow-x-auto mb-0">
+          <div className="grid grid-cols-[auto_1fr_1fr_1fr] gap-2 sm:gap-4 items-center uppercase tracking-wider text-[10px] text-[#1E4775] font-semibold">
+            <div className="min-w-0 text-center pl-2">Rank</div>
+            <div className="min-w-0 text-center">Wallet</div>
+            <div
+              className="min-w-0 text-center cursor-pointer hover:opacity-70 transition-opacity"
+              onClick={() => handleSort("total")}
+            >
+              Total Marks
+              {sortBy ==="total" && (
+                <span className="ml-1">
+                  {sortDirection ==="desc" ?"↓" :"↑"}
+                </span>
+              )}
+            </div>
+            <div
+              className="min-w-0 text-center cursor-pointer hover:opacity-70 transition-opacity"
+              onClick={() => handleSort("perDay")}
+            >
+              Marks/Day
+              {sortBy ==="perDay" && (
+                <span className="ml-1">
+                  {sortDirection ==="desc" ?"↓" :"↑"}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Desktop Header Row */}
         <div className="hidden md:block bg-white py-1.5 px-2 overflow-x-auto mb-0">
           <div className="grid grid-cols-[auto_1fr_1fr_1fr_1fr_1fr_1fr] gap-4 items-center uppercase tracking-wider text-[10px] lg:text-[11px] text-[#1E4775] font-semibold">
             <div className="min-w-0 text-center pl-6">Rank</div>
@@ -1310,7 +1340,42 @@ export default function LedgerMarksLeaderboard() {
  key={`${user.address.toLowerCase()}-${index}`}
  className="bg-white p-2 sm:p-3 overflow-x-auto"
  >
- <div className="grid grid-cols-[auto_1fr_1fr_1fr_1fr_1fr_1fr] gap-4 items-center text-sm text-[#1E4775]">
+ {/* Mobile Row */}
+ <div className="md:hidden grid grid-cols-[auto_1fr_1fr_1fr] gap-2 sm:gap-4 items-center text-sm text-[#1E4775]">
+   <div className="min-w-0 text-center font-medium pl-2">
+     <div className="flex items-center justify-center gap-1">
+       {index === 0 && (
+         <TrophyIcon className="w-4 h-4 text-yellow-500" />
+       )}
+       <span>{index + 1}</span>
+     </div>
+   </div>
+   <div className="min-w-0 text-center font-mono text-xs">
+     <a 
+       href={`https://etherscan.io/address/${user.address}`}
+       target="_blank"
+       rel="noopener noreferrer"
+       className="hover:text-[#17395F] hover:underline"
+     >
+       {formatAddress(user.address)}
+     </a>
+   </div>
+   <div className="min-w-0 text-center font-bold font-mono text-xs">
+     {user.totalMarks.toLocaleString(undefined, {
+       minimumFractionDigits: user.totalMarks < 100 ? 2 : 0,
+       maximumFractionDigits: user.totalMarks < 100 ? 2 : 0,
+     })}
+   </div>
+   <div className="min-w-0 text-center font-mono text-xs">
+     {user.marksPerDay.toLocaleString(undefined, {
+       maximumFractionDigits: 2,
+     })}
+     /day
+   </div>
+ </div>
+
+ {/* Desktop Row */}
+ <div className="hidden md:grid grid-cols-[auto_1fr_1fr_1fr_1fr_1fr_1fr] gap-4 items-center text-sm text-[#1E4775]">
  <div className="min-w-0 text-center font-medium pl-6">
  <div className="flex items-center justify-center gap-2">
  {index === 0 && (

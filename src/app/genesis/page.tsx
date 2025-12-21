@@ -2132,7 +2132,7 @@ export default function GenesisIndexPage() {
                         </div>
                         <div className="flex items-center gap-2">
                           {!isEnded && (
-                            <div>
+                            <div className="hidden md:block">
                               <div className="text-[#1E4775]/70 text-[10px]">
                                 Deposit Assets
                               </div>
