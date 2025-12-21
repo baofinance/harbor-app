@@ -143,7 +143,7 @@ function getTokenFullName(symbol: string): string {
    SPY: "S&P 500",
    TSLA: "Tesla",
    MAG7: "Magnificent 7",
-   BAGM: "Bag of Memes",
+   BOM5: "Bag of Memes",
    fxUSD: "fxUSD",
    stETH: "Lido Staked Ether",
    USDE: "Ethena USDe",

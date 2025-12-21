@@ -60,7 +60,7 @@ export const feeds = {
         fxUSD: [],
         USDE: [],
         stETH: [
-            { label: "stETH/BAGM", address: "0x76D5EbFE459643326149B488841A0228bD67d0D7" as const, status: "available" as const },
+            { label: "stETH/BOM5", address: "0x76D5EbFE459643326149B488841A0228bD67d0D7" as const, status: "available" as const },
         ],
     },
 
