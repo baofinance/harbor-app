@@ -2017,8 +2017,8 @@ export default function GenesisIndexPage() {
                     >
                       {/* Mobile Card Layout (< md) */}
                       <div className="md:hidden space-y-1.5">
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="flex items-center justify-center gap-1.5 flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2 pl-1">
+                          <div className="flex items-center justify-start gap-1.5 flex-1 min-w-0">
                             <span className="text-[#1E4775] font-medium text-sm">
                               {rowLeveragedSymbol &&
                               rowLeveragedSymbol.toLowerCase().startsWith("hs")
@@ -2082,7 +2082,7 @@ export default function GenesisIndexPage() {
                                               underlyingAPY >= 0;
                             
                             return (
-                              <div className="flex-shrink-0 text-right">
+                              <div className="flex-shrink-0 text-right mr-6">
                                 <div className="text-[#1E4775]/70 text-[10px]">APY</div>
                                 {isValidAPY ? (
                                   <div className="flex items-center justify-end gap-1">
