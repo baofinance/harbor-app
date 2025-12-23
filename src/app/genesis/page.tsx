@@ -1598,7 +1598,7 @@ export default function GenesisIndexPage() {
                         key={`header-active`}
                         className="hidden md:block bg-white py-1.5 px-2 overflow-x-auto mb-0"
                       >
-                        <div className="grid lg:grid-cols-[1.5fr_80px_1fr_1fr_1fr_0.5fr_1fr] md:grid-cols-[120px_80px_100px_1fr_1fr_90px_80px] gap-4 items-center uppercase tracking-wider text-[10px] lg:text-[11px] text-[#1E4775] font-semibold">
+                        <div className="grid lg:grid-cols-[1.5fr_80px_0.9fr_0.9fr_0.9fr_0.7fr_0.9fr] md:grid-cols-[120px_80px_100px_1fr_1fr_90px_80px] gap-4 items-center uppercase tracking-wider text-[10px] lg:text-[11px] text-[#1E4775] font-semibold">
                           <div className="min-w-0 text-center">Market</div>
                           <div className="text-center min-w-0">APY</div>
                           <div className="text-center min-w-0 flex items-center justify-center gap-1.5">
@@ -2672,8 +2672,8 @@ export default function GenesisIndexPage() {
                       <div
                         className={`hidden lg:grid gap-4 items-center text-sm ${
                           isEnded
-                            ? "grid-cols-[1.5fr_80px_1fr_1fr_1.5fr_1fr]"
-                            : "grid-cols-[1.5fr_80px_1fr_1fr_1fr_0.5fr_1fr]"
+                            ? "grid-cols-[1.5fr_80px_0.9fr_0.9fr_1.2fr_0.9fr]"
+                            : "grid-cols-[1.5fr_80px_0.9fr_0.9fr_0.9fr_0.7fr_0.9fr]"
                         }`}
                       >
                         <div className="min-w-0 overflow-hidden">
