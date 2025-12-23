@@ -1806,7 +1806,7 @@ const successFmt = formatTokenAmount(successAmountBigInt, collateralSymbol, coll
      <div className="flex items-start gap-2">
        <ArrowPathIcon className="w-4 h-4 flex-shrink-0 mt-0.5" />
        <div>
-         <span className="font-semibold">Tip:</span> You can deposit any ERC20 token! Non-collateral tokens will be automatically swapped via ParaSwap.
+         <span className="font-semibold">Tip:</span> You can deposit any ERC20 token! Non-collateral tokens will be automatically swapped via Velora.
        </div>
      </div>
    </div>
@@ -1896,7 +1896,7 @@ const successFmt = formatTokenAmount(successAmountBigInt, collateralSymbol, coll
    return (
    <div className="p-2 bg-blue-50 border border-blue-200 space-y-1 text-xs">
      <div className="flex items-center justify-between">
-       <span className="text-blue-700">Swap via ParaSwap:</span>
+       <span className="text-blue-700">Swap via Velora:</span>
        <span className="font-mono text-blue-900">{formatUnits(swapQuote.toAmount, targetDecimals)} {targetToken}</span>
      </div>
      <div className="flex items-center justify-between">
@@ -1955,7 +1955,7 @@ const successFmt = formatTokenAmount(successAmountBigInt, collateralSymbol, coll
        )}
      </div>
      <div className="flex items-center justify-between">
-       <span className="text-blue-700">ParaSwap Fee:</span>
+       <span className="text-blue-700">Velora Fee:</span>
        <span className="font-mono text-blue-700">
          {swapQuote.fee.toFixed(2)}%
        </span>
@@ -2213,7 +2213,7 @@ const successFmt = formatTokenAmount(successAmountBigInt, collateralSymbol, coll
                   </div>
                 </div>
                 <p className="text-xs text-[#1E4775]/70">
-                  Deposit any ERC20 token via ParaSwap integration
+                  Deposit any ERC20 token via Velora integration
                 </p>
               </div>
               <button
