@@ -3016,10 +3016,10 @@ export default function GenesisIndexPage() {
                                 )}
                               </div>
                             </SimpleTooltip>
-                            <SimpleTooltip label={underlyingSymbol}>
+                            <SimpleTooltip label={collateralSymbol}>
                               <Image
-                                src={getLogoPath(underlyingSymbol)}
-                                alt={underlyingSymbol}
+                                src={getLogoPath(collateralSymbol)}
+                                alt={collateralSymbol}
                                 width={20}
                                 height={20}
                                 className="flex-shrink-0 cursor-help rounded-full"
