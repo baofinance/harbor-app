@@ -2025,8 +2025,8 @@ export default function GenesisIndexPage() {
                                 ? rowLeveragedSymbol.slice(2)
                                 : rowLeveragedSymbol || (mkt as any).name}
                             </span>
-                            <span className="text-[#1E4775]/60">:</span>
-                            <div className="flex items-center gap-0.5">
+                            <div className="hidden md:flex items-center gap-0.5">
+                              <span className="text-[#1E4775]/60">:</span>
                               <SimpleTooltip label={underlyingSymbol}>
                                 <Image
                                   src={getLogoPath(underlyingSymbol)}
@@ -2060,12 +2060,12 @@ export default function GenesisIndexPage() {
                                   className="flex-shrink-0 cursor-help"
                                 />
                               </SimpleTooltip>
-                              {isExpanded ? (
-                                <ChevronUpIcon className="w-5 h-5 text-[#1E4775] flex-shrink-0 ml-1" />
-                              ) : (
-                                <ChevronDownIcon className="w-5 h-5 text-[#1E4775] flex-shrink-0 ml-1" />
-                              )}
                             </div>
+                            {isExpanded ? (
+                              <ChevronUpIcon className="w-5 h-5 text-[#1E4775] flex-shrink-0 ml-1" />
+                            ) : (
+                              <ChevronDownIcon className="w-5 h-5 text-[#1E4775] flex-shrink-0 ml-1" />
+                            )}
                           </div>
                           {/* APY for mobile - next to market title */}
                           {(() => {
@@ -2082,7 +2082,7 @@ export default function GenesisIndexPage() {
                                               underlyingAPY >= 0;
                             
                             return (
-                              <div className="flex-shrink-0 text-right mr-6">
+                              <div className="flex-shrink-0 text-right mr-8">
                                 <div className="text-[#1E4775]/70 text-[10px]">APY</div>
                                 {isValidAPY ? (
                                   <div className="flex items-center justify-end gap-1">
