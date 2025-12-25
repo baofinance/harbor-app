@@ -630,19 +630,6 @@ const expectedFxSaveFromSwap = (() => {
 // For tokens that need swapping to ETH (wstETH markets): calculate expected wstETH from ETH swap output
 const ethFromSwap = needsSwap && isETHStETHMarket && swapQuote ? swapQuote.toAmount : 0n;
 
-console.log("[wstETH Preview] Swap quote data:", {
-  needsSwap,
-  isETHStETHMarket,
-  hasSwapQuote: !!swapQuote,
-  swapQuote: swapQuote ? {
-    fromAmount: swapQuote.fromAmount.toString(),
-    toAmount: swapQuote.toAmount.toString(),
-    toAmountFormatted: formatUnits(swapQuote.toAmount, 18),
-  } : null,
-  ethFromSwap: ethFromSwap.toString(),
-  ethFromSwapFormatted: ethFromSwap > 0n ? formatUnits(ethFromSwap, 18) : "0",
-});
-
 // Query wstETH contract to get expected output from swapped ETH
 const { data: expectedWstETHFromSwap } = useContractRead({
   address: wstETHAddress,
@@ -654,9 +641,6 @@ const { data: expectedWstETHFromSwap } = useContractRead({
   },
 });
 
-console.log("[wstETH Preview] Contract query result:", {
-  expectedWstETHFromSwap: expectedWstETHFromSwap ? expectedWstETHFromSwap.toString() : "undefined",
-  formatted: expectedWstETHFromSwap ? formatUnits(expectedWstETHFromSwap as bigint, 18) : "N/A",
 });
 
 // Helper to safely extract bigint from hook result
@@ -849,7 +833,6 @@ const preDepositBalance = userCurrentDeposit;
        setError(null);
        setTxHash(null);
        
-       console.log(`[Swap Approval] Checking ${selectedAsset} allowance for ParaSwap:`, {
          token: selectedAssetAddress,
          spender: PARASWAP_TOKEN_TRANSFER_PROXY,
          amount: formatUnits(amountBigInt, selectedTokenDecimals),
@@ -863,16 +846,8 @@ const preDepositBalance = userCurrentDeposit;
          args: [address, PARASWAP_TOKEN_TRANSFER_PROXY],
        }) as bigint;
        
-       console.log(`[Swap Approval] Current allowance:`, {
-         raw: currentAllowance.toString(),
-         formatted: formatUnits(currentAllowance, selectedTokenDecimals),
-         required: formatUnits(amountBigInt, selectedTokenDecimals),
-       });
-       
        // Approve if needed
        if (currentAllowance < amountBigInt) {
-         console.log(`[Swap Approval] Insufficient allowance, approving ${selectedAsset}...`);
-         
          const approveHash = await writeContractAsync({
            address: selectedAssetAddress as `0x${string}`,
            abi: ERC20_ABI,
@@ -881,15 +856,11 @@ const preDepositBalance = userCurrentDeposit;
          });
          
          setTxHash(approveHash);
-         console.log("[Swap Approval] Approval transaction sent:", approveHash);
          
          await publicClient?.waitForTransactionReceipt({ hash: approveHash });
-         console.log("[Swap Approval] Approval confirmed");
          
          // Wait for state update and ensure nonce is updated
-         // Get current nonce to verify it's updated after approval
-         const nonceAfterApproval = await publicClient?.getTransactionCount({ address });
-         console.log("[Swap Approval] Nonce after approval:", nonceAfterApproval);
+         await publicClient?.getTransactionCount({ address });
          await new Promise((resolve) => setTimeout(resolve, 2000));
          
          setProgressSteps((prev) =>
@@ -898,7 +869,6 @@ const preDepositBalance = userCurrentDeposit;
            )
          );
        } else {
-         console.log(`[Swap Approval] Sufficient allowance already exists, skipping approval`);
          setProgressSteps((prev) =>
            prev.map((s) =>
              s.id === "approveSwap" ? { ...s, status: "completed" } : s
@@ -917,25 +887,15 @@ const preDepositBalance = userCurrentDeposit;
          functionName: "balanceOf",
          args: [address],
        }) as bigint;
-       console.log(`[Swap] ${targetTokenSymbol} balance before swap:`, {
-         balance: balanceBefore.toString(),
-         formatted: formatUnits(balanceBefore, targetTokenDecimals),
-       });
      } else {
        // For wstETH markets: track ETH balance
        balanceBefore = (await publicClient.getBalance({ address })) as bigint;
-       console.log(`[Swap] ${targetTokenSymbol} balance before swap:`, {
-         balance: balanceBefore.toString(),
-         formatted: formatUnits(balanceBefore, targetTokenDecimals),
-       });
      }
      
      // Step 3: Get fresh swap transaction data from ParaSwap RIGHT BEFORE sending
      // This ensures the transaction data is current and nonce will be handled correctly
      // Important: Get this AFTER approval is confirmed to ensure nonce is updated
-     console.log("[Swap] Getting fresh swap transaction data from ParaSwap (after approval confirmed)...");
      const currentNonce = await publicClient?.getTransactionCount({ address });
-     console.log("[Swap] Current nonce before getting swap tx:", currentNonce);
      
      const swapTx = await getDefiLlamaSwapTx(
        fromTokenForSwap,
@@ -948,11 +908,7 @@ const preDepositBalance = userCurrentDeposit;
      );
      
      // Verify nonce hasn't changed (shouldn't, but good to check)
-     const nonceAfterSwapTx = await publicClient?.getTransactionCount({ address });
-     console.log("[Swap] Nonce after getting swap tx:", nonceAfterSwapTx);
-     if (currentNonce !== nonceAfterSwapTx) {
-       console.warn("[Swap] Nonce changed between getting swap tx and sending - this might cause issues");
-     }
+     await publicClient?.getTransactionCount({ address });
      
      // Step 4: Execute the swap
      setStep("depositing"); // Use depositing step for swap
@@ -971,7 +927,6 @@ const preDepositBalance = userCurrentDeposit;
      // Add a small delay before sending to ensure wallet/provider has updated nonce
      await new Promise((resolve) => setTimeout(resolve, 500));
      
-     console.log("[Swap] Sending swap transaction (wagmi will handle nonce automatically)...");
      const swapHash = await sendTransactionAsync({
        to: swapTx.to,
        data: swapTx.data,
@@ -982,11 +937,9 @@ const preDepositBalance = userCurrentDeposit;
      });
      
      setTxHash(swapHash);
-     console.log("[Swap] Transaction sent, waiting for confirmation:", swapHash);
      
      // Wait for transaction confirmation
      await publicClient?.waitForTransactionReceipt({ hash: swapHash });
-     console.log("[Swap] Transaction confirmed, waiting for balance update...");
      
      // Wait for balance to update (3 seconds should be enough)
      await new Promise((resolve) => setTimeout(resolve, 3000));
@@ -1004,15 +957,6 @@ const preDepositBalance = userCurrentDeposit;
      } else {
        balanceAfter = (await publicClient.getBalance({ address })) as bigint;
      }
-     
-     console.log(`[Swap] ${targetTokenSymbol} balance after swap:`, {
-       balanceBefore: balanceBefore.toString(),
-       balanceAfter: balanceAfter.toString(),
-       difference: (balanceAfter - balanceBefore).toString(),
-       formattedBefore: formatUnits(balanceBefore, targetTokenDecimals),
-       formattedAfter: formatUnits(balanceAfter, targetTokenDecimals),
-       formattedDifference: formatUnits(balanceAfter - balanceBefore, targetTokenDecimals),
-     });
      
      const received = balanceAfter - balanceBefore;
      
@@ -1037,8 +981,6 @@ const preDepositBalance = userCurrentDeposit;
     // For wstETH markets (ETH swap), no approval needed - ETH is native
     if (isFxSAVEMarket) {
       setCurrentStepIndex(steps.findIndex((s) => s.id === "approveUSDC"));
-      console.log("[Swap] Swap complete, now approving USDC for zapper...");
-      
       setStep("approving");
       setProgressSteps((prev) =>
         prev.map((s) =>
@@ -1057,10 +999,7 @@ const preDepositBalance = userCurrentDeposit;
       });
       
       setTxHash(approveHash);
-      console.log("[USDC Approval] Approval transaction sent:", approveHash);
-      
       await publicClient?.waitForTransactionReceipt({ hash: approveHash });
-      console.log("[USDC Approval] Approval confirmed");
       
       // Give a moment for the blockchain state to update
       await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -1071,12 +1010,6 @@ const preDepositBalance = userCurrentDeposit;
         abi: ERC20_ABI,
         functionName: "allowance",
         args: [address, genesisZapAddress as `0x${string}`],
-      });
-      
-      console.log("[USDC Approval] Allowance after approval:", {
-        raw: allowanceAfterApproval.toString(),
-        formatted: formatUnits(allowanceAfterApproval as bigint, 6),
-        required: formatUnits(received, 6),
       });
       
       if ((allowanceAfterApproval as bigint) < received) {
@@ -1092,12 +1025,10 @@ const preDepositBalance = userCurrentDeposit;
       );
     } else {
       // For ETH swaps, no approval needed - go straight to deposit
-      console.log("[Swap] Swap complete (ETH received, no approval needed)");
     }
     
     setCurrentStepIndex(steps.findIndex((s) => s.id === "deposit"));
   } catch (err: any) {
-    console.error("Swap error:", err);
     setError(err.message || "Swap failed. Please try again.");
     setStep("error");
     setProgressSteps((prev) =>
@@ -1156,17 +1087,6 @@ if (!isNativeETH && needsApproval && !needsSwap) {
  setError(null);
  setTxHash(null);
 
-    console.log("[Deposit] Starting deposit, checking conditions:", {
-      isNativeETH,
-      isStETH,
-      isUSDC,
-      isFXUSD,
-      needsSwap,
-      useETHZap,
-      useUSDCZap,
-      needsETHZapAfterSwap,
-      genesisZapAddress,
-      wstETHAddress,
       swapUsdcAmount: (window as any).__swapUsdcAmount?.toString(),
       swapEthAmount: (window as any).__swapEthAmount?.toString(),
     });
@@ -1176,8 +1096,6 @@ if (!isNativeETH && needsApproval && !needsSwap) {
     
     // ETH zap: direct ETH deposits OR swapped tokens to ETH (for wstETH markets)
     if ((isNativeETH || needsETHZapAfterSwap) && genesisZapAddress && wstETHAddress) {
-      console.log("[Deposit] Taking ETH zap branch");
-      
       // Determine ETH amount: direct deposit or from swap
       const ethAmount = needsETHZapAfterSwap 
         ? ((window as any).__swapEthAmount as bigint)
@@ -1186,12 +1104,6 @@ if (!isNativeETH && needsApproval && !needsSwap) {
       if (!ethAmount || ethAmount <= 0n) {
         throw new Error("Invalid ETH amount for deposit");
       }
-      
-      console.log("[Deposit] ETH amount for zap:", {
-        raw: ethAmount.toString(),
-        formatted: formatUnits(ethAmount, 18),
-        source: needsETHZapAfterSwap ? "swap" : "direct",
-      });
       
       // Use zapEth for ETH deposits with slippage protection
       // Contract flow: ETH → stETH (via submit, 1:1) → wstETH (via wrap) → Genesis
@@ -1206,18 +1118,8 @@ if (!isNativeETH && needsApproval && !needsSwap) {
         args: [stETHAmount],
       });
       
-      console.log("[Deposit] Expected wstETH output:", {
-        raw: expectedWstETH.toString(),
-        formatted: formatUnits(expectedWstETH as bigint, 18),
-      });
-      
       // Apply 1% slippage buffer (99% of expected)
       const minWstETHOut = (expectedWstETH * 99n) / 100n;
-      
-      console.log("[Deposit] Minimum wstETH output (99%):", {
-        raw: minWstETHOut.toString(),
-        formatted: formatUnits(minWstETHOut, 18),
-      });
       
       depositHash = await writeContractAsync({
         address: genesisZapAddress,
@@ -1232,7 +1134,6 @@ if (!isNativeETH && needsApproval && !needsSwap) {
         delete (window as any).__swapEthAmount;
       }
     } else if (isStETH && useETHZap && genesisZapAddress && wstETHAddress) {
-      console.log("[Deposit] Taking stETH zap branch");
       // Use zapStEth for stETH deposits with slippage protection
       // Get expected wstETH from stETH amount
       const expectedWstETH = await publicClient.readContract({
@@ -1252,7 +1153,6 @@ if (!isNativeETH && needsApproval && !needsSwap) {
         args: [amountBigInt, address as `0x${string}`, minWstETHOut],
       });
     } else if ((isUSDC || needsSwap) && useUSDCZap && genesisZapAddress) {
-      console.log("[Deposit] Taking USDC zap branch");
       // Use zapUsdcToGenesis for USDC deposits with slippage protection
       // If this is after a swap, use the USDC amount from swap
       const usdcAmount = needsSwap ? ((window as any).__swapUsdcAmount as bigint) : amountBigInt;
@@ -1260,11 +1160,6 @@ if (!isNativeETH && needsApproval && !needsSwap) {
       if (!usdcAmount || usdcAmount <= 0n) {
         throw new Error("Invalid USDC amount for deposit");
       }
-      
-      console.log("[Deposit] USDC amount for zap:", {
-        raw: usdcAmount.toString(),
-        formatted: formatUnits(usdcAmount, 6),
-      });
       
       // Calculate expected fxSAVE output from USDC amount
       // Note: previewZapUsdc doesn't exist on contract, so we calculate using wrappedRate
@@ -1277,21 +1172,8 @@ if (!isNativeETH && needsApproval && !needsSwap) {
       const usdcIn18Decimals = usdcAmount * 10n ** 12n;
       const expectedFxSaveOut = (usdcIn18Decimals * 1000000000000000000n) / wrappedRate;
       
-      console.log("[Deposit] Expected fxSAVE output:", {
-        raw: expectedFxSaveOut.toString(),
-        formatted: formatUnits(expectedFxSaveOut, 18),
-        usdcAmount: formatUnits(usdcAmount, 6),
-        usdcIn18Decimals: formatUnits(usdcIn18Decimals, 18),
-        wrappedRate: formatUnits(wrappedRate, 18),
-      });
-      
       // Apply 1% slippage buffer (99% of expected)
       const minFxSaveOut = (expectedFxSaveOut * 99n) / 100n;
-      
-      console.log("[Deposit] Minimum fxSAVE output (99%):", {
-        raw: minFxSaveOut.toString(),
-        formatted: formatUnits(minFxSaveOut, 18),
-      });
       
       // IMPORTANT: Pass USDC in native 6 decimals (usdcAmount), not scaled
       // The preview function uses 18 decimals for calculation, but the actual
@@ -1308,7 +1190,6 @@ if (!isNativeETH && needsApproval && !needsSwap) {
         delete (window as any).__swapUsdcAmount;
       }
     } else if (isFXUSD && useUSDCZap && genesisZapAddress) {
-      console.log("[Deposit] Taking FXUSD zap branch");
       // Use zapFxUsdToGenesis for FXUSD deposits with slippage protection
       // Calculate expected fxSAVE output: fxSAVE = FXUSD / wrappedRate
       // Both FXUSD and wrappedRate are in 18 decimals
@@ -1317,20 +1198,8 @@ if (!isNativeETH && needsApproval && !needsSwap) {
       }
       const expectedFxSaveOut = (amountBigInt * 1000000000000000000n) / wrappedRate;
       
-      console.log("[Deposit] Expected fxSAVE output:", {
-        raw: expectedFxSaveOut.toString(),
-        formatted: formatUnits(expectedFxSaveOut, 18),
-        fxUsdAmount: formatUnits(amountBigInt, 18),
-        wrappedRate: formatUnits(wrappedRate, 18),
-      });
-      
       // Apply 1% slippage buffer (99% of expected)
       const minFxSaveOut = (expectedFxSaveOut * 99n) / 100n;
-      
-      console.log("[Deposit] Minimum fxSAVE output (99%):", {
-        raw: minFxSaveOut.toString(),
-        formatted: formatUnits(minFxSaveOut, 18),
-      });
       
       depositHash = await writeContractAsync({
         address: genesisZapAddress,
@@ -1339,7 +1208,6 @@ if (!isNativeETH && needsApproval && !needsSwap) {
         args: [amountBigInt, minFxSaveOut, address as `0x${string}`],
       });
     } else {
-      console.log("[Deposit] Taking standard genesis deposit branch");
       // For other tokens (wstETH, fxSAVE), use standard genesis deposit
       depositHash = await writeContractAsync({
  address: genesisAddress as `0x${string}`,
@@ -1370,7 +1238,6 @@ if (isNativeETH || isStETH || isUSDC || isFXUSD) {
       actualDepositedAmount = formatEther(depositedAmount);
     }
   } catch (err) {
-    console.error("Failed to read actual deposit amount:", err);
     // Fall back to the expected amount
     // Use actualCollateralDeposit if available, otherwise use amountBigInt
     const fallbackAmount = actualCollateralDeposit > 0n 
@@ -1396,8 +1263,7 @@ setSuccessfulDepositAmount(actualDepositedAmount);
  await onSuccess();
  }
  } catch (err) {
- console.error("Full transaction error object:", err);
- let errorMessage ="Transaction failed";
+   let errorMessage ="Transaction failed";
 
  // Helper to check if error is user rejection
  const isUserRejection = (error: any): boolean => {
@@ -1447,13 +1313,6 @@ setSuccessfulDepositAmount(actualDepositedAmount);
  errObj.name?.includes("RPC"))
  ) {
  const rpcCode = errObj.code;
- console.error("RPC Error details:", {
- code: rpcCode,
- message: errObj.message,
- shortMessage: errObj.shortMessage,
- name: errObj.name,
- data: errObj.data,
- });
 
  // Map common RPC error codes to user-friendly messages
  if (rpcCode !== undefined) {
@@ -1575,15 +1434,6 @@ setSuccessfulDepositAmount(actualDepositedAmount);
  errorMessage ="An unknown error occurred. Please try again.";
  }
 
- // Log detailed error information for debugging
- if (process.env.NODE_ENV ==="development") {
- console.error("Error details:", {
- error: err,
- errorMessage,
- type: err?.constructor?.name,
- stack: err instanceof Error ? err.stack : undefined,
- });
- }
 
  setError(errorMessage);
  setStep("error");

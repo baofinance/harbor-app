@@ -242,6 +242,17 @@ export default function LedgerMarksLeaderboard() {
  const graphUrl = getGraphUrl();
  const { address, isConnected } = useAccount();
  const publicClient = usePublicClient();
+ 
+ // Helper to check if errors contain indexer issues
+ const hasIndexerError = (errors: any[] | undefined): boolean => {
+   if (!errors || errors.length === 0) return false;
+   const errorMessages = errors.map((err: any) => err.message || String(err)).join('; ');
+   return errorMessages.includes('bad indexers') || errorMessages.includes('indexer');
+ };
+ 
+ // Track errors from all queries
+ const [hasIndexerErrors, setHasIndexerErrors] = useState(false);
+ const [hasAnyErrors, setHasAnyErrors] = useState(false);
  const [currentChainTime, setCurrentChainTime] = useState<number | undefined>(
  undefined
  );
@@ -434,21 +445,17 @@ export default function LedgerMarksLeaderboard() {
  const depositsResult = await depositsResponse.json();
 
  if (depositsResult.errors) {
- console.error(
-"GraphQL errors fetching deposits:",
- depositsResult.errors
- );
- return { userHarborMarks: [] };
+   const isIndexerErr = hasIndexerError(depositsResult.errors);
+   setHasIndexerErrors((prev) => prev || isIndexerErr);
+   setHasAnyErrors((prev) => prev || true);
+   return { userHarborMarks: [] };
  }
 
  if (
- !depositsResult.data?.deposits ||
- depositsResult.data.deposits.length === 0
+   !depositsResult.data?.deposits ||
+   depositsResult.data.deposits.length === 0
  ) {
- if (process.env.NODE_ENV ==="development") {
- console.log("[Leaderboard] No deposits found");
- }
- return { userHarborMarks: [] };
+   return { userHarborMarks: [] };
  }
 
  // Step 2: Get unique user-contract pairs
@@ -480,22 +487,18 @@ export default function LedgerMarksLeaderboard() {
  });
 
  if (!marksResponse.ok) {
- if (process.env.NODE_ENV ==="development") {
- console.warn(`[Leaderboard] Failed to fetch marks for ${id}`);
- }
- return null;
+   return null;
  }
 
  const marksResult = await marksResponse.json();
 
  if (marksResult.errors || !marksResult.data?.userHarborMarks) {
- if (process.env.NODE_ENV ==="development") {
- console.warn(
- `[Leaderboard] No marks data for ${id}`,
- marksResult.errors
- );
- }
- return null;
+   if (marksResult.errors) {
+     const isIndexerErr = hasIndexerError(marksResult.errors);
+     setHasIndexerErrors((prev) => prev || isIndexerErr);
+     setHasAnyErrors((prev) => prev || true);
+   }
+   return null;
  }
 
  return marksResult.data.userHarborMarks as UserMarksEntry;
@@ -504,16 +507,6 @@ export default function LedgerMarksLeaderboard() {
 
  const marks = await Promise.all(marksPromises);
  const validMarks = marks.filter((m): m is UserMarksEntry => m !== null);
-
- // Debug logging
- if (process.env.NODE_ENV ==="development") {
- console.log("[Leaderboard] Query succeeded", {
- depositsCount: depositsResult.data.deposits.length,
- uniquePairs: uniquePairs.size,
- marksFound: validMarks.length,
- sampleEntry: validMarks[0],
- });
- }
 
  return { userHarborMarks: validMarks };
  },
@@ -541,11 +534,10 @@ export default function LedgerMarksLeaderboard() {
  const result = await response.json();
 
  if (result.errors) {
- console.error(
-"GraphQL errors fetching ha token balances:",
- result.errors
- );
- return { haTokenBalances: [] };
+   const isIndexerErr = hasIndexerError(result.errors);
+   setHasIndexerErrors((prev) => prev || isIndexerErr);
+   setHasAnyErrors((prev) => prev || true);
+   return { haTokenBalances: [] };
  }
 
  return result.data || { haTokenBalances: [] };
@@ -576,11 +568,10 @@ export default function LedgerMarksLeaderboard() {
  const result = await response.json();
  
  if (result.errors) {
- console.error(
-"GraphQL errors fetching stability pool deposits:",
- result.errors
- );
- return { stabilityPoolDeposits: [] };
+   const isIndexerErr = hasIndexerError(result.errors);
+   setHasIndexerErrors((prev) => prev || isIndexerErr);
+   setHasAnyErrors((prev) => prev || true);
+   return { stabilityPoolDeposits: [] };
  }
 
  return result.data || { stabilityPoolDeposits: [] };
@@ -609,11 +600,10 @@ export default function LedgerMarksLeaderboard() {
  const result = await response.json();
 
  if (result.errors) {
- console.error(
-"GraphQL errors fetching sail token balances:",
- result.errors
- );
- return { sailTokenBalances: [] };
+   const isIndexerErr = hasIndexerError(result.errors);
+   setHasIndexerErrors((prev) => prev || isIndexerErr);
+   setHasAnyErrors((prev) => prev || true);
+   return { sailTokenBalances: [] };
  }
 
  return result.data || { sailTokenBalances: [] };
@@ -628,6 +618,23 @@ export default function LedgerMarksLeaderboard() {
  isLoadingStabilityPoolDeposits ||
  isLoadingSailTokenBalances;
  const error = marksError;
+
+ // Reset errors when all queries succeed
+ useEffect(() => {
+   if (!isLoading && !error && !marksError) {
+     // Check if all queries have data (or empty arrays, which is fine)
+     const allQueriesHaveData = 
+       marksData !== undefined &&
+       haTokenBalancesData !== undefined &&
+       stabilityPoolDepositsData !== undefined &&
+       sailTokenBalancesData !== undefined;
+     
+     if (allQueriesHaveData) {
+       setHasIndexerErrors(false);
+       setHasAnyErrors(false);
+     }
+   }
+ }, [isLoading, error, marksError, marksData, haTokenBalancesData, stabilityPoolDepositsData, sailTokenBalancesData]);
 
  // Extract marks array from query result
  const marksArray = marksData?.userHarborMarks || [];
@@ -646,28 +653,7 @@ export default function LedgerMarksLeaderboard() {
  stabilityPoolDeposits.length === 0 &&
  sailTokenBalances.length === 0
  ) {
- if (process.env.NODE_ENV ==="development") {
- console.log("[Leaderboard] No marks data", {
- marksArrayLength: marksArray?.length,
- haTokenBalancesLength: haTokenBalances.length,
- stabilityPoolDepositsLength: stabilityPoolDeposits.length,
- });
- }
- return [];
- }
-
- // Debug logging
- if (process.env.NODE_ENV ==="development") {
- console.log("[Leaderboard] Processing marks", {
- totalEntries: marksArray.length,
- sampleEntry: marksArray[0],
- knownWallet:"0xae7dbb17bc40d53a6363409c6b1ed88d3cfdc31e",
- hasKnownWallet: marksArray.some(
- (e) =>
- e.user?.toLowerCase() ===
-"0xae7dbb17bc40d53a6363409c6b1ed88d3cfdc31e"
- ),
- });
+   return [];
  }
 
  // Group by user address
@@ -684,22 +670,15 @@ export default function LedgerMarksLeaderboard() {
  >();
 
  marksArray.forEach((entry) => {
- const userAddress = entry.user?.toLowerCase();
- if (!userAddress) {
- console.warn("[Leaderboard] Entry missing user address", entry);
- return;
- }
+   const userAddress = entry.user?.toLowerCase();
+   if (!userAddress) {
+     return;
+   }
 
- // Filter out known contract addresses (they shouldn't be in the leaderboard)
- if (isContractAddress(userAddress)) {
- if (process.env.NODE_ENV ==="development") {
- console.log(
-"[Leaderboard] Filtering out contract address",
- userAddress
- );
- }
- return;
- }
+   // Filter out known contract addresses (they shouldn't be in the leaderboard)
+   if (isContractAddress(userAddress)) {
+     return;
+   }
 
  const contractType = getContractType(entry.contractAddress);
  const currentMarksRaw = entry.currentMarks ||"0";
@@ -719,33 +698,10 @@ export default function LedgerMarksLeaderboard() {
  currentMarks = currentMarks + marksAccumulated;
  }
 
- // Debug logging for known wallet
- if (userAddress ==="0xae7dbb17bc40d53a6363409c6b1ed88d3cfdc31e") {
- console.log("[Leaderboard] Found known wallet entry", {
- entry,
- currentMarksRaw,
- currentMarks,
- contractType,
- contractAddress: entry.contractAddress,
- currentDepositUSD,
- lastUpdated,
- genesisStartDate,
- marksPerDay,
- });
- }
-
- // Skip entries with zero or invalid marks, but allow if marksPerDay > 0 (user is earning marks)
- if (isNaN(currentMarks) || (currentMarks === 0 && marksPerDay === 0)) {
- if (userAddress ==="0xae7dbb17bc40d53a6363409c6b1ed88d3cfdc31e") {
- console.warn("[Leaderboard] Known wallet has zero/invalid marks", {
- currentMarksRaw,
- currentMarks,
- marksPerDay,
- entry,
- });
- }
- return;
- }
+   // Skip entries with zero or invalid marks, but allow if marksPerDay > 0 (user is earning marks)
+   if (isNaN(currentMarks) || (currentMarks === 0 && marksPerDay === 0)) {
+     return;
+   }
 
  if (!userMap.has(userAddress)) {
  userMap.set(userAddress, {
@@ -784,28 +740,11 @@ export default function LedgerMarksLeaderboard() {
 
  // Filter out known contract addresses
  if (isContractAddress(userAddress)) {
- if (process.env.NODE_ENV ==="development") {
- console.log(
-"[Leaderboard] Filtering out contract address from ha tokens",
- userAddress
- );
- }
- return;
+   return;
  }
 
  const estimatedMarks = calculateEstimatedMarks(balance, currentChainTime);
  const marksPerDay = parseFloat(balance.marksPerDay ||"0");
-
- // Debug logging for dev address
- if (userAddress ==="0xae7dbb17bc40d53a6363409c6b1ed88d3cfdc31e") {
- console.log("[Leaderboard] Dev address ha token balance", {
- balance,
- accumulatedMarks: balance.accumulatedMarks,
- marksPerDay,
- lastUpdated: balance.lastUpdated,
- estimatedMarks,
- });
- }
 
  // Don't skip if marksPerDay > 0 even if estimatedMarks is 0 (might be just starting)
  if (estimatedMarks === 0 && marksPerDay === 0) return;
@@ -883,28 +822,11 @@ export default function LedgerMarksLeaderboard() {
 
  // Filter out known contract addresses
  if (isContractAddress(userAddress)) {
- if (process.env.NODE_ENV ==="development") {
- console.log(
-"[Leaderboard] Filtering out contract address from sail tokens",
- userAddress
- );
- }
- return;
+   return;
  }
 
  const estimatedMarks = calculateEstimatedMarks(balance, currentChainTime);
  const marksPerDay = parseFloat(balance.marksPerDay ||"0");
-
- // Debug logging for dev address
- if (userAddress ==="0xae7dbb17bc40d53a6363409c6b1ed88d3cfdc31e") {
- console.log("[Leaderboard] Dev address sail token balance", {
- balance,
- accumulatedMarks: balance.accumulatedMarks,
- marksPerDay,
- lastUpdated: balance.lastUpdated,
- estimatedMarks,
- });
- }
 
  // Don't skip if marksPerDay > 0 even if estimatedMarks is 0 (might be just starting)
  if (estimatedMarks === 0 && marksPerDay === 0) return;
@@ -1118,9 +1040,39 @@ export default function LedgerMarksLeaderboard() {
         </div>
         </div>
 
-        {/* Subgraph Error Banner */}
-        {anchorLedgerMarksError && (
-          <div className="bg-[#FF8A7A]/10 border border-[#FF8A7A]/30 rounded p-3 mb-4">
+        {/* Subgraph Error Banners */}
+        {hasIndexerErrors && (
+          <div className="bg-[#FF8A7A]/10 border border-[#FF8A7A]/30 p-3 mb-4">
+            <div className="flex items-start gap-3">
+              <div className="text-[#FF8A7A] text-xl mt-0.5">⚠️</div>
+              <div className="flex-1">
+                <p className="text-[#FF8A7A] font-semibold text-sm mb-1">
+                  Temporary Service Issue
+                </p>
+                <p className="text-white/70 text-xs">
+                  The Graph Network indexers are temporarily unavailable. Your Harbor Marks are safe and will display correctly once the service is restored. This is a temporary infrastructure issue, not a problem with your account.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+        {hasAnyErrors && !hasIndexerErrors && (
+          <div className="bg-yellow-500/10 border border-yellow-500/30 p-3 mb-4">
+            <div className="flex items-start gap-3">
+              <div className="text-yellow-500 text-xl mt-0.5">⚠️</div>
+              <div className="flex-1">
+                <p className="text-yellow-500 font-semibold text-sm mb-1">
+                  Harbor Marks Data Unavailable
+                </p>
+                <p className="text-white/70 text-xs">
+                  Unable to load Harbor Marks data. Your positions and core functionality remain unaffected. Please try refreshing the page.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+        {anchorLedgerMarksError && !hasIndexerErrors && !hasAnyErrors && (
+          <div className="bg-[#FF8A7A]/10 border border-[#FF8A7A]/30 p-3 mb-4">
             <div className="flex items-start gap-3">
               <div className="text-[#FF8A7A] text-xl mt-0.5">⚠️</div>
               <div className="flex-1">

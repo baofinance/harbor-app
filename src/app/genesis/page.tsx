@@ -872,28 +872,6 @@ export default function GenesisIndexPage() {
   const { data: wstETHAPR, isLoading: isLoadingWstETHAPR, error: wstETHAPRError } = useWstETHAPR();
   const { data: fxSAVEAPR, isLoading: isLoadingFxSAVEAPR, error: fxSAVEAPRError } = useFxSAVEAPR();
 
-  // Log when CoinGecko prices update
-  useEffect(() => {
-    if (coinGeckoIds.length > 0) {
-      console.log(`[Genesis Price] CoinGecko state:`, {
-        loading: coinGeckoLoading,
-        prices: coinGeckoPrices,
-        requestedIds: coinGeckoIds,
-        timestamp: new Date().toISOString(),
-      });
-    }
-  }, [coinGeckoPrices, coinGeckoLoading, coinGeckoIds]);
-
-  // Log when collateral prices update
-  useEffect(() => {
-    if (collateralPricesMap.size > 0) {
-      console.log(`[Genesis Price] Collateral prices updated:`, {
-        totalPrices: collateralPricesMap.size,
-        isLoading: collateralPricesLoading,
-        error: collateralPricesError,
-      });
-    }
-  }, [collateralPricesMap, collateralPricesLoading, collateralPricesError]);
 
   // Chainlink BTC/USD Oracle on Mainnet (fallback when CoinGecko fails)
   const CHAINLINK_BTC_USD_ORACLE = "0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c" as `0x${string}`;
@@ -1491,7 +1469,7 @@ export default function GenesisIndexPage() {
 
         {/* GraphQL Error Banner */}
         {hasIndexerErrors && (
-          <div className="bg-[#FF8A7A]/10 border border-[#FF8A7A]/30 rounded p-3 mb-4">
+          <div className="bg-[#FF8A7A]/10 border border-[#FF8A7A]/30 p-3 mb-4">
             <div className="flex items-start gap-3">
               <div className="text-[#FF8A7A] text-xl mt-0.5">⚠️</div>
               <div className="flex-1">
@@ -1513,7 +1491,7 @@ export default function GenesisIndexPage() {
           </div>
         )}
         {hasAnyErrors && !hasIndexerErrors && (
-          <div className="bg-yellow-500/10 border border-yellow-500/30 rounded p-3 mb-4">
+          <div className="bg-yellow-500/10 border border-yellow-500/30 p-3 mb-4">
             <div className="flex items-start gap-3">
               <div className="text-yellow-500 text-xl mt-0.5">⚠️</div>
               <div className="flex-1">
@@ -1831,29 +1809,9 @@ export default function GenesisIndexPage() {
                   | string
                   | undefined;
 
-                console.log(`[Genesis Price] Market ${id} price calculation:`, {
-                  collateralSymbol,
-                  underlyingSymbol,
-                  marketCoinGeckoId,
-                  coinGeckoLoading,
-                  coinGeckoPrice: marketCoinGeckoId
-                    ? coinGeckoPrices[marketCoinGeckoId]
-                    : undefined,
-                  oraclePrice: underlyingPriceFromOracle,
-                  wrappedRate: wrappedRate?.toString(),
-                  collateralPriceData: collateralPriceData ? {
-                    priceUSD: collateralPriceData.priceUSD,
-                    maxRate: collateralPriceData.maxRate?.toString(),
-                    isLoading: collateralPriceData.isLoading,
-                  } : null,
-                });
-
                 // Priority 1: For fxUSD underlying (fxSAVE markets), always use hardcoded $1.00
                 if (underlyingSymbol.toLowerCase() === "fxusd") {
                   underlyingPriceUSD = 1.0;
-                  console.log(
-                    `[Genesis Price] Market ${id}: Using hardcoded fxUSD price: $1.00`
-                  );
                 } else if (
                   marketCoinGeckoId &&
                   coinGeckoPrices[marketCoinGeckoId] &&
@@ -1862,9 +1820,6 @@ export default function GenesisIndexPage() {
                   // Priority 2: Try CoinGecko price for other markets (preferred when available)
                   // Only use if price is valid (> 0)
                   underlyingPriceUSD = coinGeckoPrices[marketCoinGeckoId]!;
-                  console.log(
-                    `[Genesis Price] Market ${id}: Using CoinGecko price for ${marketCoinGeckoId}: $${underlyingPriceUSD}`
-                  );
                 } else if (underlyingPriceFromOracle > 0) {
                   // Priority 3: Use oracle price from hook as fallback
                   let oraclePriceUSD = underlyingPriceFromOracle;
@@ -1878,15 +1833,6 @@ export default function GenesisIndexPage() {
                     const btcPriceUSD = coinGeckoPrices["bitcoin"] || chainlinkBtcPrice || 0;
                     if (btcPriceUSD > 0) {
                       oraclePriceUSD = oraclePriceUSD * btcPriceUSD;
-                      const priceSource = coinGeckoPrices["bitcoin"] ? "CoinGecko" : "Chainlink";
-                      console.log(
-                        `[Genesis Price] Market ${id}: Converted BTC-denominated oracle price to USD: ${underlyingPriceFromOracle} BTC × $${btcPriceUSD} (${priceSource}) = $${oraclePriceUSD}`
-                      );
-                    } else {
-                      // Both CoinGecko and Chainlink failed - log warning
-                      console.warn(
-                        `[Genesis Price] Market ${id}: Cannot convert BTC-denominated price to USD - both CoinGecko and Chainlink BTC prices unavailable`
-                      );
                     }
                   }
                   
@@ -1894,21 +1840,9 @@ export default function GenesisIndexPage() {
                   // This prevents showing <0.01 when oracle returns invalid data
                   if (oraclePriceUSD > 0.01) {
                     underlyingPriceUSD = oraclePriceUSD;
-                    console.log(
-                      `[Genesis Price] Market ${id}: Using oracle price: $${underlyingPriceUSD}${
-                        coinGeckoLoading
-                          ? " (CoinGecko loading)"
-                          : coinGeckoError
-                          ? " (CoinGecko failed)"
-                          : ""
-                      }`
-                    );
                   } else {
                     priceError =
                       "Price oracle returned value too small (<0.01)";
-                    console.warn(
-                      `[Genesis Price] Market ${id}: Oracle returned value too small: $${oraclePriceUSD}`
-                    );
                   }
                 } else {
                   // Check if there was an error reading the oracle
@@ -1916,17 +1850,8 @@ export default function GenesisIndexPage() {
                     priceError = `Failed to read price oracle: ${
                       collateralPriceData.error.message || "Unknown error"
                     }`;
-                    console.warn(
-                      `[Genesis Price] Market ${id}: Oracle read failed:`,
-                      collateralPriceData.error
-                    );
                   } else {
                     priceError = "Price oracle not available";
-                    console.warn(
-                      `[Genesis Price] Market ${id}: Oracle not available, CoinGecko loading: ${coinGeckoLoading}, CoinGecko error: ${
-                        coinGeckoError ? String(coinGeckoError) : "none"
-                      }`
-                    );
                   }
                 }
 
@@ -1985,27 +1910,6 @@ export default function GenesisIndexPage() {
                     ? 1.07 // Hardcoded fallback for fxSAVE if everything fails
                     : underlyingPriceUSD; // Fallback to underlying price if no rate available and CoinGecko not loading
 
-                console.log(
-                  `[Genesis Price] Market ${id} wrapped token price calculation:`,
-                  {
-                    isWstETH,
-                    coinGeckoIsWrappedToken,
-                    underlyingPriceUSD,
-                    coinGeckoLoading,
-                    stETHPrice,
-                    useStETHFallback,
-                    wrappedRate: wrappedRate?.toString(),
-                    wrappedTokenPriceUSD,
-                    source: coinGeckoIsWrappedToken
-                      ? "CoinGecko (wrapped)"
-                      : useStETHFallback
-                      ? "stETH fallback"
-                      : underlyingPriceUSD > 0
-                      ? "Oracle"
-                      : "None (0)",
-                  }
-                );
-
                 // Use wrapped token price for USD calculations since deposits are in wrapped collateral
                 const collateralPriceUSD = wrappedTokenPriceUSD;
 
@@ -2026,16 +1930,6 @@ export default function GenesisIndexPage() {
                   : 0;
                 // userDepositAmount is already in wrapped tokens, so just multiply by wrapped token price
                 const userDepositUSD = userDepositAmount * collateralPriceUSD;
-                
-                console.log(
-                  `[Genesis Deposit] Market ${id} user deposit calculation:`,
-                  {
-                    userDepositAmount,
-                    collateralPriceUSD,
-                    userDepositUSD,
-                    calculation: `${userDepositAmount} wrapped tokens * $${collateralPriceUSD} = $${userDepositUSD}`,
-                  }
-                );
 
                 // Get anchor and sail token prices from the hook
                 const tokenPrices = tokenPricesByMarket[id];
