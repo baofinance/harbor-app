@@ -73,6 +73,10 @@ export const getGraphHeaders = (): Record<string, string> => {
   // gateway-arbitrum.network.thegraph.com uses API key in URL path
   if (graphUrl.includes("gateway.thegraph.com")) {
     headers["Authorization"] = `Bearer ${graphApiKey}`;
+    // Log in production to help debug (only log first few chars of key for security)
+    if (typeof window !== "undefined" && process.env.NEXT_PUBLIC_APP_ENV === "production") {
+      console.log(`[getGraphHeaders] Using GraphQL URL: ${graphUrl}, API key present: ${!!graphApiKey && graphApiKey.length > 0}`);
+    }
   } else if (graphUrl.includes("gateway-arbitrum.network.thegraph.com")) {
     // API key is already in the URL path for this gateway
     // But we can also add it as Authorization header for extra security

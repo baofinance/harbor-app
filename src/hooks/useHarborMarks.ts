@@ -254,6 +254,10 @@ export function useAllHarborMarks(genesisAddresses: string[]) {
         return [];
       }
 
+      // Log configuration for debugging production issues
+      console.log(`[useAllHarborMarks] Using GraphQL URL: ${graphUrl}`);
+      console.log(`[useAllHarborMarks] Querying ${genesisAddresses.length} markets for address: ${address}`);
+      
       // Query all markets in parallel
       const queries = genesisAddresses.map((genesisAddress) => {
         // UserHarborMarks id format is {genesisAddress}-{userAddress}
@@ -274,16 +278,29 @@ export function useAllHarborMarks(genesisAddresses: string[]) {
           }),
         }).then(async (res) => {
           if (!res.ok) {
-            console.warn(`[useAllHarborMarks] Query failed for ${genesisAddress} (subgraph may be rate limited). Data will be empty.`);
+            const errorText = await res.text().catch(() => res.statusText);
+            const isAuthError = res.status === 401 || res.status === 403;
+            console.warn(`[useAllHarborMarks] Query failed for ${genesisAddress}:`, {
+              status: res.status,
+              statusText: res.statusText,
+              error: errorText,
+              url: graphUrl,
+              isAuthError: isAuthError,
+              suggestion: isAuthError ? "Check if NEXT_PUBLIC_GRAPH_API_KEY is set correctly in production environment" : undefined
+            });
             return { data: null, errors: [{ message: res.statusText }] };
           }
           const json = await res.json();
           if (json.errors) {
-            console.warn(`[useAllHarborMarks] GraphQL errors for ${genesisAddress}. Data will be empty.`);
+            console.warn(`[useAllHarborMarks] GraphQL errors for ${genesisAddress}:`, json.errors);
           }
           return json;
         }).catch((error) => {
-          console.warn(`[useAllHarborMarks] Fetch error for ${genesisAddress}. Data will be empty.`);
+          console.warn(`[useAllHarborMarks] Fetch error for ${genesisAddress}:`, {
+            message: error.message,
+            name: error.name,
+            url: graphUrl
+          });
           return { data: null, errors: [{ message: error.message }] };
         });
       });
