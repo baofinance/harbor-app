@@ -400,35 +400,56 @@ export function useAllMarketBonusStatus(genesisAddresses: string[]) {
         }).then(async (res) => {
           if (!res.ok) {
             const errorText = await res.text().catch(() => res.statusText);
-            console.warn(`[useAllMarketBonusStatus] Query failed for ${genesisAddress}:`, {
-              status: res.status,
-              statusText: res.statusText,
-              errorBody: errorText.substring(0, 200),
-            });
             return { data: null, errors: [{ message: res.statusText }] };
           }
           const json = await res.json();
-          if (json.errors) {
-            console.warn(`[useAllMarketBonusStatus] GraphQL errors for ${genesisAddress}. Errors:`, JSON.stringify(json.errors, null, 2));
-            const errorMessages = json.errors.map((err: any) => err.message || String(err)).join('; ');
-            if (errorMessages.includes('bad indexers') || errorMessages.includes('indexer')) {
-              console.warn(`[useAllMarketBonusStatus] The Graph Network indexers are having issues. This is a temporary infrastructure problem on The Graph's side.`);
-            }
-          }
           return json;
         }).catch((error) => {
-          console.warn(`[useAllMarketBonusStatus] Fetch error for ${genesisAddress}`);
           return { data: null, errors: [{ message: error.message }] };
         });
       });
 
       const results = await Promise.all(queries);
 
-      return results.map((result, index) => ({
-        genesisAddress: genesisAddresses[index],
-        data: result.data?.marketBonusStatus || null,
-        errors: result.errors,
-      }));
+      // Map results with error details
+      const mappedResults = results.map((result, index) => {
+        const genesisAddress = genesisAddresses[index];
+        const hasErrors = result.errors && result.errors.length > 0;
+        let isIndexerError = false;
+        
+        if (hasErrors) {
+          const errorMessages = result.errors.map((err: any) => err.message || String(err)).join('; ');
+          isIndexerError = errorMessages.includes('bad indexers') || errorMessages.includes('indexer');
+        }
+        
+        return {
+          genesisAddress,
+          data: result.data?.marketBonusStatus || null,
+          errors: result.errors,
+          hasErrors,
+          isIndexerError,
+        };
+      });
+
+      // Check if any errors indicate indexer issues
+      const hasIndexerErrors = mappedResults.some((r) => r.isIndexerError);
+      const hasAnyErrors = mappedResults.some((r) => r.hasErrors);
+      
+      // Get list of markets with errors
+      const marketsWithIndexerErrors = mappedResults
+        .filter((r) => r.isIndexerError)
+        .map((r) => r.genesisAddress);
+      const marketsWithOtherErrors = mappedResults
+        .filter((r) => r.hasErrors && !r.isIndexerError)
+        .map((r) => r.genesisAddress);
+
+      return {
+        results: mappedResults.map(({ hasErrors, isIndexerError, ...rest }) => rest),
+        hasIndexerErrors,
+        hasAnyErrors,
+        marketsWithIndexerErrors,
+        marketsWithOtherErrors,
+      };
     },
     enabled: genesisAddresses.length > 0,
     refetchInterval: 30000, // Refetch every 30 seconds to show real-time progress

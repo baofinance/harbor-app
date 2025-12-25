@@ -641,8 +641,6 @@ const { data: expectedWstETHFromSwap } = useContractRead({
   },
 });
 
-});
-
 // Helper to safely extract bigint from hook result
 const toBigInt = (value: unknown): bigint => {
   if (typeof value === 'bigint') return value;
@@ -829,16 +827,11 @@ const preDepositBalance = userCurrentDeposit;
            s.id === "approveSwap" ? { ...s, status: "in_progress" } : s
          )
        );
-       setCurrentStepIndex(steps.findIndex((s) => s.id === "approveSwap"));
-       setError(null);
-       setTxHash(null);
-       
-         token: selectedAssetAddress,
-         spender: PARASWAP_TOKEN_TRANSFER_PROXY,
-         amount: formatUnits(amountBigInt, selectedTokenDecimals),
-       });
-       
-       // Check current allowance
+      setCurrentStepIndex(steps.findIndex((s) => s.id === "approveSwap"));
+      setError(null);
+      setTxHash(null);
+      
+      // Check current allowance
        const currentAllowance = await publicClient.readContract({
          address: selectedAssetAddress as `0x${string}`,
          abi: ERC20_ABI,
@@ -1083,15 +1076,11 @@ if (!isNativeETH && needsApproval && !needsSwap) {
  s.id ==="deposit" ? { ...s, status:"in_progress" } : s
  )
  );
- setCurrentStepIndex(steps.findIndex((s) => s.id ==="deposit"));
- setError(null);
- setTxHash(null);
+setCurrentStepIndex(steps.findIndex((s) => s.id ==="deposit"));
+setError(null);
+setTxHash(null);
 
-      swapUsdcAmount: (window as any).__swapUsdcAmount?.toString(),
-      swapEthAmount: (window as any).__swapEthAmount?.toString(),
-    });
-
-    // Use genesis zap contract for ETH, stETH, USDC, and FXUSD deposits
+// Use genesis zap contract for ETH, stETH, USDC, and FXUSD deposits
     let depositHash: `0x${string}`;
     
     // ETH zap: direct ETH deposits OR swapped tokens to ETH (for wstETH markets)

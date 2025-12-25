@@ -250,9 +250,25 @@ export default function LedgerMarksLeaderboard() {
    return errorMessages.includes('bad indexers') || errorMessages.includes('indexer');
  };
  
+ // Helper to get market name from contract address
+ const getMarketNameFromAddress = (contractAddress: string): string => {
+   const market = Object.entries(markets).find(([_, mkt]) => {
+     const genesisAddr = (mkt as any).addresses?.genesis;
+     return genesisAddr && genesisAddr.toLowerCase() === contractAddress.toLowerCase();
+   });
+   if (!market) return contractAddress.slice(0, 6) + '...' + contractAddress.slice(-4);
+   const [id, mkt] = market;
+   const rowLeveragedSymbol = (mkt as any).rowLeveragedSymbol;
+   if (rowLeveragedSymbol && rowLeveragedSymbol.toLowerCase().startsWith("hs")) {
+     return rowLeveragedSymbol.slice(2);
+   }
+   return rowLeveragedSymbol || (mkt as any).name || id;
+ };
+ 
  // Track errors from all queries
  const [hasIndexerErrors, setHasIndexerErrors] = useState(false);
  const [hasAnyErrors, setHasAnyErrors] = useState(false);
+ const [marketsWithErrors, setMarketsWithErrors] = useState<Set<string>>(new Set());
  const [currentChainTime, setCurrentChainTime] = useState<number | undefined>(
  undefined
  );
@@ -448,6 +464,7 @@ export default function LedgerMarksLeaderboard() {
    const isIndexerErr = hasIndexerError(depositsResult.errors);
    setHasIndexerErrors((prev) => prev || isIndexerErr);
    setHasAnyErrors((prev) => prev || true);
+   // Note: deposits query doesn't have per-market errors, so we can't track specific markets here
    return { userHarborMarks: [] };
  }
 
@@ -497,6 +514,11 @@ export default function LedgerMarksLeaderboard() {
      const isIndexerErr = hasIndexerError(marksResult.errors);
      setHasIndexerErrors((prev) => prev || isIndexerErr);
      setHasAnyErrors((prev) => prev || true);
+     setMarketsWithErrors((prev) => {
+       const newSet = new Set(prev);
+       newSet.add(pair.contractAddress);
+       return newSet;
+     });
    }
    return null;
  }
@@ -1042,37 +1064,51 @@ export default function LedgerMarksLeaderboard() {
 
         {/* Subgraph Error Banners */}
         {hasIndexerErrors && (
-          <div className="bg-[#FF8A7A]/10 border border-[#FF8A7A]/30 p-3 mb-4">
+          <div className="bg-[#FF8A7A]/10 border border-[#FF8A7A]/30 rounded-none p-3 mb-4">
             <div className="flex items-start gap-3">
               <div className="text-[#FF8A7A] text-xl mt-0.5">⚠️</div>
               <div className="flex-1">
                 <p className="text-[#FF8A7A] font-semibold text-sm mb-1">
                   Temporary Service Issue
                 </p>
-                <p className="text-white/70 text-xs">
-                  The Graph Network indexers are temporarily unavailable. Your Harbor Marks are safe and will display correctly once the service is restored. This is a temporary infrastructure issue, not a problem with your account.
+                <p className="text-white/70 text-xs mb-2">
+                  The Graph Network indexers are temporarily unavailable for some markets. Your Harbor Marks are safe and will display correctly once the service is restored. This is a temporary infrastructure issue, not a problem with your account.
                 </p>
+                {marketsWithErrors.size > 0 && (
+                  <div className="mt-2 pt-2 border-t border-[#FF8A7A]/20">
+                    <p className="text-[#FF8A7A]/90 text-xs font-medium mb-1">
+                      Markets affected: {Array.from(marketsWithErrors).map(getMarketNameFromAddress).join(', ')}
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
         )}
         {hasAnyErrors && !hasIndexerErrors && (
-          <div className="bg-yellow-500/10 border border-yellow-500/30 p-3 mb-4">
+          <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-none p-3 mb-4">
             <div className="flex items-start gap-3">
               <div className="text-yellow-500 text-xl mt-0.5">⚠️</div>
               <div className="flex-1">
                 <p className="text-yellow-500 font-semibold text-sm mb-1">
                   Harbor Marks Data Unavailable
                 </p>
-                <p className="text-white/70 text-xs">
-                  Unable to load Harbor Marks data. Your positions and core functionality remain unaffected. Please try refreshing the page.
+                <p className="text-white/70 text-xs mb-2">
+                  Unable to load Harbor Marks data for some markets. Your positions and core functionality remain unaffected. Please try refreshing the page.
                 </p>
+                {marketsWithErrors.size > 0 && (
+                  <div className="mt-2 pt-2 border-t border-yellow-500/20">
+                    <p className="text-yellow-500/90 text-xs font-medium mb-1">
+                      Markets affected: {Array.from(marketsWithErrors).map(getMarketNameFromAddress).join(', ')}
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
         )}
         {anchorLedgerMarksError && !hasIndexerErrors && !hasAnyErrors && (
-          <div className="bg-[#FF8A7A]/10 border border-[#FF8A7A]/30 p-3 mb-4">
+          <div className="bg-[#FF8A7A]/10 border border-[#FF8A7A]/30 rounded-none p-3 mb-4">
             <div className="flex items-start gap-3">
               <div className="text-[#FF8A7A] text-xl mt-0.5">⚠️</div>
               <div className="flex-1">
@@ -1270,18 +1306,25 @@ export default function LedgerMarksLeaderboard() {
  {error instanceof Error ? error.message :"Unknown error"}
  </div>
  ) : leaderboardData.length === 0 ? (
- <div className="bg-white p-8 text-center text-gray-500">
- <div>No marks data available yet</div>
- {process.env.NODE_ENV ==="development" &&
- marksArray.length > 0 && (
- <div className="mt-4 text-xs text-left">
- <p>
- Debug: Found {marksArray.length} entries in query result
- </p>
- <p>
- Sample entry: {JSON.stringify(marksArray[0], null, 2)}
- </p>
- </div>
+ <div className="bg-white p-8 text-center">
+ {hasAnyErrors || hasIndexerErrors ? (
+   <div className="space-y-3">
+     <div className="text-[#FF8A7A] font-semibold text-sm">
+       Unable to Load Leaderboard Data
+     </div>
+     <div className="text-gray-500 text-xs">
+       {hasIndexerErrors 
+         ? "The Graph Network indexers are temporarily unavailable. Your Harbor Marks are safe and will display correctly once the service is restored."
+         : "Unable to load Harbor Marks data. Please try refreshing the page."}
+     </div>
+     {marketsWithErrors.size > 0 && (
+       <div className="text-gray-400 text-xs mt-2">
+         Markets affected: {Array.from(marketsWithErrors).map(getMarketNameFromAddress).join(', ')}
+       </div>
+     )}
+   </div>
+ ) : (
+   <div className="text-gray-500">No marks data available yet</div>
  )}
  </div>
  ) : (

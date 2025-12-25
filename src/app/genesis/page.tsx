@@ -562,6 +562,25 @@ export default function GenesisIndexPage() {
     isLoading: isLoadingBonusStatus,
   } = useAllMarketBonusStatus(genesisAddresses);
 
+  // Extract error info from bonus status
+  const bonusStatusResults = allMarketBonusStatus?.results || [];
+  const bonusHasIndexerErrors = allMarketBonusStatus?.hasIndexerErrors || false;
+  const bonusHasAnyErrors = allMarketBonusStatus?.hasAnyErrors || false;
+  const bonusMarketsWithIndexerErrors = allMarketBonusStatus?.marketsWithIndexerErrors || [];
+  const bonusMarketsWithOtherErrors = allMarketBonusStatus?.marketsWithOtherErrors || [];
+
+  // Combine errors from marks and bonus status
+  const combinedHasIndexerErrors = hasIndexerErrors || bonusHasIndexerErrors;
+  const combinedHasAnyErrors = hasAnyErrors || bonusHasAnyErrors;
+  const combinedMarketsWithIndexerErrors = Array.from(new Set([
+    ...marketsWithIndexerErrors,
+    ...bonusMarketsWithIndexerErrors,
+  ]));
+  const combinedMarketsWithOtherErrors = Array.from(new Set([
+    ...marketsWithOtherErrors,
+    ...bonusMarketsWithOtherErrors,
+  ]));
+
   const queryClient = useQueryClient();
 
   // Index layout per market: [isEnded, balanceOf?, claimable?]
@@ -1084,7 +1103,7 @@ export default function GenesisIndexPage() {
             {/* Early Deposit Bonus Box */}
             {(() => {
               // Check if any market has an active early deposit bonus (threshold not reached)
-              const hasActiveBonus = allMarketBonusStatus?.some((status) => {
+              const hasActiveBonus = bonusStatusResults?.some((status) => {
                 const bonusData = status.data;
                 return bonusData && !bonusData.thresholdReached;
               });
@@ -1103,10 +1122,10 @@ export default function GenesisIndexPage() {
               // if (!hasActiveBonus || !hasActiveGenesis) return null;
 
               // Get threshold info from first market with active bonus, or fallback to any market
-              const activeBonusMarket = allMarketBonusStatus?.find((status) => {
+              const activeBonusMarket = bonusStatusResults?.find((status) => {
                 const bonusData = status.data;
                 return bonusData && !bonusData.thresholdReached;
-              }) || allMarketBonusStatus?.[0]; // Fallback to first market if all thresholds reached
+              }) || bonusStatusResults?.[0]; // Fallback to first market if all thresholds reached
               const thresholdToken = activeBonusMarket?.data?.thresholdToken || "fxUSD";
               const thresholdAmount = activeBonusMarket?.data?.thresholdAmount
                 ? Number(activeBonusMarket.data.thresholdAmount).toLocaleString(undefined, {
@@ -1468,8 +1487,8 @@ export default function GenesisIndexPage() {
         })()}
 
         {/* GraphQL Error Banner */}
-        {hasIndexerErrors && (
-          <div className="bg-[#FF8A7A]/10 border border-[#FF8A7A]/30 p-3 mb-4">
+        {combinedHasIndexerErrors && (
+          <div className="bg-[#FF8A7A]/10 border border-[#FF8A7A]/30 rounded-none p-3 mb-4">
             <div className="flex items-start gap-3">
               <div className="text-[#FF8A7A] text-xl mt-0.5">⚠️</div>
               <div className="flex-1">
@@ -1479,10 +1498,10 @@ export default function GenesisIndexPage() {
                 <p className="text-white/70 text-xs mb-2">
                   The Graph Network indexers are temporarily unavailable for some markets. Your Harbor Marks are safe and will display correctly once the service is restored. This is a temporary infrastructure issue, not a problem with your account.
                 </p>
-                {marketsWithIndexerErrors.length > 0 && (
+                {combinedMarketsWithIndexerErrors.length > 0 && (
                   <div className="mt-2 pt-2 border-t border-[#FF8A7A]/20">
                     <p className="text-[#FF8A7A]/90 text-xs font-medium mb-1">
-                      Markets affected: {marketsWithIndexerErrors.map(getMarketName).join(', ')}
+                      Markets affected: {combinedMarketsWithIndexerErrors.map(getMarketName).join(', ')}
                     </p>
                   </div>
                 )}
@@ -1490,8 +1509,8 @@ export default function GenesisIndexPage() {
             </div>
           </div>
         )}
-        {hasAnyErrors && !hasIndexerErrors && (
-          <div className="bg-yellow-500/10 border border-yellow-500/30 p-3 mb-4">
+        {combinedHasAnyErrors && !combinedHasIndexerErrors && (
+          <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-none p-3 mb-4">
             <div className="flex items-start gap-3">
               <div className="text-yellow-500 text-xl mt-0.5">⚠️</div>
               <div className="flex-1">
@@ -1501,10 +1520,10 @@ export default function GenesisIndexPage() {
                 <p className="text-white/70 text-xs mb-2">
                   Unable to load Harbor Marks data for some markets. Your positions and core functionality remain unaffected. Please try refreshing the page.
                 </p>
-                {marketsWithOtherErrors.length > 0 && (
+                {combinedMarketsWithOtherErrors.length > 0 && (
                   <div className="mt-2 pt-2 border-t border-yellow-500/20">
                     <p className="text-yellow-500/90 text-xs font-medium mb-1">
-                      Markets affected: {marketsWithOtherErrors.map(getMarketName).join(', ')}
+                      Markets affected: {combinedMarketsWithOtherErrors.map(getMarketName).join(', ')}
                     </p>
                   </div>
                 )}
@@ -3190,7 +3209,7 @@ export default function GenesisIndexPage() {
                       {/* Early Deposit Bonus Progress Bar - inside main market row */}
                       {(() => {
                         // Get market bonus status from the hook called at top level
-                        const marketBonusData = allMarketBonusStatus?.find(
+                        const marketBonusData = bonusStatusResults?.find(
                           (status) =>
                             status.genesisAddress?.toLowerCase() ===
                             genesisAddress?.toLowerCase()
