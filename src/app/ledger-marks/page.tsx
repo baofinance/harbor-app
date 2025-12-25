@@ -523,6 +523,16 @@ export default function LedgerMarksLeaderboard() {
    return null;
  }
 
+ // Successfully got data for this market - remove it from error set if it was there
+ setMarketsWithErrors((prev) => {
+   if (prev.has(pair.contractAddress)) {
+     const newSet = new Set(prev);
+     newSet.delete(pair.contractAddress);
+     return newSet;
+   }
+   return prev;
+ });
+
  return marksResult.data.userHarborMarks as UserMarksEntry;
  }
  );
@@ -642,8 +652,13 @@ export default function LedgerMarksLeaderboard() {
  const error = marksError;
 
  // Reset errors when all queries succeed
+ // Reset errors only when queries succeed without errors AND no markets have errors
  useEffect(() => {
-   if (!isLoading && !error && !marksError) {
+   // Only reset errors if:
+   // 1. All queries have completed (not loading)
+   // 2. No query-level errors
+   // 3. No markets have errors (marketsWithErrors is empty)
+   if (!isLoading && !error && !marksError && marketsWithErrors.size === 0) {
      // Check if all queries have data (or empty arrays, which is fine)
      const allQueriesHaveData = 
        marksData !== undefined &&
@@ -652,11 +667,13 @@ export default function LedgerMarksLeaderboard() {
        sailTokenBalancesData !== undefined;
      
      if (allQueriesHaveData) {
+       // Only clear errors if we're sure there are no errors
+       // This means all queries succeeded and no markets have errors
        setHasIndexerErrors(false);
        setHasAnyErrors(false);
      }
    }
- }, [isLoading, error, marksError, marksData, haTokenBalancesData, stabilityPoolDepositsData, sailTokenBalancesData]);
+ }, [isLoading, error, marksError, marksData, haTokenBalancesData, stabilityPoolDepositsData, sailTokenBalancesData, marketsWithErrors.size]);
 
  // Extract marks array from query result
  const marksArray = marksData?.userHarborMarks || [];
