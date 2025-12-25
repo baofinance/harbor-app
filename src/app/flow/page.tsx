@@ -17,7 +17,7 @@ import { NETWORKS, type Network } from "@/config/networks";
 import { feeds, type TokenSymbol, type FeedStatus } from "@/config/feeds";
 import { proxyAbi } from "@/abis/proxy";
 import { aggregatorAbi } from "@/abis/chainlink";
-import { customFeedAggregatorAbi } from "@/abis/harbor";
+import { customFeedAggregatorAbi, customFeedNormalizationV2Abi } from "@/abis/harbor";
 import { getLogoPath } from "@/lib/logos";
 import {
  parsePair,
@@ -663,7 +663,26 @@ function FeedDetails({
  `FeedDetails: Fetching data for ${feed.label} at ${feed.address} on ${network}`
  );
 
+// Check contract type first to use correct ABI
+let contractAbi = proxyAbi;
+let isV2Contract = false;
+try {
+ const countV2 = await rpcClient
+ .readContract({
+ address: feed.address,
+ abi: customFeedNormalizationV2Abi,
+ functionName:"getCustomFeedCount",
+ })
+ .catch(() => null);
+ if (countV2 !== null && typeof countV2 === "bigint" && Number(countV2) > 0) {
+ // v2 contract detected, but still use proxyAbi for getPrice/latestAnswer
+ // as v2 contracts implement the proxy interface
+ isV2Contract = true;
+ }
+} catch {}
+
 // Fetch price, latestAnswer, and priceDivisor
+// Always use proxyAbi for these methods as v2 contracts implement the proxy interface
 const [priceResult, latestResult, divisorResult] = await Promise.all([
  rpcClient
  .readContract({
@@ -709,13 +728,32 @@ const [priceResult, latestResult, divisorResult] = await Promise.all([
       );
       setPriceDivisor(divisorResult as bigint | undefined);
 
- // Check if this is a HarborCustomFeedAndRateAggregator_v1 contract
+ // Check if this is a HarborCustomFeedAndRateAggregator_v1 or v2 contract
  let isCustomFeedAggregator = false;
  let customFeedCount = 0;
  let feedIdsToCheck: number[] = [];
 
+ if (isV2Contract) {
+ // Already detected v2 contract
+ isCustomFeedAggregator = true;
+ customFeedCount = Number(
+ await rpcClient
+ .readContract({
+ address: feed.address,
+ abi: customFeedNormalizationV2Abi,
+ functionName:"getCustomFeedCount",
+ })
+ .catch(() => 0n)
+ );
+ if (customFeedCount > 0) {
+ // For v2, getCustomFeedCount tells us how many feeds exist (e.g., 5)
+ // We check customFeeds[0] through customFeeds[count-1] (e.g., 0, 1, 2, 3, 4)
+ feedIdsToCheck = [...Array(customFeedCount).keys()]; // [0, 1, 2, 3, 4] for count=5
+ }
+ } else {
+ // Try v1 (HarborCustomFeedAndRateAggregator_v1)
  try {
- const count = await rpcClient
+ const countV1 = await rpcClient
  .readContract({
  address: feed.address,
  abi: customFeedAggregatorAbi,
@@ -724,18 +762,19 @@ const [priceResult, latestResult, divisorResult] = await Promise.all([
  .catch(() => null);
 
  if (
- count !== null &&
- typeof count ==="bigint" &&
- Number(count) > 0
+ countV1 !== null &&
+ typeof countV1 ==="bigint" &&
+ Number(countV1) > 0
  ) {
  isCustomFeedAggregator = true;
- customFeedCount = Number(count);
+ customFeedCount = Number(countV1);
  // Custom feeds are at IDs 1, 2, 3, ..., customFeedCount
  feedIdsToCheck = [...Array(customFeedCount).keys()].map(
  (i) => i + 1
  );
  }
  } catch {}
+ }
 
  // If not a custom feed aggregator, use the default IDs (1, 2)
  if (!isCustomFeedAggregator) {
@@ -752,18 +791,73 @@ const [priceResult, latestResult, divisorResult] = await Promise.all([
  price?: string;
  }> = [];
 
+ console.log(`[FeedDetails] Processing ${feedIdsToCheck.length} feed IDs:`, feedIdsToCheck);
+ 
  for (const id of feedIdsToCheck) {
  try {
+ console.log(`[FeedDetails] Processing feed ID ${id} (isV2Contract: ${isV2Contract}, isCustomFeedAggregator: ${isCustomFeedAggregator})`);
  let aggAddr: `0x${string}` | undefined;
  let cons: [bigint, bigint] | null = null;
 
  if (isCustomFeedAggregator) {
  // For custom feed aggregator, feedIdentifiers returns address directly
+ // But constraints should be fetched from the aggregator contract using getConstraints, same as regular feeds
+ if (isV2Contract) {
+ // v2 contract: use customFeeds array (0-based index)
+ // id comes from feedIdsToCheck which is [0, 1, 2, ..., customFeedCount-1]
+ // e.g., if getCustomFeedCount returns 5, we check indices 0, 1, 2, 3, 4
+ const feedIndex = id;
+ 
+ const feedAddr = await rpcClient
+ .readContract({
+ address: feed.address,
+ abi: customFeedNormalizationV2Abi,
+ functionName:"customFeeds",
+ args: [feedIndex],
+ })
+ .catch((err) => {
+ console.warn(`Failed to fetch customFeeds[${feedIndex}] for v2 contract:`, err);
+ return null;
+ });
+
+ if (!feedAddr || feedAddr === ZERO_ADDRESS) {
+ console.warn(`Invalid feed address at index ${feedIndex} for v2 contract`);
+ continue;
+ }
+ 
+ aggAddr = feedAddr as `0x${string}`;
+ 
+ // For v2, feedConstraints takes the feed address, not an identifier
+ const constraints = await rpcClient
+ .readContract({
+ address: feed.address,
+ abi: customFeedNormalizationV2Abi,
+ functionName:"feedConstraints",
+ args: [aggAddr],
+ })
+ .catch((err) => {
+ console.warn(`Failed to fetch feedConstraints for v2 feed address ${aggAddr}:`, err);
+ return null;
+ });
+
+ // v2 returns 4 values: [maxAnswerAge, maxPercentageDeviation, maxAbsoluteDeviation, maxTrendReversalDeviation]
+ if (constraints) {
+ const constraintsV2 = constraints as [bigint, bigint, bigint, bigint];
+ // Use first two for compatibility: maxAnswerAge and maxPercentageDeviation
+ cons = [constraintsV2[0], constraintsV2[1]] as [bigint, bigint];
+ console.log(`[FeedDetails] v2 constraints for feed ${feedIndex} (address ${aggAddr}):`, cons);
+ } else {
+ console.warn(`[FeedDetails] No constraints found for v2 feed ${feedIndex} at ${aggAddr}`);
+ }
+ 
+ console.log(`[FeedDetails] v2 feed ${feedIndex} -> address: ${aggAddr}`);
+ } else {
+ // v1 contract: getConstraints returns 2 values
  const [constraints, feedAddr] = await Promise.all([
  rpcClient
  .readContract({
  address: feed.address,
- abi: customFeedAggregatorAbi,
+ abi: proxyAbi,
  functionName:"getConstraints",
  args: [id as number],
  })
@@ -778,10 +872,15 @@ const [priceResult, latestResult, divisorResult] = await Promise.all([
  .catch(() => null),
  ]);
 
- if (!constraints || !feedAddr) continue;
- cons = constraints as [bigint, bigint];
+ if (!feedAddr) continue;
  aggAddr = feedAddr as `0x${string}`;
- if (!aggAddr || aggAddr === ZERO_ADDRESS) continue;
+ if (aggAddr === ZERO_ADDRESS) continue;
+ 
+ if (constraints) {
+ cons = constraints as [bigint, bigint];
+ console.log(`[FeedDetails] v1 constraints for feed ${id} (from getConstraints):`, cons);
+ }
+ }
  } else {
  // For regular proxy feeds, feedIdentifiers returns bytes32
  const [constraints, feedIdentifier] = await Promise.all([
@@ -792,7 +891,10 @@ const [priceResult, latestResult, divisorResult] = await Promise.all([
  functionName:"getConstraints",
  args: [id],
  })
- .catch(() => null),
+ .catch((err) => {
+ console.warn(`[FeedDetails] Failed to fetch getConstraints(${id}) from proxy:`, err);
+ return null;
+ }),
  rpcClient
  .readContract({
  address: feed.address,
@@ -803,12 +905,20 @@ const [priceResult, latestResult, divisorResult] = await Promise.all([
  .catch(() => null),
  ]);
 
- if (!constraints || !feedIdentifier) continue;
- cons = constraints as [bigint, bigint];
+ if (!feedIdentifier) continue;
  const f = feedIdentifier as `0x${string}`;
  aggAddr = bytes32ToAddress(f);
  if (!f || f === ZERO_BYTES32 || f === ZERO_ADDRESS || !aggAddr)
  continue;
+ 
+ if (constraints) {
+ cons = constraints as [bigint, bigint];
+ console.log(`[FeedDetails] proxy constraints for feed ${id}:`, cons);
+ } else {
+ // Try to fetch constraints from aggregator if proxy doesn't have them
+ // Some Chainlink aggregators store heartbeat/deviation on the aggregator itself
+ console.log(`[FeedDetails] No constraints from proxy, will try aggregator for feed ${id}`);
+ }
  }
 
  let name ="-";
@@ -816,6 +926,67 @@ const [priceResult, latestResult, divisorResult] = await Promise.all([
 
  try {
  if (aggAddr) {
+ // If we don't have constraints yet, try to fetch from aggregator
+ let aggregatorConstraints: [bigint, bigint] | null = null;
+ if (!cons && !isCustomFeedAggregator) {
+ // Try common Chainlink aggregator methods for heartbeat/deviation
+ try {
+ const [heartbeat, deviation] = await Promise.all([
+ rpcClient
+ .readContract({
+ address: aggAddr,
+ abi: [
+ {
+ inputs: [],
+ name: "heartbeat",
+ outputs: [{ type: "uint256" }],
+ stateMutability: "view",
+ type: "function",
+ },
+ {
+ inputs: [],
+ name: "deviationThreshold",
+ outputs: [{ type: "uint256" }],
+ stateMutability: "view",
+ type: "function",
+ },
+ ] as const,
+ functionName:"heartbeat",
+ })
+ .catch(() => null),
+ rpcClient
+ .readContract({
+ address: aggAddr,
+ abi: [
+ {
+ inputs: [],
+ name: "heartbeat",
+ outputs: [{ type: "uint256" }],
+ stateMutability: "view",
+ type: "function",
+ },
+ {
+ inputs: [],
+ name: "deviationThreshold",
+ outputs: [{ type: "uint256" }],
+ stateMutability: "view",
+ type: "function",
+ },
+ ] as const,
+ functionName:"deviationThreshold",
+ })
+ .catch(() => null),
+ ]);
+ 
+ if (heartbeat && deviation) {
+ aggregatorConstraints = [heartbeat as bigint, deviation as bigint];
+ console.log(`[FeedDetails] Got constraints from aggregator:`, aggregatorConstraints);
+ }
+ } catch (err) {
+ // Aggregator doesn't have these methods, that's okay
+ }
+ }
+ 
  const [desc, dec, ans] = await Promise.all([
  rpcClient
  .readContract({
@@ -869,23 +1040,48 @@ const [priceResult, latestResult, divisorResult] = await Promise.all([
  if (dec !== null && ans !== null) {
  price = formatUnit(ans as bigint, Number(dec as number));
  }
+ 
+ // Use aggregator constraints if we got them and don't have proxy constraints
+ if (!cons && aggregatorConstraints) {
+ cons = aggregatorConstraints;
  }
- } catch {}
+ }
+ } catch (err) {
+ console.error(`[FeedDetails] Error fetching feed data for ID ${id}:`, err);
+ // Continue to add row even if some data failed
+ }
 
+ // Only add row if we have an aggregator address
+ if (aggAddr) {
  rows.push({
- id,
- name,
+ id: isV2Contract ? id + 1 : id, // Display 1-based IDs for v2, keep original for others
+ name: name || "-",
  feed: aggAddr,
  constraintA: cons?.[0],
  constraintB: cons?.[1],
- price,
+ price: price || "-",
  });
+ } else {
+ console.warn(`[FeedDetails] Skipping feed ID ${id} - no aggregator address`);
+ }
  } catch (err) {
- console.warn(`Failed to load feed ID ${id}:`, err);
+ console.error(`[FeedDetails] Failed to load feed ID ${id}:`, err);
+ // Try to add row with whatever data we have
+ if (aggAddr) {
+ rows.push({
+ id: isV2Contract ? id + 1 : id,
+ name: name || "-",
+ feed: aggAddr,
+ constraintA: cons?.[0],
+ constraintB: cons?.[1],
+ price: price || "-",
+ });
+ }
  }
  }
 
  if (!cancelled) {
+ console.log(`[FeedDetails] Setting ${rows.length} feed rows:`, rows);
  setFeedTable(rows);
  setLoading(false);
  }
