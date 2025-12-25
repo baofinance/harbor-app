@@ -218,7 +218,13 @@ export function useHarborMarks({
       });
 
       if (!response.ok) {
-        console.warn(`[useHarborMarks] GraphQL query failed (subgraph may be rate limited). Data will be empty.`);
+        const errorText = await response.text().catch(() => response.statusText);
+        console.warn(`[useHarborMarks] HTTP error for ${genesisAddress} (subgraph may be rate limited or unavailable):`, {
+          status: response.status,
+          statusText: response.statusText,
+          url: response.url,
+          errorBody: errorText.substring(0, 200), // Log first 200 chars of error body
+        });
         // Return empty data instead of throwing
         return { userHarborMarks: null };
       }
@@ -226,7 +232,12 @@ export function useHarborMarks({
       const data = await response.json();
 
       if (data.errors) {
-        console.warn(`[useHarborMarks] GraphQL errors (subgraph may be rate limited). Data will be empty.`);
+        console.warn(`[useHarborMarks] GraphQL errors for ${genesisAddress}. Data will be empty. Errors:`, JSON.stringify(data.errors, null, 2));
+        // Check for common error types
+        const errorMessages = data.errors.map((err: any) => err.message || String(err)).join('; ');
+        if (errorMessages.includes('bad indexers') || errorMessages.includes('indexer')) {
+          console.warn(`[useHarborMarks] The Graph Network indexers are having issues. This is a temporary infrastructure problem on The Graph's side, not an API key issue. Please try again in a few minutes.`);
+        }
         // Return empty data instead of throwing
         return { userHarborMarks: null };
       }
@@ -292,7 +303,12 @@ export function useAllHarborMarks(genesisAddresses: string[]) {
           }
           const json = await res.json();
           if (json.errors) {
-            console.warn(`[useAllHarborMarks] GraphQL errors for ${genesisAddress}:`, json.errors);
+            console.warn(`[useAllHarborMarks] GraphQL errors for ${genesisAddress}. Data will be empty. Errors:`, JSON.stringify(json.errors, null, 2));
+            // Check for common error types
+            const errorMessages = json.errors.map((err: any) => err.message || String(err)).join('; ');
+            if (errorMessages.includes('bad indexers') || errorMessages.includes('indexer')) {
+              console.warn(`[useAllHarborMarks] The Graph Network indexers are having issues. This is a temporary infrastructure problem on The Graph's side, not an API key issue. Please try again in a few minutes.`);
+            }
           }
           return json;
         }).catch((error) => {
@@ -307,11 +323,48 @@ export function useAllHarborMarks(genesisAddresses: string[]) {
 
       const results = await Promise.all(queries);
 
-      return results.map((result, index) => ({
-        genesisAddress: genesisAddresses[index],
-        data: result.data,
-        errors: result.errors,
-      }));
+      // Map results with error details
+      const mappedResults = results.map((result, index) => {
+        const genesisAddress = genesisAddresses[index];
+        const hasErrors = result.errors && result.errors.length > 0;
+        let isIndexerError = false;
+        let errorMessages: string[] = [];
+        
+        if (hasErrors) {
+          errorMessages = result.errors.map((err: any) => err.message || String(err));
+          const combinedMessages = errorMessages.join('; ');
+          isIndexerError = combinedMessages.includes('bad indexers') || combinedMessages.includes('indexer');
+        }
+        
+        return {
+          genesisAddress,
+          data: result.data,
+          errors: result.errors,
+          hasErrors,
+          isIndexerError,
+          errorMessages,
+        };
+      });
+
+      // Check if any errors indicate indexer issues
+      const hasIndexerErrors = mappedResults.some((r) => r.isIndexerError);
+      const hasAnyErrors = mappedResults.some((r) => r.hasErrors);
+      
+      // Get list of markets with errors
+      const marketsWithIndexerErrors = mappedResults
+        .filter((r) => r.isIndexerError)
+        .map((r) => r.genesisAddress);
+      const marketsWithOtherErrors = mappedResults
+        .filter((r) => r.hasErrors && !r.isIndexerError)
+        .map((r) => r.genesisAddress);
+
+      return {
+        results: mappedResults.map(({ hasErrors, isIndexerError, errorMessages, ...rest }) => rest),
+        hasIndexerErrors,
+        hasAnyErrors,
+        marketsWithIndexerErrors,
+        marketsWithOtherErrors,
+      };
     },
     enabled: isConnected && !!address && genesisAddresses.length > 0,
     refetchInterval: 180000, // Refetch every 3 minutes
@@ -346,12 +399,21 @@ export function useAllMarketBonusStatus(genesisAddresses: string[]) {
           }),
         }).then(async (res) => {
           if (!res.ok) {
-            console.warn(`[useAllMarketBonusStatus] Query failed for ${genesisAddress}`);
+            const errorText = await res.text().catch(() => res.statusText);
+            console.warn(`[useAllMarketBonusStatus] Query failed for ${genesisAddress}:`, {
+              status: res.status,
+              statusText: res.statusText,
+              errorBody: errorText.substring(0, 200),
+            });
             return { data: null, errors: [{ message: res.statusText }] };
           }
           const json = await res.json();
           if (json.errors) {
-            console.warn(`[useAllMarketBonusStatus] GraphQL errors for ${genesisAddress}`);
+            console.warn(`[useAllMarketBonusStatus] GraphQL errors for ${genesisAddress}. Errors:`, JSON.stringify(json.errors, null, 2));
+            const errorMessages = json.errors.map((err: any) => err.message || String(err)).join('; ');
+            if (errorMessages.includes('bad indexers') || errorMessages.includes('indexer')) {
+              console.warn(`[useAllMarketBonusStatus] The Graph Network indexers are having issues. This is a temporary infrastructure problem on The Graph's side.`);
+            }
           }
           return json;
         }).catch((error) => {

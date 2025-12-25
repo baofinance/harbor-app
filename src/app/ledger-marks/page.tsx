@@ -1125,11 +1125,10 @@ export default function LedgerMarksLeaderboard() {
               <div className="text-[#FF8A7A] text-xl mt-0.5">⚠️</div>
               <div className="flex-1">
                 <p className="text-[#FF8A7A] font-semibold text-sm mb-1">
-                  Harbor Marks Subgraph Error
+                  Temporary Service Issue
                 </p>
                 <p className="text-white/70 text-xs">
-                  Unable to load Harbor Marks data. This may be due to rate limiting or service issues. 
-                  Your positions and core functionality remain unaffected.
+                  The Graph Network indexers are temporarily unavailable. Your Harbor Marks are safe and will display correctly once the service is restored. This is a temporary infrastructure issue, not a problem with your account.
                 </p>
               </div>
             </div>

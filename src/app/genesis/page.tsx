@@ -534,6 +534,28 @@ export default function GenesisIndexPage() {
     error: marksError,
   } = useAllHarborMarks(genesisAddresses);
 
+  // Extract results and error info from the new structure
+  const marksResults = allMarksData?.results || [];
+  const hasIndexerErrors = allMarksData?.hasIndexerErrors || false;
+  const hasAnyErrors = allMarksData?.hasAnyErrors || false;
+  const marketsWithIndexerErrors = allMarksData?.marketsWithIndexerErrors || [];
+  const marketsWithOtherErrors = allMarksData?.marketsWithOtherErrors || [];
+
+  // Map genesis addresses to market names for error display
+  const getMarketName = (genesisAddress: string) => {
+    const market = genesisMarkets.find(
+      ([_, mkt]) =>
+        (mkt as any).addresses?.genesis?.toLowerCase() === genesisAddress.toLowerCase()
+    );
+    if (!market) return genesisAddress.slice(0, 6) + '...' + genesisAddress.slice(-4);
+    const [id, mkt] = market;
+    const rowLeveragedSymbol = (mkt as any).rowLeveragedSymbol;
+    if (rowLeveragedSymbol && rowLeveragedSymbol.toLowerCase().startsWith("hs")) {
+      return rowLeveragedSymbol.slice(2);
+    }
+    return rowLeveragedSymbol || (mkt as any).name || id;
+  };
+
   // Fetch market bonus status for all markets (early deposit bonus tracking)
   const {
     data: allMarketBonusStatus,
@@ -1201,10 +1223,10 @@ export default function GenesisIndexPage() {
             return timeHasExpired && !contractSaysEnded;
           });
 
-          if (allMarksData && !isLoadingMarks) {
+          if (marksResults && marksResults.length > 0 && !isLoadingMarks) {
             const currentTime = Math.floor(Date.now() / 1000); // Current Unix timestamp in seconds
 
-            allMarksData.forEach((result) => {
+            marksResults.forEach((result) => {
               // Handle both array and single object responses from GraphQL
               const userMarksData = result.data?.userHarborMarks;
               const marks = Array.isArray(userMarksData)
@@ -1467,6 +1489,52 @@ export default function GenesisIndexPage() {
           );
         })()}
 
+        {/* GraphQL Error Banner */}
+        {hasIndexerErrors && (
+          <div className="bg-[#FF8A7A]/10 border border-[#FF8A7A]/30 rounded p-3 mb-4">
+            <div className="flex items-start gap-3">
+              <div className="text-[#FF8A7A] text-xl mt-0.5">⚠️</div>
+              <div className="flex-1">
+                <p className="text-[#FF8A7A] font-semibold text-sm mb-1">
+                  Temporary Service Issue
+                </p>
+                <p className="text-white/70 text-xs mb-2">
+                  The Graph Network indexers are temporarily unavailable for some markets. Your Harbor Marks are safe and will display correctly once the service is restored. This is a temporary infrastructure issue, not a problem with your account.
+                </p>
+                {marketsWithIndexerErrors.length > 0 && (
+                  <div className="mt-2 pt-2 border-t border-[#FF8A7A]/20">
+                    <p className="text-[#FF8A7A]/90 text-xs font-medium mb-1">
+                      Markets affected: {marketsWithIndexerErrors.map(getMarketName).join(', ')}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+        {hasAnyErrors && !hasIndexerErrors && (
+          <div className="bg-yellow-500/10 border border-yellow-500/30 rounded p-3 mb-4">
+            <div className="flex items-start gap-3">
+              <div className="text-yellow-500 text-xl mt-0.5">⚠️</div>
+              <div className="flex-1">
+                <p className="text-yellow-500 font-semibold text-sm mb-1">
+                  Harbor Marks Data Unavailable
+                </p>
+                <p className="text-white/70 text-xs mb-2">
+                  Unable to load Harbor Marks data for some markets. Your positions and core functionality remain unaffected. Please try refreshing the page.
+                </p>
+                {marketsWithOtherErrors.length > 0 && (
+                  <div className="mt-2 pt-2 border-t border-yellow-500/20">
+                    <p className="text-yellow-500/90 text-xs font-medium mb-1">
+                      Markets affected: {marketsWithOtherErrors.map(getMarketName).join(', ')}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Divider */}
         <div className="border-t border-white/10 mt-2 mb-1"></div>
 
@@ -1549,7 +1617,7 @@ export default function GenesisIndexPage() {
                     : undefined;
 
                 // Fallback to subgraph data if contract read fails
-                const marksForMarket = allMarksData?.find(
+                const marksForMarket = marksResults?.find(
                   (marks) =>
                     marks.genesisAddress?.toLowerCase() ===
                     (mkt as any).addresses?.genesis?.toLowerCase()
@@ -3243,7 +3311,7 @@ export default function GenesisIndexPage() {
                         );
                         
                          // Get user's marks for this market
-                         const marksForMarket = allMarksData?.find(
+                         const marksForMarket = marksResults?.find(
                           (marks) =>
                             marks.genesisAddress?.toLowerCase() ===
                             genesisAddress?.toLowerCase()
