@@ -90,3 +90,68 @@ export const getGraphHeaders = (): Record<string, string> => {
 export const getSailPriceGraphUrl = (): string => {
   return process.env.NEXT_PUBLIC_SAIL_PRICE_GRAPH_URL || GRAPH_CONFIG.sailPrice.url;
 };
+
+/**
+ * Helper function to retry a GraphQL query with exponential backoff
+ * Useful for handling transient indexer errors
+ */
+export async function retryGraphQLQuery<T>(
+  queryFn: () => Promise<T>,
+  options: {
+    maxRetries?: number;
+    initialDelay?: number;
+    maxDelay?: number;
+    retryableErrors?: (error: any) => boolean;
+  } = {}
+): Promise<T> {
+  const {
+    maxRetries = 3,
+    initialDelay = 1000, // 1 second
+    maxDelay = 10000, // 10 seconds
+    retryableErrors = (error: any) => {
+      // Retry on indexer errors, network errors, and 5xx errors
+      const errorMessage = error?.message || String(error);
+      const isIndexerError = 
+        errorMessage.includes('bad indexers') ||
+        errorMessage.includes('indexer') ||
+        errorMessage.includes('indexing') ||
+        errorMessage.includes('auth error');
+      const isNetworkError = 
+        errorMessage.includes('Failed to fetch') ||
+        errorMessage.includes('NetworkError') ||
+        errorMessage.includes('ECONNREFUSED');
+      const isServerError = error?.status >= 500;
+      return isIndexerError || isNetworkError || isServerError;
+    }
+  } = options;
+
+  let lastError: any;
+  let delay = initialDelay;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await queryFn();
+    } catch (error: any) {
+      lastError = error;
+      
+      // Don't retry if we've exhausted retries or error is not retryable
+      if (attempt === maxRetries || !retryableErrors(error)) {
+        throw error;
+      }
+
+      // Wait before retrying with exponential backoff
+      if (attempt < maxRetries) {
+        const waitTime = Math.min(delay, maxDelay);
+        console.log(`[retryGraphQLQuery] Attempt ${attempt + 1} failed, retrying in ${waitTime}ms...`, {
+          error: error?.message || String(error),
+          attempt: attempt + 1,
+          maxRetries
+        });
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+        delay *= 2; // Exponential backoff
+      }
+    }
+  }
+
+  throw lastError;
+}

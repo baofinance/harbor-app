@@ -120,7 +120,7 @@ export const markets: Markets = {
     },
     genesis: {
       startDate: "2025-12-19T22:00:59Z", // From deployment timestamp
-      endDate: "2025-12-30T20:00:00Z", // December 30th at 8pm GMT
+      endDate: "2026-01-04T20:00:00Z", // January 4th at 8pm GMT
       rewards: {
         pegged: {
           symbol: "haETH",
@@ -166,7 +166,7 @@ export const markets: Markets = {
     },
     genesis: {
       startDate: "2025-12-19T21:38:23Z", // From deployment timestamp
-      endDate: "2025-12-30T20:00:00Z", // December 30th at 8pm GMT
+      endDate: "2026-01-04T20:00:00Z", // January 4th at 8pm GMT
       rewards: {
         pegged: {
           symbol: "haBTC",
@@ -212,7 +212,7 @@ export const markets: Markets = {
     },
     genesis: {
       startDate: "2025-12-19T21:17:47Z", // From deployment timestamp
-      endDate: "2025-12-30T20:00:00Z", // December 30th at 8pm GMT
+      endDate: "2026-01-04T20:00:00Z", // January 4th at 8pm GMT
       rewards: {
         pegged: {
           symbol: "haBTC",
@@ -220,6 +220,237 @@ export const markets: Markets = {
         },
         leveraged: {
           symbol: "hsSTETH-BTC",
+          amount: "1000000",
+        },
+      },
+      collateralRatio: 1.0,
+      leverageRatio: 2 * 1e18,
+    },
+  },
+  // ============================================================================
+  // Coming Soon Markets
+  // ============================================================================
+  "fxusd-gold": {
+    id: "fxusd-gold",
+    name: "fxUSD/GOLD",
+    description: "fxUSD pegged to GOLD collateral",
+    addresses: {
+      collateralToken: "0x0000000000000000000000000000000000000000", // GOLD (placeholder)
+      underlyingCollateralToken: "0x0000000000000000000000000000000000000000", // GOLD (placeholder)
+      feeReceiver: "0x0000000000000000000000000000000000000000", // placeholder
+      genesis: "0x0000000000000000000000000000000000000000", // placeholder
+      leveragedToken: "0x0000000000000000000000000000000000000000", // placeholder
+      minter: "0x0000000000000000000000000000000000000000", // placeholder
+      owner: "0x0000000000000000000000000000000000000000", // placeholder
+      peggedToken: "0x0000000000000000000000000000000000000000", // placeholder
+      priceOracle: "0x0000000000000000000000000000000000000000", // placeholder
+      stabilityPoolCollateral: "0x0000000000000000000000000000000000000000", // placeholder
+      stabilityPoolLeveraged: "0x0000000000000000000000000000000000000000", // placeholder
+      reservePool: "0x0000000000000000000000000000000000000000", // placeholder
+      rebalancePoolCollateral: "0x0000000000000000000000000000000000000000", // placeholder
+      rebalancePoolLeveraged: "0x0000000000000000000000000000000000000000", // placeholder
+      collateralPrice: "0x0000000000000000000000000000000000000000", // placeholder
+    },
+    genesis: {
+      startDate: "2026-02-01T00:00:00Z", // Placeholder - Coming Soon
+      endDate: "2026-02-08T20:00:00Z", // Placeholder - Coming Soon
+      rewards: {
+        pegged: {
+          symbol: "haGOLD",
+          amount: "1000000",
+        },
+        leveraged: {
+          symbol: "hsFXUSD-GOLD",
+          amount: "1000000",
+        },
+      },
+      collateralRatio: 1.0,
+      leverageRatio: 2 * 1e18,
+    },
+  },
+  "steth-gold": {
+    id: "steth-gold",
+    name: "stETH/GOLD",
+    description: "stETH pegged to GOLD collateral",
+    addresses: {
+      collateralToken: "0x0000000000000000000000000000000000000000", // wstETH (placeholder)
+      underlyingCollateralToken: "0x0000000000000000000000000000000000000000", // stETH (placeholder)
+      feeReceiver: "0x0000000000000000000000000000000000000000", // placeholder
+      genesis: "0x0000000000000000000000000000000000000000", // placeholder
+      leveragedToken: "0x0000000000000000000000000000000000000000", // placeholder
+      minter: "0x0000000000000000000000000000000000000000", // placeholder
+      owner: "0x0000000000000000000000000000000000000000", // placeholder
+      peggedToken: "0x0000000000000000000000000000000000000000", // placeholder
+      priceOracle: "0x0000000000000000000000000000000000000000", // placeholder
+      stabilityPoolCollateral: "0x0000000000000000000000000000000000000000", // placeholder
+      stabilityPoolLeveraged: "0x0000000000000000000000000000000000000000", // placeholder
+      reservePool: "0x0000000000000000000000000000000000000000", // placeholder
+      rebalancePoolCollateral: "0x0000000000000000000000000000000000000000", // placeholder
+      rebalancePoolLeveraged: "0x0000000000000000000000000000000000000000", // placeholder
+      collateralPrice: "0x0000000000000000000000000000000000000000", // placeholder
+    },
+    genesis: {
+      startDate: "2026-02-01T00:00:00Z", // Placeholder - Coming Soon
+      endDate: "2026-02-08T20:00:00Z", // Placeholder - Coming Soon
+      rewards: {
+        pegged: {
+          symbol: "haGOLD",
+          amount: "1000000",
+        },
+        leveraged: {
+          symbol: "hsSTETH-GOLD",
+          amount: "1000000",
+        },
+      },
+      collateralRatio: 1.0,
+      leverageRatio: 2 * 1e18,
+    },
+  },
+  "steth-eur": {
+    id: "steth-eur",
+    name: "stETH/EUR",
+    description: "stETH pegged to EUR collateral",
+    addresses: {
+      collateralToken: "0x0000000000000000000000000000000000000000", // wstETH (placeholder)
+      underlyingCollateralToken: "0x0000000000000000000000000000000000000000", // stETH (placeholder)
+      feeReceiver: "0x0000000000000000000000000000000000000000", // placeholder
+      genesis: "0x0000000000000000000000000000000000000000", // placeholder
+      leveragedToken: "0x0000000000000000000000000000000000000000", // placeholder
+      minter: "0x0000000000000000000000000000000000000000", // placeholder
+      owner: "0x0000000000000000000000000000000000000000", // placeholder
+      peggedToken: "0x0000000000000000000000000000000000000000", // placeholder
+      priceOracle: "0x0000000000000000000000000000000000000000", // placeholder
+      stabilityPoolCollateral: "0x0000000000000000000000000000000000000000", // placeholder
+      stabilityPoolLeveraged: "0x0000000000000000000000000000000000000000", // placeholder
+      reservePool: "0x0000000000000000000000000000000000000000", // placeholder
+      rebalancePoolCollateral: "0x0000000000000000000000000000000000000000", // placeholder
+      rebalancePoolLeveraged: "0x0000000000000000000000000000000000000000", // placeholder
+      collateralPrice: "0x0000000000000000000000000000000000000000", // placeholder
+    },
+    genesis: {
+      startDate: "2026-02-01T00:00:00Z", // Placeholder - Coming Soon
+      endDate: "2026-02-08T20:00:00Z", // Placeholder - Coming Soon
+      rewards: {
+        pegged: {
+          symbol: "haEUR",
+          amount: "1000000",
+        },
+        leveraged: {
+          symbol: "hsSTETH-EUR",
+          amount: "1000000",
+        },
+      },
+      collateralRatio: 1.0,
+      leverageRatio: 2 * 1e18,
+    },
+  },
+  "fxusd-eur": {
+    id: "fxusd-eur",
+    name: "fxUSD/EUR",
+    description: "fxUSD pegged to EUR collateral",
+    addresses: {
+      collateralToken: "0x0000000000000000000000000000000000000000", // fxUSD (placeholder)
+      underlyingCollateralToken: "0x0000000000000000000000000000000000000000", // fxSAVE (placeholder)
+      feeReceiver: "0x0000000000000000000000000000000000000000", // placeholder
+      genesis: "0x0000000000000000000000000000000000000000", // placeholder
+      leveragedToken: "0x0000000000000000000000000000000000000000", // placeholder
+      minter: "0x0000000000000000000000000000000000000000", // placeholder
+      owner: "0x0000000000000000000000000000000000000000", // placeholder
+      peggedToken: "0x0000000000000000000000000000000000000000", // placeholder
+      priceOracle: "0x0000000000000000000000000000000000000000", // placeholder
+      stabilityPoolCollateral: "0x0000000000000000000000000000000000000000", // placeholder
+      stabilityPoolLeveraged: "0x0000000000000000000000000000000000000000", // placeholder
+      reservePool: "0x0000000000000000000000000000000000000000", // placeholder
+      rebalancePoolCollateral: "0x0000000000000000000000000000000000000000", // placeholder
+      rebalancePoolLeveraged: "0x0000000000000000000000000000000000000000", // placeholder
+      collateralPrice: "0x0000000000000000000000000000000000000000", // placeholder
+    },
+    genesis: {
+      startDate: "2026-02-01T00:00:00Z", // Placeholder - Coming Soon
+      endDate: "2026-02-08T20:00:00Z", // Placeholder - Coming Soon
+      rewards: {
+        pegged: {
+          symbol: "haEUR",
+          amount: "1000000",
+        },
+        leveraged: {
+          symbol: "hsFXUSD-EUR",
+          amount: "1000000",
+        },
+      },
+      collateralRatio: 1.0,
+      leverageRatio: 2 * 1e18,
+    },
+  },
+  "steth-mcap": {
+    id: "steth-mcap",
+    name: "stETH/MCAP",
+    description: "stETH pegged to MCAP collateral",
+    addresses: {
+      collateralToken: "0x0000000000000000000000000000000000000000", // wstETH (placeholder)
+      underlyingCollateralToken: "0x0000000000000000000000000000000000000000", // stETH (placeholder)
+      feeReceiver: "0x0000000000000000000000000000000000000000", // placeholder
+      genesis: "0x0000000000000000000000000000000000000000", // placeholder
+      leveragedToken: "0x0000000000000000000000000000000000000000", // placeholder
+      minter: "0x0000000000000000000000000000000000000000", // placeholder
+      owner: "0x0000000000000000000000000000000000000000", // placeholder
+      peggedToken: "0x0000000000000000000000000000000000000000", // placeholder
+      priceOracle: "0x0000000000000000000000000000000000000000", // placeholder
+      stabilityPoolCollateral: "0x0000000000000000000000000000000000000000", // placeholder
+      stabilityPoolLeveraged: "0x0000000000000000000000000000000000000000", // placeholder
+      reservePool: "0x0000000000000000000000000000000000000000", // placeholder
+      rebalancePoolCollateral: "0x0000000000000000000000000000000000000000", // placeholder
+      rebalancePoolLeveraged: "0x0000000000000000000000000000000000000000", // placeholder
+      collateralPrice: "0x0000000000000000000000000000000000000000", // placeholder
+    },
+    genesis: {
+      startDate: "2026-02-01T00:00:00Z", // Placeholder - Coming Soon
+      endDate: "2026-02-08T20:00:00Z", // Placeholder - Coming Soon
+      rewards: {
+        pegged: {
+          symbol: "haMCAP",
+          amount: "1000000",
+        },
+        leveraged: {
+          symbol: "hsSTETH-MCAP",
+          amount: "1000000",
+        },
+      },
+      collateralRatio: 1.0,
+      leverageRatio: 2 * 1e18,
+    },
+  },
+  "fxusd-mcap": {
+    id: "fxusd-mcap",
+    name: "fxUSD/MCAP",
+    description: "fxUSD pegged to MCAP collateral",
+    addresses: {
+      collateralToken: "0x0000000000000000000000000000000000000000", // fxUSD (placeholder)
+      underlyingCollateralToken: "0x0000000000000000000000000000000000000000", // fxSAVE (placeholder)
+      feeReceiver: "0x0000000000000000000000000000000000000000", // placeholder
+      genesis: "0x0000000000000000000000000000000000000000", // placeholder
+      leveragedToken: "0x0000000000000000000000000000000000000000", // placeholder
+      minter: "0x0000000000000000000000000000000000000000", // placeholder
+      owner: "0x0000000000000000000000000000000000000000", // placeholder
+      peggedToken: "0x0000000000000000000000000000000000000000", // placeholder
+      priceOracle: "0x0000000000000000000000000000000000000000", // placeholder
+      stabilityPoolCollateral: "0x0000000000000000000000000000000000000000", // placeholder
+      stabilityPoolLeveraged: "0x0000000000000000000000000000000000000000", // placeholder
+      reservePool: "0x0000000000000000000000000000000000000000", // placeholder
+      rebalancePoolCollateral: "0x0000000000000000000000000000000000000000", // placeholder
+      rebalancePoolLeveraged: "0x0000000000000000000000000000000000000000", // placeholder
+      collateralPrice: "0x0000000000000000000000000000000000000000", // placeholder
+    },
+    genesis: {
+      startDate: "2026-02-01T00:00:00Z", // Placeholder - Coming Soon
+      endDate: "2026-02-08T20:00:00Z", // Placeholder - Coming Soon
+      rewards: {
+        pegged: {
+          symbol: "haMCAP",
+          amount: "1000000",
+        },
+        leveraged: {
+          symbol: "hsFXUSD-MCAP",
           amount: "1000000",
         },
       },
