@@ -24,6 +24,7 @@ import {
   CheckCircleIcon,
   ChevronDownIcon,
   ChevronUpIcon,
+  ChevronRightIcon,
   BanknotesIcon,
   CurrencyDollarIcon,
   ArrowPathIcon,
@@ -49,6 +50,17 @@ import { useMultipleTokenPrices } from "@/hooks/useTokenPrices";
 import { useMultipleCollateralPrices } from "@/hooks/useCollateralPrice";
 import { useWstETHAPR } from "@/hooks/useWstETHAPR";
 import { useFxSAVEAPR } from "@/hooks/useFxSAVEAPR";
+import { useTotalGenesisTVL } from "@/hooks/useTotalGenesisTVL";
+import { useTotalMaidenVoyageMarks } from "@/hooks/useTotalMaidenVoyageMarks";
+import TideAPRTooltip from "@/components/TideAPRTooltip";
+import { calculateTideAPR, calculateMarksForAPR, calculateMarksBreakdown, calculateTideAPRBreakdown } from "@/utils/tideAPR";
+import { 
+  calculateTokenAllocationPercent, 
+  calculateTokenAllocationAmount,
+  calculateTokenPrice,
+  TOTAL_TOKEN_SUPPLY,
+  DEFAULT_FDV
+} from "@/utils/tokenAllocation";
 
 // Helper function to get accepted deposit assets for a market
 // Now reads from market config instead of hardcoding
@@ -188,6 +200,7 @@ function MarketExpandedView({
   collateralPriceUSD,
   peggedSymbol,
   leveragedSymbol,
+  underlyingAPR,
 }: {
   marketId: string;
   market: any;
@@ -202,6 +215,7 @@ function MarketExpandedView({
   collateralPriceUSD: number;
   peggedSymbol?: string;
   leveragedSymbol?: string;
+  underlyingAPR?: number | null;
 }) {
   // Fetch contract data for expanded view
   const { data: expandedReads, error: expandedReadsError } = useContractReads({
@@ -387,6 +401,8 @@ function MarketExpandedView({
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+        {/* First Column: End Date/Time and Projected APR */}
+        <div className="flex flex-col gap-2 h-full">
         {/* Genesis Info */}
         <div className="bg-white p-2 flex flex-col justify-center">
           <h3 className="text-[#1E4775] font-semibold mb-1 text-xs text-center">
@@ -395,6 +411,28 @@ function MarketExpandedView({
           <p className="text-sm font-bold text-[#1E4775] text-center">
             {formatDateTime(endDate)}
           </p>
+          </div>
+
+          {/* Projected Stability Pool APR */}
+          {underlyingAPR !== null && underlyingAPR !== undefined && (
+            <div className="text-xs text-white bg-[#1E4775] px-4 py-2 text-center flex-1 flex flex-col justify-center">
+              <div className="font-semibold mb-1">
+                Projected {peggedTokenSymbol} APR (Stability pools)
+              </div>
+              <div>
+                <span className="font-semibold">
+                  {(underlyingAPR * 2 * 100).toFixed(2)}% +
+                </span>
+                <Image
+                  src="/icons/marks.png"
+                  alt="Marks"
+                  width={14}
+                  height={14}
+                  className="inline-block ml-1 align-middle"
+                />
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Contract Info */}
@@ -492,6 +530,7 @@ export default function GenesisIndexPage() {
     marketName?: string;
     peggedSymbol?: string;
   }>({ open: false });
+  const [fdv, setFdv] = useState<number>(DEFAULT_FDV);
 
   const { writeContractAsync } = useWriteContract();
   const publicClient = usePublicClient();
@@ -512,17 +551,35 @@ export default function GenesisIndexPage() {
   const genesisMarkets = useMemo(
     () =>
       Object.entries(markets).filter(
-        ([_, mkt]) => (mkt as any).addresses?.genesis
+        ([_, mkt]) => {
+          const genesisAddr = (mkt as any).addresses?.genesis;
+          return genesisAddr && 
+                 genesisAddr !== "0x0000000000000000000000000000000000000000" &&
+                 (mkt as any).status !== "coming-soon";
+        }
+      ),
+    []
+  );
+
+  const comingSoonMarkets = useMemo(
+    () =>
+      Object.entries(markets).filter(
+        ([_, mkt]) => (mkt as any).status === "coming-soon"
       ),
     []
   );
 
   // Get all genesis addresses for subgraph queries
+  // Filter out zero addresses (coming soon markets use placeholder addresses)
   const genesisAddresses = useMemo(
     () =>
       genesisMarkets
         .map(([_, mkt]) => (mkt as any).addresses?.genesis)
-        .filter((addr): addr is string => !!addr && typeof addr === "string"),
+        .filter((addr): addr is string => 
+          !!addr && 
+          typeof addr === "string" && 
+          addr !== "0x0000000000000000000000000000000000000000"
+        ),
     [genesisMarkets]
   );
 
@@ -534,11 +591,52 @@ export default function GenesisIndexPage() {
     error: marksError,
   } = useAllHarborMarks(genesisAddresses);
 
+  // Extract results and error info from the new structure
+  const marksResults = allMarksData?.results || [];
+  const hasIndexerErrors = allMarksData?.hasIndexerErrors || false;
+  const hasAnyErrors = allMarksData?.hasAnyErrors || false;
+  const marketsWithIndexerErrors = allMarksData?.marketsWithIndexerErrors || [];
+  const marketsWithOtherErrors = allMarksData?.marketsWithOtherErrors || [];
+
+  // Map genesis addresses to market names for error display
+  const getMarketName = (genesisAddress: string) => {
+    const market = genesisMarkets.find(
+      ([_, mkt]) =>
+        (mkt as any).addresses?.genesis?.toLowerCase() === genesisAddress.toLowerCase()
+    );
+    if (!market) return genesisAddress.slice(0, 6) + '...' + genesisAddress.slice(-4);
+    const [id, mkt] = market;
+    const rowLeveragedSymbol = (mkt as any).rowLeveragedSymbol;
+    if (rowLeveragedSymbol && rowLeveragedSymbol.toLowerCase().startsWith("hs")) {
+      return rowLeveragedSymbol.slice(2);
+    }
+    return rowLeveragedSymbol || (mkt as any).name || id;
+  };
+
   // Fetch market bonus status for all markets (early deposit bonus tracking)
   const {
     data: allMarketBonusStatus,
     isLoading: isLoadingBonusStatus,
   } = useAllMarketBonusStatus(genesisAddresses);
+
+  // Extract error info from bonus status
+  const bonusStatusResults = allMarketBonusStatus?.results || [];
+  const bonusHasIndexerErrors = allMarketBonusStatus?.hasIndexerErrors || false;
+  const bonusHasAnyErrors = allMarketBonusStatus?.hasAnyErrors || false;
+  const bonusMarketsWithIndexerErrors = allMarketBonusStatus?.marketsWithIndexerErrors || [];
+  const bonusMarketsWithOtherErrors = allMarketBonusStatus?.marketsWithOtherErrors || [];
+
+  // Combine errors from marks and bonus status
+  const combinedHasIndexerErrors = hasIndexerErrors || bonusHasIndexerErrors;
+  const combinedHasAnyErrors = hasAnyErrors || bonusHasAnyErrors;
+  const combinedMarketsWithIndexerErrors = Array.from(new Set([
+    ...marketsWithIndexerErrors,
+    ...bonusMarketsWithIndexerErrors,
+  ]));
+  const combinedMarketsWithOtherErrors = Array.from(new Set([
+    ...marketsWithOtherErrors,
+    ...bonusMarketsWithOtherErrors,
+  ]));
 
   const queryClient = useQueryClient();
 
@@ -849,29 +947,18 @@ export default function GenesisIndexPage() {
   // Fetch APY data for wstETH and fxSAVE
   const { data: wstETHAPR, isLoading: isLoadingWstETHAPR, error: wstETHAPRError } = useWstETHAPR();
   const { data: fxSAVEAPR, isLoading: isLoadingFxSAVEAPR, error: fxSAVEAPRError } = useFxSAVEAPR();
+  
+  // Fetch total genesis TVL and total maiden voyage marks for $TIDE APR calculation
+  // Only fetch when mounted (client-side only) to avoid SSR issues
+  const { totalTVL: totalGenesisTVL, isLoading: isLoadingTotalTVL } = useTotalGenesisTVL();
+  const { totalMarks: totalMaidenVoyageMarks, isLoading: isLoadingTotalMarks } = useTotalMaidenVoyageMarks();
+  
+  // Use fallback values during SSR or when data is loading
+  const safeTotalGenesisTVL = mounted ? totalGenesisTVL : 0;
+  const safeTotalMaidenVoyageMarks = mounted ? totalMaidenVoyageMarks : 0;
+  const safeIsLoadingTotalTVL = mounted ? isLoadingTotalTVL : true;
+  const safeIsLoadingTotalMarks = mounted ? isLoadingTotalMarks : true;
 
-  // Log when CoinGecko prices update
-  useEffect(() => {
-    if (coinGeckoIds.length > 0) {
-      console.log(`[Genesis Price] CoinGecko state:`, {
-        loading: coinGeckoLoading,
-        prices: coinGeckoPrices,
-        requestedIds: coinGeckoIds,
-        timestamp: new Date().toISOString(),
-      });
-    }
-  }, [coinGeckoPrices, coinGeckoLoading, coinGeckoIds]);
-
-  // Log when collateral prices update
-  useEffect(() => {
-    if (collateralPricesMap.size > 0) {
-      console.log(`[Genesis Price] Collateral prices updated:`, {
-        totalPrices: collateralPricesMap.size,
-        isLoading: collateralPricesLoading,
-        error: collateralPricesError,
-      });
-    }
-  }, [collateralPricesMap, collateralPricesLoading, collateralPricesError]);
 
   // Chainlink BTC/USD Oracle on Mainnet (fallback when CoinGecko fails)
   const CHAINLINK_BTC_USD_ORACLE = "0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c" as `0x${string}`;
@@ -957,11 +1044,11 @@ export default function GenesisIndexPage() {
           {/* Title Row with Social Buttons */}
           <div className="p-4 flex items-center justify-between mb-0">
             <div className="hidden md:block w-[120px]" /> {/* Spacer for centering */}
-            <h1 className="font-bold font-mono text-white text-7xl text-center">
+            <h1 className="font-bold font-mono text-white text-7xl text-center flex-1">
               Maiden Voyage
             </h1>
             {/* Compact Social Buttons */}
-            <div className="hidden md:flex flex-col items-end gap-2 border border-white/30  px-3 py-2">
+            <div className="hidden md:flex flex-col items-end gap-2 w-[120px]">
               <div className="text-white text-xs font-medium whitespace-nowrap">
                 follow to stay up to date
               </div>
@@ -1001,16 +1088,18 @@ export default function GenesisIndexPage() {
           </div>
 
           {/* Subheader */}
-          <div className="flex items-center justify-center mb-2 -mt-2">
-            <p className="text-white/80 text-lg text-center">
+          <div className="flex items-center justify-between mb-2 -mt-2">
+            <div className="hidden md:block w-[120px]" /> {/* Spacer matching header */}
+            <p className="text-white/80 text-lg text-center flex-1">
               Earn rewards for providing initial liquidity for new markets
             </p>
+            <div className="hidden md:block w-[120px]" /> {/* Spacer matching header */}
           </div>
 
-          {/* Four Boxes */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+          {/* Three Boxes */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 mb-2 relative">
             {/* Deposit Box */}
-            <div className="bg-[#17395F] p-4 sm:p-3 md:p-4 flex flex-col">
+            <div className="bg-[#17395F] p-4 sm:p-3 md:p-4 flex flex-col relative">
               <div className="flex items-center justify-center mb-2">
                 <BanknotesIcon className="w-5 h-5 sm:w-4 sm:h-4 md:w-6 md:h-6 text-white mr-1.5 sm:mr-1 md:mr-2 flex-shrink-0" />
                 <h2 className="font-bold text-white text-lg sm:text-sm md:text-base lg:text-lg text-center">
@@ -1021,50 +1110,41 @@ export default function GenesisIndexPage() {
                 <p className="text-sm sm:text-xs md:text-sm text-white/80 text-center w-full">
                   Deposit{" "}
                   <span className="font-semibold text-white">any token</span>{" "}
-                  via Velora to provide resources for a market's maiden voyage
+                  via Velora
                 </p>
+              </div>
+              {/* Chevron pointing right, overlapping edge */}
+              <div className="hidden lg:block absolute right-0 top-1/2 transform translate-x-[62.5%] -translate-y-1/2 z-10">
+                <ChevronRightIcon className="w-12 h-12 text-[#FF8A7A] stroke-[3]" />
               </div>
             </div>
 
             {/* Earn Box */}
-            <div className="bg-[#17395F] p-4 sm:p-3 md:p-4 flex flex-col">
+            <div className="bg-[#17395F] p-4 sm:p-3 md:p-4 flex flex-col relative">
               <div className="flex items-center justify-center mb-2">
                 <CurrencyDollarIcon className="w-5 h-5 sm:w-4 sm:h-4 md:w-6 md:h-6 text-white mr-1.5 sm:mr-1 md:mr-2 flex-shrink-0" />
                 <h2 className="font-bold text-white text-lg sm:text-sm md:text-base lg:text-lg text-center">
                   Earn Ledger Marks
                 </h2>
               </div>
-              <div className="flex-1 flex items-center">
-                <div className="text-sm sm:text-xs md:text-sm text-white/80 text-center leading-relaxed space-y-1">
-                  <div className="inline-flex items-center gap-1 justify-center flex-wrap">
-                    <span className="font-bold text-white">10x</span>
-                    <Image
-                      src="/icons/marks.png"
-                      alt="Marks"
-                      width={20}
-                      height={20}
-                      className="flex-shrink-0 w-4 h-4 sm:w-3 sm:h-3 md:w-4 md:h-4"
-                    />
-                    <span>per dollar per day</span>
-                  </div>
-                  <div className="border-t border-white/20 w-full my-1"></div>
+              <div className="flex-1 flex items-center justify-center">
+                <div className="text-sm sm:text-xs md:text-sm text-white/80 text-center leading-relaxed space-y-1 w-full">
                   <div className="text-center">
-                    <span className="font-bold text-white">100</span>{" "}
-                    <Image
-                      src="/icons/marks.png"
-                      alt="Marks"
-                      width={20}
-                      height={20}
-                      className="inline-flex align-middle w-4 h-4 sm:w-3 sm:h-3 md:w-4 md:h-4"
-                    />{" "}
-                    <span>bonus / $ deposited at the end of maiden voyage</span>
+                    and share up to 10% of the token supply.
                   </div>
+                  <div className="text-xs text-white/60 mt-1 text-center">
+                    (TGE 12 weeks after launch)
                 </div>
+                </div>
+              </div>
+              {/* Chevron pointing right, overlapping edge */}
+              <div className="hidden lg:block absolute right-0 top-1/2 transform translate-x-[62.5%] -translate-y-1/2 z-10">
+                <ChevronRightIcon className="w-12 h-12 text-[#FF8A7A] stroke-[3]" />
               </div>
             </div>
 
             {/* After Maiden Voyage Box */}
-            <div className="bg-[#17395F] p-4 sm:p-3 md:p-4 flex flex-col">
+            <div className="bg-[#17395F] p-4 sm:p-3 md:p-4 flex flex-col relative">
               <div className="flex items-center justify-center mb-2">
                 <ArrowPathIcon className="w-5 h-5 sm:w-4 sm:h-4 md:w-6 md:h-6 text-white mr-1.5 sm:mr-1 md:mr-2 flex-shrink-0" />
                 <h2 className="font-bold text-white text-lg sm:text-sm md:text-base lg:text-lg text-center">
@@ -1081,68 +1161,6 @@ export default function GenesisIndexPage() {
               </div>
             </div>
 
-            {/* Early Deposit Bonus Box */}
-            {(() => {
-              // Check if any market has an active early deposit bonus (threshold not reached)
-              const hasActiveBonus = allMarketBonusStatus?.some((status) => {
-                const bonusData = status.data;
-                return bonusData && !bonusData.thresholdReached;
-              });
-
-              // Check if any genesis is still active (not ended)
-              const hasActiveGenesis = genesisMarkets.some(([_, mkt], mi) => {
-                const baseOffset = mi * (isConnected ? 3 : 1);
-                const contractSaysEnded = reads?.[baseOffset]?.result as
-                  | boolean
-                  | undefined;
-                return contractSaysEnded !== true;
-              });
-
-              // TEMPORARY: Always show banner for testing (remove this condition later)
-              // Only show banner if there's an active bonus and active genesis
-              // if (!hasActiveBonus || !hasActiveGenesis) return null;
-
-              // Get threshold info from first market with active bonus, or fallback to any market
-              const activeBonusMarket = allMarketBonusStatus?.find((status) => {
-                const bonusData = status.data;
-                return bonusData && !bonusData.thresholdReached;
-              }) || allMarketBonusStatus?.[0]; // Fallback to first market if all thresholds reached
-              const thresholdToken = activeBonusMarket?.data?.thresholdToken || "fxUSD";
-              const thresholdAmount = activeBonusMarket?.data?.thresholdAmount
-                ? Number(activeBonusMarket.data.thresholdAmount).toLocaleString(undefined, {
-                    maximumFractionDigits: 0,
-                  })
-                : "250,000";
-
-              return (
-                <div className="bg-white p-4 sm:p-3 md:p-4 flex flex-col relative border border-[#1E4775]/10">
-                  <div className="flex items-center justify-center mb-2 gap-2">
-                    <GiftIcon className="w-5 h-5 sm:w-4 sm:h-4 md:w-5 md:h-5 text-[#1E4775] flex-shrink-0" />
-                    <h2 className="font-bold text-[#1E4775] text-lg sm:text-sm md:text-base lg:text-lg text-center">
-                      Early Deposit Bonus
-                    </h2>
-                  </div>
-                  <div className="flex-1 flex flex-col justify-center">
-                    <div className="text-center space-y-1">
-                      <div className="inline-flex items-center gap-1 text-[#1E4775] text-sm sm:text-xs md:text-sm">
-                        <span className="font-bold">100</span>
-                        <Image
-                          src="/icons/marks.png"
-                          alt="Marks"
-                          width={20}
-                          height={20}
-                          className="flex-shrink-0 w-4 h-4 sm:w-3 sm:h-3 md:w-4 md:h-4"
-                        />
-                        <span>/ $ for depositing early!</span>
-                      </div>
-                      <p className="text-[10px] sm:text-[9px] md:text-[10px] text-[#1E4775]/70 text-center">
-                        *applied at the end of maiden voyage
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              );
-            })()}
           </div>
         </div>
 
@@ -1201,17 +1219,20 @@ export default function GenesisIndexPage() {
             return timeHasExpired && !contractSaysEnded;
           });
 
-          if (allMarksData && !isLoadingMarks) {
+          if (marksResults && marksResults.length > 0 && !isLoadingMarks) {
             const currentTime = Math.floor(Date.now() / 1000); // Current Unix timestamp in seconds
 
-            allMarksData.forEach((result) => {
+            marksResults.forEach((result) => {
               // Handle both array and single object responses from GraphQL
               const userMarksData = result.data?.userHarborMarks;
+              // Get a reference to the marks object - but we'll read values directly to avoid mutations
               const marks = Array.isArray(userMarksData)
                 ? userMarksData[0]
                 : userMarksData;
 
               if (marks) {
+                // Read the original subgraph value ONCE at the start - don't mutate the object
+                const originalCurrentMarks = parseFloat(marks.currentMarks || "0");
                 const marksPerDayFromSubgraph = parseFloat(
                   marks.marksPerDay || "0"
                 );
@@ -1255,26 +1276,30 @@ export default function GenesisIndexPage() {
                 );
                 const lastUpdated = parseInt(marks.lastUpdated || "0");
 
-                // Use subgraph's USD value directly - it's already calculated correctly with real-time prices
-                // The subgraph stores:
-                // - currentDeposit: token amount in wei (e.g., "155000000000000000000" = 155 tokens)
-                // - currentDepositUSD: USD value calculated with real-time oracle prices (e.g., "0.267616772775666308")
-                // - marksPerDay: calculated marks per day based on USD value
+                // Use subgraph's USD value - it's the source of truth
+                // The subgraph calculates currentDepositUSD using real-time oracle prices
+                // If it seems stale, it might be because:
+                // 1. The subgraph hasn't synced recent price updates
+                // 2. There haven't been deposit/withdraw events to trigger price recalculation
+                // 3. Different subgraph deployment/version between prod and localhost
                 const currentDepositUSD = parseFloat(
                   marks.currentDepositUSD || "0"
                 );
-                // Use subgraph's marksPerDay directly - it's already calculated correctly
+                
+                // Calculate marksPerDay directly from currentDepositUSD to ensure accuracy
+                // Marks accumulate at 10 marks per dollar per day
                 // If genesis has ended, marksPerDay should be 0 (no more marks accumulating)
-                const marksPerDay = genesisEnded ? 0 : marksPerDayFromSubgraph;
+                const marksPerDay = genesisEnded ? 0 : currentDepositUSD * 10;
 
                 // Calculate current marks dynamically based on time elapsed since last update
                 // Marks accumulate at 10 marks per dollar per day
-                // IMPORTANT: Start with currentMarks from subgraph, which already accounts for forfeitures and bonus marks
+                // IMPORTANT: Always start from the original subgraph value to prevent accumulation bugs
                 // The subgraph's currentMarks includes:
-                // - Accumulated marks from deposits (10 marks per dollar per day)
+                // - Accumulated marks from deposits (10 marks per dollar per day) up to lastUpdated
                 // - Bonus marks (100 marks per dollar) if genesis has ended
                 // - Forfeited marks from withdrawals
-                let currentMarks = parseFloat(marks.currentMarks || "0");
+                // We add marks accumulated since lastUpdated to get the current total
+                let currentMarks = originalCurrentMarks;
 
                 // If genesis has ended, the subgraph's currentMarks already includes:
                 // - All accumulated marks up to genesis end
@@ -1297,8 +1322,33 @@ export default function GenesisIndexPage() {
                   currentMarks = currentMarks + marksAccumulated;
                 }
 
+                // DO NOT mutate the original subgraph data - this causes marks to compound on each render
+                // Instead, use currentMarks directly for display and calculations
+                // The APR calculation will use calculateMarksForAPR which handles bonus marks separately
+
                 totalCurrentMarks += currentMarks;
                 totalMarksPerDay += marksPerDay;
+
+                // Debug logging for marks calculation - compare subgraph values
+                // This helps identify if subgraph prices are stale on localhost vs production
+                if (process.env.NODE_ENV === 'development') {
+                  const marksAccumulated = genesisEnded ? 0 : (currentMarks - originalCurrentMarks);
+                  console.log('[Marks Calculation]', {
+                    genesisAddress: result.genesisAddress,
+                    subgraphCurrentMarks: originalCurrentMarks,
+                    calculatedCurrentMarks: currentMarks,
+                    marksAccumulated: marksAccumulated,
+                    subgraphCurrentDepositUSD: currentDepositUSD,
+                    subgraphMarksPerDay: marksPerDayFromSubgraph,
+                    calculatedMarksPerDay: marksPerDay,
+                    bonusAtEnd: !genesisEnded && currentDepositUSD > 0 ? currentDepositUSD * 100 : 0,
+                    lastUpdated: lastUpdated > 0 ? new Date(lastUpdated * 1000).toISOString() : 'N/A',
+                    timeSinceUpdate: lastUpdated > 0 ? `${Math.floor((currentTime - lastUpdated) / 3600)} hours` : 'N/A',
+                    daysElapsed: lastUpdated > 0 ? (currentTime - lastUpdated) / 86400 : 0,
+                    subgraphCurrentDeposit: marks.currentDeposit || '0',
+                    note: 'Always starting from original subgraph value to prevent double-counting',
+                  });
+                }
 
                 // Calculate bonus at end of genesis
                 // Bonus is 100 marks per dollar deposited
@@ -1388,10 +1438,10 @@ export default function GenesisIndexPage() {
 
               {/* Current Marks Box */}
               <div className="bg-[#17395F] p-3 flex flex-col">
-                <div className="text-xs text-white/70 mb-0.5 text-center">
+                <div className="text-xs font-medium text-white/70 uppercase tracking-wider mb-0.5 text-center">
                   Current Maiden Voyage Marks
                 </div>
-                <div className="text-base font-bold text-white font-mono text-center flex-1 flex items-center justify-center">
+                <div className="text-sm font-bold text-white font-mono text-center flex-1 flex items-center justify-center">
                   {!mounted || isLoadingMarks ? (
                     <span className="text-white/50">-</span>
                   ) : totalCurrentMarks > 0 ? (
@@ -1407,16 +1457,29 @@ export default function GenesisIndexPage() {
 
               {/* Marks per Day Box */}
               <div className="bg-[#17395F] p-3 flex flex-col">
-                <div className="text-xs text-white/70 mb-0.5 text-center">
+                <div className="text-xs font-medium text-white/70 uppercase tracking-wider mb-0.5 text-center">
                   Marks per Day
                 </div>
-                <div className="text-base font-bold text-white font-mono text-center flex-1 flex items-center justify-center">
+                <div className="text-sm font-bold text-white font-mono text-center flex-1 flex items-center justify-center gap-1">
                   {!mounted || isLoadingMarks ? (
                     <span className="text-white/50">-</span>
                   ) : totalMarksPerDay > 0 ? (
-                    totalMarksPerDay.toLocaleString(undefined, {
+                    <>
+                      {totalMarksPerDay.toLocaleString(undefined, {
                       maximumFractionDigits: 2,
-                    })
+                      })}
+                      <span className="text-xs text-white/70 font-medium">
+                        {" "}(<span>10</span>
+                        <Image
+                          src="/icons/marks.png"
+                          alt="Marks"
+                          width={14}
+                          height={14}
+                          className="flex-shrink-0 inline-block mx-0.5"
+                        />
+                        <span>/$/day</span>)
+                      </span>
+                    </>
                   ) : (
                     "0"
                   )}
@@ -1425,7 +1488,7 @@ export default function GenesisIndexPage() {
 
               {/* Bonus at End of Genesis Marks Box */}
               <div className="bg-[#17395F] p-3 flex flex-col">
-                <div className="text-xs text-white/70 mb-0.5 text-center flex items-center justify-center gap-1">
+                <div className="text-xs font-medium text-white/70 uppercase tracking-wider mb-0.5 text-center flex items-center justify-center gap-1">
                   Bonus at the end of Maiden Voyage
                   {anyInProcessing && (
                     <SimpleTooltip label="Bonus marks will be applied once processing is complete and tokens are claimable.">
@@ -1433,15 +1496,28 @@ export default function GenesisIndexPage() {
                     </SimpleTooltip>
                   )}
                 </div>
-                <div className="text-base font-bold text-white font-mono text-center flex-1 flex items-center justify-center min-h-[1.5rem]">
+                <div className="text-sm font-bold text-white font-mono text-center flex-1 flex items-center justify-center min-h-[1.5rem] gap-1">
                   {!mounted || isLoadingMarks ? (
                     <span className="text-white/50">-</span>
                   ) : allContractsEnded && isConnected && totalCurrentMarks > 0 ? (
                     <span className="text-white/50">Applied</span>
                   ) : totalBonusAtEnd > 0 ? (
-                    totalBonusAtEnd.toLocaleString(undefined, {
+                    <>
+                      {totalBonusAtEnd.toLocaleString(undefined, {
                       maximumFractionDigits: 0,
-                    })
+                      })}
+                      <span className="text-xs text-white/70 font-medium">
+                        {" "}(100{" "}
+                        <Image
+                          src="/icons/marks.png"
+                          alt="Marks"
+                          width={14}
+                          height={14}
+                          className="flex-shrink-0 inline-block mx-0.5"
+                        />
+                        <span>/$</span>)
+                      </span>
+                    </>
                   ) : (
                     "0"
                   )}
@@ -1451,12 +1527,12 @@ export default function GenesisIndexPage() {
                 {mounted && !isLoadingMarks && (
                   <>
                     {!allContractsEnded && totalEarlyBonusEstimate > 0 && (
-                      <div className="text-[10px] text-green-300 mt-1 text-center bg-green-900/30 px-2 py-0.5">
+                      <div className="text-xs text-green-300 mt-1 text-center bg-green-900/30 border border-green-500/30 px-2 py-0.5">
                         Early deposit bonus: +{totalEarlyBonusEstimate.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                       </div>
                     )}
                     {allContractsEnded && totalEarlyBonusMarks > 0 && (
-                      <div className="text-[10px] text-green-300 mt-1 text-center bg-green-900/30 px-2 py-0.5">
+                      <div className="text-xs text-green-300 mt-1 text-center bg-green-900/30 px-2 py-0.5">
                         Early deposit bonus: {totalEarlyBonusMarks.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                       </div>
                     )}
@@ -1466,6 +1542,411 @@ export default function GenesisIndexPage() {
             </div>
           );
         })()}
+
+        {/* Token Allocation Progress Bar */}
+        {(() => {
+          // Calculate total TVL by summing deposits from all markets
+          let calculatedTVL = 0;
+          if (genesisMarkets.length > 0 && totalDepositsReads && collateralPricesMap) {
+            genesisMarkets.forEach(([id, mkt], mi) => {
+              const totalDeposits = totalDepositsReads?.[mi]?.result as bigint | undefined;
+              if (!totalDeposits) return;
+              
+              const totalDepositsAmount = Number(formatEther(totalDeposits));
+              
+              // Get price using the same logic as in market rows
+              const underlyingSymbol = (mkt as any).collateral?.underlyingSymbol || (mkt as any).collateral?.symbol || "ETH";
+              const collateralSymbol = (mkt as any).collateral?.symbol || "ETH";
+              const marketCoinGeckoId = (mkt as any)?.coinGeckoId as string | undefined;
+              
+              // Priority 1: Hardcoded $1 for fxUSD
+              let underlyingPriceUSD = 0;
+              if (underlyingSymbol.toLowerCase() === "fxusd") {
+                underlyingPriceUSD = 1.0;
+              } else if (marketCoinGeckoId && coinGeckoPrices[marketCoinGeckoId] && coinGeckoPrices[marketCoinGeckoId]! > 0) {
+                underlyingPriceUSD = coinGeckoPrices[marketCoinGeckoId]!;
+              } else {
+                const oracleAddress = (mkt as any).addresses?.collateralPrice as `0x${string}` | undefined;
+                const collateralPriceData = oracleAddress ? collateralPricesMap.get(oracleAddress.toLowerCase()) : undefined;
+                const underlyingPriceFromOracle = collateralPriceData?.priceUSD || 0;
+                if (underlyingPriceFromOracle > 0.01) {
+                  underlyingPriceUSD = underlyingPriceFromOracle;
+                }
+              }
+              
+              // Calculate wrapped token price
+              const oracleAddress = (mkt as any).addresses?.collateralPrice as `0x${string}` | undefined;
+              const collateralPriceData = oracleAddress ? collateralPricesMap.get(oracleAddress.toLowerCase()) : undefined;
+              const wrappedRate = collateralPriceData?.maxRate;
+              
+              const isWstETH = collateralSymbol.toLowerCase() === "wsteth";
+              const isFxSAVE = collateralSymbol.toLowerCase() === "fxsave";
+              const coinGeckoReturnedPrice = marketCoinGeckoId && coinGeckoPrices[marketCoinGeckoId];
+              const coinGeckoIsWrappedToken = coinGeckoReturnedPrice && 
+                ((marketCoinGeckoId?.toLowerCase() === "wrapped-steth" && isWstETH) ||
+                 ((marketCoinGeckoId?.toLowerCase() === "fx-usd-saving" || marketCoinGeckoId?.toLowerCase() === "fxsave") && isFxSAVE));
+              
+              const stETHPrice = coinGeckoPrices["lido-staked-ethereum-steth"];
+              const useStETHFallback = isWstETH && !coinGeckoIsWrappedToken && underlyingPriceUSD === 0 && 
+                stETHPrice && stETHPrice > 0 && wrappedRate && wrappedRate > 0n;
+              
+              const wrappedTokenPriceUSD = 
+                coinGeckoIsWrappedToken && coinGeckoReturnedPrice && coinGeckoReturnedPrice > 0
+                  ? coinGeckoReturnedPrice
+                  : useStETHFallback
+                  ? stETHPrice! * (Number(wrappedRate) / 1e18)
+                  : wrappedRate && underlyingPriceUSD > 0
+                  ? underlyingPriceUSD * (Number(wrappedRate) / 1e18)
+                  : isFxSAVE
+                  ? 1.07
+                  : underlyingPriceUSD;
+              
+              const totalDepositsUSD = totalDepositsAmount * wrappedTokenPriceUSD;
+              calculatedTVL += totalDepositsUSD;
+            });
+          }
+          
+          // Use calculated TVL if available, otherwise fall back to safeTotalGenesisTVL
+          const currentTVL = calculatedTVL > 0 ? calculatedTVL : safeTotalGenesisTVL;
+          const currentAllocationPercent = calculateTokenAllocationPercent(currentTVL);
+          const currentAllocationAmount = calculateTokenAllocationAmount(currentTVL);
+          
+          // Milestones
+          // Note: < $1M = 1%, $1M-$10M = 1%-4%, $10M-$50M = 4%-10%
+          const milestones = [
+            { tvl: 0, label: '<$1M', percent: 0.01, allocation: TOTAL_TOKEN_SUPPLY * 0.01 }, // Base: 1% for any amount < $1M
+            { tvl: 1_000_000, label: '$1M', percent: 0.01, allocation: TOTAL_TOKEN_SUPPLY * 0.01 }, // Still 1% at $1M
+            { tvl: 10_000_000, label: '$10M', percent: 0.04, allocation: TOTAL_TOKEN_SUPPLY * 0.04 }, // 4% at $10M
+            { tvl: 50_000_000, label: '$50M', percent: 0.10, allocation: TOTAL_TOKEN_SUPPLY * 0.10 }, // 10% at $50M
+          ];
+          
+          // Calculate progress percentage
+          // Progress bar represents: 0% = $0, 33.33% = $1M, 66.67% = $10M, 100% = $50M
+          let progressPercent = 0;
+          
+          if (currentTVL < 1_000_000) {
+            // < $1M: Show progress from 0% to 33.33% of the bar
+            // Scale from $0 to $1M
+            progressPercent = (currentTVL / 1_000_000) * 33.33;
+          } else if (currentTVL < 10_000_000) {
+            // $1M to $10M: Linear from 33.33% to 66.67% of the bar
+            const segmentStart = 1_000_000;
+            const segmentEnd = 10_000_000;
+            const segmentProgress = ((currentTVL - segmentStart) / (segmentEnd - segmentStart));
+            progressPercent = 33.33 + (segmentProgress * 33.34); // 33.33% at $1M, 66.67% at $10M
+          } else if (currentTVL < 50_000_000) {
+            // $10M to $50M: Linear from 66.67% to 100% of the bar
+            const segmentStart = 10_000_000;
+            const segmentEnd = 50_000_000;
+            const segmentProgress = ((currentTVL - segmentStart) / (segmentEnd - segmentStart));
+            progressPercent = 66.67 + (segmentProgress * 33.33); // 66.67% at $10M, 100% at $50M
+          } else {
+            // >= $50M: 100% progress (at the end)
+            progressPercent = 100;
+          }
+          
+          // Get next milestone
+          let nextMilestone;
+          let nextAllocationPercent;
+          let nextAllocationAmount;
+          
+          if (currentTVL < 1_000_000) {
+            // Next milestone is $1M (but still 1% allocation)
+            nextMilestone = { tvl: 1_000_000, label: '$1M', percent: 0.01 };
+            nextAllocationPercent = 0.01;
+            nextAllocationAmount = TOTAL_TOKEN_SUPPLY * 0.01;
+          } else if (currentTVL < 10_000_000) {
+            // Next milestone is $10M (4% allocation)
+            nextMilestone = { tvl: 10_000_000, label: '$10M', percent: 0.04 };
+            nextAllocationPercent = 0.04;
+            nextAllocationAmount = TOTAL_TOKEN_SUPPLY * 0.04;
+          } else if (currentTVL < 50_000_000) {
+            // Next milestone is $50M (10% allocation)
+            nextMilestone = { tvl: 50_000_000, label: '$50M', percent: 0.10 };
+            nextAllocationPercent = 0.10;
+            nextAllocationAmount = TOTAL_TOKEN_SUPPLY * 0.10;
+          } else {
+            // Already at max
+            nextMilestone = null;
+            nextAllocationPercent = 0.10;
+            nextAllocationAmount = TOTAL_TOKEN_SUPPLY * 0.10;
+          }
+          
+          return (
+            <>
+            {/* Two Columns: Allocation (50%) | Allocated + FDV (50%) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-2">
+              {/* Box 1: Maiden Voyage Airdrop Allocation (takes 50% of row) */}
+              <div className="bg-[#17395F] px-4 pt-4 pb-4">
+                <div className="text-xs font-medium text-white/70 uppercase tracking-wider mb-6 text-center">
+                  Maiden Voyage Airdrop Allocation: Increases with TVL
+                </div>
+                {/* Combined Progress Bar */}
+                <div className="mt-3">
+                {/* TVL Labels above bar */}
+                <div className="flex items-center justify-between text-xs font-medium text-white/70 mb-1 relative">
+                  <span>$0</span>
+                  <span className="absolute left-[33.33%] transform -translate-x-1/2 text-center font-semibold">
+                    $1M
+                  </span>
+                  <span className="absolute left-[66.67%] transform -translate-x-1/2 text-center font-semibold">
+                    $10M
+                  </span>
+                  <span>$50M</span>
+                </div>
+                
+                {/* Combined Progress Bar */}
+                <div className="relative w-full bg-gray-200 rounded-full h-1.5 min-w-[100px]">
+                  {/* Progress fill with gradient segments */}
+                  {(() => {
+                    let progressPercent = 0;
+                    let fillColor = "";
+                    
+                    if (currentTVL < 1_000_000) {
+                      // < $1M: Show progress from 0% to 33.33% of the bar
+                      progressPercent = (currentTVL / 1_000_000) * 33.33;
+                      fillColor = "bg-[#FF8A7A]";
+                    } else if (currentTVL < 10_000_000) {
+                      // $1M to $10M: Linear from 33.33% to 66.67% of the bar
+                      const segmentStart = 1_000_000;
+                      const segmentEnd = 10_000_000;
+                      const segmentProgress = ((currentTVL - segmentStart) / (segmentEnd - segmentStart));
+                      progressPercent = 33.33 + (segmentProgress * 33.34);
+                      fillColor = "bg-gradient-to-r from-[#FF8A7A] to-[#FFB84D]";
+                    } else if (currentTVL < 50_000_000) {
+                      // $10M to $50M: Linear from 66.67% to 100% of the bar
+                      const segmentStart = 10_000_000;
+                      const segmentEnd = 50_000_000;
+                      const segmentProgress = ((currentTVL - segmentStart) / (segmentEnd - segmentStart));
+                      progressPercent = 66.67 + (segmentProgress * 33.33);
+                      fillColor = "bg-[#FFB84D]";
+                    } else {
+                      progressPercent = 100;
+                      fillColor = "bg-[#FFB84D]";
+                    }
+                    
+                    return (
+                      <>
+                        <div
+                          className={`absolute top-0 left-0 h-1.5 ${fillColor} rounded-full transition-all duration-500`}
+                          style={{ width: `${progressPercent}%` }}
+                        />
+                        {currentTVL > 0 && currentTVL < 50_000_000 && (
+                          <div
+                            className="absolute top-0 bottom-0 w-0.5 bg-white shadow z-10"
+                            style={{ left: `${progressPercent}%`, transform: 'translateX(-50%)' }}
+                          />
+                        )}
+                      </>
+                    );
+                  })()}
+                  
+                  {/* Divider at $1M (33.33%) */}
+                  <div className="absolute top-0 bottom-0 left-[33.33%] w-1 bg-white z-20 shadow-sm" />
+                  
+                  {/* Divider at $10M (66.67%) */}
+                  <div className="absolute top-0 bottom-0 left-[66.67%] w-1 bg-white z-20 shadow-sm" />
+                  
+                  {/* Current TVL Tag inline with progress bar, pointing to indicator */}
+                  {currentTVL > 0 && currentTVL < 50_000_000 && (() => {
+                    let progressPercent = 0;
+                    if (currentTVL < 1_000_000) {
+                      progressPercent = (currentTVL / 1_000_000) * 33.33;
+                    } else if (currentTVL < 10_000_000) {
+                      const segmentStart = 1_000_000;
+                      const segmentEnd = 10_000_000;
+                      const segmentProgress = ((currentTVL - segmentStart) / (segmentEnd - segmentStart));
+                      progressPercent = 33.33 + (segmentProgress * 33.34);
+                    } else if (currentTVL < 50_000_000) {
+                      const segmentStart = 10_000_000;
+                      const segmentEnd = 50_000_000;
+                      const segmentProgress = ((currentTVL - segmentStart) / (segmentEnd - segmentStart));
+                      progressPercent = 66.67 + (segmentProgress * 33.33);
+                    }
+                    
+                    // If progress > 50%, position tag on left with arrow on right
+                    const isOver50Percent = progressPercent > 50;
+                    
+                    return (
+                      <div
+                        className="absolute top-1/2 left-0 transform -translate-y-1/2 z-30 flex items-center"
+                        style={{ 
+                          left: `${progressPercent}%`, 
+                          ...(isOver50Percent 
+                            ? { marginRight: '8px', transform: 'translate(-100%, -50%)' }
+                            : { marginLeft: '8px' }
+                          )
+                        }}
+                      >
+                        {isOver50Percent ? (
+                          <>
+                            {/* Tag on left */}
+                            <div className="bg-[#2C3E50] text-white text-xs font-semibold px-2.5 py-1 rounded-l shadow whitespace-nowrap">
+                              TVL: ${(currentTVL / 1_000).toFixed(0)}K
+                            </div>
+                            {/* Right-pointing arrow */}
+                            <div className="w-0 h-0 border-t-[7px] border-b-[7px] border-l-[7px] border-transparent border-l-[#2C3E50]"></div>
+                          </>
+                        ) : (
+                          <>
+                            {/* Left-pointing arrow */}
+                            <div className="w-0 h-0 border-t-[7px] border-b-[7px] border-r-[7px] border-transparent border-r-[#2C3E50]"></div>
+                            {/* Tag on right */}
+                            <div className="bg-[#2C3E50] text-white text-xs font-semibold px-2.5 py-1 rounded-r shadow whitespace-nowrap">
+                              TVL: ${(currentTVL / 1_000).toFixed(0)}K
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </div>
+                
+                {/* Allocation Labels below bar - aligned with TVL markers above */}
+                <div className="flex items-center justify-between text-xs font-medium text-white/70 mt-1 relative">
+                  <span>1%</span>
+                  <span className="absolute left-[33.33%] transform -translate-x-1/2 text-center">
+                    1%
+                  </span>
+                  <span className="absolute left-[66.67%] transform -translate-x-1/2 text-center">
+                    4%
+                  </span>
+                  <span>10%</span>
+                </div>
+              </div>
+              </div>
+
+              {/* Right side: Allocated + FDV (takes 50% of row) */}
+              <div className="flex flex-col gap-2">
+                <div className="grid grid-cols-2 gap-2">
+                  {/* Box 2: Allocated */}
+                  <div className="bg-[#17395F] px-4 pt-3 pb-3">
+                    <div className="text-xs font-medium text-white/70 uppercase tracking-wider mb-2 text-center">
+                      Allocated
+                    </div>
+                    <div className="text-sm text-white/70 text-center">
+                      <span className="text-white font-bold">{(currentAllocationAmount / 1_000_000).toFixed(2)}M $TIDE</span>
+                      <span className="text-white/60 ml-1">
+                        <span className="text-white font-bold">(est. ${(() => {
+                          const estimatedValue = currentAllocationAmount * calculateTokenPrice(fdv);
+                          if (estimatedValue >= 1_000_000) {
+                            return (estimatedValue / 1_000_000).toFixed(2) + 'M';
+                          } else {
+                            return (estimatedValue / 1_000).toFixed(0) + 'k';
+                          }
+                        })()})</span>
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Box 3: FDV */}
+                  <div className="bg-[#17395F] px-4 pt-3 pb-3">
+                    <div className="text-xs font-medium text-white/70 uppercase tracking-wider mb-2 text-center">
+                      FDV (Fully Diluted Valuation)
+                    </div>
+                    <div className="flex items-center justify-center gap-2">
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        value={fdv / 1_000_000 || ''}
+                        onChange={(e) => {
+                          const inputValue = e.target.value;
+                          if (inputValue === '') {
+                            setFdv(0);
+                          } else {
+                            // Allow intermediate states like "0." or "0.5" while typing
+                            const numValue = parseFloat(inputValue);
+                            if (!isNaN(numValue) && numValue >= 0 && numValue <= 1000) {
+                              setFdv(numValue * 1_000_000);
+                            } else if (inputValue === '0' || inputValue === '0.' || inputValue.startsWith('0.')) {
+                              // Allow typing "0" or "0." or "0.5" etc
+                              const tempValue = inputValue === '0' ? 0 : parseFloat(inputValue) || 0;
+                              if (tempValue >= 0 && tempValue <= 1000) {
+                                setFdv(tempValue * 1_000_000);
+                              }
+                            }
+                          }
+                        }}
+                        onBlur={(e) => {
+                          // On blur, ensure we have a valid number
+                          const inputValue = e.target.value;
+                          const numValue = parseFloat(inputValue);
+                          if (isNaN(numValue) || numValue <= 0) {
+                            setFdv(DEFAULT_FDV);
+                          } else if (numValue > 1000) {
+                            setFdv(1000 * 1_000_000);
+                          }
+                        }}
+                        className="w-16 bg-[#0A1F35] border border-white/20 px-2 py-1 text-white text-sm focus:outline-none focus:border-[#FF8A7A]"
+                      />
+                      <span className="text-white/60 whitespace-nowrap text-sm">M USD</span>
+                      <button
+                        onClick={() => setFdv(DEFAULT_FDV)}
+                        className="text-[#FF8A7A] hover:text-[#FFB84D] text-xs underline"
+                      >
+                        Reset
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Box 4: Revenue Tag (under Allocated and FDV) */}
+                <div className="bg-green-900/30 border border-green-500/30 px-4 py-2">
+                  <div className="text-xs text-green-300 text-center">
+                    ~25% of pre-TGE revenue → protocol-owned liquidity at $10m FDV & After TGE for buybacks.
+                  </div>
+                </div>
+              </div>
+            </div>
+            </>
+          );
+        })()}
+
+        {/* GraphQL Error Banner */}
+        {combinedHasIndexerErrors && (
+          <div className="bg-[#FF8A7A]/10 border border-[#FF8A7A]/30 rounded-none p-3 mb-4">
+            <div className="flex items-start gap-3">
+              <div className="text-[#FF8A7A] text-xl mt-0.5">⚠️</div>
+              <div className="flex-1">
+                <p className="text-[#FF8A7A] font-semibold text-sm mb-1">
+                  Temporary Service Issue
+                </p>
+                <p className="text-white/70 text-xs mb-2">
+                  The Graph Network indexers are temporarily unavailable for some markets. Your Harbor Marks are safe and will display correctly once the service is restored. This is a temporary infrastructure issue, not a problem with your account.
+                </p>
+                {combinedMarketsWithIndexerErrors.length > 0 && (
+                  <div className="mt-2 pt-2 border-t border-[#FF8A7A]/20">
+                    <p className="text-[#FF8A7A]/90 text-xs font-medium mb-1">
+                      Markets affected: {combinedMarketsWithIndexerErrors.map(getMarketName).join(', ')}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+        {combinedHasAnyErrors && !combinedHasIndexerErrors && (
+          <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-none p-3 mb-4">
+            <div className="flex items-start gap-3">
+              <div className="text-yellow-500 text-xl mt-0.5">⚠️</div>
+              <div className="flex-1">
+                <p className="text-yellow-500 font-semibold text-sm mb-1">
+                  Harbor Marks Data Unavailable
+                </p>
+                <p className="text-white/70 text-xs mb-2">
+                  Unable to load Harbor Marks data for some markets. Your positions and core functionality remain unaffected. Please try refreshing the page.
+                </p>
+                {combinedMarketsWithOtherErrors.length > 0 && (
+                  <div className="mt-2 pt-2 border-t border-yellow-500/20">
+                    <p className="text-yellow-500/90 text-xs font-medium mb-1">
+                      Markets affected: {combinedMarketsWithOtherErrors.map(getMarketName).join(', ')}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Divider */}
         <div className="border-t border-white/10 mt-2 mb-1"></div>
@@ -1549,7 +2030,7 @@ export default function GenesisIndexPage() {
                     : undefined;
 
                 // Fallback to subgraph data if contract read fails
-                const marksForMarket = allMarksData?.find(
+                const marksForMarket = marksResults?.find(
                   (marks) =>
                     marks.genesisAddress?.toLowerCase() ===
                     (mkt as any).addresses?.genesis?.toLowerCase()
@@ -1589,10 +2070,24 @@ export default function GenesisIndexPage() {
                 const activeHeader =
                   showHeaders && !activeHeaderRendered && !isEnded ? (
                     <>
-                      <div key={`section-active`} className="pt-4 mb-1">
+                      <div key={`section-active`} className="pt-4 mb-1 flex items-center justify-between gap-2">
                         <h2 className="text-xs font-medium text-white/70 uppercase tracking-wider">
                           Active Genesis Events
                         </h2>
+                        <div className="text-xs text-green-300 bg-green-900/30 border border-green-500/30 px-2 py-0.5">
+                          <div className="flex items-center gap-1 flex-wrap">
+                            <span>Early Deposit Bonus!</span>
+                            <span>100</span>
+                            <Image
+                              src="/icons/marks.png"
+                              alt="Marks"
+                              width={14}
+                              height={14}
+                              className="flex-shrink-0"
+                            />
+                            <span>/ $ for being one of the first to deposit in each market. (applied at the end of maiden voyage).</span>
+                          </div>
+                        </div>
                       </div>
                       <div
                         key={`header-active`}
@@ -1600,7 +2095,7 @@ export default function GenesisIndexPage() {
                       >
                         <div className="grid lg:grid-cols-[1.5fr_80px_0.9fr_0.9fr_0.9fr_0.7fr_0.9fr] md:grid-cols-[120px_80px_100px_1fr_1fr_90px_80px] gap-4 items-center uppercase tracking-wider text-[10px] lg:text-[11px] text-[#1E4775] font-semibold">
                           <div className="min-w-0 text-center">Market</div>
-                          <div className="text-center min-w-0">APY</div>
+                          <div className="text-center min-w-0">APR</div>
                           <div className="text-center min-w-0 flex items-center justify-center gap-1.5">
                             <span>Deposit Assets</span>
                             <SimpleTooltip
@@ -1674,7 +2169,7 @@ export default function GenesisIndexPage() {
                       >
                         <div className="grid lg:grid-cols-[1.5fr_80px_1fr_1fr_1.5fr_1fr] md:grid-cols-[120px_80px_60px_60px_1fr_80px] gap-4 items-center uppercase tracking-wider text-[10px] lg:text-[11px] text-[#1E4775] font-semibold">
                           <div className="min-w-0 text-center">Market</div>
-                          <div className="text-center min-w-0">APY</div>
+                          <div className="text-center min-w-0">APR</div>
                           <div className="text-center min-w-0">
                             Anchor
                             <span className="hidden lg:inline"> Tokens</span>
@@ -1763,29 +2258,9 @@ export default function GenesisIndexPage() {
                   | string
                   | undefined;
 
-                console.log(`[Genesis Price] Market ${id} price calculation:`, {
-                  collateralSymbol,
-                  underlyingSymbol,
-                  marketCoinGeckoId,
-                  coinGeckoLoading,
-                  coinGeckoPrice: marketCoinGeckoId
-                    ? coinGeckoPrices[marketCoinGeckoId]
-                    : undefined,
-                  oraclePrice: underlyingPriceFromOracle,
-                  wrappedRate: wrappedRate?.toString(),
-                  collateralPriceData: collateralPriceData ? {
-                    priceUSD: collateralPriceData.priceUSD,
-                    maxRate: collateralPriceData.maxRate?.toString(),
-                    isLoading: collateralPriceData.isLoading,
-                  } : null,
-                });
-
                 // Priority 1: For fxUSD underlying (fxSAVE markets), always use hardcoded $1.00
                 if (underlyingSymbol.toLowerCase() === "fxusd") {
                   underlyingPriceUSD = 1.0;
-                  console.log(
-                    `[Genesis Price] Market ${id}: Using hardcoded fxUSD price: $1.00`
-                  );
                 } else if (
                   marketCoinGeckoId &&
                   coinGeckoPrices[marketCoinGeckoId] &&
@@ -1794,9 +2269,6 @@ export default function GenesisIndexPage() {
                   // Priority 2: Try CoinGecko price for other markets (preferred when available)
                   // Only use if price is valid (> 0)
                   underlyingPriceUSD = coinGeckoPrices[marketCoinGeckoId]!;
-                  console.log(
-                    `[Genesis Price] Market ${id}: Using CoinGecko price for ${marketCoinGeckoId}: $${underlyingPriceUSD}`
-                  );
                 } else if (underlyingPriceFromOracle > 0) {
                   // Priority 3: Use oracle price from hook as fallback
                   let oraclePriceUSD = underlyingPriceFromOracle;
@@ -1810,15 +2282,6 @@ export default function GenesisIndexPage() {
                     const btcPriceUSD = coinGeckoPrices["bitcoin"] || chainlinkBtcPrice || 0;
                     if (btcPriceUSD > 0) {
                       oraclePriceUSD = oraclePriceUSD * btcPriceUSD;
-                      const priceSource = coinGeckoPrices["bitcoin"] ? "CoinGecko" : "Chainlink";
-                      console.log(
-                        `[Genesis Price] Market ${id}: Converted BTC-denominated oracle price to USD: ${underlyingPriceFromOracle} BTC × $${btcPriceUSD} (${priceSource}) = $${oraclePriceUSD}`
-                      );
-                    } else {
-                      // Both CoinGecko and Chainlink failed - log warning
-                      console.warn(
-                        `[Genesis Price] Market ${id}: Cannot convert BTC-denominated price to USD - both CoinGecko and Chainlink BTC prices unavailable`
-                      );
                     }
                   }
                   
@@ -1826,21 +2289,9 @@ export default function GenesisIndexPage() {
                   // This prevents showing <0.01 when oracle returns invalid data
                   if (oraclePriceUSD > 0.01) {
                     underlyingPriceUSD = oraclePriceUSD;
-                    console.log(
-                      `[Genesis Price] Market ${id}: Using oracle price: $${underlyingPriceUSD}${
-                        coinGeckoLoading
-                          ? " (CoinGecko loading)"
-                          : coinGeckoError
-                          ? " (CoinGecko failed)"
-                          : ""
-                      }`
-                    );
                   } else {
                     priceError =
                       "Price oracle returned value too small (<0.01)";
-                    console.warn(
-                      `[Genesis Price] Market ${id}: Oracle returned value too small: $${oraclePriceUSD}`
-                    );
                   }
                 } else {
                   // Check if there was an error reading the oracle
@@ -1848,17 +2299,8 @@ export default function GenesisIndexPage() {
                     priceError = `Failed to read price oracle: ${
                       collateralPriceData.error.message || "Unknown error"
                     }`;
-                    console.warn(
-                      `[Genesis Price] Market ${id}: Oracle read failed:`,
-                      collateralPriceData.error
-                    );
                   } else {
                     priceError = "Price oracle not available";
-                    console.warn(
-                      `[Genesis Price] Market ${id}: Oracle not available, CoinGecko loading: ${coinGeckoLoading}, CoinGecko error: ${
-                        coinGeckoError ? String(coinGeckoError) : "none"
-                      }`
-                    );
                   }
                 }
 
@@ -1917,27 +2359,6 @@ export default function GenesisIndexPage() {
                     ? 1.07 // Hardcoded fallback for fxSAVE if everything fails
                     : underlyingPriceUSD; // Fallback to underlying price if no rate available and CoinGecko not loading
 
-                console.log(
-                  `[Genesis Price] Market ${id} wrapped token price calculation:`,
-                  {
-                    isWstETH,
-                    coinGeckoIsWrappedToken,
-                    underlyingPriceUSD,
-                    coinGeckoLoading,
-                    stETHPrice,
-                    useStETHFallback,
-                    wrappedRate: wrappedRate?.toString(),
-                    wrappedTokenPriceUSD,
-                    source: coinGeckoIsWrappedToken
-                      ? "CoinGecko (wrapped)"
-                      : useStETHFallback
-                      ? "stETH fallback"
-                      : underlyingPriceUSD > 0
-                      ? "Oracle"
-                      : "None (0)",
-                  }
-                );
-
                 // Use wrapped token price for USD calculations since deposits are in wrapped collateral
                 const collateralPriceUSD = wrappedTokenPriceUSD;
 
@@ -1958,16 +2379,25 @@ export default function GenesisIndexPage() {
                   : 0;
                 // userDepositAmount is already in wrapped tokens, so just multiply by wrapped token price
                 const userDepositUSD = userDepositAmount * collateralPriceUSD;
-                
-                console.log(
-                  `[Genesis Deposit] Market ${id} user deposit calculation:`,
-                  {
-                    userDepositAmount,
-                    collateralPriceUSD,
+
+                // Debug logging for marks data (after userDepositUSD and totalDepositsUSD are calculated)
+                if (process.env.NODE_ENV === 'development' && marks && id === 'btc-steth') {
+                  console.log('[btc-steth Marks Debug]', {
+                    marketId: id,
+                    genesisAddress: (mkt as any).addresses?.genesis,
+                    marksForMarketFound: !!marksForMarket,
+                    currentMarks: marks.currentMarks,
+                    currentDepositUSD: marks.currentDepositUSD,
+                    marksPerDay: marks.marksPerDay,
+                    bonusMarks: marks.bonusMarks,
+                    genesisEnded: marks.genesisEnded,
+                    genesisStartDate: marks.genesisStartDate,
+                    lastUpdated: marks.lastUpdated,
                     userDepositUSD,
-                    calculation: `${userDepositAmount} wrapped tokens * $${collateralPriceUSD} = $${userDepositUSD}`,
-                  }
-                );
+                    totalDepositsUSD,
+                    calculatedUserMarks: marks ? parseFloat(marks.currentMarks || "0") : 0,
+                  });
+                }
 
                 // Get anchor and sail token prices from the hook
                 const tokenPrices = tokenPricesByMarket[id];
@@ -2067,43 +2497,250 @@ export default function GenesisIndexPage() {
                               <ChevronDownIcon className="w-5 h-5 text-[#1E4775] flex-shrink-0 ml-1" />
                             )}
                           </div>
-                          {/* APY for mobile - next to market title */}
+                          {/* Combined APR for mobile - next to market title */}
                           {(() => {
                             const isWstETH = collateralSymbol.toLowerCase() === "wsteth";
                             const isFxSAVE = collateralSymbol.toLowerCase() === "fxsave";
-                            const underlyingAPY = isWstETH ? wstETHAPR : isFxSAVE ? fxSAVEAPR : null;
-                            const isLoadingAPY = isWstETH ? isLoadingWstETHAPR : isFxSAVE ? isLoadingFxSAVEAPR : false;
-                            const error = isWstETH ? wstETHAPRError : isFxSAVE ? fxSAVEAPRError : null;
+                            const underlyingAPR = isWstETH ? wstETHAPR : isFxSAVE ? fxSAVEAPR : null;
+                            const isLoadingAPR = isWstETH ? isLoadingWstETHAPR : isFxSAVE ? isLoadingFxSAVEAPR : false;
                             
-                            const isValidAPY = underlyingAPY !== null && 
-                                              typeof underlyingAPY === 'number' && 
-                                              !isNaN(underlyingAPY) && 
-                                              isFinite(underlyingAPY) &&
-                                              underlyingAPY >= 0;
+                            const isValidAPR = underlyingAPR !== null && 
+                                              typeof underlyingAPR === 'number' && 
+                                              !isNaN(underlyingAPR) && 
+                                              isFinite(underlyingAPR) &&
+                                              underlyingAPR >= 0;
+                            
+                            // Get user marks for this market
+                            const userMarksForMarket = marks ? parseFloat(marks.currentMarks || "0") : 0;
+                            
+                            // Calculate genesis days - use market config endDate as primary source
+                            const marketEndDate = endDate ? new Date(endDate).getTime() : 0;
+                            const genesisStartDate = marks ? parseInt(marks.genesisStartDate || "0") : 0;
+                            const genesisEndDateFromMarks = marks ? parseInt(marks.genesisEndDate || "0") : 0;
+                            // Prefer market config endDate, fall back to marks data
+                            const genesisEndDate = marketEndDate > 0 ? marketEndDate : genesisEndDateFromMarks;
+                            const genesisDays = genesisEndDate > genesisStartDate && genesisStartDate > 0
+                              ? (genesisEndDate - genesisStartDate) / (1000 * 60 * 60 * 24)
+                              : 7; // Default to 7 days if not available
+                            
+                            // Calculate days left in genesis
+                            const now = Date.now();
+                            const daysLeftInGenesis = genesisEndDate > now
+                              ? (genesisEndDate - now) / (1000 * 60 * 60 * 24)
+                              : genesisDays; // Fall back to full genesis period if end date not available
+                            
+                            // Calculate values for APR - use $1 for estimation when no wallet connected or no deposit
+                            // This shows "what would I earn if I deposit $1"
+                            const currentDepositUSD = marks ? parseFloat(marks.currentDepositUSD || "0") : 0;
+                            const hasUserDeposit = userDepositUSD > 0 || currentDepositUSD > 0;
+                            // Use $1 for APR estimation when user has no deposit
+                            const depositForAPR = hasUserDeposit 
+                              ? (userDepositUSD > 0 ? userDepositUSD : currentDepositUSD)
+                              : 1; // Use $1 for estimation
+                            
+                            // Get early bonus status for this market to check if cap is filled
+                            const marketBonusData = bonusStatusResults?.find(
+                              (status) => status.genesisAddress?.toLowerCase() === genesisAddress?.toLowerCase()
+                            );
+                            const marketBonusStatus = marketBonusData?.data;
+                            const earlyBonusCapFilled = marketBonusStatus 
+                              ? Number(marketBonusStatus.cumulativeDeposits) >= Number(marketBonusStatus.thresholdAmount)
+                              : false;
+                            const earlyBonusAvailable = !earlyBonusCapFilled;
+                            
+                            // Calculate marks for APR calculation including estimated bonus marks
+                            const earlyBonusEligibleDepositUSDFromMarks = marks ? parseFloat(marks.earlyBonusEligibleDepositUSD || "0") : 0;
+                            const genesisEnded = marks ? marks.genesisEnded : false;
+                            const qualifiesForEarlyBonusFromMarks = marks ? (marks.qualifiesForEarlyBonus || false) : false;
+                            
+                            // If early bonus cap is not filled and user has a deposit, all deposits qualify for early bonus
+                            // So earlyBonusEligibleDepositUSD should equal currentDepositUSD
+                            const earlyBonusEligibleDepositUSD = hasUserDeposit && earlyBonusAvailable
+                              ? depositForAPR
+                              : earlyBonusEligibleDepositUSDFromMarks;
+                            const qualifiesForEarlyBonus = hasUserDeposit && earlyBonusAvailable
+                              ? true
+                              : qualifiesForEarlyBonusFromMarks;
+                            
+                            // For estimation, only include early bonus if cap is not filled
+                            const estimatedEarlyBonusEligible = earlyBonusAvailable ? 1 : 0;
+                            const estimatedQualifiesForEarlyBonus = earlyBonusAvailable;
+                            
+                            // For APR estimation, use depositForAPR (either user's deposit or $1)
+                            const marksForAPR = calculateMarksForAPR(
+                              userMarksForMarket,
+                              depositForAPR,
+                              hasUserDeposit ? earlyBonusEligibleDepositUSD : estimatedEarlyBonusEligible,
+                              genesisEnded,
+                              hasUserDeposit ? qualifiesForEarlyBonus : estimatedQualifiesForEarlyBonus,
+                              daysLeftInGenesis
+                            );
+                            
+                            // Calculate marks breakdown for APR breakdown
+                            const marksBreakdown = calculateMarksBreakdown(
+                              userMarksForMarket,
+                              depositForAPR,
+                              hasUserDeposit ? earlyBonusEligibleDepositUSD : estimatedEarlyBonusEligible,
+                              genesisEnded,
+                              hasUserDeposit ? qualifiesForEarlyBonus : estimatedQualifiesForEarlyBonus,
+                              daysLeftInGenesis
+                            );
+                            
+                            // Use safe values (with mounted check) or fallback values if data not loaded yet
+                            const tvlForAPR = safeTotalGenesisTVL > 0 ? safeTotalGenesisTVL : (totalDepositsUSD > 0 ? totalDepositsUSD : 1000000); // Default $1M
+                            
+                            // Only use real total marks - don't estimate (estimation causes calculation errors)
+                            const marksForAPRTotal = safeTotalMaidenVoyageMarks;
+                            
+                            // Show combined APR if we have underlying APR and TVL
+                            // Allow showing even if marks are 0 (will show 0% for $TIDE APR)
+                            // This gives users visibility into the breakdown even before marks data loads
+                            const canShowCombinedAPR = mounted && 
+                              isValidAPR && 
+                              depositForAPR > 0 && 
+                              tvlForAPR > 0 &&
+                              !safeIsLoadingTotalTVL; // Wait for TVL, but marks can be 0
+                            
+                            // Calculate APR breakdown - show if we have valid data for APR calculation
+                            // Calculate breakdown whenever we have the data needed
+                            const aprBreakdown = canShowCombinedAPR && depositForAPR > 0 && tvlForAPR > 0 && genesisDays > 0 && marksForAPRTotal > 0
+                              ? (() => {
+                                  try {
+                                    const breakdown = calculateTideAPRBreakdown(
+                                      marksBreakdown,
+                                      marksForAPRTotal,
+                                      depositForAPR,
+                                      tvlForAPR,
+                                      daysLeftInGenesis,
+                                      fdv
+                                    );
+                                    // Always return the breakdown if calculation succeeded, even if values are 0
+                                    return breakdown;
+                                  } catch (error) {
+                                    console.error('[APR Breakdown] Calculation error:', error);
+                                    return undefined;
+                                  }
+                                })()
+                              : undefined;
+                            
+                            // Debug breakdown calculation
+                            if (process.env.NODE_ENV === 'development' && mounted) {
+                              console.log('[APR Breakdown Debug]', {
+                                marketId: id,
+                                canShowCombinedAPR,
+                                marksBreakdown,
+                                marksForAPRTotal,
+                                depositForAPR,
+                                tvlForAPR,
+                                genesisDays,
+                                fdv,
+                                aprBreakdown,
+                                hasBreakdown: !!aprBreakdown,
+                                conditions: {
+                                  marksForAPRTotal: marksForAPRTotal > 0,
+                                  depositForAPR: depositForAPR > 0,
+                                  tvlForAPR: tvlForAPR > 0,
+                                  genesisDays: genesisDays > 0,
+                                  allMet: marksForAPRTotal > 0 && depositForAPR > 0 && tvlForAPR > 0 && genesisDays > 0
+                                }
+                              });
+                              if (aprBreakdown) {
+                                console.log('[APR Breakdown Values]', aprBreakdown);
+                              }
+                            }
+                            
+                            // Debug logging (temporary) - after calculations
+                            if (process.env.NODE_ENV === 'development' && mounted) {
+                              const debugInfo = {
+                                marketId: id,
+                                mounted,
+                                isValidAPR,
+                                underlyingAPR,
+                                isLoadingTotalTVL: safeIsLoadingTotalTVL,
+                                isLoadingTotalMarks: safeIsLoadingTotalMarks,
+                                totalGenesisTVL: safeTotalGenesisTVL,
+                                totalMaidenVoyageMarks: safeTotalMaidenVoyageMarks,
+                                userDepositUSD,
+                                userMarksForMarket,
+                                totalDepositsUSD,
+                                depositForAPR,
+                                marksForAPR,
+                                tvlForAPR,
+                                marksForAPRTotal,
+                                genesisDays,
+                                canShowCombinedAPR,
+                                checks: {
+                                  mounted,
+                                  isValidAPR,
+                                  depositForAPR: depositForAPR > 0,
+                                  marksForAPR: marksForAPR > 0,
+                                  tvlForAPR: tvlForAPR > 0,
+                                  marksForAPRTotal: marksForAPRTotal > 0
+                                }
+                              };
+                              console.log('[APR Debug Full]', JSON.stringify(debugInfo, null, 2));
+                              console.log('[APR Debug]', debugInfo);
+                            }
                             
                             return (
                               <div className="flex-shrink-0 text-right mr-8">
-                                <div className="text-[#1E4775]/70 text-[10px]">APY</div>
-                                {isValidAPY ? (
-                                  <div className="flex items-center justify-end gap-1">
-                                    <SimpleTooltip label={`${collateralSymbol} underlying APY`}>
+                                <div className="text-[#1E4775]/70 text-[10px]">APR</div>
+                                {isValidAPR ? (
+                                  canShowCombinedAPR ? (
+                                    <TideAPRTooltip
+                                      underlyingAPR={underlyingAPR}
+                                      userMarks={marksForAPR}
+                                      totalMarks={marksForAPRTotal}
+                                      userDepositUSD={depositForAPR}
+                                      totalGenesisTVL={tvlForAPR}
+                                      genesisDays={genesisDays}
+                                      fdv={fdv}
+                                      onFdvChange={setFdv}
+                                      aprBreakdown={aprBreakdown}
+                                    >
                                       <span className="text-[#1E4775] font-semibold text-xs cursor-help">
-                                        {isLoadingAPY 
+                                        {isLoadingAPR || safeIsLoadingTotalTVL
                                           ? "..." 
-                                          : `${(underlyingAPY * 100).toFixed(2)}%`}
+                                          : (() => {
+                                              const tideAPR = calculateTideAPR(
+                                                marksForAPR,
+                                                marksForAPRTotal,
+                                                depositForAPR,
+                                                tvlForAPR,
+                                                daysLeftInGenesis,
+                                                fdv
+                                              );
+                                              const underlyingAPRPercent = (underlyingAPR || 0) * 100;
+                                              const combined = underlyingAPRPercent + tideAPR;
+                                              
+                                              // Debug calculation
+                                              if (process.env.NODE_ENV === 'development') {
+                                                console.log('[APR Calculation]', {
+                                                  marketId: id,
+                                                  underlyingAPRPercent,
+                                                  tideAPR,
+                                                  combined,
+                                                  isValid: !isNaN(combined) && isFinite(combined)
+                                                });
+                                              }
+                                              
+                                              return isNaN(combined) || !isFinite(combined) 
+                                                ? "..." 
+                                                : `${combined.toFixed(2)}%`;
+                                            })()}
+                                      </span>
+                                    </TideAPRTooltip>
+                                  ) : (
+                                  <div className="flex items-center justify-end gap-1">
+                                      <SimpleTooltip label={`${collateralSymbol} underlying APR${safeIsLoadingTotalTVL || safeIsLoadingTotalMarks ? ' (Loading $TIDE data...)' : ''}`}>
+                                      <span className="text-[#1E4775] font-semibold text-xs cursor-help">
+                                          {isLoadingAPR 
+                                          ? "..." 
+                                            : `${(underlyingAPR * 100).toFixed(2)}%`}
                                       </span>
                                     </SimpleTooltip>
-                                    <span className="text-[#1E4775]/60 font-semibold text-xs">+</span>
-                                    <SimpleTooltip label="Ledger Marks">
-                                      <Image
-                                        src="/icons/marks.png"
-                                        alt="Harbor Marks"
-                                        width={20}
-                                        height={20}
-                                        className="flex-shrink-0 cursor-help"
-                                      />
-                                    </SimpleTooltip>
                                   </div>
+                                  )
                                 ) : (
                                   <span className="text-xs text-gray-400">-</span>
                                 )}
@@ -2381,42 +3018,165 @@ export default function GenesisIndexPage() {
                           )}
                         </div>
 
-                        {/* APY Column */}
+                        {/* Combined APR Column */}
                         {(() => {
                           const isWstETH = collateralSymbol.toLowerCase() === "wsteth";
                           const isFxSAVE = collateralSymbol.toLowerCase() === "fxsave";
-                          const underlyingAPY = isWstETH ? wstETHAPR : isFxSAVE ? fxSAVEAPR : null;
-                          const isLoadingAPY = isWstETH ? isLoadingWstETHAPR : isFxSAVE ? isLoadingFxSAVEAPR : false;
-                          const error = isWstETH ? wstETHAPRError : isFxSAVE ? fxSAVEAPRError : null;
+                          const underlyingAPR = isWstETH ? wstETHAPR : isFxSAVE ? fxSAVEAPR : null;
+                          const isLoadingAPR = isWstETH ? isLoadingWstETHAPR : isFxSAVE ? isLoadingFxSAVEAPR : false;
                           
-                          const isValidAPY = underlyingAPY !== null && 
-                                            typeof underlyingAPY === 'number' && 
-                                            !isNaN(underlyingAPY) && 
-                                            isFinite(underlyingAPY) &&
-                                            underlyingAPY >= 0;
+                          const isValidAPR = underlyingAPR !== null && 
+                                            typeof underlyingAPR === 'number' && 
+                                            !isNaN(underlyingAPR) && 
+                                            isFinite(underlyingAPR) &&
+                                            underlyingAPR >= 0;
+                          
+                          // Get user marks for this market
+                          const userMarksForMarket = marks ? parseFloat(marks.currentMarks || "0") : 0;
+                          
+                          // Calculate genesis days - use market config endDate as primary source
+                          const marketEndDateMd = endDate ? new Date(endDate).getTime() : 0;
+                          const genesisStartDate = marks ? parseInt(marks.genesisStartDate || "0") : 0;
+                          const genesisEndDateFromMarks = marks ? parseInt(marks.genesisEndDate || "0") : 0;
+                          // Prefer market config endDate, fall back to marks data
+                          const genesisEndDate = marketEndDateMd > 0 ? marketEndDateMd : genesisEndDateFromMarks;
+                          const genesisDays = genesisEndDate > genesisStartDate && genesisStartDate > 0
+                            ? (genesisEndDate - genesisStartDate) / (1000 * 60 * 60 * 24)
+                            : 7; // Default to 7 days if not available
+                          
+                          // Calculate days left in genesis
+                          const nowMd = Date.now();
+                          const daysLeftInGenesisMd = genesisEndDate > nowMd
+                            ? (genesisEndDate - nowMd) / (1000 * 60 * 60 * 24)
+                            : genesisDays; // Fall back to full genesis period if end date not available
+                          
+                          // Calculate values for APR - use $1 for estimation when no wallet connected or no deposit
+                          const currentDepositUSD = marks ? parseFloat(marks.currentDepositUSD || "0") : 0;
+                          const hasUserDeposit = userDepositUSD > 0 || currentDepositUSD > 0;
+                          const depositForAPR = hasUserDeposit 
+                            ? (userDepositUSD > 0 ? userDepositUSD : currentDepositUSD)
+                            : 1; // Use $1 for estimation
+                          
+                          // Get early bonus status for this market to check if cap is filled
+                          const marketBonusDataMd = bonusStatusResults?.find(
+                            (status) => status.genesisAddress?.toLowerCase() === genesisAddress?.toLowerCase()
+                          );
+                          const marketBonusStatusMd = marketBonusDataMd?.data;
+                          const earlyBonusCapFilledMd = marketBonusStatusMd 
+                            ? Number(marketBonusStatusMd.cumulativeDeposits) >= Number(marketBonusStatusMd.thresholdAmount)
+                            : false;
+                          const earlyBonusAvailableMd = !earlyBonusCapFilledMd;
+                          
+                          // Calculate marks for APR calculation including estimated bonus marks
+                          const earlyBonusEligibleDepositUSDFromMarksMd = marks ? parseFloat(marks.earlyBonusEligibleDepositUSD || "0") : 0;
+                          const genesisEnded = marks ? marks.genesisEnded : false;
+                          const qualifiesForEarlyBonusFromMarksMd = marks ? (marks.qualifiesForEarlyBonus || false) : false;
+                          
+                          // If early bonus cap is not filled and user has a deposit, all deposits qualify for early bonus
+                          // So earlyBonusEligibleDepositUSD should equal currentDepositUSD
+                          const earlyBonusEligibleDepositUSD = hasUserDeposit && earlyBonusAvailableMd
+                            ? depositForAPR
+                            : earlyBonusEligibleDepositUSDFromMarksMd;
+                          const qualifiesForEarlyBonus = hasUserDeposit && earlyBonusAvailableMd
+                            ? true
+                            : qualifiesForEarlyBonusFromMarksMd;
+                          
+                          // For estimation, only include early bonus if cap is not filled
+                          const estimatedEarlyBonusEligibleMd = earlyBonusAvailableMd ? 1 : 0;
+                          const estimatedQualifiesForEarlyBonusMd = earlyBonusAvailableMd;
+                          
+                          const marksForAPR = calculateMarksForAPR(
+                            userMarksForMarket,
+                            depositForAPR,
+                            hasUserDeposit ? earlyBonusEligibleDepositUSD : estimatedEarlyBonusEligibleMd,
+                            genesisEnded,
+                            hasUserDeposit ? qualifiesForEarlyBonus : estimatedQualifiesForEarlyBonusMd,
+                            daysLeftInGenesisMd
+                          );
+                          
+                          const tvlForAPR = safeTotalGenesisTVL > 0 ? safeTotalGenesisTVL : (totalDepositsUSD > 0 ? totalDepositsUSD : 1000000);
+                          const marksForAPRTotal = safeTotalMaidenVoyageMarks;
+                          
+                          // Show combined APR if we have underlying APR and TVL
+                          // Allow showing even if marks are 0 (will show 0% for $TIDE APR)
+                          const canShowCombinedAPR = mounted && 
+                            isValidAPR && 
+                            depositForAPR > 0 && 
+                            tvlForAPR > 0 &&
+                            !safeIsLoadingTotalTVL;
+                          
+                          // Calculate marks breakdown for APR breakdown (md view)
+                          const marksBreakdownMd = calculateMarksBreakdown(
+                            userMarksForMarket,
+                            depositForAPR,
+                            hasUserDeposit ? earlyBonusEligibleDepositUSD : estimatedEarlyBonusEligibleMd,
+                            genesisEnded,
+                            hasUserDeposit ? qualifiesForEarlyBonus : estimatedQualifiesForEarlyBonusMd,
+                            daysLeftInGenesisMd
+                          );
+                          
+                          // Calculate APR breakdown (md view)
+                          const aprBreakdownMd = canShowCombinedAPR && depositForAPR > 0 && tvlForAPR > 0 && genesisDays > 0 && marksForAPRTotal > 0
+                            ? (() => {
+                                try {
+                                  return calculateTideAPRBreakdown(
+                                    marksBreakdownMd,
+                                    marksForAPRTotal,
+                                    depositForAPR,
+                                    tvlForAPR,
+                                    daysLeftInGenesisMd,
+                                    fdv
+                                  );
+                                } catch (error) {
+                                  return undefined;
+                                }
+                              })()
+                            : undefined;
                           
                           return (
                             <div className="text-center">
-                              {isValidAPY ? (
-                                <div className="flex items-center justify-center gap-1">
-                                  <SimpleTooltip label={`${collateralSymbol} underlying APY`}>
+                              {isValidAPR ? (
+                                canShowCombinedAPR ? (
+                                  <TideAPRTooltip
+                                    underlyingAPR={underlyingAPR}
+                                    userMarks={marksForAPR}
+                                    totalMarks={marksForAPRTotal}
+                                    userDepositUSD={depositForAPR}
+                                    totalGenesisTVL={tvlForAPR}
+                                    genesisDays={genesisDays}
+                                    fdv={fdv}
+                                    onFdvChange={setFdv}
+                                    aprBreakdown={aprBreakdownMd}
+                                  >
                                     <span className="text-[#1E4775] font-semibold text-xs cursor-help">
-                                      {isLoadingAPY 
+                                      {isLoadingAPR || safeIsLoadingTotalTVL
                                         ? "..." 
-                                        : `${(underlyingAPY * 100).toFixed(2)}%`}
+                                        : (() => {
+                                            const tideAPR = calculateTideAPR(
+                                              marksForAPR,
+                                              marksForAPRTotal,
+                                              depositForAPR,
+                                              tvlForAPR,
+                                              daysLeftInGenesisMd,
+                                              fdv
+                                            );
+                                            const underlyingAPRPercent = (underlyingAPR || 0) * 100;
+                                            const combined = underlyingAPRPercent + tideAPR;
+                                            return isNaN(combined) || !isFinite(combined) 
+                                              ? "..." 
+                                              : `${combined.toFixed(2)}%`;
+                                          })()}
+                                    </span>
+                                  </TideAPRTooltip>
+                                ) : (
+                                  <SimpleTooltip label={`${collateralSymbol} underlying APR${safeIsLoadingTotalTVL || safeIsLoadingTotalMarks ? ' (Loading $TIDE data...)' : ''}`}>
+                                    <span className="text-[#1E4775] font-semibold text-xs cursor-help">
+                                      {isLoadingAPR 
+                                        ? "..." 
+                                        : `${(underlyingAPR * 100).toFixed(2)}%`}
                                     </span>
                                   </SimpleTooltip>
-                                  <span className="text-[#1E4775]/60 font-semibold text-xs">+</span>
-                                  <SimpleTooltip label="Ledger Marks">
-                                    <Image
-                                      src="/icons/marks.png"
-                                      alt="Harbor Marks"
-                                      width={20}
-                                      height={20}
-                                      className="flex-shrink-0 cursor-help"
-                                    />
-                                  </SimpleTooltip>
-                                </div>
+                                )
                               ) : (
                                 <span className="text-xs text-gray-400">-</span>
                               )}
@@ -2729,42 +3489,156 @@ export default function GenesisIndexPage() {
                             )}
                           </div>
                         </div>
-                        {/* APY Column */}
+                        {/* Combined APR Column */}
                         {(() => {
                           const isWstETH = collateralSymbol.toLowerCase() === "wsteth";
                           const isFxSAVE = collateralSymbol.toLowerCase() === "fxsave";
-                          const underlyingAPY = isWstETH ? wstETHAPR : isFxSAVE ? fxSAVEAPR : null;
-                          const isLoadingAPY = isWstETH ? isLoadingWstETHAPR : isFxSAVE ? isLoadingFxSAVEAPR : false;
-                          const error = isWstETH ? wstETHAPRError : isFxSAVE ? fxSAVEAPRError : null;
+                          const underlyingAPR = isWstETH ? wstETHAPR : isFxSAVE ? fxSAVEAPR : null;
+                          const isLoadingAPR = isWstETH ? isLoadingWstETHAPR : isFxSAVE ? isLoadingFxSAVEAPR : false;
                           
-                          const isValidAPY = underlyingAPY !== null && 
-                                            typeof underlyingAPY === 'number' && 
-                                            !isNaN(underlyingAPY) && 
-                                            isFinite(underlyingAPY) &&
-                                            underlyingAPY >= 0;
+                          const isValidAPR = underlyingAPR !== null && 
+                                            typeof underlyingAPR === 'number' && 
+                                            !isNaN(underlyingAPR) && 
+                                            isFinite(underlyingAPR) &&
+                                            underlyingAPR >= 0;
+                          
+                          // Get user marks for this market
+                          const userMarksForMarket = marks ? parseFloat(marks.currentMarks || "0") : 0;
+                          
+                          // Calculate genesis days - use market config endDate as primary source
+                          const marketEndDateLg = endDate ? new Date(endDate).getTime() : 0;
+                          const genesisStartDate = marks ? parseInt(marks.genesisStartDate || "0") : 0;
+                          const genesisEndDateFromMarks = marks ? parseInt(marks.genesisEndDate || "0") : 0;
+                          // Prefer market config endDate, fall back to marks data
+                          const genesisEndDate = marketEndDateLg > 0 ? marketEndDateLg : genesisEndDateFromMarks;
+                          const genesisDays = genesisEndDate > genesisStartDate && genesisStartDate > 0
+                            ? (genesisEndDate - genesisStartDate) / (1000 * 60 * 60 * 24)
+                            : 7; // Default to 7 days if not available
+                          
+                          // Calculate days left in genesis
+                          const nowLg = Date.now();
+                          const daysLeftInGenesisLg = genesisEndDate > nowLg
+                            ? (genesisEndDate - nowLg) / (1000 * 60 * 60 * 24)
+                            : genesisDays; // Fall back to full genesis period if end date not available
+                          
+                          // Calculate values for APR - use $1 for estimation when no wallet connected or no deposit
+                          const currentDepositUSD = marks ? parseFloat(marks.currentDepositUSD || "0") : 0;
+                          const hasUserDeposit = userDepositUSD > 0 || currentDepositUSD > 0;
+                          const depositForAPR = hasUserDeposit 
+                            ? (userDepositUSD > 0 ? userDepositUSD : currentDepositUSD)
+                            : 1; // Use $1 for estimation
+                          
+                          // Get early bonus status for this market to check if cap is filled
+                          const marketBonusDataLg = bonusStatusResults?.find(
+                            (status) => status.genesisAddress?.toLowerCase() === genesisAddress?.toLowerCase()
+                          );
+                          const marketBonusStatusLg = marketBonusDataLg?.data;
+                          const earlyBonusCapFilledLg = marketBonusStatusLg 
+                            ? Number(marketBonusStatusLg.cumulativeDeposits) >= Number(marketBonusStatusLg.thresholdAmount)
+                            : false;
+                          const earlyBonusAvailableLg = !earlyBonusCapFilledLg;
+                          
+                          // Calculate marks for APR calculation including estimated bonus marks
+                          const earlyBonusEligibleDepositUSD = marks ? parseFloat(marks.earlyBonusEligibleDepositUSD || "0") : 0;
+                          const genesisEnded = marks ? marks.genesisEnded : false;
+                          const qualifiesForEarlyBonus = marks ? (marks.qualifiesForEarlyBonus || false) : false;
+                          
+                          // For estimation, only include early bonus if cap is not filled
+                          const estimatedEarlyBonusEligibleLg = earlyBonusAvailableLg ? 1 : 0;
+                          const estimatedQualifiesForEarlyBonusLg = earlyBonusAvailableLg;
+                          
+                          const marksForAPR = calculateMarksForAPR(
+                            userMarksForMarket,
+                            depositForAPR,
+                            hasUserDeposit ? earlyBonusEligibleDepositUSD : estimatedEarlyBonusEligibleLg,
+                            genesisEnded,
+                            hasUserDeposit ? qualifiesForEarlyBonus : estimatedQualifiesForEarlyBonusLg,
+                            daysLeftInGenesisLg
+                          );
+                          
+                          const tvlForAPR = safeTotalGenesisTVL > 0 ? safeTotalGenesisTVL : (totalDepositsUSD > 0 ? totalDepositsUSD : 1000000);
+                          const marksForAPRTotal = safeTotalMaidenVoyageMarks;
+                          
+                          // Show combined APR if we have underlying APR and TVL
+                          // Allow showing even if marks are 0 (will show 0% for $TIDE APR)
+                          const canShowCombinedAPR = mounted && 
+                            isValidAPR && 
+                            depositForAPR > 0 && 
+                            tvlForAPR > 0 &&
+                            !safeIsLoadingTotalTVL;
+                          
+                          // Calculate marks breakdown for APR breakdown (lg view)
+                          const marksBreakdownLg = calculateMarksBreakdown(
+                            userMarksForMarket,
+                            depositForAPR,
+                            hasUserDeposit ? earlyBonusEligibleDepositUSD : estimatedEarlyBonusEligibleLg,
+                            genesisEnded,
+                            hasUserDeposit ? qualifiesForEarlyBonus : estimatedQualifiesForEarlyBonusLg,
+                            daysLeftInGenesisLg
+                          );
+                          
+                          // Calculate APR breakdown (lg view)
+                          const aprBreakdownLg = canShowCombinedAPR && depositForAPR > 0 && tvlForAPR > 0 && genesisDays > 0 && marksForAPRTotal > 0
+                            ? (() => {
+                                try {
+                                  return calculateTideAPRBreakdown(
+                                    marksBreakdownLg,
+                                    marksForAPRTotal,
+                                    depositForAPR,
+                                    tvlForAPR,
+                                    daysLeftInGenesisLg,
+                                    fdv
+                                  );
+                                } catch (error) {
+                                  return undefined;
+                                }
+                              })()
+                            : undefined;
                           
                           return (
                             <div className="text-center min-w-0">
-                              {isValidAPY ? (
-                                <div className="flex items-center justify-center gap-1">
-                                  <SimpleTooltip label={`${collateralSymbol} underlying APY`}>
+                              {isValidAPR ? (
+                                canShowCombinedAPR ? (
+                                  <TideAPRTooltip
+                                    underlyingAPR={underlyingAPR}
+                                    userMarks={marksForAPR}
+                                    totalMarks={marksForAPRTotal}
+                                    userDepositUSD={depositForAPR}
+                                    totalGenesisTVL={tvlForAPR}
+                                    genesisDays={genesisDays}
+                                    fdv={fdv}
+                                    onFdvChange={setFdv}
+                                    aprBreakdown={aprBreakdownLg}
+                                  >
                                     <span className="text-[#1E4775] font-semibold text-xs cursor-help">
-                                      {isLoadingAPY 
+                                      {isLoadingAPR || safeIsLoadingTotalTVL
                                         ? "..." 
-                                        : `${(underlyingAPY * 100).toFixed(2)}%`}
+                                        : (() => {
+                                            const tideAPR = calculateTideAPR(
+                                              marksForAPR,
+                                              marksForAPRTotal,
+                                              depositForAPR,
+                                              tvlForAPR,
+                                              daysLeftInGenesisLg,
+                                              fdv
+                                            );
+                                            const underlyingAPRPercent = (underlyingAPR || 0) * 100;
+                                            const combined = underlyingAPRPercent + tideAPR;
+                                            return isNaN(combined) || !isFinite(combined) 
+                                              ? "..." 
+                                              : `${combined.toFixed(2)}%`;
+                                          })()}
+                                    </span>
+                                  </TideAPRTooltip>
+                                ) : (
+                                  <SimpleTooltip label={`${collateralSymbol} underlying APR${safeIsLoadingTotalTVL || safeIsLoadingTotalMarks ? ' (Loading $TIDE data...)' : ''}`}>
+                                    <span className="text-[#1E4775] font-semibold text-xs cursor-help">
+                                      {isLoadingAPR 
+                                        ? "..." 
+                                        : `${(underlyingAPR * 100).toFixed(2)}%`}
                                     </span>
                                   </SimpleTooltip>
-                                  <span className="text-[#1E4775]/60 font-semibold text-xs">+</span>
-                                  <SimpleTooltip label="Ledger Marks">
-                                    <Image
-                                      src="/icons/marks.png"
-                                      alt="Harbor Marks"
-                                      width={20}
-                                      height={20}
-                                      className="flex-shrink-0 cursor-help"
-                                    />
-                                  </SimpleTooltip>
-                                </div>
+                                )
                               ) : (
                                 <span className="text-xs text-gray-400">-</span>
                               )}
@@ -3228,7 +4102,7 @@ export default function GenesisIndexPage() {
                       {/* Early Deposit Bonus Progress Bar - inside main market row */}
                       {(() => {
                         // Get market bonus status from the hook called at top level
-                        const marketBonusData = allMarketBonusStatus?.find(
+                        const marketBonusData = bonusStatusResults?.find(
                           (status) =>
                             status.genesisAddress?.toLowerCase() ===
                             genesisAddress?.toLowerCase()
@@ -3243,7 +4117,7 @@ export default function GenesisIndexPage() {
                         );
                         
                          // Get user's marks for this market
-                         const marksForMarket = allMarksData?.find(
+                         const marksForMarket = marksResults?.find(
                           (marks) =>
                             marks.genesisAddress?.toLowerCase() ===
                             genesisAddress?.toLowerCase()
@@ -3297,7 +4171,12 @@ export default function GenesisIndexPage() {
                     </div>
 
                     {/* Expanded View */}
-                    {isExpanded && (
+                    {isExpanded && (() => {
+                      const isWstETH = collateralSymbol.toLowerCase() === "wsteth";
+                      const isFxSAVE = collateralSymbol.toLowerCase() === "fxsave";
+                      const underlyingAPR = isWstETH ? wstETHAPR : isFxSAVE ? fxSAVEAPR : null;
+                      
+                      return (
                       <MarketExpandedView
                         marketId={id}
                         market={mkt}
@@ -3312,14 +4191,99 @@ export default function GenesisIndexPage() {
                         collateralPriceUSD={collateralPriceUSD}
                         peggedSymbol={rowPeggedSymbol}
                         leveragedSymbol={rowLeveragedSymbol}
+                          underlyingAPR={underlyingAPR}
                       />
-                    )}
+                      );
+                    })()}
                   </React.Fragment>
                 );
               });
 
               return marketRows;
             })()}
+          </section>
+        )}
+
+        {/* Coming Soon Markets Section */}
+        {comingSoonMarkets.length > 0 && (
+          <section className="space-y-2 overflow-visible mt-8">
+            <div className="pt-4 mb-1">
+              <h2 className="text-xs font-medium text-white/70 uppercase tracking-wider">
+                Coming Soon
+              </h2>
+            </div>
+            <div className="space-y-2">
+              {comingSoonMarkets.map(([id, mkt]) => {
+                const peggedSymbol = mkt.peggedToken?.symbol || "haTOKEN";
+                const leveragedSymbol = mkt.leveragedToken?.symbol || "hsTOKEN";
+                const collateralSymbol = mkt.collateral?.symbol || "COLLATERAL";
+                
+                // Format market name same as active genesis events (remove "hs" prefix from leveraged symbol)
+                const marketName = leveragedSymbol && leveragedSymbol.toLowerCase().startsWith("hs")
+                  ? leveragedSymbol.slice(2)
+                  : leveragedSymbol || (mkt as any).name || id;
+                
+                // Calculate underlying APR for coming soon markets
+                const isWstETH = collateralSymbol.toLowerCase() === "wsteth";
+                const isFxSAVE = collateralSymbol.toLowerCase() === "fxsave";
+                const underlyingAPR = isWstETH ? wstETHAPR : isFxSAVE ? fxSAVEAPR : null;
+                
+                return (
+                  <div
+                    key={id}
+                    className="bg-white p-4 rounded-none border border-white/10"
+                  >
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                      {/* First row: Market title + token symbols on mobile, separate on desktop */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-col md:flex-col gap-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <div className="text-[#1E4775] font-medium text-sm lg:text-base">
+                              {marketName}
+                            </div>
+                            <div className="flex items-center gap-2 text-xs text-[#1E4775]/70 md:hidden">
+                              <span>{peggedSymbol}</span>
+                              <span>+</span>
+                              <span>{leveragedSymbol}</span>
+                              <span className="text-[#1E4775]/50">({collateralSymbol})</span>
+                            </div>
+                          </div>
+                          <div className="hidden md:flex items-center gap-2 text-xs text-[#1E4775]/70">
+                            <span>{peggedSymbol}</span>
+                            <span>+</span>
+                            <span>{leveragedSymbol}</span>
+                            <span className="text-[#1E4775]/50">({collateralSymbol})</span>
+                          </div>
+                        </div>
+                      </div>
+                      {/* Second row on mobile: Projected APR + Coming Soon */}
+                      <div className="flex items-center gap-3 md:contents">
+                        {/* Projected APR */}
+                        {underlyingAPR !== null && underlyingAPR !== undefined && (
+                          <div className="text-sm text-[#1E4775] text-center md:whitespace-nowrap flex-1 md:flex-none">
+                            <span className="font-semibold">
+                              Projected {peggedSymbol} APR (Stability pools): {(underlyingAPR * 2 * 100).toFixed(2)}% +
+                            </span>
+                            <Image
+                              src="/icons/marks.png"
+                              alt="Marks"
+                              width={18}
+                              height={18}
+                              className="inline-block ml-1 align-middle"
+                            />
+                          </div>
+                        )}
+                        <div className="bg-[#FF8A7A] px-6 md:px-12 py-2 md:self-auto flex-shrink-0">
+                          <span className="text-white font-semibold text-sm uppercase tracking-wider">
+                            Coming Soon
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </section>
         )}
       </main>

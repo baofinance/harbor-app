@@ -216,6 +216,12 @@ export function useMultipleCollateralPrices(
     const map = new Map<string, CollateralPriceData>();
 
     validAddresses.forEach((address, index) => {
+      // Safety check: ensure address is a valid string
+      if (!address || typeof address !== "string" || !address.toLowerCase) {
+        console.warn("[useMultipleCollateralPrices] Invalid address at index", index, address);
+        return;
+      }
+
       const read = reads?.[index];
       const defaultData: CollateralPriceData = {
         minPrice: undefined,
