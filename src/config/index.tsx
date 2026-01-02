@@ -1,6 +1,8 @@
 import { createConfig, http } from "wagmi";
 import { mainnet } from "wagmi/chains";
-import { injected, coinbaseWallet, walletConnect } from "wagmi/connectors";
+import { injected, walletConnect } from "wagmi/connectors";
+// Temporarily disabled due to Next.js 15 build issue with @noble/curves
+// import { coinbaseWallet } from "wagmi/connectors";
 import { safeConnector } from "./safeConnector";
 
 const WC_PROJECT_ID = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID;
@@ -12,7 +14,8 @@ const MAINNET_RPC_URL =
 const connectors = [
   safeConnector(), // Safe connector - will only be active in Safe iframe
   injected(), // This will automatically detect injected providers like MetaMask
-  coinbaseWallet({ appName: "harbor" }),
+  // Temporarily disabled due to Next.js 15 build issue with @noble/curves in ox package
+  // coinbaseWallet({ appName: "harbor" }),
  ...(WC_PROJECT_ID ? [walletConnect({ projectId: WC_PROJECT_ID })] : []),
 ];
 
