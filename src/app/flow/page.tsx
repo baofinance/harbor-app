@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React from "react";
 import Head from "next/head";
 import { usePublicClient } from "wagmi";
 import {
@@ -8,34 +8,42 @@ import {
   ChartBarIcon,
   CpuChipIcon,
   InformationCircleIcon,
+  MagnifyingGlassIcon,
+  Bars3Icon,
 } from "@heroicons/react/24/outline";
-import { NETWORKS, type Network } from "@/config/networks";
-import { feeds } from "@/config/feeds";
-import { FeedGroupSection } from "@/components/flow/FeedGroupSection";
 import { FeedDetails } from "@/components/flow/FeedDetails";
-
-type ExpandedState = null | {
-  network: Network;
-  token: string;
-  feedIndex: number;
-};
+import { ExpandedFeedHeader } from "@/components/flow/ExpandedFeedHeader";
+import { FeatureBox } from "@/components/flow/FeatureBox";
+import { ChainDropdown } from "@/components/flow/ChainDropdown";
+import { BaseAssetDropdown } from "@/components/flow/BaseAssetDropdown";
+import { FeedTable } from "@/components/flow/FeedTable";
+import { useFeedFilters } from "@/hooks/useFeedFilters";
 
 export default function FlowPage() {
   const publicClient = usePublicClient();
-  const [expanded, setExpanded] = useState<ExpandedState>(null);
-
-  // All networks are visible
-  const visibleNetworks = useMemo(() => NETWORKS, []);
+  const {
+    expanded,
+    setExpanded,
+    selectedNetwork,
+    setSelectedNetwork,
+    selectedBaseAsset,
+    setSelectedBaseAsset,
+    searchQuery,
+    setSearchQuery,
+    filteredFeeds,
+    availableBaseAssets,
+    totalFeedCount,
+  } = useFeedFilters();
 
   return (
     <>
       <Head>
         <title>Map Room | Harbor</title>
       </Head>
-      <div className="min-h-screen bg-[#1E4775] max-w-[1300px] mx-auto font-sans relative">
-        <main className="container mx-auto px-3 sm:px-4 lg:px-10 pb-6">
+      <div className="min-h-screen text-white max-w-[1300px] mx-auto font-sans relative">
+        <main className="container mx-auto px-4 sm:px-10 pb-6">
           {/* Header */}
-          <div className="mb-2 relative py-2">
+          <div className="mb-2">
             <div className="p-2 flex items-center justify-center mb-0">
               <h1 className="font-bold font-mono text-white text-7xl text-center">
                 Map Room
@@ -71,89 +79,106 @@ export default function FlowPage() {
           </div>
 
           {/* Divider */}
-          <div className="border-t border-white/20 my-2"></div>
+          <div className="border-t border-white/10 my-2"></div>
 
-          {/* Feed Sections */}
-          <section className="space-y-2 overflow-visible">
-            {visibleNetworks.map((network) => (
-              <NetworkFeedGroups
-                key={network}
-                network={network}
+          {/* Filters and Overview Section */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 mb-4">
+            {/* Filters Section - 3/4 width */}
+            <div className="md:col-span-2 lg:col-span-3 bg-white p-4 border border-[#1E4775]/10">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                {/* Chain Dropdown */}
+                <div>
+                  <label className="block text-xs text-[#1E4775]/60 mb-2 uppercase tracking-wider">
+                    Chain
+                  </label>
+                  <ChainDropdown
+                    selectedNetwork={selectedNetwork}
+                    onSelect={setSelectedNetwork}
+                  />
+                </div>
+
+                {/* Base Asset Dropdown */}
+                <div>
+                  <label className="block text-xs text-[#1E4775]/60 mb-2 uppercase tracking-wider">
+                    Base Asset
+                  </label>
+                  <BaseAssetDropdown
+                    selectedBaseAsset={selectedBaseAsset}
+                    availableAssets={availableBaseAssets}
+                    onSelect={setSelectedBaseAsset}
+                  />
+                </div>
+
+                {/* Search */}
+                <div>
+                  <label className="block text-xs text-[#1E4775]/60 mb-2 uppercase tracking-wider">
+                    Search Quote Asset
+                  </label>
+                  <div className="relative">
+                    <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-[#1E4775]/40" />
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Search by quote asset..."
+                      className="w-full pl-10 pr-4 py-2 border border-[#1E4775]/20 text-[#1E4775] focus:outline-none focus:ring-2 focus:ring-[#1E4775]/20"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Total Feeds Section - 1/4 width */}
+            <div className="md:col-span-2 lg:col-span-1 bg-[#FF8A7A] border border-[#1E4775] p-4 flex flex-col items-center justify-center">
+              <div className="flex items-center gap-2 mb-2">
+                <Bars3Icon className="w-5 h-5 text-white flex-shrink-0" />
+                <h3 className="font-bold text-white text-lg sm:text-sm md:text-base lg:text-lg text-center">
+                  Total Feeds
+                </h3>
+              </div>
+              <div className="flex-1 flex items-center justify-center">
+                <span className="text-2xl sm:text-xl md:text-3xl font-bold text-white font-mono text-center">
+                  {totalFeedCount}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Feed Table */}
+          {/* Show feeds when filters are applied or when showing first 10 feeds */}
+          {filteredFeeds.length > 0 && (
+            <>
+              <FeedTable
+                feeds={filteredFeeds}
                 publicClient={publicClient}
                 expanded={expanded}
                 setExpanded={setExpanded}
               />
-            ))}
-          </section>
+              {/* Footnote - always show max 10 feeds limit */}
+              <div className="text-right mt-2">
+                <span className="text-xs text-white/60">max 10 feeds visible</span>
+              </div>
+            </>
+          )}
 
           {/* Detailed Feed Expansion */}
           {expanded && (
-            <FeedDetails
-              network={expanded.network}
-              token={expanded.token}
-              feedIndex={expanded.feedIndex}
-              publicClient={publicClient}
-              onClose={() => setExpanded(null)}
-            />
+            <>
+              <ExpandedFeedHeader
+                expanded={expanded}
+                onClose={() => setExpanded(null)}
+              />
+              <FeedDetails
+                network={expanded.network}
+                token={expanded.token}
+                feedIndex={expanded.feedIndex}
+                publicClient={publicClient}
+                onClose={() => setExpanded(null)}
+              />
+            </>
           )}
         </main>
       </div>
-    </>
-  );
-}
-
-function FeatureBox({
-  icon: Icon,
-  title,
-  description,
-}: {
-  icon: any;
-  title: string;
-  description: string;
-}) {
-  return (
-    <div className="bg-[#17395F] p-4">
-      <div className="flex items-center justify-center mb-2">
-        <Icon className="w-6 h-6 text-white mr-2" />
-        <h2 className="font-bold text-white text-lg text-center">{title}</h2>
-      </div>
-      <p className="text-sm text-white/80 text-center">{description}</p>
-    </div>
-  );
-}
-
-function NetworkFeedGroups({
-  network,
-  publicClient,
-  expanded,
-  setExpanded,
-}: {
-  network: Network;
-  publicClient: any;
-  expanded: ExpandedState;
-  setExpanded: (state: ExpandedState) => void;
-}) {
-  const networkFeeds = feeds[network as keyof typeof feeds];
-  if (!networkFeeds) return null;
-
-  const tokenGroups = Object.entries(networkFeeds)
-    .filter(
-      ([, tokens]) => Array.isArray(tokens) && (tokens as any[]).length > 0
-    )
-    .map(([key]) => key);
-
-  return (
-    <>
-      {tokenGroups.map((token) => (
-        <FeedGroupSection
-          key={`${network}-${token}`}
-          network={network}
-          token={token}
-          publicClient={publicClient}
-          expanded={expanded}
-          setExpanded={setExpanded}
-        />
-      ))}
     </>
   );
 }

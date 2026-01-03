@@ -14,9 +14,9 @@ const ICONS: Record<string, string> = {
     dollar: "/icons/usd.svg",
     eur: "/icons/eur.svg",
     euro: "/icons/eur.svg",
-    xau: "/icons/gold.svg",
+    xau: "/icons/gold.svg", // Keep for backward compatibility
     gold: "/icons/gold.svg",
-    xag: "/icons/gold.svg", // Silver - using gold icon as placeholder
+    xag: "/icons/gold.svg", // Keep for backward compatibility - Silver using gold icon as placeholder
     silver: "/icons/gold.svg",
     mcap: "/icons/mcap.svg",
     t6ch: "/icons/mcap.svg",
