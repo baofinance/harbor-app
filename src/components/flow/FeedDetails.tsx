@@ -1238,16 +1238,7 @@ export function FeedDetails({
   if (!feed) return null;
 
   return (
-    <section className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 mt-4 relative">
-      {/* Close Button */}
-      <button
-        onClick={onClose}
-        className="absolute top-2 right-2 z-10 p-1.5 rounded-full bg-white border border-[#1E4775]/20 hover:bg-[#1E4775]/5 transition-colors"
-        aria-label="Close details"
-      >
-        <XMarkIcon className="w-5 h-5 text-[#1E4775]" />
-      </button>
-
+    <section className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 mt-4">
       {/* Price Display */}
       <div className="md:col-span-2 bg-white p-4 border border-[#1E4775]/10">
         <div className="text-[#1E4775]/60 text-xs mb-1">
@@ -1261,58 +1252,76 @@ export function FeedDetails({
         <div className="text-2xl font-mono text-[#1E4775]">
           {format18(price)}
         </div>
-        <div className="text-[#1E4775]/40 text-xs">18 decimals</div>
-        {feedCount !== undefined && feedCount > 0 && (isMultifeedSumType || isMultifeedDivType || isMultifeedNormalizedType) && !loading && (
-          <div className="text-[#1E4775]/40 text-xs mt-1">
-            {(() => {
-              // Calculate sum of all feed prices, excluding base feed
-              // For MultifeedNormalized, use normalizedPrice instead of price
-              const sum = feedTable.reduce((acc, row) => {
-                // Skip base feed rows (id === 0 or name contains "base")
-                const isBaseFeed = row.id === 0 ||
-                  row.name?.toLowerCase().includes("base") ||
-                  row.name === "Base USD Feed";
-                if (isBaseFeed) {
-                  return acc;
-                }
-
-                // For MultifeedNormalized, use normalizedPrice if available, otherwise use price
-                const priceToUse = isMultifeedNormalizedType && row.normalizedPrice && row.normalizedPrice !== "-"
-                  ? row.normalizedPrice
-                  : row.price;
-
-                if (priceToUse && priceToUse !== "-") {
-                  const priceNum = parseFloat(priceToUse.replace(/,/g, ""));
-                  if (!isNaN(priceNum)) {
-                    return acc + priceNum;
+        <div className="text-[#1E4775]/40 text-xs mt-1">18 decimals</div>
+        <div className="space-y-1 mt-2">
+          {(() => {
+            // Find base feed (id === 0 or name contains "base")
+            const baseFeed = feedTable.find(row => 
+              row.id === 0 ||
+              row.name?.toLowerCase().includes("base") ||
+              row.name === "Base USD Feed"
+            );
+            
+            const baseFeedPrice = baseFeed?.price || baseFeed?.rawPrice;
+            
+            return baseFeedPrice && baseFeedPrice !== "-" ? (
+              <div className="text-[#1E4775]/40 text-xs">
+                Price USD (Base Asset): {baseFeedPrice}
+              </div>
+            ) : null;
+          })()}
+          {feedCount !== undefined && feedCount > 0 && (isMultifeedSumType || isMultifeedDivType || isMultifeedNormalizedType) && !loading && (
+            <>
+              {(() => {
+                // Calculate sum of all feed prices, excluding base feed
+                // For MultifeedNormalized, use normalizedPrice instead of price
+                const sum = feedTable.reduce((acc, row) => {
+                  // Skip base feed rows (id === 0 or name contains "base")
+                  const isBaseFeed = row.id === 0 ||
+                    row.name?.toLowerCase().includes("base") ||
+                    row.name === "Base USD Feed";
+                  if (isBaseFeed) {
+                    return acc;
                   }
-                }
-                return acc;
-              }, 0);
 
-              // Calculate asset price USD by dividing sum by feed count (skip for MultifeedSum since feedCount=1)
-              const assetPriceUSD = !isMultifeedSumType && sum > 0 && feedCount > 0 ? sum / feedCount : null;
+                  // For MultifeedNormalized, use normalizedPrice if available, otherwise use price
+                  const priceToUse = isMultifeedNormalizedType && row.normalizedPrice && row.normalizedPrice !== "-"
+                    ? row.normalizedPrice
+                    : row.price;
 
-              return sum > 0 ? (
-                <>
-                  <div>
-                    Price USD ({isMultifeedNormalizedType ? "Sum feeds normalized" : "Sum feeds"}): {sum.toLocaleString(undefined, { maximumFractionDigits: 6 })}
-                  </div>
-                  {assetPriceUSD !== null && (
-                    <div>
-                      Price USD (haToken): {assetPriceUSD.toLocaleString(undefined, { maximumFractionDigits: 6 })}
+                  if (priceToUse && priceToUse !== "-") {
+                    const priceNum = parseFloat(priceToUse.replace(/,/g, ""));
+                    if (!isNaN(priceNum)) {
+                      return acc + priceNum;
+                    }
+                  }
+                  return acc;
+                }, 0);
+
+                // Calculate asset price USD by dividing sum by feed count (skip for MultifeedSum since feedCount=1)
+                const assetPriceUSD = !isMultifeedSumType && sum > 0 && feedCount > 0 ? sum / feedCount : null;
+
+                return sum > 0 ? (
+                  <>
+                    <div className="text-[#1E4775]/40 text-xs">
+                      Price USD ({isMultifeedNormalizedType ? "Sum feeds normalized" : "Sum feeds"}): {sum.toLocaleString(undefined, { maximumFractionDigits: 6 })}
                     </div>
-                  )}
-                </>
-              ) : null;
-            })()}
-          </div>
-        )}
-        {feedCount !== undefined && (
-          <div className="text-[#1E4775]/40 text-xs">
-            Feed count: {feedCount}
-          </div>
-        )}
+                    {assetPriceUSD !== null && (
+                      <div className="text-[#1E4775]/40 text-xs">
+                        Price USD (Quote asset): {assetPriceUSD.toLocaleString(undefined, { maximumFractionDigits: 6 })}
+                      </div>
+                    )}
+                  </>
+                ) : null;
+              })()}
+            </>
+          )}
+          {feedCount !== undefined && (
+            <div className="text-[#1E4775]/40 text-xs">
+              Feed count: {feedCount}
+            </div>
+          )}
+        </div>
         {isMultifeedSumType && indexPrice !== undefined && (
           <div className="text-[#1E4775]/40 text-xs">
             Indexed price: {format18(indexPrice)}
@@ -1393,7 +1402,15 @@ export function FeedDetails({
                 </td>
               </tr>
             ) : (
-              feedTable.map((r) => (
+              feedTable
+                .filter((r) => {
+                  // Filter out base feed rows (id === 0 or name contains "base")
+                  const isBaseFeed = r.id === 0 ||
+                    r.name?.toLowerCase().includes("base") ||
+                    r.name === "Base USD Feed";
+                  return !isBaseFeed;
+                })
+                .map((r) => (
                 <tr key={r.id} className="border-t border-[#1E4775]/10">
                   <td className="py-2 px-4 font-mono text-[#1E4775]">{r.id}</td>
                   <td className="py-2 px-4 font-mono text-[#1E4775]">
