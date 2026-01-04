@@ -18,13 +18,24 @@ export default function TokenIcon({
  className,
 }: TokenIconProps) {
  const [imgSrc, setImgSrc] = useState(src);
+ const [hasError, setHasError] = useState(false);
 
  useEffect(() => {
+ // Reset error state when src changes
+ setHasError(false);
+ setImgSrc(src);
+ 
  // Check if the image exists, otherwise set placeholder
  const image = new window.Image();
  image.src = src;
- image.onload = () => setImgSrc(src);
- image.onerror = () => setImgSrc("/icons/placeholder.svg");
+ image.onload = () => {
+   setImgSrc(src);
+   setHasError(false);
+ };
+ image.onerror = () => {
+   setImgSrc("/icons/placeholder.svg");
+   setHasError(true);
+ };
  }, [src]);
 
  // eslint-disable-next-line @next/next/no-img-element
@@ -35,6 +46,12 @@ export default function TokenIcon({
  width={width}
  height={height}
  className={className}
+ onError={() => {
+   if (!hasError) {
+     setImgSrc("/icons/placeholder.svg");
+     setHasError(true);
+   }
+ }}
  />
  );
 }

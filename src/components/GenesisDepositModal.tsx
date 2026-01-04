@@ -25,6 +25,7 @@ import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
 import { useDefiLlamaSwap, getDefiLlamaSwapTx } from "@/hooks/useDefiLlamaSwap";
 import { useUserTokens, getTokenAddress, getTokenInfo, useTokenDecimals } from "@/hooks/useUserTokens";
 import { useAnyTokenDeposit } from "@/hooks/useAnyTokenDeposit";
+import { TokenSelectorDropdown } from "@/components/TokenSelectorDropdown";
 
 interface GenesisDepositModalProps {
  isOpen: boolean;
@@ -1551,59 +1552,52 @@ const successFmt = formatTokenAmount(successAmountBigInt, collateralSymbol, coll
  <label className="text-sm text-[#1E4775]/70">
  Deposit Asset
  </label>
- <select
- value={selectedAsset}
- onChange={(e) => {
-   const newValue = e.target.value;
-   if (newValue === "custom") {
-     setShowCustomTokenInput(true);
-     setSelectedAsset("custom");
-   } else {
-     setShowCustomTokenInput(false);
-     setSelectedAsset(newValue);
-     setCustomTokenAddress("");
-   }
- }}
-                        className="w-full h-12 px-4 bg-white text-[#1E4775] border border-[#1E4775]/20 focus:border-[#1E4775]/40 focus:ring-1 focus:ring-[#1E4775]/20 focus:outline-none transition-all text-sm"
- disabled={
- step ==="approving" ||
- step ==="depositing" ||
- genesisEnded
- }
-                        >
-                          {/* Accepted assets */}
-                          {acceptedAssets.length > 0 && (
-                            <optgroup label="Supported Assets">
-                              {acceptedAssets.map((asset) => (
-                                <option key={asset.symbol} value={asset.symbol}>
-                                  {asset.name} ({asset.symbol})
-                                </option>
-                              ))}
-                            </optgroup>
-                          )}
-                          
-                          {/* User tokens (if any) */}
-                          {userTokens.length > 0 && (() => {
-                            const filteredUserTokens = userTokens.filter(token => 
-                              !acceptedAssets.some(a => a.symbol.toUpperCase() === token.symbol.toUpperCase())
-                            );
-                            
-                            if (filteredUserTokens.length === 0) return null;
-                            
-                            return (
-                              <optgroup label="Other Tokens (via Swap)">
-                                {filteredUserTokens.map((token) => (
-                                  <option key={token.symbol} value={token.symbol}>
-                                    {token.name} ({token.symbol}) - {token.balanceFormatted}
-                                  </option>
-                                ))}
-                              </optgroup>
-                            );
-                          })()}
-                          
-                          {/* Custom token option */}
-                          <option value="custom">+ Add Custom Token Address</option>
-                        </select>
+ {(() => {
+   const filteredUserTokens = userTokens.filter(token => 
+     !acceptedAssets.some(a => a.symbol.toUpperCase() === token.symbol.toUpperCase())
+   );
+   
+   const tokenGroups = [
+     ...(acceptedAssets.length > 0 ? [{
+       label: "Supported Assets",
+       tokens: acceptedAssets.map((asset) => ({
+         symbol: asset.symbol,
+         name: asset.name,
+       })),
+     }] : []),
+     ...(filteredUserTokens.length > 0 ? [{
+       label: "Other Tokens (via Swap)",
+       tokens: filteredUserTokens.map((token) => ({
+         symbol: token.symbol,
+         name: token.name,
+         isUserToken: true,
+       })),
+     }] : []),
+   ];
+   
+   return (
+     <TokenSelectorDropdown
+       value={selectedAsset === "custom" ? "" : selectedAsset}
+       onChange={(newValue) => {
+         setShowCustomTokenInput(false);
+         setSelectedAsset(newValue);
+         setCustomTokenAddress("");
+       }}
+       options={tokenGroups}
+       disabled={
+         step === "approving" ||
+         step === "depositing" ||
+         genesisEnded
+       }
+       placeholder="Select Deposit Asset"
+       showCustomOption={true}
+       onCustomOptionClick={() => {
+         setShowCustomTokenInput(true);
+         setSelectedAsset("custom");
+       }}
+     />
+   );
+ })()}
  
  {/* Custom token address input */}
  {showCustomTokenInput && (

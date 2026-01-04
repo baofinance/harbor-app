@@ -1,6 +1,7 @@
 const ICONS: Record<string, string> = {
     eth: "/icons/eth.png",
     ethereum: "/icons/eth.png",
+    weth: "/icons/eth.png", // Wrapped Ether - use ETH icon
     fxsave: "/icons/fxSave.png",
     fxusd: "/icons/fxUSD.webp",
     usdc: "/icons/usdc.webp",
@@ -8,6 +9,7 @@ const ICONS: Record<string, string> = {
     wsteth: "/icons/wstETH.webp",
     btc: "/icons/btc.png",
     bitcoin: "/icons/btc.png",
+    wbtc: "/icons/btc.png", // Wrapped Bitcoin - use BTC icon
     susde: "/icons/susde.svg",
     usde: "/icons/susde.svg",
     usd: "/icons/usd.svg",
@@ -24,6 +26,18 @@ const ICONS: Record<string, string> = {
     mag7: "/icons/stock.svg", // Financial index - using stock icon
     "mag7.i26": "/icons/stock.svg", // Financial index variant
     bom5: "/icons/stock.svg", // Financial index - using stock icon
+    // Harbor tokens - ha (pegged) tokens
+    haeth: "/icons/haETH.png",
+    habtc: "/icons/haBTC.png",
+    hapb: "/icons/haETH.png",
+    // Harbor tokens - hs (leveraged) tokens
+    "hsfxusd-eth": "/icons/hsUSDETH.png",
+    hsfxusdeth: "/icons/hsUSDETH.png",
+    "hsfxusd-btc": "/icons/hsUSDBTC.png",
+    hsfxusdbtc: "/icons/hsUSDBTC.png",
+    "hssteth-btc": "/icons/hsETHBTC.png",
+    hsstethbtc: "/icons/hsETHBTC.png",
+    hseth: "/icons/hsUSDETH.png", // Fallback for hsETH
 };
 
 const STOCK_TICKERS = ["aapl", "amzn", "googl", "meta", "msft", "nvda", "spy", "tsla"];
@@ -33,6 +47,16 @@ export function getLogoPath(symbol: string): string {
 
     if (ICONS[key]) {
         return ICONS[key];
+    }
+
+    // Harbor tokens - ha (pegged) tokens fallback
+    if (key.startsWith("ha")) {
+        return "/icons/haUSD2.png"; // Fallback for other ha tokens
+    }
+    
+    // Harbor tokens - hs (leveraged) tokens fallback
+    if (key.startsWith("hs")) {
+        return "/icons/hsUSDETH.png"; // Fallback for other hs tokens
     }
 
     if (STOCK_TICKERS.includes(key)) {
