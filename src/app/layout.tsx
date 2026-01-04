@@ -5,7 +5,7 @@ import { headers } from "next/headers";
 import Navigation from "@/components/Navigation";
 import FadeContent from "@/components/FadeContent";
 
-const siteUrl ="https://harbor.finance";
+const siteUrl ="https://harborfinance.io";
 const title ="Harbor Protocol";
 const description =
 "A decentralized protocol for creating synthetic assets pegged to any real-world data feed.";
