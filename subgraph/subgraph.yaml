@@ -1,19 +1,16 @@
-# Sail Tokens Subgraph - TEST2 (PnL + price history only)
-# Tracks minter mint/redeem events and writes:
-# - UserSailPosition, CostBasisLot, SailTokenMintEvent, SailTokenRedeemEvent
-# - SailTokenPricePoint, HourlyPriceSnapshot, PriceTracker
+# Sail Tokens Subgraph - PRODUCTION (PnL + price history only)
 specVersion: 0.0.8
 schema:
   file: ./schema.graphql
 dataSources:
-  # ETH/fxUSD (test2)
+  # ETH/fxUSD (prod)
   - kind: ethereum
     name: SailGenesis_ETH_fxUSD
     network: mainnet
     source:
-      address: "0x5f4398e1d3e33f93e3d7ee710d797e2a154cb073"
+      address: "0xC9df4f62474Cf6cdE6c064DB29416a9F4f27EBdC"
       abi: Genesis
-      startBlock: 24025347
+      startBlock: 24049488
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -46,9 +43,9 @@ dataSources:
     name: Minter_ETH_fxUSD
     network: mainnet
     source:
-      address: "0x565f90dc7c022e7857734352c7bf645852d8d4e7"
+      address: "0xd6E2F8e57b4aFB51C6fA4cbC012e1cE6aEad989F"
       abi: Minter
-      startBlock: 24080000
+      startBlock: 24049488
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -61,7 +58,6 @@ dataSources:
         - SailTokenPricePoint
         - HourlyPriceSnapshot
         - PriceTracker
-        - MinterHourlyTracker
       abis:
         - name: Minter
           file: ./abis/Minter.json
@@ -80,14 +76,14 @@ dataSources:
         - handler: handleBlock
       file: ./src/minterPnL.ts
 
-  # BTC/fxUSD (test2)
+  # BTC/fxUSD (prod)
   - kind: ethereum
     name: SailGenesis_BTC_fxUSD
     network: mainnet
     source:
-      address: "0x288c61c3b3684ff21adf38d878c81457b19bd2fe"
+      address: "0x42cc9a19b358a2A918f891D8a6199d8b05F0BC1C"
       abi: Genesis
-      startBlock: 24025557
+      startBlock: 24049375
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -120,9 +116,9 @@ dataSources:
     name: Minter_BTC_fxUSD
     network: mainnet
     source:
-      address: "0x7ffe3acb524fb40207709ba597d39c085d258f15"
+      address: "0x33e32ff4d0677862fa31582CC654a25b9b1e4888"
       abi: Minter
-      startBlock: 24080000
+      startBlock: 24049375
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -135,7 +131,6 @@ dataSources:
         - SailTokenPricePoint
         - HourlyPriceSnapshot
         - PriceTracker
-        - MinterHourlyTracker
       abis:
         - name: Minter
           file: ./abis/Minter.json
@@ -154,14 +149,14 @@ dataSources:
         - handler: handleBlock
       file: ./src/minterPnL.ts
 
-  # BTC/stETH (test2)
+  # BTC/stETH (prod)
   - kind: ethereum
     name: SailGenesis_BTC_stETH
     network: mainnet
     source:
-      address: "0x9ae0b57ceada0056dbe21edcd638476fcba3ccc0"
+      address: "0xc64Fc46eED431e92C1b5e24DC296b5985CE6Cc00"
       abi: Genesis
-      startBlock: 24025785
+      startBlock: 24049273
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -194,9 +189,9 @@ dataSources:
     name: Minter_BTC_stETH
     network: mainnet
     source:
-      address: "0x042e7cb5b993312490ea07fb89f360a65b8a9056"
+      address: "0xF42516EB885E737780EB864dd07cEc8628000919"
       abi: Minter
-      startBlock: 24080000
+      startBlock: 24049273
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -209,7 +204,6 @@ dataSources:
         - SailTokenPricePoint
         - HourlyPriceSnapshot
         - PriceTracker
-        - MinterHourlyTracker
       abis:
         - name: Minter
           file: ./abis/Minter.json

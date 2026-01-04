@@ -1674,7 +1674,8 @@ export default function GenesisIndexPage() {
           
           return (
             <>
-            {/* Two Columns: Allocation (50%) | Allocated + FDV (50%) */}
+            {/* Two Columns: Allocation (50%) | Allocated + FDV (50%) - HIDDEN */}
+            {false && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-2">
               {/* Box 1: Maiden Voyage Airdrop Allocation (takes 50% of row) */}
               <div className="bg-[#17395F] px-4 pt-4 pb-4">
@@ -1898,6 +1899,7 @@ export default function GenesisIndexPage() {
                 </div>
               </div>
             </div>
+            )}
             </>
           );
         })()}
@@ -4193,8 +4195,8 @@ export default function GenesisIndexPage() {
                         </div>
                       </div>
 
-                      {/* Early Deposit Bonus Progress Bar - inside main market row */}
-                      {(() => {
+                      {/* Early Deposit Bonus Progress Bar - inside main market row - HIDDEN */}
+                      {false && (() => {
                         // Get market bonus status from the hook called at top level
                         const marketBonusData = bonusStatusResults?.find(
                           (status) =>
