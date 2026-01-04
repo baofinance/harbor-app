@@ -47,10 +47,13 @@ const STETH_SAIL_TOKEN = Address.fromString("0x469ddfcfa98d0661b7efedc82aceeab84
 const STETH_MINTER = Address.fromString("0x8b17b6e8f9ce3477ddaf372a4140ac6005787901");
 
 // ETH-pegged tokens
-const HAETH_TOKEN = Address.fromString("0x8e7442020ba7debfd77e67491c51faa097d87478"); // haETH (ETH/fxUSD market)
+// NOTE: We support both production + test2 deployments (mainnet).
+const HAETH_TOKEN_PROD = Address.fromString("0x7A53EBc85453DD006824084c4f4bE758FcF8a5B5"); // haETH (prod ETH/fxUSD)
+const HAETH_TOKEN_TEST2 = Address.fromString("0x8e7442020ba7debfd77e67491c51faa097d87478"); // haETH (test2 ETH/fxUSD)
 
 // BTC-pegged tokens
-const HABTC_TOKEN = Address.fromString("0x1822bbe8fe313c4b53414f0b3e5ef8147d485530"); // haBTC (BTC/fxUSD and BTC/stETH markets)
+const HABTC_TOKEN_PROD = Address.fromString("0x25bA4A826E1A1346dcA2Ab530831dbFF9C08bEA7"); // haBTC (prod BTC/*)
+const HABTC_TOKEN_TEST2 = Address.fromString("0x1822bbe8fe313c4b53414f0b3e5ef8147d485530"); // haBTC (test2 BTC/*)
 
 // ============================================================================
 // TOKEN TYPE DETECTION
@@ -72,8 +75,10 @@ export enum PegType {
 export function getTokenType(tokenAddress: Address): TokenType {
   // Anchor tokens
   if (tokenAddress.equals(STETH_ANCHOR_TOKEN) ||
-      tokenAddress.equals(HAETH_TOKEN) ||
-      tokenAddress.equals(HABTC_TOKEN)) {
+      tokenAddress.equals(HAETH_TOKEN_PROD) ||
+      tokenAddress.equals(HAETH_TOKEN_TEST2) ||
+      tokenAddress.equals(HABTC_TOKEN_PROD) ||
+      tokenAddress.equals(HABTC_TOKEN_TEST2)) {
     return TokenType.ANCHOR;
   }
   
@@ -93,12 +98,12 @@ export function getPegType(tokenAddress: Address): PegType {
   }
   
   // ETH-pegged markets
-  if (tokenAddress.equals(HAETH_TOKEN)) {
+  if (tokenAddress.equals(HAETH_TOKEN_PROD) || tokenAddress.equals(HAETH_TOKEN_TEST2)) {
     return PegType.ETH;
   }
   
   // BTC-pegged markets
-  if (tokenAddress.equals(HABTC_TOKEN)) {
+  if (tokenAddress.equals(HABTC_TOKEN_PROD) || tokenAddress.equals(HABTC_TOKEN_TEST2)) {
     return PegType.BTC;
   }
   
