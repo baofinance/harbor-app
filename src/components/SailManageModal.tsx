@@ -17,12 +17,13 @@ import { useCollateralPrice } from "@/hooks/useCollateralPrice";
 import SimpleTooltip from "@/components/SimpleTooltip";
 import { ArrowPathIcon } from "@heroicons/react/24/outline";
 import {
- TransactionProgressModal,
- TransactionStep,
+  TransactionProgressModal,
+  TransactionStep,
 } from "@/components/TransactionProgressModal";
 import { useDefiLlamaSwap, getDefiLlamaSwapTx } from "@/hooks/useDefiLlamaSwap";
 import { useUserTokens, useTokenDecimals } from "@/hooks/useUserTokens";
 import { formatBalance } from "@/utils/formatters";
+import { TokenSelectorDropdown } from "@/components/TokenSelectorDropdown";
 
 interface SailManageModalProps {
  isOpen: boolean;

@@ -32,6 +32,7 @@ import {
   TransactionProgressModal,
   TransactionStep,
 } from "@/components/TransactionProgressModal";
+import { TokenSelectorDropdown } from "@/components/TokenSelectorDropdown";
 
 // -----------------------------------------------------------------------------
 // Debug logging helpers
@@ -1437,9 +1438,9 @@ export const AnchorDepositWithdrawModal = ({
     return undefined;
   })();
 
-  // Check if selected deposit asset is ha token (in simple mode)
+  // Check if selected deposit asset is ha token (works in both simple and advanced mode)
   const isDirectPeggedDeposit = useMemo(() => {
-    if (!simpleMode || !selectedDepositAsset || activeTab !== "deposit")
+    if (!selectedDepositAsset || activeTab !== "deposit")
       return false;
     // Check if selected asset matches any market's pegged token symbol
     return marketsForToken.some(({ market: m }) => {
@@ -1448,7 +1449,7 @@ export const AnchorDepositWithdrawModal = ({
         selectedDepositAsset.toLowerCase() === peggedTokenSymbol.toLowerCase()
       );
     });
-  }, [simpleMode, selectedDepositAsset, activeTab, marketsForToken]);
+  }, [selectedDepositAsset, activeTab, marketsForToken]);
 
   // Read pegged token address from Genesis contract (source of truth)
   const { data: genesisPeggedTokenAddress } = useContractRead({
@@ -4186,6 +4187,18 @@ export const AnchorDepositWithdrawModal = ({
           formatUnits((expectedMintOutput * peggedTokenPriceUsdWei) / 10n ** 18n, 18)
         )
       : 0;
+  
+  // Calculate USD value for direct pegged token deposits (e.g., haBTC)
+  const directPeggedDepositUSD = useMemo(() => {
+    if (!isDirectPeggedDeposit || !amount || parseFloat(amount) <= 0 || peggedTokenPriceUsdWei <= 0n) {
+      return 0;
+    }
+    const amountBigInt = parseEther(amount);
+    return parseFloat(
+      formatUnits((amountBigInt * peggedTokenPriceUsdWei) / 10n ** 18n, 18)
+    );
+  }, [isDirectPeggedDeposit, amount, peggedTokenPriceUsdWei]);
+  
   const newTotalDepositUSD = currentDepositUSD + expectedDepositUSD;
   const newLedgerMarksPerDay = newTotalDepositUSD;
 
@@ -7340,54 +7353,52 @@ export const AnchorDepositWithdrawModal = ({
                         <label className="block text-sm font-semibold text-[#1E4775] mb-1.5">
                           Select Deposit Token
                         </label>
-                        <select
-                          value={selectedDepositAsset}
-                          onChange={(e) => {
-                            const newAsset = e.target.value;
-                            setSelectedDepositAsset(newAsset);
-                            anyTokenDeposit.setSelectedAsset(newAsset); // Sync with hook
-                            setAmount(""); // Reset amount when changing asset
-                            setError(null); // Clear any errors
-                            // Clear temp warning when changing asset
-                            if (tempMaxWarning) {
-                              setTempMaxWarning(null);
-                              if (tempWarningTimerRef.current) {
-                                clearTimeout(tempWarningTimerRef.current);
-                                tempWarningTimerRef.current = null;
-                              }
-                            }
-                          }}
-                          disabled={isProcessing}
-                          className="w-full px-3 py-2 bg-white text-[#1E4775] border border-[#1E4775]/20 focus:border-[#1E4775]/40 focus:ring-1 focus:ring-[#1E4775]/20 focus:outline-none text-sm transition-all"
-                        >
-                          {(() => {
-                            const nativeAssets = depositAssetsForDropdown.filter(a => !a.isUserToken);
-                            const userTokens = depositAssetsForDropdown.filter(a => a.isUserToken);
-                            
-                            return (
-                              <>
-                                {nativeAssets.length > 0 && (
-                                  <optgroup label="Supported Assets">
-                                    {nativeAssets.map((asset) => (
-                                      <option key={asset.symbol} value={asset.symbol}>
-                                        {asset.name} ({asset.symbol})
-                                      </option>
-                                    ))}
-                                  </optgroup>
-                                )}
-                                {userTokens.length > 0 && (
-                                  <optgroup label="Other Tokens (via Swap)">
-                                    {userTokens.map((asset) => (
-                                      <option key={asset.symbol} value={asset.symbol}>
-                                        {asset.name} ({asset.symbol}) - Will be swapped
-                                      </option>
-                                    ))}
-                                  </optgroup>
-                                )}
-                              </>
-                            );
-                          })()}
-                        </select>
+                        {(() => {
+                          const nativeAssets = depositAssetsForDropdown.filter(a => !a.isUserToken);
+                          const userTokens = depositAssetsForDropdown.filter(a => a.isUserToken);
+                          
+                          const tokenGroups = [
+                            ...(nativeAssets.length > 0 ? [{
+                              label: "Supported Assets",
+                              tokens: nativeAssets.map((asset) => ({
+                                symbol: asset.symbol,
+                                name: asset.name,
+                                isUserToken: false,
+                              })),
+                            }] : []),
+                            ...(userTokens.length > 0 ? [{
+                              label: "Other Tokens (via Swap)",
+                              tokens: userTokens.map((asset) => ({
+                                symbol: asset.symbol,
+                                name: asset.name,
+                                isUserToken: true,
+                              })),
+                            }] : []),
+                          ];
+                          
+                          return (
+                            <TokenSelectorDropdown
+                              value={selectedDepositAsset}
+                              onChange={(newAsset) => {
+                                setSelectedDepositAsset(newAsset);
+                                anyTokenDeposit.setSelectedAsset(newAsset); // Sync with hook
+                                setAmount(""); // Reset amount when changing asset
+                                setError(null); // Clear any errors
+                                // Clear temp warning when changing asset
+                                if (tempMaxWarning) {
+                                  setTempMaxWarning(null);
+                                  if (tempWarningTimerRef.current) {
+                                    clearTimeout(tempWarningTimerRef.current);
+                                    tempWarningTimerRef.current = null;
+                                  }
+                                }
+                              }}
+                              options={tokenGroups}
+                              disabled={isProcessing}
+                              placeholder="Select Deposit Token"
+                            />
+                          );
+                        })()}
                         {/* Swap info for "any token" deposits */}
                         {anyTokenDeposit.needsSwap && selectedDepositAsset && amount && parseFloat(amount) > 0 && (() => {
                           const isSwappingToUSDC = anyTokenDeposit.swapTargetToken !== "ETH";
@@ -7590,8 +7601,8 @@ export const AnchorDepositWithdrawModal = ({
                         )}
                       </div>
 
-                      {/* Mint Only Checkbox - Only show in Step 1, below amount input */}
-                      {currentStep === 1 && (
+                      {/* Mint Only Checkbox - Only show in Step 1, below amount input, and only if not depositing haToken directly */}
+                      {currentStep === 1 && !isDirectPeggedDeposit && (
                         <div className="pt-2">
                           <label className="flex items-center gap-3 cursor-pointer">
                             <input
@@ -7811,31 +7822,27 @@ export const AnchorDepositWithdrawModal = ({
                         <label className="block text-sm font-semibold text-[#1E4775] mb-1.5">
                           Select Reward Token
                         </label>
-                        <select
+                        <TokenSelectorDropdown
                           value={selectedRewardToken || ""}
-                          onChange={(e) => {
-                            const token = e.target.value || null;
-                            setSelectedRewardToken(token);
-                            if (token) {
+                          onChange={(token) => {
+                            const selectedToken = token || null;
+                            setSelectedRewardToken(selectedToken);
+                            if (selectedToken) {
                               setSelectedStabilityPool(null);
                               setDepositInStabilityPool(false);
                             }
                           }}
+                          options={rewardTokenOptions.map(({ token, maxAPR }) => ({
+                            symbol: token,
+                            name: token,
+                            // Show APR in the description/subtitle area
+                            description: maxAPR !== undefined && !isNaN(maxAPR)
+                              ? `up to ${formatAPR(maxAPR)} APR`
+                              : undefined,
+                          }))}
                           disabled={isProcessing}
-                          className="w-full px-4 py-3 bg-white text-[#1E4775] border-2 border-[#1E4775]/30 focus:border-[#1E4775] focus:ring-2 focus:ring-[#1E4775]/20 focus:outline-none text-base"
-                        >
-                          <option value="" disabled>
-                            Select a reward token
-                          </option>
-                          {rewardTokenOptions.map(({ token, maxAPR }) => (
-                            <option key={token} value={token}>
-                              {token}
-                              {maxAPR !== undefined && !isNaN(maxAPR)
-                                ? ` (up to ${formatAPR(maxAPR)} APR)`
-                                : ""}
-                            </option>
-                          ))}
-                        </select>
+                          placeholder="Select a reward token"
+                        />
                         {selectedRewardToken && (
                           <p className="mt-2 text-xs text-[#1E4775]/60 flex items-center gap-1">
                             <span>ℹ️</span>
@@ -8111,13 +8118,15 @@ export const AnchorDepositWithdrawModal = ({
                                     {isDirectPeggedDeposit &&
                                     amount &&
                                     parseFloat(amount) > 0
-                                      ? `$${parseFloat(amount).toLocaleString(
-                                          undefined,
-                                          {
-                                            minimumFractionDigits: 2,
-                                            maximumFractionDigits: 2,
-                                          }
-                                        )}`
+                                      ? directPeggedDepositUSD > 0
+                                        ? `$${directPeggedDepositUSD.toLocaleString(
+                                            undefined,
+                                            {
+                                              minimumFractionDigits: 2,
+                                              maximumFractionDigits: 2,
+                                            }
+                                          )}`
+                                        : "..."
                                       : expectedDepositUSD > 0
                                       ? `$${expectedDepositUSD.toLocaleString(
                                           undefined,
@@ -9495,7 +9504,7 @@ export const AnchorDepositWithdrawModal = ({
                   )}
 
                 {/* Mint Only / Deposit Options - Only for Deposit Tab (Advanced Mode) */}
-                {activeTab === "deposit" && !simpleMode && (
+                {activeTab === "deposit" && !simpleMode && !isDirectPeggedDeposit && (
                   <div className="space-y-2 pt-2 border-t border-[#1E4775]/10">
                     <label className="flex items-center gap-3 cursor-pointer">
                       <input
