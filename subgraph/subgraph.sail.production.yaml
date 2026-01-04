@@ -34,6 +34,9 @@ dataSources:
           handler: handleWithdraw
         - event: GenesisEnds()
           handler: handleGenesisEnd
+      callHandlers:
+        - function: endGenesis()
+          handler: handleEndGenesis
       file: ./src/genesisPnL.ts
 
   - kind: ethereum
@@ -69,6 +72,8 @@ dataSources:
           handler: handleMintLeveragedToken
         - event: RedeemLeveragedToken(indexed address,uint256,uint256)
           handler: handleRedeemLeveragedToken
+      blockHandlers:
+        - handler: handleBlock
       file: ./src/minterPnL.ts
 
   # BTC/fxUSD (prod)
@@ -102,6 +107,9 @@ dataSources:
           handler: handleWithdraw
         - event: GenesisEnds()
           handler: handleGenesisEnd
+      callHandlers:
+        - function: endGenesis()
+          handler: handleEndGenesis
       file: ./src/genesisPnL.ts
 
   - kind: ethereum
@@ -137,6 +145,8 @@ dataSources:
           handler: handleMintLeveragedToken
         - event: RedeemLeveragedToken(indexed address,uint256,uint256)
           handler: handleRedeemLeveragedToken
+      blockHandlers:
+        - handler: handleBlock
       file: ./src/minterPnL.ts
 
   # BTC/stETH (prod)
@@ -170,6 +180,9 @@ dataSources:
           handler: handleWithdraw
         - event: GenesisEnds()
           handler: handleGenesisEnd
+      callHandlers:
+        - function: endGenesis()
+          handler: handleEndGenesis
       file: ./src/genesisPnL.ts
 
   - kind: ethereum
@@ -205,6 +218,8 @@ dataSources:
           handler: handleMintLeveragedToken
         - event: RedeemLeveragedToken(indexed address,uint256,uint256)
           handler: handleRedeemLeveragedToken
+      blockHandlers:
+        - handler: handleBlock
       file: ./src/minterPnL.ts
 
 
