@@ -73,7 +73,13 @@ export default function FlowPage() {
               <FeatureBox
                 icon={InformationCircleIcon}
                 title="Feed Details"
-                description="Detailed info about heartbeat windows & deviation thresholds"
+                description={
+                  <>
+                    Detailed info about the feed:
+                    <br />
+                    price, feed count, normalization, indexation & heartbeat windows
+                  </>
+                }
               />
             </div>
           </div>
@@ -82,10 +88,10 @@ export default function FlowPage() {
           <div className="border-t border-white/10 my-2"></div>
 
           {/* Filters and Overview Section */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 mb-4 items-stretch">
             {/* Filters Section - 3/4 width */}
-            <div className="md:col-span-2 lg:col-span-3 bg-white p-4 border border-[#1E4775]/10">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+            <div className="md:col-span-2 lg:col-span-3 bg-white py-4 px-4 border border-[#1E4775]/10 flex flex-col justify-end">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {/* Chain Dropdown */}
                 <div>
                   <label className="block text-xs text-[#1E4775]/60 mb-2 uppercase tracking-wider">
@@ -129,7 +135,7 @@ export default function FlowPage() {
             </div>
 
             {/* Total Feeds Section - 1/4 width */}
-            <div className="md:col-span-2 lg:col-span-1 bg-[#FF8A7A] border border-[#1E4775] p-4 flex flex-col items-center justify-center">
+            <div className="md:col-span-2 lg:col-span-1 bg-[#FF8A7A] border border-[#1E4775]/10 py-4 px-4 flex flex-col items-center justify-end">
               <div className="flex items-center gap-2 mb-2">
                 <Bars3Icon className="w-5 h-5 text-white flex-shrink-0" />
                 <h3 className="font-bold text-white text-lg sm:text-sm md:text-base lg:text-lg text-center">

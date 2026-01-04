@@ -1,9 +1,9 @@
-import type { ComponentType } from "react";
+import type { ComponentType, ReactNode } from "react";
 
 interface FeatureBoxProps {
   icon: ComponentType<{ className?: string }>;
   title: string;
-  description: string;
+  description: string | ReactNode;
 }
 
 export function FeatureBox({ icon: Icon, title, description }: FeatureBoxProps) {
