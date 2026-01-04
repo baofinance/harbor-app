@@ -1,6 +1,6 @@
 import type { Network } from "@/config/networks"
 
-export type FeedStatus = "active" | "possible";
+export type FeedStatus = "active" | "available";
 
 export type FeedEntry = {
     readonly label: string;
@@ -12,47 +12,57 @@ export type FeedEntry = {
 export const feeds = {
     mainnet: {
         fxUSD: [
-            { label: "fxUSD/ETH", address: "0x71437C90F1E0785dd691FD02f7bE0B90cd14c097" as const, status: "active" as const },
-            { label: "fxUSD/BTC", address: "0x8F76a260c5D21586aFfF18f880FFC808D0524A73" as const, status: "active" as const },
-            { label: "fxUSD/EUR", address: "0x6bEb1a1189Ac68a2a26b5210e5ccfB9e8a3E408E" as const, status: "possible" as const },
-            { label: "fxUSD/XAU", address: "0x7DAe17B00DCd5C37D4992a17C3Cf8f5E15d2BbAf" as const, status: "possible" as const },
-            { label: "fxUSD/MCAP", address: "0xdF21f32c522B2A871D5a6AD303638051b51C378F" as const, status: "possible" as const },
+            { label: "fxUSD/ETH", address: "0x78D74eA76Fbfd476A06c1678dC89c025595c8536" as const, status: "active" as const },
+            { label: "fxUSD/BTC", address: "0x9f62503D61cdA530216ad46c1d239258bd201034" as const, status: "active" as const },
+            { label: "fxUSD/EUR", address: "0x8f6F9C8af44f5f15a18d0fa93B5814a623Fa6353" as const, status: "available" as const },
+            { label: "fxUSD/GOLD", address: "0x4be4501336130E61e5872cB953e886a3a84D34Cc" as const, status: "available" as const },
+            { label: "fxUSD/MCAP", address: "0x63d961913cd855f5f8C8cA7cDC22771abA3326FE" as const, status: "available" as const },
+            { label: "fxUSD/SILVER", address: "0xD59a1c8D1fa8f3FAE1E1f835E243A7BFb6173f91" as const, status: "available" as const },
         ],
 
         stETH: [
-            { label: "stETH/BTC", address: "0xd8789EB86Dd57f9Fe10D0D8dFa803286b389b1BC" as const, status: "active" as const },
-            { label: "stETH/EUR", address: "0x76453e0eaF1a54c0e939b2E66D9825808cBd411b" as const, status: "possible" as const },
-            { label: "stETH/XAU", address: "0x8919713b1620BCA8bE6e774fFFA735b0051ff6cB" as const, status: "possible" as const },
-            { label: "stETH/MCAP", address: "0x06CD5701d9FfD9F7AaDFE28C57B481e99D2ba3ad" as const, status: "possible" as const },
+            { label: "stETH/BTC", address: "0xC52B9C4eB5139E817e625290874c1CeBD44b2f6A" as const, status: "active" as const },
+            { label: "stETH/EUR", address: "0x6Daab5e7999D634ae849c30658B17D0e94f0f965" as const, status: "available" as const },
+            { label: "stETH/GOLD", address: "0x863C1185470b3D2d3E9D5FbB82e7837de081F46c" as const, status: "available" as const },
+            { label: "stETH/MCAP", address: "0x6B5A6950f7f2b380c33aF81dbbD7DA31caaFEA63" as const, status: "available" as const },
+            { label: "stETH/SILVER", address: "0xE0Ba50991B891df0f0F92d06127B43314a5e427d" as const, status: "available" as const },
         ],
-        sUSDE: [],
+        USDE: [],
     },
 
     arbitrum: {
         fxUSD: [],
-        sUSDE: [
-            { label: "sUSDE/USD", address: "0xd8789EB86Dd57f9Fe10D0D8dFa803286b389b1BC" as const, status: "possible" as const },
-            { label: "sUSDE/AAPL", address: "0x76453e0eaF1a54c0e939b2E66D9825808cBd411b" as const, status: "possible" as const },
-            { label: "sUSDE/AMZN", address: "0x8919713b1620BCA8bE6e774fFFA735b0051ff6cB" as const, status: "possible" as const },
-            { label: "sUSDE/GOOGL", address: "0x06CD5701d9FfD9F7AaDFE28C57B481e99D2ba3ad" as const, status: "possible" as const },
-            { label: "sUSDE/META", address: "0xF012a1BA66a411404FEae0a2AeD68dEB18D7de32" as const, status: "possible" as const },
-            { label: "sUSDE/MSFT", address: "0x8Ee0D6AD1d15b3515Ba81CCE16Bba344Deea6781" as const, status: "possible" as const },
-            { label: "sUSDE/NVDA", address: "0x424D373141a845eB2822B2a8e5ED0f529Ece4F7a" as const, status: "possible" as const },
-            { label: "sUSDE/SPY", address: "0x8391Ea5daa500ef69D76544172EC666B77bA711E" as const, status: "possible" as const },
-            { label: "sUSDE/TSLA", address: "0x8E02c828635D9519bed050FE1CBEbC646FEb3b88" as const, status: "possible" as const },
-            { label: "sUSDE/MAG7", address: "0x9243Ed7d94bb59b27A6FE31B76010Dbef796Fc5C" as const, status: "possible" as const },
+        USDE: [
+            { label: "USDE/AAPL", address: "0x91F5C981C3676af8eE40003c79E96582Fdb12621" as const, status: "available" as const },
+            { label: "USDE/AMZN", address: "0xf5dAfBF1A1abe5eaDC16799e69b7B53C58D193b5" as const, status: "available" as const },
+            { label: "USDE/GOOGL", address: "0xc351A54B3ED4a930d8B30958A112a1e6Dcd3eFc0" as const, status: "available" as const },
+            { label: "USDE/META", address: "0x9DadfFe3Fd7c14BF1c023fd736510464ea3E8234" as const, status: "available" as const },
+            { label: "USDE/MSFT", address: "0x2b63607299E7645D883168906bEfb13cb7F59659" as const, status: "available" as const },
+            { label: "USDE/NVDA", address: "0xb772b800982127A3e1489DAacBE214b3C8575dd6" as const, status: "available" as const },
+            { label: "USDE/SPY", address: "0x657bE7a2b91F95222D163Bee3B5F4C27bed598C5" as const, status: "available" as const },
+            { label: "USDE/TSLA", address: "0x777BD12e1f61B8cac19Cbd30c0233C46B4683C00" as const, status: "available" as const },
+            { label: "USDE/MAG7", address: "0xFf37Db6dea33228A5D84546250a5D0D0da942fd7" as const, status: "available" as const },
+            { label: "USDE/MAG7.i26", address: "0xF36648F44763eFE7c528140a2f804b2124CC3FE1" as const, status: "available" as const },
         ],
         stETH: [
-            { label: "stETH/USD", address: "0xcF5392B7d3c81b1BC4aa81DE02DE4A4c265Ed4a9" as const, status: "possible" as const },
-            { label: "stETH/AAPL", address: "0x3df39f74e9538414bccA0ec71abcA3B487B89a86" as const, status: "possible" as const },
-            { label: "stETH/AMZN", address: "0xA70dc2f2a40695669A1f453E3777b10B63Fa400A" as const, status: "possible" as const },
-            { label: "stETH/GOOGL", address: "0x82b8aB2c8b4781f2B3d52e7807d4aFa5704912D0" as const, status: "possible" as const },
-            { label: "stETH/META", address: "0x9f62503D61cdA530216ad46c1d239258bd201034" as const, status: "possible" as const },
-            { label: "stETH/MSFT", address: "0x78D74eA76Fbfd476A06c1678dC89c025595c8536" as const, status: "possible" as const },
-            { label: "stETH/NVDA", address: "0x8f6F9C8af44f5f15a18d0fa93B5814a623Fa6353" as const, status: "possible" as const },
-            { label: "stETH/SPY", address: "0x63d961913cd855f5f8C8cA7cDC22771abA3326FE" as const, status: "possible" as const },
-            { label: "stETH/TSLA", address: "0xD59a1c8D1fa8f3FAE1E1f835E243A7BFb6173f91" as const, status: "possible" as const },
-            { label: "stETH/MAG7", address: "0x4be4501336130E61e5872cB953e886a3a84D34Cc" as const, status: "possible" as const },
+            { label: "stETH/AAPL", address: "0xA8643E35Ef119F983B09C322039e8AA49A3e3372" as const, status: "available" as const },
+            { label: "stETH/AMZN", address: "0x28bBAaf05dEE8A06d4206089bCd17c1129e6Edca" as const, status: "available" as const },
+            { label: "stETH/GOOGL", address: "0x52B66aD600DC6051cF056951153355d457068bD2" as const, status: "available" as const },
+            { label: "stETH/META", address: "0x677f597D3013dBF76552Ec6c605eeB551d3bBb72" as const, status: "available" as const },
+            { label: "stETH/MSFT", address: "0xf1867657Ef7F65b745E47B7F70D15DE50b66884D" as const, status: "available" as const },
+            { label: "stETH/NVDA", address: "0x0D0fDBb10B9EAf18A1034e9942F95af0147CC310" as const, status: "available" as const },
+            { label: "stETH/SPY", address: "0x969Fb67331d6Fa3E729292FAa5752BBA759f2b7F" as const, status: "available" as const },
+            { label: "stETH/TSLA", address: "0xDA6097f2b8805a01FcBE8BA8Fc2c45FCb7D3e206" as const, status: "available" as const },
+            { label: "stETH/MAG7", address: "0xA8A130Bbf041962B60e81009F09c41bd930D1294" as const, status: "available" as const },
+            { label: "stETH/MAG7.i26", address: "0x436C33222136554192733C6771669c4B51B7fE3D" as const, status: "available" as const },
+        ],
+    },
+
+    base: {
+        fxUSD: [],
+        USDE: [],
+        stETH: [
+            { label: "stETH/BOM5", address: "0x2877330d6fbA9BC0299588BcBaf16bA42d12b05a" as const, status: "available" as const },
         ],
     },
 

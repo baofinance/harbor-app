@@ -14,11 +14,16 @@ const ICONS: Record<string, string> = {
     dollar: "/icons/usd.svg",
     eur: "/icons/eur.svg",
     euro: "/icons/eur.svg",
-    xau: "/icons/gold.svg",
+    xau: "/icons/gold.svg", // Keep for backward compatibility
     gold: "/icons/gold.svg",
+    xag: "/icons/gold.svg", // Keep for backward compatibility - Silver using gold icon as placeholder
+    silver: "/icons/gold.svg",
     mcap: "/icons/mcap.svg",
     t6ch: "/icons/mcap.svg",
-    t6: "/icons/mcap.svg"
+    t6: "/icons/mcap.svg",
+    mag7: "/icons/stock.svg", // Financial index - using stock icon
+    "mag7.i26": "/icons/stock.svg", // Financial index variant
+    bom5: "/icons/stock.svg", // Financial index - using stock icon
 };
 
 const STOCK_TICKERS = ["aapl", "amzn", "googl", "meta", "msft", "nvda", "spy", "tsla"];
