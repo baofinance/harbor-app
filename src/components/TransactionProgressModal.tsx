@@ -31,18 +31,19 @@ export interface FeeInfo {
 }
 
 interface TransactionProgressModalProps {
- isOpen: boolean;
- onClose: () => void;
- title: string;
- steps: TransactionStep[];
- currentStepIndex: number;
- showFeeInfo?: FeeInfo | FeeInfo[]; // Support single fee or array of fees
- onConfirmFee?: () => void;
- onCancel?: () => void;
- canCancel?: boolean; // Whether to show cancel button
- onRetry?: () => void; // Callback for"Try Again" button on error
- errorMessage?: string; // Optional error message to display
- renderSuccessContent?: () => React.ReactNode; // Optional extra content when all steps completed
+  isOpen: boolean;
+  onClose: () => void;
+  title: string;
+  steps: TransactionStep[];
+  currentStepIndex: number;
+  showFeeInfo?: FeeInfo | FeeInfo[]; // Support single fee or array of fees
+  onConfirmFee?: () => void;
+  onCancel?: () => void;
+  canCancel?: boolean; // Whether to show cancel button
+  onRetry?: () => void; // Callback for"Try Again" button on error
+  retryButtonLabel?: string; // Custom label for retry button (default: "Try Again")
+  errorMessage?: string; // Optional error message to display
+  renderSuccessContent?: () => React.ReactNode; // Optional extra content when all steps completed
 }
 
 export const TransactionProgressModal = ({
@@ -54,10 +55,11 @@ export const TransactionProgressModal = ({
  showFeeInfo,
  onConfirmFee,
  onCancel,
- canCancel = false,
- onRetry,
- errorMessage,
- renderSuccessContent,
+  canCancel = false,
+  onRetry,
+  retryButtonLabel = "Try Again",
+  errorMessage,
+  renderSuccessContent,
 }: TransactionProgressModalProps) => {
  if (!isOpen) return null;
  const allCompleted = steps.every((s) => s.status ==="completed");
@@ -377,16 +379,16 @@ export const TransactionProgressModal = ({
  <p className="text-sm font-medium text-red-800 text-center">
  {errorMessage ||"An error occurred. Please try again."}
  </p>
- {onRetry && (
- <div className="mt-4 flex justify-center">
- <button
- onClick={onRetry}
- className="px-4 py-2 text-sm font-medium bg-[#1E4775] text-white rounded-full hover:bg-[#17395F] transition-colors"
- >
- Try Again
- </button>
- </div>
- )}
+        {onRetry && (
+          <div className="mt-4 flex justify-center">
+            <button
+              onClick={onRetry}
+              className="px-4 py-2 text-sm font-medium bg-[#1E4775] text-white rounded-full hover:bg-[#17395F] transition-colors"
+            >
+              {retryButtonLabel}
+            </button>
+          </div>
+        )}
  </div>
  )}
 

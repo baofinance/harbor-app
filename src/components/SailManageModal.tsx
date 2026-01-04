@@ -8,16 +8,21 @@ import {
  useContractRead,
  useWriteContract,
  usePublicClient,
+ useSendTransaction,
 } from "wagmi";
 import { BaseError, ContractFunctionRevertedError } from "viem";
 import { ERC20_ABI, MINTER_ABI } from "@/abis/shared";
 import { MINTER_ETH_ZAP_V2_ABI, MINTER_USDC_ZAP_V2_ABI } from "@/config/contracts";
 import { useCollateralPrice } from "@/hooks/useCollateralPrice";
 import SimpleTooltip from "@/components/SimpleTooltip";
+import { ArrowPathIcon } from "@heroicons/react/24/outline";
 import {
  TransactionProgressModal,
  TransactionStep,
 } from "@/components/TransactionProgressModal";
+import { useDefiLlamaSwap, getDefiLlamaSwapTx } from "@/hooks/useDefiLlamaSwap";
+import { useUserTokens, useTokenDecimals } from "@/hooks/useUserTokens";
+import { formatBalance } from "@/utils/formatters";
 
 interface SailManageModalProps {
  isOpen: boolean;
@@ -62,12 +67,15 @@ export const SailManageModal = ({
  const { address, isConnected } = useAccount();
  const publicClient = usePublicClient();
  const { writeContractAsync } = useWriteContract();
+ const { sendTransactionAsync } = useSendTransaction();
 
  const [activeTab, setActiveTab] = useState<"mint" |"redeem">(initialTab);
  const [amount, setAmount] = useState("");
  const [selectedDepositAsset, setSelectedDepositAsset] = useState<
  string | null
  >(null);
+ const [showCustomTokenInput, setShowCustomTokenInput] = useState(false);
+ const [customTokenAddress, setCustomTokenAddress] = useState<string>("");
  const [step, setStep] = useState<ModalStep>("input");
  const [error, setError] = useState<string | null>(null);
  const [txHash, setTxHash] = useState<string | null>(null);
@@ -107,6 +115,9 @@ export const SailManageModal = ({
    [market]
  );
 
+ // Fetch user wallet tokens (for "any token" deposit selection)
+ const { tokens: userTokens } = useUserTokens();
+
  // Determine asset types
  const isUSDC = selectedDepositAsset?.toLowerCase() === "usdc";
  const isFxUSD = selectedDepositAsset?.toLowerCase() === "fxusd";
@@ -114,6 +125,11 @@ export const SailManageModal = ({
  const isStETH = selectedDepositAsset?.toLowerCase() === "steth";
  const isFxSAVE = selectedDepositAsset?.toLowerCase() === "fxsave";
  const isWstETH = selectedDepositAsset?.toLowerCase() === "wsteth";
+ const isCustomToken =
+   selectedDepositAsset === "custom" &&
+   customTokenAddress &&
+   customTokenAddress.startsWith("0x") &&
+   customTokenAddress.length === 42;
  
  // Check if selected asset is wrapped collateral (fxSAVE, wstETH) - these don't need zaps
  // Note: fxUSD is NOT wrapped collateral (it's the underlying collateral that needs zap)
@@ -122,20 +138,8 @@ export const SailManageModal = ({
  const isWrappedCollateral = isFxSAVE || isWstETH || 
    (wrappedCollateralSymbolLower && selectedDepositAsset?.toLowerCase() === wrappedCollateralSymbolLower);
 
- // Get zap contract address - use leveragedTokenZap for minting leveraged tokens
- const zapAddress = market.addresses?.leveragedTokenZap as `0x${string}` | undefined;
- 
- // Determine which zap to use
- const useZap = !!zapAddress && !isWrappedCollateral && activeTab === "mint";
- const useETHZap = useZap && isWstETHMarket && (isNativeETH || isStETH);
- const useUSDCZap = useZap && isFxUSDMarket && (isUSDC || isFxUSD);
- 
- // Get fxSAVE rate for USDC zap calculations
- const priceOracleAddress = market.addresses?.collateralPrice as `0x${string}` | undefined;
- const { maxRate: fxSAVERate } = useCollateralPrice(
-   priceOracleAddress,
-   { enabled: useUSDCZap && !!priceOracleAddress }
- );
+// Get zap contract address - use leveragedTokenZap for minting leveraged tokens
+const zapAddress = market.addresses?.leveragedTokenZap as `0x${string}` | undefined;
 
  // Format display helper (after isUSDC is defined)
  const formatDisplay = (
@@ -161,11 +165,21 @@ export const SailManageModal = ({
  }
  }, [acceptedAssets, selectedDepositAsset]);
 
- // Get deposit asset address
+ // Get deposit asset address (extended to support user tokens + custom token address)
  const depositAssetAddress = useMemo(() => {
    if (!selectedDepositAsset) return undefined;
    const normalized = selectedDepositAsset.toLowerCase();
    if (normalized ==="eth") return undefined; // Native ETH
+   if (normalized === "custom") {
+     return (customTokenAddress as `0x${string}` | undefined) || undefined;
+   }
+   // Check user tokens first (only ERC20s; ETH handled above)
+   const userToken = userTokens.find(
+     (t) => t.symbol.toUpperCase() === selectedDepositAsset.toUpperCase()
+   );
+   if (userToken && userToken.address !== "ETH") {
+     return userToken.address as `0x${string}`;
+   }
    if (normalized ==="usdc") return "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" as `0x${string}`; // USDC
    // wstETH is the collateral token
    if (normalized ==="wsteth") return market.addresses?.collateralToken;
@@ -173,8 +187,81 @@ export const SailManageModal = ({
    if (normalized ==="steth") return market.addresses?.wrappedCollateralToken;
    // fxUSD uses collateral token address
    if (normalized ==="fxusd") return market.addresses?.collateralToken;
+   if (normalized === "fxsave") return market.addresses?.wrappedCollateralToken;
    return market.addresses?.collateralToken; // Default
- }, [selectedDepositAsset, market.addresses]);
+ }, [selectedDepositAsset, market.addresses, userTokens, customTokenAddress]);
+
+// Determine which zap to use
+const useZap = !!zapAddress && !isWrappedCollateral && activeTab === "mint";
+
+// Swap support: non-supported tokens swap to ETH (wstETH markets) or USDC (fxSAVE markets)
+const isDirectlyAccepted =
+  (isFxUSDMarket && (isUSDC || isFxUSD || isFxSAVE)) ||
+  (isWstETHMarket && (isNativeETH || isStETH || isWstETH));
+
+const hasValidTokenAddress =
+  isNativeETH ||
+  (!!depositAssetAddress &&
+    typeof depositAssetAddress === "string" &&
+    depositAssetAddress.startsWith("0x") &&
+    depositAssetAddress.length === 42);
+
+const needsSwap =
+  activeTab === "mint" &&
+  !!selectedDepositAsset &&
+  selectedDepositAsset !== "" &&
+  !isDirectlyAccepted &&
+  hasValidTokenAddress;
+
+const useETHZap = useZap && isWstETHMarket && (isNativeETH || isStETH || needsSwap);
+const useUSDCZap = useZap && isFxUSDMarket && (isUSDC || isFxUSD || needsSwap);
+
+// Get fxSAVE rate for USDC zap calculations
+const priceOracleAddress = market.addresses?.collateralPrice as `0x${string}` | undefined;
+const { maxRate: fxSAVERate } = useCollateralPrice(
+  priceOracleAddress,
+  { enabled: useUSDCZap && !!priceOracleAddress }
+);
+
+ // Token decimals (for parsing amounts, swap quoting, etc.)
+ const tokenAddressForDecimals =
+   isNativeETH || !depositAssetAddress ? undefined : (depositAssetAddress as `0x${string}`);
+ const { decimals: selectedTokenDecimals } = useTokenDecimals(tokenAddressForDecimals);
+ const hasValidDecimals = isNativeETH || (selectedTokenDecimals != null && selectedTokenDecimals > 0);
+
+ // Common swap targets
+ const USDC_ADDRESS =
+   "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" as `0x${string}`;
+ const ETH_ADDRESS = "ETH" as const;
+
+ // Swap quote (Velora/ParaSwap via DefiLlama) for "any token" deposits
+ const swapTargetToken = isWstETHMarket ? ETH_ADDRESS : USDC_ADDRESS;
+ const fromTokenForSwap = isNativeETH ? "ETH" : (depositAssetAddress as `0x${string}`);
+ const toTokenDecimals = swapTargetToken === "ETH" ? 18 : 6;
+ const { data: swapQuote, isLoading: isLoadingSwapQuote, error: swapQuoteError } =
+   useDefiLlamaSwap(
+     fromTokenForSwap,
+     swapTargetToken as any,
+     amount && parseFloat(amount) > 0 ? amount : "1",
+     !!isOpen &&
+       activeTab === "mint" &&
+       needsSwap &&
+       !!fromTokenForSwap &&
+       !!amount &&
+       parseFloat(amount) > 0 &&
+       !!hasValidDecimals,
+     selectedTokenDecimals,
+     toTokenDecimals
+   );
+
+ // Merge accepted assets with user tokens for dropdown (avoid duplicates)
+ const allAvailableAssets = useMemo(() => {
+   const acceptedUpper = new Set(acceptedAssets.map((a) => a.symbol.toUpperCase()));
+   const filteredUserTokens = userTokens.filter(
+     (t) => !acceptedUpper.has(t.symbol.toUpperCase()) && t.balance > 0n
+   );
+   return { filteredUserTokens };
+ }, [acceptedAssets, userTokens]);
 
  // Get native ETH balance (when ETH is selected) - use useBalance
  const { data: nativeEthBalance } = useBalance({
@@ -263,6 +350,44 @@ export const SailManageModal = ({
    },
  });
 
+ // Swap allowance (for ParaSwap / Velora swaps)
+ const PARASWAP_TOKEN_TRANSFER_PROXY =
+   "0x216b4b4ba9f3e719726886d34a177484278bfcae" as `0x${string}`;
+ const { data: swapAllowance } = useContractRead({
+   address: depositAssetAddress,
+   abi: ERC20_ABI,
+   functionName: "allowance",
+   args: address ? [address, PARASWAP_TOKEN_TRANSFER_PROXY] : undefined,
+   query: {
+     enabled:
+       isOpen &&
+       !!address &&
+       activeTab === "mint" &&
+       needsSwap &&
+       !isNativeETH &&
+       !!depositAssetAddress,
+     retry: 1,
+   },
+ });
+
+ // Post-swap USDC approval to leveraged zap (fxSAVE markets)
+ const { data: usdcZapAllowance } = useContractRead({
+   address: USDC_ADDRESS,
+   abi: ERC20_ABI,
+   functionName: "allowance",
+   args: address && zapAddress ? [address, zapAddress] : undefined,
+   query: {
+     enabled:
+       isOpen &&
+       !!address &&
+       activeTab === "mint" &&
+       needsSwap &&
+       !isWstETHMarket &&
+       !!zapAddress,
+     retry: 1,
+   },
+ });
+
  // Get allowance for leveraged token
  const { data: leveragedTokenAllowance } = useContractRead({
  address: leveragedTokenAddress,
@@ -284,14 +409,26 @@ export const SailManageModal = ({
 
  // Parse amount safely with correct decimals
  const parsedAmount = useMemo(() => {
-   if (!amount || amount ==="") return undefined;
+   if (!amount || amount === "") return undefined;
    try {
-     // USDC uses 6 decimals, others use 18 decimals
-     return isUSDC ? parseUnits(amount, 6) : parseEther(amount);
+     if (activeTab === "redeem") {
+       // Leveraged token amounts are 18 decimals
+       return parseEther(amount);
+     }
+
+     // Mint side: use token decimals (USDC=6, others vary)
+     if (isNativeETH) return parseEther(amount);
+
+     const decimals =
+       selectedDepositAsset?.toLowerCase() === "usdc"
+         ? 6
+         : selectedTokenDecimals ?? 18;
+
+     return parseUnits(amount, decimals);
    } catch {
      return undefined;
    }
- }, [amount, isUSDC]);
+ }, [amount, activeTab, isNativeETH, selectedDepositAsset, selectedTokenDecimals]);
 
  // Dry run for mint
  const mintDryRunEnabled =
@@ -443,6 +580,20 @@ export const SailManageModal = ({
  }
 
  if (activeTab ==="mint") {
+ // Custom token address validation
+ if (selectedDepositAsset === "custom") {
+   if (!customTokenAddress || !customTokenAddress.startsWith("0x") || customTokenAddress.length !== 42) {
+     setError("Please enter a valid token address");
+     return false;
+   }
+ }
+
+ // If a swap is required, ensure the quote is available before proceeding
+ if (needsSwap && !swapQuote) {
+   setError("Swap quote not ready yet. Please wait a moment and try again.");
+   return false;
+ }
+
  // Use native ETH balance if ETH is selected, otherwise use deposit asset balance
  let balance = 0n;
  if (selectedDepositAsset ==="ETH") {
@@ -522,14 +673,34 @@ export const SailManageModal = ({
  return;
  }
 
+ const includeSwap = needsSwap && !!swapQuote;
+ const swapOutAmount = includeSwap ? swapQuote!.toAmount : 0n;
+
  // Determine if approval is needed (for zap or direct minting)
- const needsZapApproval = useZap && zapAddress && depositAssetAddress && !isNativeETH
-   ? ((depositAssetAllowance as bigint) || 0n) < parsedAmount
-   : false;
- const needsDirectApproval = !useZap && depositAssetAddress
-   ? ((depositAssetAllowance as bigint) || 0n) < parsedAmount
-   : false;
+ // If we're swapping first, approvals are handled separately (swap approval + post-swap USDC approval).
+ const needsZapApproval =
+   !includeSwap && useZap && zapAddress && depositAssetAddress && !isNativeETH
+     ? ((depositAssetAllowance as bigint) || 0n) < parsedAmount
+     : false;
+ const needsDirectApproval =
+   !includeSwap && !useZap && depositAssetAddress
+     ? ((depositAssetAllowance as bigint) || 0n) < parsedAmount
+     : false;
  const needsApproval = needsZapApproval || needsDirectApproval;
+
+ // Swap approvals
+ const needsSwapApproval =
+   includeSwap &&
+   !isNativeETH &&
+   !!depositAssetAddress &&
+   (((swapAllowance as bigint) || 0n) < parsedAmount);
+
+ // Post-swap USDC approval to leveraged zap
+ const needsPostSwapUsdcApproval =
+   includeSwap &&
+   !isWstETHMarket &&
+   !!zapAddress &&
+   (((usdcZapAllowance as bigint) || 0n) < swapOutAmount);
 
  // Determine zap asset name for labels
  let zapAssetName: string | null = null;
@@ -542,6 +713,31 @@ export const SailManageModal = ({
 
  // Build steps
  const steps: TransactionStep[] = [];
+ if (needsSwapApproval) {
+   steps.push({
+     id: "approveSwap",
+     label: `Approve ${selectedDepositAsset} for swap`,
+     status: "pending",
+     details: `Approve ${selectedDepositAsset} for swapping via Velora`,
+   });
+ }
+ if (includeSwap) {
+   const swapTargetLabel = isWstETHMarket ? "ETH" : "USDC";
+   steps.push({
+     id: "swap",
+     label: `Swap ${selectedDepositAsset} → ${swapTargetLabel}`,
+     status: "pending",
+     details: "Execute swap via Velora",
+   });
+ }
+ if (needsPostSwapUsdcApproval) {
+   steps.push({
+     id: "approvePostSwap",
+     label: "Approve USDC for zap",
+     status: "pending",
+     details: "Approve USDC for minting via zap",
+   });
+ }
  if (needsApproval) {
    const approveLabel = useZap && zapAssetName
      ? `Approve ${zapAssetName} for zap`
@@ -578,7 +774,69 @@ export const SailManageModal = ({
  });
 
  try {
-   // Step 1: Approve (if needed)
+   // Step 1a: Approve source token for swap (if needed)
+   if (needsSwapApproval && depositAssetAddress) {
+     updateProgressStep("approveSwap", { status: "in_progress" });
+     const approveHash = await writeContractAsync({
+       address: depositAssetAddress,
+       abi: ERC20_ABI,
+       functionName: "approve",
+       args: [PARASWAP_TOKEN_TRANSFER_PROXY, parsedAmount],
+     });
+     await publicClient?.waitForTransactionReceipt({ hash: approveHash });
+     updateProgressStep("approveSwap", {
+       status: "completed",
+       txHash: approveHash,
+     });
+   }
+
+   // Step 1b: Swap (if needed)
+   let effectiveMintAmount: bigint = parsedAmount;
+   if (includeSwap && swapQuote && address) {
+     updateProgressStep("swap", { status: "in_progress" });
+
+     // Build the swap transaction right before sending (ParaSwap tx builder checks allowance)
+     const swapTx = await getDefiLlamaSwapTx(
+       fromTokenForSwap,
+       swapTargetToken as any,
+       parsedAmount,
+       address as `0x${string}`,
+       1.0,
+       selectedTokenDecimals ?? 18,
+       toTokenDecimals
+     );
+
+     const swapHash = await sendTransactionAsync({
+       to: swapTx.to,
+       data: swapTx.data,
+       value: swapTx.value,
+       gas: swapTx.gas,
+     });
+
+     await publicClient?.waitForTransactionReceipt({ hash: swapHash });
+     updateProgressStep("swap", { status: "completed", txHash: swapHash });
+
+     // Use quote output as the effective amount for zap input (ETH=18, USDC=6)
+     effectiveMintAmount = swapOutAmount;
+   }
+
+   // Step 1c: Approve post-swap USDC for zap (fxSAVE markets)
+   if (needsPostSwapUsdcApproval && zapAddress) {
+     updateProgressStep("approvePostSwap", { status: "in_progress" });
+     const approveHash = await writeContractAsync({
+       address: USDC_ADDRESS,
+       abi: ERC20_ABI,
+       functionName: "approve",
+       args: [zapAddress, effectiveMintAmount],
+     });
+     await publicClient?.waitForTransactionReceipt({ hash: approveHash });
+     updateProgressStep("approvePostSwap", {
+       status: "completed",
+       txHash: approveHash,
+     });
+   }
+
+   // Step 2: Approve (if needed, no-swap path)
    if (needsApproval && depositAssetAddress) {
      updateProgressStep("approve", { status:"in_progress" });
      const approveTarget = useZap && zapAddress ? zapAddress : minterAddress;
@@ -595,21 +853,22 @@ export const SailManageModal = ({
      });
    }
 
-   // Step 2: Mint (via zap or direct)
+   // Step 3: Mint (via zap or direct)
    updateProgressStep("mint", { status:"in_progress" });
    
    // Calculate minimum output based on zap type or direct minting
    let minOutput: bigint;
+   const amountForMint = includeSwap ? effectiveMintAmount : parsedAmount;
    
    if (useUSDCZap && fxSAVERate && fxSAVERate > 0n) {
      // For USDC/fxUSD zap: minOutput = amount / fxSAVE rate
      let amountIn18Decimals: bigint;
-     if (isUSDC) {
+     if (includeSwap ? !isWstETHMarket : isUSDC) {
        // USDC: convert from 6 decimals to 18 decimals
-       amountIn18Decimals = parsedAmount * 10n ** 12n;
+       amountIn18Decimals = amountForMint * 10n ** 12n;
      } else {
        // fxUSD: already in 18 decimals
-       amountIn18Decimals = parsedAmount;
+       amountIn18Decimals = amountForMint;
      }
      const leveragedOutBeforeSlippage = amountIn18Decimals / fxSAVERate;
      minOutput = (leveragedOutBeforeSlippage * 995n) / 1000n; // 0.5% slippage
@@ -626,15 +885,15 @@ export const SailManageModal = ({
      // Use zap contract to mint
      if (useETHZap) {
        // ETH/stETH zap for wstETH markets
-       const minWstEthOut = (parsedAmount * 995n) / 1000n; // 0.5% slippage
+       const minWstEthOut = (amountForMint * 995n) / 1000n; // 0.5% slippage
        
-       if (isNativeETH) {
+       if (includeSwap || isNativeETH) {
          mintHash = await writeContractAsync({
            address: zapAddress,
            abi: MINTER_ETH_ZAP_V2_ABI,
            functionName: "zapEthToLeveraged",
            args: [address as `0x${string}`, minOutput, minWstEthOut],
-           value: parsedAmount,
+           value: amountForMint,
          });
        } else if (isStETH) {
          const stETHAddress = market.addresses?.wrappedCollateralToken as `0x${string}` | undefined;
@@ -644,7 +903,7 @@ export const SailManageModal = ({
            address: zapAddress,
            abi: MINTER_ETH_ZAP_V2_ABI,
            functionName: "zapStEthToLeveraged",
-           args: [parsedAmount, address as `0x${string}`, minOutput, minWstEthOut],
+           args: [amountForMint, address as `0x${string}`, minOutput, minWstEthOut],
          });
        } else {
          throw new Error("Invalid asset for ETH zap");
@@ -655,19 +914,19 @@ export const SailManageModal = ({
          throw new Error("fxSAVE rate not available");
        }
        
-       if (isUSDC) {
+       if (includeSwap || isUSDC) {
          mintHash = await writeContractAsync({
            address: zapAddress,
            abi: MINTER_USDC_ZAP_V2_ABI,
            functionName: "zapUsdcToLeveraged",
-           args: [parsedAmount, address as `0x${string}`, minOutput],
+           args: [amountForMint, address as `0x${string}`, minOutput],
          });
        } else if (isFxUSD) {
          mintHash = await writeContractAsync({
            address: zapAddress,
            abi: MINTER_USDC_ZAP_V2_ABI,
            functionName: "zapFxUsdToLeveraged",
-           args: [parsedAmount, address as `0x${string}`, minOutput],
+           args: [amountForMint, address as `0x${string}`, minOutput],
          });
        } else {
          throw new Error("Invalid asset for USDC zap");
@@ -893,8 +1152,8 @@ export const SailManageModal = ({
  <div className="relative bg-white shadow-2xl w-full max-w-xl mx-4 animate-in fade-in-0 scale-in-95 duration-200 overflow-hidden">
  {/* Header with tabs and close button */}
  <div className="flex items-center justify-between p-0 pt-3 px-3 border-b border-[#d1d7e5]">
- {/* Tab-style header with padding */}
- <div className="flex w-full border border-[#d1d7e5] border-b-0 -t-xl overflow-hidden">
+ {/* Tab-style header - takes most of width but leaves room for X */}
+ <div className="flex flex-1 mr-4 border border-[#d1d7e5] border-b-0 overflow-hidden">
  <button
  onClick={() => handleTabChange("mint")}
  disabled={isProcessing}
@@ -990,21 +1249,91 @@ export const SailManageModal = ({
  <div>
  {activeTab ==="mint" && (
  <div className="mb-3">
- <label className="block text-xs text-[#1E4775]/70 mb-1">
- Deposit Asset
- </label>
- <select
- value={selectedDepositAsset ||""}
- onChange={(e) => setSelectedDepositAsset(e.target.value)}
- disabled={isProcessing}
- className="w-full px-3 py-2 border border-[#1E4775]/30 text-sm text-[#1E4775] bg-white focus:outline-none focus:ring-2 focus:ring-[#1E4775]/20 disabled:opacity-50"
- >
- {acceptedAssets.map((asset) => (
- <option key={asset.symbol} value={asset.symbol}>
- {asset.name}
- </option>
- ))}
- </select>
+ <div className="space-y-2">
+   <label className="text-sm text-[#1E4775]/70">Deposit Asset</label>
+   <select
+     value={selectedDepositAsset || ""}
+     onChange={(e) => {
+       const newValue = e.target.value;
+       if (newValue === "custom") {
+         setShowCustomTokenInput(true);
+         setSelectedDepositAsset("custom");
+       } else {
+         setShowCustomTokenInput(false);
+         setSelectedDepositAsset(newValue);
+         setCustomTokenAddress("");
+       }
+     }}
+     disabled={isProcessing}
+     className="w-full h-12 px-4 bg-white text-[#1E4775] border border-[#1E4775]/20 focus:border-[#1E4775]/40 focus:ring-1 focus:ring-[#1E4775]/20 focus:outline-none transition-all text-sm"
+   >
+     {acceptedAssets.length > 0 && (
+       <optgroup label="Supported Assets">
+         {acceptedAssets.map((asset) => (
+           <option key={asset.symbol} value={asset.symbol}>
+             {asset.name} ({asset.symbol})
+           </option>
+         ))}
+       </optgroup>
+     )}
+
+     {allAvailableAssets.filteredUserTokens.length > 0 && (
+       <optgroup label="Other Tokens (via Swap)">
+         {allAvailableAssets.filteredUserTokens.map((token) => (
+           <option key={token.symbol} value={token.symbol}>
+             {token.name} ({token.symbol}) - {token.balanceFormatted}
+           </option>
+         ))}
+       </optgroup>
+     )}
+
+     <option value="custom">+ Add Custom Token Address</option>
+   </select>
+
+   {showCustomTokenInput && (
+     <div className="space-y-2">
+       <input
+         type="text"
+         value={customTokenAddress}
+         onChange={(e) => setCustomTokenAddress(e.target.value.trim())}
+         placeholder="0x..."
+         className="w-full h-10 px-3 bg-white text-[#1E4775] border border-[#1E4775]/30 focus:border-[#1E4775] focus:ring-2 focus:ring-[#1E4775]/20 focus:outline-none transition-all text-sm font-mono"
+         disabled={isProcessing}
+       />
+       {customTokenAddress &&
+         (!customTokenAddress.startsWith("0x") ||
+           customTokenAddress.length !== 42) && (
+           <div className="text-xs text-red-600">
+             Invalid address format. Must start with 0x and be 42 characters.
+           </div>
+         )}
+     </div>
+   )}
+
+   {/* Any-token support notice */}
+   <div className="p-2.5 bg-blue-50 border border-blue-200 text-xs text-blue-700">
+     <div className="flex items-start gap-2">
+       <ArrowPathIcon className="w-4 h-4 flex-shrink-0 mt-0.5" />
+       <div>
+         <span className="font-semibold">Tip:</span> You can deposit any ERC20
+         token! Non-collateral tokens will be automatically swapped via Velora.
+       </div>
+     </div>
+   </div>
+
+   {/* Swap quote status */}
+   {needsSwap && (
+     <div className="text-xs text-[#1E4775]/70">
+       {isLoadingSwapQuote
+         ? "Fetching swap quote..."
+         : swapQuoteError
+         ? "Swap quote unavailable (try a smaller amount or a different token)."
+         : swapQuote
+         ? `Will swap to ${isWstETHMarket ? "ETH" : "USDC"} before minting.`
+         : null}
+     </div>
+   )}
+ </div>
  </div>
  )}
  <div className="flex justify-between items-center mb-1.5">
@@ -1012,10 +1341,19 @@ export const SailManageModal = ({
  {activeTab ==="mint" ?"Deposit Amount" :"Redeem Amount"}
  </label>
  <span className="text-sm text-[#1E4775]/70">
- Balance: {formatDisplay(currentBalance, 4)}{""}
- {activeTab ==="mint"
- ? selectedDepositAsset || collateralSymbol
- : leveragedTokenSymbol}
+ Balance:{" "}
+ {activeTab === "mint"
+   ? formatBalance(
+       currentBalance,
+       selectedDepositAsset || collateralSymbol,
+       4,
+       selectedDepositAsset?.toLowerCase() === "usdc"
+         ? 6
+         : isNativeETH
+         ? 18
+         : selectedTokenDecimals ?? 18
+     )
+   : formatBalance(currentBalance, leveragedTokenSymbol, 4, 18)}
  </span>
  </div>
  <div className="relative">
@@ -1028,9 +1366,24 @@ export const SailManageModal = ({
  // Cap at balance if value exceeds it
  if (value && currentBalance) {
  try {
-         const parsed = isUSDC ? parseUnits(value, 6) : parseEther(value);
+         const decimals =
+           activeTab === "redeem"
+             ? 18
+             : isNativeETH
+             ? 18
+             : selectedDepositAsset?.toLowerCase() === "usdc"
+             ? 6
+             : selectedTokenDecimals ?? 18;
+         const parsed =
+           activeTab === "mint" && isNativeETH
+             ? parseEther(value)
+             : parseUnits(value, decimals);
          if (parsed > currentBalance) {
-           setAmount(isUSDC ? formatUnits(currentBalance, 6) : formatEther(currentBalance));
+           const formatted =
+             activeTab === "mint" && isNativeETH
+               ? formatEther(currentBalance)
+               : formatUnits(currentBalance, decimals);
+           setAmount(formatted);
  setError(null);
  return;
  }
@@ -1055,7 +1408,19 @@ export const SailManageModal = ({
  <button
  onClick={() => {
    if (currentBalance) {
-     setAmount(isUSDC ? formatUnits(currentBalance, 6) : formatEther(currentBalance));
+     const decimals =
+       activeTab === "redeem"
+         ? 18
+         : isNativeETH
+         ? 18
+         : selectedDepositAsset?.toLowerCase() === "usdc"
+         ? 6
+         : selectedTokenDecimals ?? 18;
+     const formatted =
+       activeTab === "mint" && isNativeETH
+         ? formatEther(currentBalance)
+         : formatUnits(currentBalance, decimals);
+     setAmount(formatted);
      setError(null);
    }
  }}

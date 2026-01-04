@@ -4183,10 +4183,17 @@ export default function AnchorPage() {
                               </div>
                               {(() => {
                                 // Calculate TVL in USD for both pools from stability pool contracts
-                                // Use pegged token price for both pools (they hold pegged tokens)
+                                // Use the same CR-aware USD pricing as positions (prefer peggedPriceUSDMap; fallback to contract reads)
+                                const tvlUsdPriceFromMap =
+                                  peggedPriceUSDMap[marketData.marketId];
                                 const peggedPriceUSD =
-                                  marketData.peggedTokenPrice &&
-                                  marketData.peggedTokenPrice > 0n
+                                  tvlUsdPriceFromMap && tvlUsdPriceFromMap > 0n
+                                    ? Number(tvlUsdPriceFromMap) / 1e18
+                                    : positionData?.peggedTokenPrice &&
+                                      positionData.peggedTokenPrice > 0n
+                                    ? Number(positionData.peggedTokenPrice) / 1e18
+                                    : marketData.peggedTokenPrice &&
+                                      marketData.peggedTokenPrice > 0n
                                     ? Number(marketData.peggedTokenPrice) / 1e18
                                     : 1; // fallback to $1 peg if price missing
 
@@ -4203,6 +4210,17 @@ export default function AnchorPage() {
                                   : 0;
                                 const sailPoolTVLUSD =
                                   sailPoolTVLTokens * peggedPriceUSD;
+
+                                // Dev-only debug to validate TVL reads, especially right after new pool deployments.
+                                if (process.env.NODE_ENV === "development") {
+                                  // eslint-disable-next-line no-console
+                                  console.log("[Anchor][TVL]", {
+                                    marketId: marketData.marketId,
+                                    collateralPoolTVL: marketData.collateralPoolTVL?.toString(),
+                                    sailPoolTVL: marketData.sailPoolTVL?.toString(),
+                                    peggedPriceUSD,
+                                  });
+                                }
 
                                 return (
                                   <div className="grid grid-cols-3 md:grid-cols-8 gap-1.5">

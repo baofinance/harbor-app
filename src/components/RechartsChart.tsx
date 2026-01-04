@@ -13,8 +13,8 @@ interface RechartsChartProps {
  data: PriceDataPoint[];
  formatTimestamp: (timestamp: number) => string;
  formatTooltipTimestamp: (timestamp: number) => string;
- dataKey: string;
- unit: string;
+ dataKey?: string;
+ unit?: string;
 }
 
 const CustomTooltip = ({
@@ -22,14 +22,20 @@ const CustomTooltip = ({
  payload,
  label,
  formatTooltipTimestamp,
+ unit,
 }: any) => {
  if (active && payload && payload.length) {
+ const value = typeof payload?.[0]?.value === "number" ? payload[0].value : Number(payload?.[0]?.value);
+ const formattedValue =
+   unit === "$"
+     ? `$${Number.isFinite(value) ? value.toFixed(2) : "-"}`
+     : `${Number.isFinite(value) ? value.toFixed(4) : "-"}${unit || ""}`;
  return (
  <div className="bg-[#0c0c0c] p-4 shadow-lg">
  <p className="text-sm text-white/80">{formatTooltipTimestamp(label)}</p>
  <p className="text-lg font-bold text-[#1E4775]">
- {`${payload[0].value.toFixed(2)}%`}
- <span className="text-xs text-white/50 ml-1">APR</span>
+ {formattedValue}
+ <span className="text-xs text-white/50 ml-1">{unit === "$" ? "Price" : ""}</span>
  </p>
  </div>
  );
@@ -42,8 +48,8 @@ export default function RechartsChart({
  data,
  formatTimestamp,
  formatTooltipTimestamp,
- dataKey,
- unit,
+ dataKey = "price",
+ unit = "$",
 }: RechartsChartProps) {
  return (
  <ResponsiveContainer width="100%" height="100%">
@@ -65,23 +71,27 @@ export default function RechartsChart({
  />
  <XAxis
  dataKey="timestamp"
- stroke="white"
- opacity={0.5}
+ stroke="#1E4775"
+ opacity={0.35}
  tick={{ fontSize: 12, fill:"#A3A3A3" }}
  tickLine={{ stroke:"#1E4775", opacity: 0.2 }}
  tickFormatter={formatTimestamp}
  />
  <YAxis
- stroke="white"
- opacity={0.5}
+ stroke="#1E4775"
+ opacity={0.35}
  tick={{ fontSize: 12, fill:"#A3A3A3" }}
  tickLine={{ stroke:"#1E4775", opacity: 0.2 }}
  domain={["auto","auto"]}
- tickFormatter={(value) => `${value}${unit}`}
+  tickFormatter={(value) =>
+    unit === "$"
+      ? `$${Number(value).toFixed(2)}`
+      : `${value}${unit}`
+  }
  />
  <Tooltip
  content={
- <CustomTooltip formatTooltipTimestamp={formatTooltipTimestamp} />
+  <CustomTooltip formatTooltipTimestamp={formatTooltipTimestamp} unit={unit} />
  }
  />
  <Area

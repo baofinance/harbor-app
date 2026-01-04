@@ -65,3 +65,4 @@ export function calculateTokenPrice(fdv: number = DEFAULT_FDV): number {
   return fdv / TOTAL_TOKEN_SUPPLY;
 }
 
+

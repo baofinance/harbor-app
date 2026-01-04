@@ -22,6 +22,16 @@ const USER_POSITION_QUERY = `
       totalReceivedUSD
       firstAcquiredAt
       lastUpdated
+      lots(first: 50, orderBy: lotIndex, orderDirection: asc) {
+        id
+        lotIndex
+        eventType
+        tokenAmount
+        costUSD
+        isFullyRedeemed
+        timestamp
+        txHash
+      }
     }
     
     # Get recent mint/redeem events for this user
@@ -114,14 +124,26 @@ export interface SailPositionPnLData {
 
 interface UseSailPositionPnLOptions {
   tokenAddress: string;
+  minterAddress?: `0x${string}`;
+  startBlock?: number;
+  genesisAddress?: `0x${string}`;
+  genesisLeveragedRatio?: number; // Portion of genesis deposit attributed to hs tokens (e.g. 0.5)
+  pegTarget?: "ETH" | "BTC"; // Needed to convert oracle prices (pegged-denominated) into USD
   currentTokenPrice?: number; // Current token price in USD (from oracle)
   enabled?: boolean;
+  debug?: boolean;
 }
 
 export function useSailPositionPnL({
   tokenAddress,
+  minterAddress,
+  startBlock,
+  genesisAddress,
+  genesisLeveragedRatio = 0.5,
+  pegTarget,
   currentTokenPrice,
   enabled = true,
+  debug = false,
 }: UseSailPositionPnLOptions): SailPositionPnLData {
   const { address } = useAccount();
   const graphUrl = getSailPriceGraphUrl();
@@ -131,7 +153,17 @@ export function useSailPositionPnL({
     : "";
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ["sailPositionPnL", tokenAddress, address],
+    queryKey: [
+      "sailPositionPnL",
+      graphUrl,
+      tokenAddress,
+      minterAddress,
+      startBlock,
+      genesisAddress,
+      genesisLeveragedRatio,
+      debug,
+      address,
+    ],
     queryFn: async () => {
       if (!tokenAddress || !address) {
         // Return empty data structure instead of null
@@ -142,56 +174,98 @@ export function useSailPositionPnL({
         };
       }
 
-      const response = await fetch(graphUrl, {
-        method: "POST",
-        headers: getGraphHeaders(),
-        body: JSON.stringify({
-          query: USER_POSITION_QUERY,
-          variables: {
+      const dbg = debug && typeof window !== "undefined";
+      const dbgInfo: any = dbg
+        ? {
+            tokenAddress,
+            minterAddress,
+            startBlock,
+            genesisAddress,
+            genesisLeveragedRatio,
+            pegTarget,
+            address,
+            graphUrl,
             positionId,
-            userAddress: address.toLowerCase(),
-            tokenAddress: tokenAddress.toLowerCase(),
-          },
-        }),
-      });
+          }
+        : null;
 
-      if (!response.ok) {
-        throw new Error(`GraphQL query failed: ${response.statusText}`);
+      try {
+        const response = await fetch(graphUrl, {
+          method: "POST",
+          headers: getGraphHeaders(graphUrl),
+          body: JSON.stringify({
+            query: USER_POSITION_QUERY,
+            variables: {
+              positionId,
+              userAddress: address.toLowerCase(),
+              tokenAddress: tokenAddress.toLowerCase(),
+            },
+          }),
+        });
+
+        const result = await response.json();
+        if (!response.ok || result?.errors) {
+          if (dbg) dbgInfo.subgraph = { ok: false, status: response.status, errors: result?.errors };
+          throw new Error(
+            `PnL subgraph query failed (${response.status}). ${
+              result?.errors ? JSON.stringify(result.errors) : ""
+            }`
+          );
+        }
+
+        const subgraphData = result?.data;
+        if (dbg) {
+          dbgInfo.subgraph = {
+            ok: true,
+            hasUserSailPosition: !!subgraphData?.userSailPosition,
+            totalCostBasisUSD: subgraphData?.userSailPosition?.totalCostBasisUSD,
+            realizedPnLUSD: subgraphData?.userSailPosition?.realizedPnLUSD,
+            mintEvents: subgraphData?.sailTokenMintEvents?.length ?? 0,
+            redeemEvents: subgraphData?.sailTokenRedeemEvents?.length ?? 0,
+          };
+          // eslint-disable-next-line no-console
+          console.log("[useSailPositionPnL][debug]", dbgInfo);
+        }
+
+        // If the subgraph hasn't indexed this position yet, surface a clear error.
+        if (!subgraphData?.userSailPosition) {
+          throw new Error(
+            `PnL data not available yet (subgraph has no UserSailPosition for ${positionId}).`
+          );
+        }
+
+        return subgraphData;
+      } catch (e) {
+        if (dbg) {
+          dbgInfo.subgraph = { ok: false, error: String(e) };
+          // eslint-disable-next-line no-console
+          console.log("[useSailPositionPnL][debug]", dbgInfo);
+        }
+        throw e;
       }
-
-      const result = await response.json();
-
-      if (result.errors) {
-        throw new Error(`GraphQL errors: ${JSON.stringify(result.errors)}`);
-      }
-
-      // Ensure we always return a valid data structure
-      return result.data || {
-        userSailPosition: null,
-        sailTokenMintEvents: [],
-        sailTokenRedeemEvents: [],
-      };
     },
     enabled: enabled && !!tokenAddress && !!address,
     refetchInterval: 30000, // Refetch every 30 seconds
     staleTime: 10000,
   });
 
-  // Parse position data
-  const position: UserSailPosition | null = data?.userSailPosition
-    ? {
-        balance: BigInt(data.userSailPosition.balance),
-        balanceUSD: parseFloat(data.userSailPosition.balanceUSD),
-        totalCostBasisUSD: parseFloat(data.userSailPosition.totalCostBasisUSD),
-        averageCostPerToken: parseFloat(data.userSailPosition.averageCostPerToken),
-        realizedPnLUSD: parseFloat(data.userSailPosition.realizedPnLUSD),
-        totalTokensBought: BigInt(data.userSailPosition.totalTokensBought),
-        totalTokensSold: BigInt(data.userSailPosition.totalTokensSold),
-        totalSpentUSD: parseFloat(data.userSailPosition.totalSpentUSD),
-        totalReceivedUSD: parseFloat(data.userSailPosition.totalReceivedUSD),
-        firstAcquiredAt: parseInt(data.userSailPosition.firstAcquiredAt),
-        lastUpdated: parseInt(data.userSailPosition.lastUpdated),
-      }
+  // Subgraph-only: if we have no data, we show an error.
+  const position: UserSailPosition | null = address && tokenAddress
+    ? (data?.userSailPosition
+      ? {
+          balance: BigInt(data.userSailPosition.balance),
+          balanceUSD: parseFloat(data.userSailPosition.balanceUSD),
+          totalCostBasisUSD: parseFloat(data.userSailPosition.totalCostBasisUSD),
+          averageCostPerToken: parseFloat(data.userSailPosition.averageCostPerToken),
+          realizedPnLUSD: parseFloat(data.userSailPosition.realizedPnLUSD),
+          totalTokensBought: BigInt(data.userSailPosition.totalTokensBought),
+          totalTokensSold: BigInt(data.userSailPosition.totalTokensSold),
+          totalSpentUSD: parseFloat(data.userSailPosition.totalSpentUSD),
+          totalReceivedUSD: parseFloat(data.userSailPosition.totalReceivedUSD),
+          firstAcquiredAt: parseInt(data.userSailPosition.firstAcquiredAt),
+          lastUpdated: parseInt(data.userSailPosition.lastUpdated),
+        }
+      : null)
     : null;
 
   // Parse events

@@ -19,6 +19,42 @@ dataSources:
   # ============================================================================
   # MARKET 1: ETH/fxUSD (harbor_v1::ETH::fxUSD)
   # ============================================================================
+
+  # Minter - ETH/fxUSD market (PnL + cost basis)
+  - kind: ethereum
+    name: Minter_ETH_fxUSD
+    network: mainnet
+    source:
+      address: "0xd6E2F8e57b4aFB51C6fA4cbC012e1cE6aEad989F"
+      abi: Minter
+      startBlock: 24049488
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - UserSailPosition
+        - CostBasisLot
+        - SailTokenMintEvent
+        - SailTokenRedeemEvent
+        - SailTokenPricePoint
+        - HourlyPriceSnapshot
+        - PriceTracker
+      abis:
+        - name: Minter
+          file: ./abis/Minter.json
+        - name: WrappedPriceOracle
+          file: ./abis/WrappedPriceOracle.json
+        - name: ChainlinkAggregator
+          file: ./abis/ChainlinkAggregator.json
+        - name: ERC20
+          file: ./abis/ERC20.json
+      eventHandlers:
+        - event: MintLeveragedToken(indexed address,indexed address,uint256,uint256)
+          handler: handleMintLeveragedToken
+        - event: RedeemLeveragedToken(indexed address,uint256,uint256)
+          handler: handleRedeemLeveragedToken
+      file: ./src/minterPnL.ts
   
   # Genesis - ETH/fxUSD market
   - kind: ethereum
@@ -192,6 +228,42 @@ dataSources:
   # ============================================================================
   # MARKET 2: BTC/fxUSD (harbor_v1::BTC::fxUSD)
   # ============================================================================
+
+  # Minter - BTC/fxUSD market (PnL + cost basis)
+  - kind: ethereum
+    name: Minter_BTC_fxUSD
+    network: mainnet
+    source:
+      address: "0x33e32ff4d0677862fa31582CC654a25b9b1e4888"
+      abi: Minter
+      startBlock: 24049375
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - UserSailPosition
+        - CostBasisLot
+        - SailTokenMintEvent
+        - SailTokenRedeemEvent
+        - SailTokenPricePoint
+        - HourlyPriceSnapshot
+        - PriceTracker
+      abis:
+        - name: Minter
+          file: ./abis/Minter.json
+        - name: WrappedPriceOracle
+          file: ./abis/WrappedPriceOracle.json
+        - name: ChainlinkAggregator
+          file: ./abis/ChainlinkAggregator.json
+        - name: ERC20
+          file: ./abis/ERC20.json
+      eventHandlers:
+        - event: MintLeveragedToken(indexed address,indexed address,uint256,uint256)
+          handler: handleMintLeveragedToken
+        - event: RedeemLeveragedToken(indexed address,uint256,uint256)
+          handler: handleRedeemLeveragedToken
+      file: ./src/minterPnL.ts
   
   # Genesis - BTC/fxUSD market
   - kind: ethereum
@@ -360,6 +432,42 @@ dataSources:
   # ============================================================================
   # MARKET 3: BTC/stETH (harbor_v1::BTC::stETH)
   # ============================================================================
+
+  # Minter - BTC/stETH market (PnL + cost basis)
+  - kind: ethereum
+    name: Minter_BTC_stETH
+    network: mainnet
+    source:
+      address: "0xF42516EB885E737780EB864dd07cEc8628000919"
+      abi: Minter
+      startBlock: 24049273
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - UserSailPosition
+        - CostBasisLot
+        - SailTokenMintEvent
+        - SailTokenRedeemEvent
+        - SailTokenPricePoint
+        - HourlyPriceSnapshot
+        - PriceTracker
+      abis:
+        - name: Minter
+          file: ./abis/Minter.json
+        - name: WrappedPriceOracle
+          file: ./abis/WrappedPriceOracle.json
+        - name: ChainlinkAggregator
+          file: ./abis/ChainlinkAggregator.json
+        - name: ERC20
+          file: ./abis/ERC20.json
+      eventHandlers:
+        - event: MintLeveragedToken(indexed address,indexed address,uint256,uint256)
+          handler: handleMintLeveragedToken
+        - event: RedeemLeveragedToken(indexed address,uint256,uint256)
+          handler: handleRedeemLeveragedToken
+      file: ./src/minterPnL.ts
   
   # Genesis - BTC/stETH market
   - kind: ethereum

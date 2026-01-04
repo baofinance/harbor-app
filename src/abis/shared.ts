@@ -193,6 +193,15 @@ export const GENESIS_ABI = [
  * Stability Pool ABI - core functions
  */
 export const STABILITY_POOL_ABI = [
+  // Custom errors (add as we encounter them so viem can decode revert reasons)
+  {
+    type: "error",
+    name: "DepositAmountLessThanMinimum",
+    inputs: [
+      { name: "amount", type: "uint256" },
+      { name: "minimum", type: "uint256" },
+    ],
+  },
   {
     inputs: [],
     name: "ASSET_TOKEN",
@@ -204,6 +213,15 @@ export const STABILITY_POOL_ABI = [
     inputs: [],
     name: "totalAssetSupply",
     outputs: [{ name: "amount", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  // Minimum total supply floor (public immutable in StabilityPool implementation).
+  // When totalAssetSupply is at this floor, withdraw() will clamp withdrawals to 0.
+  {
+    inputs: [],
+    name: "MIN_TOTAL_ASSET_SUPPLY",
+    outputs: [{ name: "", type: "uint256" }],
     stateMutability: "view",
     type: "function",
   },

@@ -236,6 +236,15 @@ type PriceTracker @entity(immutable: false) {
   lastBlockNumber: BigInt! # Block number of last update
 }
 
+# Per-minter tracker so we can write hourly snapshots from a block handler without doing
+# expensive onchain reads every block.
+type MinterHourlyTracker @entity(immutable: false) {
+  id: ID! # "{minterAddress}"
+  minterAddress: Bytes!
+  tokenAddress: Bytes!
+  lastHourTimestamp: BigInt! # Hour timestamp of last snapshot attempt
+}
+
 # User's sail token position with cost basis (for PnL)
 type UserSailPosition @entity(immutable: false) {
   id: ID! # "{tokenAddress}-{userAddress}"
@@ -332,4 +341,17 @@ type SailTokenRedeemEvent @entity(immutable: true) {
   timestamp: BigInt!
   blockNumber: BigInt!
   txHash: Bytes!
+}
+
+# ============ Sail PnL: Genesis-derived cost basis ============
+#
+# This entity is used by the sail-tokens subgraph to attribute cost basis to
+# leveraged (hs) tokens minted via the Genesis process.
+type SailGenesisUser @entity(immutable: false) {
+  id: ID! # "{genesisAddress}-{userAddress}"
+  genesisAddress: Bytes!
+  user: Bytes!
+  netDeposit: BigInt! # Net deposited wrapped collateral (deposits - withdrawals)
+  netDepositUSD: BigDecimal! # Net deposited value in USD at time of each event (running total)
+  lastUpdated: BigInt!
 }

@@ -1,21 +1,29 @@
 // GraphQL configuration for Harbor subgraphs
 
 const GRAPH_API_KEY = process.env.NEXT_PUBLIC_GRAPH_API_KEY || "247d3c7824af808d9ba8a671c7bddfdf";
+const useTest2 = process.env.NEXT_PUBLIC_USE_TEST2_CONTRACTS === "true";
 
 export const GRAPH_CONFIG = {
   // Harbor Marks subgraph (for marks tracking)
   marks: {
     url:
-      process.env.NEXT_PUBLIC_GRAPH_URL ||
+      (useTest2
+        ? process.env.NEXT_PUBLIC_GRAPH_URL_TEST2 ||
+          process.env.NEXT_PUBLIC_GRAPH_URL
+        : process.env.NEXT_PUBLIC_GRAPH_URL) ||
       `https://gateway.thegraph.com/api/subgraphs/id/6XgXZkgr2SL1UWeriY6MsJV9aB2BUfemtMbsfuRq6uP1`,
     chainId: 1,
     network: "mainnet",
   },
   // Sail Token Price subgraph (for price history and PnL)
   sailPrice: {
-    url:
-      process.env.NEXT_PUBLIC_SAIL_PRICE_GRAPH_URL ||
-      `https://gateway.thegraph.com/api/subgraphs/id/6XgXZkgr2SL1UWeriY6MsJV9aB2BUfemtMbsfuRq6uP1`,
+    // Intentionally do NOT fall back to the marks subgraph; sail price/PnL needs its own schema.
+    // If this is empty, UI hooks will throw a clear error prompting configuration.
+    url: useTest2
+      ? process.env.NEXT_PUBLIC_SAIL_PRICE_GRAPH_URL_TEST2 ||
+        process.env.NEXT_PUBLIC_SAIL_PRICE_GRAPH_URL ||
+        ""
+      : process.env.NEXT_PUBLIC_SAIL_PRICE_GRAPH_URL || "",
     chainId: 1,
     network: "mainnet",
   },
@@ -55,17 +63,18 @@ export const CONTRACTS_WBTC = {
 
 // Get the Graph URL for marks (always production/mainnet)
 export const getGraphUrl = (): string => {
-  return process.env.NEXT_PUBLIC_GRAPH_URL || GRAPH_CONFIG.marks.url;
+  return GRAPH_CONFIG.marks.url;
 };
 
 // Get headers for GraphQL requests (includes API key if needed)
-export const getGraphHeaders = (): Record<string, string> => {
+// Pass a URL to ensure auth headers match the endpoint you're calling.
+export const getGraphHeaders = (url?: string): Record<string, string> => {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
   };
   
   // If using Graph Network gateway, add API key in Authorization header
-  const graphUrl = getGraphUrl();
+  const graphUrl = url || getGraphUrl();
   const graphApiKey = process.env.NEXT_PUBLIC_GRAPH_API_KEY || GRAPH_API_KEY;
   
   // Check if URL is a Graph Network gateway (requires auth)
@@ -88,7 +97,13 @@ export const getGraphHeaders = (): Record<string, string> => {
 
 // Get the Sail Price Graph URL (for price history and PnL)
 export const getSailPriceGraphUrl = (): string => {
-  return process.env.NEXT_PUBLIC_SAIL_PRICE_GRAPH_URL || GRAPH_CONFIG.sailPrice.url;
+  const url = GRAPH_CONFIG.sailPrice.url;
+  if (!url) {
+    throw new Error(
+      "Missing Sail price subgraph URL. Set NEXT_PUBLIC_SAIL_PRICE_GRAPH_URL (production) or NEXT_PUBLIC_SAIL_PRICE_GRAPH_URL_TEST2 (test2)."
+    );
+  }
+  return url;
 };
 
 /**

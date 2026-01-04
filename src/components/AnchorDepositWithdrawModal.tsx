@@ -10,7 +10,10 @@ import {
   useWriteContract,
   usePublicClient,
   useSendTransaction,
+  useChainId,
+  useSwitchChain,
 } from "wagmi";
+import { mainnet } from "wagmi/chains";
 import { BaseError, ContractFunctionRevertedError } from "viem";
 import { ERC20_ABI, STABILITY_POOL_ABI } from "@/abis/shared";
 import { aprABI } from "@/abis/apr";
@@ -24,10 +27,24 @@ import { useAnchorLedgerMarks } from "@/hooks/useAnchorLedgerMarks";
 import { useAnyTokenDeposit } from "@/hooks/useAnyTokenDeposit";
 import { getDefiLlamaSwapTx } from "@/hooks/useDefiLlamaSwap";
 import { useCollateralPrice } from "@/hooks/useCollateralPrice";
+import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
 import {
   TransactionProgressModal,
   TransactionStep,
 } from "@/components/TransactionProgressModal";
+
+// -----------------------------------------------------------------------------
+// Debug logging helpers
+// -----------------------------------------------------------------------------
+const DEBUG_TX =
+  process.env.NODE_ENV === "development" ||
+  process.env.NEXT_PUBLIC_DEBUG_TX === "true";
+
+function debugTx(label: string, data?: unknown) {
+  if (!DEBUG_TX) return;
+  // eslint-disable-next-line no-console
+  console.log(`[AnchorTx] ${label}`, data ?? "");
+}
 
 // Helper function to format numbers nicely
 const formatNumber = (
@@ -51,6 +68,85 @@ const formatNumber = (
     maximumFractionDigits: maxDecimals,
     minimumFractionDigits: 0,
   });
+};
+
+// Format 18-decimal token amounts for UI without rounding small balances to zero.
+// Used for ha token + stability pool balances in the withdraw modal.
+const formatTokenAmount18 = (value: bigint): string => {
+  if (value === 0n) return "0";
+
+  const raw = formatUnits(value, 18); // decimal string
+  const abs = Math.abs(parseFloat(raw));
+
+  // Show more precision for smaller balances so users can see tiny deposits.
+  const maxDecimals =
+    abs >= 1
+      ? 4
+      : abs >= 0.01
+        ? 6
+        : abs >= 0.0001
+          ? 8
+          : 10;
+
+  if (!raw.includes(".")) return raw;
+  const [intPart, fracPart = ""] = raw.split(".");
+  const slicedFrac = fracPart.slice(0, maxDecimals);
+  const trimmed = slicedFrac.replace(/0+$/, "");
+  const candidate = trimmed.length > 0 ? `${intPart}.${trimmed}` : intPart;
+
+  // If truncation would display 0 for a non-zero value, show a "< min" hint.
+  if ((candidate === "0" || candidate === "-0") && value !== 0n) {
+    return `<0.${"0".repeat(Math.max(0, maxDecimals - 1))}1`;
+  }
+  return candidate;
+};
+
+// Format 18-decimal USD-wei amounts (1e18 = $1.00) for UI.
+const formatUsd18 = (usdWei: bigint): string => {
+  if (usdWei === 0n) return "$0";
+  const raw = formatUnits(usdWei, 18);
+  const abs = Math.abs(parseFloat(raw));
+  if (abs > 0 && abs < 0.01) return "<$0.01";
+  const maxDecimals = abs >= 1 ? 2 : abs >= 0.01 ? 4 : 6;
+  return `$${formatNumber(raw, maxDecimals)}`;
+};
+
+// -----------------------------------------------------------------------------
+// Chainlink feeds (mainnet) used as fallback when CoinGecko is unavailable
+// -----------------------------------------------------------------------------
+const CHAINLINK_FEEDS = {
+  ETH_USD: "0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419" as `0x${string}`,
+  BTC_USD: "0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c" as `0x${string}`,
+} as const;
+
+const CHAINLINK_AGGREGATOR_ABI = [
+  {
+    inputs: [],
+    name: "decimals",
+    outputs: [{ type: "uint8" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "latestRoundData",
+    outputs: [
+      { name: "roundId", type: "uint80" },
+      { name: "answer", type: "int256" },
+      { name: "startedAt", type: "uint256" },
+      { name: "updatedAt", type: "uint256" },
+      { name: "answeredInRound", type: "uint80" },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+] as const;
+
+const scaleChainlinkToUsdWei = (answer: bigint, decimals: number): bigint => {
+  if (answer <= 0n) return 0n;
+  if (decimals === 18) return answer;
+  if (decimals < 18) return answer * 10n ** BigInt(18 - decimals);
+  return answer / 10n ** BigInt(decimals - 18);
 };
 
 // Extended ERC20 ABI with symbol function
@@ -215,7 +311,94 @@ export const AnchorDepositWithdrawModal = ({
   bestPoolType = "collateral",
   allMarkets,
 }: AnchorDepositWithdrawModalProps) => {
-  const { address, isConnected } = useAccount();
+  const { address, isConnected, connector } = useAccount();
+  // NOTE: `useChainId()` can be misleading when the wallet is on an unsupported chain (e.g. Polygon),
+  // so we treat it as a fallback and prefer `connector.getChainId()` when available.
+  const chainId = useChainId();
+  const { switchChain, isPending: isSwitchingChain } = useSwitchChain();
+
+  const [walletChainId, setWalletChainId] = useState<number | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const readWalletChainId = async () => {
+      if (!connector?.getChainId) {
+        if (!cancelled) setWalletChainId(null);
+        return;
+      }
+      try {
+        const id = await connector.getChainId();
+        if (!cancelled) setWalletChainId(id);
+      } catch (e) {
+        if (process.env.NODE_ENV === "development") {
+          console.warn("[Network] Failed to read connector chainId:", e);
+        }
+        if (!cancelled) setWalletChainId(null);
+      }
+    };
+    readWalletChainId();
+    return () => {
+      cancelled = true;
+    };
+  }, [connector]);
+
+  const effectiveChainId = walletChainId ?? chainId;
+
+  // Check if user is on the correct network (mainnet)
+  const isCorrectNetwork = effectiveChainId === mainnet.id;
+  const shouldShowNetworkSwitch = !isCorrectNetwork && isConnected;
+
+  // Function to handle network switching (manual trigger from UI)
+  const handleSwitchNetwork = async () => {
+    try {
+      await switchChain({ chainId: mainnet.id });
+      setError(null);
+      // Best-effort refresh from connector
+      if (connector?.getChainId) {
+        const id = await connector.getChainId();
+        setWalletChainId(id);
+      }
+    } catch (err) {
+      console.error("[Network Switch] Error:", err);
+      setError(
+        "Failed to switch network. Please switch to Ethereum Mainnet manually in your wallet."
+      );
+      setStep("error");
+    }
+  };
+
+  // Helper function to ensure we're on the correct network before any transaction.
+  // Auto-attempts to switch to mainnet, and only proceeds if the switch succeeds.
+  const ensureCorrectNetwork = async (): Promise<boolean> => {
+    if (!isConnected) return true;
+
+    let currentWalletChainId: number | null = null;
+    try {
+      currentWalletChainId = connector?.getChainId ? await connector.getChainId() : null;
+    } catch {
+      currentWalletChainId = null;
+    }
+
+    const chainToCheck = currentWalletChainId ?? effectiveChainId;
+    if (chainToCheck === mainnet.id) return true;
+
+    try {
+      await switchChain({ chainId: mainnet.id });
+      // Best-effort refresh from connector
+      if (connector?.getChainId) {
+        const id = await connector.getChainId();
+        setWalletChainId(id);
+      }
+      return true;
+    } catch (err) {
+      if (process.env.NODE_ENV === "development") {
+        console.warn("[Network] Auto switch rejected/failed:", err);
+      }
+      setError("Please switch to Ethereum Mainnet to continue.");
+      setStep("error");
+      return false;
+    }
+  };
 
   // Map old initialTab to new tab structure
   const getInitialTab = (): TabType => {
@@ -283,6 +466,14 @@ export const AnchorDepositWithdrawModal = ({
   const [progressConfig, setProgressConfig] = useState(defaultProgressConfig);
   const [progressModalOpen, setProgressModalOpen] = useState(false);
 
+  // Track the last non-error step so the progress modal can highlight the step that actually failed.
+  const lastNonErrorStepRef = useRef<ModalStep>("input");
+  useEffect(() => {
+    if (step !== "error") {
+      lastNonErrorStepRef.current = step;
+    }
+  }, [step]);
+
   // Slippage input state for swap preview
   const [slippageTolerance, setSlippageTolerance] = useState<number>(0.5); // Default 0.5% slippage
   const [showSlippageInput, setShowSlippageInput] = useState(false);
@@ -305,8 +496,8 @@ export const AnchorDepositWithdrawModal = ({
   >("collateral");
 
   // Withdraw/Redeem tab options
+  // Default: withdraw from pools + redeem selected ha tokens to collateral.
   const [withdrawOnly, setWithdrawOnly] = useState(false);
-  const [redeemOnly, setRedeemOnly] = useState(false);
   const [withdrawFromCollateralPool, setWithdrawFromCollateralPool] =
     useState(false);
   const [withdrawFromSailPool, setWithdrawFromSailPool] = useState(false);
@@ -420,7 +611,15 @@ export const AnchorDepositWithdrawModal = ({
         );
       }
     } else if (progressConfig.mode === "withdraw") {
-      if (progressConfig.includeWithdrawCollateral) {
+      // NOTE: Step list should reflect what we actually send to the wallet.
+      // Rely primarily on progressConfig, but also include steps if we already have tx hashes
+      // (e.g. allowance reads can be stale, causing an extra approve tx not pre-listed).
+      const hasWithdrawCollateralTx = !!(txHashes.withdrawCollateral || txHashes.requestCollateral);
+      const hasWithdrawSailTx = !!(txHashes.withdrawSail || txHashes.requestSail);
+      const hasApproveRedeemTx = !!txHashes.approveRedeem;
+      const hasRedeemTx = !!txHashes.redeem;
+
+      if (progressConfig.includeWithdrawCollateral || hasWithdrawCollateralTx) {
         addStep(
           "withdraw-collateral",
           progressConfig.withdrawCollateralLabel ||
@@ -428,23 +627,28 @@ export const AnchorDepositWithdrawModal = ({
           txHashes.withdrawCollateral || txHashes.requestCollateral
         );
       }
-      if (progressConfig.includeWithdrawSail) {
+      if (progressConfig.includeWithdrawSail || hasWithdrawSailTx) {
         addStep(
           "withdraw-sail",
           progressConfig.withdrawSailLabel || "Withdraw from sail pool",
           txHashes.withdrawSail || txHashes.requestSail
         );
       }
-      if (progressConfig.includeApproveRedeem) {
+      if (progressConfig.includeApproveRedeem || hasApproveRedeemTx) {
         addStep("approve-redeem", "Approve ha token", txHashes.approveRedeem);
       }
-      if (progressConfig.includeRedeem) {
+      if (progressConfig.includeRedeem || hasRedeemTx) {
         addStep("redeem", "Redeem ha for collateral", txHashes.redeem);
       }
     }
 
     // Determine current step index based on modal step state
     const getCurrentIndex = () => {
+      const stepForIndex = step === "error" ? lastNonErrorStepRef.current : step;
+      const approveCollateralIndex = steps.findIndex(
+        (s) => s.id === "approve-collateral"
+      );
+      const approveDirectIndex = steps.findIndex((s) => s.id === "approve-direct");
       const mintIndex = steps.findIndex((s) => s.id === "mint");
       const approvePeggedIndex = steps.findIndex(
         (s) => s.id === "approve-pegged"
@@ -460,36 +664,41 @@ export const AnchorDepositWithdrawModal = ({
         (s) => s.id === "approve-redeem"
       );
       const redeemIndex = steps.findIndex((s) => s.id === "redeem");
-      if (step === "minting") return mintIndex >= 0 ? mintIndex : 0;
-      if (step === "approvingPegged")
+      if (stepForIndex === "minting") return mintIndex >= 0 ? mintIndex : 0;
+      if (stepForIndex === "approvingPegged")
         return approvePeggedIndex >= 0
           ? approvePeggedIndex
           : depositIndex >= 0
           ? depositIndex - 1
           : steps.length - 1;
-      if (step === "depositing")
+      if (stepForIndex === "depositing")
         return depositIndex >= 0 ? depositIndex : steps.length - 1;
       if (
-        step === "withdrawing" ||
-        step === "withdrawingCollateral" ||
-        step === "requestingCollateral"
+        stepForIndex === "withdrawing" ||
+        stepForIndex === "withdrawingCollateral" ||
+        stepForIndex === "requestingCollateral"
       ) {
         if (withdrawCollateralIndex >= 0) return withdrawCollateralIndex;
         if (withdrawSailIndex >= 0) return withdrawSailIndex;
       }
-      if (step === "withdrawingSail" || step === "requestingSail") {
+      if (stepForIndex === "withdrawingSail" || stepForIndex === "requestingSail") {
         if (withdrawSailIndex >= 0) return withdrawSailIndex;
         if (withdrawCollateralIndex >= 0) return withdrawCollateralIndex;
       }
-      if (step === "redeeming")
+      if (stepForIndex === "redeeming")
         return redeemIndex >= 0 ? redeemIndex : steps.length - 1;
-      if (step === "approving")
-        return approveRedeemIndex >= 0
-          ? approveRedeemIndex
-          : redeemIndex >= 0
-          ? Math.max(redeemIndex - 1, 0)
-          : steps.length - 1;
-      if (step === "success") return steps.length - 1;
+      if (stepForIndex === "approving") {
+        // "approving" is used in multiple flows:
+        // - collateral mode: approve collateral token
+        // - direct mode: approve ha token
+        // - withdraw/redeem mode: approve redeem
+        if (approveCollateralIndex >= 0) return approveCollateralIndex;
+        if (approveDirectIndex >= 0) return approveDirectIndex;
+        if (approveRedeemIndex >= 0) return approveRedeemIndex;
+        if (redeemIndex >= 0) return Math.max(redeemIndex - 1, 0);
+        return 0;
+      }
+      if (stepForIndex === "success") return steps.length - 1;
       return 0;
     };
 
@@ -550,6 +759,222 @@ export const AnchorDepositWithdrawModal = ({
   const marketsForToken =
     allMarkets && allMarkets.length > 0 ? allMarkets : [{ marketId, market }];
 
+  // If multiple markets share the same ha token (e.g. haBTC across BTC/fxUSD and BTC/stETH),
+  // the "Manage" modal may open on a market that doesn't contain the user's stability pool deposit.
+  // In withdraw mode, auto-select the market within the group that actually has a deposit so the UI
+  // doesn't incorrectly show "no positions".
+  const selectedMarketHasPoolDeposit = useMemo(() => {
+    if (!poolDeposits || poolDeposits.length === 0) return false;
+    const m = marketsForToken.find((x) => x.marketId === selectedMarketId)?.market;
+    if (!m) return false;
+
+    const collateralAddr = (m as any)?.addresses?.stabilityPoolCollateral as
+      | string
+      | undefined;
+    const sailAddr = (m as any)?.addresses?.stabilityPoolLeveraged as
+      | string
+      | undefined;
+
+    const collateralLower = collateralAddr?.toLowerCase();
+    const sailLower = sailAddr?.toLowerCase();
+
+    const collateralDeposit = collateralLower
+      ? poolDeposits.find(
+          (d) =>
+            d.poolType === "collateral" &&
+            d.poolAddress.toLowerCase() === collateralLower
+        )
+      : null;
+    const sailDeposit = sailLower
+      ? poolDeposits.find(
+          (d) =>
+            d.poolType === "sail" && d.poolAddress.toLowerCase() === sailLower
+        )
+      : null;
+
+    const collateralBal = collateralDeposit ? parseEther(collateralDeposit.balance) : 0n;
+    const sailBal = sailDeposit ? parseEther(sailDeposit.balance) : 0n;
+    return collateralBal > 0n || sailBal > 0n;
+  }, [poolDeposits, marketsForToken, selectedMarketId]);
+
+  const marketIdWithAnyPoolDeposit = useMemo(() => {
+    if (!poolDeposits || poolDeposits.length === 0) return null;
+    if (!marketsForToken || marketsForToken.length <= 1) return null;
+
+    for (const entry of marketsForToken) {
+      const m = entry.market;
+      const collateralAddr = (m as any)?.addresses?.stabilityPoolCollateral as
+        | string
+        | undefined;
+      const sailAddr = (m as any)?.addresses?.stabilityPoolLeveraged as
+        | string
+        | undefined;
+
+      const collateralLower = collateralAddr?.toLowerCase();
+      const sailLower = sailAddr?.toLowerCase();
+
+      const collateralDeposit = collateralLower
+        ? poolDeposits.find(
+            (d) =>
+              d.poolType === "collateral" &&
+              d.poolAddress.toLowerCase() === collateralLower
+          )
+        : null;
+      const sailDeposit = sailLower
+        ? poolDeposits.find(
+            (d) =>
+              d.poolType === "sail" && d.poolAddress.toLowerCase() === sailLower
+          )
+        : null;
+
+      const collateralBal = collateralDeposit ? parseEther(collateralDeposit.balance) : 0n;
+      const sailBal = sailDeposit ? parseEther(sailDeposit.balance) : 0n;
+
+      if (collateralBal > 0n || sailBal > 0n) return entry.marketId;
+    }
+    return null;
+  }, [poolDeposits, marketsForToken]);
+
+  // Onchain fallback for selecting the correct market in withdraw mode:
+  // If the marks subgraph is pointing at a different environment (e.g., prod) it may return no deposits.
+  // In that case, we detect deposits directly via StabilityPool.assetBalanceOf across all markets in the group.
+  const { contracts: groupBalanceContracts, indexMap: groupBalanceIndexMap } =
+    useMemo(() => {
+      const idxMap = new Map<
+        number,
+        { marketId: string; kind: "collateralPool" | "sailPool" }
+      >();
+      const items: any[] = [];
+
+      if (!address || !marketsForToken || marketsForToken.length <= 1) {
+        return { contracts: items, indexMap: idxMap };
+      }
+
+      for (const entry of marketsForToken) {
+        const m = entry.market;
+        const collateralAddr = (m as any)?.addresses?.stabilityPoolCollateral as
+          | `0x${string}`
+          | undefined;
+        const sailAddr = (m as any)?.addresses?.stabilityPoolLeveraged as
+          | `0x${string}`
+          | undefined;
+
+        if (collateralAddr) {
+          idxMap.set(items.length, {
+            marketId: entry.marketId,
+            kind: "collateralPool",
+          });
+          items.push({
+            address: collateralAddr,
+            abi: STABILITY_POOL_ABI,
+            functionName: "assetBalanceOf",
+            args: [address as `0x${string}`],
+          });
+        }
+        if (sailAddr) {
+          idxMap.set(items.length, {
+            marketId: entry.marketId,
+            kind: "sailPool",
+          });
+          items.push({
+            address: sailAddr,
+            abi: STABILITY_POOL_ABI,
+            functionName: "assetBalanceOf",
+            args: [address as `0x${string}`],
+          });
+        }
+      }
+
+      return { contracts: items, indexMap: idxMap };
+    }, [address, marketsForToken]);
+
+  const { data: groupOnchainBalances } = useContractReads({
+    contracts: groupBalanceContracts,
+    query: {
+      enabled:
+        !!address &&
+        isOpen &&
+        activeTab === "withdraw" &&
+        groupBalanceContracts.length > 0,
+      refetchInterval: isOpen ? 15000 : false,
+      retry: 1,
+      allowFailure: true,
+    },
+  });
+
+  const marketIdWithAnyOnchainPoolDeposit = useMemo(() => {
+    if (!groupOnchainBalances || groupOnchainBalances.length === 0) return null;
+    const balancesByMarket = new Map<
+      string,
+      { collateralPool: bigint; sailPool: bigint }
+    >();
+
+    groupOnchainBalances.forEach((res, idx) => {
+      const meta = groupBalanceIndexMap.get(idx);
+      if (!meta) return;
+      const prev = balancesByMarket.get(meta.marketId) || {
+        collateralPool: 0n,
+        sailPool: 0n,
+      };
+      const val =
+        res?.status === "success" && res.result !== undefined && res.result !== null
+          ? (res.result as bigint)
+          : 0n;
+      if (meta.kind === "collateralPool") prev.collateralPool = val;
+      if (meta.kind === "sailPool") prev.sailPool = val;
+      balancesByMarket.set(meta.marketId, prev);
+    });
+
+    for (const [marketId, b] of balancesByMarket.entries()) {
+      if (b.collateralPool > 0n || b.sailPool > 0n) return marketId;
+    }
+    return null;
+  }, [groupOnchainBalances, groupBalanceIndexMap]);
+
+  const selectedMarketHasOnchainPoolDeposit = useMemo(() => {
+    if (!groupOnchainBalances || groupOnchainBalances.length === 0) return false;
+    // If we only have one market, the per-market hooks below already cover it.
+    if (!marketsForToken || marketsForToken.length <= 1) return false;
+
+    // Reuse computed market id if any; if it equals selectedMarketId, we know selected has deposit.
+    if (!marketIdWithAnyOnchainPoolDeposit) return false;
+    return marketIdWithAnyOnchainPoolDeposit === selectedMarketId;
+  }, [groupOnchainBalances, marketsForToken, marketIdWithAnyOnchainPoolDeposit, selectedMarketId]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    if (activeTab !== "withdraw") return;
+    // Prefer subgraph-based selection if available, but fall back to onchain detection.
+    const preferredMarketId =
+      marketIdWithAnyPoolDeposit || marketIdWithAnyOnchainPoolDeposit;
+
+    const hasDeposit =
+      selectedMarketHasPoolDeposit || selectedMarketHasOnchainPoolDeposit;
+
+    if (hasDeposit) return;
+    if (!preferredMarketId) return;
+    if (selectedMarketId === preferredMarketId) return;
+
+    if (process.env.NODE_ENV === "development") {
+      console.log(
+        "[AnchorDepositWithdrawModal] Auto-selecting market with pool deposit:",
+        {
+          from: selectedMarketId,
+          to: preferredMarketId,
+        }
+      );
+    }
+    setSelectedMarketId(preferredMarketId);
+  }, [
+    isOpen,
+    activeTab,
+    selectedMarketHasPoolDeposit,
+    marketIdWithAnyPoolDeposit,
+    selectedMarketHasOnchainPoolDeposit,
+    marketIdWithAnyOnchainPoolDeposit,
+    selectedMarketId,
+  ]);
+
   // Debug: log markets being used
   useEffect(() => {
     if (isOpen && simpleMode) {
@@ -572,8 +997,12 @@ export const AnchorDepositWithdrawModal = ({
 
   // Extract key addresses and symbols from selected market (needed for anyTokenDeposit hook)
   const minterAddress = selectedMarket?.addresses?.minter;
-  const collateralAddress = selectedMarket?.addresses?.collateralToken;
+  // All markets deposit the wrapped collateral token (fxSAVE, wstETH, etc).
+  // If this is missing, the config is wrong and we should fail fast.
+  const collateralAddress = selectedMarket?.addresses
+    ?.wrappedCollateralToken as `0x${string}` | undefined;
   const peggedTokenAddress = selectedMarket?.addresses?.peggedToken;
+  const leveragedTokenAddress = selectedMarket?.addresses?.leveragedToken;
   const collateralSymbol = selectedMarket?.collateral?.symbol || "ETH";
   const peggedTokenSymbol = selectedMarket?.peggedToken?.symbol || "ha";
 
@@ -599,6 +1028,10 @@ export const AnchorDepositWithdrawModal = ({
     enabled: isOpen && activeTab === "deposit",
   });
 
+  // Get BTC and ETH prices for fee conversion in BTC markets
+  const { price: btcPrice } = useCoinGeckoPrice("bitcoin", 120000);
+  const { price: ethPrice } = useCoinGeckoPrice("ethereum", 120000);
+
   // Find market for selected deposit asset (in simple mode, deposit asset determines which market to use)
   const marketForDepositAsset = useMemo(() => {
     if (!simpleMode || !selectedDepositAsset) return null;
@@ -614,15 +1047,73 @@ export const AnchorDepositWithdrawModal = ({
     }
 
     // Find the market whose collateral symbol matches the deposit asset
-    // or whose accepted deposit assets include the selected asset
+    // Prioritize markets where the selected asset is the native collateral (no swap needed)
+    const normalizedAsset = selectedDepositAsset.toLowerCase();
+    
+    // First pass: find market where selected asset is the native wrapped collateral
     for (const { market: m } of marketsForToken) {
-      const assets = getAcceptedDepositAssets(m);
-      if (assets.some((asset) => asset.symbol === selectedDepositAsset)) {
+      const wrappedSymbol = m?.collateral?.symbol?.toLowerCase();
+      if (wrappedSymbol === normalizedAsset) {
         return m;
       }
     }
+    
+    // Second pass: find best market where selected asset is in accepted assets (may need wrapping/zap/swap)
+    const getAssetMarketPriority = (assetSymbol: string, m: any): number => {
+      const sym = assetSymbol?.toLowerCase?.() || "";
+      const collateralSym = m?.collateral?.symbol?.toLowerCase?.() || "";
+      const underlyingSym = m?.collateral?.underlyingSymbol?.toLowerCase?.() || "";
+
+      if (collateralSym && sym === collateralSym) return 100;
+      if (underlyingSym && sym === underlyingSym) return 90;
+
+      if (
+        (sym === "eth" || sym === "steth" || sym === "wsteth") &&
+        collateralSym === "wsteth"
+      ) {
+        return 80;
+      }
+
+      if (
+        (sym === "fxusd" || sym === "fxsave" || sym === "usdc") &&
+        collateralSym === "fxsave"
+      ) {
+        return 80;
+      }
+
+      return 0;
+    };
+
+    let bestMarket: any = null;
+    let bestPriority = -1;
+    for (const { market: m } of marketsForToken) {
+      const assets = getAcceptedDepositAssets(m);
+      if (assets.some((asset) => asset.symbol === selectedDepositAsset)) {
+        const p = getAssetMarketPriority(selectedDepositAsset, m);
+        if (p > bestPriority) {
+          bestPriority = p;
+          bestMarket = m;
+        }
+      }
+    }
+    if (bestMarket) return bestMarket;
     return null;
   }, [selectedDepositAsset, marketsForToken, simpleMode]);
+
+  // Update selectedMarketId when deposit asset changes (Step 1 only)
+  // This ensures the minting market is locked to the deposit asset
+  // We only update in Step 1 to prevent resets when selecting pools in Step 3
+  useEffect(() => {
+    if (simpleMode && currentStep === 1 && marketForDepositAsset) {
+      // Find the marketId for the marketForDepositAsset
+      const matchingMarket = marketsForToken.find(
+        ({ market: m }) => m === marketForDepositAsset
+      );
+      if (matchingMarket) {
+        setSelectedMarketId(matchingMarket.marketId);
+      }
+    }
+  }, [marketForDepositAsset, currentStep, simpleMode, marketsForToken]);
 
   // Use market for deposit asset if available, otherwise use selected market
   const activeMarketForFees = marketForDepositAsset || selectedMarket;
@@ -636,30 +1127,71 @@ export const AnchorDepositWithdrawModal = ({
 
   // Collect all unique deposit assets from all markets with their corresponding markets
   const allDepositAssetsWithMarkets = useMemo(() => {
+    const getAssetMarketPriority = (assetSymbol: string, m: any): number => {
+      const sym = assetSymbol?.toLowerCase?.() || "";
+      const collateralSym = m?.collateral?.symbol?.toLowerCase?.() || "";
+      const underlyingSym = m?.collateral?.underlyingSymbol?.toLowerCase?.() || "";
+
+      // Strongest signals: this market's collateral (wrapped or underlying) matches the asset.
+      if (collateralSym && sym === collateralSym) return 100;
+      if (underlyingSym && sym === underlyingSym) return 90;
+
+      // Heuristics for multi-market ha tokens (e.g., haBTC across fxSAVE-collateral and wstETH-collateral markets)
+      // Ensure ETH-based inputs map to the wstETH-collateral market.
+      if (
+        (sym === "eth" || sym === "steth" || sym === "wsteth") &&
+        collateralSym === "wsteth"
+      ) {
+        return 80;
+      }
+
+      // Ensure USD-based inputs map to the fxSAVE-collateral market.
+      if (
+        (sym === "fxusd" || sym === "fxsave" || sym === "usdc") &&
+        collateralSym === "fxsave"
+      ) {
+        return 80;
+      }
+
+      return 0;
+    };
+
     const assetMap = new Map<
       string,
       {
         symbol: string;
         name: string;
         market: any;
+        marketId: string;
         minterAddress: string | undefined;
         isPeggedToken?: boolean; // Flag to indicate this is a ha token (direct deposit, no minting)
       }
     >();
-    marketsForToken.forEach(({ market: m }) => {
+    marketsForToken.forEach(({ marketId, market: m }) => {
       const assets = getAcceptedDepositAssets(m);
       const minterAddr = m?.addresses?.minter;
       const peggedTokenSymbol = m?.peggedToken?.symbol || "ha";
 
       // Add collateral-based assets (require minting)
       assets.forEach((asset) => {
-        if (!assetMap.has(asset.symbol)) {
-          assetMap.set(asset.symbol, {
-            ...asset,
-            market: m,
-            minterAddress: minterAddr,
-            isPeggedToken: false,
-          });
+        const existing = assetMap.get(asset.symbol);
+        const next = {
+          ...asset,
+          market: m,
+          marketId,
+          minterAddress: minterAddr,
+          isPeggedToken: false,
+        };
+
+        if (!existing) {
+          assetMap.set(asset.symbol, next);
+          return;
+        }
+
+        const prevPriority = getAssetMarketPriority(existing.symbol, existing.market);
+        const nextPriority = getAssetMarketPriority(next.symbol, next.market);
+        if (nextPriority > prevPriority) {
+          assetMap.set(asset.symbol, next);
         }
       });
 
@@ -669,6 +1201,7 @@ export const AnchorDepositWithdrawModal = ({
           symbol: peggedTokenSymbol,
           name: m?.peggedToken?.name || `${peggedTokenSymbol} Token`,
           market: m,
+          marketId,
           minterAddress: undefined, // No minter needed for direct ha deposits
           isPeggedToken: true,
         });
@@ -686,81 +1219,39 @@ export const AnchorDepositWithdrawModal = ({
     }));
   }, [allDepositAssetsWithMarkets]);
 
-  // Calculate fees for each deposit asset using a sample amount (1 token)
-  // Only run when modal is open and user is on deposit tab to reduce unnecessary calls
-  const sampleAmountForFeeCalc = "1.0";
-  const feeContracts = useMemo(() => {
-    if (!simpleMode || !isOpen || activeTab !== "deposit") return [];
+  // Dropdown deposit assets (no estimated fees shown)
+  const depositAssetsForDropdown = useMemo(() => {
+    let result = allDepositAssetsWithMarkets.map((asset) => ({
+      ...asset,
+      isUserToken: false,
+    }));
 
-    // Create contracts array with asset info for mapping
-    const contracts: Array<{
-      address: `0x${string}`;
-      abi: typeof minterABI;
-      functionName: "mintPeggedTokenDryRun";
-      args: [bigint];
-      assetSymbol: string;
-      wrappedAmount: bigint; // Store the wrapped amount for fee calculation
-    }> = [];
+    // Merge with "any token" assets from user's wallet
+    if (anyTokenDeposit.allAvailableAssets.length > 0) {
+      const existingSymbols = new Set(result.map((a) => a.symbol.toUpperCase()));
 
-    allDepositAssetsWithMarkets.forEach((asset) => {
-      if (
-        asset.minterAddress &&
-        typeof asset.minterAddress === "string" &&
-        asset.minterAddress.startsWith("0x") &&
-        asset.minterAddress.length === 42
-      ) {
-        // Convert sample amount to wrapped collateral units
-        let wrappedAmount: bigint;
-        const sampleAmount = parseEther(sampleAmountForFeeCalc);
-        
-        // Get market data for conversions
-        const wrappedCollateralSymbol = asset.market?.wrappedCollateral?.symbol;
-        const peggedTokenSymbol = asset.market?.peggedToken?.symbol;
-        const wrappedRate = asset.market?.wrappedRate || 10n**18n;
-        
-        // Check if this asset is the wrapped collateral for its market
-        const isWrappedCollateral = asset.symbol === wrappedCollateralSymbol;
-        
-        if (isWrappedCollateral) {
-          // Already in wrapped collateral units
-          wrappedAmount = sampleAmount;
-        } else if (asset.symbol === peggedTokenSymbol) {
-          // Pegged token (fxUSD) -> wrapped collateral (fxSAVE)
-          wrappedAmount = (sampleAmount * 10n**18n) / wrappedRate;
-        } else if (asset.symbol === "USDC") {
-          // USDC (6 decimals) -> fxUSD (18 decimals) -> fxSAVE
-          // 1 USDC = 1e6 in USDC units
-          // Convert to 18 decimals: 1e6 * 1e12 = 1e18 (1 USDC in 18 decimals)
-          // Convert to fxSAVE: (1e18 * 1e18) / wrappedRate
-          // But wait - we should compare fees on the same basis. For USDC, we deposit 1 USDC,
-          // which equals 1 fxUSD (since USDC and fxUSD are both $1), so we should use the same wrappedAmount
-          // as fxUSD to get a fair fee comparison.
-          // Actually, the fee is calculated on the wrapped collateral amount, so:
-          // 1 USDC = 1 fxUSD (in value) = 1e18 in 18 decimals
-          // fxSAVE = fxUSD / wrappedRate = 1e18 / wrappedRate
-          const usdcAmount = BigInt(Math.floor(parseFloat(sampleAmountForFeeCalc) * 10**6));
-          const usdcIn18Decimals = usdcAmount * 10n**12n; // 1 USDC = 1e18 in 18 decimals
-          // For fee comparison, we want to know the fee for depositing 1 USDC worth of wrapped collateral
-          // Since 1 USDC = 1 fxUSD, we use the same conversion as fxUSD
-          wrappedAmount = (usdcIn18Decimals * 10n**18n) / wrappedRate;
-        } else {
-          // Unknown asset type, use as-is (should not happen for native deposits)
-          wrappedAmount = sampleAmount;
+      anyTokenDeposit.allAvailableAssets.forEach((token) => {
+        if (!existingSymbols.has(token.symbol.toUpperCase())) {
+          result.push({
+            symbol: token.symbol,
+            name: token.name,
+            marketId: selectedMarketId, // Use selected market for "any token" deposits
+            market: selectedMarket,
+            minterAddress: selectedMarket?.addresses?.minter,
+            isUserToken: token.isUserToken ?? true,
+            isPeggedToken: false,
+          } as any);
         }
-        
-        contracts.push({
-          address: asset.minterAddress as `0x${string}`,
-          abi: minterABI,
-          functionName: "mintPeggedTokenDryRun" as const,
-          args: [wrappedAmount] as const,
-          assetSymbol: asset.symbol,
-          wrappedAmount: wrappedAmount, // Store for fee calculation
-        });
-      }
-    });
+      });
+    }
 
-    return contracts;
-  }, [allDepositAssetsWithMarkets, simpleMode, isOpen, activeTab]);
+    return result;
+  }, [
+    allDepositAssetsWithMarkets,
+    anyTokenDeposit.allAvailableAssets,
+    selectedMarketId,
+    selectedMarket,
+  ]);
 
   // Calculate fees for each market separately (for showing per-market fees)
   const marketFeeContracts = useMemo(() => {
@@ -784,7 +1275,7 @@ export const AnchorDepositWithdrawModal = ({
       ) {
         // For market fees, we use wrapped collateral directly since we're comparing across markets
         // The sample amount should already be in wrapped collateral units
-        const wrappedAmount = parseEther(sampleAmountForFeeCalc);
+        const wrappedAmount = parseEther("1.0");
         
         contracts.push({
           address: minterAddr as `0x${string}`,
@@ -835,7 +1326,7 @@ export const AnchorDepositWithdrawModal = ({
 
       if (resultData && Array.isArray(resultData) && resultData.length >= 2) {
         const wrappedFee = resultData[1] as bigint;
-        const inputAmount = parseEther(sampleAmountForFeeCalc);
+        const inputAmount = parseEther("1.0");
         if (inputAmount > 0n) {
           feePercentage = (Number(wrappedFee) / Number(inputAmount)) * 100;
         }
@@ -866,128 +1357,7 @@ export const AnchorDepositWithdrawModal = ({
   }, [marketFeesMap]);
 
   // Use production-compatible contract reads (works on both mainnet and Anvil)
-  const {
-    data: feeDataForAllAssets,
-    isLoading: feeLoading,
-    error: feeError,
-  } = useContractReads({
-    contracts: feeContracts.map(({ assetSymbol, ...contract }) => contract),
-    allowFailure: true, // Allow individual contract reads to fail without breaking the whole batch
-    query: {
-      enabled:
-        feeContracts.length > 0 &&
-        isOpen &&
-        simpleMode &&
-        activeTab === "deposit",
-      refetchInterval: 30000, // Refetch every 30 seconds
-    },
-  });
-
-  // Debug: Log fee data state changes
-  useEffect(() => {
-    // Fee data state tracking
-  }, [
-    feeDataForAllAssets,
-    feeLoading,
-    feeError,
-    feeContracts.length,
-    isOpen,
-    simpleMode,
-    activeTab,
-  ]);
-
-  // Map fees to deposit assets using minter address as key
-  const depositAssetsWithFees = useMemo(() => {
-    // Create a map of asset symbol to fee result
-    const feeMap = new Map<string, number | undefined>();
-
-    feeContracts.forEach((contract, index) => {
-      const feeResult = feeDataForAllAssets?.[index];
-      let feePercentage: number | undefined = undefined;
-
-      // Handle result structure - could be { status:"success", result: T } or just T
-      let resultData: any = undefined;
-      if (feeResult) {
-        // Check if it has a status field (from allowFailure: true)
-        if ("status" in feeResult && feeResult.status === "success") {
-          resultData = feeResult.result;
-        } else if ("status" in feeResult && feeResult.status === "failure") {
-          console.warn(
-            `[Modal] Failed to fetch fee for ${contract.assetSymbol}:`,
-            feeResult.error
-          );
-          feeMap.set(contract.assetSymbol, undefined);
-          return; // Skip to next contract
-        } else if (!("status" in feeResult)) {
-          // No status field, assume it's the result directly
-          resultData = feeResult;
-        }
-      }
-
-      // Process the result data
-      if (resultData && Array.isArray(resultData) && resultData.length >= 2) {
-        const wrappedFee = resultData[1] as bigint;
-        // Use the actual wrappedAmount that was passed to the contract, not a fixed amount
-        // This ensures fees are calculated correctly for assets with different conversions (e.g., USDC)
-        const inputAmount = contract.wrappedAmount;
-        if (inputAmount > 0n) {
-          // Calculate fee percentage even if wrappedFee is 0 (to show 0%)
-          feePercentage = (Number(wrappedFee) / Number(inputAmount)) * 100;
-        }
-      } else if (isOpen && simpleMode && activeTab === "deposit") {
-        console.warn(
-          `[Modal] Fee result for ${contract.assetSymbol} is invalid:`,
-          {
-            hasResult: !!feeResult,
-            resultType: typeof feeResult,
-            resultData: resultData,
-            isArray: Array.isArray(resultData),
-            length: Array.isArray(resultData) ? resultData.length : undefined,
-          }
-        );
-      }
-
-      // Map by asset symbol to match back to assets
-      feeMap.set(contract.assetSymbol, feePercentage);
-    });
-
-    // Map fees back to assets
-    let result = allDepositAssetsWithMarkets.map((asset) => ({
-      ...asset,
-      feePercentage: feeMap.get(asset.symbol),
-    }));
-
-    // Merge with "any token" assets from user's wallet
-    if (anyTokenDeposit.allAvailableAssets.length > 0) {
-      const existingSymbols = new Set(result.map((a) => a.symbol.toUpperCase()));
-      
-      anyTokenDeposit.allAvailableAssets.forEach((token) => {
-        if (!existingSymbols.has(token.symbol.toUpperCase())) {
-          result.push({
-            symbol: token.symbol,
-            name: token.name,
-            marketId: selectedMarketId, // Use selected market for "any token" deposits
-            market: selectedMarket,
-            minterAddress: selectedMarket?.addresses?.minter,
-            isUserToken: token.isUserToken,
-            feePercentage: undefined, // Will need swap, so no direct mint fee
-          });
-        }
-      });
-    }
-
-    return result;
-  }, [
-    allDepositAssetsWithMarkets,
-    feeDataForAllAssets,
-    feeContracts,
-    isOpen,
-    simpleMode,
-    activeTab,
-    anyTokenDeposit.allAvailableAssets,
-    selectedMarketId,
-    selectedMarket,
-  ]);
+  // (Removed) Estimated fee fetching for dropdown options.
 
   // Collect all stability pools from all markets
   const allStabilityPools = useMemo(() => {
@@ -1107,10 +1477,25 @@ export const AnchorDepositWithdrawModal = ({
 
   // Get token address for selected deposit asset
   const getSelectedAssetAddress = useMemo(() => {
-    if (!selectedDepositAsset || !marketForDepositAsset) return null;
+    if (!selectedDepositAsset) return null;
+    
+    // Use marketForDepositAsset in simple mode, selectedMarket in advanced mode
+    const market = marketForDepositAsset || selectedMarket;
+    if (!market) return null;
 
     const normalized = selectedDepositAsset.toLowerCase();
-    const market = marketForDepositAsset;
+    
+    if (process.env.NODE_ENV === "development") {
+      console.log("[getSelectedAssetAddress]", {
+        selectedDepositAsset,
+        normalized,
+        marketId: market?.id,
+        marketName: market?.name,
+        collateralSymbol: market?.collateral?.symbol,
+        wrappedCollateralToken: market?.addresses?.wrappedCollateralToken,
+        collateralToken: market?.addresses?.collateralToken,
+      });
+    }
 
     // Check if it's ha token - use Genesis contract's pegged token address if available, otherwise fall back to market config
     const peggedTokenSymbol = market?.peggedToken?.symbol || "ha";
@@ -1132,9 +1517,15 @@ export const AnchorDepositWithdrawModal = ({
     // collateral.symbol is the wrapped version (what's actually deposited)
     const wrappedCollateralSymbol = market?.collateral?.symbol || "";
     if (normalized === wrappedCollateralSymbol.toLowerCase()) {
-      return market?.addresses?.wrappedCollateralToken as
-        | `0x${string}`
-        | undefined;
+      const address = market?.addresses?.wrappedCollateralToken as `0x${string}` | undefined;
+      if (process.env.NODE_ENV === "development") {
+        console.log("[getSelectedAssetAddress] Matched wrapped collateral:", {
+          normalized,
+          wrappedCollateralSymbol,
+          address,
+        });
+      }
+      return address;
     }
 
     // Check if it's underlying collateral token (fxUSD, stETH, etc.)
@@ -1178,7 +1569,7 @@ export const AnchorDepositWithdrawModal = ({
     }
 
     return null;
-  }, [selectedDepositAsset, marketForDepositAsset, genesisPeggedTokenAddress]);
+  }, [selectedDepositAsset, marketForDepositAsset, selectedMarket, genesisPeggedTokenAddress]);
 
   const isSelectedAssetNativeETH =
     selectedDepositAsset?.toLowerCase() === "eth";
@@ -1247,6 +1638,31 @@ export const AnchorDepositWithdrawModal = ({
     },
   });
 
+  const wagmiSelectedAssetBalanceEnabled = 
+    !!address &&
+    !!selectedAssetAddress &&
+    selectedAssetAddress !== "0x0000000000000000000000000000000000000000" &&
+    isOpen &&
+    activeTab === "deposit" &&
+    simpleMode &&
+    !!selectedDepositAsset &&
+    !useAnvilForBalance;
+
+  useEffect(() => {
+    if (process.env.NODE_ENV === "development" && isOpen && activeTab === "deposit") {
+      console.log("[Balance Read Enabled Check]", {
+        enabled: wagmiSelectedAssetBalanceEnabled,
+        address: !!address,
+        selectedAssetAddress: selectedAssetAddress || "null",
+        isOpen,
+        activeTab,
+        simpleMode,
+        selectedDepositAsset: selectedDepositAsset || "null",
+        useAnvilForBalance,
+      });
+    }
+  }, [wagmiSelectedAssetBalanceEnabled, address, selectedAssetAddress, isOpen, activeTab, simpleMode, selectedDepositAsset, useAnvilForBalance]);
+
   const selectedAssetBalanceData = useAnvilForBalance
     ? anvilSelectedAssetResult.data
     : wagmiSelectedAssetResult.data;
@@ -1256,6 +1672,22 @@ export const AnchorDepositWithdrawModal = ({
   const selectedAssetBalanceLoading = useAnvilForBalance
     ? anvilSelectedAssetResult.isLoading
     : wagmiSelectedAssetResult.isLoading;
+
+  // Debug: Log the actual balance value being returned from the contract
+  useEffect(() => {
+    if (process.env.NODE_ENV === "development" && selectedDepositAsset) {
+      console.log("[Balance Read from Contract]", {
+        asset: selectedDepositAsset,
+        address: selectedAssetAddress,
+        hasData: !!selectedAssetBalanceData,
+        rawBalance: selectedAssetBalanceData ? selectedAssetBalanceData.toString() : "null/undefined",
+        formatted: selectedAssetBalanceData ? formatEther(selectedAssetBalanceData as bigint) : "null/undefined",
+        isLoading: selectedAssetBalanceLoading,
+        error: selectedAssetBalanceError?.message || null,
+        wagmiResultData: wagmiSelectedAssetResult.data ? wagmiSelectedAssetResult.data.toString() : "null/undefined",
+      });
+    }
+  }, [selectedAssetBalanceData, selectedDepositAsset, selectedAssetAddress, selectedAssetBalanceLoading, selectedAssetBalanceError, wagmiSelectedAssetResult.data]);
 
   // Debug: Log selected asset balance read status
   useEffect(() => {
@@ -1484,6 +1916,53 @@ export const AnchorDepositWithdrawModal = ({
   const sailPoolAddress = selectedMarket?.addresses?.stabilityPoolLeveraged as
     | `0x${string}`
     | undefined;
+
+  // ---------------------------------------------------------------------------
+  // Stability Pool minimum-supply floor reads (used to prevent 0-withdraw txs)
+  // ---------------------------------------------------------------------------
+  const { data: collateralPoolTotalSupply } = useContractRead({
+    address: collateralPoolAddress,
+    abi: STABILITY_POOL_ABI,
+    functionName: "totalAssetSupply",
+    query: {
+      enabled: !!collateralPoolAddress && isOpen && activeTab === "withdraw",
+      retry: 1,
+      allowFailure: true,
+    },
+  });
+
+  const { data: collateralPoolMinTotalSupply } = useContractRead({
+    address: collateralPoolAddress,
+    abi: STABILITY_POOL_ABI,
+    functionName: "MIN_TOTAL_ASSET_SUPPLY",
+    query: {
+      enabled: !!collateralPoolAddress && isOpen && activeTab === "withdraw",
+      retry: 1,
+      allowFailure: true,
+    },
+  });
+
+  const { data: sailPoolTotalSupply } = useContractRead({
+    address: sailPoolAddress,
+    abi: STABILITY_POOL_ABI,
+    functionName: "totalAssetSupply",
+    query: {
+      enabled: !!sailPoolAddress && isOpen && activeTab === "withdraw",
+      retry: 1,
+      allowFailure: true,
+    },
+  });
+
+  const { data: sailPoolMinTotalSupply } = useContractRead({
+    address: sailPoolAddress,
+    abi: STABILITY_POOL_ABI,
+    functionName: "MIN_TOTAL_ASSET_SUPPLY",
+    query: {
+      enabled: !!sailPoolAddress && isOpen && activeTab === "withdraw",
+      retry: 1,
+      allowFailure: true,
+    },
+  });
 
   // Collateral pool balance - use Anvil hook when on local chain
   const anvilCollateralPoolResult = useContractRead({
@@ -1776,6 +2255,114 @@ export const AnchorDepositWithdrawModal = ({
     return minterAddress;
   }, [isDirectPeggedDeposit, marketForDepositAsset, minterAddress]);
 
+  const pegTargetForPrice = useMemo(() => {
+    const m =
+      isDirectPeggedDeposit && marketForDepositAsset
+        ? marketForDepositAsset
+        : selectedMarket;
+    return (m as any)?.pegTarget?.toLowerCase?.() || "usd";
+  }, [isDirectPeggedDeposit, marketForDepositAsset, selectedMarket]);
+
+  const needsBtcUsdFeed =
+    pegTargetForPrice === "btc" || pegTargetForPrice === "bitcoin";
+  const needsEthUsdFeed =
+    pegTargetForPrice === "eth" || pegTargetForPrice === "ethereum";
+
+  const chainlinkPegTargetContracts = useMemo(() => {
+    const contracts: any[] = [];
+    if (needsBtcUsdFeed) {
+      contracts.push(
+        {
+          address: CHAINLINK_FEEDS.BTC_USD,
+          abi: CHAINLINK_AGGREGATOR_ABI,
+          functionName: "decimals",
+        },
+        {
+          address: CHAINLINK_FEEDS.BTC_USD,
+          abi: CHAINLINK_AGGREGATOR_ABI,
+          functionName: "latestRoundData",
+        }
+      );
+    }
+    if (needsEthUsdFeed) {
+      contracts.push(
+        {
+          address: CHAINLINK_FEEDS.ETH_USD,
+          abi: CHAINLINK_AGGREGATOR_ABI,
+          functionName: "decimals",
+        },
+        {
+          address: CHAINLINK_FEEDS.ETH_USD,
+          abi: CHAINLINK_AGGREGATOR_ABI,
+          functionName: "latestRoundData",
+        }
+      );
+    }
+    return contracts;
+  }, [needsBtcUsdFeed, needsEthUsdFeed]);
+
+  const { data: chainlinkPegTargetData } = useContractReads({
+    contracts: chainlinkPegTargetContracts,
+    query: {
+      enabled:
+        chainlinkPegTargetContracts.length > 0 &&
+        isOpen &&
+        activeTab === "deposit",
+      retry: 1,
+      allowFailure: true,
+    },
+  });
+
+  const { btcUsdWei, ethUsdWei } = useMemo(() => {
+    let idx = 0;
+    let btc = 0n;
+    let eth = 0n;
+
+    const readPrice = () => {
+      const decRaw = chainlinkPegTargetData?.[idx]?.result as
+        | bigint
+        | number
+        | undefined;
+      const decimals =
+        typeof decRaw === "bigint"
+          ? Number(decRaw)
+          : typeof decRaw === "number"
+            ? decRaw
+            : undefined;
+      const round = chainlinkPegTargetData?.[idx + 1]?.result as
+        | readonly [bigint, bigint, bigint, bigint, bigint]
+        | undefined;
+      const answer = round?.[1];
+      idx += 2;
+      if (decimals === undefined || answer === undefined) return 0n;
+      return scaleChainlinkToUsdWei(answer, decimals);
+    };
+
+    if (needsBtcUsdFeed) btc = readPrice();
+    if (needsEthUsdFeed) eth = readPrice();
+
+    return { btcUsdWei: btc, ethUsdWei: eth };
+  }, [chainlinkPegTargetData, needsBtcUsdFeed, needsEthUsdFeed]);
+
+  const pegTargetUsdWei = useMemo(() => {
+    if (pegTargetForPrice === "btc" || pegTargetForPrice === "bitcoin") {
+      return btcPrice
+        ? parseUnits(btcPrice.toFixed(8), 18)
+        : btcUsdWei > 0n
+          ? btcUsdWei
+          : 0n;
+    }
+    if (pegTargetForPrice === "eth" || pegTargetForPrice === "ethereum") {
+      return ethPrice
+        ? parseUnits(ethPrice.toFixed(8), 18)
+        : ethUsdWei > 0n
+          ? ethUsdWei
+          : 0n;
+    }
+    // USD-pegged
+    return 10n ** 18n;
+  }, [pegTargetForPrice, btcPrice, ethPrice, btcUsdWei, ethUsdWei]);
+
   const isValidMinterAddressForPrice =
     minterAddressForPrice &&
     typeof minterAddressForPrice === "string" &&
@@ -2051,19 +2638,13 @@ export const AnchorDepositWithdrawModal = ({
   }, [skipRewardStep, rewardTokenOptions, selectedRewardToken, currentStep]);
 
   // Filter pools by selected reward token
-  // For ha token deposits (isDirectPeggedDeposit), show all pools (both collateral and sail)
-  // For other deposits, filter by selected reward token
+  // Always filter by the selected reward token, regardless of deposit type
   const filteredPools = useMemo(() => {
-    // If depositing ha tokens directly, show all pools (both collateral and sail)
-    if (isDirectPeggedDeposit) {
-      return poolsWithSymbols;
-    }
-    // Otherwise, filter by selected reward token
     if (!selectedRewardToken) return [];
     return poolsWithSymbols.filter((pool) =>
       pool.rewardTokens.includes(selectedRewardToken)
     );
-  }, [poolsWithSymbols, selectedRewardToken, isDirectPeggedDeposit]);
+  }, [poolsWithSymbols, selectedRewardToken]);
 
   // Get APR for selected stability pool (advanced mode)
   const isValidStabilityPoolAddress =
@@ -2611,33 +3192,37 @@ export const AnchorDepositWithdrawModal = ({
     try {
       const inputAmount = parseEther(debouncedAmount);
       
-      // If user selected wrapped collateral (fxSAVE), use amount as-is
-      const wrappedCollateralSymbol = marketForDepositAsset?.collateral?.symbol || "";
-      const underlyingCollateralSymbol = marketForDepositAsset?.collateral?.underlyingSymbol || "";
+      // Use marketForDepositAsset in simple mode, selectedMarket in advanced mode
+      const relevantMarket = marketForDepositAsset || selectedMarket;
+      
+      // If user selected wrapped collateral (fxSAVE, wstETH), use amount as-is
+      const wrappedCollateralSymbol = relevantMarket?.collateral?.symbol || "";
+      const underlyingCollateralSymbol = relevantMarket?.collateral?.underlyingSymbol || "";
       
       if (selectedDepositAsset?.toLowerCase() === wrappedCollateralSymbol.toLowerCase()) {
-        // User selected fxSAVE directly
+        // User selected fxSAVE or wstETH directly
         return inputAmount;
       } else if (selectedDepositAsset?.toLowerCase() === underlyingCollateralSymbol.toLowerCase()) {
-        // User selected fxUSD - need to convert to fxSAVE for dry run
+        // User selected fxUSD or stETH - need to convert to wrapped collateral for dry run
         // fxSAVE = fxUSD / rate (where rate is fxSAVE:fxUSD ratio, e.g., 1.07 means 1 fxSAVE = 1.07 fxUSD)
-        const wrappedRate = marketForDepositAsset?.wrappedRate;
+        // wstETH = stETH / rate
+        const wrappedRate = relevantMarket?.wrappedRate;
         if (wrappedRate && wrappedRate > 0n) {
-          // Convert: amountInFxSAVE = amountInFxUSD * 1e18 / rate
+          // Convert: amountInWrapped = amountInUnderlying * 1e18 / rate
           const amountInWrapped = (inputAmount * BigInt(1e18)) / wrappedRate;
           return amountInWrapped;
         }
         // Fallback: 1:1 if no rate available
         return inputAmount;
       } else {
-        // For other assets (USDC, ETH), use amount as-is
+        // For other assets (USDC, ETH, etc.), use amount as-is
         // The actual conversion will happen in the contract
         return inputAmount;
       }
     } catch (error) {
       return undefined;
     }
-  }, [debouncedAmount, selectedDepositAsset, marketForDepositAsset]);
+  }, [debouncedAmount, selectedDepositAsset, marketForDepositAsset, selectedMarket]);
 
   const dryRunEnabled =
     !!isValidFeeMinterAddress &&
@@ -2645,6 +3230,18 @@ export const AnchorDepositWithdrawModal = ({
     isOpen &&
     activeTab === "deposit" &&
     !isDirectPeggedDeposit; // Only run for collateral deposits
+
+  if (process.env.NODE_ENV === "development" && activeTab === "deposit") {
+    console.log("[Dry Run Enabled Check]", {
+      dryRunEnabled,
+      isValidFeeMinterAddress,
+      parsedAmount: parsedAmount?.toString(),
+      isOpen,
+      activeTab,
+      isDirectPeggedDeposit,
+      feeMinterAddress,
+    });
+  }
 
   // Dry run query using Anvil hook for local development
   const { data: anvilDryRunData, error: anvilDryRunError } = useContractRead({
@@ -2673,6 +3270,14 @@ export const AnchorDepositWithdrawModal = ({
   const dryRunError = shouldUseAnvilHook
     ? anvilDryRunError
     : regularDryRunError;
+
+  if (process.env.NODE_ENV === "development" && activeTab === "deposit") {
+    console.log("[Dry Run Data]", {
+      dryRunData: dryRunData ? (Array.isArray(dryRunData) ? dryRunData.map(v => typeof v === "bigint" ? v.toString() : v) : dryRunData) : null,
+      dryRunError: dryRunError?.message || null,
+      parsedAmount: parsedAmount?.toString(),
+    });
+  }
 
   // Use dry run data's peggedMinted as fallback when calculateMintPeggedTokenOutput fails
   // dryRunData is an array: [incentiveRatio, fee, discount, peggedMinted, price, rate]
@@ -2807,11 +3412,68 @@ export const AnchorDepositWithdrawModal = ({
     if (!dryRunResult || dryRunResult.length < 2) return undefined;
 
     const wrappedFee = dryRunResult[1];
+    
+    if (process.env.NODE_ENV === "development") {
+      console.log("[Fee Calculation Debug] Raw dry run data:", {
+        dryRunResult: dryRunResult.map(v => v.toString()),
+        wrappedFee: wrappedFee.toString(),
+        parsedAmount: parsedAmount.toString(),
+        selectedDepositAsset,
+        activeCollateralSymbol,
+      });
+    }
+
+    // Check if this is a BTC-pegged market with ETH-based collateral
+    // For BTC markets, the fee is returned in BTC terms, but we're depositing ETH
+    // Need to convert fee from BTC to ETH for accurate percentage calculation
+    const pegTarget = activeMarketForFees?.pegTarget?.toLowerCase() || market?.pegTarget?.toLowerCase();
+    const isBTCMarket = pegTarget === "btc" || pegTarget === "bitcoin";
+    const depositAssetSymbol = selectedDepositAsset?.toLowerCase() || "";
+    const isETHBasedCollateral = 
+      depositAssetSymbol === "eth" || 
+      depositAssetSymbol === "steth" || 
+      depositAssetSymbol === "wsteth" ||
+      activeCollateralSymbol?.toLowerCase() === "wsteth";
+
+    let feeInInputUnits = wrappedFee;
+    
+    // If BTC market with ETH-based collateral, convert fee from BTC to ETH
+    if (isBTCMarket && isETHBasedCollateral && btcPrice && ethPrice && btcPrice > 0 && ethPrice > 0) {
+      // Fee is in BTC, input is in ETH
+      // Convert: feeInETH = feeInBTC * (BTC/USD) / (ETH/USD) = feeInBTC * (BTC/ETH ratio)
+      // BTC/ETH ratio = btcPrice / ethPrice
+      const btcToEthRatio = btcPrice / ethPrice;
+      // wrappedFee is in BTC (18 decimals), convert to ETH (18 decimals)
+      // Since both are in 18 decimals, we can multiply by the ratio directly
+      feeInInputUnits = BigInt(Math.floor(Number(wrappedFee) * btcToEthRatio));
+      
+      if (process.env.NODE_ENV === "development") {
+        console.log("[Fee Calculation] BTC market with ETH collateral:", {
+          wrappedFee: wrappedFee.toString(),
+          btcPrice,
+          ethPrice,
+          btcToEthRatio,
+          feeInInputUnits: feeInInputUnits.toString(),
+          parsedAmount: parsedAmount.toString(),
+        });
+      }
+    }
 
     // Calculate fee as percentage: (fee / input) * 100
-    const feePercent = (Number(wrappedFee) / Number(parsedAmount)) * 100;
+    const feePercent = (Number(feeInInputUnits) / Number(parsedAmount)) * 100;
+    
+    if (process.env.NODE_ENV === "development") {
+      console.log("[Fee Calculation Final]", {
+        feePercent,
+        feeInInputUnits: feeInInputUnits.toString(),
+        parsedAmount: parsedAmount.toString(),
+        isBTCMarket,
+        isETHBasedCollateral,
+      });
+    }
+    
     return feePercent;
-  }, [anyTokenDeposit.needsSwap, swapDryRunOutput, swappedAmountForDryRun, dryRunData, dryRunError, parsedAmount, isDirectPeggedDeposit]);
+  }, [anyTokenDeposit.needsSwap, swapDryRunOutput, swappedAmountForDryRun, dryRunData, dryRunError, parsedAmount, isDirectPeggedDeposit, activeMarketForFees, market, selectedDepositAsset, activeCollateralSymbol, btcPrice, ethPrice]);
 
   // Auto-adjust amount when minter refuses full deposit
   const [depositLimitWarning, setDepositLimitWarning] = useState<string | null>(null);
@@ -3179,8 +3841,27 @@ export const AnchorDepositWithdrawModal = ({
 
 
   // Contract write hooks
-  const { writeContractAsync } = useWriteContract();
-  const { sendTransactionAsync } = useSendTransaction();
+  const { writeContractAsync: originalWriteContractAsync } = useWriteContract();
+  const { sendTransactionAsync: originalSendTransactionAsync } = useSendTransaction();
+  
+  // Wrapper functions that check network before executing transactions
+  const writeContractAsync = async (
+    ...args: Parameters<typeof originalWriteContractAsync>
+  ) => {
+    if (!(await ensureCorrectNetwork())) {
+      throw new Error("Wrong network. Please switch to Ethereum Mainnet.");
+    }
+    return originalWriteContractAsync(...args);
+  };
+
+  const sendTransactionAsync = async (
+    ...args: Parameters<typeof originalSendTransactionAsync>
+  ) => {
+    if (!(await ensureCorrectNetwork())) {
+      throw new Error("Wrong network. Please switch to Ethereum Mainnet.");
+    }
+    return originalSendTransactionAsync(...args);
+  };
 
   const collateralBalance = collateralBalanceData || 0n;
 
@@ -3334,6 +4015,34 @@ export const AnchorDepositWithdrawModal = ({
     ? parseEther(subgraphSailDeposit.balance)
     : sailPoolBalanceContract;
 
+  const collateralPoolImmediateCap = useMemo(() => {
+    if (
+      collateralPoolBalance === 0n ||
+      collateralPoolTotalSupply === undefined ||
+      collateralPoolMinTotalSupply === undefined
+    ) {
+      return collateralPoolBalance;
+    }
+    const total = collateralPoolTotalSupply as bigint;
+    const minTotal = collateralPoolMinTotalSupply as bigint;
+    const poolRoom = total > minTotal ? total - minTotal : 0n;
+    return collateralPoolBalance < poolRoom ? collateralPoolBalance : poolRoom;
+  }, [collateralPoolBalance, collateralPoolTotalSupply, collateralPoolMinTotalSupply]);
+
+  const sailPoolImmediateCap = useMemo(() => {
+    if (
+      sailPoolBalance === 0n ||
+      sailPoolTotalSupply === undefined ||
+      sailPoolMinTotalSupply === undefined
+    ) {
+      return sailPoolBalance;
+    }
+    const total = sailPoolTotalSupply as bigint;
+    const minTotal = sailPoolMinTotalSupply as bigint;
+    const poolRoom = total > minTotal ? total - minTotal : 0n;
+    return sailPoolBalance < poolRoom ? sailPoolBalance : poolRoom;
+  }, [sailPoolBalance, sailPoolTotalSupply, sailPoolMinTotalSupply]);
+
   const totalStabilityPoolBalance = collateralPoolBalance + sailPoolBalance;
   const allowance = allowanceData || 0n;
   const peggedTokenAllowance = peggedTokenAllowanceData || 0n;
@@ -3459,33 +4168,61 @@ export const AnchorDepositWithdrawModal = ({
   };
 
   // Calculate current deposit USD value and ledger marks per day
+  const peggedTokenPriceUsdWei =
+    peggedTokenPrice !== undefined && (peggedTokenPrice as bigint) > 0n && pegTargetUsdWei > 0n
+      ? ((peggedTokenPrice as bigint) * pegTargetUsdWei) / 10n ** 18n
+      : 0n;
+
   const currentDepositUSD =
-    peggedTokenPrice && currentDeposit
-      ? (Number(currentDeposit) * Number(peggedTokenPrice)) / 1e36
+    peggedTokenPriceUsdWei > 0n && currentDeposit
+      ? parseFloat(formatUnits((currentDeposit * peggedTokenPriceUsdWei) / 10n ** 18n, 18))
       : 0;
   const currentLedgerMarksPerDay = currentDepositUSD;
 
   // Calculate expected ledger marks per day after deposit
   const expectedDepositUSD =
-    expectedMintOutput && peggedTokenPrice
-      ? (Number(expectedMintOutput) * Number(peggedTokenPrice)) / 1e36
+    expectedMintOutput && peggedTokenPriceUsdWei > 0n
+      ? parseFloat(
+          formatUnits((expectedMintOutput * peggedTokenPriceUsdWei) / 10n ** 18n, 18)
+        )
       : 0;
   const newTotalDepositUSD = currentDepositUSD + expectedDepositUSD;
   const newLedgerMarksPerDay = newTotalDepositUSD;
 
-  // Update active tab when initialTab prop changes
+  // Initialize modal state on open.
+  // IMPORTANT: Do NOT depend on derived values like `collateralSymbol` here.
+  // In grouped markets (e.g. haBTC shared across multiple markets), we may auto-select a different market
+  // after the user clicks "Withdraw". That can change `selectedMarket`/`collateralSymbol` and would
+  // otherwise re-run this effect, resetting the user's tab choice back to the initial tab.
+  const hasInitializedOnOpen = useRef(false);
   useEffect(() => {
-    if (isOpen) {
-      setActiveTab(initialTab);
+    if (!isOpen) {
+      hasInitializedOnOpen.current = false;
+      return;
+    }
+    if (hasInitializedOnOpen.current) return;
+    hasInitializedOnOpen.current = true;
+
+    // Resolve initial market + collateral symbol based on the market the modal was opened for.
+    const initialMarket =
+      marketsForToken.find((m) => m.marketId === marketId)?.market || market;
+    const initialCollateralSymbol = initialMarket?.collateral?.symbol || "ETH";
+
+    {
+      const tab = getInitialTab();
+      setActiveTab(tab);
       setAmount("");
       setStep("input");
       setError(null);
       setTxHash(null);
-      if (initialTab === "mint" || initialTab === "deposit") {
+      // Ensure selectedMarketId is always initialized when opening the modal.
+      // Withdraw flows (and several reads) depend on `selectedMarket` which is derived from `selectedMarketId`.
+      setSelectedMarketId(marketId);
+      if (tab === "deposit") {
         // In simple mode, use step-by-step flow
         if (simpleMode) {
           setCurrentStep(1);
-          setSelectedDepositAsset(collateralSymbol);
+          setSelectedDepositAsset(initialCollateralSymbol);
           // Don't pre-select pools in step-by-step mode - let user choose
           setSelectedStabilityPool(null);
           setDepositInStabilityPool(false);
@@ -3494,11 +4231,9 @@ export const AnchorDepositWithdrawModal = ({
           setDepositInStabilityPool(true);
           setStabilityPoolType("collateral");
         }
-      } else if (initialTab === "deposit") {
-        setStabilityPoolType(simpleMode ? bestPoolType : "collateral");
-      } else if (initialTab === "redeem" || initialTab === "withdraw") {
+      } else if (tab === "withdraw") {
         // Initialize selected redeem asset to the current market's collateral
-        setSelectedRedeemAsset(collateralSymbol);
+        setSelectedRedeemAsset(initialCollateralSymbol);
       }
     }
   }, [
@@ -3506,9 +4241,9 @@ export const AnchorDepositWithdrawModal = ({
     initialTab,
     simpleMode,
     bestPoolType,
-    collateralSymbol,
     marketId,
     marketsForToken,
+    market,
   ]);
 
   // Auto-select collateral pool when entering Step 3 (only if not mint only)
@@ -3533,7 +4268,8 @@ export const AnchorDepositWithdrawModal = ({
         });
         setDepositInStabilityPool(true);
         setStabilityPoolType(poolToSelect.poolType);
-        setSelectedMarketId(poolToSelect.marketId);
+        // Don't change selectedMarketId here - it should remain tied to the deposit asset from Step 1
+        // selectedMarketId is for minting, selectedStabilityPool.marketId is for the pool destination
       }
     }
   }, [
@@ -3566,7 +4302,8 @@ export const AnchorDepositWithdrawModal = ({
       setSelectedDepositAsset("");
       setSelectedRewardToken(null);
       setSelectedStabilityPool(null);
-      setSelectedMarketId(null);
+      // Reset back to the market this modal was opened for (prevents withdraw showing no positions on reopen)
+      setSelectedMarketId(marketId);
     }
     onClose();
   };
@@ -3728,18 +4465,35 @@ export const AnchorDepositWithdrawModal = ({
       }
       if (positionAmounts.collateralPool && collateralPoolBalance) {
         const amount = parseEther(positionAmounts.collateralPool);
-        result.collateralPool = amount > collateralPoolBalance;
+        const max =
+          withdrawalMethods.collateralPool === "immediate"
+            ? collateralPoolImmediateCap
+            : collateralPoolBalance;
+        result.collateralPool = amount > max;
       }
       if (positionAmounts.sailPool && sailPoolBalance) {
         const amount = parseEther(positionAmounts.sailPool);
-        result.sailPool = amount > sailPoolBalance;
+        const max =
+          withdrawalMethods.sailPool === "immediate"
+            ? sailPoolImmediateCap
+            : sailPoolBalance;
+        result.sailPool = amount > max;
       }
     } catch {
       // Ignore parsing errors
     }
 
     return result;
-  }, [positionAmounts, peggedBalance, collateralPoolBalance, sailPoolBalance]);
+  }, [
+    positionAmounts,
+    peggedBalance,
+    collateralPoolBalance,
+    sailPoolBalance,
+    withdrawalMethods.collateralPool,
+    withdrawalMethods.sailPool,
+    collateralPoolImmediateCap,
+    sailPoolImmediateCap,
+  ]);
 
   const validateAmount = (): boolean => {
     if (process.env.NODE_ENV === "development") {
@@ -3838,6 +4592,29 @@ export const AnchorDepositWithdrawModal = ({
   };
 
   const handleMint = async () => {
+    // Ensure correct network before starting transaction (auto-attempt switch)
+    if (!(await ensureCorrectNetwork())) return;
+    // Clear any stale hashes from previous runs so the progress UI starts fresh
+    setTxHashes({});
+
+    debugTx("handleMint/start", {
+      activeTab,
+      simpleMode,
+      currentStep,
+      selectedDepositAsset,
+      amount,
+      amountBigInt: amountBigInt?.toString(),
+      isDirectPeggedDeposit,
+      mintOnly,
+      depositInStabilityPool,
+      stabilityPoolType,
+      selectedStabilityPool,
+      selectedMarketId,
+      effectiveChainId,
+      isCorrectNetwork,
+      shouldShowNetworkSwitch,
+    });
+    
     if (process.env.NODE_ENV === "development") {
       console.log("[handleMint] Starting deposit flow", {
         isDirectPeggedDeposit,
@@ -3961,8 +4738,43 @@ export const AnchorDepositWithdrawModal = ({
           return;
         }
 
+        debugTx("directHa/targets", {
+          targetMarketId: selectedStabilityPool?.marketId,
+          targetPoolAddress,
+          targetPeggedTokenAddress,
+          amountBigInt: amountBigInt.toString(),
+        });
+
         // Use Anvil client for local development, regular publicClient for production
         const directDepositClient = false ? publicClient : publicClient;
+
+        // Extra debug: read pool asset + user balance (helps diagnose "estimated to fail")
+        try {
+          const poolAssetToken = (await directDepositClient?.readContract({
+            address: targetPoolAddress,
+            abi: STABILITY_POOL_ABI,
+            functionName: "ASSET_TOKEN",
+          })) as `0x${string}` | undefined;
+
+          const userHaBalance = (await directDepositClient?.readContract({
+            address: targetPeggedTokenAddress,
+            abi: ERC20_ABI,
+            functionName: "balanceOf",
+            args: [address as `0x${string}`],
+          })) as bigint | undefined;
+
+          debugTx("directHa/preflight", {
+            pool: targetPoolAddress,
+            poolAssetToken,
+            expectedHa: targetPeggedTokenAddress,
+            amount: amountBigInt.toString(),
+            userHaBalance: userHaBalance?.toString(),
+          });
+        } catch (e: any) {
+          debugTx("directHa/preflight/error", {
+            message: e?.message,
+          });
+        }
 
         // Check allowance for pegged token to stability pool
         if (process.env.NODE_ENV === "development") {
@@ -4014,6 +4826,11 @@ export const AnchorDepositWithdrawModal = ({
         }
 
         const needsDirectApproval = amountBigInt > directPeggedAllowance;
+        debugTx("directHa/allowance", {
+          allowance: directPeggedAllowance.toString(),
+          amount: amountBigInt.toString(),
+          needsDirectApproval,
+        });
         setProgressConfig({
           mode: "direct",
           includeApproveCollateral: false,
@@ -4024,8 +4841,8 @@ export const AnchorDepositWithdrawModal = ({
           includeDirectDeposit: true,
           title: "Deposit ha token",
         });
-        // Close modal so user can interact with wallet
-        onClose();
+        // Show progress modal for transaction feedback
+        setProgressModalOpen(true);
 
         // Step 1: Approve pegged token for stability pool (if needed)
         if (needsDirectApproval) {
@@ -4044,6 +4861,12 @@ export const AnchorDepositWithdrawModal = ({
           }
 
           try {
+            debugTx("directHa/approve", {
+              token: targetPeggedTokenAddress,
+              spender: targetPoolAddress,
+              amount: amountBigInt.toString(),
+            });
+            
             const approveHash = await writeContractAsync({
               address: targetPeggedTokenAddress,
               abi: ERC20_ABI,
@@ -4091,11 +4914,77 @@ export const AnchorDepositWithdrawModal = ({
         }
 
         try {
+          debugTx("directHa/deposit", {
+            pool: targetPoolAddress,
+            args: [amountBigInt.toString(), address, "0"],
+          });
+
+          // Simulate first to capture revert data/selector
+          try {
+            debugTx("directHa/simulateDeposit", {
+              pool: targetPoolAddress,
+              args: [amountBigInt.toString(), address, "0"],
+            });
+            await directDepositClient?.simulateContract({
+              address: targetPoolAddress,
+              abi: STABILITY_POOL_ABI,
+              functionName: "deposit",
+              args: [amountBigInt, address as `0x${string}`, 0n],
+              account: address as `0x${string}`,
+            });
+            debugTx("directHa/simulateDeposit/success");
+          } catch (simErr: any) {
+            debugTx("directHa/simulateDeposit/error", {
+              message: simErr?.message,
+              shortMessage: simErr?.shortMessage,
+              cause: simErr?.cause?.message,
+              data: simErr?.data,
+              causeData: simErr?.cause?.data,
+            });
+            // Try to decode known custom errors (we add them to the ABI as we discover them)
+            try {
+              if (simErr instanceof BaseError) {
+                const revertError = simErr.walk(
+                  (e) => e instanceof ContractFunctionRevertedError
+                );
+                if (revertError instanceof ContractFunctionRevertedError) {
+                  const errorName = revertError.data?.errorName || "";
+                  const args = (revertError.data as any)?.args as
+                    | readonly unknown[]
+                    | undefined;
+                  if (errorName === "DepositAmountLessThanMinimum" && args?.length === 2) {
+                    const minimum = args[1] as bigint;
+                    throw new Error(
+                      `Deposit amount too small. Minimum deposit is ${formatEther(minimum)} ${peggedTokenSymbol}.`
+                    );
+                  }
+                }
+              }
+            } catch (decodedErr) {
+              throw decodedErr;
+            }
+
+            let msg =
+              simErr?.cause?.message ||
+              simErr?.shortMessage ||
+              simErr?.message ||
+              "Unknown error";
+            if (
+              typeof msg === "string" &&
+              msg.toLowerCase().includes("unable to decode signature")
+            ) {
+              const match = msg.match(/\"(0x[0-9a-fA-F]{8})\"/);
+              const selector = match?.[1] || "unknown";
+              msg = `Deposit reverted with custom error ${selector}.`;
+            }
+            throw new Error(`Deposit would fail (simulate): ${msg}`);
+          }
+          
           if (process.env.NODE_ENV === "development") {
             console.log("[handleMint] About to call writeContractAsync with:", {
               address: targetPoolAddress,
               functionName: "deposit",
-              args: [amountBigInt.toString(), address],
+              args: [amountBigInt.toString(), address, "0"],
               amountBigInt: amountBigInt.toString(),
             });
           }
@@ -4104,7 +4993,7 @@ export const AnchorDepositWithdrawModal = ({
             address: targetPoolAddress,
             abi: STABILITY_POOL_ABI,
             functionName: "deposit",
-            args: [amountBigInt, address as `0x${string}`],
+            args: [amountBigInt, address as `0x${string}`, 0n],
           });
 
           if (!poolDepositHash) {
@@ -4173,6 +5062,11 @@ export const AnchorDepositWithdrawModal = ({
           
           // Approve token for ParaSwap (if not ETH)
           if (!anyTokenDeposit.isNativeETH && anyTokenDeposit.needsSwapApproval) {
+            // Check network before sending transaction
+            if (!(await ensureCorrectNetwork())) {
+              throw new Error("Wrong network. Please switch to Ethereum Mainnet.");
+            }
+            
             const swapApproveHash = await writeContractAsync({
               address: anyTokenDeposit.selectedAssetAddress as `0x${string}`,
               abi: ERC20_ABI,
@@ -4203,6 +5097,11 @@ export const AnchorDepositWithdrawModal = ({
           
           if (!swapTxData) {
             throw new Error("Failed to get swap transaction data");
+          }
+          
+          // Check network before sending transaction
+          if (!(await ensureCorrectNetwork())) {
+            throw new Error("Wrong network. Please switch to Ethereum Mainnet.");
           }
           
           const swapHash = await sendTransactionAsync({
@@ -4248,6 +5147,11 @@ export const AnchorDepositWithdrawModal = ({
             
             const minWstETH = expectedWstETH ? (expectedWstETH * BigInt(Math.floor((100 - slippageTolerance) * 10))) / 1000n : 0n;
             
+            // Check network before sending transaction
+            if (!(await ensureCorrectNetwork())) {
+              throw new Error("Wrong network. Please switch to Ethereum Mainnet.");
+            }
+            
             // Call zapEth on Genesis zap (we're reusing for Minter)
             const zapHash = await writeContractAsync({
               address: zapAddress,
@@ -4268,6 +5172,11 @@ export const AnchorDepositWithdrawModal = ({
             // USDC Zap: USDC → fxUSD → fxSAVE → Minter
             // Approve USDC for zap
             if (anyTokenDeposit.needsZapApproval) {
+              // Check network before sending transaction
+              if (!(await ensureCorrectNetwork())) {
+                throw new Error("Wrong network. Please switch to Ethereum Mainnet.");
+              }
+              
               const zapApproveHash = await writeContractAsync({
                 address: anyTokenDeposit.selectedAssetAddress as `0x${string}`,
                 abi: ERC20_ABI,
@@ -4279,6 +5188,12 @@ export const AnchorDepositWithdrawModal = ({
             
             // Call zapUsdc
             const minFxSAVEOut = (swappedAmount * BigInt(Math.floor((100 - slippageTolerance) * 10))) / 1000n;
+            
+            // Check network before sending transaction
+            if (!(await ensureCorrectNetwork())) {
+              throw new Error("Wrong network. Please switch to Ethereum Mainnet.");
+            }
+            
             const zapHash = await writeContractAsync({
               address: zapAddress,
               abi: USDC_ZAP_ABI,
@@ -4333,10 +5248,35 @@ export const AnchorDepositWithdrawModal = ({
           zapAsset: zapAssetName,
           title: includeDeposit ? "Mint & Deposit" : "Mint pegged token",
         });
-        // Close modal so user can interact with wallet
-        onClose();
+        // Show progress modal for transaction feedback
+        setProgressModalOpen(true);
         // Use Anvil client for local development, regular publicClient for production
         const txClient = false ? publicClient : publicClient;
+
+        debugTx("mintFlow/addresses", {
+          selectedMarketId,
+          minterAddress,
+          collateralAddress,
+          peggedTokenAddress,
+          leveragedTokenAddress,
+          stabilityPoolAddress,
+          depositAssetMarket: depositAssetMarket?.id || depositAssetMarket?.name,
+          depositAssetCollateralSymbol,
+          depositAssetWrappedCollateralSymbol,
+          isWrappedCollateral,
+          zapAddress,
+          useZap,
+          useETHZap,
+          useUSDCZap,
+          fxSAVERate: fxSAVERate?.toString(),
+        });
+
+        debugTx("mintFlow/allowances", {
+          collateralAllowance: allowance?.toString(),
+          needsApproval,
+          peggedAllowance: peggedTokenAllowance?.toString(),
+          needsPeggedTokenApproval,
+        });
 
         // Step 1: Handle approvals - for zap contracts or direct minting
         if (useZap && zapAddress) {
@@ -4359,6 +5299,14 @@ export const AnchorDepositWithdrawModal = ({
               setStep("approving");
               setError(null);
               setTxHash(null);
+
+              debugTx("zap/steth/approve", {
+                token: stETHAddress,
+                spender: zapAddress,
+                amount: amountBigInt.toString(),
+                currentAllowance: currentAllowance.toString(),
+              });
+
               const approveHash = await writeContractAsync({
                 address: stETHAddress,
                 abi: ERC20_ABI,
@@ -4394,6 +5342,14 @@ export const AnchorDepositWithdrawModal = ({
               setStep("approving");
               setError(null);
               setTxHash(null);
+
+              debugTx("zap/usdcOrFxUsd/approve", {
+                token: assetAddress,
+                spender: zapAddress,
+                amount: amountBigInt.toString(),
+                currentAllowance: currentAllowance.toString(),
+              });
+
               const approveHash = await writeContractAsync({
                 address: assetAddress,
                 abi: ERC20_ABI,
@@ -4415,6 +5371,14 @@ export const AnchorDepositWithdrawModal = ({
           setStep("approving");
           setError(null);
           setTxHash(null);
+
+          debugTx("directMint/approveCollateral", {
+            token: collateralAddress,
+            spender: minterAddress,
+            amount: amountBigInt.toString(),
+            currentAllowance: allowance?.toString(),
+          });
+
           const approveHash = await writeContractAsync({
             address: collateralAddress as `0x${string}`,
             abi: ERC20_ABI,
@@ -4487,6 +5451,12 @@ export const AnchorDepositWithdrawModal = ({
             const minWstEthOut = (amountBigInt * 995n) / 1000n; // 0.5% slippage
             
             if (isNativeETH) {
+              debugTx("zap/ethToPegged", {
+                zapAddress,
+                function: "zapEthToPegged",
+                args: [address, minPeggedOut.toString(), minWstEthOut.toString()],
+                value: amountBigInt.toString(),
+              });
               mintHash = await writeContractAsync({
                 address: zapAddress,
                 abi: MINTER_ETH_ZAP_V2_ABI,
@@ -4495,6 +5465,16 @@ export const AnchorDepositWithdrawModal = ({
                 value: amountBigInt,
               });
             } else if (isStETH) {
+              debugTx("zap/stEthToPegged", {
+                zapAddress,
+                function: "zapStEthToPegged",
+                args: [
+                  amountBigInt.toString(),
+                  address,
+                  minPeggedOut.toString(),
+                  minWstEthOut.toString(),
+                ],
+              });
               mintHash = await writeContractAsync({
                 address: zapAddress,
                 abi: MINTER_ETH_ZAP_V2_ABI,
@@ -4511,6 +5491,11 @@ export const AnchorDepositWithdrawModal = ({
             }
             
             if (isUSDC) {
+              debugTx("zap/usdcToPegged", {
+                zapAddress,
+                function: "zapUsdcToPegged",
+                args: [amountBigInt.toString(), address, minPeggedOut.toString()],
+              });
               mintHash = await writeContractAsync({
                 address: zapAddress,
                 abi: MINTER_USDC_ZAP_V2_ABI,
@@ -4518,6 +5503,11 @@ export const AnchorDepositWithdrawModal = ({
                 args: [amountBigInt, address as `0x${string}`, minPeggedOut],
               });
             } else if (isFxUSD) {
+              debugTx("zap/fxUsdToPegged", {
+                zapAddress,
+                function: "zapFxUsdToPegged",
+                args: [amountBigInt.toString(), address, minPeggedOut.toString()],
+              });
               mintHash = await writeContractAsync({
                 address: zapAddress,
                 abi: MINTER_USDC_ZAP_V2_ABI,
@@ -4531,6 +5521,11 @@ export const AnchorDepositWithdrawModal = ({
             throw new Error("Invalid zap configuration");
           }
         } else {
+          debugTx("directMint/mintPeggedToken", {
+            minterAddress,
+            function: "mintPeggedToken",
+            args: [amountBigInt.toString(), address, minPeggedOut.toString()],
+          });
           // Direct minting (no zap)
           if (process.env.NODE_ENV === "development") {
             console.log("[handleMint] About to mint pegged token:", {
@@ -4919,6 +5914,49 @@ export const AnchorDepositWithdrawModal = ({
 
           // Try to simulate the deposit first to get a better error message
           try {
+            // Sanity-check the pool's asset token.
+            // Both Collateral + Sail pools should accept the pegged (ha) token as the deposit asset.
+            try {
+              const poolAssetToken = (await readClient?.readContract({
+                address: stabilityPoolAddress,
+                abi: STABILITY_POOL_ABI,
+                functionName: "ASSET_TOKEN",
+              })) as `0x${string}` | undefined;
+
+              debugTx("pool/assetToken", {
+                stabilityPoolAddress,
+                poolAssetToken,
+                expectedPeggedToken: peggedTokenAddress,
+              });
+
+              if (
+                poolAssetToken &&
+                peggedTokenAddress &&
+                poolAssetToken.toLowerCase() !== peggedTokenAddress.toLowerCase()
+              ) {
+                let poolAssetSymbol: string | null = null;
+                try {
+                  poolAssetSymbol = (await readClient?.readContract({
+                    address: poolAssetToken,
+                    abi: ERC20_ABI_WITH_SYMBOL,
+                    functionName: "symbol",
+                  })) as string;
+                } catch {}
+
+                throw new Error(
+                  `Pool configuration mismatch: selected pool ASSET_TOKEN is ${
+                    poolAssetSymbol ? `${poolAssetSymbol} (${poolAssetToken})` : poolAssetToken
+                  }, but expected ${peggedTokenSymbol} (${peggedTokenAddress}).`
+                );
+              }
+            } catch (assetCheckErr) {
+              throw assetCheckErr;
+            }
+
+            debugTx("pool/simulateDeposit", {
+              stabilityPoolAddress,
+              args: [depositAmount.toString(), address, "0"],
+            });
             await readClient?.simulateContract({
               address: stabilityPoolAddress,
               abi: STABILITY_POOL_ABI,
@@ -4930,6 +5968,12 @@ export const AnchorDepositWithdrawModal = ({
               console.log("[handleMint] Deposit simulation succeeded");
             }
           } catch (simErr: any) {
+            debugTx("pool/simulateDeposit/error", {
+              message: simErr?.message,
+              shortMessage: simErr?.shortMessage,
+              cause: simErr?.cause?.message,
+              data: simErr?.data,
+            });
             if (process.env.NODE_ENV === "development") {
               console.error("[handleMint] Deposit simulation failed:", simErr);
               console.error("[handleMint] Simulation error details:", {
@@ -4938,12 +5982,50 @@ export const AnchorDepositWithdrawModal = ({
                 shortMessage: simErr?.shortMessage,
               });
             }
+
+            // Try to decode known custom errors (we add them to the ABI as we discover them)
+            try {
+              if (simErr instanceof BaseError) {
+                const revertError = simErr.walk(
+                  (e) => e instanceof ContractFunctionRevertedError
+                );
+                if (revertError instanceof ContractFunctionRevertedError) {
+                  const errorName = revertError.data?.errorName || "";
+                  const args = (revertError.data as any)?.args as
+                    | readonly unknown[]
+                    | undefined;
+                  if (
+                    errorName === "DepositAmountLessThanMinimum" &&
+                    args?.length === 2
+                  ) {
+                    const minimum = args[1] as bigint;
+                    throw new Error(
+                      `Deposit amount too small. Minimum deposit is ${formatEther(minimum)} ${peggedTokenSymbol}.`
+                    );
+                  }
+                }
+              }
+            } catch (decodedErr) {
+              throw decodedErr;
+            }
+
             // Try to extract a meaningful error message
-            const errorMsg =
+            let errorMsg =
               simErr?.cause?.message ||
               simErr?.shortMessage ||
               simErr?.message ||
               "Unknown error";
+
+            // If viem can't decode a custom error selector, show a concise message.
+            // Example: Unable to decode signature "0x14960154"...
+            if (
+              typeof errorMsg === "string" &&
+              errorMsg.toLowerCase().includes("unable to decode signature")
+            ) {
+              const match = errorMsg.match(/\"(0x[0-9a-fA-F]{8})\"/);
+              const selector = match?.[1] || "unknown";
+              errorMsg = `Deposit reverted with custom error ${selector}. This pool may currently restrict deposits (e.g. paused / genesis mode).`;
+            }
             throw new Error(
               `Deposit would fail: ${errorMsg}. The stability pool may be in genesis mode or have other restrictions.`
             );
@@ -5155,6 +6237,11 @@ export const AnchorDepositWithdrawModal = ({
   };
 
   const handleWithdrawExecution = async () => {
+    // Ensure correct network before starting transaction (auto-attempt switch)
+    if (!(await ensureCorrectNetwork())) return;
+    // Clear any stale hashes from previous runs so the progress UI starts fresh
+    setTxHashes({});
+    
     console.log("[handleWithdrawExecution] Starting withdrawal execution", {
       address,
       minterAddress,
@@ -5192,6 +6279,7 @@ export const AnchorDepositWithdrawModal = ({
     try {
       // Validate individual amounts
       let totalPeggedTokens = 0n;
+      let walletBalBeforeForDelta = 0n;
       const walletAmount =
         selectedPositions.wallet && positionAmounts.wallet
           ? parseEther(positionAmounts.wallet)
@@ -5216,17 +6304,22 @@ export const AnchorDepositWithdrawModal = ({
         sailAmount > 0n &&
         selectedPositions.sailPool &&
         withdrawalMethods.sailPool !== "request";
+
       const redeemableTotal =
         walletAmount +
         (collateralIsImmediate ? collateralAmount : 0n) +
         (sailIsImmediate ? sailAmount : 0n);
-      const estimatedNeedsRedeemApproval =
+
+      const shouldAutoRedeem =
         !withdrawOnly &&
+        (walletAmount > 0n || collateralIsImmediate || sailIsImmediate);
+
+      const estimatedNeedsRedeemApproval =
+        shouldAutoRedeem &&
         redeemableTotal > 0n &&
         (peggedTokenMinterAllowanceData !== undefined
           ? redeemableTotal > peggedTokenMinterAllowanceData
           : true);
-
       setProgressConfig({
         mode: "withdraw",
         includeApproveCollateral: false,
@@ -5243,8 +6336,8 @@ export const AnchorDepositWithdrawModal = ({
           (!!sailPoolAddress && withdrawalMethods.sailPool === "request") ||
           (sailAmount > 0n && !!sailPoolAddress),
         includeApproveRedeem:
-          !withdrawOnly && redeemableTotal > 0n && estimatedNeedsRedeemApproval,
-        includeRedeem: !withdrawOnly && redeemableTotal > 0n,
+          shouldAutoRedeem && redeemableTotal > 0n && estimatedNeedsRedeemApproval,
+        includeRedeem: shouldAutoRedeem && redeemableTotal > 0n,
         withdrawCollateralLabel:
           withdrawalMethods.collateralPool === "request"
             ? "Request withdraw (collateral pool)"
@@ -5255,8 +6348,8 @@ export const AnchorDepositWithdrawModal = ({
             : "Withdraw from sail pool",
         title: withdrawOnly ? "Withdraw" : "Withdraw & Redeem",
       });
-      // Close modal so user can interact with wallet
-      onClose();
+      // Show progress modal for transaction feedback
+      setProgressModalOpen(true);
 
       // Validate wallet amount
       if (walletAmount > 0n) {
@@ -5277,6 +6370,7 @@ export const AnchorDepositWithdrawModal = ({
           {
             collateralAmount: collateralAmount.toString(),
             collateralPoolBalance: collateralPoolBalance.toString(),
+            collateralPoolImmediateCap: collateralPoolImmediateCap.toString(),
             collateralPoolAddress,
           }
         );
@@ -5287,7 +6381,43 @@ export const AnchorDepositWithdrawModal = ({
             )}, Want: ${formatEther(collateralAmount)}`
           );
         }
+        // Guard against StabilityPool MIN_TOTAL_ASSET_SUPPLY floor causing 0-withdraw "success" txs
+        if (withdrawalMethods.collateralPool === "immediate") {
+          if (collateralPoolImmediateCap === 0n) {
+            throw new Error(
+              "Early withdraw is temporarily unavailable: the pool is at its minimum total supply. Use Request (free) or wait for TVL to increase."
+            );
+          }
+          if (collateralAmount > collateralPoolImmediateCap) {
+            throw new Error(
+              `Early withdraw capped by pool minimum supply. Max withdrawable now: ${formatEther(
+                collateralPoolImmediateCap
+              )} ${peggedTokenSymbol}`
+            );
+          }
+        }
         totalPeggedTokens += collateralAmount;
+      }
+
+      // Validate request-withdraw selections (requestWithdrawal has no amount, but user must have a deposit)
+      if (
+        selectedPositions.collateralPool &&
+        withdrawalMethods.collateralPool === "request"
+      ) {
+        if (!collateralPoolAddress) {
+          throw new Error("Collateral pool not configured for this market");
+        }
+        if (collateralPoolBalance === 0n) {
+          throw new Error("No collateral pool deposit found to request withdrawal");
+        }
+      }
+      if (selectedPositions.sailPool && withdrawalMethods.sailPool === "request") {
+        if (!sailPoolAddress) {
+          throw new Error("Sail pool not configured for this market");
+        }
+        if (sailPoolBalance === 0n) {
+          throw new Error("No sail pool deposit found to request withdrawal");
+        }
       }
 
       // Validate sail pool amount
@@ -5295,6 +6425,7 @@ export const AnchorDepositWithdrawModal = ({
         console.log("[handleWithdrawExecution] Validating sail pool amount:", {
           sailAmount: sailAmount.toString(),
           sailPoolBalance: sailPoolBalance.toString(),
+          sailPoolImmediateCap: sailPoolImmediateCap.toString(),
           sailPoolAddress,
         });
         if (sailAmount > sailPoolBalance) {
@@ -5303,6 +6434,21 @@ export const AnchorDepositWithdrawModal = ({
               sailPoolBalance
             )}, Want: ${formatEther(sailAmount)}`
           );
+        }
+        // Guard against StabilityPool MIN_TOTAL_ASSET_SUPPLY floor causing 0-withdraw "success" txs
+        if (withdrawalMethods.sailPool === "immediate") {
+          if (sailPoolImmediateCap === 0n) {
+            throw new Error(
+              "Early withdraw is temporarily unavailable: the pool is at its minimum total supply. Use Request (free) or wait for TVL to increase."
+            );
+          }
+          if (sailAmount > sailPoolImmediateCap) {
+            throw new Error(
+              `Early withdraw capped by pool minimum supply. Max withdrawable now: ${formatEther(
+                sailPoolImmediateCap
+              )} ${peggedTokenSymbol}`
+            );
+          }
         }
         totalPeggedTokens += sailAmount;
       }
@@ -5319,6 +6465,21 @@ export const AnchorDepositWithdrawModal = ({
       }
 
       const txClient = false ? publicClient : publicClient;
+      // If we plan to redeem, snapshot wallet balance BEFORE any pool withdrawals so we can compute
+      // what actually arrived from pools (fees/rounding can reduce received amount).
+      if (shouldAutoRedeem && txClient) {
+        try {
+          walletBalBeforeForDelta =
+            ((await txClient.readContract({
+              address: peggedTokenAddress as `0x${string}`,
+              abi: ERC20_ABI,
+              functionName: "balanceOf",
+              args: [address as `0x${string}`],
+            })) as bigint) || 0n;
+        } catch {
+          walletBalBeforeForDelta = 0n;
+        }
+      }
 
       setStep("withdrawing");
       setError(null);
@@ -5341,61 +6502,62 @@ export const AnchorDepositWithdrawModal = ({
         (withdrawalMethods.collateralPool === "request" ||
           positionAmounts.collateralPool)
       ) {
+        const method = withdrawalMethods.collateralPool;
         const withdrawFromCollateral = collateralAmount;
 
-        if (withdrawFromCollateral > 0n) {
-          const method = withdrawalMethods.collateralPool;
-          console.log("[handleWithdrawExecution] Collateral pool withdrawal:", {
-            method,
-            amount: withdrawFromCollateral.toString(),
-            poolAddress: collateralPoolAddress,
-            userAddress: address,
+        console.log("[handleWithdrawExecution] Collateral pool withdrawal:", {
+          method,
+          amount:
+            method === "request"
+              ? "(requestWithdrawal)"
+              : withdrawFromCollateral.toString(),
+          poolAddress: collateralPoolAddress,
+          userAddress: address,
+        });
+
+        if (method === "request") {
+          // Request withdrawal - starts the fee-free window (no amount parameters)
+          setStep("requestingCollateral");
+          console.log(
+            "[handleWithdrawExecution] Calling requestWithdrawal on collateral pool:",
+            {
+              address: collateralPoolAddress,
+            }
+          );
+          const requestHash = await writeContractAsync({
+            address: collateralPoolAddress as `0x${string}`,
+            abi: STABILITY_POOL_ABI,
+            functionName: "requestWithdrawal",
+            args: [],
           });
+          setTxHash(requestHash);
+          setTxHashes((prev) => ({
+            ...prev,
+            requestCollateral: requestHash,
+          }));
+          await txClient?.waitForTransactionReceipt({
+            hash: requestHash,
+          });
+          // Don't add to peggedTokensReceived - tokens stay in pool until user calls withdraw during window
+        } else if (withdrawFromCollateral > 0n) {
+          // Immediate withdrawal - use direct withdraw function
+          setStep("withdrawingCollateral");
 
-          if (method === "request") {
-            // Request withdrawal - starts the fee-free window (no parameters)
-            setStep("requestingCollateral");
-            console.log(
-              "[handleWithdrawExecution] Calling requestWithdrawal on collateral pool:",
-              {
-                address: collateralPoolAddress,
-              }
-            );
-            const requestHash = await writeContractAsync({
-              address: collateralPoolAddress as `0x${string}`,
-              abi: STABILITY_POOL_ABI,
-              functionName: "requestWithdrawal",
-              args: [],
-            });
-            setTxHash(requestHash);
-            setTxHashes((prev) => ({
-              ...prev,
-              requestCollateral: requestHash,
-            }));
-            await txClient?.waitForTransactionReceipt({
-              hash: requestHash,
-            });
-            // Don't add to peggedTokensReceived - tokens stay in pool until user calls withdraw during window
-          } else {
-            // Immediate withdrawal - use direct withdraw function
-            setStep("withdrawingCollateral");
-
-            const collateralWithdrawHash = await writeContractAsync({
-              address: collateralPoolAddress as `0x${string}`,
-              abi: STABILITY_POOL_ABI,
-              functionName: "withdraw",
-              args: [withdrawFromCollateral, address as `0x${string}`, 0n], // assetAmount, receiver, minAmount
-            });
-            setTxHash(collateralWithdrawHash);
-            setTxHashes((prev) => ({
-              ...prev,
-              withdrawCollateral: collateralWithdrawHash,
-            }));
-            await txClient?.waitForTransactionReceipt({
-              hash: collateralWithdrawHash,
-            });
-            peggedTokensReceived += withdrawFromCollateral;
-          }
+          const collateralWithdrawHash = await writeContractAsync({
+            address: collateralPoolAddress as `0x${string}`,
+            abi: STABILITY_POOL_ABI,
+            functionName: "withdraw",
+            args: [withdrawFromCollateral, address as `0x${string}`, 0n], // assetAmount, receiver, minAmount
+          });
+          setTxHash(collateralWithdrawHash);
+          setTxHashes((prev) => ({
+            ...prev,
+            withdrawCollateral: collateralWithdrawHash,
+          }));
+          await txClient?.waitForTransactionReceipt({
+            hash: collateralWithdrawHash,
+          });
+          peggedTokensReceived += withdrawFromCollateral;
         }
       }
 
@@ -5405,206 +6567,189 @@ export const AnchorDepositWithdrawModal = ({
         sailPoolAddress &&
         (withdrawalMethods.sailPool === "request" || positionAmounts.sailPool)
       ) {
+        const sailMethod = withdrawalMethods.sailPool;
         const withdrawFromSail = sailAmount;
 
-        if (withdrawFromSail > 0n) {
-          const sailMethod = withdrawalMethods.sailPool;
-          console.log("[handleWithdrawExecution] Sail pool withdrawal:", {
-            method: sailMethod,
-            amount: withdrawFromSail.toString(),
-            poolAddress: sailPoolAddress,
-            userAddress: address,
+        console.log("[handleWithdrawExecution] Sail pool withdrawal:", {
+          method: sailMethod,
+          amount:
+            sailMethod === "request"
+              ? "(requestWithdrawal)"
+              : withdrawFromSail.toString(),
+          poolAddress: sailPoolAddress,
+          userAddress: address,
+        });
+
+        if (sailMethod === "request") {
+          // Request withdrawal - starts the fee-free window (no amount parameters)
+          setStep("requestingSail");
+          console.log(
+            "[handleWithdrawExecution] Calling requestWithdrawal on sail pool:",
+            {
+              address: sailPoolAddress,
+            }
+          );
+          const requestHash = await writeContractAsync({
+            address: sailPoolAddress as `0x${string}`,
+            abi: STABILITY_POOL_ABI,
+            functionName: "requestWithdrawal",
+            args: [],
           });
+          setTxHash(requestHash);
+          setTxHashes((prev) => ({ ...prev, requestSail: requestHash }));
+          await txClient?.waitForTransactionReceipt({
+            hash: requestHash,
+          });
+          // Don't add to peggedTokensReceived - tokens stay in pool until user calls withdraw during window
+        } else if (withdrawFromSail > 0n) {
+          // Immediate withdrawal - use direct withdraw function
+          setStep("withdrawingSail");
 
-          if (sailMethod === "request") {
-            // Request withdrawal - starts the fee-free window (no parameters)
-            setStep("requestingSail");
-            console.log(
-              "[handleWithdrawExecution] Calling requestWithdrawal on sail pool:",
-              {
-                address: sailPoolAddress,
-              }
-            );
-            const requestHash = await writeContractAsync({
-              address: sailPoolAddress as `0x${string}`,
-              abi: STABILITY_POOL_ABI,
-              functionName: "requestWithdrawal",
-              args: [],
-            });
-            setTxHash(requestHash);
-            setTxHashes((prev) => ({ ...prev, requestSail: requestHash }));
-            await txClient?.waitForTransactionReceipt({
-              hash: requestHash,
-            });
-            // Don't add to peggedTokensReceived - tokens stay in pool until user calls withdraw during window
-          } else {
-            // Immediate withdrawal - use direct withdraw function
-            setStep("withdrawingSail");
-
-            const sailWithdrawHash = await writeContractAsync({
-              address: sailPoolAddress as `0x${string}`,
-              abi: STABILITY_POOL_ABI,
-              functionName: "withdraw",
-              args: [withdrawFromSail, address as `0x${string}`, 0n], // assetAmount, receiver, minAmount
-            });
-            setTxHash(sailWithdrawHash);
-            setTxHashes((prev) => ({
-              ...prev,
-              withdrawSail: sailWithdrawHash,
-            }));
-            await txClient?.waitForTransactionReceipt({
-              hash: sailWithdrawHash,
-            });
-            peggedTokensReceived += withdrawFromSail;
-          }
+          const sailWithdrawHash = await writeContractAsync({
+            address: sailPoolAddress as `0x${string}`,
+            abi: STABILITY_POOL_ABI,
+            functionName: "withdraw",
+            args: [withdrawFromSail, address as `0x${string}`, 0n], // assetAmount, receiver, minAmount
+          });
+          setTxHash(sailWithdrawHash);
+          setTxHashes((prev) => ({
+            ...prev,
+            withdrawSail: sailWithdrawHash,
+          }));
+          await txClient?.waitForTransactionReceipt({
+            hash: sailWithdrawHash,
+          });
+          peggedTokensReceived += withdrawFromSail;
         }
       }
 
-      // Redeem pegged tokens for collateral (default behavior unless"Withdraw only" is checked)
-      if (!withdrawOnly && peggedTokensReceived > 0n) {
-        // Use the correct client based on environment
+      // Redeem pegged tokens for collateral (default behavior unless "Withdraw only" is checked).
+      // IMPORTANT: We must redeem an amount that is actually in-wallet *after* pool withdrawals
+      // to avoid wallet simulation failures due to temporarily insufficient balance/allowance.
+      if (shouldAutoRedeem) {
         const client = false ? publicClient : publicClient;
+        if (!client) throw new Error("No client available for contract reads");
 
-        if (!client) {
-          throw new Error("No client available for contract reads");
+        // NOTE: wallet tokens are already in-wallet. Pool withdrawals should increase wallet balance.
+        // We already computed walletAmount above as the amount the user selected to redeem from wallet.
+        // After withdrawals, compute the *delta* and redeem walletAmount + delta.
+        const walletBalAfter = ((await client.readContract({
+          address: peggedTokenAddress as `0x${string}`,
+          abi: ERC20_ABI,
+          functionName: "balanceOf",
+          args: [address as `0x${string}`],
+        })) as bigint) || 0n;
+
+        const deltaFromPools =
+          walletBalAfter > walletBalBeforeForDelta
+            ? walletBalAfter - walletBalBeforeForDelta
+            : 0n;
+        let redeemAmount = walletAmount + deltaFromPools;
+
+        // Clamp to current wallet balance to avoid any race/rounding/fee surprises.
+        if (redeemAmount > walletBalAfter) redeemAmount = walletBalAfter;
+
+        if (process.env.NODE_ENV === "development") {
+          console.log("[handleWithdrawExecution] Redeem amount computed (post-withdraw):", {
+            walletBalBefore: walletBalBeforeForDelta.toString(),
+            walletBalAfter: walletBalAfter.toString(),
+            walletAmount: walletAmount.toString(),
+            deltaFromPools: deltaFromPools.toString(),
+            redeemAmount: redeemAmount.toString(),
+          });
         }
 
-        // Step 1: Check and approve pegged token for minter (if needed)
-        let currentAllowance = 0n;
-        try {
-          currentAllowance =
-            ((await client.readContract({
+        if (redeemAmount > 0n) {
+          // Step 1: Check/approve pegged token for minter (if needed)
+          let currentAllowance = 0n;
+          try {
+            currentAllowance =
+              ((await client.readContract({
+                address: peggedTokenAddress as `0x${string}`,
+                abi: ERC20_ABI,
+                functionName: "allowance",
+                args: [
+                  address as `0x${string}`,
+                  minterAddress as `0x${string}`,
+                ],
+              })) as bigint) || 0n;
+          } catch (allowErr) {
+            console.warn(
+              "[handleWithdrawExecution] Allowance read failed, assuming 0",
+              allowErr
+            );
+            currentAllowance = 0n;
+          }
+
+          const needsApproval = redeemAmount > currentAllowance;
+          console.log("[handleWithdrawExecution] Redeem approval check:", {
+            redeemAmount: redeemAmount.toString(),
+            currentAllowance: currentAllowance.toString(),
+            needsApproval,
+          });
+
+          if (needsApproval) {
+            setStep("approving");
+            setError(null);
+            setTxHash(null);
+
+            const approveHash = await writeContractAsync({
               address: peggedTokenAddress as `0x${string}`,
               abi: ERC20_ABI,
-              functionName: "allowance",
-              args: [address as `0x${string}`, minterAddress as `0x${string}`],
-            })) as bigint) || 0n;
-        } catch (allowErr) {
-          console.warn(
-            "[handleWithdrawExecution] Allowance read failed, assuming 0",
-            allowErr
-          );
-          currentAllowance = 0n;
-        }
+              functionName: "approve",
+              args: [minterAddress as `0x${string}`, redeemAmount],
+            });
+            setTxHash(approveHash);
+            setTxHashes((prev) => ({ ...prev, approveRedeem: approveHash }));
+            await client.waitForTransactionReceipt({ hash: approveHash });
+            await new Promise((resolve) => setTimeout(resolve, 500));
+          }
 
-        const needsApproval = peggedTokensReceived > currentAllowance;
-        console.log("[handleWithdrawExecution] Redeem approval check:", {
-          peggedTokensReceived: peggedTokensReceived.toString(),
-          currentAllowance: currentAllowance.toString(),
-          needsApproval,
-        });
-
-        if (needsApproval) {
-          setStep("approving");
+          // Step 2: Redeem pegged tokens
+          setStep("redeeming");
           setError(null);
           setTxHash(null);
 
-          console.log(
-            "[handleWithdrawExecution] Approving pegged token for minter:",
-            {
-              peggedTokenAddress,
-              minterAddress,
-              amount: peggedTokensReceived.toString(),
+          let minCollateralOut = 0n;
+          try {
+            const freshDryRunResult = (await client.readContract({
+              address: minterAddress as `0x${string}`,
+              abi: minterABI,
+              functionName: "redeemPeggedTokenDryRun",
+              args: [redeemAmount],
+            })) as [bigint, bigint, bigint, bigint, bigint, bigint, bigint] | undefined;
+
+            if (freshDryRunResult && Array.isArray(freshDryRunResult) && freshDryRunResult.length >= 5) {
+              const wrappedCollateralReturned = freshDryRunResult[4];
+              minCollateralOut = (wrappedCollateralReturned * 99n) / 100n;
             }
-          );
+          } catch {}
 
-          const approveHash = await writeContractAsync({
-            address: peggedTokenAddress as `0x${string}`,
-            abi: ERC20_ABI,
-            functionName: "approve",
-            args: [minterAddress as `0x${string}`, peggedTokensReceived],
-          });
-          setTxHash(approveHash);
-          setTxHashes((prev) => ({ ...prev, approveRedeem: approveHash }));
-          await client.waitForTransactionReceipt({ hash: approveHash });
-          // Small delay to allow state to propagate
-          await new Promise((resolve) => setTimeout(resolve, 500));
-        }
-
-        // Step 2: Redeem pegged tokens
-        setStep("redeeming");
-        setError(null);
-        setTxHash(null);
-
-        // Do a fresh dry-run with the exact amount we're about to redeem
-        let minCollateralOut: bigint;
-        console.log("[Redeem] Performing fresh dry-run for exact amount:", {
-          peggedTokensReceived: peggedTokensReceived.toString(),
-        });
-
-        try {
-          const freshDryRunResult = (await client.readContract({
-            address: minterAddress as `0x${string}`,
-            abi: minterABI,
-            functionName: "redeemPeggedTokenDryRun",
-            args: [peggedTokensReceived],
-          })) as
-            | [bigint, bigint, bigint, bigint, bigint, bigint, bigint]
-            | undefined;
-
-          if (
-            freshDryRunResult &&
-            Array.isArray(freshDryRunResult) &&
-            freshDryRunResult.length >= 5
-          ) {
-            const wrappedCollateralReturned = freshDryRunResult[4];
-            minCollateralOut = (wrappedCollateralReturned * 99n) / 100n;
-            console.log("[Redeem] Fresh dry-run result:", {
-              wrappedCollateralReturned: wrappedCollateralReturned.toString(),
-              minCollateralOut: minCollateralOut.toString(),
+          let redeemHash: `0x${string}` | undefined;
+          try {
+            redeemHash = await writeContractAsync({
+              address: minterAddress as `0x${string}`,
+              abi: minterABI,
+              functionName: "redeemPeggedToken",
+              args: [redeemAmount, address as `0x${string}`, minCollateralOut],
             });
-          } else if (redeemDryRun?.wrappedCollateralReturned) {
-            // Fall back to cached dry-run if fresh one fails
-            minCollateralOut =
-              (redeemDryRun.wrappedCollateralReturned * 99n) / 100n;
-            console.log("[Redeem] Using cached dry-run result:", {
-              wrappedCollateralReturned:
-                redeemDryRun.wrappedCollateralReturned.toString(),
-              minCollateralOut: minCollateralOut.toString(),
-            });
-          } else {
-            // Use 0 to skip slippage check
-            minCollateralOut = 0n;
-            console.log(
-              "[Redeem] No dry-run result, using minCollateralOut = 0"
+          } catch (redeemErr: any) {
+            console.warn(
+              "[handleWithdrawExecution] redeemPeggedToken reverted with minCollateralOut, retrying with 0",
+              redeemErr
             );
+            redeemHash = await writeContractAsync({
+              address: minterAddress as `0x${string}`,
+              abi: minterABI,
+              functionName: "redeemPeggedToken",
+              args: [redeemAmount, address as `0x${string}`, 0n],
+            });
           }
-        } catch (dryRunError) {
-          console.warn(
-            "[Redeem] Fresh dry-run failed, using minCollateralOut = 0:",
-            dryRunError
-          );
-          minCollateralOut = 0n;
-        }
 
-        let redeemHash: `0x${string}` | undefined;
-        try {
-          redeemHash = await writeContractAsync({
-            address: minterAddress as `0x${string}`,
-            abi: minterABI,
-            functionName: "redeemPeggedToken",
-            args: [
-              peggedTokensReceived,
-              address as `0x${string}`,
-              minCollateralOut,
-            ],
-          });
-        } catch (redeemErr: any) {
-          // If redeem fails, try again with minCollateralOut = 0 to bypass slippage checks
-          console.warn(
-            "[handleWithdrawExecution] redeemPeggedToken reverted with minCollateralOut, retrying with 0",
-            redeemErr
-          );
-          redeemHash = await writeContractAsync({
-            address: minterAddress as `0x${string}`,
-            abi: minterABI,
-            functionName: "redeemPeggedToken",
-            args: [peggedTokensReceived, address as `0x${string}`, 0n],
-          });
+          setTxHash(redeemHash);
+          setTxHashes((prev) => ({ ...prev, redeem: redeemHash }));
+          await client.waitForTransactionReceipt({ hash: redeemHash });
         }
-        setTxHash(redeemHash);
-        setTxHashes((prev) => ({ ...prev, redeem: redeemHash }));
-        await client.waitForTransactionReceipt({ hash: redeemHash });
       }
 
       setStep("success");
@@ -5644,7 +6789,11 @@ export const AnchorDepositWithdrawModal = ({
   };
 
   const handleRedeem = async () => {
-    if (!validateAmount() || !address) return;
+    // Ensure correct network before starting transaction (auto-attempt switch)
+    if (!(await ensureCorrectNetwork())) return;
+    // Clear any stale hashes from previous runs so the progress UI starts fresh
+    setTxHashes({});
+    if (!address) return;
 
     // Use the minter address for the selected redeem asset
     const targetMinterAddress = redeemMinterAddress || minterAddress;
@@ -5656,9 +6805,19 @@ export const AnchorDepositWithdrawModal = ({
       peggedTokenAddress;
     if (!targetPeggedTokenAddress) return;
 
-    // Use the summed redeem input (positions or single amount)
-    const redeemAmount = redeemInputAmount || amountBigInt;
-    if (!redeemAmount || redeemAmount <= 0n) return;
+    // Redeem mode uses the withdraw-position input (wallet) rather than the shared `amount` field.
+    const redeemAmount = redeemInputAmount;
+    if (!redeemAmount || redeemAmount <= 0n) {
+      setError("Please enter a valid amount to redeem");
+      setStep("error");
+      return;
+    }
+    // Redeeming requires the ha tokens to already be in-wallet.
+    if (redeemAmount > peggedBalance) {
+      setError("Insufficient ha token balance in wallet");
+      setStep("error");
+      return;
+    }
 
     try {
       // Check if we need to approve pegged token for minter (explicit RPC read, Anvil-aware)
@@ -5701,8 +6860,8 @@ export const AnchorDepositWithdrawModal = ({
         includeRedeem: true,
         title: "Redeem",
       });
-      // Close modal so user can interact with wallet
-      onClose();
+      // Show progress modal for transaction feedback
+      setProgressModalOpen(true);
 
       if (process.env.NODE_ENV === "development") {
         console.log("[handleRedeem] Starting redeem flow:", {
@@ -5768,8 +6927,8 @@ export const AnchorDepositWithdrawModal = ({
           args: [redeemAmount, address as `0x${string}`, minCollateralOut],
         });
       } catch (callErr: any) {
-        // On Anvil, some view prechecks may revert; retry with zero floor to surface allowance/amount issues
-        if (false && minCollateralOut > 0n) {
+        // Retry once with minCollateralOut=0 to bypass slippage floor and surface real issues.
+        if (minCollateralOut > 0n) {
           if (process.env.NODE_ENV === "development") {
             console.warn(
               "[handleRedeem] redeemPeggedToken reverted with minCollateralOut, retrying with 0",
@@ -5837,12 +6996,8 @@ export const AnchorDepositWithdrawModal = ({
     if (activeTab === "deposit") {
       handleMint();
     } else if (activeTab === "withdraw") {
-      if (redeemOnly) {
-        handleRedeem();
-      } else {
-        // Withdrawal method is now selected inline - go directly to execution
-        handleWithdrawExecution();
-      }
+      // Withdrawal method is selected inline - go directly to execution
+      handleWithdrawExecution();
     }
   };
 
@@ -5875,19 +7030,6 @@ export const AnchorDepositWithdrawModal = ({
         switch (step) {
           case "withdrawing":
             return "Withdrawing...";
-          case "success":
-            return baseLabel;
-          case "error":
-            return "Try Again";
-          default:
-            return baseLabel;
-        }
-      } else if (redeemOnly) {
-        switch (step) {
-          case "approving":
-            return "Approving...";
-          case "redeeming":
-            return "Redeeming...";
           case "success":
             return baseLabel;
           case "error":
@@ -5997,16 +7139,14 @@ export const AnchorDepositWithdrawModal = ({
   const expectedOutput =
     activeTab === "deposit"
       ? expectedMintOutput
-      : activeTab === "withdraw" && (!withdrawOnly || redeemOnly)
+      : activeTab === "withdraw" && !withdrawOnly
       ? expectedRedeemOutput
       : undefined;
   const outputSymbol =
     activeTab === "deposit"
       ? peggedTokenSymbol // Always use selected market's pegged token
-      : activeTab === "withdraw" && (!withdrawOnly || redeemOnly)
+      : activeTab === "withdraw" && !withdrawOnly
       ? selectedRedeemAsset || collateralSymbol
-      : activeTab === "withdraw"
-      ? peggedTokenSymbol
       : undefined;
 
   if (!isOpen) return null;
@@ -6019,6 +7159,33 @@ export const AnchorDepositWithdrawModal = ({
 
   return (
     <>
+      {/* Progress Modal for transaction feedback */}
+      {showProgressModal && (
+        <TransactionProgressModal
+          isOpen={showProgressModal}
+          onClose={handleProgressClose}
+          title={progressConfig.title || "Processing Transaction"}
+          steps={progressSteps}
+          currentStepIndex={currentProgressIndex}
+          canCancel={false}
+          errorMessage={
+            error || undefined
+          }
+          onRetry={
+            shouldShowNetworkSwitch || (error?.toLowerCase().includes("switch") || error?.toLowerCase().includes("mainnet"))
+              ? handleSwitchNetwork
+              : handleProgressRetry
+          }
+          retryButtonLabel={
+            shouldShowNetworkSwitch || (error?.toLowerCase().includes("switch") || error?.toLowerCase().includes("mainnet"))
+              ? "Switch Network"
+              : "Try Again"
+          }
+        />
+      )}
+
+      {/* Main Modal - hide when progress modal is showing */}
+      {!showProgressModal && isOpen && (
       <div className="fixed inset-0 z-50 flex items-center justify-center">
         <div
           className="absolute inset-0 bg-black/40 backdrop-blur-sm"
@@ -6194,8 +7361,8 @@ export const AnchorDepositWithdrawModal = ({
                           className="w-full px-3 py-2 bg-white text-[#1E4775] border border-[#1E4775]/20 focus:border-[#1E4775]/40 focus:ring-1 focus:ring-[#1E4775]/20 focus:outline-none text-sm transition-all"
                         >
                           {(() => {
-                            const nativeAssets = depositAssetsWithFees.filter(a => !a.isUserToken);
-                            const userTokens = depositAssetsWithFees.filter(a => a.isUserToken);
+                            const nativeAssets = depositAssetsForDropdown.filter(a => !a.isUserToken);
+                            const userTokens = depositAssetsForDropdown.filter(a => a.isUserToken);
                             
                             return (
                               <>
@@ -6204,9 +7371,6 @@ export const AnchorDepositWithdrawModal = ({
                                     {nativeAssets.map((asset) => (
                                       <option key={asset.symbol} value={asset.symbol}>
                                         {asset.name} ({asset.symbol})
-                                        {asset.feePercentage !== undefined
-                                          ? ` - ${asset.feePercentage.toFixed(2)}% estimated fee`
-                                          : " - Fee: -"}
                                       </option>
                                     ))}
                                   </optgroup>
@@ -6280,17 +7444,13 @@ export const AnchorDepositWithdrawModal = ({
                         {selectedDepositAsset &&
                           !isDirectPeggedDeposit &&
                           (() => {
-                            const selectedAssetData =
-                              depositAssetsWithFees.find(
-                                (a) => a.symbol === selectedDepositAsset
-                              );
-                            // Use actual calculated fee if amount is entered, otherwise use estimated fee from dropdown
+                            // Use actual calculated fee if amount is entered; otherwise show feeRange (if available)
                             const displayFee =
                               amount &&
                               parseFloat(amount) > 0 &&
                               feePercentage !== undefined
                                 ? feePercentage
-                                : selectedAssetData?.feePercentage;
+                                : undefined;
 
                             const hasFee = displayFee !== undefined;
                             const feeValue = hasFee ? displayFee : 0;
@@ -6381,7 +7541,7 @@ export const AnchorDepositWithdrawModal = ({
                             Enter Amount
                           </label>
                           <span className="text-sm text-[#1E4775]/70">
-                            Balance:{""}
+                            Balance:{" "}
                             {selectedAssetBalance !== null
                               ? (isUSDC 
                                   ? formatUnits(selectedAssetBalance, 6)
@@ -6389,7 +7549,7 @@ export const AnchorDepositWithdrawModal = ({
                               : (isUSDC
                                   ? formatUnits(collateralBalance, 6)
                                   : formatEther(collateralBalance))}
-                            {""}
+                            {" "}
                             {selectedDepositAsset || activeCollateralSymbol}
                           </span>
                         </div>
@@ -6774,7 +7934,8 @@ export const AnchorDepositWithdrawModal = ({
                                       });
                                       setDepositInStabilityPool(true);
                                       setStabilityPoolType(pool.poolType);
-                                      setSelectedMarketId(pool.marketId);
+                                      // Don't change selectedMarketId here - it should remain tied to the deposit asset from Step 1
+                                      // selectedMarketId is for minting, selectedStabilityPool.marketId is for the pool destination
                                     }}
                                     disabled={isProcessing}
                                     className="mt-0.5 w-3.5 h-3.5 text-[#1E4775] border-[#1E4775]/30 focus:ring-1 focus:ring-[#1E4775]/20 cursor-pointer"
@@ -6880,13 +8041,16 @@ export const AnchorDepositWithdrawModal = ({
                                           TVL:
                                         </span>
                                         <span className="text-[#1E4775] font-medium font-mono ml-1 truncate inline-block max-w-[120px] align-bottom">
-                                          {pool.tvl !== undefined
-                                            ? pool.tvl
-                                              ? formatNumber(
-                                                  Number(formatEther(pool.tvl)),
-                                                  2
-                                                )
-                                              : "-"
+                                          {pool.tvl !== undefined &&
+                                          peggedTokenPrice !== undefined &&
+                                          (peggedTokenPrice as bigint) > 0n &&
+                                          pegTargetUsdWei > 0n
+                                            ? formatUsd18(
+                                                (pool.tvl *
+                                                  (peggedTokenPrice as bigint) *
+                                                  pegTargetUsdWei) /
+                                                  10n ** 36n
+                                              )
                                             : "..."}
                                         </span>
                                       </div>
@@ -7285,33 +8449,26 @@ export const AnchorDepositWithdrawModal = ({
                   ) : null}
                 </div>
 
-                {/* Withdraw/Redeem Options - Only for Withdraw Tab */}
+                {/* Withdraw Options - Only for Withdraw Tab */}
                 {activeTab === "withdraw" && (
                   <div className="flex items-center gap-4 pt-2 border-t border-[#1E4775]/10 mb-3">
                     <div className="flex-1">
                       <div className="p-2 bg-[#17395F]/5 border border-[#17395F]/20 text-xs text-[#1E4775]/80 flex items-start justify-between gap-3">
                         <span>
-                          Withdrawing from stability pools will return pegged
-                          tokens to your wallet. These will be automatically
-                          redeemed for collateral.
+                          Select positions to withdraw. If you include wallet tokens and/or do immediate pool withdrawals,
+                          we will automatically redeem the resulting ha tokens to collateral.
                         </span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const next = !redeemOnly;
-                            setRedeemOnly(next);
-                            if (next) setWithdrawOnly(false);
-                          }}
-                          disabled={isProcessing}
-                          className={`px-3 py-1 border text-[11px] font-semibold transition-colors ${
-                            redeemOnly
-                              ? "bg-[#1E4775] text-white border-[#1E4775]"
-                              : "bg-white text-[#1E4775] border-[#1E4775]/40 hover:bg-[#e8edf7]"
-                          } disabled:opacity-50`}
-                        >
-                          Redeem only
-                        </button>
                       </div>
+                      <label className="mt-2 flex items-center gap-2 text-xs text-[#1E4775]/80">
+                        <input
+                          type="checkbox"
+                          checked={withdrawOnly}
+                          onChange={(e) => setWithdrawOnly(e.target.checked)}
+                          disabled={isProcessing}
+                          className="w-4 h-4 text-[#1E4775] border-[#1E4775]/30 focus:ring-2 focus:ring-[#1E4775]/20 focus:ring-offset-0 cursor-pointer disabled:opacity-50"
+                        />
+                        Withdraw only (do not redeem to collateral)
+                      </label>
                     </div>
                   </div>
                 )}
@@ -7430,8 +8587,8 @@ export const AnchorDepositWithdrawModal = ({
                             </span>
                           </div>
                           <div className="text-sm text-[#1E4775]/70 font-mono">
-                            Balance: {formatNumber(formatEther(peggedBalance))}
-                            {""}
+                            Balance: {formatTokenAmount18(peggedBalance)}
+                            {" "}
                             {peggedTokenSymbol}
                           </div>
                         </div>
@@ -7472,9 +8629,8 @@ export const AnchorDepositWithdrawModal = ({
                       </div>
                     )}
 
-                    {/* Collateral Pool Position - Only show if NOT"Redeem only" */}
-                    {!redeemOnly &&
-                      market.addresses?.stabilityPoolCollateral &&
+                    {/* Collateral Pool Position */}
+                    {market.addresses?.stabilityPoolCollateral &&
                       collateralPoolBalance > 0n && (
                         <div className="p-3 bg-[#17395F]/5 border border-[#17395F]/20">
                           <div className="flex items-center justify-between mb-2">
@@ -7505,9 +8661,9 @@ export const AnchorDepositWithdrawModal = ({
                               </span>
                             </div>
                             <div className="text-sm text-[#1E4775]/70 font-mono">
-                              Balance:{""}
-                              {formatNumber(formatEther(collateralPoolBalance))}
-                              {""}
+                              Balance:{" "}
+                              {formatTokenAmount18(collateralPoolBalance)}
+                              {" "}
                               {peggedTokenSymbol}
                             </div>
                           </div>
@@ -7568,7 +8724,7 @@ export const AnchorDepositWithdrawModal = ({
                                       handlePositionAmountChange(
                                         "collateralPool",
                                         e.target.value,
-                                        collateralPoolBalance
+                                        collateralPoolImmediateCap
                                       )
                                     }
                                     placeholder="0.0"
@@ -7584,17 +8740,25 @@ export const AnchorDepositWithdrawModal = ({
                                       setPositionAmounts((prev) => ({
                                         ...prev,
                                         collateralPool: formatEther(
-                                          collateralPoolBalance
+                                          collateralPoolImmediateCap
                                         ),
                                       }));
                                     }}
                                     className="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 text-xs bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white transition-colors disabled:bg-gray-300 disabled:text-gray-500 rounded-full"
-                                    disabled={isProcessing}
+                                    disabled={isProcessing || collateralPoolImmediateCap === 0n}
                                   >
                                     MAX
                                   </button>
                                 </div>
                               )}
+                              {withdrawalMethods.collateralPool === "immediate" &&
+                                collateralPoolImmediateCap === 0n && (
+                                  <p className="text-[10px] text-[#1E4775]/60 mt-1">
+                                    Early withdraw is temporarily unavailable:
+                                    the pool is at its minimum total supply. Use
+                                    Request (free) or wait for TVL to increase.
+                                  </p>
+                                )}
                               {/* Info message for request method */}
                               {withdrawalMethods.collateralPool ===
                                 "request" && (
@@ -7618,9 +8782,8 @@ export const AnchorDepositWithdrawModal = ({
                         </div>
                       )}
 
-                    {/* Sail Pool Position - Only show if NOT"Redeem only" */}
-                    {!redeemOnly &&
-                      market.addresses?.stabilityPoolLeveraged &&
+                    {/* Sail Pool Position */}
+                    {market.addresses?.stabilityPoolLeveraged &&
                       sailPoolBalance > 0n && (
                         <div className="p-3 bg-[#17395F]/5 border border-[#17395F]/20">
                           <div className="flex items-center justify-between mb-2">
@@ -7649,9 +8812,9 @@ export const AnchorDepositWithdrawModal = ({
                               </span>
                             </div>
                             <div className="text-sm text-[#1E4775]/70 font-mono">
-                              Balance:{""}
-                              {formatNumber(formatEther(sailPoolBalance))}
-                              {""}
+                              Balance:{" "}
+                              {formatTokenAmount18(sailPoolBalance)}
+                              {" "}
                               {peggedTokenSymbol}
                             </div>
                           </div>
@@ -7707,7 +8870,7 @@ export const AnchorDepositWithdrawModal = ({
                                       handlePositionAmountChange(
                                         "sailPool",
                                         e.target.value,
-                                        sailPoolBalance
+                                        sailPoolImmediateCap
                                       )
                                     }
                                     placeholder="0.0"
@@ -7722,16 +8885,24 @@ export const AnchorDepositWithdrawModal = ({
                                     onClick={() => {
                                       setPositionAmounts((prev) => ({
                                         ...prev,
-                                        sailPool: formatEther(sailPoolBalance),
+                                        sailPool: formatEther(sailPoolImmediateCap),
                                       }));
                                     }}
                                     className="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 text-xs bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white transition-colors disabled:bg-gray-300 disabled:text-gray-500 rounded-full"
-                                    disabled={isProcessing}
+                                    disabled={isProcessing || sailPoolImmediateCap === 0n}
                                   >
                                     MAX
                                   </button>
                                 </div>
                               )}
+                              {withdrawalMethods.sailPool === "immediate" &&
+                                sailPoolImmediateCap === 0n && (
+                                  <p className="text-[10px] text-[#1E4775]/60 mt-1">
+                                    Early withdraw is temporarily unavailable:
+                                    the pool is at its minimum total supply. Use
+                                    Request (free) or wait for TVL to increase.
+                                  </p>
+                                )}
                               {/* Info message for request method */}
                               {withdrawalMethods.sailPool === "request" && (
                                 <p className="text-[10px] text-[#1E4775]/60 mt-1">
@@ -7758,9 +8929,7 @@ export const AnchorDepositWithdrawModal = ({
                     {((withdrawOnly &&
                       collateralPoolBalance === 0n &&
                       sailPoolBalance === 0n) ||
-                      (redeemOnly && peggedBalance === 0n) ||
                       (!withdrawOnly &&
-                        !redeemOnly &&
                         peggedBalance === 0n &&
                         collateralPoolBalance === 0n &&
                         sailPoolBalance === 0n)) && (
@@ -7772,7 +8941,7 @@ export const AnchorDepositWithdrawModal = ({
                 )}
 
                 {/* Old Redeem Tab - Removed, now handled in main positions list */}
-                {false && activeTab === "withdraw" && redeemOnly && (
+                {false && activeTab === "withdraw" && false && (
                   <div className="space-y-3 pt-2 border-t border-[#1E4775]/10">
                     {/* Positions List */}
                     <div className="space-y-3">
@@ -7815,7 +8984,7 @@ export const AnchorDepositWithdrawModal = ({
                                   </span>
                                 </div>
                                 <div className="text-sm font-bold text-[#1E4775] font-mono">
-                                  {Number(formatEther(collateralPoolBalance)).toFixed(6)}
+                                  {formatTokenAmount18(collateralPoolBalance)}
                                   {" "}
                                   {peggedTokenSymbol}
                                 </div>
@@ -7835,7 +9004,7 @@ export const AnchorDepositWithdrawModal = ({
                                   </span>
                                 </div>
                                 <div className="text-sm font-bold text-[#1E4775] font-mono">
-                                  {Number(formatEther(sailPoolBalance)).toFixed(6)}
+                                  {formatTokenAmount18(sailPoolBalance)}
                                   {" "}
                                   {peggedTokenSymbol}
                                 </div>
@@ -7998,7 +9167,7 @@ export const AnchorDepositWithdrawModal = ({
                     <div className="flex justify-between items-center text-xs">
                       <span className="text-[#1E4775]/70">Amount</span>
                       <span className="text-[#1E4775]/70">
-                        Balance: {formatEther(balance)} {balanceSymbol}
+                        Balance: {formatEther(balance)}{" "}{balanceSymbol}
                       </span>
                     </div>
                     <div className="relative">
@@ -8703,6 +9872,7 @@ export const AnchorDepositWithdrawModal = ({
           )}
         </div>
       </div>
+      )}
     </>
   );
 };

@@ -2,7 +2,20 @@
 // Updated from DeployLog/harbor_v1__*.json files
 // Legacy contracts object - kept for backward compatibility but deprecated
 // Use markets["eth-fxusd"] or markets["btc-fxusd"] instead
-export const contracts = {
+//
+// NOTE: To use test2 contracts, set NEXT_PUBLIC_USE_TEST2_CONTRACTS=true
+// This file will automatically switch to test2 contracts when that env var is set
+// See contracts.test2.ts for test2 addresses
+
+// Import test2 config if needed
+import { markets as test2Markets, contracts as test2Contracts } from "./contracts.test2";
+
+// Check if we should use test2 contracts
+// NEXT_PUBLIC_ variables are available on both server and client in Next.js
+const useTest2 = process.env.NEXT_PUBLIC_USE_TEST2_CONTRACTS === "true";
+
+// Production contracts (default)
+const productionContracts = {
   minter: "0xd6E2F8e57b4aFB51C6fA4cbC012e1cE6aEad989F", // ETH/fxUSD minter (default)
   peggedToken: "0x7A53EBc85453DD006824084c4f4bE758FcF8a5B5", // haETH (default)
   leveragedToken: "0x0Cd6BB1a0cfD95e2779EDC6D17b664B481f2EB4C", // hsFXUSD-ETH (default)
@@ -36,7 +49,15 @@ export type MarketConfig = {
   id: string;
   name: string;
   description: string;
+  /**
+   * First block where the market contracts are deployed.
+   * Used for log queries (PnL, history) to avoid scanning from genesis.
+   */
+  startBlock: number;
   addresses: {
+    // The token users actually deposit (wrapped collateral, e.g. fxSAVE, wstETH)
+    wrappedCollateralToken: `0x${string}`;
+    // The underlying/base collateral token (e.g. fxUSD, stETH)
     collateralToken: `0x${string}`;
     underlyingCollateralToken: `0x${string}`;
     feeReceiver: `0x${string}`;
@@ -88,7 +109,7 @@ export type Markets = {
 // 4. Update any dependent configurations
 // ============================================================================
 
-export const markets: Markets = {
+const productionMarkets: Markets = {
   // ============================================================================
   // ETH/fxUSD Market (production v1 deployment) - Mainnet deployment Dec 2025
   // Backing: haETH (anchor) and hsFXUSD-ETH (sail)
@@ -98,9 +119,11 @@ export const markets: Markets = {
     id: "eth-fxusd",
     name: "ETH/fxUSD",
     description: "ETH pegged to fxUSD collateral",
+    startBlock: 24049488,
     addresses: {
+      wrappedCollateralToken: "0x7743e50F534a7f9F1791DdE7dCD89F7783Eefc39", // fxSAVE (deposited)
       collateralToken: "0x085780639CC2cACd35E474e71f4d000e2405d8f6", // fxUSD
-      underlyingCollateralToken: "0x7743e50F534a7f9F1791DdE7dCD89F7783Eefc39", // fxSAVE
+      underlyingCollateralToken: "0x085780639CC2cACd35E474e71f4d000e2405d8f6", // fxUSD (underlying)
       feeReceiver: "0xdC903fe5ebCE440f22578D701b95424363D20881", // minterFeeReceiver
       genesis: "0xC9df4f62474Cf6cdE6c064DB29416a9F4f27EBdC",
       leveragedToken: "0x0Cd6BB1a0cfD95e2779EDC6D17b664B481f2EB4C", // hsFXUSD-ETH
@@ -144,9 +167,11 @@ export const markets: Markets = {
     id: "btc-fxusd",
     name: "BTC/fxUSD",
     description: "BTC pegged to fxUSD collateral",
+    startBlock: 24049375,
     addresses: {
+      wrappedCollateralToken: "0x7743e50F534a7f9F1791DdE7dCD89F7783Eefc39", // fxSAVE (deposited)
       collateralToken: "0x085780639CC2cACd35E474e71f4d000e2405d8f6", // fxUSD
-      underlyingCollateralToken: "0x7743e50F534a7f9F1791DdE7dCD89F7783Eefc39", // fxSAVE
+      underlyingCollateralToken: "0x085780639CC2cACd35E474e71f4d000e2405d8f6", // fxUSD (underlying)
       feeReceiver: "0x70DdA12032335656b63435840Cd55ff7A19dDAb7", // minterFeeReceiver
       genesis: "0x42cc9a19b358a2A918f891D8a6199d8b05F0BC1C",
       leveragedToken: "0x9567c243F647f9Ac37efb7Fc26BD9551Dce0BE1B", // hsFXUSD-BTC
@@ -190,7 +215,9 @@ export const markets: Markets = {
     id: "btc-steth",
     name: "BTC/stETH",
     description: "BTC pegged to stETH collateral",
+    startBlock: 24049273,
     addresses: {
+      wrappedCollateralToken: "0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0", // wstETH (deposited)
       collateralToken: "0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0", // wstETH
       underlyingCollateralToken: "0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84", // stETH
       feeReceiver: "0xc3a97138a5aDCC7d28A1375E28EC3440aeaeDF3e", // minterFeeReceiver
@@ -235,6 +262,7 @@ export const markets: Markets = {
     name: "fxUSD/GOLD",
     description: "fxUSD pegged to GOLD collateral",
     addresses: {
+      wrappedCollateralToken: "0x0000000000000000000000000000000000000000", // placeholder
       collateralToken: "0x0000000000000000000000000000000000000000", // GOLD (placeholder)
       underlyingCollateralToken: "0x0000000000000000000000000000000000000000", // GOLD (placeholder)
       feeReceiver: "0x0000000000000000000000000000000000000000", // placeholder
@@ -273,6 +301,7 @@ export const markets: Markets = {
     name: "stETH/GOLD",
     description: "stETH pegged to GOLD collateral",
     addresses: {
+      wrappedCollateralToken: "0x0000000000000000000000000000000000000000", // placeholder
       collateralToken: "0x0000000000000000000000000000000000000000", // wstETH (placeholder)
       underlyingCollateralToken: "0x0000000000000000000000000000000000000000", // stETH (placeholder)
       feeReceiver: "0x0000000000000000000000000000000000000000", // placeholder
@@ -311,6 +340,7 @@ export const markets: Markets = {
     name: "stETH/EUR",
     description: "stETH pegged to EUR collateral",
     addresses: {
+      wrappedCollateralToken: "0x0000000000000000000000000000000000000000", // placeholder
       collateralToken: "0x0000000000000000000000000000000000000000", // wstETH (placeholder)
       underlyingCollateralToken: "0x0000000000000000000000000000000000000000", // stETH (placeholder)
       feeReceiver: "0x0000000000000000000000000000000000000000", // placeholder
@@ -349,6 +379,7 @@ export const markets: Markets = {
     name: "fxUSD/EUR",
     description: "fxUSD pegged to EUR collateral",
     addresses: {
+      wrappedCollateralToken: "0x0000000000000000000000000000000000000000", // placeholder
       collateralToken: "0x0000000000000000000000000000000000000000", // fxUSD (placeholder)
       underlyingCollateralToken: "0x0000000000000000000000000000000000000000", // fxSAVE (placeholder)
       feeReceiver: "0x0000000000000000000000000000000000000000", // placeholder
@@ -387,6 +418,7 @@ export const markets: Markets = {
     name: "stETH/MCAP",
     description: "stETH pegged to MCAP collateral",
     addresses: {
+      wrappedCollateralToken: "0x0000000000000000000000000000000000000000", // placeholder
       collateralToken: "0x0000000000000000000000000000000000000000", // wstETH (placeholder)
       underlyingCollateralToken: "0x0000000000000000000000000000000000000000", // stETH (placeholder)
       feeReceiver: "0x0000000000000000000000000000000000000000", // placeholder
@@ -425,6 +457,7 @@ export const markets: Markets = {
     name: "fxUSD/MCAP",
     description: "fxUSD pegged to MCAP collateral",
     addresses: {
+      wrappedCollateralToken: "0x0000000000000000000000000000000000000000", // placeholder
       collateralToken: "0x0000000000000000000000000000000000000000", // fxUSD (placeholder)
       underlyingCollateralToken: "0x0000000000000000000000000000000000000000", // fxSAVE (placeholder)
       feeReceiver: "0x0000000000000000000000000000000000000000", // placeholder
@@ -460,10 +493,22 @@ export const markets: Markets = {
   },
 };
 
+// Export markets and contracts based on environment variable
+export const markets: Markets = useTest2 ? test2Markets : productionMarkets;
+export const contracts = useTest2 ? test2Contracts : productionContracts;
+
 // For backward compatibility and convenience
 // Default to ETH/fxUSD market (primary new deployment)
 export const marketConfig = markets["eth-fxusd"];
 export const contractAddresses = markets["eth-fxusd"].addresses;
+
+// Log which config is being used (only in development)
+if (process.env.NODE_ENV === "development") {
+  console.log(`[Contracts] Using ${useTest2 ? "TEST2" : "PRODUCTION"} contracts`);
+  if (useTest2) {
+    console.log(`[Contracts] Test2 markets: ${Object.keys(test2Markets).join(", ")}`);
+  }
+}
 
 // ============================================================================
 // Contract ABIs and Types

@@ -2167,9 +2167,8 @@ export default function GenesisIndexPage() {
                         key={`header-ended`}
                         className="hidden md:block bg-white py-1.5 px-2 overflow-x-auto sticky top-0 z-10"
                       >
-                        <div className="grid lg:grid-cols-[1.5fr_80px_1fr_1fr_1.5fr_1fr] md:grid-cols-[120px_80px_60px_60px_1fr_80px] gap-4 items-center uppercase tracking-wider text-[10px] lg:text-[11px] text-[#1E4775] font-semibold">
+                        <div className="grid lg:grid-cols-[1.5fr_1fr_1fr_1.5fr_1fr] md:grid-cols-[120px_60px_60px_1fr_80px] gap-4 items-center uppercase tracking-wider text-[10px] lg:text-[11px] text-[#1E4775] font-semibold">
                           <div className="min-w-0 text-center">Market</div>
-                          <div className="text-center min-w-0">APR</div>
                           <div className="text-center min-w-0">
                             Anchor
                             <span className="hidden lg:inline"> Tokens</span>
@@ -2999,7 +2998,7 @@ export default function GenesisIndexPage() {
                       <div
                         className={`hidden md:grid lg:hidden items-center gap-4 text-xs ${
                           isEnded
-                            ? "grid-cols-[120px_80px_60px_60px_1fr_80px]"
+                            ? "grid-cols-[120px_60px_60px_1fr_80px]"
                             : "grid-cols-[120px_80px_100px_1fr_1fr_90px_80px]"
                         }`}
                       >
@@ -3018,8 +3017,8 @@ export default function GenesisIndexPage() {
                           )}
                         </div>
 
-                        {/* Combined APR Column */}
-                        {(() => {
+                        {/* Combined APR Column - Only show for active markets */}
+                        {!isEnded ? (() => {
                           const isWstETH = collateralSymbol.toLowerCase() === "wsteth";
                           const isFxSAVE = collateralSymbol.toLowerCase() === "fxsave";
                           const underlyingAPR = isWstETH ? wstETHAPR : isFxSAVE ? fxSAVEAPR : null;
@@ -3182,7 +3181,7 @@ export default function GenesisIndexPage() {
                               )}
                             </div>
                           );
-                        })()}
+                        })() : null}
 
                         {/* Deposit Assets (if not ended) */}
                         {!isEnded && (
@@ -3204,80 +3203,124 @@ export default function GenesisIndexPage() {
                         {/* Stats Columns */}
                         {isEnded ? (
                           <>
-                            {/* APY Column for ended markets */}
-                            {(() => {
-                              const isWstETH = collateralSymbol.toLowerCase() === "wsteth";
-                              const isFxSAVE = collateralSymbol.toLowerCase() === "fxsave";
-                              const underlyingAPY = isWstETH ? wstETHAPR : isFxSAVE ? fxSAVEAPR : null;
-                              const isLoadingAPY = isWstETH ? isLoadingWstETHAPR : isFxSAVE ? isLoadingFxSAVEAPR : false;
-                              const error = isWstETH ? wstETHAPRError : isFxSAVE ? fxSAVEAPRError : null;
-                              
-                              const isValidAPY = underlyingAPY !== null && 
-                                                typeof underlyingAPY === 'number' && 
-                                                !isNaN(underlyingAPY) && 
-                                                isFinite(underlyingAPY) &&
-                                                underlyingAPY >= 0;
-                              
-                              return (
+                            {/* Anchor Tokens Column */}
                                 <div className="text-center">
-                                  {isValidAPY ? (
-                                    <div className="text-[#1E4775] font-semibold text-xs">
-                                      {isLoadingAPY 
-                                        ? "..." 
-                                        : `${(underlyingAPY * 100).toFixed(2)}%`}
-                                    </div>
-                                  ) : (
-                                    <span className="text-xs text-gray-400">-</span>
-                                  )}
-                                </div>
-                              );
-                            })()}
-                            <div className="text-center">
+                              {claimablePegged > 0n ? (
                               <SimpleTooltip
                                 label={
-                                  claimablePegged > 0n &&
                                   anchorTokenPriceUSD > 0
                                     ? formatUSD(
                                         Number(formatEther(claimablePegged)) *
                                           anchorTokenPriceUSD
                                       )
-                                    : claimablePegged > 0n
-                                    ? `${formatToken(claimablePegged)} ${
+                                      : `${formatToken(claimablePegged)} ${
                                         rowPeggedSymbol || "tokens"
                                       }`
-                                    : ""
-                                }
-                              >
-                                <div className="text-[#1E4775] font-semibold cursor-help">
-                                  {claimablePegged > 0n
-                                    ? formatToken(claimablePegged)
-                                    : "-"}
+                                  }
+                                >
+                                  <div className="flex items-center justify-center gap-1 cursor-help">
+                                    <span className="font-mono text-[#1E4775] font-semibold text-xs">
+                                      {formatToken(claimablePegged)}
+                                    </span>
+                                    <Image
+                                      src={getLogoPath(
+                                        rowPeggedSymbol ||
+                                          (mkt as any).peggedToken?.symbol ||
+                                          "haPB"
+                                      )}
+                                      alt={
+                                        rowPeggedSymbol ||
+                                        (mkt as any).peggedToken?.symbol ||
+                                        "haPB"
+                                      }
+                                      width={20}
+                                      height={20}
+                                      className="flex-shrink-0"
+                                    />
                                 </div>
                               </SimpleTooltip>
+                              ) : (
+                                <div className="flex items-center justify-center gap-1">
+                                  <span className="text-[#1E4775] font-semibold text-xs">
+                                    {rowPeggedSymbol || (mkt as any).peggedToken?.symbol || "haTOKEN"}
+                                  </span>
+                                  <Image
+                                    src={getLogoPath(
+                                      rowPeggedSymbol ||
+                                        (mkt as any).peggedToken?.symbol ||
+                                        "haPB"
+                                    )}
+                                    alt={
+                                      rowPeggedSymbol ||
+                                      (mkt as any).peggedToken?.symbol ||
+                                      "haPB"
+                                    }
+                                    width={20}
+                                    height={20}
+                                    className="flex-shrink-0"
+                                  />
                             </div>
+                              )}
+                            </div>
+                            {/* Sail Tokens Column */}
                             <div className="text-center">
+                              {claimableLeveraged > 0n ? (
                               <SimpleTooltip
                                 label={
-                                  claimableLeveraged > 0n &&
                                   sailTokenPriceUSD > 0
                                     ? formatUSD(
                                         Number(
                                           formatEther(claimableLeveraged)
                                         ) * sailTokenPriceUSD
                                       )
-                                    : claimableLeveraged > 0n
-                                    ? `${formatToken(claimableLeveraged)} ${
+                                      : `${formatToken(claimableLeveraged)} ${
                                         rowLeveragedSymbol || "tokens"
                                       }`
-                                    : ""
-                                }
-                              >
-                                <div className="text-[#1E4775] font-semibold cursor-help">
-                                  {claimableLeveraged > 0n
-                                    ? formatToken(claimableLeveraged)
-                                    : "-"}
+                                  }
+                                >
+                                  <div className="flex items-center justify-center gap-1 cursor-help">
+                                    <span className="font-mono text-[#1E4775] font-semibold text-xs">
+                                      {formatToken(claimableLeveraged)}
+                                    </span>
+                                    <Image
+                                      src={getLogoPath(
+                                        rowLeveragedSymbol ||
+                                          (mkt as any).leveragedToken?.symbol ||
+                                          "hsPB"
+                                      )}
+                                      alt={
+                                        rowLeveragedSymbol ||
+                                        (mkt as any).leveragedToken?.symbol ||
+                                        "hsPB"
+                                      }
+                                      width={20}
+                                      height={20}
+                                      className="flex-shrink-0"
+                                    />
                                 </div>
                               </SimpleTooltip>
+                              ) : (
+                                <div className="flex items-center justify-center gap-1">
+                                  <span className="text-[#1E4775] font-semibold text-xs">
+                                    {rowLeveragedSymbol || (mkt as any).leveragedToken?.symbol || "hsTOKEN"}
+                                  </span>
+                                  <Image
+                                    src={getLogoPath(
+                                      rowLeveragedSymbol ||
+                                        (mkt as any).leveragedToken?.symbol ||
+                                        "hsPB"
+                                    )}
+                                    alt={
+                                      rowLeveragedSymbol ||
+                                      (mkt as any).leveragedToken?.symbol ||
+                                      "hsPB"
+                                    }
+                                    width={20}
+                                    height={20}
+                                    className="flex-shrink-0"
+                                  />
+                                </div>
+                              )}
                             </div>
                             <div className="text-center">
                               <div className="text-[#1E4775] font-semibold">
@@ -3432,7 +3475,7 @@ export default function GenesisIndexPage() {
                       <div
                         className={`hidden lg:grid gap-4 items-center text-sm ${
                           isEnded
-                            ? "grid-cols-[1.5fr_80px_0.9fr_0.9fr_1.2fr_0.9fr]"
+                            ? "grid-cols-[1.5fr_1fr_1fr_1.5fr_1fr]"
                             : "grid-cols-[1.5fr_80px_0.9fr_0.9fr_0.9fr_0.7fr_0.9fr]"
                         }`}
                       >
@@ -3489,8 +3532,8 @@ export default function GenesisIndexPage() {
                             )}
                           </div>
                         </div>
-                        {/* Combined APR Column */}
-                        {(() => {
+                        {/* Combined APR Column - Only show for active markets */}
+                        {!isEnded ? (() => {
                           const isWstETH = collateralSymbol.toLowerCase() === "wsteth";
                           const isFxSAVE = collateralSymbol.toLowerCase() === "fxsave";
                           const underlyingAPR = isWstETH ? wstETHAPR : isFxSAVE ? fxSAVEAPR : null;
@@ -3644,8 +3687,8 @@ export default function GenesisIndexPage() {
                               )}
                             </div>
                           );
-                        })()}
-                        {!isEnded && (
+                        })() : null}
+                        {!isEnded ? (
                           <div
                             className="flex items-center justify-center gap-1.5 min-w-0"
                             onClick={(e) => e.stopPropagation()}
@@ -3722,53 +3765,11 @@ export default function GenesisIndexPage() {
                               </div>
                             </SimpleTooltip>
                           </div>
-                        )}
+                        ) : null}
                         {isEnded ? (
                           <>
-                            {/* APY Column */}
-                            {(() => {
-                              const isWstETH = collateralSymbol.toLowerCase() === "wsteth";
-                              const isFxSAVE = collateralSymbol.toLowerCase() === "fxsave";
-                              const underlyingAPY = isWstETH ? wstETHAPR : isFxSAVE ? fxSAVEAPR : null;
-                              const isLoadingAPY = isWstETH ? isLoadingWstETHAPR : isFxSAVE ? isLoadingFxSAVEAPR : false;
-                              const error = isWstETH ? wstETHAPRError : isFxSAVE ? fxSAVEAPRError : null;
-                              
-                              const isValidAPY = underlyingAPY !== null && 
-                                                typeof underlyingAPY === 'number' && 
-                                                !isNaN(underlyingAPY) && 
-                                                isFinite(underlyingAPY) &&
-                                                underlyingAPY >= 0;
-                              
-                              return (
-                                <div className="text-center min-w-0">
-                                  {isValidAPY ? (
-                                    <div className="flex items-center justify-center gap-1">
-                                      <SimpleTooltip label={`${collateralSymbol} underlying APY`}>
-                                        <span className="text-[#1E4775] font-semibold text-xs cursor-help">
-                                          {isLoadingAPY 
-                                            ? "..." 
-                                            : `${(underlyingAPY * 100).toFixed(2)}%`}
-                                        </span>
-                                      </SimpleTooltip>
-                                      <span className="text-[#1E4775]/60 font-semibold text-xs">+</span>
-                                      <SimpleTooltip label="Ledger Marks">
-                                        <Image
-                                          src="/icons/marks.png"
-                                          alt="Harbor Marks"
-                                          width={20}
-                                          height={20}
-                                          className="flex-shrink-0 cursor-help"
-                                        />
-                                      </SimpleTooltip>
-                                    </div>
-                                  ) : (
-                                    <span className="text-xs text-gray-400">-</span>
-                                  )}
-                                </div>
-                              );
-                            })()}
                             {/* Anchor Tokens Column */}
-                            <div className="text-center min-w-0">
+                            <div className="min-w-0 flex items-center justify-center">
                               {claimablePegged > 0n ? (
                                 <SimpleTooltip
                                   label={
@@ -3804,11 +3805,30 @@ export default function GenesisIndexPage() {
                                   </div>
                                 </SimpleTooltip>
                               ) : (
-                                <span className="text-xs text-gray-400">-</span>
+                                <div className="flex items-center justify-center gap-1">
+                                  <span className="text-[#1E4775] font-semibold text-xs">
+                                    {rowPeggedSymbol || (mkt as any).peggedToken?.symbol || "haTOKEN"}
+                                  </span>
+                                  <Image
+                                    src={getLogoPath(
+                                      rowPeggedSymbol ||
+                                        (mkt as any).peggedToken?.symbol ||
+                                        "haPB"
+                                    )}
+                                    alt={
+                                      rowPeggedSymbol ||
+                                      (mkt as any).peggedToken?.symbol ||
+                                      "haPB"
+                                    }
+                                    width={20}
+                                    height={20}
+                                    className="flex-shrink-0"
+                                  />
+                                </div>
                               )}
                             </div>
                             {/* Sail Tokens Column */}
-                            <div className="text-center min-w-0">
+                            <div className="min-w-0 flex items-center justify-center">
                               {claimableLeveraged > 0n ? (
                                 <SimpleTooltip
                                   label={
@@ -3845,8 +3865,80 @@ export default function GenesisIndexPage() {
                                   </div>
                                 </SimpleTooltip>
                               ) : (
-                                <span className="text-xs text-gray-400">-</span>
+                                <div className="flex items-center justify-center gap-1">
+                                  <span className="text-[#1E4775] font-semibold text-xs">
+                                    {rowLeveragedSymbol || (mkt as any).leveragedToken?.symbol || "hsTOKEN"}
+                                  </span>
+                                  <Image
+                                    src={getLogoPath(
+                                      rowLeveragedSymbol ||
+                                        (mkt as any).leveragedToken?.symbol ||
+                                        "hsPB"
+                                    )}
+                                    alt={
+                                      rowLeveragedSymbol ||
+                                      (mkt as any).leveragedToken?.symbol ||
+                                      "hsPB"
+                                    }
+                                    width={20}
+                                    height={20}
+                                    className="flex-shrink-0"
+                                  />
+                                </div>
                               )}
+                            </div>
+                            {/* Your Deposit Column for completed markets */}
+                            <div className="min-w-0 flex items-center justify-center">
+                              <div className="flex items-center justify-center gap-1.5">
+                                <SimpleTooltip
+                                  label={
+                                    userDeposit && userDeposit > 0n
+                                      ? priceError
+                                        ? `${formatToken(
+                                            userDeposit
+                                          )} ${collateralSymbol}\n\nPrice Error: ${priceError}`
+                                        : `${formatToken(
+                                            userDeposit
+                                          )} ${collateralSymbol}`
+                                      : priceError
+                                      ? `No deposit\n\nPrice Error: ${priceError}`
+                                      : "No deposit"
+                                  }
+                                >
+                                  <div className="font-mono text-[#1E4775] font-semibold cursor-help text-xs">
+                                    {userDeposit && userDeposit > 0n ? (
+                                      collateralPriceUSD > 0 ? (
+                                        formatUSD(userDepositUSD)
+                                      ) : priceError ? (
+                                        <span className="text-red-500">
+                                          Price Error
+                                        </span>
+                                      ) : (
+                                        `${formatToken(
+                                          userDeposit
+                                        )} ${collateralSymbol}`
+                                      )
+                                    ) : collateralPriceUSD > 0 ? (
+                                      "$0"
+                                    ) : priceError ? (
+                                      <span className="text-red-500 text-xs">
+                                        Error
+                                      </span>
+                                    ) : (
+                                      "0"
+                                    )}
+                                  </div>
+                                </SimpleTooltip>
+                                <SimpleTooltip label={collateralSymbol}>
+                                  <Image
+                                    src={getLogoPath(collateralSymbol)}
+                                    alt={collateralSymbol}
+                                    width={20}
+                                    height={20}
+                                    className="flex-shrink-0 cursor-help rounded-full"
+                                  />
+                                </SimpleTooltip>
+                              </div>
                             </div>
                           </>
                         ) : (
@@ -3901,6 +3993,7 @@ export default function GenesisIndexPage() {
                             </SimpleTooltip>
                           </div>
                         )}
+                        {!isEnded && (
                         <div className="text-center min-w-0 flex items-center justify-center gap-1.5">
                           <SimpleTooltip
                             label={
@@ -3951,6 +4044,7 @@ export default function GenesisIndexPage() {
                             />
                           </SimpleTooltip>
                         </div>
+                        )}
                         {!isEnded && (
                           <div className="text-center min-w-0">
                             {isProcessing ? (

@@ -18,6 +18,13 @@ const minterABI = MINTER_ABI;
 const stabilityPoolABI = [
   {
     inputs: [],
+    name: "totalAssets",
+    outputs: [{ type: "uint256", name: "" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
     name: "totalAssetSupply",
     outputs: [{ type: "uint256", name: "" }],
     stateMutability: "view",
@@ -137,6 +144,11 @@ export function useAnchorContractReads(
           {
             address: collateralStabilityPool,
             abi: stabilityPoolABI as any,
+            functionName: "totalAssets" as any,
+          } as any,
+          {
+            address: collateralStabilityPool,
+            abi: stabilityPoolABI as any,
             functionName: "totalAssetSupply" as any,
           } as any,
           {
@@ -183,6 +195,11 @@ export function useAnchorContractReads(
         sailStabilityPool.length === 42
       ) {
         contracts.push(
+          {
+            address: sailStabilityPool,
+            abi: stabilityPoolABI as any,
+            functionName: "totalAssets" as any,
+          } as any,
           {
             address: sailStabilityPool,
             abi: stabilityPoolABI as any,

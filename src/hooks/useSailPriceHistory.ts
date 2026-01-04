@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getSailPriceGraphUrl, getGraphHeaders } from "@/config/graph";
 
@@ -77,12 +78,18 @@ export function useSailPriceHistory({
   enabled = true,
 }: UseSailPriceHistoryOptions): PriceHistoryData {
   const graphUrl = getSailPriceGraphUrl();
+  const debug = typeof window !== "undefined" && process.env.NODE_ENV !== "production";
   
   // Calculate timestamp for "since" parameter
-  const sinceTimestamp = Math.floor(Date.now() / 1000) - (daysBack * 24 * 60 * 60);
+  // Important: don't put Date.now() directly in the queryKey (it will change every render).
+  const sinceTimestamp = useMemo(
+    () => Math.floor(Date.now() / 1000) - daysBack * 24 * 60 * 60,
+    [daysBack]
+  );
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ["sailPriceHistory", tokenAddress, sinceTimestamp],
+    // Include graphUrl so switching subgraph versions/endpoints doesn't reuse cached data from a previous endpoint.
+    queryKey: ["sailPriceHistory", graphUrl, tokenAddress, sinceTimestamp],
     queryFn: async () => {
       if (!tokenAddress) {
         return { pricePoints: [], hourlySnapshots: [] };
@@ -90,7 +97,7 @@ export function useSailPriceHistory({
 
       const response = await fetch(graphUrl, {
         method: "POST",
-        headers: getGraphHeaders(),
+        headers: getGraphHeaders(graphUrl),
         body: JSON.stringify({
           query: PRICE_HISTORY_QUERY,
           variables: {
@@ -101,7 +108,10 @@ export function useSailPriceHistory({
       });
 
       if (!response.ok) {
-        throw new Error(`GraphQL query failed: ${response.statusText}`);
+        const body = await response.text().catch(() => "");
+        throw new Error(
+          `GraphQL query failed: ${response.status} ${response.statusText}${body ? ` - ${body}` : ""}`
+        );
       }
 
       const result = await response.json();
@@ -129,6 +139,23 @@ export function useSailPriceHistory({
           collateralRatio: parseFloat(s.collateralRatio) / 1e18,
         })
       );
+
+      if (debug) {
+        const authHeaderPresent = Boolean(getGraphHeaders(graphUrl)["Authorization"]);
+        // Log a tiny sample to avoid console spam
+        // eslint-disable-next-line no-console
+        console.log("[useSailPriceHistory] subgraph response", {
+          graphUrl,
+          authHeaderPresent,
+          tokenAddress: tokenAddress.toLowerCase(),
+          since: sinceTimestamp,
+          pricePoints: pricePoints.length,
+          hourlySnapshots: hourlySnapshots.length,
+          samplePoint: pricePoints[0],
+          sampleHourly: hourlySnapshots[0],
+          dataKeys: result.data ? Object.keys(result.data) : null,
+        });
+      }
 
       return { pricePoints, hourlySnapshots };
     },

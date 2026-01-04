@@ -77,7 +77,6 @@
       { "indexed": true, "internalType": "address", "name": "sender", "type": "address" },
       { "indexed": true, "internalType": "address", "name": "receiver", "type": "address" },
       { "indexed": false, "internalType": "uint256", "name": "collateralIn", "type": "uint256" },
-      { "indexed": false, "internalType": "uint256", "name": "feeIn", "type": "uint256" },
       { "indexed": false, "internalType": "uint256", "name": "leveragedOut", "type": "uint256" }
     ],
     "name": "MintLeveragedToken",
@@ -94,5 +93,6 @@
     "type": "event"
   }
 ]
+
 
 

@@ -38,6 +38,7 @@ interface PnLData {
   unrealizedPnLPercent: number;
   realizedPnL: number;
   isLoading: boolean;
+  error?: string;
 }
 
 const minterABI = [
@@ -369,6 +370,20 @@ function SailMarketRow({
   const isFxUSDMarket =
     collateralSymbol === "fxusd" || collateralSymbol === "fxsave";
 
+  // For fxUSD markets, read fxSAVE price directly from the oracle (getPrice()) as a reliable fallback.
+  // This avoids relying on the large batched reads array offsets for getPrice().
+  const priceOracleAddress = (market as any).addresses?.collateralPrice as
+    | `0x${string}`
+    | undefined;
+  const { data: fxSAVEPriceInETHDirect } = useContractRead({
+    address: priceOracleAddress,
+    abi: wrappedPriceOracleABI,
+    functionName: "getPrice",
+    query: {
+      enabled: isFxUSDMarket && !!priceOracleAddress,
+    },
+  });
+
   if (hasOracle) {
     const oracleRead = reads?.[baseOffset + oracleOffset];
     const oracleResult = oracleRead?.result;
@@ -400,6 +415,11 @@ function SailMarketRow({
     }
   }
 
+  // If the batched read didn't include getPrice(), fall back to the dedicated read.
+  if (!fxSAVEPriceInETH && typeof fxSAVEPriceInETHDirect === "bigint") {
+    fxSAVEPriceInETH = fxSAVEPriceInETHDirect;
+  }
+
   // Get token name and total supply (after oracle if it exists, +1 if fxUSD market for getPrice)
   const tokenOffset = hasOracle ? (isFxUSDMarket ? 6 : 5) : 4;
   const tokenName = hasToken
@@ -425,17 +445,37 @@ function SailMarketRow({
   // Calculate PnL from subgraph - uses pre-computed cost basis
   const pnlSubgraph = useSailPositionPnL({
     tokenAddress: leveragedTokenAddress || "",
+    minterAddress: (market as any).addresses?.minter as
+      | `0x${string}`
+      | undefined,
+    startBlock: (market as any).startBlock as number | undefined,
+    genesisAddress: (market as any).addresses?.genesis as
+      | `0x${string}`
+      | undefined,
+    genesisLeveragedRatio: (market as any)?.genesis?.tokenDistribution
+      ?.leveraged?.ratio as number | undefined,
+    pegTarget: (market as any)?.pegTarget as "ETH" | "BTC" | undefined,
+    debug: process.env.NODE_ENV === "development",
     currentTokenPrice: tokenPrices?.leveragedPriceUSD,
     enabled: !!leveragedTokenAddress && !!userDeposit && userDeposit > 0n,
   });
 
   // Map subgraph data to PnLData format for compatibility
+  const rawPnlError = pnlSubgraph.error as unknown;
+  const pnlError =
+    rawPnlError && typeof rawPnlError === "object" && "message" in rawPnlError
+      ? String((rawPnlError as any).message)
+      : rawPnlError
+      ? String(rawPnlError)
+      : undefined;
+
   const pnlData: PnLData = {
-    costBasis: pnlSubgraph.position?.totalCostBasisUSD || 0,
-    unrealizedPnL: pnlSubgraph.unrealizedPnL,
-    unrealizedPnLPercent: pnlSubgraph.unrealizedPnLPercent,
-    realizedPnL: pnlSubgraph.position?.realizedPnLUSD || 0,
+    costBasis: pnlSubgraph.position?.totalCostBasisUSD ?? 0,
+    unrealizedPnL: pnlSubgraph.unrealizedPnL ?? 0,
+    unrealizedPnLPercent: pnlSubgraph.unrealizedPnLPercent ?? 0,
+    realizedPnL: pnlSubgraph.position?.realizedPnLUSD ?? 0,
     isLoading: pnlSubgraph.isLoading,
+    error: pnlError,
   };
 
   const pnlFormatted =
@@ -843,10 +883,18 @@ function SailMarketExpandedView({
               <h3 className="text-[#1E4775] font-semibold mb-3 text-xs">
                 Position Details
               </h3>
+              {pnlData.error && !pnlData.isLoading && (
+                <div className="mb-3 rounded border border-red-200 bg-red-50 px-2 py-1 text-[11px] text-red-700">
+                  PnL data is temporarily unavailable from the subgraph:{" "}
+                  <span className="font-mono break-all">{pnlData.error}</span>
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
                 <div className="text-[#1E4775]/70">Cost Basis:</div>
                 <div className="text-[#1E4775] font-mono text-right">
-                  {pnlData.isLoading ? "-" : formatUSD(pnlData.costBasis)}
+                  {pnlData.isLoading || pnlData.error
+                    ? "-"
+                    : formatUSD(pnlData.costBasis)}
                 </div>
                 <div className="text-[#1E4775]/70">Current Value:</div>
                 <div className="text-[#1E4775] font-mono text-right">
@@ -860,24 +908,27 @@ function SailMarketExpandedView({
                       : formatPnL(pnlData.unrealizedPnL).color
                   }`}
                 >
-                  {pnlData.isLoading
+                  {pnlData.isLoading || pnlData.error
                     ? "-"
                     : `${formatPnL(pnlData.unrealizedPnL).text} (${
                         pnlData.unrealizedPnLPercent >= 0 ? "+" : ""
                       }${pnlData.unrealizedPnLPercent.toFixed(1)}%)`}
                 </div>
-                {!pnlData.isLoading && pnlData.realizedPnL !== 0 && (
-                  <>
-                    <div className="text-[#1E4775]/70">Realized PnL:</div>
-                    <div
-                      className={`font-mono text-right ${
-                        formatPnL(pnlData.realizedPnL).color
-                      }`}
-                    >
-                      {formatPnL(pnlData.realizedPnL).text}
-                    </div>
-                  </>
-                )}
+                {!pnlData.isLoading &&
+                  !pnlData.error &&
+                  pnlData.realizedPnL &&
+                  pnlData.realizedPnL !== 0 && (
+                    <>
+                      <div className="text-[#1E4775]/70">Realized PnL:</div>
+                      <div
+                        className={`font-mono text-right ${
+                          formatPnL(pnlData.realizedPnL).color
+                        }`}
+                      >
+                        {formatPnL(pnlData.realizedPnL).text}
+                      </div>
+                    </>
+                  )}
                 <div className="text-[#1E4775]/70 font-semibold pt-1 border-t border-[#1E4775]/10">
                   Total PnL:
                 </div>
@@ -888,7 +939,9 @@ function SailMarketExpandedView({
                       : totalPnLFormatted?.color || ""
                   }`}
                 >
-                  {pnlData.isLoading ? "-" : totalPnLFormatted?.text || "-"}
+                  {pnlData.isLoading || pnlData.error
+                    ? "-"
+                    : totalPnLFormatted?.text || "-"}
                 </div>
               </div>
             </div>
@@ -958,7 +1011,7 @@ function SailMarketExpandedView({
           <h3 className="text-[#1E4775] font-semibold mb-3 text-xs">
             Price Chart
           </h3>
-          <div className="h-[300px] flex-1">
+          <div className="h-72">
             <PriceChart
               tokenType="STEAMED"
               selectedToken={market.leveragedToken?.symbol || ""}
@@ -1003,7 +1056,8 @@ export default function SailPage() {
     }
 
     const totalMarks = sailBalances.reduce(
-      (sum, balance) => sum + balance.estimatedMarks,
+      (sum: number, balance: { estimatedMarks: number }) =>
+        sum + balance.estimatedMarks,
       0
     );
 
@@ -1011,10 +1065,12 @@ export default function SailPage() {
       console.log("[Sail Page] Updating totalSailMarksState", {
         totalMarks,
         sailBalancesCount: sailBalances.length,
-        sailBalances: sailBalances.map((b) => ({
-          token: b.tokenAddress,
-          marks: b.estimatedMarks,
-        })),
+        sailBalances: sailBalances.map(
+          (b: { tokenAddress: string; estimatedMarks: number }) => ({
+            token: b.tokenAddress,
+            marks: b.estimatedMarks,
+          })
+        ),
       });
     }
 
@@ -1028,7 +1084,8 @@ export default function SailPage() {
 
     const totalMarks = totalSailMarksState;
     const totalPerDay = sailBalances.reduce(
-      (sum, balance) => sum + balance.marksPerDay,
+      (sum: number, balance: { marksPerDay: number }) =>
+        sum + balance.marksPerDay,
       0
     );
 
@@ -1272,8 +1329,10 @@ export default function SailPage() {
 
   const anvilUserDepositReads = useContractReads({
     contracts: userDepositContractArray,
-    enabled: sailMarkets.length > 0 && !!address && useAnvil,
-    refetchInterval: 5000,
+    query: {
+      enabled: sailMarkets.length > 0 && !!address && useAnvil,
+      refetchInterval: 5000,
+    },
   });
 
   const userDepositReads = useAnvil
@@ -1507,121 +1566,139 @@ export default function SailPage() {
           <section className="space-y-4">
             {(() => {
               // Check if any markets have finished genesis (have collateral)
-              const hasAnyFinishedMarkets = Object.entries(groupedMarkets).some(([_, markets]) => {
-                return markets.some(([id]) => {
-                  const globalIndex = sailMarkets.findIndex(
-                    ([marketId]) => marketId === id
-                  );
-                  const baseOffset = marketOffsets.get(globalIndex) ?? 0;
-                  const collateralValue = reads?.[baseOffset + 3]?.result as
-                    | bigint
-                    | undefined;
-                  return collateralValue !== undefined && collateralValue > 0n;
-                });
-              });
+              const hasAnyFinishedMarkets = Object.entries(groupedMarkets).some(
+                ([_, markets]) => {
+                  return markets.some(([id]) => {
+                    const globalIndex = sailMarkets.findIndex(
+                      ([marketId]) => marketId === id
+                    );
+                    const baseOffset = marketOffsets.get(globalIndex) ?? 0;
+                    const collateralValue = reads?.[baseOffset + 3]?.result as
+                      | bigint
+                      | undefined;
+                    return (
+                      collateralValue !== undefined && collateralValue > 0n
+                    );
+                  });
+                }
+              );
 
               // If no markets have finished genesis, show banner
               if (!hasAnyFinishedMarkets) {
                 return (
                   <div className="bg-[#17395F] border border-white/10 p-6 rounded-lg text-center">
                     <p className="text-white text-lg font-medium">
-                      Maiden Voyage in progress for Harbor's first markets - coming soon!
+                      Maiden Voyage in progress for Harbor's first markets -
+                      coming soon!
                     </p>
                   </div>
                 );
               }
 
               // Otherwise, show markets as usual
-              return Object.entries(groupedMarkets).map(([longSide, markets]) => {
-                // Filter to only show markets where genesis has completed (has collateral)
-                const activeMarkets = markets.filter(([id]) => {
-                  const globalIndex = sailMarkets.findIndex(
-                    ([marketId]) => marketId === id
-                  );
-                  const baseOffset = marketOffsets.get(globalIndex) ?? 0;
-                  const collateralValue = reads?.[baseOffset + 3]?.result as
-                    | bigint
-                    | undefined;
-                  return collateralValue !== undefined && collateralValue > 0n;
-                });
+              return Object.entries(groupedMarkets).map(
+                ([longSide, markets]) => {
+                  // Filter to only show markets where genesis has completed (has collateral)
+                  const activeMarkets = markets.filter(([id]) => {
+                    const globalIndex = sailMarkets.findIndex(
+                      ([marketId]) => marketId === id
+                    );
+                    const baseOffset = marketOffsets.get(globalIndex) ?? 0;
+                    const collateralValue = reads?.[baseOffset + 3]?.result as
+                      | bigint
+                      | undefined;
+                    return (
+                      collateralValue !== undefined && collateralValue > 0n
+                    );
+                  });
 
-                // Skip this group if no markets have completed genesis
-                if (activeMarkets.length === 0) {
-                  return null;
-                }
+                  // Skip this group if no markets have completed genesis
+                  if (activeMarkets.length === 0) {
+                    return null;
+                  }
 
-              return (
-                <div key={longSide}>
-                  <div className="pt-4 mb-3">
-                    <h2 className="text-xs font-medium text-white/70 uppercase tracking-wider">
-                      Long {longSide}
-                    </h2>
-                  </div>
+                  return (
+                    <div key={longSide}>
+                      <div className="pt-4 mb-3">
+                        <h2 className="text-xs font-medium text-white/70 uppercase tracking-wider">
+                          Long {longSide}
+                        </h2>
+                      </div>
 
-                  {/* Header Row */}
-                  <div className="hidden md:block bg-white py-1.5 px-2 overflow-x-auto mb-2">
-                    <div className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr] gap-4 items-center uppercase tracking-wider text-[10px] lg:text-[11px] text-[#1E4775] font-semibold">
-                      <div className="min-w-0 text-center">Token</div>
-                      <div className="text-center min-w-0">Leverage</div>
-                      <div className="text-center min-w-0">Your Position</div>
-                      <div className="text-center min-w-0">Current Value</div>
-                      <div className="text-center min-w-0">Action</div>
+                      {/* Header Row */}
+                      <div className="hidden md:block bg-white py-1.5 px-2 overflow-x-auto mb-2">
+                        <div className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr] gap-4 items-center uppercase tracking-wider text-[10px] lg:text-[11px] text-[#1E4775] font-semibold">
+                          <div className="min-w-0 text-center">Token</div>
+                          <div className="text-center min-w-0">Leverage</div>
+                          <div className="text-center min-w-0">
+                            Your Position
+                          </div>
+                          <div className="text-center min-w-0">
+                            Current Value
+                          </div>
+                          <div className="text-center min-w-0">Action</div>
+                        </div>
+                      </div>
+
+                      {/* Market Rows */}
+                      <div className="space-y-2">
+                        {activeMarkets.map(([id, m]) => {
+                          const globalIndex = sailMarkets.findIndex(
+                            ([marketId]) => marketId === id
+                          );
+                          const userDeposit = userDepositMap.get(globalIndex);
+                          const baseOffset =
+                            marketOffsets.get(globalIndex) ?? 0;
+
+                          // Check if this market has oracle and token addresses
+                          const priceOracle = (m as any).addresses
+                            ?.collateralPrice as `0x${string}` | undefined;
+                          const leveragedTokenAddress = (m as any).addresses
+                            ?.leveragedToken as `0x${string}` | undefined;
+                          const isValidAddress = (addr: any): boolean =>
+                            addr &&
+                            typeof addr === "string" &&
+                            addr.startsWith("0x") &&
+                            addr.length === 42;
+                          const hasOracle = isValidAddress(priceOracle);
+                          const hasToken = isValidAddress(
+                            leveragedTokenAddress
+                          );
+
+                          const tokenPrices = tokenPricesByMarket[id];
+
+                          return (
+                            <SailMarketRow
+                              key={id}
+                              id={id}
+                              market={m}
+                              baseOffset={baseOffset}
+                              hasOracle={hasOracle}
+                              hasToken={hasToken}
+                              reads={reads}
+                              userDeposit={userDeposit}
+                              isExpanded={expandedMarket === id}
+                              onToggleExpand={() =>
+                                setExpandedMarket(
+                                  expandedMarket === id ? null : id
+                                )
+                              }
+                              onManageClick={() => {
+                                setSelectedMarketId(id);
+                                setSelectedMarket(m);
+                                setManageModalTab("mint");
+                                setManageModalOpen(true);
+                              }}
+                              isConnected={isConnected}
+                              tokenPrices={tokenPrices}
+                            />
+                          );
+                        })}
+                      </div>
                     </div>
-                  </div>
-
-                  {/* Market Rows */}
-                  <div className="space-y-2">
-                    {activeMarkets.map(([id, m]) => {
-                      const globalIndex = sailMarkets.findIndex(
-                        ([marketId]) => marketId === id
-                      );
-                      const userDeposit = userDepositMap.get(globalIndex);
-                      const baseOffset = marketOffsets.get(globalIndex) ?? 0;
-
-                      // Check if this market has oracle and token addresses
-                      const priceOracle = (m as any).addresses
-                        ?.collateralPrice as `0x${string}` | undefined;
-                      const leveragedTokenAddress = (m as any).addresses
-                        ?.leveragedToken as `0x${string}` | undefined;
-                      const isValidAddress = (addr: any): boolean =>
-                        addr &&
-                        typeof addr === "string" &&
-                        addr.startsWith("0x") &&
-                        addr.length === 42;
-                      const hasOracle = isValidAddress(priceOracle);
-                      const hasToken = isValidAddress(leveragedTokenAddress);
-
-                      const tokenPrices = tokenPricesByMarket[id];
-
-                      return (
-                        <SailMarketRow
-                          key={id}
-                          id={id}
-                          market={m}
-                          baseOffset={baseOffset}
-                          hasOracle={hasOracle}
-                          hasToken={hasToken}
-                          reads={reads}
-                          userDeposit={userDeposit}
-                          isExpanded={expandedMarket === id}
-                          onToggleExpand={() =>
-                            setExpandedMarket(expandedMarket === id ? null : id)
-                          }
-                          onManageClick={() => {
-                            setSelectedMarketId(id);
-                            setSelectedMarket(m);
-                            setManageModalTab("mint");
-                            setManageModalOpen(true);
-                          }}
-                          isConnected={isConnected}
-                          tokenPrices={tokenPrices}
-                        />
-                      );
-                    })}
-                  </div>
-                </div>
+                  );
+                }
               );
-              });
             })()}
           </section>
         </main>

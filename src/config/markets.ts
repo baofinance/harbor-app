@@ -1,4 +1,12 @@
-import { markets as contractsMarkets } from "./contracts";
+import { markets as contractsMarkets } from "./contracts.index";
+
+// Check if we're using test2 contracts
+const useTest2 = process.env.NEXT_PUBLIC_USE_TEST2_CONTRACTS === "true";
+
+// Helper to safely get contract market or return undefined
+const getContractMarket = (marketId: string) => {
+  return contractsMarkets[marketId as keyof typeof contractsMarkets];
+};
 
 export const markets = {
   // ============================================================================
@@ -41,11 +49,12 @@ export const markets = {
       collateralPrice: contractsMarkets["eth-fxusd"].addresses.collateralPrice,
       feeReceiver: contractsMarkets["eth-fxusd"].addresses.feeReceiver,
       collateralToken: contractsMarkets["eth-fxusd"].addresses.collateralToken, // fxUSD
-      wrappedCollateralToken: contractsMarkets["eth-fxusd"].addresses.underlyingCollateralToken, // fxSAVE
+      wrappedCollateralToken: contractsMarkets["eth-fxusd"].addresses.wrappedCollateralToken, // fxSAVE
       genesisZap: contractsMarkets["eth-fxusd"].addresses.genesisZap, // GenesisUSDCZap_v2 for ETH/fxUSD
       peggedTokenZap: contractsMarkets["eth-fxusd"].addresses.peggedTokenZap, // MinterUSDCZap_v2 for ETH/fxUSD
       leveragedTokenZap: contractsMarkets["eth-fxusd"].addresses.leveragedTokenZap, // MinterUSDCZap_v2 for ETH/fxUSD
     },
+    startBlock: contractsMarkets["eth-fxusd"].startBlock,
     peggedToken: {
       name: "Harbor Anchored ETH",
       symbol: "haETH",
@@ -118,11 +127,12 @@ export const markets = {
       collateralPrice: contractsMarkets["btc-fxusd"].addresses.collateralPrice,
       feeReceiver: contractsMarkets["btc-fxusd"].addresses.feeReceiver,
       collateralToken: contractsMarkets["btc-fxusd"].addresses.collateralToken, // fxUSD
-      wrappedCollateralToken: contractsMarkets["btc-fxusd"].addresses.underlyingCollateralToken, // fxSAVE
+      wrappedCollateralToken: contractsMarkets["btc-fxusd"].addresses.wrappedCollateralToken, // fxSAVE
       genesisZap: contractsMarkets["btc-fxusd"].addresses.genesisZap, // GenesisUSDCZap_v2 for BTC/fxUSD
       peggedTokenZap: contractsMarkets["btc-fxusd"].addresses.peggedTokenZap, // MinterUSDCZap_v2 for BTC/fxUSD
       leveragedTokenZap: contractsMarkets["btc-fxusd"].addresses.leveragedTokenZap, // MinterUSDCZap_v2 for BTC/fxUSD
     },
+    startBlock: contractsMarkets["btc-fxusd"].startBlock,
     peggedToken: {
       name: "Harbor Anchored BTC",
       symbol: "haBTC",
@@ -193,12 +203,13 @@ export const markets = {
       priceOracle: contractsMarkets["btc-steth"].addresses.priceOracle,
       collateralPrice: contractsMarkets["btc-steth"].addresses.collateralPrice,
       feeReceiver: contractsMarkets["btc-steth"].addresses.feeReceiver,
-      collateralToken: contractsMarkets["btc-steth"].addresses.collateralToken, // wstETH (what's deposited in genesis)
-      wrappedCollateralToken: contractsMarkets["btc-steth"].addresses.collateralToken, // wstETH (matches deployment logs)
+      collateralToken: contractsMarkets["btc-steth"].addresses.collateralToken, // wstETH (underlying collateral token)
+      wrappedCollateralToken: contractsMarkets["btc-steth"].addresses.wrappedCollateralToken, // wstETH (deposited)
       genesisZap: contractsMarkets["btc-steth"].addresses.genesisZap, // GenesisETHZap_v3 for BTC/stETH
       peggedTokenZap: contractsMarkets["btc-steth"].addresses.peggedTokenZap, // MinterETHZap_v2 for BTC/stETH
       leveragedTokenZap: contractsMarkets["btc-steth"].addresses.leveragedTokenZap, // MinterETHZap_v2 for BTC/stETH
     },
+    startBlock: contractsMarkets["btc-steth"].startBlock,
     peggedToken: {
       name: "Harbor Anchored BTC",
       symbol: "haBTC",
@@ -232,7 +243,9 @@ export const markets = {
   },
   // ============================================================================
   // Coming Soon Markets
+  // These are only available in production, not in test2
   // ============================================================================
+  ...(useTest2 ? {} : {
   "fxusd-gold": {
     name: "fxUSD-GOLD",
     status: "coming-soon" as const,
@@ -269,7 +282,7 @@ export const markets = {
       collateralPrice: contractsMarkets["fxusd-gold"].addresses.collateralPrice,
       feeReceiver: contractsMarkets["fxusd-gold"].addresses.feeReceiver,
       collateralToken: contractsMarkets["fxusd-gold"].addresses.collateralToken,
-      wrappedCollateralToken: contractsMarkets["fxusd-gold"].addresses.underlyingCollateralToken,
+      wrappedCollateralToken: contractsMarkets["fxusd-gold"].addresses.wrappedCollateralToken,
     },
     peggedToken: {
       name: "Harbor Anchored GOLD",
@@ -337,7 +350,7 @@ export const markets = {
       collateralPrice: contractsMarkets["steth-gold"].addresses.collateralPrice,
       feeReceiver: contractsMarkets["steth-gold"].addresses.feeReceiver,
       collateralToken: contractsMarkets["steth-gold"].addresses.collateralToken,
-      wrappedCollateralToken: contractsMarkets["steth-gold"].addresses.underlyingCollateralToken,
+      wrappedCollateralToken: contractsMarkets["steth-gold"].addresses.wrappedCollateralToken,
     },
     peggedToken: {
       name: "Harbor Anchored GOLD",
@@ -405,7 +418,7 @@ export const markets = {
       collateralPrice: contractsMarkets["steth-eur"].addresses.collateralPrice,
       feeReceiver: contractsMarkets["steth-eur"].addresses.feeReceiver,
       collateralToken: contractsMarkets["steth-eur"].addresses.collateralToken,
-      wrappedCollateralToken: contractsMarkets["steth-eur"].addresses.underlyingCollateralToken,
+      wrappedCollateralToken: contractsMarkets["steth-eur"].addresses.wrappedCollateralToken,
     },
     peggedToken: {
       name: "Harbor Anchored EUR",
@@ -473,7 +486,7 @@ export const markets = {
       collateralPrice: contractsMarkets["fxusd-eur"].addresses.collateralPrice,
       feeReceiver: contractsMarkets["fxusd-eur"].addresses.feeReceiver,
       collateralToken: contractsMarkets["fxusd-eur"].addresses.collateralToken,
-      wrappedCollateralToken: contractsMarkets["fxusd-eur"].addresses.underlyingCollateralToken,
+      wrappedCollateralToken: contractsMarkets["fxusd-eur"].addresses.wrappedCollateralToken,
     },
     peggedToken: {
       name: "Harbor Anchored EUR",
@@ -541,7 +554,7 @@ export const markets = {
       collateralPrice: contractsMarkets["steth-mcap"].addresses.collateralPrice,
       feeReceiver: contractsMarkets["steth-mcap"].addresses.feeReceiver,
       collateralToken: contractsMarkets["steth-mcap"].addresses.collateralToken,
-      wrappedCollateralToken: contractsMarkets["steth-mcap"].addresses.underlyingCollateralToken,
+      wrappedCollateralToken: contractsMarkets["steth-mcap"].addresses.wrappedCollateralToken,
     },
     peggedToken: {
       name: "Harbor Anchored MCAP",
@@ -609,7 +622,7 @@ export const markets = {
       collateralPrice: contractsMarkets["fxusd-mcap"].addresses.collateralPrice,
       feeReceiver: contractsMarkets["fxusd-mcap"].addresses.feeReceiver,
       collateralToken: contractsMarkets["fxusd-mcap"].addresses.collateralToken,
-      wrappedCollateralToken: contractsMarkets["fxusd-mcap"].addresses.underlyingCollateralToken,
+      wrappedCollateralToken: contractsMarkets["fxusd-mcap"].addresses.wrappedCollateralToken,
     },
     peggedToken: {
       name: "Harbor Anchored MCAP",
@@ -641,6 +654,7 @@ export const markets = {
       },
     },
   },
+  }),
 } as const;
 
 export type Market = (typeof markets)[keyof typeof markets];

@@ -206,21 +206,21 @@ export function useHarborMarks({
 
       try {
         const data = await retryGraphQLQuery(async () => {
-          const response = await fetch(graphUrl, {
-            method: "POST",
-            headers: getGraphHeaders(),
-            body: JSON.stringify({
-              query: HARBOR_MARKS_QUERY,
-              variables: {
-                userAddress: userAddress,
-                genesisAddress: genesisAddressLower,
-                genesisId: genesisId,
-              },
-            }),
-          });
+      const response = await fetch(graphUrl, {
+        method: "POST",
+        headers: getGraphHeaders(),
+        body: JSON.stringify({
+          query: HARBOR_MARKS_QUERY,
+          variables: {
+            userAddress: userAddress,
+            genesisAddress: genesisAddressLower,
+            genesisId: genesisId,
+          },
+        }),
+      });
 
-          if (!response.ok) {
-            const errorText = await response.text().catch(() => response.statusText);
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => response.statusText);
             const error = new Error(`HTTP ${response.status}: ${errorText || response.statusText}`);
             (error as any).status = response.status;
             throw error;
@@ -233,7 +233,7 @@ export function useHarborMarks({
             const error = new Error(`GraphQL errors: ${errorMessages}`);
             (error as any).errors = result.errors;
             throw error;
-          }
+      }
 
           return result.data;
         }, {
@@ -325,21 +325,21 @@ export function useAllHarborMarks(genesisAddresses: string[]) {
         try {
           const json = await retryGraphQLQuery(async () => {
             const res = await fetch(graphUrl, {
-              method: "POST",
-              headers: getGraphHeaders(),
-              body: JSON.stringify({
-                query: HARBOR_MARKS_QUERY,
-                variables: {
-                  userAddress: userAddress,
-                  genesisAddress: genesisAddressLower,
-                  genesisId: genesisId,
-                },
-              }),
+          method: "POST",
+          headers: getGraphHeaders(),
+          body: JSON.stringify({
+            query: HARBOR_MARKS_QUERY,
+            variables: {
+              userAddress: userAddress,
+              genesisAddress: genesisAddressLower,
+              genesisId: genesisId,
+            },
+          }),
             });
 
-            if (!res.ok) {
-              const errorText = await res.text().catch(() => res.statusText);
-              const isAuthError = res.status === 401 || res.status === 403;
+          if (!res.ok) {
+            const errorText = await res.text().catch(() => res.statusText);
+            const isAuthError = res.status === 401 || res.status === 403;
               const error = new Error(`HTTP ${res.status}: ${errorText || res.statusText}`);
               (error as any).status = res.status;
               (error as any).isAuthError = isAuthError;
@@ -367,16 +367,16 @@ export function useAllHarborMarks(genesisAddresses: string[]) {
           console.warn(`[useAllHarborMarks] Query failed for ${genesisAddress} after retries:`, {
             status: error?.status,
             message: error?.message,
-            url: graphUrl,
-            isAuthError: isAuthError,
-            suggestion: isAuthError ? "Check if NEXT_PUBLIC_GRAPH_API_KEY is set correctly in production environment" : undefined
-          });
+              url: graphUrl,
+              isAuthError: isAuthError,
+              suggestion: isAuthError ? "Check if NEXT_PUBLIC_GRAPH_API_KEY is set correctly in production environment" : undefined
+            });
           
           // Check for indexer errors
           const errorMessage = error?.message || String(error);
           if (errorMessage.includes('bad indexers') || errorMessage.includes('indexer')) {
             console.warn(`[useAllHarborMarks] The Graph Network indexers are having issues. This is a temporary infrastructure problem on The Graph's side.`);
-          }
+            }
           
           return { data: null, errors: [{ message: error?.message || 'Query failed' }] };
         }

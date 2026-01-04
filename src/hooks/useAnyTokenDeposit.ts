@@ -115,7 +115,7 @@ export function useAnyTokenDeposit(options: UseAnyTokenDepositOptions) {
       return marketAddresses?.wrappedCollateralToken || marketAddresses?.collateralToken || null;
     }
 
-    // Common tokens
+    // Common tokens - use hardcoded mainnet addresses
     if (normalized === "usdc") {
       return "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
     }
@@ -123,13 +123,13 @@ export function useAnyTokenDeposit(options: UseAnyTokenDepositOptions) {
       return "0xae7ab96520de3a18e5e111b5eaab095312d7fe84";
     }
     if (normalized === "wsteth") {
-      return marketAddresses?.wrappedCollateralToken || null;
+      return "0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0"; // Mainnet wstETH
     }
     if (normalized === "fxusd") {
-      return marketAddresses?.collateralToken || null;
+      return "0x085780639CC2cACd35E474e71f4d000e2405d8f6"; // Mainnet fxUSD
     }
     if (normalized === "fxsave") {
-      return marketAddresses?.wrappedCollateralToken || null;
+      return "0x7743e50F534a7f9F1791DdE7dCD89F7783Eefc39"; // Mainnet fxSAVE
     }
 
     return null;
