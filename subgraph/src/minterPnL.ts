@@ -197,13 +197,15 @@ function maybeWriteHourlySnapshot(
   tracker.save();
 }
 
-function getOrCreateMinterHourlyTracker(minterAddress: Address): MinterHourlyTracker {
+function getOrCreateMinterHourlyTracker(
+  minterAddress: Address
+): MinterHourlyTracker | null {
   const id = minterAddress.toHexString();
   let t = MinterHourlyTracker.load(id);
   if (t == null) {
     const minter = Minter.bind(minterAddress);
     const tokenRes = minter.try_LEVERAGED_TOKEN();
-    if (tokenRes.reverted) return null as MinterHourlyTracker;
+    if (tokenRes.reverted) return null;
 
     t = new MinterHourlyTracker(id);
     t.minterAddress = minterAddress;
