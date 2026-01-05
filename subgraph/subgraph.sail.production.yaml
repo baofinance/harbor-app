@@ -74,6 +74,9 @@ dataSources:
           handler: handleRedeemLeveragedToken
       blockHandlers:
         - handler: handleBlock
+          filter:
+            kind: polling
+            every: 240
       file: ./src/minterPnL.ts
 
   # BTC/fxUSD (prod)
@@ -147,6 +150,9 @@ dataSources:
           handler: handleRedeemLeveragedToken
       blockHandlers:
         - handler: handleBlock
+          filter:
+            kind: polling
+            every: 240
       file: ./src/minterPnL.ts
 
   # BTC/stETH (prod)
@@ -220,6 +226,9 @@ dataSources:
           handler: handleRedeemLeveragedToken
       blockHandlers:
         - handler: handleBlock
+          filter:
+            kind: polling
+            every: 240
       file: ./src/minterPnL.ts
 
 
