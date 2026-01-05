@@ -113,12 +113,37 @@ export default function PriceChart({
    }
  }, [priceHistory, timeRange]);
 
- const formatTimestamp = (timestamp: number) => {
- const date = new Date(timestamp * 1000);
- return timeRange ==="1D"
- ? date.toLocaleTimeString()
- : date.toLocaleDateString();
- };
+ const formatTimestamp = useMemo(() => {
+   return (timestamp: number) => {
+     const date = new Date(timestamp * 1000);
+     switch (timeRange) {
+       case "1D": {
+         // Show time in 12-hour format (e.g., "12:00 PM", "3:30 PM")
+         return date.toLocaleTimeString("en-US", {
+           hour: "numeric",
+           minute: "2-digit",
+           hour12: true,
+         });
+       }
+       case "1W": {
+         // Show day of week and date (e.g., "Mon 12/20", "Tue 12/21")
+         return date.toLocaleDateString("en-US", {
+           weekday: "short",
+           month: "numeric",
+           day: "numeric",
+         });
+       }
+       case "1M":
+       default: {
+         // Show month and day (e.g., "Dec 20", "Dec 25")
+         return date.toLocaleDateString("en-US", {
+           month: "short",
+           day: "numeric",
+         });
+       }
+     }
+   };
+ }, [timeRange]);
 
  const formatTooltipTimestamp = (timestamp: number) => {
  const date = new Date(timestamp * 1000);
@@ -126,13 +151,13 @@ export default function PriceChart({
  };
 
  return (
- <div className="relative z-10 h-full">
- <div className="flex items-center justify-end mb-3">
+ <div className="relative z-10 h-full flex flex-col">
+ <div className="flex items-center justify-end mb-2 flex-shrink-0">
  <div className="flex items-center gap-4">
- <div className="text-sm text-[#1E4775]/60">
+ <div className="text-xs text-[#1E4775]/60">
  {isLoading ?"Loading..." : `${filteredData.length} data points`}
  </div>
- <div className="flex gap-4">
+ <div className="flex gap-2">
  {(["1D","1W","1M"] as const).map((range) => (
  <button
  key={range}
@@ -149,7 +174,7 @@ export default function PriceChart({
  </div>
  </div>
  </div>
- <div className="h-[calc(100%-2rem)]">
+ <div className="flex-1 min-h-0">
  {isLoading ? (
  <div className="flex items-center justify-center h-full text-[#1E4775]/60">
  Loading price history...
