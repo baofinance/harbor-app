@@ -234,8 +234,8 @@ const productionMarkets: Markets = {
       rebalancePoolLeveraged: "0x0000000000000000000000000000000000000000", // Not deployed yet
       collateralPrice: "0xE370289aF2145A5B2F0F7a4a900eBfD478A156dB", // Using priceOracle
       genesisZap: "0x8Ee0D6AD1d15b3515Ba81CCE16Bba344Deea6781", // GenesisETHZap_v3 for BTC/stETH
-      peggedTokenZap: "0xcF5392B7d3c81b1BC4aa81DE02DE4A4c265Ed4a9" as `0x${string}`, // MinterETHZap_v2 for BTC/stETH
-      leveragedTokenZap: "0xcF5392B7d3c81b1BC4aa81DE02DE4A4c265Ed4a9" as `0x${string}`, // MinterETHZap_v2 for BTC/stETH (same contract)
+      peggedTokenZap: "0x922790df9a3bc5949847a4e9a7d01cf7379831ce" as `0x${string}`, // MinterETHZap_v2 for BTC/stETH
+      leveragedTokenZap: "0x922790df9a3bc5949847a4e9a7d01cf7379831ce" as `0x${string}`, // MinterETHZap_v2 for BTC/stETH (same contract)
     },
     genesis: {
       startDate: "2025-12-19T21:17:47Z", // From deployment timestamp
@@ -261,6 +261,7 @@ const productionMarkets: Markets = {
     id: "fxusd-gold",
     name: "fxUSD/GOLD",
     description: "fxUSD pegged to GOLD collateral",
+    startBlock: 0, // Placeholder - will be updated when deployed
     addresses: {
       wrappedCollateralToken: "0x0000000000000000000000000000000000000000", // placeholder
       collateralToken: "0x0000000000000000000000000000000000000000", // GOLD (placeholder)
@@ -268,7 +269,7 @@ const productionMarkets: Markets = {
       feeReceiver: "0x0000000000000000000000000000000000000000", // placeholder
       genesis: "0x0000000000000000000000000000000000000000", // placeholder
       leveragedToken: "0x0000000000000000000000000000000000000000", // placeholder
-      minter: "0x0000000000000000000000000000000000000000", // placeholder
+      minter: "0x880600E0c803d836E305B7c242FC095Eed234A8f" as `0x${string}`, // GOLD/fxUSD minter
       owner: "0x0000000000000000000000000000000000000000", // placeholder
       peggedToken: "0x0000000000000000000000000000000000000000", // placeholder
       priceOracle: "0x0000000000000000000000000000000000000000", // placeholder
@@ -278,6 +279,8 @@ const productionMarkets: Markets = {
       rebalancePoolCollateral: "0x0000000000000000000000000000000000000000", // placeholder
       rebalancePoolLeveraged: "0x0000000000000000000000000000000000000000", // placeholder
       collateralPrice: "0x0000000000000000000000000000000000000000", // placeholder
+      peggedTokenZap: "0x82b8aB2c8b4781f2B3d52e7807d4aFa5704912D0" as `0x${string}`, // MinterUSDCZap_v2 for GOLD/fxUSD
+      leveragedTokenZap: "0x82b8aB2c8b4781f2B3d52e7807d4aFa5704912D0" as `0x${string}`, // MinterUSDCZap_v2 for GOLD/fxUSD (same contract)
     },
     genesis: {
       startDate: "2026-02-01T00:00:00Z", // Placeholder - Coming Soon
@@ -300,6 +303,7 @@ const productionMarkets: Markets = {
     id: "steth-gold",
     name: "stETH/GOLD",
     description: "stETH pegged to GOLD collateral",
+    startBlock: 0, // Placeholder - will be updated when deployed
     addresses: {
       wrappedCollateralToken: "0x0000000000000000000000000000000000000000", // placeholder
       collateralToken: "0x0000000000000000000000000000000000000000", // wstETH (placeholder)
@@ -339,6 +343,7 @@ const productionMarkets: Markets = {
     id: "steth-eur",
     name: "stETH/EUR",
     description: "stETH pegged to EUR collateral",
+    startBlock: 0, // Placeholder - will be updated when deployed
     addresses: {
       wrappedCollateralToken: "0x0000000000000000000000000000000000000000", // placeholder
       collateralToken: "0x0000000000000000000000000000000000000000", // wstETH (placeholder)
@@ -378,6 +383,7 @@ const productionMarkets: Markets = {
     id: "fxusd-eur",
     name: "fxUSD/EUR",
     description: "fxUSD pegged to EUR collateral",
+    startBlock: 0, // Placeholder - will be updated when deployed
     addresses: {
       wrappedCollateralToken: "0x0000000000000000000000000000000000000000", // placeholder
       collateralToken: "0x0000000000000000000000000000000000000000", // fxUSD (placeholder)
@@ -385,7 +391,7 @@ const productionMarkets: Markets = {
       feeReceiver: "0x0000000000000000000000000000000000000000", // placeholder
       genesis: "0x0000000000000000000000000000000000000000", // placeholder
       leveragedToken: "0x0000000000000000000000000000000000000000", // placeholder
-      minter: "0x0000000000000000000000000000000000000000", // placeholder
+      minter: "0xDEFB2C04062350678965CBF38A216Cc50723B246" as `0x${string}`, // EUR/fxUSD minter
       owner: "0x0000000000000000000000000000000000000000", // placeholder
       peggedToken: "0x0000000000000000000000000000000000000000", // placeholder
       priceOracle: "0x0000000000000000000000000000000000000000", // placeholder
@@ -395,6 +401,8 @@ const productionMarkets: Markets = {
       rebalancePoolCollateral: "0x0000000000000000000000000000000000000000", // placeholder
       rebalancePoolLeveraged: "0x0000000000000000000000000000000000000000", // placeholder
       collateralPrice: "0x0000000000000000000000000000000000000000", // placeholder
+      peggedTokenZap: "0xA70dc2f2a40695669A1f453E3777b10B63Fa400A" as `0x${string}`, // MinterUSDCZap_v2 for EUR/fxUSD
+      leveragedTokenZap: "0xA70dc2f2a40695669A1f453E3777b10B63Fa400A" as `0x${string}`, // MinterUSDCZap_v2 for EUR/fxUSD (same contract)
     },
     genesis: {
       startDate: "2026-02-01T00:00:00Z", // Placeholder - Coming Soon
@@ -417,6 +425,7 @@ const productionMarkets: Markets = {
     id: "steth-mcap",
     name: "stETH/MCAP",
     description: "stETH pegged to MCAP collateral",
+    startBlock: 0, // Placeholder - will be updated when deployed
     addresses: {
       wrappedCollateralToken: "0x0000000000000000000000000000000000000000", // placeholder
       collateralToken: "0x0000000000000000000000000000000000000000", // wstETH (placeholder)
@@ -456,6 +465,7 @@ const productionMarkets: Markets = {
     id: "fxusd-mcap",
     name: "fxUSD/MCAP",
     description: "fxUSD pegged to MCAP collateral",
+    startBlock: 0, // Placeholder - will be updated when deployed
     addresses: {
       wrappedCollateralToken: "0x0000000000000000000000000000000000000000", // placeholder
       collateralToken: "0x0000000000000000000000000000000000000000", // fxUSD (placeholder)
@@ -770,32 +780,103 @@ export const MINTER_ETH_ZAP_V2_ABI = [
   },
   { inputs: [], name: "FunctionNotFound", type: "error" },
   { inputs: [], name: "InvalidAddress", type: "error" },
-  { inputs: [], name: "NoStETHReceived", type: "error" },
+  { inputs: [], name: "MintFailed", type: "error" },
   { inputs: [], name: "ReentrancyGuardReentrantCall", type: "error" },
   { inputs: [{ internalType: "address", name: "token", type: "address" }], name: "SafeERC20FailedOperation", type: "error" },
-  { inputs: [], name: "SlippageTooHigh", type: "error" },
   { inputs: [], name: "Unauthorized", type: "error" },
   { inputs: [{ internalType: "address", name: "expected", type: "address" }, { internalType: "address", name: "provided", type: "address" }], name: "WstETHMismatch", type: "error" },
   { inputs: [], name: "ZeroAmount", type: "error" },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "address", name: "user", type: "address" },
+      { indexed: true, internalType: "address", name: "minter", type: "address" },
+      { indexed: true, internalType: "address", name: "receiver", type: "address" },
+      { indexed: false, internalType: "uint256", name: "ethAmount", type: "uint256" },
+      { indexed: false, internalType: "uint256", name: "wstEthAmount", type: "uint256" },
+      { indexed: false, internalType: "uint256", name: "leveragedOut", type: "uint256" },
+    ],
+    name: "ETHZappedToLeveraged",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "address", name: "user", type: "address" },
+      { indexed: true, internalType: "address", name: "minter", type: "address" },
+      { indexed: true, internalType: "address", name: "receiver", type: "address" },
+      { indexed: false, internalType: "uint256", name: "ethAmount", type: "uint256" },
+      { indexed: false, internalType: "uint256", name: "wstEthAmount", type: "uint256" },
+      { indexed: false, internalType: "uint256", name: "peggedOut", type: "uint256" },
+    ],
+    name: "ETHZappedToPegged",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "address", name: "previousOwner", type: "address" },
+      { indexed: true, internalType: "address", name: "newOwner", type: "address" },
+    ],
+    name: "OwnershipTransferred",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "address", name: "oldReferral", type: "address" },
+      { indexed: true, internalType: "address", name: "newReferral", type: "address" },
+    ],
+    name: "ReferralUpdated",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "address", name: "user", type: "address" },
+      { indexed: true, internalType: "address", name: "minter", type: "address" },
+      { indexed: true, internalType: "address", name: "receiver", type: "address" },
+      { indexed: false, internalType: "uint256", name: "stEthAmount", type: "uint256" },
+      { indexed: false, internalType: "uint256", name: "wstEthAmount", type: "uint256" },
+      { indexed: false, internalType: "uint256", name: "leveragedOut", type: "uint256" },
+    ],
+    name: "STETHZappedToLeveraged",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "address", name: "user", type: "address" },
+      { indexed: true, internalType: "address", name: "minter", type: "address" },
+      { indexed: true, internalType: "address", name: "receiver", type: "address" },
+      { indexed: false, internalType: "uint256", name: "stEthAmount", type: "uint256" },
+      { indexed: false, internalType: "uint256", name: "wstEthAmount", type: "uint256" },
+      { indexed: false, internalType: "uint256", name: "peggedOut", type: "uint256" },
+    ],
+    name: "STETHZappedToPegged",
+    type: "event",
+  },
   { stateMutability: "payable", type: "fallback" },
   { inputs: [], name: "DEFAULT_REFERRAL", outputs: [{ internalType: "address", name: "", type: "address" }], stateMutability: "view", type: "function" },
   { inputs: [], name: "MINTER", outputs: [{ internalType: "address", name: "", type: "address" }], stateMutability: "view", type: "function" },
   { inputs: [], name: "STETH", outputs: [{ internalType: "address", name: "", type: "address" }], stateMutability: "view", type: "function" },
   { inputs: [], name: "WSTETH", outputs: [{ internalType: "address", name: "", type: "address" }], stateMutability: "view", type: "function" },
   { inputs: [], name: "owner", outputs: [{ internalType: "address", name: "", type: "address" }], stateMutability: "view", type: "function" },
-  { inputs: [{ internalType: "uint256", name: "wstEthAmount", type: "uint256" }], name: "previewMintLeveraged", outputs: [{ internalType: "uint256", name: "expectedLeveragedOut", type: "uint256" }], stateMutability: "view", type: "function" },
-  { inputs: [{ internalType: "uint256", name: "wstEthAmount", type: "uint256" }], name: "previewMintPegged", outputs: [{ internalType: "uint256", name: "expectedPeggedOut", type: "uint256" }], stateMutability: "view", type: "function" },
-  { inputs: [{ internalType: "uint256", name: "ethIn", type: "uint256" }], name: "previewZapEth", outputs: [{ internalType: "uint256", name: "expectedWstEthOut", type: "uint256" }], stateMutability: "view", type: "function" },
-  { inputs: [{ internalType: "uint256", name: "stEthIn", type: "uint256" }], name: "previewZapStEth", outputs: [{ internalType: "uint256", name: "expectedWstEthOut", type: "uint256" }], stateMutability: "view", type: "function" },
   { inputs: [], name: "referral", outputs: [{ internalType: "address", name: "", type: "address" }], stateMutability: "view", type: "function" },
+  { inputs: [{ internalType: "uint256", name: "ethAmount", type: "uint256" }], name: "previewLeveragedFromEth", outputs: [{ internalType: "uint256", name: "leveragedOut", type: "uint256" }, { internalType: "uint256", name: "wstEthAmount", type: "uint256" }], stateMutability: "view", type: "function" },
+  { inputs: [{ internalType: "uint256", name: "stEthAmount", type: "uint256" }], name: "previewLeveragedFromStEth", outputs: [{ internalType: "uint256", name: "leveragedOut", type: "uint256" }, { internalType: "uint256", name: "wstEthAmount", type: "uint256" }], stateMutability: "view", type: "function" },
+  { inputs: [{ internalType: "uint256", name: "ethAmount", type: "uint256" }], name: "previewPeggedFromEth", outputs: [{ internalType: "uint256", name: "peggedOut", type: "uint256" }, { internalType: "uint256", name: "wstEthAmount", type: "uint256" }], stateMutability: "view", type: "function" },
+  { inputs: [{ internalType: "uint256", name: "stEthAmount", type: "uint256" }], name: "previewPeggedFromStEth", outputs: [{ internalType: "uint256", name: "peggedOut", type: "uint256" }, { internalType: "uint256", name: "wstEthAmount", type: "uint256" }], stateMutability: "view", type: "function" },
+  { inputs: [{ internalType: "uint256", name: "ethAmount", type: "uint256" }], name: "previewWstEthFromEth", outputs: [{ internalType: "uint256", name: "wstEthOut", type: "uint256" }], stateMutability: "view", type: "function" },
+  { inputs: [{ internalType: "uint256", name: "stEthAmount", type: "uint256" }], name: "previewWstEthFromStEth", outputs: [{ internalType: "uint256", name: "wstEthOut", type: "uint256" }], stateMutability: "view", type: "function" },
   { inputs: [], name: "rescueEth", outputs: [], stateMutability: "nonpayable", type: "function" },
   { inputs: [{ internalType: "address", name: "token", type: "address" }], name: "rescueToken", outputs: [], stateMutability: "nonpayable", type: "function" },
   { inputs: [{ internalType: "address", name: "newReferral", type: "address" }], name: "setReferral", outputs: [], stateMutability: "nonpayable", type: "function" },
   { inputs: [{ internalType: "address", name: "newOwner", type: "address" }], name: "transferOwnership", outputs: [], stateMutability: "nonpayable", type: "function" },
-  { inputs: [{ internalType: "address", name: "receiver", type: "address" }, { internalType: "uint256", name: "minLeveragedOut", type: "uint256" }, { internalType: "uint256", name: "minWstEthOut", type: "uint256" }], name: "zapEthToLeveraged", outputs: [{ internalType: "uint256", name: "leveragedOut", type: "uint256" }], stateMutability: "payable", type: "function" },
-  { inputs: [{ internalType: "address", name: "receiver", type: "address" }, { internalType: "uint256", name: "minPeggedOut", type: "uint256" }, { internalType: "uint256", name: "minWstEthOut", type: "uint256" }], name: "zapEthToPegged", outputs: [{ internalType: "uint256", name: "peggedOut", type: "uint256" }], stateMutability: "payable", type: "function" },
-  { inputs: [{ internalType: "uint256", name: "stEthAmount", type: "uint256" }, { internalType: "address", name: "receiver", type: "address" }, { internalType: "uint256", name: "minLeveragedOut", type: "uint256" }, { internalType: "uint256", name: "minWstEthOut", type: "uint256" }], name: "zapStEthToLeveraged", outputs: [{ internalType: "uint256", name: "leveragedOut", type: "uint256" }], stateMutability: "nonpayable", type: "function" },
-  { inputs: [{ internalType: "uint256", name: "stEthAmount", type: "uint256" }, { internalType: "address", name: "receiver", type: "address" }, { internalType: "uint256", name: "minPeggedOut", type: "uint256" }, { internalType: "uint256", name: "minWstEthOut", type: "uint256" }], name: "zapStEthToPegged", outputs: [{ internalType: "uint256", name: "peggedOut", type: "uint256" }], stateMutability: "nonpayable", type: "function" },
+  { inputs: [{ internalType: "address", name: "receiver", type: "address" }, { internalType: "uint256", name: "minLeveragedOut", type: "uint256" }], name: "zapEthToLeveraged", outputs: [{ internalType: "uint256", name: "leveragedOut", type: "uint256" }], stateMutability: "payable", type: "function" },
+  { inputs: [{ internalType: "address", name: "receiver", type: "address" }, { internalType: "uint256", name: "minPeggedOut", type: "uint256" }], name: "zapEthToPegged", outputs: [{ internalType: "uint256", name: "peggedOut", type: "uint256" }], stateMutability: "payable", type: "function" },
+  { inputs: [{ internalType: "uint256", name: "stEthAmount", type: "uint256" }, { internalType: "address", name: "receiver", type: "address" }, { internalType: "uint256", name: "minLeveragedOut", type: "uint256" }], name: "zapStEthToLeveraged", outputs: [{ internalType: "uint256", name: "leveragedOut", type: "uint256" }], stateMutability: "nonpayable", type: "function" },
+  { inputs: [{ internalType: "uint256", name: "stEthAmount", type: "uint256" }, { internalType: "address", name: "receiver", type: "address" }, { internalType: "uint256", name: "minPeggedOut", type: "uint256" }], name: "zapStEthToPegged", outputs: [{ internalType: "uint256", name: "peggedOut", type: "uint256" }], stateMutability: "nonpayable", type: "function" },
   { stateMutability: "payable", type: "receive" },
 ] as const;
 
@@ -809,10 +890,72 @@ export const MINTER_USDC_ZAP_V2_ABI = [
   { inputs: [{ internalType: "address", name: "expected", type: "address" }, { internalType: "address", name: "provided", type: "address" }], name: "CollateralMismatch", type: "error" },
   { inputs: [], name: "FunctionNotFound", type: "error" },
   { inputs: [], name: "InvalidAddress", type: "error" },
+  { inputs: [], name: "MintFailed", type: "error" },
   { inputs: [], name: "ReentrancyGuardReentrantCall", type: "error" },
   { inputs: [{ internalType: "address", name: "token", type: "address" }], name: "SafeERC20FailedOperation", type: "error" },
   { inputs: [], name: "Unauthorized", type: "error" },
   { inputs: [], name: "ZeroAmount", type: "error" },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "address", name: "user", type: "address" },
+      { indexed: true, internalType: "address", name: "minter", type: "address" },
+      { indexed: true, internalType: "address", name: "receiver", type: "address" },
+      { indexed: false, internalType: "uint256", name: "fxUsdAmount", type: "uint256" },
+      { indexed: false, internalType: "uint256", name: "fxSaveAmount", type: "uint256" },
+      { indexed: false, internalType: "uint256", name: "leveragedOut", type: "uint256" },
+    ],
+    name: "FXUSDZappedToLeveraged",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "address", name: "user", type: "address" },
+      { indexed: true, internalType: "address", name: "minter", type: "address" },
+      { indexed: true, internalType: "address", name: "receiver", type: "address" },
+      { indexed: false, internalType: "uint256", name: "fxUsdAmount", type: "uint256" },
+      { indexed: false, internalType: "uint256", name: "fxSaveAmount", type: "uint256" },
+      { indexed: false, internalType: "uint256", name: "peggedOut", type: "uint256" },
+    ],
+    name: "FXUSDZappedToPegged",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "address", name: "previousOwner", type: "address" },
+      { indexed: true, internalType: "address", name: "newOwner", type: "address" },
+    ],
+    name: "OwnershipTransferred",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "address", name: "user", type: "address" },
+      { indexed: true, internalType: "address", name: "minter", type: "address" },
+      { indexed: true, internalType: "address", name: "receiver", type: "address" },
+      { indexed: false, internalType: "uint256", name: "usdcAmount", type: "uint256" },
+      { indexed: false, internalType: "uint256", name: "fxSaveAmount", type: "uint256" },
+      { indexed: false, internalType: "uint256", name: "leveragedOut", type: "uint256" },
+    ],
+    name: "USDCZappedToLeveraged",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "address", name: "user", type: "address" },
+      { indexed: true, internalType: "address", name: "minter", type: "address" },
+      { indexed: true, internalType: "address", name: "receiver", type: "address" },
+      { indexed: false, internalType: "uint256", name: "usdcAmount", type: "uint256" },
+      { indexed: false, internalType: "uint256", name: "fxSaveAmount", type: "uint256" },
+      { indexed: false, internalType: "uint256", name: "peggedOut", type: "uint256" },
+    ],
+    name: "USDCZappedToPegged",
+    type: "event",
+  },
   { stateMutability: "payable", type: "fallback" },
   { inputs: [], name: "FXSAVE", outputs: [{ internalType: "address", name: "", type: "address" }], stateMutability: "view", type: "function" },
   { inputs: [], name: "FXUSD", outputs: [{ internalType: "address", name: "", type: "address" }], stateMutability: "view", type: "function" },
@@ -821,8 +964,6 @@ export const MINTER_USDC_ZAP_V2_ABI = [
   { inputs: [], name: "MINTER", outputs: [{ internalType: "address", name: "", type: "address" }], stateMutability: "view", type: "function" },
   { inputs: [], name: "USDC", outputs: [{ internalType: "address", name: "", type: "address" }], stateMutability: "view", type: "function" },
   { inputs: [], name: "owner", outputs: [{ internalType: "address", name: "", type: "address" }], stateMutability: "view", type: "function" },
-  { inputs: [{ internalType: "uint256", name: "fxSaveAmount", type: "uint256" }], name: "previewMintLeveraged", outputs: [{ internalType: "uint256", name: "expectedLeveragedOut", type: "uint256" }], stateMutability: "view", type: "function" },
-  { inputs: [{ internalType: "uint256", name: "fxSaveAmount", type: "uint256" }], name: "previewMintPegged", outputs: [{ internalType: "uint256", name: "expectedPeggedOut", type: "uint256" }], stateMutability: "view", type: "function" },
   { inputs: [], name: "rescueEth", outputs: [], stateMutability: "nonpayable", type: "function" },
   { inputs: [{ internalType: "address", name: "token", type: "address" }], name: "rescueToken", outputs: [], stateMutability: "nonpayable", type: "function" },
   { inputs: [{ internalType: "address", name: "newOwner", type: "address" }], name: "transferOwnership", outputs: [], stateMutability: "nonpayable", type: "function" },

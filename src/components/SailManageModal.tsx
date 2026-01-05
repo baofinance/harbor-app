@@ -12,6 +12,7 @@ import {
 } from "wagmi";
 import { BaseError, ContractFunctionRevertedError } from "viem";
 import { ERC20_ABI, MINTER_ABI } from "@/abis/shared";
+import { WSTETH_ABI } from "@/abis";
 import { MINTER_ETH_ZAP_V2_ABI, MINTER_USDC_ZAP_V2_ABI } from "@/config/contracts";
 import { useCollateralPrice } from "@/hooks/useCollateralPrice";
 import SimpleTooltip from "@/components/SimpleTooltip";
@@ -135,9 +136,9 @@ export const SailManageModal = ({
  // Check if selected asset is wrapped collateral (fxSAVE, wstETH) - these don't need zaps
  // Note: fxUSD is NOT wrapped collateral (it's the underlying collateral that needs zap)
  // Only fxSAVE (the wrapped version) should skip zaps
- // We check against wrappedCollateralSymbol (underlyingSymbol) not collateralSymbol
+ // wrappedCollateralSymbol is actually the underlying (fxUSD), so we check against collateralSymbol (fxSAVE)
  const isWrappedCollateral = isFxSAVE || isWstETH || 
-   (wrappedCollateralSymbolLower && selectedDepositAsset?.toLowerCase() === wrappedCollateralSymbolLower);
+   (collateralSymbolLower && selectedDepositAsset?.toLowerCase() === collateralSymbolLower);
 
 // Get zap contract address - use leveragedTokenZap for minting leveraged tokens
 const zapAddress = market.addresses?.leveragedTokenZap as `0x${string}` | undefined;
@@ -331,7 +332,12 @@ const { maxRate: fxSAVERate } = useCollateralPrice(
  });
 
  // Get allowance for deposit asset (for direct minting or zap)
- const allowanceTarget = useZap && zapAddress ? zapAddress : minterAddress;
+ // If using zap (ETH zap or USDC zap), approve to zapAddress
+ // Only direct mints (wstETH, fxSAVE) approve to minterAddress
+ // Note: useETHZap and useUSDCZap already check for zapAddress via useZap, so if they're true, zapAddress must exist
+ const allowanceTarget = useETHZap || useUSDCZap
+   ? zapAddress!
+   : minterAddress;
  const { data: depositAssetAllowance } = useContractRead({
    address: depositAssetAddress,
    abi: ERC20_ABI,
@@ -431,18 +437,39 @@ const { maxRate: fxSAVERate } = useCollateralPrice(
    }
  }, [amount, activeTab, isNativeETH, selectedDepositAsset, selectedTokenDecimals]);
 
+ // For ETH zaps, convert ETH → wstETH for dry run
+ // Contract flow: ETH → stETH (1:1) → wstETH (via wstETH.wrap())
+ const wstETHAddress = useETHZap && isNativeETH && !needsSwap
+   ? (market.addresses?.wrappedCollateralToken as `0x${string}` | undefined)
+   : undefined;
+ 
+ const { data: wstETHAmountForDryRun } = useContractRead({
+   address: wstETHAddress,
+   abi: WSTETH_ABI,
+   functionName: "getWstETHByStETH",
+   args: parsedAmount && wstETHAddress ? [parsedAmount] : undefined, // ETH → stETH is 1:1, so use parsedAmount as stETH
+   query: {
+     enabled: !!wstETHAddress && !!parsedAmount && parsedAmount > 0n && activeTab === "mint" && useETHZap && isNativeETH && !needsSwap,
+   },
+ });
+
  // Dry run for mint
+ // For ETH zaps, use wstETH amount; for others, use parsedAmount directly
+ const amountForDryRun = useETHZap && isNativeETH && !needsSwap && wstETHAmountForDryRun
+   ? (wstETHAmountForDryRun as bigint)
+   : parsedAmount;
+
  const mintDryRunEnabled =
  activeTab ==="mint" &&
- !!parsedAmount &&
+ !!amountForDryRun &&
  !!minterAddress &&
- parsedAmount > 0n;
+ amountForDryRun > 0n;
 
  const { data: mintDryRunResult, error: mintDryRunErr } = useContractRead({
  address: minterAddress,
  abi: MINTER_ABI,
  functionName:"mintLeveragedTokenDryRun",
- args: parsedAmount ? [parsedAmount] : undefined,
+ args: amountForDryRun ? [amountForDryRun] : undefined,
  query: {
  enabled: mintDryRunEnabled,
  },
@@ -679,8 +706,10 @@ const { maxRate: fxSAVERate } = useCollateralPrice(
 
  // Determine if approval is needed (for zap or direct minting)
  // If we're swapping first, approvals are handled separately (swap approval + post-swap USDC approval).
+ // For zap (ETH zap or USDC zap), check if we need approval to zapAddress
+ // For direct mint, check if we need approval to minterAddress
  const needsZapApproval =
-   !includeSwap && useZap && zapAddress && depositAssetAddress && !isNativeETH
+   !includeSwap && (useETHZap || useUSDCZap) && zapAddress && depositAssetAddress && !isNativeETH
      ? ((depositAssetAllowance as bigint) || 0n) < parsedAmount
      : false;
  const needsDirectApproval =
@@ -838,9 +867,14 @@ const { maxRate: fxSAVERate } = useCollateralPrice(
    }
 
    // Step 2: Approve (if needed, no-swap path)
+   // If using zap (ETH zap or USDC zap), approve to zapAddress
+   // Only direct mints (wstETH, fxSAVE) approve to minterAddress
+   // Note: useETHZap and useUSDCZap already check for zapAddress via useZap, so if they're true, zapAddress must exist
    if (needsApproval && depositAssetAddress) {
      updateProgressStep("approve", { status:"in_progress" });
-     const approveTarget = useZap && zapAddress ? zapAddress : minterAddress;
+     const approveTarget = useETHZap || useUSDCZap
+       ? zapAddress!
+       : minterAddress;
      const approveHash = await writeContractAsync({
        address: depositAssetAddress,
        abi: ERC20_ABI,
@@ -861,50 +895,102 @@ const { maxRate: fxSAVERate } = useCollateralPrice(
    let minOutput: bigint;
    const amountForMint = includeSwap ? effectiveMintAmount : parsedAmount;
    
-   if (useUSDCZap && fxSAVERate && fxSAVERate > 0n) {
-     // For USDC/fxUSD zap: minOutput = amount / fxSAVE rate
-     let amountIn18Decimals: bigint;
-     if (includeSwap ? !isWstETHMarket : isUSDC) {
-       // USDC: convert from 6 decimals to 18 decimals
-       amountIn18Decimals = amountForMint * 10n ** 12n;
+   // Default slippage tolerance (1%, minimum 2% to account for dynamic fees)
+   // NOTE: Dynamic fees can change if collateral ratio crosses bands between dry run and execution
+   // We use higher slippage tolerance to account for potential fee increases
+   const slippageTolerance = 1; // Could be made configurable in the future
+   const slippageBps = Math.max(slippageTolerance, 2.0); // Increased from 0.5% to 2% minimum
+   
+   if (useUSDCZap) {
+     // For USDC/fxUSD zap: use expectedMintOutput from dry run if available
+     // This accounts for actual conversion (USDC → fxUSD → fxSAVE) and minting fees
+     if (expectedMintOutput && expectedMintOutput > 0n) {
+       // Apply slippage tolerance
+       minOutput = (expectedMintOutput * BigInt(Math.floor((100 - slippageBps) * 100))) / 10000n;
+     } else if (fxSAVERate && fxSAVERate > 0n) {
+       // Fallback: estimate using fxSAVE rate (less accurate, but better than 0)
+       let amountIn18Decimals: bigint;
+       if (includeSwap ? !isWstETHMarket : isUSDC) {
+         // USDC: convert from 6 decimals to 18 decimals
+         amountIn18Decimals = amountForMint * 10n ** 12n;
+       } else {
+         // fxUSD: already in 18 decimals
+         amountIn18Decimals = amountForMint;
+       }
+       // Convert to fxSAVE using wrapped rate, then estimate mint output (account for ~0.25% fee)
+       const fxSaveAmount = (amountIn18Decimals * 10n ** 18n) / fxSAVERate;
+       const estimatedLeveragedOut = (fxSaveAmount * 9975n) / 10000n; // Estimate 0.25% fee
+       minOutput = (estimatedLeveragedOut * BigInt(Math.floor((100 - slippageBps) * 100))) / 10000n;
      } else {
-       // fxUSD: already in 18 decimals
-       amountIn18Decimals = amountForMint;
+       throw new Error("Cannot calculate minOutput: expectedMintOutput and fxSAVERate both unavailable");
      }
-     const leveragedOutBeforeSlippage = amountIn18Decimals / fxSAVERate;
-     minOutput = (leveragedOutBeforeSlippage * 995n) / 1000n; // 0.5% slippage
    } else {
-     // For direct minting or ETH zap: use expectedMintOutput with 1% slippage
+     // For direct minting or ETH zap: use expectedMintOutput with slippage tolerance
+     // TODO: Fine-tune this later with dynamic slippage and zapper fee calculations
+     const ethZapSlippage = slippageBps; // Use default 2% slippage for all
      minOutput = expectedMintOutput
-       ? (expectedMintOutput * 99n) / 100n
+       ? (expectedMintOutput * BigInt(Math.floor((100 - ethZapSlippage) * 100))) / 10000n
        : 0n;
    }
 
    let mintHash: `0x${string}`;
 
+   // FXUSD must always use zap - if zapAddress is missing, throw error
+   if (isFxUSD && isFxUSDMarket && !zapAddress) {
+     throw new Error("Zap contract address (leveragedTokenZap) is missing from market config. FXUSD deposits require a zap contract.");
+   }
+
    if (useZap && zapAddress) {
      // Use zap contract to mint
      if (useETHZap) {
        // ETH/stETH zap for wstETH markets
-       const minWstEthOut = (amountForMint * 995n) / 1000n; // 0.5% slippage
-       
        if (includeSwap || isNativeETH) {
          mintHash = await writeContractAsync({
            address: zapAddress,
            abi: MINTER_ETH_ZAP_V2_ABI,
            functionName: "zapEthToLeveraged",
-           args: [address as `0x${string}`, minOutput, minWstEthOut],
+           args: [address as `0x${string}`, minOutput],
            value: amountForMint,
          });
        } else if (isStETH) {
-         const stETHAddress = market.addresses?.wrappedCollateralToken as `0x${string}` | undefined;
-         if (!stETHAddress) throw new Error("stETH address not found");
+         // Use underlyingCollateralToken (stETH), not wrappedCollateralToken (wstETH)
+         let stETHAddress = market.addresses?.underlyingCollateralToken as `0x${string}` | undefined;
+         
+         // Fallback: use hardcoded stETH address (constant across all markets)
+         if (!stETHAddress) {
+           stETHAddress = "0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84" as `0x${string}`;
+         }
+         
+         if (!stETHAddress) {
+           throw new Error("stETH address not found. Please ensure you're depositing to a wstETH market.");
+         }
+         
+         // Check and approve stETH if needed
+         const stETHAllowance = await publicClient?.readContract({
+           address: stETHAddress,
+           abi: ERC20_ABI,
+           functionName: "allowance",
+           args: [address as `0x${string}`, zapAddress],
+         });
+         
+         const allowanceBigInt = (stETHAllowance as bigint) || 0n;
+         if (allowanceBigInt < amountForMint) {
+           updateProgressStep("approve", { status: "in_progress" });
+           const approveHash = await writeContractAsync({
+             address: stETHAddress,
+             abi: ERC20_ABI,
+             functionName: "approve",
+             args: [zapAddress, amountForMint],
+           });
+           updateProgressStep("approve", { status: "completed", txHash: approveHash });
+           await publicClient?.waitForTransactionReceipt({ hash: approveHash });
+         }
          
          mintHash = await writeContractAsync({
            address: zapAddress,
            abi: MINTER_ETH_ZAP_V2_ABI,
            functionName: "zapStEthToLeveraged",
-           args: [amountForMint, address as `0x${string}`, minOutput, minWstEthOut],
+           args: [amountForMint, address as `0x${string}`, minOutput],
          });
        } else {
          throw new Error("Invalid asset for ETH zap");
@@ -915,14 +1001,71 @@ const { maxRate: fxSAVERate } = useCollateralPrice(
          throw new Error("fxSAVE rate not available");
        }
        
-       if (includeSwap || isUSDC) {
+       // Determine which asset we're actually zapping (USDC or fxUSD)
+       const USDC_ADDRESS = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" as `0x${string}`;
+       const isActuallyUSDC = includeSwap || isUSDC;
+       const isActuallyFxUSD = isFxUSD;
+       
+       // Get the asset address for approval
+       const assetAddressForApproval = isActuallyUSDC 
+         ? USDC_ADDRESS 
+         : (market.addresses?.collateralToken as `0x${string}` | undefined);
+       
+       if (!assetAddressForApproval) {
+         throw new Error("Asset address not found for approval");
+       }
+       
+       // Both USDC and FXUSD approve to ZAPPER
+       const approvalTarget = zapAddress;
+       
+       // Check and approve asset if needed
+       const currentAllowance = await publicClient?.readContract({
+         address: assetAddressForApproval,
+         abi: ERC20_ABI,
+         functionName: "allowance",
+         args: [address as `0x${string}`, approvalTarget],
+       });
+       
+       const allowanceBigInt = (currentAllowance as bigint) || 0n;
+       if (allowanceBigInt < amountForMint) {
+         // Add approval step to progress modal if it doesn't exist
+         setProgressModal((prev) => {
+           if (!prev) return prev;
+           const hasApproveStep = prev.steps.some(s => s.id === "approve");
+           if (!hasApproveStep) {
+             // Insert approval step before mint step
+             const mintIndex = prev.steps.findIndex(s => s.id === "mint");
+             const newSteps = [...prev.steps];
+             newSteps.splice(mintIndex, 0, {
+               id: "approve",
+               label: `Approve ${isActuallyFxUSD ? "fxUSD" : "USDC"} for zap`,
+               status: "pending",
+               details: `Approve ${isActuallyFxUSD ? "fxUSD" : "USDC"} for minting via zap`,
+             });
+             return { ...prev, steps: newSteps };
+           }
+           return prev;
+         });
+         
+         updateProgressStep("approve", { status: "in_progress" });
+         const approveHash = await writeContractAsync({
+           address: assetAddressForApproval,
+           abi: ERC20_ABI,
+           functionName: "approve",
+           args: [approvalTarget, amountForMint],
+         });
+         updateProgressStep("approve", { status: "completed", txHash: approveHash });
+         await publicClient?.waitForTransactionReceipt({ hash: approveHash });
+       }
+       
+       if (isActuallyUSDC) {
          mintHash = await writeContractAsync({
            address: zapAddress,
            abi: MINTER_USDC_ZAP_V2_ABI,
            functionName: "zapUsdcToLeveraged",
            args: [amountForMint, address as `0x${string}`, minOutput],
          });
-       } else if (isFxUSD) {
+       } else if (isActuallyFxUSD) {
          mintHash = await writeContractAsync({
            address: zapAddress,
            abi: MINTER_USDC_ZAP_V2_ABI,
@@ -936,7 +1079,17 @@ const { maxRate: fxSAVERate } = useCollateralPrice(
        throw new Error("Invalid zap configuration");
      }
    } else {
-     // Direct minting (no zap)
+     // Direct minting (no zap) - only for wrapped collateral (wstETH, fxSAVE)
+     // FXUSD should never reach here - it must use zap
+     if (isFxUSD && isFxUSDMarket) {
+       const errorMsg = `FXUSD deposits must use zap contract. 
+         useZap: ${useZap}, 
+         zapAddress: ${zapAddress || 'undefined'}, 
+         useUSDCZap: ${useUSDCZap}, 
+         isWrappedCollateral: ${isWrappedCollateral},
+         market.addresses?.leveragedTokenZap: ${market.addresses?.leveragedTokenZap || 'undefined'}`;
+       throw new Error(errorMsg);
+     }
      mintHash = await writeContractAsync({
        address: minterAddress,
        abi: MINTER_ABI,
@@ -953,16 +1106,40 @@ const { maxRate: fxSAVERate } = useCollateralPrice(
  } catch (err) {
  console.error("Mint error:", err);
  let errorMessage ="Transaction failed";
- if (err instanceof BaseError) {
- const revertError = err.walk(
- (e) => e instanceof ContractFunctionRevertedError
- );
- if (revertError instanceof ContractFunctionRevertedError) {
- errorMessage = revertError.reason ||"Transaction failed";
- } else {
- errorMessage = err.message ||"Transaction failed";
+ 
+ // Check for user rejection first (most common case)
+ const errMessage = err instanceof Error ? err.message : String(err);
+ const errShortMessage = err instanceof BaseError ? err.shortMessage : "";
+ const lowerMessage = (errMessage + " " + errShortMessage).toLowerCase();
+ 
+ if (lowerMessage.includes("user rejected") || lowerMessage.includes("user denied") || lowerMessage.includes("rejected the request")) {
+   errorMessage = "Transaction cancelled";
+ } else if (err instanceof BaseError) {
+   const revertError = err.walk(
+     (e) => e instanceof ContractFunctionRevertedError
+   );
+   if (revertError instanceof ContractFunctionRevertedError) {
+     errorMessage = revertError.reason || revertError.data?.message || "Transaction failed";
+   } else {
+     // Extract concise error message
+     const msg = err.message || err.shortMessage || "Transaction failed";
+     // Remove verbose prefixes like "ContractFunctionExecutionError:"
+     errorMessage = msg.replace(/^[^:]+:\s*/i, "").replace(/\s*\([^)]+\)$/, "") || "Transaction failed";
+   }
+ } else if (err instanceof Error) {
+   errorMessage = err.message.replace(/^[^:]+:\s*/i, "").replace(/\s*\([^)]+\)$/, "") || "Transaction failed";
  }
- }
+ 
+ // Log full error for debugging
+ console.error("Full error details:", {
+   error: err,
+   message: errorMessage,
+   useZap,
+   useUSDCZap,
+   zapAddress,
+   depositAssetAddress,
+   isFxUSD,
+ });
  // Mark current step as error
  setProgressModal((prev) => {
  if (!prev) return prev;
@@ -1059,15 +1236,27 @@ const { maxRate: fxSAVERate } = useCollateralPrice(
  } catch (err) {
  console.error("Redeem error:", err);
  let errorMessage ="Transaction failed";
- if (err instanceof BaseError) {
- const revertError = err.walk(
- (e) => e instanceof ContractFunctionRevertedError
- );
- if (revertError instanceof ContractFunctionRevertedError) {
- errorMessage = revertError.reason ||"Transaction failed";
- } else {
- errorMessage = err.message ||"Transaction failed";
- }
+ 
+ // Check for user rejection first (most common case)
+ const errMessage = err instanceof Error ? err.message : String(err);
+ const errShortMessage = err instanceof BaseError ? err.shortMessage : "";
+ const lowerMessage = (errMessage + " " + errShortMessage).toLowerCase();
+ 
+ if (lowerMessage.includes("user rejected") || lowerMessage.includes("user denied") || lowerMessage.includes("rejected the request")) {
+   errorMessage = "Transaction cancelled";
+ } else if (err instanceof BaseError) {
+   const revertError = err.walk(
+     (e) => e instanceof ContractFunctionRevertedError
+   );
+   if (revertError instanceof ContractFunctionRevertedError) {
+     errorMessage = revertError.reason || "Transaction failed";
+   } else {
+     // Extract concise error message
+     const msg = err.message || err.shortMessage || "Transaction failed";
+     errorMessage = msg.replace(/^[^:]+:\s*/i, "").replace(/\s*\([^)]+\)$/, "") || "Transaction failed";
+   }
+ } else if (err instanceof Error) {
+   errorMessage = err.message.replace(/^[^:]+:\s*/i, "").replace(/\s*\([^)]+\)$/, "") || "Transaction failed";
  }
  // Mark current step as error
  setProgressModal((prev) => {
@@ -1252,44 +1441,52 @@ const { maxRate: fxSAVERate } = useCollateralPrice(
  <div className="mb-3">
  <div className="space-y-2">
    <label className="text-sm text-[#1E4775]/70">Deposit Asset</label>
-   <select
-     value={selectedDepositAsset || ""}
-     onChange={(e) => {
-       const newValue = e.target.value;
-       if (newValue === "custom") {
-         setShowCustomTokenInput(true);
-         setSelectedDepositAsset("custom");
-       } else {
-         setShowCustomTokenInput(false);
-         setSelectedDepositAsset(newValue);
-         setCustomTokenAddress("");
-       }
-     }}
-     disabled={isProcessing}
-     className="w-full h-12 px-4 bg-white text-[#1E4775] border border-[#1E4775]/20 focus:border-[#1E4775]/40 focus:ring-1 focus:ring-[#1E4775]/20 focus:outline-none transition-all text-sm"
-   >
-     {acceptedAssets.length > 0 && (
-       <optgroup label="Supported Assets">
-         {acceptedAssets.map((asset) => (
-           <option key={asset.symbol} value={asset.symbol}>
-             {asset.name} ({asset.symbol})
-           </option>
-         ))}
-       </optgroup>
-     )}
-
-     {allAvailableAssets.filteredUserTokens.length > 0 && (
-       <optgroup label="Other Tokens (via Swap)">
-         {allAvailableAssets.filteredUserTokens.map((token) => (
-           <option key={token.symbol} value={token.symbol}>
-             {token.name} ({token.symbol}) - {token.balanceFormatted}
-           </option>
-         ))}
-       </optgroup>
-     )}
-
-     <option value="custom">+ Add Custom Token Address</option>
-   </select>
+   {(() => {
+     const tokenGroups = [
+       ...(acceptedAssets.length > 0 ? [{
+         label: "Supported Assets",
+         tokens: acceptedAssets.map((asset) => ({
+           symbol: asset.symbol,
+           name: asset.name,
+         })),
+       }] : []),
+       ...(allAvailableAssets.filteredUserTokens.length > 0 ? [{
+         label: "Other Tokens (via Swap)",
+         tokens: allAvailableAssets.filteredUserTokens.map((token) => ({
+           symbol: token.symbol,
+           name: token.name,
+           isUserToken: true,
+         })),
+       }] : []),
+     ];
+     
+     return (
+       <TokenSelectorDropdown
+         value={selectedDepositAsset || ""}
+         onChange={(newAsset) => {
+           if (newAsset === "custom") {
+             setShowCustomTokenInput(true);
+             setSelectedDepositAsset("custom");
+           } else {
+             setShowCustomTokenInput(false);
+             setSelectedDepositAsset(newAsset);
+             setCustomTokenAddress("");
+             setAmount(""); // Reset amount when changing asset
+             setError(null); // Clear any errors
+           }
+         }}
+         options={tokenGroups}
+         disabled={isProcessing}
+         placeholder="Select Deposit Token"
+         showCustomOption={true}
+         onCustomOptionClick={() => {
+           setShowCustomTokenInput(true);
+           setSelectedDepositAsset("custom");
+         }}
+         customOptionLabel="+ Add Custom Token Address"
+       />
+     );
+   })()}
 
    {showCustomTokenInput && (
      <div className="space-y-2">
@@ -1624,6 +1821,7 @@ const { maxRate: fxSAVERate } = useCollateralPrice(
  title={progressModal.title}
  steps={progressModal.steps}
  currentStepIndex={progressModal.currentStepIndex}
+ errorMessage={progressModal.steps.find(s => s.status === "error")?.error}
  />
  )}
  </div>

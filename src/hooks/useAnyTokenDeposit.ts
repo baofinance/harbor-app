@@ -25,7 +25,9 @@ interface UseAnyTokenDepositOptions {
   marketAddresses?: {
     collateralToken?: string;
     wrappedCollateralToken?: string;
-    genesisZap?: string; // Zap contract for this market
+    genesisZap?: string; // Zap contract for genesis deposits
+    peggedTokenZap?: string; // Zap contract for minter deposits (pegged tokens)
+    leveragedTokenZap?: string; // Zap contract for minter deposits (leveraged tokens)
     priceOracle?: string;
   };
   
@@ -85,8 +87,11 @@ export function useAnyTokenDeposit(options: UseAnyTokenDepositOptions) {
   const isWstETHMarket = collateralSymbol.toLowerCase() === "wsteth";
   const isFxSAVEMarket = !isWstETHMarket;
 
-  // Get zap address
-  const zapAddress = marketAddresses?.genesisZap as `0x${string}` | undefined;
+  // Get zap address based on deposit target type
+  // For genesis deposits, use genesisZap; for minter deposits, use peggedTokenZap
+  const zapAddress = depositTarget.type === "genesis"
+    ? (marketAddresses?.genesisZap as `0x${string}` | undefined)
+    : (marketAddresses?.peggedTokenZap as `0x${string}` | undefined);
 
   // Map asset symbol to address
   const getAssetAddress = (assetSymbol: string): string | null => {

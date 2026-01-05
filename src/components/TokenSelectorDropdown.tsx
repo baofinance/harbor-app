@@ -154,15 +154,17 @@ export function TokenSelectorDropdown({
                     <div className="text-[#1E4775] font-medium">
                       {token.name} ({token.symbol})
                     </div>
-                    <div className="text-xs text-[#1E4775]/60 truncate">
-                      {token.description
-                        ? token.description
-                        : token.feePercentage !== undefined
-                        ? `${token.feePercentage.toFixed(2)}% estimated fee`
-                        : token.isUserToken
-                        ? "Will be swapped"
-                        : "Fee: -"}
-                    </div>
+                    {token.description || token.feePercentage !== undefined || token.isUserToken ? (
+                      <div className="text-xs text-[#1E4775]/60 truncate">
+                        {token.description
+                          ? token.description
+                          : token.feePercentage !== undefined
+                          ? `${token.feePercentage.toFixed(2)}% estimated fee`
+                          : token.isUserToken
+                          ? "Will be swapped"
+                          : null}
+                      </div>
+                    ) : null}
                   </div>
                 </button>
               ))}
