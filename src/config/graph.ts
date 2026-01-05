@@ -21,7 +21,7 @@ export const GRAPH_CONFIG = {
     // If this is empty, UI hooks will throw a clear error prompting configuration.
     url: useTest2
       ? process.env.NEXT_PUBLIC_SAIL_PRICE_GRAPH_URL_TEST2 ||
-        process.env.NEXT_PUBLIC_SAIL_PRICE_GRAPH_URL ||
+      process.env.NEXT_PUBLIC_SAIL_PRICE_GRAPH_URL ||
         ""
       : process.env.NEXT_PUBLIC_SAIL_PRICE_GRAPH_URL || "",
     chainId: 1,

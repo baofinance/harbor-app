@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import {
  useTransparencyData,
  formatCollateralRatio,
@@ -15,6 +15,7 @@ import {
  type PoolTransparencyData,
  type UserPoolData,
 } from "@/hooks/useTransparencyData";
+import { formatCompactUSD } from "@/utils/anchor";
 import {
  ClipboardDocumentIcon,
  CheckIcon,
@@ -23,11 +24,8 @@ import {
  ExclamationTriangleIcon,
  XCircleIcon,
  ClockIcon,
- ChevronDownIcon,
- ChevronUpIcon,
  CurrencyDollarIcon,
  Squares2X2Icon,
- EyeIcon,
 } from "@heroicons/react/24/outline";
 import InfoTooltip from "@/components/InfoTooltip";
 
@@ -202,7 +200,8 @@ function MarketCard({
  pools: PoolTransparencyData[];
  userPools?: UserPoolData[];
 }) {
- const [isExpanded, setIsExpanded] = useState(false);
+ // Expanded views disabled
+ const isExpanded = false;
 
  const avgPrice = (market.minPrice + market.maxPrice) / 2n;
  const avgRate = (market.minRate + market.maxRate) / 2n;
@@ -211,9 +210,6 @@ function MarketCard({
  market.rebalanceThreshold
  );
 
- // Calculate total TVL from pools
- const totalTVL = pools.reduce((sum, pool) => sum + pool.tvl, 0n);
-
  const pegPriceUSD = calculatePeggedPriceUSD(
  market.collateralTokenBalance,
  avgPrice,
@@ -221,6 +217,13 @@ function MarketCard({
  market.collateralRatio,
  market.peggedTokenBalance
  );
+
+  // Calculate total TVL in USD using the same approach as Anchor expanded view:
+  // tvlUSD = (poolTVL / 1e18) * peggedPriceUSD
+  const totalTVLUSD = pools.reduce((sum, pool) => {
+    const tvlTokens = Number(pool.tvl) / 1e18;
+    return sum + tvlTokens * (pegPriceUSD || 0);
+  }, 0);
 
  const distanceToThreshold =
  market.rebalanceThreshold > 0n
@@ -231,24 +234,14 @@ function MarketCard({
 
  return (
  <div className="overflow-hidden">
- {/* Collapsed Bar */}
+ {/* Market Bar */}
  <div
- className={`cursor-pointer transition-colors ${
- isExpanded
- ?"bg-[rgb(var(--surface-selected-rgb))]"
- :"bg-white hover:bg-[rgb(var(--surface-selected-rgb))]"
- }`}
- onClick={() => setIsExpanded(!isExpanded)}
+ className="bg-white transition-colors"
  >
  <div className="p-3">
  <div className="hidden lg:grid grid-cols-[1.5fr_1fr_1fr_1fr_1fr_1fr_auto] gap-3 items-center">
  {/* Market Name */}
  <div className="flex items-center gap-2">
- {isExpanded ? (
- <ChevronUpIcon className="w-4 h-4 text-[#1E4775] flex-shrink-0" />
- ) : (
- <ChevronDownIcon className="w-4 h-4 text-[#1E4775] flex-shrink-0" />
- )}
  <div>
  <div className="text-[#1E4775] font-semibold text-sm">
  {market.marketName}
@@ -278,9 +271,9 @@ function MarketCard({
  {/* TVL */}
  <div className="text-center">
  <div className="text-[#1E4775] font-mono text-sm font-semibold">
- {formatTokenBalance(totalTVL)}
+ {formatCompactUSD(totalTVLUSD)}
  </div>
- <div className="text-[#1E4775]/50 text-[10px]">TVL</div>
+ <div className="text-[#1E4775]/50 text-[10px]">TVL (USD)</div>
  </div>
 
  {/* Rebalance Threshold */}
@@ -296,10 +289,8 @@ function MarketCard({
  <HealthBadge status={healthStatus} compact />
  </div>
 
- {/* Expand indicator */}
- <div className="text-[#1E4775]/40">
- <EyeIcon className="w-4 h-4" />
- </div>
+ {/* Spacer (replaces expand indicator) */}
+ <div className="w-4"></div>
  </div>
  </div>
  </div>
@@ -471,8 +462,11 @@ function MarketCard({
  </div>
  <div className="grid grid-cols-3 gap-2 text-xs">
  <div className="bg-[#1E4775]/5 p-2">
- <div className="text-[#1E4775]/60 text-[10px]">TVL</div>
+ <div className="text-[#1E4775]/60 text-[10px]">TVL (USD)</div>
  <div className="text-[#1E4775] font-mono font-semibold">
+ {formatCompactUSD((Number(pool.tvl) / 1e18) * (pegPriceUSD || 0))}
+ </div>
+ <div className="text-[#1E4775]/50 text-[10px] mt-0.5">
  {formatTokenBalance(pool.tvl)}
  </div>
  </div>
@@ -678,7 +672,7 @@ export default function TransparencyPage() {
              <div>Market</div>
              <div className="text-center">Collateral Ratio</div>
              <div className="text-center">Leverage</div>
-             <div className="text-center">TVL</div>
+            <div className="text-center">TVL (USD)</div>
              <div className="text-center">Threshold</div>
              <div className="text-center">Health</div>
              <div className="w-4"></div>

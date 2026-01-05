@@ -29,6 +29,8 @@ import { useSailPositionPnL } from "@/hooks/useSailPositionPnL";
 import { useMultipleTokenPrices } from "@/hooks/useTokenPrices";
 import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
 import { useCollateralPrice } from "@/hooks/useCollateralPrice";
+import { useMarketBoostWindows } from "@/hooks/useMarketBoostWindows";
+import { MarksBoostBadge } from "@/components/MarksBoostBadge";
 
 // PnL is now fetched from subgraph (useSailPositionPnL hook)
 
@@ -1094,6 +1096,33 @@ export default function SailPage() {
     };
   }, [totalSailMarksState, sailBalances]);
 
+  // Sail marks boost window (2x) for markets in their first 8 days
+  const sailBoostIds = useMemo(() => {
+    if (!sailBalances || sailBalances.length === 0) return [];
+    return sailBalances.map(
+      (b: { tokenAddress: string }) => `sailToken-${b.tokenAddress.toLowerCase()}`
+    );
+  }, [sailBalances]);
+
+  const { data: sailBoostWindowsData } = useMarketBoostWindows({
+    enabled: !!address && isConnected && sailBoostIds.length > 0,
+    ids: sailBoostIds,
+    first: 50,
+  });
+
+  const activeSailBoostEndTimestamp = useMemo(() => {
+    const nowSec = Math.floor(Date.now() / 1000);
+    const windows = sailBoostWindowsData?.marketBoostWindows ?? [];
+    const active = windows
+      .map((w) => ({
+        start: Number(w.startTimestamp),
+        end: Number(w.endTimestamp),
+      }))
+      .filter((w) => nowSec >= w.start && nowSec < w.end);
+    if (active.length === 0) return null;
+    return active.reduce((minEnd, w) => Math.min(minEnd, w.end), active[0].end);
+  }, [sailBoostWindowsData]);
+
   // Get all markets with leveraged tokens (we'll filter by collateral balance later)
   const sailMarkets = useMemo(
     () => Object.entries(markets).filter(([_, m]) => m.leveragedToken),
@@ -1557,6 +1586,12 @@ export default function SailPage() {
               </div>
             </div>
           </div>
+
+          {activeSailBoostEndTimestamp && (
+            <div className="mb-2">
+              <MarksBoostBadge multiplier={2} endTimestamp={activeSailBoostEndTimestamp} />
+            </div>
+          )}
 
           {/* Divider */}
           <div className="border-t border-white/10 mb-3"></div>

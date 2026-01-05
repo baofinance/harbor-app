@@ -1094,8 +1094,8 @@ export const AnchorDepositWithdrawModal = ({
         if (p > bestPriority) {
           bestPriority = p;
           bestMarket = m;
-        }
       }
+    }
     }
     if (bestMarket) return bestMarket;
     return null;
@@ -1177,11 +1177,11 @@ export const AnchorDepositWithdrawModal = ({
       assets.forEach((asset) => {
         const existing = assetMap.get(asset.symbol);
         const next = {
-          ...asset,
-          market: m,
+            ...asset,
+            market: m,
           marketId,
-          minterAddress: minterAddr,
-          isPeggedToken: false,
+            minterAddress: minterAddr,
+            isPeggedToken: false,
         };
 
         if (!existing) {
@@ -1242,8 +1242,8 @@ export const AnchorDepositWithdrawModal = ({
             isUserToken: token.isUserToken ?? true,
             isPeggedToken: false,
           } as any);
-        }
-      });
+      }
+    });
     }
 
     return result;
@@ -6518,59 +6518,59 @@ export const AnchorDepositWithdrawModal = ({
         const method = withdrawalMethods.collateralPool;
         const withdrawFromCollateral = collateralAmount;
 
-        console.log("[handleWithdrawExecution] Collateral pool withdrawal:", {
-          method,
+          console.log("[handleWithdrawExecution] Collateral pool withdrawal:", {
+            method,
           amount:
             method === "request"
               ? "(requestWithdrawal)"
               : withdrawFromCollateral.toString(),
-          poolAddress: collateralPoolAddress,
-          userAddress: address,
-        });
+            poolAddress: collateralPoolAddress,
+            userAddress: address,
+          });
 
-        if (method === "request") {
+          if (method === "request") {
           // Request withdrawal - starts the fee-free window (no amount parameters)
-          setStep("requestingCollateral");
-          console.log(
-            "[handleWithdrawExecution] Calling requestWithdrawal on collateral pool:",
-            {
-              address: collateralPoolAddress,
-            }
-          );
-          const requestHash = await writeContractAsync({
-            address: collateralPoolAddress as `0x${string}`,
-            abi: STABILITY_POOL_ABI,
-            functionName: "requestWithdrawal",
-            args: [],
-          });
-          setTxHash(requestHash);
-          setTxHashes((prev) => ({
-            ...prev,
-            requestCollateral: requestHash,
-          }));
-          await txClient?.waitForTransactionReceipt({
-            hash: requestHash,
-          });
-          // Don't add to peggedTokensReceived - tokens stay in pool until user calls withdraw during window
+            setStep("requestingCollateral");
+            console.log(
+              "[handleWithdrawExecution] Calling requestWithdrawal on collateral pool:",
+              {
+                address: collateralPoolAddress,
+              }
+            );
+            const requestHash = await writeContractAsync({
+              address: collateralPoolAddress as `0x${string}`,
+              abi: STABILITY_POOL_ABI,
+              functionName: "requestWithdrawal",
+              args: [],
+            });
+            setTxHash(requestHash);
+            setTxHashes((prev) => ({
+              ...prev,
+              requestCollateral: requestHash,
+            }));
+            await txClient?.waitForTransactionReceipt({
+              hash: requestHash,
+            });
+            // Don't add to peggedTokensReceived - tokens stay in pool until user calls withdraw during window
         } else if (withdrawFromCollateral > 0n) {
-          // Immediate withdrawal - use direct withdraw function
-          setStep("withdrawingCollateral");
+            // Immediate withdrawal - use direct withdraw function
+            setStep("withdrawingCollateral");
 
-          const collateralWithdrawHash = await writeContractAsync({
-            address: collateralPoolAddress as `0x${string}`,
-            abi: STABILITY_POOL_ABI,
-            functionName: "withdraw",
-            args: [withdrawFromCollateral, address as `0x${string}`, 0n], // assetAmount, receiver, minAmount
-          });
-          setTxHash(collateralWithdrawHash);
-          setTxHashes((prev) => ({
-            ...prev,
-            withdrawCollateral: collateralWithdrawHash,
-          }));
-          await txClient?.waitForTransactionReceipt({
-            hash: collateralWithdrawHash,
-          });
-          peggedTokensReceived += withdrawFromCollateral;
+            const collateralWithdrawHash = await writeContractAsync({
+              address: collateralPoolAddress as `0x${string}`,
+              abi: STABILITY_POOL_ABI,
+              functionName: "withdraw",
+              args: [withdrawFromCollateral, address as `0x${string}`, 0n], // assetAmount, receiver, minAmount
+            });
+            setTxHash(collateralWithdrawHash);
+            setTxHashes((prev) => ({
+              ...prev,
+              withdrawCollateral: collateralWithdrawHash,
+            }));
+            await txClient?.waitForTransactionReceipt({
+              hash: collateralWithdrawHash,
+            });
+            peggedTokensReceived += withdrawFromCollateral;
         }
       }
 
@@ -6583,57 +6583,57 @@ export const AnchorDepositWithdrawModal = ({
         const sailMethod = withdrawalMethods.sailPool;
         const withdrawFromSail = sailAmount;
 
-        console.log("[handleWithdrawExecution] Sail pool withdrawal:", {
-          method: sailMethod,
+          console.log("[handleWithdrawExecution] Sail pool withdrawal:", {
+            method: sailMethod,
           amount:
             sailMethod === "request"
               ? "(requestWithdrawal)"
               : withdrawFromSail.toString(),
-          poolAddress: sailPoolAddress,
-          userAddress: address,
-        });
+            poolAddress: sailPoolAddress,
+            userAddress: address,
+          });
 
-        if (sailMethod === "request") {
+          if (sailMethod === "request") {
           // Request withdrawal - starts the fee-free window (no amount parameters)
-          setStep("requestingSail");
-          console.log(
-            "[handleWithdrawExecution] Calling requestWithdrawal on sail pool:",
-            {
-              address: sailPoolAddress,
-            }
-          );
-          const requestHash = await writeContractAsync({
-            address: sailPoolAddress as `0x${string}`,
-            abi: STABILITY_POOL_ABI,
-            functionName: "requestWithdrawal",
-            args: [],
-          });
-          setTxHash(requestHash);
-          setTxHashes((prev) => ({ ...prev, requestSail: requestHash }));
-          await txClient?.waitForTransactionReceipt({
-            hash: requestHash,
-          });
-          // Don't add to peggedTokensReceived - tokens stay in pool until user calls withdraw during window
+            setStep("requestingSail");
+            console.log(
+              "[handleWithdrawExecution] Calling requestWithdrawal on sail pool:",
+              {
+                address: sailPoolAddress,
+              }
+            );
+            const requestHash = await writeContractAsync({
+              address: sailPoolAddress as `0x${string}`,
+              abi: STABILITY_POOL_ABI,
+              functionName: "requestWithdrawal",
+              args: [],
+            });
+            setTxHash(requestHash);
+            setTxHashes((prev) => ({ ...prev, requestSail: requestHash }));
+            await txClient?.waitForTransactionReceipt({
+              hash: requestHash,
+            });
+            // Don't add to peggedTokensReceived - tokens stay in pool until user calls withdraw during window
         } else if (withdrawFromSail > 0n) {
-          // Immediate withdrawal - use direct withdraw function
-          setStep("withdrawingSail");
+            // Immediate withdrawal - use direct withdraw function
+            setStep("withdrawingSail");
 
-          const sailWithdrawHash = await writeContractAsync({
-            address: sailPoolAddress as `0x${string}`,
-            abi: STABILITY_POOL_ABI,
-            functionName: "withdraw",
-            args: [withdrawFromSail, address as `0x${string}`, 0n], // assetAmount, receiver, minAmount
-          });
-          setTxHash(sailWithdrawHash);
-          setTxHashes((prev) => ({
-            ...prev,
-            withdrawSail: sailWithdrawHash,
-          }));
-          await txClient?.waitForTransactionReceipt({
-            hash: sailWithdrawHash,
-          });
-          peggedTokensReceived += withdrawFromSail;
-        }
+            const sailWithdrawHash = await writeContractAsync({
+              address: sailPoolAddress as `0x${string}`,
+              abi: STABILITY_POOL_ABI,
+              functionName: "withdraw",
+              args: [withdrawFromSail, address as `0x${string}`, 0n], // assetAmount, receiver, minAmount
+            });
+            setTxHash(sailWithdrawHash);
+            setTxHashes((prev) => ({
+              ...prev,
+              withdrawSail: sailWithdrawHash,
+            }));
+            await txClient?.waitForTransactionReceipt({
+              hash: sailWithdrawHash,
+            });
+            peggedTokensReceived += withdrawFromSail;
+          }
       }
 
       // Redeem pegged tokens for collateral (default behavior unless "Withdraw only" is checked).
@@ -6674,94 +6674,94 @@ export const AnchorDepositWithdrawModal = ({
 
         if (redeemAmount > 0n) {
           // Step 1: Check/approve pegged token for minter (if needed)
-          let currentAllowance = 0n;
-          try {
-            currentAllowance =
-              ((await client.readContract({
-                address: peggedTokenAddress as `0x${string}`,
-                abi: ERC20_ABI,
-                functionName: "allowance",
+        let currentAllowance = 0n;
+        try {
+          currentAllowance =
+            ((await client.readContract({
+              address: peggedTokenAddress as `0x${string}`,
+              abi: ERC20_ABI,
+              functionName: "allowance",
                 args: [
                   address as `0x${string}`,
                   minterAddress as `0x${string}`,
                 ],
-              })) as bigint) || 0n;
-          } catch (allowErr) {
-            console.warn(
-              "[handleWithdrawExecution] Allowance read failed, assuming 0",
-              allowErr
-            );
-            currentAllowance = 0n;
-          }
+            })) as bigint) || 0n;
+        } catch (allowErr) {
+          console.warn(
+            "[handleWithdrawExecution] Allowance read failed, assuming 0",
+            allowErr
+          );
+          currentAllowance = 0n;
+        }
 
           const needsApproval = redeemAmount > currentAllowance;
-          console.log("[handleWithdrawExecution] Redeem approval check:", {
+        console.log("[handleWithdrawExecution] Redeem approval check:", {
             redeemAmount: redeemAmount.toString(),
-            currentAllowance: currentAllowance.toString(),
-            needsApproval,
-          });
+          currentAllowance: currentAllowance.toString(),
+          needsApproval,
+        });
 
-          if (needsApproval) {
-            setStep("approving");
-            setError(null);
-            setTxHash(null);
-
-            const approveHash = await writeContractAsync({
-              address: peggedTokenAddress as `0x${string}`,
-              abi: ERC20_ABI,
-              functionName: "approve",
-              args: [minterAddress as `0x${string}`, redeemAmount],
-            });
-            setTxHash(approveHash);
-            setTxHashes((prev) => ({ ...prev, approveRedeem: approveHash }));
-            await client.waitForTransactionReceipt({ hash: approveHash });
-            await new Promise((resolve) => setTimeout(resolve, 500));
-          }
-
-          // Step 2: Redeem pegged tokens
-          setStep("redeeming");
+        if (needsApproval) {
+          setStep("approving");
           setError(null);
           setTxHash(null);
 
+          const approveHash = await writeContractAsync({
+            address: peggedTokenAddress as `0x${string}`,
+            abi: ERC20_ABI,
+            functionName: "approve",
+              args: [minterAddress as `0x${string}`, redeemAmount],
+          });
+          setTxHash(approveHash);
+          setTxHashes((prev) => ({ ...prev, approveRedeem: approveHash }));
+          await client.waitForTransactionReceipt({ hash: approveHash });
+          await new Promise((resolve) => setTimeout(resolve, 500));
+        }
+
+        // Step 2: Redeem pegged tokens
+        setStep("redeeming");
+        setError(null);
+        setTxHash(null);
+
           let minCollateralOut = 0n;
-          try {
-            const freshDryRunResult = (await client.readContract({
-              address: minterAddress as `0x${string}`,
-              abi: minterABI,
-              functionName: "redeemPeggedTokenDryRun",
+        try {
+          const freshDryRunResult = (await client.readContract({
+            address: minterAddress as `0x${string}`,
+            abi: minterABI,
+            functionName: "redeemPeggedTokenDryRun",
               args: [redeemAmount],
             })) as [bigint, bigint, bigint, bigint, bigint, bigint, bigint] | undefined;
 
             if (freshDryRunResult && Array.isArray(freshDryRunResult) && freshDryRunResult.length >= 5) {
-              const wrappedCollateralReturned = freshDryRunResult[4];
-              minCollateralOut = (wrappedCollateralReturned * 99n) / 100n;
+            const wrappedCollateralReturned = freshDryRunResult[4];
+            minCollateralOut = (wrappedCollateralReturned * 99n) / 100n;
             }
           } catch {}
 
-          let redeemHash: `0x${string}` | undefined;
-          try {
-            redeemHash = await writeContractAsync({
-              address: minterAddress as `0x${string}`,
-              abi: minterABI,
-              functionName: "redeemPeggedToken",
+        let redeemHash: `0x${string}` | undefined;
+        try {
+          redeemHash = await writeContractAsync({
+            address: minterAddress as `0x${string}`,
+            abi: minterABI,
+            functionName: "redeemPeggedToken",
               args: [redeemAmount, address as `0x${string}`, minCollateralOut],
-            });
-          } catch (redeemErr: any) {
-            console.warn(
-              "[handleWithdrawExecution] redeemPeggedToken reverted with minCollateralOut, retrying with 0",
-              redeemErr
-            );
-            redeemHash = await writeContractAsync({
-              address: minterAddress as `0x${string}`,
-              abi: minterABI,
-              functionName: "redeemPeggedToken",
+          });
+        } catch (redeemErr: any) {
+          console.warn(
+            "[handleWithdrawExecution] redeemPeggedToken reverted with minCollateralOut, retrying with 0",
+            redeemErr
+          );
+          redeemHash = await writeContractAsync({
+            address: minterAddress as `0x${string}`,
+            abi: minterABI,
+            functionName: "redeemPeggedToken",
               args: [redeemAmount, address as `0x${string}`, 0n],
-            });
-          }
+          });
+        }
 
-          setTxHash(redeemHash);
-          setTxHashes((prev) => ({ ...prev, redeem: redeemHash }));
-          await client.waitForTransactionReceipt({ hash: redeemHash });
+        setTxHash(redeemHash);
+        setTxHashes((prev) => ({ ...prev, redeem: redeemHash }));
+        await client.waitForTransactionReceipt({ hash: redeemHash });
         }
       }
 
@@ -7010,7 +7010,7 @@ export const AnchorDepositWithdrawModal = ({
       handleMint();
     } else if (activeTab === "withdraw") {
       // Withdrawal method is selected inline - go directly to execution
-      handleWithdrawExecution();
+        handleWithdrawExecution();
     }
   };
 
@@ -8767,7 +8767,7 @@ export const AnchorDepositWithdrawModal = ({
                                     the pool is at its minimum total supply. Use
                                     Request (free) or wait for TVL to increase.
                                   </p>
-                                )}
+                              )}
                               {/* Info message for request method */}
                               {withdrawalMethods.collateralPool ===
                                 "request" && (
@@ -8911,7 +8911,7 @@ export const AnchorDepositWithdrawModal = ({
                                     the pool is at its minimum total supply. Use
                                     Request (free) or wait for TVL to increase.
                                   </p>
-                                )}
+                              )}
                               {/* Info message for request method */}
                               {withdrawalMethods.sailPool === "request" && (
                                 <p className="text-[10px] text-[#1E4775]/60 mt-1">

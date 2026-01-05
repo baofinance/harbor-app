@@ -19,7 +19,7 @@ dataSources:
   # ============================================================================
   # MARKET 1: ETH/fxUSD (test2::ETH::fxUSD)
   # ============================================================================
-
+  
   # Minter - ETH/fxUSD market (PnL + cost basis)
   - kind: ethereum
     name: Minter_ETH_fxUSD

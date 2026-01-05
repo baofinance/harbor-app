@@ -154,6 +154,16 @@ type MarksMultiplier @entity(immutable: false) {
   updatedBy: Bytes # Address that updated (null if system)
 }
 
+# Per-market marks boost window (for “first 8 days” boosts)
+type MarketBoostWindow @entity(immutable: false) {
+  id: ID! # {sourceType}-{sourceAddress}
+  sourceType: String! # "haToken" | "sailToken" | "stabilityPoolCollateral" | "stabilityPoolLeveraged"
+  sourceAddress: Bytes! # Contract address for the token/pool
+  startTimestamp: BigInt! # Start of boost window (set once on first indexed activity)
+  endTimestamp: BigInt! # startTimestamp + duration
+  boostMultiplier: BigDecimal! # 10.0 for anchor sources, 2.0 for sailToken
+}
+
 # Tracks price feeds for USD calculations
 type PriceFeed @entity(immutable: false) {
   id: ID! # {tokenAddress}

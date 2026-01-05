@@ -68,6 +68,8 @@ import {
 import Image from "next/image";
 import { useProjectedAPR } from "@/hooks/useProjectedAPR";
 import { useAnchorLedgerMarks } from "@/hooks/useAnchorLedgerMarks";
+import { useMarketBoostWindows } from "@/hooks/useMarketBoostWindows";
+import { MarksBoostBadge } from "@/components/MarksBoostBadge";
 import { useWithdrawalRequests } from "@/hooks/useWithdrawalRequests";
 import { useStabilityPoolRewards } from "@/hooks/useStabilityPoolRewards";
 import { useAllStabilityPoolRewards } from "@/hooks/useAllStabilityPoolRewards";
@@ -373,6 +375,59 @@ export default function AnchorPage() {
     isLoading: isLoadingAnchorMarks,
     error: anchorMarksError,
   } = useAnchorMarks(anchorMarkets, allMarketContracts, reads);
+
+  // Subgraph-backed ledger marks (source of truth for airdrops)
+  const {
+    haBalances: haLedgerBalances,
+    poolDeposits: poolLedgerDeposits,
+    loading: isLoadingLedgerMarks,
+    error: ledgerMarksError,
+  } = useAnchorLedgerMarks({ enabled: true });
+
+  const { totalAnchorLedgerMarks, totalAnchorLedgerMarksPerDay } = useMemo(() => {
+    const totalMarks =
+      (haLedgerBalances ?? []).reduce((sum, b) => sum + (b.estimatedMarks ?? 0), 0) +
+      (poolLedgerDeposits ?? []).reduce((sum, d) => sum + (d.estimatedMarks ?? 0), 0);
+
+    const totalPerDay =
+      (haLedgerBalances ?? []).reduce((sum, b) => sum + (b.marksPerDay ?? 0), 0) +
+      (poolLedgerDeposits ?? []).reduce((sum, d) => sum + (d.marksPerDay ?? 0), 0);
+
+    return { totalAnchorLedgerMarks: totalMarks, totalAnchorLedgerMarksPerDay: totalPerDay };
+  }, [haLedgerBalances, poolLedgerDeposits]);
+
+  const anchorBoostIds = useMemo(() => {
+    const ids: string[] = [];
+    for (const b of haLedgerBalances ?? []) {
+      ids.push(`haToken-${b.tokenAddress.toLowerCase()}`);
+    }
+    for (const d of poolLedgerDeposits ?? []) {
+      const sourceType =
+        d.poolType === "collateral" ? "stabilityPoolCollateral" : "stabilityPoolLeveraged";
+      ids.push(`${sourceType}-${d.poolAddress.toLowerCase()}`);
+    }
+    return Array.from(new Set(ids));
+  }, [haLedgerBalances, poolLedgerDeposits]);
+
+  const { data: anchorBoostWindowsData } = useMarketBoostWindows({
+    enabled: !!address && isConnected && anchorBoostIds.length > 0,
+    ids: anchorBoostIds,
+    first: 100,
+  });
+
+  const activeAnchorBoostEndTimestamp = useMemo(() => {
+    const nowSec = Math.floor(Date.now() / 1000);
+    const windows = anchorBoostWindowsData?.marketBoostWindows ?? [];
+    const active = windows
+      .map((w) => ({
+        start: Number(w.startTimestamp),
+        end: Number(w.endTimestamp),
+        mult: Number(w.boostMultiplier),
+      }))
+      .filter((w) => nowSec >= w.start && nowSec < w.end && w.mult >= 10);
+    if (active.length === 0) return null;
+    return active.reduce((minEnd, w) => Math.min(minEnd, w.end), active[0].end);
+  }, [anchorBoostWindowsData]);
 
   // Keep for backward compatibility
   const maidenVoyageMarksPerDay = maidenVoyageMarksPerDayFromHook;
@@ -1880,7 +1935,7 @@ export default function AnchorPage() {
           <div className="border-t border-white/10 my-2"></div>
 
           {/* Subgraph Error Banner */}
-          {anchorMarksError && (
+          {ledgerMarksError && (
             <div className="bg-[#FF8A7A]/10 border border-[#FF8A7A]/30 rounded p-3 mb-4">
               <div className="flex items-start gap-3">
                 <div className="text-[#FF8A7A] text-xl mt-0.5">⚠️</div>
@@ -1889,7 +1944,9 @@ export default function AnchorPage() {
                     Harbor Marks Subgraph Error
                   </p>
                   <p className="text-white/70 text-xs">
-                    {anchorMarksError.message || "Unable to load Harbor Marks data. This may be due to rate limiting or service issues. Your positions and core functionality remain unaffected."}
+                    {ledgerMarksError instanceof Error
+                      ? ledgerMarksError.message
+                      : "Unable to load Harbor Marks data. This may be due to rate limiting or service issues. Your positions and core functionality remain unaffected."}
                   </p>
                 </div>
               </div>
@@ -2610,12 +2667,14 @@ export default function AnchorPage() {
                     <div className="text-base font-bold text-white font-mono text-center tabular-nums">
                       {!ANCHOR_MARKS_ENABLED ? (
                         "0"
-                      ) : !mounted || isLoadingAnchorMarks ? (
+                      ) : !mounted || isLoadingLedgerMarks ? (
                         <span className="text-white/50">-</span>
-                      ) : totalAnchorMarks > 0 ? (
-                        totalAnchorMarks.toLocaleString(undefined, {
-                          minimumFractionDigits: totalAnchorMarks < 100 ? 2 : 0,
-                          maximumFractionDigits: totalAnchorMarks < 100 ? 2 : 0,
+                      ) : totalAnchorLedgerMarks > 0 ? (
+                        totalAnchorLedgerMarks.toLocaleString(undefined, {
+                          minimumFractionDigits:
+                            totalAnchorLedgerMarks < 100 ? 2 : 0,
+                          maximumFractionDigits:
+                            totalAnchorLedgerMarks < 100 ? 2 : 0,
                         })
                       ) : (
                         "0"
@@ -2624,14 +2683,23 @@ export default function AnchorPage() {
                     <div className="text-[10px] text-white/50 text-center mt-0.5">
                       {!ANCHOR_MARKS_ENABLED
                         ? "0 marks/day"
-                        : !mounted || isLoadingAnchorMarks
+                        : !mounted || isLoadingLedgerMarks
                         ? ""
-                        : totalAnchorMarksPerDay > 0
-                        ? `${totalAnchorMarksPerDay.toLocaleString(undefined, {
+                        : totalAnchorLedgerMarksPerDay > 0
+                        ? `${totalAnchorLedgerMarksPerDay.toLocaleString(undefined, {
                             maximumFractionDigits: 2,
                           })} marks/day`
                         : "0 marks/day"}
                     </div>
+
+                    {activeAnchorBoostEndTimestamp && (
+                      <div className="mt-1">
+                        <MarksBoostBadge
+                          multiplier={10}
+                          endTimestamp={activeAnchorBoostEndTimestamp}
+                        />
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
