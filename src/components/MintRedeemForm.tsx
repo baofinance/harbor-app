@@ -1340,7 +1340,6 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                 });
                 setTransactionHash(hash);
               }
-              }
             }
           } else if (useUSDCZap) {
             // USDC/fxUSD zap for fxSAVE markets
