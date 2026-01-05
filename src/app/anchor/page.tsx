@@ -74,6 +74,8 @@ import { useAllStabilityPoolRewards } from "@/hooks/useAllStabilityPoolRewards";
 import { useMultipleVolatilityProtection } from "@/hooks/useVolatilityProtection";
 import { useMarketPositions } from "@/hooks/useMarketPositions";
 import { useMultipleTokenPrices } from "@/hooks/useTokenPrices";
+import { useFxSAVEAPR } from "@/hooks/useFxSAVEAPR";
+import { useWstETHAPR } from "@/hooks/useWstETHAPR";
 import { useCoinGeckoPrices } from "@/hooks/useCoinGeckoPrice";
 import { useContractReads as useWagmiContractReads } from "wagmi";
 import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
@@ -241,6 +243,10 @@ export default function AnchorPage() {
 
   // Get projected APR for the primary market (pb-steth)
   const projectedAPR = useProjectedAPR("pb-steth");
+
+  // Wrapped collateral APR (DeFiLlama yields). Used for "projected APR" before pool rewards start.
+  const { data: fxSAVEApy } = useFxSAVEAPR(true);
+  const { data: wstETHApy } = useWstETHAPR(true);
 
   // Anchor ledger marks are now provided by useAnchorMarks hook (see below)
 
@@ -445,7 +451,8 @@ export default function AnchorPage() {
     marketPositions,
     poolRewardsMap,
     poolDeposits,
-    projectedAPR
+    projectedAPR,
+    { fxSAVEApy: fxSAVEApy ?? null, wstETHApy: wstETHApy ?? null }
   );
 
   // Create a map for quick lookup: marketId -> marketData
@@ -3583,52 +3590,53 @@ export default function AnchorPage() {
                                   return "10k%+";
                                 }
 
-                                // Format APR display:"X% - Y% (Proj: A% - B%)"
                                 const hasCurrentAPR = minAPR > 0 || maxAPR > 0;
                                 const hasProjectedAPR =
-                                  minProjectedAPR !== null ||
-                                  maxProjectedAPR !== null;
+                                  (minProjectedAPR !== null &&
+                                    minProjectedAPR > 0) ||
+                                  (maxProjectedAPR !== null &&
+                                    maxProjectedAPR > 0);
 
-                                if (!hasCurrentAPR && !hasProjectedAPR)
-                                  return "-";
-
-                                let display = "";
-
-                                // Show projected APR range (this is the main display now)
-                                if (hasProjectedAPR) {
-                                  if (
-                                    minProjectedAPR !== null &&
-                                    maxProjectedAPR !== null &&
-                                    minProjectedAPR !== maxProjectedAPR
-                                  ) {
-                                    // Cap display at 10k%
-                                    const minDisplay =
-                                      minProjectedAPR >= 10000
-                                        ? "10k"
-                                        : minProjectedAPR.toFixed(1);
-                                    const maxDisplay =
-                                      maxProjectedAPR >= 10000
-                                        ? "10k+"
-                                        : maxProjectedAPR.toFixed(1);
-                                    display = `${minDisplay}% - ${maxDisplay}%`;
-                                  } else if (maxProjectedAPR !== null) {
-                                    display =
-                                      maxProjectedAPR >= 10000
-                                        ? "10k%+"
-                                        : `${maxProjectedAPR.toFixed(1)}%`;
-                                  }
-                                } else if (hasCurrentAPR) {
-                                  // Fallback to current APR if no projected
-                                  if (minAPR !== maxAPR && minAPR > 0) {
-                                    display = `${minAPR.toFixed(
+                                const formatRange = (
+                                  min: number,
+                                  max: number
+                                ): string => {
+                                  if (min > 0 && min !== max) {
+                                    return `${min.toFixed(1)}% - ${max.toFixed(
                                       1
-                                    )}% - ${maxAPR.toFixed(1)}%`;
-                                  } else {
-                                    display = `${maxAPR.toFixed(1)}%`;
+                                    )}%`;
                                   }
+                                  return `${max.toFixed(1)}%`;
+                                };
+
+                                const currentStr = hasCurrentAPR
+                                  ? formatRange(minAPR, maxAPR)
+                                  : "";
+
+                                const projMin =
+                                  minProjectedAPR !== null
+                                    ? minProjectedAPR
+                                    : maxProjectedAPR ?? 0;
+                                const projMax =
+                                  maxProjectedAPR !== null
+                                    ? maxProjectedAPR
+                                    : minProjectedAPR ?? 0;
+                                const projectedStr = hasProjectedAPR
+                                  ? formatRange(projMin, projMax)
+                                  : "";
+
+                                // When there is no live APR, show projected APR (explicitly labeled)
+                                if (!hasCurrentAPR) {
+                                  return hasProjectedAPR
+                                    ? `Proj ${projectedStr}`
+                                    : "-";
                                 }
 
-                                return display || "-";
+                                // When there is a live APR, show projected in brackets
+                                if (hasProjectedAPR) {
+                                  return `${currentStr} (Proj ${projectedStr})`;
+                                }
+                                return currentStr || "-";
                               })()}
                             </span>
                           </SimpleTooltip>

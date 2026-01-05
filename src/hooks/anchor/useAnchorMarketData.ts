@@ -60,7 +60,8 @@ export function useAnchorMarketData(
     hasRewardsNoTVL: boolean;
     collateralRewards7Day: bigint | null;
     leveragedRewards7Day: bigint | null;
-  }
+  },
+  wrappedCollateralApy: { fxSAVEApy: number | null; wstETHApy: number | null }
 ): MarketData[] {
   return useMemo(() => {
     if (!reads) return [];
@@ -667,15 +668,25 @@ export function useAnchorMarketData(
             ? (sailPoolAPR.collateral || 0) + (sailPoolAPR.steam || 0)
             : 0;
 
-          // Get projected APRs for this market
-          const projectedCollateralAPR =
-            marketId === "pb-steth" && projectedAPR.collateralPoolAPR !== null
-              ? projectedAPR.collateralPoolAPR
-              : null;
-          const projectedSailAPR =
-            marketId === "pb-steth" && projectedAPR.leveragedPoolAPR !== null
-              ? projectedAPR.leveragedPoolAPR
-              : null;
+          // Projected APR (before pool rewards are live):
+          // projected = wrapped collateral yield * collateral ratio
+          // Example: fxSAVE APY 7% and CR 200% => projected 14%.
+          const collateralSymbolForProj =
+            market?.collateral?.symbol?.toLowerCase?.() || "";
+          const baseYield =
+            collateralSymbolForProj === "fxsave" ||
+            collateralSymbolForProj === "fxusd"
+              ? wrappedCollateralApy.fxSAVEApy
+              : collateralSymbolForProj === "wsteth" ||
+                  collateralSymbolForProj === "steth"
+                ? wrappedCollateralApy.wstETHApy
+                : null;
+          const cr =
+            collateralRatio !== undefined ? Number(collateralRatio) / 1e18 : 0;
+          const projectedAprPercent =
+            baseYield !== null && cr > 0 ? baseYield * cr * 100 : null;
+          const projectedCollateralAPR = projectedAprPercent;
+          const projectedSailAPR = projectedAprPercent;
 
           // Calculate APR ranges (min and max across pools)
           const aprValues = [collateralTotalAPR, sailTotalAPR].filter(
