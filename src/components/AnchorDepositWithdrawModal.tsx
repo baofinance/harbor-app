@@ -1506,7 +1506,8 @@ export const AnchorDepositWithdrawModal = ({
         return genesisPeggedTokenAddress as `0x${string}`;
       }
       // Fall back to market config address
-      return market?.addresses?.peggedToken as `0x${string}` | undefined;
+      const address = market?.addresses?.peggedToken;
+      return address ? (address as `0x${string}`) : null;
     }
 
     // Check if it's native ETH
@@ -1518,7 +1519,7 @@ export const AnchorDepositWithdrawModal = ({
     // collateral.symbol is the wrapped version (what's actually deposited)
     const wrappedCollateralSymbol = market?.collateral?.symbol || "";
     if (normalized === wrappedCollateralSymbol.toLowerCase()) {
-      const address = market?.addresses?.wrappedCollateralToken as `0x${string}` | undefined;
+      const address = market?.addresses?.wrappedCollateralToken;
       if (process.env.NODE_ENV === "development") {
         console.log("[getSelectedAssetAddress] Matched wrapped collateral:", {
           normalized,
@@ -1526,7 +1527,7 @@ export const AnchorDepositWithdrawModal = ({
           address,
         });
       }
-      return address;
+      return address ? (address as `0x${string}`) : null;
     }
 
     // Check if it's underlying collateral token (fxUSD, stETH, etc.)
@@ -1541,7 +1542,8 @@ export const AnchorDepositWithdrawModal = ({
         return stETHAddress as `0x${string}`;
       }
       // For other underlying tokens (like fxUSD), use collateralToken
-      return market?.addresses?.collateralToken as `0x${string}` | undefined;
+      const address = market?.addresses?.collateralToken;
+      return address ? (address as `0x${string}`) : null;
     }
 
     // Backward compatibility fallbacks
@@ -1558,29 +1560,27 @@ export const AnchorDepositWithdrawModal = ({
         return stETHAddress as `0x${string}`;
       } else {
         // For BTC/stETH market, stETH is the wrapped collateral
-        return market?.addresses?.wrappedCollateralToken as
-          | `0x${string}`
-          | undefined;
+        const address = market?.addresses?.wrappedCollateralToken;
+        return address ? (address as `0x${string}`) : null;
       }
     }
 
     // wstETH is wrapped, stETH is underlying
     if (normalized === "wsteth") {
-      return market?.addresses?.wrappedCollateralToken as
-        | `0x${string}`
-        | undefined;
+      const address = market?.addresses?.wrappedCollateralToken;
+      return address ? (address as `0x${string}`) : null;
     }
 
     // fxSAVE is wrapped, fxUSD is underlying
     if (normalized === "fxsave") {
-      return market?.addresses?.wrappedCollateralToken as
-        | `0x${string}`
-        | undefined;
+      const address = market?.addresses?.wrappedCollateralToken;
+      return address ? (address as `0x${string}`) : null;
     }
 
     // fxUSD is the underlying token
     if (normalized === "fxusd") {
-      return market?.addresses?.collateralToken as `0x${string}` | undefined;
+      const address = market?.addresses?.collateralToken;
+      return address ? (address as `0x${string}`) : null;
     }
 
     // Check if it's USDC (standard USDC address on Ethereum mainnet)
