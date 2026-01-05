@@ -1533,16 +1533,35 @@ export const AnchorDepositWithdrawModal = ({
     // collateral.underlyingSymbol is the base token
     const underlyingCollateralSymbol = market?.collateral?.underlyingSymbol || "";
     if (normalized === underlyingCollateralSymbol.toLowerCase()) {
+      // Special case: for stETH in wstETH markets, use underlyingCollateralToken or hardcoded address
+      // Do NOT use collateralToken as it might be wstETH
+      if (normalized === "steth" && wrappedCollateralSymbol.toLowerCase() === "wsteth") {
+        const stETHAddress = market?.addresses?.underlyingCollateralToken || 
+                             "0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84";
+        return stETHAddress as `0x${string}`;
+      }
+      // For other underlying tokens (like fxUSD), use collateralToken
       return market?.addresses?.collateralToken as `0x${string}` | undefined;
     }
 
     // Backward compatibility fallbacks
-    // stETH can be either wrapped (wstETH deposit) or underlying (BTC/stETH market)
+    // stETH can be either wrapped (BTC/stETH market) or underlying (wstETH market)
     if (normalized === "steth") {
-      // For BTC/stETH market, stETH is the wrapped collateral
-      return market?.addresses?.wrappedCollateralToken as
-        | `0x${string}`
-        | undefined;
+      // Check if this is a wstETH market (stETH is underlying) or BTC/stETH market (stETH is wrapped)
+      const isWstETHMarket = wrappedCollateralSymbol.toLowerCase() === "wsteth";
+      if (isWstETHMarket) {
+        // For wstETH markets, stETH is the underlying collateral
+        // Use underlyingCollateralToken if available (from contracts.ts), otherwise fallback to hardcoded stETH address
+        // NOTE: Do NOT use collateralToken as it might be wstETH in some market configs
+        const stETHAddress = market?.addresses?.underlyingCollateralToken || 
+                             "0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84";
+        return stETHAddress as `0x${string}`;
+      } else {
+        // For BTC/stETH market, stETH is the wrapped collateral
+        return market?.addresses?.wrappedCollateralToken as
+          | `0x${string}`
+          | undefined;
+      }
     }
 
     // wstETH is wrapped, stETH is underlying

@@ -103,6 +103,7 @@ export function TokenSelectorDropdown({
           {selectedToken ? (
             <>
               <TokenIconClient
+                key={selectedToken.symbol}
                 symbol={selectedToken.symbol}
                 size={20}
                 variant="branded"
@@ -145,6 +146,7 @@ export function TokenSelectorDropdown({
                   }`}
                 >
                   <TokenIconClient
+                    key={token.symbol}
                     symbol={token.symbol}
                     size={20}
                     variant="branded"
