@@ -2800,8 +2800,12 @@ export const AnchorDepositWithdrawModal = ({
     
     // If depositing USDC (for USD market), convert USDC → fxUSD → fxSAVE
     if (depositAsset === "USDC" && isFxSAVEMarket) {
-      // Parse USDC with 6 decimals
-      const usdcAmount = BigInt(Math.floor(parseFloat(amount) * 10**6));
+      // Parse USDC with 6 decimals - use debouncedAmount and validate
+      const amountFloat = parseFloat(debouncedAmount);
+      if (isNaN(amountFloat) || amountFloat <= 0) {
+        return undefined;
+      }
+      const usdcAmount = BigInt(Math.floor(amountFloat * 10**6));
       // Convert to 18 decimals
       const usdcIn18Decimals = usdcAmount * 10n**12n;
       // Convert fxUSD to fxSAVE
@@ -3560,10 +3564,14 @@ export const AnchorDepositWithdrawModal = ({
   const [depositLimitWarning, setDepositLimitWarning] = useState<string | null>(null);
   const [tempMaxWarning, setTempMaxWarning] = useState<string | null>(null);
   const tempWarningTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const lastAdjustedAmountRef = useRef<string | null>(null);
 
   // Helper function to calculate max acceptable amount for swap deposits
   const calculateMaxSwapAmount = useMemo(() => {
-    if (!anyTokenDeposit.needsSwap || !swapDryRunOutput || !swappedAmountForDryRun || !anyTokenDeposit.swapQuote) {
+    // Skip for direct deposits (wstETH, fxSAVE) that don't need swaps
+    const isWrappedCollateralDeposit = selectedDepositAsset?.toLowerCase() === "wsteth" || 
+                                        selectedDepositAsset?.toLowerCase() === "fxsave";
+    if (!anyTokenDeposit.needsSwap || !swapDryRunOutput || !swappedAmountForDryRun || !anyTokenDeposit.swapQuote || isWrappedCollateralDeposit) {
       return null;
     }
 
@@ -3612,12 +3620,18 @@ export const AnchorDepositWithdrawModal = ({
     activeWrappedCollateralSymbol,
     marketForDepositAsset,
     selectedMarket,
+    selectedDepositAsset,
   ]);
 
   // Check swap dry run for max acceptable amount and auto-adjust
+  // Skip this entirely for direct deposits (wstETH, fxSAVE) that don't need swaps
   useEffect(() => {
-    if (!anyTokenDeposit.needsSwap || activeTab !== "deposit") {
+    // Skip if not a swap deposit, or if it's a wrapped collateral (direct deposit, no swap needed)
+    const isWrappedCollateralDeposit = selectedDepositAsset?.toLowerCase() === "wsteth" || 
+                                        selectedDepositAsset?.toLowerCase() === "fxsave";
+    if (!anyTokenDeposit.needsSwap || activeTab !== "deposit" || isWrappedCollateralDeposit) {
       setDepositLimitWarning(null);
+      lastAdjustedAmountRef.current = null; // Reset tracking when not applicable
       return;
     }
 
@@ -3676,14 +3690,25 @@ export const AnchorDepositWithdrawModal = ({
     }
 
     // If amount exceeds the max, always adjust it down
+    // But only if we haven't already adjusted to this value (prevent infinite loops)
     if (exceedsMax) {
+      const adjustedAmount = calculateMaxSwapAmount;
+      
+      // Prevent infinite loop: don't adjust if we've already adjusted to this value
+      if (lastAdjustedAmountRef.current === adjustedAmount) {
+        if (process.env.NODE_ENV === "development") {
+          console.log("[Swap Dry Run] Skipping adjustment - already adjusted to this value:", adjustedAmount);
+        }
+        return;
+      }
+      
       if (process.env.NODE_ENV === "development") {
         console.log("[Swap Dry Run] Adjusting amount from", currentInputAmount, "to", calculateMaxSwapAmount, "difference:", difference);
       }
       // Always adjust - use the calculated max
-      const adjustedAmount = calculateMaxSwapAmount;
       setAmount(adjustedAmount);
       anyTokenDeposit.setAmount(adjustedAmount); // Sync with hook
+      lastAdjustedAmountRef.current = adjustedAmount; // Track the adjusted amount
       
       if (process.env.NODE_ENV === "development") {
         console.log("[Swap Dry Run] Amount adjusted successfully to:", adjustedAmount);
@@ -3745,13 +3770,16 @@ export const AnchorDepositWithdrawModal = ({
         tempWarningTimerRef.current = null;
       }, 5000);
     } else {
-      // Input is below the max, clear warnings
+      // Input is below the max, clear warnings and reset adjustment tracking
       // Only clear if the amount is significantly below the max (not just slightly)
       // Use a larger threshold (1% of max) to ensure warnings persist when near the max
       // This prevents the warning from disappearing when calculateMaxSwapAmount is recalculated
       const clearThreshold = Math.max(0.001, maxInputAmountFloat * 0.01); // At least 0.001 or 1% of max
       const significantDifference = currentInputAmount < maxInputAmountFloat - clearThreshold;
       if (significantDifference) {
+        // Reset adjustment tracking when amount is significantly below max
+        // This allows re-adjustment if user increases amount again
+        lastAdjustedAmountRef.current = null;
         if (process.env.NODE_ENV === "development") {
           console.log("[Swap Dry Run] Clearing warning - amount significantly below max:", {
             currentInputAmount,
@@ -3810,11 +3838,31 @@ export const AnchorDepositWithdrawModal = ({
     anyTokenDeposit.setAmount,
   ]);
 
+  // Reset adjustment tracking when deposit asset changes
+  useEffect(() => {
+    lastAdjustedAmountRef.current = null;
+  }, [selectedDepositAsset]);
+
   // Check direct deposit dry run for max acceptable amount
   useEffect(() => {
     // For swap deposits, this useEffect should not run - handled by swap dry run useEffect
     if (anyTokenDeposit.needsSwap) {
       return; // Don't clear warning - it's managed by the swap dry run useEffect
+    }
+    
+    // Skip auto-adjustment for wrapped collateral deposits (wstETH, fxSAVE) - they should go directly to minter
+    // The dry run might show limits, but we shouldn't auto-adjust for these direct deposits
+    const isWrappedCollateralDeposit = selectedDepositAsset?.toLowerCase() === "wsteth" || 
+                                        selectedDepositAsset?.toLowerCase() === "fxsave";
+    if (isWrappedCollateralDeposit) {
+      setDepositLimitWarning(null);
+      if (tempWarningTimerRef.current) {
+        clearTimeout(tempWarningTimerRef.current);
+        tempWarningTimerRef.current = null;
+      }
+      setTempMaxWarning(null);
+      lastAdjustedAmountRef.current = null;
+      return;
     }
     
     if (isDirectPeggedDeposit || !dryRunData || !parsedAmount || activeTab !== "deposit") {
@@ -3894,8 +3942,18 @@ export const AnchorDepositWithdrawModal = ({
       const maxInputAmountFloat = parseFloat(formattedMax);
       
       // Only auto-adjust if user's input EXCEEDS the max
+      // But prevent infinite loops by checking if we've already adjusted to this value
       if (currentInputAmount > maxInputAmountFloat) {
+        // Prevent infinite loop: don't adjust if we've already adjusted to this value
+        if (lastAdjustedAmountRef.current === formattedMax) {
+          if (process.env.NODE_ENV === "development") {
+            console.log("[Direct Deposit Dry Run] Skipping adjustment - already adjusted to this value:", formattedMax);
+          }
+          return;
+        }
+        
         setAmount(formattedMax);
+        lastAdjustedAmountRef.current = formattedMax; // Track the adjusted amount
         setDepositLimitWarning(
           `Maximum deposit limited to ${formattedMax} ${selectedDepositAsset || activeCollateralSymbol} to maintain collateral ratio.`
         );
@@ -3916,6 +3974,8 @@ export const AnchorDepositWithdrawModal = ({
         }, 3000);
       } else {
         // Input is within limits, just clear any previous warning
+        // Reset adjustment tracking when amount is within limits
+        lastAdjustedAmountRef.current = null;
         setDepositLimitWarning(null);
       }
     } else {
