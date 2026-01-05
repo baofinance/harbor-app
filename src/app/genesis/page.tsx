@@ -1069,7 +1069,7 @@ export default function GenesisIndexPage() {
                   </svg>
                 </a>
                 <a
-                  href="https://discord.gg/harborfin"
+                  href="https://discord.com/invite/BW3P62vJXT"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="p-2 bg-[#5865F2] hover:bg-[#4752C4] text-white  transition-colors"
