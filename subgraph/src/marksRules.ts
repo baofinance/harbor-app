@@ -30,14 +30,16 @@ export function getOrCreateMarksRule(
       rule.marksPerDollarPerDay = BigDecimal.fromString("1");
       rule.bonusMultiplier = null;
       rule.hasPeriod = false;
-      rule.forfeitOnWithdrawal = true;
-      rule.forfeitPercentage = BigDecimal.fromString("100"); // 100% forfeit
+      // No forfeiture for non-genesis products: marks accrue up to withdrawal, then stop.
+      rule.forfeitOnWithdrawal = false;
+      rule.forfeitPercentage = null;
     } else if (contractType == "stabilityPoolSail") {
       rule.marksPerDollarPerDay = BigDecimal.fromString("2");
       rule.bonusMultiplier = null;
       rule.hasPeriod = false;
-      rule.forfeitOnWithdrawal = true;
-      rule.forfeitPercentage = BigDecimal.fromString("100"); // 100% forfeit
+      // No forfeiture for non-genesis products: marks accrue up to withdrawal, then stop.
+      rule.forfeitOnWithdrawal = false;
+      rule.forfeitPercentage = null;
     } else if (contractType == "sailToken") {
       rule.marksPerDollarPerDay = BigDecimal.fromString("5");
       rule.bonusMultiplier = null;
