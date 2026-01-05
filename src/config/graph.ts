@@ -106,6 +106,12 @@ export const getSailPriceGraphUrl = (): string => {
   return url;
 };
 
+// Optional Sail Price Graph URL helper (use in UI hooks to avoid hard crashes when not configured).
+export const getSailPriceGraphUrlOptional = (): string | null => {
+  const url = GRAPH_CONFIG.sailPrice.url;
+  return url && url.length > 0 ? url : null;
+};
+
 /**
  * Helper function to retry a GraphQL query with exponential backoff
  * Useful for handling transient indexer errors
