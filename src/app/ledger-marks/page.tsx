@@ -316,22 +316,20 @@ export default function LedgerMarksLeaderboard() {
     error: anchorLedgerMarksError,
   } = useAnchorLedgerMarks({ enabled: true }); // Enable subgraph queries
 
- // Calculate anchor marks per day (ha tokens + collateral stability pools)
+ // Calculate anchor marks per day (ha tokens + ALL stability pools)
+ // Note: Both collateral and "sail" stability pools accept ha token deposits.
  const anchorMarksPerDay = useMemo(() => {
  if (!anchorMarksData) return 0;
  return (
  anchorMarksData.haTokenMarksPerDay +
- anchorMarksData.collateralPoolMarksPerDay
+ anchorMarksData.collateralPoolMarksPerDay +
+ anchorMarksData.sailPoolMarksPerDay
  );
  }, [anchorMarksData]);
 
- // Calculate sail marks per day (sail stability pools + sail token holdings)
+ // Calculate sail marks per day (sail token holdings only)
  const sailMarksPerDay = useMemo(() => {
  let total = 0;
- // Add sail stability pool marks
- if (anchorMarksData) {
- total += anchorMarksData.sailPoolMarksPerDay;
- }
  // Add sail token holdings marks
  if (sailBalances) {
  total += sailBalances.reduce(
@@ -340,7 +338,7 @@ export default function LedgerMarksLeaderboard() {
  );
  }
  return total;
- }, [anchorMarksData, sailBalances]);
+ }, [sailBalances]);
 
  // Fetch genesis/maiden voyage marks per day for connected user
  const { data: genesisMarksData, isLoading: isLoadingGenesisMarks } =
@@ -882,20 +880,12 @@ export default function LedgerMarksLeaderboard() {
  const user = userMap.get(userAddress)!;
  user.totalMarks += estimatedMarks;
 
- // Categorize by pool type: collateral pools → anchor marks, sail pools → sail marks
+ // Categorize stability pool deposits:
+ // Both collateral pools and "sail" pools accept ha token deposits, so they count as ANCHOR marks.
  const poolType = deposit.poolType?.toLowerCase();
- if (poolType ==="collateral" || poolType ==="anchor") {
+ // Default all pools to anchor marks.
+ // Keep poolType for UI/debugging if needed.
  user.anchorMarks += estimatedMarks;
- // Only add marksPerDay to anchor marks for collateral pools
- // (marksPerDay will be added to total marksPerDay below)
- } else if (poolType ==="sail" || poolType ==="leveraged") {
- user.sailMarks += estimatedMarks;
- // Only add marksPerDay to sail marks for sail pools
- // (marksPerDay will be added to total marksPerDay below)
- } else {
- // Default to anchor marks if pool type is unknown
- user.anchorMarks += estimatedMarks;
- }
 
  // Always add marksPerDay to total marksPerDay
  user.marksPerDay += marksPerDay;
