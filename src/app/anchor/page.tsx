@@ -357,6 +357,7 @@ export default function AnchorPage() {
     peggedPriceUSDMap,
     mergedPeggedPriceMap,
     ethPrice,
+    btcPrice,
     fxUSDPrice,
     fxSAVEPrice,
     usdcPrice,

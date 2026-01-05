@@ -354,6 +354,7 @@ export function useAnchorPrices(
     peggedPriceUSDMap,
     mergedPeggedPriceMap,
     ethPrice,
+    btcPrice,
     fxUSDPrice,
     fxSAVEPrice,
     usdcPrice,

@@ -21,6 +21,7 @@ import {
   getActiveBoostMultiplier,
   getOrCreateMarketBoostWindow,
 } from "./marksBoost";
+import { ensureUserRegistered } from "./userRegistry";
 
 // Constants
 const SECONDS_PER_DAY = BigDecimal.fromString("86400");
@@ -142,6 +143,7 @@ export function handleStabilityPoolDeposit(event: StabilityPoolDepositEvent): vo
   );
   
   const deposit = getOrCreateStabilityPoolDeposit(poolAddress, userAddress);
+  ensureUserRegistered(poolAddress, userAddress);
   
   // Accumulate marks before balance change
   accumulateMarks(deposit, event.block);
@@ -186,6 +188,7 @@ export function handleStabilityPoolWithdraw(event: StabilityPoolWithdrawEvent): 
   );
   
   const deposit = getOrCreateStabilityPoolDeposit(poolAddress, userAddress);
+  ensureUserRegistered(poolAddress, userAddress);
   
   // Accumulate marks before balance change
   accumulateMarks(deposit, event.block);
@@ -229,6 +232,7 @@ export function handleStabilityPoolDepositChange(event: UserDepositChangeEvent):
   );
   
   const deposit = getOrCreateStabilityPoolDeposit(poolAddress, userAddress);
+  ensureUserRegistered(poolAddress, userAddress);
   
   // Accumulate marks before balance change
   accumulateMarks(deposit, event.block);

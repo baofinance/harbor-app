@@ -25,6 +25,7 @@ import {
   getActiveBoostMultiplier,
   getOrCreateMarketBoostWindow,
 } from "./marksBoost";
+import { ensureUserRegistered } from "./userRegistry";
 
 // Constants
 const SECONDS_PER_DAY = BigDecimal.fromString("86400");
@@ -238,6 +239,7 @@ export function handleSailTokenTransfer(event: TransferEvent): void {
     senderBalance.lastUpdated = timestamp;
     senderBalance.save();
     updateSailTokenMarksInTotal(fromAddress, senderBalance, timestamp);
+    ensureUserRegistered(tokenAddress, fromAddress);
   }
 
   // Handle receiver (if not zero address)
@@ -261,6 +263,7 @@ export function handleSailTokenTransfer(event: TransferEvent): void {
     receiverBalance.lastUpdated = timestamp;
     receiverBalance.save();
     updateSailTokenMarksInTotal(toAddress, receiverBalance, timestamp);
+    ensureUserRegistered(tokenAddress, toAddress);
   }
 }
 
