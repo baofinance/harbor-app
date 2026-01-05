@@ -219,11 +219,17 @@ function MarketCard({
  market.peggedTokenBalance
  );
 
-  // Calculate total TVL in USD using the same approach as Anchor expanded view:
+  // Prefer the minter's peggedTokenPrice (USD-wei, 1e18 = $1) to match Anchor page logic.
+  // Fallback to the oracle-derived estimate if the minter price isn't available.
+  const peggedPriceUSD =
+    market.peggedTokenPrice && market.peggedTokenPrice > 0n
+      ? Number(market.peggedTokenPrice) / 1e18
+      : pegPriceUSD || 0;
+
   // tvlUSD = (poolTVL / 1e18) * peggedPriceUSD
   const totalTVLUSD = pools.reduce((sum, pool) => {
     const tvlTokens = Number(pool.tvl) / 1e18;
-    return sum + tvlTokens * (pegPriceUSD || 0);
+    return sum + tvlTokens * peggedPriceUSD;
   }, 0);
 
  const distanceToThreshold =
@@ -465,7 +471,7 @@ function MarketCard({
  <div className="bg-[#1E4775]/5 p-2">
  <div className="text-[#1E4775]/60 text-[10px]">TVL (USD)</div>
  <div className="text-[#1E4775] font-mono font-semibold">
- {formatCompactUSD((Number(pool.tvl) / 1e18) * (pegPriceUSD || 0))}
+ {formatCompactUSD((Number(pool.tvl) / 1e18) * peggedPriceUSD)}
  </div>
  <div className="text-[#1E4775]/50 text-[10px] mt-0.5">
  {formatTokenBalance(pool.tvl)}
