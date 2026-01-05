@@ -1015,7 +1015,7 @@ export default function LedgerMarksLeaderboard() {
               Ledger Marks
             </h1>
             {/* Compact Social Buttons */}
-            <div className="hidden md:flex flex-col items-end gap-2 border border-white/30  px-3 py-2">
+            <div className="hidden md:flex flex-col items-end gap-2 px-3 py-2">
               <div className="text-white text-xs font-medium whitespace-nowrap">
                 follow to stay up to date
               </div>
