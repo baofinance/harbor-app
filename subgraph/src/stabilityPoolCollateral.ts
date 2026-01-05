@@ -17,6 +17,7 @@ import { StabilityPool } from "../generated/StabilityPoolCollateral_ETH_fxUSD/St
 // Note: WrappedPriceOracle bindings are generated per data source, but we'll use a generic approach
 // Import from Genesis_ETH_fxUSD as a reference (same ABI structure)
 import { WrappedPriceOracle } from "../generated/Genesis_ETH_fxUSD/WrappedPriceOracle";
+import { ChainlinkAggregator } from "../generated/HaToken_haETH/ChainlinkAggregator";
 import {
   ANCHOR_BOOST_MULTIPLIER,
   getActiveBoostMultiplier,
@@ -29,6 +30,35 @@ const DEFAULT_MULTIPLIER = BigDecimal.fromString("1.0");
 const DEFAULT_MARKS_PER_DOLLAR_PER_DAY = BigDecimal.fromString("1.0");
 const POOL_TYPE = "collateral";
 const E18 = BigDecimal.fromString("1000000000000000000"); // 10^18
+
+// Chainlink (mainnet) feeds
+const ETH_USD_FEED = Address.fromString("0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419");
+const BTC_USD_FEED = Address.fromString("0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c");
+
+function chainlinkUsd(feed: Address): BigDecimal {
+  const oracle = ChainlinkAggregator.bind(feed);
+  const res = oracle.try_latestAnswer();
+  if (res.reverted) return BigDecimal.fromString("0");
+  // standard Chainlink 8 decimals
+  return res.value.toBigDecimal().div(BigDecimal.fromString("100000000"));
+}
+
+function pegUsdForPool(poolAddress: string): BigDecimal {
+  // ETH/fxUSD collateral pool
+  if (poolAddress == "0xfb9747b30ee1b1df2434255c7768c1ebfa7e89bb") {
+    return chainlinkUsd(ETH_USD_FEED);
+  }
+  // BTC/fxUSD collateral pool
+  if (poolAddress == "0x5378fbf71627e352211779bd4cd09b0a791015ac") {
+    return chainlinkUsd(BTC_USD_FEED);
+  }
+  // BTC/stETH collateral pool
+  if (poolAddress == "0x86297bd2de92e91486c7e3b32cb5bc18f0a363bc") {
+    return chainlinkUsd(BTC_USD_FEED);
+  }
+  // Default: assume USD peg (1.0)
+  return BigDecimal.fromString("1.0");
+}
 
 // Price oracle addresses for each stability pool (collateral pools use wrapped collateral tokens)
 // Format: pool address -> price oracle address
@@ -92,11 +122,17 @@ function getWrappedTokenPriceUSD(poolAddress: Bytes, block: ethereum.Block): Big
   const maxWrappedRate = result.value.value3; // maxWrappedRate
   
   // Convert from BigInt (18 decimals) to BigDecimal
-  const underlyingPriceUSD = maxUnderlyingPrice.toBigDecimal().div(E18);
+  // IMPORTANT: For ETH/BTC-pegged markets, the oracle returns prices in PEG units, not USD.
+  // We must convert PEG->USD using Chainlink.
+  const underlyingPriceInPeg = maxUnderlyingPrice.toBigDecimal().div(E18);
   const wrappedRate = maxWrappedRate.toBigDecimal().div(E18);
   
-  // Calculate wrapped token price: underlying price * wrapped rate
-  const wrappedTokenPriceUSD = underlyingPriceUSD.times(wrappedRate);
+  // Calculate wrapped token price in peg units then convert peg->USD
+  const wrappedTokenPriceInPeg = underlyingPriceInPeg.times(wrappedRate);
+  const pegUsd = pegUsdForPool(poolAddressStr);
+  const wrappedTokenPriceUSD = pegUsd.gt(BigDecimal.fromString("0"))
+    ? wrappedTokenPriceInPeg.times(pegUsd)
+    : getFallbackPriceForPool(poolAddressStr);
   
   // Ensure we have a valid price
   if (wrappedTokenPriceUSD.le(BigDecimal.fromString("0"))) {
