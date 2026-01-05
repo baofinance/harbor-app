@@ -147,13 +147,21 @@ function poolType(pool: Address): string {
   return "stabilityPoolCollateral";
 }
 
-function poolAssetUsd(pool: Address, haEthUsd: BigDecimal, haBtcUsd: BigDecimal, hsEthUsd: BigDecimal, hsBtcUsd: BigDecimal, hsStethUsd: BigDecimal): BigDecimal {
+function poolAssetUsd(
+  pool: Address,
+  haEthUsd: BigDecimal,
+  haBtcUsd: BigDecimal,
+  hsEthUsd: BigDecimal,
+  hsBtcUsd: BigDecimal,
+  hsStethUsd: BigDecimal
+): BigDecimal {
   if (pool.equals(POOL_COLL_ETH_FXUSD)) return haEthUsd;
   if (pool.equals(POOL_COLL_BTC_FXUSD)) return haBtcUsd;
   if (pool.equals(POOL_COLL_BTC_STETH)) return haBtcUsd;
-  if (pool.equals(POOL_LEV_ETH_FXUSD)) return hsEthUsd;
-  if (pool.equals(POOL_LEV_BTC_FXUSD)) return hsBtcUsd;
-  if (pool.equals(POOL_LEV_BTC_STETH)) return hsStethUsd;
+  // Leveraged pools deposit ha tokens (confirmed): treat as ha-valued deposits
+  if (pool.equals(POOL_LEV_ETH_FXUSD)) return haEthUsd;
+  if (pool.equals(POOL_LEV_BTC_FXUSD)) return haBtcUsd;
+  if (pool.equals(POOL_LEV_BTC_STETH)) return haBtcUsd;
   return BigDecimal.fromString("0");
 }
 
