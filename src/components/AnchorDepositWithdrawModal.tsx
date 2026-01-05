@@ -1506,7 +1506,8 @@ export const AnchorDepositWithdrawModal = ({
         return genesisPeggedTokenAddress as `0x${string}`;
       }
       // Fall back to market config address
-      return market?.addresses?.peggedToken as `0x${string}` | undefined;
+      const address = market?.addresses?.peggedToken;
+      return address ? (address as `0x${string}`) : null;
     }
 
     // Check if it's native ETH
@@ -1518,7 +1519,7 @@ export const AnchorDepositWithdrawModal = ({
     // collateral.symbol is the wrapped version (what's actually deposited)
     const wrappedCollateralSymbol = market?.collateral?.symbol || "";
     if (normalized === wrappedCollateralSymbol.toLowerCase()) {
-      const address = market?.addresses?.wrappedCollateralToken as `0x${string}` | undefined;
+      const address = market?.addresses?.wrappedCollateralToken;
       if (process.env.NODE_ENV === "development") {
         console.log("[getSelectedAssetAddress] Matched wrapped collateral:", {
           normalized,
@@ -1526,42 +1527,60 @@ export const AnchorDepositWithdrawModal = ({
           address,
         });
       }
-      return address;
+      return address ? (address as `0x${string}`) : null;
     }
 
     // Check if it's underlying collateral token (fxUSD, stETH, etc.)
     // collateral.underlyingSymbol is the base token
     const underlyingCollateralSymbol = market?.collateral?.underlyingSymbol || "";
     if (normalized === underlyingCollateralSymbol.toLowerCase()) {
-      return market?.addresses?.collateralToken as `0x${string}` | undefined;
+      // Special case: for stETH in wstETH markets, use underlyingCollateralToken or hardcoded address
+      // Do NOT use collateralToken as it might be wstETH
+      if (normalized === "steth" && wrappedCollateralSymbol.toLowerCase() === "wsteth") {
+        const stETHAddress = market?.addresses?.underlyingCollateralToken || 
+                             "0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84";
+        return stETHAddress as `0x${string}`;
+      }
+      // For other underlying tokens (like fxUSD), use collateralToken
+      const address = market?.addresses?.collateralToken;
+      return address ? (address as `0x${string}`) : null;
     }
 
     // Backward compatibility fallbacks
-    // stETH can be either wrapped (wstETH deposit) or underlying (BTC/stETH market)
+    // stETH can be either wrapped (BTC/stETH market) or underlying (wstETH market)
     if (normalized === "steth") {
-      // For BTC/stETH market, stETH is the wrapped collateral
-      return market?.addresses?.wrappedCollateralToken as
-        | `0x${string}`
-        | undefined;
+      // Check if this is a wstETH market (stETH is underlying) or BTC/stETH market (stETH is wrapped)
+      const isWstETHMarket = wrappedCollateralSymbol.toLowerCase() === "wsteth";
+      if (isWstETHMarket) {
+        // For wstETH markets, stETH is the underlying collateral
+        // Use underlyingCollateralToken if available (from contracts.ts), otherwise fallback to hardcoded stETH address
+        // NOTE: Do NOT use collateralToken as it might be wstETH in some market configs
+        const stETHAddress = market?.addresses?.underlyingCollateralToken || 
+                             "0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84";
+        return stETHAddress as `0x${string}`;
+      } else {
+        // For BTC/stETH market, stETH is the wrapped collateral
+        const address = market?.addresses?.wrappedCollateralToken;
+        return address ? (address as `0x${string}`) : null;
+      }
     }
 
     // wstETH is wrapped, stETH is underlying
     if (normalized === "wsteth") {
-      return market?.addresses?.wrappedCollateralToken as
-        | `0x${string}`
-        | undefined;
+      const address = market?.addresses?.wrappedCollateralToken;
+      return address ? (address as `0x${string}`) : null;
     }
 
     // fxSAVE is wrapped, fxUSD is underlying
     if (normalized === "fxsave") {
-      return market?.addresses?.wrappedCollateralToken as
-        | `0x${string}`
-        | undefined;
+      const address = market?.addresses?.wrappedCollateralToken;
+      return address ? (address as `0x${string}`) : null;
     }
 
     // fxUSD is the underlying token
     if (normalized === "fxusd") {
-      return market?.addresses?.collateralToken as `0x${string}` | undefined;
+      const address = market?.addresses?.collateralToken;
+      return address ? (address as `0x${string}`) : null;
     }
 
     // Check if it's USDC (standard USDC address on Ethereum mainnet)
@@ -2800,13 +2819,24 @@ export const AnchorDepositWithdrawModal = ({
     
     // If depositing USDC (for USD market), convert USDC → fxUSD → fxSAVE
     if (depositAsset === "USDC" && isFxSAVEMarket) {
-      // Parse USDC with 6 decimals
-      const usdcAmount = BigInt(Math.floor(parseFloat(amount) * 10**6));
+      // Parse USDC with 6 decimals - use debouncedAmount and validate
+      const amountFloat = parseFloat(debouncedAmount);
+      if (isNaN(amountFloat) || amountFloat <= 0) {
+        return undefined;
+      }
+      const usdcAmount = BigInt(Math.floor(amountFloat * 10**6));
       // Convert to 18 decimals
       const usdcIn18Decimals = usdcAmount * 10n**12n;
       // Convert fxUSD to fxSAVE
       const wrappedRate = marketForDepositAsset?.wrappedRate || selectedMarket?.wrappedRate || 10n**18n;
       return (usdcIn18Decimals * 10n**18n) / wrappedRate;
+    }
+    
+    // If depositing fxUSD (for USD market), convert fxUSD → fxSAVE
+    if (depositAsset === "fxUSD" && isFxSAVEMarket) {
+      // fxUSD is already in 18 decimals, just convert to fxSAVE using wrapped rate
+      const wrappedRate = marketForDepositAsset?.wrappedRate || selectedMarket?.wrappedRate || 10n**18n;
+      return (inputAmount * 10n**18n) / wrappedRate;
     }
     
     // If depositing ETH (for ETH market), convert ETH → wstETH
@@ -2816,22 +2846,65 @@ export const AnchorDepositWithdrawModal = ({
       return (inputAmount * 10n**18n) / wrappedRate;
     }
     
+    // If depositing stETH (for ETH market), convert stETH → wstETH
+    if (depositAsset === "stETH" && isWstETHMarket) {
+      // stETH → wstETH (using wrapped rate)
+      const wrappedRate = marketForDepositAsset?.wrappedRate || selectedMarket?.wrappedRate || 10n**18n;
+      return (inputAmount * 10n**18n) / wrappedRate;
+    }
+    
     // For other assets (swap assets handled separately), return undefined
     return undefined;
   }, [debouncedAmount, activeTab, selectedDepositAsset, collateralSymbol, activeWrappedCollateralSymbol, peggedTokenSymbol, marketForDepositAsset, selectedMarket]);
+
+  // For ETH/stETH deposits, query wstETH contract for accurate conversion rate
+  const wstETHAddressForConversion = useMemo(() => {
+    const depositAsset = selectedDepositAsset || collateralSymbol;
+    const isWstETHMarket = activeWrappedCollateralSymbol === "wstETH";
+    if ((depositAsset === "ETH" || depositAsset === collateralSymbol || depositAsset === "stETH") && isWstETHMarket) {
+      return marketForDepositAsset?.addresses?.wrappedCollateralToken || selectedMarket?.addresses?.wrappedCollateralToken;
+    }
+    return undefined;
+  }, [selectedDepositAsset, collateralSymbol, activeWrappedCollateralSymbol, marketForDepositAsset, selectedMarket]);
+
+  const ethOrStethAmount = useMemo(() => {
+    const depositAsset = selectedDepositAsset || collateralSymbol;
+    if ((depositAsset === "ETH" || depositAsset === collateralSymbol || depositAsset === "stETH") && debouncedAmount && parseFloat(debouncedAmount) > 0) {
+      return parseEther(debouncedAmount);
+    }
+    return undefined;
+  }, [selectedDepositAsset, collateralSymbol, debouncedAmount]);
+
+  const { data: wstETHAmountFromContract } = useContractRead({
+    address: wstETHAddressForConversion as `0x${string}`,
+    abi: WSTETH_ABI,
+    functionName: "getWstETHByStETH",
+    args: ethOrStethAmount ? [ethOrStethAmount] : undefined,
+    query: {
+      enabled: !!wstETHAddressForConversion && !!ethOrStethAmount && activeTab === "deposit" && isOpen,
+    },
+  });
+
+  // Use wstETH contract rate if available, otherwise fall back to depositAmountInWrappedCollateral
+  const accurateDepositAmountInWrappedCollateral = useMemo(() => {
+    if (wstETHAmountFromContract) {
+      return wstETHAmountFromContract as bigint;
+    }
+    return depositAmountInWrappedCollateral;
+  }, [wstETHAmountFromContract, depositAmountInWrappedCollateral]);
 
   // Calculate expected output based on active tab - use Anvil hook when on Anvil
   const { data: anvilExpectedMintOutput } = useContractRead({
     address: minterAddress as `0x${string}`,
     abi: minterABI,
     functionName: "mintPeggedTokenDryRun",
-    args: depositAmountInWrappedCollateral ? [depositAmountInWrappedCollateral] : undefined,
+    args: accurateDepositAmountInWrappedCollateral ? [accurateDepositAmountInWrappedCollateral] : undefined,
     enabled:
       shouldUseAnvilHook &&
       !!minterAddress &&
       isValidMinterAddress &&
-      !!depositAmountInWrappedCollateral &&
-      depositAmountInWrappedCollateral > 0n &&
+      !!accurateDepositAmountInWrappedCollateral &&
+      accurateDepositAmountInWrappedCollateral > 0n &&
       isOpen &&
       activeTab === "deposit",
   });
@@ -2840,14 +2913,14 @@ export const AnchorDepositWithdrawModal = ({
     address: minterAddress as `0x${string}`,
     abi: minterABI,
     functionName: "mintPeggedTokenDryRun",
-    args: depositAmountInWrappedCollateral ? [depositAmountInWrappedCollateral] : undefined,
+    args: accurateDepositAmountInWrappedCollateral ? [accurateDepositAmountInWrappedCollateral] : undefined,
     query: {
       enabled:
         !shouldUseAnvilHook &&
         !!minterAddress &&
         isValidMinterAddress &&
-        !!depositAmountInWrappedCollateral &&
-        depositAmountInWrappedCollateral > 0n &&
+        !!accurateDepositAmountInWrappedCollateral &&
+        accurateDepositAmountInWrappedCollateral > 0n &&
         isOpen &&
         activeTab === "deposit",
       retry: 1,
@@ -3245,12 +3318,22 @@ export const AnchorDepositWithdrawModal = ({
   }
 
   // Dry run query using Anvil hook for local development
+  // For ETH/stETH deposits, use accurate wstETH amount for fee calculation dry run
+  const amountForFeeDryRun = useMemo(() => {
+    // If we have accurate wstETH amount from contract, use it
+    if (wstETHAmountFromContract) {
+      return wstETHAmountFromContract as bigint;
+    }
+    // Otherwise use parsedAmount (for direct wstETH deposits or other assets)
+    return parsedAmount;
+  }, [wstETHAmountFromContract, parsedAmount]);
+
   const { data: anvilDryRunData, error: anvilDryRunError } = useContractRead({
     address: feeMinterAddress as `0x${string}`,
     abi: minterABI,
     functionName: "mintPeggedTokenDryRun",
-    args: parsedAmount ? [parsedAmount] : undefined,
-    enabled: shouldUseAnvilHook && dryRunEnabled && !!parsedAmount,
+    args: amountForFeeDryRun ? [amountForFeeDryRun] : undefined,
+    enabled: shouldUseAnvilHook && dryRunEnabled && !!amountForFeeDryRun,
   });
 
   // Dry run query using regular hook for production
@@ -3259,9 +3342,9 @@ export const AnchorDepositWithdrawModal = ({
       address: feeMinterAddress as `0x${string}`,
       abi: minterABI,
       functionName: "mintPeggedTokenDryRun",
-      args: parsedAmount ? [parsedAmount] : undefined,
+      args: amountForFeeDryRun ? [amountForFeeDryRun] : undefined,
       query: {
-        enabled: !shouldUseAnvilHook && dryRunEnabled && !!parsedAmount,
+        enabled: !shouldUseAnvilHook && dryRunEnabled && !!amountForFeeDryRun,
         retry: 1,
       },
     });
@@ -3393,9 +3476,25 @@ export const AnchorDepositWithdrawModal = ({
       const dryRunResult = swapDryRunOutput as [bigint, bigint, bigint, bigint, bigint, bigint] | undefined;
       if (!dryRunResult || dryRunResult.length < 2) return undefined;
 
-      const wrappedFee = dryRunResult[1];
-      // Calculate fee as percentage: (fee / swapped input) * 100
-      const feePercent = (Number(wrappedFee) / Number(swappedAmountForDryRun)) * 100;
+      // Use incentiveRatio (index 0) from dry run to get the fee percentage
+      const incentiveRatio = dryRunResult[0];
+      const incentiveRatioBN = BigInt(incentiveRatio);
+      
+      // Check if minting is disallowed (incentiveRatio === 1e18)
+      const isDisallowed = incentiveRatioBN === 1000000000000000000n; // 1e18
+      if (isDisallowed) {
+        return undefined; // Don't show fee if minting is disallowed
+      }
+      
+      // Convert incentiveRatio to percentage: divide by 1e16 to get percentage
+      let feePercent = 0;
+      if (incentiveRatioBN > 0n) {
+        feePercent = Number(incentiveRatioBN) / 1e16; // convert to percent
+      } else if (incentiveRatioBN < 0n) {
+        // Negative means discount, but we still show it as 0% fee
+        feePercent = 0;
+      }
+      
       return feePercent;
     }
 
@@ -3407,69 +3506,73 @@ export const AnchorDepositWithdrawModal = ({
 
     if (!dryRunData || !parsedAmount || parsedAmount === 0n) return undefined;
 
-    const dryRunResult = dryRunData as
-      | [bigint, bigint, bigint, bigint, bigint, bigint]
-      | undefined;
-    if (!dryRunResult || dryRunResult.length < 2) return undefined;
+    // Handle both array and object formats
+    let dryRunResult: [bigint, bigint, bigint, bigint, bigint, bigint] | undefined;
+    if (Array.isArray(dryRunData)) {
+      dryRunResult = dryRunData as [bigint, bigint, bigint, bigint, bigint, bigint];
+    } else if (typeof dryRunData === "object" && dryRunData !== null) {
+      // Handle object format if returned
+      const obj = dryRunData as any;
+      if (obj.incentiveRatio !== undefined) {
+        dryRunResult = [
+          BigInt(obj.incentiveRatio || 0),
+          BigInt(obj.fee || 0),
+          BigInt(obj.discount || 0),
+          BigInt(obj.peggedMinted || 0),
+          BigInt(obj.price || 0),
+          BigInt(obj.rate || 0),
+        ];
+      }
+    }
+    
+    if (!dryRunResult || dryRunResult.length < 1) {
+      if (process.env.NODE_ENV === "development") {
+        console.warn("[Fee Calculation] Invalid dry run result structure:", dryRunData);
+      }
+      return undefined;
+    }
 
-    const wrappedFee = dryRunResult[1];
+    // Use incentiveRatio (index 0) from dry run to get the fee percentage
+    // This is the correct way as it returns the exact fee percentage for the current CR band
+    // Format: incentiveRatio is in 1e18 units, where 0.25% = 0.0025 * 1e18 = 2500000000000000
+    const incentiveRatio = dryRunResult[0];
+    if (incentiveRatio === undefined || incentiveRatio === null) {
+      if (process.env.NODE_ENV === "development") {
+        console.warn("[Fee Calculation] incentiveRatio is missing from dry run result");
+      }
+      return undefined;
+    }
+    
+    const incentiveRatioBN = BigInt(incentiveRatio);
+    
+    // Check if minting is disallowed (incentiveRatio === 1e18)
+    const isDisallowed = incentiveRatioBN === 1000000000000000000n; // 1e18
+    if (isDisallowed) {
+      return undefined; // Don't show fee if minting is disallowed
+    }
+    
+    // Convert incentiveRatio to percentage: divide by 1e16 to get percentage
+    // Positive values = fee, negative values = discount
+    let feePercent = 0;
+    if (incentiveRatioBN > 0n) {
+      feePercent = Number(incentiveRatioBN) / 1e16; // convert to percent
+    } else if (incentiveRatioBN < 0n) {
+      // Negative means discount, but we still show it as 0% fee
+      feePercent = 0;
+    }
     
     if (process.env.NODE_ENV === "development") {
-      console.log("[Fee Calculation Debug] Raw dry run data:", {
+      console.log("[Fee Calculation Debug] Using incentiveRatio from dry run:", {
+        dryRunData: Array.isArray(dryRunData) ? dryRunData.map(v => typeof v === "bigint" ? v.toString() : String(v)) : dryRunData,
         dryRunResult: dryRunResult.map(v => v.toString()),
-        wrappedFee: wrappedFee.toString(),
+        incentiveRatio: incentiveRatio.toString(),
+        incentiveRatioBN: incentiveRatioBN.toString(),
+        feePercent,
         parsedAmount: parsedAmount.toString(),
         selectedDepositAsset,
         activeCollateralSymbol,
-      });
-    }
-
-    // Check if this is a BTC-pegged market with ETH-based collateral
-    // For BTC markets, the fee is returned in BTC terms, but we're depositing ETH
-    // Need to convert fee from BTC to ETH for accurate percentage calculation
-    const pegTarget = activeMarketForFees?.pegTarget?.toLowerCase() || market?.pegTarget?.toLowerCase();
-    const isBTCMarket = pegTarget === "btc" || pegTarget === "bitcoin";
-    const depositAssetSymbol = selectedDepositAsset?.toLowerCase() || "";
-    const isETHBasedCollateral = 
-      depositAssetSymbol === "eth" || 
-      depositAssetSymbol === "steth" || 
-      depositAssetSymbol === "wsteth" ||
-      activeCollateralSymbol?.toLowerCase() === "wsteth";
-
-    let feeInInputUnits = wrappedFee;
-    
-    // If BTC market with ETH-based collateral, convert fee from BTC to ETH
-    if (isBTCMarket && isETHBasedCollateral && btcPrice && ethPrice && btcPrice > 0 && ethPrice > 0) {
-      // Fee is in BTC, input is in ETH
-      // Convert: feeInETH = feeInBTC * (BTC/USD) / (ETH/USD) = feeInBTC * (BTC/ETH ratio)
-      // BTC/ETH ratio = btcPrice / ethPrice
-      const btcToEthRatio = btcPrice / ethPrice;
-      // wrappedFee is in BTC (18 decimals), convert to ETH (18 decimals)
-      // Since both are in 18 decimals, we can multiply by the ratio directly
-      feeInInputUnits = BigInt(Math.floor(Number(wrappedFee) * btcToEthRatio));
-      
-      if (process.env.NODE_ENV === "development") {
-        console.log("[Fee Calculation] BTC market with ETH collateral:", {
-          wrappedFee: wrappedFee.toString(),
-          btcPrice,
-          ethPrice,
-          btcToEthRatio,
-          feeInInputUnits: feeInInputUnits.toString(),
-          parsedAmount: parsedAmount.toString(),
-        });
-      }
-    }
-
-    // Calculate fee as percentage: (fee / input) * 100
-    const feePercent = (Number(feeInInputUnits) / Number(parsedAmount)) * 100;
-    
-    if (process.env.NODE_ENV === "development") {
-      console.log("[Fee Calculation Final]", {
-        feePercent,
-        feeInInputUnits: feeInInputUnits.toString(),
-        parsedAmount: parsedAmount.toString(),
-        isBTCMarket,
-        isETHBasedCollateral,
+        isWstETH: activeCollateralSymbol?.toLowerCase() === "wsteth",
+        isFxSAVE: activeCollateralSymbol?.toLowerCase() === "fxsave",
       });
     }
     
@@ -3480,10 +3583,14 @@ export const AnchorDepositWithdrawModal = ({
   const [depositLimitWarning, setDepositLimitWarning] = useState<string | null>(null);
   const [tempMaxWarning, setTempMaxWarning] = useState<string | null>(null);
   const tempWarningTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const lastAdjustedAmountRef = useRef<string | null>(null);
 
   // Helper function to calculate max acceptable amount for swap deposits
   const calculateMaxSwapAmount = useMemo(() => {
-    if (!anyTokenDeposit.needsSwap || !swapDryRunOutput || !swappedAmountForDryRun || !anyTokenDeposit.swapQuote) {
+    // Skip for direct deposits (wstETH, fxSAVE) that don't need swaps
+    const isWrappedCollateralDeposit = selectedDepositAsset?.toLowerCase() === "wsteth" || 
+                                        selectedDepositAsset?.toLowerCase() === "fxsave";
+    if (!anyTokenDeposit.needsSwap || !swapDryRunOutput || !swappedAmountForDryRun || !anyTokenDeposit.swapQuote || isWrappedCollateralDeposit) {
       return null;
     }
 
@@ -3532,12 +3639,18 @@ export const AnchorDepositWithdrawModal = ({
     activeWrappedCollateralSymbol,
     marketForDepositAsset,
     selectedMarket,
+    selectedDepositAsset,
   ]);
 
   // Check swap dry run for max acceptable amount and auto-adjust
+  // Skip this entirely for direct deposits (wstETH, fxSAVE) that don't need swaps
   useEffect(() => {
-    if (!anyTokenDeposit.needsSwap || activeTab !== "deposit") {
+    // Skip if not a swap deposit, or if it's a wrapped collateral (direct deposit, no swap needed)
+    const isWrappedCollateralDeposit = selectedDepositAsset?.toLowerCase() === "wsteth" || 
+                                        selectedDepositAsset?.toLowerCase() === "fxsave";
+    if (!anyTokenDeposit.needsSwap || activeTab !== "deposit" || isWrappedCollateralDeposit) {
       setDepositLimitWarning(null);
+      lastAdjustedAmountRef.current = null; // Reset tracking when not applicable
       return;
     }
 
@@ -3596,14 +3709,25 @@ export const AnchorDepositWithdrawModal = ({
     }
 
     // If amount exceeds the max, always adjust it down
+    // But only if we haven't already adjusted to this value (prevent infinite loops)
     if (exceedsMax) {
+      const adjustedAmount = calculateMaxSwapAmount;
+      
+      // Prevent infinite loop: don't adjust if we've already adjusted to this value
+      if (lastAdjustedAmountRef.current === adjustedAmount) {
+        if (process.env.NODE_ENV === "development") {
+          console.log("[Swap Dry Run] Skipping adjustment - already adjusted to this value:", adjustedAmount);
+        }
+        return;
+      }
+      
       if (process.env.NODE_ENV === "development") {
         console.log("[Swap Dry Run] Adjusting amount from", currentInputAmount, "to", calculateMaxSwapAmount, "difference:", difference);
       }
       // Always adjust - use the calculated max
-      const adjustedAmount = calculateMaxSwapAmount;
       setAmount(adjustedAmount);
       anyTokenDeposit.setAmount(adjustedAmount); // Sync with hook
+      lastAdjustedAmountRef.current = adjustedAmount; // Track the adjusted amount
       
       if (process.env.NODE_ENV === "development") {
         console.log("[Swap Dry Run] Amount adjusted successfully to:", adjustedAmount);
@@ -3665,13 +3789,16 @@ export const AnchorDepositWithdrawModal = ({
         tempWarningTimerRef.current = null;
       }, 5000);
     } else {
-      // Input is below the max, clear warnings
+      // Input is below the max, clear warnings and reset adjustment tracking
       // Only clear if the amount is significantly below the max (not just slightly)
       // Use a larger threshold (1% of max) to ensure warnings persist when near the max
       // This prevents the warning from disappearing when calculateMaxSwapAmount is recalculated
       const clearThreshold = Math.max(0.001, maxInputAmountFloat * 0.01); // At least 0.001 or 1% of max
       const significantDifference = currentInputAmount < maxInputAmountFloat - clearThreshold;
       if (significantDifference) {
+        // Reset adjustment tracking when amount is significantly below max
+        // This allows re-adjustment if user increases amount again
+        lastAdjustedAmountRef.current = null;
         if (process.env.NODE_ENV === "development") {
           console.log("[Swap Dry Run] Clearing warning - amount significantly below max:", {
             currentInputAmount,
@@ -3730,11 +3857,31 @@ export const AnchorDepositWithdrawModal = ({
     anyTokenDeposit.setAmount,
   ]);
 
+  // Reset adjustment tracking when deposit asset changes
+  useEffect(() => {
+    lastAdjustedAmountRef.current = null;
+  }, [selectedDepositAsset]);
+
   // Check direct deposit dry run for max acceptable amount
   useEffect(() => {
     // For swap deposits, this useEffect should not run - handled by swap dry run useEffect
     if (anyTokenDeposit.needsSwap) {
       return; // Don't clear warning - it's managed by the swap dry run useEffect
+    }
+    
+    // Skip auto-adjustment for wrapped collateral deposits (wstETH, fxSAVE) - they should go directly to minter
+    // The dry run might show limits, but we shouldn't auto-adjust for these direct deposits
+    const isWrappedCollateralDeposit = selectedDepositAsset?.toLowerCase() === "wsteth" || 
+                                        selectedDepositAsset?.toLowerCase() === "fxsave";
+    if (isWrappedCollateralDeposit) {
+      setDepositLimitWarning(null);
+      if (tempWarningTimerRef.current) {
+        clearTimeout(tempWarningTimerRef.current);
+        tempWarningTimerRef.current = null;
+      }
+      setTempMaxWarning(null);
+      lastAdjustedAmountRef.current = null;
+      return;
     }
     
     if (isDirectPeggedDeposit || !dryRunData || !parsedAmount || activeTab !== "deposit") {
@@ -3790,8 +3937,23 @@ export const AnchorDepositWithdrawModal = ({
           maxAcceptableInUserAsset = Number(formatEther(wrappedCollateralTaken));
         }
       } else {
-        // For USDC, ETH, etc. - use wrapped amount
-        maxAcceptableInUserAsset = Number(formatEther(wrappedCollateralTaken));
+        // For ETH/stETH deposits: convert wstETH back to ETH/stETH using wrapped rate
+        // wrappedCollateralTaken is in wstETH, we need to convert back to ETH/stETH
+        const isWstETHMarket = activeWrappedCollateralSymbol === "wstETH";
+        if (isWstETHMarket && (selectedDepositAsset === "ETH" || selectedDepositAsset === collateralSymbol || selectedDepositAsset === "stETH")) {
+          // wstETH → stETH → ETH (stETH and ETH are 1:1)
+          // stETH = wstETH * wrappedRate / 1e18
+          if (wrappedRate && wrappedRate > 0n) {
+            const stEthAmount = (wrappedCollateralTaken * wrappedRate) / 10n**18n;
+            maxAcceptableInUserAsset = Number(formatEther(stEthAmount));
+          } else {
+            // Fallback: assume 1:1 (shouldn't happen, but safe fallback)
+            maxAcceptableInUserAsset = Number(formatEther(wrappedCollateralTaken));
+          }
+        } else {
+          // For USDC, fxUSD, etc. - use wrapped amount directly
+          maxAcceptableInUserAsset = Number(formatEther(wrappedCollateralTaken));
+        }
       }
       
       const formattedMax = maxAcceptableInUserAsset.toFixed(4);
@@ -3799,8 +3961,18 @@ export const AnchorDepositWithdrawModal = ({
       const maxInputAmountFloat = parseFloat(formattedMax);
       
       // Only auto-adjust if user's input EXCEEDS the max
+      // But prevent infinite loops by checking if we've already adjusted to this value
       if (currentInputAmount > maxInputAmountFloat) {
+        // Prevent infinite loop: don't adjust if we've already adjusted to this value
+        if (lastAdjustedAmountRef.current === formattedMax) {
+          if (process.env.NODE_ENV === "development") {
+            console.log("[Direct Deposit Dry Run] Skipping adjustment - already adjusted to this value:", formattedMax);
+          }
+          return;
+        }
+        
         setAmount(formattedMax);
+        lastAdjustedAmountRef.current = formattedMax; // Track the adjusted amount
         setDepositLimitWarning(
           `Maximum deposit limited to ${formattedMax} ${selectedDepositAsset || activeCollateralSymbol} to maintain collateral ratio.`
         );
@@ -3821,6 +3993,8 @@ export const AnchorDepositWithdrawModal = ({
         }, 3000);
       } else {
         // Input is within limits, just clear any previous warning
+        // Reset adjustment tracking when amount is within limits
+        lastAdjustedAmountRef.current = null;
         setDepositLimitWarning(null);
       }
     } else {
@@ -3941,28 +4115,33 @@ export const AnchorDepositWithdrawModal = ({
       return 0n;
     }
 
-    // For other assets, try anyTokenDeposit.balance first (for user tokens that don't need swap)
-    if (anyTokenDeposit.balance !== undefined && anyTokenDeposit.balance > 0n) {
-      if (process.env.NODE_ENV === "development") {
-        console.log("[AnchorDepositModal] Asset balance from anyTokenDeposit:", {
-          asset: selectedDepositAsset,
-          address: anyTokenDeposit.selectedAssetAddress,
-          balance: anyTokenDeposit.balance.toString(),
-        });
-      }
-      return anyTokenDeposit.balance;
-    }
-
-    // Fallback to selectedAssetBalanceData from contract read
+    // For other assets, prefer contract read balance (selectedAssetBalanceData) as it's always for the correct address
+    // Only use anyTokenDeposit.balance if it matches the selected asset address
     if (selectedAssetBalanceData !== undefined) {
       if (process.env.NODE_ENV === "development") {
-        console.log("[AnchorDepositModal] Selected asset balance:", {
+        console.log("[AnchorDepositModal] Selected asset balance from contract read:", {
           asset: selectedDepositAsset,
           address: selectedAssetAddress,
           balance: selectedAssetBalanceData?.toString() || "0",
         });
       }
       return (selectedAssetBalanceData as bigint) || 0n;
+    }
+
+    // Fallback to anyTokenDeposit.balance only if the selected asset matches
+    const anyTokenAssetMatches = anyTokenDeposit.selectedAssetAddress && 
+      selectedAssetAddress && 
+      anyTokenDeposit.selectedAssetAddress.toLowerCase() === selectedAssetAddress.toLowerCase();
+    
+    if (anyTokenAssetMatches && anyTokenDeposit.balance !== undefined && anyTokenDeposit.balance > 0n) {
+      if (process.env.NODE_ENV === "development") {
+        console.log("[AnchorDepositModal] Asset balance from anyTokenDeposit (fallback):", {
+          asset: selectedDepositAsset,
+          address: anyTokenDeposit.selectedAssetAddress,
+          balance: anyTokenDeposit.balance.toString(),
+        });
+      }
+      return anyTokenDeposit.balance;
     }
 
     return null;
@@ -4409,12 +4588,25 @@ export const AnchorDepositWithdrawModal = ({
     
     if (value === "" || /^\d*\.?\d*$/.test(value)) {
       // Cap at balance if value exceeds it (for deposit tab)
-      if (value && activeTab === "deposit" && balance > 0n) {
+      // Prefer selectedAssetBalance when available (for USDC, fxUSD, etc. in simple mode)
+      // Otherwise fall back to balance (collateral balance for advanced mode)
+      const balanceToCheck = (simpleMode && selectedAssetBalance !== null && selectedAssetBalance !== undefined)
+        ? selectedAssetBalance 
+        : balance;
+      
+      if (value && activeTab === "deposit" && balanceToCheck && balanceToCheck > 0n) {
         try {
-          const parsed = parseEther(value);
-          if (parsed > balance) {
-            setAmount(formatEther(balance));
-            anyTokenDeposit.setAmount(formatEther(balance)); // Sync with hook
+          // Use correct decimals: USDC uses 6, others use 18
+          const decimals = isUSDC ? 6 : 18;
+          const parsed = decimals === 6 ? parseUnits(value, 6) : parseEther(value);
+          
+          if (parsed > balanceToCheck) {
+            // Format with correct decimals
+            const cappedAmount = decimals === 6 
+              ? formatUnits(balanceToCheck, 6)
+              : formatEther(balanceToCheck);
+            setAmount(cappedAmount);
+            anyTokenDeposit.setAmount(cappedAmount); // Sync with hook
             setError(null);
             return;
           }
@@ -5138,41 +5330,344 @@ export const AnchorDepositWithdrawModal = ({
         
         if (useZap && zapAddress) {
           // Use zap contract for efficient ETH → collateral or USDC → collateral conversion
-          setStep("minting");
+          // Determine if approval is needed
+          const needsZapApproval = (anyTokenDeposit.useETHZap && !anyTokenDeposit.isNativeETH && !anyTokenDeposit.needsSwap) || // stETH direct
+            (anyTokenDeposit.useUSDCZap && !anyTokenDeposit.isNativeETH); // USDC/fxUSD (always needs approval)
+          
+          // Set up progress modal before zap transaction
+          // Determine the actual asset being zapped (after swap if applicable)
+          let zapAssetName: string;
+          if (anyTokenDeposit.useETHZap) {
+            zapAssetName = swappedTokenIsETH ? "ETH" : "stETH";
+          } else if (anyTokenDeposit.useUSDCZap) {
+            // After swap, we always have USDC; otherwise check selected asset
+            zapAssetName = anyTokenDeposit.needsSwap ? "USDC" : (anyTokenDeposit.selectedAsset?.toUpperCase() || "USDC");
+          } else {
+            zapAssetName = anyTokenDeposit.selectedAsset?.toUpperCase() || "TOKEN";
+          }
+          
+          setProgressConfig({
+            mode: "collateral",
+            includeApproveCollateral: needsZapApproval,
+            includeMint: true,
+            includeApprovePegged: false,
+            includeDeposit: false, // Zap transactions skip deposit (mint only)
+            includeDirectApprove: false,
+            includeDirectDeposit: false,
+            useZap: true,
+            zapAsset: zapAssetName,
+            title: "Mint pegged token",
+          });
+          setProgressModalOpen(true);
+          
+          setStep(needsZapApproval ? "approving" : "minting");
           setError(null);
           setTxHash(null);
           
           if (anyTokenDeposit.useETHZap) {
-            // ETH Zap: ETH → stETH → wstETH → Minter
-            const wstETHAddress = selectedMarket?.addresses?.wrappedCollateralToken as `0x${string}` | undefined;
-            if (!wstETHAddress) {
-              throw new Error("wstETH address not found");
+            // ETH/stETH Zap: ETH → stETH → wstETH → Minter OR stETH → wstETH → Minter (via peggedTokenZap)
+            // Determine which asset we're actually zapping (ETH or stETH)
+            const isActuallyETH = anyTokenDeposit.isNativeETH || swappedTokenIsETH;
+            const isActuallyStETH = !isActuallyETH && !anyTokenDeposit.needsSwap;
+            
+            // Calculate minPeggedOut for minter zap
+            // Use swapDryRunOutput or expectedMintOutput from swap dry run if available (accounts for actual conversion and fees)
+            // Otherwise fall back to estimation
+            let minPeggedOut: bigint;
+            let actualExpectedOutput: bigint | undefined;
+            
+            // For direct ETH deposits, try to get dry run output
+            // First check if we have a dry run for the direct deposit amount
+            if (isActuallyETH && !anyTokenDeposit.needsSwap) {
+              // Try to find the market - use marketForDepositAsset, selectedMarket, or find by zap address
+              let marketForDryRun = marketForDepositAsset;
+              if (!marketForDryRun) {
+                const selectedMarket = marketsForToken.find((x) => x.marketId === selectedMarketId)?.market;
+                marketForDryRun = selectedMarket;
+              }
+              if (!marketForDryRun && zapAddress) {
+                marketForDryRun = marketsForToken.find(
+                  ({ market: m }) => 
+                    m?.addresses?.peggedTokenZap?.toLowerCase() === zapAddress.toLowerCase() ||
+                    m?.addresses?.leveragedTokenZap?.toLowerCase() === zapAddress.toLowerCase()
+                )?.market;
+              }
+              
+              if (marketForDryRun?.addresses?.minter && publicClient) {
+                try {
+                  // Convert ETH to wstETH for dry run
+                  // Contract flow: ETH → stETH (1:1) → wstETH (via wstETH.wrap())
+                  // So we need: ETH amount → stETH amount (1:1) → wstETH amount (via wstETH contract)
+                  const wstETHAddress = marketForDryRun.addresses.wrappedCollateralToken as `0x${string}` | undefined;
+                  
+                  if (wstETHAddress) {
+                    // ETH → stETH is 1:1, so stETH amount = ETH amount
+                    const stEthAmount = swappedAmount;
+                    
+                    // Query wstETH contract for actual conversion rate
+                    const wstEthAmount = await publicClient.readContract({
+                      address: wstETHAddress,
+                      abi: WSTETH_ABI,
+                      functionName: "getWstETHByStETH",
+                      args: [stEthAmount],
+                    });
+                    
+                    // Read dry run synchronously with actual wstETH amount
+                    const dryRunResult = await publicClient.readContract({
+                      address: marketForDryRun.addresses.minter as `0x${string}`,
+                      abi: minterABI,
+                      functionName: "mintPeggedTokenDryRun",
+                      args: [wstEthAmount as bigint],
+                    });
+                    if (dryRunResult && Array.isArray(dryRunResult) && dryRunResult.length >= 4) {
+                      actualExpectedOutput = dryRunResult[3] as bigint;
+                      if (process.env.NODE_ENV === "development") {
+                        console.log("[ETH Zap] Direct deposit dry run result:", {
+                          ethAmount: swappedAmount.toString(),
+                          stEthAmount: stEthAmount.toString(),
+                          wstEthAmount: (wstEthAmount as bigint).toString(),
+                          peggedMinted: actualExpectedOutput.toString(),
+                          minter: marketForDryRun.addresses.minter,
+                        });
+                      }
+                    }
+                  } else {
+                    // Fallback to wrappedRate if wstETH address not available
+                    const wrappedRate = marketForDryRun?.wrappedRate || selectedMarket?.wrappedRate;
+                    if (wrappedRate && wrappedRate > 0n) {
+                      const wstEthAmount = (swappedAmount * 10n ** 18n) / wrappedRate;
+                      const dryRunResult = await publicClient.readContract({
+                        address: marketForDryRun.addresses.minter as `0x${string}`,
+                        abi: minterABI,
+                        functionName: "mintPeggedTokenDryRun",
+                        args: [wstEthAmount],
+                      });
+                      if (dryRunResult && Array.isArray(dryRunResult) && dryRunResult.length >= 4) {
+                        actualExpectedOutput = dryRunResult[3] as bigint;
+                      }
+                    }
+                  }
+                } catch (err) {
+                  // Dry run failed, will use fallback
+                  if (process.env.NODE_ENV === "development") {
+                    console.warn("[ETH Zap] Direct deposit dry run failed, using fallback:", err);
+                  }
+                }
+              } else {
+                if (process.env.NODE_ENV === "development") {
+                  console.warn("[ETH Zap] No market found for dry run, will use fallback estimation");
+                }
+              }
             }
             
-            // Get expected wstETH output for slippage calculation
-            const stETHAmount = swappedAmount; // ETH → stETH is 1:1
-            const expectedWstETH = await publicClient?.readContract({
-              address: wstETHAddress,
-              abi: WSTETH_ABI,
-              functionName: "getWstETHByStETH",
-              args: [stETHAmount],
-            });
+            // Prefer swapDryRunOutput directly (most reliable for swap deposits)
+            if (swapDryRunOutput && Array.isArray(swapDryRunOutput) && swapDryRunOutput.length >= 4) {
+              actualExpectedOutput = swapDryRunOutput[3] as bigint; // peggedMinted from dry run
+            } else if (expectedMintOutput && expectedMintOutput > 0n) {
+              actualExpectedOutput = expectedMintOutput;
+            }
             
-            const minWstETH = expectedWstETH ? (expectedWstETH * BigInt(Math.floor((100 - slippageTolerance) * 10))) / 1000n : 0n;
+            if (actualExpectedOutput && actualExpectedOutput > 0n) {
+              // Validate that actualExpectedOutput is reasonable
+              // For ETH → haBTC, the output should be roughly similar to input (accounting for price differences)
+              // But we need to be more lenient since BTC price is much higher than ETH
+              // Check if output is more than 10x input (which would be unreasonable even for BTC)
+              const maxReasonableOutput = swappedAmount * 10n; // Allow up to 10x for BTC markets
+              const minReasonableOutput = swappedAmount / 1000n; // At least 0.1% of input
+              
+              // Also check if the ratio is suspicious (e.g., output is much higher than input for BTC markets)
+              // For ETH → haBTC, the ratio should be roughly 1:1 (accounting for BTC price being ~20-30x ETH)
+              // If the ratio is way off, the dry run might be wrong
+              const outputRatio = Number(actualExpectedOutput) / Number(swappedAmount);
+              const suspiciousRatio = outputRatio > 50 || outputRatio < 0.01; // BTC is ~20-30x ETH, so ratio should be reasonable
+              
+              if (actualExpectedOutput > maxReasonableOutput || actualExpectedOutput < minReasonableOutput || suspiciousRatio) {
+                if (process.env.NODE_ENV === "development") {
+                  console.warn("[ETH Zap] Dry run output seems unreasonable, using fallback:", {
+                    actualExpectedOutput: actualExpectedOutput.toString(),
+                    swappedAmount: swappedAmount.toString(),
+                    ratio: outputRatio,
+                    maxReasonable: maxReasonableOutput.toString(),
+                    minReasonable: minReasonableOutput.toString(),
+                    suspiciousRatio,
+                  });
+                }
+                actualExpectedOutput = undefined; // Force fallback
+              } else {
+                // Use actual expected output from dry run and apply 2% slippage tolerance
+                // TODO: Fine-tune this later with dynamic slippage and zapper fee calculations
+                const slippagePercent = 2.0; // 2% slippage tolerance
+                minPeggedOut = (actualExpectedOutput * BigInt(Math.floor((100 - slippagePercent) * 100))) / 10000n;
+                
+                if (process.env.NODE_ENV === "development") {
+                  console.log("[ETH Zap] Using dry run output with 10% slippage:", {
+                    actualExpectedOutput: actualExpectedOutput.toString(),
+                    minPeggedOut: minPeggedOut.toString(),
+                    slippagePercent,
+                    ratio: Number(actualExpectedOutput) / Number(swappedAmount),
+                  });
+                }
+              }
+            }
+            
+            // If we don't have a valid actualExpectedOutput, use fallback estimation
+            if (!actualExpectedOutput || actualExpectedOutput === 0n) {
+              // Fallback: estimate from ETH/stETH amount (less accurate)
+              // For direct ETH deposits, we need to account for ETH → stETH → wstETH conversion
+              // The wrapped rate converts ETH to wstETH, so we should use that for estimation
+              let estimatedPeggedOut: bigint;
+              
+              // Try to get wrapped rate for better estimation
+              // Try multiple sources for wrapped rate
+              let wrappedRate = marketForDepositAsset?.wrappedRate || selectedMarket?.wrappedRate;
+              if (!wrappedRate && zapAddress) {
+                const marketByZap = marketsForToken.find(
+                  ({ market: m }) => 
+                    m?.addresses?.peggedTokenZap?.toLowerCase() === zapAddress.toLowerCase() ||
+                    m?.addresses?.leveragedTokenZap?.toLowerCase() === zapAddress.toLowerCase()
+                )?.market;
+                wrappedRate = marketByZap?.wrappedRate;
+              }
+              
+              if (wrappedRate && wrappedRate > 0n) {
+                // Convert ETH to wstETH using wrapped rate, then estimate mint output
+                const wstEthAmount = (swappedAmount * 10n ** 18n) / wrappedRate;
+                // Estimate: account for minting fees (~0.25%)
+                estimatedPeggedOut = (wstEthAmount * 9975n) / 10000n;
+              } else {
+                // Fallback: assume 1:1 conversion (less accurate)
+                // Estimate: account for conversion (ETH → stETH → wstETH) and minting fees (~0.25%)
+                estimatedPeggedOut = (swappedAmount * 9975n) / 10000n; // Estimate 0.25% fee
+              }
+              
+              // Apply 2% slippage tolerance for fallback estimation
+              // TODO: Fine-tune this later with dynamic slippage and zapper fee calculations
+              const slippagePercent = 2.0; // 2% slippage tolerance
+              minPeggedOut = (estimatedPeggedOut * BigInt(Math.floor((100 - slippagePercent) * 100))) / 10000n;
+              
+              if (process.env.NODE_ENV === "development") {
+                console.log("[ETH Zap] Using fallback estimation:", {
+                  swappedAmount: swappedAmount.toString(),
+                  wrappedRate: wrappedRate?.toString() || "none",
+                  estimatedPeggedOut: estimatedPeggedOut.toString(),
+                  minPeggedOut: minPeggedOut.toString(),
+                  slippagePercent,
+                });
+              }
+            }
+            
+            // Validate minPeggedOut is reasonable (at least 0.1% of input amount, or at least 1 wei)
+            const minPeggedOutThreshold = swappedAmount > 1000n ? swappedAmount / 1000n : 1n; // 0.1% of input, or 1 wei minimum
+            if (minPeggedOut < minPeggedOutThreshold) {
+              const errorMsg = `Calculated minPeggedOut (${formatEther(minPeggedOut)} ETH) is too small relative to input amount (${formatEther(swappedAmount)} ETH). ` +
+                `This usually indicates a calculation error. Please try again.`;
+              if (process.env.NODE_ENV === "development") {
+                console.error("[ETH Zap] minPeggedOut validation failed:", {
+                  swappedAmount: swappedAmount.toString(),
+                  minPeggedOut: minPeggedOut.toString(),
+                  minPeggedOutThreshold: minPeggedOutThreshold.toString(),
+                  actualExpectedOutput: actualExpectedOutput?.toString(),
+                });
+              }
+              throw new Error(errorMsg);
+            }
+            
+            if (process.env.NODE_ENV === "development") {
+              console.log("[ETH Zap] Final values:", {
+                swappedAmount: swappedAmount.toString(),
+                minPeggedOut: minPeggedOut.toString(),
+                minPeggedOutETH: formatEther(minPeggedOut),
+                isActuallyETH,
+                isActuallyStETH,
+              });
+            }
             
             // Check network before sending transaction
             if (!(await ensureCorrectNetwork())) {
               throw new Error("Wrong network. Please switch to Ethereum Mainnet.");
             }
             
-            // Call zapEth on Genesis zap (we're reusing for Minter)
-            const zapHash = await writeContractAsync({
-              address: zapAddress,
-              abi: ZAP_ABI,
-              functionName: "zapEth",
-              args: [minWstETH, address as `0x${string}`],
-              value: swappedAmount,
-            });
+            // Call the correct zap function based on asset type
+            let zapHash: `0x${string}`;
+            if (isActuallyETH) {
+              debugTx("zap/ethToPegged", {
+                zapAddress,
+                function: "zapEthToPegged",
+                args: [address, minPeggedOut.toString()],
+                value: swappedAmount.toString(),
+              });
+              zapHash = await writeContractAsync({
+                address: zapAddress,
+                abi: MINTER_ETH_ZAP_V2_ABI,
+                functionName: "zapEthToPegged",
+                args: [address as `0x${string}`, minPeggedOut],
+                value: swappedAmount,
+              });
+            } else if (isActuallyStETH) {
+              // Need approval for stETH first
+              // Use underlyingCollateralToken (stETH), not wrappedCollateralToken (wstETH)
+              // Try marketForDepositAsset first, then selectedMarket, then find market by zap address
+              let stETHAddress = marketForDepositAsset?.addresses?.underlyingCollateralToken as `0x${string}` | undefined;
+              
+              // Fallback: try selectedMarket
+              if (!stETHAddress) {
+                const selectedMarket = marketsForToken.find((x) => x.marketId === selectedMarketId)?.market;
+                stETHAddress = selectedMarket?.addresses?.underlyingCollateralToken as `0x${string}` | undefined;
+              }
+              
+              // Fallback: find market by zap address
+              if (!stETHAddress && zapAddress) {
+                const marketByZap = marketsForToken.find(
+                  ({ market: m }) => 
+                    m?.addresses?.peggedTokenZap?.toLowerCase() === zapAddress.toLowerCase() ||
+                    m?.addresses?.leveragedTokenZap?.toLowerCase() === zapAddress.toLowerCase()
+                )?.market;
+                stETHAddress = marketByZap?.addresses?.underlyingCollateralToken as `0x${string}` | undefined;
+              }
+              
+              // Final fallback: use hardcoded stETH address (constant across all markets)
+              if (!stETHAddress) {
+                stETHAddress = "0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84" as `0x${string}`;
+              }
+              
+              if (!stETHAddress) throw new Error("stETH address not found. Please ensure you're depositing to a wstETH market.");
+              
+              // Check and approve stETH if needed
+              const stETHAllowance = await publicClient?.readContract({
+                address: stETHAddress,
+                abi: ERC20_ABI,
+                functionName: "allowance",
+                args: [address as `0x${string}`, zapAddress],
+              });
+              
+              const allowanceBigInt = (stETHAllowance as bigint) || 0n;
+              if (allowanceBigInt < swappedAmount) {
+                setStep("approving");
+                const approveHash = await writeContractAsync({
+                  address: stETHAddress,
+                  abi: ERC20_ABI,
+                  functionName: "approve",
+                  args: [zapAddress, swappedAmount],
+                });
+                setTxHashes((prev) => ({ ...prev, approveCollateral: approveHash }));
+                await publicClient?.waitForTransactionReceipt({ hash: approveHash });
+                setStep("minting");
+              }
+              
+              debugTx("zap/stEthToPegged", {
+                zapAddress,
+                function: "zapStEthToPegged",
+                args: [swappedAmount.toString(), address, minPeggedOut.toString()],
+              });
+              zapHash = await writeContractAsync({
+                address: zapAddress,
+                abi: MINTER_ETH_ZAP_V2_ABI,
+                functionName: "zapStEthToPegged",
+                args: [swappedAmount, address as `0x${string}`, minPeggedOut],
+              });
+            } else {
+              throw new Error("Invalid asset for ETH/stETH zap");
+            }
             
             await publicClient?.waitForTransactionReceipt({ hash: zapHash });
             setTxHashes((prev) => ({ ...prev, mint: zapHash }));
@@ -5182,37 +5677,121 @@ export const AnchorDepositWithdrawModal = ({
             if (onSuccess) onSuccess();
             return;
           } else if (anyTokenDeposit.useUSDCZap) {
-            // USDC Zap: USDC → fxUSD → fxSAVE → Minter
-            // Approve USDC for zap
-            if (anyTokenDeposit.needsZapApproval) {
-              // Check network before sending transaction
-              if (!(await ensureCorrectNetwork())) {
-                throw new Error("Wrong network. Please switch to Ethereum Mainnet.");
-              }
-              
-              const zapApproveHash = await writeContractAsync({
-                address: anyTokenDeposit.selectedAssetAddress as `0x${string}`,
-                abi: ERC20_ABI,
-                functionName: "approve",
-                args: [zapAddress, swappedAmount],
-              });
-              await publicClient?.waitForTransactionReceipt({ hash: zapApproveHash });
-            }
+            // USDC/fxUSD Zap: USDC → fxUSD → fxSAVE → Minter OR fxUSD → fxSAVE → Minter (via peggedTokenZap)
+            // Determine which asset we're actually zapping (USDC or fxUSD)
+            const USDC_ADDRESS = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" as `0x${string}`;
+            const isActuallyUSDC = anyTokenDeposit.needsSwap 
+              ? true // After swap, we always have USDC
+              : (anyTokenDeposit.selectedAssetAddress?.toLowerCase() === USDC_ADDRESS.toLowerCase());
+            const isActuallyFxUSD = !isActuallyUSDC && !anyTokenDeposit.needsSwap;
             
-            // Call zapUsdc
-            const minFxSAVEOut = (swappedAmount * BigInt(Math.floor((100 - slippageTolerance) * 10))) / 1000n;
+            // Get the asset address for approval
+            const assetAddressForApproval = anyTokenDeposit.needsSwap 
+              ? USDC_ADDRESS 
+              : (anyTokenDeposit.selectedAssetAddress as `0x${string}`);
+            
+            if (!assetAddressForApproval) {
+              throw new Error("Asset address not found for approval");
+            }
             
             // Check network before sending transaction
             if (!(await ensureCorrectNetwork())) {
               throw new Error("Wrong network. Please switch to Ethereum Mainnet.");
             }
             
-            const zapHash = await writeContractAsync({
-              address: zapAddress,
-              abi: USDC_ZAP_ABI,
-              functionName: "zapUsdc",
-              args: [swappedAmount, minFxSAVEOut, address as `0x${string}`],
+            // Read current allowance for the asset to zap contract
+            const currentAllowance = await publicClient?.readContract({
+              address: assetAddressForApproval,
+              abi: ERC20_ABI,
+              functionName: "allowance",
+              args: [address as `0x${string}`, zapAddress],
             });
+            
+            const allowanceBigInt = (currentAllowance as bigint) || 0n;
+            if (allowanceBigInt < swappedAmount) {
+              setStep("approving");
+              const zapApproveHash = await writeContractAsync({
+                address: assetAddressForApproval,
+                abi: ERC20_ABI,
+                functionName: "approve",
+                args: [zapAddress, swappedAmount],
+              });
+              setTxHashes((prev) => ({ ...prev, approveCollateral: zapApproveHash }));
+              await publicClient?.waitForTransactionReceipt({ hash: zapApproveHash });
+              setStep("minting");
+            }
+            
+            // Calculate minPeggedOut for minter zap
+            // Use swapDryRunOutput or expectedMintOutput from swap dry run if available (accounts for actual conversion and fees)
+            // Otherwise fall back to estimation
+            let minPeggedOut: bigint;
+            let actualExpectedOutput: bigint | undefined;
+            
+            // Prefer swapDryRunOutput directly (most reliable for swap deposits)
+            if (swapDryRunOutput && Array.isArray(swapDryRunOutput) && swapDryRunOutput.length >= 4) {
+              actualExpectedOutput = swapDryRunOutput[3] as bigint; // peggedMinted from dry run
+            } else if (expectedMintOutput && expectedMintOutput > 0n) {
+              actualExpectedOutput = expectedMintOutput;
+            }
+            
+            if (actualExpectedOutput && actualExpectedOutput > 0n) {
+              // Use actual expected output from dry run and apply slippage tolerance
+              // NOTE: Dynamic fees can change if collateral ratio crosses bands between dry run and execution
+              // We use higher slippage tolerance to account for potential fee increases
+              const slippageBps = Math.max(slippageTolerance || 1, 2.0); // Increased from 0.5% to 2% minimum
+              minPeggedOut = (actualExpectedOutput * BigInt(Math.floor((100 - slippageBps) * 100))) / 10000n;
+            } else {
+              // Fallback: estimate based on asset type
+              if (isActuallyUSDC) {
+                // USDC has 6 decimals, pegged tokens have 18 decimals
+                const usdcAmountIn18Decimals = swappedAmount * 10n ** 12n; // Convert 6 to 18 decimals
+                // Estimate: account for conversion (USDC → fxUSD 1:1) and minting fees (~0.25%)
+                const estimatedPeggedOut = (usdcAmountIn18Decimals * 9975n) / 10000n; // Estimate 0.25% fee
+                const slippageBps = Math.max(slippageTolerance || 1, 2.0);
+                minPeggedOut = (estimatedPeggedOut * BigInt(Math.floor((100 - slippageBps) * 100))) / 10000n;
+              } else {
+                // fxUSD already in 18 decimals
+                // Estimate: account for conversion (fxUSD → fxSAVE) and minting fees (~0.25%)
+                const estimatedPeggedOut = (swappedAmount * 9975n) / 10000n; // Estimate 0.25% fee
+                const slippageBps = Math.max(slippageTolerance || 1, 2.0);
+                minPeggedOut = (estimatedPeggedOut * BigInt(Math.floor((100 - slippageBps) * 100))) / 10000n;
+              }
+            }
+            
+            // Check network before sending transaction
+            if (!(await ensureCorrectNetwork())) {
+              throw new Error("Wrong network. Please switch to Ethereum Mainnet.");
+            }
+            
+            // Call the correct zap function based on asset type
+            let zapHash: `0x${string}`;
+            if (isActuallyUSDC) {
+              debugTx("zap/usdcToPegged", {
+                zapAddress,
+                function: "zapUsdcToPegged",
+                args: [swappedAmount.toString(), address, minPeggedOut.toString()],
+              });
+              zapHash = await writeContractAsync({
+                address: zapAddress,
+                abi: MINTER_USDC_ZAP_V2_ABI,
+                functionName: "zapUsdcToPegged",
+                args: [swappedAmount, address as `0x${string}`, minPeggedOut],
+              });
+            } else if (isActuallyFxUSD) {
+              debugTx("zap/fxUsdToPegged", {
+                zapAddress,
+                function: "zapFxUsdToPegged",
+                args: [swappedAmount.toString(), address, minPeggedOut.toString()],
+              });
+              zapHash = await writeContractAsync({
+                address: zapAddress,
+                abi: MINTER_USDC_ZAP_V2_ABI,
+                functionName: "zapFxUsdToPegged",
+                args: [swappedAmount, address as `0x${string}`, minPeggedOut],
+              });
+            } else {
+              throw new Error("Invalid asset for USDC/fxUSD zap");
+            }
             
             await publicClient?.waitForTransactionReceipt({ hash: zapHash });
             setTxHashes((prev) => ({ ...prev, mint: zapHash }));
@@ -5296,8 +5875,27 @@ export const AnchorDepositWithdrawModal = ({
           // Handle approvals for zap contracts
           if (useETHZap && isStETH) {
             // Approve stETH to zap contract
-            const stETHAddress = depositAssetMarket?.addresses?.wrappedCollateralToken as `0x${string}` | undefined;
-            if (!stETHAddress) throw new Error("stETH address not found");
+            // Use underlyingCollateralToken (stETH), not wrappedCollateralToken (wstETH)
+            // Try depositAssetMarket first, then selectedMarket, then find market by zap address
+            let stETHAddress = depositAssetMarket?.addresses?.underlyingCollateralToken as `0x${string}` | undefined;
+            
+            // Fallback: try selectedMarket
+            if (!stETHAddress) {
+              const selectedMarket = marketsForToken.find((x) => x.marketId === selectedMarketId)?.market;
+              stETHAddress = selectedMarket?.addresses?.underlyingCollateralToken as `0x${string}` | undefined;
+            }
+            
+            // Fallback: find market by zap address
+            if (!stETHAddress && zapAddress) {
+              const marketByZap = marketsForToken.find(
+                ({ market: m }) => 
+                  m?.addresses?.peggedTokenZap?.toLowerCase() === zapAddress.toLowerCase() ||
+                  m?.addresses?.leveragedTokenZap?.toLowerCase() === zapAddress.toLowerCase()
+              )?.market;
+              stETHAddress = marketByZap?.addresses?.underlyingCollateralToken as `0x${string}` | undefined;
+            }
+            
+            if (!stETHAddress) throw new Error("stETH address not found. Please ensure you're depositing to a wstETH market.");
             
             // Read allowance for zap contract
             const allowance = await publicClient?.readContract({
@@ -5434,24 +6032,48 @@ export const AnchorDepositWithdrawModal = ({
         // Calculate minimum output based on zap type or direct minting
         let minPeggedOut: bigint;
         
-        if (useUSDCZap && fxSAVERate && fxSAVERate > 0n) {
-          // For USDC/fxUSD zap: minPeggedOut = amount / fxSAVE rate
-          // USDC has 6 decimals, fxUSD has 18 decimals
-          // Apply 0.5% slippage tolerance (99.5%)
-          let amountIn18Decimals: bigint;
-          if (isUSDC) {
-            // USDC: convert from 6 decimals to 18 decimals
-            amountIn18Decimals = amountBigInt * 10n ** 12n;
+        if (useUSDCZap) {
+          // For USDC/fxUSD zap: use expectedMintOutput from dry run if available
+          // This accounts for actual conversion (USDC → fxUSD → fxSAVE) and minting fees
+          // NOTE: Dynamic fees can change if collateral ratio crosses bands between dry run and execution
+          // We use higher slippage tolerance to account for potential fee increases
+          if (expectedMintOutput && expectedMintOutput > 0n) {
+            // Apply slippage tolerance (default 1%, minimum 0.5%)
+            // Use higher tolerance (2%) to account for dynamic fee changes if collateral ratio crosses bands
+            const slippageBps = Math.max(slippageTolerance || 1, 2.0); // Increased from 0.5% to 2% minimum
+            minPeggedOut = (expectedMintOutput * BigInt(Math.floor((100 - slippageBps) * 100))) / 10000n;
+          } else if (fxSAVERate && fxSAVERate > 0n) {
+            // Fallback: estimate using fxSAVE rate (less accurate, but better than 0)
+            // USDC has 6 decimals, fxUSD has 18 decimals
+            let amountIn18Decimals: bigint;
+            if (isUSDC) {
+              // USDC: convert from 6 decimals to 18 decimals
+              amountIn18Decimals = amountBigInt * 10n ** 12n;
+            } else {
+              // fxUSD: already in 18 decimals
+              amountIn18Decimals = amountBigInt;
+            }
+            // Convert to fxSAVE using wrapped rate
+            // fxSAVERate is in 18 decimals: rate = (fxSAVE_amount * 10^18) / fxUSD_amount
+            // So: fxSAVE_amount = (fxUSD_amount * 10^18) / fxSAVERate
+            // For fxUSD (already 18 decimals): fxSAVE = (fxUSD * 10^18) / rate
+            // For USDC (converted to 18 decimals): fxSAVE = (USDC_in_18 * 10^18) / rate
+            const fxSaveAmount = (amountIn18Decimals * 10n ** 18n) / fxSAVERate;
+            // Estimate mint output: be more conservative with fees
+            // Account for conversion fees (~0.1%) + minting fees (~0.25%) = ~0.35% total
+            const estimatedPeggedOut = (fxSaveAmount * 9965n) / 10000n; // Estimate 0.35% total fee
+            const slippageBps = Math.max(slippageTolerance || 1, 2.0); // Increased from 0.5% to 2% minimum
+            minPeggedOut = (estimatedPeggedOut * BigInt(Math.floor((100 - slippageBps) * 100))) / 10000n;
           } else {
-            // fxUSD: already in 18 decimals
-            amountIn18Decimals = amountBigInt;
+            throw new Error("Cannot calculate minPeggedOut: expectedMintOutput and fxSAVERate both unavailable");
           }
-          const peggedOutBeforeSlippage = amountIn18Decimals / fxSAVERate;
-          minPeggedOut = (peggedOutBeforeSlippage * 995n) / 1000n; // 0.5% slippage
         } else {
-          // For direct minting or ETH zap: use expectedMintOutput with 1% slippage
+          // For direct minting or ETH zap: use expectedMintOutput with slippage tolerance
+          // NOTE: Dynamic fees can change if collateral ratio crosses bands between dry run and execution
+          // We use higher slippage tolerance to account for potential fee increases
+          const slippageBps = Math.max(slippageTolerance || 1, 2.0); // Increased from 0.5% to 2% minimum
           minPeggedOut = expectedMintOutput
-            ? (expectedMintOutput * 99n) / 100n
+            ? (expectedMintOutput * BigInt(Math.floor((100 - slippageBps) * 100))) / 10000n
             : 0n;
         }
 
@@ -5461,20 +6083,18 @@ export const AnchorDepositWithdrawModal = ({
           // Use zap contract to mint
           if (useETHZap) {
             // ETH/stETH zap for wstETH markets
-            const minWstEthOut = (amountBigInt * 995n) / 1000n; // 0.5% slippage
-            
             if (isNativeETH) {
               debugTx("zap/ethToPegged", {
                 zapAddress,
                 function: "zapEthToPegged",
-                args: [address, minPeggedOut.toString(), minWstEthOut.toString()],
+                args: [address, minPeggedOut.toString()],
                 value: amountBigInt.toString(),
               });
               mintHash = await writeContractAsync({
                 address: zapAddress,
                 abi: MINTER_ETH_ZAP_V2_ABI,
                 functionName: "zapEthToPegged",
-                args: [address as `0x${string}`, minPeggedOut, minWstEthOut],
+                args: [address as `0x${string}`, minPeggedOut],
                 value: amountBigInt,
               });
             } else if (isStETH) {
@@ -5485,14 +6105,13 @@ export const AnchorDepositWithdrawModal = ({
                   amountBigInt.toString(),
                   address,
                   minPeggedOut.toString(),
-                  minWstEthOut.toString(),
                 ],
               });
               mintHash = await writeContractAsync({
                 address: zapAddress,
                 abi: MINTER_ETH_ZAP_V2_ABI,
                 functionName: "zapStEthToPegged",
-                args: [amountBigInt, address as `0x${string}`, minPeggedOut, minWstEthOut],
+                args: [amountBigInt, address as `0x${string}`, minPeggedOut],
               });
             } else {
               throw new Error("Invalid asset for ETH zap");
@@ -6205,26 +6824,26 @@ export const AnchorDepositWithdrawModal = ({
       console.error("Deposit error:", err);
       let errorMessage = "Transaction failed";
 
-      // Check if it's a user rejection
-      if (
-        err?.name === "UserRejectedRequestError" ||
-        err?.message?.includes("User rejected") ||
-        err?.message?.includes("user rejected")
-      ) {
-        errorMessage = "Transaction was rejected by user";
+      // Check for user rejection first (most common case)
+      const errMessage = err instanceof Error ? err.message : String(err);
+      const errShortMessage = err instanceof BaseError ? err.shortMessage : "";
+      const lowerMessage = (errMessage + " " + errShortMessage).toLowerCase();
+      
+      if (lowerMessage.includes("user rejected") || lowerMessage.includes("user denied") || lowerMessage.includes("rejected the request") || err?.name === "UserRejectedRequestError") {
+        errorMessage = "Transaction cancelled";
       } else if (err instanceof BaseError) {
         const revertError = err.walk(
           (err) => err instanceof ContractFunctionRevertedError
         );
         if (revertError instanceof ContractFunctionRevertedError) {
-          errorMessage = `Contract error: ${
-            revertError.data?.errorName || "Unknown error"
-          }`;
+          errorMessage = revertError.reason || revertError.data?.errorName || "Transaction failed";
         } else {
-          errorMessage = err.shortMessage || err.message;
+          // Extract concise error message
+          const msg = err.message || err.shortMessage || "Transaction failed";
+          errorMessage = msg.replace(/^[^:]+:\s*/i, "").replace(/\s*\([^)]+\)$/, "") || "Transaction failed";
         }
       } else if (err instanceof Error) {
-        errorMessage = err.message;
+        errorMessage = err.message.replace(/^[^:]+:\s*/i, "").replace(/\s*\([^)]+\)$/, "") || "Transaction failed";
       }
 
       // Check if it's a connection/wallet issue
@@ -6970,26 +7589,26 @@ export const AnchorDepositWithdrawModal = ({
       console.error("Redeem error:", err);
       let errorMessage = "Transaction failed";
 
-      // Check if it's a user rejection
-      if (
-        err?.name === "UserRejectedRequestError" ||
-        err?.message?.includes("User rejected") ||
-        err?.message?.includes("user rejected")
-      ) {
-        errorMessage = "Transaction was rejected by user";
+      // Check for user rejection first (most common case)
+      const errMessage = err instanceof Error ? err.message : String(err);
+      const errShortMessage = err instanceof BaseError ? err.shortMessage : "";
+      const lowerMessage = (errMessage + " " + errShortMessage).toLowerCase();
+      
+      if (lowerMessage.includes("user rejected") || lowerMessage.includes("user denied") || lowerMessage.includes("rejected the request") || err?.name === "UserRejectedRequestError") {
+        errorMessage = "Transaction cancelled";
       } else if (err instanceof BaseError) {
         const revertError = err.walk(
           (err) => err instanceof ContractFunctionRevertedError
         );
         if (revertError instanceof ContractFunctionRevertedError) {
-          errorMessage = `Contract error: ${
-            revertError.data?.errorName || "Unknown error"
-          }`;
+          errorMessage = revertError.reason || revertError.data?.errorName || "Transaction failed";
         } else {
-          errorMessage = err.shortMessage || err.message;
+          // Extract concise error message
+          const msg = err.message || err.shortMessage || "Transaction failed";
+          errorMessage = msg.replace(/^[^:]+:\s*/i, "").replace(/\s*\([^)]+\)$/, "") || "Transaction failed";
         }
       } else if (err instanceof Error) {
-        errorMessage = err.message;
+        errorMessage = err.message.replace(/^[^:]+:\s*/i, "").replace(/\s*\([^)]+\)$/, "") || "Transaction failed";
       }
 
       setError(errorMessage);
