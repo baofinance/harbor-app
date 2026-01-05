@@ -61,7 +61,9 @@ export function useAnchorMarketData(
     collateralRewards7Day: bigint | null;
     leveragedRewards7Day: bigint | null;
   },
-  wrappedCollateralApy: { fxSAVEApy: number | null; wstETHApy: number | null }
+  wrappedCollateralApy: { fxSAVEApy: number | null; wstETHApy: number | null },
+  peggedPriceUSDMap?: Record<string, bigint | undefined>,
+  ethPrice?: number | null
 ): MarketData[] {
   return useMemo(() => {
     if (!reads) return [];
@@ -668,25 +670,149 @@ export function useAnchorMarketData(
             ? (sailPoolAPR.collateral || 0) + (sailPoolAPR.steam || 0)
             : 0;
 
-          // Projected APR (before pool rewards are live):
-          // projected = wrapped collateral yield * collateral ratio
-          // Example: fxSAVE APY 7% and CR 200% => projected 14%.
-          const collateralSymbolForProj =
-            market?.collateral?.symbol?.toLowerCase?.() || "";
+          // Dynamic Projected APR calculation:
+          // Formula: fxSAVE_APR * (minter_collateral_value_USD / (sail_pool_tvl_USD + anchor_pool_tvl_USD))
+          // This accounts for the fact that all collateral yield goes to the pools, so if pools are smaller
+          // than total collateral, the APR is amplified proportionally.
+          // Reuse isFxUSDMarket and collateralSymbol from earlier in the function (line 125)
           const baseYield =
-            collateralSymbolForProj === "fxsave" ||
-            collateralSymbolForProj === "fxusd"
+            isFxUSDMarket
               ? wrappedCollateralApy.fxSAVEApy
-              : collateralSymbolForProj === "wsteth" ||
-                  collateralSymbolForProj === "steth"
+              : collateralSymbol === "wsteth" ||
+                  collateralSymbol === "steth"
                 ? wrappedCollateralApy.wstETHApy
                 : null;
-          const cr =
-            collateralRatio !== undefined ? Number(collateralRatio) / 1e18 : 0;
-          const projectedAprPercent =
-            baseYield !== null && cr > 0 ? baseYield * cr * 100 : null;
-          const projectedCollateralAPR = projectedAprPercent;
-          const projectedSailAPR = projectedAprPercent;
+
+          let projectedCollateralAPR: number | null = null;
+          let projectedSailAPR: number | null = null;
+
+          // For fxUSD and wstETH markets, use dynamic calculation based on pool TVL vs minter collateral
+          const isWstETHMarket = collateralSymbol === "wsteth" || collateralSymbol === "steth";
+          const useDynamicCalculation = (isFxUSDMarket || isWstETHMarket) && baseYield !== null && collateralValue && peggedTokenPrice;
+          
+          if (useDynamicCalculation) {
+            // Get pegged token price in USD (haETH, haBTC, etc.) - use peggedPriceUSDMap if available (most accurate)
+            // Otherwise estimate from market data
+            let peggedTokenPriceUSD = 0;
+            
+            if (peggedPriceUSDMap && peggedPriceUSDMap[marketId]) {
+              // Use the CR-aware price from useAnchorPrices (most accurate)
+              peggedTokenPriceUSD = Number(peggedPriceUSDMap[marketId]) / 1e18;
+            } else if (totalDebt && collateralValue) {
+              // Fallback: Estimate pegged token price from collateral/debt relationship
+              const totalCollateralUSD = Number(collateralValue) / 1e18;
+              const totalDebtNum = Number(totalDebt) / 1e18;
+              peggedTokenPriceUSD = totalDebtNum > 0 ? totalCollateralUSD / totalDebtNum : 0;
+            }
+
+            // Convert pool TVLs to USD using pegged token price
+            let anchorPoolTVLUSD = 0;
+            if (collateralPoolTVL && peggedTokenPriceUSD > 0) {
+              anchorPoolTVLUSD = (Number(collateralPoolTVL) / 1e18) * peggedTokenPriceUSD;
+            }
+
+            let sailPoolTVLUSD = 0;
+            if (sailPoolTVL && peggedTokenPriceUSD > 0) {
+              sailPoolTVLUSD = (Number(sailPoolTVL) / 1e18) * peggedTokenPriceUSD;
+            }
+
+            const totalPoolTVLUSD = anchorPoolTVLUSD + sailPoolTVLUSD;
+
+            // Convert minter collateral value to USD
+            let minterCollateralUSD = 0;
+            if (collateralValue) {
+              if (isFxUSDMarket) {
+                // For fxUSD markets, underlying collateral (fxUSD) is approximately $1 per token
+                minterCollateralUSD = Number(collateralValue) / 1e18;
+              } else if (isWstETHMarket && wrappedRate) {
+                // For wstETH markets, collateralValue is in stETH (underlying)
+                // Convert to wstETH balance: stETH / wrappedRate
+                const wrappedRateNum = Number(wrappedRate) / 1e18;
+                const stETHAmount = Number(collateralValue) / 1e18;
+                const wstETHAmount = wrappedRateNum > 0 ? stETHAmount / wrappedRateNum : stETHAmount;
+                
+                // wstETH price = ETH price * wrappedRate (wstETH ≈ 1.21x ETH)
+                const wstETHPriceUSD = ethPrice && ethPrice > 0 
+                  ? ethPrice * wrappedRateNum 
+                  : 3000 * wrappedRateNum; // Fallback: ETH ~$3000 * wrappedRate
+                
+                // minterCollateralUSD = wstETH balance * wstETH price
+                minterCollateralUSD = wstETHAmount * wstETHPriceUSD;
+              }
+            }
+
+            if (process.env.NODE_ENV === "development") {
+              console.log("[Dynamic APR Pre-calculation]", {
+                marketId,
+                isFxUSDMarket,
+                baseYield,
+                baseYieldPercent: baseYield ? baseYield * 100 : null,
+                collateralValue: collateralValue?.toString(),
+                peggedTokenPrice: peggedTokenPrice?.toString(),
+                totalDebt: totalDebt?.toString(),
+                collateralPoolTVL: collateralPoolTVL?.toString(),
+                sailPoolTVL: sailPoolTVL?.toString(),
+                anchorPoolTVLUSD,
+                sailPoolTVLUSD,
+                totalPoolTVLUSD,
+                minterCollateralUSD,
+                ratio: totalPoolTVLUSD > 0 ? minterCollateralUSD / totalPoolTVLUSD : 0,
+              });
+            }
+
+            // Calculate dynamic projected APR
+            // Formula: fxSAVE APR × (full collateral / pool TVL)
+            // The full collateral ($36k) generates yield at fxSAVE APR
+            // This yield is distributed to pool depositors ($1.5k)
+            // So the effective APR = fxSAVE APR × (full collateral / pool TVL)
+            // Only use dynamic calculation if pool TVL is reasonable (at least $100) to avoid insane APRs
+            if (
+              totalPoolTVLUSD >= 100 && // Minimum $100 pool TVL to avoid division by tiny numbers
+              minterCollateralUSD > 0 &&
+              minterCollateralUSD / totalPoolTVLUSD < 1000 // Cap ratio at 1000x to prevent insane APRs
+            ) {
+              // Base yield APR × (full collateral / total pool TVL)
+              // Full collateral generates the yield, pool TVL receives it
+              const baseYieldPercent = baseYield * 100;
+              const ratio = minterCollateralUSD / totalPoolTVLUSD;
+              const dynamicAPR = baseYieldPercent * ratio;
+              
+              if (process.env.NODE_ENV === "development") {
+                console.log("[Dynamic APR Calculation]", {
+                  marketId,
+                  baseYieldPercent,
+                  collateralSymbol,
+                  minterCollateralUSD,
+                  anchorPoolTVLUSD,
+                  sailPoolTVLUSD,
+                  totalPoolTVLUSD,
+                  ratio,
+                  dynamicAPR,
+                });
+              }
+              
+              // Cap APR at reasonable maximum (e.g., 1000% to prevent display issues)
+              const cappedAPR = Math.min(dynamicAPR, 1000);
+              projectedCollateralAPR = cappedAPR;
+              projectedSailAPR = cappedAPR;
+            } else {
+              // Fallback to old calculation if pools are too small or ratio is too high
+              const cr =
+                collateralRatio !== undefined ? Number(collateralRatio) / 1e18 : 0;
+              const projectedAprPercent =
+                cr > 0 ? baseYield * cr * 100 : null;
+              projectedCollateralAPR = projectedAprPercent;
+              projectedSailAPR = projectedAprPercent;
+            }
+          } else if (baseYield !== null) {
+            // For non-fxUSD markets, use the old calculation
+            const cr =
+              collateralRatio !== undefined ? Number(collateralRatio) / 1e18 : 0;
+            const projectedAprPercent =
+              cr > 0 ? baseYield * cr * 100 : null;
+            projectedCollateralAPR = projectedAprPercent;
+            projectedSailAPR = projectedAprPercent;
+          }
 
           // Calculate APR ranges (min and max across pools)
           const aprValues = [collateralTotalAPR, sailTotalAPR].filter(
@@ -764,6 +890,51 @@ export function useAnchorMarketData(
           (m.sailPoolDeposit > 0n)
       );
 
+      // Calculate min/max projected APR across all markets in this group
+      // For markets with multiple collaterals (e.g., BTC with fxSAVE and wstETH),
+      // min = lowest APR market, max = highest APR market
+      // Use the max projected APR from each market (in dynamic calc, min = max anyway)
+      const allProjectedAPRs = activeMarketsData
+        .map((m) => {
+          // For each market, use the max projected APR
+          // In dynamic calculation, min and max should be equal, but use max to be safe
+          if (m.maxProjectedAPR !== null && m.maxProjectedAPR > 0) {
+            return m.maxProjectedAPR;
+          }
+          if (m.minProjectedAPR !== null && m.minProjectedAPR > 0) {
+            return m.minProjectedAPR;
+          }
+          return null;
+        })
+        .filter((apr): apr is number => apr !== null && apr > 0);
+
+      if (allProjectedAPRs.length > 0) {
+        const groupMinProjectedAPR = Math.min(...allProjectedAPRs);
+        const groupMaxProjectedAPR = Math.max(...allProjectedAPRs);
+
+        if (process.env.NODE_ENV === "development") {
+          console.log("[Group APR Calculation]", {
+            symbol,
+            marketIds: activeMarketsData.map((m) => m.marketId),
+            individualAPRs: activeMarketsData.map((m) => ({
+              marketId: m.marketId,
+              collateral: m.market?.collateral?.symbol,
+              minProjectedAPR: m.minProjectedAPR,
+              maxProjectedAPR: m.maxProjectedAPR,
+            })),
+            allProjectedAPRs,
+            groupMinProjectedAPR,
+            groupMaxProjectedAPR,
+          });
+        }
+
+        // Update all markets in the group with the group min/max
+        activeMarketsData.forEach((market) => {
+          market.minProjectedAPR = groupMinProjectedAPR;
+          market.maxProjectedAPR = groupMaxProjectedAPR;
+        });
+      }
+
       // Add all active markets to the result
       allMarketsData.push(...activeMarketsData);
     });
@@ -776,5 +947,8 @@ export function useAnchorMarketData(
     poolRewardsMap,
     poolDeposits,
     projectedAPR,
+    wrappedCollateralApy,
+    peggedPriceUSDMap,
+    ethPrice,
   ]);
 }

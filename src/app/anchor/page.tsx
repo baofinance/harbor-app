@@ -508,7 +508,9 @@ export default function AnchorPage() {
     poolRewardsMap,
     poolDeposits,
     projectedAPR,
-    { fxSAVEApy: fxSAVEApy ?? null, wstETHApy: wstETHApy ?? null }
+    { fxSAVEApy: fxSAVEApy ?? null, wstETHApy: wstETHApy ?? null },
+    peggedPriceUSDMap,
+    ethPrice
   );
 
   // Create a map for quick lookup: marketId -> marketData
