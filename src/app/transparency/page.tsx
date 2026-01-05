@@ -199,12 +199,18 @@ function MarketCard({
  userPools,
  fxSAVEPrice,
  wstETHPrice,
+  stETHPrice,
+  btcPrice,
+  ethPrice,
 }: {
  market: MarketTransparencyData;
  pools: PoolTransparencyData[];
  userPools?: UserPoolData[];
  fxSAVEPrice?: number;
  wstETHPrice?: number;
+  stETHPrice?: number;
+  btcPrice?: number;
+  ethPrice?: number;
 }) {
  // Expanded views disabled
  const isExpanded = false;
@@ -235,7 +241,22 @@ function MarketCard({
     wrappedTokenPriceUSD = fxSAVEPrice || 1.07; // Fallback to ~$1.07
   } else if (marketIdLower.includes("steth") || marketIdLower.includes("eth")) {
     // stETH/ETH market -> uses wstETH as wrapped collateral
+    // Prefer CoinGecko wstETH price
     wrappedTokenPriceUSD = wstETHPrice || 0;
+    // Fallback: stETH price * wrapped rate
+    if (wrappedTokenPriceUSD === 0 && stETHPrice && stETHPrice > 0 && avgRateNum > 0) {
+      wrappedTokenPriceUSD = stETHPrice * avgRateNum;
+    }
+    // Fallback: oracle (peg-denominated) * peg USD * wrapped rate
+    if (wrappedTokenPriceUSD === 0 && avgPrice > 0n && avgRateNum > 0) {
+      const pegTargetLower = marketIdLower.includes("btc") ? "btc" : "eth";
+      const pegUsd = pegTargetLower === "btc" ? (btcPrice || 0) : (ethPrice || 0);
+      if (pegUsd > 0) {
+        const underlyingInPeg = Number(avgPrice) / 1e18; // peg units per underlying
+        const underlyingUsd = underlyingInPeg * pegUsd;
+        wrappedTokenPriceUSD = underlyingUsd * avgRateNum;
+      }
+    }
   }
   
   const totalTVLUSD =
@@ -582,6 +603,9 @@ export default function TransparencyPage() {
  // Fetch wrapped collateral token prices for TVL calculation (same as Anchor page)
  const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving");
  const { price: wstETHPrice } = useCoinGeckoPrice("wrapped-steth");
+ const { price: stETHPrice } = useCoinGeckoPrice("lido-staked-ethereum-steth");
+ const { price: btcPrice } = useCoinGeckoPrice("bitcoin", 120000);
+ const { price: ethPrice } = useCoinGeckoPrice("ethereum", 120000);
 
  return (
  <div className="min-h-screen text-white max-w-[1300px] mx-auto font-sans relative overflow-x-hidden">
@@ -723,6 +747,9 @@ export default function TransparencyPage() {
                userPools={userPools}
                fxSAVEPrice={fxSAVEPrice}
                wstETHPrice={wstETHPrice}
+               stETHPrice={stETHPrice}
+               btcPrice={btcPrice || undefined}
+               ethPrice={ethPrice || undefined}
              />
            ))}
          </div>

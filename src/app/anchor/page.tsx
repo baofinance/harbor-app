@@ -4273,9 +4273,27 @@ export default function AnchorPage() {
                                 // Use the same CR-aware USD pricing as positions (prefer peggedPriceUSDMap; fallback to contract reads)
                                 const tvlUsdPriceFromMap =
                                   peggedPriceUSDMap[marketData.marketId];
+                                // Extra robustness: if the USD map is missing/zero for haBTC/haETH,
+                                // fall back to CoinGecko peg-target USD price.
+                                const peggedSymbolLower =
+                                  marketData.market?.peggedToken?.symbol
+                                    ?.toLowerCase?.() || "";
+                                const btcUsdFallback =
+                                  (coinGeckoPrices?.["bitcoin"] as number | null) ||
+                                  0;
+                                const ethUsdFallback =
+                                  (coinGeckoPrices?.["ethereum"] as number | null) ||
+                                  0;
+
                                 const peggedPriceUSD =
                                   tvlUsdPriceFromMap && tvlUsdPriceFromMap > 0n
                                     ? Number(tvlUsdPriceFromMap) / 1e18
+                                    : peggedSymbolLower.includes("btc") &&
+                                      btcUsdFallback > 0
+                                    ? btcUsdFallback
+                                    : peggedSymbolLower.includes("eth") &&
+                                      ethUsdFallback > 0
+                                    ? ethUsdFallback
                                     : positionData?.peggedTokenPrice &&
                                       positionData.peggedTokenPrice > 0n
                                     ? Number(positionData.peggedTokenPrice) / 1e18
