@@ -10,33 +10,41 @@ import {
 import {
   updateHaTokenMarksInTotal,
 } from "./marksAggregation";
-import { calculateBalanceUSD } from "./priceOracle";
 import {
   HaTokenBalance,
   MarksMultiplier,
-  PriceFeed,
 } from "../generated/schema";
 import { BigDecimal, BigInt, Bytes, Address, ethereum } from "@graphprotocol/graph-ts";
 import { ERC20 } from "../generated/HaToken_haPB/ERC20";
+import { ChainlinkAggregator } from "../generated/HaToken_haPB/ChainlinkAggregator";
 import {
   ANCHOR_BOOST_MULTIPLIER,
   getActiveBoostMultiplier,
   getOrCreateMarketBoostWindow,
 } from "./marksBoost";
 import { ensureUserRegistered } from "./userRegistry";
-import { runDailyMarksUpdate } from "./dailyUpdate";
+// import { runDailyMarksUpdate } from "./dailyUpdate";
 
 // Constants
 const SECONDS_PER_DAY = BigDecimal.fromString("86400");
 const DEFAULT_MULTIPLIER = BigDecimal.fromString("1.0");
 const DEFAULT_MARKS_PER_DOLLAR_PER_DAY = BigDecimal.fromString("1.0");
+const ONE_E18 = BigDecimal.fromString("1000000000000000000");
+
+// Chainlink (mainnet) feeds
+const ETH_USD_FEED = Address.fromString("0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419");
+const BTC_USD_FEED = Address.fromString("0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c");
+
+// Production v1 ha tokens
+const HAETH = Address.fromString("0x7A53EBc85453DD006824084c4f4bE758FcF8a5B5");
+const HABTC = Address.fromString("0x25bA4A826E1A1346dcA2Ab530831dbFF9C08bEA7");
 
 // Helper to get or create ha token balance
 function getOrCreateHaTokenBalance(
   tokenAddress: Bytes,
   userAddress: Bytes
 ): HaTokenBalance {
-  const id = `${tokenAddress.toHexString()}-${userAddress.toHexString()}`;
+  const id = tokenAddress.toHexString().concat("-").concat(userAddress.toHexString());
   let balance = HaTokenBalance.load(id);
   
   if (balance == null) {
@@ -59,7 +67,28 @@ function getOrCreateHaTokenBalance(
 
 // USD calculation now uses priceOracle module
 function calculateBalanceUSDForToken(balance: BigInt, tokenAddress: Bytes, block: ethereum.Block): BigDecimal {
-  return calculateBalanceUSD(balance, tokenAddress, block.timestamp, 18);
+  const tokenAddr = Address.fromBytes(tokenAddress);
+  let priceUSD = BigDecimal.fromString("1.0");
+
+  // haETH is 1 ETH; haBTC is 1 BTC
+  if (tokenAddr.equals(HAETH)) {
+    priceUSD = fetchChainlinkPrice(ETH_USD_FEED);
+  } else if (tokenAddr.equals(HABTC)) {
+    priceUSD = fetchChainlinkPrice(BTC_USD_FEED);
+  }
+
+  const amount = balance.toBigDecimal().div(ONE_E18);
+  return amount.times(priceUSD);
+}
+
+function fetchChainlinkPrice(feed: Address): BigDecimal {
+  const agg = ChainlinkAggregator.bind(feed);
+  const ans = agg.try_latestAnswer();
+  if (ans.reverted) return BigDecimal.fromString("0");
+  const decRes = agg.try_decimals();
+  const decimals = decRes.reverted ? 8 : decRes.value;
+  const divisor = BigInt.fromI32(10).pow(decimals as u8).toBigDecimal();
+  return ans.value.toBigDecimal().div(divisor);
 }
 
 // Query contract balance directly
@@ -76,7 +105,7 @@ function queryTokenBalance(tokenAddress: Address, userAddress: Address): BigInt 
 
 // Get multiplier (simplified)
 function getHaTokenMultiplier(tokenAddress: Bytes, timestamp: BigInt): BigDecimal {
-  const id = `haToken-${tokenAddress.toHexString()}`;
+  const id = "haToken-".concat(tokenAddress.toHexString());
   let multiplier = MarksMultiplier.load(id);
   
   if (multiplier == null) {
@@ -246,57 +275,11 @@ export function handleHaTokenTransfer(event: TransferEvent): void {
   if (!to.equals(zeroAddress)) ensureUserRegistered(tokenAddress, to);
 }
 
-// ============================================================================
-// Hourly Price Update Block Handler
-// Updates PriceFeed prices every hour to ensure marks are calculated with current prices
-// ============================================================================
-
-const LAST_UPDATE_KEY = "lastDailyPriceUpdate";
-
-// List of all token addresses that need price updates (PRODUCTION v1 addresses)
-function getTokensToUpdate(): Address[] {
-  return [
-    // ha tokens (production v1)
-    Address.fromString("0x7A53EBc85453DD006824084c4f4bE758FcF8a5B5"), // haETH
-    Address.fromString("0x25bA4A826E1A1346dcA2Ab530831dbFF9C08bEA7"), // haBTC
-    // sail tokens (production v1)
-    Address.fromString("0x0Cd6BB1a0cfD95e2779EDC6D17b664B481f2EB4C"), // hsFXUSD-ETH
-    Address.fromString("0x9567c243F647f9Ac37efb7Fc26BD9551Dce0BE1B"), // hsFXUSD-BTC
-    Address.fromString("0x817ADaE288eD46B8618AAEffE75ACD26A0a1b0FD"), // hsSTETH-BTC
-  ];
-}
-
-function getLastUpdateTimestamp(): BigInt {
-  let tracker = PriceFeed.load(LAST_UPDATE_KEY);
-  if (tracker == null) {
-    return BigInt.fromI32(0);
-  }
-  return tracker.lastUpdated;
-}
-
-function setLastUpdateTimestamp(timestamp: BigInt): void {
-  let tracker = PriceFeed.load(LAST_UPDATE_KEY);
-  if (tracker == null) {
-    tracker = new PriceFeed(LAST_UPDATE_KEY);
-    tracker.tokenAddress = Bytes.fromHexString("0x0000000000000000000000000000000000000000");
-    tracker.priceFeedAddress = Bytes.fromHexString("0x0000000000000000000000000000000000000000");
-    tracker.priceUSD = fetchPriceUSD(
-      Address.fromString("0x0000000000000000000000000000000000000000"),
-      timestamp
-    );
-    tracker.decimals = 18;
-  }
-  tracker.lastUpdated = timestamp;
-  tracker.save();
-}
-
 /**
  * Block handler that runs periodically
- * Checks if an hour has passed since last update, and if so, updates all PriceFeed prices
- * 
- * Optimization: Only check every ~1000 blocks to reduce overhead during sync
+ * Uses block.timestamp to decide when to perform daily work.
  */
 export function handleBlock(block: ethereum.Block): void {
-  // Keep the polling frequency low; use timestamp to decide when to do daily work.
-  runDailyMarksUpdate(block);
+  // TEMP: disable daily update to isolate AssemblyScript compiler crash.
+  // runDailyMarksUpdate(block);
 }

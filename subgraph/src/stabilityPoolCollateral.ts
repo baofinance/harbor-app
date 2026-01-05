@@ -7,14 +7,13 @@ import {
   Withdraw as StabilityPoolWithdrawEvent,
   UserDepositChange as UserDepositChangeEvent,
 } from "../generated/StabilityPoolCollateral/StabilityPool";
-import { StabilityPoolDeposit, MarksMultiplier, PriceFeed } from "../generated/schema";
+import { StabilityPoolDeposit, MarksMultiplier } from "../generated/schema";
 import { BigDecimal, BigInt, Bytes, Address, ethereum } from "@graphprotocol/graph-ts";
 import { StabilityPool } from "../generated/StabilityPoolCollateral_ETH_fxUSD/StabilityPool";
 // Note: WrappedPriceOracle bindings are generated per data source, but we'll use a generic approach
 // Import from Genesis_ETH_fxUSD as a reference (same ABI structure)
 import { WrappedPriceOracle } from "../generated/Genesis_ETH_fxUSD/WrappedPriceOracle";
 import { ChainlinkAggregator } from "../generated/HaToken_haETH/ChainlinkAggregator";
-import { fetchPriceUSD } from "./priceOracle";
 import {
   ANCHOR_BOOST_MULTIPLIER,
   getActiveBoostMultiplier,
@@ -32,6 +31,17 @@ const E18 = BigDecimal.fromString("1000000000000000000"); // 10^18
 // Chainlink (mainnet) feeds
 const ETH_USD_FEED = Address.fromString("0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419");
 const BTC_USD_FEED = Address.fromString("0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c");
+
+// Production v1 ha tokens (mainnet)
+const HAETH = Address.fromString("0x7A53EBc85453DD006824084c4f4bE758FcF8a5B5");
+const HABTC = Address.fromString("0x25bA4A826E1A1346dcA2Ab530831dbFF9C08bEA7");
+
+function assetTokenUsd(assetToken: Address): BigDecimal {
+  if (assetToken.equals(HAETH)) return chainlinkUsd(ETH_USD_FEED);
+  if (assetToken.equals(HABTC)) return chainlinkUsd(BTC_USD_FEED);
+  // haUSD-like
+  return BigDecimal.fromString("1.0");
+}
 
 function chainlinkUsd(feed: Address): BigDecimal {
   const oracle = ChainlinkAggregator.bind(feed);
@@ -267,7 +277,7 @@ export function handleStabilityPoolDeposit(event: StabilityPoolDepositEvent): vo
   // Marks: pool deposits are in ASSET_TOKEN (pegged ha token). Price ASSET_TOKEN directly.
   const assetToken = getPoolAssetToken(Address.fromBytes(poolAddress));
   const amountInTokens = actualBalance.toBigDecimal().div(E18);
-  const assetPriceUSD = assetToken ? fetchPriceUSD(assetToken as Bytes, timestamp) : BigDecimal.fromString("0");
+  const assetPriceUSD = assetToken ? assetTokenUsd(assetToken as Address) : BigDecimal.fromString("0");
   deposit.balanceUSD = amountInTokens.times(assetPriceUSD);
   
   // Update marks per day
@@ -312,7 +322,7 @@ export function handleStabilityPoolWithdraw(event: StabilityPoolWithdrawEvent): 
   // Calculate USD value using real-time oracle price
   const assetToken = getPoolAssetToken(Address.fromBytes(poolAddress));
   const amountInTokens = actualBalance.toBigDecimal().div(E18);
-  const assetPriceUSD = assetToken ? fetchPriceUSD(assetToken as Bytes, timestamp) : BigDecimal.fromString("0");
+  const assetPriceUSD = assetToken ? assetTokenUsd(assetToken as Address) : BigDecimal.fromString("0");
   deposit.balanceUSD = amountInTokens.times(assetPriceUSD);
   const boost = getActiveBoostMultiplier("stabilityPoolCollateral", poolAddress, timestamp);
   const marksPerDollarPerDay = DEFAULT_MARKS_PER_DOLLAR_PER_DAY
@@ -356,7 +366,7 @@ export function handleStabilityPoolDepositChange(event: UserDepositChangeEvent):
   // Calculate USD value using real-time oracle price
   const assetToken = getPoolAssetToken(Address.fromBytes(poolAddress));
   const amountInTokens = newDeposit.toBigDecimal().div(E18);
-  const assetPriceUSD = assetToken ? fetchPriceUSD(assetToken as Bytes, timestamp) : BigDecimal.fromString("0");
+  const assetPriceUSD = assetToken ? assetTokenUsd(assetToken as Address) : BigDecimal.fromString("0");
   deposit.balanceUSD = amountInTokens.times(assetPriceUSD);
   const boost = getActiveBoostMultiplier("stabilityPoolCollateral", poolAddress, timestamp);
   const marksPerDollarPerDay = DEFAULT_MARKS_PER_DOLLAR_PER_DAY
