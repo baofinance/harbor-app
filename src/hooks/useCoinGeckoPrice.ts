@@ -28,7 +28,7 @@ export function useCoinGeckoPrice(
       setError(null);
       try {
         const response = await fetch(
-          `https://api.coingecko.com/api/v3/simple/price?ids=${coinId}&vs_currencies=usd`
+          `/api/coingecko/simple-price?ids=${encodeURIComponent(coinId)}`
         );
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
@@ -99,22 +99,38 @@ export function useCoinGeckoPrices(
 
     const fetchPrices = async (retryCount: number = 0): Promise<void> => {
       const startTime = performance.now();
-      console.log(`[CoinGecko] Starting fetch for: ${coinIds.join(", ")}${retryCount > 0 ? ` (retry ${retryCount})` : ""}`);
+      if (process.env.NODE_ENV === "development") {
+        console.log(
+          `[CoinGecko] Starting fetch for: ${coinIds.join(", ")}${
+            retryCount > 0 ? ` (retry ${retryCount})` : ""
+          }`
+        );
+      }
       setIsLoading(true);
       setError(null);
       try {
         const ids = coinIds.join(",");
         const response = await fetch(
-          `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd`
+          `/api/coingecko/simple-price?ids=${encodeURIComponent(ids)}`
         );
         const fetchTime = performance.now() - startTime;
-        console.log(`[CoinGecko] Fetch completed in ${fetchTime.toFixed(2)}ms, status: ${response.status}`);
+        if (process.env.NODE_ENV === "development") {
+          console.log(
+            `[CoinGecko] Fetch completed in ${fetchTime.toFixed(
+              2
+            )}ms, status: ${response.status}`
+          );
+        }
         
         if (!response.ok) {
           // Handle rate limiting (429) with retry logic
           if (response.status === 429 && retryCount < 3) {
             const backoffDelay = Math.min(1000 * Math.pow(2, retryCount), 10000); // Exponential backoff, max 10s
-            console.warn(`[CoinGecko] Rate limited (429), retrying in ${backoffDelay}ms...`);
+            if (process.env.NODE_ENV === "development") {
+              console.warn(
+                `[CoinGecko] Rate limited (429), retrying in ${backoffDelay}ms...`
+              );
+            }
             if (cancelled) return;
             retryTimeoutId = setTimeout(() => {
               fetchPrices(retryCount + 1);
@@ -130,14 +146,23 @@ export function useCoinGeckoPrices(
         const newPrices: Record<string, number | null> = {};
         coinIds.forEach((id) => {
           newPrices[id] = data[id]?.usd || null;
-          if (newPrices[id]) {
-            console.log(`[CoinGecko] Price for ${id}: $${newPrices[id]}`);
-          } else {
-            console.warn(`[CoinGecko] No price found for ${id}`);
+          if (process.env.NODE_ENV === "development") {
+            if (newPrices[id]) {
+              console.log(`[CoinGecko] Price for ${id}: $${newPrices[id]}`);
+            } else {
+              console.warn(`[CoinGecko] No price found for ${id}`);
+            }
           }
         });
         const totalTime = performance.now() - startTime;
-        console.log(`[CoinGecko] Total time: ${totalTime.toFixed(2)}ms, prices:`, newPrices);
+        if (process.env.NODE_ENV === "development") {
+          console.log(
+            `[CoinGecko] Total time: ${totalTime.toFixed(
+              2
+            )}ms, prices:`,
+            newPrices
+          );
+        }
         
         // Only update prices if we got valid data
         // Preserve existing prices for coins that weren't returned in this response

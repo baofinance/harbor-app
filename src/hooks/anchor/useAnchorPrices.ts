@@ -19,6 +19,7 @@ export function useAnchorPrices(
   reads: any,
   peggedPriceMap: Record<string, bigint | undefined>
 ) {
+  const isDebug = process.env.NODE_ENV === "development";
   // Fetch CoinGecko prices
   const { price: fxUSDPrice } = useCoinGeckoPrice("f-x-protocol-fxusd");
   const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving");
@@ -76,12 +77,18 @@ export function useAnchorPrices(
       return ethPriceCoinGecko;
     }
     if (chainlinkEthPrice && chainlinkEthPrice > 0) {
-      console.log(`[useAnchorPrices] CoinGecko ETH price unavailable (${ethPriceCoinGecko}), using Chainlink fallback: $${chainlinkEthPrice}`);
+      if (isDebug) {
+        console.log(
+          `[useAnchorPrices] CoinGecko ETH price unavailable (${ethPriceCoinGecko}), using Chainlink fallback: $${chainlinkEthPrice}`
+        );
+      }
       return chainlinkEthPrice;
     }
-    console.warn(`[useAnchorPrices] Both CoinGecko and Chainlink ETH prices unavailable`);
+    if (isDebug) {
+      console.warn(`[useAnchorPrices] Both CoinGecko and Chainlink ETH prices unavailable`);
+    }
     return null;
-  }, [ethPriceCoinGecko, chainlinkEthPrice]);
+  }, [ethPriceCoinGecko, chainlinkEthPrice, isDebug]);
 
   // Use Chainlink as fallback if CoinGecko fails or returns 0
   const btcPrice = useMemo(() => {
@@ -89,22 +96,37 @@ export function useAnchorPrices(
       return btcPriceCoinGecko;
     }
     if (chainlinkBtcPrice && chainlinkBtcPrice > 0) {
-      console.log(`[useAnchorPrices] CoinGecko BTC price unavailable (${btcPriceCoinGecko}), using Chainlink fallback: $${chainlinkBtcPrice}`);
+      if (isDebug) {
+        console.log(
+          `[useAnchorPrices] CoinGecko BTC price unavailable (${btcPriceCoinGecko}), using Chainlink fallback: $${chainlinkBtcPrice}`
+        );
+      }
       return chainlinkBtcPrice;
     }
-    console.warn(`[useAnchorPrices] Both CoinGecko and Chainlink BTC prices unavailable`);
+    if (isDebug) {
+      console.warn(`[useAnchorPrices] Both CoinGecko and Chainlink BTC prices unavailable`);
+    }
     return null;
-  }, [btcPriceCoinGecko, chainlinkBtcPrice]);
+  }, [btcPriceCoinGecko, chainlinkBtcPrice, isDebug]);
 
   // Build USD price map for useMarketPositions (peggedTokenPrice * collateralPriceUSD)
   const peggedPriceUSDMap = useMemo(() => {
     const map: Record<string, bigint | undefined> = {};
     if (!reads) {
-      console.log("[peggedPriceUSDMap] No reads available");
+      if (isDebug) {
+        console.log("[peggedPriceUSDMap] No reads available");
+      }
       return map;
     }
     
-    console.log("[peggedPriceUSDMap] ETH price:", ethPrice, "Available markets:", anchorMarkets.length);
+    if (isDebug) {
+      console.log(
+        "[peggedPriceUSDMap] ETH price:",
+        ethPrice,
+        "Available markets:",
+        anchorMarkets.length
+      );
+    }
     
     anchorMarkets.forEach(([id, m], mi) => {
       // Get peggedTokenPrice from peggedPriceMap (already calculated correctly)
@@ -232,21 +254,37 @@ export function useAnchorPrices(
       const isETHPegged = pegTarget === "eth" || pegTarget === "ethereum" || peggedTokenSymbol.includes("eth") || peggedTokenSymbol === "haeth";
       const isBTCPegged = pegTarget === "btc" || pegTarget === "bitcoin" || peggedTokenSymbol.includes("btc") || peggedTokenSymbol === "habtc";
       
-      console.log(`[peggedPriceUSDMap] Market ${id}: symbol="${peggedTokenSymbol}", pegTarget="${pegTarget}", isETHPegged=${isETHPegged}, isBTCPegged=${isBTCPegged}, ethPrice=${ethPrice}, btcPrice=${btcPrice}`);
+      if (isDebug) {
+        console.log(
+          `[peggedPriceUSDMap] Market ${id}: symbol="${peggedTokenSymbol}", pegTarget="${pegTarget}", isETHPegged=${isETHPegged}, isBTCPegged=${isBTCPegged}, ethPrice=${ethPrice}, btcPrice=${btcPrice}`
+        );
+      }
       
       if (isETHPegged && ethPrice) {
         // haETH is pegged to ETH, so price = ETH price in USD
         const ethPriceInWei = BigInt(Math.floor(ethPrice * 1e18));
         map[id] = ethPriceInWei;
-        console.log(`[peggedPriceUSDMap] Market ${id} (${peggedTokenSymbol}): Using ETH price directly: $${ethPrice} = ${ethPriceInWei.toString()}`);
+        if (isDebug) {
+          console.log(
+            `[peggedPriceUSDMap] Market ${id} (${peggedTokenSymbol}): Using ETH price directly: $${ethPrice} = ${ethPriceInWei.toString()}`
+          );
+        }
       } else if (isBTCPegged && btcPrice) {
         // haBTC is pegged to BTC, so price = BTC price in USD
         const btcPriceInWei = BigInt(Math.floor(btcPrice * 1e18));
         map[id] = btcPriceInWei;
-        console.log(`[peggedPriceUSDMap] Market ${id} (${peggedTokenSymbol}): Using BTC price directly: $${btcPrice} = ${btcPriceInWei.toString()}`);
+        if (isDebug) {
+          console.log(
+            `[peggedPriceUSDMap] Market ${id} (${peggedTokenSymbol}): Using BTC price directly: $${btcPrice} = ${btcPriceInWei.toString()}`
+          );
+        }
       } else if (isBTCPegged && !btcPrice) {
         // BTC-pegged token but BTC price not loaded yet - don't use collateral price calculation
-        console.warn(`[peggedPriceUSDMap] Market ${id} (${peggedTokenSymbol}): BTC price not available yet (btcPrice=${btcPrice}), skipping price calculation`);
+        if (isDebug) {
+          console.warn(
+            `[peggedPriceUSDMap] Market ${id} (${peggedTokenSymbol}): BTC price not available yet (btcPrice=${btcPrice}), skipping price calculation`
+          );
+        }
         // Don't set a price - let it fall through to the fallback
       } else if (peggedTokenPrice && collateralPriceUSD > 0) {
         // For other tokens, calculate USD price: peggedTokenPrice (in collateral units) * collateralPriceUSD
@@ -256,17 +294,33 @@ export function useAnchorPrices(
         map[id] = BigInt(Math.floor(peggedPriceInUSD * 1e18));
       } else if (isETHPegged && !ethPrice) {
         // ETH-pegged token but ETH price not loaded yet - log warning
-        console.warn(`[peggedPriceUSDMap] Market ${id} (${peggedTokenSymbol}): ETH price not available yet`);
+        if (isDebug) {
+          console.warn(
+            `[peggedPriceUSDMap] Market ${id} (${peggedTokenSymbol}): ETH price not available yet`
+          );
+        }
       } else if (peggedTokenPrice) {
         // Fallback: if collateral price unavailable, assume $1 peg
         map[id] = peggedTokenPrice;
       } else {
-        console.warn(`[peggedPriceUSDMap] Market ${id}: No price calculated`);
+        if (isDebug) {
+          console.warn(`[peggedPriceUSDMap] Market ${id}: No price calculated`);
+        }
       }
     });
     
     return map;
-  }, [anchorMarkets, reads, peggedPriceMap, fxUSDPrice, fxSAVEPrice, usdcPrice, ethPrice, btcPrice]);
+  }, [
+    anchorMarkets,
+    reads,
+    peggedPriceMap,
+    fxUSDPrice,
+    fxSAVEPrice,
+    usdcPrice,
+    ethPrice,
+    btcPrice,
+    isDebug,
+  ]);
 
   const mergedPeggedPriceMap = useMemo(() => {
     // Use USD prices (peggedPriceUSDMap) instead of raw collateral prices
@@ -284,12 +338,17 @@ export function useAnchorPrices(
         }
       }
     });
-    console.log("[mergedPeggedPriceMap] Final price map:", Object.entries(out).map(([id, price]) => ({
-      marketId: id,
-      price: price ? Number(price) / 1e18 : undefined
-    })));
+    if (isDebug) {
+      console.log(
+        "[mergedPeggedPriceMap] Final price map:",
+        Object.entries(out).map(([id, price]) => ({
+          marketId: id,
+          price: price ? Number(price) / 1e18 : undefined,
+        }))
+      );
+    }
     return out;
-  }, [peggedPriceUSDMap, peggedPriceMap]);
+  }, [peggedPriceUSDMap, peggedPriceMap, isDebug]);
 
   return {
     peggedPriceUSDMap,

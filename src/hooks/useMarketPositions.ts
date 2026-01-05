@@ -40,14 +40,22 @@ export function useMarketPositions(
   userAddress?: `0x${string}`,
   externalPriceMap?: Record<string, bigint | undefined>
 ) {
+  const isDebug = process.env.NODE_ENV === "development";
   // Debug: log the address being used
-  console.log("[useMarketPositions] userAddress:", userAddress);
-  console.log("[useMarketPositions] externalPriceMap:", externalPriceMap ? Object.keys(externalPriceMap) : "none");
+  if (isDebug) {
+    console.log("[useMarketPositions] userAddress:", userAddress);
+    console.log(
+      "[useMarketPositions] externalPriceMap:",
+      externalPriceMap ? Object.keys(externalPriceMap) : "none"
+    );
+  }
   
   // Build contract calls for all markets
   const { contracts, indexMap } = useMemo(() => {
     if (!userAddress || marketConfigs.length === 0) {
-      console.log("[useMarketPositions] No userAddress or marketConfigs, skipping");
+      if (isDebug) {
+        console.log("[useMarketPositions] No userAddress or marketConfigs, skipping");
+      }
       return { 
         contracts: [] as any[], 
         indexMap: new Map<number, { marketId: string; kind: "walletHa" | "collateralPool" | "sailPool" | "price" }>() 
@@ -180,7 +188,9 @@ export function useMarketPositions(
         }
       });
     } else {
-      console.log("[useMarketPositions] No data returned from contract reads");
+      if (isDebug) {
+        console.log("[useMarketPositions] No data returned from contract reads");
+      }
     }
 
     // Calculate totals and USD values
@@ -202,11 +212,21 @@ export function useMarketPositions(
         pos.totalUSD = pos.walletHaUSD + pos.collateralPoolUSD + pos.sailPoolUSD;
         
         if (pos.walletHa > 0n) {
-          console.log(`[useMarketPositions] Market ${config.marketId}: walletHa=${walletHaAmount}, priceUSD=$${priceUSD}, walletHaUSD=$${pos.walletHaUSD}`);
+          if (isDebug) {
+            console.log(
+              `[useMarketPositions] Market ${config.marketId}: walletHa=${walletHaAmount}, priceUSD=$${priceUSD}, walletHaUSD=$${pos.walletHaUSD}`
+            );
+          }
         }
       } else {
         // If price missing, keep USD as 0 to signal unavailable
-        console.warn(`[useMarketPositions] Market ${config.marketId}: No price available, walletHa=${Number(pos.walletHa) / 1e18}`);
+        if (isDebug) {
+          console.warn(
+            `[useMarketPositions] Market ${config.marketId}: No price available, walletHa=${
+              Number(pos.walletHa) / 1e18
+            }`
+          );
+        }
         pos.walletHaUSD = 0;
         pos.collateralPoolUSD = 0;
         pos.sailPoolUSD = 0;
