@@ -335,6 +335,9 @@ export default function AnchorPage() {
     // Add wstETH and stETH for fallback
     ids.add("wrapped-steth");
     ids.add("lido-staked-ethereum-steth");
+    // Add peg targets used for oracle conversions (BTC/ETH-pegged markets)
+    ids.add("bitcoin");
+    ids.add("ethereum");
     return Array.from(ids);
   }, [anchorMarkets]);
 
@@ -4127,20 +4130,28 @@ export default function AnchorPage() {
                               : 0;
 
                           // Collateral value calculation
-                          // collateralTokenBalance returns wrapped collateral (fxSAVE for fxUSD markets, wstETH for wstETH markets)
-                          const collateralTokensWrapped =
+                          // IMPORTANT: Minter.collateralTokenBalance() / collateralValue is returned in **underlying-equivalent units**
+                          // - fxUSD markets: returned value is in fxUSD units (even though the minter holds fxSAVE)
+                          // - wstETH markets: returned value is in stETH units (even though the minter holds wstETH)
+                          // This matches on-chain behavior: underlyingEq = wrappedBalance * wrappedRate (where wrappedRate is underlying per wrapped).
+                          const collateralTokensUnderlyingEq =
                             marketData.collateralValue !== undefined
                               ? Number(marketData.collateralValue) / 1e18
                               : 0;
+
+                          const collateralTokensWrapped =
+                            wrappedRateNum > 0
+                              ? collateralTokensUnderlyingEq / wrappedRateNum
+                              : collateralTokensUnderlyingEq;
                           
                           // Removed debug logging
 
-                          // Calculate collateral value USD using the price from the hook
-                          // For fxUSD markets: collateralValue is already in fxSAVE (wrapped), use fxSAVE price
-                          // For wstETH markets: collateralValue is in wstETH (wrapped), use wstETH price
+                          // Calculate collateral value USD.
+                          // We compute USD from the wrapped token price (fxSAVE/wstETH) and convert the underlying-equivalent amount back to wrapped.
                           let collateralValueUSD = 0;
                           if (collateralTokensWrapped > 0 && collateralPriceUSD > 0) {
-                            collateralValueUSD = collateralTokensWrapped * collateralPriceUSD;
+                            collateralValueUSD =
+                              collateralTokensWrapped * collateralPriceUSD;
                           }
 
                           // Calculate total debt in USD (same calculation as market position)
@@ -4305,16 +4316,35 @@ export default function AnchorPage() {
                                         Collateral (USD)
                                       </div>
                                       <SimpleTooltip
-                                        label={`${collateralTokensWrapped.toLocaleString(
-                                          undefined,
-                                          {
-                                            minimumFractionDigits: 2,
-                                            maximumFractionDigits: 2,
-                                          }
-                                        )} ${
-                                          marketData.market.collateral
-                                            ?.symbol || "ETH"
-                                        } (wrapped)`}
+                                        label={
+                                          <div className="space-y-1">
+                                            <div>
+                                              {collateralTokensUnderlyingEq.toLocaleString(
+                                                undefined,
+                                                {
+                                                  minimumFractionDigits: 2,
+                                                  maximumFractionDigits: 2,
+                                                }
+                                              )}{" "}
+                                              {marketData.market.collateral
+                                                ?.underlyingSymbol ||
+                                                (isFxUSDMarket ? "fxUSD" : "stETH")}{" "}
+                                              (underlying)
+                                            </div>
+                                            <div className="text-white/70">
+                                              {collateralTokensWrapped.toLocaleString(
+                                                undefined,
+                                                {
+                                                  minimumFractionDigits: 2,
+                                                  maximumFractionDigits: 2,
+                                                }
+                                              )}{" "}
+                                              {marketData.market.collateral
+                                                ?.symbol || "ETH"}{" "}
+                                              (wrapped)
+                                            </div>
+                                          </div>
+                                        }
                                       >
                                         <div className="text-xs font-semibold text-[#1E4775] cursor-help">
                                           {collateralValueUSD > 0

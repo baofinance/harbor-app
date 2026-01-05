@@ -767,27 +767,26 @@ function SailMarketExpandedView({
     "USD";
 
   // Calculate TVL in USD using collateral value and price from hook
-  // Match the anchor page calculation logic
+  // IMPORTANT: minter.collateralTokenBalance() / collateralValue is in underlying-equivalent units
+  // (fxUSD for fxUSD markets, stETH for wstETH markets). Do NOT multiply the amount by wrappedRate again.
   const collateralSymbol = market.collateral?.symbol?.toLowerCase() || "";
   const isFxUSDMarket =
     collateralSymbol === "fxusd" || collateralSymbol === "fxsave";
 
   let tvlUSD: number | undefined;
   if (collateralValue) {
-    // collateralValue is in underlying tokens (fxUSD for fxUSD markets, stETH for wstETH markets)
-    // Need to convert to wrapped tokens (fxSAVE for fxUSD markets, wstETH for wstETH markets)
-    const collateralTokensUnderlying = Number(collateralValue) / 1e18;
+    const collateralTokensUnderlyingEq = Number(collateralValue) / 1e18;
     const wrappedRateNum =
       wrappedRateFromHook !== undefined
         ? Number(wrappedRateFromHook) / 1e18
         : 1.0; // Default 1:1 if no rate
 
-    if (isFxUSDMarket && collateralTokensUnderlying > 0) {
-      // For fxUSD markets: collateralValue is in fxUSD (underlying)
-      // Convert to fxSAVE (wrapped) by multiplying by wrappedRate
-      // wrappedRate = fxSAVE/fxUSD rate, so fxSAVE = fxUSD * rate
-      const fxSAVEBalance = collateralTokensUnderlying * wrappedRateNum;
+    const collateralTokensWrapped =
+      wrappedRateNum > 0
+        ? collateralTokensUnderlyingEq / wrappedRateNum
+        : collateralTokensUnderlyingEq;
 
+    if (isFxUSDMarket && collateralTokensUnderlyingEq > 0) {
       // Calculate fxSAVE price in USD
       // Priority: getPrice() * ETH price > CoinGecko fxSAVE price > USDC price > $1.00
       // Only calculate when all price sources are loaded
@@ -812,28 +811,30 @@ function SailMarketExpandedView({
         }
       }
 
-      // Collateral USD = fxSAVE balance * fxSAVE price USD
+      // Collateral USD = fxSAVE (wrapped) balance * fxSAVE price USD
       // Only calculate if we have a valid price (not loading)
       if (
         fxSAVEPriceUSD > 0 &&
         !isCollateralPriceLoading &&
         !isCoinGeckoLoading
       ) {
-        tvlUSD = fxSAVEBalance * fxSAVEPriceUSD;
+        tvlUSD = collateralTokensWrapped * fxSAVEPriceUSD;
       }
-    } else if (!isFxUSDMarket && collateralTokensUnderlying > 0) {
-      // For wstETH markets: collateralValue is in underlying (stETH)
-      // Convert to wrapped (wstETH) by multiplying by wrappedRate
-      // Use price from hook if available and loaded, otherwise fallback to CoinGecko wstETH price
+    } else if (!isFxUSDMarket && collateralTokensUnderlyingEq > 0) {
+      // For wstETH markets: collateralValue is in underlying-equivalent (stETH).
+      // Convert to wrapped (wstETH) by dividing by wrappedRate (stETH per wstETH).
+      // Use CoinGecko wstETH price, otherwise derive wrapped price from oracle-underlying price * wrappedRate.
       // Only calculate when all price sources are loaded
       let effectivePrice = 0;
       if (!isCollateralPriceLoading && !isCoinGeckoLoading) {
-        if (collateralPriceUSDFromHook > 0) {
-          // Use hook price (underlying stETH price, which equals wstETH price)
-          effectivePrice = collateralPriceUSDFromHook;
-        } else if (wstETHPrice) {
+        if (wstETHPrice) {
           // Fallback to CoinGecko wstETH price (same as anchor page logic)
           effectivePrice = wstETHPrice;
+        } else if (collateralPriceUSDFromHook > 0 && tokenPrices?.pegTargetUSD) {
+          // Oracle returns underlying price in peg target units; convert to USD and then to wrapped price.
+          const underlyingPriceUSD =
+            collateralPriceUSDFromHook * tokenPrices.pegTargetUSD;
+          effectivePrice = underlyingPriceUSD * wrappedRateNum;
         }
       }
 
@@ -843,9 +844,7 @@ function SailMarketExpandedView({
         !isCollateralPriceLoading &&
         !isCoinGeckoLoading
       ) {
-        // TVL = underlying tokens * wrappedRate * price
-        // This gives: (stETH * wrappedRate) * price = wstETH * wstETH_price
-        tvlUSD = collateralTokensUnderlying * wrappedRateNum * effectivePrice;
+        tvlUSD = collateralTokensWrapped * effectivePrice;
       }
     }
   }
@@ -918,17 +917,17 @@ function SailMarketExpandedView({
                   !pnlData.error &&
                   pnlData.realizedPnL &&
                   pnlData.realizedPnL !== 0 && (
-                    <>
-                      <div className="text-[#1E4775]/70">Realized PnL:</div>
-                      <div
-                        className={`font-mono text-right ${
-                          formatPnL(pnlData.realizedPnL).color
-                        }`}
-                      >
-                        {formatPnL(pnlData.realizedPnL).text}
-                      </div>
-                    </>
-                  )}
+                  <>
+                    <div className="text-[#1E4775]/70">Realized PnL:</div>
+                    <div
+                      className={`font-mono text-right ${
+                        formatPnL(pnlData.realizedPnL).color
+                      }`}
+                    >
+                      {formatPnL(pnlData.realizedPnL).text}
+                    </div>
+                  </>
+                )}
                 <div className="text-[#1E4775]/70 font-semibold pt-1 border-t border-[#1E4775]/10">
                   Total PnL:
                 </div>
@@ -1067,8 +1066,8 @@ export default function SailPage() {
         sailBalancesCount: sailBalances.length,
         sailBalances: sailBalances.map(
           (b: { tokenAddress: string; estimatedMarks: number }) => ({
-            token: b.tokenAddress,
-            marks: b.estimatedMarks,
+          token: b.tokenAddress,
+          marks: b.estimatedMarks,
           })
         ),
       });
@@ -1330,8 +1329,8 @@ export default function SailPage() {
   const anvilUserDepositReads = useContractReads({
     contracts: userDepositContractArray,
     query: {
-      enabled: sailMarkets.length > 0 && !!address && useAnvil,
-      refetchInterval: 5000,
+    enabled: sailMarkets.length > 0 && !!address && useAnvil,
+    refetchInterval: 5000,
     },
   });
 
@@ -1568,18 +1567,18 @@ export default function SailPage() {
               // Check if any markets have finished genesis (have collateral)
               const hasAnyFinishedMarkets = Object.entries(groupedMarkets).some(
                 ([_, markets]) => {
-                  return markets.some(([id]) => {
-                    const globalIndex = sailMarkets.findIndex(
-                      ([marketId]) => marketId === id
-                    );
-                    const baseOffset = marketOffsets.get(globalIndex) ?? 0;
-                    const collateralValue = reads?.[baseOffset + 3]?.result as
-                      | bigint
-                      | undefined;
+                return markets.some(([id]) => {
+                  const globalIndex = sailMarkets.findIndex(
+                    ([marketId]) => marketId === id
+                  );
+                  const baseOffset = marketOffsets.get(globalIndex) ?? 0;
+                  const collateralValue = reads?.[baseOffset + 3]?.result as
+                    | bigint
+                    | undefined;
                     return (
                       collateralValue !== undefined && collateralValue > 0n
                     );
-                  });
+                });
                 }
               );
 
@@ -1598,105 +1597,105 @@ export default function SailPage() {
               // Otherwise, show markets as usual
               return Object.entries(groupedMarkets).map(
                 ([longSide, markets]) => {
-                  // Filter to only show markets where genesis has completed (has collateral)
-                  const activeMarkets = markets.filter(([id]) => {
-                    const globalIndex = sailMarkets.findIndex(
-                      ([marketId]) => marketId === id
-                    );
-                    const baseOffset = marketOffsets.get(globalIndex) ?? 0;
-                    const collateralValue = reads?.[baseOffset + 3]?.result as
-                      | bigint
-                      | undefined;
+                // Filter to only show markets where genesis has completed (has collateral)
+                const activeMarkets = markets.filter(([id]) => {
+                  const globalIndex = sailMarkets.findIndex(
+                    ([marketId]) => marketId === id
+                  );
+                  const baseOffset = marketOffsets.get(globalIndex) ?? 0;
+                  const collateralValue = reads?.[baseOffset + 3]?.result as
+                    | bigint
+                    | undefined;
                     return (
                       collateralValue !== undefined && collateralValue > 0n
                     );
-                  });
+                });
 
-                  // Skip this group if no markets have completed genesis
-                  if (activeMarkets.length === 0) {
-                    return null;
-                  }
+                // Skip this group if no markets have completed genesis
+                if (activeMarkets.length === 0) {
+                  return null;
+                }
 
-                  return (
-                    <div key={longSide}>
-                      <div className="pt-4 mb-3">
-                        <h2 className="text-xs font-medium text-white/70 uppercase tracking-wider">
-                          Long {longSide}
-                        </h2>
-                      </div>
+              return (
+                <div key={longSide}>
+                  <div className="pt-4 mb-3">
+                    <h2 className="text-xs font-medium text-white/70 uppercase tracking-wider">
+                      Long {longSide}
+                    </h2>
+                  </div>
 
-                      {/* Header Row */}
-                      <div className="hidden md:block bg-white py-1.5 px-2 overflow-x-auto mb-2">
-                        <div className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr] gap-4 items-center uppercase tracking-wider text-[10px] lg:text-[11px] text-[#1E4775] font-semibold">
-                          <div className="min-w-0 text-center">Token</div>
-                          <div className="text-center min-w-0">Leverage</div>
+                  {/* Header Row */}
+                  <div className="hidden md:block bg-white py-1.5 px-2 overflow-x-auto mb-2">
+                    <div className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr] gap-4 items-center uppercase tracking-wider text-[10px] lg:text-[11px] text-[#1E4775] font-semibold">
+                      <div className="min-w-0 text-center">Token</div>
+                      <div className="text-center min-w-0">Leverage</div>
                           <div className="text-center min-w-0">
                             Your Position
                           </div>
                           <div className="text-center min-w-0">
                             Current Value
                           </div>
-                          <div className="text-center min-w-0">Action</div>
-                        </div>
-                      </div>
+                      <div className="text-center min-w-0">Action</div>
+                    </div>
+                  </div>
 
-                      {/* Market Rows */}
-                      <div className="space-y-2">
-                        {activeMarkets.map(([id, m]) => {
-                          const globalIndex = sailMarkets.findIndex(
-                            ([marketId]) => marketId === id
-                          );
-                          const userDeposit = userDepositMap.get(globalIndex);
+                  {/* Market Rows */}
+                  <div className="space-y-2">
+                    {activeMarkets.map(([id, m]) => {
+                      const globalIndex = sailMarkets.findIndex(
+                        ([marketId]) => marketId === id
+                      );
+                      const userDeposit = userDepositMap.get(globalIndex);
                           const baseOffset =
                             marketOffsets.get(globalIndex) ?? 0;
 
-                          // Check if this market has oracle and token addresses
-                          const priceOracle = (m as any).addresses
-                            ?.collateralPrice as `0x${string}` | undefined;
-                          const leveragedTokenAddress = (m as any).addresses
-                            ?.leveragedToken as `0x${string}` | undefined;
-                          const isValidAddress = (addr: any): boolean =>
-                            addr &&
-                            typeof addr === "string" &&
-                            addr.startsWith("0x") &&
-                            addr.length === 42;
-                          const hasOracle = isValidAddress(priceOracle);
+                      // Check if this market has oracle and token addresses
+                      const priceOracle = (m as any).addresses
+                        ?.collateralPrice as `0x${string}` | undefined;
+                      const leveragedTokenAddress = (m as any).addresses
+                        ?.leveragedToken as `0x${string}` | undefined;
+                      const isValidAddress = (addr: any): boolean =>
+                        addr &&
+                        typeof addr === "string" &&
+                        addr.startsWith("0x") &&
+                        addr.length === 42;
+                      const hasOracle = isValidAddress(priceOracle);
                           const hasToken = isValidAddress(
                             leveragedTokenAddress
                           );
 
-                          const tokenPrices = tokenPricesByMarket[id];
+                      const tokenPrices = tokenPricesByMarket[id];
 
-                          return (
-                            <SailMarketRow
-                              key={id}
-                              id={id}
-                              market={m}
-                              baseOffset={baseOffset}
-                              hasOracle={hasOracle}
-                              hasToken={hasToken}
-                              reads={reads}
-                              userDeposit={userDeposit}
-                              isExpanded={expandedMarket === id}
-                              onToggleExpand={() =>
+                      return (
+                        <SailMarketRow
+                          key={id}
+                          id={id}
+                          market={m}
+                          baseOffset={baseOffset}
+                          hasOracle={hasOracle}
+                          hasToken={hasToken}
+                          reads={reads}
+                          userDeposit={userDeposit}
+                          isExpanded={expandedMarket === id}
+                          onToggleExpand={() =>
                                 setExpandedMarket(
                                   expandedMarket === id ? null : id
                                 )
-                              }
-                              onManageClick={() => {
-                                setSelectedMarketId(id);
-                                setSelectedMarket(m);
-                                setManageModalTab("mint");
-                                setManageModalOpen(true);
-                              }}
-                              isConnected={isConnected}
-                              tokenPrices={tokenPrices}
-                            />
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
+                          }
+                          onManageClick={() => {
+                            setSelectedMarketId(id);
+                            setSelectedMarket(m);
+                            setManageModalTab("mint");
+                            setManageModalOpen(true);
+                          }}
+                          isConnected={isConnected}
+                          tokenPrices={tokenPrices}
+                        />
+                      );
+                    })}
+                  </div>
+                </div>
+              );
                 }
               );
             })()}
