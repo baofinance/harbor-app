@@ -2691,17 +2691,17 @@ export default function AnchorPage() {
                           })} marks/day`
                         : "0 marks/day"}
                     </div>
-
-                    {activeAnchorBoostEndTimestamp && (
-                      <div className="mt-1">
-                        <MarksBoostBadge
-                          multiplier={10}
-                          endTimestamp={activeAnchorBoostEndTimestamp}
-                        />
-                      </div>
-                    )}
                   </div>
                 </div>
+
+                {activeAnchorBoostEndTimestamp && (
+                  <div className="mt-2">
+                    <MarksBoostBadge
+                      multiplier={10}
+                      endTimestamp={activeAnchorBoostEndTimestamp}
+                    />
+                  </div>
+                )}
               </div>
             );
           })()}
