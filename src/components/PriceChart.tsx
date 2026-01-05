@@ -22,6 +22,19 @@ export default function PriceChart({
  // Get leveraged token address for subgraph query
  const leveragedTokenAddress = markets[marketId]?.addresses?.leveragedToken as string | undefined;
 
+ // Calculate daysBack based on time range (add 1 day buffer to ensure we have enough data)
+ const daysBack = useMemo(() => {
+   switch (timeRange) {
+     case "1D":
+       return 2; // 1 day + 1 day buffer
+     case "1W":
+       return 8; // 7 days + 1 day buffer
+     case "1M":
+     default:
+       return 31; // 30 days + 1 day buffer
+   }
+ }, [timeRange]);
+
  // Use subgraph for leveraged tokens (SAIL), oracle for pegged tokens
  const {
    pricePoints: sailPricePoints,
@@ -30,7 +43,7 @@ export default function PriceChart({
    error: sailError,
  } = useSailPriceHistory({
  tokenAddress: leveragedTokenAddress || "",
- daysBack: 30,
+ daysBack: daysBack,
  enabled: tokenType ==="STEAMED" && !!leveragedTokenAddress,
  });
 
@@ -79,19 +92,26 @@ export default function PriceChart({
  const isLoading = tokenType ==="LONG" ? isOracleLoading : isSailLoading;
 
  // Filter data based on time range
- const filteredData = priceHistory.filter((point) => {
- const now = Date.now();
- const pointTime = point.timestamp * 1000;
- switch (timeRange) {
- case"1D":
- return now - pointTime <= 24 * 60 * 60 * 1000;
- case"1W":
- return now - pointTime <= 7 * 24 * 60 * 60 * 1000;
- case"1M":
- default:
- return true;
- }
- });
+ const filteredData = useMemo(() => {
+   if (!priceHistory || priceHistory.length === 0) return [];
+   
+   const now = Math.floor(Date.now() / 1000); // Current time in seconds
+   const pointTime = (point: PriceDataPoint) => point.timestamp; // Already in seconds
+   
+   switch (timeRange) {
+     case "1D": {
+       const oneDayAgo = now - (24 * 60 * 60); // 24 hours ago in seconds
+       return priceHistory.filter((point) => pointTime(point) >= oneDayAgo);
+     }
+     case "1W": {
+       const oneWeekAgo = now - (7 * 24 * 60 * 60); // 7 days ago in seconds
+       return priceHistory.filter((point) => pointTime(point) >= oneWeekAgo);
+     }
+     case "1M":
+     default:
+       return priceHistory;
+   }
+ }, [priceHistory, timeRange]);
 
  const formatTimestamp = (timestamp: number) => {
  const date = new Date(timestamp * 1000);
@@ -119,7 +139,7 @@ export default function PriceChart({
  onClick={() => setTimeRange(range)}
  className={`px-2 py-1 text-xs ${
  timeRange === range
-   ?"bg-[#1E4775] text-white"
+ ?"bg-[#1E4775] text-white"
    :"bg-[#eef1f7] text-[#4b5a78] hover:bg-[#1E4775]/10"
  }`}
  >
