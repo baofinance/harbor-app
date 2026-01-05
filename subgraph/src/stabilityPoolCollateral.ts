@@ -7,17 +7,14 @@ import {
   Withdraw as StabilityPoolWithdrawEvent,
   UserDepositChange as UserDepositChangeEvent,
 } from "../generated/StabilityPoolCollateral/StabilityPool";
-import {
-  StabilityPoolDeposit,
-  MarksMultiplier,
-  PriceFeed,
-} from "../generated/schema";
+import { StabilityPoolDeposit, MarksMultiplier, PriceFeed } from "../generated/schema";
 import { BigDecimal, BigInt, Bytes, Address, ethereum } from "@graphprotocol/graph-ts";
 import { StabilityPool } from "../generated/StabilityPoolCollateral_ETH_fxUSD/StabilityPool";
 // Note: WrappedPriceOracle bindings are generated per data source, but we'll use a generic approach
 // Import from Genesis_ETH_fxUSD as a reference (same ABI structure)
 import { WrappedPriceOracle } from "../generated/Genesis_ETH_fxUSD/WrappedPriceOracle";
 import { ChainlinkAggregator } from "../generated/HaToken_haETH/ChainlinkAggregator";
+import { fetchPriceUSD } from "./priceOracle";
 import {
   ANCHOR_BOOST_MULTIPLIER,
   getActiveBoostMultiplier,
@@ -60,8 +57,8 @@ function pegUsdForPool(poolAddress: string): BigDecimal {
   return BigDecimal.fromString("1.0");
 }
 
-// Price oracle addresses for each stability pool (collateral pools use wrapped collateral tokens)
-// Format: pool address -> price oracle address
+// Price oracle addresses for each stability pool (legacy: used only for fallback/diagnostics)
+// NOTE: Pool deposits are in ASSET_TOKEN (pegged ha token). We price ASSET_TOKEN directly via Chainlink (see below).
 function getPriceOracleAddressForPool(poolAddress: string): string {
   // ETH/fxUSD market - collateral pool (fxSAVE deposits)
   if (poolAddress == "0xfb9747b30ee1b1df2434255c7768c1ebfa7e89bb") {
@@ -78,7 +75,7 @@ function getPriceOracleAddressForPool(poolAddress: string): string {
   return "";
 }
 
-// Fallback prices if oracle fails (in USD)
+// Fallback prices if oracle fails (in USD) - legacy
 function getFallbackPriceForPool(poolAddress: string): BigDecimal {
   // ETH/fxUSD and BTC/fxUSD collateral pools use fxSAVE
   if (poolAddress == "0xfb9747b30ee1b1df2434255c7768c1ebfa7e89bb" || 
@@ -95,6 +92,8 @@ function getFallbackPriceForPool(poolAddress: string): BigDecimal {
 /**
  * Fetch real-time price from the WrappedPriceOracle contract for stability pool deposits
  * Returns the wrapped token price in USD (underlying price * wrapped rate)
+ *
+ * NOTE: This is NOT used for marks pricing anymore (marks price ASSET_TOKEN directly).
  */
 function getWrappedTokenPriceUSD(poolAddress: Bytes, block: ethereum.Block): BigDecimal {
   const poolAddressStr = poolAddress.toHexString();
@@ -140,6 +139,13 @@ function getWrappedTokenPriceUSD(poolAddress: Bytes, block: ethereum.Block): Big
   }
   
   return wrappedTokenPriceUSD;
+}
+
+function getPoolAssetToken(poolAddress: Address): Address | null {
+  const pool = StabilityPool.bind(poolAddress);
+  const res = pool.try_ASSET_TOKEN();
+  if (res.reverted) return null;
+  return res.value;
 }
 
 // Helper to get or create stability pool deposit
@@ -255,11 +261,12 @@ export function handleStabilityPoolDeposit(event: StabilityPoolDepositEvent): vo
   // Query actual balance from pool contract
   const actualBalance = queryPoolDepositBalance(Address.fromBytes(poolAddress), Address.fromBytes(userAddress));
   deposit.balance = actualBalance;
-  
-  // Calculate USD value using real-time oracle price
-  const wrappedTokenPriceUSD = getWrappedTokenPriceUSD(poolAddress, event.block);
+
+  // Marks: pool deposits are in ASSET_TOKEN (pegged ha token). Price ASSET_TOKEN directly.
+  const assetToken = getPoolAssetToken(Address.fromBytes(poolAddress));
   const amountInTokens = actualBalance.toBigDecimal().div(E18);
-  deposit.balanceUSD = amountInTokens.times(wrappedTokenPriceUSD);
+  const assetPriceUSD = assetToken ? fetchPriceUSD(assetToken as Bytes, timestamp) : BigDecimal.fromString("0");
+  deposit.balanceUSD = amountInTokens.times(assetPriceUSD);
   
   // Update marks per day
   const boost = getActiveBoostMultiplier("stabilityPoolCollateral", poolAddress, timestamp);
@@ -300,9 +307,10 @@ export function handleStabilityPoolWithdraw(event: StabilityPoolWithdrawEvent): 
   deposit.balance = actualBalance;
   
   // Calculate USD value using real-time oracle price
-  const wrappedTokenPriceUSD = getWrappedTokenPriceUSD(poolAddress, event.block);
+  const assetToken = getPoolAssetToken(Address.fromBytes(poolAddress));
   const amountInTokens = actualBalance.toBigDecimal().div(E18);
-  deposit.balanceUSD = amountInTokens.times(wrappedTokenPriceUSD);
+  const assetPriceUSD = assetToken ? fetchPriceUSD(assetToken as Bytes, timestamp) : BigDecimal.fromString("0");
+  deposit.balanceUSD = amountInTokens.times(assetPriceUSD);
   const boost = getActiveBoostMultiplier("stabilityPoolCollateral", poolAddress, timestamp);
   const marksPerDollarPerDay = DEFAULT_MARKS_PER_DOLLAR_PER_DAY
     .times(DEFAULT_MULTIPLIER)
@@ -342,9 +350,10 @@ export function handleStabilityPoolDepositChange(event: UserDepositChangeEvent):
   deposit.balance = newDeposit;
   
   // Calculate USD value using real-time oracle price
-  const wrappedTokenPriceUSD = getWrappedTokenPriceUSD(poolAddress, event.block);
+  const assetToken = getPoolAssetToken(Address.fromBytes(poolAddress));
   const amountInTokens = newDeposit.toBigDecimal().div(E18);
-  deposit.balanceUSD = amountInTokens.times(wrappedTokenPriceUSD);
+  const assetPriceUSD = assetToken ? fetchPriceUSD(assetToken as Bytes, timestamp) : BigDecimal.fromString("0");
+  deposit.balanceUSD = amountInTokens.times(assetPriceUSD);
   const boost = getActiveBoostMultiplier("stabilityPoolCollateral", poolAddress, timestamp);
   const marksPerDollarPerDay = DEFAULT_MARKS_PER_DOLLAR_PER_DAY
     .times(DEFAULT_MULTIPLIER)
