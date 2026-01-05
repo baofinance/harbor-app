@@ -1926,7 +1926,7 @@ export default function AnchorPage() {
                   </h2>
                 </div>
                 <p className="text-sm text-white/80 text-center">
-                  Redeem for collateral and redeem tokens at any time
+                  Redeem for collateral at any time
                 </p>
               </div>
             </div>
