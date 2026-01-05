@@ -4119,7 +4119,8 @@ export default function AnchorPage() {
                           if (underlyingPriceUSD > 0) {
                             // Oracle price is in peg token units, convert to USD
                             if (isBTCMarket) {
-                              const btcPriceUSD = coinGeckoPrices?.["bitcoin"] || 0;
+                              // Prefer Chainlink-backed btcPrice (from useAnchorPrices) over CoinGecko-only map.
+                              const btcPriceUSD = btcPrice || 0;
                               if (btcPriceUSD > 0) {
                                 underlyingPriceUSD = underlyingPriceUSD * btcPriceUSD;
                               } else {
@@ -4278,12 +4279,8 @@ export default function AnchorPage() {
                                 const peggedSymbolLower =
                                   marketData.market?.peggedToken?.symbol
                                     ?.toLowerCase?.() || "";
-                                const btcUsdFallback =
-                                  (coinGeckoPrices?.["bitcoin"] as number | null) ||
-                                  0;
-                                const ethUsdFallback =
-                                  (coinGeckoPrices?.["ethereum"] as number | null) ||
-                                  0;
+                                const btcUsdFallback = btcPrice || 0;
+                                const ethUsdFallback = ethPrice || 0;
 
                                 const peggedPriceUSD =
                                   tvlUsdPriceFromMap && tvlUsdPriceFromMap > 0n
