@@ -790,26 +790,30 @@ function SailMarketExpandedView({
 
     if (isFxUSDMarket && collateralTokensUnderlyingEq > 0) {
       // Calculate fxSAVE price in USD
-      // Priority: getPrice() * ETH price > CoinGecko fxSAVE price > USDC price > $1.00
+      // Priority: CoinGecko fxSAVE price > getPrice() * ETH price > $1.08 fallback
       // Only calculate when all price sources are loaded
       let fxSAVEPriceUSD = 0;
       if (!isCollateralPriceLoading && !isCoinGeckoLoading) {
-        if (fxSAVEPriceInETH && ethPrice) {
+        // Prefer CoinGecko fxSAVE price if available and reasonable (> $1.00)
+        if (fxSAVEPrice && fxSAVEPrice > 1.0) {
+          fxSAVEPriceUSD = fxSAVEPrice;
+        } else if (fxSAVEPriceInETH && ethPrice) {
           // fxSAVE price in ETH (from getPrice())
           const fxSAVEPriceInETHNum = Number(fxSAVEPriceInETH) / 1e18;
           // ETH price in USD (from CoinGecko)
           const ethPriceUSD = ethPrice;
           // fxSAVE price in USD = fxSAVE price in ETH * ETH price in USD
-          fxSAVEPriceUSD = fxSAVEPriceInETHNum * ethPriceUSD;
-        } else if (fxSAVEPrice) {
-          // Fallback to CoinGecko fxSAVE price (same as anchor page)
-          fxSAVEPriceUSD = fxSAVEPrice;
-        } else if (usdcPrice) {
-          // Fallback to USDC price
-          fxSAVEPriceUSD = usdcPrice;
+          const calculatedPrice = fxSAVEPriceInETHNum * ethPriceUSD;
+          // Only use calculated price if it's reasonable (> $1.00), otherwise use fallback
+          if (calculatedPrice > 1.0) {
+            fxSAVEPriceUSD = calculatedPrice;
+          } else {
+            // Calculated price seems wrong, use fallback
+            fxSAVEPriceUSD = 1.08;
+          }
         } else {
-          // Final fallback to $1.00
-          fxSAVEPriceUSD = 1.0;
+          // Final fallback to $1.08 (current fxSAVE price)
+          fxSAVEPriceUSD = 1.08;
         }
       }
 
@@ -837,6 +841,9 @@ function SailMarketExpandedView({
           const underlyingPriceUSD =
             collateralPriceUSDFromHook * tokenPrices.pegTargetUSD;
           effectivePrice = underlyingPriceUSD * wrappedRateNum;
+        } else {
+          // Final fallback to $3960 (current wstETH price)
+          effectivePrice = 3960;
         }
       }
 
@@ -955,13 +962,17 @@ function SailMarketExpandedView({
               <p className="text-sm font-bold text-[#1E4775]">
                 {(() => {
                   // collateralValue is in underlying tokens, convert to wrapped for display
+                  // wrappedRate = underlying per wrapped (e.g., 1.07 fxUSD per fxSAVE)
+                  // So: wrapped = underlying / wrappedRate
                   if (collateralValue) {
                     const underlyingAmount = Number(collateralValue) / 1e18;
                     const wrappedRateNum =
                       wrappedRateFromHook !== undefined
                         ? Number(wrappedRateFromHook) / 1e18
                         : 1.0;
-                    const wrappedAmount = underlyingAmount * wrappedRateNum;
+                    const wrappedAmount = wrappedRateNum > 0
+                      ? underlyingAmount / wrappedRateNum
+                      : underlyingAmount;
                     return `${formatToken(
                       BigInt(Math.floor(wrappedAmount * 1e18))
                     )} ${market.collateral?.symbol || "ETH"}`;
