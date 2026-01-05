@@ -42,6 +42,30 @@ function toE18(value: BigInt): BigDecimal {
   return value.toBigDecimal().div(E18_BD);
 }
 
+function getOracleAddressForMinter(minter: Address): Address {
+  // Production
+  if (minter.equals(Address.fromString("0xd6E2F8e57b4aFB51C6fA4cbC012e1cE6aEad989F"))) {
+    return Address.fromString("0x56d1a2fc199ba05f84d2eb8eab5858d3d954030c"); // ETH/fxUSD
+  }
+  if (minter.equals(Address.fromString("0x33e32ff4d0677862fa31582CC654a25b9b1e4888"))) {
+    return Address.fromString("0xf6e28853563db7f7e42f5db0e1f959743ac5b0e6"); // BTC/fxUSD
+  }
+  if (minter.equals(Address.fromString("0xF42516EB885E737780EB864dd07cEc8628000919"))) {
+    return Address.fromString("0xe370289af2145a5b2f0f7a4a900ebfd478a156db"); // BTC/stETH
+  }
+  // Test2
+  if (minter.equals(Address.fromString("0x565f90dc7c022e7857734352c7bf645852d8d4e7"))) {
+    return Address.fromString("0x56d1a2fc199ba05f84d2eb8eab5858d3d954030c"); // ETH/fxUSD test2
+  }
+  if (minter.equals(Address.fromString("0x7ffe3acb524fb40207709ba597d39c085d258f15"))) {
+    return Address.fromString("0xf6e28853563db7f7e42f5db0e1f959743ac5b0e6"); // BTC/fxUSD test2
+  }
+  if (minter.equals(Address.fromString("0x042e7cb5b993312490ea07fb89f360a65b8a9056"))) {
+    return Address.fromString("0xe370289af2145a5b2f0f7a4a900ebfd478a156db"); // BTC/stETH test2
+  }
+  return Address.zero();
+}
+
 function isFxUsdMinter(minter: Address): boolean {
   // Markets where wrapped collateral is fxSAVE and oracle uses getPrice() (fxSAVE price in ETH).
   // Production
@@ -97,11 +121,17 @@ function getPegUsdForMinter(minterAddress: Address): BigDecimal {
  * - wrappedCollateralUsd (underlyingPriceUSD * wrappedRate)
  */
 function getOraclePricesForMinter(minterAddress: Address): BigDecimal[] {
-  const minter = Minter.bind(minterAddress);
-  const oracleAddrRes = minter.try_PRICE_ORACLE();
-  if (oracleAddrRes.reverted) return [ZERO_BD, ZERO_BD, ZERO_BD];
+  // Avoid an extra minter call by using hardcoded oracle addresses for known markets.
+  // This reduces the chance of a non-deterministic eth_call timeout in block handlers.
+  let oracleAddr = getOracleAddressForMinter(minterAddress);
+  if (oracleAddr.equals(Address.zero())) {
+    const minter = Minter.bind(minterAddress);
+    const oracleAddrRes = minter.try_PRICE_ORACLE();
+    if (oracleAddrRes.reverted) return [ZERO_BD, ZERO_BD, ZERO_BD];
+    oracleAddr = oracleAddrRes.value;
+  }
 
-  const oracle = WrappedPriceOracle.bind(oracleAddrRes.value);
+  const oracle = WrappedPriceOracle.bind(oracleAddr);
 
   // fxUSD markets: oracle.getPrice() returns fxSAVE price in ETH (1e18).
   // Convert to USD using ETH/USD Chainlink, and treat wrappedRate as 1.
@@ -146,10 +176,8 @@ function getOrCreatePriceTracker(token: Address, minter: Address, oracle: Addres
 }
 
 function safeOracleAddress(minterAddress: Address): Address {
-  const minter = Minter.bind(minterAddress);
-  const oracleAddrRes = minter.try_PRICE_ORACLE();
-  if (oracleAddrRes.reverted) return Address.zero();
-  return oracleAddrRes.value;
+  // For hourly snapshots, avoid PRICE_ORACLE() calls from inside the block handler path.
+  return getOracleAddressForMinter(minterAddress);
 }
 
 function maybeWriteHourlySnapshot(
@@ -177,19 +205,17 @@ function maybeWriteHourlySnapshot(
     snapshot.blockNumber = blockNumber;
   }
 
-  const minter = Minter.bind(minterAddress);
-  const totalSupplyRes = ERC20.bind(token).try_totalSupply();
-  const collateralBalRes = minter.try_collateralTokenBalance();
-  const levRes = minter.try_leverageRatio();
-  const crRes = minter.try_collateralRatio();
-
   snapshot.tokenPriceUSD = tokenPriceUSD;
   snapshot.collateralPriceUSD = collateralPriceUSD;
   snapshot.wrappedRate = wrappedRate;
-  snapshot.totalSupply = totalSupplyRes.reverted ? ZERO_BI : totalSupplyRes.value;
-  snapshot.collateralBalance = collateralBalRes.reverted ? ZERO_BI : collateralBalRes.value;
-  snapshot.leverageRatio = levRes.reverted ? ZERO_BI : levRes.value;
-  snapshot.collateralRatio = crRes.reverted ? ZERO_BI : crRes.value;
+  // IMPORTANT:
+  // Avoid onchain reads in block handlers. We’ve seen non-deterministic eth_call hangs that cause the
+  // handler to hit the 1200s timeout and halt the deployment (Studio shows "failed syncing").
+  // These fields are not needed for the price chart and can safely be zero-filled for hourly points.
+  snapshot.totalSupply = ZERO_BI;
+  snapshot.collateralBalance = ZERO_BI;
+  snapshot.leverageRatio = ZERO_BI;
+  snapshot.collateralRatio = ZERO_BI;
   snapshot.save();
 
   tracker.lastHourlySnapshot = hourTs;

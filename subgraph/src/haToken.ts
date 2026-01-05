@@ -26,6 +26,11 @@ import {
 } from "../generated/schema";
 import { BigDecimal, BigInt, Bytes, Address, ethereum } from "@graphprotocol/graph-ts";
 import { ERC20 } from "../generated/HaToken_haPB/ERC20";
+import {
+  ANCHOR_BOOST_MULTIPLIER,
+  getActiveBoostMultiplier,
+  getOrCreateMarketBoostWindow,
+} from "./marksBoost";
 
 // Constants
 const SECONDS_PER_DAY = BigDecimal.fromString("86400");
@@ -91,7 +96,8 @@ function getHaTokenMultiplier(tokenAddress: Bytes, timestamp: BigInt): BigDecima
     multiplier.save();
   }
   
-  return multiplier.multiplier;
+  const boost = getActiveBoostMultiplier("haToken", tokenAddress, timestamp);
+  return multiplier.multiplier.times(boost);
 }
 
 // Accumulate marks (simplified - no complex time calculations for now)
@@ -166,6 +172,14 @@ export function handleHaTokenTransfer(event: TransferEvent): void {
   const from = event.params.from;
   const to = event.params.to;
   const timestamp = event.block.timestamp;
+
+  // Ensure we have a market-level boost window (set once on first activity)
+  getOrCreateMarketBoostWindow(
+    "haToken",
+    tokenAddress,
+    timestamp,
+    ANCHOR_BOOST_MULTIPLIER
+  );
   
   // Skip zero address transfers
   const zeroAddress = Address.fromString("0x0000000000000000000000000000000000000000");

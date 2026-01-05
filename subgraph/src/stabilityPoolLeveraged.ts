@@ -18,6 +18,11 @@ import { StabilityPool } from "../generated/StabilityPoolLeveraged_ETH_fxUSD/Sta
 // Note: Minter bindings are generated per data source, but we'll use a reference import
 // Import from SailToken_hsFXUSD_ETH as a reference (same ABI structure)
 import { Minter } from "../generated/SailToken_hsFXUSD_ETH/Minter";
+import {
+  ANCHOR_BOOST_MULTIPLIER,
+  getActiveBoostMultiplier,
+  getOrCreateMarketBoostWindow,
+} from "./marksBoost";
 
 // Constants
 const SECONDS_PER_DAY = BigDecimal.fromString("86400");
@@ -139,8 +144,14 @@ function accumulateMarks(
     return;
   }
 
-  const multiplier = DEFAULT_MULTIPLIER;
-  const marksPerDollarPerDay = DEFAULT_MARKS_PER_DOLLAR_PER_DAY.times(multiplier);
+  const boost = getActiveBoostMultiplier(
+    "stabilityPoolLeveraged",
+    deposit.poolAddress,
+    currentTimestamp
+  );
+  const marksPerDollarPerDay = DEFAULT_MARKS_PER_DOLLAR_PER_DAY
+    .times(DEFAULT_MULTIPLIER)
+    .times(boost);
 
   const lastUpdate = deposit.lastUpdated.gt(BigInt.fromI32(0))
     ? deposit.lastUpdated
@@ -177,6 +188,13 @@ export function handleStabilityPoolDeposit(event: StabilityPoolDepositEvent): vo
   const poolAddress = event.address;
   const userAddress = event.params.receiver;
   const timestamp = event.block.timestamp;
+
+  getOrCreateMarketBoostWindow(
+    "stabilityPoolLeveraged",
+    poolAddress,
+    timestamp,
+    ANCHOR_BOOST_MULTIPLIER
+  );
   
   const deposit = getOrCreateStabilityPoolDeposit(poolAddress, userAddress);
   
@@ -193,7 +211,11 @@ export function handleStabilityPoolDeposit(event: StabilityPoolDepositEvent): vo
   deposit.balanceUSD = amountInTokens.times(sailTokenPriceUSD);
   
   // Update marks per day
-  deposit.marksPerDay = deposit.balanceUSD.times(DEFAULT_MARKS_PER_DOLLAR_PER_DAY);
+  const boost = getActiveBoostMultiplier("stabilityPoolLeveraged", poolAddress, timestamp);
+  const marksPerDollarPerDay = DEFAULT_MARKS_PER_DOLLAR_PER_DAY
+    .times(DEFAULT_MULTIPLIER)
+    .times(boost);
+  deposit.marksPerDay = deposit.balanceUSD.times(marksPerDollarPerDay);
   
   // Set first deposit time if needed
   if (deposit.firstDepositAt.equals(BigInt.fromI32(0)) && actualBalance.gt(BigInt.fromI32(0))) {
@@ -209,6 +231,13 @@ export function handleStabilityPoolWithdraw(event: StabilityPoolWithdrawEvent): 
   const poolAddress = event.address;
   const userAddress = event.params.owner;
   const timestamp = event.block.timestamp;
+
+  getOrCreateMarketBoostWindow(
+    "stabilityPoolLeveraged",
+    poolAddress,
+    timestamp,
+    ANCHOR_BOOST_MULTIPLIER
+  );
   
   const deposit = getOrCreateStabilityPoolDeposit(poolAddress, userAddress);
   
@@ -219,7 +248,11 @@ export function handleStabilityPoolWithdraw(event: StabilityPoolWithdrawEvent): 
   const actualBalance = queryPoolDepositBalance(Address.fromBytes(poolAddress), Address.fromBytes(userAddress));
   deposit.balance = actualBalance;
   deposit.balanceUSD = actualBalance.toBigDecimal().div(BigDecimal.fromString("1000000000000000000"));
-  deposit.marksPerDay = deposit.balanceUSD.times(DEFAULT_MARKS_PER_DOLLAR_PER_DAY);
+  const boost = getActiveBoostMultiplier("stabilityPoolLeveraged", poolAddress, timestamp);
+  const marksPerDollarPerDay = DEFAULT_MARKS_PER_DOLLAR_PER_DAY
+    .times(DEFAULT_MULTIPLIER)
+    .times(boost);
+  deposit.marksPerDay = deposit.balanceUSD.times(marksPerDollarPerDay);
   
   // Reset if balance is zero
   if (actualBalance.equals(BigInt.fromI32(0))) {
@@ -237,6 +270,13 @@ export function handleStabilityPoolDepositChange(event: UserDepositChangeEvent):
   const userAddress = event.params.owner;
   const newDeposit = event.params.newDeposit;
   const timestamp = event.block.timestamp;
+
+  getOrCreateMarketBoostWindow(
+    "stabilityPoolLeveraged",
+    poolAddress,
+    timestamp,
+    ANCHOR_BOOST_MULTIPLIER
+  );
   
   const deposit = getOrCreateStabilityPoolDeposit(poolAddress, userAddress);
   
@@ -250,7 +290,11 @@ export function handleStabilityPoolDepositChange(event: UserDepositChangeEvent):
   const sailTokenPriceUSD = getSailTokenPriceUSD(poolAddress, event.block);
   const amountInTokens = newDeposit.toBigDecimal().div(E18);
   deposit.balanceUSD = amountInTokens.times(sailTokenPriceUSD);
-  deposit.marksPerDay = deposit.balanceUSD.times(DEFAULT_MARKS_PER_DOLLAR_PER_DAY);
+  const boost = getActiveBoostMultiplier("stabilityPoolLeveraged", poolAddress, timestamp);
+  const marksPerDollarPerDay = DEFAULT_MARKS_PER_DOLLAR_PER_DAY
+    .times(DEFAULT_MULTIPLIER)
+    .times(boost);
+  deposit.marksPerDay = deposit.balanceUSD.times(marksPerDollarPerDay);
   
   // Reset if balance is zero
   if (newDeposit.equals(BigInt.fromI32(0))) {

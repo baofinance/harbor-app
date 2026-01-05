@@ -20,6 +20,11 @@ import {
   UserTotalMarks,
 } from "../generated/schema";
 import { BigDecimal, BigInt, Bytes, Address, ethereum } from "@graphprotocol/graph-ts";
+import {
+  SAIL_BOOST_MULTIPLIER,
+  getActiveBoostMultiplier,
+  getOrCreateMarketBoostWindow,
+} from "./marksBoost";
 
 // Constants
 const SECONDS_PER_DAY = BigDecimal.fromString("86400");
@@ -135,7 +140,8 @@ function getSailTokenMultiplier(tokenAddress: Bytes, timestamp: BigInt): BigDeci
     multiplier.updatedBy = null;
     multiplier.save();
   }
-  return multiplier.multiplier;
+  const boost = getActiveBoostMultiplier("sailToken", tokenAddress, timestamp);
+  return multiplier.multiplier.times(boost);
 }
 
 // Helper to accumulate marks (daily snapshot approach)
@@ -196,6 +202,14 @@ export function handleSailTokenTransfer(event: TransferEvent): void {
   const fromAddress = event.params.from;
   const toAddress = event.params.to;
   const timestamp = event.block.timestamp;
+
+  // Ensure we have a market-level boost window (set once on first activity)
+  getOrCreateMarketBoostWindow(
+    "sailToken",
+    tokenAddress,
+    timestamp,
+    SAIL_BOOST_MULTIPLIER
+  );
 
   // Handle sender (if not zero address)
   if (!fromAddress.equals(Address.fromHexString("0x0000000000000000000000000000000000000000"))) {

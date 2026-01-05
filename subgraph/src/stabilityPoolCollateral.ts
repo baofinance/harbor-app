@@ -17,6 +17,11 @@ import { StabilityPool } from "../generated/StabilityPoolCollateral_ETH_fxUSD/St
 // Note: WrappedPriceOracle bindings are generated per data source, but we'll use a generic approach
 // Import from Genesis_ETH_fxUSD as a reference (same ABI structure)
 import { WrappedPriceOracle } from "../generated/Genesis_ETH_fxUSD/WrappedPriceOracle";
+import {
+  ANCHOR_BOOST_MULTIPLIER,
+  getActiveBoostMultiplier,
+  getOrCreateMarketBoostWindow,
+} from "./marksBoost";
 
 // Constants
 const SECONDS_PER_DAY = BigDecimal.fromString("86400");
@@ -154,8 +159,14 @@ function accumulateMarks(
     return;
   }
 
-  const multiplier = DEFAULT_MULTIPLIER;
-  const marksPerDollarPerDay = DEFAULT_MARKS_PER_DOLLAR_PER_DAY.times(multiplier);
+  const boost = getActiveBoostMultiplier(
+    "stabilityPoolCollateral",
+    deposit.poolAddress,
+    currentTimestamp
+  );
+  const marksPerDollarPerDay = DEFAULT_MARKS_PER_DOLLAR_PER_DAY
+    .times(DEFAULT_MULTIPLIER)
+    .times(boost);
 
   const lastUpdate = deposit.lastUpdated.gt(BigInt.fromI32(0))
     ? deposit.lastUpdated
@@ -192,6 +203,13 @@ export function handleStabilityPoolDeposit(event: StabilityPoolDepositEvent): vo
   const poolAddress = event.address;
   const userAddress = event.params.receiver;
   const timestamp = event.block.timestamp;
+
+  getOrCreateMarketBoostWindow(
+    "stabilityPoolCollateral",
+    poolAddress,
+    timestamp,
+    ANCHOR_BOOST_MULTIPLIER
+  );
   
   const deposit = getOrCreateStabilityPoolDeposit(poolAddress, userAddress);
   
@@ -208,7 +226,11 @@ export function handleStabilityPoolDeposit(event: StabilityPoolDepositEvent): vo
   deposit.balanceUSD = amountInTokens.times(wrappedTokenPriceUSD);
   
   // Update marks per day
-  deposit.marksPerDay = deposit.balanceUSD.times(DEFAULT_MARKS_PER_DOLLAR_PER_DAY);
+  const boost = getActiveBoostMultiplier("stabilityPoolCollateral", poolAddress, timestamp);
+  const marksPerDollarPerDay = DEFAULT_MARKS_PER_DOLLAR_PER_DAY
+    .times(DEFAULT_MULTIPLIER)
+    .times(boost);
+  deposit.marksPerDay = deposit.balanceUSD.times(marksPerDollarPerDay);
   
   // Set first deposit time if needed
   if (deposit.firstDepositAt.equals(BigInt.fromI32(0)) && actualBalance.gt(BigInt.fromI32(0))) {
@@ -224,6 +246,13 @@ export function handleStabilityPoolWithdraw(event: StabilityPoolWithdrawEvent): 
   const poolAddress = event.address;
   const userAddress = event.params.owner;
   const timestamp = event.block.timestamp;
+
+  getOrCreateMarketBoostWindow(
+    "stabilityPoolCollateral",
+    poolAddress,
+    timestamp,
+    ANCHOR_BOOST_MULTIPLIER
+  );
   
   const deposit = getOrCreateStabilityPoolDeposit(poolAddress, userAddress);
   
@@ -238,7 +267,11 @@ export function handleStabilityPoolWithdraw(event: StabilityPoolWithdrawEvent): 
   const wrappedTokenPriceUSD = getWrappedTokenPriceUSD(poolAddress, event.block);
   const amountInTokens = actualBalance.toBigDecimal().div(E18);
   deposit.balanceUSD = amountInTokens.times(wrappedTokenPriceUSD);
-  deposit.marksPerDay = deposit.balanceUSD.times(DEFAULT_MARKS_PER_DOLLAR_PER_DAY);
+  const boost = getActiveBoostMultiplier("stabilityPoolCollateral", poolAddress, timestamp);
+  const marksPerDollarPerDay = DEFAULT_MARKS_PER_DOLLAR_PER_DAY
+    .times(DEFAULT_MULTIPLIER)
+    .times(boost);
+  deposit.marksPerDay = deposit.balanceUSD.times(marksPerDollarPerDay);
   
   // Reset if balance is zero
   if (actualBalance.equals(BigInt.fromI32(0))) {
@@ -256,6 +289,13 @@ export function handleStabilityPoolDepositChange(event: UserDepositChangeEvent):
   const userAddress = event.params.owner;
   const newDeposit = event.params.newDeposit;
   const timestamp = event.block.timestamp;
+
+  getOrCreateMarketBoostWindow(
+    "stabilityPoolCollateral",
+    poolAddress,
+    timestamp,
+    ANCHOR_BOOST_MULTIPLIER
+  );
   
   const deposit = getOrCreateStabilityPoolDeposit(poolAddress, userAddress);
   
@@ -269,7 +309,11 @@ export function handleStabilityPoolDepositChange(event: UserDepositChangeEvent):
   const wrappedTokenPriceUSD = getWrappedTokenPriceUSD(poolAddress, event.block);
   const amountInTokens = newDeposit.toBigDecimal().div(E18);
   deposit.balanceUSD = amountInTokens.times(wrappedTokenPriceUSD);
-  deposit.marksPerDay = deposit.balanceUSD.times(DEFAULT_MARKS_PER_DOLLAR_PER_DAY);
+  const boost = getActiveBoostMultiplier("stabilityPoolCollateral", poolAddress, timestamp);
+  const marksPerDollarPerDay = DEFAULT_MARKS_PER_DOLLAR_PER_DAY
+    .times(DEFAULT_MULTIPLIER)
+    .times(boost);
+  deposit.marksPerDay = deposit.balanceUSD.times(marksPerDollarPerDay);
   
   // Reset if balance is zero
   if (newDeposit.equals(BigInt.fromI32(0))) {

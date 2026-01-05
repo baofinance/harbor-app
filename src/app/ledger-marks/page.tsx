@@ -14,6 +14,8 @@ import {
  calculateEstimatedMarks,
  useAnchorLedgerMarks,
 } from "@/hooks/useAnchorLedgerMarks";
+import { useMarketBoostWindows } from "@/hooks/useMarketBoostWindows";
+import { MarksBoostBadge } from "@/components/MarksBoostBadge";
 import { CONTRACTS } from "@/config/contracts";
 
 // GraphQL queries for leaderboard
@@ -644,6 +646,51 @@ export default function LedgerMarksLeaderboard() {
  staleTime: 10000,
  });
 
+  // Query boost windows for markets present in the leaderboard data
+  const boostIds = useMemo(() => {
+    const ids: string[] = [];
+    for (const b of haTokenBalancesData?.haTokenBalances ?? []) {
+      ids.push(`haToken-${(b.tokenAddress || "").toLowerCase()}`);
+    }
+    for (const d of stabilityPoolDepositsData?.stabilityPoolDeposits ?? []) {
+      const sourceType =
+        d.poolType === "collateral" ? "stabilityPoolCollateral" : "stabilityPoolLeveraged";
+      ids.push(`${sourceType}-${(d.poolAddress || "").toLowerCase()}`);
+    }
+    for (const b of sailTokenBalancesData?.sailTokenBalances ?? []) {
+      ids.push(`sailToken-${(b.tokenAddress || "").toLowerCase()}`);
+    }
+    return Array.from(new Set(ids)).filter((id) => id.includes("0x"));
+  }, [haTokenBalancesData, stabilityPoolDepositsData, sailTokenBalancesData]);
+
+  const { data: boostWindowsData } = useMarketBoostWindows({
+    enabled: boostIds.length > 0,
+    ids: boostIds,
+    first: 250,
+  });
+
+  const { activeAnchorBoostEndTimestamp, activeSailBoostEndTimestamp } = useMemo(() => {
+    const nowSec = Math.floor(Date.now() / 1000);
+    const windows = boostWindowsData?.marketBoostWindows ?? [];
+
+    const activeAnchorEnds = windows
+      .filter((w) => Number(w.boostMultiplier) >= 10)
+      .filter((w) => nowSec >= Number(w.startTimestamp) && nowSec < Number(w.endTimestamp))
+      .map((w) => Number(w.endTimestamp));
+
+    const activeSailEnds = windows
+      .filter((w) => Number(w.boostMultiplier) >= 2 && Number(w.boostMultiplier) < 10)
+      .filter((w) => nowSec >= Number(w.startTimestamp) && nowSec < Number(w.endTimestamp))
+      .map((w) => Number(w.endTimestamp));
+
+    return {
+      activeAnchorBoostEndTimestamp: activeAnchorEnds.length
+        ? Math.min(...activeAnchorEnds)
+        : null,
+      activeSailBoostEndTimestamp: activeSailEnds.length ? Math.min(...activeSailEnds) : null,
+    };
+  }, [boostWindowsData]);
+
  const isLoading =
  isLoadingMarks ||
  isLoadingHaTokenBalances ||
@@ -1013,6 +1060,17 @@ export default function LedgerMarksLeaderboard() {
               Leaderboard
             </p>
           </div>
+
+          {(activeAnchorBoostEndTimestamp || activeSailBoostEndTimestamp) && (
+            <div className="flex items-center justify-center gap-2 mb-2">
+              {activeAnchorBoostEndTimestamp && (
+                <MarksBoostBadge multiplier={10} endTimestamp={activeAnchorBoostEndTimestamp} />
+              )}
+              {activeSailBoostEndTimestamp && (
+                <MarksBoostBadge multiplier={2} endTimestamp={activeSailBoostEndTimestamp} />
+              )}
+            </div>
+          )}
         </div>
 
           {/* Explainer Section */}

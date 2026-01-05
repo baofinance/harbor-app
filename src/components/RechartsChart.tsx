@@ -55,7 +55,7 @@ export default function RechartsChart({
  <ResponsiveContainer width="100%" height="100%">
  <AreaChart
  data={data}
- margin={{ top: 10, right: 10, bottom: 20, left: 10 }}
+ margin={{ top: 5, right: 15, bottom: 30, left: 15 }}
  >
  <defs>
  <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
@@ -72,17 +72,22 @@ export default function RechartsChart({
  <XAxis
  dataKey="timestamp"
  stroke="#1E4775"
- opacity={0.35}
- tick={{ fontSize: 12, fill:"#A3A3A3" }}
- tickLine={{ stroke:"#1E4775", opacity: 0.2 }}
+ opacity={0.5}
+ tick={{ fontSize: 11, fill:"#1E4775", fontWeight: 500 }}
+ tickLine={{ stroke:"#1E4775", opacity: 0.3 }}
  tickFormatter={formatTimestamp}
+ angle={-45}
+ textAnchor="end"
+ height={50}
+ interval="preserveStartEnd"
  />
  <YAxis
  stroke="#1E4775"
- opacity={0.35}
- tick={{ fontSize: 12, fill:"#A3A3A3" }}
- tickLine={{ stroke:"#1E4775", opacity: 0.2 }}
+ opacity={0.5}
+ tick={{ fontSize: 11, fill:"#1E4775", fontWeight: 500 }}
+ tickLine={{ stroke:"#1E4775", opacity: 0.3 }}
  domain={["auto","auto"]}
+ width={60}
   tickFormatter={(value) =>
     unit === "$"
       ? `$${Number(value).toFixed(2)}`

@@ -190,18 +190,18 @@ export function useSailPositionPnL({
         : null;
 
       try {
-        const response = await fetch(graphUrl, {
-          method: "POST",
+      const response = await fetch(graphUrl, {
+        method: "POST",
           headers: getGraphHeaders(graphUrl),
-          body: JSON.stringify({
-            query: USER_POSITION_QUERY,
-            variables: {
-              positionId,
-              userAddress: address.toLowerCase(),
-              tokenAddress: tokenAddress.toLowerCase(),
-            },
-          }),
-        });
+        body: JSON.stringify({
+          query: USER_POSITION_QUERY,
+          variables: {
+            positionId,
+            userAddress: address.toLowerCase(),
+            tokenAddress: tokenAddress.toLowerCase(),
+          },
+        }),
+      });
 
         const result = await response.json();
         if (!response.ok || result?.errors) {
@@ -211,7 +211,7 @@ export function useSailPositionPnL({
               result?.errors ? JSON.stringify(result.errors) : ""
             }`
           );
-        }
+      }
 
         const subgraphData = result?.data;
         if (dbg) {
@@ -252,19 +252,19 @@ export function useSailPositionPnL({
   // Subgraph-only: if we have no data, we show an error.
   const position: UserSailPosition | null = address && tokenAddress
     ? (data?.userSailPosition
-      ? {
-          balance: BigInt(data.userSailPosition.balance),
-          balanceUSD: parseFloat(data.userSailPosition.balanceUSD),
-          totalCostBasisUSD: parseFloat(data.userSailPosition.totalCostBasisUSD),
-          averageCostPerToken: parseFloat(data.userSailPosition.averageCostPerToken),
-          realizedPnLUSD: parseFloat(data.userSailPosition.realizedPnLUSD),
-          totalTokensBought: BigInt(data.userSailPosition.totalTokensBought),
-          totalTokensSold: BigInt(data.userSailPosition.totalTokensSold),
-          totalSpentUSD: parseFloat(data.userSailPosition.totalSpentUSD),
-          totalReceivedUSD: parseFloat(data.userSailPosition.totalReceivedUSD),
-          firstAcquiredAt: parseInt(data.userSailPosition.firstAcquiredAt),
-          lastUpdated: parseInt(data.userSailPosition.lastUpdated),
-        }
+    ? {
+        balance: BigInt(data.userSailPosition.balance),
+        balanceUSD: parseFloat(data.userSailPosition.balanceUSD),
+        totalCostBasisUSD: parseFloat(data.userSailPosition.totalCostBasisUSD),
+        averageCostPerToken: parseFloat(data.userSailPosition.averageCostPerToken),
+        realizedPnLUSD: parseFloat(data.userSailPosition.realizedPnLUSD),
+        totalTokensBought: BigInt(data.userSailPosition.totalTokensBought),
+        totalTokensSold: BigInt(data.userSailPosition.totalTokensSold),
+        totalSpentUSD: parseFloat(data.userSailPosition.totalSpentUSD),
+        totalReceivedUSD: parseFloat(data.userSailPosition.totalReceivedUSD),
+        firstAcquiredAt: parseInt(data.userSailPosition.firstAcquiredAt),
+        lastUpdated: parseInt(data.userSailPosition.lastUpdated),
+      }
       : null)
     : null;
 

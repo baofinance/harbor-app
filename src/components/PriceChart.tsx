@@ -22,19 +22,6 @@ export default function PriceChart({
  // Get leveraged token address for subgraph query
  const leveragedTokenAddress = markets[marketId]?.addresses?.leveragedToken as string | undefined;
 
- // Calculate daysBack based on time range (add 1 day buffer to ensure we have enough data)
- const daysBack = useMemo(() => {
-   switch (timeRange) {
-     case "1D":
-       return 2; // 1 day + 1 day buffer
-     case "1W":
-       return 8; // 7 days + 1 day buffer
-     case "1M":
-     default:
-       return 31; // 30 days + 1 day buffer
-   }
- }, [timeRange]);
-
  // Use subgraph for leveraged tokens (SAIL), oracle for pegged tokens
  const {
    pricePoints: sailPricePoints,
@@ -43,7 +30,9 @@ export default function PriceChart({
    error: sailError,
  } = useSailPriceHistory({
  tokenAddress: leveragedTokenAddress || "",
- daysBack: daysBack,
+ // Always fetch a wider window; the chart filters by timeRange relative to the latest datapoint.
+ // This prevents 1D/1W from showing "no data" when the subgraph is behind real time.
+ daysBack: 31,
  enabled: tokenType ==="STEAMED" && !!leveragedTokenAddress,
  });
 
@@ -94,31 +83,60 @@ export default function PriceChart({
  // Filter data based on time range
  const filteredData = useMemo(() => {
    if (!priceHistory || priceHistory.length === 0) return [];
-   
-   const now = Math.floor(Date.now() / 1000); // Current time in seconds
-   const pointTime = (point: PriceDataPoint) => point.timestamp; // Already in seconds
-   
+
+   // Use the latest datapoint as the "end" so 1D/1W always show the most recent available data,
+   // even if the dataset is stale relative to wall-clock time.
+   const end = priceHistory.reduce((max, p) => (p.timestamp > max ? p.timestamp : max), 0);
+   if (end <= 0) return [];
+
+   let start = 0;
    switch (timeRange) {
-     case "1D": {
-       const oneDayAgo = now - (24 * 60 * 60); // 24 hours ago in seconds
-       return priceHistory.filter((point) => pointTime(point) >= oneDayAgo);
-     }
-     case "1W": {
-       const oneWeekAgo = now - (7 * 24 * 60 * 60); // 7 days ago in seconds
-       return priceHistory.filter((point) => pointTime(point) >= oneWeekAgo);
-     }
+     case "1D":
+       start = end - 24 * 60 * 60;
+       break;
+     case "1W":
+       start = end - 7 * 24 * 60 * 60;
+       break;
      case "1M":
      default:
+       // Keep whatever window the underlying hook provides (typically ~30 days).
        return priceHistory;
    }
+
+   return priceHistory.filter((point) => point.timestamp >= start);
  }, [priceHistory, timeRange]);
 
- const formatTimestamp = (timestamp: number) => {
- const date = new Date(timestamp * 1000);
- return timeRange ==="1D"
- ? date.toLocaleTimeString()
- : date.toLocaleDateString();
- };
+ const formatTimestamp = useMemo(() => {
+   return (timestamp: number) => {
+     const date = new Date(timestamp * 1000);
+     switch (timeRange) {
+       case "1D": {
+         // Show time in 12-hour format (e.g., "12:00 PM", "3:30 PM")
+         return date.toLocaleTimeString("en-US", {
+           hour: "numeric",
+           minute: "2-digit",
+           hour12: true,
+         });
+       }
+       case "1W": {
+         // Show day of week and date (e.g., "Mon 12/20", "Tue 12/21")
+         return date.toLocaleDateString("en-US", {
+           weekday: "short",
+           month: "numeric",
+           day: "numeric",
+         });
+       }
+       case "1M":
+       default: {
+         // Show month and day (e.g., "Dec 20", "Dec 25")
+         return date.toLocaleDateString("en-US", {
+           month: "short",
+           day: "numeric",
+         });
+       }
+     }
+   };
+ }, [timeRange]);
 
  const formatTooltipTimestamp = (timestamp: number) => {
  const date = new Date(timestamp * 1000);
@@ -126,13 +144,13 @@ export default function PriceChart({
  };
 
  return (
- <div className="relative z-10 h-full">
- <div className="flex items-center justify-end mb-3">
+ <div className="relative z-10 h-full flex flex-col">
+ <div className="flex items-center justify-end mb-2 flex-shrink-0">
  <div className="flex items-center gap-4">
- <div className="text-sm text-[#1E4775]/60">
+ <div className="text-xs text-[#1E4775]/60">
  {isLoading ?"Loading..." : `${filteredData.length} data points`}
  </div>
- <div className="flex gap-4">
+ <div className="flex gap-2">
  {(["1D","1W","1M"] as const).map((range) => (
  <button
  key={range}
@@ -149,7 +167,7 @@ export default function PriceChart({
  </div>
  </div>
  </div>
- <div className="h-[calc(100%-2rem)]">
+ <div className="flex-1 min-h-0">
  {isLoading ? (
  <div className="flex items-center justify-center h-full text-[#1E4775]/60">
  Loading price history...
