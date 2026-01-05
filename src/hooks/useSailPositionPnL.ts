@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useAccount } from "wagmi";
-import { getSailPriceGraphUrl, getGraphHeaders } from "@/config/graph";
+import { getSailPriceGraphUrlOptional, getGraphHeaders } from "@/config/graph";
 
 // GraphQL query for user position and PnL
 const USER_POSITION_QUERY = `
@@ -146,7 +146,7 @@ export function useSailPositionPnL({
   debug = false,
 }: UseSailPositionPnLOptions): SailPositionPnLData {
   const { address } = useAccount();
-  const graphUrl = getSailPriceGraphUrl();
+  const graphUrl = getSailPriceGraphUrlOptional();
   
   const positionId = tokenAddress && address
     ? `${tokenAddress.toLowerCase()}-${address.toLowerCase()}`
@@ -167,6 +167,14 @@ export function useSailPositionPnL({
     queryFn: async () => {
       if (!tokenAddress || !address) {
         // Return empty data structure instead of null
+        return {
+          userSailPosition: null,
+          sailTokenMintEvents: [],
+          sailTokenRedeemEvents: [],
+        };
+      }
+      if (!graphUrl) {
+        // Not configured (common in staging) — return empty so UI can render without crashing.
         return {
           userSailPosition: null,
           sailTokenMintEvents: [],
@@ -244,7 +252,7 @@ export function useSailPositionPnL({
         throw e;
       }
     },
-    enabled: enabled && !!tokenAddress && !!address,
+    enabled: enabled && !!tokenAddress && !!address && !!graphUrl,
     refetchInterval: 30000, // Refetch every 30 seconds
     staleTime: 10000,
   });
@@ -324,7 +332,12 @@ export function useSailPositionPnL({
     unrealizedPnLPercent,
     totalPnL,
     isLoading,
-    error: error ? String(error) : null,
+    error:
+      !graphUrl && enabled && !!tokenAddress && !!address
+        ? "PnL unavailable: Sail price subgraph URL is not configured."
+        : error
+          ? String(error)
+          : null,
   };
 }
 

@@ -11,6 +11,7 @@
 import { Address, BigDecimal, BigInt, Bytes } from "@graphprotocol/graph-ts";
 import { ChainlinkAggregator } from "../generated/HaToken_haPB/ChainlinkAggregator";
 import { PriceFeed } from "../generated/schema";
+import { Minter } from "../generated/Minter_ETH_fxUSD/Minter";
 
 // Import Minter for fetching token prices
 // Note: This import path works because Minter ABI is included in SailToken data source
@@ -41,10 +42,20 @@ const STETH_USD_FEED = Address.fromString("0xCfE54B5cD566aB89272946F602D76Ea879C
 // Maps token addresses to their corresponding Minter contracts
 // ============================================================================
 
-// stETH Market (USD-pegged)
-const STETH_ANCHOR_TOKEN = Address.fromString("0x6ff0fe773d4ad4ea923ba9ea9cc1c1b42b70f5fc"); // haUSD-stETH
-const STETH_SAIL_TOKEN = Address.fromString("0x469ddfcfa98d0661b7efedc82aceeab84133f7fe");   // hsUSD-stETH
+// stETH Market (USD-pegged) - legacy/test
+const STETH_ANCHOR_TOKEN = Address.fromString("0x6ff0fe773d4ad4ea923ba9ea9cc1c1b42b70f5fc"); // haUSD-stETH (legacy)
+const STETH_SAIL_TOKEN = Address.fromString("0x469ddfcfa98d0661b7efedc82aceeab84133f7fe"); // hsUSD-stETH (legacy)
 const STETH_MINTER = Address.fromString("0x8b17b6e8f9ce3477ddaf372a4140ac6005787901");
+
+// Production v1 Sail tokens (mainnet)
+const HS_FXUSD_ETH = Address.fromString("0x0Cd6BB1a0cfD95e2779EDC6D17b664B481f2EB4C"); // hsFXUSD-ETH
+const HS_FXUSD_BTC = Address.fromString("0x9567c243F647f9Ac37efb7Fc26BD9551Dce0BE1B"); // hsFXUSD-BTC
+const HS_STETH_BTC = Address.fromString("0x817ADaE288eD46B8618AAEffE75ACD26A0a1b0FD"); // hsSTETH-BTC
+
+// Production v1 minters (mainnet)
+const MINTER_ETH_FXUSD = Address.fromString("0xd6E2F8e57b4aFB51C6fA4cbC012e1cE6aEad989F");
+const MINTER_BTC_FXUSD = Address.fromString("0x33e32ff4d0677862fa31582CC654a25b9b1e4888");
+const MINTER_BTC_STETH = Address.fromString("0xF42516EB885E737780EB864dd07cEc8628000919");
 
 // ETH-pegged tokens
 // NOTE: We support both production + test2 deployments (mainnet).
@@ -83,7 +94,12 @@ export function getTokenType(tokenAddress: Address): TokenType {
   }
   
   // Sail tokens
-  if (tokenAddress.equals(STETH_SAIL_TOKEN)) {
+  if (
+      tokenAddress.equals(STETH_SAIL_TOKEN) ||
+      tokenAddress.equals(HS_FXUSD_ETH) ||
+      tokenAddress.equals(HS_FXUSD_BTC) ||
+      tokenAddress.equals(HS_STETH_BTC)
+  ) {
     return TokenType.SAIL;
   }
   
@@ -95,6 +111,15 @@ export function getPegType(tokenAddress: Address): PegType {
   if (tokenAddress.equals(STETH_ANCHOR_TOKEN) || 
       tokenAddress.equals(STETH_SAIL_TOKEN)) {
     return PegType.USD;
+  }
+
+  // ETH-pegged sail token (leveragedTokenPrice denominated in ETH)
+  if (tokenAddress.equals(HS_FXUSD_ETH)) {
+    return PegType.ETH;
+  }
+  // BTC-pegged sail tokens (leveragedTokenPrice denominated in BTC)
+  if (tokenAddress.equals(HS_FXUSD_BTC) || tokenAddress.equals(HS_STETH_BTC)) {
+    return PegType.BTC;
   }
   
   // ETH-pegged markets
@@ -114,6 +139,11 @@ function getMinterForToken(tokenAddress: Address): Address | null {
   if (tokenAddress.equals(STETH_ANCHOR_TOKEN) || tokenAddress.equals(STETH_SAIL_TOKEN)) {
     return STETH_MINTER;
   }
+
+  // Production v1
+  if (tokenAddress.equals(HS_FXUSD_ETH)) return MINTER_ETH_FXUSD;
+  if (tokenAddress.equals(HS_FXUSD_BTC)) return MINTER_BTC_FXUSD;
+  if (tokenAddress.equals(HS_STETH_BTC)) return MINTER_BTC_STETH;
   
   return null;
 }
@@ -152,16 +182,33 @@ export function fetchPriceUSD(tokenAddress: Bytes, blockTimestamp: BigInt): BigD
   // For sail tokens, we need to fetch the actual price from the Minter
   // The leveragedTokenPrice() returns the NAV in terms of the peg (e.g., USD for hsUSD)
   if (tokenType == TokenType.SAIL) {
-    // For now, return $1 as a baseline
-    // The actual price should be fetched from Minter.leveragedTokenPrice()
-    // but subgraph contract calls are limited to the same block context
-    // 
-    // IMPORTANT: The frontend should fetch the actual price from the Minter
-    // and multiply by the balance to get accurate USD values
-    //
-    // Alternative: We can add a PriceUpdate event to the Minter and track prices
-    // that way, updating PriceFeed entities when prices change
-    return BigDecimal.fromString("1.0");
+    const minterAddress = getMinterForToken(tokenAddr);
+    if (minterAddress == null) {
+      // Unknown token, fall back to $1
+      return BigDecimal.fromString("1.0");
+    }
+
+    const minter = Minter.bind(minterAddress as Address);
+    const priceRes = minter.try_leveragedTokenPrice();
+    if (priceRes.reverted) {
+      return BigDecimal.fromString("1.0");
+    }
+
+    // leveragedTokenPrice() is 18 decimals in PEG units (ETH/BTC/USD)
+    const ONE_E18 = BigDecimal.fromString("1000000000000000000");
+    const priceInPeg = priceRes.value.toBigDecimal().div(ONE_E18);
+
+    // Convert peg units to USD if needed
+    if (pegType == PegType.ETH) {
+      const ethUsd = fetchChainlinkPrice(ETH_USD_FEED);
+      return priceInPeg.times(ethUsd);
+    }
+    if (pegType == PegType.BTC) {
+      const btcUsd = fetchChainlinkPrice(BTC_USD_FEED);
+      return priceInPeg.times(btcUsd);
+    }
+    // USD peg
+    return priceInPeg;
   }
   
   // For anchor tokens

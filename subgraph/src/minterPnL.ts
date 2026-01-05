@@ -26,6 +26,7 @@ import {
   SailGenesisUser,
 } from "../generated/schema";
 import { Genesis } from "../generated/SailGenesis_ETH_fxUSD/Genesis";
+import { runDailyMarksUpdate } from "./dailyMarksUpdate";
 
 const ZERO_BI = BigInt.fromI32(0);
 const ZERO_BD = BigDecimal.fromString("0");
@@ -348,6 +349,9 @@ function maybeApplyGenesisCostBasis(
 }
 
 export function handleBlock(block: ethereum.Block): void {
+  // Daily marks snapshot update (price-at-the-time accumulation)
+  runDailyMarksUpdate(block);
+
   const minterAddress = dataSource.address();
   const hourTs = block.timestamp.div(HOUR_SECONDS).times(HOUR_SECONDS);
 

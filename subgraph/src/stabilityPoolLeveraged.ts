@@ -11,18 +11,17 @@ import {
 import {
   StabilityPoolDeposit,
   MarksMultiplier,
-  PriceFeed,
 } from "../generated/schema";
 import { BigDecimal, BigInt, Bytes, Address, ethereum } from "@graphprotocol/graph-ts";
 import { StabilityPool } from "../generated/StabilityPoolLeveraged_ETH_fxUSD/StabilityPool";
-// Note: Minter bindings are generated per data source, but we'll use a reference import
-// Import from SailToken_hsFXUSD_ETH as a reference (same ABI structure)
-import { Minter } from "../generated/SailToken_hsFXUSD_ETH/Minter";
+import { Minter } from "../generated/StabilityPoolLeveraged_ETH_fxUSD/Minter";
+import { ChainlinkAggregator } from "../generated/StabilityPoolLeveraged_ETH_fxUSD/ChainlinkAggregator";
 import {
   ANCHOR_BOOST_MULTIPLIER,
   getActiveBoostMultiplier,
   getOrCreateMarketBoostWindow,
 } from "./marksBoost";
+import { ensureUserRegistered } from "./userRegistry";
 
 // Constants
 const SECONDS_PER_DAY = BigDecimal.fromString("86400");
@@ -31,64 +30,80 @@ const DEFAULT_MARKS_PER_DOLLAR_PER_DAY = BigDecimal.fromString("1.0");
 const POOL_TYPE = "sail";
 const E18 = BigDecimal.fromString("1000000000000000000"); // 10^18
 
-// Map stability pool addresses to their corresponding Minter addresses
-// Leveraged pools contain sail tokens, which get their price from Minter.leveragedTokenPrice()
-function getMinterAddressForPool(poolAddress: string): string {
-  // ETH/fxUSD market - leveraged pool (hsFXUSD-ETH deposits)
-  if (poolAddress == "0x93d0472443d775e95bf1597c8c66dfe9093bfc48") {
-    return "0x565f90dc7c022e7857734352c7bf645852d8d4e7"; // ETH/fxUSD minter
-  }
-  // BTC/fxUSD market - leveraged pool (hsFXUSD-BTC deposits)
-  if (poolAddress == "0x8667592f836a8e2d19ce7879b8ae557297514f48") {
-    return "0x7ffe3acb524fb40207709ba597d39c085d258f15"; // BTC/fxUSD minter
-  }
-  // BTC/stETH market - leveraged pool (hsSTETH-BTC deposits)
-  if (poolAddress == "0x8d6307be018fcc42ad65e91b77c6b09c7ac9f0df") {
-    return "0x042e7cb5b993312490ea07fb89f360a65b8a9056"; // BTC/stETH minter (from contracts.ts)
-  }
-  return "";
+// Chainlink (mainnet) feeds
+const ETH_USD_FEED = Address.fromString("0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419");
+const BTC_USD_FEED = Address.fromString("0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c");
+
+// Production v1 ha tokens (mainnet) - leveraged pools deposit ha tokens
+const HAETH = Address.fromString("0x7A53EBc85453DD006824084c4f4bE758FcF8a5B5");
+const HABTC = Address.fromString("0x25bA4A826E1A1346dcA2Ab530831dbFF9C08bEA7");
+
+// Production v1 Sail tokens (mainnet)
+const HS_FXUSD_ETH = Address.fromString("0x0Cd6BB1a0cfD95e2779EDC6D17b664B481f2EB4C"); // hsFXUSD-ETH
+const HS_FXUSD_BTC = Address.fromString("0x9567c243F647f9Ac37efb7Fc26BD9551Dce0BE1B"); // hsFXUSD-BTC
+const HS_STETH_BTC = Address.fromString("0x817ADaE288eD46B8618AAEffE75ACD26A0a1b0FD"); // hsSTETH-BTC
+
+// Production v1 minters (mainnet)
+const MINTER_ETH_FXUSD = Address.fromString("0xd6E2F8e57b4aFB51C6fA4cbC012e1cE6aEad989F");
+const MINTER_BTC_FXUSD = Address.fromString("0x33e32ff4d0677862fa31582CC654a25b9b1e4888");
+const MINTER_BTC_STETH = Address.fromString("0xF42516EB885E737780EB864dd07cEc8628000919");
+
+function chainlinkUsd(feed: Address): BigDecimal {
+  const oracle = ChainlinkAggregator.bind(feed);
+  const res = oracle.try_latestAnswer();
+  if (res.reverted) return BigDecimal.fromString("0");
+  // standard Chainlink 8 decimals
+  return res.value.toBigDecimal().div(BigDecimal.fromString("100000000"));
 }
 
-// Fallback price if Minter call fails (in USD)
-function getFallbackPriceForPool(poolAddress: string): BigDecimal {
-  // Sail tokens typically trade around $1 but can vary
+function haTokenPriceUSD(token: Address): BigDecimal {
+  if (token.equals(HAETH)) return chainlinkUsd(ETH_USD_FEED);
+  if (token.equals(HABTC)) return chainlinkUsd(BTC_USD_FEED);
+  // haUSD-like
   return BigDecimal.fromString("1.0");
 }
 
-/**
- * Fetch real-time price from the Minter contract for sail tokens in leveraged pools
- * Returns the sail token price in USD from Minter.leveragedTokenPrice()
- */
-function getSailTokenPriceUSD(poolAddress: Bytes, block: ethereum.Block): BigDecimal {
-  const poolAddressStr = poolAddress.toHexString();
-  const minterAddressStr = getMinterAddressForPool(poolAddressStr);
-  
-  // If no minter configured, use fallback
-  if (minterAddressStr == "") {
-    return getFallbackPriceForPool(poolAddressStr);
+function pegUsdForSailToken(token: Address): BigDecimal {
+  if (token.equals(HS_FXUSD_ETH)) return chainlinkUsd(ETH_USD_FEED);
+  if (token.equals(HS_FXUSD_BTC) || token.equals(HS_STETH_BTC)) return chainlinkUsd(BTC_USD_FEED);
+  return BigDecimal.fromString("1.0");
+}
+
+function minterForSailToken(token: Address): Address {
+  if (token.equals(HS_FXUSD_ETH)) return MINTER_ETH_FXUSD;
+  if (token.equals(HS_FXUSD_BTC)) return MINTER_BTC_FXUSD;
+  if (token.equals(HS_STETH_BTC)) return MINTER_BTC_STETH;
+  return Address.zero();
+}
+
+function sailTokenPriceUSD(token: Address): BigDecimal {
+  const minterAddr = minterForSailToken(token);
+  if (minterAddr.equals(Address.zero())) return BigDecimal.fromString("0");
+  const minter = Minter.bind(minterAddr);
+  const nav = minter.try_leveragedTokenPrice();
+  if (nav.reverted) return BigDecimal.fromString("0");
+  const priceInPeg = nav.value.toBigDecimal().div(E18);
+  const pegUsd = pegUsdForSailToken(token);
+  return priceInPeg.times(pegUsd);
+}
+
+function assetPriceUSDForLeveragedPool(assetToken: Address): BigDecimal {
+  // Leveraged pools deposit ha tokens (confirmed by user)
+  if (assetToken.equals(HAETH) || assetToken.equals(HABTC)) {
+    return haTokenPriceUSD(assetToken);
   }
-  
-  // Bind to the Minter contract
-  const minterAddress = Address.fromString(minterAddressStr);
-  const minter = Minter.bind(minterAddress);
-  
-  // Call leveragedTokenPrice() which returns the NAV in terms of the peg (18 decimals)
-  const result = minter.try_leveragedTokenPrice();
-  
-  if (result.reverted) {
-    // Minter call failed, use fallback
-    return getFallbackPriceForPool(poolAddressStr);
+  // Defensive fallback: if a pool ever uses hs tokens, still support it.
+  if (assetToken.equals(HS_FXUSD_ETH) || assetToken.equals(HS_FXUSD_BTC) || assetToken.equals(HS_STETH_BTC)) {
+    return sailTokenPriceUSD(assetToken);
   }
-  
-  // leveragedTokenPrice() returns price with 18 decimals
-  const priceUSD = result.value.toBigDecimal().div(E18);
-  
-  // Ensure we have a valid price
-  if (priceUSD.le(BigDecimal.fromString("0"))) {
-    return getFallbackPriceForPool(poolAddressStr);
-  }
-  
-  return priceUSD;
+  return BigDecimal.fromString("0");
+}
+
+function getPoolAssetToken(poolAddress: Address): Address | null {
+  const pool = StabilityPool.bind(poolAddress);
+  const res = pool.try_ASSET_TOKEN();
+  if (res.reverted) return null;
+  return res.value;
 }
 
 // Helper to get or create stability pool deposit
@@ -197,6 +212,7 @@ export function handleStabilityPoolDeposit(event: StabilityPoolDepositEvent): vo
   );
   
   const deposit = getOrCreateStabilityPoolDeposit(poolAddress, userAddress);
+  ensureUserRegistered(poolAddress, userAddress);
   
   // Accumulate marks before balance change
   accumulateMarks(deposit, event.block);
@@ -205,10 +221,11 @@ export function handleStabilityPoolDeposit(event: StabilityPoolDepositEvent): vo
   const actualBalance = queryPoolDepositBalance(Address.fromBytes(poolAddress), Address.fromBytes(userAddress));
   deposit.balance = actualBalance;
   
-  // Calculate USD value using real-time Minter price for sail tokens
-  const sailTokenPriceUSD = getSailTokenPriceUSD(poolAddress, event.block);
+  // Calculate USD value using ASSET_TOKEN price (leveraged pools deposit ha tokens)
+  const assetToken = getPoolAssetToken(Address.fromBytes(poolAddress));
   const amountInTokens = actualBalance.toBigDecimal().div(E18);
-  deposit.balanceUSD = amountInTokens.times(sailTokenPriceUSD);
+  const assetPriceUSD = assetToken ? assetPriceUSDForLeveragedPool(assetToken as Address) : BigDecimal.fromString("0");
+  deposit.balanceUSD = amountInTokens.times(assetPriceUSD);
   
   // Update marks per day
   const boost = getActiveBoostMultiplier("stabilityPoolLeveraged", poolAddress, timestamp);
@@ -240,6 +257,7 @@ export function handleStabilityPoolWithdraw(event: StabilityPoolWithdrawEvent): 
   );
   
   const deposit = getOrCreateStabilityPoolDeposit(poolAddress, userAddress);
+  ensureUserRegistered(poolAddress, userAddress);
   
   // Accumulate marks before balance change
   accumulateMarks(deposit, event.block);
@@ -247,7 +265,11 @@ export function handleStabilityPoolWithdraw(event: StabilityPoolWithdrawEvent): 
   // Query actual balance from pool contract
   const actualBalance = queryPoolDepositBalance(Address.fromBytes(poolAddress), Address.fromBytes(userAddress));
   deposit.balance = actualBalance;
-  deposit.balanceUSD = actualBalance.toBigDecimal().div(BigDecimal.fromString("1000000000000000000"));
+  
+  const assetToken = getPoolAssetToken(Address.fromBytes(poolAddress));
+  const amountInTokens = actualBalance.toBigDecimal().div(E18);
+  const assetPriceUSD = assetToken ? assetPriceUSDForLeveragedPool(assetToken as Address) : BigDecimal.fromString("0");
+  deposit.balanceUSD = amountInTokens.times(assetPriceUSD);
   const boost = getActiveBoostMultiplier("stabilityPoolLeveraged", poolAddress, timestamp);
   const marksPerDollarPerDay = DEFAULT_MARKS_PER_DOLLAR_PER_DAY
     .times(DEFAULT_MULTIPLIER)
@@ -279,6 +301,7 @@ export function handleStabilityPoolDepositChange(event: UserDepositChangeEvent):
   );
   
   const deposit = getOrCreateStabilityPoolDeposit(poolAddress, userAddress);
+  ensureUserRegistered(poolAddress, userAddress);
   
   // Accumulate marks before balance change
   accumulateMarks(deposit, event.block);
@@ -286,10 +309,10 @@ export function handleStabilityPoolDepositChange(event: UserDepositChangeEvent):
   // Update balance directly from event
   deposit.balance = newDeposit;
   
-  // Calculate USD value using real-time Minter price for sail tokens
-  const sailTokenPriceUSD = getSailTokenPriceUSD(poolAddress, event.block);
+  const assetToken = getPoolAssetToken(Address.fromBytes(poolAddress));
   const amountInTokens = newDeposit.toBigDecimal().div(E18);
-  deposit.balanceUSD = amountInTokens.times(sailTokenPriceUSD);
+  const assetPriceUSD = assetToken ? assetPriceUSDForLeveragedPool(assetToken as Address) : BigDecimal.fromString("0");
+  deposit.balanceUSD = amountInTokens.times(assetPriceUSD);
   const boost = getActiveBoostMultiplier("stabilityPoolLeveraged", poolAddress, timestamp);
   const marksPerDollarPerDay = DEFAULT_MARKS_PER_DOLLAR_PER_DAY
     .times(DEFAULT_MULTIPLIER)

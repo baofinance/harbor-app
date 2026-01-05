@@ -357,6 +357,7 @@ export default function AnchorPage() {
     peggedPriceUSDMap,
     mergedPeggedPriceMap,
     ethPrice,
+    btcPrice,
     fxUSDPrice,
     fxSAVEPrice,
     usdcPrice,
@@ -1925,7 +1926,7 @@ export default function AnchorPage() {
                   </h2>
                 </div>
                 <p className="text-sm text-white/80 text-center">
-                  Redeem for collateral and redeem tokens at any time
+                  Redeem for collateral at any time
                 </p>
               </div>
             </div>
@@ -2691,17 +2692,17 @@ export default function AnchorPage() {
                           })} marks/day`
                         : "0 marks/day"}
                     </div>
-
-                    {activeAnchorBoostEndTimestamp && (
-                      <div className="mt-1">
-                        <MarksBoostBadge
-                          multiplier={10}
-                          endTimestamp={activeAnchorBoostEndTimestamp}
-                        />
-                      </div>
-                    )}
                   </div>
                 </div>
+
+                {activeAnchorBoostEndTimestamp && (
+                  <div className="mt-2">
+                    <MarksBoostBadge
+                      multiplier={10}
+                      endTimestamp={activeAnchorBoostEndTimestamp}
+                    />
+                  </div>
+                )}
               </div>
             );
           })()}
@@ -4119,7 +4120,8 @@ export default function AnchorPage() {
                           if (underlyingPriceUSD > 0) {
                             // Oracle price is in peg token units, convert to USD
                             if (isBTCMarket) {
-                              const btcPriceUSD = coinGeckoPrices?.["bitcoin"] || 0;
+                              // Prefer Chainlink-backed btcPrice (from useAnchorPrices) over CoinGecko-only map.
+                              const btcPriceUSD = btcPrice || 0;
                               if (btcPriceUSD > 0) {
                                 underlyingPriceUSD = underlyingPriceUSD * btcPriceUSD;
                               } else {
@@ -4273,9 +4275,23 @@ export default function AnchorPage() {
                                 // Use the same CR-aware USD pricing as positions (prefer peggedPriceUSDMap; fallback to contract reads)
                                 const tvlUsdPriceFromMap =
                                   peggedPriceUSDMap[marketData.marketId];
+                                // Extra robustness: if the USD map is missing/zero for haBTC/haETH,
+                                // fall back to CoinGecko peg-target USD price.
+                                const peggedSymbolLower =
+                                  marketData.market?.peggedToken?.symbol
+                                    ?.toLowerCase?.() || "";
+                                const btcUsdFallback = btcPrice || 0;
+                                const ethUsdFallback = ethPrice || 0;
+
                                 const peggedPriceUSD =
                                   tvlUsdPriceFromMap && tvlUsdPriceFromMap > 0n
                                     ? Number(tvlUsdPriceFromMap) / 1e18
+                                    : peggedSymbolLower.includes("btc") &&
+                                      btcUsdFallback > 0
+                                    ? btcUsdFallback
+                                    : peggedSymbolLower.includes("eth") &&
+                                      ethUsdFallback > 0
+                                    ? ethUsdFallback
                                     : positionData?.peggedTokenPrice &&
                                       positionData.peggedTokenPrice > 0n
                                     ? Number(positionData.peggedTokenPrice) / 1e18

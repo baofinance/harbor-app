@@ -54,6 +54,11 @@ dataSources:
           handler: handleMintLeveragedToken
         - event: RedeemLeveragedToken(indexed address,uint256,uint256)
           handler: handleRedeemLeveragedToken
+      blockHandlers:
+        - handler: handleBlock
+          filter:
+            kind: polling
+            every: 1000
       file: ./src/minterPnL.ts
   
   # Genesis - ETH/fxUSD market

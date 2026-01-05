@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import {
  useTransparencyData,
  formatCollateralRatio,
@@ -26,8 +26,10 @@ import {
  ClockIcon,
  CurrencyDollarIcon,
  Squares2X2Icon,
+ EyeIcon,
 } from "@heroicons/react/24/outline";
 import InfoTooltip from "@/components/InfoTooltip";
+import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
 
 // Copy to clipboard component
 function CopyButton({ text, label }: { text: string; label?: string }) {
@@ -195,10 +197,20 @@ function MarketCard({
  market,
  pools,
  userPools,
+ fxSAVEPrice,
+ wstETHPrice,
+  stETHPrice,
+  btcPrice,
+  ethPrice,
 }: {
  market: MarketTransparencyData;
  pools: PoolTransparencyData[];
  userPools?: UserPoolData[];
+ fxSAVEPrice?: number;
+ wstETHPrice?: number;
+  stETHPrice?: number;
+  btcPrice?: number;
+  ethPrice?: number;
 }) {
  // Expanded views disabled
  const isExpanded = false;
@@ -210,20 +222,47 @@ function MarketCard({
  market.rebalanceThreshold
  );
 
- const pegPriceUSD = calculatePeggedPriceUSD(
- market.collateralTokenBalance,
- avgPrice,
- avgRate,
- market.collateralRatio,
- market.peggedTokenBalance
- );
+  // Calculate TVL as the minter's total collateral value in USD (same as Anchor page)
+  // collateralTokenBalance is in underlying-equivalent units (fxUSD for fxSAVE markets, stETH for wstETH markets)
+  const collateralTokensUnderlyingEq = Number(market.collateralTokenBalance) / 1e18;
+  const avgRateNum = Number(avgRate) / 1e18;
+  const collateralTokensWrapped =
+    avgRateNum > 0
+      ? collateralTokensUnderlyingEq / avgRateNum
+      : collateralTokensUnderlyingEq;
 
-  // Calculate total TVL in USD using the same approach as Anchor expanded view:
-  // tvlUSD = (poolTVL / 1e18) * peggedPriceUSD
-  const totalTVLUSD = pools.reduce((sum, pool) => {
-    const tvlTokens = Number(pool.tvl) / 1e18;
-    return sum + tvlTokens * (pegPriceUSD || 0);
-  }, 0);
+  // Determine wrapped token price in USD (fxSAVE or wstETH)
+  // Use lowercase marketId to identify market type
+  const marketIdLower = market.marketId.toLowerCase();
+  let wrappedTokenPriceUSD = 0;
+  
+  if (marketIdLower.includes("fxusd") || marketIdLower.includes("fx-usd")) {
+    // fxUSD market -> uses fxSAVE as wrapped collateral
+    wrappedTokenPriceUSD = fxSAVEPrice || 1.07; // Fallback to ~$1.07
+  } else if (marketIdLower.includes("steth") || marketIdLower.includes("eth")) {
+    // stETH/ETH market -> uses wstETH as wrapped collateral
+    // Prefer CoinGecko wstETH price
+    wrappedTokenPriceUSD = wstETHPrice || 0;
+    // Fallback: stETH price * wrapped rate
+    if (wrappedTokenPriceUSD === 0 && stETHPrice && stETHPrice > 0 && avgRateNum > 0) {
+      wrappedTokenPriceUSD = stETHPrice * avgRateNum;
+    }
+    // Fallback: oracle (peg-denominated) * peg USD * wrapped rate
+    if (wrappedTokenPriceUSD === 0 && avgPrice > 0n && avgRateNum > 0) {
+      const pegTargetLower = marketIdLower.includes("btc") ? "btc" : "eth";
+      const pegUsd = pegTargetLower === "btc" ? (btcPrice || 0) : (ethPrice || 0);
+      if (pegUsd > 0) {
+        const underlyingInPeg = Number(avgPrice) / 1e18; // peg units per underlying
+        const underlyingUsd = underlyingInPeg * pegUsd;
+        wrappedTokenPriceUSD = underlyingUsd * avgRateNum;
+      }
+    }
+  }
+  
+  const totalTVLUSD =
+    collateralTokensWrapped > 0 && wrappedTokenPriceUSD > 0
+      ? collateralTokensWrapped * wrappedTokenPriceUSD
+      : 0;
 
  const distanceToThreshold =
  market.rebalanceThreshold > 0n
@@ -464,7 +503,7 @@ function MarketCard({
  <div className="bg-[#1E4775]/5 p-2">
  <div className="text-[#1E4775]/60 text-[10px]">TVL (USD)</div>
  <div className="text-[#1E4775] font-mono font-semibold">
- {formatCompactUSD((Number(pool.tvl) / 1e18) * (pegPriceUSD || 0))}
+ {formatCompactUSD((Number(pool.tvl) / 1e18) * peggedPriceUSD)}
  </div>
  <div className="text-[#1E4775]/50 text-[10px] mt-0.5">
  {formatTokenBalance(pool.tvl)}
@@ -560,6 +599,13 @@ export default function TransparencyPage() {
  error,
  refetch,
  } = useTransparencyData();
+
+ // Fetch wrapped collateral token prices for TVL calculation (same as Anchor page)
+ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving");
+ const { price: wstETHPrice } = useCoinGeckoPrice("wrapped-steth");
+ const { price: stETHPrice } = useCoinGeckoPrice("lido-staked-ethereum-steth");
+ const { price: btcPrice } = useCoinGeckoPrice("bitcoin", 120000);
+ const { price: ethPrice } = useCoinGeckoPrice("ethereum", 120000);
 
  return (
  <div className="min-h-screen text-white max-w-[1300px] mx-auto font-sans relative overflow-x-hidden">
@@ -699,6 +745,11 @@ export default function TransparencyPage() {
                    p.address === market.stabilityPoolLeveragedAddress
                )}
                userPools={userPools}
+               fxSAVEPrice={fxSAVEPrice}
+               wstETHPrice={wstETHPrice}
+               stETHPrice={stETHPrice}
+               btcPrice={btcPrice || undefined}
+               ethPrice={ethPrice || undefined}
              />
            ))}
          </div>

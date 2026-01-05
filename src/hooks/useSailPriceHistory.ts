@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { getSailPriceGraphUrl, getGraphHeaders } from "@/config/graph";
+import { getSailPriceGraphUrlOptional, getGraphHeaders } from "@/config/graph";
 
 // GraphQL query for sail token price history
 const PRICE_HISTORY_QUERY = `
@@ -77,7 +77,7 @@ export function useSailPriceHistory({
   daysBack = 30,
   enabled = true,
 }: UseSailPriceHistoryOptions): PriceHistoryData {
-  const graphUrl = getSailPriceGraphUrl();
+  const graphUrl = getSailPriceGraphUrlOptional();
   const debug = typeof window !== "undefined" && process.env.NODE_ENV !== "production";
   
   // Calculate timestamp for "since" parameter
@@ -91,6 +91,9 @@ export function useSailPriceHistory({
     // Include graphUrl so switching subgraph versions/endpoints doesn't reuse cached data from a previous endpoint.
     queryKey: ["sailPriceHistory", graphUrl, tokenAddress, sinceTimestamp],
     queryFn: async () => {
+      if (!graphUrl) {
+        return { pricePoints: [], hourlySnapshots: [] };
+      }
       if (!tokenAddress) {
         return { pricePoints: [], hourlySnapshots: [] };
       }
@@ -159,7 +162,7 @@ export function useSailPriceHistory({
 
       return { pricePoints, hourlySnapshots };
     },
-    enabled: enabled && !!tokenAddress,
+    enabled: enabled && !!tokenAddress && !!graphUrl,
     refetchInterval: 60000, // Refetch every minute
     staleTime: 30000, // Consider data stale after 30 seconds
   });
@@ -168,7 +171,11 @@ export function useSailPriceHistory({
     pricePoints: data?.pricePoints || [],
     hourlySnapshots: data?.hourlySnapshots || [],
     isLoading,
-    error: error ? String(error) : null,
+    error: !graphUrl && enabled && !!tokenAddress
+      ? "Price data unavailable: Sail price subgraph URL is not configured."
+      : error
+        ? String(error)
+        : null,
   };
 }
 

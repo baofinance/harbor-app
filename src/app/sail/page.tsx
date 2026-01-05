@@ -1431,12 +1431,11 @@ export default function SailPage() {
                 <div className="flex items-center justify-center mb-2">
                   <CurrencyDollarIcon className="w-6 h-6 text-white mr-2" />
                   <h2 className="font-bold text-white text-lg text-center">
-                    Leverage
+                    No funding fees
                   </h2>
                 </div>
                 <p className="text-sm text-white/80 text-center">
-                  No funding fees - There are no ongoing fees for holding Sail
-                  tokens
+                  Funding fee free leverage
                 </p>
               </div>
 
@@ -1463,8 +1462,7 @@ export default function SailPage() {
                   </h2>
                 </div>
                 <p className="text-sm text-white/80 text-center">
-                  Earn ledger marks for deposits: 1 ledger mark per dollar per
-                  day
+                  Earn Ledger marks for deposits: 5 per dollar per day
                 </p>
               </div>
 
