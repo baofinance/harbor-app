@@ -1010,7 +1010,7 @@ function SailMarketExpandedView({
           <h3 className="text-[#1E4775] font-semibold mb-3 text-xs">
             Price Chart
           </h3>
-          <div className="h-72">
+          <div className="flex-1 min-h-72">
             <PriceChart
               tokenType="STEAMED"
               selectedToken={market.leveragedToken?.symbol || ""}
