@@ -9,7 +9,6 @@ import {
 } from "@heroicons/react/24/outline";
 import { markets } from "@/config/markets";
 import { getGraphUrl, getGraphHeaders } from "@/config/graph";
-import { useAnchorMarks } from "@/hooks/useAnchorMarks";
 import {
  calculateEstimatedMarks,
  useAnchorLedgerMarks,
@@ -303,29 +302,39 @@ export default function LedgerMarksLeaderboard() {
  return () => clearInterval(interval);
  }, [publicClient]);
 
- // Get marks from ha tokens and stability pools for connected user
- const { data: anchorMarksData, isLoading: isLoadingAnchorMarks } =
- useAnchorMarks();
+// Get anchor ledger marks (includes sail token balances)
+// Use same data source as Anchor page for consistency
+ const {
+   haBalances,
+   poolDeposits,
+   sailBalances,
+   loading: isLoadingAnchorLedgerMarks,
+   error: anchorLedgerMarksError,
+ } = useAnchorLedgerMarks({ enabled: true }); // Enable subgraph queries
 
- // Get anchor ledger marks (includes sail token balances)
-  const {
-    haBalances,
-    poolDeposits,
-    sailBalances,
-    loading: isLoadingAnchorLedgerMarks,
-    error: anchorLedgerMarksError,
-  } = useAnchorLedgerMarks({ enabled: true }); // Enable subgraph queries
+// Calculate anchor marks per day (ha tokens + ALL stability pools)
+// Note: Both collateral and "sail" stability pools accept ha token deposits.
+// Use same calculation as Anchor page
+const anchorMarksPerDay = useMemo(() => {
+return (
+(haBalances ?? []).reduce((sum, b) => sum + (b.marksPerDay ?? 0), 0) +
+(poolDeposits ?? []).reduce((sum, d) => sum + (d.marksPerDay ?? 0), 0)
+);
+}, [haBalances, poolDeposits]);
 
- // Calculate anchor marks per day (ha tokens + ALL stability pools)
- // Note: Both collateral and "sail" stability pools accept ha token deposits.
- const anchorMarksPerDay = useMemo(() => {
- if (!anchorMarksData) return 0;
- return (
- anchorMarksData.haTokenMarksPerDay +
- anchorMarksData.collateralPoolMarksPerDay +
- anchorMarksData.sailPoolMarksPerDay
- );
- }, [anchorMarksData]);
+// Calculate total anchor marks (ha tokens + ALL stability pools)
+const totalAnchorLedgerMarks = useMemo(() => {
+let total = 0;
+// Add ha token marks
+if (haBalances) {
+total += haBalances.reduce((sum, balance) => sum + (balance.estimatedMarks || 0), 0);
+}
+// Add stability pool marks (both collateral and sail pools)
+if (poolDeposits) {
+total += poolDeposits.reduce((sum, deposit) => sum + (deposit.estimatedMarks || 0), 0);
+}
+return total;
+}, [haBalances, poolDeposits]);
 
  // Calculate sail marks per day (sail token holdings only)
  const sailMarksPerDay = useMemo(() => {
@@ -1052,12 +1061,20 @@ export default function LedgerMarksLeaderboard() {
           </div>
 
           {(activeAnchorBoostEndTimestamp || activeSailBoostEndTimestamp) && (
-            <div className="flex items-center justify-center gap-2 mb-2">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-2 mb-2 min-w-0">
               {activeAnchorBoostEndTimestamp && (
-                <MarksBoostBadge multiplier={10} endTimestamp={activeAnchorBoostEndTimestamp} />
+                <MarksBoostBadge
+                  multiplier={10}
+                  endTimestamp={activeAnchorBoostEndTimestamp}
+                  className="sm:w-fit"
+                />
               )}
               {activeSailBoostEndTimestamp && (
-                <MarksBoostBadge multiplier={2} endTimestamp={activeSailBoostEndTimestamp} />
+                <MarksBoostBadge
+                  multiplier={2}
+                  endTimestamp={activeSailBoostEndTimestamp}
+                  className="sm:w-fit"
+                />
               )}
             </div>
           )}
@@ -1197,65 +1214,77 @@ export default function LedgerMarksLeaderboard() {
  <h3 className="font-bold text-base text-[#1E4775] mb-2">
  Ledger Marks Summary
  </h3>
- {isLoadingAnchorMarks ||
- isLoadingAnchorLedgerMarks ||
- isLoadingGenesisMarks ? (
+{isLoadingAnchorLedgerMarks ||
+isLoadingGenesisMarks ? (
  <p className="text-[#1E4775]/70 text-sm">Loading your marks...</p>
  ) : (
- <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
- <div className="bg-white p-2">
- <div className="text-xs text-[#1E4775]/70 mb-0.5 text-center">
- Maiden Voyage Marks per Day
- </div>
- <div className="flex items-baseline gap-1 justify-center">
- <div className="text-base font-bold text-[#1E4775]">
- {maidenVoyageMarksPerDay.toLocaleString(undefined, {
- maximumFractionDigits: 2,
- })}
- </div>
- <div className="text-[10px] text-[#1E4775]/60">marks/day</div>
- </div>
- </div>
- <div className="bg-white p-2">
- <div className="text-xs text-[#1E4775]/70 mb-0.5 text-center">
- Anchor Marks per Day
- </div>
- <div className="flex items-baseline gap-1 justify-center">
- <div className="text-base font-bold text-[#1E4775]">
- {anchorMarksPerDay.toLocaleString(undefined, {
- maximumFractionDigits: 2,
- })}
- </div>
- <div className="text-[10px] text-[#1E4775]/60">marks/day</div>
- </div>
- </div>
- <div className="bg-white p-2">
- <div className="text-xs text-[#1E4775]/70 mb-0.5 text-center">
- Sail Marks per Day
- </div>
- <div className="flex items-baseline gap-1 justify-center">
- <div className="text-base font-bold text-[#1E4775]">
- {sailMarksPerDay.toLocaleString(undefined, {
- maximumFractionDigits: 2,
- })}
- </div>
- <div className="text-[10px] text-[#1E4775]/60">marks/day</div>
- </div>
- </div>
- <div className="bg-[#1E4775] p-2">
- <div className="text-xs text-white/70 mb-0.5 text-center">
- Total Marks per Day
- </div>
- <div className="flex items-baseline gap-1 justify-center">
- <div className="text-base font-bold text-white">
- {totalMarksPerDay.toLocaleString(undefined, {
- maximumFractionDigits: 2,
- })}
- </div>
- <div className="text-[10px] text-white/60">marks/day</div>
- </div>
- </div>
- </div>
+<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 sm:gap-3">
+<div className="bg-white p-2">
+<div className="text-xs text-[#1E4775]/70 mb-0.5 text-center">
+Maiden Voyage Marks per Day
+</div>
+<div className="flex items-baseline gap-1 justify-center">
+<div className="text-base font-bold text-[#1E4775]">
+{maidenVoyageMarksPerDay.toLocaleString(undefined, {
+maximumFractionDigits: 2,
+})}
+</div>
+<div className="text-[10px] text-[#1E4775]/60">marks/day</div>
+</div>
+</div>
+<div className="bg-white p-2">
+<div className="text-xs text-[#1E4775]/70 mb-0.5 text-center">
+Anchor Marks per Day
+</div>
+<div className="flex items-baseline gap-1 justify-center">
+<div className="text-base font-bold text-[#1E4775]">
+{anchorMarksPerDay.toLocaleString(undefined, {
+maximumFractionDigits: 2,
+})}
+</div>
+<div className="text-[10px] text-[#1E4775]/60">marks/day</div>
+</div>
+</div>
+<div className="bg-white p-2">
+<div className="text-xs text-[#1E4775]/70 mb-0.5 text-center">
+Anchor Ledger Marks
+</div>
+<div className="flex items-baseline gap-1 justify-center">
+<div className="text-base font-bold text-[#1E4775]">
+{totalAnchorLedgerMarks.toLocaleString(undefined, {
+minimumFractionDigits: totalAnchorLedgerMarks < 100 ? 2 : 0,
+maximumFractionDigits: totalAnchorLedgerMarks < 100 ? 2 : 0,
+})}
+</div>
+</div>
+</div>
+<div className="bg-white p-2">
+<div className="text-xs text-[#1E4775]/70 mb-0.5 text-center">
+Sail Marks per Day
+</div>
+<div className="flex items-baseline gap-1 justify-center">
+<div className="text-base font-bold text-[#1E4775]">
+{sailMarksPerDay.toLocaleString(undefined, {
+maximumFractionDigits: 2,
+})}
+</div>
+<div className="text-[10px] text-[#1E4775]/60">marks/day</div>
+</div>
+</div>
+<div className="bg-[#1E4775] p-2">
+<div className="text-xs text-white/70 mb-0.5 text-center">
+Total Marks per Day
+</div>
+<div className="flex items-baseline gap-1 justify-center">
+<div className="text-base font-bold text-white">
+{totalMarksPerDay.toLocaleString(undefined, {
+maximumFractionDigits: 2,
+})}
+</div>
+<div className="text-[10px] text-white/60">marks/day</div>
+</div>
+</div>
+</div>
  )}
  </div>
  </div>

@@ -183,6 +183,23 @@ export const stabilityPoolABI = [
   },
   {
     type: "function",
+    name: "getEarlyWithdrawalFee",
+    inputs: [],
+    outputs: [{ name: "fee", type: "uint256", internalType: "uint256" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "getWithdrawalWindow",
+    inputs: [],
+    outputs: [
+      { name: "startDelay", type: "uint256", internalType: "uint256" },
+      { name: "endWindow", type: "uint256", internalType: "uint256" },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
     name: "activeRewardTokens",
     inputs: [],
     outputs: [{ name: "", type: "address[]", internalType: "address[]" }],

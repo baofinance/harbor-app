@@ -85,7 +85,7 @@ export function useAnchorPrices(
       return chainlinkEthPrice;
     }
     if (isDebug) {
-      console.warn(`[useAnchorPrices] Both CoinGecko and Chainlink ETH prices unavailable`);
+    console.warn(`[useAnchorPrices] Both CoinGecko and Chainlink ETH prices unavailable`);
     }
     return null;
   }, [ethPriceCoinGecko, chainlinkEthPrice, isDebug]);
@@ -104,7 +104,7 @@ export function useAnchorPrices(
       return chainlinkBtcPrice;
     }
     if (isDebug) {
-      console.warn(`[useAnchorPrices] Both CoinGecko and Chainlink BTC prices unavailable`);
+    console.warn(`[useAnchorPrices] Both CoinGecko and Chainlink BTC prices unavailable`);
     }
     return null;
   }, [btcPriceCoinGecko, chainlinkBtcPrice, isDebug]);
@@ -114,7 +114,7 @@ export function useAnchorPrices(
     const map: Record<string, bigint | undefined> = {};
     if (!reads) {
       if (isDebug) {
-        console.log("[peggedPriceUSDMap] No reads available");
+      console.log("[peggedPriceUSDMap] No reads available");
       }
       return map;
     }
@@ -304,7 +304,7 @@ export function useAnchorPrices(
         map[id] = peggedTokenPrice;
       } else {
         if (isDebug) {
-          console.warn(`[peggedPriceUSDMap] Market ${id}: No price calculated`);
+        console.warn(`[peggedPriceUSDMap] Market ${id}: No price calculated`);
         }
       }
     });
@@ -342,7 +342,7 @@ export function useAnchorPrices(
       console.log(
         "[mergedPeggedPriceMap] Final price map:",
         Object.entries(out).map(([id, price]) => ({
-          marketId: id,
+      marketId: id,
           price: price ? Number(price) / 1e18 : undefined,
         }))
       );

@@ -191,7 +191,7 @@ export function fetchPriceUSD(tokenAddress: Bytes, blockTimestamp: BigInt): BigD
     const minter = Minter.bind(minterAddress as Address);
     const priceRes = minter.try_leveragedTokenPrice();
     if (priceRes.reverted) {
-      return BigDecimal.fromString("1.0");
+    return BigDecimal.fromString("1.0");
     }
 
     // leveragedTokenPrice() is 18 decimals in PEG units (ETH/BTC/USD)

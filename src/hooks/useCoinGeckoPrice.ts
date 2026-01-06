@@ -147,10 +147,10 @@ export function useCoinGeckoPrices(
         coinIds.forEach((id) => {
           newPrices[id] = data[id]?.usd || null;
           if (process.env.NODE_ENV === "development") {
-            if (newPrices[id]) {
-              console.log(`[CoinGecko] Price for ${id}: $${newPrices[id]}`);
-            } else {
-              console.warn(`[CoinGecko] No price found for ${id}`);
+          if (newPrices[id]) {
+            console.log(`[CoinGecko] Price for ${id}: $${newPrices[id]}`);
+          } else {
+            console.warn(`[CoinGecko] No price found for ${id}`);
             }
           }
         });

@@ -897,7 +897,7 @@ function SailMarketExpandedView({
                   <span className="font-mono break-all">{pnlData.error}</span>
                 </div>
               )}
-              <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+              <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs [&>*:last-child]:-mt-2">
                 <div className="text-[#1E4775]/70">Cost Basis:</div>
                 <div className="text-[#1E4775] font-mono text-right">
                   {pnlData.isLoading || pnlData.error
@@ -937,19 +937,26 @@ function SailMarketExpandedView({
                     </div>
                   </>
                 )}
-                <div className="text-[#1E4775]/70 font-semibold pt-1 border-t border-[#1E4775]/10">
-                  Total PnL:
-                </div>
-                <div
-                  className={`font-mono text-right font-semibold pt-1 border-t border-[#1E4775]/10 ${
-                    pnlData.isLoading
-                      ? "text-[#1E4775]/50"
-                      : totalPnLFormatted?.color || ""
-                  }`}
-                >
-                  {pnlData.isLoading || pnlData.error
-                    ? "-"
-                    : totalPnLFormatted?.text || "-"}
+                <div className="col-span-2 border-t border-[#1E4775]/10 pt-1.5">
+                  <div className="grid grid-cols-2 gap-x-4 text-xs">
+                    <div />
+                    <div className="text-right">
+                      <span className="text-[#1E4775]/70 font-semibold">
+                        Total PnL:
+                      </span>{" "}
+                      <span
+                        className={`font-mono font-semibold ${
+                          pnlData.isLoading
+                            ? "text-[#1E4775]/50"
+                            : totalPnLFormatted?.color || ""
+                        }`}
+                      >
+                        {pnlData.isLoading || pnlData.error
+                          ? "-"
+                          : totalPnLFormatted?.text || "-"}
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -957,7 +964,7 @@ function SailMarketExpandedView({
 
           {/* Market Stats */}
           <div className="grid grid-cols-2 gap-2">
-            <div className="bg-white p-3 h-full flex flex-col">
+            <div className="bg-white p-3 h-full flex flex-col items-center text-center">
               <h3 className="text-[#1E4775] font-semibold mb-2 text-xs">TVL</h3>
               <p className="text-sm font-bold text-[#1E4775]">
                 {(() => {
@@ -987,7 +994,7 @@ function SailMarketExpandedView({
               )}
             </div>
 
-            <div className="bg-white p-3 h-full flex flex-col">
+            <div className="bg-white p-3 h-full flex flex-col items-center text-center">
               <h3 className="text-[#1E4775] font-semibold mb-2 text-xs">
                 Token Price
               </h3>
@@ -998,7 +1005,7 @@ function SailMarketExpandedView({
               </p>
             </div>
 
-            <div className="bg-white p-3 h-full flex flex-col">
+            <div className="bg-white p-3 h-full flex flex-col items-center text-center">
               <h3 className="text-[#1E4775] font-semibold mb-2 text-xs">
                 Collateral Ratio
               </h3>
@@ -1007,7 +1014,7 @@ function SailMarketExpandedView({
               </p>
             </div>
 
-            <div className="bg-white p-3 h-full flex flex-col">
+            <div className="bg-white p-3 h-full flex flex-col items-center text-center">
               <h3 className="text-[#1E4775] font-semibold mb-2 text-xs">
                 Leverage Ratio
               </h3>
@@ -1597,8 +1604,12 @@ export default function SailPage() {
           </div>
 
           {activeSailBoostEndTimestamp && (
-            <div className="mb-2">
-              <MarksBoostBadge multiplier={2} endTimestamp={activeSailBoostEndTimestamp} />
+            <div className="mb-2 w-full min-w-0">
+              <MarksBoostBadge
+                multiplier={2}
+                endTimestamp={activeSailBoostEndTimestamp}
+                className="w-full"
+              />
             </div>
           )}
 

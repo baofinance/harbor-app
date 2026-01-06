@@ -2698,10 +2698,11 @@ export default function AnchorPage() {
                 </div>
 
                 {activeAnchorBoostEndTimestamp && (
-                  <div className="mt-2">
+                  <div className="mt-2 w-full min-w-0">
                     <MarksBoostBadge
                       multiplier={10}
                       endTimestamp={activeAnchorBoostEndTimestamp}
+                      className="w-full"
                     />
                   </div>
                 )}
@@ -3409,9 +3410,13 @@ export default function AnchorPage() {
                           ? "bg-[rgb(var(--surface-selected-rgb))]"
                           : "bg-white hover:bg-[rgb(var(--surface-selected-rgb))]"
                       }`}
-                      onClick={() =>
-                        setExpandedMarket(isExpanded ? null : symbol)
-                      }
+                      onClick={(e) => {
+                        // Expand unless clicking on a button or element that stops propagation
+                        const target = e.target as HTMLElement;
+                        if (target.closest('button') === null && target.closest('[onclick]') === null) {
+                          setExpandedMarket(isExpanded ? null : symbol);
+                        }
+                      }}
                     >
                       <div className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr_1fr_1fr] gap-4 items-center text-sm">
                         <div className="whitespace-nowrap min-w-0 overflow-hidden">

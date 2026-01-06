@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
  useTransparencyData,
  formatCollateralRatio,
@@ -27,9 +27,172 @@ import {
  CurrencyDollarIcon,
  Squares2X2Icon,
  EyeIcon,
+ ChevronDownIcon,
+ ChevronUpIcon,
+ ArrowTopRightOnSquareIcon,
 } from "@heroicons/react/24/outline";
 import InfoTooltip from "@/components/InfoTooltip";
 import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
+import { markets as marketsConfig } from "@/config/markets";
+import { useMultipleTokenPrices } from "@/hooks/useTokenPrices";
+import { useReadContract } from "wagmi";
+import { minterABI } from "@/abis/minter";
+
+function formatUSD(value: number | undefined): string {
+ if (value === undefined || !Number.isFinite(value)) return "-";
+ return `$${value.toLocaleString(undefined, {
+   minimumFractionDigits: 2,
+   maximumFractionDigits: 2,
+ })}`;
+}
+
+function formatTokenBalanceMax2Decimals(balance: bigint, decimals: number = 18): string {
+  if (balance === 0n) return "0";
+  const num = Number(balance) / 10 ** decimals;
+  if (num < 0.01) return "<0.01";
+  if (num < 1000) return num.toFixed(2).replace(/\.?0+$/, "");
+  if (num < 1000000) return `${(num / 1000).toFixed(2)}K`;
+  return `${(num / 1000000).toFixed(2)}M`;
+}
+
+const WAD = 10n ** 18n;
+type FeeBand = {
+ lowerBound: bigint; // inclusive
+ upperBound?: bigint; // inclusive
+ ratio: bigint; // int256 (wad, where 1e18 = 100%)
+};
+
+function bandsFromConfig(config: any): FeeBand[] {
+ if (!config) return [];
+ const bounds: bigint[] = Array.isArray(config.collateralRatioBandUpperBounds)
+   ? (config.collateralRatioBandUpperBounds as bigint[])
+   : [];
+ const ratiosRaw: unknown =
+   (config as any).incentiveRatios ?? (config as any).incentiveRates;
+ const ratios: bigint[] = Array.isArray(ratiosRaw) ? (ratiosRaw as bigint[]) : [];
+ if (ratios.length === 0) return [];
+
+ const bands: FeeBand[] = [];
+ let prev = 0n;
+ for (let i = 0; i < ratios.length; i++) {
+   const isLast = i === ratios.length - 1;
+   const upper = !isLast ? bounds[i] : undefined;
+   bands.push({ lowerBound: prev, upperBound: upper, ratio: ratios[i] });
+   if (upper !== undefined) prev = upper;
+ }
+ return bands;
+}
+
+function FeeBandBadge({ ratio }: { ratio: bigint }) {
+ // ratio is WAD-scaled percent (1e18 = 100%)
+ const pct = Number(ratio) / 1e16; // 1e16 => 1%
+ const isBlocked = ratio >= WAD;
+ const isDiscount = ratio < 0n;
+ const isFree = ratio === 0n;
+
+ const className = isBlocked
+   ? "bg-red-500/30 text-red-700 font-semibold"
+   : isDiscount
+   ? "bg-green-500/30 text-green-700 font-semibold"
+   : isFree
+   ? "bg-blue-500/30 text-blue-700 font-semibold"
+   : "bg-orange-500/30 text-orange-700 font-semibold";
+
+ const label = isBlocked
+   ? "Blocked"
+   : isFree
+   ? "Free"
+   : isDiscount
+   ? `${pct.toFixed(2)}% discount`
+   : `${pct.toFixed(2)}% fee`;
+
+ return (
+   <span className={`px-1.5 py-0.5 rounded text-[9px] ${className}`}>{label}</span>
+ );
+}
+
+function FeeTransparencyBands({
+ minterAddress,
+ currentCR,
+}: {
+ minterAddress: `0x${string}`;
+ currentCR: bigint;
+}) {
+ const { data: configData } = useReadContract({
+   address: minterAddress,
+   abi: minterABI,
+   functionName: "config",
+ });
+
+ const feeBands = useMemo(() => {
+   const cfg = configData as any;
+   if (!cfg) return null;
+   return {
+     mintPegged: bandsFromConfig(cfg.mintPeggedIncentiveConfig),
+     mintLeveraged: bandsFromConfig(cfg.mintLeveragedIncentiveConfig),
+     redeemPegged: bandsFromConfig(cfg.redeemPeggedIncentiveConfig),
+     redeemLeveraged: bandsFromConfig(cfg.redeemLeveragedIncentiveConfig),
+   };
+ }, [configData]);
+
+ const renderTable = (title: string, bands: FeeBand[] | undefined) => {
+   if (!bands || bands.length === 0) {
+     return (
+       <div className="bg-white p-3">
+         <h5 className="text-[#1E4775] font-semibold text-[10px] uppercase tracking-wider mb-1.5">
+           {title}
+         </h5>
+         <div className="text-[10px] text-[#1E4775]/60">Loading…</div>
+       </div>
+     );
+   }
+
+   return (
+     <div className="bg-white p-3">
+       <h5 className="text-[#1E4775] font-semibold text-[10px] uppercase tracking-wider mb-1.5">
+         {title}
+       </h5>
+       <div className="space-y-1">
+         {bands.map((b, idx) => {
+           const active =
+             currentCR >= b.lowerBound && (b.upperBound === undefined || currentCR <= b.upperBound);
+           const range = b.upperBound
+             ? `${formatCollateralRatio(b.lowerBound)} – ${formatCollateralRatio(b.upperBound)}`
+             : `> ${formatCollateralRatio(b.lowerBound)}`;
+           return (
+             <div
+               key={idx}
+               className={`flex items-center justify-between text-[10px] px-2 py-1 rounded ${
+                 active ? "bg-[#1E4775]/10 border border-[#1E4775]/30" : "bg-[#1E4775]/5"
+               }`}
+             >
+               <span className="text-[#1E4775]/70 font-mono">{range}</span>
+               <FeeBandBadge ratio={b.ratio} />
+             </div>
+           );
+         })}
+       </div>
+     </div>
+   );
+ };
+
+ return (
+   <div className="bg-white p-3">
+     <h4 className="text-[#1E4775] font-semibold text-xs uppercase tracking-wider mb-2">
+       Fees & Incentives
+     </h4>
+     <div className="text-[10px] text-[#1E4775]/60 mb-2">
+       Current CR: <span className="font-mono font-semibold">{formatCollateralRatio(currentCR)}</span>
+     </div>
+     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+       {renderTable("Mint Anchor", feeBands?.mintPegged)}
+       {renderTable("Mint Sail", feeBands?.mintLeveraged)}
+       {renderTable("Redeem Anchor", feeBands?.redeemPegged)}
+       {renderTable("Redeem Sail", feeBands?.redeemLeveraged)}
+     </div>
+   </div>
+ );
+}
 
 // Copy to clipboard component
 function CopyButton({ text, label }: { text: string; label?: string }) {
@@ -59,6 +222,56 @@ function CopyButton({ text, label }: { text: string; label?: string }) {
  );
 }
 
+// Contract address item component
+function ContractAddressItem({ label, address }: { label: string; address: string }) {
+ const [copied, setCopied] = useState(false);
+
+ const handleCopy = async (e: React.MouseEvent) => {
+ e.stopPropagation();
+ try {
+ await navigator.clipboard.writeText(address);
+ setCopied(true);
+ setTimeout(() => setCopied(false), 2000);
+ } catch (err) {
+ console.error("Failed to copy:", err);
+ }
+ };
+
+ const etherscanUrl = `https://etherscan.io/address/${address}`;
+
+ return (
+ <div className="flex flex-col gap-1 py-1.5 px-2 bg-[#1E4775]/5 text-center">
+ <span className="text-[#1E4775]/60 text-[10px]">{label}</span>
+ <div className="flex items-center justify-center gap-1.5">
+ <button
+ onClick={handleCopy}
+ className="flex items-center gap-1 text-[#1E4775] hover:text-[#1E4775]/80 transition-colors cursor-pointer group"
+ title={`Copy ${label} address`}
+ >
+ <code className="font-mono text-[10px]">
+ {address.slice(0, 6)}...{address.slice(-4)}
+ </code>
+ {copied ? (
+ <CheckIcon className="h-3 w-3 text-harbor-mint" />
+ ) : (
+ <ClipboardDocumentIcon className="h-3 w-3 text-[#1E4775]/60 group-hover:text-[#1E4775]" />
+ )}
+ </button>
+ <a
+ href={etherscanUrl}
+ target="_blank"
+ rel="noopener noreferrer"
+ className="text-[#1E4775]/60 hover:text-[#1E4775] transition-colors"
+ title={`View ${label} on Etherscan`}
+ onClick={(e) => e.stopPropagation()}
+ >
+ <ArrowTopRightOnSquareIcon className="h-3 w-3" />
+ </a>
+ </div>
+ </div>
+ );
+}
+
 // Health indicator badge
 function HealthBadge({
  status,
@@ -70,19 +283,19 @@ function HealthBadge({
  const config = {
  green: {
  bg:"bg-green-500/20",
- text:"text-green-400",
+ text:"text-green-700",
  icon: ShieldCheckIcon,
  label:"Healthy",
  },
  yellow: {
  bg:"bg-yellow-500/20",
- text:"text-yellow-400",
+ text:"text-yellow-700",
  icon: ExclamationTriangleIcon,
  label:"Warning",
  },
  red: {
  bg:"bg-red-500/20",
- text:"text-red-400",
+ text:"text-red-700",
  icon: XCircleIcon,
  label:"Critical",
  },
@@ -197,6 +410,7 @@ function MarketCard({
  market,
  pools,
  userPools,
+ tokenPricesByMarket,
  fxSAVEPrice,
  wstETHPrice,
   stETHPrice,
@@ -206,14 +420,24 @@ function MarketCard({
  market: MarketTransparencyData;
  pools: PoolTransparencyData[];
  userPools?: UserPoolData[];
+ tokenPricesByMarket: Record<
+   string,
+   {
+     peggedPriceUSD: number;
+     leveragedPriceUSD: number;
+     pegTargetUSD: number;
+     isDepegged: boolean;
+     isLoading: boolean;
+     error: boolean;
+   }
+ >;
  fxSAVEPrice?: number;
  wstETHPrice?: number;
   stETHPrice?: number;
   btcPrice?: number;
   ethPrice?: number;
 }) {
- // Expanded views disabled
- const isExpanded = false;
+ const [isExpanded, setIsExpanded] = useState(false);
 
  const avgPrice = (market.minPrice + market.maxPrice) / 2n;
  const avgRate = (market.minRate + market.maxRate) / 2n;
@@ -221,6 +445,19 @@ function MarketCard({
  market.collateralRatio,
  market.rebalanceThreshold
  );
+
+ const tokenPrices = tokenPricesByMarket[market.marketId];
+
+  const marketCfg = (marketsConfig as any)?.[market.marketId];
+  const collateralHeldSymbol: string =
+    marketCfg?.collateral?.symbol || marketCfg?.collateral?.underlyingSymbol || "";
+
+  // collateralTokenBalance is in underlying-equivalent units (fxUSD for fxSAVE markets, stETH for wstETH markets)
+  // Convert to wrapped collateral units using avgRate (underlying per wrapped)
+  const collateralHeldWrapped: bigint =
+    avgRate > 0n
+      ? (market.collateralTokenBalance * WAD) / avgRate
+      : market.collateralTokenBalance;
 
   // Calculate TVL as the minter's total collateral value in USD (same as Anchor page)
   // collateralTokenBalance is in underlying-equivalent units (fxUSD for fxSAVE markets, stETH for wstETH markets)
@@ -275,61 +512,66 @@ function MarketCard({
  <div className="overflow-hidden">
  {/* Market Bar */}
  <div
- className="bg-white transition-colors"
+ className={`cursor-pointer transition-colors ${
+   isExpanded
+     ? "bg-[rgb(var(--surface-selected-rgb))]"
+     : "bg-white hover:bg-[rgb(var(--surface-selected-rgb))]"
+ }`}
+ onClick={() => setIsExpanded((v) => !v)}
  >
  <div className="p-3">
- <div className="hidden lg:grid grid-cols-[1.5fr_1fr_1fr_1fr_1fr_1fr_auto] gap-3 items-center">
+ <div className="hidden lg:grid grid-cols-[1.3fr_1fr_1fr_1fr_1fr_1fr_auto] gap-4 items-center text-sm">
  {/* Market Name */}
- <div className="flex items-center gap-2">
- <div>
+ <div className="whitespace-nowrap min-w-0 overflow-hidden">
+ <div className="flex items-center justify-center gap-2">
  <div className="text-[#1E4775] font-semibold text-sm">
  {market.marketName}
  </div>
- <div className="text-[#1E4775]/50 text-[10px] font-mono">
- {market.marketId}
- </div>
+ {isExpanded ? (
+ <ChevronUpIcon className="w-5 h-5 text-[#1E4775] flex-shrink-0" />
+ ) : (
+ <ChevronDownIcon className="w-5 h-5 text-[#1E4775] flex-shrink-0" />
+ )}
  </div>
  </div>
 
- {/* Collateral Ratio */}
- <div className="text-center">
- <div className="text-[#1E4775] font-mono text-sm font-semibold">
- {formatCollateralRatio(market.collateralRatio)}
- </div>
- <div className="text-[#1E4775]/50 text-[10px]">CR</div>
- </div>
+{/* Collateral Ratio */}
+<div className="text-center">
+<div className="text-[#1E4775] font-mono text-sm font-semibold">
+{formatCollateralRatio(market.collateralRatio)}
+</div>
+</div>
 
- {/* Leverage Ratio */}
- <div className="text-center">
- <div className="text-[#1E4775] font-mono text-sm font-semibold">
- {formatLeverageRatio(market.leverageRatio)}
- </div>
- <div className="text-[#1E4775]/50 text-[10px]">Leverage</div>
- </div>
+{/* Leverage Ratio */}
+<div className="text-center">
+<div className="text-[#1E4775] font-mono text-sm font-semibold">
+{formatLeverageRatio(market.leverageRatio)}
+</div>
+</div>
 
- {/* TVL */}
- <div className="text-center">
- <div className="text-[#1E4775] font-mono text-sm font-semibold">
- {formatCompactUSD(totalTVLUSD)}
- </div>
- <div className="text-[#1E4775]/50 text-[10px]">TVL (USD)</div>
- </div>
+{/* TVL */}
+<div className="text-center">
+<div className="text-[#1E4775] font-mono text-sm font-semibold">
+{formatCompactUSD(totalTVLUSD)}
+{collateralHeldWrapped > 0n && (
+ <span className="text-[#1E4775]/60 text-xs ml-1">
+ ({formatTokenBalanceMax2Decimals(collateralHeldWrapped)} {collateralHeldSymbol || ""})
+ </span>
+)}
+</div>
+</div>
 
- {/* Rebalance Threshold */}
- <div className="text-center">
- <div className="text-[#1E4775] font-mono text-sm font-semibold">
- {formatCollateralRatio(market.rebalanceThreshold)}
- </div>
- <div className="text-[#1E4775]/50 text-[10px]">Threshold</div>
- </div>
+{/* Rebalance Threshold */}
+<div className="text-center">
+<div className="text-[#1E4775] font-mono text-sm font-semibold">
+{formatCollateralRatio(market.rebalanceThreshold)}
+</div>
+</div>
 
  {/* Health Status */}
  <div className="text-center">
  <HealthBadge status={healthStatus} compact />
  </div>
-
- {/* Spacer (replaces expand indicator) */}
- <div className="w-4"></div>
  </div>
  </div>
  </div>
@@ -337,145 +579,71 @@ function MarketCard({
  {/* Expanded Content */}
  {isExpanded && (
  <div className="bg-[rgb(var(--surface-selected-rgb))] border-t border-[#1E4775]/10 p-3">
+ {/* Fees & Incentives (bands) */}
+ <div className="mb-3">
+ <FeeTransparencyBands minterAddress={market.minterAddress} currentCR={market.collateralRatio} />
+ </div>
+
  <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
  {/* Token Prices & Supply */}
- <div className="bg-white p-3 space-y-2">
+ <div className="bg-white p-2.5 space-y-2">
  <h4 className="text-[#1E4775] font-semibold text-xs uppercase tracking-wider mb-2">
  Prices & Supply
  </h4>
- <div className="grid grid-cols-2 gap-2 text-xs">
- <div className="bg-[#1E4775]/5 p-2">
- <div className="text-[#1E4775]/60 text-[10px]">
+ <div className="grid grid-cols-2 gap-1.5 text-xs">
+ <div className="bg-[#1E4775]/5 p-1.5 text-center">
+ <div className="text-[#1E4775]/60 text-[9px]">
  Anchor Price
  </div>
- <div className="text-[#1E4775] font-mono font-semibold">
- {formatTokenPrice(market.peggedTokenPrice)}
+ <div className="text-[#1E4775] font-mono font-semibold text-[10px]">
+ {tokenPrices?.peggedPriceUSD && tokenPrices.peggedPriceUSD > 0
+   ? formatUSD(tokenPrices.peggedPriceUSD)
+   : "-"}
  </div>
- {pegPriceUSD > 0 && (
- <div className="text-[10px] text-green-600">
- ≈ ${pegPriceUSD.toFixed(4)}
  </div>
- )}
- </div>
- <div className="bg-[#1E4775]/5 p-2">
- <div className="text-[#1E4775]/60 text-[10px]">
+ <div className="bg-[#1E4775]/5 p-1.5 text-center">
+ <div className="text-[#1E4775]/60 text-[9px]">
  Sail Price
  </div>
- <div className="text-[#1E4775] font-mono font-semibold">
- {formatTokenPrice(market.leveragedTokenPrice)}
+ <div className="text-[#1E4775] font-mono font-semibold text-[10px]">
+ {tokenPrices?.leveragedPriceUSD && tokenPrices.leveragedPriceUSD > 0
+   ? formatUSD(tokenPrices.leveragedPriceUSD)
+   : "-"}
  </div>
  </div>
- <div className="bg-[#1E4775]/5 p-2">
- <div className="text-[#1E4775]/60 text-[10px]">
+ <div className="bg-[#1E4775]/5 p-1.5 text-center">
+ <div className="text-[#1E4775]/60 text-[9px]">
  Anchor Supply
  </div>
- <div className="text-[#1E4775] font-mono font-semibold">
- {formatTokenBalance(market.peggedTokenBalance)}
+ <div className="text-[#1E4775] font-mono font-semibold text-[10px]">
+ {formatTokenBalanceMax2Decimals(market.peggedTokenBalance)}
  </div>
  </div>
- <div className="bg-[#1E4775]/5 p-2">
- <div className="text-[#1E4775]/60 text-[10px]">
+ <div className="bg-[#1E4775]/5 p-1.5 text-center">
+ <div className="text-[#1E4775]/60 text-[9px]">
  Sail Supply
  </div>
- <div className="text-[#1E4775] font-mono font-semibold">
- {formatTokenBalance(market.leveragedTokenBalance)}
- </div>
- </div>
- </div>
- <div className="bg-[#1E4775]/5 p-2">
- <div className="text-[#1E4775]/60 text-[10px]">
- Collateral Held
- </div>
- <div className="text-[#1E4775] font-mono font-semibold">
- {formatTokenBalance(market.collateralTokenBalance)} wstETH
- </div>
- </div>
- </div>
-
- {/* Oracle & Threshold */}
- <div className="bg-white p-3 space-y-2">
- <h4 className="text-[#1E4775] font-semibold text-xs uppercase tracking-wider mb-2">
- Oracle & Rebalancing
- </h4>
- <div className="grid grid-cols-2 gap-2 text-xs">
- <div className="bg-[#1E4775]/5 p-2">
- <div className="text-[#1E4775]/60 text-[10px]">Min Price</div>
- <div className="text-[#1E4775] font-mono text-[11px]">
- {formatTokenPrice(market.minPrice)}
- </div>
- </div>
- <div className="bg-[#1E4775]/5 p-2">
- <div className="text-[#1E4775]/60 text-[10px]">Max Price</div>
- <div className="text-[#1E4775] font-mono text-[11px]">
- {formatTokenPrice(market.maxPrice)}
- </div>
- </div>
- <div className="bg-[#1E4775]/5 p-2">
- <div className="text-[#1E4775]/60 text-[10px]">Min Rate</div>
- <div className="text-[#1E4775] font-mono text-[11px]">
- {formatTokenPrice(market.minRate)}
- </div>
- </div>
- <div className="bg-[#1E4775]/5 p-2">
- <div className="text-[#1E4775]/60 text-[10px]">Max Rate</div>
- <div className="text-[#1E4775] font-mono text-[11px]">
- {formatTokenPrice(market.maxRate)}
- </div>
- </div>
- </div>
- <div className="bg-[#1E4775]/5 p-2">
- <div className="flex justify-between items-center">
- <span className="text-[#1E4775]/60 text-[10px]">
- Distance to Threshold
- </span>
- <span
- className={`font-mono text-xs font-semibold ${
- distanceToThreshold > 15
- ?"text-green-600"
- : distanceToThreshold > 5
- ?"text-yellow-600"
- :"text-red-600"
- }`}
- >
- {distanceToThreshold > 0 ?"+" :""}
- {distanceToThreshold.toFixed(1)}%
- </span>
- </div>
- </div>
- </div>
-
- {/* Fees & Incentives */}
- <div className="bg-white p-3 space-y-2">
- <h4 className="text-[#1E4775] font-semibold text-xs uppercase tracking-wider mb-2">
- Fees & Incentives
- </h4>
- <div className="space-y-1.5">
- <div className="flex items-center justify-between text-xs">
- <span className="text-[#1E4775]/70">Mint Anchor</span>
- <FeeBadge ratio={market.mintPeggedIncentiveRatio} />
- </div>
- <div className="flex items-center justify-between text-xs">
- <span className="text-[#1E4775]/70">Redeem Anchor</span>
- <FeeBadge ratio={market.redeemPeggedIncentiveRatio} />
- </div>
- <div className="flex items-center justify-between text-xs">
- <span className="text-[#1E4775]/70">Mint Sail</span>
- <FeeBadge ratio={market.mintLeveragedIncentiveRatio} />
- </div>
- <div className="flex items-center justify-between text-xs">
- <span className="text-[#1E4775]/70">Redeem Sail</span>
- <FeeBadge ratio={market.redeemLeveragedIncentiveRatio} />
+ <div className="text-[#1E4775] font-mono font-semibold text-[10px]">
+ {formatTokenBalanceMax2Decimals(market.leveragedTokenBalance)}
  </div>
  </div>
  </div>
  </div>
 
  {/* Stability Pools */}
- <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+ <div className="bg-white p-2.5 space-y-2 lg:col-span-2">
+ <h4 className="text-[#1E4775] font-semibold text-xs uppercase tracking-wider mb-2">
+ Stability Pools
+ </h4>
+ <div className="space-y-2">
  {pools.map((pool) => {
  const userData = userPools?.find(
  (u) => u.poolAddress === pool.address
  );
+ const poolTokenPriceUSD =
+  pool.type === "collateral"
+    ? tokenPrices?.peggedPriceUSD ?? 0
+    : tokenPrices?.leveragedPriceUSD ?? 0;
  const withdrawStatus = userData
  ? getWithdrawalRequestStatus(
  userData.withdrawalRequest.requestedAt,
@@ -484,62 +652,52 @@ function MarketCard({
  :"none";
 
  return (
- <div key={pool.address} className="bg-white p-3">
- <div className="flex items-center justify-between mb-2">
- <h4 className="text-[#1E4775] font-semibold text-xs">
- {pool.name}
- </h4>
- <span
- className={`text-[10px] px-1.5 py-0.5 ${
- pool.type ==="collateral"
- ?"bg-harbor-mint/30 text-[#1E4775]"
- :"bg-harbor-coral/30 text-[#1E4775]"
- }`}
- >
+ <div key={pool.address} className="space-y-1.5">
+ <div className="flex items-center gap-2">
+ <span className="text-[#1E4775] font-semibold text-[10px] w-12">
  {pool.type ==="collateral" ?"Anchor" :"Sail"}
  </span>
- </div>
- <div className="grid grid-cols-3 gap-2 text-xs">
- <div className="bg-[#1E4775]/5 p-2">
- <div className="text-[#1E4775]/60 text-[10px]">TVL (USD)</div>
- <div className="text-[#1E4775] font-mono font-semibold">
- {formatCompactUSD((Number(pool.tvl) / 1e18) * peggedPriceUSD)}
- </div>
- <div className="text-[#1E4775]/50 text-[10px] mt-0.5">
- {formatTokenBalance(pool.tvl)}
+ <div className="grid grid-cols-4 gap-1.5 text-xs flex-1">
+ <div className="bg-[#1E4775]/5 p-1.5 text-center">
+ <div className="text-[#1E4775]/60 text-[9px]">TVL (USD)</div>
+ <div className="text-[#1E4775] font-mono font-semibold text-[10px]">
+ {formatCompactUSD((Number(pool.tvl) / 1e18) * poolTokenPriceUSD)} ({formatTokenBalanceMax2Decimals(pool.tvl)} {market.marketName?.toLowerCase().includes("btc") ? "haBTC" : "haETH"})
  </div>
  </div>
- <div className="bg-[#1E4775]/5 p-2">
- <div className="text-[#1E4775]/60 text-[10px]">
- Early Fee
- </div>
- <div className="text-[#1E4775] font-mono font-semibold">
- {(Number(pool.earlyWithdrawalFee) / 1e16).toFixed(1)}%
+ <div className="bg-[#1E4775]/5 p-1.5 text-center">
+ <div className="text-[#1E4775]/60 text-[9px]">Early Fee</div>
+ <div className="text-[#1E4775] font-mono font-semibold text-[10px]">
+ {(Number(pool.earlyWithdrawalFee) / 1e16).toFixed(2)}%
  </div>
  </div>
- <div className="bg-[#1E4775]/5 p-2">
- <div className="text-[#1E4775]/60 text-[10px]">
- Window
+ <div className="bg-[#1E4775]/5 p-1.5 text-center">
+ <div className="text-[#1E4775]/60 text-[9px]">Wait period</div>
+ <div className="text-[#1E4775] font-mono font-semibold text-[10px]">
+ {(Number(pool.withdrawWindow.startDelay) / 3600).toFixed(2)}h
  </div>
- <div className="text-[#1E4775] font-mono font-semibold">
- {Number(pool.withdrawWindow) / 3600}h
+ </div>
+ <div className="bg-[#1E4775]/5 p-1.5 text-center">
+ <div className="text-[#1E4775]/60 text-[9px]">Fee-free duration</div>
+ <div className="text-[#1E4775] font-mono font-semibold text-[10px]">
+ {(Number(pool.withdrawWindow.endWindow) / 3600).toFixed(2)}h
+ </div>
  </div>
  </div>
  </div>
  {userData && userData.assetBalance > 0n && (
- <div className="mt-2 pt-2 border-t border-[#1E4775]/10 flex items-center justify-between text-xs">
+ <div className="pt-1.5 border-t border-[#1E4775]/10 flex items-center justify-between text-[10px]">
  <span className="text-[#1E4775]/70">Your Deposit</span>
  <span className="text-[#1E4775] font-mono font-semibold">
- {formatTokenBalance(userData.assetBalance)}
+ {formatTokenBalanceMax2Decimals(userData.assetBalance)}
  </span>
  </div>
  )}
  {userData && userData.withdrawalRequest.amount > 0n && (
- <div className="mt-1 flex items-center justify-between text-xs">
+ <div className="flex items-center justify-between text-[10px]">
  <span className="text-[#1E4775]/70">Withdrawal</span>
- <div className="flex items-center gap-2">
+ <div className="flex items-center gap-1.5">
  <span className="text-[#1E4775] font-mono">
- {formatTokenBalance(
+ {formatTokenBalanceMax2Decimals(
  userData.withdrawalRequest.amount
  )}
  </span>
@@ -547,12 +705,11 @@ function MarketCard({
  </div>
  </div>
  )}
- <div className="mt-2 pt-2 border-t border-[#1E4775]/10">
- <CopyButton text={pool.address} label="pool" />
- </div>
  </div>
  );
  })}
+ </div>
+ </div>
  </div>
 
  {/* Contract Addresses */}
@@ -560,7 +717,7 @@ function MarketCard({
  <h4 className="text-[#1E4775] font-semibold text-xs uppercase tracking-wider mb-2">
  Contract Addresses
  </h4>
- <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+ <div className="grid grid-cols-5 gap-2">
  {[
  { label:"Minter", address: market.minterAddress },
  { label:"Anchor Token", address: market.peggedTokenAddress },
@@ -572,14 +729,12 @@ function MarketCard({
  label:"Pool Manager",
  address: market.stabilityPoolManagerAddress,
  },
+ ...pools.map((pool) => ({
+ label: pool.name,
+ address: pool.address,
+ })),
  ].map(({ label, address }) => (
- <div
- key={label}
- className="flex items-center justify-between py-1.5 px-2 bg-[#1E4775]/5"
- >
- <span className="text-[#1E4775]/60 text-[10px]">{label}</span>
- <CopyButton text={address} label={label} />
- </div>
+ <ContractAddressItem key={label} label={label} address={address} />
  ))}
  </div>
  </div>
@@ -606,6 +761,26 @@ export default function TransparencyPage() {
  const { price: stETHPrice } = useCoinGeckoPrice("lido-staked-ethereum-steth");
  const { price: btcPrice } = useCoinGeckoPrice("bitcoin", 120000);
  const { price: ethPrice } = useCoinGeckoPrice("ethereum", 120000);
+
+ const finishedMarkets = useMemo(
+   () => markets.filter((m) => m.collateralTokenBalance > 0n),
+   [markets]
+ );
+
+ const tokenPriceInputs = useMemo(() => {
+   return finishedMarkets
+     .map((m) => {
+       const pegTarget =
+         (marketsConfig as any)?.[m.marketId]?.pegTarget || "USD";
+       return {
+         marketId: m.marketId,
+         minterAddress: m.minterAddress,
+         pegTarget,
+       };
+     })
+     .filter((x) => !!x.minterAddress);
+ }, [finishedMarkets]);
+ const tokenPricesByMarket = useMultipleTokenPrices(tokenPriceInputs as any);
 
  return (
  <div className="min-h-screen text-white max-w-[1300px] mx-auto font-sans relative overflow-x-hidden">
@@ -691,73 +866,59 @@ export default function TransparencyPage() {
  )}
 
  {/* Check if any markets have finished genesis (have collateral) */}
- {(() => {
-   // Filter markets to only those with finished genesis (have collateral)
-   const finishedMarkets = markets.filter(
-     (market) => market.collateralTokenBalance > 0n
-   );
-
-   // If no markets have finished genesis, show banner
-   if (!isLoading && finishedMarkets.length === 0) {
-     return (
-       <div className="bg-[#17395F] border border-white/10 p-6 rounded-lg text-center">
-         <p className="text-white text-lg font-medium">
-           Maiden Voyage in progress for Harbor's first markets - coming soon!
-         </p>
+ {!isLoading && finishedMarkets.length === 0 ? (
+   <div className="bg-[#17395F] border border-white/10 p-6 rounded-lg text-center">
+     <p className="text-white text-lg font-medium">
+       Maiden Voyage in progress for Harbor's first markets - coming soon!
+     </p>
+   </div>
+ ) : (
+   <>
+     {finishedMarkets.length > 0 && (
+       <div className="bg-white p-2 mb-2">
+         <div className="grid grid-cols-[1.3fr_1fr_1fr_1fr_1fr_1fr_auto] gap-4 items-center uppercase tracking-wider text-[10px] text-[#1E4775] font-bold">
+           <div className="text-center">Market</div>
+           <div className="text-center">Collateral Ratio</div>
+           <div className="text-center">Leverage</div>
+           <div className="text-center">TVL (USD)</div>
+           <div className="text-center">Threshold</div>
+           <div className="text-center">Health</div>
+         </div>
        </div>
-     );
-   }
+     )}
 
-   // Otherwise, show markets as usual
-   return (
-     <>
-       {/* Header Row - only show if there are finished markets */}
-       {finishedMarkets.length > 0 && (
-         <div className="bg-white p-2 mb-2">
-           <div className="grid grid-cols-[1.5fr_1fr_1fr_1fr_1fr_1fr_auto] gap-3 items-center uppercase tracking-wider text-[10px] text-[#1E4775] font-bold">
-             <div>Market</div>
-             <div className="text-center">Collateral Ratio</div>
-             <div className="text-center">Leverage</div>
-            <div className="text-center">TVL (USD)</div>
-             <div className="text-center">Threshold</div>
-             <div className="text-center">Health</div>
-             <div className="w-4"></div>
-           </div>
-         </div>
-       )}
-
-       {/* Loading state */}
-       {isLoading && finishedMarkets.length === 0 ? (
-         <div className="space-y-2">
-           {[1, 2].map((i) => (
-             <div key={i} className="animate-pulse h-14 bg-white/10" />
-           ))}
-         </div>
-       ) : (
-         <div className="space-y-2">
-           {finishedMarkets.map((market) => (
-             <MarketCard
-               key={market.marketId}
-               market={market}
-               pools={pools.filter(
-                 (p) =>
-                   p.address === market.stabilityPoolCollateralAddress ||
-                   p.address === market.stabilityPoolLeveragedAddress
-               )}
-               userPools={userPools}
-               fxSAVEPrice={fxSAVEPrice}
-               wstETHPrice={wstETHPrice}
-               stETHPrice={stETHPrice}
-               btcPrice={btcPrice || undefined}
-               ethPrice={ethPrice || undefined}
-             />
-           ))}
-         </div>
-       )}
-     </>
-   );
- })()}
+     {isLoading && finishedMarkets.length === 0 ? (
+       <div className="space-y-2">
+         {[1, 2].map((i) => (
+           <div key={i} className="animate-pulse h-14 bg-white/10" />
+         ))}
+       </div>
+     ) : (
+       <div className="space-y-2">
+         {finishedMarkets.map((market) => (
+           <MarketCard
+             key={market.marketId}
+             market={market}
+             pools={pools.filter(
+               (p) =>
+                 p.address === market.stabilityPoolCollateralAddress ||
+                 p.address === market.stabilityPoolLeveragedAddress
+             )}
+             userPools={userPools}
+             tokenPricesByMarket={tokenPricesByMarket as any}
+             fxSAVEPrice={fxSAVEPrice}
+             wstETHPrice={wstETHPrice}
+             stETHPrice={stETHPrice}
+             btcPrice={btcPrice || undefined}
+             ethPrice={ethPrice || undefined}
+           />
+         ))}
+       </div>
+     )}
+   </>
+ )}
  </main>
  </div>
  );
 }
+
