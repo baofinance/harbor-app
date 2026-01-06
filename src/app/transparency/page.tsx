@@ -520,6 +520,63 @@ function MarketCard({
  onClick={() => setIsExpanded((v) => !v)}
  >
  <div className="p-3">
+ <div className="lg:hidden space-y-2">
+ <div className="flex items-center justify-between gap-2">
+ <div className="text-[#1E4775] font-semibold text-sm truncate">
+ {market.marketName}
+ </div>
+ <div className="flex items-center gap-2 flex-shrink-0">
+ <HealthBadge status={healthStatus} compact />
+ {isExpanded ? (
+ <ChevronUpIcon className="w-5 h-5 text-[#1E4775] flex-shrink-0" />
+ ) : (
+ <ChevronDownIcon className="w-5 h-5 text-[#1E4775] flex-shrink-0" />
+ )}
+ </div>
+ </div>
+
+ <div className="grid grid-cols-[1.15fr_0.65fr_1.65fr_0.95fr] gap-x-2 gap-y-0 text-[10px]">
+ <div className="flex flex-col gap-0.5 min-w-0">
+ <div className="text-[#1E4775]/60 font-semibold text-[9px] whitespace-nowrap">
+ Collateral Ratio
+ </div>
+ <div className="text-[#1E4775] font-mono font-semibold text-[11px] whitespace-nowrap">
+ {formatCollateralRatio(market.collateralRatio)}
+ </div>
+ </div>
+ <div className="flex flex-col gap-0.5 min-w-0">
+ <div className="text-[#1E4775]/60 font-semibold text-[9px] whitespace-nowrap">
+ Leverage
+ </div>
+ <div className="text-[#1E4775] font-mono font-semibold text-[11px] whitespace-nowrap">
+ {formatLeverageRatio(market.leverageRatio)}
+ </div>
+ </div>
+ <div className="flex flex-col gap-0.5 min-w-0">
+ <div className="text-[#1E4775]/60 font-semibold text-[9px] whitespace-nowrap">
+ TVL
+ </div>
+ <div className="text-[#1E4775] font-mono font-semibold text-[11px] whitespace-nowrap overflow-hidden">
+ <span className="whitespace-nowrap">{formatCompactUSD(totalTVLUSD)}</span>
+ {collateralHeldWrapped > 0n && (
+ <span className="text-[#1E4775]/60 text-[10px] ml-1 truncate inline-block max-w-full align-bottom">
+ ({formatTokenBalanceMax2Decimals(collateralHeldWrapped)}{" "}
+ {collateralHeldSymbol || ""})
+ </span>
+ )}
+ </div>
+ </div>
+ <div className="flex flex-col gap-0.5 min-w-0 items-end text-right">
+ <div className="text-[#1E4775]/60 font-semibold text-[9px] whitespace-nowrap">
+ Threshold
+ </div>
+ <div className="text-[#1E4775] font-mono font-semibold text-[11px] whitespace-nowrap">
+ {formatCollateralRatio(market.rebalanceThreshold)}
+ </div>
+ </div>
+ </div>
+ </div>
+
  <div className="hidden lg:grid grid-cols-[1.3fr_1fr_1fr_1fr_1fr_1fr_auto] gap-4 items-center text-sm">
  {/* Market Name */}
  <div className="whitespace-nowrap min-w-0 overflow-hidden">
@@ -717,7 +774,7 @@ function MarketCard({
  <h4 className="text-[#1E4775] font-semibold text-xs uppercase tracking-wider mb-2">
  Contract Addresses
  </h4>
- <div className="grid grid-cols-5 gap-2">
+ <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
  {[
  { label:"Minter", address: market.minterAddress },
  { label:"Anchor Token", address: market.peggedTokenAddress },
@@ -875,7 +932,7 @@ export default function TransparencyPage() {
  ) : (
    <>
      {finishedMarkets.length > 0 && (
-       <div className="bg-white p-2 mb-2">
+       <div className="hidden lg:block bg-white p-2 mb-2">
          <div className="grid grid-cols-[1.3fr_1fr_1fr_1fr_1fr_1fr_auto] gap-4 items-center uppercase tracking-wider text-[10px] text-[#1E4775] font-bold">
            <div className="text-center">Market</div>
            <div className="text-center">Collateral Ratio</div>
