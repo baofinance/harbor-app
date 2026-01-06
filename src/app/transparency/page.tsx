@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
  useTransparencyData,
  formatCollateralRatio,
@@ -27,9 +27,24 @@ import {
  CurrencyDollarIcon,
  Squares2X2Icon,
  EyeIcon,
+ ChevronDownIcon,
+ ChevronUpIcon,
 } from "@heroicons/react/24/outline";
 import InfoTooltip from "@/components/InfoTooltip";
 import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
+import { useReadContract } from "wagmi";
+import { minterABI } from "@/abis/minter";
+import { useMultipleTokenPrices } from "@/hooks/useTokenPrices";
+
+function formatUSD(value: number | undefined): string {
+ if (value === undefined || !Number.isFinite(value)) return "-";
+ return value.toLocaleString(undefined, {
+   style: "currency",
+   currency: "USD",
+   minimumFractionDigits: 2,
+   maximumFractionDigits: 6,
+ });
+}
 
 // Copy to clipboard component
 function CopyButton({ text, label }: { text: string; label?: string }) {
@@ -197,6 +212,7 @@ function MarketCard({
  market,
  pools,
  userPools,
+ tokenPricesByMarket,
  fxSAVEPrice,
  wstETHPrice,
   stETHPrice,
@@ -206,14 +222,23 @@ function MarketCard({
  market: MarketTransparencyData;
  pools: PoolTransparencyData[];
  userPools?: UserPoolData[];
+ tokenPricesByMarket: Record<
+   string,
+   {
+     peggedPriceUSD: number;
+     leveragedPriceUSD: number;
+     pegTargetUSD: number;
+     isLoading: boolean;
+     error: boolean;
+   }
+ >;
  fxSAVEPrice?: number;
  wstETHPrice?: number;
   stETHPrice?: number;
   btcPrice?: number;
   ethPrice?: number;
 }) {
- // Expanded views disabled
- const isExpanded = false;
+ const [isExpanded, setIsExpanded] = useState(false);
 
  const avgPrice = (market.minPrice + market.maxPrice) / 2n;
  const avgRate = (market.minRate + market.maxRate) / 2n;
@@ -221,6 +246,8 @@ function MarketCard({
  market.collateralRatio,
  market.rebalanceThreshold
  );
+
+ const tokenPrices = tokenPricesByMarket[market.marketId];
 
   // Calculate TVL as the minter's total collateral value in USD (same as Anchor page)
   // collateralTokenBalance is in underlying-equivalent units (fxUSD for fxSAVE markets, stETH for wstETH markets)
@@ -275,12 +302,22 @@ function MarketCard({
  <div className="overflow-hidden">
  {/* Market Bar */}
  <div
- className="bg-white transition-colors"
+ className={`cursor-pointer transition-colors ${
+   isExpanded
+     ? "bg-[rgb(var(--surface-selected-rgb))]"
+     : "bg-white hover:bg-[rgb(var(--surface-selected-rgb))]"
+ }`}
+ onClick={() => setIsExpanded((v) => !v)}
  >
  <div className="p-3">
  <div className="hidden lg:grid grid-cols-[1.5fr_1fr_1fr_1fr_1fr_1fr_auto] gap-3 items-center">
  {/* Market Name */}
  <div className="flex items-center gap-2">
+ {isExpanded ? (
+ <ChevronUpIcon className="w-4 h-4 text-[#1E4775] flex-shrink-0" />
+ ) : (
+ <ChevronDownIcon className="w-4 h-4 text-[#1E4775] flex-shrink-0" />
+ )}
  <div>
  <div className="text-[#1E4775] font-semibold text-sm">
  {market.marketName}
@@ -328,8 +365,14 @@ function MarketCard({
  <HealthBadge status={healthStatus} compact />
  </div>
 
- {/* Spacer (replaces expand indicator) */}
- <div className="w-4"></div>
+ {/* Expand Indicator */}
+ <div className="flex items-center justify-center">
+ {isExpanded ? (
+ <ChevronUpIcon className="w-4 h-4 text-[#1E4775]" />
+ ) : (
+ <ChevronDownIcon className="w-4 h-4 text-[#1E4775]" />
+ )}
+ </div>
  </div>
  </div>
  </div>
@@ -337,7 +380,32 @@ function MarketCard({
  {/* Expanded Content */}
  {isExpanded && (
  <div className="bg-[rgb(var(--surface-selected-rgb))] border-t border-[#1E4775]/10 p-3">
- <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+ {/* Fees & Incentives (compact overview) */}
+ <div className="bg-white p-3 mb-3">
+ <h4 className="text-[#1E4775] font-semibold text-xs uppercase tracking-wider mb-2">
+ Fees & Incentives
+ </h4>
+ <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
+ <div className="flex items-center justify-between text-xs bg-[#1E4775]/5 p-2">
+ <span className="text-[#1E4775]/70">Mint Anchor</span>
+ <FeeBadge ratio={market.mintPeggedIncentiveRatio} />
+ </div>
+ <div className="flex items-center justify-between text-xs bg-[#1E4775]/5 p-2">
+ <span className="text-[#1E4775]/70">Mint Sail</span>
+ <FeeBadge ratio={market.mintLeveragedIncentiveRatio} />
+ </div>
+ <div className="flex items-center justify-between text-xs bg-[#1E4775]/5 p-2">
+ <span className="text-[#1E4775]/70">Redeem Anchor</span>
+ <FeeBadge ratio={market.redeemPeggedIncentiveRatio} />
+ </div>
+ <div className="flex items-center justify-between text-xs bg-[#1E4775]/5 p-2">
+ <span className="text-[#1E4775]/70">Redeem Sail</span>
+ <FeeBadge ratio={market.redeemLeveragedIncentiveRatio} />
+ </div>
+ </div>
+ </div>
+
+ <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
  {/* Token Prices & Supply */}
  <div className="bg-white p-3 space-y-2">
  <h4 className="text-[#1E4775] font-semibold text-xs uppercase tracking-wider mb-2">
@@ -349,20 +417,15 @@ function MarketCard({
  Anchor Price
  </div>
  <div className="text-[#1E4775] font-mono font-semibold">
- {formatTokenPrice(market.peggedTokenPrice)}
+ {tokenPrices && tokenPrices.peggedPriceUSD > 0 ? formatUSD(tokenPrices.peggedPriceUSD) : "-"}
  </div>
- {pegPriceUSD > 0 && (
- <div className="text-[10px] text-green-600">
- ≈ ${pegPriceUSD.toFixed(4)}
- </div>
- )}
  </div>
  <div className="bg-[#1E4775]/5 p-2">
  <div className="text-[#1E4775]/60 text-[10px]">
  Sail Price
  </div>
  <div className="text-[#1E4775] font-mono font-semibold">
- {formatTokenPrice(market.leveragedTokenPrice)}
+ {tokenPrices && tokenPrices.leveragedPriceUSD > 0 ? formatUSD(tokenPrices.leveragedPriceUSD) : "-"}
  </div>
  </div>
  <div className="bg-[#1E4775]/5 p-2">
@@ -444,31 +507,8 @@ function MarketCard({
  </div>
  </div>
 
- {/* Fees & Incentives */}
- <div className="bg-white p-3 space-y-2">
- <h4 className="text-[#1E4775] font-semibold text-xs uppercase tracking-wider mb-2">
- Fees & Incentives
- </h4>
- <div className="space-y-1.5">
- <div className="flex items-center justify-between text-xs">
- <span className="text-[#1E4775]/70">Mint Anchor</span>
- <FeeBadge ratio={market.mintPeggedIncentiveRatio} />
  </div>
- <div className="flex items-center justify-between text-xs">
- <span className="text-[#1E4775]/70">Redeem Anchor</span>
- <FeeBadge ratio={market.redeemPeggedIncentiveRatio} />
- </div>
- <div className="flex items-center justify-between text-xs">
- <span className="text-[#1E4775]/70">Mint Sail</span>
- <FeeBadge ratio={market.mintLeveragedIncentiveRatio} />
- </div>
- <div className="flex items-center justify-between text-xs">
- <span className="text-[#1E4775]/70">Redeem Sail</span>
- <FeeBadge ratio={market.redeemLeveragedIncentiveRatio} />
- </div>
- </div>
- </div>
- </div>
+
 
  {/* Stability Pools */}
  <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -476,6 +516,10 @@ function MarketCard({
  const userData = userPools?.find(
  (u) => u.poolAddress === pool.address
  );
+ const poolTokenPriceUSD =
+  pool.type === "collateral"
+    ? tokenPrices?.peggedPriceUSD ?? 0
+    : tokenPrices?.leveragedPriceUSD ?? 0;
  const withdrawStatus = userData
  ? getWithdrawalRequestStatus(
  userData.withdrawalRequest.requestedAt,
@@ -503,7 +547,7 @@ function MarketCard({
  <div className="bg-[#1E4775]/5 p-2">
  <div className="text-[#1E4775]/60 text-[10px]">TVL (USD)</div>
  <div className="text-[#1E4775] font-mono font-semibold">
- {formatCompactUSD((Number(pool.tvl) / 1e18) * peggedPriceUSD)}
+ {formatCompactUSD((Number(pool.tvl) / 1e18) * poolTokenPriceUSD)}
  </div>
  <div className="text-[#1E4775]/50 text-[10px] mt-0.5">
  {formatTokenBalance(pool.tvl)}
@@ -552,7 +596,7 @@ function MarketCard({
  </div>
  </div>
  );
- })}
+})}
  </div>
 
  {/* Contract Addresses */}
@@ -606,6 +650,18 @@ export default function TransparencyPage() {
  const { price: stETHPrice } = useCoinGeckoPrice("lido-staked-ethereum-steth");
  const { price: btcPrice } = useCoinGeckoPrice("bitcoin", 120000);
  const { price: ethPrice } = useCoinGeckoPrice("ethereum", 120000);
+
+ // Fetch ha/hs token prices in USD (same approach as Sail page)
+ const tokenPriceInputs = useMemo(() => {
+   return markets
+     .filter((m) => !!m.minterAddress)
+     .map((m) => ({
+       marketId: m.marketId,
+       minterAddress: m.minterAddress,
+       pegTarget: m.pegTarget,
+     }));
+ }, [markets]);
+ const tokenPricesByMarket = useMultipleTokenPrices(tokenPriceInputs);
 
  return (
  <div className="min-h-screen text-white max-w-[1300px] mx-auto font-sans relative overflow-x-hidden">
@@ -745,6 +801,7 @@ export default function TransparencyPage() {
                    p.address === market.stabilityPoolLeveragedAddress
                )}
                userPools={userPools}
+               tokenPricesByMarket={tokenPricesByMarket}
                fxSAVEPrice={fxSAVEPrice}
                wstETHPrice={wstETHPrice}
                stETHPrice={stETHPrice}
