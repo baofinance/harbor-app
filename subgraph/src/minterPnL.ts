@@ -378,9 +378,11 @@ export function handleBlock(block: ethereum.Block): void {
   const navRes = minter.try_leveragedTokenPrice();
   const tokenPriceUSD_fromPeg = navRes.reverted ? ZERO_BD : toE18(navRes.value).times(pegUsd);
 
-  let tokenPriceUSD = navRes.reverted ? ZERO_BD : toE18(navRes.value).times(wrappedCollateralUsd);
-  if (tokenPriceUSD.equals(ZERO_BD) && !tokenPriceUSD_fromPeg.equals(ZERO_BD)) {
-    tokenPriceUSD = tokenPriceUSD_fromPeg;
+  // IMPORTANT: leveragedTokenPrice() is denominated in the peg target (ETH/BTC/USD),
+  // so the correct USD price is nav * pegUsd.
+  let tokenPriceUSD = tokenPriceUSD_fromPeg;
+  if (tokenPriceUSD.equals(ZERO_BD) && !navRes.reverted && !wrappedCollateralUsd.equals(ZERO_BD)) {
+    tokenPriceUSD = toE18(navRes.value).times(wrappedCollateralUsd);
   }
 
   if (collateralPriceUSD.equals(ZERO_BD)) collateralPriceUSD = pegUsd;
@@ -593,10 +595,12 @@ export function handleMintLeveragedToken(event: MintLeveragedToken): void {
   const navRes = minter.try_leveragedTokenPrice();
   const tokenPriceUSD_fromPeg = navRes.reverted ? ZERO_BD : toE18(navRes.value).times(pegUsd);
 
-  // Existing tokenPriceUSD (oracle-based) may be zero; prefer non-zero.
-  let tokenPriceUSD = navRes.reverted ? ZERO_BD : toE18(navRes.value).times(wrappedCollateralUsd);
-  if (tokenPriceUSD.equals(ZERO_BD) && !tokenPriceUSD_fromPeg.equals(ZERO_BD)) {
-    tokenPriceUSD = tokenPriceUSD_fromPeg;
+  // IMPORTANT: leveragedTokenPrice() is denominated in the peg target (ETH/BTC/USD),
+  // so the correct USD price is nav * pegUsd. (Chart should be ~$3k for hsFXUSD-ETH, not ~$1.)
+  // Keep the wrapped-collateral USD path only as a last-resort fallback if pegUsd is unavailable.
+  let tokenPriceUSD = tokenPriceUSD_fromPeg;
+  if (tokenPriceUSD.equals(ZERO_BD) && !navRes.reverted && !wrappedCollateralUsd.equals(ZERO_BD)) {
+    tokenPriceUSD = toE18(navRes.value).times(wrappedCollateralUsd);
   }
 
   // If oracle-based collateral valuation failed, approximate collateralValueUSD from tokens minted * tokenPriceUSD.
@@ -706,9 +710,10 @@ export function handleRedeemLeveragedToken(event: RedeemLeveragedToken): void {
   const navRes = minter.try_leveragedTokenPrice();
   const tokenPriceUSD_fromPeg = navRes.reverted ? ZERO_BD : toE18(navRes.value).times(pegUsd);
 
-  let tokenPriceUSD = navRes.reverted ? ZERO_BD : toE18(navRes.value).times(wrappedCollateralUsd);
-  if (tokenPriceUSD.equals(ZERO_BD) && !tokenPriceUSD_fromPeg.equals(ZERO_BD)) {
-    tokenPriceUSD = tokenPriceUSD_fromPeg;
+  // See handleMintLeveragedToken: prefer peg-based USD pricing.
+  let tokenPriceUSD = tokenPriceUSD_fromPeg;
+  if (tokenPriceUSD.equals(ZERO_BD) && !navRes.reverted && !wrappedCollateralUsd.equals(ZERO_BD)) {
+    tokenPriceUSD = toE18(navRes.value).times(wrappedCollateralUsd);
   }
 
   const burnDec = toE18(leveragedBurned);
