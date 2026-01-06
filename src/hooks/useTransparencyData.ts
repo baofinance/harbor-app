@@ -26,7 +26,6 @@ const oracleABI = [
 export interface MarketTransparencyData {
   marketId: string;
   marketName: string;
-  pegTarget: string;
   // Minter data
   collateralRatio: bigint;
   leverageRatio: bigint;
@@ -207,7 +206,6 @@ export function useTransparencyData(): TransparencyData {
     return {
       marketId,
       marketName: market.name,
-      pegTarget: ((market as any).pegTarget as string | undefined) || "USD",
       collateralRatio: parseResult(baseIndex + 0, 0n),
       leverageRatio: parseResult(baseIndex + 1, 0n),
       peggedTokenPrice: parseResult(baseIndex + 2, 0n),
