@@ -20,7 +20,15 @@ export function MarksBoostBadge({
   return (
     <div
       className={[
-        "text-xs text-green-300 text-center bg-green-900/30 border border-green-500/30 px-2 py-0.5",
+        // Responsive "bar" sizing:
+        // - full width on mobile so it doesn't overflow narrow layouts
+        // - consumers can optionally shrink-to-fit on larger screens (e.g. leaderboard)
+        // - allow wrapping instead of pushing layout wider
+        "w-full max-w-full min-w-0",
+        "text-xs sm:text-sm font-bold text-green-300 text-center",
+        "bg-green-900/30 border border-green-500/30",
+        "px-3 py-1.5 leading-tight",
+        "whitespace-normal break-words",
         className,
       ].join(" ")}
     >

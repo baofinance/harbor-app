@@ -273,7 +273,7 @@ export function handleStabilityPoolDeposit(event: StabilityPoolDepositEvent): vo
   // Query actual balance from pool contract
   const actualBalance = queryPoolDepositBalance(Address.fromBytes(poolAddress), Address.fromBytes(userAddress));
   deposit.balance = actualBalance;
-
+  
   // Marks: pool deposits are in ASSET_TOKEN (pegged ha token). Price ASSET_TOKEN directly.
   const assetToken = getPoolAssetToken(Address.fromBytes(poolAddress));
   const amountInTokens = actualBalance.toBigDecimal().div(E18);

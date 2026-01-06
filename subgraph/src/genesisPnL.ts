@@ -1,8 +1,8 @@
-import { Address, BigDecimal, BigInt, Bytes } from "@graphprotocol/graph-ts";
+import { Address, BigDecimal, BigInt, Bytes, dataSource, ethereum } from "@graphprotocol/graph-ts";
 import { Deposit, Withdraw, GenesisEnds, Genesis, EndGenesisCall } from "../generated/SailGenesis_ETH_fxUSD/Genesis";
 import { WrappedPriceOracle } from "../generated/SailGenesis_ETH_fxUSD/WrappedPriceOracle";
 import { ChainlinkAggregator } from "../generated/SailGenesis_ETH_fxUSD/ChainlinkAggregator";
-import { SailGenesisUser, UserList, UserSailPosition, CostBasisLot } from "../generated/schema";
+import { GenesisEnd, SailGenesisTotals, SailGenesisUser, UserList, UserSailPosition, CostBasisLot } from "../generated/schema";
 
 const ZERO_BI = BigInt.fromI32(0);
 const ZERO_BD = BigDecimal.fromString("0");
@@ -235,6 +235,100 @@ function createGenesisLot(
   lot.save();
 }
 
+function getOrCreateSailGenesisTotals(genesisAddress: Address): SailGenesisTotals {
+  const id = genesisAddress.toHexString();
+  let t = SailGenesisTotals.load(id);
+  if (t == null) {
+    t = new SailGenesisTotals(id);
+    t.genesisAddress = genesisAddress;
+    t.totalNetDeposit = ZERO_BI;
+    t.totalNetDepositUSD = ZERO_BD;
+    t.genesisEnded = false;
+    t.finalized = false;
+    t.save();
+  }
+  return t as SailGenesisTotals;
+}
+
+function getLeveragedToken(genesis: Genesis): Address {
+  // Prefer immutable getter if present (many deployments expose LEVERAGED_TOKEN()).
+  const levImm = genesis.try_LEVERAGED_TOKEN();
+  if (!levImm.reverted) return levImm.value;
+  const lev = genesis.try_leveragedToken();
+  if (!lev.reverted) return lev.value;
+  return Address.zero();
+}
+
+function finalizeGenesisLots(
+  genesisAddress: Address,
+  ts: BigInt,
+  blockNumber: BigInt,
+  txHash: Bytes
+): void {
+  const totals = getOrCreateSailGenesisTotals(genesisAddress);
+  if (totals.finalized) return;
+
+  // Need a non-zero denominator.
+  if (totals.totalNetDeposit.le(ZERO_BI)) return;
+
+  const genesis = Genesis.bind(genesisAddress);
+
+  const leveragedToken = getLeveragedToken(genesis);
+  if (leveragedToken.equals(Address.zero())) return;
+
+  const totalLevRes = genesis.try_totalLeveragedAtGenesisEnd();
+  if (totalLevRes.reverted) return;
+  const totalLeveragedAtEnd = totalLevRes.value;
+  if (totalLeveragedAtEnd.le(ZERO_BI)) return;
+
+  // Mark genesis end entity (used elsewhere in this subgraph) exactly once.
+  const geId = genesisAddress.toHexString();
+  const existingGe = GenesisEnd.load(geId);
+  if (existingGe == null) {
+    const ge = new GenesisEnd(geId);
+    ge.contractAddress = genesisAddress;
+    ge.timestamp = ts;
+    ge.txHash = txHash;
+    ge.blockNumber = blockNumber;
+    ge.save();
+  }
+
+  const ul = getOrCreateUserList(genesisAddress);
+  for (let i = 0; i < ul.users.length; i++) {
+    const user = Address.fromBytes(ul.users[i]);
+    const guId = genesisAddress.toHexString() + "-" + user.toHexString();
+    const gu = SailGenesisUser.load(guId);
+    if (gu == null) continue;
+    if (gu.netDeposit.le(ZERO_BI)) continue;
+    if (gu.netDepositUSD.le(ZERO_BD)) continue;
+
+    const position = getOrCreateUserPosition(leveragedToken, user);
+    if (hasGenesisLot(position.id)) continue;
+
+    // Allocate leveraged tokens based on share of total net deposits at genesis end.
+    // userLeveragedAtEnd = totalLeveragedAtEnd * userNetDeposit / totalNetDeposit
+    const userLeveraged = totalLeveragedAtEnd.times(gu.netDeposit).div(totals.totalNetDeposit);
+    if (userLeveraged.le(ZERO_BI)) continue;
+
+    const costUSD = gu.netDepositUSD.times(GENESIS_RATIO);
+    if (position.firstAcquiredAt.equals(ZERO_BI)) position.firstAcquiredAt = ts;
+
+    createGenesisLot(position, userLeveraged, costUSD, ts, blockNumber, txHash);
+    position.totalTokensBought = position.totalTokensBought.plus(userLeveraged);
+    position.totalSpentUSD = position.totalSpentUSD.plus(costUSD);
+    updateAggregates(position);
+    position.lastUpdated = ts;
+    position.save();
+  }
+
+  totals.genesisEnded = true;
+  totals.genesisEndedAt = ts;
+  totals.finalized = true;
+  totals.totalLeveragedAtGenesisEnd = totalLeveragedAtEnd;
+  totals.leveragedToken = leveragedToken;
+  totals.save();
+}
+
 export function handleDeposit(event: Deposit): void {
   const genesisAddress = event.address;
   const user = event.params.receiver;
@@ -248,6 +342,12 @@ export function handleDeposit(event: Deposit): void {
   gu.netDepositUSD = gu.netDepositUSD.plus(amountUsd);
   gu.lastUpdated = event.block.timestamp;
   gu.save();
+
+  // Update totals (shares) for genesis-end allocation.
+  const totals = getOrCreateSailGenesisTotals(genesisAddress);
+  totals.totalNetDeposit = totals.totalNetDeposit.plus(event.params.collateralIn);
+  totals.totalNetDepositUSD = totals.totalNetDepositUSD.plus(amountUsd);
+  totals.save();
 }
 
 export function handleWithdraw(event: Withdraw): void {
@@ -265,80 +365,38 @@ export function handleWithdraw(event: Withdraw): void {
   if (gu.netDepositUSD.lt(ZERO_BD)) gu.netDepositUSD = ZERO_BD;
   gu.lastUpdated = event.block.timestamp;
   gu.save();
+
+  // Update totals (shares) for genesis-end allocation.
+  const totals = getOrCreateSailGenesisTotals(genesisAddress);
+  totals.totalNetDeposit = totals.totalNetDeposit.minus(event.params.amount);
+  if (totals.totalNetDeposit.lt(ZERO_BI)) totals.totalNetDeposit = ZERO_BI;
+  totals.totalNetDepositUSD = totals.totalNetDepositUSD.minus(amountUsd);
+  if (totals.totalNetDepositUSD.lt(ZERO_BD)) totals.totalNetDepositUSD = ZERO_BD;
+  totals.save();
 }
 
 export function handleGenesisEnd(event: GenesisEnds): void {
   const genesisAddress = event.address;
-  const genesis = Genesis.bind(genesisAddress);
-
-  const leveragedTokenRes = genesis.try_leveragedToken();
-  if (leveragedTokenRes.reverted) return;
-  const leveragedToken = leveragedTokenRes.value;
-
-  const ul = getOrCreateUserList(genesisAddress);
-  for (let i = 0; i < ul.users.length; i++) {
-    const user = Address.fromBytes(ul.users[i]);
-    const guId = genesisAddress.toHexString() + "-" + user.toHexString();
-    const gu = SailGenesisUser.load(guId);
-    if (gu == null) continue;
-    if (gu.netDepositUSD.le(ZERO_BD)) continue;
-
-    const position = getOrCreateUserPosition(leveragedToken, user);
-    if (hasGenesisLot(position.id)) continue;
-
-    const claimableRes = genesis.try_claimable(user);
-    if (claimableRes.reverted) continue;
-    const leveragedAmount = claimableRes.value.getLeveragedAmount();
-    if (leveragedAmount.le(ZERO_BI)) continue;
-
-    const costUSD = gu.netDepositUSD.times(GENESIS_RATIO);
-    if (position.firstAcquiredAt.equals(ZERO_BI)) position.firstAcquiredAt = event.block.timestamp;
-
-    createGenesisLot(position, leveragedAmount, costUSD, event.block.timestamp, event.block.number, event.transaction.hash);
-    position.totalTokensBought = position.totalTokensBought.plus(leveragedAmount);
-    position.totalSpentUSD = position.totalSpentUSD.plus(costUSD);
-    updateAggregates(position);
-    position.lastUpdated = event.block.timestamp;
-    position.save();
-  }
+  finalizeGenesisLots(genesisAddress, event.block.timestamp, event.block.number, event.transaction.hash);
 }
 
 // Some deployments may not reliably emit/encode GenesisEnds; index the endGenesis() call as a fallback.
 export function handleEndGenesis(call: EndGenesisCall): void {
-  // Reuse the GenesisEnds handler logic by constructing equivalent values from the call context.
-  const genesisAddress = call.to;
+  finalizeGenesisLots(call.to, call.block.timestamp, call.block.number, call.transaction.hash);
+}
+
+// Block fallback: detect genesis end and finalize if the event/call handler was missed.
+export function handleGenesisBlock(block: ethereum.Block): void {
+  const genesisAddress = dataSource.address();
+  const totals = getOrCreateSailGenesisTotals(genesisAddress);
+  if (totals.finalized) return;
+
   const genesis = Genesis.bind(genesisAddress);
+  const endedRes = genesis.try_genesisIsEnded();
+  if (endedRes.reverted || !endedRes.value) return;
 
-  const leveragedTokenRes = genesis.try_leveragedToken();
-  if (leveragedTokenRes.reverted) return;
-  const leveragedToken = leveragedTokenRes.value;
-
-  const ul = getOrCreateUserList(genesisAddress);
-  for (let i = 0; i < ul.users.length; i++) {
-    const user = Address.fromBytes(ul.users[i]);
-    const guId = genesisAddress.toHexString() + "-" + user.toHexString();
-    const gu = SailGenesisUser.load(guId);
-    if (gu == null) continue;
-    if (gu.netDepositUSD.le(ZERO_BD)) continue;
-
-    const position = getOrCreateUserPosition(leveragedToken, user);
-    if (hasGenesisLot(position.id)) continue;
-
-    const claimableRes = genesis.try_claimable(user);
-    if (claimableRes.reverted) continue;
-    const leveragedAmount = claimableRes.value.getLeveragedAmount();
-    if (leveragedAmount.le(ZERO_BI)) continue;
-
-    const costUSD = gu.netDepositUSD.times(GENESIS_RATIO);
-    if (position.firstAcquiredAt.equals(ZERO_BI)) position.firstAcquiredAt = call.block.timestamp;
-
-    createGenesisLot(position, leveragedAmount, costUSD, call.block.timestamp, call.block.number, call.transaction.hash);
-    position.totalTokensBought = position.totalTokensBought.plus(leveragedAmount);
-    position.totalSpentUSD = position.totalSpentUSD.plus(costUSD);
-    updateAggregates(position);
-    position.lastUpdated = call.block.timestamp;
-    position.save();
-  }
+  // Use block hash as a deterministic txHash surrogate for the one-time finalization.
+  finalizeGenesisLots(genesisAddress, block.timestamp, block.number, block.hash);
 }
 
 

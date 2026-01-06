@@ -39,6 +39,19 @@ type GenesisEnd @entity(immutable: true) {
   blockNumber: BigInt! # Block number
 }
 
+# Tracks aggregated genesis deposits and whether genesis-end Sail cost basis has been finalized.
+type SailGenesisTotals @entity(immutable: false) {
+  id: ID! # {genesisAddress}
+  genesisAddress: Bytes!
+  totalNetDeposit: BigInt! # Sum of net deposits (shares) across all users
+  totalNetDepositUSD: BigDecimal! # Sum of net deposits in USD across all users
+  genesisEnded: Boolean! # Whether we observed genesis end (event/call/block detection)
+  genesisEndedAt: BigInt # Timestamp when we first observed genesis end
+  finalized: Boolean! # Whether we've written genesis cost basis lots (one-time)
+  totalLeveragedAtGenesisEnd: BigInt # Snapshot total leveraged minted at genesis end (optional)
+  leveragedToken: Bytes # Leveraged token address (optional)
+}
+
 type UserHarborMarks @entity(immutable: false) {
   id: ID! # {contractAddress}-{userAddress}
   contractAddress: Bytes! # Contract address

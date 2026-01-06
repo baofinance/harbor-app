@@ -71,8 +71,6 @@ dataSources:
           file: ./abis/ChainlinkAggregator.json
         - name: ERC20
           file: ./abis/ERC20.json
-        - name: Genesis
-          file: ./abis/Genesis.json
       eventHandlers:
         - event: MintLeveragedToken(indexed address,indexed address,uint256,uint256)
           handler: handleMintLeveragedToken
@@ -150,8 +148,6 @@ dataSources:
           file: ./abis/ChainlinkAggregator.json
         - name: ERC20
           file: ./abis/ERC20.json
-        - name: Genesis
-          file: ./abis/Genesis.json
       eventHandlers:
         - event: MintLeveragedToken(indexed address,indexed address,uint256,uint256)
           handler: handleMintLeveragedToken
@@ -229,8 +225,6 @@ dataSources:
           file: ./abis/ChainlinkAggregator.json
         - name: ERC20
           file: ./abis/ERC20.json
-        - name: Genesis
-          file: ./abis/Genesis.json
       eventHandlers:
         - event: MintLeveragedToken(indexed address,indexed address,uint256,uint256)
           handler: handleMintLeveragedToken

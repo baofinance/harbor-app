@@ -43,7 +43,7 @@ export function useMarketPositions(
   const isDebug = process.env.NODE_ENV === "development";
   // Debug: log the address being used
   if (isDebug) {
-    console.log("[useMarketPositions] userAddress:", userAddress);
+  console.log("[useMarketPositions] userAddress:", userAddress);
     console.log(
       "[useMarketPositions] externalPriceMap:",
       externalPriceMap ? Object.keys(externalPriceMap) : "none"
@@ -54,7 +54,7 @@ export function useMarketPositions(
   const { contracts, indexMap } = useMemo(() => {
     if (!userAddress || marketConfigs.length === 0) {
       if (isDebug) {
-        console.log("[useMarketPositions] No userAddress or marketConfigs, skipping");
+      console.log("[useMarketPositions] No userAddress or marketConfigs, skipping");
       }
       return { 
         contracts: [] as any[], 
@@ -189,7 +189,7 @@ export function useMarketPositions(
       });
     } else {
       if (isDebug) {
-        console.log("[useMarketPositions] No data returned from contract reads");
+      console.log("[useMarketPositions] No data returned from contract reads");
       }
     }
 

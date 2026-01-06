@@ -26,7 +26,6 @@ const oracleABI = [
 export interface MarketTransparencyData {
   marketId: string;
   marketName: string;
-  pegTarget: string;
   // Minter data
   collateralRatio: bigint;
   leverageRatio: bigint;
@@ -66,7 +65,10 @@ export interface PoolTransparencyData {
   tvl: bigint;
   activeRewardTokens: `0x${string}`[];
   earlyWithdrawalFee: bigint;
-  withdrawWindow: bigint;
+  withdrawWindow: {
+    startDelay: bigint;
+    endWindow: bigint;
+  };
 }
 
 export interface UserPoolData {
@@ -142,13 +144,13 @@ export function useTransparencyData(): TransparencyData {
       // Collateral pool (0-3)
       { address: stabilityPoolCollateral, abi: stabilityPoolABI, functionName: "totalAssetSupply" },
       { address: stabilityPoolCollateral, abi: stabilityPoolABI, functionName: "activeRewardTokens" },
-      { address: stabilityPoolCollateral, abi: stabilityPoolABI, functionName: "earlyWithdrawFee" },
-      { address: stabilityPoolCollateral, abi: stabilityPoolABI, functionName: "withdrawWindow" },
+      { address: stabilityPoolCollateral, abi: stabilityPoolABI, functionName: "getEarlyWithdrawalFee" },
+      { address: stabilityPoolCollateral, abi: stabilityPoolABI, functionName: "getWithdrawalWindow" },
       // Leveraged pool (4-7)
       { address: stabilityPoolLeveraged, abi: stabilityPoolABI, functionName: "totalAssetSupply" },
       { address: stabilityPoolLeveraged, abi: stabilityPoolABI, functionName: "activeRewardTokens" },
-      { address: stabilityPoolLeveraged, abi: stabilityPoolABI, functionName: "earlyWithdrawFee" },
-      { address: stabilityPoolLeveraged, abi: stabilityPoolABI, functionName: "withdrawWindow" },
+      { address: stabilityPoolLeveraged, abi: stabilityPoolABI, functionName: "getEarlyWithdrawalFee" },
+      { address: stabilityPoolLeveraged, abi: stabilityPoolABI, functionName: "getWithdrawalWindow" },
     ];
   });
 
@@ -207,7 +209,6 @@ export function useTransparencyData(): TransparencyData {
     return {
       marketId,
       marketName: market.name,
-      pegTarget: ((market as any).pegTarget as string | undefined) || "USD",
       collateralRatio: parseResult(baseIndex + 0, 0n),
       leverageRatio: parseResult(baseIndex + 1, 0n),
       peggedTokenPrice: parseResult(baseIndex + 2, 0n),
@@ -251,7 +252,19 @@ export function useTransparencyData(): TransparencyData {
         tvl: parseResult(baseIndex + 0, 0n),
         activeRewardTokens: parseResult(baseIndex + 1, []),
         earlyWithdrawalFee: parseResult(baseIndex + 2, 0n),
-        withdrawWindow: parseResult(baseIndex + 3, 0n),
+        withdrawWindow: (() => {
+          const res = parseResult<any>(baseIndex + 3, [0n, 0n] as const);
+          if (Array.isArray(res)) {
+            return { startDelay: res[0] as bigint, endWindow: res[1] as bigint };
+          }
+          if (res && typeof res === "object") {
+            return {
+              startDelay: (res as any).startDelay ?? 0n,
+              endWindow: (res as any).endWindow ?? 0n,
+            };
+          }
+          return { startDelay: 0n, endWindow: 0n };
+        })(),
       },
       {
         address: stabilityPoolLeveraged,
@@ -260,7 +273,19 @@ export function useTransparencyData(): TransparencyData {
         tvl: parseResult(baseIndex + 4, 0n),
         activeRewardTokens: parseResult(baseIndex + 5, []),
         earlyWithdrawalFee: parseResult(baseIndex + 6, 0n),
-        withdrawWindow: parseResult(baseIndex + 7, 0n),
+        withdrawWindow: (() => {
+          const res = parseResult<any>(baseIndex + 7, [0n, 0n] as const);
+          if (Array.isArray(res)) {
+            return { startDelay: res[0] as bigint, endWindow: res[1] as bigint };
+          }
+          if (res && typeof res === "object") {
+            return {
+              startDelay: (res as any).startDelay ?? 0n,
+              endWindow: (res as any).endWindow ?? 0n,
+            };
+          }
+          return { startDelay: 0n, endWindow: 0n };
+        })(),
       },
     ];
   });
@@ -392,13 +417,15 @@ export function calculatePeggedPriceUSD(
 
 export function getWithdrawalRequestStatus(
   requestedAt: bigint,
-  withdrawWindow: bigint
+  withdrawWindow: { startDelay: bigint; endWindow: bigint }
 ): "none" | "waiting" | "open" | "expired" {
   if (requestedAt === 0n) return "none";
 
   const now = BigInt(Math.floor(Date.now() / 1000));
-  const startTime = requestedAt + 86400n; // 1 day delay
-  const endTime = startTime + withdrawWindow;
+  const startDelay = withdrawWindow?.startDelay ?? 0n;
+  const endWindow = withdrawWindow?.endWindow ?? 0n;
+  const startTime = requestedAt + startDelay;
+  const endTime = startTime + endWindow;
 
   if (now < startTime) return "waiting";
   if (now < endTime) return "open";
