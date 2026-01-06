@@ -3208,14 +3208,24 @@ export default function AnchorPage() {
               // Process each group
               return (
                 <>
-                  {/* Header Row */}
-                  <div className="bg-white py-1.5 px-2 overflow-x-auto">
+                  {/* Header Row (desktop) */}
+                  <div className="hidden lg:block bg-white py-1.5 px-2 overflow-x-auto">
                     <div className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr_1fr_1fr] gap-4 items-center uppercase tracking-wider text-[10px] lg:text-[11px] text-[#1E4775] font-semibold">
                       <div className="min-w-0 text-center">Token</div>
                       <div className="text-center min-w-0">Deposit Assets</div>
                       <div className="text-center min-w-0">APR</div>
                       <div className="text-center min-w-0">Earnings</div>
                       <div className="text-center min-w-0">Reward Assets</div>
+                      <div className="text-center min-w-0">Position</div>
+                      <div className="text-center min-w-0">Actions</div>
+                    </div>
+                  </div>
+
+                  {/* Header Row (md / narrow) */}
+                  <div className="hidden md:block lg:hidden bg-white py-1.5 px-2 overflow-x-auto">
+                    <div className="grid grid-cols-[1fr_1fr_1fr_1fr] gap-4 items-center uppercase tracking-wider text-[10px] text-[#1E4775] font-semibold">
+                      <div className="min-w-0 text-center">Token</div>
+                      <div className="text-center min-w-0">APR</div>
                       <div className="text-center min-w-0">Position</div>
                       <div className="text-center min-w-0">Actions</div>
                     </div>
@@ -3405,7 +3415,7 @@ export default function AnchorPage() {
                 return (
                   <React.Fragment key={symbol}>
                     <div
-                      className={`p-3 overflow-x-auto transition cursor-pointer ${
+                      className={`p-3 overflow-visible md:overflow-x-auto transition cursor-pointer ${
                         isExpanded
                           ? "bg-[rgb(var(--surface-selected-rgb))]"
                           : "bg-white hover:bg-[rgb(var(--surface-selected-rgb))]"
@@ -3418,7 +3428,298 @@ export default function AnchorPage() {
                         }
                       }}
                     >
-                      <div className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr_1fr_1fr] gap-4 items-center text-sm">
+                      {/* Mobile card layout (< md) - modeled after Maiden Voyage page */}
+                      <div className="md:hidden space-y-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <SimpleTooltip label={peggedTokenSymbol || symbol}>
+                              <Image
+                                src={getLogoPath(peggedTokenSymbol || symbol)}
+                                alt={peggedTokenSymbol || symbol}
+                                width={20}
+                                height={20}
+                                className="flex-shrink-0 cursor-help"
+                              />
+                            </SimpleTooltip>
+                            <span className="text-[#1E4775] font-semibold text-base truncate">
+                              {symbol}
+                            </span>
+                            {isExpanded ? (
+                              <ChevronUpIcon className="w-5 h-5 text-[#1E4775] flex-shrink-0" />
+                            ) : (
+                              <ChevronDownIcon className="w-5 h-5 text-[#1E4775] flex-shrink-0" />
+                            )}
+                          </div>
+
+                          <div
+                            className="flex items-center justify-end flex-shrink-0"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const enrichedAllMarkets = marketList.map((m) => {
+                                  const marketData = marketsData.find(
+                                    (md) => md.marketId === m.marketId
+                                  );
+                                  return {
+                                    marketId: m.marketId,
+                                    market: {
+                                      ...m.market,
+                                      wrappedRate: marketData?.wrappedRate,
+                                    },
+                                  };
+                                });
+                                setManageModal({
+                                  marketId: marketList[0].marketId,
+                                  market: {
+                                    ...marketList[0].market,
+                                    wrappedRate: marketsData.find(
+                                      (md) => md.marketId === marketList[0].marketId
+                                    )?.wrappedRate,
+                                  },
+                                  initialTab: "deposit",
+                                  simpleMode: true,
+                                  bestPoolType: "collateral",
+                                  allMarkets: enrichedAllMarkets,
+                                });
+                              }}
+                              className="px-3 py-1.5 text-xs font-medium bg-[#1E4775] text-white hover:bg-[#17395F] transition-colors rounded-full whitespace-nowrap"
+                            >
+                              Manage
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Mobile stats: single row, headers above values */}
+                        <div
+                          className="flex items-stretch justify-between gap-3 whitespace-nowrap"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <div className="flex flex-col items-end leading-tight min-w-0">
+                            <div className="text-[10px] text-[#1E4775]/60 font-semibold uppercase tracking-wide">
+                              APR
+                            </div>
+                            <div className="text-[#1E4775] font-semibold text-sm font-mono">
+                              {(() => {
+                                const hasCurrentAPR = minAPR > 0 || maxAPR > 0;
+                                const hasProjectedAPR =
+                                  (minProjectedAPR !== null && minProjectedAPR > 0) ||
+                                  (maxProjectedAPR !== null && maxProjectedAPR > 0);
+                                const formatRange = (min: number, max: number) => {
+                                  if (min > 0 && min !== max) return `${min.toFixed(1)}% - ${max.toFixed(1)}%`;
+                                  return `${max.toFixed(1)}%`;
+                                };
+                                const currentStr = hasCurrentAPR ? formatRange(minAPR, maxAPR) : "";
+                                const projMin =
+                                  minProjectedAPR !== null ? minProjectedAPR : maxProjectedAPR ?? 0;
+                                const projMax =
+                                  maxProjectedAPR !== null ? maxProjectedAPR : minProjectedAPR ?? 0;
+                                const projectedStr = hasProjectedAPR ? formatRange(projMin, projMax) : "";
+                                if (!hasCurrentAPR && !hasProjectedAPR) return "-";
+                                if (!hasCurrentAPR) return projectedStr ? `Proj ${projectedStr}` : "-";
+                                if (hasProjectedAPR) return `${currentStr} (Proj ${projectedStr})`;
+                                return currentStr || "-";
+                              })()}
+                            </div>
+                          </div>
+
+                          <div className="flex flex-col items-end leading-tight min-w-0">
+                            <div className="text-[10px] text-[#1E4775]/60 font-semibold uppercase tracking-wide">
+                              Position
+                            </div>
+                            <div className="text-[#1E4775] font-semibold text-sm font-mono">
+                              {combinedPositionUSD > 0
+                                ? formatCompactUSD(combinedPositionUSD)
+                                : combinedPositionTokens > 0
+                                ? `${combinedPositionTokens.toLocaleString(undefined, {
+                                    maximumFractionDigits: 2,
+                                  })} ${symbol}`
+                                : "-"}
+                            </div>
+                          </div>
+
+                          <div className="flex flex-col items-end leading-tight min-w-0">
+                            <div className="text-[10px] text-[#1E4775]/60 font-semibold uppercase tracking-wide">
+                              Earnings
+                            </div>
+                            <div className="text-[#1E4775] font-semibold text-sm font-mono">
+                              {combinedRewardsUSD > 0 ? `$${combinedRewardsUSD.toFixed(2)}` : "-"}
+                            </div>
+                          </div>
+
+                          <div className="flex flex-col items-end leading-tight min-w-0">
+                            <div className="text-[10px] text-[#1E4775]/60 font-semibold uppercase tracking-wide">
+                              Rewards
+                            </div>
+                            <div className="mt-0.5 flex items-center justify-end">
+                              <RewardTokensDisplay
+                                collateralPool={collateralPoolAddress}
+                                sailPool={sailPoolAddress}
+                                iconSize={16}
+                                className="justify-end gap-1"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Medium / narrow layout (md to < lg) */}
+                      <div className="hidden md:grid lg:hidden grid-cols-[1fr_1fr_1fr_1fr] gap-4 items-center text-sm">
+                        <div className="whitespace-nowrap min-w-0 overflow-hidden">
+                          <div className="flex items-center justify-center gap-1.5">
+                            <SimpleTooltip label={peggedTokenSymbol || symbol}>
+                              <Image
+                                src={getLogoPath(peggedTokenSymbol || symbol)}
+                                alt={peggedTokenSymbol || symbol}
+                                width={20}
+                                height={20}
+                                className="flex-shrink-0 cursor-help"
+                              />
+                            </SimpleTooltip>
+                            <span className="text-[#1E4775] font-medium text-sm">
+                              {symbol}
+                            </span>
+                            {isExpanded ? (
+                              <ChevronUpIcon className="w-5 h-5 text-[#1E4775] flex-shrink-0" />
+                            ) : (
+                              <ChevronDownIcon className="w-5 h-5 text-[#1E4775] flex-shrink-0" />
+                            )}
+                          </div>
+                        </div>
+                        <div
+                          className="text-center min-w-0"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {(() => {
+                            const hasCurrentAPR = minAPR > 0 || maxAPR > 0;
+                            const hasProjectedAPR =
+                              (minProjectedAPR !== null && minProjectedAPR > 0) ||
+                              (maxProjectedAPR !== null && maxProjectedAPR > 0);
+                            const formatRange = (min: number, max: number) => {
+                              if (min > 0 && min !== max) {
+                                return `${min.toFixed(1)}% - ${max.toFixed(1)}%`;
+                              }
+                              return `${max.toFixed(1)}%`;
+                            };
+                            const currentStr = hasCurrentAPR ? formatRange(minAPR, maxAPR) : "";
+                            const projMin =
+                              minProjectedAPR !== null ? minProjectedAPR : maxProjectedAPR ?? 0;
+                            const projMax =
+                              maxProjectedAPR !== null ? maxProjectedAPR : minProjectedAPR ?? 0;
+                            const projectedStr = hasProjectedAPR ? formatRange(projMin, projMax) : "";
+
+                            if (!hasCurrentAPR && !hasProjectedAPR) {
+                              return <span className="text-[#1E4775] font-bold text-sm font-mono">-</span>;
+                            }
+
+                            if (!hasCurrentAPR && hasProjectedAPR) {
+                              return (
+                                <div className="flex flex-col items-center leading-tight">
+                                  <div className="text-[10px] text-[#1E4775]/60 font-semibold">Proj</div>
+                                  <div className="text-[#1E4775] font-bold text-sm font-mono">
+                                    {projectedStr}
+                                  </div>
+                                </div>
+                              );
+                            }
+
+                            if (hasCurrentAPR && hasProjectedAPR) {
+                              return (
+                                <div className="flex flex-col items-center leading-tight">
+                                  <div className="text-[#1E4775] font-bold text-sm font-mono">{currentStr}</div>
+                                  <div className="mt-0.5 flex flex-col items-center leading-tight">
+                                    <div className="text-[10px] text-[#1E4775]/60 font-semibold">Proj</div>
+                                    <div className="text-[#1E4775] font-bold text-[11px] font-mono">
+                                      {projectedStr}
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            }
+
+                            return (
+                              <span className="text-[#1E4775] font-bold text-sm font-mono">
+                                {currentStr || "-"}
+                              </span>
+                            );
+                          })()}
+                        </div>
+                        <div className="text-center min-w-0">
+                          <div className="inline-flex items-stretch justify-center gap-4 whitespace-nowrap">
+                            <div className="flex flex-col items-center leading-tight">
+                              <div className="text-[10px] text-[#1E4775]/60 font-semibold uppercase tracking-wide">
+                                Position
+                              </div>
+                              <div className="text-[#1E4775] font-medium text-xs font-mono">
+                                {combinedPositionUSD > 0
+                                  ? formatCompactUSD(combinedPositionUSD)
+                                  : combinedPositionTokens > 0
+                                  ? `${combinedPositionTokens.toLocaleString(undefined, {
+                                      maximumFractionDigits: 2,
+                                    })} ${symbol}`
+                                  : "-"}
+                              </div>
+                            </div>
+                            <div className="flex flex-col items-center leading-tight">
+                              <div className="text-[10px] text-[#1E4775]/60 font-semibold uppercase tracking-wide">
+                                Earnings
+                              </div>
+                              <div className="text-[#1E4775] font-medium text-xs font-mono">
+                                {combinedRewardsUSD > 0 ? `$${combinedRewardsUSD.toFixed(2)}` : "-"}
+                              </div>
+                            </div>
+                            <div className="flex flex-col items-center leading-tight">
+                              <div className="text-[10px] text-[#1E4775]/60 font-semibold uppercase tracking-wide">
+                                Rewards
+                              </div>
+                              <div className="mt-0.5 flex items-center justify-center">
+                                <RewardTokensDisplay
+                                  collateralPool={collateralPoolAddress}
+                                  sailPool={sailPoolAddress}
+                                  iconSize={16}
+                                  className="justify-center gap-1"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        <div
+                          className="text-center min-w-0 flex items-center justify-center gap-1.5 pr-2"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const enrichedAllMarkets = marketList.map((m) => {
+                                const marketData = marketsData.find((md) => md.marketId === m.marketId);
+                                return {
+                                  marketId: m.marketId,
+                                  market: { ...m.market, wrappedRate: marketData?.wrappedRate },
+                                };
+                              });
+                              setManageModal({
+                                marketId: marketList[0].marketId,
+                                market: {
+                                  ...marketList[0].market,
+                                  wrappedRate: marketsData.find((md) => md.marketId === marketList[0].marketId)
+                                    ?.wrappedRate,
+                                },
+                                initialTab: "deposit",
+                                simpleMode: true,
+                                bestPoolType: "collateral",
+                                allMarkets: enrichedAllMarkets,
+                              });
+                            }}
+                            className="px-3 py-1.5 text-xs font-medium bg-[#1E4775] text-white hover:bg-[#17395F] transition-colors rounded-full whitespace-nowrap"
+                          >
+                            Manage
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Desktop layout (>= lg) */}
+                      <div className="hidden lg:grid grid-cols-[1fr_1fr_1fr_1fr_1fr_1fr_1fr] gap-4 items-center text-sm">
                         <div className="whitespace-nowrap min-w-0 overflow-hidden">
                           <div className="flex items-center justify-center gap-1.5">
                             <SimpleTooltip label={peggedTokenSymbol || symbol}>
@@ -3701,17 +4002,18 @@ export default function AnchorPage() {
                                   ? formatRange(projMin, projMax)
                                   : "";
 
-                                // When there is no live APR, show projected APR (explicitly labeled)
-                                if (!hasCurrentAPR) {
-                                  return hasProjectedAPR
-                                    ? `Proj ${projectedStr}`
-                                    : "-";
+                                if (!hasCurrentAPR && !hasProjectedAPR) {
+                                  return "-";
                                 }
 
-                                // When there is a live APR, show projected in brackets
-                                if (hasProjectedAPR) {
-                                  return `${currentStr} (Proj ${projectedStr})`;
+                                if (!hasCurrentAPR && hasProjectedAPR) {
+                                  return projectedStr ? `Proj\n${projectedStr}` : "-";
                                 }
+
+                                if (hasCurrentAPR && hasProjectedAPR) {
+                                  return projectedStr ? `${currentStr}\nProj\n${projectedStr}` : currentStr || "-";
+                                }
+
                                 return currentStr || "-";
                               })()}
                             </span>

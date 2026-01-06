@@ -7,11 +7,15 @@ import { getLogoPath } from "@/components/shared";
 interface RewardTokensDisplayProps {
   collateralPool: `0x${string}` | undefined;
   sailPool: `0x${string}` | undefined;
+  iconSize?: number;
+  className?: string;
 }
 
 export function RewardTokensDisplay({
   collateralPool,
   sailPool,
+  iconSize = 24,
+  className = "",
 }: RewardTokensDisplayProps) {
   const { data: collateralRewardTokens = [], isLoading: isLoadingCollateral } =
     usePoolRewardTokens({
@@ -42,7 +46,10 @@ export function RewardTokensDisplay({
 
   return (
     <div
-      className="text-center min-w-0 flex items-center justify-center gap-1.5"
+      className={[
+        "text-center min-w-0 flex items-center justify-center gap-1.5",
+        className,
+      ].join(" ")}
       onClick={(e) => e.stopPropagation()}
     >
       {allRewardTokens.length > 0 ? (
@@ -60,8 +67,8 @@ export function RewardTokensDisplay({
               <Image
                 src={getLogoPath(token.symbol)}
                 alt={token.displayName}
-                width={24}
-                height={24}
+                width={iconSize}
+                height={iconSize}
                 className="flex-shrink-0 cursor-help rounded-full border border-white"
                 style={{
                   zIndex: allRewardTokens.length - idx,
@@ -74,7 +81,7 @@ export function RewardTokensDisplay({
           <span
             className="text-[#1E4775]/60 font-semibold mx-1"
             style={{
-              fontSize: "14px",
+              fontSize: iconSize <= 16 ? "12px" : "14px",
             }}
           >
             +
@@ -90,8 +97,8 @@ export function RewardTokensDisplay({
               <Image
                 src="/icons/marks.png"
                 alt="Harbor Marks 1x"
-                width={24}
-                height={24}
+                width={iconSize}
+                height={iconSize}
                 className="flex-shrink-0 cursor-help rounded-full border border-white"
               />
             </div>
@@ -103,8 +110,8 @@ export function RewardTokensDisplay({
             <Image
               src="/icons/marks.png"
               alt="Harbor Marks 1x"
-              width={24}
-              height={24}
+              width={iconSize}
+              height={iconSize}
               className="flex-shrink-0 cursor-help rounded-full border border-white"
             />
           </div>
