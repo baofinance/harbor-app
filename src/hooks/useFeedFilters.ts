@@ -18,7 +18,9 @@ type FeedWithMetadata = FeedEntry & {
 export function useFeedFilters() {
   const [expanded, setExpanded] = useState<ExpandedState>(null);
   const [selectedNetwork, setSelectedNetwork] = useState<Network | null>(null);
-  const [selectedBaseAsset, setSelectedBaseAsset] = useState<string | null>(null);
+  const [selectedBaseAsset, setSelectedBaseAsset] = useState<string | null>(
+    null
+  );
   const [searchQuery, setSearchQuery] = useState("");
 
   // Clear expanded view when filters change
@@ -32,7 +34,7 @@ export function useFeedFilters() {
     NETWORKS.forEach((network) => {
       const networkFeeds = feedsConfig[network];
       if (!networkFeeds) return;
-      
+
       Object.entries(networkFeeds).forEach(([baseAsset, feedEntries]) => {
         if (Array.isArray(feedEntries) && feedEntries.length > 0) {
           feedEntries.forEach((feed) => {
@@ -59,7 +61,9 @@ export function useFeedFilters() {
 
     // Filter by base asset
     if (selectedBaseAsset) {
-      filtered = filtered.filter((feed) => feed.baseAsset === selectedBaseAsset);
+      filtered = filtered.filter(
+        (feed) => feed.baseAsset === selectedBaseAsset
+      );
     }
 
     // Filter by search query (quote asset)
@@ -71,9 +75,6 @@ export function useFeedFilters() {
       });
     }
 
-    // Always limit to max 10 feeds
-    filtered = filtered.slice(0, 10);
-
     return filtered;
   }, [allFeeds, selectedNetwork, selectedBaseAsset, searchQuery]);
 
@@ -81,19 +82,20 @@ export function useFeedFilters() {
   const availableBaseAssets = useMemo(() => {
     const assets = new Set<string>();
     const networksToCheck = selectedNetwork ? [selectedNetwork] : NETWORKS;
-    
+
     networksToCheck.forEach((network) => {
       const networkFeeds = feedsConfig[network];
       if (!networkFeeds) return;
-      
+
       Object.keys(networkFeeds).forEach((baseAsset) => {
-        const feedEntries = networkFeeds[baseAsset as keyof typeof networkFeeds];
+        const feedEntries =
+          networkFeeds[baseAsset as keyof typeof networkFeeds];
         if (Array.isArray(feedEntries) && feedEntries.length > 0) {
           assets.add(baseAsset);
         }
       });
     });
-    
+
     return Array.from(assets).sort();
   }, [selectedNetwork]);
 
@@ -103,7 +105,12 @@ export function useFeedFilters() {
       return allFeeds.length;
     }
     return filteredFeeds.length;
-  }, [allFeeds.length, selectedNetwork, selectedBaseAsset, filteredFeeds.length]);
+  }, [
+    allFeeds.length,
+    selectedNetwork,
+    selectedBaseAsset,
+    filteredFeeds.length,
+  ]);
 
   return {
     expanded,

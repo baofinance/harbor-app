@@ -23,6 +23,8 @@ dataSources:
       abis:
         - name: Genesis
           file: ./abis/Genesis.json
+        - name: ERC20
+          file: ./abis/ERC20.json
         - name: WrappedPriceOracle
           file: ./abis/WrappedPriceOracle.json
         - name: ChainlinkAggregator
@@ -99,6 +101,8 @@ dataSources:
       abis:
         - name: Genesis
           file: ./abis/Genesis.json
+        - name: ERC20
+          file: ./abis/ERC20.json
         - name: WrappedPriceOracle
           file: ./abis/WrappedPriceOracle.json
         - name: ChainlinkAggregator
@@ -175,6 +179,8 @@ dataSources:
       abis:
         - name: Genesis
           file: ./abis/Genesis.json
+        - name: ERC20
+          file: ./abis/ERC20.json
         - name: WrappedPriceOracle
           file: ./abis/WrappedPriceOracle.json
         - name: ChainlinkAggregator

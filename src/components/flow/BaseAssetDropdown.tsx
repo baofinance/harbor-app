@@ -22,7 +22,7 @@ export function BaseAssetDropdown({
     <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between px-4 py-2 bg-white border border-[#1E4775]/20 text-[#1E4775] hover:bg-[#1E4775]/5 transition-colors"
+        className="w-full flex items-center justify-between px-2 py-1 bg-white border border-[#1E4775]/20 text-[#1E4775] hover:bg-[#1E4775]/5 transition-colors text-xs h-[28px]"
       >
         <div className="flex items-center gap-2">
           {selectedBaseAsset ? (
@@ -30,18 +30,18 @@ export function BaseAssetDropdown({
               <TokenIcon
                 src={getLogoPath(selectedBaseAsset)}
                 alt={selectedBaseAsset}
-                width={20}
-                height={20}
+                width={14}
+                height={14}
                 className="rounded-full flex-shrink-0"
               />
-              <span className="font-medium">{selectedBaseAsset}</span>
+              <span className="font-medium text-xs">{selectedBaseAsset}</span>
             </>
           ) : (
-            <span className="text-[#1E4775]/60">Select Base Asset</span>
+            <span className="text-xs text-[#1E4775]/60">Select Base Asset</span>
           )}
         </div>
         <ChevronDownIcon
-          className={`w-5 h-5 text-[#1E4775]/60 transition-transform ${
+          className={`w-3.5 h-3.5 text-[#1E4775]/60 transition-transform ${
             isOpen ? "rotate-180" : ""
           }`}
         />
@@ -53,13 +53,13 @@ export function BaseAssetDropdown({
             className="fixed inset-0 z-10"
             onClick={() => setIsOpen(false)}
           />
-          <div className="absolute z-20 mt-2 w-full bg-white border border-[#1E4775]/20 rounded-lg shadow-lg overflow-hidden max-h-60 overflow-y-auto">
+          <div className="absolute z-20 mt-1 w-full bg-white border border-[#1E4775]/20 rounded-lg shadow-lg overflow-hidden max-h-60 overflow-y-auto">
             <button
               onClick={() => {
                 onSelect(null);
                 setIsOpen(false);
               }}
-              className={`w-full text-left px-4 py-2 hover:bg-[#1E4775]/5 transition-colors ${
+              className={`w-full text-left px-2 py-1 hover:bg-[#1E4775]/5 transition-colors text-xs ${
                 !selectedBaseAsset ? "bg-[#1E4775]/10" : ""
               }`}
             >
@@ -72,15 +72,15 @@ export function BaseAssetDropdown({
                   onSelect(asset);
                   setIsOpen(false);
                 }}
-                className={`w-full flex items-center gap-2 px-4 py-2 hover:bg-[#1E4775]/5 transition-colors ${
+                className={`w-full flex items-center gap-1.5 px-2 py-1 hover:bg-[#1E4775]/5 transition-colors text-xs ${
                   selectedBaseAsset === asset ? "bg-[#1E4775]/10" : ""
                 }`}
               >
                 <TokenIcon
                   src={getLogoPath(asset)}
                   alt={asset}
-                  width={20}
-                  height={20}
+                  width={14}
+                  height={14}
                   className="rounded-full flex-shrink-0"
                 />
                 <span className="text-[#1E4775] font-medium">{asset}</span>

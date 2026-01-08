@@ -1,5 +1,6 @@
 import { Address, BigDecimal, BigInt, Bytes, dataSource, ethereum } from "@graphprotocol/graph-ts";
 import { Deposit, Withdraw, GenesisEnds, Genesis, EndGenesisCall } from "../generated/SailGenesis_ETH_fxUSD/Genesis";
+import { ERC20 } from "../generated/SailGenesis_ETH_fxUSD/ERC20";
 import { WrappedPriceOracle } from "../generated/SailGenesis_ETH_fxUSD/WrappedPriceOracle";
 import { ChainlinkAggregator } from "../generated/SailGenesis_ETH_fxUSD/ChainlinkAggregator";
 import { GenesisEnd, SailGenesisTotals, SailGenesisUser, UserList, UserSailPosition, CostBasisLot } from "../generated/schema";
@@ -276,9 +277,19 @@ function finalizeGenesisLots(
   const leveragedToken = getLeveragedToken(genesis);
   if (leveragedToken.equals(Address.zero())) return;
 
+  // Some genesis deployments do not expose totalLeveragedAtGenesisEnd() as a callable getter.
+  // Prefer it if it exists; otherwise fall back to leveraged token totalSupply at the genesis-end block.
+  let totalLeveragedAtEnd = ZERO_BI;
   const totalLevRes = genesis.try_totalLeveragedAtGenesisEnd();
-  if (totalLevRes.reverted) return;
-  const totalLeveragedAtEnd = totalLevRes.value;
+  if (!totalLevRes.reverted) {
+    totalLeveragedAtEnd = totalLevRes.value;
+  }
+  if (totalLeveragedAtEnd.le(ZERO_BI)) {
+    const token = ERC20.bind(leveragedToken);
+    const tsRes = token.try_totalSupply();
+    if (tsRes.reverted) return;
+    totalLeveragedAtEnd = tsRes.value;
+  }
   if (totalLeveragedAtEnd.le(ZERO_BI)) return;
 
   // Mark genesis end entity (used elsewhere in this subgraph) exactly once.

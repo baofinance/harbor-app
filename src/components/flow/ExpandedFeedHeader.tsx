@@ -17,7 +17,7 @@ export function ExpandedFeedHeader({ expanded, onClose }: ExpandedFeedHeaderProp
   const feedLabel = feed?.label || "Feed";
 
   return (
-    <div className="bg-[#FF8A7A] border border-[#1E4775] p-4 mb-4 mt-4">
+    <div className="bg-[#FF8A7A] border border-[#1E4775] p-4 mb-2 mt-2">
       <div className="flex items-center justify-between">
         <h2 className="font-bold text-white text-lg">
           Details - {feedLabel}

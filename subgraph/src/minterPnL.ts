@@ -23,9 +23,7 @@ import {
   HourlyPriceSnapshot,
   PriceTracker,
   MinterHourlyTracker,
-  SailGenesisUser,
 } from "../generated/schema";
-import { Genesis } from "../generated/SailGenesis_ETH_fxUSD/Genesis";
 import { runDailyMarksUpdate } from "./dailyMarksUpdate";
 
 const ZERO_BI = BigInt.fromI32(0);
@@ -308,45 +306,8 @@ function createGenesisLot(
   lot.save();
 }
 
-function maybeApplyGenesisCostBasis(
-  minterAddress: Address,
-  token: Address,
-  user: Address,
-  timestamp: BigInt,
-  blockNumber: BigInt,
-  txHash: Bytes
-): void {
-  const genesisAddress = getGenesisAddressForMinter(minterAddress);
-  if (genesisAddress.equals(Address.zero())) return;
-
-  // Genesis deposit tracking is handled in genesisPnL.ts via Deposit/Withdraw events.
-  const guId = genesisAddress.toHexString() + "-" + user.toHexString();
-  const gu = SailGenesisUser.load(guId);
-  if (gu == null) return;
-  if (gu.netDepositUSD.le(ZERO_BD)) return;
-
-  const position = getOrCreateUserPosition(token, user);
-  if (hasGenesisLot(position.id)) return;
-
-  // Read claimable leveraged amount once genesis has ended. If it's 0, just skip.
-  const genesis = Genesis.bind(genesisAddress);
-  const claimableRes = genesis.try_claimable(user);
-  if (claimableRes.reverted) return;
-  const leveragedAmount = claimableRes.value.getLeveragedAmount();
-  if (leveragedAmount.le(ZERO_BI)) return;
-
-  // Cost basis for hs tokens is 50% of genesis net deposit USD.
-  const costUSD = gu.netDepositUSD.times(BigDecimal.fromString("0.5"));
-  if (position.firstAcquiredAt.equals(ZERO_BI)) {
-    position.firstAcquiredAt = timestamp;
-  }
-  createGenesisLot(position, leveragedAmount, costUSD, timestamp, blockNumber, txHash);
-  position.totalTokensBought = position.totalTokensBought.plus(leveragedAmount);
-  position.totalSpentUSD = position.totalSpentUSD.plus(costUSD);
-  updateAggregates(position);
-  position.lastUpdated = timestamp;
-  position.save();
-}
+// Genesis cost basis lots are created by `genesisPnL.ts` at genesis end.
+// We intentionally do not attempt to apply genesis lots from minter handlers.
 
 export function handleBlock(block: ethereum.Block): void {
   // Daily marks snapshot update (price-at-the-time accumulation)
@@ -660,15 +621,7 @@ export function handleMintLeveragedToken(event: MintLeveragedToken): void {
     );
   }
 
-  // Apply genesis cost basis lazily (in case endGenesis event/call isn't indexed).
-  maybeApplyGenesisCostBasis(
-    minterAddress,
-    token,
-    receiver,
-    event.block.timestamp,
-    event.block.number,
-    event.transaction.hash
-  );
+  // Genesis cost basis lots are handled in `genesisPnL.ts`.
 
   const position = getOrCreateUserPosition(token, receiver);
   if (position.firstAcquiredAt.equals(ZERO_BI)) {
@@ -772,15 +725,7 @@ export function handleRedeemLeveragedToken(event: RedeemLeveragedToken): void {
     );
   }
 
-  // Apply genesis cost basis lazily (in case endGenesis event/call isn't indexed).
-  maybeApplyGenesisCostBasis(
-    minterAddress,
-    token,
-    sender,
-    event.block.timestamp,
-    event.block.number,
-    event.transaction.hash
-  );
+  // Genesis cost basis lots are handled in `genesisPnL.ts`.
 
   position.totalTokensSold = position.totalTokensSold.plus(leveragedBurned);
   position.totalReceivedUSD = position.totalReceivedUSD.plus(collateralValueUSD);
