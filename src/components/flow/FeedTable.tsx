@@ -472,8 +472,43 @@ export function FeedTable({
     ? `Voting unavailable: ${votesErrorMessage}`
     : undefined;
 
-  const totals = votesQuery.data?.totals ?? {};
-  const myAllocations = votesQuery.data?.allocations ?? {};
+  const canonicalizeFeedId = (feedId: string): string | null => {
+    const raw = String(feedId || "").trim();
+    const idx = raw.indexOf(":");
+    if (idx <= 0) return null;
+    const net = raw.slice(0, idx).trim().toLowerCase();
+    const addr = raw.slice(idx + 1).trim().toLowerCase();
+    if (!net || !addr) return null;
+    return `${net}:${addr}`;
+  };
+
+  const totals = useMemo(() => {
+    const raw = votesQuery.data?.totals ?? {};
+    const out: Record<string, number> = {};
+    for (const [k, v] of Object.entries(raw)) {
+      const canon = canonicalizeFeedId(k);
+      if (!canon) continue;
+      const n = Number(v);
+      if (!Number.isFinite(n)) continue;
+      // totals can safely accumulate if the same feedId appears with different casing
+      out[canon] = (out[canon] ?? 0) + n;
+    }
+    return out;
+  }, [votesQuery.data?.totals]);
+
+  const myAllocations = useMemo(() => {
+    const raw = votesQuery.data?.allocations ?? {};
+    const out: Record<string, number> = {};
+    for (const [k, v] of Object.entries(raw)) {
+      const canon = canonicalizeFeedId(k);
+      if (!canon) continue;
+      const n = Number(v);
+      if (!Number.isFinite(n)) continue;
+      // If the same feedId appears multiple ways, keep the max allocation.
+      out[canon] = Math.max(out[canon] ?? 0, n);
+    }
+    return out;
+  }, [votesQuery.data?.allocations]);
 
   const activeFeedIdSet = useMemo(() => {
     const set = new Set<string>();

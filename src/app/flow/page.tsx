@@ -70,6 +70,27 @@ export default function FlowPage() {
   });
 
   const myAllocations = votesQuery.data?.allocations ?? {};
+  const canonicalizeFeedId = (feedId: string): string | null => {
+    const raw = String(feedId || "").trim();
+    const idx = raw.indexOf(":");
+    if (idx <= 0) return null;
+    const net = raw.slice(0, idx).trim().toLowerCase();
+    const addr = raw.slice(idx + 1).trim().toLowerCase();
+    if (!net || !addr) return null;
+    return `${net}:${addr}`;
+  };
+
+  const myAllocationsCanonical = useMemo(() => {
+    const out: Record<string, number> = {};
+    for (const [k, v] of Object.entries(myAllocations)) {
+      const canon = canonicalizeFeedId(k);
+      if (!canon) continue;
+      const n = Number(v);
+      if (!Number.isFinite(n)) continue;
+      out[canon] = Math.max(out[canon] ?? 0, n);
+    }
+    return out;
+  }, [myAllocations]);
   const activeFeedIdSet = useMemo(() => {
     const set = new Set<string>();
     for (const f of allFeeds) {
@@ -84,12 +105,12 @@ export default function FlowPage() {
   const usedPoints = useMemo(() => {
     // Only count votes for non-active feeds (active markets are not votable).
     let sum = 0;
-    for (const [feedId, v] of Object.entries(myAllocations)) {
+    for (const [feedId, v] of Object.entries(myAllocationsCanonical)) {
       if (activeFeedIdSet.has(feedId)) continue;
       sum += Number.isFinite(v) ? v : 0;
     }
     return sum;
-  }, [myAllocations, activeFeedIdSet]);
+  }, [myAllocationsCanonical, activeFeedIdSet]);
 
   // No default expansion - users must manually expand feeds
 
