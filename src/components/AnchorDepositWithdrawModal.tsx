@@ -1930,6 +1930,29 @@ export const AnchorDepositWithdrawModal = ({
     ? anvilPeggedBalanceResult.data
     : wagmiPeggedBalanceResult.data;
 
+  // Set default selection to ha token when user has ha tokens in wallet
+  useEffect(() => {
+    if (
+      isOpen &&
+      activeTab === "deposit" &&
+      simpleMode &&
+      !selectedDepositAsset &&
+      peggedTokenSymbol &&
+      peggedBalanceData !== undefined &&
+      peggedBalanceData !== null &&
+      peggedBalanceData > 0n
+    ) {
+      setSelectedDepositAsset(peggedTokenSymbol);
+    }
+  }, [
+    isOpen,
+    activeTab,
+    simpleMode,
+    selectedDepositAsset,
+    peggedTokenSymbol,
+    peggedBalanceData,
+  ]);
+
   // Get stability pool balances for withdraw
   const collateralPoolAddress = selectedMarket?.addresses
     ?.stabilityPoolCollateral as `0x${string}` | undefined;

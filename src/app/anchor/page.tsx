@@ -3174,8 +3174,301 @@ export default function AnchorPage() {
             );
           })()}
 
+          {/* Wallet Positions Not Earning Yield */}
+          {(() => {
+            if (!isConnected || !address) return null;
+
+            // Group markets by ha token address to find wallet positions not in pools
+            const walletPositionsByToken = new Map<
+              string,
+              {
+                tokenAddress: string;
+                symbol: string;
+                balance: bigint;
+                balanceUSD: number;
+                markets: Array<{ marketId: string; market: any; marketData: (typeof allMarketsData)[0] }>;
+              }
+            >();
+
+            // Iterate through all markets to find wallet positions
+            allMarketsData.forEach((marketData) => {
+              const peggedTokenAddress = (marketData.market as any)?.addresses?.peggedToken as string | undefined;
+              if (!peggedTokenAddress) return;
+
+              const tokenAddressLower = peggedTokenAddress.toLowerCase();
+              const walletBalance = marketData.userDeposit || 0n;
+              const walletBalanceUSD = marketData.haTokenBalanceUSD || 0;
+
+              // Include if wallet has balance (regardless of pool deposits - they are separate)
+              if (walletBalance > 0n) {
+                if (!walletPositionsByToken.has(tokenAddressLower)) {
+                  walletPositionsByToken.set(tokenAddressLower, {
+                    tokenAddress: peggedTokenAddress,
+                    symbol: marketData.market?.peggedToken?.symbol || "ha",
+                    balance: walletBalance,
+                    balanceUSD: walletBalanceUSD,
+                    markets: [],
+                  });
+                }
+                const position = walletPositionsByToken.get(tokenAddressLower)!;
+                position.markets.push({
+                  marketId: marketData.marketId,
+                  market: marketData.market,
+                  marketData,
+                });
+                // Use the highest balance/USD value (should be same across markets for same token)
+                if (walletBalanceUSD > position.balanceUSD) {
+                  position.balanceUSD = walletBalanceUSD;
+                }
+              }
+            });
+
+            if (walletPositionsByToken.size === 0) return null;
+
+            return (
+              <section className="mb-4">
+                <div className="space-y-2">
+                  {/* Header with coral tag */}
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="bg-[#FF8A7A] text-white text-xs font-medium uppercase tracking-wider px-2 py-1">
+                      You have anchor tokens that aren't earning yield
+                    </span>
+                  </div>
+
+                  {/* Token positions */}
+                  {Array.from(walletPositionsByToken.values()).map((position) => {
+                    const firstMarket = position.markets[0];
+                    const marketData = firstMarket.marketData;
+
+                    return (
+                      <div
+                        key={position.tokenAddress}
+                        className="bg-white border border-[#1E4775]/10 p-3 hover:bg-[rgb(var(--surface-selected-rgb))] transition-colors"
+                      >
+                        {/* Desktop layout (>= lg) - matches market bars grid */}
+                        <div className="hidden lg:grid grid-cols-[1fr_1fr_1fr_1fr_1fr_1fr_1fr] gap-4 items-center text-sm">
+                          {/* Token */}
+                          <div className="whitespace-nowrap min-w-0 overflow-hidden">
+                            <div className="flex items-center justify-center gap-1.5">
+                              <SimpleTooltip label={position.symbol}>
+                                <Image
+                                  src={getLogoPath(position.symbol)}
+                                  alt={position.symbol}
+                                  width={20}
+                                  height={20}
+                                  className="flex-shrink-0 cursor-help"
+                                />
+                              </SimpleTooltip>
+                              <span className="text-[#1E4775] font-medium text-sm lg:text-base">
+                                {position.symbol}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Deposit Assets - Info text */}
+                          <div className="text-center min-w-0">
+                            <span className="text-xs text-[#1E4775]/60 whitespace-nowrap">
+                              Deposit in a stability pool to earn yield
+                            </span>
+                          </div>
+
+                          {/* APR - empty */}
+                          <div></div>
+
+                          {/* Earnings - empty */}
+                          <div></div>
+
+                          {/* Reward Assets - empty */}
+                          <div></div>
+
+                          {/* Position */}
+                          <div className="text-center min-w-0">
+                            <span className="text-[#1E4775] font-medium text-xs font-mono">
+                              {formatToken(position.balance)} {position.symbol} ({formatCompactUSD(position.balanceUSD)})
+                            </span>
+                          </div>
+
+                          {/* Actions */}
+                          <div
+                            className="text-center min-w-0 flex items-center justify-center gap-1.5 pr-2"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const enrichedMarkets = position.markets.map((m) => ({
+                                  marketId: m.marketId,
+                                  market: {
+                                    ...m.market,
+                                    wrappedRate: m.marketData?.wrappedRate,
+                                  },
+                                }));
+                                setManageModal({
+                                  marketId: firstMarket.marketId,
+                                  market: {
+                                    ...firstMarket.market,
+                                    wrappedRate: marketData?.wrappedRate,
+                                  },
+                                  initialTab: "deposit",
+                                  simpleMode: true,
+                                  bestPoolType: "collateral",
+                                  allMarkets: enrichedMarkets,
+                                });
+                              }}
+                              className="px-3 py-1.5 text-xs font-medium bg-[#1E4775] text-white hover:bg-[#17395F] transition-colors rounded-full whitespace-nowrap"
+                            >
+                              Deposit
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Medium/narrow layout (md to < lg) - matches market bars grid */}
+                        <div className="hidden md:grid lg:hidden grid-cols-[1fr_1fr_1fr_1fr] gap-4 items-center text-sm">
+                          {/* Token */}
+                          <div className="whitespace-nowrap min-w-0 overflow-hidden">
+                            <div className="flex items-center justify-center gap-1.5">
+                              <SimpleTooltip label={position.symbol}>
+                                <Image
+                                  src={getLogoPath(position.symbol)}
+                                  alt={position.symbol}
+                                  width={20}
+                                  height={20}
+                                  className="flex-shrink-0 cursor-help"
+                                />
+                              </SimpleTooltip>
+                              <span className="text-[#1E4775] font-medium text-sm">
+                                {position.symbol}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* APR - Info text */}
+                          <div className="text-center min-w-0">
+                            <span className="text-xs text-[#1E4775]/60 whitespace-nowrap">
+                              Deposit in a stability pool to earn yield
+                            </span>
+                          </div>
+
+                          {/* Position */}
+                          <div className="text-center min-w-0">
+                            <span className="text-[#1E4775] font-medium text-xs font-mono">
+                              {formatToken(position.balance)} {position.symbol} ({formatCompactUSD(position.balanceUSD)})
+                            </span>
+                          </div>
+
+                          {/* Actions */}
+                          <div
+                            className="text-center min-w-0 flex items-center justify-center gap-1.5 pr-2"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const enrichedMarkets = position.markets.map((m) => ({
+                                  marketId: m.marketId,
+                                  market: {
+                                    ...m.market,
+                                    wrappedRate: m.marketData?.wrappedRate,
+                                  },
+                                }));
+                                setManageModal({
+                                  marketId: firstMarket.marketId,
+                                  market: {
+                                    ...firstMarket.market,
+                                    wrappedRate: marketData?.wrappedRate,
+                                  },
+                                  initialTab: "deposit",
+                                  simpleMode: true,
+                                  bestPoolType: "collateral",
+                                  allMarkets: enrichedMarkets,
+                                });
+                              }}
+                              className="px-3 py-1.5 text-xs font-medium bg-[#1E4775] text-white hover:bg-[#17395F] transition-colors rounded-full whitespace-nowrap"
+                            >
+                              Deposit
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Mobile layout (< md) */}
+                        <div className="md:hidden space-y-2">
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-2 min-w-0 flex-1">
+                              <SimpleTooltip label={position.symbol}>
+                                <Image
+                                  src={getLogoPath(position.symbol)}
+                                  alt={position.symbol}
+                                  width={20}
+                                  height={20}
+                                  className="flex-shrink-0 cursor-help"
+                                />
+                              </SimpleTooltip>
+                              <span className="text-[#1E4775] font-medium text-sm truncate">
+                                {position.symbol}
+                              </span>
+                              <span className="text-xs text-[#1E4775]/60 hidden sm:inline ml-2 whitespace-nowrap">
+                                Deposit in a stability pool to earn yield
+                              </span>
+                            </div>
+                            <div
+                              className="flex items-center justify-end flex-shrink-0"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const enrichedMarkets = position.markets.map((m) => ({
+                                    marketId: m.marketId,
+                                    market: {
+                                      ...m.market,
+                                      wrappedRate: m.marketData?.wrappedRate,
+                                    },
+                                  }));
+                                  setManageModal({
+                                    marketId: firstMarket.marketId,
+                                    market: {
+                                      ...firstMarket.market,
+                                      wrappedRate: marketData?.wrappedRate,
+                                    },
+                                    initialTab: "deposit",
+                                    simpleMode: true,
+                                    bestPoolType: "collateral",
+                                    allMarkets: enrichedMarkets,
+                                  });
+                                }}
+                                className="px-3 py-1.5 text-xs font-medium bg-[#1E4775] text-white hover:bg-[#17395F] transition-colors rounded-full whitespace-nowrap"
+                              >
+                                Deposit
+                              </button>
+                            </div>
+                          </div>
+                          <div className="text-xs text-[#1E4775]/60">
+                            {formatToken(position.balance)} {position.symbol} ({formatCompactUSD(position.balanceUSD)})
+                          </div>
+                          <div className="text-xs text-[#1E4775]/60 sm:hidden">
+                            Deposit in a stability pool to earn yield
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Separator bar */}
+                <div className="border-t border-white/10 mt-4"></div>
+              </section>
+            );
+          })()}
+
           {/* Markets List */}
           <section className="space-y-2 overflow-visible">
+            {/* Stability Pools Header */}
+            <div className="mb-3">
+              <h2 className="text-xs font-medium text-white/70 uppercase tracking-wider">
+                Stability Pools
+              </h2>
+            </div>
+
             {/* Market Cards/Rows */}
             {(() => {
               // Check if any markets have finished genesis (marketsDataMap only contains finished markets)
@@ -3252,40 +3545,19 @@ export default function AnchorPage() {
                   return null;
                 }
 
-                // Calculate combined values
-                // Track ha token addresses to avoid double-counting wallet balances
-                // (multiple markets can share the same ha token, e.g., btc-fxusd and btc-steth both use haBTC)
-                const haTokenAddressesSeen = new Set<string>();
+                // Calculate combined values - only include stability pool deposits (not wallet balances)
                 const combinedPositionUSD = activeMarketsData.reduce(
                   (sum, m) => {
-                    let marketSum = m.collateralPoolDepositUSD + m.sailPoolDepositUSD;
-                    
-                    // Only count haTokenBalanceUSD once per unique ha token address
-                    const peggedTokenAddress = (m.market as any)?.addresses?.peggedToken as string | undefined;
-                    if (peggedTokenAddress && !haTokenAddressesSeen.has(peggedTokenAddress.toLowerCase())) {
-                      haTokenAddressesSeen.add(peggedTokenAddress.toLowerCase());
-                      marketSum += m.haTokenBalanceUSD;
-                      // Debug: Log frontend position USD for comparison with subgraph
-                      if (m.haTokenBalanceUSD > 0) {
-                        console.log(`[AnchorPage] Frontend haTokenBalanceUSD for token ${peggedTokenAddress}: $${m.haTokenBalanceUSD.toFixed(4)} (market: ${m.marketId})`);
-                      }
-                    }
-                    
-                    return sum + marketSum;
+                    return sum + m.collateralPoolDepositUSD + m.sailPoolDepositUSD;
                   },
                   0
                 );
-                // Debug: Log total combined position USD
-                if (combinedPositionUSD > 0) {
-                  console.log(`[AnchorPage] Combined position USD: $${combinedPositionUSD.toFixed(4)}`);
-                }
-                // Also track total token amounts (for display when USD isn't available)
+                // Also track total token amounts (for display when USD isn't available) - only pool deposits
                 const combinedPositionTokens = activeMarketsData.reduce(
                   (sum, m) =>
                     sum +
                     Number(m.collateralPoolDeposit || 0n) / 1e18 +
-                    Number(m.sailPoolDeposit || 0n) / 1e18 +
-                    Number(m.userDeposit || 0n) / 1e18,
+                    Number(m.sailPoolDeposit || 0n) / 1e18,
                   0
                 );
                 const combinedRewardsUSD = activeMarketsData.reduce(
@@ -4101,14 +4373,9 @@ export default function AnchorPage() {
                       <div className="bg-[rgb(var(--surface-selected-rgb))] p-4 border-t border-white/20">
                         {/* Consolidated Your Positions - shown once for the group */}
                         {(() => {
-                          // Aggregate positions across all markets in this group
-                          // ha token balance is the same for all markets (same token)
-                          const firstMarket = activeMarketsData[0];
-                          const haTokenBalance = firstMarket?.userDeposit;
-                          const haTokenBalanceUSD =
-                            firstMarket?.haTokenBalanceUSD || 0;
+                          // Aggregate pool deposits across all markets (wallet balances shown in separate section)
                           const haSymbol =
-                            firstMarket?.market?.peggedToken?.symbol || "ha";
+                            activeMarketsData[0]?.market?.peggedToken?.symbol || "ha";
 
                           // Aggregate pool deposits across all markets
                           let totalCollateralPoolDeposit = 0n;
@@ -4147,10 +4414,8 @@ export default function AnchorPage() {
                           });
 
                           const hasGroupPositions =
-                            haTokenBalanceUSD > 0 ||
                             totalCollateralPoolDepositUSD > 0 ||
                             totalSailPoolDepositUSD > 0 ||
-                            (haTokenBalance && haTokenBalance > 0n) ||
                             totalCollateralPoolDeposit > 0n ||
                             totalSailPoolDeposit > 0n;
 
@@ -4312,33 +4577,13 @@ export default function AnchorPage() {
                                 </div>
                               )}
 
-                              {/* Your Positions - consolidated */}
+                              {/* Your Positions - consolidated (only stability pool deposits) */}
                               {hasGroupPositions && (
                                 <div className="bg-white border border-[#1E4775]/10 shadow-sm p-3 space-y-2">
                                   <div className="text-[10px] text-[#1E4775]/70 font-semibold uppercase tracking-wide">
                                     Your Positions
                                   </div>
                                   <div className="space-y-2">
-                                    {/* ha Tokens in Wallet */}
-                                    {haTokenBalance && haTokenBalance > 0n && (
-                                      <div className="flex justify-between items-center text-xs">
-                                        <span className="text-[#1E4775]/70">
-                                          In Wallet:
-                                        </span>
-                                        <div className="text-right">
-                                          <div className="font-semibold text-[#1E4775] font-mono">
-                                            {formatCompactUSD(
-                                              haTokenBalanceUSD
-                                            )}
-                                          </div>
-                                          <div className="text-[10px] text-[#1E4775]/50 font-mono">
-                                            {formatToken(haTokenBalance)}{" "}
-                                            {haSymbol}
-                                          </div>
-                                        </div>
-                                      </div>
-                                    )}
-
                                     {/* Collateral Pool Deposit - aggregated */}
                                     {totalCollateralPoolDeposit > 0n && (
                                       <div className="flex justify-between items-center text-xs">
