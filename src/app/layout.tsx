@@ -43,7 +43,7 @@ export const metadata: Metadata = {
  siteName: title,
  images: [
  {
- url:"/demo.png",
+ url: `${siteUrl}/logowhitenobg.png`,
  width: 1200,
  height: 630,
  alt: description,
@@ -55,9 +55,9 @@ export const metadata: Metadata = {
  card:"summary_large_image",
  title,
  description,
- creator:"@HarborFi",
- site:"@HarborFi",
- images: [`${siteUrl}/demo.png`],
+ creator:"@0xHarborFi",
+ site:"@0xHarborFi",
+ images: [`${siteUrl}/logowhitenobg.png`],
  },
  alternates: {
  canonical: siteUrl,
