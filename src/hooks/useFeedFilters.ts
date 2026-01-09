@@ -15,16 +15,21 @@ type FeedWithMetadata = FeedEntry & {
   baseAsset: string;
 };
 
+export type StatusFilter = "all" | "active" | "available";
+
 export function useFeedFilters() {
   const [expanded, setExpanded] = useState<ExpandedState>(null);
   const [selectedNetwork, setSelectedNetwork] = useState<Network | null>(null);
-  const [selectedBaseAsset, setSelectedBaseAsset] = useState<string | null>(null);
+  const [selectedBaseAsset, setSelectedBaseAsset] = useState<string | null>(
+    null
+  );
   const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("available");
 
   // Clear expanded view when filters change
   useEffect(() => {
     setExpanded(null);
-  }, [selectedNetwork, selectedBaseAsset, searchQuery]);
+  }, [selectedNetwork, selectedBaseAsset, searchQuery, statusFilter]);
 
   // Get all feeds with metadata
   const allFeeds = useMemo(() => {
@@ -32,7 +37,7 @@ export function useFeedFilters() {
     NETWORKS.forEach((network) => {
       const networkFeeds = feedsConfig[network];
       if (!networkFeeds) return;
-      
+
       Object.entries(networkFeeds).forEach(([baseAsset, feedEntries]) => {
         if (Array.isArray(feedEntries) && feedEntries.length > 0) {
           feedEntries.forEach((feed) => {
@@ -59,7 +64,9 @@ export function useFeedFilters() {
 
     // Filter by base asset
     if (selectedBaseAsset) {
-      filtered = filtered.filter((feed) => feed.baseAsset === selectedBaseAsset);
+      filtered = filtered.filter(
+        (feed) => feed.baseAsset === selectedBaseAsset
+      );
     }
 
     // Filter by search query (quote asset)
@@ -71,29 +78,35 @@ export function useFeedFilters() {
       });
     }
 
-    // Always limit to max 10 feeds
-    filtered = filtered.slice(0, 10);
+    // Filter by status
+    if (statusFilter !== "all") {
+      filtered = filtered.filter((feed) => {
+        const feedStatus = feed.status || "available";
+        return feedStatus === statusFilter;
+      });
+    }
 
     return filtered;
-  }, [allFeeds, selectedNetwork, selectedBaseAsset, searchQuery]);
+  }, [allFeeds, selectedNetwork, selectedBaseAsset, searchQuery, statusFilter]);
 
   // Get available base assets based on selected network
   const availableBaseAssets = useMemo(() => {
     const assets = new Set<string>();
     const networksToCheck = selectedNetwork ? [selectedNetwork] : NETWORKS;
-    
+
     networksToCheck.forEach((network) => {
       const networkFeeds = feedsConfig[network];
       if (!networkFeeds) return;
-      
+
       Object.keys(networkFeeds).forEach((baseAsset) => {
-        const feedEntries = networkFeeds[baseAsset as keyof typeof networkFeeds];
+        const feedEntries =
+          networkFeeds[baseAsset as keyof typeof networkFeeds];
         if (Array.isArray(feedEntries) && feedEntries.length > 0) {
           assets.add(baseAsset);
         }
       });
     });
-    
+
     return Array.from(assets).sort();
   }, [selectedNetwork]);
 
@@ -103,7 +116,12 @@ export function useFeedFilters() {
       return allFeeds.length;
     }
     return filteredFeeds.length;
-  }, [allFeeds.length, selectedNetwork, selectedBaseAsset, filteredFeeds.length]);
+  }, [
+    allFeeds.length,
+    selectedNetwork,
+    selectedBaseAsset,
+    filteredFeeds.length,
+  ]);
 
   return {
     expanded,
@@ -114,6 +132,8 @@ export function useFeedFilters() {
     setSelectedBaseAsset,
     searchQuery,
     setSearchQuery,
+    statusFilter,
+    setStatusFilter,
     allFeeds,
     filteredFeeds,
     availableBaseAssets,

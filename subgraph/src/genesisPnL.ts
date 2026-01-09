@@ -1,5 +1,6 @@
 import { Address, BigDecimal, BigInt, Bytes, dataSource, ethereum } from "@graphprotocol/graph-ts";
 import { Deposit, Withdraw, GenesisEnds, Genesis, EndGenesisCall } from "../generated/SailGenesis_ETH_fxUSD/Genesis";
+import { ERC20 } from "../generated/SailGenesis_ETH_fxUSD/ERC20";
 import { WrappedPriceOracle } from "../generated/SailGenesis_ETH_fxUSD/WrappedPriceOracle";
 import { ChainlinkAggregator } from "../generated/SailGenesis_ETH_fxUSD/ChainlinkAggregator";
 import { GenesisEnd, SailGenesisTotals, SailGenesisUser, UserList, UserSailPosition, CostBasisLot } from "../generated/schema";
@@ -72,15 +73,22 @@ function wrappedCollateralUsdPrice(genesisAddress: Address): BigDecimal {
     if (p.reverted) return ZERO_BD;
     const fxSaveEth = toE18(p.value);
     if (fxSaveEth.equals(ZERO_BD)) return ZERO_BD;
-    return fxSaveEth.times(chainlinkUsd(ETH_USD_FEED));
+    const pegUsd = isEthPegged(genesisStr) ? chainlinkUsd(ETH_USD_FEED) : chainlinkUsd(BTC_USD_FEED);
+    return fxSaveEth.times(pegUsd);
   }
 
   const ans = oracle.try_latestAnswer();
   if (ans.reverted) return ZERO_BD;
 
   const maxUnderlyingPrice = toE18(ans.value.value1);
-  const maxWrappedRate = toE18(ans.value.value3);
+  let maxWrappedRate = toE18(ans.value.value3);
   if (maxUnderlyingPrice.equals(ZERO_BD) || maxWrappedRate.equals(ZERO_BD)) return ZERO_BD;
+
+  // BTC/stETH market: treat genesis collateral amounts as underlying stETH units, not wstETH.
+  // So we should not apply the wrapped rate multiplier when valuing deposits.
+  if (genesisStr.toLowerCase() == "0xc64fc46eed431e92c1b5e24dc296b5985ce6cc00") {
+    maxWrappedRate = ONE_BD;
+  }
 
   const pegUsd = isEthPegged(genesisStr) ? chainlinkUsd(ETH_USD_FEED) : chainlinkUsd(BTC_USD_FEED);
   return maxUnderlyingPrice.times(maxWrappedRate).times(pegUsd);
@@ -276,9 +284,24 @@ function finalizeGenesisLots(
   const leveragedToken = getLeveragedToken(genesis);
   if (leveragedToken.equals(Address.zero())) return;
 
+  // Value collateral at genesis end (not at deposit times) to avoid drift due to price moves during genesis.
+  // This also makes the genesis cost basis consistent with the mint that happens at genesis end.
+  const collateralUsdAtEnd = wrappedCollateralUsdPrice(genesisAddress);
+  if (collateralUsdAtEnd.equals(ZERO_BD)) return;
+
+  // Some genesis deployments do not expose totalLeveragedAtGenesisEnd() as a callable getter.
+  // Prefer it if it exists; otherwise fall back to leveraged token totalSupply at the genesis-end block.
+  let totalLeveragedAtEnd = ZERO_BI;
   const totalLevRes = genesis.try_totalLeveragedAtGenesisEnd();
-  if (totalLevRes.reverted) return;
-  const totalLeveragedAtEnd = totalLevRes.value;
+  if (!totalLevRes.reverted) {
+    totalLeveragedAtEnd = totalLevRes.value;
+  }
+  if (totalLeveragedAtEnd.le(ZERO_BI)) {
+    const token = ERC20.bind(leveragedToken);
+    const tsRes = token.try_totalSupply();
+    if (tsRes.reverted) return;
+    totalLeveragedAtEnd = tsRes.value;
+  }
   if (totalLeveragedAtEnd.le(ZERO_BI)) return;
 
   // Mark genesis end entity (used elsewhere in this subgraph) exactly once.
@@ -300,7 +323,6 @@ function finalizeGenesisLots(
     const gu = SailGenesisUser.load(guId);
     if (gu == null) continue;
     if (gu.netDeposit.le(ZERO_BI)) continue;
-    if (gu.netDepositUSD.le(ZERO_BD)) continue;
 
     const position = getOrCreateUserPosition(leveragedToken, user);
     if (hasGenesisLot(position.id)) continue;
@@ -310,7 +332,9 @@ function finalizeGenesisLots(
     const userLeveraged = totalLeveragedAtEnd.times(gu.netDeposit).div(totals.totalNetDeposit);
     if (userLeveraged.le(ZERO_BI)) continue;
 
-    const costUSD = gu.netDepositUSD.times(GENESIS_RATIO);
+    // Cost basis for hs tokens is 50% of the user's net collateral deposit valued at genesis end.
+    const userDepositUsdAtEnd = toE18(gu.netDeposit).times(collateralUsdAtEnd);
+    const costUSD = userDepositUsdAtEnd.times(GENESIS_RATIO);
     if (position.firstAcquiredAt.equals(ZERO_BI)) position.firstAcquiredAt = ts;
 
     createGenesisLot(position, userLeveraged, costUSD, ts, blockNumber, txHash);

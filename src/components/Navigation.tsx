@@ -148,11 +148,11 @@ export default function Example() {
           <div className="flex items-center justify-center mb-4 flex-shrink-0">
             <WalletButton />
           </div>
-          <div className="flex flex-col items-center justify-center space-y-2.5 py-2">
+          <div className="flex flex-col w-full items-stretch justify-center space-y-2.5 py-2">
             <DisclosureButton
               as={Link}
               href="/genesis"
-              className={`w-full max-w-sm px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 text-center ${
+              className={`block w-full max-w-sm mx-auto px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 text-center ${
                 isActive("/genesis")
                   ? "text-[#1E4775] bg-white"
                   : "text-white bg-white/10 hover:bg-white/20"
@@ -164,7 +164,7 @@ export default function Example() {
             <DisclosureButton
               as={Link}
               href="/anchor"
-              className={`w-full max-w-sm px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 text-center ${
+              className={`block w-full max-w-sm mx-auto px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 text-center ${
                 isActive("/anchor")
                   ? "text-[#1E4775] bg-white"
                   : "text-white bg-white/10 hover:bg-white/20"
@@ -176,7 +176,7 @@ export default function Example() {
             <DisclosureButton
               as={Link}
               href="/sail"
-              className={`w-full max-w-sm px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 text-center ${
+              className={`block w-full max-w-sm mx-auto px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 text-center ${
                 isActive("/sail")
                   ? "text-[#1E4775] bg-white"
                   : "text-white bg-white/10 hover:bg-white/20"
@@ -188,7 +188,7 @@ export default function Example() {
             <DisclosureButton
               as={Link}
               href="/flow"
-              className={`w-full max-w-sm px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 text-center ${
+              className={`block w-full max-w-sm mx-auto px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 text-center ${
                 isActive("/flow")
                   ? "text-[#1E4775] bg-white"
                   : "text-white bg-white/10 hover:bg-white/20"
@@ -200,7 +200,7 @@ export default function Example() {
             <DisclosureButton
               as={Link}
               href="/ledger-marks"
-              className={`w-full max-w-sm px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 text-center ${
+              className={`block w-full max-w-sm mx-auto px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 text-center ${
                 isActive("/ledger-marks")
                   ? "text-[#1E4775] bg-white"
                   : "text-white bg-white/10 hover:bg-white/20"
@@ -212,7 +212,7 @@ export default function Example() {
             <DisclosureButton
               as={Link}
               href="/transparency"
-              className={`w-full max-w-sm px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 text-center ${
+              className={`block w-full max-w-sm mx-auto px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 text-center ${
                 isActive("/transparency")
                   ? "text-[#1E4775] bg-white"
                   : "text-white bg-white/10 hover:bg-white/20"
@@ -225,7 +225,7 @@ export default function Example() {
               href="https://docs.harborfinance.io/"
               target="_blank"
               rel="noopener noreferrer"
-              className="w-full max-w-sm px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 text-white bg-white/10 hover:bg-white/20 text-center"
+              className="block w-full max-w-sm mx-auto px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 text-white bg-white/10 hover:bg-white/20 text-center"
             >
               Docs
             </a>

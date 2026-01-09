@@ -1,26 +1,28 @@
 "use client";
 
-import React from "react";
+import React, { useMemo } from "react";
 import Head from "next/head";
-import { usePublicClient } from "wagmi";
+import { usePublicClient, useAccount } from "wagmi";
+import { useQuery } from "@tanstack/react-query";
 import {
   MapIcon,
   ChartBarIcon,
-  CpuChipIcon,
+  HandRaisedIcon,
   InformationCircleIcon,
   MagnifyingGlassIcon,
   Bars3Icon,
 } from "@heroicons/react/24/outline";
-import { FeedDetails } from "@/components/flow/FeedDetails";
-import { ExpandedFeedHeader } from "@/components/flow/ExpandedFeedHeader";
 import { FeatureBox } from "@/components/flow/FeatureBox";
 import { ChainDropdown } from "@/components/flow/ChainDropdown";
 import { BaseAssetDropdown } from "@/components/flow/BaseAssetDropdown";
 import { FeedTable } from "@/components/flow/FeedTable";
 import { useFeedFilters } from "@/hooks/useFeedFilters";
+import { buildFeedId } from "@/lib/votesStore";
+import { VOTE_POINTS_MAX } from "@/lib/votesTypedData";
 
 export default function FlowPage() {
   const publicClient = usePublicClient();
+  const { address } = useAccount();
   const {
     expanded,
     setExpanded,
@@ -30,10 +32,87 @@ export default function FlowPage() {
     setSelectedBaseAsset,
     searchQuery,
     setSearchQuery,
+    statusFilter,
+    setStatusFilter,
+    allFeeds,
     filteredFeeds,
     availableBaseAssets,
     totalFeedCount,
   } = useFeedFilters();
+
+  // Votes query for the votes used display
+  const allFeedIds = useMemo(() => {
+    return filteredFeeds.map((f) => buildFeedId(f.network, f.address));
+  }, [filteredFeeds]);
+
+  const votesQuery = useQuery({
+    queryKey: ["maproomVotes", allFeedIds.join(","), address ?? ""],
+    queryFn: async () => {
+      const qs = new URLSearchParams();
+      qs.set("feedIds", allFeedIds.join(","));
+      if (address) qs.set("address", address);
+      const res = await fetch(`/api/votes?${qs.toString()}`, {
+        cache: "no-store",
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        // Staging/preview may not have persistent votes storage configured. Treat as "voting unavailable".
+        const msg = String(json?.error || "Failed to load votes");
+        throw new Error(msg);
+      }
+      return json as {
+        totals: Record<string, number>;
+        allocations?: Record<string, number>;
+      };
+    },
+    enabled: allFeedIds.length > 0,
+    staleTime: 15_000,
+  });
+
+  const myAllocations = votesQuery.data?.allocations ?? {};
+  const canonicalizeFeedId = (feedId: string): string | null => {
+    const raw = String(feedId || "").trim();
+    const idx = raw.indexOf(":");
+    if (idx <= 0) return null;
+    const net = raw.slice(0, idx).trim().toLowerCase();
+    const addr = raw.slice(idx + 1).trim().toLowerCase();
+    if (!net || !addr) return null;
+    return `${net}:${addr}`;
+  };
+
+  const myAllocationsCanonical = useMemo(() => {
+    const out: Record<string, number> = {};
+    for (const [k, v] of Object.entries(myAllocations)) {
+      const canon = canonicalizeFeedId(k);
+      if (!canon) continue;
+      const n = Number(v);
+      if (!Number.isFinite(n)) continue;
+      out[canon] = Math.max(out[canon] ?? 0, n);
+    }
+    return out;
+  }, [myAllocations]);
+  const activeFeedIdSet = useMemo(() => {
+    const set = new Set<string>();
+    for (const f of allFeeds) {
+      const status = f.status || "available";
+      if (status === "active") {
+        set.add(buildFeedId(f.network, f.address));
+      }
+    }
+    return set;
+  }, [allFeeds]);
+
+  const usedPoints = useMemo(() => {
+    // Only count votes for non-active feeds (active markets are not votable).
+    let sum = 0;
+    for (const [feedId, v] of Object.entries(myAllocationsCanonical)) {
+      if (activeFeedIdSet.has(feedId)) continue;
+      sum += Number.isFinite(v) ? v : 0;
+    }
+    return sum;
+  }, [myAllocationsCanonical, activeFeedIdSet]);
+
+  // No default expansion - users must manually expand feeds
 
   return (
     <>
@@ -45,7 +124,7 @@ export default function FlowPage() {
           {/* Header */}
           <div className="mb-2">
             <div className="p-2 flex items-center justify-center mb-0">
-              <h1 className="font-bold font-mono text-white text-7xl text-center">
+              <h1 className="font-bold font-mono text-white text-5xl sm:text-6xl md:text-7xl text-center">
                 Map Room
               </h1>
             </div>
@@ -55,6 +134,19 @@ export default function FlowPage() {
               </p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
+              <div className="bg-[#FF8A7A] p-4 sm:p-3 md:p-4 flex flex-col border border-[#1E4775]/10">
+                <div className="flex items-center justify-center mb-2">
+                  <HandRaisedIcon className="w-5 h-5 sm:w-4 sm:h-4 md:w-6 md:h-6 text-white mr-1.5 sm:mr-1 md:mr-2 flex-shrink-0" />
+                  <h2 className="font-bold text-white text-lg sm:text-sm md:text-base lg:text-lg text-center">
+                    Vote
+                  </h2>
+                </div>
+                <div className="flex-1 flex items-center">
+                  <p className="text-sm sm:text-xs md:text-sm text-white/90 text-center w-full">
+                    Vote for the markets you want to see go live next
+                  </p>
+                </div>
+              </div>
               <FeatureBox
                 icon={MapIcon}
                 title="Oracle Feeds"
@@ -66,18 +158,14 @@ export default function FlowPage() {
                 description="Real-time prices and market data from Chainlink oracles"
               />
               <FeatureBox
-                icon={CpuChipIcon}
-                title="Contract Rates"
-                description="Contract rates used for haTokens and stability pools"
-              />
-              <FeatureBox
                 icon={InformationCircleIcon}
                 title="Feed Details"
                 description={
                   <>
                     Detailed info about the feed:
                     <br />
-                    price, feed count, normalization, indexation & heartbeat windows
+                    price, feed count, normalization, indexation & heartbeat
+                    windows
                   </>
                 }
               />
@@ -87,14 +175,14 @@ export default function FlowPage() {
           {/* Divider */}
           <div className="border-t border-white/10 my-2"></div>
 
-          {/* Filters and Overview Section */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 mb-4 items-stretch">
-            {/* Filters Section - 3/4 width */}
-            <div className="md:col-span-2 lg:col-span-3 bg-white py-4 px-4 border border-[#1E4775]/10 flex flex-col justify-end">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Filters, Total Feeds, and Votes Box - All on one line */}
+          <div className="grid grid-cols-1 md:grid-cols-[4fr_1fr_1fr] gap-2 mb-2">
+            {/* Filters Section */}
+            <div className="bg-white py-1.5 px-2.5 border border-[#1E4775]/10">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-1.5">
                 {/* Chain Dropdown */}
                 <div>
-                  <label className="block text-xs text-[#1E4775]/60 mb-2 uppercase tracking-wider">
+                  <label className="block text-xs text-[#1E4775]/60 mb-1 uppercase tracking-wider font-medium text-center">
                     Chain
                   </label>
                   <ChainDropdown
@@ -105,7 +193,7 @@ export default function FlowPage() {
 
                 {/* Base Asset Dropdown */}
                 <div>
-                  <label className="block text-xs text-[#1E4775]/60 mb-2 uppercase tracking-wider">
+                  <label className="block text-xs text-[#1E4775]/60 mb-1 uppercase tracking-wider font-medium text-center">
                     Base Asset
                   </label>
                   <BaseAssetDropdown
@@ -117,72 +205,92 @@ export default function FlowPage() {
 
                 {/* Search */}
                 <div>
-                  <label className="block text-xs text-[#1E4775]/60 mb-2 uppercase tracking-wider">
+                  <label className="block text-xs text-[#1E4775]/60 mb-1 uppercase tracking-wider font-medium text-center">
                     Search Quote Asset
                   </label>
                   <div className="relative">
-                    <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-[#1E4775]/40" />
+                    <MagnifyingGlassIcon className="absolute left-2 top-1/2 transform -translate-y-1/2 w-3.5 h-3.5 text-[#1E4775]/40" />
                     <input
                       type="text"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       placeholder="Search by quote asset..."
-                      className="w-full pl-10 pr-4 py-2 border border-[#1E4775]/20 text-[#1E4775] focus:outline-none focus:ring-2 focus:ring-[#1E4775]/20"
+                      className="w-full pl-7 pr-2.5 py-1 text-xs border border-[#1E4775]/20 text-[#1E4775] focus:outline-none focus:ring-1 focus:ring-[#1E4775]/20"
                     />
                   </div>
                 </div>
+
+                {/* Status Filter */}
+                <div>
+                  <label className="block text-xs text-[#1E4775]/60 mb-1 uppercase tracking-wider font-medium text-center">
+                    Status
+                  </label>
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value as "all" | "active" | "available")}
+                    className="w-full px-2.5 py-1 text-xs border border-[#1E4775]/20 text-[#1E4775] bg-white focus:outline-none focus:ring-1 focus:ring-[#1E4775]/20"
+                  >
+                    <option value="all">All</option>
+                    <option value="active">Active</option>
+                    <option value="available">Available</option>
+                  </select>
+                </div>
               </div>
             </div>
-
-            {/* Total Feeds Section - 1/4 width */}
-            <div className="md:col-span-2 lg:col-span-1 bg-[#FF8A7A] border border-[#1E4775]/10 py-4 px-4 flex flex-col items-center justify-end">
-              <div className="flex items-center gap-2 mb-2">
-                <Bars3Icon className="w-5 h-5 text-white flex-shrink-0" />
-                <h3 className="font-bold text-white text-lg sm:text-sm md:text-base lg:text-lg text-center">
+            {/* Total Feeds Section */}
+            <div className="bg-[#FF8A7A] border border-[#1E4775]/10 py-3 px-3 flex flex-col items-center justify-center">
+              <div className="flex items-center gap-2 mb-1">
+                <Bars3Icon className="w-4 h-4 text-white flex-shrink-0" />
+                <h3 className="font-medium text-white text-xs uppercase tracking-wider text-center">
                   Total Feeds
                 </h3>
               </div>
-              <div className="flex-1 flex items-center justify-center">
-                <span className="text-2xl sm:text-xl md:text-3xl font-bold text-white font-mono text-center">
+              <div className="flex items-center justify-center">
+                <span className="text-base font-semibold text-white font-mono text-center">
                   {totalFeedCount}
                 </span>
               </div>
             </div>
+
+            {/* Votes Box */}
+            <div className="bg-white border border-[#1E4775]/10 py-3 px-3 flex flex-col items-center justify-center">
+              <div className="flex items-center gap-2 mb-1">
+                <h3 className="font-medium text-[#1E4775] text-xs uppercase tracking-wider text-center">
+                  Your Votes
+                </h3>
+              </div>
+              <div className="flex items-center justify-center">
+                <span className="font-mono font-semibold text-[#1E4775] text-base text-center">
+                  {usedPoints}/{VOTE_POINTS_MAX}
+                </span>
+              </div>
+              {votesQuery.isLoading && (
+                <div className="text-[10px] text-[#1E4775]/50 mt-1">
+                  Loading votes…
+                </div>
+              )}
+              {votesQuery.isError && (
+                <div className="text-[10px] text-red-600 mt-1">
+                  {String(
+                    (votesQuery.error as any)?.message || "Failed to load votes"
+                  )}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Feed Table */}
-          {/* Show feeds when filters are applied or when showing first 10 feeds */}
           {filteredFeeds.length > 0 && (
-            <>
-              <FeedTable
-                feeds={filteredFeeds}
-                publicClient={publicClient}
-                expanded={expanded}
-                setExpanded={setExpanded}
-              />
-              {/* Footnote - always show max 10 feeds limit */}
-              <div className="text-right mt-2">
-                <span className="text-xs text-white/60">max 10 feeds visible</span>
-              </div>
-            </>
+            <FeedTable
+              feeds={filteredFeeds}
+              allFeeds={allFeeds}
+              publicClient={publicClient}
+              expanded={expanded}
+              setExpanded={setExpanded}
+            />
           )}
 
-          {/* Detailed Feed Expansion */}
-          {expanded && (
-            <>
-              <ExpandedFeedHeader
-                expanded={expanded}
-                onClose={() => setExpanded(null)}
-              />
-              <FeedDetails
-                network={expanded.network}
-                token={expanded.token}
-                feedIndex={expanded.feedIndex}
-                publicClient={publicClient}
-                onClose={() => setExpanded(null)}
-              />
-            </>
-          )}
+          {/* Details render inline within the feed list when a row is expanded */}
         </main>
       </div>
     </>

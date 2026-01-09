@@ -30,6 +30,8 @@ export default function PriceChart({
    error: sailError,
  } = useSailPriceHistory({
  tokenAddress: leveragedTokenAddress || "",
+ genesisAddress: markets[marketId]?.addresses?.genesis as string | undefined,
+ sinceGenesisEnd: true,
  // Always fetch a wider window; the chart filters by timeRange relative to the latest datapoint.
  // This prevents 1D/1W from showing "no data" when the subgraph is behind real time.
  daysBack: 31,

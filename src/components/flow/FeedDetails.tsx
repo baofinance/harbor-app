@@ -303,7 +303,10 @@ interface FeedDetailsProps {
   token: string;
   feedIndex: number;
   publicClient: any;
-  onClose: () => void;
+  onClose?: () => void;
+  compact?: boolean;
+  compactOuterClassName?: string;
+  embedded?: boolean;
 }
 
 export function FeedDetails({
@@ -312,6 +315,9 @@ export function FeedDetails({
   feedIndex,
   publicClient,
   onClose,
+  compact = false,
+  compactOuterClassName,
+  embedded = false,
 }: FeedDetailsProps) {
   const networkFeeds = feeds[network as keyof typeof feeds];
   const feedEntries =
@@ -1237,10 +1243,165 @@ export function FeedDetails({
 
   if (!feed) return null;
 
+  if (compact) {
   return (
-    <section className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 mt-4">
+      <div className={compactOuterClassName ?? "bg-white border border-[#1E4775]/10 p-3"}>
+        <div className="flex items-center justify-between gap-2">
+          <div className="min-w-0">
+            <div className="text-[#1E4775] font-semibold text-sm truncate">
+              {feed.label}
+            </div>
+          </div>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <div className="text-right">
+              <div className="text-[#1E4775]/60 text-[10px] uppercase tracking-wider">
+                Price
+              </div>
+              <div className="text-[#1E4775] font-mono font-semibold">
+                {format18(price)}
+              </div>
+            </div>
+            {onClose && (
+              <button
+                onClick={onClose}
+                className="text-[#1E4775]/60 hover:text-[#1E4775] transition-colors"
+                aria-label="Close details"
+              >
+                <XMarkIcon className="w-5 h-5" />
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="mt-2 grid grid-cols-2 lg:grid-cols-4 gap-2 text-[10px]">
+          <div className="bg-[#1E4775]/5 p-2">
+            <div className="text-[#1E4775]/60">Min / Max</div>
+            <div className="text-[#1E4775] font-mono font-semibold">
+              {format18(latestAnswer?.[0])} / {format18(latestAnswer?.[1])}
+            </div>
+          </div>
+          <div className="bg-[#1E4775]/5 p-2">
+            <div className="text-[#1E4775]/60">Rate (min / max)</div>
+            <div className="text-[#1E4775] font-mono font-semibold">
+              {format18(latestAnswer?.[2])} / {format18(latestAnswer?.[3])}
+            </div>
+          </div>
+          <div className="bg-[#1E4775]/5 p-2 col-span-2 lg:col-span-2 min-w-0">
+            <div className="text-[#1E4775]/60">Contract</div>
+            <a
+              href={getExplorerUrl(feed.address, network)}
+              target="_blank"
+              rel="noreferrer"
+              className="text-[#1E4775] font-mono font-semibold hover:underline break-all"
+            >
+              {feed.address}
+              <ExternalLinkIcon />
+            </a>
+          </div>
+        </div>
+
+        {/* Feed Details Table (compact) */}
+        <div className="mt-2 bg-white border border-[#1E4775]/10 overflow-x-auto">
+          <table className="min-w-full text-left text-sm table-fixed">
+            <thead>
+              <tr className="border-b border-[#1E4775]/20 uppercase tracking-wider text-[10px] text-[#1E4775]/60">
+                <th className="py-2 px-3 font-normal">ID</th>
+                <th className="py-2 px-3 font-normal">Feed Name / Description</th>
+                <th className="py-2 px-3 font-normal">Feed Identifier</th>
+                {(isMultifeedNormalizedType || isMultifeedDivType) && (
+                  <th className="py-2 px-3 font-normal">Normalization Factor</th>
+                )}
+                {isMultifeedNormalizedType && (
+                  <th className="py-2 px-3 font-normal">Normalized Price</th>
+                )}
+                <th className="py-2 px-3 font-normal">Price</th>
+                <th className="py-2 px-3 font-normal">Heartbeat (seconds)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr className="border-t border-[#1E4775]/10">
+                  <td
+                    colSpan={isMultifeedNormalizedType ? 6 : isMultifeedDivType ? 5 : 4}
+                    className="py-3 px-3 text-[#1E4775]/60 text-xs"
+                  >
+                    Loading…
+                  </td>
+                </tr>
+              ) : feedTable.length === 0 ? (
+                <tr className="border-t border-[#1E4775]/10">
+                  <td
+                    colSpan={isMultifeedNormalizedType ? 6 : isMultifeedDivType ? 5 : 4}
+                    className="py-3 px-3 text-[#1E4775]/60 text-xs"
+                  >
+                    No feeds found.
+                  </td>
+                </tr>
+              ) : (
+                feedTable.map((row) => (
+                  <tr
+                    key={`${row.id}-${row.feed || row.name}`}
+                    className="border-t border-[#1E4775]/10"
+                  >
+                    <td className="py-2 px-3 text-[#1E4775]/70 font-mono text-xs">
+                      {row.id}
+                    </td>
+                    <td className="py-2 px-3 text-[#1E4775] text-xs">
+                      {row.name || "-"}
+                    </td>
+                    <td className="py-2 px-3 text-[#1E4775] font-mono text-xs break-all">
+                      {row.feed ? (
+                        <a
+                          href={getExplorerUrl(row.feed, network)}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="hover:underline"
+                        >
+                          {row.feed}
+                          <ExternalLinkIcon />
+                        </a>
+                      ) : (
+                        "-"
+                      )}
+                    </td>
+                    {(isMultifeedNormalizedType || isMultifeedDivType) && (
+                      <td className="py-2 px-3 text-[#1E4775] font-mono text-xs">
+                        {row.normFactor !== undefined ? row.normFactor.toString() : "-"}
+                      </td>
+                    )}
+                    {isMultifeedNormalizedType && (
+                      <td className="py-2 px-3 text-[#1E4775] font-mono text-xs">
+                        {row.normalizedPrice || "-"}
+                      </td>
+                    )}
+                    <td className="py-2 px-3 text-[#1E4775] font-mono text-xs">
+                      {row.price || "-"}
+                    </td>
+                    <td className="py-2 px-3 text-[#1E4775]/70 text-xs">
+                      {row.constraintA !== undefined
+                        ? formatHeartbeat(row.constraintA)
+                        : "-"}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  }
+
+  const boxBg = embedded ? "bg-[#1E4775]/5" : "bg-white";
+
+  return (
+    <section
+      className={`grid grid-cols-1 md:grid-cols-3 gap-3 ${
+        embedded ? "" : "mb-2 mt-2"
+      }`}
+    >
       {/* Price Display */}
-      <div className="md:col-span-2 bg-white p-4 border border-[#1E4775]/10">
+      <div className={`md:col-span-2 ${boxBg} p-3 border border-[#1E4775]/10`}>
         <div className="text-[#1E4775]/60 text-xs mb-1">
           {feed.label} - Price
           {((priceDivisor && priceDivisor > 1n) || (feed.divisor && feed.divisor > 1)) && (
@@ -1330,7 +1491,7 @@ export function FeedDetails({
       </div>
 
       {/* Latest Answer Display */}
-      <div className="bg-white p-4 border border-[#1E4775]/10">
+      <div className={`${boxBg} p-3 border border-[#1E4775]/10`}>
         <div className="text-[#1E4775]/60 text-xs mb-1">
           Latest oracle feed data
         </div>
@@ -1351,7 +1512,7 @@ export function FeedDetails({
       </div>
 
       {/* Contract Address */}
-      <div className="md:col-span-3 bg-white p-3 sm:p-4 border border-[#1E4775]/10">
+      <div className={`md:col-span-3 ${boxBg} p-3 border border-[#1E4775]/10`}>
         <div className="text-[#1E4775]/60 text-xs mb-1">Contract</div>
         <a
           href={getExplorerUrl(feed.address, network)}
@@ -1365,7 +1526,9 @@ export function FeedDetails({
       </div>
 
       {/* Feed Details Table */}
-      <div className="md:col-span-3 bg-white p-2 sm:p-3 lg:p-4 overflow-x-auto border border-[#1E4775]/10">
+      <div
+        className={`md:col-span-3 ${boxBg} p-3 overflow-x-auto border border-[#1E4775]/10`}
+      >
         <table className="min-w-full text-left text-sm table-fixed">
           <thead>
             <tr className="border-b border-[#1E4775]/20 uppercase tracking-wider text-[10px] text-[#1E4775]/60">

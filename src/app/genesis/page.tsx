@@ -1044,7 +1044,7 @@ export default function GenesisIndexPage() {
           {/* Title Row with Social Buttons */}
           <div className="p-4 flex items-center justify-between mb-0">
             <div className="hidden md:block w-[120px]" /> {/* Spacer for centering */}
-            <h1 className="font-bold font-mono text-white text-7xl text-center flex-1">
+            <h1 className="font-bold font-mono text-white text-5xl sm:text-6xl md:text-7xl text-center flex-1">
               Maiden Voyage
             </h1>
             {/* Compact Social Buttons */}

@@ -842,22 +842,6 @@ export function AnchorMarketExpandedView({
             </div>
           )}
 
-          {/* Naked ha Tokens in Wallet */}
-          <div className="flex justify-between items-center">
-            <span className="text-xs text-[#1E4775]/70">In Wallet:</span>
-            <div className="text-right">
-              <div className="text-sm font-bold text-[#1E4775] font-mono">
-                {formatCompactUSD(haTokenBalanceUSD)}
-              </div>
-              {haTokenBalance && haTokenBalance > 0n && (
-                <div className="text-xs text-[#1E4775]/70 font-mono">
-                  {formatToken(haTokenBalance)}
-                  {""}
-                  {market.peggedToken?.symbol || "ha"}
-                </div>
-              )}
-            </div>
-          </div>
         </div>
       </div>
 

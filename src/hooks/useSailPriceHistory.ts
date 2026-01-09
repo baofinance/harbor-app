@@ -6,7 +6,11 @@ import { getSailPriceGraphUrlOptional, getGraphHeaders } from "@/config/graph";
 
 // GraphQL query for sail token price history
 const PRICE_HISTORY_QUERY = `
-  query GetPriceHistory($tokenAddress: Bytes!, $since: BigInt!) {
+  query GetPriceHistory($tokenAddress: Bytes!, $since: BigInt!, $genesisId: ID) {
+    genesisEnd(id: $genesisId) {
+      timestamp
+    }
+
     sailTokenPricePoints(
       where: { tokenAddress: $tokenAddress, timestamp_gte: $since }
       orderBy: timestamp
@@ -68,12 +72,16 @@ interface PriceHistoryData {
 
 interface UseSailPriceHistoryOptions {
   tokenAddress: string;
+  genesisAddress?: string;
+  sinceGenesisEnd?: boolean;
   daysBack?: number; // How many days of history to fetch
   enabled?: boolean;
 }
 
 export function useSailPriceHistory({
   tokenAddress,
+  genesisAddress,
+  sinceGenesisEnd = true,
   daysBack = 30,
   enabled = true,
 }: UseSailPriceHistoryOptions): PriceHistoryData {
@@ -106,6 +114,7 @@ export function useSailPriceHistory({
           variables: {
             tokenAddress: tokenAddress.toLowerCase(),
             since: sinceTimestamp.toString(),
+            genesisId: genesisAddress ? genesisAddress.toLowerCase() : null,
           },
         }),
       });
@@ -123,7 +132,7 @@ export function useSailPriceHistory({
         throw new Error(`GraphQL errors: ${JSON.stringify(result.errors)}`);
       }
 
-      const pricePoints: PricePoint[] = (result.data?.sailTokenPricePoints || []).map(
+      const rawPricePoints: PricePoint[] = (result.data?.sailTokenPricePoints || []).map(
         (p: any) => ({
           timestamp: parseInt(p.timestamp),
           priceUSD: parseFloat(p.tokenPriceUSD),
@@ -132,7 +141,7 @@ export function useSailPriceHistory({
         })
       );
 
-      const hourlySnapshots: HourlySnapshot[] = (result.data?.hourlyPriceSnapshots || []).map(
+      const rawHourlySnapshots: HourlySnapshot[] = (result.data?.hourlyPriceSnapshots || []).map(
         (s: any) => ({
           timestamp: parseInt(s.hourTimestamp),
           priceUSD: parseFloat(s.tokenPriceUSD),
@@ -143,6 +152,19 @@ export function useSailPriceHistory({
         })
       );
 
+      const genesisEndTs = result.data?.genesisEnd?.timestamp
+        ? parseInt(result.data.genesisEnd.timestamp)
+        : null;
+
+      // To avoid chart cliffs when subgraph logic changes (or grafted deployments),
+      // only show price series from genesis end onward (if we know it).
+      const cutoffTs = sinceGenesisEnd && genesisEndTs && genesisEndTs > 0
+        ? Math.max(sinceTimestamp, genesisEndTs)
+        : sinceTimestamp;
+
+      const pricePoints = rawPricePoints.filter((p) => p.timestamp >= cutoffTs);
+      const hourlySnapshots = rawHourlySnapshots.filter((s) => s.timestamp >= cutoffTs);
+
       if (debug) {
         const authHeaderPresent = Boolean(getGraphHeaders(graphUrl)["Authorization"]);
         // Log a tiny sample to avoid console spam
@@ -152,6 +174,9 @@ export function useSailPriceHistory({
           authHeaderPresent,
           tokenAddress: tokenAddress.toLowerCase(),
           since: sinceTimestamp,
+          genesisAddress,
+          genesisEndTs,
+          cutoffTs,
           pricePoints: pricePoints.length,
           hourlySnapshots: hourlySnapshots.length,
           samplePoint: pricePoints[0],
