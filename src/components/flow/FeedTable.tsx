@@ -462,6 +462,11 @@ export function FeedTable({
   expanded,
   setExpanded,
 }: FeedTableProps) {
+  // Use stable per-network RPC clients so we can fetch prices without breaking hook rules.
+  const mainnetRpcClient = useRpcClient("mainnet" as any);
+  const arbitrumRpcClient = useRpcClient("arbitrum" as any);
+  const baseRpcClient = useRpcClient("base" as any);
+
   const { address, isConnected } = useAccount();
   const { signTypedDataAsync } = useSignTypedData();
   const queryClient = useQueryClient();
@@ -572,6 +577,92 @@ export function FeedTable({
   }, [myAllocationsVotable]);
   const remainingPoints = Math.max(0, VOTE_POINTS_MAX - usedPoints);
 
+  // Price fetching (stable 3-hook approach: mainnet + arbitrum + base)
+  const mainnetFeedEntries = useMemo(() => {
+    return feeds
+      .filter((f) => f.network === "mainnet")
+      .map((f) => ({ address: f.address as `0x${string}`, label: f.label }))
+      .sort((a, b) => a.address.localeCompare(b.address));
+  }, [feeds]);
+
+  const arbitrumFeedEntries = useMemo(() => {
+    return feeds
+      .filter((f) => f.network === "arbitrum")
+      .map((f) => ({ address: f.address as `0x${string}`, label: f.label }))
+      .sort((a, b) => a.address.localeCompare(b.address));
+  }, [feeds]);
+
+  const baseFeedEntries = useMemo(() => {
+    return feeds
+      .filter((f) => f.network === "base")
+      .map((f) => ({ address: f.address as `0x${string}`, label: f.label }))
+      .sort((a, b) => a.address.localeCompare(b.address));
+  }, [feeds]);
+
+  const {
+    prices: mainnetPrices,
+    loading: mainnetPricesLoading,
+  } = useFeedPrices(mainnetRpcClient as any, mainnetFeedEntries);
+  const {
+    prices: arbitrumPrices,
+    loading: arbitrumPricesLoading,
+  } = useFeedPrices(arbitrumRpcClient as any, arbitrumFeedEntries);
+  const { prices: basePrices, loading: basePricesLoading } = useFeedPrices(
+    baseRpcClient as any,
+    baseFeedEntries
+  );
+
+  const mainnetPriceByAddr = useMemo(() => {
+    const m = new Map<string, string>();
+    for (let i = 0; i < mainnetFeedEntries.length; i++) {
+      m.set(
+        mainnetFeedEntries[i].address.toLowerCase(),
+        mainnetPrices[i] ?? "-"
+      );
+    }
+    return m;
+  }, [mainnetFeedEntries, mainnetPrices]);
+
+  const arbitrumPriceByAddr = useMemo(() => {
+    const m = new Map<string, string>();
+    for (let i = 0; i < arbitrumFeedEntries.length; i++) {
+      m.set(
+        arbitrumFeedEntries[i].address.toLowerCase(),
+        arbitrumPrices[i] ?? "-"
+      );
+    }
+    return m;
+  }, [arbitrumFeedEntries, arbitrumPrices]);
+
+  const basePriceByAddr = useMemo(() => {
+    const m = new Map<string, string>();
+    for (let i = 0; i < baseFeedEntries.length; i++) {
+      m.set(baseFeedEntries[i].address.toLowerCase(), basePrices[i] ?? "-");
+    }
+    return m;
+  }, [baseFeedEntries, basePrices]);
+
+  const getPriceForFeed = (network: string, address: string) => {
+    const addr = String(address || "").toLowerCase();
+    if (network === "mainnet") return mainnetPriceByAddr.get(addr) ?? "-";
+    if (network === "arbitrum") return arbitrumPriceByAddr.get(addr) ?? "-";
+    if (network === "base") return basePriceByAddr.get(addr) ?? "-";
+    return "-";
+  };
+
+  const isPriceLoadingForNetwork = (network: string) => {
+    if (network === "mainnet") return mainnetPricesLoading;
+    if (network === "arbitrum") return arbitrumPricesLoading;
+    if (network === "base") return basePricesLoading;
+    return false;
+  };
+
+  const formatNetworkLabel = (network: string) => {
+    return network === "mainnet"
+      ? "ETH Mainnet"
+      : network.charAt(0).toUpperCase() + network.slice(1);
+  };
+
   const saveVotesMutation = useMutation({
     mutationFn: async (nextAllocations: Record<string, number>) => {
       if (!address) throw new Error("Connect wallet to vote");
@@ -660,9 +751,9 @@ export function FeedTable({
     }
   };
 
-  // Sort feeds based on selected column and direction
-  const sortedAndGroupedFeeds = useMemo(() => {
-    const sorted = [...feeds].sort((a, b) => {
+  // Sort feeds globally (not grouped) so sorting by votes actually works.
+  const sortedFeeds = useMemo(() => {
+    return [...feeds].sort((a, b) => {
       const feedIdA = canonicalizeFeedId(buildFeedId(a.network, a.address)) ?? buildFeedId(a.network, a.address);
       const feedIdB = canonicalizeFeedId(buildFeedId(b.network, b.address)) ?? buildFeedId(b.network, b.address);
       const totalPointsA = totals[feedIdA] ?? 0;
@@ -702,17 +793,6 @@ export function FeedTable({
 
       return sortDirection === "asc" ? comparison : -comparison;
     });
-
-    // Group by network and base asset for price fetching
-    const groups: Record<string, FeedWithMetadata[]> = {};
-    sorted.forEach((feed) => {
-      const key = `${feed.network}-${feed.baseAsset}`;
-      if (!groups[key]) {
-        groups[key] = [];
-      }
-      groups[key].push(feed);
-    });
-    return groups;
   }, [feeds, totals, sortBy, sortDirection]);
 
   return (
@@ -845,22 +925,324 @@ export function FeedTable({
       </div>
 
       <div className="space-y-2">
-        {Object.entries(sortedAndGroupedFeeds).map(([key, groupFeeds]) => (
-          <FeedGroupRows
-            key={key}
-            feeds={groupFeeds}
-            publicClient={publicClient}
-            expanded={expanded}
-            setExpanded={setExpanded}
-            votesTotals={totals}
-            myAllocations={myAllocations}
-            remainingPoints={remainingPoints}
-            isConnected={isConnected}
-            voteDisabledReason={voteDisabledReason}
-            onOpenVote={openVoteModal}
-            canonicalizeFeedId={canonicalizeFeedId}
-          />
-        ))}
+        {sortedFeeds.map((feed) => {
+          const pair = parsePair(feed.label);
+          const status = feed.status || "available";
+          const feedId =
+            canonicalizeFeedId(buildFeedId(feed.network, feed.address)) ??
+            buildFeedId(feed.network, feed.address);
+          const totalPoints = totals[feedId] ?? 0;
+          const myPoints = myAllocations[feedId] ?? 0;
+          const price = getPriceForFeed(feed.network, feed.address);
+          const loading = isPriceLoadingForNetwork(feed.network);
+
+          const network = feed.network;
+          const baseAsset = feed.baseAsset;
+
+          const networkFeeds = feedsConfig[network as keyof typeof feedsConfig];
+          const baseAssetFeeds =
+            networkFeeds?.[baseAsset as keyof typeof networkFeeds];
+          const feedIndex = baseAssetFeeds
+            ? baseAssetFeeds.findIndex((f: any) => f.address === feed.address)
+            : -1;
+
+          const isFeedExpanded =
+            expanded?.network === network &&
+            expanded?.token === baseAsset &&
+            expanded?.feedIndex === feedIndex;
+
+          const marketId = getMarketIdFromFeedLabel(feed.label);
+          const isActive = status === "active" && marketId !== null;
+
+          return (
+            <div key={`${feed.network}:${feed.address}`} className="space-y-2">
+              <div
+                className={`border border-[#1E4775]/10 transition-colors cursor-pointer ${
+                  isFeedExpanded
+                    ? "bg-[rgb(var(--surface-selected-rgb))]"
+                    : "bg-white hover:bg-[rgb(var(--surface-selected-rgb))]"
+                }`}
+                onClick={() =>
+                  setExpanded(
+                    isFeedExpanded ? null : { network, token: baseAsset, feedIndex }
+                  )
+                }
+              >
+                {/* Desktop layout */}
+                <div className="hidden lg:block py-2 px-3">
+                  <div
+                    className={`grid gap-3 items-center text-sm ${
+                      isActive
+                        ? "grid-cols-[1.2fr_0.8fr_0.6fr_1.2fr_0.6fr_1.2fr]"
+                        : "grid-cols-[1.2fr_0.8fr_0.6fr_1.2fr_0.6fr_0.4fr_0.7fr]"
+                    }`}
+                  >
+                    <div className="min-w-0 flex justify-center">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <TokenIcon
+                          src={getLogoPath(pair.base)}
+                          alt={pair.base}
+                          width={20}
+                          height={20}
+                          className="rounded-full flex-shrink-0"
+                        />
+                        <TokenIcon
+                          src={getLogoPath(pair.quote)}
+                          alt={pair.quote}
+                          width={20}
+                          height={20}
+                          className="rounded-full flex-shrink-0 -ml-2"
+                        />
+                        <SimpleTooltip
+                          label={`${getTokenFullName(pair.base)} / ${getTokenFullName(
+                            pair.quote
+                          )}`}
+                        >
+                          <span className="text-[#1E4775] font-medium min-w-0 truncate">
+                            {feed.label}
+                            {feed.divisor && feed.divisor > 1 && (
+                              <span className="ml-2 text-xs text-[#1E4775]/60 italic">
+                                (price normalized)
+                              </span>
+                            )}
+                          </span>
+                        </SimpleTooltip>
+                        {isFeedExpanded ? (
+                          <ChevronUpIcon className="w-4 h-4 text-[#1E4775]/70 flex-shrink-0" />
+                        ) : (
+                          <ChevronDownIcon className="w-4 h-4 text-[#1E4775]/70 flex-shrink-0" />
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="text-center text-[#1E4775] whitespace-nowrap text-sm">
+                      {formatNetworkLabel(network)}
+                    </div>
+
+                    <div className="text-center text-[#1E4775] whitespace-nowrap">
+                      <div>Chainlink</div>
+                      {feed.divisor && feed.divisor > 1 && (
+                        <div className="text-xs text-[#1E4775]/60">
+                          divisor: {feed.divisor}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="text-center font-mono text-[#1E4775]">
+                      {loading ? (
+                        "Loading..."
+                      ) : price === "-" ? (
+                        "-"
+                      ) : (
+                        <SimpleTooltip
+                          label={`1 ${getTokenFullName(pair.base)} = ${price} ${getTokenFullName(
+                            pair.quote
+                          )}`}
+                        >
+                          <span>{`1 ${pair.base} = ${price} ${pair.quote}`}</span>
+                        </SimpleTooltip>
+                      )}
+                    </div>
+
+                    <div className="text-center">
+                      <span
+                        className={`inline-block px-2 py-1 text-xs font-medium rounded ${
+                          status === "active"
+                            ? "bg-green-100 text-green-800"
+                            : "bg-gray-100 text-gray-600"
+                        }`}
+                      >
+                        {status === "active" ? "Active" : "Available"}
+                      </span>
+                    </div>
+
+                    {!isActive && (
+                      <div className="text-center">
+                        <div className="font-mono font-semibold text-[#1E4775] text-sm">
+                          {totalPoints}
+                        </div>
+                      </div>
+                    )}
+
+                    <div
+                      className="flex justify-center gap-2"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {isActive ? (
+                        <>
+                          <Link
+                            href={`/anchor?market=${marketId}`}
+                            className="px-4 py-2 rounded-full text-xs font-medium whitespace-nowrap transition-colors bg-[#1E4775] text-white hover:bg-[#17395F]"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            Anchor
+                          </Link>
+                          <Link
+                            href={`/sail?market=${marketId}`}
+                            className="px-4 py-2 rounded-full text-xs font-medium whitespace-nowrap transition-colors bg-[#1E4775] text-white hover:bg-[#17395F]"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            Sail
+                          </Link>
+                        </>
+                      ) : (
+                        <button
+                          className={`px-4 py-2 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
+                            isConnected && !voteDisabledReason
+                              ? "bg-[#FF8A7A] text-white hover:bg-[#FF6B5A]"
+                              : "bg-[#FF8A7A]/30 text-white/50 cursor-not-allowed"
+                          }`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (!isConnected || voteDisabledReason) return;
+                            openVoteModal(feedId);
+                          }}
+                          title={
+                            voteDisabledReason
+                              ? voteDisabledReason
+                              : isConnected
+                                ? `Allocate vote points (remaining ${remainingPoints})`
+                                : "Connect wallet to vote"
+                          }
+                        >
+                          Vote{myPoints > 0 ? ` (${myPoints})` : ""}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Mobile layout */}
+                <div className="lg:hidden p-3 space-y-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                      <TokenIcon
+                        src={getLogoPath(pair.base)}
+                        alt={pair.base}
+                        width={20}
+                        height={20}
+                        className="rounded-full flex-shrink-0"
+                      />
+                      <TokenIcon
+                        src={getLogoPath(pair.quote)}
+                        alt={pair.quote}
+                        width={20}
+                        height={20}
+                        className="rounded-full flex-shrink-0 -ml-2"
+                      />
+                      <span className="text-[#1E4775] font-semibold text-sm truncate">
+                        {feed.label}
+                      </span>
+                      {isFeedExpanded ? (
+                        <ChevronUpIcon className="w-5 h-5 text-[#1E4775]/70 flex-shrink-0" />
+                      ) : (
+                        <ChevronDownIcon className="w-5 h-5 text-[#1E4775]/70 flex-shrink-0" />
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <span
+                        className={`inline-block px-2 py-1 text-[10px] font-medium rounded whitespace-nowrap ${
+                          status === "active"
+                            ? "bg-green-100 text-green-800"
+                            : "bg-gray-100 text-gray-600"
+                        }`}
+                      >
+                        {status === "active" ? "Active" : "Available"}
+                      </span>
+                      <div className="text-[10px] text-[#1E4775]/70 whitespace-nowrap">
+                        {formatNetworkLabel(network)}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-end justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="text-[#1E4775]/60 text-[9px] uppercase tracking-wider">
+                        Price
+                      </div>
+                      <div className="text-[#1E4775] font-mono font-semibold text-[11px] truncate">
+                        {loading
+                          ? "Loading…"
+                          : price === "-"
+                            ? "-"
+                            : `1 ${pair.base} = ${price} ${pair.quote}`}
+                      </div>
+                    </div>
+
+                    <div className="flex-shrink-0 text-right">
+                      <div className="text-[#1E4775]/60 text-[9px] uppercase tracking-wider">
+                        Total votes
+                      </div>
+                      <div className="font-mono font-semibold text-[#1E4775] text-base leading-none">
+                        {totalPoints}
+                      </div>
+                    </div>
+
+                    <div
+                      className="flex items-center gap-2 flex-shrink-0"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {isActive ? (
+                        <>
+                          <Link
+                            href={`/anchor?market=${marketId}`}
+                            className="px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors bg-[#1E4775] text-white hover:bg-[#17395F]"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            Anchor
+                          </Link>
+                          <Link
+                            href={`/sail?market=${marketId}`}
+                            className="px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors bg-[#1E4775] text-white hover:bg-[#17395F]"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            Sail
+                          </Link>
+                        </>
+                      ) : (
+                        <button
+                          className={`px-4 py-2 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
+                            isConnected && !voteDisabledReason
+                              ? "bg-[#FF8A7A] text-white hover:bg-[#FF6B5A]"
+                              : "bg-[#FF8A7A]/30 text-white/50 cursor-not-allowed"
+                          }`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (!isConnected || voteDisabledReason) return;
+                            openVoteModal(feedId);
+                          }}
+                          title={
+                            voteDisabledReason
+                              ? voteDisabledReason
+                              : isConnected
+                                ? `Allocate vote points (remaining ${remainingPoints})`
+                                : "Connect wallet to vote"
+                          }
+                        >
+                          Vote{myPoints > 0 ? ` (${myPoints})` : ""}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {isFeedExpanded && (
+                <div className="bg-white border border-[#1E4775]/10">
+                  <div className="bg-[rgb(var(--surface-selected-rgb))] p-3">
+                    <FeedDetails
+                      network={network as any}
+                      token={baseAsset}
+                      feedIndex={feedIndex}
+                      publicClient={publicClient}
+                      embedded
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {/* Simple vote modal */}
