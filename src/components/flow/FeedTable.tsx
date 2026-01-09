@@ -27,6 +27,7 @@ import Link from "next/link";
 
 interface FeedTableProps {
   feeds: FeedWithMetadata[];
+  allFeeds: FeedWithMetadata[];
   publicClient: any;
   expanded: ExpandedState;
   setExpanded: (state: ExpandedState) => void;
@@ -427,6 +428,7 @@ type SortDirection = "asc" | "desc";
 
 export function FeedTable({
   feeds,
+  allFeeds,
   publicClient,
   expanded,
   setExpanded,
@@ -472,12 +474,35 @@ export function FeedTable({
 
   const totals = votesQuery.data?.totals ?? {};
   const myAllocations = votesQuery.data?.allocations ?? {};
+
+  const activeFeedIdSet = useMemo(() => {
+    const set = new Set<string>();
+    for (const f of allFeeds) {
+      const status = f.status || "available";
+      if (status === "active") {
+        set.add(buildFeedId(f.network, f.address));
+      }
+    }
+    return set;
+  }, [allFeeds]);
+
+  const myAllocationsVotable = useMemo(() => {
+    // Strip allocations for active feeds so they don't count against the max
+    // and can be cleared on the next save without requiring special UI.
+    const out: Record<string, number> = {};
+    for (const [k, v] of Object.entries(myAllocations)) {
+      if (activeFeedIdSet.has(k)) continue;
+      out[k] = v;
+    }
+    return out;
+  }, [myAllocations, activeFeedIdSet]);
+
   const usedPoints = useMemo(() => {
-    return Object.values(myAllocations).reduce(
+    return Object.values(myAllocationsVotable).reduce(
       (s, v) => s + (Number.isFinite(v) ? v : 0),
       0
     );
-  }, [myAllocations]);
+  }, [myAllocationsVotable]);
   const remainingPoints = Math.max(0, VOTE_POINTS_MAX - usedPoints);
 
   const saveVotesMutation = useMutation({
@@ -542,11 +567,13 @@ export function FeedTable({
   function openVoteModal(feedId: string) {
     if (voteDisabledReason) return;
     setVoteModalFeedId(feedId);
-    setVoteModalPoints(myAllocations[feedId] ?? 0);
+    setVoteModalPoints(myAllocationsVotable[feedId] ?? 0);
   }
 
   async function saveVotePoints(feedId: string, points: number) {
-    const next = { ...myAllocations, [feedId]: points };
+    // Only save votable allocations (non-active feeds). This clears any
+    // legacy allocations on active feeds on the next user action.
+    const next = { ...myAllocationsVotable, [feedId]: points };
     // remove zeros
     for (const k of Object.keys(next)) {
       if (!next[k] || next[k] <= 0) delete next[k];
@@ -755,7 +782,7 @@ export function FeedTable({
             <div className="text-xs text-[#1E4775]/70 mb-3">
               You have{" "}
               <span className="font-mono font-semibold text-[#1E4775]">
-                {remainingPoints + (myAllocations[voteModalFeedId] ?? 0)}
+                {remainingPoints + (myAllocationsVotable[voteModalFeedId] ?? 0)}
               </span>{" "}
               points available for this change (max {VOTE_POINTS_MAX} total).
             </div>
@@ -777,7 +804,7 @@ export function FeedTable({
                   disabled={
                     voteModalPoints >= VOTE_POINTS_MAX ||
                     voteModalPoints >=
-                      remainingPoints + (myAllocations[voteModalFeedId] ?? 0)
+                      remainingPoints + (myAllocationsVotable[voteModalFeedId] ?? 0)
                   }
                   onClick={() =>
                     setVoteModalPoints((v) => Math.min(VOTE_POINTS_MAX, v + 1))

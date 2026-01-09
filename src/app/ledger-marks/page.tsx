@@ -1023,7 +1023,7 @@ return total;
           {/* Title Row with Social Buttons */}
           <div className="p-4 flex items-center justify-between mb-0">
             <div className="hidden md:block w-[120px]" /> {/* Spacer for centering */}
-            <h1 className="font-bold font-mono text-white text-7xl text-center">
+            <h1 className="font-bold font-mono text-white text-5xl sm:text-6xl md:text-7xl text-center">
               Ledger Marks
             </h1>
             {/* Compact Social Buttons */}

@@ -1421,7 +1421,7 @@ export default function SailPage() {
           <div className="mb-2">
             {/* Title - Full Row */}
             <div className="p-4 flex items-center justify-center mb-0">
-              <h1 className="font-bold font-mono text-white text-7xl text-center">
+              <h1 className="font-bold font-mono text-white text-5xl sm:text-6xl md:text-7xl text-center">
                 Sail
               </h1>
             </div>

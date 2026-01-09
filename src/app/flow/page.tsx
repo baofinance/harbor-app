@@ -34,6 +34,7 @@ export default function FlowPage() {
     setSearchQuery,
     statusFilter,
     setStatusFilter,
+    allFeeds,
     filteredFeeds,
     availableBaseAssets,
     totalFeedCount,
@@ -69,12 +70,26 @@ export default function FlowPage() {
   });
 
   const myAllocations = votesQuery.data?.allocations ?? {};
+  const activeFeedIdSet = useMemo(() => {
+    const set = new Set<string>();
+    for (const f of allFeeds) {
+      const status = f.status || "available";
+      if (status === "active") {
+        set.add(buildFeedId(f.network, f.address));
+      }
+    }
+    return set;
+  }, [allFeeds]);
+
   const usedPoints = useMemo(() => {
-    return Object.values(myAllocations).reduce(
-      (s, v) => s + (Number.isFinite(v) ? v : 0),
-      0
-    );
-  }, [myAllocations]);
+    // Only count votes for non-active feeds (active markets are not votable).
+    let sum = 0;
+    for (const [feedId, v] of Object.entries(myAllocations)) {
+      if (activeFeedIdSet.has(feedId)) continue;
+      sum += Number.isFinite(v) ? v : 0;
+    }
+    return sum;
+  }, [myAllocations, activeFeedIdSet]);
 
   // No default expansion - users must manually expand feeds
 
@@ -88,7 +103,7 @@ export default function FlowPage() {
           {/* Header */}
           <div className="mb-2">
             <div className="p-2 flex items-center justify-center mb-0">
-              <h1 className="font-bold font-mono text-white text-7xl text-center">
+              <h1 className="font-bold font-mono text-white text-5xl sm:text-6xl md:text-7xl text-center">
                 Map Room
               </h1>
             </div>
@@ -247,6 +262,7 @@ export default function FlowPage() {
           {filteredFeeds.length > 0 && (
             <FeedTable
               feeds={filteredFeeds}
+              allFeeds={allFeeds}
               publicClient={publicClient}
               expanded={expanded}
               setExpanded={setExpanded}
