@@ -305,139 +305,130 @@ function FeedGroupRows({
                 </div>
               </div>
 
-              {/* Mobile layout */}
+              {/* Mobile layout (< lg): 2-line bar */}
               <div className="lg:hidden p-3 space-y-2">
-                  {/* Row 1: label + status + expand */}
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2 min-w-0 flex-1">
-                      <TokenIcon
-                        src={getLogoPath(pair.base)}
-                        alt={pair.base}
-                        width={20}
-                        height={20}
-                        className="rounded-full flex-shrink-0"
-                      />
-                      <TokenIcon
-                        src={getLogoPath(pair.quote)}
-                        alt={pair.quote}
-                        width={20}
-                        height={20}
-                        className="rounded-full flex-shrink-0 -ml-2"
-                      />
-                      <SimpleTooltip
-                        label={`${getTokenFullName(pair.base)} / ${getTokenFullName(
-                          pair.quote
-                        )}`}
-                      >
-                        <span className="text-[#1E4775] font-semibold text-sm truncate">
-                          {feed.label}
-                        </span>
-                      </SimpleTooltip>
-                    </div>
-
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      <span
-                        className={`inline-block px-2 py-1 text-[10px] font-medium rounded whitespace-nowrap ${
-                          status === "active"
-                            ? "bg-green-100 text-green-800"
-                            : "bg-gray-100 text-gray-600"
-                        }`}
-                      >
-                        {status === "active" ? "Active" : "Available"}
+                {/* Line 1: market name + chevron, then status tag + chain */}
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                    <TokenIcon
+                      src={getLogoPath(pair.base)}
+                      alt={pair.base}
+                      width={20}
+                      height={20}
+                      className="rounded-full flex-shrink-0"
+                    />
+                    <TokenIcon
+                      src={getLogoPath(pair.quote)}
+                      alt={pair.quote}
+                      width={20}
+                      height={20}
+                      className="rounded-full flex-shrink-0 -ml-2"
+                    />
+                    <SimpleTooltip
+                      label={`${getTokenFullName(pair.base)} / ${getTokenFullName(
+                        pair.quote
+                      )}`}
+                    >
+                      <span className="text-[#1E4775] font-semibold text-sm truncate">
+                        {feed.label}
                       </span>
-                      {isFeedExpanded ? (
-                        <ChevronUpIcon className="w-5 h-5 text-[#1E4775]/70" />
-                      ) : (
-                        <ChevronDownIcon className="w-5 h-5 text-[#1E4775]/70" />
-                      )}
-                    </div>
+                    </SimpleTooltip>
+                    {isFeedExpanded ? (
+                      <ChevronUpIcon className="w-5 h-5 text-[#1E4775]/70 flex-shrink-0" />
+                    ) : (
+                      <ChevronDownIcon className="w-5 h-5 text-[#1E4775]/70 flex-shrink-0" />
+                    )}
                   </div>
 
-                  {/* Row 2: chain + price on left, actions on right */}
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-4">
-                        <div className="min-w-0">
-                          <div className="text-[#1E4775]/60 text-[9px] uppercase tracking-wider">
-                            Chain
-                          </div>
-                          <div className="text-[#1E4775] font-mono font-semibold text-[11px] whitespace-nowrap">
-                            {network === "mainnet"
-                              ? "ETH Mainnet"
-                              : network.charAt(0).toUpperCase() +
-                                network.slice(1)}
-                          </div>
-                        </div>
-
-                        <div className="min-w-0">
-                          <div className="text-[#1E4775]/60 text-[9px] uppercase tracking-wider">
-                            Price
-                          </div>
-                          <div className="text-[#1E4775] font-mono font-semibold text-[11px] truncate">
-                            {loading
-                              ? "Loading…"
-                              : price === "-"
-                                ? "-"
-                                : `1 ${pair.base} = ${price} ${pair.quote}`}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div
-                      className="flex items-center gap-2 flex-shrink-0"
-                      onClick={(e) => e.stopPropagation()}
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <span
+                      className={`inline-block px-2 py-1 text-[10px] font-medium rounded whitespace-nowrap ${
+                        status === "active"
+                          ? "bg-green-100 text-green-800"
+                          : "bg-gray-100 text-gray-600"
+                      }`}
                     >
-                      {isActive ? (
-                        <>
-                          <Link
-                            href={`/anchor?market=${marketId}`}
-                            className="px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors bg-[#1E4775] text-white hover:bg-[#17395F]"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            Anchor
-                          </Link>
-                          <Link
-                            href={`/sail?market=${marketId}`}
-                            className="px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors bg-[#1E4775] text-white hover:bg-[#17395F]"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            Sail
-                          </Link>
-                        </>
-                      ) : (
-                        <>
-                          <div className="text-[10px] text-[#1E4775]/60 whitespace-nowrap">
-                            <span className="font-mono font-semibold text-[#1E4775] text-sm">
-                              {totalPoints}
-                            </span>
-                          </div>
-                          <button
-                            className={`px-4 py-2 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
-                              isConnected && !voteDisabledReason
-                                ? "bg-[#FF8A7A] text-white hover:bg-[#FF6B5A]"
-                                : "bg-[#FF8A7A]/30 text-white/50 cursor-not-allowed"
-                            }`}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (!isConnected || voteDisabledReason) return;
-                              onOpenVote(feedId);
-                            }}
-                            title={
-                              voteDisabledReason
-                                ? voteDisabledReason
-                                : isConnected
-                                  ? `Allocate vote points (remaining ${remainingPoints})`
-                                  : "Connect wallet to vote"
-                            }
-                          >
-                            Vote{myPoints > 0 ? ` (${myPoints})` : ""}
-                          </button>
-                        </>
-                      )}
+                      {status === "active" ? "Active" : "Available"}
+                    </span>
+                    <div className="text-[10px] text-[#1E4775]/70 whitespace-nowrap">
+                      {network === "mainnet"
+                        ? "ETH Mainnet"
+                        : network.charAt(0).toUpperCase() + network.slice(1)}
                     </div>
                   </div>
                 </div>
+
+                {/* Line 2: price, total votes (with header), vote button */}
+                <div className="flex items-end justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="text-[#1E4775]/60 text-[9px] uppercase tracking-wider">
+                      Price
+                    </div>
+                    <div className="text-[#1E4775] font-mono font-semibold text-[11px] truncate">
+                      {loading
+                        ? "Loading…"
+                        : price === "-"
+                          ? "-"
+                          : `1 ${pair.base} = ${price} ${pair.quote}`}
+                    </div>
+                  </div>
+
+                  <div className="flex-shrink-0 text-right">
+                    <div className="text-[#1E4775]/60 text-[9px] uppercase tracking-wider">
+                      Total votes
+                    </div>
+                    <div className="font-mono font-semibold text-[#1E4775] text-base leading-none">
+                      {totalPoints}
+                    </div>
+                  </div>
+
+                  <div
+                    className="flex items-center gap-2 flex-shrink-0"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {isActive ? (
+                      <>
+                        <Link
+                          href={`/anchor?market=${marketId}`}
+                          className="px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors bg-[#1E4775] text-white hover:bg-[#17395F]"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          Anchor
+                        </Link>
+                        <Link
+                          href={`/sail?market=${marketId}`}
+                          className="px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors bg-[#1E4775] text-white hover:bg-[#17395F]"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          Sail
+                        </Link>
+                      </>
+                    ) : (
+                      <button
+                        className={`px-4 py-2 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
+                          isConnected && !voteDisabledReason
+                            ? "bg-[#FF8A7A] text-white hover:bg-[#FF6B5A]"
+                            : "bg-[#FF8A7A]/30 text-white/50 cursor-not-allowed"
+                        }`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (!isConnected || voteDisabledReason) return;
+                          onOpenVote(feedId);
+                        }}
+                        title={
+                          voteDisabledReason
+                            ? voteDisabledReason
+                            : isConnected
+                              ? `Allocate vote points (remaining ${remainingPoints})`
+                              : "Connect wallet to vote"
+                        }
+                      >
+                        Vote{myPoints > 0 ? ` (${myPoints})` : ""}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Expanded details box */}
@@ -726,6 +717,42 @@ export function FeedTable({
 
   return (
     <div className="space-y-2">
+      {/* Sort menu (mobile) */}
+      <div className="lg:hidden bg-white border border-[#1E4775]/10 py-2 px-3">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="text-[10px] uppercase tracking-wider font-semibold text-[#1E4775]/70 whitespace-nowrap">
+              Sort
+            </div>
+            <select
+              value={sortBy}
+              onChange={(e) => {
+                setSortBy(e.target.value as SortColumn);
+                setSortDirection("desc");
+              }}
+              className="min-w-0 flex-1 px-2 py-1 text-xs border border-[#1E4775]/20 text-[#1E4775] bg-white focus:outline-none focus:ring-1 focus:ring-[#1E4775]/20"
+            >
+              <option value="votes">Votes</option>
+              <option value="feed">Feed</option>
+              <option value="chain">Chain</option>
+              <option value="type">Type</option>
+              <option value="price">Price</option>
+              <option value="status">Status</option>
+            </select>
+          </div>
+          <button
+            className="px-2 py-1 text-xs bg-[#1E4775]/10 text-[#1E4775] font-semibold flex items-center gap-1"
+            onClick={() =>
+              setSortDirection(sortDirection === "asc" ? "desc" : "asc")
+            }
+            title={`Sort ${sortDirection === "asc" ? "descending" : "ascending"}`}
+          >
+            {sortDirection === "asc" ? "↑" : "↓"}
+            <span className="text-[#1E4775]/70">Order</span>
+          </button>
+        </div>
+      </div>
+
       {/* Header row (desktop) */}
       <div className="hidden lg:block bg-white border border-[#1E4775]/10 py-2 px-3">
         <div className="grid grid-cols-[1.2fr_0.8fr_0.6fr_1.2fr_0.6fr_0.4fr_0.7fr] gap-3 items-center uppercase tracking-wider text-[10px] text-[#1E4775] font-bold">
