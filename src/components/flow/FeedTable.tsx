@@ -838,11 +838,20 @@ export function FeedTable({
               </button>
             </div>
             <div className="text-xs text-[#1E4775]/70 mb-3">
-              You have{" "}
+              Currently allocated to this feed:{" "}
               <span className="font-mono font-semibold text-[#1E4775]">
-                {remainingPoints + (myAllocationsVotable[voteModalFeedId] ?? 0)}
-              </span>{" "}
-              points available for this change (max {VOTE_POINTS_MAX} total).
+                {myAllocationsVotable[voteModalFeedId] ?? 0}
+              </span>
+              {" • "}
+              Unallocated points:{" "}
+              <span className="font-mono font-semibold text-[#1E4775]">
+                {remainingPoints}
+              </span>
+              {" • "}
+              Total:{" "}
+              <span className="font-mono font-semibold text-[#1E4775]">
+                {VOTE_POINTS_MAX - remainingPoints}/{VOTE_POINTS_MAX}
+              </span>
             </div>
 
             <div className="flex items-center justify-between gap-3">
