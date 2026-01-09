@@ -306,8 +306,9 @@ function FeedGroupRows({
 
                 {/* Mobile layout */}
                 <div className="lg:hidden p-3 space-y-2">
+                  {/* Row 1: label + status + expand */}
                   <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2 min-w-0">
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
                       <TokenIcon
                         src={getLogoPath(pair.base)}
                         alt={pair.base}
@@ -322,11 +323,27 @@ function FeedGroupRows({
                         height={20}
                         className="rounded-full flex-shrink-0 -ml-2"
                       />
-                      <span className="text-[#1E4775] font-semibold text-sm truncate">
-                        {feed.label}
-                      </span>
+                      <SimpleTooltip
+                        label={`${getTokenFullName(pair.base)} / ${getTokenFullName(
+                          pair.quote
+                        )}`}
+                      >
+                        <span className="text-[#1E4775] font-semibold text-sm truncate">
+                          {feed.label}
+                        </span>
+                      </SimpleTooltip>
                     </div>
+
                     <div className="flex items-center gap-2 flex-shrink-0">
+                      <span
+                        className={`inline-block px-2 py-1 text-[10px] font-medium rounded whitespace-nowrap ${
+                          status === "active"
+                            ? "bg-green-100 text-green-800"
+                            : "bg-gray-100 text-gray-600"
+                        }`}
+                      >
+                        {status === "active" ? "Active" : "Available"}
+                      </span>
                       {isFeedExpanded ? (
                         <ChevronUpIcon className="w-5 h-5 text-[#1E4775]/70" />
                       ) : (
@@ -335,53 +352,43 @@ function FeedGroupRows({
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2 text-[10px]">
-                    <div className="bg-[#1E4775]/5 p-2 text-center">
-                      <div className="text-[#1E4775]/60 text-[9px]">Chain</div>
-                      <div className="text-[#1E4775] font-mono font-semibold text-[10px]">
-                        {network === "mainnet"
-                          ? "ETH Mainnet"
-                          : network.charAt(0).toUpperCase() + network.slice(1)}
-                      </div>
-                    </div>
-                    <div className="bg-[#1E4775]/5 p-2 text-center">
-                      <div className="text-[#1E4775]/60 text-[9px]">Price</div>
-                      <div className="text-[#1E4775] font-mono font-semibold text-[10px]">
-                        {loading ? "Loading..." : price === "-" ? "-" : price}
-                      </div>
-                    </div>
-                    <div className="bg-[#1E4775]/5 p-2 text-center">
-                      <div className="text-[#1E4775]/60 text-[9px]">Status</div>
-                      <div className="text-[#1E4775] font-mono font-semibold text-[10px]">
-                        {status === "active" ? "Active" : "Available"}
-                      </div>
-                    </div>
-                    {!isActive && (
-                      <div
-                        className="bg-[#1E4775]/5 p-2 text-center"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <div className="text-[#1E4775]/60 text-[9px]">Votes</div>
-                        <div className="flex justify-center">
-                          <VoteCell
-                            feedId={feedId}
-                            totalPoints={totalPoints}
-                            myPoints={myPoints}
-                            remainingPoints={remainingPoints}
-                            isConnected={isConnected}
-                            disabledReason={voteDisabledReason}
-                            onOpen={() => onOpenVote(feedId)}
-                          />
+                  {/* Row 2: chain + price on left, actions on right */}
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-4">
+                        <div className="min-w-0">
+                          <div className="text-[#1E4775]/60 text-[9px] uppercase tracking-wider">
+                            Chain
+                          </div>
+                          <div className="text-[#1E4775] font-mono font-semibold text-[11px] whitespace-nowrap">
+                            {network === "mainnet"
+                              ? "ETH Mainnet"
+                              : network.charAt(0).toUpperCase() +
+                                network.slice(1)}
+                          </div>
+                        </div>
+
+                        <div className="min-w-0">
+                          <div className="text-[#1E4775]/60 text-[9px] uppercase tracking-wider">
+                            Price
+                          </div>
+                          <div className="text-[#1E4775] font-mono font-semibold text-[11px] truncate">
+                            {loading
+                              ? "Loading…"
+                              : price === "-"
+                                ? "-"
+                                : `1 ${pair.base} = ${price} ${pair.quote}`}
+                          </div>
                         </div>
                       </div>
-                    )}
-                    {isActive && (
-                      <div
-                        className="bg-[#1E4775]/5 p-2 text-center col-span-2"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <div className="text-[#1E4775]/60 text-[9px] mb-1">Actions</div>
-                        <div className="flex justify-center gap-2">
+                    </div>
+
+                    <div
+                      className="flex items-center gap-2 flex-shrink-0"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {isActive ? (
+                        <>
                           <Link
                             href={`/anchor?market=${marketId}`}
                             className="px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors bg-[#1E4775] text-white hover:bg-[#17395F]"
@@ -396,9 +403,38 @@ function FeedGroupRows({
                           >
                             Sail
                           </Link>
-                        </div>
-                      </div>
-                    )}
+                        </>
+                      ) : (
+                        <>
+                          <div className="text-[10px] text-[#1E4775]/60 whitespace-nowrap">
+                            <span className="font-mono font-semibold text-[#1E4775] text-sm">
+                              {totalPoints}
+                            </span>
+                          </div>
+                          <button
+                            className={`px-4 py-2 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
+                              isConnected && !voteDisabledReason
+                                ? "bg-[#FF8A7A] text-white hover:bg-[#FF6B5A]"
+                                : "bg-[#FF8A7A]/30 text-white/50 cursor-not-allowed"
+                            }`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (!isConnected || voteDisabledReason) return;
+                              onOpenVote(feedId);
+                            }}
+                            title={
+                              voteDisabledReason
+                                ? voteDisabledReason
+                                : isConnected
+                                  ? `Allocate vote points (remaining ${remainingPoints})`
+                                  : "Connect wallet to vote"
+                            }
+                          >
+                            Vote{myPoints > 0 ? ` (${myPoints})` : ""}
+                          </button>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -458,13 +494,7 @@ export function FeedTable({
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || "Failed to load votes");
-      
-      // Debug logging
-      if (address && json?.allocations) {
-        console.log('[FeedTable] Raw allocations from API:', json.allocations);
-        console.log('[FeedTable] All feed IDs we built:', allFeedIds);
-      }
-      
+
       return json as {
         totals: Record<string, number>;
         allocations?: Record<string, number>;
@@ -510,17 +540,11 @@ export function FeedTable({
     const out: Record<string, number> = {};
     for (const [k, v] of Object.entries(raw)) {
       const canon = canonicalizeFeedId(k);
-      if (!canon) {
-        console.warn('[FeedTable] Failed to canonicalize feedId:', k);
-        continue;
-      }
+      if (!canon) continue;
       const n = Number(v);
       if (!Number.isFinite(n)) continue;
       // If the same feedId appears multiple ways, keep the max allocation.
       out[canon] = Math.max(out[canon] ?? 0, n);
-    }
-    if (address && Object.keys(out).length > 0) {
-      console.log('[FeedTable] Canonical myAllocations:', out);
     }
     return out;
   }, [votesQuery.data?.allocations, address]);
@@ -619,10 +643,6 @@ export function FeedTable({
   function openVoteModal(feedId: string) {
     if (voteDisabledReason) return;
     const canonicalFeedId = canonicalizeFeedId(feedId) ?? feedId;
-    console.log('[FeedTable] Opening vote modal for feedId:', feedId);
-    console.log('[FeedTable] Canonical feedId:', canonicalFeedId);
-    console.log('[FeedTable] myAllocationsVotable:', myAllocationsVotable);
-    console.log('[FeedTable] Current points for this feed:', myAllocationsVotable[canonicalFeedId] ?? 0);
     setVoteModalFeedId(canonicalFeedId);
     setVoteModalPoints(myAllocationsVotable[canonicalFeedId] ?? 0);
   }
