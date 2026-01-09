@@ -94,6 +94,7 @@ function FeedGroupRows({
   isConnected,
   voteDisabledReason,
   onOpenVote,
+  canonicalizeFeedId,
 }: {
   feeds: FeedWithMetadata[];
   publicClient: any;
@@ -105,6 +106,7 @@ function FeedGroupRows({
   isConnected: boolean;
   voteDisabledReason?: string;
   onOpenVote: (feedId: string) => void;
+  canonicalizeFeedId: (feedId: string) => string | null;
 }) {
   const network = feeds[0].network;
   const baseAsset = feeds[0].baseAsset;
@@ -122,7 +124,7 @@ function FeedGroupRows({
         const pair = parsePair(feed.label);
         const price = prices[idx] ?? "-";
         const status = feed.status || "available";
-        const feedId = buildFeedId(network, feed.address);
+        const feedId = canonicalizeFeedId(buildFeedId(network, feed.address)) ?? buildFeedId(network, feed.address);
         const totalPoints = votesTotals[feedId] ?? 0;
         const myPoints = myAllocations[feedId] ?? 0;
 
@@ -528,7 +530,9 @@ export function FeedTable({
     for (const f of allFeeds) {
       const status = f.status || "available";
       if (status === "active") {
-        set.add(buildFeedId(f.network, f.address));
+        const feedId = buildFeedId(f.network, f.address);
+        const canonical = canonicalizeFeedId(feedId);
+        if (canonical) set.add(canonical);
       }
     }
     return set;
@@ -614,11 +618,13 @@ export function FeedTable({
 
   function openVoteModal(feedId: string) {
     if (voteDisabledReason) return;
+    const canonicalFeedId = canonicalizeFeedId(feedId) ?? feedId;
     console.log('[FeedTable] Opening vote modal for feedId:', feedId);
+    console.log('[FeedTable] Canonical feedId:', canonicalFeedId);
     console.log('[FeedTable] myAllocationsVotable:', myAllocationsVotable);
-    console.log('[FeedTable] Current points for this feed:', myAllocationsVotable[feedId] ?? 0);
-    setVoteModalFeedId(feedId);
-    setVoteModalPoints(myAllocationsVotable[feedId] ?? 0);
+    console.log('[FeedTable] Current points for this feed:', myAllocationsVotable[canonicalFeedId] ?? 0);
+    setVoteModalFeedId(canonicalFeedId);
+    setVoteModalPoints(myAllocationsVotable[canonicalFeedId] ?? 0);
   }
 
   async function saveVotePoints(feedId: string, points: number) {
@@ -646,8 +652,8 @@ export function FeedTable({
   // Sort feeds based on selected column and direction
   const sortedAndGroupedFeeds = useMemo(() => {
     const sorted = [...feeds].sort((a, b) => {
-      const feedIdA = buildFeedId(a.network, a.address);
-      const feedIdB = buildFeedId(b.network, b.address);
+      const feedIdA = canonicalizeFeedId(buildFeedId(a.network, a.address)) ?? buildFeedId(a.network, a.address);
+      const feedIdB = canonicalizeFeedId(buildFeedId(b.network, b.address)) ?? buildFeedId(b.network, b.address);
       const totalPointsA = totals[feedIdA] ?? 0;
       const totalPointsB = totals[feedIdB] ?? 0;
       const statusA = a.status || "available";
@@ -805,6 +811,7 @@ export function FeedTable({
             isConnected={isConnected}
             voteDisabledReason={voteDisabledReason}
             onOpenVote={openVoteModal}
+            canonicalizeFeedId={canonicalizeFeedId}
           />
         ))}
       </div>
