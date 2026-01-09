@@ -456,6 +456,13 @@ export function FeedTable({
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || "Failed to load votes");
+      
+      // Debug logging
+      if (address && json?.allocations) {
+        console.log('[FeedTable] Raw allocations from API:', json.allocations);
+        console.log('[FeedTable] All feed IDs we built:', allFeedIds);
+      }
+      
       return json as {
         totals: Record<string, number>;
         allocations?: Record<string, number>;
@@ -501,14 +508,20 @@ export function FeedTable({
     const out: Record<string, number> = {};
     for (const [k, v] of Object.entries(raw)) {
       const canon = canonicalizeFeedId(k);
-      if (!canon) continue;
+      if (!canon) {
+        console.warn('[FeedTable] Failed to canonicalize feedId:', k);
+        continue;
+      }
       const n = Number(v);
       if (!Number.isFinite(n)) continue;
       // If the same feedId appears multiple ways, keep the max allocation.
       out[canon] = Math.max(out[canon] ?? 0, n);
     }
+    if (address && Object.keys(out).length > 0) {
+      console.log('[FeedTable] Canonical myAllocations:', out);
+    }
     return out;
-  }, [votesQuery.data?.allocations]);
+  }, [votesQuery.data?.allocations, address]);
 
   const activeFeedIdSet = useMemo(() => {
     const set = new Set<string>();
@@ -601,6 +614,9 @@ export function FeedTable({
 
   function openVoteModal(feedId: string) {
     if (voteDisabledReason) return;
+    console.log('[FeedTable] Opening vote modal for feedId:', feedId);
+    console.log('[FeedTable] myAllocationsVotable:', myAllocationsVotable);
+    console.log('[FeedTable] Current points for this feed:', myAllocationsVotable[feedId] ?? 0);
     setVoteModalFeedId(feedId);
     setVoteModalPoints(myAllocationsVotable[feedId] ?? 0);
   }
