@@ -54,7 +54,11 @@ export default function FlowPage() {
         cache: "no-store",
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json?.error || "Failed to load votes");
+      if (!res.ok) {
+        // Staging/preview may not have persistent votes storage configured. Treat as "voting unavailable".
+        const msg = String(json?.error || "Failed to load votes");
+        throw new Error(msg);
+      }
       return json as {
         totals: Record<string, number>;
         allocations?: Record<string, number>;
@@ -229,7 +233,9 @@ export default function FlowPage() {
               )}
               {votesQuery.isError && (
                 <div className="text-[10px] text-red-600 mt-1">
-                  Failed to load votes
+                  {String(
+                    (votesQuery.error as any)?.message || "Failed to load votes"
+                  )}
                 </div>
               )}
             </div>

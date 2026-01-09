@@ -41,6 +41,14 @@ function toE18(value: BigInt): BigDecimal {
   return value.toBigDecimal().div(E18_BD);
 }
 
+function chainlinkUsd(feed: Address): BigDecimal {
+  const agg = ChainlinkAggregator.bind(feed);
+  const ans = agg.try_latestAnswer();
+  if (ans.reverted) return ONE;
+  // latestAnswer is int256 but graph-ts exposes BigInt; assume positive.
+  return ans.value.toBigDecimal().div(CHAINLINK_1E8);
+}
+
 function getOracleAddressForMinter(minter: Address): Address {
   // Production
   if (minter.equals(Address.fromString("0xd6E2F8e57b4aFB51C6fA4cbC012e1cE6aEad989F"))) {
@@ -94,22 +102,26 @@ function isBtcPegged(minter: Address): boolean {
   return false;
 }
 
+function isBtcStethMinter(minter: Address): boolean {
+  // Production BTC/stETH
+  if (minter.equals(Address.fromString("0xF42516EB885E737780EB864dd07cEc8628000919"))) return true;
+  // Test2 BTC/stETH
+  if (minter.equals(Address.fromString("0x042e7cb5b993312490ea07fb89f360a65b8a9056"))) return true;
+  return false;
+}
+
 function peggedUsdPrice(): BigDecimal {
   // Default to $1 if unknown.
   return ONE;
 }
 
 function peggedUsdPriceFromChainlink(feed: Address): BigDecimal {
-  const agg = ChainlinkAggregator.bind(feed);
-  const ans = agg.try_latestAnswer();
-  if (ans.reverted) return ONE;
-  // latestAnswer is int256 but graph-ts exposes BigInt; assume positive.
-  return ans.value.toBigDecimal().div(CHAINLINK_1E8);
+  return chainlinkUsd(feed);
 }
 
 function getPegUsdForMinter(minterAddress: Address): BigDecimal {
-  if (isEthPegged(minterAddress)) return peggedUsdPriceFromChainlink(ETH_USD_FEED);
-  if (isBtcPegged(minterAddress)) return peggedUsdPriceFromChainlink(BTC_USD_FEED);
+  if (isEthPegged(minterAddress)) return chainlinkUsd(ETH_USD_FEED);
+  if (isBtcPegged(minterAddress)) return chainlinkUsd(BTC_USD_FEED);
   return peggedUsdPrice();
 }
 
@@ -133,14 +145,15 @@ function getOraclePricesForMinter(minterAddress: Address): BigDecimal[] {
   const oracle = WrappedPriceOracle.bind(oracleAddr);
 
   // fxUSD markets: oracle.getPrice() returns fxSAVE price in ETH (1e18).
-  // Convert to USD using ETH/USD Chainlink, and treat wrappedRate as 1.
+  // Convert to USD using the market's peg/USD feed (ETH/USD for ETH-pegged, BTC/USD for BTC-pegged),
+  // and treat wrappedRate as 1.
   if (isFxUsdMinter(minterAddress)) {
     const priceRes = oracle.try_getPrice();
     if (priceRes.reverted) return [ZERO_BD, ZERO_BD, ZERO_BD];
     const fxSavePriceEth = toE18(priceRes.value);
     if (fxSavePriceEth.equals(ZERO_BD)) return [ZERO_BD, ZERO_BD, ZERO_BD];
-    const ethUsd = peggedUsdPriceFromChainlink(ETH_USD_FEED);
-    const fxSavePriceUsd = fxSavePriceEth.times(ethUsd);
+    const pegUsd = getPegUsdForMinter(minterAddress);
+    const fxSavePriceUsd = fxSavePriceEth.times(pegUsd);
     return [fxSavePriceUsd, ONE, fxSavePriceUsd];
   }
 
@@ -154,6 +167,11 @@ function getOraclePricesForMinter(minterAddress: Address): BigDecimal[] {
 
   const pegUsd = getPegUsdForMinter(minterAddress);
   const underlyingPriceUSD = maxUnderlyingPrice.times(pegUsd);
+  // For the BTC/stETH market, on-chain collateral amounts are already in underlying stETH units
+  // (not wstETH), so do NOT apply maxWrappedRate when valuing collateral amounts.
+  if (isBtcStethMinter(minterAddress)) {
+    return [underlyingPriceUSD, ONE, underlyingPriceUSD];
+  }
   const wrappedCollateralUsd = underlyingPriceUSD.times(maxWrappedRate);
   return [underlyingPriceUSD, maxWrappedRate, wrappedCollateralUsd];
 }
@@ -336,13 +354,10 @@ export function handleBlock(block: ethereum.Block): void {
   let wrappedCollateralUsd = oraclePrices[2];
 
   const pegUsd = getPegUsdForMinter(minterAddress);
+  // hs token USD price should drift vs the peg asset:
+  // tokenPriceUSD = leveragedTokenPrice (in peg units) * pegUsd
   const navRes = minter.try_leveragedTokenPrice();
-  const tokenPriceUSD_fromPeg = navRes.reverted ? ZERO_BD : toE18(navRes.value).times(pegUsd);
-
-  let tokenPriceUSD = navRes.reverted ? ZERO_BD : toE18(navRes.value).times(wrappedCollateralUsd);
-  if (tokenPriceUSD.equals(ZERO_BD) && !tokenPriceUSD_fromPeg.equals(ZERO_BD)) {
-    tokenPriceUSD = tokenPriceUSD_fromPeg;
-  }
+  const tokenPriceUSD = navRes.reverted ? ZERO_BD : toE18(navRes.value).times(pegUsd);
 
   if (collateralPriceUSD.equals(ZERO_BD)) collateralPriceUSD = pegUsd;
   if (wrappedRate.equals(ZERO_BD)) wrappedRate = ONE;
@@ -377,10 +392,16 @@ function valueCollateralUsd(
 ): BigDecimal {
   if (collateralAmount.equals(ZERO_BI)) return ZERO_BD;
 
-  const minter = Minter.bind(minterAddress);
-  const oracleAddrRes = minter.try_PRICE_ORACLE();
-  if (oracleAddrRes.reverted) return ZERO_BD;
-  const oracle = WrappedPriceOracle.bind(oracleAddrRes.value);
+  // Prefer hardcoded oracle addresses for known markets to avoid PRICE_ORACLE() reverts.
+  // If unknown, fall back to PRICE_ORACLE().
+  let oracleAddr = getOracleAddressForMinter(minterAddress);
+  if (oracleAddr.equals(Address.zero())) {
+    const minter = Minter.bind(minterAddress);
+    const oracleAddrRes = minter.try_PRICE_ORACLE();
+    if (oracleAddrRes.reverted) return ZERO_BD;
+    oracleAddr = oracleAddrRes.value;
+  }
+  const oracle = WrappedPriceOracle.bind(oracleAddr);
 
   // fxUSD markets: value directly from getPrice() (fxSAVE price in ETH).
   if (isFxUsdMinter(minterAddress)) {
@@ -388,8 +409,10 @@ function valueCollateralUsd(
     if (priceRes.reverted) return ZERO_BD;
     const fxSavePriceEth = toE18(priceRes.value);
     if (fxSavePriceEth.equals(ZERO_BD)) return ZERO_BD;
-    const ethUsd = peggedUsdPriceFromChainlink(ETH_USD_FEED);
-    const fxSavePriceUsd = fxSavePriceEth.times(ethUsd);
+    // getPrice() is denominated in the market's peg units (ETH for ETH-pegged, BTC for BTC-pegged).
+    // Convert to USD using the correct peg/USD feed.
+    const pegUsd = getPegUsdForMinter(minterAddress);
+    const fxSavePriceUsd = fxSavePriceEth.times(pegUsd);
     const amountDec = toE18(collateralAmount);
     return amountDec.times(fxSavePriceUsd);
   }
@@ -403,8 +426,12 @@ function valueCollateralUsd(
   if (maxWrappedRate.equals(ZERO_BD)) return ZERO_BD;
 
   const pegUsd = getPegUsdForMinter(minterAddress);
-  // (amount * price * rate * pegUsd)
   const amountDec = toE18(collateralAmount);
+  // For BTC/stETH, collateralAmount is already underlying stETH units, so don't apply wrapped rate.
+  if (isBtcStethMinter(minterAddress)) {
+    return amountDec.times(maxUnderlyingPrice).times(pegUsd);
+  }
+  // (amount * price * rate * pegUsd)
   return amountDec.times(maxUnderlyingPrice).times(maxWrappedRate).times(pegUsd);
 }
 
@@ -552,13 +579,7 @@ export function handleMintLeveragedToken(event: MintLeveragedToken): void {
   // Convert to USD using Chainlink peg price. This path is what the frontend uses and should be robust.
   const pegUsd = getPegUsdForMinter(minterAddress);
   const navRes = minter.try_leveragedTokenPrice();
-  const tokenPriceUSD_fromPeg = navRes.reverted ? ZERO_BD : toE18(navRes.value).times(pegUsd);
-
-  // Existing tokenPriceUSD (oracle-based) may be zero; prefer non-zero.
-  let tokenPriceUSD = navRes.reverted ? ZERO_BD : toE18(navRes.value).times(wrappedCollateralUsd);
-  if (tokenPriceUSD.equals(ZERO_BD) && !tokenPriceUSD_fromPeg.equals(ZERO_BD)) {
-    tokenPriceUSD = tokenPriceUSD_fromPeg;
-  }
+  const tokenPriceUSD = navRes.reverted ? ZERO_BD : toE18(navRes.value).times(pegUsd);
 
   // If oracle-based collateral valuation failed, approximate collateralValueUSD from tokens minted * tokenPriceUSD.
   const outDec = toE18(leveragedOut);
@@ -657,12 +678,7 @@ export function handleRedeemLeveragedToken(event: RedeemLeveragedToken): void {
 
   const pegUsd = getPegUsdForMinter(minterAddress);
   const navRes = minter.try_leveragedTokenPrice();
-  const tokenPriceUSD_fromPeg = navRes.reverted ? ZERO_BD : toE18(navRes.value).times(pegUsd);
-
-  let tokenPriceUSD = navRes.reverted ? ZERO_BD : toE18(navRes.value).times(wrappedCollateralUsd);
-  if (tokenPriceUSD.equals(ZERO_BD) && !tokenPriceUSD_fromPeg.equals(ZERO_BD)) {
-    tokenPriceUSD = tokenPriceUSD_fromPeg;
-  }
+  const tokenPriceUSD = navRes.reverted ? ZERO_BD : toE18(navRes.value).times(pegUsd);
 
   const burnDec = toE18(leveragedBurned);
   if (collateralValueUSD.equals(ZERO_BD) && !tokenPriceUSD.equals(ZERO_BD) && burnDec.gt(ZERO_BD)) {

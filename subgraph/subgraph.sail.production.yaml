@@ -2,6 +2,13 @@
 specVersion: 0.0.8
 schema:
   file: ./schema.graphql
+features:
+  - grafting
+graft:
+  # Base is the currently-published Gateway deployment (serving correct BTC fxUSD cost basis, etc).
+  # We graft from just BEFORE genesis end so that genesis end is replayed with corrected stETH wrapped-rate handling.
+  base: QmSGKrbUwYTmkmTGxyXUJUBwDqkBuDV6agnF12Twz2Fego
+  block: 24164127
 dataSources:
   # ETH/fxUSD (prod)
   - kind: ethereum
@@ -10,7 +17,7 @@ dataSources:
     source:
       address: "0xC9df4f62474Cf6cdE6c064DB29416a9F4f27EBdC"
       abi: Genesis
-      startBlock: 24049488
+      startBlock: 24164127
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -47,7 +54,7 @@ dataSources:
     source:
       address: "0xd6E2F8e57b4aFB51C6fA4cbC012e1cE6aEad989F"
       abi: Minter
-      startBlock: 24049488
+      startBlock: 24164127
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -88,7 +95,7 @@ dataSources:
     source:
       address: "0x42cc9a19b358a2A918f891D8a6199d8b05F0BC1C"
       abi: Genesis
-      startBlock: 24049375
+      startBlock: 24164127
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -125,7 +132,7 @@ dataSources:
     source:
       address: "0x33e32ff4d0677862fa31582CC654a25b9b1e4888"
       abi: Minter
-      startBlock: 24049375
+      startBlock: 24164127
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -166,7 +173,7 @@ dataSources:
     source:
       address: "0xc64Fc46eED431e92C1b5e24DC296b5985CE6Cc00"
       abi: Genesis
-      startBlock: 24049273
+      startBlock: 24164127
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
@@ -203,7 +210,7 @@ dataSources:
     source:
       address: "0xF42516EB885E737780EB864dd07cEc8628000919"
       abi: Minter
-      startBlock: 24049273
+      startBlock: 24164127
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7

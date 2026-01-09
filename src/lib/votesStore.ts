@@ -16,14 +16,19 @@ export type VotesStore = {
   setAllocations(
     voter: Address,
     next: Record<FeedId, number>
-  ): Promise<{ totals: Record<FeedId, number>; allocations: Record<FeedId, number> }>;
+  ): Promise<{
+    totals: Record<FeedId, number>;
+    allocations: Record<FeedId, number>;
+  }>;
 };
 
 const TOTALS_KEY = "harbor:votes:totals";
 const ALLOC_KEY_PREFIX = "harbor:votes:alloc:";
 const NONCE_KEY_PREFIX = "harbor:votes:nonce:";
 
-function normalizeAllocations(input: Record<FeedId, number>): Record<FeedId, number> {
+function normalizeAllocations(
+  input: Record<FeedId, number>
+): Record<FeedId, number> {
   const out: Record<FeedId, number> = {};
   for (const [k, v] of Object.entries(input || {})) {
     const points = Number(v);
@@ -37,7 +42,10 @@ function normalizeAllocations(input: Record<FeedId, number>): Record<FeedId, num
 }
 
 function sumPoints(map: Record<FeedId, number>): number {
-  return Object.values(map).reduce((s, v) => s + (Number.isFinite(v) ? v : 0), 0);
+  return Object.values(map).reduce(
+    (s, v) => s + (Number.isFinite(v) ? v : 0),
+    0
+  );
 }
 
 async function upstashCommand<T = any>(cmd: any[]): Promise<T> {
@@ -115,7 +123,10 @@ function createMemoryStore(): VotesStore {
         throw new Error("Total vote points cannot exceed 5.");
       }
 
-      const allFeedIds = new Set<FeedId>([...prevMap.keys(), ...Object.keys(nextNorm)]);
+      const allFeedIds = new Set<FeedId>([
+        ...prevMap.keys(),
+        ...Object.keys(nextNorm),
+      ]);
       for (const feedId of allFeedIds) {
         const prev = prevMap.get(feedId) ?? 0;
         const nxt = nextNorm[feedId] ?? 0;
@@ -161,7 +172,11 @@ function createUpstashStore(): VotesStore {
     async getTotals(feedIds) {
       if (feedIds.length === 0) return {};
       // HMGET totals hash
-      const result = await upstashCommand<(string | null)[]>(["HMGET", TOTALS_KEY, ...feedIds]);
+      const result = await upstashCommand<(string | null)[]>([
+        "HMGET",
+        TOTALS_KEY,
+        ...feedIds,
+      ]);
       const out: Record<FeedId, number> = {};
       for (let i = 0; i < feedIds.length; i++) {
         out[feedIds[i]] = result?.[i] ? Number(result[i]) : 0;
@@ -171,7 +186,10 @@ function createUpstashStore(): VotesStore {
 
     async getAllocations(voter) {
       const key = `${ALLOC_KEY_PREFIX}${voter.toLowerCase()}`;
-      const res = await upstashCommand<Record<string, string> | null>(["HGETALL", key]);
+      const res = await upstashCommand<Record<string, string> | null>([
+        "HGETALL",
+        key,
+      ]);
       const out: Record<FeedId, number> = {};
       if (!res) return out;
       for (const [k, v] of Object.entries(res)) {
@@ -192,7 +210,10 @@ function createUpstashStore(): VotesStore {
         throw new Error("Total vote points cannot exceed 5.");
       }
 
-      const allFeedIds = new Set<FeedId>([...Object.keys(prev), ...Object.keys(nextNorm)]);
+      const allFeedIds = new Set<FeedId>([
+        ...Object.keys(prev),
+        ...Object.keys(nextNorm),
+      ]);
       for (const feedId of allFeedIds) {
         const prevPts = prev[feedId] ?? 0;
         const nextPts = nextNorm[feedId] ?? 0;
@@ -223,14 +244,23 @@ export function getVotesStore(): VotesStore {
 
   // Upstash default; allow dev to run without env by falling back to memory
   const hasUpstash =
-    !!process.env.UPSTASH_REDIS_REST_URL && !!process.env.UPSTASH_REDIS_REST_TOKEN;
+    !!process.env.UPSTASH_REDIS_REST_URL &&
+    !!process.env.UPSTASH_REDIS_REST_TOKEN;
   if (!hasUpstash) {
-    if (process.env.NODE_ENV === "development") {
+    const vercelEnv = process.env.VERCEL_ENV; // "production" | "preview" | "development" (when on Vercel)
+    const allowMemoryFallback =
+      process.env.NODE_ENV === "development" ||
+      (vercelEnv && vercelEnv !== "production");
+
+    if (allowMemoryFallback) {
       console.warn(
-        "[votes] UPSTASH_REDIS_REST_URL/TOKEN missing; using in-memory votes store (dev only)."
+        `[votes] UPSTASH_REDIS_REST_URL/TOKEN missing; using in-memory votes store (non-production env: ${
+          vercelEnv || process.env.NODE_ENV
+        }).`
       );
       return createMemoryStore();
     }
+
     throw new Error(
       "Votes storage not configured. Set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN."
     );
@@ -245,5 +275,3 @@ export function buildFeedId(network: string, address: string): FeedId {
   }
   return `${net}:${address.toLowerCase()}`;
 }
-
-

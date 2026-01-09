@@ -36,6 +36,7 @@ function VoteCell({
   myPoints,
   remainingPoints,
   isConnected,
+  disabledReason,
   onOpen,
 }: {
   feedId: string;
@@ -43,8 +44,10 @@ function VoteCell({
   myPoints: number;
   remainingPoints: number;
   isConnected: boolean;
+  disabledReason?: string;
   onOpen: () => void;
 }) {
+  const isDisabled = !isConnected || !!disabledReason;
   return (
     <div className="flex items-center gap-1.5">
       <div className="text-[10px] text-[#1E4775]/60 whitespace-nowrap">
@@ -55,17 +58,19 @@ function VoteCell({
       </div>
       <button
         className={`px-4 py-2 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
-          isConnected
+          !isDisabled
             ? "bg-[#FF8A7A] text-white hover:bg-[#FF6B5A]"
             : "bg-[#FF8A7A]/30 text-white/50 cursor-not-allowed"
         }`}
         onClick={(e) => {
           e.stopPropagation();
-          if (!isConnected) return;
+          if (isDisabled) return;
           onOpen();
         }}
         title={
-          isConnected
+          disabledReason
+            ? disabledReason
+            : isConnected
             ? `Allocate vote points (remaining ${remainingPoints})`
             : "Connect wallet to vote"
         }
@@ -85,6 +90,7 @@ function FeedGroupRows({
   myAllocations,
   remainingPoints,
   isConnected,
+  voteDisabledReason,
   onOpenVote,
 }: {
   feeds: FeedWithMetadata[];
@@ -95,6 +101,7 @@ function FeedGroupRows({
   myAllocations: Record<string, number>;
   remainingPoints: number;
   isConnected: boolean;
+  voteDisabledReason?: string;
   onOpenVote: (feedId: string) => void;
 }) {
   const network = feeds[0].network;
@@ -245,17 +252,19 @@ function FeedGroupRows({
                   >
                     <button
                       className={`px-4 py-2 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
-                        isConnected
+                        isConnected && !voteDisabledReason
                           ? "bg-[#FF8A7A] text-white hover:bg-[#FF6B5A]"
                           : "bg-[#FF8A7A]/30 text-white/50 cursor-not-allowed"
                       }`}
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (!isConnected) return;
+                        if (!isConnected || voteDisabledReason) return;
                         onOpenVote(feedId);
                       }}
                       title={
-                        isConnected
+                        voteDisabledReason
+                          ? voteDisabledReason
+                          : isConnected
                           ? `Allocate vote points (remaining ${remainingPoints})`
                           : "Connect wallet to vote"
                       }
@@ -329,6 +338,7 @@ function FeedGroupRows({
                           myPoints={myPoints}
                           remainingPoints={remainingPoints}
                           isConnected={isConnected}
+                          disabledReason={voteDisabledReason}
                           onOpen={() => onOpenVote(feedId)}
                         />
                       </div>
@@ -394,6 +404,13 @@ export function FeedTable({
     enabled: allFeedIds.length > 0,
     staleTime: 15_000,
   });
+
+  const votesErrorMessage = votesQuery.isError
+    ? String((votesQuery.error as any)?.message || "Failed to load votes")
+    : "";
+  const voteDisabledReason = votesErrorMessage
+    ? `Voting unavailable: ${votesErrorMessage}`
+    : undefined;
 
   const totals = votesQuery.data?.totals ?? {};
   const myAllocations = votesQuery.data?.allocations ?? {};
@@ -465,6 +482,7 @@ export function FeedTable({
   });
 
   function openVoteModal(feedId: string) {
+    if (voteDisabledReason) return;
     setVoteModalFeedId(feedId);
     setVoteModalPoints(myAllocations[feedId] ?? 0);
   }
@@ -534,6 +552,7 @@ export function FeedTable({
             myAllocations={myAllocations}
             remainingPoints={remainingPoints}
             isConnected={isConnected}
+            voteDisabledReason={voteDisabledReason}
             onOpenVote={openVoteModal}
           />
         ))}
