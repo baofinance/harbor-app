@@ -254,6 +254,7 @@ interface AnchorDepositWithdrawModalProps {
   bestPoolType?: "collateral" | "sail";
   // For simple mode: all markets for the same ha token
   allMarkets?: Array<{ marketId: string; market: any }>;
+  initialDepositAsset?: string;
 }
 
 type TabType = "deposit" | "withdraw";
@@ -311,6 +312,7 @@ export const AnchorDepositWithdrawModal = ({
   simpleMode = false,
   bestPoolType = "collateral",
   allMarkets,
+  initialDepositAsset,
 }: AnchorDepositWithdrawModalProps) => {
   const { address, isConnected, connector } = useAccount();
   // NOTE: `useChainId()` can be misleading when the wallet is on an unsupported chain (e.g. Polygon),
@@ -1559,7 +1561,7 @@ export const AnchorDepositWithdrawModal = ({
                              "0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84";
         return stETHAddress as `0x${string}`;
       } else {
-        // For BTC/stETH market, stETH is the wrapped collateral
+      // For BTC/stETH market, stETH is the wrapped collateral
         const address = market?.addresses?.wrappedCollateralToken;
         return address ? (address as `0x${string}`) : null;
       }
@@ -1930,25 +1932,32 @@ export const AnchorDepositWithdrawModal = ({
     ? anvilPeggedBalanceResult.data
     : wagmiPeggedBalanceResult.data;
 
-  // Set default selection to ha token when user has ha tokens in wallet
+  // Set default selection to ha token when user has ha tokens in wallet or when initialDepositAsset is provided
   useEffect(() => {
     if (
       isOpen &&
       activeTab === "deposit" &&
       simpleMode &&
-      !selectedDepositAsset &&
-      peggedTokenSymbol &&
-      peggedBalanceData !== undefined &&
-      peggedBalanceData !== null &&
-      peggedBalanceData > 0n
+      !selectedDepositAsset
     ) {
-      setSelectedDepositAsset(peggedTokenSymbol);
+      // Priority: use initialDepositAsset if provided, otherwise use ha token if user has balance
+      if (initialDepositAsset) {
+        setSelectedDepositAsset(initialDepositAsset);
+      } else if (
+        peggedTokenSymbol &&
+        peggedBalanceData !== undefined &&
+        peggedBalanceData !== null &&
+        peggedBalanceData > 0n
+      ) {
+        setSelectedDepositAsset(peggedTokenSymbol);
+      }
     }
   }, [
     isOpen,
     activeTab,
     simpleMode,
     selectedDepositAsset,
+    initialDepositAsset,
     peggedTokenSymbol,
     peggedBalanceData,
   ]);
@@ -3549,9 +3558,9 @@ export const AnchorDepositWithdrawModal = ({
     }
     
     if (!dryRunResult || dryRunResult.length < 1) {
-      if (process.env.NODE_ENV === "development") {
+    if (process.env.NODE_ENV === "development") {
         console.warn("[Fee Calculation] Invalid dry run result structure:", dryRunData);
-      }
+    }
       return undefined;
     }
 
@@ -3573,7 +3582,7 @@ export const AnchorDepositWithdrawModal = ({
     if (isDisallowed) {
       return undefined; // Don't show fee if minting is disallowed
     }
-    
+
     // Convert incentiveRatio to percentage: divide by 1e16 to get percentage
     // Positive values = fee, negative values = discount
     let feePercent = 0;
@@ -3971,7 +3980,7 @@ export const AnchorDepositWithdrawModal = ({
             maxAcceptableInUserAsset = Number(formatEther(stEthAmount));
           } else {
             // Fallback: assume 1:1 (shouldn't happen, but safe fallback)
-            maxAcceptableInUserAsset = Number(formatEther(wrappedCollateralTaken));
+        maxAcceptableInUserAsset = Number(formatEther(wrappedCollateralTaken));
           }
         } else {
           // For USDC, fxUSD, etc. - use wrapped amount directly
@@ -5414,8 +5423,8 @@ export const AnchorDepositWithdrawModal = ({
                     m?.addresses?.peggedTokenZap?.toLowerCase() === zapAddress.toLowerCase() ||
                     m?.addresses?.leveragedTokenZap?.toLowerCase() === zapAddress.toLowerCase()
                 )?.market;
-              }
-              
+            }
+            
               if (marketForDryRun?.addresses?.minter && publicClient) {
                 try {
                   // Convert ETH to wstETH for dry run
@@ -5429,9 +5438,9 @@ export const AnchorDepositWithdrawModal = ({
                     
                     // Query wstETH contract for actual conversion rate
                     const wstEthAmount = await publicClient.readContract({
-                      address: wstETHAddress,
-                      abi: WSTETH_ABI,
-                      functionName: "getWstETHByStETH",
+              address: wstETHAddress,
+              abi: WSTETH_ABI,
+              functionName: "getWstETHByStETH",
                       args: [stEthAmount],
                     });
                     
@@ -5441,7 +5450,7 @@ export const AnchorDepositWithdrawModal = ({
                       abi: minterABI,
                       functionName: "mintPeggedTokenDryRun",
                       args: [wstEthAmount as bigint],
-                    });
+            });
                     if (dryRunResult && Array.isArray(dryRunResult) && dryRunResult.length >= 4) {
                       actualExpectedOutput = dryRunResult[3] as bigint;
                       if (process.env.NODE_ENV === "development") {
@@ -5620,12 +5629,12 @@ export const AnchorDepositWithdrawModal = ({
                 value: swappedAmount.toString(),
               });
               zapHash = await writeContractAsync({
-                address: zapAddress,
+              address: zapAddress,
                 abi: MINTER_ETH_ZAP_V2_ABI,
                 functionName: "zapEthToPegged",
                 args: [address as `0x${string}`, minPeggedOut],
-                value: swappedAmount,
-              });
+              value: swappedAmount,
+            });
             } else if (isActuallyStETH) {
               // Need approval for stETH first
               // Use underlyingCollateralToken (stETH), not wrappedCollateralToken (wstETH)
@@ -5717,11 +5726,11 @@ export const AnchorDepositWithdrawModal = ({
               throw new Error("Asset address not found for approval");
             }
             
-            // Check network before sending transaction
-            if (!(await ensureCorrectNetwork())) {
-              throw new Error("Wrong network. Please switch to Ethereum Mainnet.");
-            }
-            
+              // Check network before sending transaction
+              if (!(await ensureCorrectNetwork())) {
+                throw new Error("Wrong network. Please switch to Ethereum Mainnet.");
+              }
+              
             // Read current allowance for the asset to zap contract
             const currentAllowance = await publicClient?.readContract({
               address: assetAddressForApproval,
@@ -5795,7 +5804,7 @@ export const AnchorDepositWithdrawModal = ({
                 args: [swappedAmount.toString(), address, minPeggedOut.toString()],
               });
               zapHash = await writeContractAsync({
-                address: zapAddress,
+              address: zapAddress,
                 abi: MINTER_USDC_ZAP_V2_ABI,
                 functionName: "zapUsdcToPegged",
                 args: [swappedAmount, address as `0x${string}`, minPeggedOut],
@@ -5811,7 +5820,7 @@ export const AnchorDepositWithdrawModal = ({
                 abi: MINTER_USDC_ZAP_V2_ABI,
                 functionName: "zapFxUsdToPegged",
                 args: [swappedAmount, address as `0x${string}`, minPeggedOut],
-              });
+            });
             } else {
               throw new Error("Invalid asset for USDC/fxUSD zap");
             }
@@ -6067,15 +6076,15 @@ export const AnchorDepositWithdrawModal = ({
             minPeggedOut = (expectedMintOutput * BigInt(Math.floor((100 - slippageBps) * 100))) / 10000n;
           } else if (fxSAVERate && fxSAVERate > 0n) {
             // Fallback: estimate using fxSAVE rate (less accurate, but better than 0)
-            // USDC has 6 decimals, fxUSD has 18 decimals
-            let amountIn18Decimals: bigint;
-            if (isUSDC) {
-              // USDC: convert from 6 decimals to 18 decimals
-              amountIn18Decimals = amountBigInt * 10n ** 12n;
-            } else {
-              // fxUSD: already in 18 decimals
-              amountIn18Decimals = amountBigInt;
-            }
+          // USDC has 6 decimals, fxUSD has 18 decimals
+          let amountIn18Decimals: bigint;
+          if (isUSDC) {
+            // USDC: convert from 6 decimals to 18 decimals
+            amountIn18Decimals = amountBigInt * 10n ** 12n;
+          } else {
+            // fxUSD: already in 18 decimals
+            amountIn18Decimals = amountBigInt;
+          }
             // Convert to fxSAVE using wrapped rate
             // fxSAVERate is in 18 decimals: rate = (fxSAVE_amount * 10^18) / fxUSD_amount
             // So: fxSAVE_amount = (fxUSD_amount * 10^18) / fxSAVERate
@@ -6087,7 +6096,7 @@ export const AnchorDepositWithdrawModal = ({
             const estimatedPeggedOut = (fxSaveAmount * 9965n) / 10000n; // Estimate 0.35% total fee
             const slippageBps = Math.max(slippageTolerance || 1, 2.0); // Increased from 0.5% to 2% minimum
             minPeggedOut = (estimatedPeggedOut * BigInt(Math.floor((100 - slippageBps) * 100))) / 10000n;
-          } else {
+        } else {
             throw new Error("Cannot calculate minPeggedOut: expectedMintOutput and fxSAVERate both unavailable");
           }
         } else {
@@ -8020,27 +8029,27 @@ export const AnchorDepositWithdrawModal = ({
                           
                           return (
                             <TokenSelectorDropdown
-                              value={selectedDepositAsset}
+                          value={selectedDepositAsset}
                               onChange={(newAsset) => {
-                                setSelectedDepositAsset(newAsset);
-                                anyTokenDeposit.setSelectedAsset(newAsset); // Sync with hook
-                                setAmount(""); // Reset amount when changing asset
-                                setError(null); // Clear any errors
-                                // Clear temp warning when changing asset
-                                if (tempMaxWarning) {
-                                  setTempMaxWarning(null);
-                                  if (tempWarningTimerRef.current) {
-                                    clearTimeout(tempWarningTimerRef.current);
-                                    tempWarningTimerRef.current = null;
-                                  }
-                                }
-                              }}
+                            setSelectedDepositAsset(newAsset);
+                            anyTokenDeposit.setSelectedAsset(newAsset); // Sync with hook
+                            setAmount(""); // Reset amount when changing asset
+                            setError(null); // Clear any errors
+                            // Clear temp warning when changing asset
+                            if (tempMaxWarning) {
+                              setTempMaxWarning(null);
+                              if (tempWarningTimerRef.current) {
+                                clearTimeout(tempWarningTimerRef.current);
+                                tempWarningTimerRef.current = null;
+                              }
+                            }
+                          }}
                               options={tokenGroups}
-                              disabled={isProcessing}
+                          disabled={isProcessing}
                               placeholder="Select Deposit Token"
                             />
-                          );
-                        })()}
+                            );
+                          })()}
                         {/* Swap info for "any token" deposits */}
                         {anyTokenDeposit.needsSwap && selectedDepositAsset && amount && parseFloat(amount) > 0 && (() => {
                           const isSwappingToUSDC = anyTokenDeposit.swapTargetToken !== "ETH";
@@ -8762,12 +8771,12 @@ export const AnchorDepositWithdrawModal = ({
                                     parseFloat(amount) > 0
                                       ? directPeggedDepositUSD > 0
                                         ? `$${directPeggedDepositUSD.toLocaleString(
-                                            undefined,
-                                            {
-                                              minimumFractionDigits: 2,
-                                              maximumFractionDigits: 2,
-                                            }
-                                          )}`
+                                          undefined,
+                                          {
+                                            minimumFractionDigits: 2,
+                                            maximumFractionDigits: 2,
+                                          }
+                                        )}`
                                         : "..."
                                       : expectedDepositUSD > 0
                                       ? `$${expectedDepositUSD.toLocaleString(

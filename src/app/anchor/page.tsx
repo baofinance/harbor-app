@@ -143,6 +143,7 @@ export default function AnchorPage() {
     simpleMode?: boolean;
     bestPoolType?: "collateral" | "sail";
     allMarkets?: Array<{ marketId: string; market: any }>;
+    initialDepositAsset?: string;
   } | null>(null);
   const [compoundModal, setCompoundModal] = useState<{
     marketId: string;
@@ -3313,6 +3314,7 @@ export default function AnchorPage() {
                                   simpleMode: true,
                                   bestPoolType: "collateral",
                                   allMarkets: enrichedMarkets,
+                                  initialDepositAsset: position.symbol,
                                 });
                               }}
                               className="px-3 py-1.5 text-xs font-medium bg-[#1E4775] text-white hover:bg-[#17395F] transition-colors rounded-full whitespace-nowrap"
@@ -3371,26 +3373,27 @@ export default function AnchorPage() {
                                     wrappedRate: m.marketData?.wrappedRate,
                                   },
                                 }));
-                                setManageModal({
-                                  marketId: firstMarket.marketId,
-                                  market: {
-                                    ...firstMarket.market,
-                                    wrappedRate: marketData?.wrappedRate,
-                                  },
-                                  initialTab: "deposit",
-                                  simpleMode: true,
-                                  bestPoolType: "collateral",
-                                  allMarkets: enrichedMarkets,
-                                });
-                              }}
-                              className="px-3 py-1.5 text-xs font-medium bg-[#1E4775] text-white hover:bg-[#17395F] transition-colors rounded-full whitespace-nowrap"
-                            >
-                              Deposit
-                            </button>
+                                  setManageModal({
+                                    marketId: firstMarket.marketId,
+                                    market: {
+                                      ...firstMarket.market,
+                                      wrappedRate: marketData?.wrappedRate,
+                                    },
+                                    initialTab: "deposit",
+                                    simpleMode: true,
+                                    bestPoolType: "collateral",
+                                    allMarkets: enrichedMarkets,
+                                    initialDepositAsset: position.symbol,
+                                  });
+                                }}
+                                className="px-3 py-1.5 text-xs font-medium bg-[#1E4775] text-white hover:bg-[#17395F] transition-colors rounded-full whitespace-nowrap"
+                              >
+                                Deposit
+                              </button>
+                            </div>
                           </div>
-                        </div>
 
-                        {/* Mobile layout (< md) */}
+                          {/* Mobile layout (< md) */}
                         <div className="md:hidden space-y-2">
                           <div className="flex items-center justify-between gap-3">
                             <div className="flex items-center gap-2 min-w-0 flex-1">
@@ -3434,6 +3437,7 @@ export default function AnchorPage() {
                                     simpleMode: true,
                                     bestPoolType: "collateral",
                                     allMarkets: enrichedMarkets,
+                                    initialDepositAsset: position.symbol,
                                   });
                                 }}
                                 className="px-3 py-1.5 text-xs font-medium bg-[#1E4775] text-white hover:bg-[#17395F] transition-colors rounded-full whitespace-nowrap"
@@ -4287,7 +4291,7 @@ export default function AnchorPage() {
 
                                 if (!hasCurrentAPR && hasProjectedAPR) {
                                   return projectedStr ? `Proj\n${projectedStr}` : "-";
-                                }
+                                  }
 
                                 if (hasCurrentAPR && hasProjectedAPR) {
                                   return projectedStr ? `${currentStr}\nProj\n${projectedStr}` : currentStr || "-";
@@ -5140,6 +5144,8 @@ export default function AnchorPage() {
             simpleMode={true}
             bestPoolType={manageModal.bestPoolType || "collateral"}
             allMarkets={manageModal.allMarkets}
+            initialDepositAsset={manageModal.initialDepositAsset}
+            initialDepositAsset={manageModal.initialDepositAsset}
             onSuccess={async () => {
               // Wait for blockchain state to update
               await new Promise((resolve) => setTimeout(resolve, 2000));
