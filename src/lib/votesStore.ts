@@ -186,16 +186,30 @@ function createUpstashStore(): VotesStore {
 
     async getAllocations(voter) {
       const key = `${ALLOC_KEY_PREFIX}${voter.toLowerCase()}`;
-      const res = await upstashCommand<Record<string, string> | null>([
+      const res = await upstashCommand<(string | null)[] | Record<string, string> | null>([
         "HGETALL",
         key,
       ]);
       const out: Record<FeedId, number> = {};
       if (!res) return out;
-      for (const [k, v] of Object.entries(res)) {
-        const n = Number(v);
-        if (!Number.isFinite(n)) continue;
-        out[k] = n;
+      
+      // HGETALL returns an array: ["key1", "val1", "key2", "val2", ...]
+      if (Array.isArray(res)) {
+        for (let i = 0; i < res.length; i += 2) {
+          const k = res[i];
+          const v = res[i + 1];
+          if (!k || !v) continue;
+          const n = Number(v);
+          if (!Number.isFinite(n)) continue;
+          out[k] = n;
+        }
+      } else {
+        // Fallback for object format (in case API behavior differs)
+        for (const [k, v] of Object.entries(res)) {
+          const n = Number(v);
+          if (!Number.isFinite(n)) continue;
+          out[k] = n;
+        }
       }
       return out;
     },
