@@ -15,6 +15,8 @@ type FeedWithMetadata = FeedEntry & {
   baseAsset: string;
 };
 
+export type StatusFilter = "all" | "active" | "available";
+
 export function useFeedFilters() {
   const [expanded, setExpanded] = useState<ExpandedState>(null);
   const [selectedNetwork, setSelectedNetwork] = useState<Network | null>(null);
@@ -22,11 +24,12 @@ export function useFeedFilters() {
     null
   );
   const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("available");
 
   // Clear expanded view when filters change
   useEffect(() => {
     setExpanded(null);
-  }, [selectedNetwork, selectedBaseAsset, searchQuery]);
+  }, [selectedNetwork, selectedBaseAsset, searchQuery, statusFilter]);
 
   // Get all feeds with metadata
   const allFeeds = useMemo(() => {
@@ -75,8 +78,16 @@ export function useFeedFilters() {
       });
     }
 
+    // Filter by status
+    if (statusFilter !== "all") {
+      filtered = filtered.filter((feed) => {
+        const feedStatus = feed.status || "available";
+        return feedStatus === statusFilter;
+      });
+    }
+
     return filtered;
-  }, [allFeeds, selectedNetwork, selectedBaseAsset, searchQuery]);
+  }, [allFeeds, selectedNetwork, selectedBaseAsset, searchQuery, statusFilter]);
 
   // Get available base assets based on selected network
   const availableBaseAssets = useMemo(() => {
@@ -121,6 +132,8 @@ export function useFeedFilters() {
     setSelectedBaseAsset,
     searchQuery,
     setSearchQuery,
+    statusFilter,
+    setStatusFilter,
     allFeeds,
     filteredFeeds,
     availableBaseAssets,

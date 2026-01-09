@@ -399,19 +399,26 @@ export default function AnchorPage() {
 
   const anchorBoostIds = useMemo(() => {
     const ids: string[] = [];
-    for (const b of haLedgerBalances ?? []) {
-      ids.push(`haToken-${b.tokenAddress.toLowerCase()}`);
-    }
-    for (const d of poolLedgerDeposits ?? []) {
-      const sourceType =
-        d.poolType === "collateral" ? "stabilityPoolCollateral" : "stabilityPoolLeveraged";
-      ids.push(`${sourceType}-${d.poolAddress.toLowerCase()}`);
+    // Include all anchor markets (not just user's balances) so boost banners show when no wallet is connected
+    for (const [_, market] of anchorMarkets) {
+      const peggedTokenAddress = (market as any)?.addresses?.peggedToken as string | undefined;
+      if (peggedTokenAddress) {
+        ids.push(`haToken-${peggedTokenAddress.toLowerCase()}`);
+      }
+      const collateralPoolAddress = (market as any)?.addresses?.stabilityPoolCollateral as string | undefined;
+      if (collateralPoolAddress) {
+        ids.push(`stabilityPoolCollateral-${collateralPoolAddress.toLowerCase()}`);
+      }
+      const leveragedPoolAddress = (market as any)?.addresses?.stabilityPoolLeveraged as string | undefined;
+      if (leveragedPoolAddress) {
+        ids.push(`stabilityPoolLeveraged-${leveragedPoolAddress.toLowerCase()}`);
+      }
     }
     return Array.from(new Set(ids));
-  }, [haLedgerBalances, poolLedgerDeposits]);
+  }, [anchorMarkets]);
 
   const { data: anchorBoostWindowsData } = useMarketBoostWindows({
-    enabled: !!address && isConnected && anchorBoostIds.length > 0,
+    enabled: anchorBoostIds.length > 0,
     ids: anchorBoostIds,
     first: 100,
   });
@@ -4721,11 +4728,11 @@ export default function AnchorPage() {
                                           <div className="space-y-1">
                                             <div>
                                               {collateralTokensUnderlyingEq.toLocaleString(
-                                                undefined,
-                                                {
-                                                  minimumFractionDigits: 2,
-                                                  maximumFractionDigits: 2,
-                                                }
+                                          undefined,
+                                          {
+                                            minimumFractionDigits: 2,
+                                            maximumFractionDigits: 2,
+                                          }
                                               )}{" "}
                                               {marketData.market.collateral
                                                 ?.underlyingSymbol ||

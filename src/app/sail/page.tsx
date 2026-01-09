@@ -1114,16 +1114,27 @@ export default function SailPage() {
     };
   }, [totalSailMarksState, sailBalances]);
 
+  // Get all markets with leveraged tokens (we'll filter by collateral balance later)
+  const sailMarkets = useMemo(
+    () => Object.entries(markets).filter(([_, m]) => m.leveragedToken),
+    []
+  );
+
   // Sail marks boost window (2x) for markets in their first 8 days
   const sailBoostIds = useMemo(() => {
-    if (!sailBalances || sailBalances.length === 0) return [];
-    return sailBalances.map(
-      (b: { tokenAddress: string }) => `sailToken-${b.tokenAddress.toLowerCase()}`
-    );
-  }, [sailBalances]);
+    const ids: string[] = [];
+    // Include all sail markets (not just user's balances) so boost banners show when no wallet is connected
+    for (const [_, market] of sailMarkets) {
+      const leveragedTokenAddress = (market as any)?.addresses?.leveragedToken as string | undefined;
+      if (leveragedTokenAddress) {
+        ids.push(`sailToken-${leveragedTokenAddress.toLowerCase()}`);
+      }
+    }
+    return Array.from(new Set(ids));
+  }, [sailMarkets]);
 
   const { data: sailBoostWindowsData } = useMarketBoostWindows({
-    enabled: !!address && isConnected && sailBoostIds.length > 0,
+    enabled: sailBoostIds.length > 0,
     ids: sailBoostIds,
     first: 50,
   });
@@ -1140,12 +1151,6 @@ export default function SailPage() {
     if (active.length === 0) return null;
     return active.reduce((minEnd, w) => Math.min(minEnd, w.end), active[0].end);
   }, [sailBoostWindowsData]);
-
-  // Get all markets with leveraged tokens (we'll filter by collateral balance later)
-  const sailMarkets = useMemo(
-    () => Object.entries(markets).filter(([_, m]) => m.leveragedToken),
-    []
-  );
 
   // Group markets by long side
   const groupedMarkets = useMemo(() => {

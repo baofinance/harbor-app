@@ -653,22 +653,35 @@ return total;
  staleTime: 10000,
  });
 
-  // Query boost windows for markets present in the leaderboard data
+  // Query boost windows for all markets (not just leaderboard data) so boost banners show when no wallet is connected
   const boostIds = useMemo(() => {
     const ids: string[] = [];
-    for (const b of haTokenBalancesData?.haTokenBalances ?? []) {
-      ids.push(`haToken-${(b.tokenAddress || "").toLowerCase()}`);
+    // Include all anchor markets
+    const anchorMarkets = Object.entries(markets).filter(([_, m]) => m.peggedToken);
+    for (const [_, market] of anchorMarkets) {
+      const peggedTokenAddress = (market as any)?.addresses?.peggedToken as string | undefined;
+      if (peggedTokenAddress) {
+        ids.push(`haToken-${peggedTokenAddress.toLowerCase()}`);
+      }
+      const collateralPoolAddress = (market as any)?.addresses?.stabilityPoolCollateral as string | undefined;
+      if (collateralPoolAddress) {
+        ids.push(`stabilityPoolCollateral-${collateralPoolAddress.toLowerCase()}`);
+      }
+      const leveragedPoolAddress = (market as any)?.addresses?.stabilityPoolLeveraged as string | undefined;
+      if (leveragedPoolAddress) {
+        ids.push(`stabilityPoolLeveraged-${leveragedPoolAddress.toLowerCase()}`);
+      }
     }
-    for (const d of stabilityPoolDepositsData?.stabilityPoolDeposits ?? []) {
-      const sourceType =
-        d.poolType === "collateral" ? "stabilityPoolCollateral" : "stabilityPoolLeveraged";
-      ids.push(`${sourceType}-${(d.poolAddress || "").toLowerCase()}`);
-    }
-    for (const b of sailTokenBalancesData?.sailTokenBalances ?? []) {
-      ids.push(`sailToken-${(b.tokenAddress || "").toLowerCase()}`);
+    // Include all sail markets
+    const sailMarkets = Object.entries(markets).filter(([_, m]) => m.leveragedToken);
+    for (const [_, market] of sailMarkets) {
+      const leveragedTokenAddress = (market as any)?.addresses?.leveragedToken as string | undefined;
+      if (leveragedTokenAddress) {
+        ids.push(`sailToken-${leveragedTokenAddress.toLowerCase()}`);
+      }
     }
     return Array.from(new Set(ids)).filter((id) => id.includes("0x"));
-  }, [haTokenBalancesData, stabilityPoolDepositsData, sailTokenBalancesData]);
+  }, []);
 
   const { data: boostWindowsData } = useMarketBoostWindows({
     enabled: boostIds.length > 0,

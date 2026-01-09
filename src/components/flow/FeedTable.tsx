@@ -11,7 +11,7 @@ import { useRpcClient } from "@/hooks/useRpcClient";
 import { useFeedPrices } from "@/hooks/useFeedPrices";
 import type { FeedWithMetadata, ExpandedState } from "@/hooks/useFeedFilters";
 import { FeedDetails } from "@/components/flow/FeedDetails";
-import { ChevronDownIcon, ChevronUpIcon } from "@heroicons/react/24/outline";
+import { ChevronDownIcon, ChevronUpIcon, ArrowsUpDownIcon } from "@heroicons/react/24/outline";
 import { useAccount, useSignTypedData } from "wagmi";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { buildFeedId } from "@/lib/votesStore";
@@ -22,6 +22,8 @@ import {
   VOTE_POINTS_MAX,
   type VoteAllocation,
 } from "@/lib/votesTypedData";
+import { getMarketIdFromFeedLabel } from "@/utils/feedMarketMapping";
+import Link from "next/link";
 
 interface FeedTableProps {
   feeds: FeedWithMetadata[];
@@ -50,9 +52,8 @@ function VoteCell({
   const isDisabled = !isConnected || !!disabledReason;
   return (
     <div className="flex items-center gap-1.5">
-      <div className="text-[10px] text-[#1E4775]/60 whitespace-nowrap">
-        Total:{" "}
-        <span className="font-mono font-semibold text-[#1E4775]">
+      <div className="text-xs text-[#1E4775]/60 whitespace-nowrap">
+        <span className="font-mono font-semibold text-[#1E4775] text-sm">
           {totalPoints}
         </span>
       </div>
@@ -137,6 +138,9 @@ function FeedGroupRows({
           expanded?.token === baseAsset &&
           expanded?.feedIndex === feedIndex;
 
+        const marketId = getMarketIdFromFeedLabel(feed.label);
+        const isActive = status === "active" && marketId !== null;
+
         return (
           <div key={feed.address} className="space-y-2">
             {/* Feed card (like Anchor/Sail market bars) */}
@@ -156,7 +160,11 @@ function FeedGroupRows({
             >
               <div className="hidden lg:block py-2 px-3">
                 {/* Desktop layout */}
-                <div className="grid grid-cols-[1.2fr_0.8fr_0.6fr_1.2fr_0.6fr_0.4fr_0.7fr] gap-3 items-center text-sm">
+                <div className={`grid gap-3 items-center text-sm ${
+                  isActive 
+                    ? "grid-cols-[1.2fr_0.8fr_0.6fr_1.2fr_0.6fr_1.2fr]"
+                    : "grid-cols-[1.2fr_0.8fr_0.6fr_1.2fr_0.6fr_0.4fr_0.7fr]"
+                }`}>
                   <div className="min-w-0 flex justify-center">
                     <div className="flex items-center gap-2 min-w-0">
                       <TokenIcon
@@ -238,39 +246,58 @@ function FeedGroupRows({
                     </span>
                   </div>
 
-                  <div className="text-center">
-                    <div className="text-[10px] text-[#1E4775]/60 whitespace-nowrap">
-                      <span className="font-mono font-semibold text-[#1E4775]">
+                  {!isActive && (
+                    <div className="text-center">
+                      <div className="font-mono font-semibold text-[#1E4775] text-sm">
                         {totalPoints}
-                      </span>
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   <div
-                    className="flex justify-center"
+                    className="flex justify-center gap-2"
                     onClick={(e) => e.stopPropagation()}
                   >
-                    <button
-                      className={`px-4 py-2 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
-                        isConnected && !voteDisabledReason
-                          ? "bg-[#FF8A7A] text-white hover:bg-[#FF6B5A]"
-                          : "bg-[#FF8A7A]/30 text-white/50 cursor-not-allowed"
-                      }`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (!isConnected || voteDisabledReason) return;
-                        onOpenVote(feedId);
-                      }}
-                      title={
-                        voteDisabledReason
-                          ? voteDisabledReason
-                          : isConnected
-                          ? `Allocate vote points (remaining ${remainingPoints})`
-                          : "Connect wallet to vote"
-                      }
-                    >
-                      Vote{myPoints > 0 ? ` (${myPoints})` : ""}
-                    </button>
+                    {isActive ? (
+                      <>
+                        <Link
+                          href={`/anchor?market=${marketId}`}
+                          className="px-4 py-2 rounded-full text-xs font-medium whitespace-nowrap transition-colors bg-[#1E4775] text-white hover:bg-[#17395F]"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          Anchor
+                        </Link>
+                        <Link
+                          href={`/sail?market=${marketId}`}
+                          className="px-4 py-2 rounded-full text-xs font-medium whitespace-nowrap transition-colors bg-[#1E4775] text-white hover:bg-[#17395F]"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          Sail
+                        </Link>
+                      </>
+                    ) : (
+                      <button
+                        className={`px-4 py-2 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
+                          isConnected && !voteDisabledReason
+                            ? "bg-[#FF8A7A] text-white hover:bg-[#FF6B5A]"
+                            : "bg-[#FF8A7A]/30 text-white/50 cursor-not-allowed"
+                        }`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (!isConnected || voteDisabledReason) return;
+                          onOpenVote(feedId);
+                        }}
+                        title={
+                          voteDisabledReason
+                            ? voteDisabledReason
+                            : isConnected
+                            ? `Allocate vote points (remaining ${remainingPoints})`
+                            : "Connect wallet to vote"
+                        }
+                      >
+                        Vote{myPoints > 0 ? ` (${myPoints})` : ""}
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -326,23 +353,49 @@ function FeedGroupRows({
                         {status === "active" ? "Active" : "Available"}
                       </div>
                     </div>
-                    <div
-                      className="bg-[#1E4775]/5 p-2 text-center"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <div className="text-[#1E4775]/60 text-[9px]">Votes</div>
-                      <div className="flex justify-center">
-                        <VoteCell
-                          feedId={feedId}
-                          totalPoints={totalPoints}
-                          myPoints={myPoints}
-                          remainingPoints={remainingPoints}
-                          isConnected={isConnected}
-                          disabledReason={voteDisabledReason}
-                          onOpen={() => onOpenVote(feedId)}
-                        />
+                    {!isActive && (
+                      <div
+                        className="bg-[#1E4775]/5 p-2 text-center"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <div className="text-[#1E4775]/60 text-[9px]">Votes</div>
+                        <div className="flex justify-center">
+                          <VoteCell
+                            feedId={feedId}
+                            totalPoints={totalPoints}
+                            myPoints={myPoints}
+                            remainingPoints={remainingPoints}
+                            isConnected={isConnected}
+                            disabledReason={voteDisabledReason}
+                            onOpen={() => onOpenVote(feedId)}
+                          />
+                        </div>
                       </div>
-                    </div>
+                    )}
+                    {isActive && (
+                      <div
+                        className="bg-[#1E4775]/5 p-2 text-center col-span-2"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <div className="text-[#1E4775]/60 text-[9px] mb-1">Actions</div>
+                        <div className="flex justify-center gap-2">
+                          <Link
+                            href={`/anchor?market=${marketId}`}
+                            className="px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors bg-[#1E4775] text-white hover:bg-[#17395F]"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            Anchor
+                          </Link>
+                          <Link
+                            href={`/sail?market=${marketId}`}
+                            className="px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors bg-[#1E4775] text-white hover:bg-[#17395F]"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            Sail
+                          </Link>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -369,6 +422,9 @@ function FeedGroupRows({
   );
 }
 
+type SortColumn = "feed" | "chain" | "type" | "price" | "status" | "votes";
+type SortDirection = "asc" | "desc";
+
 export function FeedTable({
   feeds,
   publicClient,
@@ -380,6 +436,8 @@ export function FeedTable({
   const queryClient = useQueryClient();
   const [voteModalFeedId, setVoteModalFeedId] = useState<string | null>(null);
   const [voteModalPoints, setVoteModalPoints] = useState<number>(0);
+  const [sortBy, setSortBy] = useState<SortColumn>("votes");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
 
   const allFeedIds = useMemo(() => {
     return feeds.map((f) => buildFeedId(f.network, f.address));
@@ -496,21 +554,58 @@ export function FeedTable({
     await saveVotesMutation.mutateAsync(next);
   }
 
-  // Sort feeds to prioritize those with votes, then group by network and base asset
+  const handleSort = (column: SortColumn) => {
+    if (sortBy === column) {
+      // Toggle direction if clicking the same column
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      // Set new column and default to descending
+      setSortBy(column);
+      setSortDirection("desc");
+    }
+  };
+
+  // Sort feeds based on selected column and direction
   const sortedAndGroupedFeeds = useMemo(() => {
-    // Sort feeds: those with votes first, then by feed label
     const sorted = [...feeds].sort((a, b) => {
       const feedIdA = buildFeedId(a.network, a.address);
       const feedIdB = buildFeedId(b.network, b.address);
-      const hasVoteA = (myAllocations[feedIdA] ?? 0) > 0;
-      const hasVoteB = (myAllocations[feedIdB] ?? 0) > 0;
+      const totalPointsA = totals[feedIdA] ?? 0;
+      const totalPointsB = totals[feedIdB] ?? 0;
+      const statusA = a.status || "available";
+      const statusB = b.status || "available";
 
-      // If one has a vote and the other doesn't, prioritize the one with a vote
-      if (hasVoteA && !hasVoteB) return -1;
-      if (!hasVoteA && hasVoteB) return 1;
+      let comparison = 0;
 
-      // If both have votes or both don't, sort by label
-      return a.label.localeCompare(b.label);
+      switch (sortBy) {
+        case "feed":
+          comparison = a.label.localeCompare(b.label);
+          break;
+        case "chain":
+          comparison = a.network.localeCompare(b.network);
+          break;
+        case "status":
+          // Active comes before available
+          if (statusA === "active" && statusB === "available") comparison = -1;
+          else if (statusA === "available" && statusB === "active") comparison = 1;
+          else comparison = statusA.localeCompare(statusB);
+          break;
+        case "votes":
+          comparison = totalPointsA - totalPointsB;
+          break;
+        case "type":
+          // Type is always "Chainlink" for now, so sort by label as fallback
+          comparison = a.label.localeCompare(b.label);
+          break;
+        case "price":
+          // Price sorting would require fetching prices first, so fallback to label
+          comparison = a.label.localeCompare(b.label);
+          break;
+        default:
+          comparison = 0;
+      }
+
+      return sortDirection === "asc" ? comparison : -comparison;
     });
 
     // Group by network and base asset for price fetching
@@ -523,19 +618,97 @@ export function FeedTable({
       groups[key].push(feed);
     });
     return groups;
-  }, [feeds, myAllocations]);
+  }, [feeds, totals, sortBy, sortDirection]);
 
   return (
     <div className="space-y-2">
       {/* Header row (desktop) */}
       <div className="hidden lg:block bg-white border border-[#1E4775]/10 py-2 px-3">
         <div className="grid grid-cols-[1.2fr_0.8fr_0.6fr_1.2fr_0.6fr_0.4fr_0.7fr] gap-3 items-center uppercase tracking-wider text-[10px] text-[#1E4775] font-bold">
-          <div className="text-center">Feed</div>
-          <div className="text-center">Chain</div>
-          <div className="text-center">Type</div>
-          <div className="text-center">Price</div>
-          <div className="text-center">Status</div>
-          <div className="text-center">Votes</div>
+          <div
+            className="text-center cursor-pointer hover:opacity-70 transition-opacity flex items-center justify-center gap-1"
+            onClick={() => handleSort("feed")}
+          >
+            Feed
+            {sortBy === "feed" && (
+              <span className="text-xs">
+                {sortDirection === "asc" ? "↑" : "↓"}
+              </span>
+            )}
+            {sortBy !== "feed" && (
+              <ArrowsUpDownIcon className="w-3 h-3 opacity-40" />
+            )}
+          </div>
+          <div
+            className="text-center cursor-pointer hover:opacity-70 transition-opacity flex items-center justify-center gap-1"
+            onClick={() => handleSort("chain")}
+          >
+            Chain
+            {sortBy === "chain" && (
+              <span className="text-xs">
+                {sortDirection === "asc" ? "↑" : "↓"}
+              </span>
+            )}
+            {sortBy !== "chain" && (
+              <ArrowsUpDownIcon className="w-3 h-3 opacity-40" />
+            )}
+          </div>
+          <div
+            className="text-center cursor-pointer hover:opacity-70 transition-opacity flex items-center justify-center gap-1"
+            onClick={() => handleSort("type")}
+          >
+            Type
+            {sortBy === "type" && (
+              <span className="text-xs">
+                {sortDirection === "asc" ? "↑" : "↓"}
+              </span>
+            )}
+            {sortBy !== "type" && (
+              <ArrowsUpDownIcon className="w-3 h-3 opacity-40" />
+            )}
+          </div>
+          <div
+            className="text-center cursor-pointer hover:opacity-70 transition-opacity flex items-center justify-center gap-1"
+            onClick={() => handleSort("price")}
+          >
+            Price
+            {sortBy === "price" && (
+              <span className="text-xs">
+                {sortDirection === "asc" ? "↑" : "↓"}
+              </span>
+            )}
+            {sortBy !== "price" && (
+              <ArrowsUpDownIcon className="w-3 h-3 opacity-40" />
+            )}
+          </div>
+          <div
+            className="text-center cursor-pointer hover:opacity-70 transition-opacity flex items-center justify-center gap-1"
+            onClick={() => handleSort("status")}
+          >
+            Status
+            {sortBy === "status" && (
+              <span className="text-xs">
+                {sortDirection === "asc" ? "↑" : "↓"}
+              </span>
+            )}
+            {sortBy !== "status" && (
+              <ArrowsUpDownIcon className="w-3 h-3 opacity-40" />
+            )}
+          </div>
+          <div
+            className="text-center cursor-pointer hover:opacity-70 transition-opacity flex items-center justify-center gap-1"
+            onClick={() => handleSort("votes")}
+          >
+            Votes
+            {sortBy === "votes" && (
+              <span className="text-xs">
+                {sortDirection === "asc" ? "↑" : "↓"}
+              </span>
+            )}
+            {sortBy !== "votes" && (
+              <ArrowsUpDownIcon className="w-3 h-3 opacity-40" />
+            )}
+          </div>
           <div className="text-center">Vote</div>
         </div>
       </div>
