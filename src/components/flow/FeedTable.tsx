@@ -303,10 +303,9 @@ function FeedGroupRows({
                     )}
                   </div>
                 </div>
-              </div>
 
-              {/* Mobile layout */}
-              <div className="lg:hidden p-3 space-y-2">
+                {/* Mobile layout */}
+                <div className="lg:hidden p-3 space-y-2">
                   {/* Row 1: label + status + expand */}
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2 min-w-0 flex-1">
@@ -438,6 +437,7 @@ function FeedGroupRows({
                     </div>
                   </div>
                 </div>
+              </div>
             </div>
 
             {/* Expanded details box */}
