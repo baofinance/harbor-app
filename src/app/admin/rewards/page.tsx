@@ -6,7 +6,7 @@ import { useAccount } from "wagmi";
 import WalletButton from "@/components/WalletButton";
 import RewardDeposits from "@/components/admin/RewardDeposits";
 
-export default function AdminRewardDepositsPage() {
+export default function AdminRewardsPage() {
   const { isConnected } = useAccount();
   const [mounted, setMounted] = useState(false);
 
@@ -18,7 +18,7 @@ export default function AdminRewardDepositsPage() {
         <main className="container mx-auto px-4 sm:px-10 pt-[6rem] pb-6 relative z-10">
           <div className="mb-6 flex items-center justify-between gap-4">
             <h1 className="text-4xl font-medium font-geo text-left text-white">
-              ADMIN / REWARD DEPOSITS
+              ADMIN / REWARDS
             </h1>
           </div>
         </main>
@@ -31,7 +31,7 @@ export default function AdminRewardDepositsPage() {
       <main className="container mx-auto px-4 sm:px-10 pt-[6rem] pb-6 relative z-10">
         <div className="mb-6 flex items-center justify-between gap-4">
           <h1 className="text-4xl font-medium font-geo text-left text-white">
-            ADMIN / REWARD DEPOSITS
+            ADMIN / REWARDS
           </h1>
           <Link href="/admin">
             <button className="py-2 px-4 bg-white/10 text-white font-medium hover:bg-white/15 transition-colors">

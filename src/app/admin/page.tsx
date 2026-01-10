@@ -476,7 +476,7 @@ export default function Admin() {
        Mint/Redeem Fees
      </button>
    </Link>
-   <Link href="/admin/reward-deposits">
+   <Link href="/admin/rewards">
      <button className="py-2 px-4 bg-harbor text-white font-medium hover:bg-harbor transition-colors">
        Reward Deposits
      </button>
