@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import Head from "next/head";
 import { usePublicClient, useAccount } from "wagmi";
 import { useQuery } from "@tanstack/react-query";
@@ -11,6 +11,8 @@ import {
   InformationCircleIcon,
   MagnifyingGlassIcon,
   Bars3Icon,
+  CheckIcon,
+  XMarkIcon,
 } from "@heroicons/react/24/outline";
 import { FeatureBox } from "@/components/flow/FeatureBox";
 import { ChainDropdown } from "@/components/flow/ChainDropdown";
@@ -112,6 +114,9 @@ export default function FlowPage() {
     return sum;
   }, [myAllocationsCanonical, activeFeedIdSet]);
 
+  // Toggle state for Feed Price / Quote Asset Price
+  const [showQuoteAssetPrice, setShowQuoteAssetPrice] = useState(false);
+
   // No default expansion - users must manually expand feeds
 
   return (
@@ -178,8 +183,8 @@ export default function FlowPage() {
           {/* Filters, Total Feeds, and Votes Box - All on one line */}
           <div className="grid grid-cols-1 md:grid-cols-[4fr_1fr_1fr] gap-2 mb-2">
             {/* Filters Section */}
-            <div className="bg-white py-1.5 px-2.5 border border-[#1E4775]/10">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-1.5">
+            <div className="bg-white py-2.5 px-2.5 border border-[#1E4775]/10">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-1.5 mb-2">
                 {/* Chain Dropdown */}
                 <div>
                   <label className="block text-xs text-[#1E4775]/60 mb-1 uppercase tracking-wider font-medium text-center">
@@ -221,7 +226,7 @@ export default function FlowPage() {
                 </div>
 
                 {/* Status Filter */}
-                <div>
+                <div className="flex flex-col">
                   <label className="block text-xs text-[#1E4775]/60 mb-1 uppercase tracking-wider font-medium text-center">
                     Status
                   </label>
@@ -234,6 +239,45 @@ export default function FlowPage() {
                     <option value="active">Active</option>
                     <option value="available">Available</option>
                   </select>
+                  {/* Toggle Switch under Status */}
+                  <div className="flex items-center justify-end gap-2 mt-2">
+                    <span className="text-[10px] text-[#1E4775]/60 uppercase tracking-wider">
+                      Feed Price
+                    </span>
+                    <button
+                      onClick={() => setShowQuoteAssetPrice(!showQuoteAssetPrice)}
+                      className="relative inline-flex h-5 w-9 items-center rounded-md transition-colors focus:outline-none"
+                      type="button"
+                      title="Toggle between Feed Price and Quote Asset Price"
+                      role="switch"
+                      aria-checked={showQuoteAssetPrice}
+                    >
+                      {/* Background track */}
+                      <span
+                        className={`inline-block h-5 w-9 transform rounded-md shadow-sm transition-colors ${
+                          showQuoteAssetPrice ? "bg-[#FF8A7A]" : "bg-harbor-mint"
+                        }`}
+                      />
+                      {/* Switch thumb */}
+                      <span
+                        className={`absolute top-0.5 left-0.5 inline-block h-4 w-4 transform rounded-md bg-white shadow-md transition-transform ${
+                          showQuoteAssetPrice ? "translate-x-4" : "translate-x-0"
+                        }`}
+                      >
+                        {/* Icon inside thumb */}
+                        <span className="flex h-full w-full items-center justify-center">
+                          {showQuoteAssetPrice ? (
+                            <CheckIcon className="h-2.5 w-2.5 text-[#FF8A7A]" />
+                          ) : (
+                            <XMarkIcon className="h-2.5 w-2.5 text-[#1E4775]/40" />
+                          )}
+                        </span>
+                      </span>
+                    </button>
+                    <span className="text-[10px] text-[#1E4775]/60 uppercase tracking-wider">
+                      Quote Asset Price
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -287,6 +331,7 @@ export default function FlowPage() {
               publicClient={publicClient}
               expanded={expanded}
               setExpanded={setExpanded}
+              showQuoteAssetPrice={showQuoteAssetPrice}
             />
           )}
 

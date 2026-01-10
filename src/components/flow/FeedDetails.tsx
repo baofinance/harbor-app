@@ -503,14 +503,15 @@ export function FeedDetails({
         const abiToUse = isSingleFeed ? singleFeedAbi : (isDoubleFeed ? doubleFeedAbi : (isMultifeedDiv ? multifeedDivAbi : (isMultifeedSum ? multifeedSumAbi : (isMultifeedNormalized ? multifeedNormalizedAbi : proxyAbi))));
 
         const [priceResult, latestResult, divisorResult] = await Promise.all([
-          // Try getPrice first, fallback to latestAnswer[0] if not available
-          rpcClient
+          // Try getPrice first (only for non-SingleFeed/DoubleFeed contracts), fallback to latestAnswer[0] if not available
+          // SingleFeed and DoubleFeed contracts don't have getPrice, they use latestAnswer directly
+          (!isSingleFeed && !isDoubleFeed) ? rpcClient
             .readContract({
               address: feed.address,
               abi: abiToUse,
               functionName: "getPrice",
             })
-            .catch(() => null),
+            .catch(() => null) : Promise.resolve(null),
           rpcClient
             .readContract({
               address: feed.address,
@@ -1254,7 +1255,7 @@ export function FeedDetails({
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
             <div className="text-right">
-              <div className="text-[#1E4775]/60 text-[10px] uppercase tracking-wider">
+              <div className="text-[#1E4775]/60 text-[10px] uppercase tracking-wider mb-0.5">
                 Price
               </div>
               <div className="text-[#1E4775] font-mono font-semibold">
@@ -1462,6 +1463,16 @@ export function FeedDetails({
                 // Calculate asset price USD by dividing sum by feed count (skip for MultifeedSum since feedCount=1)
                 const assetPriceUSD = !isMultifeedSumType && sum > 0 && feedCount > 0 ? sum / feedCount : null;
 
+                // For MultifeedSum, calculate quote asset (index of performance) = sum feeds / indexed price
+                let quoteAsset: number | null = null;
+                if (isMultifeedSumType && indexPrice !== undefined && sum > 0) {
+                  // Convert indexPrice from 18 decimals to number
+                  const indexPriceNum = Number(indexPrice) / 1e18;
+                  if (indexPriceNum > 0) {
+                    quoteAsset = sum / indexPriceNum;
+                  }
+                }
+
                 return sum > 0 ? (
                   <>
                     <div className="text-[#1E4775]/40 text-xs">
@@ -1470,6 +1481,11 @@ export function FeedDetails({
                     {assetPriceUSD !== null && (
                       <div className="text-[#1E4775]/40 text-xs">
                         Price USD (Quote asset): {assetPriceUSD.toLocaleString(undefined, { maximumFractionDigits: 6 })}
+                      </div>
+                    )}
+                    {quoteAsset !== null && (
+                      <div className="text-[#1E4775]/40 text-xs">
+                        Price USD (Index performance): {quoteAsset.toLocaleString(undefined, { maximumFractionDigits: 6 })}
                       </div>
                     )}
                   </>

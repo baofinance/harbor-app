@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import { feeds as feedsConfig } from "@/config/feeds";
 import { parsePair } from "@/lib/utils";
 import { getTokenFullName } from "@/utils/flowUtils";
@@ -9,10 +9,11 @@ import TokenIcon from "@/components/TokenIcon";
 import SimpleTooltip from "@/components/SimpleTooltip";
 import { useRpcClient } from "@/hooks/useRpcClient";
 import { useFeedPrices } from "@/hooks/useFeedPrices";
+import { useFeedQuotePrices } from "@/hooks/useFeedQuotePrices";
 import type { FeedWithMetadata, ExpandedState } from "@/hooks/useFeedFilters";
 import { FeedDetails } from "@/components/flow/FeedDetails";
-import { ChevronDownIcon, ChevronUpIcon, ArrowsUpDownIcon } from "@heroicons/react/24/outline";
-import { useAccount, useSignTypedData } from "wagmi";
+import { ChevronDownIcon, ChevronUpIcon, ArrowsUpDownIcon, CheckIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { useAccount, useSignTypedData, useContractReads } from "wagmi";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { buildFeedId } from "@/lib/votesStore";
 import {
@@ -23,7 +24,35 @@ import {
   type VoteAllocation,
 } from "@/lib/votesTypedData";
 import { getMarketIdFromFeedLabel } from "@/utils/feedMarketMapping";
+import { markets } from "@/config/markets";
+import { MINTER_ABI } from "@/abis/shared";
+import { useCoinGeckoPrices } from "@/hooks/useCoinGeckoPrice";
 import Link from "next/link";
+
+// Map quote assets to CoinGecko IDs
+function getCoinGeckoIdForQuoteAsset(quoteAsset: string): string | null {
+  const lower = quoteAsset.toLowerCase();
+  const mapping: Record<string, string> = {
+    eur: "euro",
+    gold: "gold",
+    xau: "gold",
+    silver: "silver",
+    xag: "silver",
+    btc: "bitcoin",
+    eth: "ethereum",
+    ethereum: "ethereum",
+    // Stocks/indices - these might need special handling
+    aapl: "apple",
+    amzn: "amazon",
+    googl: "google",
+    meta: "meta",
+    msft: "microsoft",
+    nvda: "nvidia",
+    spy: "sp500",
+    tsla: "tesla",
+  };
+  return mapping[lower] || null;
+}
 
 interface FeedTableProps {
   feeds: FeedWithMetadata[];
@@ -95,6 +124,7 @@ function FeedGroupRows({
   voteDisabledReason,
   onOpenVote,
   canonicalizeFeedId,
+  showQuoteAssetPrice,
 }: {
   feeds: FeedWithMetadata[];
   publicClient: any;
@@ -107,6 +137,7 @@ function FeedGroupRows({
   voteDisabledReason?: string;
   onOpenVote: (feedId: string) => void;
   canonicalizeFeedId: (feedId: string) => string | null;
+  showQuoteAssetPrice: boolean;
 }) {
   const network = feeds[0].network;
   const baseAsset = feeds[0].baseAsset;
@@ -117,6 +148,143 @@ function FeedGroupRows({
   }));
   // Type assertion needed due to wagmi/viem type compatibility
   const { prices, loading } = useFeedPrices(rpcClient as any, feedEntries);
+
+  // Get markets for feeds that have active markets
+  const feedMarkets = useMemo(() => {
+    const marketMap = new Map<string, { marketId: string; market: any; minterAddress: `0x${string}`; pegTarget: string }>();
+    feeds.forEach((feed) => {
+      const marketId = getMarketIdFromFeedLabel(feed.label);
+      if (marketId) {
+        const market = markets[marketId as keyof typeof markets];
+        if (market?.addresses?.minter && network === "mainnet") {
+          marketMap.set(feed.address, {
+            marketId,
+            market,
+            minterAddress: market.addresses.minter as `0x${string}`,
+            pegTarget: market.pegTarget?.toLowerCase() || "",
+          });
+        }
+      }
+    });
+    return marketMap;
+  }, [feeds, network]);
+
+  // Extract quote assets from all feeds for fetching USD prices
+  const uniqueQuoteAssets = useMemo(() => {
+    const quoteAssets = new Set<string>();
+    feeds.forEach((feed) => {
+      const pair = parsePair(feed.label);
+      if (pair.quote) {
+        quoteAssets.add(pair.quote);
+      }
+    });
+    return Array.from(quoteAssets);
+  }, [feeds]);
+
+  // Get CoinGecko IDs for all quote assets
+  const coinGeckoIds = useMemo(() => {
+    const ids: string[] = [];
+    uniqueQuoteAssets.forEach((quote) => {
+      const cgId = getCoinGeckoIdForQuoteAsset(quote);
+      if (cgId) {
+        ids.push(cgId);
+      }
+    });
+    // Always fetch ETH and BTC for active markets
+    if (!ids.includes("ethereum")) ids.push("ethereum");
+    if (!ids.includes("bitcoin")) ids.push("bitcoin");
+    return ids;
+  }, [uniqueQuoteAssets]);
+
+  // Fetch USD prices for all quote assets
+  const { prices: quoteAssetPrices } = useCoinGeckoPrices(coinGeckoIds, 60000);
+
+  // Map quote asset -> USD price
+  const quoteAssetPriceMap = useMemo(() => {
+    const map = new Map<string, number>();
+    uniqueQuoteAssets.forEach((quote) => {
+      const cgId = getCoinGeckoIdForQuoteAsset(quote);
+      if (cgId && quoteAssetPrices[cgId]) {
+        map.set(quote.toLowerCase(), quoteAssetPrices[cgId]!);
+      }
+    });
+    // Add ETH and BTC prices
+    if (quoteAssetPrices["ethereum"]) map.set("eth", quoteAssetPrices["ethereum"]!);
+    if (quoteAssetPrices["bitcoin"]) map.set("btc", quoteAssetPrices["bitcoin"]!);
+    return map;
+  }, [uniqueQuoteAssets, quoteAssetPrices]);
+
+  // Get unique minter addresses for batch reading
+  const uniqueMinterAddresses = useMemo(() => {
+    return Array.from(new Set(Array.from(feedMarkets.values()).map((m) => m.minterAddress)));
+  }, [feedMarkets]);
+
+  // Fetch peggedTokenPrice from all minter contracts
+  const minterPriceReads = useContractReads({
+    contracts: uniqueMinterAddresses.map((minterAddress) => ({
+      address: minterAddress,
+      abi: MINTER_ABI,
+      functionName: "peggedTokenPrice",
+    })),
+    query: {
+      enabled: showQuoteAssetPrice && uniqueMinterAddresses.length > 0 && network === "mainnet",
+    },
+  });
+
+
+  // Create a map of minter address -> peggedTokenPrice
+  const minterPriceMap = useMemo(() => {
+    const map = new Map<`0x${string}`, bigint>();
+    if (minterPriceReads.data) {
+      uniqueMinterAddresses.forEach((minterAddress, idx) => {
+        const price = minterPriceReads.data?.[idx]?.result as bigint | undefined;
+        if (price !== undefined && price !== null) {
+          map.set(minterAddress, price);
+        }
+      });
+    }
+    return map;
+  }, [minterPriceReads.data, uniqueMinterAddresses]);
+
+  // Fetch quote asset prices using the custom hook with 60-second caching
+  const { prices: quotePrices, loading: loadingContractData } = useFeedQuotePrices(
+    rpcClient,
+    feeds,
+    network || "mainnet",
+    showQuoteAssetPrice
+  );
+
+  // Create a map of feed address -> USD price to display (now using the hook's cached prices)
+  const feedHaTokenPriceMap = useMemo(() => {
+    const map = new Map<string, number>();
+    if (!showQuoteAssetPrice) {
+      return map;
+    }
+
+    feeds.forEach((feed) => {
+      const quotePrice = quotePrices.get(feed.address);
+      // Only add valid prices (> 0) to the display map
+      // null/undefined/0 means no price available, but we check quotePrices.has() to know if it's been attempted
+      if (quotePrice !== undefined && quotePrice !== null && quotePrice > 0) {
+        map.set(feed.address, quotePrice);
+      }
+    });
+
+    return map;
+  }, [showQuoteAssetPrice, feeds, quotePrices]);
+  
+  // Check if a feed has been attempted (even if it returned null/0)
+  // This helps us distinguish between "never loaded" vs "loaded but failed"
+  const hasAttemptedPrice = useMemo(() => {
+    const attempted = new Set<string>();
+    feeds.forEach((feed) => {
+      // If the price exists in quotePrices Map (even if null), it means we've attempted to load it
+      if (quotePrices.has(feed.address)) {
+        attempted.add(feed.address);
+      }
+    });
+    return attempted;
+  }, [feeds, quotePrices]);
 
   return (
     <>
@@ -222,19 +390,51 @@ function FeedGroupRows({
                   </div>
 
                   <div className="text-center font-mono text-[#1E4775]">
-                    {loading ? (
-                      "Loading..."
-                    ) : price === "-" ? (
-                      "-"
-                    ) : (
-                      <SimpleTooltip
-                        label={`1 ${getTokenFullName(
-                          pair.base
-                        )} = ${price} ${getTokenFullName(pair.quote)}`}
-                      >
-                        <span>{`1 ${pair.base} = ${price} ${pair.quote}`}</span>
-                      </SimpleTooltip>
-                    )}
+                    {(() => {
+                      // If toggle is on, show quote asset price as "XXX USD"
+                      if (showQuoteAssetPrice) {
+                        const haTokenPriceUSD = feedHaTokenPriceMap.get(feed.address);
+                        const hasCachedPrice = haTokenPriceUSD !== undefined && haTokenPriceUSD > 0;
+                        const hasBeenAttempted = hasAttemptedPrice.has(feed.address);
+                        
+                        // Only show "Loading..." if we're loading AND this feed hasn't been attempted yet
+                        // If it's been attempted (even if it returned null), show "-" instead of "Loading..."
+                        if (loadingContractData && !hasBeenAttempted) {
+                          return "Loading...";
+                        }
+                        
+                        if (hasCachedPrice) {
+                          return (
+                            <SimpleTooltip
+                              label={`${haTokenPriceUSD.toLocaleString(undefined, { maximumFractionDigits: 6 })} USD`}
+                            >
+                              <span>{`${haTokenPriceUSD.toLocaleString(undefined, { maximumFractionDigits: 6 })} USD`}</span>
+                            </SimpleTooltip>
+                          );
+                        }
+                        // If price not available (attempted but failed, or not attempted and not loading), show "-"
+                        return "-";
+                      }
+                      
+                      // For regular feed price: only show "Loading..." if loading AND no price yet
+                      if (loading && price === "-") {
+                        return "Loading...";
+                      }
+                      
+                      // Otherwise show feed price as is: "1 [BASE] = X [QUOTE]"
+                      if (price === "-") {
+                        return "-";
+                      }
+                      return (
+                        <SimpleTooltip
+                          label={`1 ${getTokenFullName(
+                            pair.base
+                          )} = ${price} ${getTokenFullName(pair.quote)}`}
+                        >
+                          <span>{`1 ${pair.base} = ${price} ${pair.quote}`}</span>
+                        </SimpleTooltip>
+                      );
+                    })()}
                   </div>
 
                   <div className="text-center">
@@ -365,11 +565,32 @@ function FeedGroupRows({
                       Price
                     </div>
                     <div className="text-[#1E4775] font-mono font-semibold text-[11px] truncate">
-                      {loading
-                        ? "Loading…"
-                        : price === "-"
-                          ? "-"
-                          : `1 ${pair.base} = ${price} ${pair.quote}`}
+                      {showQuoteAssetPrice ? (
+                        (() => {
+                          const haTokenPriceUSD = feedHaTokenPriceMap.get(feed.address);
+                          const hasCachedPrice = haTokenPriceUSD !== undefined && haTokenPriceUSD > 0;
+                          const hasBeenAttempted = hasAttemptedPrice.has(feed.address);
+                          
+                          // Only show "Loading…" if we're loading AND this feed hasn't been attempted yet
+                          // If it's been attempted (even if it returned null), show "-" instead of "Loading…"
+                          if (loadingContractData && !hasBeenAttempted) {
+                            return "Loading…";
+                          }
+                          
+                          if (hasCachedPrice) {
+                            return `${haTokenPriceUSD.toLocaleString(undefined, { maximumFractionDigits: 6 })} USD`;
+                          }
+                          return price === "-" ? "-" : price;
+                        })()
+                      ) : (
+                        (() => {
+                          // For regular feed price: only show "Loading…" if loading AND no price yet
+                          if (loading && price === "-") {
+                            return "Loading…";
+                          }
+                          return price === "-" ? "-" : `1 ${pair.base} = ${price} ${pair.quote}`;
+                        })()
+                      )}
                     </div>
                   </div>
 
@@ -461,12 +682,12 @@ export function FeedTable({
   publicClient,
   expanded,
   setExpanded,
-}: FeedTableProps) {
+  showQuoteAssetPrice,
+}: FeedTableProps & { showQuoteAssetPrice: boolean }) {
   // Use stable per-network RPC clients so we can fetch prices without breaking hook rules.
   const mainnetRpcClient = useRpcClient("mainnet" as any);
   const arbitrumRpcClient = useRpcClient("arbitrum" as any);
   const baseRpcClient = useRpcClient("base" as any);
-
   const { address, isConnected } = useAccount();
   const { signTypedDataAsync } = useSignTypedData();
   const queryClient = useQueryClient();
@@ -795,6 +1016,19 @@ export function FeedTable({
     });
   }, [feeds, totals, sortBy, sortDirection]);
 
+  // Group sorted feeds by network and baseAsset for FeedGroupRows
+  const sortedAndGroupedFeeds = useMemo(() => {
+    const grouped: Record<string, FeedWithMetadata[]> = {};
+    for (const feed of sortedFeeds) {
+      const key = `${feed.network}:${feed.baseAsset}`;
+      if (!grouped[key]) {
+        grouped[key] = [];
+      }
+      grouped[key].push(feed);
+    }
+    return grouped;
+  }, [sortedFeeds]);
+
   return (
     <div className="space-y-2">
       {/* Sort menu (mobile) */}
@@ -925,324 +1159,23 @@ export function FeedTable({
       </div>
 
       <div className="space-y-2">
-        {sortedFeeds.map((feed) => {
-          const pair = parsePair(feed.label);
-          const status = feed.status || "available";
-          const feedId =
-            canonicalizeFeedId(buildFeedId(feed.network, feed.address)) ??
-            buildFeedId(feed.network, feed.address);
-          const totalPoints = totals[feedId] ?? 0;
-          const myPoints = myAllocations[feedId] ?? 0;
-          const price = getPriceForFeed(feed.network, feed.address);
-          const loading = isPriceLoadingForNetwork(feed.network);
-
-          const network = feed.network;
-          const baseAsset = feed.baseAsset;
-
-          const networkFeeds = feedsConfig[network as keyof typeof feedsConfig];
-          const baseAssetFeeds =
-            networkFeeds?.[baseAsset as keyof typeof networkFeeds];
-          const feedIndex = baseAssetFeeds
-            ? baseAssetFeeds.findIndex((f: any) => f.address === feed.address)
-            : -1;
-
-          const isFeedExpanded =
-            expanded?.network === network &&
-            expanded?.token === baseAsset &&
-            expanded?.feedIndex === feedIndex;
-
-          const marketId = getMarketIdFromFeedLabel(feed.label);
-          const isActive = status === "active" && marketId !== null;
-
-          return (
-            <div key={`${feed.network}:${feed.address}`} className="space-y-2">
-              <div
-                className={`border border-[#1E4775]/10 transition-colors cursor-pointer ${
-                  isFeedExpanded
-                    ? "bg-[rgb(var(--surface-selected-rgb))]"
-                    : "bg-white hover:bg-[rgb(var(--surface-selected-rgb))]"
-                }`}
-                onClick={() =>
-                  setExpanded(
-                    isFeedExpanded ? null : { network, token: baseAsset, feedIndex }
-                  )
-                }
-              >
-                {/* Desktop layout */}
-                <div className="hidden lg:block py-2 px-3">
-                  <div
-                    className={`grid gap-3 items-center text-sm ${
-                      isActive
-                        ? "grid-cols-[1.2fr_0.8fr_0.6fr_1.2fr_0.6fr_1.2fr]"
-                        : "grid-cols-[1.2fr_0.8fr_0.6fr_1.2fr_0.6fr_0.4fr_0.7fr]"
-                    }`}
-                  >
-                    <div className="min-w-0 flex justify-center">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <TokenIcon
-                          src={getLogoPath(pair.base)}
-                          alt={pair.base}
-                          width={20}
-                          height={20}
-                          className="rounded-full flex-shrink-0"
-                        />
-                        <TokenIcon
-                          src={getLogoPath(pair.quote)}
-                          alt={pair.quote}
-                          width={20}
-                          height={20}
-                          className="rounded-full flex-shrink-0 -ml-2"
-                        />
-                        <SimpleTooltip
-                          label={`${getTokenFullName(pair.base)} / ${getTokenFullName(
-                            pair.quote
-                          )}`}
-                        >
-                          <span className="text-[#1E4775] font-medium min-w-0 truncate">
-                            {feed.label}
-                            {feed.divisor && feed.divisor > 1 && (
-                              <span className="ml-2 text-xs text-[#1E4775]/60 italic">
-                                (price normalized)
-                              </span>
-                            )}
-                          </span>
-                        </SimpleTooltip>
-                        {isFeedExpanded ? (
-                          <ChevronUpIcon className="w-4 h-4 text-[#1E4775]/70 flex-shrink-0" />
-                        ) : (
-                          <ChevronDownIcon className="w-4 h-4 text-[#1E4775]/70 flex-shrink-0" />
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="text-center text-[#1E4775] whitespace-nowrap text-sm">
-                      {formatNetworkLabel(network)}
-                    </div>
-
-                    <div className="text-center text-[#1E4775] whitespace-nowrap">
-                      <div>Chainlink</div>
-                      {feed.divisor && feed.divisor > 1 && (
-                        <div className="text-xs text-[#1E4775]/60">
-                          divisor: {feed.divisor}
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="text-center font-mono text-[#1E4775]">
-                      {loading ? (
-                        "Loading..."
-                      ) : price === "-" ? (
-                        "-"
-                      ) : (
-                        <SimpleTooltip
-                          label={`1 ${getTokenFullName(pair.base)} = ${price} ${getTokenFullName(
-                            pair.quote
-                          )}`}
-                        >
-                          <span>{`1 ${pair.base} = ${price} ${pair.quote}`}</span>
-                        </SimpleTooltip>
-                      )}
-                    </div>
-
-                    <div className="text-center">
-                      <span
-                        className={`inline-block px-2 py-1 text-xs font-medium rounded ${
-                          status === "active"
-                            ? "bg-green-100 text-green-800"
-                            : "bg-gray-100 text-gray-600"
-                        }`}
-                      >
-                        {status === "active" ? "Active" : "Available"}
-                      </span>
-                    </div>
-
-                    {!isActive && (
-                      <div className="text-center">
-                        <div className="font-mono font-semibold text-[#1E4775] text-sm">
-                          {totalPoints}
-                        </div>
-                      </div>
-                    )}
-
-                    <div
-                      className="flex justify-center gap-2"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      {isActive ? (
-                        <>
-                          <Link
-                            href={`/anchor?market=${marketId}`}
-                            className="px-4 py-2 rounded-full text-xs font-medium whitespace-nowrap transition-colors bg-[#1E4775] text-white hover:bg-[#17395F]"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            Anchor
-                          </Link>
-                          <Link
-                            href={`/sail?market=${marketId}`}
-                            className="px-4 py-2 rounded-full text-xs font-medium whitespace-nowrap transition-colors bg-[#1E4775] text-white hover:bg-[#17395F]"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            Sail
-                          </Link>
-                        </>
-                      ) : (
-                        <button
-                          className={`px-4 py-2 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
-                            isConnected && !voteDisabledReason
-                              ? "bg-[#FF8A7A] text-white hover:bg-[#FF6B5A]"
-                              : "bg-[#FF8A7A]/30 text-white/50 cursor-not-allowed"
-                          }`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (!isConnected || voteDisabledReason) return;
-                            openVoteModal(feedId);
-                          }}
-                          title={
-                            voteDisabledReason
-                              ? voteDisabledReason
-                              : isConnected
-                                ? `Allocate vote points (remaining ${remainingPoints})`
-                                : "Connect wallet to vote"
-                          }
-                        >
-                          Vote{myPoints > 0 ? ` (${myPoints})` : ""}
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Mobile layout */}
-                <div className="lg:hidden p-3 space-y-2">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2 min-w-0 flex-1">
-                      <TokenIcon
-                        src={getLogoPath(pair.base)}
-                        alt={pair.base}
-                        width={20}
-                        height={20}
-                        className="rounded-full flex-shrink-0"
-                      />
-                      <TokenIcon
-                        src={getLogoPath(pair.quote)}
-                        alt={pair.quote}
-                        width={20}
-                        height={20}
-                        className="rounded-full flex-shrink-0 -ml-2"
-                      />
-                      <span className="text-[#1E4775] font-semibold text-sm truncate">
-                        {feed.label}
-                      </span>
-                      {isFeedExpanded ? (
-                        <ChevronUpIcon className="w-5 h-5 text-[#1E4775]/70 flex-shrink-0" />
-                      ) : (
-                        <ChevronDownIcon className="w-5 h-5 text-[#1E4775]/70 flex-shrink-0" />
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      <span
-                        className={`inline-block px-2 py-1 text-[10px] font-medium rounded whitespace-nowrap ${
-                          status === "active"
-                            ? "bg-green-100 text-green-800"
-                            : "bg-gray-100 text-gray-600"
-                        }`}
-                      >
-                        {status === "active" ? "Active" : "Available"}
-                      </span>
-                      <div className="text-[10px] text-[#1E4775]/70 whitespace-nowrap">
-                        {formatNetworkLabel(network)}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-end justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <div className="text-[#1E4775]/60 text-[9px] uppercase tracking-wider">
-                        Price
-                      </div>
-                      <div className="text-[#1E4775] font-mono font-semibold text-[11px] truncate">
-                        {loading
-                          ? "Loading…"
-                          : price === "-"
-                            ? "-"
-                            : `1 ${pair.base} = ${price} ${pair.quote}`}
-                      </div>
-                    </div>
-
-                    <div className="flex-shrink-0 text-right">
-                      <div className="text-[#1E4775]/60 text-[9px] uppercase tracking-wider">
-                        Total votes
-                      </div>
-                      <div className="font-mono font-semibold text-[#1E4775] text-base leading-none">
-                        {totalPoints}
-                      </div>
-                    </div>
-
-                    <div
-                      className="flex items-center gap-2 flex-shrink-0"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      {isActive ? (
-                        <>
-                          <Link
-                            href={`/anchor?market=${marketId}`}
-                            className="px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors bg-[#1E4775] text-white hover:bg-[#17395F]"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            Anchor
-                          </Link>
-                          <Link
-                            href={`/sail?market=${marketId}`}
-                            className="px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors bg-[#1E4775] text-white hover:bg-[#17395F]"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            Sail
-                          </Link>
-                        </>
-                      ) : (
-                        <button
-                          className={`px-4 py-2 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
-                            isConnected && !voteDisabledReason
-                              ? "bg-[#FF8A7A] text-white hover:bg-[#FF6B5A]"
-                              : "bg-[#FF8A7A]/30 text-white/50 cursor-not-allowed"
-                          }`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (!isConnected || voteDisabledReason) return;
-                            openVoteModal(feedId);
-                          }}
-                          title={
-                            voteDisabledReason
-                              ? voteDisabledReason
-                              : isConnected
-                                ? `Allocate vote points (remaining ${remainingPoints})`
-                                : "Connect wallet to vote"
-                          }
-                        >
-                          Vote{myPoints > 0 ? ` (${myPoints})` : ""}
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {isFeedExpanded && (
-                <div className="bg-white border border-[#1E4775]/10">
-                  <div className="bg-[rgb(var(--surface-selected-rgb))] p-3">
-                    <FeedDetails
-                      network={network as any}
-                      token={baseAsset}
-                      feedIndex={feedIndex}
-                      publicClient={publicClient}
-                      embedded
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-          );
-        })}
+        {Object.entries(sortedAndGroupedFeeds).map(([key, groupFeeds]) => (
+          <FeedGroupRows
+            key={key}
+            feeds={groupFeeds}
+            publicClient={publicClient}
+            expanded={expanded}
+            setExpanded={setExpanded}
+            votesTotals={totals}
+            myAllocations={myAllocations}
+            remainingPoints={remainingPoints}
+            isConnected={isConnected}
+            voteDisabledReason={voteDisabledReason}
+            onOpenVote={openVoteModal}
+            canonicalizeFeedId={canonicalizeFeedId}
+            showQuoteAssetPrice={showQuoteAssetPrice}
+          />
+        ))}
       </div>
 
       {/* Simple vote modal */}
