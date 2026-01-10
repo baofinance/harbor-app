@@ -12,7 +12,6 @@ import { markets } from "../../config/markets";
 import WalletButton from "../../components/WalletButton";
 import Navigation from "../../components/Navigation";
 import Link from "next/link";
-import RewardDeposits from "@/components/admin/RewardDeposits";
 
 const minterABI = [
  {
@@ -462,7 +461,6 @@ export default function Admin() {
  </div>
  ) : (
  <div className="space-y-4">
- <RewardDeposits />
  <div className="bg-zinc-900/50 p-4 sm:p-6">
  <h2 className="text-lg font-medium text-white mb-4 font-geo">
  System Controls
@@ -478,7 +476,7 @@ export default function Admin() {
        Mint/Redeem Fees
      </button>
    </Link>
-   <Link href="/admin#reward-deposits">
+   <Link href="/admin/reward-deposits">
      <button className="py-2 px-4 bg-harbor text-white font-medium hover:bg-harbor transition-colors">
        Reward Deposits
      </button>

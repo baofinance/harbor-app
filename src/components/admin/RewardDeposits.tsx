@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { encodeFunctionData, isAddress, parseUnits } from "viem";
+import { encodeFunctionData, isAddress, parseUnits, toHex } from "viem";
 import { useReadContract } from "wagmi";
 import { markets } from "@/config/markets";
 import { TREASURY_SAFE_ADDRESS } from "@/config/treasury";
@@ -270,7 +270,17 @@ function RewardDepositRow({
   return (
     <div className="bg-black/10 p-4">
       <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
+        <div className="flex items-start gap-3 min-w-0">
+          <label className="flex items-center gap-2 text-xs text-white/70 whitespace-nowrap pt-[2px]">
+            <input
+              type="checkbox"
+              checked={enabled}
+              onChange={(e) => setEnabled(e.target.checked)}
+            />
+            Include
+          </label>
+
+          <div className="min-w-0">
           <div className="text-white font-geo text-base">
             {pool.marketName} • {poolKindLabel(pool.poolKind)}
           </div>
@@ -278,108 +288,105 @@ function RewardDepositRow({
             {pool.poolAddress}
           </div>
         </div>
-
-        <label className="flex items-center gap-2 text-xs text-white/70 whitespace-nowrap">
-          <input
-            type="checkbox"
-            checked={enabled}
-            onChange={(e) => setEnabled(e.target.checked)}
-          />
-          Include
-        </label>
       </div>
 
-      <div className="mt-3 grid grid-cols-1 md:grid-cols-12 gap-3">
-        <div className="md:col-span-7">
-          <div className="text-white/70 text-xs mb-1">Reward token</div>
-          <input
-            value={rewardTokenInput}
-            onChange={(e) => setRewardTokenInput(e.target.value.trim())}
-            placeholder="0x…"
-            className="w-full bg-zinc-900/50 px-3 py-2 text-white placeholder-white/30 focus:outline-none focus:ring-1 focus:ring-white/20 font-mono text-xs"
-          />
-        </div>
-        <div className="md:col-span-5">
-          <div className="text-white/70 text-xs mb-1">Amount</div>
-          <input
-            value={amountRaw}
-            onChange={(e) => setAmountRaw(e.target.value)}
-            placeholder={tokenSymbol ? `Amount (${tokenSymbol})` : "Amount"}
-            className="w-full bg-zinc-900/50 px-3 py-2 text-white placeholder-white/30 focus:outline-none focus:ring-1 focus:ring-white/20 text-xs"
-          />
-        </div>
-      </div>
+      {enabled ? (
+        <div className="mt-3">
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
+            <div className="md:col-span-7">
+              <div className="text-white/70 text-xs mb-1">Reward token</div>
+              <input
+                value={rewardTokenInput}
+                onChange={(e) => setRewardTokenInput(e.target.value.trim())}
+                placeholder="0x…"
+                className="w-full bg-zinc-900/50 px-3 py-2 text-white placeholder-white/30 focus:outline-none focus:ring-1 focus:ring-white/20 font-mono text-xs"
+              />
+            </div>
+            <div className="md:col-span-5">
+              <div className="text-white/70 text-xs mb-1">Amount</div>
+              <input
+                value={amountRaw}
+                onChange={(e) => setAmountRaw(e.target.value)}
+                placeholder={tokenSymbol ? `Amount (${tokenSymbol})` : "Amount"}
+                className="w-full bg-zinc-900/50 px-3 py-2 text-white placeholder-white/30 focus:outline-none focus:ring-1 focus:ring-white/20 text-xs"
+              />
+            </div>
+          </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-white/70">
-        <span>
-          Token:{" "}
-          <span className="text-white/90">
-            {tokenSymbol ?? (rewardToken ? truncate(rewardToken) : "—")}
-          </span>
-          {decimals != null ? (
-            <span className="text-white/50"> • {decimals} decimals</span>
-          ) : null}
-        </span>
-        <span>
-          Pool owner:{" "}
-          <span className="text-white/90 font-mono">
-            {poolOwner ? truncate(poolOwner) : "—"}
-          </span>
-        </span>
-        <span>
-          Safe is owner/role:{" "}
-          <span className={canDeposit ? "text-green-400" : "text-red-300"}>
-            {canDeposit == null ? "…" : canDeposit ? "YES" : "NO"}
-          </span>
-        </span>
-        <span>
-          Active token:{" "}
-          <span
-            className={
-              isActiveRewardToken ? "text-green-400" : "text-red-300"
-            }
-          >
-            {isActiveRewardToken == null
-              ? "…"
-              : isActiveRewardToken
-              ? "YES"
-              : "NO"}
-          </span>
-        </span>
-      </div>
-
-      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-white/70">
-        <span>
-          Safe balance:{" "}
-          <span className="text-white/90">
-            {safeBalance == null ? "…" : safeBalance.toString()}
-          </span>
-        </span>
-        <span>
-          Allowance to pool:{" "}
-          <span className="text-white/90">
-            {safeAllowance == null ? "…" : safeAllowance.toString()}
-          </span>
-        </span>
-        {needsApprove != null ? (
-          <span>
-            Needs approve:{" "}
-            <span className={needsApprove ? "text-amber-300" : "text-green-400"}>
-              {needsApprove ? "YES" : "NO"}
+          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-white/70">
+            <span>
+              Token:{" "}
+              <span className="text-white/90">
+                {tokenSymbol ?? (rewardToken ? truncate(rewardToken) : "—")}
+              </span>
+              {decimals != null ? (
+                <span className="text-white/50"> • {decimals} decimals</span>
+              ) : null}
             </span>
-          </span>
-        ) : null}
-        {needsRegister != null ? (
-          <span>
-            Needs register:{" "}
-            <span
-              className={needsRegister ? "text-amber-300" : "text-green-400"}
-            >
-              {needsRegister ? "YES" : "NO"}
+            <span>
+              Pool owner:{" "}
+              <span className="text-white/90 font-mono">
+                {poolOwner ? truncate(poolOwner) : "—"}
+              </span>
             </span>
-          </span>
-        ) : null}
-      </div>
+            <span>
+              Safe is owner/role:{" "}
+              <span className={canDeposit ? "text-green-400" : "text-red-300"}>
+                {canDeposit == null ? "…" : canDeposit ? "YES" : "NO"}
+              </span>
+            </span>
+            <span>
+              Active token:{" "}
+              <span
+                className={
+                  isActiveRewardToken ? "text-green-400" : "text-red-300"
+                }
+              >
+                {isActiveRewardToken == null
+                  ? "…"
+                  : isActiveRewardToken
+                  ? "YES"
+                  : "NO"}
+              </span>
+            </span>
+          </div>
+
+          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-white/70">
+            <span>
+              Safe balance:{" "}
+              <span className="text-white/90">
+                {safeBalance == null ? "…" : safeBalance.toString()}
+              </span>
+            </span>
+            <span>
+              Allowance to pool:{" "}
+              <span className="text-white/90">
+                {safeAllowance == null ? "…" : safeAllowance.toString()}
+              </span>
+            </span>
+            {needsApprove != null ? (
+              <span>
+                Needs approve:{" "}
+                <span
+                  className={needsApprove ? "text-amber-300" : "text-green-400"}
+                >
+                  {needsApprove ? "YES" : "NO"}
+                </span>
+              </span>
+            ) : null}
+            {needsRegister != null ? (
+              <span>
+                Needs register:{" "}
+                <span
+                  className={needsRegister ? "text-amber-300" : "text-green-400"}
+                >
+                  {needsRegister ? "YES" : "NO"}
+                </span>
+              </span>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -387,6 +394,8 @@ function RewardDepositRow({
 export default function RewardDeposits() {
   const pools = useMemo(() => buildPoolEntries(), []);
   const [rows, setRows] = useState<Record<string, RowComputed>>({});
+  const [depositError, setDepositError] = useState<string | null>(null);
+  const [depositResult, setDepositResult] = useState<string | null>(null);
 
   const onRowChange = useCallback((key: string, row: RowComputed) => {
     setRows((prev) => {
@@ -400,8 +409,12 @@ export default function RewardDeposits() {
   }, [rows]);
 
   const txs = useMemo(() => {
-    const out: Array<{ to: `0x${string}`; value: string; data: `0x${string}`; label: string }> =
-      [];
+    const out: Array<{
+      to: `0x${string}`;
+      value: bigint;
+      data: `0x${string}`;
+      label: string;
+    }> = [];
 
     for (const r of selectedRows) {
       if (!r.rewardToken || !r.amountParsed || r.amountParsed <= 0n) continue;
@@ -415,7 +428,7 @@ export default function RewardDeposits() {
         });
         out.push({
           to: r.pool.poolAddress,
-          value: "0",
+          value: 0n,
           data,
           label: `${r.pool.marketName} • ${poolKindLabel(r.pool.poolKind)} • registerRewardToken(${truncate(
             r.rewardToken
@@ -432,7 +445,7 @@ export default function RewardDeposits() {
         });
         out.push({
           to: r.rewardToken,
-          value: "0",
+          value: 0n,
           data,
           label: `${r.pool.marketName} • approve(${poolKindLabel(
             r.pool.poolKind
@@ -448,7 +461,7 @@ export default function RewardDeposits() {
       });
       out.push({
         to: r.pool.poolAddress,
-        value: "0",
+        value: 0n,
         data,
         label: `${r.pool.marketName} • ${poolKindLabel(
           r.pool.poolKind
@@ -472,7 +485,7 @@ export default function RewardDeposits() {
         },
         transactions: txs.map((t) => ({
           to: t.to,
-          value: t.value,
+          value: t.value.toString(),
           data: t.data,
         })),
       },
@@ -480,6 +493,69 @@ export default function RewardDeposits() {
       2
     );
   }, [txs]);
+
+  const handleDeposit = async () => {
+    setDepositError(null);
+    setDepositResult(null);
+    if (txs.length === 0) {
+      setDepositError("No transactions generated.");
+      return;
+    }
+
+    const ethereum = (window as any)?.ethereum;
+    if (!ethereum?.request) {
+      setDepositError("No injected wallet found (window.ethereum).");
+      return;
+    }
+
+    // Preferred: EIP-5792 batch request (single wallet prompt if supported).
+    const calls = txs.map((t) => ({
+      to: t.to,
+      data: t.data,
+      value: toHex(t.value),
+    }));
+
+    try {
+      const res = await ethereum.request({
+        method: "wallet_sendCalls",
+        params: [
+          {
+            version: "1.0",
+            chainId: "0x1",
+            calls,
+          },
+        ],
+      });
+      setDepositResult(
+        typeof res === "string" ? res : "Sent batch via wallet_sendCalls."
+      );
+      return;
+    } catch (e: any) {
+      // Fallback: send txs one-by-one (will require multiple confirmations).
+      try {
+        for (const t of txs) {
+          await ethereum.request({
+            method: "eth_sendTransaction",
+            params: [
+              {
+                to: t.to,
+                data: t.data,
+                value: toHex(t.value),
+              },
+            ],
+          });
+        }
+        setDepositResult("Sent transactions via eth_sendTransaction (one by one).");
+        return;
+      } catch (e2: any) {
+        const msg =
+          e2?.message ??
+          e?.message ??
+          "Wallet rejected or does not support batch sending.";
+        setDepositError(String(msg));
+      }
+    }
+  };
 
   return (
     <div id="reward-deposits" className="bg-zinc-900/50 p-4 sm:p-6">
@@ -529,8 +605,18 @@ export default function RewardDeposits() {
       </div>
 
       <div className="mt-4 bg-black/10 p-4">
-        <div className="text-white font-geo text-base mb-2">
-          Generated transactions ({txs.length})
+        <div className="flex items-center justify-between gap-3 mb-2">
+          <div className="text-white font-geo text-base">
+            Generated transactions ({txs.length})
+          </div>
+          <button
+            className="py-2 px-4 bg-harbor text-white font-medium hover:bg-harbor/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={txs.length === 0}
+            onClick={handleDeposit}
+            title="Attempts to send the generated transaction batch to your wallet"
+          >
+            Deposit
+          </button>
         </div>
         {txs.length === 0 ? (
           <div className="text-white/60 text-sm">
@@ -551,6 +637,12 @@ export default function RewardDeposits() {
             ))}
           </div>
         )}
+        {depositResult ? (
+          <div className="mt-3 text-green-400 text-xs">{depositResult}</div>
+        ) : null}
+        {depositError ? (
+          <div className="mt-3 text-red-300 text-xs">{depositError}</div>
+        ) : null}
       </div>
     </div>
   );
