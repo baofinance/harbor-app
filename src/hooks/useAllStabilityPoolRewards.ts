@@ -32,23 +32,33 @@ interface UseAllStabilityPoolRewardsParams {
     address: `0x${string}`;
     poolType: "collateral" | "sail";
     marketId: string;
-    peggedTokenPrice: bigint | undefined; // pegged token price in 18 decimals
+    peggedTokenPrice: bigint | undefined; // pegged token price in underlying asset units (18 decimals), e.g., 1e18 = 1 ETH
     collateralPrice: bigint | undefined; // collateral price from oracle
     collateralPriceDecimals: number | undefined;
     peggedTokenAddress: `0x${string}` | undefined;
     collateralTokenAddress: `0x${string}` | undefined;
   }>;
   tokenPriceMap?: Map<string, number>; // Map of token address (lowercase) -> price in USD
+  ethPrice?: number | null; // ETH price in USD (for calculating haETH USD price)
+  btcPrice?: number | null; // BTC price in USD (for calculating haBTC USD price)
+  peggedPriceUSDMap?: Record<string, bigint | undefined>; // Map of marketId -> pegged token USD price (18 decimals)
   enabled?: boolean;
+  overrideAddress?: `0x${string}`; // Optional address to override useAccount (useful for transparency page)
 }
 
 export function useAllStabilityPoolRewards({
   pools,
   tokenPriceMap,
+  ethPrice,
+  btcPrice,
+  peggedPriceUSDMap,
   enabled = true,
+  overrideAddress,
 }: UseAllStabilityPoolRewardsParams) {
-  const { address } = useAccount();
+  const { address: accountAddress } = useAccount();
   const publicClient = usePublicClient();
+  // Use overrideAddress if provided, otherwise use accountAddress
+  const address = overrideAddress ?? accountAddress;
 
   // Create serializable version of pools for queryKey (convert BigInt to string)
   const serializablePools = useMemo(() => {
@@ -65,7 +75,7 @@ export function useAllStabilityPoolRewards({
   }, [pools]);
 
   return useQuery({
-    queryKey: ["all-stability-pool-rewards", serializablePools, address],
+    queryKey: ["all-stability-pool-rewards", serializablePools, address, overrideAddress ? "override" : "account"],
     queryFn: async () => {
       if (!address || !publicClient || pools.length === 0) {
         return [];
@@ -74,6 +84,22 @@ export function useAllStabilityPoolRewards({
       const client = false ? publicClient : publicClient;
       if (!client) {
         return [];
+      }
+
+      // Debug: log prices received
+      if (process.env.NODE_ENV === "development") {
+        console.log("[useAllStabilityPoolRewards] Starting calculation", {
+          poolsCount: pools.length,
+          ethPrice,
+          btcPrice,
+          pools: pools.map(p => ({ 
+            marketId: p.marketId, 
+            poolType: p.poolType, 
+            address: p.address,
+            peggedTokenPrice: p.peggedTokenPrice?.toString(),
+            peggedTokenAddress: p.peggedTokenAddress,
+          })),
+        });
       }
 
       const results: PoolRewards[] = [];
@@ -221,9 +247,26 @@ export function useAllStabilityPoolRewards({
                     }
                   }
                 }
-                
+
                 // If still no price, leave it as 0 (don't assume pegged price)
                 // This ensures we don't show incorrect USD values for unknown tokens
+
+                // Debug: log price lookup
+                if (process.env.NODE_ENV === "development") {
+                  console.log("[Reward Token Price Lookup]", {
+                    marketId: pool.marketId,
+                    poolType: pool.poolType,
+                    rewardTokenAddress: tokenAddress,
+                    rewardTokenSymbol: symbol,
+                    price,
+                    priceSource,
+                    fromTokenPriceMap: tokenPriceMap?.get(tokenAddressLower),
+                    peggedTokenAddress: pool.peggedTokenAddress,
+                    collateralTokenAddress: pool.collateralTokenAddress,
+                    isPeggedToken: pool.peggedTokenAddress && tokenAddressLower === pool.peggedTokenAddress.toLowerCase(),
+                    isCollateralToken: pool.collateralTokenAddress && tokenAddressLower === pool.collateralTokenAddress.toLowerCase(),
+                  });
+                }
 
                 // Calculate USD value
                 const claimableFormatted = formatEther(claimable);
@@ -232,22 +275,141 @@ export function useAllStabilityPoolRewards({
                 // Calculate APR from reward rate
                 // Only calculate APR if we have a valid price for the reward token
                 let apr = 0;
+                
+                // Debug: log even if conditions aren't met
+                if (process.env.NODE_ENV === "development") {
+                  if (!rewardData || rewardData.rate === 0n || poolTVL === 0n || price === 0) {
+                    console.log("[APR Calculation SKIPPED]", {
+                      marketId: pool.marketId,
+                      poolType: pool.poolType,
+                      poolAddress: pool.address,
+                      rewardToken: symbol,
+                      hasRewardData: !!rewardData,
+                      rewardRate: rewardData?.rate?.toString() || "0",
+                      poolTVL: poolTVL?.toString() || "0",
+                      rewardTokenPrice: price,
+                      ethPrice,
+                      btcPrice,
+                    });
+                  }
+                }
+                
                 if (rewardData && rewardData.rate > 0n && poolTVL > 0n && price > 0) {
                   const SECONDS_PER_YEAR = 365 * 24 * 60 * 60;
-                  const ratePerTokenPerSecond =
-                    Number(rewardData.rate) / Number(poolTVL);
-                  const annualRewards =
-                    ratePerTokenPerSecond * Number(poolTVL) * SECONDS_PER_YEAR;
-
+                  
+                  // rewardData.rate is in wei per second for the entire pool
+                  // Convert to annual rewards in tokens (divide by 1e18)
+                  const annualRewardsTokens = (Number(rewardData.rate) * SECONDS_PER_YEAR) / 1e18;
+                  
                   // Calculate USD values
-                  const depositTokenPrice = pool.peggedTokenPrice
-                    ? Number(pool.peggedTokenPrice) / 1e18
-                    : 1; // Default to $1 if price unavailable
-                  const annualRewardsValueUSD = (annualRewards * price) / 1e18;
-                  const depositValueUSD = (Number(poolTVL) * depositTokenPrice) / 1e18;
+                  // Prefer peggedPriceUSDMap (already calculated correctly in USD)
+                  // Otherwise, calculate from peggedTokenPrice (in underlying asset units) * underlyingAssetUSD
+                  let depositTokenPriceUSD = 0;
+                  let isBTCPegged = false;
+                  let isETHPegged = false;
+                  
+                  // First, try peggedPriceUSDMap (most accurate - already in USD, 18 decimals)
+                  if (peggedPriceUSDMap && peggedPriceUSDMap[pool.marketId]) {
+                    depositTokenPriceUSD = Number(peggedPriceUSDMap[pool.marketId]) / 1e18;
+                    if (process.env.NODE_ENV === "development") {
+                      console.log("[APR USD Price from peggedPriceUSDMap]", {
+                        marketId: pool.marketId,
+                        peggedPriceUSD: depositTokenPriceUSD,
+                      });
+                    }
+                  }
+                  
+                  // Fallback: calculate from peggedTokenPrice * underlyingAssetUSD
+                  if (depositTokenPriceUSD === 0 && pool.peggedTokenPrice && (ethPrice || btcPrice)) {
+                    const peggedTokenPriceInUnderlying = Number(pool.peggedTokenPrice) / 1e18;
+                    
+                    // Determine underlying asset from marketId (e.g., "eth-fxusd" = ETH, "btc-steth" = BTC)
+                    const marketIdLower = pool.marketId.toLowerCase();
+                    isBTCPegged = marketIdLower.includes("btc") || marketIdLower.includes("bitcoin");
+                    isETHPegged = marketIdLower.includes("eth") || marketIdLower.includes("ethereum") || (!isBTCPegged && ethPrice);
+                    
+                    // Calculate USD price: peggedTokenPrice (in underlying) * underlyingAssetUSD
+                    if (isBTCPegged && btcPrice && btcPrice > 0) {
+                      depositTokenPriceUSD = peggedTokenPriceInUnderlying * btcPrice;
+                    } else if (isETHPegged && ethPrice && ethPrice > 0) {
+                      depositTokenPriceUSD = peggedTokenPriceInUnderlying * ethPrice;
+                    }
+                    
+                    if (process.env.NODE_ENV === "development") {
+                      console.log("[APR USD Price Calculation]", {
+                        marketId: pool.marketId,
+                        peggedTokenPriceRaw: pool.peggedTokenPrice.toString(),
+                        peggedTokenPriceInUnderlying,
+                        isBTCPegged,
+                        isETHPegged,
+                        btcPrice,
+                        ethPrice,
+                        calculatedUSDPrice: depositTokenPriceUSD,
+                      });
+                    }
+                  }
+                  
+                  // Fallback: try tokenPriceMap (should have USD prices if available)
+                  if (depositTokenPriceUSD === 0 && pool.peggedTokenAddress && tokenPriceMap) {
+                    const mappedPrice = tokenPriceMap.get(pool.peggedTokenAddress.toLowerCase());
+                    if (mappedPrice !== undefined && mappedPrice > 0 && mappedPrice > 100) {
+                      // Price > 100 is likely already in USD (ETH/BTC are $3k-$90k)
+                      depositTokenPriceUSD = mappedPrice;
+                      if (process.env.NODE_ENV === "development") {
+                        console.log("[APR USD Price from tokenPriceMap]", {
+                          marketId: pool.marketId,
+                          peggedTokenAddress: pool.peggedTokenAddress,
+                          mappedPrice,
+                        });
+                      }
+                    }
+                  }
+                  
+                  // Final fallback: use $1 if no price available
+                  if (depositTokenPriceUSD === 0) {
+                    depositTokenPriceUSD = 1;
+                    if (process.env.NODE_ENV === "development") {
+                      console.warn("[APR USD Price FALLBACK to $1]", {
+                        marketId: pool.marketId,
+                        peggedTokenPrice: pool.peggedTokenPrice?.toString(),
+                        peggedPriceUSDMap: peggedPriceUSDMap?.[pool.marketId]?.toString(),
+                        ethPrice,
+                        btcPrice,
+                      });
+                    }
+                  }
+                  
+                  // Annual rewards value in USD (reward token price * annual rewards in tokens)
+                  const annualRewardsValueUSD = annualRewardsTokens * price;
+                  
+                  // Deposit value in USD (poolTVL is in wei, convert to tokens then multiply by USD price)
+                  const depositValueUSD = (Number(poolTVL) / 1e18) * depositTokenPriceUSD;
 
                   if (depositValueUSD > 0) {
                     apr = (annualRewardsValueUSD / depositValueUSD) * 100;
+                  }
+                  
+                  // Debug logging for APR calculation (always log for now to debug BTC issue)
+                  if (process.env.NODE_ENV === "development") {
+                    console.log("[APR Calculation]", {
+                      marketId: pool.marketId,
+                      poolType: pool.poolType,
+                      poolAddress: pool.address,
+                      rewardToken: symbol,
+                      rewardRate: rewardData.rate.toString(),
+                      rewardRatePerYear: (Number(rewardData.rate) * SECONDS_PER_YEAR).toString(),
+                      poolTVL: poolTVL.toString(),
+                      poolTVLTokens: (Number(poolTVL) / 1e18).toFixed(6),
+                      annualRewardsTokens: annualRewardsTokens.toFixed(6),
+                      rewardTokenPriceUSD: price,
+                      annualRewardsValueUSD: annualRewardsValueUSD.toFixed(2),
+                      peggedTokenPriceRaw: pool.peggedTokenPrice?.toString(),
+                      peggedTokenPriceInUnderlying: pool.peggedTokenPrice ? Number(pool.peggedTokenPrice) / 1e18 : 0,
+                      underlyingAssetUSD: isBTCPegged ? btcPrice : isETHPegged ? ethPrice : "unknown",
+                      depositTokenPriceUSD: depositTokenPriceUSD.toFixed(2),
+                      depositValueUSD: depositValueUSD.toFixed(2),
+                      calculatedAPR: apr.toFixed(2) + "%",
+                    });
                   }
                 }
 

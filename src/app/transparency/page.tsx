@@ -37,6 +37,8 @@ import { markets as marketsConfig } from "@/config/markets";
 import { useMultipleTokenPrices } from "@/hooks/useTokenPrices";
 import { useReadContract } from "wagmi";
 import { minterABI } from "@/abis/minter";
+import Image from "next/image";
+import { useAllStabilityPoolRewards } from "@/hooks/useAllStabilityPoolRewards";
 
 function formatUSD(value: number | undefined): string {
  if (value === undefined || !Number.isFinite(value)) return "-";
@@ -452,6 +454,41 @@ function MarketCard({
   const collateralHeldSymbol: string =
     marketCfg?.collateral?.symbol || marketCfg?.collateral?.underlyingSymbol || "";
 
+  // Prepare pool data for APR calculation
+  const poolDataForAPR = useMemo(() => {
+    return pools.map((pool) => ({
+      address: pool.address,
+      poolType: pool.type === "collateral" ? "collateral" as const : "sail" as const,
+      marketId: market.marketId,
+      peggedTokenPrice: market.peggedTokenPrice,
+      collateralPrice: avgPrice, // Using avgPrice from oracle
+      collateralPriceDecimals: 18,
+      peggedTokenAddress: market.peggedTokenAddress,
+      collateralTokenAddress: marketCfg?.addresses?.wrappedCollateralToken as `0x${string}` | undefined,
+    }));
+  }, [pools, market.marketId, market.peggedTokenPrice, market.peggedTokenAddress, avgPrice, marketCfg]);
+
+  // Calculate APR for pools (using dummy address since we only need APR, not claimable rewards)
+  const { data: poolRewardsData = [] } = useAllStabilityPoolRewards({
+    pools: poolDataForAPR,
+    ethPrice: ethPrice ?? undefined,
+    btcPrice: btcPrice ?? undefined,
+    peggedPriceUSDMap: tokenPrices?.peggedPriceUSD 
+      ? { [market.marketId]: BigInt(Math.floor(tokenPrices.peggedPriceUSD * 1e18)) }
+      : undefined,
+    enabled: isExpanded && poolDataForAPR.length > 0,
+    overrideAddress: "0x0000000000000000000000000000000000000000" as `0x${string}`, // Dummy address for transparency page
+  });
+
+  // Create a map of pool address -> APR
+  const poolAPRMap = useMemo(() => {
+    const map = new Map<string, number>();
+    poolRewardsData.forEach((reward) => {
+      map.set(reward.poolAddress.toLowerCase(), reward.totalRewardAPR);
+    });
+    return map;
+  }, [poolRewardsData]);
+
   // collateralTokenBalance is in underlying-equivalent units (fxUSD for fxSAVE markets, stETH for wstETH markets)
   // Convert to wrapped collateral units using avgRate (underlying per wrapped)
   const collateralHeldWrapped: bigint =
@@ -672,16 +709,54 @@ function MarketCard({
  <div className="text-[#1E4775]/60 text-[9px]">
  Anchor Supply
  </div>
+ <div className="flex items-center justify-center gap-1">
+ {market.marketName?.toLowerCase().includes("btc") ? (
+ <Image
+ src="/icons/haBTC.png"
+ alt="haBTC"
+ width={16}
+ height={16}
+ className="flex-shrink-0"
+ />
+ ) : (
+ <Image
+ src="/icons/haETH.png"
+ alt="haETH"
+ width={16}
+ height={16}
+ className="flex-shrink-0"
+ />
+ )}
  <div className="text-[#1E4775] font-mono font-semibold text-[10px]">
  {formatTokenBalanceMax2Decimals(market.peggedTokenBalance)}
+ </div>
  </div>
  </div>
  <div className="bg-[#1E4775]/5 p-1.5 text-center">
  <div className="text-[#1E4775]/60 text-[9px]">
  Sail Supply
  </div>
+ <div className="flex items-center justify-center gap-1">
+ {market.marketName?.toLowerCase().includes("btc") ? (
+ <Image
+ src="/icons/haBTC.png"
+ alt="haBTC"
+ width={16}
+ height={16}
+ className="flex-shrink-0"
+ />
+ ) : (
+ <Image
+ src="/icons/haETH.png"
+ alt="haETH"
+ width={16}
+ height={16}
+ className="flex-shrink-0"
+ />
+ )}
  <div className="text-[#1E4775] font-mono font-semibold text-[10px]">
  {formatTokenBalanceMax2Decimals(market.leveragedTokenBalance)}
+ </div>
  </div>
  </div>
  </div>
@@ -714,11 +789,20 @@ function MarketCard({
  <span className="text-[#1E4775] font-semibold text-[10px] w-12">
  {pool.type ==="collateral" ?"Anchor" :"Sail"}
  </span>
- <div className="grid grid-cols-4 gap-1.5 text-xs flex-1">
+ <div className="grid grid-cols-5 gap-1.5 text-xs flex-1">
  <div className="bg-[#1E4775]/5 p-1.5 text-center">
  <div className="text-[#1E4775]/60 text-[9px]">TVL (USD)</div>
  <div className="text-[#1E4775] font-mono font-semibold text-[10px]">
  {formatCompactUSD((Number(pool.tvl) / 1e18) * poolTokenPriceUSD)} ({formatTokenBalanceMax2Decimals(pool.tvl)} {market.marketName?.toLowerCase().includes("btc") ? "haBTC" : "haETH"})
+ </div>
+ </div>
+ <div className="bg-[#1E4775]/5 p-1.5 text-center">
+ <div className="text-[#1E4775]/60 text-[9px]">APR</div>
+ <div className="text-[#1E4775] font-mono font-semibold text-[10px]">
+ {(() => {
+   const apr = poolAPRMap.get(pool.address.toLowerCase());
+   return apr !== undefined && apr > 0 ? `${apr.toFixed(2)}%` : "-";
+ })()}
  </div>
  </div>
  <div className="bg-[#1E4775]/5 p-1.5 text-center">

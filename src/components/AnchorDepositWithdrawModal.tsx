@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { parseEther, formatEther, parseUnits, formatUnits } from "viem";
 import {
   useAccount,
@@ -2182,6 +2182,57 @@ export const AnchorDepositWithdrawModal = ({
     ? anvilSailWindowResult.data
     : wagmiSailWindowResult.data;
 
+  // Read withdrawal request data for both pools to check if fee-free window is open
+  const anvilCollateralRequestResult = useContractRead({
+    address: collateralPoolAddress,
+    abi: STABILITY_POOL_ABI,
+    functionName: "getWithdrawalRequest",
+    args: address ? [address] : undefined,
+    enabled: !!collateralPoolAddress && !!address && isOpen && useAnvilForPeggedBalance && activeTab === "withdraw",
+    refetchInterval: 30000,
+  });
+
+  const wagmiCollateralRequestResult = useContractRead({
+    address: collateralPoolAddress,
+    abi: STABILITY_POOL_ABI,
+    functionName: "getWithdrawalRequest",
+    args: address ? [address] : undefined,
+    query: {
+      enabled: !!collateralPoolAddress && !!address && isOpen && !useAnvilForPeggedBalance && activeTab === "withdraw",
+      refetchInterval: 30000,
+      allowFailure: true,
+    },
+  });
+
+  const collateralPoolRequest: readonly [bigint, bigint] | undefined = useAnvilForPeggedBalance
+    ? (anvilCollateralRequestResult.data as readonly [bigint, bigint] | undefined)
+    : (wagmiCollateralRequestResult.data as readonly [bigint, bigint] | undefined);
+
+  const anvilSailRequestResult = useContractRead({
+    address: sailPoolAddress,
+    abi: STABILITY_POOL_ABI,
+    functionName: "getWithdrawalRequest",
+    args: address ? [address] : undefined,
+    enabled: !!sailPoolAddress && !!address && isOpen && useAnvilForPeggedBalance && activeTab === "withdraw",
+    refetchInterval: 30000,
+  });
+
+  const wagmiSailRequestResult = useContractRead({
+    address: sailPoolAddress,
+    abi: STABILITY_POOL_ABI,
+    functionName: "getWithdrawalRequest",
+    args: address ? [address] : undefined,
+    query: {
+      enabled: !!sailPoolAddress && !!address && isOpen && !useAnvilForPeggedBalance && activeTab === "withdraw",
+      refetchInterval: 30000,
+      allowFailure: true,
+    },
+  });
+
+  const sailPoolRequest: readonly [bigint, bigint] | undefined = useAnvilForPeggedBalance
+    ? (anvilSailRequestResult.data as readonly [bigint, bigint] | undefined)
+    : (wagmiSailRequestResult.data as readonly [bigint, bigint] | undefined);
+
   // Helper function to format seconds to hours
   const formatDuration = (seconds: bigint | number): string => {
     const totalSeconds = Number(seconds);
@@ -2192,6 +2243,44 @@ export const AnchorDepositWithdrawModal = ({
     }
     return `${hours} hour${hours !== 1 ? "s" : ""}`;
   };
+
+  // Helper function to calculate remaining time in fee-free window and format display
+  const getFeeFreeDisplay = useCallback((
+    request: readonly [bigint, bigint] | undefined,
+    feePercent: number | undefined
+  ): string => {
+    if (!request || !feePercent) {
+      return `${feePercent?.toFixed(0) ?? "1"}%`;
+    }
+
+    const [start, end] = request;
+    // Check if there's no active request
+    if (start === 0n && end === 0n) {
+      return `${feePercent.toFixed(0)}%`;
+    }
+
+    // Get current time
+    const now = BigInt(Math.floor(Date.now() / 1000));
+    
+    // Check if window is open
+    if (now >= start && now <= end) {
+      const remainingSeconds = Number(end - now);
+      const remainingHours = remainingSeconds / 3600;
+      
+      if (remainingHours < 1) {
+        // Less than 1 hour - show in minutes with "fee free" text
+        const remainingMinutes = Math.floor(remainingSeconds / 60);
+        return `${remainingMinutes}m (fee free)`;
+      } else {
+        // 1 hour or more - show in hours
+        const hours = Math.floor(remainingHours);
+        return `${hours}h (fee free)`;
+      }
+    }
+
+    // Window not open - show fee percentage
+    return `${feePercent.toFixed(0)}%`;
+  }, []);
 
   // Convert fee from wei (1e18 scale) to percentage
   const collateralPoolFeePercent = useMemo(() => {
@@ -9348,11 +9437,13 @@ export const AnchorDepositWithdrawModal = ({
                                   } disabled:opacity-50 disabled:cursor-not-allowed`}
                                 >
                                   Early Withdraw
-                                  {collateralPoolFeePercent !== undefined
-                                    ? ` (${collateralPoolFeePercent.toFixed(
-                                        2
-                                      )}% fee)`
-                                    : " (with fee)"}
+                                  {(() => {
+                                    const display = getFeeFreeDisplay(
+                                      collateralPoolRequest,
+                                      collateralPoolFeePercent
+                                    );
+                                    return ` (${display})`;
+                                  })()}
                                 </button>
                                 <button
                                   type="button"
@@ -9498,9 +9589,13 @@ export const AnchorDepositWithdrawModal = ({
                                   } disabled:opacity-50 disabled:cursor-not-allowed`}
                                 >
                                   Early Withdraw
-                                  {sailPoolFeePercent !== undefined
-                                    ? ` (${sailPoolFeePercent.toFixed(2)}% fee)`
-                                    : " (with fee)"}
+                                  {(() => {
+                                    const display = getFeeFreeDisplay(
+                                      sailPoolRequest,
+                                      sailPoolFeePercent
+                                    );
+                                    return ` (${display})`;
+                                  })()}
                                 </button>
                                 <button
                                   type="button"

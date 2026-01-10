@@ -430,10 +430,26 @@ export function useAnchorMarketData(
               ) {
                 // Use the total reward APR from all tokens directly
                 // This includes ha tokens, wstETH, and any other reward tokens
+                if (process.env.NODE_ENV === "development") {
+                  console.log("[useAnchorMarketData] Using poolReward.totalRewardAPR for collateral pool", {
+                    marketId,
+                    poolAddress: collateralPoolAddress,
+                    contractAPR: contractAPRTotal,
+                    totalRewardAPR: poolReward.totalRewardAPR,
+                  });
+                }
                 collateralPoolAPR = {
                   collateral: poolReward.totalRewardAPR,
                   steam: 0,
                 };
+              } else if (process.env.NODE_ENV === "development" && collateralPoolAddress) {
+                console.log("[useAnchorMarketData] No poolReward.totalRewardAPR for collateral pool, using contract APR", {
+                  marketId,
+                  poolAddress: collateralPoolAddress,
+                  contractAPR: contractAPRTotal,
+                  poolRewardExists: !!poolReward,
+                  totalRewardAPR: poolReward?.totalRewardAPR,
+                });
               }
             }
 
@@ -569,10 +585,26 @@ export function useAnchorMarketData(
               ) {
                 // Use the total reward APR from all tokens directly
                 // This includes ha tokens, wstETH, and any other reward tokens
+                if (process.env.NODE_ENV === "development") {
+                  console.log("[useAnchorMarketData] Using poolReward.totalRewardAPR for sail pool", {
+                    marketId,
+                    poolAddress: sailPoolAddress,
+                    contractAPR: contractAPRTotal,
+                    totalRewardAPR: poolReward.totalRewardAPR,
+                  });
+                }
                 sailPoolAPR = {
                   collateral: poolReward.totalRewardAPR,
                   steam: 0,
                 };
+              } else if (process.env.NODE_ENV === "development" && sailPoolAddress) {
+                console.log("[useAnchorMarketData] No poolReward.totalRewardAPR for sail pool, using contract APR", {
+                  marketId,
+                  poolAddress: sailPoolAddress,
+                  contractAPR: contractAPRTotal,
+                  poolRewardExists: !!poolReward,
+                  totalRewardAPR: poolReward?.totalRewardAPR,
+                });
               }
             }
 
