@@ -41,6 +41,38 @@ export const stabilityPoolABI = [
     outputs: [{ name: "role", type: "uint256", internalType: "uint256" }],
     stateMutability: "view",
   },
+  // v1 roles (bitmask-style) used by StabilityPoolManager + treasury safe flows
+  {
+    type: "function",
+    name: "REWARD_DEPOSITOR_ROLE",
+    inputs: [],
+    outputs: [{ name: "role", type: "uint256", internalType: "uint256" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "REWARD_MANAGER_ROLE",
+    inputs: [],
+    outputs: [{ name: "role", type: "uint256", internalType: "uint256" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "hasRole",
+    inputs: [
+      { name: "role", type: "uint256", internalType: "uint256" },
+      { name: "account", type: "address", internalType: "address" },
+    ],
+    outputs: [{ name: "ok", type: "bool", internalType: "bool" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "owner",
+    inputs: [],
+    outputs: [{ name: "", type: "address", internalType: "address" }],
+    stateMutability: "view",
+  },
   {
     type: "function",
     name: "accumulateReward",
@@ -211,6 +243,30 @@ export const stabilityPoolABI = [
     inputs: [{ name: "token", type: "address", internalType: "address" }],
     outputs: [{ name: "", type: "bool", internalType: "bool" }],
     stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "historicalRewardTokens",
+    inputs: [],
+    outputs: [{ name: "", type: "address[]", internalType: "address[]" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "registerRewardToken",
+    inputs: [{ name: "token", type: "address", internalType: "address" }],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "depositReward",
+    inputs: [
+      { name: "rewardToken", type: "address", internalType: "address" },
+      { name: "rewardAmount", type: "uint256", internalType: "uint256" },
+    ],
+    outputs: [],
+    stateMutability: "nonpayable",
   },
   {
     type: "function",
