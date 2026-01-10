@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useAllStabilityPoolRewards } from "@/hooks/useAllStabilityPoolRewards";
 import { calculateReadOffset, calculatePriceOracleOffset } from "@/utils/anchor/calculateReadOffset";
+import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
 
 /**
  * Hook to calculate and aggregate all pool rewards for anchor markets
@@ -13,6 +14,11 @@ export function useAnchorRewards(
   anchorMarkets: Array<[string, any]>,
   reads: any
 ) {
+  // Reward token USD prices (used to compute claimableValue + APR)
+  const { price: fxSAVEPriceUSD } = useCoinGeckoPrice("fx-usd-saving");
+  const { price: wstETHPriceUSD } = useCoinGeckoPrice("wrapped-steth");
+  const { price: stETHPriceUSD } = useCoinGeckoPrice("lido-staked-ethereum-steth");
+
   // Build pools array for useAllStabilityPoolRewards
   const allPoolsForRewards = useMemo(() => {
     if (!reads) return [];
@@ -138,6 +144,22 @@ export function useAnchorRewards(
         map.set(peggedTokenAddress.toLowerCase(), price);
       }
 
+      // Add wrapped collateral token price (reward tokens commonly include wrapped collateral, e.g. fxSAVE / wstETH)
+      const wrappedCollateralTokenAddress = (m as any).addresses
+        ?.wrappedCollateralToken as `0x${string}` | undefined;
+      const wrappedSymbol = (m as any).collateral?.symbol?.toLowerCase?.() as
+        | string
+        | undefined;
+      if (wrappedCollateralTokenAddress) {
+        let p: number | undefined;
+        if (wrappedSymbol === "fxsave") p = fxSAVEPriceUSD ?? undefined;
+        else if (wrappedSymbol === "wsteth") p = wstETHPriceUSD ?? undefined;
+        else if (wrappedSymbol === "steth") p = stETHPriceUSD ?? undefined;
+        if (p && Number.isFinite(p) && p > 0) {
+          map.set(wrappedCollateralTokenAddress.toLowerCase(), p);
+        }
+      }
+
       // Add collateral token price
         if (hasPriceOracle && collateralTokenAddress) {
           const priceOracleOffset = calculatePriceOracleOffset(anchorMarkets, mi);
@@ -183,7 +205,13 @@ export function useAnchorRewards(
     });
 
     return map;
-  }, [anchorMarkets, reads]);
+  }, [
+    anchorMarkets,
+    reads,
+    fxSAVEPriceUSD,
+    wstETHPriceUSD,
+    stETHPriceUSD,
+  ]);
 
   // Fetch all stability pool rewards
   const { data: allPoolRewards = [], isLoading: isLoadingAllRewards } =
