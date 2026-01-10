@@ -2,7 +2,8 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { encodeFunctionData, isAddress, parseUnits, toHex } from "viem";
-import { useReadContract } from "wagmi";
+import { useAccount, useReadContract } from "wagmi";
+import SafeAppsSDK from "@safe-global/safe-apps-sdk";
 import { markets } from "@/config/markets";
 import { TREASURY_SAFE_ADDRESS } from "@/config/treasury";
 import { ERC20_ABI } from "@/config/contracts";
@@ -47,6 +48,16 @@ function truncate(addr: string) {
 function copyToClipboard(text: string) {
   if (typeof navigator === "undefined" || !navigator.clipboard) return;
   navigator.clipboard.writeText(text).catch(() => {});
+}
+
+function isSafeContext(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return window.self !== window.top;
+  } catch {
+    // If we can't access window.top due to cross-origin, we're likely in an iframe
+    return true;
+  }
 }
 
 function buildPoolEntries(): PoolEntry[] {
@@ -393,10 +404,36 @@ function RewardDepositRow({
 }
 
 export default function RewardDeposits() {
+  const { address: connectedAddress } = useAccount();
   const pools = useMemo(() => buildPoolEntries(), []);
   const [rows, setRows] = useState<Record<string, RowComputed>>({});
   const [depositError, setDepositError] = useState<string | null>(null);
   const [depositResult, setDepositResult] = useState<string | null>(null);
+  const [safeInfo, setSafeInfo] = useState<{
+    safeAddress: `0x${string}`;
+    chainId: number;
+  } | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      if (!isSafeContext()) return;
+      try {
+        const sdk = new SafeAppsSDK();
+        const info = await sdk.safe.getInfo();
+        if (!mounted) return;
+        setSafeInfo({
+          safeAddress: info.safeAddress as `0x${string}`,
+          chainId: info.chainId,
+        });
+      } catch {
+        // ignore
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const onRowChange = useCallback((key: string, row: RowComputed) => {
     setRows((prev) => {
@@ -503,6 +540,44 @@ export default function RewardDeposits() {
       return;
     }
 
+    // If running inside Safe{Wallet}, propose the tx batch via Safe Apps SDK.
+    if (safeInfo) {
+      if (safeInfo.chainId !== 1) {
+        setDepositError(
+          `Wrong chain: Safe is on chainId ${safeInfo.chainId}, expected 1.`
+        );
+        return;
+      }
+      if (safeInfo.safeAddress.toLowerCase() !== TREASURY_SAFE_ADDRESS.toLowerCase()) {
+        setDepositError(
+          `Wrong Safe: this app is configured for ${TREASURY_SAFE_ADDRESS}, but you're running in ${safeInfo.safeAddress}.`
+        );
+        return;
+      }
+
+      try {
+        const sdk = new SafeAppsSDK();
+        const res = await sdk.txs.send({
+          txs: txs.map((t) => ({
+            to: t.to,
+            value: t.value.toString(),
+            data: t.data,
+          })),
+        });
+        const safeTxHash = (res as any)?.safeTxHash;
+        setDepositResult(
+          safeTxHash
+            ? `Proposed Safe transaction: ${safeTxHash}`
+            : "Proposed Safe transaction."
+        );
+      } catch (e: any) {
+        setDepositError(
+          e?.message ?? "Failed to propose Safe transaction via Safe Apps SDK."
+        );
+      }
+      return;
+    }
+
     const ethereum = (window as any)?.ethereum;
     if (!ethereum?.request) {
       setDepositError("No injected wallet found (window.ethereum).");
@@ -572,8 +647,9 @@ export default function RewardDeposits() {
             </span>
           </div>
           <div className="text-white/50 text-xs mt-1">
-            This page generates Safe-ready tx calldata (it does not submit onchain
-            txs from your connected wallet).
+            {safeInfo
+              ? `Safe context: ${safeInfo.safeAddress} (chainId ${safeInfo.chainId})`
+              : `Connected wallet: ${connectedAddress ?? "—"}. (Not in Safe context)`}
           </div>
         </div>
 
@@ -612,9 +688,20 @@ export default function RewardDeposits() {
           </div>
           <button
             className="py-2 px-4 bg-harbor text-white font-medium hover:bg-harbor/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={txs.length === 0}
+            disabled={
+              txs.length === 0 ||
+              (safeInfo
+                ? safeInfo.chainId !== 1 ||
+                  safeInfo.safeAddress.toLowerCase() !==
+                    TREASURY_SAFE_ADDRESS.toLowerCase()
+                : false)
+            }
             onClick={handleDeposit}
-            title="Attempts to send the generated transaction batch to your wallet"
+            title={
+              safeInfo
+                ? "Propose the batch as a Safe transaction"
+                : "Send the batch from your connected wallet (EOA)"
+            }
           >
             Deposit
           </button>
