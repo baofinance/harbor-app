@@ -281,11 +281,12 @@ function RewardDepositRow({
           </label>
 
           <div className="min-w-0">
-          <div className="text-white font-geo text-base">
-            {pool.marketName} • {poolKindLabel(pool.poolKind)}
-          </div>
-          <div className="text-white/60 text-xs font-mono">
-            {pool.poolAddress}
+            <div className="text-white font-geo text-base">
+              {pool.marketName} • {poolKindLabel(pool.poolKind)}
+            </div>
+            <div className="text-white/60 text-xs font-mono">
+              {pool.poolAddress}
+            </div>
           </div>
         </div>
       </div>
