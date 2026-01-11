@@ -14,7 +14,8 @@ interface CachedPrice {
   timestamp: number;
 }
 
-const CACHE_DURATION_MS = 60_000; // 60 seconds
+// Map Room prices don't need to update every minute. A longer TTL materially reduces RPC load.
+const CACHE_DURATION_MS = 5 * 60_000; // 5 minutes
 const priceCache = new Map<string, CachedPrice>();
 
 /**
@@ -36,6 +37,14 @@ function extractLatestAnswerMinPrice(val: unknown): bigint | null {
     if (typeof v[0] === "bigint") return v[0] as bigint;
   }
   return null;
+}
+
+const MULTICALL_BATCH_SIZE = 25;
+function chunk<T>(arr: T[], size: number): T[][] {
+  if (size <= 0) return [arr];
+  const out: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+  return out;
 }
 
 /**
@@ -90,35 +99,72 @@ export function useFeedPrices(
 
     (async () => {
       try {
-        const priceResults: string[] = [];
+        // Prefer multicall to reduce RPC requests dramatically; fallback per-feed to preserve reliability.
+        const priceResults: string[] = new Array(feedEntries.length).fill("-");
+        const needFallbackIdx = new Set<number>();
 
-        for (const feed of feedEntries) {
-          if (cancelled) break;
+        const canMulticall = typeof (rpcClient as any).multicall === "function";
+        if (canMulticall) {
+          const contracts = feedEntries.map((feed) => ({
+            address: feed.address,
+            abi: proxyAbi,
+            functionName: "latestAnswer" as const,
+          }));
+
+          let out: any[] = [];
           try {
-            // Try latestAnswer first (works for SingleFeed, DoubleFeed, proxy contracts, etc.)
-            let price: bigint | null = null;
+            for (const batch of chunk(contracts, MULTICALL_BATCH_SIZE)) {
+              // eslint-disable-next-line no-await-in-loop
+              const r = await (rpcClient as any).multicall({
+                contracts: batch,
+                allowFailure: true,
+              });
+              out = out.concat(r as any[]);
+            }
 
+            for (let i = 0; i < out.length; i++) {
+              const r = out[i];
+              if (r?.status === "success") {
+                const price = extractLatestAnswerMinPrice(r.result);
+                if (price !== null && price !== undefined) {
+                  priceResults[i] = format18(price);
+                } else {
+                  needFallbackIdx.add(i);
+                }
+              } else {
+                needFallbackIdx.add(i);
+              }
+            }
+          } catch {
+            // If multicall itself fails, fall back for all.
+            for (let i = 0; i < feedEntries.length; i++) needFallbackIdx.add(i);
+          }
+        } else {
+          for (let i = 0; i < feedEntries.length; i++) needFallbackIdx.add(i);
+        }
+
+        // Per-feed fallback (latestAnswer, then getPrice on network-ish errors)
+        for (const i of Array.from(needFallbackIdx.values())) {
+          if (cancelled) break;
+          const feed = feedEntries[i];
+          try {
+            let price: bigint | null = null;
             try {
               const latestResult = await rpcClient.readContract({
                 address: feed.address,
                 abi: proxyAbi,
                 functionName: "latestAnswer",
               });
-
               price = extractLatestAnswerMinPrice(latestResult);
             } catch (err: unknown) {
-              // Only try getPrice if latestAnswer failed for a clear network/RPC error.
-              // Many feeds (e.g., SingleFeed/DoubleFeed) don't implement getPrice.
               const errMsg = err instanceof Error ? err.message : String(err);
-              const isNetworkError =
-                errMsg.toLowerCase().includes("network") ||
-                errMsg.toLowerCase().includes("fetch");
+              const lower = errMsg.toLowerCase();
+              const isNetworkError = lower.includes("network") || lower.includes("fetch");
               const isFunctionNotFound =
-                errMsg.toLowerCase().includes("function") ||
-                errMsg.toLowerCase().includes("not found") ||
-                errMsg.toLowerCase().includes("does not exist") ||
-                errMsg.toLowerCase().includes("execution reverted");
-
+                lower.includes("function") ||
+                lower.includes("not found") ||
+                lower.includes("does not exist") ||
+                lower.includes("execution reverted");
               if (isNetworkError && !isFunctionNotFound) {
                 try {
                   const priceResult = await rpcClient.readContract({
@@ -128,22 +174,15 @@ export function useFeedPrices(
                   });
                   if (typeof priceResult === "bigint") price = priceResult as bigint;
                 } catch {
-                  // Expected for SingleFeed/DoubleFeed, ignore.
+                  // ignore
                 }
               }
             }
-
             if (price !== null && price !== undefined) {
-              priceResults.push(format18(price));
-            } else {
-              priceResults.push("-");
+              priceResults[i] = format18(price);
             }
-          } catch (err: unknown) {
-            console.error(
-              `[useFeedPrices] Exception fetching price for ${feed.label}:`,
-              err
-            );
-            priceResults.push("-");
+          } catch (err) {
+            console.error(`[useFeedPrices] Exception fetching price for ${feed.label}:`, err);
           }
         }
 
