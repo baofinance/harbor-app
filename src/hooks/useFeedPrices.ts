@@ -18,9 +18,18 @@ const CACHE_DURATION_MS = 60_000; // 60 seconds
 // Cache key: feed address (lowercased) -> { price, timestamp }
 const priceCache = new Map<string, CachedFeedPrice>();
 
+const MULTICALL_BATCH_SIZE = 40;
+
 function isCacheValid(cached: CachedFeedPrice | undefined): boolean {
   if (!cached) return false;
   return Date.now() - cached.timestamp < CACHE_DURATION_MS;
+}
+
+function chunk<T>(arr: T[], size: number): T[][] {
+  if (size <= 0) return [arr];
+  const out: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+  return out;
 }
 
 /**
@@ -85,10 +94,28 @@ export function useFeedPrices(
           functionName: "latestAnswer" as const,
         }));
 
-        const latestResults = await rpcClient.multicall({
-          contracts: latestContracts as any,
-          allowFailure: true,
-        });
+        // NOTE: Some RPCs reject very large multicalls. Chunk to keep it reliable.
+        let latestResults: any[] = [];
+        try {
+          for (const batch of chunk(latestContracts, MULTICALL_BATCH_SIZE)) {
+            // eslint-disable-next-line no-await-in-loop
+            const r = await rpcClient.multicall({
+              contracts: batch as any,
+              allowFailure: true,
+            });
+            latestResults = latestResults.concat(r as any[]);
+          }
+        } catch (e) {
+          // Fallback: concurrent per-contract read (still cached per address).
+          latestResults = await Promise.all(
+            latestContracts.map((c) =>
+              rpcClient
+                .readContract(c as any)
+                .then((result) => ({ status: "success", result }))
+                .catch((error) => ({ status: "failure", error }))
+            )
+          );
+        }
 
         // For any failures, attempt getPrice in a second multicall (best-effort).
         const fallbackIdx: number[] = [];
@@ -124,10 +151,26 @@ export function useFeedPrices(
             abi: proxyAbi,
             functionName: "getPrice" as const,
           }));
-          const fallbackResults = await rpcClient.multicall({
-            contracts: fallbackContracts as any,
-            allowFailure: true,
-          });
+          let fallbackResults: any[] = [];
+          try {
+            for (const batch of chunk(fallbackContracts, MULTICALL_BATCH_SIZE)) {
+              // eslint-disable-next-line no-await-in-loop
+              const r = await rpcClient.multicall({
+                contracts: batch as any,
+                allowFailure: true,
+              });
+              fallbackResults = fallbackResults.concat(r as any[]);
+            }
+          } catch (e) {
+            fallbackResults = await Promise.all(
+              fallbackContracts.map((c) =>
+                rpcClient
+                  .readContract(c as any)
+                  .then((result) => ({ status: "success", result }))
+                  .catch((error) => ({ status: "failure", error }))
+              )
+            );
+          }
 
           for (let j = 0; j < fallbackResults.length; j++) {
             const idx = fallbackIdx[j];
