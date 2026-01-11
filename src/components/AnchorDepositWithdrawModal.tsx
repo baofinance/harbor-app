@@ -120,6 +120,15 @@ const CHAINLINK_FEEDS = {
   BTC_USD: "0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c" as `0x${string}`,
 } as const;
 
+// Common reward token addresses used by Harbor stability pools (mainnet).
+// Used for APR fallback calculation when getAPRBreakdown is unavailable.
+const FXSAVE_TOKEN_ADDRESS =
+  "0x7743e50F534a7f9F1791DdE7dCD89F7783Eefc39" as `0x${string}`;
+const WSTETH_TOKEN_ADDRESS =
+  "0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0" as `0x${string}`;
+const STETH_TOKEN_ADDRESS =
+  "0xae7ab96520de3a18e5e111b5eaab095312d7fe84" as `0x${string}`;
+
 const CHAINLINK_AGGREGATOR_ABI = [
   {
     inputs: [],
@@ -1034,6 +1043,13 @@ export const AnchorDepositWithdrawModal = ({
   // Get BTC and ETH prices for fee conversion in BTC markets
   const { price: btcPrice } = useCoinGeckoPrice("bitcoin", 120000);
   const { price: ethPrice } = useCoinGeckoPrice("ethereum", 120000);
+  // Reward token USD prices (used for APR fallback in stability pool selector)
+  const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
+  const { price: wstETHPrice } = useCoinGeckoPrice("wrapped-steth", 120000);
+  const { price: stETHPrice } = useCoinGeckoPrice(
+    "lido-staked-ethereum-steth",
+    120000
+  );
 
   // Find market for selected deposit asset (in simple mode, deposit asset determines which market to use)
   const marketForDepositAsset = useMemo(() => {
@@ -2754,10 +2770,157 @@ export const AnchorDepositWithdrawModal = ({
     });
   }, [allPoolData, allStabilityPools, isOpen, simpleMode]);
 
+  // ---------------------------------------------------------------------------
+  // APR fallback: compute APR from reward emission rates if getAPRBreakdown fails.
+  // This fixes "APR: ..." in the stability pool selector while TVL loads fine.
+  // ---------------------------------------------------------------------------
+  const rewardTokenUsdPriceMap = useMemo(() => {
+    const map = new Map<string, number>();
+    if (fxSAVEPrice && fxSAVEPrice > 0)
+      map.set(FXSAVE_TOKEN_ADDRESS.toLowerCase(), fxSAVEPrice);
+    if (wstETHPrice && wstETHPrice > 0)
+      map.set(WSTETH_TOKEN_ADDRESS.toLowerCase(), wstETHPrice);
+    // Use stETH spot for stETH address (some pools may pay stETH directly)
+    if (stETHPrice && stETHPrice > 0)
+      map.set(STETH_TOKEN_ADDRESS.toLowerCase(), stETHPrice);
+    return map;
+  }, [fxSAVEPrice, wstETHPrice, stETHPrice]);
+
+  const rewardDataMeta = useMemo(() => {
+    const meta: Array<{ poolAddress: `0x${string}`; tokenAddress: `0x${string}` }> =
+      [];
+    if (!isOpen || !simpleMode || activeTab !== "deposit") return meta;
+
+    for (const pool of poolsWithData) {
+      const poolAddr = pool.address as unknown as string;
+      const isValidPool =
+        poolAddr &&
+        typeof poolAddr === "string" &&
+        poolAddr.startsWith("0x") &&
+        poolAddr.length === 42;
+      if (!isValidPool) continue;
+
+      const addrs = [
+        pool.gaugeRewardToken as `0x${string}` | undefined,
+        pool.liquidationToken as `0x${string}` | undefined,
+      ]
+        .filter(
+          (a): a is `0x${string}` =>
+            !!a &&
+            a !== "0x0000000000000000000000000000000000000000" &&
+            a.startsWith("0x") &&
+            a.length === 42
+        )
+        .map((a) => a.toLowerCase() as `0x${string}`);
+
+      // de-dupe per pool
+      for (const token of Array.from(new Set(addrs))) {
+        meta.push({
+          poolAddress: (pool.address as `0x${string}`),
+          tokenAddress: token,
+        });
+      }
+    }
+    return meta;
+  }, [poolsWithData, isOpen, simpleMode, activeTab]);
+
+  const { data: rewardDataReads } = useContractReads({
+    contracts: rewardDataMeta.map((m) => ({
+      address: m.poolAddress,
+      abi: STABILITY_POOL_ABI,
+      functionName: "rewardData",
+      args: [m.tokenAddress],
+    })),
+    query: {
+      enabled:
+        rewardDataMeta.length > 0 &&
+        isOpen &&
+        simpleMode &&
+        activeTab === "deposit",
+      retry: 1,
+      allowFailure: true,
+    },
+  });
+
+  const poolAprFallbackByAddress = useMemo(() => {
+    const map = new Map<string, number>();
+    if (!rewardDataReads || rewardDataReads.length === 0) return map;
+
+    const SECONDS_PER_YEAR = 365 * 24 * 60 * 60;
+
+    // Group reward rates by pool address
+    const ratesByPool = new Map<string, Array<{ token: string; rate: bigint }>>();
+    for (let i = 0; i < rewardDataMeta.length; i++) {
+      const meta = rewardDataMeta[i];
+      const r = rewardDataReads[i];
+      if (!meta || !r || r.status !== "success" || !r.result) continue;
+      const tuple = r.result as [bigint, bigint, bigint, bigint]; // [lastUpdate, finishAt, rate, queued]
+      const rate = tuple?.[2];
+      if (typeof rate !== "bigint" || rate <= 0n) continue;
+
+      const poolKey = String(meta.poolAddress).toLowerCase();
+      const tokenKey = String(meta.tokenAddress).toLowerCase();
+      const arr = ratesByPool.get(poolKey) ?? [];
+      arr.push({ token: tokenKey, rate });
+      ratesByPool.set(poolKey, arr);
+    }
+
+    for (const pool of poolsWithData) {
+      const poolKey = String(pool.address).toLowerCase();
+      const tvl = pool.tvl as bigint | undefined;
+      if (!tvl || tvl <= 0n) continue;
+
+      // We already have a USD conversion path for TVL in the modal (peggedTokenPrice * pegTargetUsdWei).
+      // This assumes the current market's peggedTokenPrice is representative in simple mode.
+      if (!peggedTokenPrice || (peggedTokenPrice as bigint) <= 0n || pegTargetUsdWei <= 0n)
+        continue;
+
+      const tvlUsdWei =
+        (tvl * (peggedTokenPrice as bigint) * pegTargetUsdWei) / 10n ** 36n;
+      const tvlUsd = parseFloat(formatUnits(tvlUsdWei, 18));
+      if (!Number.isFinite(tvlUsd) || tvlUsd <= 0) continue;
+
+      let totalApr = 0;
+      const rates = ratesByPool.get(poolKey) ?? [];
+      for (const rr of rates) {
+        const tokenPriceUsd = rewardTokenUsdPriceMap.get(rr.token);
+        if (!tokenPriceUsd || tokenPriceUsd <= 0) continue;
+
+        const annualRewardsTokens = (Number(rr.rate) * SECONDS_PER_YEAR) / 1e18;
+        const annualRewardsUsd = annualRewardsTokens * tokenPriceUsd;
+        if (annualRewardsUsd > 0) {
+          totalApr += (annualRewardsUsd / tvlUsd) * 100;
+        }
+      }
+
+      if (totalApr > 0) map.set(poolKey, totalApr);
+    }
+
+    return map;
+  }, [
+    rewardDataMeta,
+    rewardDataReads,
+    poolsWithData,
+    rewardTokenUsdPriceMap,
+    peggedTokenPrice,
+    pegTargetUsdWei,
+  ]);
+
+  const poolsWithAprFallback = useMemo(() => {
+    return poolsWithData.map((pool) => {
+      const key = String(pool.address).toLowerCase();
+      const fallback = poolAprFallbackByAddress.get(key);
+      return {
+        ...pool,
+        apr: pool.apr ?? fallback,
+      };
+    });
+  }, [poolsWithData, poolAprFallbackByAddress]);
+
   // Fetch reward token symbols for all pools
   const rewardTokenAddresses = useMemo(() => {
     const addresses: `0x${string}`[] = [];
-    poolsWithData.forEach((pool) => {
+    poolsWithAprFallback.forEach((pool) => {
       if (
         pool.gaugeRewardToken &&
         pool.gaugeRewardToken !== "0x0000000000000000000000000000000000000000"
@@ -2776,7 +2939,7 @@ export const AnchorDepositWithdrawModal = ({
     // Debug logging
 
     return uniqueAddresses;
-  }, [poolsWithData, isOpen, simpleMode]);
+  }, [poolsWithAprFallback, isOpen, simpleMode]);
 
   const { data: rewardTokenSymbols } = useContractReads({
     contracts: rewardTokenAddresses.map((addr) => ({
@@ -2810,7 +2973,7 @@ export const AnchorDepositWithdrawModal = ({
 
   // Add symbols to pools (combine config reward tokens with fetched ones)
   const poolsWithSymbols = useMemo(() => {
-    return poolsWithData.map((pool) => {
+    return poolsWithAprFallback.map((pool) => {
       // Get reward tokens from market config (default is collateral)
       const marketConfig = pool.market;
       const configRewardTokens = marketConfig?.rewardTokens?.default || [];
@@ -2841,7 +3004,7 @@ export const AnchorDepositWithdrawModal = ({
         rewardTokens: allRewardTokens,
       };
     });
-  }, [poolsWithData, rewardTokenSymbolMap]);
+  }, [poolsWithAprFallback, rewardTokenSymbolMap]);
 
   // Get all unique reward tokens from all pools with max APR for each
   const rewardTokenOptions = useMemo(() => {
