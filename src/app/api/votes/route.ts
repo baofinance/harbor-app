@@ -26,14 +26,21 @@ export async function GET(req: Request) {
   const address = (searchParams.get("address") || "").trim();
   const includeAllocations = isAddress(address);
 
+  const storeMode =
+    (process.env.VOTES_STORE || "upstash") === "memory" ||
+    !process.env.UPSTASH_REDIS_REST_URL ||
+    !process.env.UPSTASH_REDIS_REST_TOKEN
+      ? "memory"
+      : "upstash";
+
   try {
     const store = getVotesStore();
     const totals = await store.getTotals(feedIds);
     if (!includeAllocations) {
-      return NextResponse.json({ totals });
+      return NextResponse.json({ totals, store: storeMode });
     }
     const allocations = await store.getAllocations(address as Address);
-    return NextResponse.json({ totals, allocations });
+    return NextResponse.json({ totals, allocations, store: storeMode });
   } catch (err: any) {
     return NextResponse.json(
       { error: err?.message || "Failed to fetch votes" },
@@ -73,6 +80,12 @@ export async function POST(req: Request) {
 
   try {
     const store = getVotesStore();
+    const storeMode =
+      (process.env.VOTES_STORE || "upstash") === "memory" ||
+      !process.env.UPSTASH_REDIS_REST_URL ||
+      !process.env.UPSTASH_REDIS_REST_TOKEN
+        ? "memory"
+        : "upstash";
 
     const typed = buildVoteTypedData({
       voter: voter as Address,
@@ -101,7 +114,11 @@ export async function POST(req: Request) {
     const { totals, allocations: storedAllocations } =
       await store.setAllocations(voter as Address, nextMap);
 
-    return NextResponse.json({ totals, allocations: storedAllocations });
+    return NextResponse.json({
+      totals,
+      allocations: storedAllocations,
+      store: storeMode,
+    });
   } catch (err: any) {
     return NextResponse.json(
       { error: err?.message || "Failed to save votes" },

@@ -547,6 +547,7 @@ export function FeedTable({
       return json as {
         totals: Record<string, number>;
         allocations?: Record<string, number>;
+        store?: "upstash" | "memory";
       };
     },
     enabled: allFeedIds.length > 0,
@@ -558,7 +559,9 @@ export function FeedTable({
     : "";
   const voteDisabledReason = votesErrorMessage
     ? `Voting unavailable: ${votesErrorMessage}`
-    : undefined;
+    : votesQuery.data?.store === "memory"
+      ? "Voting is running on an in-memory store (preview). Totals may differ from main."
+      : undefined;
 
   const canonicalizeFeedId = (feedId: string): string | null => {
     const raw = String(feedId || "").trim();

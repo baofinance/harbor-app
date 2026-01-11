@@ -65,6 +65,7 @@ export default function FlowPage() {
       return json as {
         totals: Record<string, number>;
         allocations?: Record<string, number>;
+        store?: "upstash" | "memory";
       };
     },
     enabled: allFeedIds.length > 0,
@@ -318,6 +319,13 @@ export default function FlowPage() {
                   Loading votes…
                 </div>
               )}
+              {!votesQuery.isLoading &&
+                !votesQuery.isError &&
+                votesQuery.data?.store === "memory" && (
+                  <div className="text-[10px] text-[#1E4775]/50 mt-1 text-center">
+                    Votes store: memory (preview) — totals may differ from main
+                  </div>
+                )}
               {votesQuery.isError && (
                 <div className="text-[10px] text-red-600 mt-1">
                   {String(
