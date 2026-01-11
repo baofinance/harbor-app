@@ -633,21 +633,31 @@ export function FeedTable({
   const mainnetFeedEntries = useMemo(() => {
     return feeds
       .filter((f) => f.network === "mainnet")
-      .map((f) => ({ address: f.address as `0x${string}`, label: f.label }))
+      // Normalize to lowercase so viem doesn't reject non-checksummed mixed-case addresses.
+      .map((f) => ({
+        address: f.address.toLowerCase() as `0x${string}`,
+        label: f.label,
+      }))
       .sort((a, b) => a.address.localeCompare(b.address));
   }, [feeds]);
 
   const arbitrumFeedEntries = useMemo(() => {
     return feeds
       .filter((f) => f.network === "arbitrum")
-      .map((f) => ({ address: f.address as `0x${string}`, label: f.label }))
+      .map((f) => ({
+        address: f.address.toLowerCase() as `0x${string}`,
+        label: f.label,
+      }))
       .sort((a, b) => a.address.localeCompare(b.address));
   }, [feeds]);
 
   const baseFeedEntries = useMemo(() => {
     return feeds
       .filter((f) => f.network === "base")
-      .map((f) => ({ address: f.address as `0x${string}`, label: f.label }))
+      .map((f) => ({
+        address: f.address.toLowerCase() as `0x${string}`,
+        label: f.label,
+      }))
       .sort((a, b) => a.address.localeCompare(b.address));
   }, [feeds]);
 
@@ -715,7 +725,7 @@ export function FeedTable({
     return feeds
       .filter((f) => f.network === "mainnet")
       .map((f) => ({
-        address: f.address as `0x${string}`,
+        address: f.address.toLowerCase() as `0x${string}`,
         label: f.label,
         divisor: (f as any).divisor,
       }))
@@ -726,7 +736,7 @@ export function FeedTable({
     return feeds
       .filter((f) => f.network === "arbitrum")
       .map((f) => ({
-        address: f.address as `0x${string}`,
+        address: f.address.toLowerCase() as `0x${string}`,
         label: f.label,
         divisor: (f as any).divisor,
       }))
@@ -737,7 +747,7 @@ export function FeedTable({
     return feeds
       .filter((f) => f.network === "base")
       .map((f) => ({
-        address: f.address as `0x${string}`,
+        address: f.address.toLowerCase() as `0x${string}`,
         label: f.label,
         divisor: (f as any).divisor,
       }))
