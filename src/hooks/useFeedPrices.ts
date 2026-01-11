@@ -118,7 +118,7 @@ export function useFeedPrices(
         }
 
         // For any failures, attempt getPrice in a second multicall (best-effort).
-        const fallbackIdx: number[] = [];
+        let fallbackIdx: number[] = [];
         for (let j = 0; j < latestResults.length; j++) {
           const idx = toFetchIdx[j];
           const r: any = latestResults[j];
@@ -143,6 +143,47 @@ export function useFeedPrices(
           } else {
             fallbackIdx.push(idx);
           }
+        }
+
+        // IMPORTANT: Some feeds can fail inside multicall (gas/stack/implementation quirks)
+        // but succeed when called directly. Retry latestAnswer directly before trying getPrice.
+        if (fallbackIdx.length > 0) {
+          const direct = await Promise.all(
+            fallbackIdx.map((idx) =>
+              rpcClient
+                .readContract({
+                  address: feedEntries[idx].address,
+                  abi: proxyAbi,
+                  functionName: "latestAnswer",
+                } as any)
+                .then((result) => ({ idx, status: "success" as const, result }))
+                .catch((error) => ({ idx, status: "failure" as const, error }))
+            )
+          );
+
+          const stillFail: number[] = [];
+          for (const r of direct) {
+            if (r.status === "success") {
+              const val: any = (r as any).result;
+              let price: bigint | null = null;
+              if (val && Array.isArray(val) && val.length >= 1) {
+                price = val[0] as bigint;
+              } else if (typeof val === "bigint") {
+                price = val;
+              }
+              if (price !== null && price !== undefined) {
+                const formatted = format18(price);
+                results[r.idx] = formatted;
+                priceCache.set(String(feedEntries[r.idx].address).toLowerCase(), {
+                  price: formatted,
+                  timestamp: now,
+                });
+              }
+            } else {
+              stillFail.push((r as any).idx);
+            }
+          }
+          fallbackIdx = stillFail;
         }
 
         if (fallbackIdx.length > 0) {
