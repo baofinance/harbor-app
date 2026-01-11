@@ -2690,18 +2690,36 @@ export const AnchorDepositWithdrawModal = ({
       }));
     }
 
-    return allStabilityPools.map((pool, index) => {
-      const baseIndex = index * 4;
-      const aprData = allPoolData[baseIndex]?.result as
+    // IMPORTANT: poolContracts only includes reads for *valid* pool addresses.
+    // So we must advance through allPoolData with a cursor, not by index*4.
+    let cursor = 0;
+    return allStabilityPools.map((pool) => {
+      const isValidAddress =
+        pool.address &&
+        typeof pool.address === "string" &&
+        pool.address.startsWith("0x") &&
+        pool.address.length === 42;
+
+      if (!isValidAddress) {
+        return {
+          ...pool,
+          apr: undefined,
+          tvl: undefined,
+          rewardTokens: [],
+        };
+      }
+
+      const aprData = allPoolData[cursor]?.result as
         | [bigint, bigint]
         | undefined;
-      const tvl = allPoolData[baseIndex + 1]?.result as bigint | undefined;
-      const gaugeRewardToken = allPoolData[baseIndex + 2]?.result as
+      const tvl = allPoolData[cursor + 1]?.result as bigint | undefined;
+      const gaugeRewardToken = allPoolData[cursor + 2]?.result as
         | `0x${string}`
         | undefined;
-      const liquidationToken = allPoolData[baseIndex + 3]?.result as
+      const liquidationToken = allPoolData[cursor + 3]?.result as
         | `0x${string}`
         | undefined;
+      cursor += 4;
 
       const apr =
         aprData && Array.isArray(aprData) && aprData.length >= 2
