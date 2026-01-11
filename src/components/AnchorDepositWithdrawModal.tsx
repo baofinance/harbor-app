@@ -16,6 +16,7 @@ import {
 import { mainnet } from "wagmi/chains";
 import { BaseError, ContractFunctionRevertedError } from "viem";
 import { ERC20_ABI, STABILITY_POOL_ABI } from "@/abis/shared";
+import { stabilityPoolABI } from "@/abis/stabilityPool";
 import { aprABI } from "@/abis/apr";
 import { ZAP_ABI, USDC_ZAP_ABI, WSTETH_ABI } from "@/abis";
 import { MINTER_ETH_ZAP_V2_ABI, MINTER_USDC_ZAP_V2_ABI } from "@/config/contracts";
@@ -2664,12 +2665,12 @@ export const AnchorDepositWithdrawModal = ({
         // Reward tokens
         contracts.push({
           address: pool.address,
-          abi: STABILITY_POOL_ABI,
+          abi: stabilityPoolABI,
           functionName: "GAUGE_REWARD_TOKEN",
         });
         contracts.push({
           address: pool.address,
-          abi: STABILITY_POOL_ABI,
+          abi: stabilityPoolABI,
           functionName: "LIQUIDATION_TOKEN",
         });
       }
@@ -2677,7 +2678,7 @@ export const AnchorDepositWithdrawModal = ({
     return contracts;
   }, [allStabilityPools, simpleMode, activeTab, isOpen, address]);
 
-  const { data: allPoolData } = useContractReads({
+  const { data: allPoolData, isLoading: isPoolDataLoading } = useContractReads({
     contracts: poolContracts,
     query: {
       enabled: poolContracts.length > 0,
@@ -2824,7 +2825,8 @@ export const AnchorDepositWithdrawModal = ({
     return meta;
   }, [poolsWithData, isOpen, simpleMode, activeTab]);
 
-  const { data: rewardDataReads } = useContractReads({
+  const { data: rewardDataReads, isLoading: isRewardDataLoading } =
+    useContractReads({
     contracts: rewardDataMeta.map((m) => ({
       address: m.poolAddress,
       abi: STABILITY_POOL_ABI,
@@ -2840,7 +2842,7 @@ export const AnchorDepositWithdrawModal = ({
       retry: 1,
       allowFailure: true,
     },
-  });
+    });
 
   const poolAprFallbackByAddress = useMemo(() => {
     const map = new Map<string, number>();
@@ -9067,11 +9069,17 @@ export const AnchorDepositWithdrawModal = ({
                                           APR:
                                         </span>
                                         <span className="text-[#1E4775] font-medium ml-1">
-                                          {pool.apr !== undefined
-                                            ? pool.apr > 0
-                                              ? formatAPR(pool.apr)
-                                              : "-"
-                                            : "..."}
+                                          {pool.apr !== undefined ? (
+                                            pool.apr > 0 ? (
+                                              formatAPR(pool.apr)
+                                            ) : (
+                                              "-"
+                                            )
+                                          ) : isPoolDataLoading || isRewardDataLoading ? (
+                                            "Loading..."
+                                          ) : (
+                                            "-"
+                                          )}
                                         </span>
                                       </div>
                                       <div>
