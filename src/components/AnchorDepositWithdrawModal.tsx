@@ -4626,7 +4626,9 @@ export const AnchorDepositWithdrawModal = ({
         // In simple mode, use step-by-step flow
         if (simpleMode) {
           setCurrentStep(1);
-          setSelectedDepositAsset(initialCollateralSymbol);
+          // Prefer an explicit initial deposit asset (e.g. ha token when opened from
+          // "not earning yield" section). Otherwise default to the market's collateral.
+          setSelectedDepositAsset(initialDepositAsset || initialCollateralSymbol);
           // Don't pre-select pools in step-by-step mode - let user choose
           setSelectedStabilityPool(null);
           setDepositInStabilityPool(false);
