@@ -207,39 +207,34 @@ export function useAllStabilityPoolRewards({
                 const tokenAddressLower = tokenAddress.toLowerCase();
                 let priceSource = "none";
                 
-                // Check if it's the pegged token
-                if (
-                  pool.peggedTokenAddress &&
-                  tokenAddressLower === pool.peggedTokenAddress.toLowerCase()
-                ) {
+                // IMPORTANT: Check tokenPriceMap FIRST (before collateral/pegged checks)
+                // because tokenPriceMap contains correct USD prices for wrapped collateral tokens (fxSAVE, wstETH)
+                // The collateralTokenAddress in transparency page is set to wrappedCollateralToken,
+                // and using collateralPrice (which is in ETH units) would give wrong prices
+                if (tokenPriceMap) {
+                  const mappedPrice = tokenPriceMap.get(tokenAddressLower);
+                  if (mappedPrice !== undefined) {
+                    price = mappedPrice;
+                    priceSource = "tokenPriceMap";
+                  }
+                }
+                
+                // Check if it's the pegged token (only if not found in tokenPriceMap)
+                if (price === 0 && pool.peggedTokenAddress && tokenAddressLower === pool.peggedTokenAddress.toLowerCase()) {
                   // Use pegged token price
                   if (pool.peggedTokenPrice) {
                     price = Number(pool.peggedTokenPrice) / 1e18;
                     priceSource = "pegged";
                   }
                 }
-                // Check if it's the collateral token
-                else if (
-                  pool.collateralTokenAddress &&
-                  tokenAddressLower === pool.collateralTokenAddress.toLowerCase()
-                ) {
-                  // Use collateral price
-                  if (
-                    pool.collateralPrice &&
-                    pool.collateralPriceDecimals !== undefined
-                  ) {
-                    price =
-                      Number(pool.collateralPrice) /
-                      10 ** pool.collateralPriceDecimals;
+                // Check if it's the collateral token (only if not found in tokenPriceMap)
+                // NOTE: For wrapped collateral tokens (fxSAVE, wstETH), tokenPriceMap should be checked first
+                // because collateralPrice is in underlying asset units (ETH), not USD
+                else if (price === 0 && pool.collateralTokenAddress && tokenAddressLower === pool.collateralTokenAddress.toLowerCase()) {
+                  // Use collateral price (only as fallback - this is in underlying asset units, not USD)
+                  if (pool.collateralPrice && pool.collateralPriceDecimals !== undefined) {
+                    price = Number(pool.collateralPrice) / 10 ** pool.collateralPriceDecimals;
                     priceSource = "collateral";
-                  }
-                }
-                // Check token price map for other tokens (e.g., wstETH)
-                else if (tokenPriceMap) {
-                  const mappedPrice = tokenPriceMap.get(tokenAddressLower);
-                  if (mappedPrice !== undefined) {
-                    price = mappedPrice;
-                    priceSource = "tokenPriceMap";
                   }
                 }
                 
@@ -322,12 +317,6 @@ export function useAllStabilityPoolRewards({
                   // First, try peggedPriceUSDMap (most accurate - already in USD, 18 decimals)
                   if (peggedPriceUSDMap && peggedPriceUSDMap[pool.marketId]) {
                     depositTokenPriceUSD = Number(peggedPriceUSDMap[pool.marketId]) / 1e18;
-                    if (process.env.NODE_ENV === "development") {
-                      console.log("[APR USD Price from peggedPriceUSDMap]", {
-                        marketId: pool.marketId,
-                        peggedPriceUSD: depositTokenPriceUSD,
-                      });
-                    }
                   }
                   
                   // Fallback: calculate from peggedTokenPrice * underlyingAssetUSD
@@ -344,19 +333,6 @@ export function useAllStabilityPoolRewards({
                       depositTokenPriceUSD = peggedTokenPriceInUnderlying * btcPrice;
                     } else if (isETHPegged && ethPrice && ethPrice > 0) {
                       depositTokenPriceUSD = peggedTokenPriceInUnderlying * ethPrice;
-                    }
-                    
-                    if (process.env.NODE_ENV === "development") {
-                      console.log("[APR USD Price Calculation]", {
-                        marketId: pool.marketId,
-                        peggedTokenPriceRaw: pool.peggedTokenPrice.toString(),
-                        peggedTokenPriceInUnderlying,
-                        isBTCPegged,
-                        isETHPegged,
-                        btcPrice,
-                        ethPrice,
-                        calculatedUSDPrice: depositTokenPriceUSD,
-                      });
                     }
                   }
                   
@@ -379,15 +355,18 @@ export function useAllStabilityPoolRewards({
                   // Final fallback: use $1 if no price available
                   if (depositTokenPriceUSD === 0) {
                     depositTokenPriceUSD = 1;
-                    if (process.env.NODE_ENV === "development") {
-                      console.warn("[APR USD Price FALLBACK to $1]", {
-                        marketId: pool.marketId,
-                        peggedTokenPrice: pool.peggedTokenPrice?.toString(),
-                        peggedPriceUSDMap: peggedPriceUSDMap?.[pool.marketId]?.toString(),
-                        ethPrice,
-                        btcPrice,
-                      });
-                    }
+                    console.warn("[Transparency APR] ❌ FALLBACK to $1 - PRICE CALCULATION FAILED", {
+                      marketId: pool.marketId,
+                      poolType: pool.poolType,
+                      poolAddress: pool.address,
+                      peggedTokenPrice: pool.peggedTokenPrice?.toString(),
+                      peggedPriceUSDMap: peggedPriceUSDMap?.[pool.marketId]?.toString(),
+                      peggedTokenAddress: pool.peggedTokenAddress,
+                      ethPrice,
+                      btcPrice,
+                      rewardToken: symbol,
+                      issue: "This will cause incorrect APR calculation!",
+                    });
                   }
                   
                   // Annual rewards value in USD (reward token price * annual rewards in tokens)
@@ -398,29 +377,6 @@ export function useAllStabilityPoolRewards({
 
                   if (depositValueUSD > 0) {
                     apr = (annualRewardsValueUSD / depositValueUSD) * 100;
-                  }
-                  
-                  // Debug logging for APR calculation (always log for now to debug BTC issue)
-                  if (process.env.NODE_ENV === "development") {
-                    console.log("[APR Calculation]", {
-                      marketId: pool.marketId,
-                      poolType: pool.poolType,
-                      poolAddress: pool.address,
-                      rewardToken: symbol,
-                      rewardRate: rewardData.rate.toString(),
-                      rewardRatePerYear: (Number(rewardData.rate) * SECONDS_PER_YEAR).toString(),
-                      poolTVL: poolTVL.toString(),
-                      poolTVLTokens: (Number(poolTVL) / 1e18).toFixed(6),
-                      annualRewardsTokens: annualRewardsTokens.toFixed(6),
-                      rewardTokenPriceUSD: price,
-                      annualRewardsValueUSD: annualRewardsValueUSD.toFixed(2),
-                      peggedTokenPriceRaw: pool.peggedTokenPrice?.toString(),
-                      peggedTokenPriceInUnderlying: pool.peggedTokenPrice ? Number(pool.peggedTokenPrice) / 1e18 : 0,
-                      underlyingAssetUSD: isBTCPegged ? btcPrice : isETHPegged ? ethPrice : "unknown",
-                      depositTokenPriceUSD: depositTokenPriceUSD.toFixed(2),
-                      depositValueUSD: depositValueUSD.toFixed(2),
-                      calculatedAPR: apr.toFixed(2) + "%",
-                    });
                   }
                 }
 

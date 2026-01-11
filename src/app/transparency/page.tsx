@@ -904,6 +904,7 @@ export default function TransparencyPage() {
 
  // Fetch wrapped collateral token prices for TVL calculation (same as Anchor page)
  const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving");
+ const { price: fxUSDPrice } = useCoinGeckoPrice("f-x-protocol-fxusd");
  const { price: wstETHPrice } = useCoinGeckoPrice("wrapped-steth");
  const { price: stETHPrice } = useCoinGeckoPrice("lido-staked-ethereum-steth");
  const { price: btcPrice } = useCoinGeckoPrice("bitcoin", 120000);
@@ -1001,19 +1002,26 @@ export default function TransparencyPage() {
        }
      }
 
-     // Add collateral token price from oracle (use maxPrice to match anchor page)
-     if (maxPrice > 0n) {
-       const collateralTokenAddress = marketCfg?.addresses?.collateralToken as `0x${string}` | undefined;
-       if (collateralTokenAddress) {
-         // maxPrice is maxUnderlyingPrice from oracle (18 decimals)
-         const price = Number(maxPrice) / 1e18;
-         map.set(collateralTokenAddress.toLowerCase(), price);
+     // Add collateral token price in USD if it might be used as a reward token
+     // For fxUSD markets: use CoinGecko USD price (~$1), not oracle price (which is in ETH units)
+     const collateralTokenAddress = marketCfg?.addresses?.collateralToken as `0x${string}` | undefined;
+     if (collateralTokenAddress) {
+       const collateralSymbol = collateralHeldSymbol.toLowerCase();
+       // For fxUSD, use CoinGecko price in USD
+       if (collateralSymbol === "fxusd") {
+         // fxUSD should be priced at ~$1 USD
+         const price = fxUSDPrice || 1.0;
+         if (price > 0) {
+           map.set(collateralTokenAddress.toLowerCase(), price);
+         }
        }
+       // For stETH/wstETH, the price is already added via wrappedCollateralTokenAddress
+       // We don't need to add it again here
      }
    });
 
    return map;
- }, [finishedMarkets, fxSAVEPrice, wstETHPrice, stETHPrice]);
+ }, [finishedMarkets, fxSAVEPrice, fxUSDPrice, wstETHPrice, stETHPrice]);
 
  // Build peggedPriceUSDMap for APR calculation
  const peggedPriceUSDMap = useMemo(() => {

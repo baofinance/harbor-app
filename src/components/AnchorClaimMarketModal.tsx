@@ -100,7 +100,6 @@ export const AnchorClaimMarketModal = ({
  <button
  onClick={() => {
  onCompound();
- onClose();
  }}
  disabled={isLoading}
  className={`px-4 py-2 text-sm font-medium transition-colors rounded-full ${
