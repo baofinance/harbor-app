@@ -184,7 +184,7 @@ export default function FlowPage() {
           <div className="grid grid-cols-1 md:grid-cols-[4fr_1fr_1fr] gap-2 mb-2">
             {/* Filters Section */}
             <div className="bg-white py-2.5 px-2.5 border border-[#1E4775]/10">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-1.5 mb-2">
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-1.5 mb-2">
                 {/* Chain Dropdown */}
                 <div>
                   <label className="block text-xs text-[#1E4775]/60 mb-1 uppercase tracking-wider font-medium text-center">
@@ -239,10 +239,16 @@ export default function FlowPage() {
                     <option value="active">Active</option>
                     <option value="available">Available</option>
                   </select>
-                  {/* Toggle Switch under Status */}
-                  <div className="flex items-center justify-end gap-2 mt-2">
-                    <span className="text-[10px] text-[#1E4775]/60 uppercase tracking-wider">
-                      Feed Price
+                </div>
+
+                {/* Price Feed Toggle */}
+                <div className="flex flex-col">
+                  <label className="block text-xs text-[#1E4775]/60 mb-1 uppercase tracking-wider font-medium text-center">
+                    Price Feed
+                  </label>
+                  <div className="flex items-center justify-center gap-2 h-[26px]">
+                    <span className="text-[10px] text-[#1E4775]/60 uppercase tracking-wider whitespace-nowrap">
+                      Feed
                     </span>
                     <button
                       onClick={() => setShowQuoteAssetPrice(!showQuoteAssetPrice)}
@@ -264,7 +270,6 @@ export default function FlowPage() {
                           showQuoteAssetPrice ? "translate-x-4" : "translate-x-0"
                         }`}
                       >
-                        {/* Icon inside thumb - use + and - instead of checkmark/X */}
                         <span className="flex h-full w-full items-center justify-center">
                           {showQuoteAssetPrice ? (
                             <MinusIcon className="h-2.5 w-2.5 text-[#FF8A7A]" />
@@ -274,8 +279,8 @@ export default function FlowPage() {
                         </span>
                       </span>
                     </button>
-                    <span className="text-[10px] text-[#1E4775]/60 uppercase tracking-wider">
-                      Quote Asset Price
+                    <span className="text-[10px] text-[#1E4775]/60 uppercase tracking-wider whitespace-nowrap">
+                      Quote
                     </span>
                   </div>
                 </div>
