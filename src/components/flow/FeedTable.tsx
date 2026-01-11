@@ -1017,16 +1017,14 @@ export function FeedTable({
   }, [feeds, totals, sortBy, sortDirection]);
 
   // Group sorted feeds by network and baseAsset for FeedGroupRows
-  const sortedAndGroupedFeeds = useMemo(() => {
-    const grouped: Record<string, FeedWithMetadata[]> = {};
-    for (const feed of sortedFeeds) {
-      const key = `${feed.network}:${feed.baseAsset}`;
-      if (!grouped[key]) {
-        grouped[key] = [];
-      }
-      grouped[key].push(feed);
-    }
-    return grouped;
+  // But to maintain global sort order, we need to render feeds individually
+  // So we create an array of groups, one per feed, preserving sort order
+  const sortedAndGroupedFeedsArray = useMemo(() => {
+    // Create a group for each feed to maintain global sort order
+    return sortedFeeds.map((feed) => ({
+      key: `${feed.network}:${feed.baseAsset}:${feed.address}`,
+      feeds: [feed],
+    }));
   }, [sortedFeeds]);
 
   return (
@@ -1159,7 +1157,7 @@ export function FeedTable({
       </div>
 
       <div className="space-y-2">
-        {Object.entries(sortedAndGroupedFeeds).map(([key, groupFeeds]) => (
+        {sortedAndGroupedFeedsArray.map(({ key, feeds: groupFeeds }) => (
           <FeedGroupRows
             key={key}
             feeds={groupFeeds}
