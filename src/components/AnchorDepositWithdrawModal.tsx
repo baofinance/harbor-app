@@ -2788,6 +2788,8 @@ export const AnchorDepositWithdrawModal = ({
   }, [fxSAVEPrice, wstETHPrice, stETHPrice]);
 
   const rewardDataMeta = useMemo(() => {
+    // Only compute APR from the *collateral reward token* (wrapped collateral),
+    // so we don't surface hs/leveraged reward tokens in the UI.
     const meta: Array<{ poolAddress: `0x${string}`; tokenAddress: `0x${string}` }> =
       [];
     if (!isOpen || !simpleMode || activeTab !== "deposit") return meta;
@@ -2801,26 +2803,15 @@ export const AnchorDepositWithdrawModal = ({
         poolAddr.length === 42;
       if (!isValidPool) continue;
 
-      const addrs = [
-        pool.gaugeRewardToken as `0x${string}` | undefined,
-        pool.liquidationToken as `0x${string}` | undefined,
-      ]
-        .filter(
-          (a): a is `0x${string}` =>
-            !!a &&
-            a !== "0x0000000000000000000000000000000000000000" &&
-            a.startsWith("0x") &&
-            a.length === 42
-        )
-        .map((a) => a.toLowerCase() as `0x${string}`);
+      const wrapped = (pool.market as any)?.addresses?.wrappedCollateralToken as
+        | `0x${string}`
+        | undefined;
+      if (!wrapped || !wrapped.startsWith("0x") || wrapped.length !== 42) continue;
 
-      // de-dupe per pool
-      for (const token of Array.from(new Set(addrs))) {
-        meta.push({
-          poolAddress: (pool.address as `0x${string}`),
-          tokenAddress: token,
-        });
-      }
+      meta.push({
+        poolAddress: pool.address as `0x${string}`,
+        tokenAddress: wrapped.toLowerCase() as `0x${string}`,
+      });
     }
     return meta;
   }, [poolsWithData, isOpen, simpleMode, activeTab]);
@@ -2850,7 +2841,7 @@ export const AnchorDepositWithdrawModal = ({
 
     const SECONDS_PER_YEAR = 365 * 24 * 60 * 60;
 
-    // Group reward rates by pool address
+    // Group reward rates by pool address (collateral reward token only)
     const ratesByPool = new Map<string, Array<{ token: string; rate: bigint }>>();
     for (let i = 0; i < rewardDataMeta.length; i++) {
       const meta = rewardDataMeta[i];
@@ -2922,18 +2913,18 @@ export const AnchorDepositWithdrawModal = ({
   // Fetch reward token symbols for all pools
   const rewardTokenAddresses = useMemo(() => {
     const addresses: `0x${string}`[] = [];
+    // Only include the wrapped collateral token for each pool (collateral reward token)
     poolsWithAprFallback.forEach((pool) => {
+      const wrapped = (pool.market as any)?.addresses?.wrappedCollateralToken as
+        | `0x${string}`
+        | undefined;
       if (
-        pool.gaugeRewardToken &&
-        pool.gaugeRewardToken !== "0x0000000000000000000000000000000000000000"
+        wrapped &&
+        wrapped !== "0x0000000000000000000000000000000000000000" &&
+        wrapped.startsWith("0x") &&
+        wrapped.length === 42
       ) {
-        addresses.push(pool.gaugeRewardToken);
-      }
-      if (
-        pool.liquidationToken &&
-        pool.liquidationToken !== "0x0000000000000000000000000000000000000000"
-      ) {
-        addresses.push(pool.liquidationToken);
+        addresses.push(wrapped);
       }
     });
     const uniqueAddresses = [...new Set(addresses)]; // Remove duplicates
@@ -2978,28 +2969,10 @@ export const AnchorDepositWithdrawModal = ({
     return poolsWithAprFallback.map((pool) => {
       // Get reward tokens from market config (default is collateral)
       const marketConfig = pool.market;
+      // Revert behavior: only show collateral reward tokens (config default),
+      // not every registered/active reward token (e.g. leveraged/hs tokens).
       const configRewardTokens = marketConfig?.rewardTokens?.default || [];
-      const configAdditionalRewardTokens =
-        marketConfig?.rewardTokens?.additional || [];
-      const allConfigRewardTokens = [
-        ...configRewardTokens,
-        ...configAdditionalRewardTokens,
-      ];
-
-      // Get reward tokens from contract reads (if any)
-      const contractRewardTokens = [
-        pool.gaugeRewardToken
-          ? rewardTokenSymbolMap.get(pool.gaugeRewardToken.toLowerCase())
-          : undefined,
-        pool.liquidationToken
-          ? rewardTokenSymbolMap.get(pool.liquidationToken.toLowerCase())
-          : undefined,
-      ].filter((s): s is string => !!s);
-
-      // Combine config and contract reward tokens, removing duplicates
-      const allRewardTokens = [
-        ...new Set([...allConfigRewardTokens, ...contractRewardTokens]),
-      ];
+      const allRewardTokens = [...new Set(configRewardTokens)];
 
       return {
         ...pool,
