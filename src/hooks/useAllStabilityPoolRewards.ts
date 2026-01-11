@@ -61,14 +61,14 @@ export function useAllStabilityPoolRewards({
   const address = overrideAddress ?? accountAddress;
   const addressKey = address ? address.toLowerCase() : "no-wallet";
 
-  // Create serializable version of pools for queryKey (convert BigInt to string)
-  const serializablePools = useMemo(() => {
+  // IMPORTANT: Query keys must be stable, otherwise React Query will treat
+  // every price update as a brand-new query and drop cached APR data.
+  // We intentionally exclude dynamic price fields (peggedTokenPrice, collateralPrice).
+  const stablePoolsKey = useMemo(() => {
     return pools.map((pool) => ({
       address: pool.address,
       poolType: pool.poolType,
       marketId: pool.marketId,
-      peggedTokenPrice: pool.peggedTokenPrice?.toString() ?? null,
-      collateralPrice: pool.collateralPrice?.toString() ?? null,
       collateralPriceDecimals: pool.collateralPriceDecimals ?? null,
       peggedTokenAddress: pool.peggedTokenAddress ?? null,
       collateralTokenAddress: pool.collateralTokenAddress ?? null,
@@ -78,7 +78,7 @@ export function useAllStabilityPoolRewards({
   return useQuery({
     queryKey: [
       "all-stability-pool-rewards",
-      serializablePools,
+      stablePoolsKey,
       addressKey,
       overrideAddress ? "override" : "account",
     ],
@@ -110,6 +110,7 @@ export function useAllStabilityPoolRewards({
       }
 
       const results: PoolRewards[] = [];
+      let hadPoolError = false;
 
       // Process each pool
       for (const pool of pools) {
@@ -477,18 +478,19 @@ export function useAllStabilityPoolRewards({
             rewardTokenAPRs,
           });
         } catch (e) {
-          // Pool query failed, add empty result
-          results.push({
-            poolAddress: pool.address,
-            poolType: pool.poolType,
-            marketId: pool.marketId,
-            claimableValue: 0,
-            rewardTokens: [],
-            totalRewardAPR: 0,
-            totalAPR: 0,
-            tvl: 0n,
-            rewardTokenAPRs: [],
-          });
+          // If any pool fails, we prefer to avoid publishing a "0 APR" result that
+          // can cause the UI to incorrectly fall back to projected APR.
+          // We'll mark the error and let React Query keep previous data if available.
+          hadPoolError = true;
+        }
+      }
+
+      // If we had pool errors and we ended up with no usable APR data, throw so
+      // the UI can keep previous APRs rather than flickering to projected.
+      if (hadPoolError) {
+        const hasAnyApr = results.some((r) => (r.totalRewardAPR ?? 0) > 0);
+        if (!hasAnyApr) {
+          throw new Error("Failed to load live APRs (partial pool read failure)");
         }
       }
 
@@ -496,6 +498,9 @@ export function useAllStabilityPoolRewards({
     },
     enabled: enabled && !!publicClient && pools.length > 0,
     refetchInterval: 30000, // Refetch every 30 seconds
+    // Keep last known values while refetching to avoid APR flicker.
+    placeholderData: (prev) => prev,
+    retry: 1,
   });
 }
 
