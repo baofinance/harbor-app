@@ -478,34 +478,40 @@ export default function PoolClient({ marketId, poolType }: PoolClientProps) {
   const tokenSymbol = pool?.tokenSymbol;
   const poolName = pool?.name;
 
-  // Get token balance
-  const { data: tokenBalance } = useContractReads({
-    contracts: assetAddress
-      ? [
-          {
-            address: assetAddress as `0x${string}`,
-            abi: ERC20_ABI,
-            functionName: "balanceOf",
-            args: [address ?? "0x"],
-          },
-        ]
-      : [],
+  // Wallet-dependent reads: only run when connected and addresses are available.
+  // Combine into a single batched call to reduce RPC requests.
+  const walletReadContracts = useMemo(() => {
+    if (!isConnected || !address || !assetAddress) return [];
+    const contracts: any[] = [
+      {
+        address: assetAddress as `0x${string}`,
+        abi: ERC20_ABI,
+        functionName: "balanceOf",
+        args: [address],
+      },
+    ];
+    if (poolAddress) {
+      contracts.push({
+        address: assetAddress as `0x${string}`,
+        abi: ERC20_ABI,
+        functionName: "allowance",
+        args: [address, poolAddress as `0x${string}`],
+      });
+    }
+    return contracts;
+  }, [isConnected, address, assetAddress, poolAddress]);
+
+  const { data: walletReads } = useContractReads({
+    contracts: walletReadContracts,
+    query: { enabled: walletReadContracts.length > 0 },
   });
 
-  // Get allowance
-  const { data: allowance } = useContractReads({
-    contracts:
-      assetAddress && poolAddress
-        ? [
-            {
-              address: assetAddress as `0x${string}`,
-              abi: ERC20_ABI,
-              functionName: "allowance",
-              args: [address ?? "0x0", poolAddress as `0x${string}`],
-            },
-          ]
-        : [],
-  });
+  // Preserve the previous tokenBalance shape used by UI components (array with [0].result).
+  const tokenBalance =
+    walletReads && walletReads[0]
+      ? ([walletReads[0]] as unknown as ReadonlyArray<ContractReadResult>)
+      : undefined;
+  const allowance = (walletReads?.[1] as unknown as ContractReadResult | undefined) ?? undefined;
 
   // Format helpers
   const formatAmount = (value: bigint | undefined) => {
@@ -535,8 +541,8 @@ export default function PoolClient({ marketId, poolType }: PoolClientProps) {
 
       if (
         assetAddress &&
-        (!allowance?.[0]?.result ||
-          (allowance[0].result as unknown as bigint) < amount)
+        (!allowance?.result ||
+          (allowance.result as unknown as bigint) < amount)
       ) {
         setIsApproveLoading(true);
         await writeContractAsync({

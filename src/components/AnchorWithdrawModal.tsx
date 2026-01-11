@@ -47,7 +47,7 @@ export const AnchorWithdrawModal = ({
  abi: ERC20_ABI,
  functionName:"balanceOf",
  args: address ? [address] : undefined,
- query: { enabled: !!address && isOpen, refetchInterval: 5000 },
+ query: { enabled: !!address && isOpen, refetchInterval: 30000 },
  });
 
  // Calculate expected output

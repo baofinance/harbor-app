@@ -299,7 +299,7 @@ export default function AnchorPage() {
   useAnchorTokenMetadata(anchorMarkets);
 
   // Use extracted hook for contract reads
-  const { reads, refetchReads } = useAnchorContractReads(
+  const { reads, refetchReads, isLoading: isLoadingReads, isError: isReadsError, error: readsError } = useAnchorContractReads(
     anchorMarkets,
     useAnvil
   );
@@ -448,8 +448,16 @@ export default function AnchorPage() {
   );
 
   // Use extracted hook for rewards calculations
-  const { allPoolRewards, poolRewardsMap, isLoadingAllRewards } =
+  const {
+    allPoolRewards,
+    poolRewardsMap,
+    isLoadingAllRewards,
+    isFetchingAllRewards,
+    isErrorAllRewards,
+  } =
     useAnchorRewards(anchorMarkets, reads, ethPrice, btcPrice, peggedPriceUSDMap);
+
+  const showLiveAprLoading = isLoadingAllRewards || (isFetchingAllRewards && poolRewardsMap.size === 0);
 
   // Build market configs for positions hook
   const marketPositionConfigs = useMemo(() => {
@@ -2646,7 +2654,8 @@ export default function AnchorPage() {
                                   </div>
                                 )}
                                 {/** Hide projected APRs while live reward APRs are still loading */}
-                                {!isLoadingAllRewards &&
+                                {!showLiveAprLoading &&
+                                  !isErrorAllRewards &&
                                   projectedAPR.harvestableAmount !== null &&
                                   projectedAPR.harvestableAmount > 0n &&
                                   blendedAPRForBar <= 0 && (
@@ -3522,13 +3531,41 @@ export default function AnchorPage() {
 
             {/* Market Cards/Rows */}
             {(() => {
+              // Show loading state while fetching market data
+              if (isLoadingReads) {
+                return null; // Don't show anything while loading
+              }
+
+              // Show error state if there's an issue loading markets
+              if (isReadsError) {
+                return (
+                  <div className="bg-[#17395F] border border-white/10 p-6 rounded-lg text-center">
+                    <p className="text-white text-lg font-medium mb-4">
+                      Error loading markets
+                    </p>
+                    <button
+                      onClick={() => refetchReads()}
+                      className="px-4 py-2 bg-[#FF8A7A] text-white rounded hover:bg-[#FF6B5A] transition-colors"
+                    >
+                      Try again
+                    </button>
+                  </div>
+                );
+              }
+
               // Check if any markets have finished genesis (marketsDataMap only contains finished markets)
               if (marketsDataMap.size === 0) {
                 return (
                   <div className="bg-[#17395F] border border-white/10 p-6 rounded-lg text-center">
-                    <p className="text-white text-lg font-medium">
-                      Maiden Voyage in progress for Harbor's first markets - coming soon!
+                    <p className="text-white text-lg font-medium mb-4">
+                      No markets available
                     </p>
+                    <button
+                      onClick={() => refetchReads()}
+                      className="px-4 py-2 bg-[#FF8A7A] text-white rounded hover:bg-[#FF6B5A] transition-colors"
+                    >
+                      Try again
+                    </button>
                   </div>
                 );
               }
@@ -4153,7 +4190,7 @@ export default function AnchorPage() {
                                 <div className="font-semibold mb-1">
                                   APR by Pool
                                 </div>
-                                {isLoadingAllRewards ? (
+                                {showLiveAprLoading ? (
                                   <div className="text-xs">Loading live APRs…</div>
                                 ) : projectedAPR.hasRewardsNoTVL ? (
                                   <div className="text-xs space-y-2">
@@ -4225,7 +4262,7 @@ export default function AnchorPage() {
                                           <div>
                                             <div className="font-semibold">• Collateral Pool:</div>
                                             <div className="ml-2 mt-0.5">
-                                              {isLoadingAllRewards
+                                              {showLiveAprLoading
                                                 ? "Loading"
                                                 : collateralPoolAPRMin !== null &&
                                                   collateralPoolAPRMax !== null
@@ -4323,7 +4360,7 @@ export default function AnchorPage() {
                                           <div>
                                             <div className="font-semibold">• Sail Pool:</div>
                                             <div className="ml-2 mt-0.5">
-                                              {isLoadingAllRewards
+                                              {showLiveAprLoading
                                                 ? "Loading"
                                                 : sailPoolAPRMin !== null &&
                                                   sailPoolAPRMax !== null
@@ -4398,7 +4435,8 @@ export default function AnchorPage() {
                                   </div>
                                 )}
                                 {/* Only show Projected APR if we don't have LIVE APRs (and live APRs are not loading) */}
-                                {!isLoadingAllRewards &&
+                                {!showLiveAprLoading &&
+                                  !isErrorAllRewards &&
                                   !projectedAPR.hasRewardsNoTVL &&
                                   minAPR === 0 && maxAPR === 0 &&
                                   (projectedAPR.collateralPoolAPR !== null ||
@@ -4459,7 +4497,7 @@ export default function AnchorPage() {
                               }`}
                             >
                               {(() => {
-                                if (isLoadingAllRewards) {
+                                if (showLiveAprLoading) {
                                   return "Loading";
                                 }
                                 // Special case: rewards waiting with no TVL
@@ -5430,7 +5468,7 @@ export default function AnchorPage() {
                                           </SimpleTooltip>
                                         </div>
                                         <div className="text-xs font-semibold text-[#1E4775]">
-                                          {isLoadingAllRewards
+                                          {showLiveAprLoading
                                             ? "Loading"
                                             : collateralPoolAPR > 0
                                             ? `${collateralPoolAPR.toFixed(2)}%`
@@ -5476,7 +5514,7 @@ export default function AnchorPage() {
                                           </SimpleTooltip>
                                         </div>
                                         <div className="text-xs font-semibold text-[#1E4775]">
-                                          {isLoadingAllRewards
+                                          {showLiveAprLoading
                                             ? "Loading"
                                             : sailPoolAPR > 0
                                             ? `${sailPoolAPR.toFixed(2)}%`

@@ -227,7 +227,13 @@ export function useAnchorRewards(
     });
   }
   
-  const { data: allPoolRewards = [], isLoading: isLoadingAllRewards } =
+  const {
+    data: allPoolRewards = [],
+    isLoading: isLoadingAllRewards,
+    isFetching: isFetchingAllRewards,
+    isError: isErrorAllRewards,
+    error: allRewardsError,
+  } =
     useAllStabilityPoolRewards({
       pools: allPoolsForRewards,
       tokenPriceMap: globalTokenPriceMap,
@@ -250,6 +256,9 @@ export function useAnchorRewards(
     allPoolRewards,
     poolRewardsMap,
     isLoadingAllRewards,
+    isFetchingAllRewards,
+    isErrorAllRewards,
+    allRewardsError,
     allPoolsForRewards,
     globalTokenPriceMap,
   };
