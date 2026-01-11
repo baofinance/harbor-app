@@ -23,6 +23,17 @@ function isCacheValid(cached: CachedFeedPrice | undefined): boolean {
   return Date.now() - cached.timestamp < CACHE_DURATION_MS;
 }
 
+function extractLatestAnswerMinPrice(val: unknown): bigint | null {
+  if (typeof val === "bigint") return val;
+  if (Array.isArray(val) && typeof val[0] === "bigint") return val[0] as bigint;
+  if (val && typeof val === "object") {
+    const v: any = val as any;
+    if (typeof v.minPrice === "bigint") return v.minPrice as bigint;
+    if (typeof v[0] === "bigint") return v[0] as bigint;
+  }
+  return null;
+}
+
 /**
  * Hook to fetch prices for multiple feeds with 60-second caching
  */
@@ -96,13 +107,7 @@ export function useFeedPrices(
         const fallbackIdx: number[] = [];
         for (const r of latest) {
           if (r.ok) {
-            const val: any = r.result;
-            let price: bigint | null = null;
-            if (val && Array.isArray(val) && val.length >= 1) {
-              price = val[0] as bigint;
-            } else if (typeof val === "bigint") {
-              price = val;
-            }
+            const price = extractLatestAnswerMinPrice(r.result);
             if (price !== null && price !== undefined) {
               const formatted = format18(price);
               results[r.idx] = formatted;
