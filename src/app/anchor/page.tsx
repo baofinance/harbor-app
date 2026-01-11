@@ -2645,8 +2645,11 @@ export default function AnchorPage() {
                                     No stability pool positions found
                                   </div>
                                 )}
-                                {projectedAPR.harvestableAmount !== null &&
-                                  projectedAPR.harvestableAmount > 0n && (
+                                {/** Hide projected APRs while live reward APRs are still loading */}
+                                {!isLoadingAllRewards &&
+                                  projectedAPR.harvestableAmount !== null &&
+                                  projectedAPR.harvestableAmount > 0n &&
+                                  blendedAPRForBar <= 0 && (
                                     <div className="mt-2 pt-2 border-t border-white/20 text-xs opacity-90">
                                       Projected APR (next 7 days):{""}
                                       {projectedAPR.collateralPoolAPR !==
@@ -4146,7 +4149,9 @@ export default function AnchorPage() {
                                 <div className="font-semibold mb-1">
                                   APR by Pool
                                 </div>
-                                {projectedAPR.hasRewardsNoTVL ? (
+                                {isLoadingAllRewards ? (
+                                  <div className="text-xs">Loading live APRs…</div>
+                                ) : projectedAPR.hasRewardsNoTVL ? (
                                   <div className="text-xs space-y-2">
                                     <div className="bg-green-500/20 border border-green-500/30 px-2 py-1">
                                       <span className="font-semibold text-green-400">
@@ -4388,8 +4393,9 @@ export default function AnchorPage() {
                                     })()}
                                   </div>
                                 )}
-                                {/* Only show Projected APR if we don't have LIVE APRs */}
-                                {!projectedAPR.hasRewardsNoTVL &&
+                                {/* Only show Projected APR if we don't have LIVE APRs (and live APRs are not loading) */}
+                                {!isLoadingAllRewards &&
+                                  !projectedAPR.hasRewardsNoTVL &&
                                   minAPR === 0 && maxAPR === 0 &&
                                   (projectedAPR.collateralPoolAPR !== null ||
                                     projectedAPR.leveragedPoolAPR !== null) && (
@@ -4449,6 +4455,9 @@ export default function AnchorPage() {
                               }`}
                             >
                               {(() => {
+                                if (isLoadingAllRewards) {
+                                  return "Loading";
+                                }
                                 // Special case: rewards waiting with no TVL
                                 if (projectedAPR.hasRewardsNoTVL) {
                                   return "10k%+";
