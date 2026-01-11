@@ -1624,26 +1624,9 @@ export default function SailPage() {
           {/* Markets List - Grouped by Long Side */}
           <section className="space-y-4">
             {(() => {
-              // Check if any markets have finished genesis (have collateral)
-              const hasAnyFinishedMarkets = Object.entries(groupedMarkets).some(
-                ([_, markets]) => {
-                return markets.some(([id]) => {
-                  const globalIndex = sailMarkets.findIndex(
-                    ([marketId]) => marketId === id
-                  );
-                  const baseOffset = marketOffsets.get(globalIndex) ?? 0;
-                  const collateralValue = reads?.[baseOffset + 3]?.result as
-                    | bigint
-                    | undefined;
-                    return (
-                      collateralValue !== undefined && collateralValue > 0n
-                    );
-                });
-                }
-              );
-
-              // If no markets have finished genesis, show banner
-              if (!hasAnyFinishedMarkets) {
+              // Only show "Maiden Voyage" message if there are no markets configured at all
+              // If markets exist, show them even if data hasn't loaded or they don't have collateral yet
+              if (sailMarkets.length === 0) {
                 return (
                   <div className="bg-[#17395F] border border-white/10 p-6 rounded-lg text-center">
                     <p className="text-white text-lg font-medium">
