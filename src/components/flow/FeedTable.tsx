@@ -262,7 +262,7 @@ function FeedRow({
                         <SimpleTooltip
                           label={`1 ${getTokenFullName(
                             pair.base
-                          )} = ${price} ${getTokenFullName(pair.quote)}`}
+                          )} = ${feedPrice} ${getTokenFullName(pair.quote)}`}
                         >
                           <span>{`1 ${pair.base} = ${feedPrice} ${pair.quote}`}</span>
                         </SimpleTooltip>
