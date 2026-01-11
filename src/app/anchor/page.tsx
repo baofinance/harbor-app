@@ -3357,7 +3357,9 @@ export default function AnchorPage() {
                                   simpleMode: true,
                                   bestPoolType: "collateral",
                                   allMarkets: enrichedMarkets,
-                                  initialDepositAsset: position.symbol,
+                                  // Default the modal deposit-asset selector to the ha token.
+                                  // (Some flows otherwise default to collateral, which is confusing here.)
+                                  initialDepositAsset: firstMarket.market?.peggedToken?.symbol || position.symbol,
                                 });
                               }}
                               className="px-3 py-1.5 text-xs font-medium bg-[#1E4775] text-white hover:bg-[#17395F] transition-colors rounded-full whitespace-nowrap"
@@ -3426,7 +3428,8 @@ export default function AnchorPage() {
                                     simpleMode: true,
                                     bestPoolType: "collateral",
                                     allMarkets: enrichedMarkets,
-                                    initialDepositAsset: position.symbol,
+                                    initialDepositAsset:
+                                      firstMarket.market?.peggedToken?.symbol || position.symbol,
                                   });
                                 }}
                                 className="px-3 py-1.5 text-xs font-medium bg-[#1E4775] text-white hover:bg-[#17395F] transition-colors rounded-full whitespace-nowrap"
@@ -3480,7 +3483,8 @@ export default function AnchorPage() {
                                     simpleMode: true,
                                     bestPoolType: "collateral",
                                     allMarkets: enrichedMarkets,
-                                    initialDepositAsset: position.symbol,
+                                    initialDepositAsset:
+                                      firstMarket.market?.peggedToken?.symbol || position.symbol,
                                   });
                                 }}
                                 className="px-3 py-1.5 text-xs font-medium bg-[#1E4775] text-white hover:bg-[#17395F] transition-colors rounded-full whitespace-nowrap"
