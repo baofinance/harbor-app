@@ -7,13 +7,13 @@ import { getTokenFullName } from "@/utils/flowUtils";
 import { getLogoPath } from "@/lib/logos";
 import TokenIcon from "@/components/TokenIcon";
 import SimpleTooltip from "@/components/SimpleTooltip";
-import { useRpcClient } from "@/hooks/useRpcClient";
 import { useFeedPrices } from "@/hooks/useFeedPrices";
 import { useFeedQuotePrices } from "@/hooks/useFeedQuotePrices";
 import type { FeedWithMetadata, ExpandedState } from "@/hooks/useFeedFilters";
 import { FeedDetails } from "@/components/flow/FeedDetails";
 import { ChevronDownIcon, ChevronUpIcon, ArrowsUpDownIcon } from "@heroicons/react/24/outline";
-import { useAccount, useSignTypedData } from "wagmi";
+import { useAccount, useSignTypedData, usePublicClient } from "wagmi";
+import { mainnet, arbitrum, base } from "wagmi/chains";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { buildFeedId } from "@/lib/votesStore";
 import {
@@ -515,10 +515,10 @@ export function FeedTable({
   setExpanded,
   showQuoteAssetPrice,
 }: FeedTableProps & { showQuoteAssetPrice: boolean }) {
-  // Use stable per-network RPC clients so we can fetch prices without breaking hook rules.
-  const mainnetRpcClient = useRpcClient("mainnet" as any);
-  const arbitrumRpcClient = useRpcClient("arbitrum" as any);
-  const baseRpcClient = useRpcClient("base" as any);
+  // Use wagmi's public clients (configured transports) for stable, production-safe RPC.
+  const mainnetRpcClient = usePublicClient({ chainId: mainnet.id });
+  const arbitrumRpcClient = usePublicClient({ chainId: arbitrum.id });
+  const baseRpcClient = usePublicClient({ chainId: base.id });
   const { address, isConnected } = useAccount();
   const { signTypedDataAsync } = useSignTypedData();
   const queryClient = useQueryClient();
