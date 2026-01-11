@@ -73,7 +73,7 @@ export const AnchorDepositModal = ({
  args: address ? [address] : undefined,
  query: {
  enabled: !!address && isOpen && selectedDepositAsset ==="collateral",
- refetchInterval: 5000,
+ refetchInterval: 30000,
  },
  });
 
@@ -89,7 +89,7 @@ export const AnchorDepositModal = ({
  !!peggedTokenAddress &&
  isOpen &&
  selectedDepositAsset ==="pegged",
- refetchInterval: 5000,
+ refetchInterval: 30000,
  },
  });
 
@@ -101,7 +101,7 @@ export const AnchorDepositModal = ({
  args: address ? [address] : undefined,
  query: {
  enabled: !!address && !!peggedTokenAddress && isOpen,
- refetchInterval: 5000,
+ refetchInterval: 30000,
  },
  });
 
@@ -131,7 +131,7 @@ export const AnchorDepositModal = ({
  : undefined,
  query: {
  enabled: !!address && !!minterAddress && isOpen,
- refetchInterval: 5000,
+ refetchInterval: 30000,
  },
  });
 
@@ -154,7 +154,7 @@ export const AnchorDepositModal = ({
  !!stabilityPoolAddress &&
  isOpen &&
  (depositInStabilityPool || isDirectPeggedDeposit),
- refetchInterval: 5000,
+ refetchInterval: 30000,
  },
  });
 

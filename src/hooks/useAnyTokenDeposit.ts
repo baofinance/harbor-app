@@ -260,7 +260,7 @@ export function useAnyTokenDeposit(options: UseAnyTokenDepositOptions) {
     args: address ? [address] : undefined,
     query: {
       enabled: enabled && !!address && !!normalizedAssetAddress && !isNativeETH,
-      refetchInterval: 5000,
+      refetchInterval: 30000,
     },
   });
 
@@ -278,7 +278,7 @@ export function useAnyTokenDeposit(options: UseAnyTokenDepositOptions) {
     args: address ? [address, PARASWAP_TOKEN_TRANSFER_PROXY] : undefined,
     query: {
       enabled: enabled && !!address && !!selectedAssetAddress && !isNativeETH && needsSwap,
-      refetchInterval: 5000,
+      refetchInterval: 30000,
     },
   });
 
@@ -296,7 +296,7 @@ export function useAnyTokenDeposit(options: UseAnyTokenDepositOptions) {
         !isNativeETH &&
         !needsSwap &&
         (isUSDC || isFXUSD),
-      refetchInterval: 5000,
+      refetchInterval: 30000,
     },
   });
 

@@ -33,11 +33,26 @@ const CACHE_DURATION_FAILED_MS = 10_000; // 10 seconds for failed/rate-limited p
 // Cache key: "network:feedAddress" -> { price, timestamp }
 const priceCache = new Map<string, CachedFeedPrice>();
 
+// Cache for feed type detection (these are effectively static)
+type DetectedType = "single" | "double" | "unknown";
+interface CachedFeedType {
+  type: DetectedType;
+  timestamp: number;
+}
+const TYPE_CACHE_MS = 24 * 60 * 60 * 1000; // 24h
+const typeCache = new Map<string, CachedFeedType>();
+
 /**
  * Generate cache key for a single feed
  */
 function getFeedCacheKey(feedAddress: string, network: string): string {
   return `${network}:${feedAddress.toLowerCase()}`;
+}
+
+function isTypeCacheValid(cached: CachedFeedType | undefined): boolean {
+  if (!cached) return false;
+  const now = Date.now();
+  return now - cached.timestamp < TYPE_CACHE_MS;
 }
 
 /**
@@ -242,76 +257,98 @@ export function useFeedQuotePrices(
 
         // Process regular feeds (SingleFeed or DoubleFeed)
         if (feedsByType.regular.length > 0) {
+          // First, consult type cache and collect unknowns for batch detection.
+          const regularDetected: Array<{ feed: FeedEntry; type: DetectedType }> = [];
+          const regularUnknown: FeedEntry[] = [];
           for (const feed of feedsByType.regular) {
+            const key = getFeedCacheKey(feed.address, network);
+            const cachedType = typeCache.get(key);
+            if (isTypeCacheValid(cachedType)) {
+              regularDetected.push({ feed, type: cachedType!.type });
+            } else {
+              regularUnknown.push(feed);
+            }
+          }
+
+          // Batch-detect unknown regular feeds using multicall (PRICE_FEED, then FIRST_FEED).
+          if (regularUnknown.length > 0) {
+            const priceFeedReads = regularUnknown.map((feed) => ({
+              address: feed.address as `0x${string}`,
+              abi: singleFeedAbi,
+              functionName: "PRICE_FEED" as const,
+            }));
+            const priceFeedResults = await rpcClient.multicall({
+              contracts: priceFeedReads as any,
+              allowFailure: true,
+            });
+
+            const stillUnknown: FeedEntry[] = [];
+            for (let i = 0; i < regularUnknown.length; i++) {
+              const feed = regularUnknown[i];
+              const key = getFeedCacheKey(feed.address, network);
+              const r: any = priceFeedResults[i];
+              const addr = r?.status === "success" ? (r.result as string | undefined) : undefined;
+              if (addr && addr !== "0x0000000000000000000000000000000000000000") {
+                typeCache.set(key, { type: "single", timestamp: Date.now() });
+                regularDetected.push({ feed, type: "single" });
+              } else {
+                stillUnknown.push(feed);
+              }
+            }
+
+            if (stillUnknown.length > 0) {
+              const firstFeedReads = stillUnknown.map((feed) => ({
+                address: feed.address as `0x${string}`,
+                abi: doubleFeedAbi,
+                functionName: "FIRST_FEED" as const,
+              }));
+              const firstFeedResults = await rpcClient.multicall({
+                contracts: firstFeedReads as any,
+                allowFailure: true,
+              });
+              for (let i = 0; i < stillUnknown.length; i++) {
+                const feed = stillUnknown[i];
+                const key = getFeedCacheKey(feed.address, network);
+                const r: any = firstFeedResults[i];
+                const addr = r?.status === "success" ? (r.result as string | undefined) : undefined;
+                if (addr && addr !== "0x0000000000000000000000000000000000000000") {
+                  typeCache.set(key, { type: "double", timestamp: Date.now() });
+                  regularDetected.push({ feed, type: "double" });
+                } else {
+                  typeCache.set(key, { type: "unknown", timestamp: Date.now() });
+                  regularDetected.push({ feed, type: "unknown" });
+                }
+              }
+            }
+          }
+
+          // Now compute prices for detected feeds (single/double), cache outputs in priceCache.
+          for (const { feed, type } of regularDetected) {
             if (cancelledRef.current) break;
             const feedCacheKey = getFeedCacheKey(feed.address, network);
-            
             try {
-              // Check if it's a SingleFeed by trying to read PRICE_FEED
-              const priceFeed = await rpcClient
-                .readContract({
-                  address: feed.address as `0x${string}`,
-                  abi: singleFeedAbi,
-                  functionName: "PRICE_FEED",
-                })
-                .catch(() => null);
-
-              if (priceFeed && priceFeed !== "0x0000000000000000000000000000000000000000") {
-                // It's a SingleFeed - check if inverted
+              if (type === "single") {
                 const pair = parsePair(feed.label);
                 const isInverted = pair.base?.toLowerCase() === "fxusd";
-                
                 if (isInverted) {
                   const price = await calculateSingleFeedPrice(rpcClient, feed, true);
-                  priceCache.set(feedCacheKey, {
-                    price,
-                    timestamp: Date.now(),
-                  });
+                  priceCache.set(feedCacheKey, { price, timestamp: Date.now() });
                   priceResults.set(feed.address, price);
                 } else {
-                  // Not inverted, no price to show
-                  priceCache.set(feedCacheKey, {
-                    price: null,
-                    timestamp: Date.now(),
-                  });
+                  priceCache.set(feedCacheKey, { price: null, timestamp: Date.now() });
                   priceResults.set(feed.address, null);
                 }
-                continue;
-              }
-
-              // Check if it's a DoubleFeed by trying to read FIRST_FEED
-              const firstFeed = await rpcClient
-                .readContract({
-                  address: feed.address as `0x${string}`,
-                  abi: doubleFeedAbi,
-                  functionName: "FIRST_FEED",
-                })
-                .catch(() => null);
-
-              if (firstFeed && firstFeed !== "0x0000000000000000000000000000000000000000") {
-                // It's a DoubleFeed
+              } else if (type === "double") {
                 const price = await calculateDoubleFeedPrice(rpcClient, feed);
-                priceCache.set(feedCacheKey, {
-                  price,
-                  timestamp: Date.now(),
-                });
+                priceCache.set(feedCacheKey, { price, timestamp: Date.now() });
                 priceResults.set(feed.address, price);
               } else {
-                // Not a known feed type, cache null
-                priceCache.set(feedCacheKey, {
-                  price: null,
-                  timestamp: Date.now(),
-                });
+                priceCache.set(feedCacheKey, { price: null, timestamp: Date.now() });
                 priceResults.set(feed.address, null);
               }
             } catch (err) {
-              // Not a SingleFeed/DoubleFeed or error reading
-              console.error(`[useFeedQuotePrices] Error detecting feed type for ${feed.label}:`, err);
-              const feedCacheKey = getFeedCacheKey(feed.address, network);
-              priceCache.set(feedCacheKey, {
-                price: null,
-                timestamp: Date.now(),
-              });
+              console.error(`[useFeedQuotePrices] Error computing quote price for ${feed.label}:`, err);
+              priceCache.set(feedCacheKey, { price: null, timestamp: Date.now() });
               priceResults.set(feed.address, null);
             }
           }

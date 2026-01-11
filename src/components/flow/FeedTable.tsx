@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect, useRef } from "react";
+import { useMemo, useState } from "react";
 import { feeds as feedsConfig } from "@/config/feeds";
 import { parsePair } from "@/lib/utils";
 import { getTokenFullName } from "@/utils/flowUtils";
@@ -12,8 +12,8 @@ import { useFeedPrices } from "@/hooks/useFeedPrices";
 import { useFeedQuotePrices } from "@/hooks/useFeedQuotePrices";
 import type { FeedWithMetadata, ExpandedState } from "@/hooks/useFeedFilters";
 import { FeedDetails } from "@/components/flow/FeedDetails";
-import { ChevronDownIcon, ChevronUpIcon, ArrowsUpDownIcon, CheckIcon, XMarkIcon } from "@heroicons/react/24/outline";
-import { useAccount, useSignTypedData, useContractReads } from "wagmi";
+import { ChevronDownIcon, ChevronUpIcon, ArrowsUpDownIcon } from "@heroicons/react/24/outline";
+import { useAccount, useSignTypedData } from "wagmi";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { buildFeedId } from "@/lib/votesStore";
 import {
@@ -24,35 +24,7 @@ import {
   type VoteAllocation,
 } from "@/lib/votesTypedData";
 import { getMarketIdFromFeedLabel } from "@/utils/feedMarketMapping";
-import { markets } from "@/config/markets";
-import { MINTER_ABI } from "@/abis/shared";
-import { useCoinGeckoPrices } from "@/hooks/useCoinGeckoPrice";
 import Link from "next/link";
-
-// Map quote assets to CoinGecko IDs
-function getCoinGeckoIdForQuoteAsset(quoteAsset: string): string | null {
-  const lower = quoteAsset.toLowerCase();
-  const mapping: Record<string, string> = {
-    eur: "euro",
-    gold: "gold",
-    xau: "gold",
-    silver: "silver",
-    xag: "silver",
-    btc: "bitcoin",
-    eth: "ethereum",
-    ethereum: "ethereum",
-    // Stocks/indices - these might need special handling
-    aapl: "apple",
-    amzn: "amazon",
-    googl: "google",
-    meta: "meta",
-    msft: "microsoft",
-    nvda: "nvidia",
-    spy: "sp500",
-    tsla: "tesla",
-  };
-  return mapping[lower] || null;
-}
 
 interface FeedTableProps {
   feeds: FeedWithMetadata[];
@@ -112,8 +84,13 @@ function VoteCell({
   );
 }
 
-function FeedGroupRows({
-  feeds,
+function FeedRow({
+  feed,
+  feedPrice,
+  isFeedPriceLoading,
+  quotePriceUSD,
+  isQuotePriceLoading,
+  hasAttemptedQuotePrice,
   publicClient,
   expanded,
   setExpanded,
@@ -126,7 +103,12 @@ function FeedGroupRows({
   canonicalizeFeedId,
   showQuoteAssetPrice,
 }: {
-  feeds: FeedWithMetadata[];
+  feed: FeedWithMetadata;
+  feedPrice: string;
+  isFeedPriceLoading: boolean;
+  quotePriceUSD: number | null;
+  isQuotePriceLoading: boolean;
+  hasAttemptedQuotePrice: boolean;
   publicClient: any;
   expanded: ExpandedState;
   setExpanded: (state: ExpandedState) => void;
@@ -139,196 +121,46 @@ function FeedGroupRows({
   canonicalizeFeedId: (feedId: string) => string | null;
   showQuoteAssetPrice: boolean;
 }) {
-  const network = feeds[0].network;
-  const baseAsset = feeds[0].baseAsset;
-  const rpcClient = useRpcClient(network);
-  const feedEntries = feeds.map((f) => ({
-    address: f.address as `0x${string}`,
-    label: f.label,
-  }));
-  // Type assertion needed due to wagmi/viem type compatibility
-  const { prices, loading } = useFeedPrices(rpcClient as any, feedEntries);
+  const network = feed.network;
+  const baseAsset = feed.baseAsset;
+  const pair = parsePair(feed.label);
+  const status = feed.status || "available";
+  const feedId =
+    canonicalizeFeedId(buildFeedId(network, feed.address)) ??
+    buildFeedId(network, feed.address);
+  const totalPoints = votesTotals[feedId] ?? 0;
+  const myPoints = myAllocations[feedId] ?? 0;
 
-  // Get markets for feeds that have active markets
-  const feedMarkets = useMemo(() => {
-    const marketMap = new Map<string, { marketId: string; market: any; minterAddress: `0x${string}`; pegTarget: string }>();
-    feeds.forEach((feed) => {
-      const marketId = getMarketIdFromFeedLabel(feed.label);
-      if (marketId) {
-        const market = markets[marketId as keyof typeof markets];
-        if (market?.addresses?.minter && network === "mainnet") {
-          marketMap.set(feed.address, {
-            marketId,
-            market,
-            minterAddress: market.addresses.minter as `0x${string}`,
-            pegTarget: market.pegTarget?.toLowerCase() || "",
-          });
-        }
-      }
-    });
-    return marketMap;
-  }, [feeds, network]);
+  // Find the index in the original feeds array for this network and base asset
+  const networkFeeds = feedsConfig[network as keyof typeof feedsConfig];
+  const baseAssetFeeds = networkFeeds?.[baseAsset as keyof typeof networkFeeds];
+  const feedIndex = baseAssetFeeds
+    ? baseAssetFeeds.findIndex((f: any) => f.address === feed.address)
+    : -1;
 
-  // Extract quote assets from all feeds for fetching USD prices
-  const uniqueQuoteAssets = useMemo(() => {
-    const quoteAssets = new Set<string>();
-    feeds.forEach((feed) => {
-      const pair = parsePair(feed.label);
-      if (pair.quote) {
-        quoteAssets.add(pair.quote);
-      }
-    });
-    return Array.from(quoteAssets);
-  }, [feeds]);
+  const isFeedExpanded =
+    expanded?.network === network &&
+    expanded?.token === baseAsset &&
+    expanded?.feedIndex === feedIndex;
 
-  // Get CoinGecko IDs for all quote assets
-  const coinGeckoIds = useMemo(() => {
-    const ids: string[] = [];
-    uniqueQuoteAssets.forEach((quote) => {
-      const cgId = getCoinGeckoIdForQuoteAsset(quote);
-      if (cgId) {
-        ids.push(cgId);
-      }
-    });
-    // Always fetch ETH and BTC for active markets
-    if (!ids.includes("ethereum")) ids.push("ethereum");
-    if (!ids.includes("bitcoin")) ids.push("bitcoin");
-    return ids;
-  }, [uniqueQuoteAssets]);
-
-  // Fetch USD prices for all quote assets
-  const { prices: quoteAssetPrices } = useCoinGeckoPrices(coinGeckoIds, 60000);
-
-  // Map quote asset -> USD price
-  const quoteAssetPriceMap = useMemo(() => {
-    const map = new Map<string, number>();
-    uniqueQuoteAssets.forEach((quote) => {
-      const cgId = getCoinGeckoIdForQuoteAsset(quote);
-      if (cgId && quoteAssetPrices[cgId]) {
-        map.set(quote.toLowerCase(), quoteAssetPrices[cgId]!);
-      }
-    });
-    // Add ETH and BTC prices
-    if (quoteAssetPrices["ethereum"]) map.set("eth", quoteAssetPrices["ethereum"]!);
-    if (quoteAssetPrices["bitcoin"]) map.set("btc", quoteAssetPrices["bitcoin"]!);
-    return map;
-  }, [uniqueQuoteAssets, quoteAssetPrices]);
-
-  // Get unique minter addresses for batch reading
-  const uniqueMinterAddresses = useMemo(() => {
-    return Array.from(new Set(Array.from(feedMarkets.values()).map((m) => m.minterAddress)));
-  }, [feedMarkets]);
-
-  // Fetch peggedTokenPrice from all minter contracts
-  const minterPriceReads = useContractReads({
-    contracts: uniqueMinterAddresses.map((minterAddress) => ({
-      address: minterAddress,
-      abi: MINTER_ABI,
-      functionName: "peggedTokenPrice",
-    })),
-    query: {
-      enabled: showQuoteAssetPrice && uniqueMinterAddresses.length > 0 && network === "mainnet",
-    },
-  });
-
-
-  // Create a map of minter address -> peggedTokenPrice
-  const minterPriceMap = useMemo(() => {
-    const map = new Map<`0x${string}`, bigint>();
-    if (minterPriceReads.data) {
-      uniqueMinterAddresses.forEach((minterAddress, idx) => {
-        const price = minterPriceReads.data?.[idx]?.result as bigint | undefined;
-        if (price !== undefined && price !== null) {
-          map.set(minterAddress, price);
-        }
-      });
-    }
-    return map;
-  }, [minterPriceReads.data, uniqueMinterAddresses]);
-
-  // Fetch quote asset prices using the custom hook with 60-second caching
-  const { prices: quotePrices, loading: loadingContractData } = useFeedQuotePrices(
-    rpcClient,
-    feeds,
-    network || "mainnet",
-    showQuoteAssetPrice
-  );
-
-  // Create a map of feed address -> USD price to display (now using the hook's cached prices)
-  const feedHaTokenPriceMap = useMemo(() => {
-    const map = new Map<string, number>();
-    if (!showQuoteAssetPrice) {
-      return map;
-    }
-
-    feeds.forEach((feed) => {
-      const quotePrice = quotePrices.get(feed.address);
-      // Only add valid prices (> 0) to the display map
-      // null/undefined/0 means no price available, but we check quotePrices.has() to know if it's been attempted
-      if (quotePrice !== undefined && quotePrice !== null && quotePrice > 0) {
-        map.set(feed.address, quotePrice);
-      }
-    });
-
-    return map;
-  }, [showQuoteAssetPrice, feeds, quotePrices]);
-  
-  // Check if a feed has been attempted (even if it returned null/0)
-  // This helps us distinguish between "never loaded" vs "loaded but failed"
-  const hasAttemptedPrice = useMemo(() => {
-    const attempted = new Set<string>();
-    feeds.forEach((feed) => {
-      // If the price exists in quotePrices Map (even if null), it means we've attempted to load it
-      if (quotePrices.has(feed.address)) {
-        attempted.add(feed.address);
-      }
-    });
-    return attempted;
-  }, [feeds, quotePrices]);
+  const marketId = getMarketIdFromFeedLabel(feed.label);
+  const isActive = status === "active" && marketId !== null;
 
   return (
-    <>
-      {feeds.map((feed, idx) => {
-        const pair = parsePair(feed.label);
-        const price = prices[idx] ?? "-";
-        const status = feed.status || "available";
-        const feedId = canonicalizeFeedId(buildFeedId(network, feed.address)) ?? buildFeedId(network, feed.address);
-        const totalPoints = votesTotals[feedId] ?? 0;
-        const myPoints = myAllocations[feedId] ?? 0;
-
-        // Find the index in the original feeds array for this network and base asset
-        const networkFeeds = feedsConfig[network as keyof typeof feedsConfig];
-        const baseAssetFeeds =
-          networkFeeds?.[baseAsset as keyof typeof networkFeeds];
-        const feedIndex = baseAssetFeeds
-          ? baseAssetFeeds.findIndex((f: any) => f.address === feed.address)
-          : -1;
-
-        const isFeedExpanded =
-          expanded?.network === network &&
-          expanded?.token === baseAsset &&
-          expanded?.feedIndex === feedIndex;
-
-        const marketId = getMarketIdFromFeedLabel(feed.label);
-        const isActive = status === "active" && marketId !== null;
-
-        return (
-          <div key={feed.address} className="space-y-2">
-            {/* Feed card (like Anchor/Sail market bars) */}
-            <div
-              className={`border border-[#1E4775]/10 transition-colors cursor-pointer ${
-                isFeedExpanded
-                  ? "bg-[rgb(var(--surface-selected-rgb))]"
-                  : "bg-white hover:bg-[rgb(var(--surface-selected-rgb))]"
-              }`}
-              onClick={() =>
-                setExpanded(
-                  isFeedExpanded
-                    ? null
-                    : { network, token: baseAsset, feedIndex }
-                )
-              }
-            >
+    <div className="space-y-2">
+      {/* Feed card (like Anchor/Sail market bars) */}
+      <div
+        className={`border border-[#1E4775]/10 transition-colors cursor-pointer ${
+          isFeedExpanded
+            ? "bg-[rgb(var(--surface-selected-rgb))]"
+            : "bg-white hover:bg-[rgb(var(--surface-selected-rgb))]"
+        }`}
+        onClick={() =>
+          setExpanded(
+            isFeedExpanded ? null : { network, token: baseAsset, feedIndex }
+          )
+        }
+      >
               <div className="hidden lg:block py-2 px-3">
                 {/* Desktop layout */}
                 <div className={`grid gap-3 items-center text-sm ${
@@ -393,22 +225,23 @@ function FeedGroupRows({
                     {(() => {
                       // If toggle is on, show quote asset price as "XXX USD"
                       if (showQuoteAssetPrice) {
-                        const haTokenPriceUSD = feedHaTokenPriceMap.get(feed.address);
-                        const hasCachedPrice = haTokenPriceUSD !== undefined && haTokenPriceUSD > 0;
-                        const hasBeenAttempted = hasAttemptedPrice.has(feed.address);
+                        const hasCachedPrice =
+                          quotePriceUSD !== null &&
+                          quotePriceUSD !== undefined &&
+                          quotePriceUSD > 0;
                         
                         // Only show "Loading..." if we're loading AND this feed hasn't been attempted yet
                         // If it's been attempted (even if it returned null), show "-" instead of "Loading..."
-                        if (loadingContractData && !hasBeenAttempted) {
+                        if (isQuotePriceLoading && !hasAttemptedQuotePrice) {
                           return "Loading...";
                         }
                         
                         if (hasCachedPrice) {
                           return (
                             <SimpleTooltip
-                              label={`${haTokenPriceUSD.toLocaleString(undefined, { maximumFractionDigits: 6 })} USD`}
+                              label={`${quotePriceUSD!.toLocaleString(undefined, { maximumFractionDigits: 6 })} USD`}
                             >
-                              <span>{`${haTokenPriceUSD.toLocaleString(undefined, { maximumFractionDigits: 6 })} USD`}</span>
+                              <span>{`${quotePriceUSD!.toLocaleString(undefined, { maximumFractionDigits: 6 })} USD`}</span>
                             </SimpleTooltip>
                           );
                         }
@@ -417,12 +250,12 @@ function FeedGroupRows({
                       }
                       
                       // For regular feed price: only show "Loading..." if loading AND no price yet
-                      if (loading && price === "-") {
+                      if (isFeedPriceLoading && feedPrice === "-") {
                         return "Loading...";
                       }
                       
                       // Otherwise show feed price as is: "1 [BASE] = X [QUOTE]"
-                      if (price === "-") {
+                      if (feedPrice === "-") {
                         return "-";
                       }
                       return (
@@ -431,7 +264,7 @@ function FeedGroupRows({
                             pair.base
                           )} = ${price} ${getTokenFullName(pair.quote)}`}
                         >
-                          <span>{`1 ${pair.base} = ${price} ${pair.quote}`}</span>
+                          <span>{`1 ${pair.base} = ${feedPrice} ${pair.quote}`}</span>
                         </SimpleTooltip>
                       );
                     })()}
@@ -567,28 +400,29 @@ function FeedGroupRows({
                     <div className="text-[#1E4775] font-mono font-semibold text-[11px] truncate">
                       {showQuoteAssetPrice ? (
                         (() => {
-                          const haTokenPriceUSD = feedHaTokenPriceMap.get(feed.address);
-                          const hasCachedPrice = haTokenPriceUSD !== undefined && haTokenPriceUSD > 0;
-                          const hasBeenAttempted = hasAttemptedPrice.has(feed.address);
+                          const hasCachedPrice =
+                            quotePriceUSD !== null &&
+                            quotePriceUSD !== undefined &&
+                            quotePriceUSD > 0;
                           
                           // Only show "Loading…" if we're loading AND this feed hasn't been attempted yet
                           // If it's been attempted (even if it returned null), show "-" instead of "Loading…"
-                          if (loadingContractData && !hasBeenAttempted) {
+                          if (isQuotePriceLoading && !hasAttemptedQuotePrice) {
                             return "Loading…";
                           }
                           
                           if (hasCachedPrice) {
-                            return `${haTokenPriceUSD.toLocaleString(undefined, { maximumFractionDigits: 6 })} USD`;
+                            return `${quotePriceUSD!.toLocaleString(undefined, { maximumFractionDigits: 6 })} USD`;
                           }
-                          return price === "-" ? "-" : price;
+                          return feedPrice === "-" ? "-" : feedPrice;
                         })()
                       ) : (
                         (() => {
                           // For regular feed price: only show "Loading…" if loading AND no price yet
-                          if (loading && price === "-") {
+                          if (isFeedPriceLoading && feedPrice === "-") {
                             return "Loading…";
                           }
-                          return price === "-" ? "-" : `1 ${pair.base} = ${price} ${pair.quote}`;
+                          return feedPrice === "-" ? "-" : `1 ${pair.base} = ${feedPrice} ${pair.quote}`;
                         })()
                       )}
                     </div>
@@ -666,10 +500,7 @@ function FeedGroupRows({
                 </div>
               </div>
             )}
-          </div>
-        );
-      })}
-    </>
+    </div>
   );
 }
 
@@ -878,10 +709,120 @@ export function FeedTable({
     return false;
   };
 
-  const formatNetworkLabel = (network: string) => {
-    return network === "mainnet"
-      ? "ETH Mainnet"
-      : network.charAt(0).toUpperCase() + network.slice(1);
+  // Quote asset price fetching (stable 3-hook approach: mainnet + arbitrum + base)
+  // This is only used when showQuoteAssetPrice is enabled.
+  const mainnetQuoteEntries = useMemo(() => {
+    return feeds
+      .filter((f) => f.network === "mainnet")
+      .map((f) => ({
+        address: f.address as `0x${string}`,
+        label: f.label,
+        divisor: (f as any).divisor,
+      }))
+      .sort((a, b) => a.address.localeCompare(b.address));
+  }, [feeds]);
+
+  const arbitrumQuoteEntries = useMemo(() => {
+    return feeds
+      .filter((f) => f.network === "arbitrum")
+      .map((f) => ({
+        address: f.address as `0x${string}`,
+        label: f.label,
+        divisor: (f as any).divisor,
+      }))
+      .sort((a, b) => a.address.localeCompare(b.address));
+  }, [feeds]);
+
+  const baseQuoteEntries = useMemo(() => {
+    return feeds
+      .filter((f) => f.network === "base")
+      .map((f) => ({
+        address: f.address as `0x${string}`,
+        label: f.label,
+        divisor: (f as any).divisor,
+      }))
+      .sort((a, b) => a.address.localeCompare(b.address));
+  }, [feeds]);
+
+  const {
+    prices: mainnetQuotePrices,
+    loading: mainnetQuoteLoading,
+  } = useFeedQuotePrices(
+    mainnetRpcClient as any,
+    mainnetQuoteEntries as any,
+    "mainnet",
+    showQuoteAssetPrice
+  );
+  const {
+    prices: arbitrumQuotePrices,
+    loading: arbitrumQuoteLoading,
+  } = useFeedQuotePrices(
+    arbitrumRpcClient as any,
+    arbitrumQuoteEntries as any,
+    "arbitrum",
+    showQuoteAssetPrice
+  );
+  const { prices: baseQuotePrices, loading: baseQuoteLoading } =
+    useFeedQuotePrices(
+      baseRpcClient as any,
+      baseQuoteEntries as any,
+      "base",
+      showQuoteAssetPrice
+    );
+
+  const mainnetQuoteByAddr = useMemo(() => {
+    const m = new Map<string, number | null>();
+    for (const [addr, v] of mainnetQuotePrices.entries()) {
+      m.set(String(addr).toLowerCase(), v);
+    }
+    return m;
+  }, [mainnetQuotePrices]);
+  const arbitrumQuoteByAddr = useMemo(() => {
+    const m = new Map<string, number | null>();
+    for (const [addr, v] of arbitrumQuotePrices.entries()) {
+      m.set(String(addr).toLowerCase(), v);
+    }
+    return m;
+  }, [arbitrumQuotePrices]);
+  const baseQuoteByAddr = useMemo(() => {
+    const m = new Map<string, number | null>();
+    for (const [addr, v] of baseQuotePrices.entries()) {
+      m.set(String(addr).toLowerCase(), v);
+    }
+    return m;
+  }, [baseQuotePrices]);
+
+  const mainnetQuoteAttempted = useMemo(() => {
+    return new Set(Array.from(mainnetQuotePrices.keys()).map((k) => String(k).toLowerCase()));
+  }, [mainnetQuotePrices]);
+  const arbitrumQuoteAttempted = useMemo(() => {
+    return new Set(Array.from(arbitrumQuotePrices.keys()).map((k) => String(k).toLowerCase()));
+  }, [arbitrumQuotePrices]);
+  const baseQuoteAttempted = useMemo(() => {
+    return new Set(Array.from(baseQuotePrices.keys()).map((k) => String(k).toLowerCase()));
+  }, [baseQuotePrices]);
+
+  const getQuotePriceForFeed = (network: string, address: string) => {
+    const addr = String(address || "").toLowerCase();
+    if (network === "mainnet") return mainnetQuoteByAddr.get(addr) ?? null;
+    if (network === "arbitrum") return arbitrumQuoteByAddr.get(addr) ?? null;
+    if (network === "base") return baseQuoteByAddr.get(addr) ?? null;
+    return null;
+  };
+
+  const hasAttemptedQuotePriceForFeed = (network: string, address: string) => {
+    const addr = String(address || "").toLowerCase();
+    if (network === "mainnet") return mainnetQuoteAttempted.has(addr);
+    if (network === "arbitrum") return arbitrumQuoteAttempted.has(addr);
+    if (network === "base") return baseQuoteAttempted.has(addr);
+    return false;
+  };
+
+  const isQuotePriceLoadingForNetwork = (network: string) => {
+    if (network === "mainnet") return mainnetQuoteLoading;
+    if (network === "arbitrum") return arbitrumQuoteLoading;
+    if (network === "base") return baseQuoteLoading;
+    return false;
   };
 
   const saveVotesMutation = useMutation({
@@ -1016,17 +957,6 @@ export function FeedTable({
     });
   }, [feeds, totals, sortBy, sortDirection]);
 
-  // Group sorted feeds by network and baseAsset for FeedGroupRows
-  // But to maintain global sort order, we need to render feeds individually
-  // So we create an array of groups, one per feed, preserving sort order
-  const sortedAndGroupedFeedsArray = useMemo(() => {
-    // Create a group for each feed to maintain global sort order
-    return sortedFeeds.map((feed) => ({
-      key: `${feed.network}:${feed.baseAsset}:${feed.address}`,
-      feeds: [feed],
-    }));
-  }, [sortedFeeds]);
-
   return (
     <div className="space-y-2">
       {/* Sort menu (mobile) */}
@@ -1157,10 +1087,18 @@ export function FeedTable({
       </div>
 
       <div className="space-y-2">
-        {sortedAndGroupedFeedsArray.map(({ key, feeds: groupFeeds }) => (
-          <FeedGroupRows
-            key={key}
-            feeds={groupFeeds}
+        {sortedFeeds.map((feed) => (
+          <FeedRow
+            key={`${feed.network}:${feed.address}`}
+            feed={feed}
+            feedPrice={getPriceForFeed(feed.network, feed.address)}
+            isFeedPriceLoading={isPriceLoadingForNetwork(feed.network)}
+            quotePriceUSD={getQuotePriceForFeed(feed.network, feed.address)}
+            isQuotePriceLoading={isQuotePriceLoadingForNetwork(feed.network)}
+            hasAttemptedQuotePrice={hasAttemptedQuotePriceForFeed(
+              feed.network,
+              feed.address
+            )}
             publicClient={publicClient}
             expanded={expanded}
             setExpanded={setExpanded}
