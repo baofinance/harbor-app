@@ -80,7 +80,7 @@ export function useFeedPrices(
       for (const feed of feedEntries) {
         if (cancelled) break;
         try {
-          // Try latestAnswer first (works for SingleFeed, DoubleFeed, etc.)
+          // Try latestAnswer first (works for SingleFeed, DoubleFeed, proxy contracts, etc.)
           let price: bigint | null = null;
 
           try {
@@ -94,24 +94,39 @@ export function useFeedPrices(
               // latestAnswer returns [minPrice, maxPrice, minRate, maxRate]
               // Use minPrice (first element) as the price
               price = latestResult[0] as bigint;
+            } else if (latestResult && typeof latestResult === "bigint") {
+              // Some contracts return a single bigint instead of an array
+              price = latestResult;
             }
           } catch (err: unknown) {
-            console.log(`[useFeedPrices] latestAnswer failed, trying getPrice:`, err);
-
-            // Fallback to getPrice if latestAnswer doesn't work
-            try {
-              const priceResult = await rpcClient.readContract({
-                address: feed.address,
-                abi: proxyAbi,
-                functionName: "getPrice",
-              });
-              price = priceResult as bigint;
-            } catch (getPriceErr: unknown) {
-              console.error(
-                `[useFeedPrices] Error fetching price for ${feed.label}:`,
-                getPriceErr
-              );
+            // latestAnswer failed - check if this might be a SingleFeed/DoubleFeed contract
+            // SingleFeed and DoubleFeed contracts don't have getPrice, only latestAnswer
+            // If latestAnswer fails for them, getPrice won't work either
+            const errMsg = err instanceof Error ? err.message : String(err);
+            const isNetworkError = errMsg.includes("NetworkError") || errMsg.includes("network") || errMsg.includes("fetch");
+            const isFunctionNotFound = errMsg.includes("function") || 
+                                      errMsg.includes("not found") || 
+                                      errMsg.includes("does not exist") ||
+                                      errMsg.includes("execution reverted");
+            
+            // Only try getPrice if latestAnswer failed for a clear network/RPC error
+            // If it's a function-not-found error or we can't determine, skip getPrice
+            // SingleFeed/DoubleFeed contracts don't have getPrice, so trying it causes errors
+            if (isNetworkError && !isFunctionNotFound) {
+              try {
+                const priceResult = await rpcClient.readContract({
+                  address: feed.address,
+                  abi: proxyAbi,
+                  functionName: "getPrice",
+                });
+                price = priceResult as bigint;
+              } catch (getPriceErr: unknown) {
+                // Silently fail - contract might not have getPrice (e.g., SingleFeed/DoubleFeed)
+                // This is expected behavior, so we don't log it as an error
+              }
             }
+            // If latestAnswer failed for a non-network reason (function not found, execution reverted, etc.)
+            // Don't try getPrice - the contract likely doesn't have it
           }
 
           if (price !== null && price !== undefined) {

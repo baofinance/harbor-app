@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { parseEther, formatEther, parseUnits, formatUnits } from "viem";
 import {
   useAccount,
@@ -2182,6 +2182,57 @@ export const AnchorDepositWithdrawModal = ({
     ? anvilSailWindowResult.data
     : wagmiSailWindowResult.data;
 
+  // Read withdrawal request data for both pools to check if fee-free window is open
+  const anvilCollateralRequestResult = useContractRead({
+    address: collateralPoolAddress,
+    abi: STABILITY_POOL_ABI,
+    functionName: "getWithdrawalRequest",
+    args: address ? [address] : undefined,
+    enabled: !!collateralPoolAddress && !!address && isOpen && useAnvilForPeggedBalance && activeTab === "withdraw",
+    refetchInterval: 30000,
+  });
+
+  const wagmiCollateralRequestResult = useContractRead({
+    address: collateralPoolAddress,
+    abi: STABILITY_POOL_ABI,
+    functionName: "getWithdrawalRequest",
+    args: address ? [address] : undefined,
+    query: {
+      enabled: !!collateralPoolAddress && !!address && isOpen && !useAnvilForPeggedBalance && activeTab === "withdraw",
+      refetchInterval: 30000,
+      allowFailure: true,
+    },
+  });
+
+  const collateralPoolRequest: readonly [bigint, bigint] | undefined = useAnvilForPeggedBalance
+    ? (anvilCollateralRequestResult.data as readonly [bigint, bigint] | undefined)
+    : (wagmiCollateralRequestResult.data as readonly [bigint, bigint] | undefined);
+
+  const anvilSailRequestResult = useContractRead({
+    address: sailPoolAddress,
+    abi: STABILITY_POOL_ABI,
+    functionName: "getWithdrawalRequest",
+    args: address ? [address] : undefined,
+    enabled: !!sailPoolAddress && !!address && isOpen && useAnvilForPeggedBalance && activeTab === "withdraw",
+    refetchInterval: 30000,
+  });
+
+  const wagmiSailRequestResult = useContractRead({
+    address: sailPoolAddress,
+    abi: STABILITY_POOL_ABI,
+    functionName: "getWithdrawalRequest",
+    args: address ? [address] : undefined,
+    query: {
+      enabled: !!sailPoolAddress && !!address && isOpen && !useAnvilForPeggedBalance && activeTab === "withdraw",
+      refetchInterval: 30000,
+      allowFailure: true,
+    },
+  });
+
+  const sailPoolRequest: readonly [bigint, bigint] | undefined = useAnvilForPeggedBalance
+    ? (anvilSailRequestResult.data as readonly [bigint, bigint] | undefined)
+    : (wagmiSailRequestResult.data as readonly [bigint, bigint] | undefined);
+
   // Helper function to format seconds to hours
   const formatDuration = (seconds: bigint | number): string => {
     const totalSeconds = Number(seconds);
@@ -2192,6 +2243,135 @@ export const AnchorDepositWithdrawModal = ({
     }
     return `${hours} hour${hours !== 1 ? "s" : ""}`;
   };
+
+  // Helper function to calculate remaining time in fee-free window and format display
+  // Returns fee percentage (e.g., "1%") BEFORE window opens or AFTER window closes
+  // Returns "(free)" DURING the open window (time remaining is shown in banner, not button)
+  const getFeeFreeDisplay = useCallback((
+    request: readonly [bigint, bigint] | undefined,
+    feePercent: number | undefined
+  ): string => {
+    if (!request || !feePercent) {
+      return `${feePercent?.toFixed(0) ?? "1"}%`;
+    }
+
+    const [start, end] = request;
+    // Check if there's no active request
+    if (start === 0n && end === 0n) {
+      return `${feePercent.toFixed(0)}%`;
+    }
+
+    // Get current time
+    const now = BigInt(Math.floor(Date.now() / 1000));
+    
+    // Check if window is currently open (now is between start and end)
+    if (now >= start && now <= end) {
+      // Window is OPEN - show "(free)" only, time remaining is shown in banner
+      return "(free)";
+    }
+
+    // Window is NOT open (either before it opens: now < start, or after it closes: now > end)
+    // Show fee percentage (e.g., "1%")
+    return `${feePercent.toFixed(0)}%`;
+  }, []);
+
+  // Helper function to get request status text for button
+  const getRequestStatusText = useCallback((
+    request: readonly [bigint, bigint] | undefined
+  ): string => {
+    if (!request) {
+      return "";
+    }
+
+    const [start, end] = request;
+    // Check if there's no active request
+    if (start === 0n && end === 0n) {
+      return "";
+    }
+
+    // Get current time
+    const now = BigInt(Math.floor(Date.now() / 1000));
+    
+    // Check if window is open
+    if (now >= start && now <= end) {
+      return " (open)";
+    }
+
+    // Check if window is coming (start > now)
+    if (start > now) {
+      return " (pending)";
+    }
+
+    // Window has passed (end < now)
+    return "";
+  }, []);
+
+  // Helper function to format time as HH:MM
+  const formatTime = (timestamp: bigint): string => {
+    const date = new Date(Number(timestamp) * 1000);
+    return date.toLocaleTimeString("en-US", { 
+      hour: "2-digit", 
+      minute: "2-digit",
+      hour12: false 
+    });
+  };
+
+  // Helper function to get window banner info
+  const getWindowBannerInfo = useCallback((
+    request: readonly [bigint, bigint] | undefined,
+    window: readonly [bigint, bigint] | undefined
+  ): { type: "coming" | "open" | null; message: string } | null => {
+    if (!request || !window) {
+      return null;
+    }
+
+    const [start, end] = request;
+    // Check if there's no active request
+    if (start === 0n && end === 0n) {
+      return null;
+    }
+
+    const [startDelay, endWindow] = window;
+    const now = BigInt(Math.floor(Date.now() / 1000));
+    
+    // Check if window is open
+    if (now >= start && now <= end) {
+      const remainingSeconds = Number(end - now);
+      const remainingHours = remainingSeconds / 3600;
+      const remainingMinutes = Math.floor(remainingSeconds / 60);
+      
+      const startTimeStr = formatTime(start);
+      const endTimeStr = formatTime(end);
+      
+      let timeRemaining: string;
+      if (remainingHours < 1) {
+        timeRemaining = `${remainingMinutes} minute${remainingMinutes !== 1 ? "s" : ""} remaining`;
+      } else {
+        const hours = Math.floor(remainingHours);
+        timeRemaining = `${hours} hour${hours !== 1 ? "s" : ""} remaining`;
+      }
+      
+      return {
+        type: "open",
+        message: `Window open from ${startTimeStr} to ${endTimeStr} (${timeRemaining})`,
+      };
+    }
+
+    // Check if window is coming (start > now)
+    if (start > now) {
+      const secondsUntilStart = Number(start - now);
+      const minutesUntilStart = Math.floor(secondsUntilStart / 60);
+      const startTimeStr = formatTime(start);
+      
+      return {
+        type: "coming",
+        message: `Withdraw window opens at ${startTimeStr} in ${minutesUntilStart} minute${minutesUntilStart !== 1 ? "s" : ""}`,
+      };
+    }
+
+    // Window has passed
+    return null;
+  }, []);
 
   // Convert fee from wei (1e18 scale) to percentage
   const collateralPoolFeePercent = useMemo(() => {
@@ -4446,7 +4626,9 @@ export const AnchorDepositWithdrawModal = ({
         // In simple mode, use step-by-step flow
         if (simpleMode) {
           setCurrentStep(1);
-          setSelectedDepositAsset(initialCollateralSymbol);
+          // Prefer an explicit initial deposit asset (e.g. ha token when opened from
+          // "not earning yield" section). Otherwise default to the market's collateral.
+          setSelectedDepositAsset(initialDepositAsset || initialCollateralSymbol);
           // Don't pre-select pools in step-by-step mode - let user choose
           setSelectedStabilityPool(null);
           setDepositInStabilityPool(false);
@@ -9348,11 +9530,13 @@ export const AnchorDepositWithdrawModal = ({
                                   } disabled:opacity-50 disabled:cursor-not-allowed`}
                                 >
                                   Early Withdraw
-                                  {collateralPoolFeePercent !== undefined
-                                    ? ` (${collateralPoolFeePercent.toFixed(
-                                        2
-                                      )}% fee)`
-                                    : " (with fee)"}
+                                  {(() => {
+                                    const display = getFeeFreeDisplay(
+                                      collateralPoolRequest,
+                                      collateralPoolFeePercent
+                                    );
+                                    return ` (${display})`;
+                                  })()}
                                 </button>
                                 <button
                                   type="button"
@@ -9370,9 +9554,31 @@ export const AnchorDepositWithdrawModal = ({
                                       : "text-[#1E4775]/70 hover:text-[#1E4775]"
                                   } disabled:opacity-50 disabled:cursor-not-allowed`}
                                 >
-                                  Request (free)
+                                  Request Withdraw{getRequestStatusText(collateralPoolRequest)}
                                 </button>
                               </div>
+                              {/* Window status banner - show when pool is selected and window exists */}
+                              {selectedPositions.collateralPool && (() => {
+                                const bannerInfo = getWindowBannerInfo(collateralPoolRequest, collateralPoolWindow);
+                                if (!bannerInfo) return null;
+                                
+                                if (bannerInfo.type === "coming") {
+                                  // Pearl orange warning for window coming
+                                  return (
+                                    <div className="mt-2 px-3 py-2 bg-[#FF8A7A]/20 border border-[#FF8A7A]/40 rounded text-[10px] text-[#FF8A7A] font-medium">
+                                      {bannerInfo.message}
+                                    </div>
+                                  );
+                                } else if (bannerInfo.type === "open") {
+                                  // Seafoam green banner for window open
+                                  return (
+                                    <div className="mt-2 px-3 py-2 bg-[#7FD4C0]/20 border border-[#7FD4C0]/40 rounded text-[10px] text-[#7FD4C0] font-medium">
+                                      {bannerInfo.message}
+                                    </div>
+                                  );
+                                }
+                                return null;
+                              })()}
                               {/* Amount input - only show for immediate withdrawals */}
                               {withdrawalMethods.collateralPool ===
                                 "immediate" && (
@@ -9419,9 +9625,9 @@ export const AnchorDepositWithdrawModal = ({
                                     Request (free) or wait for TVL to increase.
                                   </p>
                               )}
-                              {/* Info message for request method */}
+                              {/* Info message for request method - only show if no window banner */}
                               {withdrawalMethods.collateralPool ===
-                                "request" && (
+                                "request" && !getWindowBannerInfo(collateralPoolRequest, collateralPoolWindow) && (
                                 <p className="text-[10px] text-[#1E4775]/60 mt-1">
                                   Creates a withdrawal request. You can withdraw
                                   without a fee for{""}
@@ -9498,9 +9704,13 @@ export const AnchorDepositWithdrawModal = ({
                                   } disabled:opacity-50 disabled:cursor-not-allowed`}
                                 >
                                   Early Withdraw
-                                  {sailPoolFeePercent !== undefined
-                                    ? ` (${sailPoolFeePercent.toFixed(2)}% fee)`
-                                    : " (with fee)"}
+                                  {(() => {
+                                    const display = getFeeFreeDisplay(
+                                      sailPoolRequest,
+                                      sailPoolFeePercent
+                                    );
+                                    return ` (${display})`;
+                                  })()}
                                 </button>
                                 <button
                                   type="button"
@@ -9517,9 +9727,31 @@ export const AnchorDepositWithdrawModal = ({
                                       : "text-[#1E4775]/70 hover:text-[#1E4775]"
                                   } disabled:opacity-50 disabled:cursor-not-allowed`}
                                 >
-                                  Request (free)
+                                  Request Withdraw{getRequestStatusText(sailPoolRequest)}
                                 </button>
                               </div>
+                              {/* Window status banner - show when pool is selected and window exists */}
+                              {selectedPositions.sailPool && (() => {
+                                const bannerInfo = getWindowBannerInfo(sailPoolRequest, sailPoolWindow);
+                                if (!bannerInfo) return null;
+                                
+                                if (bannerInfo.type === "coming") {
+                                  // Pearl orange warning for window coming
+                                  return (
+                                    <div className="mt-2 px-3 py-2 bg-[#FF8A7A]/20 border border-[#FF8A7A]/40 rounded text-[10px] text-[#FF8A7A] font-medium">
+                                      {bannerInfo.message}
+                                    </div>
+                                  );
+                                } else if (bannerInfo.type === "open") {
+                                  // Seafoam green banner for window open
+                                  return (
+                                    <div className="mt-2 px-3 py-2 bg-[#7FD4C0]/20 border border-[#7FD4C0]/40 rounded text-[10px] text-[#7FD4C0] font-medium">
+                                      {bannerInfo.message}
+                                    </div>
+                                  );
+                                }
+                                return null;
+                              })()}
                               {/* Amount input - only show for immediate withdrawals */}
                               {withdrawalMethods.sailPool === "immediate" && (
                                 <div className="relative mt-2">
@@ -9563,8 +9795,8 @@ export const AnchorDepositWithdrawModal = ({
                                     Request (free) or wait for TVL to increase.
                                   </p>
                               )}
-                              {/* Info message for request method */}
-                              {withdrawalMethods.sailPool === "request" && (
+                              {/* Info message for request method - only show if no window banner */}
+                              {withdrawalMethods.sailPool === "request" && !getWindowBannerInfo(sailPoolRequest, sailPoolWindow) && (
                                 <p className="text-[10px] text-[#1E4775]/60 mt-1">
                                   Creates a withdrawal request. You can withdraw
                                   without a fee for{""}

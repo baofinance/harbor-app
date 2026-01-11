@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 
 /**
  * Fetches a single token price in USD from CoinGecko API
@@ -86,10 +86,30 @@ export function useCoinGeckoPrices(
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Use a ref to track previous coinIds key to prevent infinite loops
+  const prevCoinIdsKeyRef = useRef<string>("");
+
   useEffect(() => {
+    // Create a stable string key from the array contents (sorted to handle order changes)
+    const currentCoinIdsKey = coinIds.length === 0 
+      ? "" 
+      : coinIds.slice().sort().join(",");
+    
+    // Only proceed if coinIds actually changed (compare stringified sorted arrays)
+    if (currentCoinIdsKey === prevCoinIdsKeyRef.current) {
+      return;
+    }
+    prevCoinIdsKeyRef.current = currentCoinIdsKey;
+    
     if (coinIds.length === 0) {
-      setPrices({});
-      setIsLoading(false);
+      setPrices((prev) => {
+        // Only update if prices is not already empty to prevent unnecessary re-renders
+        if (Object.keys(prev).length === 0) {
+          return prev;
+        }
+        return {};
+      });
+      setIsLoading((prev) => prev ? false : prev);
       return;
     }
 
@@ -98,10 +118,12 @@ export function useCoinGeckoPrices(
     let retryTimeoutId: NodeJS.Timeout | null = null;
 
     const fetchPrices = async (retryCount: number = 0): Promise<void> => {
+      // Capture coinIds at the time of effect execution to avoid stale closures
+      const currentCoinIds = coinIds;
       const startTime = performance.now();
       if (process.env.NODE_ENV === "development") {
         console.log(
-          `[CoinGecko] Starting fetch for: ${coinIds.join(", ")}${
+          `[CoinGecko] Starting fetch for: ${currentCoinIds.join(", ")}${
             retryCount > 0 ? ` (retry ${retryCount})` : ""
           }`
         );
@@ -109,7 +131,7 @@ export function useCoinGeckoPrices(
       setIsLoading(true);
       setError(null);
       try {
-        const ids = coinIds.join(",");
+        const ids = currentCoinIds.join(",");
         const response = await fetch(
           `/api/coingecko/simple-price?ids=${encodeURIComponent(ids)}`
         );
@@ -144,7 +166,7 @@ export function useCoinGeckoPrices(
         if (cancelled) return;
 
         const newPrices: Record<string, number | null> = {};
-        coinIds.forEach((id) => {
+        currentCoinIds.forEach((id) => {
           newPrices[id] = data[id]?.usd || null;
           if (process.env.NODE_ENV === "development") {
           if (newPrices[id]) {
@@ -168,7 +190,7 @@ export function useCoinGeckoPrices(
         // Preserve existing prices for coins that weren't returned in this response
         setPrices((prevPrices) => {
           const mergedPrices = { ...prevPrices };
-          coinIds.forEach((id) => {
+          currentCoinIds.forEach((id) => {
             if (newPrices[id] !== null && newPrices[id] !== undefined) {
               mergedPrices[id] = newPrices[id];
             }
@@ -180,7 +202,7 @@ export function useCoinGeckoPrices(
         if (cancelled) return;
         // Only log network errors in development, not in production
         if (process.env.NODE_ENV === "development") {
-          console.warn(`Failed to fetch prices for ${coinIds.join(", ")}:`, e.message || "Network error");
+          console.warn(`Failed to fetch prices for ${currentCoinIds.join(", ")}:`, e.message || "Network error");
         }
         setError(e.message || "Failed to fetch prices");
         // DON'T clear prices on error - preserve last known good prices
