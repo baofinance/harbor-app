@@ -4216,9 +4216,12 @@ export default function AnchorPage() {
                                           <div>
                                             <div className="font-semibold">• Collateral Pool:</div>
                                             <div className="ml-2 mt-0.5">
-                                              {collateralPoolAPRMin !== null &&
-                                              collateralPoolAPRMax !== null
-                                                ? collateralPoolAPRMin === collateralPoolAPRMax
+                                              {isLoadingAllRewards
+                                                ? "Loading"
+                                                : collateralPoolAPRMin !== null &&
+                                                  collateralPoolAPRMax !== null
+                                                ? collateralPoolAPRMin ===
+                                                  collateralPoolAPRMax
                                                   ? `${collateralPoolAPRMin.toFixed(2)}%`
                                                   : `${collateralPoolAPRMin.toFixed(2)}% - ${collateralPoolAPRMax.toFixed(2)}%`
                                                 : "-"}
@@ -4311,8 +4314,10 @@ export default function AnchorPage() {
                                           <div>
                                             <div className="font-semibold">• Sail Pool:</div>
                                             <div className="ml-2 mt-0.5">
-                                              {sailPoolAPRMin !== null &&
-                                              sailPoolAPRMax !== null
+                                              {isLoadingAllRewards
+                                                ? "Loading"
+                                                : sailPoolAPRMin !== null &&
+                                                  sailPoolAPRMax !== null
                                                 ? sailPoolAPRMin === sailPoolAPRMax
                                                   ? `${sailPoolAPRMin.toFixed(2)}%`
                                                   : `${sailPoolAPRMin.toFixed(2)}% - ${sailPoolAPRMax.toFixed(2)}%`
@@ -5412,7 +5417,9 @@ export default function AnchorPage() {
                                           </SimpleTooltip>
                                         </div>
                                         <div className="text-xs font-semibold text-[#1E4775]">
-                                          {collateralPoolAPR > 0
+                                          {isLoadingAllRewards
+                                            ? "Loading"
+                                            : collateralPoolAPR > 0
                                             ? `${collateralPoolAPR.toFixed(2)}%`
                                             : "-"}
                                         </div>
@@ -5456,7 +5463,9 @@ export default function AnchorPage() {
                                           </SimpleTooltip>
                                         </div>
                                         <div className="text-xs font-semibold text-[#1E4775]">
-                                          {sailPoolAPR > 0
+                                          {isLoadingAllRewards
+                                            ? "Loading"
+                                            : sailPoolAPR > 0
                                             ? `${sailPoolAPR.toFixed(2)}%`
                                             : "-"}
                                         </div>
