@@ -4663,26 +4663,57 @@ export default function AnchorPage() {
                                         request.status === "waiting"
                                           ? startSec
                                           : endSec;
+                                      
                                       const countdownLabel =
                                         request.status === "waiting"
-                                          ? "Window opens in"
+                                          ? "Withdraw window opens"
                                           : request.status === "window"
                                           ? "Window closes in"
                                           : "Window expired";
+                                      // Format time remaining without "ends in" prefix for waiting windows
+                                      const formatTimeOnly = (
+                                        endDate: Date,
+                                        currentDate: Date
+                                      ): string => {
+                                        const diffMs = endDate.getTime() - currentDate.getTime();
+                                        if (diffMs <= 0) return "Ended";
+                                        
+                                        const diffHours = diffMs / (1000 * 60 * 60);
+                                        const diffDays = diffHours / 24;
+                                        const diffMinutes = diffMs / (1000 * 60);
+                                        
+                                        if (diffDays >= 2) {
+                                          return `${diffDays.toFixed(1)} days`;
+                                        } else if (diffHours >= 2) {
+                                          return `${diffHours.toFixed(1)} hours`;
+                                        } else {
+                                          return `${diffMinutes.toFixed(0)} minutes`;
+                                        }
+                                      };
+                                      
                                       const countdownText =
                                         countdownTarget > 0
-                                          ? formatTimeRemaining(
-                                              new Date(
-                                                countdownTarget * 1000
-                                              ).toISOString(),
-                                              request.currentTime
-                                                ? new Date(
-                                                    Number(
-                                                      request.currentTime
-                                                    ) * 1000
-                                                  )
-                                                : new Date()
-                                            )
+                                          ? request.status === "waiting"
+                                            ? formatTimeOnly(
+                                                new Date(countdownTarget * 1000),
+                                                request.currentTime
+                                                  ? new Date(
+                                                      Number(request.currentTime) * 1000
+                                                    )
+                                                  : new Date()
+                                              )
+                                            : formatTimeRemaining(
+                                                new Date(
+                                                  countdownTarget * 1000
+                                                ).toISOString(),
+                                                request.currentTime
+                                                  ? new Date(
+                                                      Number(
+                                                        request.currentTime
+                                                      ) * 1000
+                                                    )
+                                                  : new Date()
+                                              )
                                           : "Ended";
 
                                       return (
@@ -4726,7 +4757,10 @@ export default function AnchorPage() {
                                                 : "Expired"}
                                             </span>
                                             <span className="text-[11px] text-[#1E4775]/70">
-                                              {countdownLabel}: {countdownText}
+                                              {request.status === "waiting"
+                                                ? `${countdownLabel} ${countdownText}`
+                                                : `${countdownLabel}: ${countdownText}`
+                                              }
                                             </span>
                                           </div>
                                           <div className="flex gap-1.5">

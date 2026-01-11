@@ -35,7 +35,7 @@ import InfoTooltip from "@/components/InfoTooltip";
 import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
 import { markets as marketsConfig } from "@/config/markets";
 import { useMultipleTokenPrices } from "@/hooks/useTokenPrices";
-import { useReadContract } from "wagmi";
+import { useReadContract, useAccount } from "wagmi";
 import { minterABI } from "@/abis/minter";
 import Image from "next/image";
 import { useAllStabilityPoolRewards } from "@/hooks/useAllStabilityPoolRewards";
@@ -418,6 +418,7 @@ function MarketCard({
   stETHPrice,
   btcPrice,
   ethPrice,
+  poolRewardsMap,
 }: {
  market: MarketTransparencyData;
  pools: PoolTransparencyData[];
@@ -438,56 +439,23 @@ function MarketCard({
   stETHPrice?: number;
   btcPrice?: number;
   ethPrice?: number;
+  poolRewardsMap: Map<`0x${string}`, { totalRewardAPR: number; poolAddress: `0x${string}` }>;
 }) {
  const [isExpanded, setIsExpanded] = useState(false);
 
  const avgPrice = (market.minPrice + market.maxPrice) / 2n;
+ const maxPrice = market.maxPrice; // Use maxPrice for collateral price (matches anchor page which uses maxUnderlyingPrice)
  const avgRate = (market.minRate + market.maxRate) / 2n;
  const healthStatus = getHealthColor(
  market.collateralRatio,
  market.rebalanceThreshold
  );
 
- const tokenPrices = tokenPricesByMarket[market.marketId];
+  const tokenPrices = tokenPricesByMarket[market.marketId];
 
   const marketCfg = (marketsConfig as any)?.[market.marketId];
   const collateralHeldSymbol: string =
     marketCfg?.collateral?.symbol || marketCfg?.collateral?.underlyingSymbol || "";
-
-  // Prepare pool data for APR calculation
-  const poolDataForAPR = useMemo(() => {
-    return pools.map((pool) => ({
-      address: pool.address,
-      poolType: pool.type === "collateral" ? "collateral" as const : "sail" as const,
-      marketId: market.marketId,
-      peggedTokenPrice: market.peggedTokenPrice,
-      collateralPrice: avgPrice, // Using avgPrice from oracle
-      collateralPriceDecimals: 18,
-      peggedTokenAddress: market.peggedTokenAddress,
-      collateralTokenAddress: marketCfg?.addresses?.wrappedCollateralToken as `0x${string}` | undefined,
-    }));
-  }, [pools, market.marketId, market.peggedTokenPrice, market.peggedTokenAddress, avgPrice, marketCfg]);
-
-  // Calculate APR for pools (using dummy address since we only need APR, not claimable rewards)
-  const { data: poolRewardsData = [] } = useAllStabilityPoolRewards({
-    pools: poolDataForAPR,
-    ethPrice: ethPrice ?? undefined,
-    btcPrice: btcPrice ?? undefined,
-    peggedPriceUSDMap: tokenPrices?.peggedPriceUSD 
-      ? { [market.marketId]: BigInt(Math.floor(tokenPrices.peggedPriceUSD * 1e18)) }
-      : undefined,
-    enabled: isExpanded && poolDataForAPR.length > 0,
-    overrideAddress: "0x0000000000000000000000000000000000000000" as `0x${string}`, // Dummy address for transparency page
-  });
-
-  // Create a map of pool address -> APR
-  const poolAPRMap = useMemo(() => {
-    const map = new Map<string, number>();
-    poolRewardsData.forEach((reward) => {
-      map.set(reward.poolAddress.toLowerCase(), reward.totalRewardAPR);
-    });
-    return map;
-  }, [poolRewardsData]);
 
   // collateralTokenBalance is in underlying-equivalent units (fxUSD for fxSAVE markets, stETH for wstETH markets)
   // Convert to wrapped collateral units using avgRate (underlying per wrapped)
@@ -737,23 +705,60 @@ function MarketCard({
  Sail Supply
  </div>
  <div className="flex items-center justify-center gap-1">
- {market.marketName?.toLowerCase().includes("btc") ? (
- <Image
- src="/icons/haBTC.png"
- alt="haBTC"
- width={16}
- height={16}
- className="flex-shrink-0"
- />
- ) : (
- <Image
- src="/icons/haETH.png"
- alt="haETH"
- width={16}
- height={16}
- className="flex-shrink-0"
- />
- )}
+ {(() => {
+   // Determine sail token icon based on market type
+   const marketIdLower = market.marketId.toLowerCase();
+   const isBtcMarket = marketIdLower.includes("btc");
+   const collateralLower = collateralHeldSymbol.toLowerCase();
+   
+   if (isBtcMarket) {
+     // BTC markets
+     if (collateralLower.includes("fxusd") || collateralLower.includes("fxsave")) {
+       return (
+         <Image
+           src="/icons/hsUSDBTC.png"
+           alt="hsUSDBTC"
+           width={16}
+           height={16}
+           className="flex-shrink-0"
+         />
+       );
+     } else if (collateralLower.includes("steth") || collateralLower.includes("wsteth")) {
+       return (
+         <Image
+           src="/icons/hsETHBTC.png"
+           alt="hsETHBTC"
+           width={16}
+           height={16}
+           className="flex-shrink-0"
+         />
+       );
+     }
+   } else {
+     // ETH markets
+     if (collateralLower.includes("fxusd") || collateralLower.includes("fxsave")) {
+       return (
+         <Image
+           src="/icons/hsUSDETH.png"
+           alt="hsUSDETH"
+           width={16}
+           height={16}
+           className="flex-shrink-0"
+         />
+       );
+     }
+   }
+   // Fallback to default
+   return (
+     <Image
+       src="/icons/hsUSDETH.png"
+       alt="hsToken"
+       width={16}
+       height={16}
+       className="flex-shrink-0"
+     />
+   );
+ })()}
  <div className="text-[#1E4775] font-mono font-semibold text-[10px]">
  {formatTokenBalanceMax2Decimals(market.leveragedTokenBalance)}
  </div>
@@ -772,10 +777,8 @@ function MarketCard({
  const userData = userPools?.find(
  (u) => u.poolAddress === pool.address
  );
- const poolTokenPriceUSD =
-  pool.type === "collateral"
-    ? tokenPrices?.peggedPriceUSD ?? 0
-    : tokenPrices?.leveragedPriceUSD ?? 0;
+ // Both collateral and sail pools hold haBTC/haETH tokens, so use peggedPriceUSD for both
+ const poolTokenPriceUSD = tokenPrices?.peggedPriceUSD ?? 0;
  const withdrawStatus = userData
  ? getWithdrawalRequestStatus(
  userData.withdrawalRequest.requestedAt,
@@ -800,8 +803,11 @@ function MarketCard({
  <div className="text-[#1E4775]/60 text-[9px]">APR</div>
  <div className="text-[#1E4775] font-mono font-semibold text-[10px]">
  {(() => {
-   const apr = poolAPRMap.get(pool.address.toLowerCase());
-   return apr !== undefined && apr > 0 ? `${apr.toFixed(2)}%` : "-";
+   // Get APR from poolRewardsMap (same as anchor page)
+   const poolReward = poolRewardsMap.get(pool.address);
+   const apr = poolReward?.totalRewardAPR ?? 0;
+   // Format APR same as anchor page: show value if > 0, otherwise "-"
+   return apr > 0 ? `${apr.toFixed(2)}%` : "-";
  })()}
  </div>
  </div>
@@ -922,6 +928,124 @@ export default function TransparencyPage() {
      .filter((x) => !!x.minterAddress);
  }, [finishedMarkets]);
  const tokenPricesByMarket = useMultipleTokenPrices(tokenPriceInputs as any);
+ const { address: userAddress } = useAccount();
+
+ // Build all pools from all markets for APR calculation (same approach as anchor page)
+ const allPoolsForRewards = useMemo(() => {
+   if (finishedMarkets.length === 0) return [];
+
+   const poolsArray: Array<{
+     address: `0x${string}`;
+     poolType: "collateral" | "sail";
+     marketId: string;
+     peggedTokenPrice: bigint | undefined;
+     collateralPrice: bigint | undefined;
+     collateralPriceDecimals: number | undefined;
+     peggedTokenAddress: `0x${string}` | undefined;
+     collateralTokenAddress: `0x${string}` | undefined;
+   }> = [];
+
+   finishedMarkets.forEach((market) => {
+     const marketCfg = (marketsConfig as any)?.[market.marketId];
+     const maxPrice = market.maxPrice; // Use maxPrice (maxUnderlyingPrice) to match anchor page
+
+     // Get pools for this market
+     const marketPools = pools.filter(
+       (p) =>
+         p.address === market.stabilityPoolCollateralAddress ||
+         p.address === market.stabilityPoolLeveragedAddress
+     );
+
+     marketPools.forEach((pool) => {
+       poolsArray.push({
+         address: pool.address,
+         poolType: pool.type === "collateral" ? "collateral" as const : "sail" as const,
+         marketId: market.marketId,
+         peggedTokenPrice: market.peggedTokenPrice,
+         collateralPrice: maxPrice, // Using maxPrice (maxUnderlyingPrice) to match anchor page
+         collateralPriceDecimals: 18,
+         peggedTokenAddress: market.peggedTokenAddress,
+         collateralTokenAddress: marketCfg?.addresses?.wrappedCollateralToken as `0x${string}` | undefined,
+       });
+     });
+   });
+
+   return poolsArray;
+ }, [finishedMarkets, pools]);
+
+ // Build global token price map for all reward tokens (same as useAnchorRewards)
+ const globalTokenPriceMap = useMemo(() => {
+   const map = new Map<string, number>();
+
+   finishedMarkets.forEach((market) => {
+     const marketCfg = (marketsConfig as any)?.[market.marketId];
+     const collateralHeldSymbol = marketCfg?.collateral?.symbol || marketCfg?.collateral?.underlyingSymbol || "";
+     const maxPrice = market.maxPrice; // Use maxPrice to match anchor page
+
+     // Add pegged token price (in underlying asset units, not USD)
+     if (market.peggedTokenAddress && market.peggedTokenPrice) {
+       const price = Number(market.peggedTokenPrice) / 1e18;
+       map.set(market.peggedTokenAddress.toLowerCase(), price);
+     }
+
+     // Add wrapped collateral token price (reward tokens commonly include wrapped collateral, e.g. fxSAVE / wstETH)
+     const wrappedCollateralTokenAddress = marketCfg?.addresses?.wrappedCollateralToken as `0x${string}` | undefined;
+     const wrappedSymbol = collateralHeldSymbol.toLowerCase();
+     if (wrappedCollateralTokenAddress) {
+       let p: number | undefined;
+       if (wrappedSymbol === "fxsave") p = fxSAVEPrice ?? undefined;
+       else if (wrappedSymbol === "wsteth") p = wstETHPrice ?? undefined;
+       else if (wrappedSymbol === "steth") p = stETHPrice ?? undefined;
+       if (p && Number.isFinite(p) && p > 0) {
+         map.set(wrappedCollateralTokenAddress.toLowerCase(), p);
+       }
+     }
+
+     // Add collateral token price from oracle (use maxPrice to match anchor page)
+     if (maxPrice > 0n) {
+       const collateralTokenAddress = marketCfg?.addresses?.collateralToken as `0x${string}` | undefined;
+       if (collateralTokenAddress) {
+         // maxPrice is maxUnderlyingPrice from oracle (18 decimals)
+         const price = Number(maxPrice) / 1e18;
+         map.set(collateralTokenAddress.toLowerCase(), price);
+       }
+     }
+   });
+
+   return map;
+ }, [finishedMarkets, fxSAVEPrice, wstETHPrice, stETHPrice]);
+
+ // Build peggedPriceUSDMap for APR calculation
+ const peggedPriceUSDMap = useMemo(() => {
+   const map: Record<string, bigint | undefined> = {};
+   finishedMarkets.forEach((market) => {
+     const tokenPrices = tokenPricesByMarket[market.marketId];
+     if (tokenPrices?.peggedPriceUSD && tokenPrices.peggedPriceUSD > 0) {
+       map[market.marketId] = BigInt(Math.floor(tokenPrices.peggedPriceUSD * 1e18));
+     }
+   });
+   return map;
+ }, [finishedMarkets, tokenPricesByMarket]);
+
+ // Calculate APR for all pools at page level (same as anchor page)
+ const { data: allPoolRewards = [] } = useAllStabilityPoolRewards({
+   pools: allPoolsForRewards,
+   tokenPriceMap: globalTokenPriceMap, // Pass the token price map for reward token price lookup
+   ethPrice: ethPrice ?? undefined,
+   btcPrice: btcPrice ?? undefined,
+   peggedPriceUSDMap: Object.keys(peggedPriceUSDMap).length > 0 ? peggedPriceUSDMap : undefined,
+   enabled: finishedMarkets.length > 0 && allPoolsForRewards.length > 0,
+   overrideAddress: userAddress || ("0x0000000000000000000000000000000000000000" as `0x${string}`), // Use user address if available, otherwise dummy
+ });
+
+ // Create a map for quick lookup: poolAddress -> rewards (same as anchor page)
+ const poolRewardsMap = useMemo(() => {
+   const map = new Map<`0x${string}`, (typeof allPoolRewards)[0]>();
+   allPoolRewards.forEach((poolReward) => {
+     map.set(poolReward.poolAddress, poolReward);
+   });
+   return map;
+ }, [allPoolRewards]);
 
  return (
  <div className="min-h-screen text-white max-w-[1300px] mx-auto font-sans relative overflow-x-hidden">
@@ -982,7 +1106,7 @@ export default function TransparencyPage() {
 
  {/* Divider with refresh */}
  <div className="flex items-center justify-between border-t border-white/10 my-2 pt-2">
- <span className="text-white/40 text-[10px]">
+ <span className="text-white/40 text-[10px]" suppressHydrationWarning>
  Last updated: {new Date(lastUpdatedTimestamp).toLocaleString()}
  </span>
  <button
@@ -1052,6 +1176,7 @@ export default function TransparencyPage() {
              stETHPrice={stETHPrice}
              btcPrice={btcPrice || undefined}
              ethPrice={ethPrice || undefined}
+             poolRewardsMap={poolRewardsMap}
            />
          ))}
        </div>
