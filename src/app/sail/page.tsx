@@ -1167,7 +1167,7 @@ export default function SailPage() {
 
   // Fetch contract data for all markets (ALWAYS 7 reads per market to ensure consistent offsets)
   // Reads: 0=leverageRatio, 1=leveragedTokenPrice, 2=collateralRatio, 3=collateralTokenBalance, 4=latestAnswer, 5=name, 6=totalSupply
-  const { data: reads } = useContractReads({
+  const { data: reads, isLoading: isLoadingReads, isError: isReadsError, refetch: refetchReads } = useContractReads({
     contracts: sailMarkets.flatMap(([_, m]) => {
       const minter = (m as any).addresses?.minter as `0x${string}` | undefined;
       const priceOracle = (m as any).addresses?.collateralPrice as
@@ -1624,15 +1624,59 @@ export default function SailPage() {
           {/* Markets List - Grouped by Long Side */}
           <section className="space-y-4">
             {(() => {
-              // Only show "Maiden Voyage" message if there are no markets configured at all
-              // If markets exist, show them even if data hasn't loaded or they don't have collateral yet
-              if (sailMarkets.length === 0) {
+              // Check if any markets have finished genesis (have collateral)
+              const hasAnyFinishedMarkets = Object.entries(groupedMarkets).some(
+                ([_, markets]) => {
+                return markets.some(([id]) => {
+                  const globalIndex = sailMarkets.findIndex(
+                    ([marketId]) => marketId === id
+                  );
+                  const baseOffset = marketOffsets.get(globalIndex) ?? 0;
+                  const collateralValue = reads?.[baseOffset + 3]?.result as
+                    | bigint
+                    | undefined;
+                    return (
+                      collateralValue !== undefined && collateralValue > 0n
+                    );
+                });
+                }
+              );
+
+              // Show loading state while fetching market data
+              if (isLoadingReads) {
+                return null; // Don't show anything while loading
+              }
+
+              // Show error state if there's an issue loading markets
+              if (isReadsError) {
                 return (
                   <div className="bg-[#17395F] border border-white/10 p-6 rounded-lg text-center">
-                    <p className="text-white text-lg font-medium">
-                      Maiden Voyage in progress for Harbor's first markets -
-                      coming soon!
+                    <p className="text-white text-lg font-medium mb-4">
+                      Error loading markets
                     </p>
+                    <button
+                      onClick={() => refetchReads()}
+                      className="px-4 py-2 bg-[#FF8A7A] text-white rounded hover:bg-[#FF6B5A] transition-colors"
+                    >
+                      Try again
+                    </button>
+                  </div>
+                );
+              }
+
+              // If no markets have finished genesis, show try again message
+              if (!hasAnyFinishedMarkets) {
+                return (
+                  <div className="bg-[#17395F] border border-white/10 p-6 rounded-lg text-center">
+                    <p className="text-white text-lg font-medium mb-4">
+                      No markets available
+                    </p>
+                    <button
+                      onClick={() => refetchReads()}
+                      className="px-4 py-2 bg-[#FF8A7A] text-white rounded hover:bg-[#FF6B5A] transition-colors"
+                    >
+                      Try again
+                    </button>
                   </div>
                 );
               }

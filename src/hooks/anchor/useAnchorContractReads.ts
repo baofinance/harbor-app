@@ -306,6 +306,8 @@ export function useAnchorContractReads(
     reads,
     refetchReads,
     isLoading: useAnvil ? anvilMarketReads.isLoading : wagmiMarketReads.isLoading,
+    isError: useAnvil ? anvilMarketReads.isError : wagmiMarketReads.isError,
+    error: useAnvil ? anvilMarketReads.error : wagmiMarketReads.error,
   };
 }
 

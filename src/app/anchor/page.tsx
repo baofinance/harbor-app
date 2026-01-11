@@ -299,7 +299,7 @@ export default function AnchorPage() {
   useAnchorTokenMetadata(anchorMarkets);
 
   // Use extracted hook for contract reads
-  const { reads, refetchReads } = useAnchorContractReads(
+  const { reads, refetchReads, isLoading: isLoadingReads, isError: isReadsError, error: readsError } = useAnchorContractReads(
     anchorMarkets,
     useAnvil
   );
@@ -3522,14 +3522,41 @@ export default function AnchorPage() {
 
             {/* Market Cards/Rows */}
             {(() => {
-              // Only show "Maiden Voyage" message if there are no markets configured at all
-              // If markets exist, show them even if data hasn't loaded or they don't have collateral yet
-              if (anchorMarkets.length === 0) {
+              // Show loading state while fetching market data
+              if (isLoadingReads) {
+                return null; // Don't show anything while loading
+              }
+
+              // Show error state if there's an issue loading markets
+              if (isReadsError) {
                 return (
                   <div className="bg-[#17395F] border border-white/10 p-6 rounded-lg text-center">
-                    <p className="text-white text-lg font-medium">
-                      Maiden Voyage in progress for Harbor's first markets - coming soon!
+                    <p className="text-white text-lg font-medium mb-4">
+                      Error loading markets
                     </p>
+                    <button
+                      onClick={() => refetchReads()}
+                      className="px-4 py-2 bg-[#FF8A7A] text-white rounded hover:bg-[#FF6B5A] transition-colors"
+                    >
+                      Try again
+                    </button>
+                  </div>
+                );
+              }
+
+              // Check if any markets have finished genesis (marketsDataMap only contains finished markets)
+              if (marketsDataMap.size === 0) {
+                return (
+                  <div className="bg-[#17395F] border border-white/10 p-6 rounded-lg text-center">
+                    <p className="text-white text-lg font-medium mb-4">
+                      No markets available
+                    </p>
+                    <button
+                      onClick={() => refetchReads()}
+                      className="px-4 py-2 bg-[#FF8A7A] text-white rounded hover:bg-[#FF6B5A] transition-colors"
+                    >
+                      Try again
+                    </button>
                   </div>
                 );
               }
@@ -3584,49 +3611,9 @@ export default function AnchorPage() {
                   </div>
                   {Object.entries(groups).map(([symbol, marketList]) => {
                 // Collect all data for markets in this group from the hook
-                // If a market doesn't have data yet, still include it with undefined data
                 const marketsData = marketList
-                  .map(({ marketId, market, marketIndex }) => {
-                    const data = marketsDataMap.get(marketId);
-                    // If no data yet, create a minimal data object so the market still shows
-                    if (!data) {
-                      return {
-                        marketId,
-                        market,
-                        marketIndex,
-                        collateralRatio: undefined,
-                        collateralValue: undefined,
-                        totalDebt: undefined,
-                        peggedTokenPrice: undefined,
-                        leveragedTokenBalance: undefined,
-                        leveragedTokenPrice: undefined,
-                        collateralPoolTVL: undefined,
-                        collateralPoolAPR: undefined,
-                        collateralPoolRewards: undefined,
-                        collateralPoolDeposit: 0n,
-                        collateralPoolDepositUSD: 0,
-                        sailPoolTVL: undefined,
-                        sailPoolAPR: undefined,
-                        sailPoolRewards: undefined,
-                        sailPoolDeposit: 0n,
-                        sailPoolDepositUSD: 0,
-                        haTokenBalanceUSD: 0,
-                        collateralRewardsUSD: 0,
-                        sailRewardsUSD: 0,
-                        collateralPrice: undefined,
-                        collateralPriceDecimals: 18,
-                        wrappedRate: undefined,
-                        fxSAVEPriceInETH: undefined,
-                        userDeposit: 0n,
-                        minAPR: 0,
-                        maxAPR: 0,
-                        minProjectedAPR: null,
-                        maxProjectedAPR: null,
-                        minterAddress: (market as any).addresses?.minter,
-                      } as (typeof allMarketsData)[0];
-                    }
-                    return data;
-                  });
+                  .map(({ marketId }) => marketsDataMap.get(marketId))
+                  .filter((m): m is NonNullable<typeof m> => m !== undefined);
 
                 // Use all markets in the group (not just those with collateral > 0)
                 // This ensures all markets are displayed in the expanded view
