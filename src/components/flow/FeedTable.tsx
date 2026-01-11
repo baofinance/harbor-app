@@ -12,8 +12,7 @@ import { useFeedQuotePrices } from "@/hooks/useFeedQuotePrices";
 import type { FeedWithMetadata, ExpandedState } from "@/hooks/useFeedFilters";
 import { FeedDetails } from "@/components/flow/FeedDetails";
 import { ChevronDownIcon, ChevronUpIcon, ArrowsUpDownIcon } from "@heroicons/react/24/outline";
-import { useAccount, useSignTypedData, usePublicClient } from "wagmi";
-import { mainnet, arbitrum, base } from "wagmi/chains";
+import { useAccount, useSignTypedData } from "wagmi";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { buildFeedId } from "@/lib/votesStore";
 import {
@@ -25,6 +24,7 @@ import {
 } from "@/lib/votesTypedData";
 import { getMarketIdFromFeedLabel } from "@/utils/feedMarketMapping";
 import Link from "next/link";
+import { useRpcClient } from "@/hooks/useRpcClient";
 
 interface FeedTableProps {
   feeds: FeedWithMetadata[];
@@ -516,10 +516,10 @@ export function FeedTable({
   setExpanded,
   showQuoteAssetPrice,
 }: FeedTableProps & { showQuoteAssetPrice: boolean }) {
-  // Use wagmi's public clients (configured transports) for stable, production-safe RPC.
-  const mainnetRpcClient = usePublicClient({ chainId: mainnet.id });
-  const arbitrumRpcClient = usePublicClient({ chainId: arbitrum.id });
-  const baseRpcClient = usePublicClient({ chainId: base.id });
+  // Use the same viem clients as FeedDetails (proven to work on staging).
+  const mainnetRpcClient = useRpcClient("mainnet");
+  const arbitrumRpcClient = useRpcClient("arbitrum");
+  const baseRpcClient = useRpcClient("base");
   const { address, isConnected } = useAccount();
   const { signTypedDataAsync } = useSignTypedData();
   const queryClient = useQueryClient();
