@@ -47,6 +47,7 @@ export function useFeedPrices(
 
     (async () => {
       const now = Date.now();
+      try {
 
       // Start with cached prices where valid, and collect feeds to fetch
       const results: string[] = new Array(feedEntries.length).fill("-");
@@ -168,6 +169,14 @@ export function useFeedPrices(
           }
           if (!cancelled) setRefreshTrigger((v) => v + 1);
         }, CACHE_DURATION_MS);
+      }
+      } catch (err: unknown) {
+        // Any error (including multicall failures) should never leave us stuck in "loading".
+        if (!cancelled) {
+          setLoading(false);
+          setPrices(new Array(feedEntries.length).fill("-"));
+          setError(err instanceof Error ? err.message : "Failed to load prices");
+        }
       }
     })();
 
