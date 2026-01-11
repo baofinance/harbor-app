@@ -59,6 +59,7 @@ export function useAllStabilityPoolRewards({
   const publicClient = usePublicClient();
   // Use overrideAddress if provided, otherwise use accountAddress
   const address = overrideAddress ?? accountAddress;
+  const addressKey = address ? address.toLowerCase() : "no-wallet";
 
   // Create serializable version of pools for queryKey (convert BigInt to string)
   const serializablePools = useMemo(() => {
@@ -75,9 +76,15 @@ export function useAllStabilityPoolRewards({
   }, [pools]);
 
   return useQuery({
-    queryKey: ["all-stability-pool-rewards", serializablePools, address, overrideAddress ? "override" : "account"],
+    queryKey: [
+      "all-stability-pool-rewards",
+      serializablePools,
+      addressKey,
+      overrideAddress ? "override" : "account",
+    ],
     queryFn: async () => {
-      if (!address || !publicClient || pools.length === 0) {
+      // We can compute pool APRs without a connected wallet (skip per-user claimable).
+      if (!publicClient || pools.length === 0) {
         return [];
       }
 
@@ -151,17 +158,20 @@ export function useAllStabilityPoolRewards({
             args: [],
           })) as bigint;
 
-          // Fetch claimable amounts, prices, and reward data for each reward token
+          // Fetch claimable amounts (if wallet connected), prices, and reward data for each reward token
           const rewardTokensData = await Promise.all(
             rewardTokenAddresses.map(async (tokenAddress) => {
               try {
-                // Get claimable amount
-                const claimable = (await client.readContract({
-                  address: pool.address,
-                  abi: stabilityPoolABI,
-                  functionName: "claimable",
-                  args: [address, tokenAddress],
-                })) as bigint;
+                // Get claimable amount (only if wallet connected; otherwise treat as 0)
+                let claimable = 0n;
+                if (address) {
+                  claimable = (await client.readContract({
+                    address: pool.address,
+                    abi: stabilityPoolABI,
+                    functionName: "claimable",
+                    args: [address, tokenAddress],
+                  })) as bigint;
+                }
 
                 // Get token symbol
                 let symbol = "UNKNOWN";
@@ -484,7 +494,7 @@ export function useAllStabilityPoolRewards({
 
       return results;
     },
-    enabled: enabled && !!address && !!publicClient && pools.length > 0,
+    enabled: enabled && !!publicClient && pools.length > 0,
     refetchInterval: 30000, // Refetch every 30 seconds
   });
 }
