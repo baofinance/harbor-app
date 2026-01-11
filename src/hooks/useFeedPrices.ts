@@ -18,18 +18,9 @@ const CACHE_DURATION_MS = 60_000; // 60 seconds
 // Cache key: feed address (lowercased) -> { price, timestamp }
 const priceCache = new Map<string, CachedFeedPrice>();
 
-const MULTICALL_BATCH_SIZE = 40;
-
 function isCacheValid(cached: CachedFeedPrice | undefined): boolean {
   if (!cached) return false;
   return Date.now() - cached.timestamp < CACHE_DURATION_MS;
-}
-
-function chunk<T>(arr: T[], size: number): T[][] {
-  if (size <= 0) return [arr];
-  const out: T[][] = [];
-  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
-  return out;
 }
 
 /**
@@ -87,43 +78,25 @@ export function useFeedPrices(
           setPrices(results);
         }
 
-        // Batch read latestAnswer for all stale feeds.
-        const latestContracts = toFetchIdx.map((i) => ({
-          address: feedEntries[i].address,
-          abi: proxyAbi,
-          functionName: "latestAnswer" as const,
-        }));
+        // Direct reads (no multicall): this is the most reliable path in-browser.
+        // 1) Try latestAnswer for each feed concurrently.
+        const latest = await Promise.all(
+          toFetchIdx.map((idx) =>
+            rpcClient
+              .readContract({
+                address: feedEntries[idx].address,
+                abi: proxyAbi,
+                functionName: "latestAnswer",
+              } as any)
+              .then((result) => ({ idx, ok: true as const, result }))
+              .catch((error) => ({ idx, ok: false as const, error }))
+          )
+        );
 
-        // NOTE: Some RPCs reject very large multicalls. Chunk to keep it reliable.
-        let latestResults: any[] = [];
-        try {
-          for (const batch of chunk(latestContracts, MULTICALL_BATCH_SIZE)) {
-            // eslint-disable-next-line no-await-in-loop
-            const r = await rpcClient.multicall({
-              contracts: batch as any,
-              allowFailure: true,
-            });
-            latestResults = latestResults.concat(r as any[]);
-          }
-        } catch (e) {
-          // Fallback: concurrent per-contract read (still cached per address).
-          latestResults = await Promise.all(
-            latestContracts.map((c) =>
-              rpcClient
-                .readContract(c as any)
-                .then((result) => ({ status: "success", result }))
-                .catch((error) => ({ status: "failure", error }))
-            )
-          );
-        }
-
-        // For any failures, attempt getPrice in a second multicall (best-effort).
-        let fallbackIdx: number[] = [];
-        for (let j = 0; j < latestResults.length; j++) {
-          const idx = toFetchIdx[j];
-          const r: any = latestResults[j];
-          if (r?.status === "success") {
-            const val = r.result;
+        const fallbackIdx: number[] = [];
+        for (const r of latest) {
+          if (r.ok) {
+            const val: any = r.result;
             let price: bigint | null = null;
             if (val && Array.isArray(val) && val.length >= 1) {
               price = val[0] as bigint;
@@ -132,96 +105,39 @@ export function useFeedPrices(
             }
             if (price !== null && price !== undefined) {
               const formatted = format18(price);
-              results[idx] = formatted;
-              priceCache.set(String(feedEntries[idx].address).toLowerCase(), {
+              results[r.idx] = formatted;
+              priceCache.set(String(feedEntries[r.idx].address).toLowerCase(), {
                 price: formatted,
                 timestamp: now,
               });
-            } else {
-              results[idx] = "-";
             }
           } else {
-            fallbackIdx.push(idx);
+            fallbackIdx.push(r.idx);
           }
         }
 
-        // IMPORTANT: Some feeds can fail inside multicall (gas/stack/implementation quirks)
-        // but succeed when called directly. Retry latestAnswer directly before trying getPrice.
+        // 2) For failures, try getPrice as a fallback concurrently.
         if (fallbackIdx.length > 0) {
-          const direct = await Promise.all(
+          const fallback = await Promise.all(
             fallbackIdx.map((idx) =>
               rpcClient
                 .readContract({
                   address: feedEntries[idx].address,
                   abi: proxyAbi,
-                  functionName: "latestAnswer",
+                  functionName: "getPrice",
                 } as any)
-                .then((result) => ({ idx, status: "success" as const, result }))
-                .catch((error) => ({ idx, status: "failure" as const, error }))
+                .then((result) => ({ idx, ok: true as const, result }))
+                .catch((error) => ({ idx, ok: false as const, error }))
             )
           );
 
-          const stillFail: number[] = [];
-          for (const r of direct) {
-            if (r.status === "success") {
-              const val: any = (r as any).result;
-              let price: bigint | null = null;
-              if (val && Array.isArray(val) && val.length >= 1) {
-                price = val[0] as bigint;
-              } else if (typeof val === "bigint") {
-                price = val;
-              }
-              if (price !== null && price !== undefined) {
-                const formatted = format18(price);
-                results[r.idx] = formatted;
-                priceCache.set(String(feedEntries[r.idx].address).toLowerCase(), {
-                  price: formatted,
-                  timestamp: now,
-                });
-              }
-            } else {
-              stillFail.push((r as any).idx);
-            }
-          }
-          fallbackIdx = stillFail;
-        }
-
-        if (fallbackIdx.length > 0) {
-          const fallbackContracts = fallbackIdx.map((i) => ({
-            address: feedEntries[i].address,
-            abi: proxyAbi,
-            functionName: "getPrice" as const,
-          }));
-          let fallbackResults: any[] = [];
-          try {
-            for (const batch of chunk(fallbackContracts, MULTICALL_BATCH_SIZE)) {
-              // eslint-disable-next-line no-await-in-loop
-              const r = await rpcClient.multicall({
-                contracts: batch as any,
-                allowFailure: true,
-              });
-              fallbackResults = fallbackResults.concat(r as any[]);
-            }
-          } catch (e) {
-            fallbackResults = await Promise.all(
-              fallbackContracts.map((c) =>
-                rpcClient
-                  .readContract(c as any)
-                  .then((result) => ({ status: "success", result }))
-                  .catch((error) => ({ status: "failure", error }))
-              )
-            );
-          }
-
-          for (let j = 0; j < fallbackResults.length; j++) {
-            const idx = fallbackIdx[j];
-            const r: any = fallbackResults[j];
-            if (r?.status === "success") {
+          for (const r of fallback) {
+            if (r.ok) {
               const val = r.result as bigint | undefined;
               if (val !== undefined && val !== null) {
                 const formatted = format18(val);
-                results[idx] = formatted;
-                priceCache.set(String(feedEntries[idx].address).toLowerCase(), {
+                results[r.idx] = formatted;
+                priceCache.set(String(feedEntries[r.idx].address).toLowerCase(), {
                   price: formatted,
                   timestamp: now,
                 });
