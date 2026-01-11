@@ -245,8 +245,9 @@ function FeedRow({
                             </SimpleTooltip>
                           );
                         }
-                        // If price not available (attempted but failed, or not attempted and not loading), show "-"
-                        return "-";
+                        // If quote price isn't available for this feed, fall back to the regular feed price.
+                        // (Many feeds don't support quote-price calculation, so "-" everywhere is confusing.)
+                        return feedPrice === "-" ? "-" : feedPrice;
                       }
                       
                       // For regular feed price: only show "Loading..." if loading AND no price yet
