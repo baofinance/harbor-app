@@ -11,8 +11,8 @@ import {
   InformationCircleIcon,
   MagnifyingGlassIcon,
   Bars3Icon,
-  CheckIcon,
-  XMarkIcon,
+  PlusIcon,
+  MinusIcon,
 } from "@heroicons/react/24/outline";
 import { FeatureBox } from "@/components/flow/FeatureBox";
 import { ChainDropdown } from "@/components/flow/ChainDropdown";
@@ -264,12 +264,12 @@ export default function FlowPage() {
                           showQuoteAssetPrice ? "translate-x-4" : "translate-x-0"
                         }`}
                       >
-                        {/* Icon inside thumb */}
+                        {/* Icon inside thumb - use + and - instead of checkmark/X */}
                         <span className="flex h-full w-full items-center justify-center">
                           {showQuoteAssetPrice ? (
-                            <CheckIcon className="h-2.5 w-2.5 text-[#FF8A7A]" />
+                            <MinusIcon className="h-2.5 w-2.5 text-[#FF8A7A]" />
                           ) : (
-                            <XMarkIcon className="h-2.5 w-2.5 text-[#1E4775]/40" />
+                            <PlusIcon className="h-2.5 w-2.5 text-harbor-mint" />
                           )}
                         </span>
                       </span>
@@ -285,12 +285,12 @@ export default function FlowPage() {
             <div className="bg-[#FF8A7A] border border-[#1E4775]/10 py-3 px-3 flex flex-col items-center justify-center">
               <div className="flex items-center gap-2 mb-1">
                 <Bars3Icon className="w-4 h-4 text-white flex-shrink-0" />
-                <h3 className="font-medium text-white text-xs uppercase tracking-wider text-center">
+                <h3 className="font-medium text-white text-sm uppercase tracking-wider text-center">
                   Total Feeds
                 </h3>
               </div>
               <div className="flex items-center justify-center">
-                <span className="text-base font-semibold text-white font-mono text-center">
+                <span className="text-lg font-semibold text-white font-mono text-center">
                   {totalFeedCount}
                 </span>
               </div>
@@ -299,12 +299,12 @@ export default function FlowPage() {
             {/* Votes Box */}
             <div className="bg-white border border-[#1E4775]/10 py-3 px-3 flex flex-col items-center justify-center">
               <div className="flex items-center gap-2 mb-1">
-                <h3 className="font-medium text-[#1E4775] text-xs uppercase tracking-wider text-center">
+                <h3 className="font-medium text-[#1E4775] text-sm uppercase tracking-wider text-center">
                   Your Votes
                 </h3>
               </div>
               <div className="flex items-center justify-center">
-                <span className="font-mono font-semibold text-[#1E4775] text-base text-center">
+                <span className="font-mono font-semibold text-[#1E4775] text-lg text-center">
                   {usedPoints}/{VOTE_POINTS_MAX}
                 </span>
               </div>
