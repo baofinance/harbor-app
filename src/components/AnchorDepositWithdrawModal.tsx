@@ -2690,6 +2690,25 @@ export const AnchorDepositWithdrawModal = ({
       }));
     }
 
+    const extractAprBreakdown = (
+      val: unknown
+    ): { collateral: bigint; steam: bigint } | null => {
+      if (!val) return null;
+      // viem can return tuples as arrays, named objects, or array-like objects with named keys.
+      if (Array.isArray(val) && val.length >= 2) {
+        const a = val[0];
+        const b = val[1];
+        if (typeof a === "bigint" && typeof b === "bigint") return { collateral: a, steam: b };
+      }
+      if (typeof val === "object") {
+        const v: any = val as any;
+        const a = v.collateralTokenAPR ?? v[0];
+        const b = v.steamTokenAPR ?? v[1];
+        if (typeof a === "bigint" && typeof b === "bigint") return { collateral: a, steam: b };
+      }
+      return null;
+    };
+
     // IMPORTANT: poolContracts only includes reads for *valid* pool addresses.
     // So we must advance through allPoolData with a cursor, not by index*4.
     let cursor = 0;
@@ -2709,9 +2728,7 @@ export const AnchorDepositWithdrawModal = ({
         };
       }
 
-      const aprData = allPoolData[cursor]?.result as
-        | [bigint, bigint]
-        | undefined;
+      const aprBreakdown = extractAprBreakdown(allPoolData[cursor]?.result);
       const tvl = allPoolData[cursor + 1]?.result as bigint | undefined;
       const gaugeRewardToken = allPoolData[cursor + 2]?.result as
         | `0x${string}`
@@ -2722,9 +2739,9 @@ export const AnchorDepositWithdrawModal = ({
       cursor += 4;
 
       const apr =
-        aprData && Array.isArray(aprData) && aprData.length >= 2
-          ? (Number(aprData[0]) / 1e16) * 100 +
-            (Number(aprData[1]) / 1e16) * 100
+        aprBreakdown
+          ? (Number(aprBreakdown.collateral) / 1e16) * 100 +
+            (Number(aprBreakdown.steam) / 1e16) * 100
           : undefined;
 
       return {
