@@ -54,6 +54,9 @@ function isUserRejection(error: any): boolean {
 interface UseAnchorTransactionsOptions {
   anchorMarkets: Array<[string, any]>;
   reads: any;
+  // USD price for each pegged token (18 decimals). Source of truth on Anchor page.
+  // Using this avoids recomputing USD from peggedTokenPrice + pegTarget USD and keeps TVLs consistent across UIs.
+  peggedPriceUSDMap?: Record<string, bigint | undefined>;
   allPoolRewards?: Array<{
     poolAddress: string;
     rewardTokens?: Array<{
@@ -105,6 +108,7 @@ interface UseAnchorTransactionsOptions {
 export function useAnchorTransactions({
   anchorMarkets,
   reads,
+  peggedPriceUSDMap,
   allPoolRewards = [],
   poolRewardsMap,
   transactionProgress,
@@ -323,40 +327,12 @@ export function useAnchorTransactions({
         | `0x${string}`
         | undefined;
 
-      // Get pegged token price for TVL calculation
-      let peggedTokenPrice: bigint | undefined;
-      const marketIndex = anchorMarkets.findIndex(
-        ([id]) => id === market.id || (market as any).addresses?.peggedToken
-      );
-      if (marketIndex >= 0 && reads) {
-        // Calculate offset to get peggedTokenPrice
-        let offset = 0;
-        for (let i = 0; i < marketIndex; i++) {
-          const prevMarket = anchorMarkets[i][1];
-          const prevHasCollateral = !!(prevMarket as any).addresses
-            ?.stabilityPoolCollateral;
-          const prevHasSail = !!(prevMarket as any).addresses
-            ?.stabilityPoolLeveraged;
-          const prevHasPriceOracle = !!(prevMarket as any).addresses
-            ?.collateralPrice;
-          const prevHasStabilityPoolManager = !!(prevMarket as any).addresses
-            ?.stabilityPoolManager;
-          const prevPeggedTokenAddress = (prevMarket as any)?.addresses
-            ?.peggedToken;
-          offset += 5; // 4 minter calls + 1 config call
-          if (prevHasStabilityPoolManager) offset += 1;
-          if (prevHasCollateral) {
-            offset += 4;
-            if (prevPeggedTokenAddress) offset += 1;
-          }
-          if (prevHasSail) {
-            offset += 4;
-            if (prevPeggedTokenAddress) offset += 1;
-          }
-          if (prevHasPriceOracle) offset += 1;
-        }
-        peggedTokenPrice = reads?.[offset + 3]?.result as bigint | undefined;
-      }
+      // Determine marketId so we can pull the correct USD price for TVL calculations
+      const marketId =
+        anchorMarkets.find(([_, m]) => m === market)?.[0] ??
+        (market?.id as string | undefined);
+      const peggedTokenUsdWei =
+        marketId && peggedPriceUSDMap ? peggedPriceUSDMap[marketId] : undefined;
 
       const pools: PoolOption[] = [];
 
@@ -368,16 +344,16 @@ export function useAnchorTransactions({
         );
         const collateralPoolAPR = collateralPoolData?.totalAPR;
 
-        // Calculate TVL USD from pool data if available
+        // Calculate TVL USD using the same pegged-token USD map used elsewhere on Anchor page
         let collateralTVLUSD: number | undefined;
-        if (collateralPoolData?.tvl !== undefined && peggedTokenPrice) {
+        if (collateralPoolData?.tvl !== undefined && peggedTokenUsdWei) {
           const tvlTokens = Number(collateralPoolData.tvl) / 1e18;
-          const peggedPriceUSD = Number(peggedTokenPrice) / 1e18;
+          const peggedPriceUSD = Number(peggedTokenUsdWei) / 1e18;
           collateralTVLUSD = tvlTokens * peggedPriceUSD;
         }
 
         pools.push({
-          id: "collateral",
+          id: `${marketId || market.id}-collateral`,
           name: `${market.peggedToken?.symbol || market.id} Collateral Pool`,
           address: collateralPoolAddress,
           apr: collateralPoolAPR,
@@ -394,16 +370,16 @@ export function useAnchorTransactions({
         );
         const sailPoolAPR = sailPoolData?.totalAPR;
 
-        // Calculate TVL USD from pool data if available
+        // Calculate TVL USD using the same pegged-token USD map used elsewhere on Anchor page
         let sailTVLUSD: number | undefined;
-        if (sailPoolData?.tvl !== undefined && peggedTokenPrice) {
+        if (sailPoolData?.tvl !== undefined && peggedTokenUsdWei) {
           const tvlTokens = Number(sailPoolData.tvl) / 1e18;
-          const peggedPriceUSD = Number(peggedTokenPrice) / 1e18;
+          const peggedPriceUSD = Number(peggedTokenUsdWei) / 1e18;
           sailTVLUSD = tvlTokens * peggedPriceUSD;
         }
 
         pools.push({
-          id: "sail",
+          id: `${marketId || market.id}-sail`,
           name: `${market.peggedToken?.symbol || market.id} Sail Pool`,
           address: sailPoolAddress,
           apr: sailPoolAPR,
@@ -425,8 +401,8 @@ export function useAnchorTransactions({
     },
     [
       anchorMarkets,
-      reads,
       allPoolRewards,
+      peggedPriceUSDMap,
       setCompoundPoolSelection,
     ]
   );
@@ -693,8 +669,9 @@ export function useAnchorTransactions({
     ) => {
       if (!address || isCompoundingAll) return;
 
-      // First, find the market with rewards to compound
+      // First, find the first *selected pool* with rewards to compound
       let marketWithRewards: any = null;
+      let poolTypeWithRewards: "collateral" | "sail" = "collateral";
       let totalRewardAmount = 0n;
 
       // If no pools selected, use all pools with rewards
@@ -715,36 +692,37 @@ export function useAnchorTransactions({
               return pools;
             });
 
-      // Find first market with rewards
-      for (const [id, m] of anchorMarkets) {
-        const selectedPool = poolsToCompound.find((p) => p.marketId === id);
-        if (!selectedPool) continue;
+      // Find the first selected pool (marketId + poolType) that actually has rewards.
+      for (const { marketId, poolType } of poolsToCompound) {
+        const market = anchorMarkets.find(([id]) => id === marketId)?.[1];
+        if (!market) continue;
 
-        // Check if this market has rewards
-        const collateralPoolAddress = (m as any).addresses
-          ?.stabilityPoolCollateral;
-        const sailPoolAddress = (m as any).addresses?.stabilityPoolLeveraged;
+        const poolAddress =
+          poolType === "collateral"
+            ? ((market as any).addresses?.stabilityPoolCollateral as
+                | `0x${string}`
+                | undefined)
+            : ((market as any).addresses?.stabilityPoolLeveraged as
+                | `0x${string}`
+                | undefined);
+
+        if (!poolAddress) continue;
 
         const poolReward = allPoolRewards?.find(
-          (r) =>
-            (collateralPoolAddress &&
-              r.poolAddress.toLowerCase() ===
-                collateralPoolAddress.toLowerCase()) ||
-            (sailPoolAddress &&
-              r.poolAddress.toLowerCase() === sailPoolAddress.toLowerCase())
+          (r) => r.poolAddress.toLowerCase() === poolAddress.toLowerCase()
         );
 
-        if (
-          poolReward &&
-          poolReward.rewardTokens?.some((rt) => rt.claimable > 0n)
-        ) {
-          marketWithRewards = m;
-          totalRewardAmount = poolReward.rewardTokens.reduce(
-            (sum, rt) => sum + rt.claimable,
-            0n
-          );
-          break;
+        if (!poolReward?.rewardTokens?.some((rt) => rt.claimable > 0n)) {
+          continue;
         }
+
+        marketWithRewards = market;
+        poolTypeWithRewards = poolType;
+        totalRewardAmount = poolReward.rewardTokens.reduce(
+          (sum, rt) => sum + rt.claimable,
+          0n
+        );
+        break;
       }
 
       if (!marketWithRewards) {
@@ -753,7 +731,11 @@ export function useAnchorTransactions({
       }
 
       // Show pool selection modal for this market
-      handleCompoundRewards(marketWithRewards, "collateral", totalRewardAmount);
+      handleCompoundRewards(
+        marketWithRewards,
+        poolTypeWithRewards,
+        totalRewardAmount
+      );
     },
     [address, anchorMarkets, allPoolRewards, handleCompoundRewards, isCompoundingAll]
   );

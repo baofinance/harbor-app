@@ -39,6 +39,7 @@ import { useReadContract, useAccount } from "wagmi";
 import { minterABI } from "@/abis/minter";
 import Image from "next/image";
 import { useAllStabilityPoolRewards } from "@/hooks/useAllStabilityPoolRewards";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
 
 function formatUSD(value: number | undefined): string {
  if (value === undefined || !Number.isFinite(value)) return "-";
@@ -513,6 +514,55 @@ function MarketCard({
  100
  : 0;
 
+  // Calculate distribution for pie chart: Anchor Supply (3 parts) + Sail Supply
+  const distributionData = useMemo(() => {
+    const anchorSupply = market.peggedTokenBalance; // Total haToken supply
+    const sailSupply = market.leveragedTokenBalance; // Total Sail token supply
+    const collateralPoolTVL = pools.find(p => p.type === "collateral")?.tvl || 0n;
+    const sailPoolTVL = pools.find(p => p.type === "leveraged")?.tvl || 0n;
+    
+    // Anchor Supply is divided into 3 parts:
+    const anchorNotDeposited = anchorSupply > (collateralPoolTVL + sailPoolTVL) 
+      ? anchorSupply - collateralPoolTVL - sailPoolTVL 
+      : 0n;
+
+    const data = [];
+    
+    // Anchor Supply parts (3 sections)
+    if (anchorNotDeposited > 0n) {
+      data.push({
+        name: "Not Deposited",
+        value: Number(anchorNotDeposited) / 1e18,
+        rawValue: anchorNotDeposited,
+      });
+    }
+    if (collateralPoolTVL > 0n) {
+      data.push({
+        name: "Collateral Pool",
+        value: Number(collateralPoolTVL) / 1e18,
+        rawValue: collateralPoolTVL,
+      });
+    }
+    if (sailPoolTVL > 0n) {
+      data.push({
+        name: "Sail Pool",
+        value: Number(sailPoolTVL) / 1e18,
+        rawValue: sailPoolTVL,
+      });
+    }
+    
+    // Sail Supply (as separate slice)
+    if (sailSupply > 0n) {
+      data.push({
+        name: "Sail Supply",
+        value: Number(sailSupply) / 1e18,
+        rawValue: sailSupply,
+      });
+    }
+
+    return data;
+  }, [market.peggedTokenBalance, market.leveragedTokenBalance, pools]);
+
  return (
  <div className="overflow-hidden">
  {/* Market Bar */}
@@ -648,7 +698,7 @@ function MarketCard({
 
  <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
  {/* Token Prices & Supply */}
- <div className="bg-white p-2.5 space-y-2">
+ <div className="bg-white p-2.5 space-y-2 lg:row-span-2">
  <h4 className="text-[#1E4775] font-semibold text-xs uppercase tracking-wider mb-2">
  Prices & Supply
  </h4>
@@ -763,11 +813,81 @@ function MarketCard({
  {formatTokenBalanceMax2Decimals(market.leveragedTokenBalance)}
  </div>
  </div>
- </div>
- </div>
- </div>
+    </div>
+    </div>
 
- {/* Stability Pools */}
+    {/* Distribution Pie Chart */}
+    {distributionData.length > 0 && (
+      <div className="mt-2 mb-1">
+        <h5 className="text-[#1E4775] font-semibold text-[10px] uppercase tracking-wider mb-1.5">
+          Supply Distribution
+        </h5>
+        <div className="w-full" style={{ height: "220px" }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={distributionData}
+                cx="50%"
+                cy="50%"
+                labelLine={false}
+                label={false}
+                outerRadius={80}
+                fill="#8884d8"
+                dataKey="value"
+              >
+                {distributionData.map((entry, index) => {
+                  let color = "#1E4775"; // harbor-blue (default)
+                  if (entry.name === "Not Deposited") {
+                    color = "#1E4775"; // harbor-blue
+                  } else if (entry.name === "Collateral Pool") {
+                    color = "#9ED5BE"; // toned down seafoam green
+                  } else if (entry.name === "Sail Pool") {
+                    color = "#FF8A7A"; // harbor-coral (pearl orange)
+                  } else if (entry.name === "Sail Supply") {
+                    color = "#E9C46A"; // yellow
+                  }
+                  return <Cell key={`cell-${index}`} fill={color} stroke="#1E4775" strokeWidth={entry.name === "Sail Pool" ? 0 : 0} />;
+                })}
+              </Pie>
+              <Tooltip 
+                formatter={(value: number, name: string, props: any) => {
+                  const total = distributionData.reduce((sum, item) => sum + item.value, 0);
+                  const percent = total > 0 ? ((value / total) * 100).toFixed(1) : '0.0';
+                  return [
+                    `${percent}%`,
+                    name
+                  ];
+                }}
+              />
+              <Legend 
+                wrapperStyle={{ 
+                  fontSize: '9px', 
+                  paddingTop: '8px',
+                  paddingBottom: '4px',
+                  paddingLeft: '8px',
+                  paddingRight: '8px',
+                  backgroundColor: 'rgba(30, 71, 117, 0.05)', // #1E4775/5
+                  borderRadius: '4px',
+                  marginTop: '8px',
+                  marginBottom: '0px',
+                  display: 'flex',
+                  justifyContent: 'center',
+                  flexWrap: 'nowrap',
+                  gap: '32px',
+                  overflow: 'hidden'
+                }}
+                layout="horizontal"
+                iconType="circle"
+                formatter={(value: string) => value}
+              />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+    )}
+  </div>
+
+  {/* Stability Pools */}
  <div className="bg-white p-2.5 space-y-2 lg:col-span-2">
  <h4 className="text-[#1E4775] font-semibold text-xs uppercase tracking-wider mb-2">
  Stability Pools
@@ -855,6 +975,216 @@ function MarketCard({
  </div>
  );
  })}
+ </div>
+ </div>
+
+ {/* Yield (Anchor Supply) */}
+ <div className="bg-white p-2.5 space-y-2 lg:col-span-2">
+ <h4 className="text-[#1E4775] font-semibold text-xs uppercase tracking-wider mb-2">
+ Anchor Supply
+ </h4>
+ <div className="space-y-2">
+  <div className="flex flex-col gap-2">
+   <div className="flex items-center gap-2">
+    <span className="text-[#1E4775] font-semibold text-[10px] w-12">
+     Yield
+    </span>
+    <div className="grid grid-cols-5 gap-1.5 text-xs flex-1">
+     {(() => {
+      const anchorSupply = market.peggedTokenBalance;
+      const collateralPoolTVL = pools.find(p => p.type === "collateral")?.tvl || 0n;
+      const sailPoolTVL = pools.find(p => p.type === "leveraged")?.tvl || 0n;
+      const anchorNotDeposited = anchorSupply > (collateralPoolTVL + sailPoolTVL) 
+        ? anchorSupply - collateralPoolTVL - sailPoolTVL 
+        : 0n;
+      
+      const anchorSupplyNum = Number(anchorSupply) / 1e18;
+      const poolTokenPriceUSD = tokenPrices?.peggedPriceUSD ?? 0;
+      const totalTVL = anchorSupplyNum * poolTokenPriceUSD;
+      const tokenSymbol = market.marketName?.toLowerCase().includes("btc") ? "haBTC" : "haETH";
+
+      const categories = [
+        { name: "Not Deposited", value: anchorNotDeposited, color: "#1E4775" },
+        { name: "Collateral Pool", value: collateralPoolTVL, color: "#9ED5BE" },
+        { name: "Sail Pool", value: sailPoolTVL, color: "#FF8A7A" },
+      ];
+
+      // Calculate percentages for bar (based on Anchor Supply only, no Sail Supply)
+      const notDepositedNum = Number(anchorNotDeposited) / 1e18;
+      const collateralPoolNum = Number(collateralPoolTVL) / 1e18;
+      const sailPoolNum = Number(sailPoolTVL) / 1e18;
+
+      const notDepositedPercent = anchorSupplyNum > 0 ? (notDepositedNum / anchorSupplyNum) * 100 : 0;
+      const collateralPoolPercent = anchorSupplyNum > 0 ? (collateralPoolNum / anchorSupplyNum) * 100 : 0;
+      const sailPoolPercent = anchorSupplyNum > 0 ? (sailPoolNum / anchorSupplyNum) * 100 : 0;
+
+      // TVL Yield Generator: Full TVL (minter's total collateral) converted to wrapped collateral token
+      // Use the minter's total collateral TVL (totalTVLUSD) and wrapped collateral amount
+      const tvlYieldGeneratorUSD = totalTVLUSD; // Full minter TVL in USD
+      // collateralTokensWrapped is already in token units (not wei), convert to wei for formatting
+      const tvlYieldGeneratorWrappedTokenWei = BigInt(Math.floor(collateralTokensWrapped * 1e18));
+      const wrappedCollateralSymbol = market.marketId?.toLowerCase().includes("fxusd") || market.marketId?.toLowerCase().includes("fx-usd") ? "fxSAVE" : "wstETH";
+
+      return (
+        <>
+          {/* First box: TVL USD */}
+          <div className="bg-[#1E4775]/5 p-1.5 text-center">
+            <div className="text-[#1E4775]/60 text-[9px]">TVL USD</div>
+            <div className="text-[#1E4775] font-mono font-semibold text-[10px]">
+              {formatCompactUSD(totalTVL)}
+            </div>
+            <div className="text-[#1E4775]/70 font-mono text-[9px] mt-0.5">
+              {formatTokenBalanceMax2Decimals(anchorSupply)} {tokenSymbol}
+            </div>
+            <div className="text-[#1E4775]/60 font-mono text-[9px]">
+              100.0%
+            </div>
+          </div>
+
+          {/* Second box: TVL Yield Generator */}
+          <div className="bg-[#1E4775]/5 p-1.5 text-center">
+            <div className="text-[#1E4775]/60 text-[9px]">TVL Yield Generator</div>
+            <div className="text-[#1E4775] font-mono font-semibold text-[10px]">
+              {formatCompactUSD(tvlYieldGeneratorUSD)}
+            </div>
+            <div className="text-[#1E4775]/70 font-mono text-[9px] mt-0.5">
+              {formatTokenBalanceMax2Decimals(tvlYieldGeneratorWrappedTokenWei)} {wrappedCollateralSymbol}
+            </div>
+          </div>
+
+          {/* Three category boxes */}
+          {categories.map((category) => {
+            const valueNum = Number(category.value) / 1e18;
+            const usdValue = valueNum * poolTokenPriceUSD;
+            const percent = anchorSupplyNum > 0 ? ((valueNum / anchorSupplyNum) * 100).toFixed(1) : "0.0";
+
+            return (
+              <div key={category.name} className="bg-[#1E4775]/5 p-1.5 text-center">
+                <div className="text-[#1E4775]/60 text-[9px]">{category.name}</div>
+                <div className="text-[#1E4775] font-mono font-semibold text-[10px]">
+                  {formatCompactUSD(usdValue)}
+                </div>
+                <div className="text-[#1E4775]/70 font-mono text-[9px] mt-0.5">
+                  {formatTokenBalanceMax2Decimals(category.value)} {tokenSymbol}
+                </div>
+                <div className="text-[#1E4775]/60 font-mono text-[9px]">
+                  {percent}%
+                </div>
+              </div>
+            );
+          })}
+        </>
+      );
+     })()}
+    </div>
+   </div>
+
+   {/* Bar visualization underneath */}
+   {(() => {
+    const anchorSupply = market.peggedTokenBalance;
+    const collateralPoolTVL = pools.find(p => p.type === "collateral")?.tvl || 0n;
+    const sailPoolTVL = pools.find(p => p.type === "leveraged")?.tvl || 0n;
+    const anchorNotDeposited = anchorSupply > (collateralPoolTVL + sailPoolTVL) 
+      ? anchorSupply - collateralPoolTVL - sailPoolTVL 
+      : 0n;
+    
+    const anchorSupplyNum = Number(anchorSupply) / 1e18;
+    const notDepositedNum = Number(anchorNotDeposited) / 1e18;
+    const collateralPoolNum = Number(collateralPoolTVL) / 1e18;
+    const sailPoolNum = Number(sailPoolTVL) / 1e18;
+
+    const notDepositedPercent = anchorSupplyNum > 0 ? (notDepositedNum / anchorSupplyNum) * 100 : 0;
+    const collateralPoolPercent = anchorSupplyNum > 0 ? (collateralPoolNum / anchorSupplyNum) * 100 : 0;
+    const sailPoolPercent = anchorSupplyNum > 0 ? (sailPoolNum / anchorSupplyNum) * 100 : 0;
+
+    return (
+      <div className="flex items-center gap-2">
+       <div className="w-12"></div>
+       <div className="flex-1 space-y-1">
+        {/* Yield/No Yield indicator above bar */}
+        <div className="relative flex items-center text-[8px] text-[#1E4775]/60 px-1" style={{ height: '14px' }}>
+          {/* No yield label on left with arrow, aligned to pipe */}
+          <span 
+            className="absolute whitespace-nowrap text-right"
+            style={{ 
+              right: `${100 - notDepositedPercent}%`,
+              paddingRight: '12px'
+            }}
+          >
+            ⟵ no yield
+          </span>
+          {/* Yield label on right with arrow, aligned to pipe */}
+          <span 
+            className="absolute whitespace-nowrap text-left"
+            style={{ 
+              left: `${notDepositedPercent}%`,
+              paddingLeft: '12px'
+            }}
+          >
+            yield ⟶
+          </span>
+        </div>
+
+        {/* Bar container */}
+        <div className="relative h-4 bg-[#1E4775]/10 rounded overflow-visible">
+          {/* Bar segments */}
+          {notDepositedPercent > 0 && (
+            <div 
+              className="absolute top-0 bottom-0 bg-[#1E4775] rounded-l"
+              style={{ left: '0%', width: `${notDepositedPercent}%` }}
+            />
+          )}
+          {collateralPoolPercent > 0 && (
+            <div 
+              className="absolute top-0 bottom-0"
+              style={{ backgroundColor: "#9ED5BE", left: `${notDepositedPercent}%`, width: `${collateralPoolPercent}%` }}
+            />
+          )}
+          {sailPoolPercent > 0 && (
+            <div 
+              className="absolute top-0 bottom-0 bg-[#FF8A7A] rounded-r"
+              style={{ left: `${notDepositedPercent + collateralPoolPercent}%`, width: `${sailPoolPercent}%` }}
+            />
+          )}
+
+          {/* Vertical pipe/divider between yield and no yield - extends 10px above and below bar */}
+          {/* No yield = Not Deposited; Yield = Collateral Pool + Sail Pool */}
+          <div 
+            className="absolute w-0.5 bg-red-500 z-10"
+            style={{ 
+              left: `${notDepositedPercent}%`,
+              top: '-10px',
+              bottom: '-10px'
+            }}
+          />
+        </div>
+
+        {/* Pool names below bar - aligned with segments */}
+        <div className="relative flex text-[8px] text-[#1E4775]/60 px-1" style={{ height: '16px' }}>
+          <div 
+            className="absolute text-center"
+            style={{ left: '0%', width: `${notDepositedPercent}%` }}
+          >
+            Not Deposited
+          </div>
+          <div 
+            className="absolute text-center"
+            style={{ left: `${notDepositedPercent}%`, width: `${collateralPoolPercent}%` }}
+          >
+            Collateral Pool
+          </div>
+          <div 
+            className="absolute text-center"
+            style={{ left: `${notDepositedPercent + collateralPoolPercent}%`, width: `${sailPoolPercent}%` }}
+          >
+            Sail Pool
+          </div>
+        </div>
+       </div>
+      </div>
+    );
+   })()}
+  </div>
  </div>
  </div>
  </div>

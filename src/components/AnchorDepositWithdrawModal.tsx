@@ -772,6 +772,73 @@ export const AnchorDepositWithdrawModal = ({
   const marketsForToken =
     allMarkets && allMarkets.length > 0 ? allMarkets : [{ marketId, market }];
 
+  // In withdraw mode for grouped markets, show each pool position per-market so users can see
+  // (and select) collateral + sail deposits across different markets in the same ha token group.
+  const groupedPoolPositions = useMemo(() => {
+    if (!poolDeposits || poolDeposits.length === 0) return [];
+
+    const rows: Array<{
+      key: string;
+      marketId: string;
+      market: any;
+      poolType: "collateral" | "sail";
+      poolAddress: string;
+      balance: bigint;
+    }> = [];
+
+    for (const entry of marketsForToken) {
+      const m = entry.market;
+      const collateralAddr = (m as any)?.addresses?.stabilityPoolCollateral as
+        | string
+        | undefined;
+      const sailAddr = (m as any)?.addresses?.stabilityPoolLeveraged as
+        | string
+        | undefined;
+
+      const collateralLower = collateralAddr?.toLowerCase();
+      const sailLower = sailAddr?.toLowerCase();
+
+      if (collateralLower) {
+        const d = poolDeposits.find(
+          (x) =>
+            x.poolType === "collateral" &&
+            x.poolAddress.toLowerCase() === collateralLower
+        );
+        const bal = d ? parseEther(d.balance) : 0n;
+        if (bal > 0n) {
+          rows.push({
+            key: `${entry.marketId}-collateral`,
+            marketId: entry.marketId,
+            market: m,
+            poolType: "collateral",
+            poolAddress: collateralAddr!,
+            balance: bal,
+          });
+        }
+      }
+
+      if (sailLower) {
+        const d = poolDeposits.find(
+          (x) =>
+            x.poolType === "sail" && x.poolAddress.toLowerCase() === sailLower
+        );
+        const bal = d ? parseEther(d.balance) : 0n;
+        if (bal > 0n) {
+          rows.push({
+            key: `${entry.marketId}-sail`,
+            marketId: entry.marketId,
+            market: m,
+            poolType: "sail",
+            poolAddress: sailAddr!,
+            balance: bal,
+          });
+        }
+      }
+    }
+
+    return rows;
+  }, [poolDeposits, marketsForToken]);
+
   // If multiple markets share the same ha token (e.g. haBTC across BTC/fxUSD and BTC/stETH),
   // the "Manage" modal may open on a market that doesn't contain the user's stability pool deposit.
   // In withdraw mode, auto-select the market within the group that actually has a deposit so the UI
@@ -9580,6 +9647,83 @@ export const AnchorDepositWithdrawModal = ({
                       Select positions and enter amounts:
                     </label>
 
+                    {/* Grouped markets: show each stability pool position per-market so users can select the correct one */}
+                    {marketsForToken.length > 1 &&
+                      groupedPoolPositions.length > 0 && (
+                        <div className="p-3 bg-[#17395F]/5 border border-[#17395F]/20">
+                          <div className="text-xs font-semibold text-[#1E4775] mb-2">
+                            Your stability pool positions
+                          </div>
+                          <div className="space-y-1">
+                            {groupedPoolPositions.map((p) => {
+                              const marketLabel =
+                                p.market?.collateral?.symbol || p.marketId;
+                              const poolLabel =
+                                p.poolType === "collateral"
+                                  ? "Collateral Pool"
+                                  : "Sail Pool";
+                              const isSelected =
+                                p.marketId === selectedMarketId &&
+                                ((p.poolType === "collateral" &&
+                                  selectedPositions.collateralPool) ||
+                                  (p.poolType === "sail" &&
+                                    selectedPositions.sailPool));
+
+                              return (
+                                <button
+                                  key={p.key}
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedMarketId(p.marketId);
+                                    setSelectedPositions((prev) => ({
+                                      ...prev,
+                                      collateralPool:
+                                        p.poolType === "collateral",
+                                      sailPool: p.poolType === "sail",
+                                    }));
+                                    setWithdrawFromCollateralPool(
+                                      p.poolType === "collateral"
+                                    );
+                                    setWithdrawFromSailPool(p.poolType === "sail");
+                                    // Clear any previously-entered amounts when switching positions
+                                    setPositionAmounts((prev) => ({
+                                      ...prev,
+                                      collateralPool: "",
+                                      sailPool: "",
+                                    }));
+                                    // Default to early withdraw when switching
+                                    setWithdrawalMethods((prev) => ({
+                                      ...prev,
+                                      collateralPool: "immediate",
+                                      sailPool: "immediate",
+                                    }));
+                                  }}
+                                  disabled={isProcessing}
+                                  className={`w-full flex items-center justify-between px-3 py-2 text-left border transition-colors ${
+                                    isSelected
+                                      ? "bg-white border-[#1E4775]"
+                                      : "bg-white/70 border-[#1E4775]/20 hover:bg-white"
+                                  } disabled:opacity-50 disabled:cursor-not-allowed`}
+                                >
+                                  <div className="min-w-0">
+                                    <div className="text-xs font-medium text-[#1E4775]">
+                                      {poolLabel}{" "}
+                                      <span className="text-[#1E4775]/50">
+                                        ({marketLabel})
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <div className="text-xs text-[#1E4775]/70 font-mono flex-shrink-0">
+                                    {formatTokenAmount18(p.balance)}{" "}
+                                    {peggedTokenSymbol}
+                                  </div>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
                     {/* Wallet Position (ha tokens) - Only show if NOT"Withdraw only" */}
                     {!withdrawOnly && peggedBalance > 0n && (
                       <div className="p-3 bg-[#17395F]/5 border border-[#17395F]/20">
@@ -9651,7 +9795,7 @@ export const AnchorDepositWithdrawModal = ({
                     )}
 
                     {/* Collateral Pool Position */}
-                    {market.addresses?.stabilityPoolCollateral &&
+                    {selectedMarket?.addresses?.stabilityPoolCollateral &&
                       collateralPoolBalance > 0n && (
                         <div className="p-3 bg-[#17395F]/5 border border-[#17395F]/20">
                           <div className="flex items-center justify-between mb-2">
@@ -9828,7 +9972,7 @@ export const AnchorDepositWithdrawModal = ({
                       )}
 
                     {/* Sail Pool Position */}
-                    {market.addresses?.stabilityPoolLeveraged &&
+                    {selectedMarket?.addresses?.stabilityPoolLeveraged &&
                       sailPoolBalance > 0n && (
                         <div className="p-3 bg-[#17395F]/5 border border-[#17395F]/20">
                           <div className="flex items-center justify-between mb-2">
