@@ -9647,15 +9647,62 @@ export const AnchorDepositWithdrawModal = ({
                       Select positions and enter amounts:
                     </label>
 
-                    {/* Grouped markets: show each stability pool position per-market so users can select the correct one */}
-                    {marketsForToken.length > 1 &&
-                      groupedPoolPositions.length > 0 && (
+                    {/* Stability pool positions (inline withdraw controls per pool row) */}
+                    {(() => {
+                      const poolRows: Array<{
+                        key: string;
+                        marketId: string;
+                        market: any;
+                        poolType: "collateral" | "sail";
+                        balance: bigint;
+                      }> =
+                        marketsForToken.length > 1
+                          ? groupedPoolPositions.map((p) => ({
+                              key: p.key,
+                              marketId: p.marketId,
+                              market: p.market,
+                              poolType: p.poolType,
+                              balance: p.balance,
+                            }))
+                          : [
+                              ...(selectedMarket?.addresses
+                                ?.stabilityPoolCollateral &&
+                              collateralPoolBalance > 0n
+                                ? [
+                                    {
+                                      key: `${selectedMarketId}-collateral`,
+                                      marketId: selectedMarketId,
+                                      market: selectedMarket,
+                                      poolType: "collateral" as const,
+                                      balance: collateralPoolBalance,
+                                    },
+                                  ]
+                                : []),
+                              ...(selectedMarket?.addresses
+                                ?.stabilityPoolLeveraged &&
+                              sailPoolBalance > 0n
+                                ? [
+                                    {
+                                      key: `${selectedMarketId}-sail`,
+                                      marketId: selectedMarketId,
+                                      market: selectedMarket,
+                                      poolType: "sail" as const,
+                                      balance: sailPoolBalance,
+                                    },
+                                  ]
+                                : []),
+                            ];
+
+                      if (poolRows.length === 0) return null;
+
+                      return (
                         <div className="p-3 bg-[#17395F]/5 border border-[#17395F]/20">
                           <div className="text-xs font-semibold text-[#1E4775] mb-2">
                             Your stability pool positions
                           </div>
-                          <div className="space-y-1">
-                            {groupedPoolPositions.map((p) => {
+
+                          <div className="space-y-2">
+                            {poolRows.map((p) => {
                               const marketLabel =
                                 p.market?.collateral?.symbol || p.marketId;
                               const poolLabel =
@@ -9669,60 +9716,279 @@ export const AnchorDepositWithdrawModal = ({
                                   (p.poolType === "sail" &&
                                     selectedPositions.sailPool));
 
+                              const modeKey =
+                                p.poolType === "collateral"
+                                  ? "collateralPool"
+                                  : "sailPool";
+                              const isImmediate =
+                                (p.poolType === "collateral"
+                                  ? withdrawalMethods.collateralPool
+                                  : withdrawalMethods.sailPool) === "immediate";
+                              const request =
+                                p.poolType === "collateral"
+                                  ? collateralPoolRequest
+                                  : sailPoolRequest;
+                              const window =
+                                p.poolType === "collateral"
+                                  ? collateralPoolWindow
+                                  : sailPoolWindow;
+                              const feePercent =
+                                p.poolType === "collateral"
+                                  ? collateralPoolFeePercent
+                                  : sailPoolFeePercent;
+                              const immediateCap =
+                                p.poolType === "collateral"
+                                  ? collateralPoolImmediateCap
+                                  : sailPoolImmediateCap;
+                              const exceeds =
+                                p.poolType === "collateral"
+                                  ? positionExceedsBalance.collateralPool
+                                  : positionExceedsBalance.sailPool;
+                              const amountValue =
+                                p.poolType === "collateral"
+                                  ? positionAmounts.collateralPool
+                                  : positionAmounts.sailPool;
+
                               return (
-                                <button
+                                <div
                                   key={p.key}
-                                  type="button"
-                                  onClick={() => {
-                                    setSelectedMarketId(p.marketId);
-                                    setSelectedPositions((prev) => ({
-                                      ...prev,
-                                      collateralPool:
-                                        p.poolType === "collateral",
-                                      sailPool: p.poolType === "sail",
-                                    }));
-                                    setWithdrawFromCollateralPool(
-                                      p.poolType === "collateral"
-                                    );
-                                    setWithdrawFromSailPool(p.poolType === "sail");
-                                    // Clear any previously-entered amounts when switching positions
-                                    setPositionAmounts((prev) => ({
-                                      ...prev,
-                                      collateralPool: "",
-                                      sailPool: "",
-                                    }));
-                                    // Default to early withdraw when switching
-                                    setWithdrawalMethods((prev) => ({
-                                      ...prev,
-                                      collateralPool: "immediate",
-                                      sailPool: "immediate",
-                                    }));
-                                  }}
-                                  disabled={isProcessing}
-                                  className={`w-full flex items-center justify-between px-3 py-2 text-left border transition-colors ${
+                                  className={`bg-white border ${
                                     isSelected
-                                      ? "bg-white border-[#1E4775]"
-                                      : "bg-white/70 border-[#1E4775]/20 hover:bg-white"
-                                  } disabled:opacity-50 disabled:cursor-not-allowed`}
+                                      ? "border-[#1E4775]"
+                                      : "border-[#1E4775]/20"
+                                  }`}
                                 >
-                                  <div className="min-w-0">
-                                    <div className="text-xs font-medium text-[#1E4775]">
-                                      {poolLabel}{" "}
-                                      <span className="text-[#1E4775]/50">
-                                        ({marketLabel})
-                                      </span>
+                                  <div className="flex items-center justify-between px-3 py-2">
+                                    <div className="flex items-center gap-3 min-w-0">
+                                      <input
+                                        type="checkbox"
+                                        checked={isSelected}
+                                        onChange={(e) => {
+                                          const checked = e.target.checked;
+
+                                          // Switching markets: reset to only the selected pool
+                                          const switchingMarket =
+                                            p.marketId !== selectedMarketId;
+                                          if (switchingMarket) {
+                                            setSelectedMarketId(p.marketId);
+                                            setSelectedPositions((prev) => ({
+                                              ...prev,
+                                              collateralPool:
+                                                checked &&
+                                                p.poolType === "collateral",
+                                              sailPool:
+                                                checked && p.poolType === "sail",
+                                            }));
+                                            setWithdrawFromCollateralPool(
+                                              checked &&
+                                                p.poolType === "collateral"
+                                            );
+                                            setWithdrawFromSailPool(
+                                              checked && p.poolType === "sail"
+                                            );
+                                            setPositionAmounts((prev) => ({
+                                              ...prev,
+                                              collateralPool: "",
+                                              sailPool: "",
+                                            }));
+                                            setWithdrawalMethods((prev) => ({
+                                              ...prev,
+                                              collateralPool: "immediate",
+                                              sailPool: "immediate",
+                                            }));
+                                            return;
+                                          }
+
+                                          // Same market: toggle this pool only
+                                          if (p.poolType === "collateral") {
+                                            setSelectedPositions((prev) => ({
+                                              ...prev,
+                                              collateralPool: checked,
+                                            }));
+                                            setWithdrawFromCollateralPool(checked);
+                                            if (!checked) {
+                                              setPositionAmounts((prev) => ({
+                                                ...prev,
+                                                collateralPool: "",
+                                              }));
+                                            }
+                                          } else {
+                                            setSelectedPositions((prev) => ({
+                                              ...prev,
+                                              sailPool: checked,
+                                            }));
+                                            setWithdrawFromSailPool(checked);
+                                            if (!checked) {
+                                              setPositionAmounts((prev) => ({
+                                                ...prev,
+                                                sailPool: "",
+                                              }));
+                                            }
+                                          }
+                                        }}
+                                        disabled={isProcessing}
+                                        className="w-5 h-5 text-[#1E4775] border-[#1E4775]/30 focus:ring-2 focus:ring-[#1E4775]/20 focus:ring-offset-0 cursor-pointer disabled:opacity-50"
+                                      />
+                                      <div className="min-w-0">
+                                        <div className="text-sm font-medium text-[#1E4775] truncate">
+                                          {poolLabel}{" "}
+                                          <span className="text-[#1E4775]/50">
+                                            ({marketLabel})
+                                          </span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                    <div className="text-sm text-[#1E4775]/70 font-mono flex-shrink-0">
+                                      {formatTokenAmount18(p.balance)}{" "}
+                                      {peggedTokenSymbol}
                                     </div>
                                   </div>
-                                  <div className="text-xs text-[#1E4775]/70 font-mono flex-shrink-0">
-                                    {formatTokenAmount18(p.balance)}{" "}
-                                    {peggedTokenSymbol}
-                                  </div>
-                                </button>
+
+                                  {isSelected && (
+                                    <div className="px-3 pb-3">
+                                      {/* Withdrawal Method Toggle */}
+                                      <div className="flex items-center bg-[#17395F]/10 p-1 mb-2">
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            setWithdrawalMethods((prev) => ({
+                                              ...prev,
+                                              [modeKey]: "immediate",
+                                            }))
+                                          }
+                                          disabled={isProcessing}
+                                          className={`flex-1 px-3 py-1.5 text-xs font-medium transition-all ${
+                                            isImmediate
+                                              ? "bg-[#1E4775] text-white shadow-sm"
+                                              : "text-[#1E4775]/70 hover:text-[#1E4775]"
+                                          } disabled:opacity-50 disabled:cursor-not-allowed`}
+                                        >
+                                          Early Withdraw
+                                          {(() => {
+                                            const display = getFeeFreeDisplay(
+                                              request,
+                                              feePercent
+                                            );
+                                            return ` (${display})`;
+                                          })()}
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            setWithdrawalMethods((prev) => ({
+                                              ...prev,
+                                              [modeKey]: "request",
+                                            }))
+                                          }
+                                          disabled={isProcessing}
+                                          className={`flex-1 px-3 py-1.5 text-xs font-medium transition-all ${
+                                            !isImmediate
+                                              ? "bg-[#1E4775] text-white shadow-sm"
+                                              : "text-[#1E4775]/70 hover:text-[#1E4775]"
+                                          } disabled:opacity-50 disabled:cursor-not-allowed`}
+                                        >
+                                          Request Withdraw
+                                          {getRequestStatusText(request)}
+                                        </button>
+                                      </div>
+
+                                      {/* Window status banner */}
+                                      {(() => {
+                                        const bannerInfo =
+                                          getWindowBannerInfo(request, window);
+                                        if (!bannerInfo) return null;
+
+                                        if (bannerInfo.type === "coming") {
+                                          return (
+                                            <div className="mt-2 px-3 py-2 bg-[#FF8A7A]/20 border border-[#FF8A7A]/40 rounded text-[10px] text-[#FF8A7A] font-medium">
+                                              {bannerInfo.message}
+                                            </div>
+                                          );
+                                        }
+                                        if (bannerInfo.type === "open") {
+                                          return (
+                                            <div className="mt-2 px-3 py-2 bg-[#7FD4C0]/20 border border-[#7FD4C0]/40 rounded text-[10px] text-[#7FD4C0] font-medium">
+                                              {bannerInfo.message}
+                                            </div>
+                                          );
+                                        }
+                                        return null;
+                                      })()}
+
+                                      {/* Amount input - only show for immediate withdrawals */}
+                                      {isImmediate && (
+                                        <div className="relative mt-2">
+                                          <input
+                                            type="text"
+                                            value={amountValue}
+                                            onChange={(e) =>
+                                              handlePositionAmountChange(
+                                                modeKey as any,
+                                                e.target.value,
+                                                immediateCap
+                                              )
+                                            }
+                                            placeholder="0.0"
+                                            className={`w-full h-10 px-3 pr-16 bg-white text-[#1E4775] border focus:ring-2 focus:outline-none text-sm font-mono ${
+                                              exceeds
+                                                ? "border-red-500 focus:border-red-500 focus:ring-red-200"
+                                                : "border-[#1E4775]/30 focus:border-[#1E4775] focus:ring-[#1E4775]/20"
+                                            }`}
+                                            disabled={isProcessing}
+                                          />
+                                          <button
+                                            onClick={() => {
+                                              setPositionAmounts((prev) => ({
+                                                ...prev,
+                                                [modeKey]: formatEther(
+                                                  immediateCap
+                                                ),
+                                              }));
+                                            }}
+                                            className="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 text-xs bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white transition-colors disabled:bg-gray-300 disabled:text-gray-500 rounded-full"
+                                            disabled={
+                                              isProcessing || immediateCap === 0n
+                                            }
+                                          >
+                                            MAX
+                                          </button>
+                                        </div>
+                                      )}
+
+                                      {isImmediate && immediateCap === 0n && (
+                                        <p className="text-[10px] text-[#1E4775]/60 mt-1">
+                                          Early withdraw is temporarily unavailable:
+                                          the pool is at its minimum total supply.
+                                          Use Request (free) or wait for TVL to
+                                          increase.
+                                        </p>
+                                      )}
+
+                                      {/* Info message for request method - only show if no window banner */}
+                                      {!isImmediate &&
+                                        !getWindowBannerInfo(request, window) && (
+                                          <p className="text-[10px] text-[#1E4775]/60 mt-1">
+                                            Creates a withdrawal request. You can
+                                            withdraw without a fee for{" "}
+                                            {window
+                                              ? formatDuration(window[1])
+                                              : "..."}{" "}
+                                            after a{" "}
+                                            {window
+                                              ? formatDuration(window[0])
+                                              : "..."}{" "}
+                                            delay.
+                                          </p>
+                                        )}
+                                    </div>
+                                  )}
+                                </div>
                               );
                             })}
                           </div>
                         </div>
-                      )}
+                      );
+                    })()}
 
                     {/* Wallet Position (ha tokens) - Only show if NOT"Withdraw only" */}
                     {!withdrawOnly && peggedBalance > 0n && (
@@ -9794,351 +10060,7 @@ export const AnchorDepositWithdrawModal = ({
                       </div>
                     )}
 
-                    {/* Collateral Pool Position */}
-                    {selectedMarket?.addresses?.stabilityPoolCollateral &&
-                      collateralPoolBalance > 0n && (
-                        <div className="p-3 bg-[#17395F]/5 border border-[#17395F]/20">
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="flex items-center gap-3">
-                              <input
-                                type="checkbox"
-                                checked={selectedPositions.collateralPool}
-                                onChange={(e) => {
-                                  setSelectedPositions((prev) => ({
-                                    ...prev,
-                                    collateralPool: e.target.checked,
-                                  }));
-                                  setWithdrawFromCollateralPool(
-                                    e.target.checked
-                                  );
-                                  if (!e.target.checked) {
-                                    setPositionAmounts((prev) => ({
-                                      ...prev,
-                                      collateralPool: "",
-                                    }));
-                                  }
-                                }}
-                                disabled={isProcessing}
-                                className="w-5 h-5 text-[#1E4775] border-[#1E4775]/30 focus:ring-2 focus:ring-[#1E4775]/20 focus:ring-offset-0 cursor-pointer disabled:opacity-50"
-                              />
-                              <span className="text-sm font-medium text-[#1E4775]">
-                                Collateral Pool
-                              </span>
-                            </div>
-                            <div className="text-sm text-[#1E4775]/70 font-mono">
-                              Balance:{" "}
-                              {formatTokenAmount18(collateralPoolBalance)}
-                              {" "}
-                              {peggedTokenSymbol}
-                            </div>
-                          </div>
-                          {selectedPositions.collateralPool && (
-                            <>
-                              {/* Withdrawal Method Toggle */}
-                              <div className="flex items-center bg-[#17395F]/10 p-1 mb-2">
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    setWithdrawalMethods((prev) => ({
-                                      ...prev,
-                                      collateralPool: "immediate",
-                                    }))
-                                  }
-                                  disabled={isProcessing}
-                                  className={`flex-1 px-3 py-1.5 text-xs font-medium transition-all ${
-                                    withdrawalMethods.collateralPool ===
-                                    "immediate"
-                                      ? "bg-[#1E4775] text-white shadow-sm"
-                                      : "text-[#1E4775]/70 hover:text-[#1E4775]"
-                                  } disabled:opacity-50 disabled:cursor-not-allowed`}
-                                >
-                                  Early Withdraw
-                                  {(() => {
-                                    const display = getFeeFreeDisplay(
-                                      collateralPoolRequest,
-                                      collateralPoolFeePercent
-                                    );
-                                    return ` (${display})`;
-                                  })()}
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    setWithdrawalMethods((prev) => ({
-                                      ...prev,
-                                      collateralPool: "request",
-                                    }))
-                                  }
-                                  disabled={isProcessing}
-                                  className={`flex-1 px-3 py-1.5 text-xs font-medium transition-all ${
-                                    withdrawalMethods.collateralPool ===
-                                    "request"
-                                      ? "bg-[#1E4775] text-white shadow-sm"
-                                      : "text-[#1E4775]/70 hover:text-[#1E4775]"
-                                  } disabled:opacity-50 disabled:cursor-not-allowed`}
-                                >
-                                  Request Withdraw{getRequestStatusText(collateralPoolRequest)}
-                                </button>
-                              </div>
-                              {/* Window status banner - show when pool is selected and window exists */}
-                              {selectedPositions.collateralPool && (() => {
-                                const bannerInfo = getWindowBannerInfo(collateralPoolRequest, collateralPoolWindow);
-                                if (!bannerInfo) return null;
-                                
-                                if (bannerInfo.type === "coming") {
-                                  // Pearl orange warning for window coming
-                                  return (
-                                    <div className="mt-2 px-3 py-2 bg-[#FF8A7A]/20 border border-[#FF8A7A]/40 rounded text-[10px] text-[#FF8A7A] font-medium">
-                                      {bannerInfo.message}
-                                    </div>
-                                  );
-                                } else if (bannerInfo.type === "open") {
-                                  // Seafoam green banner for window open
-                                  return (
-                                    <div className="mt-2 px-3 py-2 bg-[#7FD4C0]/20 border border-[#7FD4C0]/40 rounded text-[10px] text-[#7FD4C0] font-medium">
-                                      {bannerInfo.message}
-                                    </div>
-                                  );
-                                }
-                                return null;
-                              })()}
-                              {/* Amount input - only show for immediate withdrawals */}
-                              {withdrawalMethods.collateralPool ===
-                                "immediate" && (
-                                <div className="relative mt-2">
-                                  <input
-                                    type="text"
-                                    value={positionAmounts.collateralPool}
-                                    onChange={(e) =>
-                                      handlePositionAmountChange(
-                                        "collateralPool",
-                                        e.target.value,
-                                        collateralPoolImmediateCap
-                                      )
-                                    }
-                                    placeholder="0.0"
-                                    className={`w-full h-10 px-3 pr-16 bg-white text-[#1E4775] border focus:ring-2 focus:outline-none text-sm font-mono ${
-                                      positionExceedsBalance.collateralPool
-                                        ? "border-red-500 focus:border-red-500 focus:ring-red-200"
-                                        : "border-[#1E4775]/30 focus:border-[#1E4775] focus:ring-[#1E4775]/20"
-                                    }`}
-                                    disabled={isProcessing}
-                                  />
-                                  <button
-                                    onClick={() => {
-                                      setPositionAmounts((prev) => ({
-                                        ...prev,
-                                        collateralPool: formatEther(
-                                          collateralPoolImmediateCap
-                                        ),
-                                      }));
-                                    }}
-                                    className="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 text-xs bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white transition-colors disabled:bg-gray-300 disabled:text-gray-500 rounded-full"
-                                    disabled={isProcessing || collateralPoolImmediateCap === 0n}
-                                  >
-                                    MAX
-                                  </button>
-                                </div>
-                              )}
-                              {withdrawalMethods.collateralPool === "immediate" &&
-                                collateralPoolImmediateCap === 0n && (
-                                  <p className="text-[10px] text-[#1E4775]/60 mt-1">
-                                    Early withdraw is temporarily unavailable:
-                                    the pool is at its minimum total supply. Use
-                                    Request (free) or wait for TVL to increase.
-                                  </p>
-                              )}
-                              {/* Info message for request method - only show if no window banner */}
-                              {withdrawalMethods.collateralPool ===
-                                "request" && !getWindowBannerInfo(collateralPoolRequest, collateralPoolWindow) && (
-                                <p className="text-[10px] text-[#1E4775]/60 mt-1">
-                                  Creates a withdrawal request. You can withdraw
-                                  without a fee for{""}
-                                  {collateralPoolWindow
-                                    ? formatDuration(collateralPoolWindow[1])
-                                    : "..."}
-                                  {""}
-                                  after a{""}
-                                  {collateralPoolWindow
-                                    ? formatDuration(collateralPoolWindow[0])
-                                    : "..."}
-                                  {""}
-                                  delay.
-                                </p>
-                              )}
-                            </>
-                          )}
-                        </div>
-                      )}
-
-                    {/* Sail Pool Position */}
-                    {selectedMarket?.addresses?.stabilityPoolLeveraged &&
-                      sailPoolBalance > 0n && (
-                        <div className="p-3 bg-[#17395F]/5 border border-[#17395F]/20">
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="flex items-center gap-3">
-                              <input
-                                type="checkbox"
-                                checked={selectedPositions.sailPool}
-                                onChange={(e) => {
-                                  setSelectedPositions((prev) => ({
-                                    ...prev,
-                                    sailPool: e.target.checked,
-                                  }));
-                                  setWithdrawFromSailPool(e.target.checked);
-                                  if (!e.target.checked) {
-                                    setPositionAmounts((prev) => ({
-                                      ...prev,
-                                      sailPool: "",
-                                    }));
-                                  }
-                                }}
-                                disabled={isProcessing}
-                                className="w-5 h-5 text-[#1E4775] border-[#1E4775]/30 focus:ring-2 focus:ring-[#1E4775]/20 focus:ring-offset-0 cursor-pointer disabled:opacity-50"
-                              />
-                              <span className="text-sm font-medium text-[#1E4775]">
-                                Sail Pool
-                              </span>
-                            </div>
-                            <div className="text-sm text-[#1E4775]/70 font-mono">
-                              Balance:{" "}
-                              {formatTokenAmount18(sailPoolBalance)}
-                              {" "}
-                              {peggedTokenSymbol}
-                            </div>
-                          </div>
-                          {selectedPositions.sailPool && (
-                            <>
-                              {/* Withdrawal Method Toggle */}
-                              <div className="flex items-center bg-[#17395F]/10 p-1 mb-2">
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    setWithdrawalMethods((prev) => ({
-                                      ...prev,
-                                      sailPool: "immediate",
-                                    }))
-                                  }
-                                  disabled={isProcessing}
-                                  className={`flex-1 px-3 py-1.5 text-xs font-medium transition-all ${
-                                    withdrawalMethods.sailPool === "immediate"
-                                      ? "bg-[#1E4775] text-white shadow-sm"
-                                      : "text-[#1E4775]/70 hover:text-[#1E4775]"
-                                  } disabled:opacity-50 disabled:cursor-not-allowed`}
-                                >
-                                  Early Withdraw
-                                  {(() => {
-                                    const display = getFeeFreeDisplay(
-                                      sailPoolRequest,
-                                      sailPoolFeePercent
-                                    );
-                                    return ` (${display})`;
-                                  })()}
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    setWithdrawalMethods((prev) => ({
-                                      ...prev,
-                                      sailPool: "request",
-                                    }))
-                                  }
-                                  disabled={isProcessing}
-                                  className={`flex-1 px-3 py-1.5 text-xs font-medium transition-all ${
-                                    withdrawalMethods.sailPool === "request"
-                                      ? "bg-[#1E4775] text-white shadow-sm"
-                                      : "text-[#1E4775]/70 hover:text-[#1E4775]"
-                                  } disabled:opacity-50 disabled:cursor-not-allowed`}
-                                >
-                                  Request Withdraw{getRequestStatusText(sailPoolRequest)}
-                                </button>
-                              </div>
-                              {/* Window status banner - show when pool is selected and window exists */}
-                              {selectedPositions.sailPool && (() => {
-                                const bannerInfo = getWindowBannerInfo(sailPoolRequest, sailPoolWindow);
-                                if (!bannerInfo) return null;
-                                
-                                if (bannerInfo.type === "coming") {
-                                  // Pearl orange warning for window coming
-                                  return (
-                                    <div className="mt-2 px-3 py-2 bg-[#FF8A7A]/20 border border-[#FF8A7A]/40 rounded text-[10px] text-[#FF8A7A] font-medium">
-                                      {bannerInfo.message}
-                                    </div>
-                                  );
-                                } else if (bannerInfo.type === "open") {
-                                  // Seafoam green banner for window open
-                                  return (
-                                    <div className="mt-2 px-3 py-2 bg-[#7FD4C0]/20 border border-[#7FD4C0]/40 rounded text-[10px] text-[#7FD4C0] font-medium">
-                                      {bannerInfo.message}
-                                    </div>
-                                  );
-                                }
-                                return null;
-                              })()}
-                              {/* Amount input - only show for immediate withdrawals */}
-                              {withdrawalMethods.sailPool === "immediate" && (
-                                <div className="relative mt-2">
-                                  <input
-                                    type="text"
-                                    value={positionAmounts.sailPool}
-                                    onChange={(e) =>
-                                      handlePositionAmountChange(
-                                        "sailPool",
-                                        e.target.value,
-                                        sailPoolImmediateCap
-                                      )
-                                    }
-                                    placeholder="0.0"
-                                    className={`w-full h-10 px-3 pr-16 bg-white text-[#1E4775] border focus:ring-2 focus:outline-none text-sm font-mono ${
-                                      positionExceedsBalance.sailPool
-                                        ? "border-red-500 focus:border-red-500 focus:ring-red-200"
-                                        : "border-[#1E4775]/30 focus:border-[#1E4775] focus:ring-[#1E4775]/20"
-                                    }`}
-                                    disabled={isProcessing}
-                                  />
-                                  <button
-                                    onClick={() => {
-                                      setPositionAmounts((prev) => ({
-                                        ...prev,
-                                        sailPool: formatEther(sailPoolImmediateCap),
-                                      }));
-                                    }}
-                                    className="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 text-xs bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white transition-colors disabled:bg-gray-300 disabled:text-gray-500 rounded-full"
-                                    disabled={isProcessing || sailPoolImmediateCap === 0n}
-                                  >
-                                    MAX
-                                  </button>
-                                </div>
-                              )}
-                              {withdrawalMethods.sailPool === "immediate" &&
-                                sailPoolImmediateCap === 0n && (
-                                  <p className="text-[10px] text-[#1E4775]/60 mt-1">
-                                    Early withdraw is temporarily unavailable:
-                                    the pool is at its minimum total supply. Use
-                                    Request (free) or wait for TVL to increase.
-                                  </p>
-                              )}
-                              {/* Info message for request method - only show if no window banner */}
-                              {withdrawalMethods.sailPool === "request" && !getWindowBannerInfo(sailPoolRequest, sailPoolWindow) && (
-                                <p className="text-[10px] text-[#1E4775]/60 mt-1">
-                                  Creates a withdrawal request. You can withdraw
-                                  without a fee for{""}
-                                  {sailPoolWindow
-                                    ? formatDuration(sailPoolWindow[1])
-                                    : "..."}
-                                  {""}
-                                  after a{""}
-                                  {sailPoolWindow
-                                    ? formatDuration(sailPoolWindow[0])
-                                    : "..."}
-                                  {""}
-                                  delay.
-                                </p>
-                              )}
-                            </>
-                          )}
-                        </div>
-                      )}
+                    {/* Pool position controls are now rendered inline above */}
 
                     {/* No positions message */}
                     {((withdrawOnly &&
