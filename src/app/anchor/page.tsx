@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState, useEffect, useRef } from "react";
+import React, { useMemo, useState, useEffect, useRef, useCallback } from "react";
 import {
   useAccount,
   useContractReads,
@@ -40,6 +40,12 @@ import {
 import { AnchorDepositWithdrawModal } from "@/components/AnchorDepositWithdrawModal";
 import { AnchorCompoundModal } from "@/components/AnchorCompoundModal";
 import { AnchorClaimAllModal } from "@/components/AnchorClaimAllModal";
+import {
+  CompoundTargetTokenModal,
+  CompoundTargetMode,
+  CompoundSelectedPosition,
+  CompoundTargetOption,
+} from "@/components/CompoundTargetTokenModal";
 import {
   TransactionProgressModal,
   TransactionStep,
@@ -190,6 +196,69 @@ export default function AnchorPage() {
     fees: FeeInfo[];
     feeErrors?: string[];
     onConfirm: () => void;
+  } | null>(null);
+  const [compoundTargetModal, setCompoundTargetModal] = useState<{
+    selectedPools: Array<{ marketId: string; poolType: "collateral" | "sail" }>;
+    positions: CompoundSelectedPosition[];
+    options: CompoundTargetOption[];
+  } | null>(null);
+  const [compoundIntent, setCompoundIntent] = useState<{
+    mode: CompoundTargetMode;
+    selectedPools: Array<{ marketId: string; poolType: "collateral" | "sail" }>;
+    targetMarketId?: string;
+  } | null>(null);
+  const [advancedPreflight, setAdvancedPreflight] = useState<{
+    key: string;
+    isLoading: boolean;
+    error?: string;
+    fees: Array<{
+      id: string;
+      label: string;
+      tokenSymbol: string;
+      feeFormatted: string;
+      feePercentage?: number;
+      details?: string;
+    }>;
+    // execution plan (chosen routes). Used to avoid recalculating after claim.
+    plan?: {
+      targetMarketId: string;
+      allocations: Array<{ poolAddress: `0x${string}`; percentage: number }>;
+      selectedClaimPools: Array<{ marketId: string; poolType: "collateral" | "sail" }>;
+      redeemPegged: Array<{
+        peggedToken: `0x${string}`;
+        amount: bigint;
+        minter: `0x${string}`;
+        wrappedCollateralToken: `0x${string}`;
+        expectedOut: bigint;
+      }>;
+      redeemLeveraged: Array<{
+        marketId: string;
+        leveragedToken: `0x${string}`;
+        amount: bigint;
+        minter: `0x${string}`;
+        expectedOut: bigint;
+      }>;
+      mint: Array<{
+        wrappedToken: `0x${string}`;
+        amount: bigint;
+        minter: `0x${string}`;
+        expectedMint: bigint;
+      }>;
+    };
+  } | null>(null);
+
+  const [simplePreflight, setSimplePreflight] = useState<{
+    key: string;
+    isLoading: boolean;
+    error?: string;
+    fees: Array<{
+      id: string;
+      label: string;
+      tokenSymbol: string;
+      feeFormatted: string;
+      feePercentage?: number;
+      details?: string;
+    }>;
   } | null>(null);
   // Ref to track cancellation for claim all and compound operations
   const cancelOperationRef = useRef<(() => void) | null>(null);
@@ -564,6 +633,7 @@ export default function AnchorPage() {
   } = useAnchorTransactions({
     anchorMarkets,
     reads,
+    peggedPriceUSDMap,
     allPoolRewards,
     poolRewardsMap,
     transactionProgress,
@@ -581,6 +651,191 @@ export default function AnchorPage() {
     isClaimingAll,
     isCompoundingAll,
   });
+
+  const claimAllPositions = useMemo(() => {
+    // Build positions array using allPoolRewards from useAllStabilityPoolRewards
+    const positions: Array<{
+      marketId: string;
+      market: any;
+      poolType: "collateral" | "sail";
+      rewards: bigint;
+      rewardsUSD: number;
+      deposit: bigint;
+      depositUSD: number;
+      rewardTokens: Array<{
+        symbol: string;
+        claimable: bigint;
+        claimableFormatted: string;
+      }>;
+    }> = [];
+
+    if (reads && anchorMarkets && allPoolRewards) {
+      anchorMarkets.forEach(([id, m], mi) => {
+        const hasCollateralPool = !!(m as any).addresses?.stabilityPoolCollateral;
+        const hasSailPool = !!(m as any).addresses?.stabilityPoolLeveraged;
+
+        // Calculate offset for this market to get deposit data
+        let offset = 0;
+        for (let i = 0; i < mi; i++) {
+          const prevMarket = anchorMarkets[i][1];
+          const prevHasCollateral = !!(prevMarket as any).addresses
+            ?.stabilityPoolCollateral;
+          const prevHasSail = !!(prevMarket as any).addresses
+            ?.stabilityPoolLeveraged;
+          const prevHasPriceOracle = !!(prevMarket as any).addresses
+            ?.collateralPrice;
+          offset += 4;
+          if (prevHasCollateral) offset += 3;
+          if (prevHasSail) offset += 3;
+          if (prevHasPriceOracle) offset += 1;
+        }
+
+        const baseOffset = offset;
+        const peggedTokenPrice = reads?.[baseOffset + 3]?.result as
+          | bigint
+          | undefined;
+        let currentOffset = baseOffset + 4;
+
+        // Get price oracle for USD calculations
+        const hasPriceOracle = !!(m as any).addresses?.collateralPrice;
+        const collateralPriceDecimals = 18;
+        let collateralPrice: bigint | undefined;
+        let priceOffset = currentOffset;
+        if (hasCollateralPool) priceOffset += 3;
+        if (hasSailPool) priceOffset += 3;
+        if (hasPriceOracle) {
+          const latestAnswerResult = reads?.[priceOffset]?.result;
+          if (latestAnswerResult !== undefined && latestAnswerResult !== null) {
+            if (Array.isArray(latestAnswerResult)) {
+              collateralPrice = latestAnswerResult[1] as bigint;
+            } else if (typeof latestAnswerResult === "object") {
+              const obj = latestAnswerResult as { maxUnderlyingPrice?: bigint };
+              collateralPrice = obj.maxUnderlyingPrice;
+            } else if (typeof latestAnswerResult === "bigint") {
+              collateralPrice = latestAnswerResult;
+            }
+          }
+        }
+
+        // Collateral pool position
+        if (hasCollateralPool) {
+          const collateralPoolAddress = (m as any).addresses
+            ?.stabilityPoolCollateral as `0x${string}`;
+          const collateralPoolDeposit = reads?.[currentOffset]?.result as
+            | bigint
+            | undefined;
+
+          // Get rewards from allPoolRewards
+          const poolReward = allPoolRewards.find(
+            (pr) =>
+              pr.poolAddress.toLowerCase() ===
+              collateralPoolAddress.toLowerCase()
+          );
+
+          let depositUSD = 0;
+          const rewardsUSD = poolReward?.claimableValue || 0;
+
+          // Calculate total rewards as bigint (sum of all reward tokens)
+          const totalRewards =
+            poolReward?.rewardTokens.reduce(
+              (sum, token) => sum + token.claimable,
+              0n
+            ) || 0n;
+
+          if (
+            collateralPoolDeposit &&
+            collateralPrice &&
+            collateralPriceDecimals !== undefined
+          ) {
+            const price =
+              Number(collateralPrice) /
+              10 ** (Number(collateralPriceDecimals) || 8);
+            const depositAmount = Number(collateralPoolDeposit) / 1e18;
+            depositUSD = depositAmount * price;
+          }
+
+          // Only include if there are rewards
+          if (poolReward && poolReward.claimableValue > 0) {
+            positions.push({
+              marketId: id,
+              market: m,
+              poolType: "collateral",
+              rewards: totalRewards,
+              rewardsUSD,
+              deposit: collateralPoolDeposit || 0n,
+              depositUSD,
+              rewardTokens: poolReward.rewardTokens.map((token) => ({
+                symbol: token.symbol,
+                claimable: token.claimable,
+                claimableFormatted: formatEther(token.claimable),
+              })),
+            });
+          }
+
+          currentOffset += 3;
+        }
+
+        // Sail pool position
+        if (hasSailPool) {
+          const sailPoolAddress = (m as any).addresses
+            ?.stabilityPoolLeveraged as `0x${string}`;
+          const sailPoolDeposit = reads?.[currentOffset]?.result as
+            | bigint
+            | undefined;
+
+          // Get rewards from allPoolRewards
+          const poolReward = allPoolRewards.find(
+            (pr) =>
+              pr.poolAddress.toLowerCase() === sailPoolAddress.toLowerCase()
+          );
+
+          let depositUSD = 0;
+          const rewardsUSD = poolReward?.claimableValue || 0;
+
+          // Calculate total rewards as bigint (sum of all reward tokens)
+          const totalRewards =
+            poolReward?.rewardTokens.reduce(
+              (sum, token) => sum + token.claimable,
+              0n
+            ) || 0n;
+
+          if (
+            sailPoolDeposit &&
+            peggedTokenPrice &&
+            collateralPrice &&
+            collateralPriceDecimals !== undefined
+          ) {
+            const peggedPrice = Number(peggedTokenPrice) / 1e18;
+            const collateralPriceNum =
+              Number(collateralPrice) /
+              10 ** (Number(collateralPriceDecimals) || 8);
+            const depositAmount = Number(sailPoolDeposit) / 1e18;
+            depositUSD = depositAmount * (peggedPrice * collateralPriceNum);
+          }
+
+          // Only include if there are rewards
+          if (poolReward && poolReward.claimableValue > 0) {
+            positions.push({
+              marketId: id,
+              market: m,
+              poolType: "sail",
+              rewards: totalRewards,
+              rewardsUSD,
+              deposit: sailPoolDeposit || 0n,
+              depositUSD,
+              rewardTokens: poolReward.rewardTokens.map((token) => ({
+                symbol: token.symbol,
+                claimable: token.claimable,
+                claimableFormatted: formatEther(token.claimable),
+              })),
+            });
+          }
+        }
+      });
+    }
+
+    return positions;
+  }, [reads, anchorMarkets, allPoolRewards]);
 
   const handleCompoundConfirm = async (
     market: any,
@@ -1763,6 +2018,1507 @@ export default function AnchorPage() {
     await handleClaimAll(selectedPools);
   };
 
+  const ensureAllowance = useCallback(
+    async (token: `0x${string}`, spender: `0x${string}`, amount: bigint) => {
+      if (!address || !publicClient) return;
+      if (amount <= 0n) return;
+      const formatTxError = (e: any): string => {
+        const msgRaw =
+          e?.shortMessage ||
+          e?.cause?.shortMessage ||
+          e?.cause?.message ||
+          e?.message ||
+          String(e);
+
+        const msg = String(msgRaw);
+        const lower = msg.toLowerCase();
+
+        // Hardware wallets / connectors sometimes surface this as an "unknown RPC error"
+        // but it's actually just a disconnected signer device.
+        if (lower.includes("device disconnected") || lower.includes("disconnected during action")) {
+          return "Wallet device disconnected. Reconnect your wallet and try again.";
+        }
+        if (
+          lower.includes("user rejected") ||
+          lower.includes("user denied") ||
+          lower.includes("rejected the request") ||
+          lower.includes("request rejected")
+        ) {
+          return "Transaction was rejected in your wallet.";
+        }
+
+        // Strip noisy viem request dumps (Request Arguments / Contract Call blobs).
+        const trimmed = msg.split("Request Arguments:")[0]?.trim();
+        return trimmed || "Transaction failed. Please try again.";
+      };
+
+      const readAllowance = async () => {
+        const currentAllowance = (await publicClient.readContract({
+          address: token,
+          abi: ERC20_ABI,
+          functionName: "allowance",
+          args: [address, spender],
+        })) as bigint;
+        return currentAllowance ?? 0n;
+      };
+
+      const sendApprove = async () => {
+        const approveHash = await writeContractAsync({
+          address: token,
+          abi: ERC20_ABI,
+          functionName: "approve",
+          args: [spender, amount],
+        });
+        await publicClient.waitForTransactionReceipt({
+          hash: approveHash as `0x${string}`,
+        });
+      };
+
+      const allowance0 = await readAllowance();
+      if (allowance0 >= amount) return;
+
+      try {
+        await sendApprove();
+      } catch (e: any) {
+        const msg = (e?.message || "").toLowerCase();
+        const isNonceError =
+          msg.includes("nonce") && (msg.includes("lower") || msg.includes("too low"));
+
+        // If we hit a nonce sync issue (usually due to pending txs / wallet nonce cache),
+        // wait briefly, re-check allowance (maybe the approval already mined), then retry once.
+        if (isNonceError) {
+          await new Promise((r) => setTimeout(r, 1500));
+          const allowance1 = await readAllowance();
+          if (allowance1 >= amount) return;
+          await sendApprove();
+          return;
+        }
+
+        throw new Error(formatTxError(e));
+      }
+    },
+    [address, publicClient, writeContractAsync]
+  );
+
+  const readErc20Balance = useCallback(
+    async (token: `0x${string}`) => {
+      if (!address || !publicClient) return 0n;
+      const bal = (await publicClient.readContract({
+        address: token,
+        abi: ERC20_ABI,
+        functionName: "balanceOf",
+        args: [address],
+      })) as bigint;
+      return bal ?? 0n;
+    },
+    [address, publicClient]
+  );
+
+  const getSelectedPoolsByMarket = useCallback(
+    (
+      selectedPools: Array<{ marketId: string; poolType: "collateral" | "sail" }>
+    ) => {
+      const map = new Map<string, Array<"collateral" | "sail">>();
+      for (const p of selectedPools) {
+        const arr = map.get(p.marketId) ?? [];
+        if (!arr.includes(p.poolType)) arr.push(p.poolType);
+        map.set(p.marketId, arr);
+      }
+      return map;
+    },
+    []
+  );
+
+  const getPoolRewardTokens = useCallback(
+    (poolAddress: `0x${string}`) => {
+      const poolReward = allPoolRewards?.find(
+        (r) => r.poolAddress.toLowerCase() === poolAddress.toLowerCase()
+      );
+      return poolReward?.rewardTokens ?? [];
+    },
+    [allPoolRewards]
+  );
+
+  const formatTokenAmount = useCallback((amount: bigint): string => {
+    const num = Number(amount) / 1e18;
+    if (!Number.isFinite(num) || num === 0) return "0";
+    if (num >= 1) return num.toLocaleString(undefined, { maximumFractionDigits: 6 });
+    return num
+      .toLocaleString(undefined, { maximumFractionDigits: 8, useGrouping: false })
+      .replace(/\.?0+$/, "");
+  }, []);
+
+  const runAdvancedPreflight = useCallback(
+    async (args: {
+      targetMarketId: string;
+      allocations: Array<{ poolAddress: `0x${string}`; percentage: number }>;
+      selectedClaimPools: Array<{ marketId: string; poolType: "collateral" | "sail" }>;
+    }) => {
+      if (!publicClient) {
+        setAdvancedPreflight({
+          key: "",
+          isLoading: false,
+          error: "Public client not available",
+          fees: [],
+        });
+        return;
+      }
+
+      const key = JSON.stringify({
+        t: args.targetMarketId,
+        a: args.allocations
+          .slice()
+          .sort((x, y) => x.poolAddress.localeCompare(y.poolAddress))
+          .map((x) => [x.poolAddress.toLowerCase(), x.percentage]),
+        c: args.selectedClaimPools
+          .slice()
+          .sort((x, y) => `${x.marketId}-${x.poolType}`.localeCompare(`${y.marketId}-${y.poolType}`)),
+      });
+
+      setAdvancedPreflight({
+        key,
+        isLoading: true,
+        fees: [],
+      });
+
+      try {
+        const targetMarket = anchorMarkets.find(([id]) => id === args.targetMarketId)?.[1];
+        if (!targetMarket) throw new Error("Target market not found");
+        const targetPegged = targetMarket.addresses?.peggedToken as `0x${string}` | undefined;
+        if (!targetPegged) throw new Error("Target pegged token missing");
+
+        // Aggregate claimable rewards from selected claim pools using `allPoolRewards`
+        const peggedByToken = new Map<`0x${string}`, bigint>();
+        const leveragedByMarket = new Map<string, bigint>();
+        const wrappedByToken = new Map<`0x${string}`, bigint>();
+
+        for (const { marketId, poolType } of args.selectedClaimPools) {
+          const market = anchorMarkets.find(([id]) => id === marketId)?.[1];
+          if (!market) continue;
+          const poolAddress =
+            poolType === "collateral"
+              ? (market.addresses?.stabilityPoolCollateral as `0x${string}` | undefined)
+              : (market.addresses?.stabilityPoolLeveraged as `0x${string}` | undefined);
+          if (!poolAddress) continue;
+          const rts = getPoolRewardTokens(poolAddress);
+
+          const peggedTokenAddr = market.addresses?.peggedToken as `0x${string}` | undefined;
+          const leveragedTokenAddr = market.addresses?.leveragedToken as `0x${string}` | undefined;
+          const wrappedTokenAddr = market.addresses?.wrappedCollateralToken as `0x${string}` | undefined;
+
+          for (const rt of rts) {
+            if (!rt.claimable || rt.claimable <= 0n) continue;
+            const addr = (rt.address as `0x${string}`).toLowerCase() as `0x${string}`;
+            if (peggedTokenAddr && addr === peggedTokenAddr.toLowerCase()) {
+              peggedByToken.set(peggedTokenAddr, (peggedByToken.get(peggedTokenAddr) ?? 0n) + rt.claimable);
+            } else if (leveragedTokenAddr && addr === leveragedTokenAddr.toLowerCase()) {
+              leveragedByMarket.set(marketId, (leveragedByMarket.get(marketId) ?? 0n) + rt.claimable);
+            } else if (wrappedTokenAddr && addr === wrappedTokenAddr.toLowerCase()) {
+              wrappedByToken.set(wrappedTokenAddr, (wrappedByToken.get(wrappedTokenAddr) ?? 0n) + rt.claimable);
+            } else {
+              // Unknown reward token type for this market; ignore for now.
+            }
+          }
+        }
+
+        // Build redeem leveraged plans (market-specific)
+        const redeemLeveragedPlan: Array<{
+          marketId: string;
+          leveragedToken: `0x${string}`;
+          amount: bigint;
+          minter: `0x${string}`;
+          expectedOut: bigint;
+          fee: bigint;
+        }> = [];
+        for (const [marketId, amount] of leveragedByMarket.entries()) {
+          const market = anchorMarkets.find(([id]) => id === marketId)?.[1];
+          const minter = market?.addresses?.minter as `0x${string}` | undefined;
+          const leveragedToken = market?.addresses?.leveragedToken as `0x${string}` | undefined;
+          if (!minter || !leveragedToken) continue;
+          const dry = (await publicClient.readContract({
+            address: minter,
+            abi: minterABI,
+            functionName: "redeemLeveragedTokenDryRun",
+            args: [amount],
+          })) as [bigint, bigint, bigint, bigint, bigint, bigint];
+          const fee = dry?.[1] ?? 0n;
+          const out = dry?.[3] ?? 0n;
+          redeemLeveragedPlan.push({ marketId, leveragedToken, amount, minter, expectedOut: out, fee });
+
+          const wrappedToken = market?.addresses?.wrappedCollateralToken as `0x${string}` | undefined;
+          if (wrappedToken) {
+            wrappedByToken.set(wrappedToken, (wrappedByToken.get(wrappedToken) ?? 0n) + out);
+          }
+        }
+
+        // Redeem non-target pegged via best market (lowest fee %)
+        const redeemPeggedPlan: Array<{
+          peggedToken: `0x${string}`;
+          amount: bigint;
+          minter: `0x${string}`;
+          wrappedCollateralToken: `0x${string}`;
+          expectedOut: bigint;
+          fee: bigint;
+          feePct?: number;
+          marketId: string;
+          tokenSymbol: string;
+        }> = [];
+
+        for (const [peggedToken, amount] of peggedByToken.entries()) {
+          if (peggedToken.toLowerCase() === targetPegged.toLowerCase()) continue;
+          const candidates = anchorMarkets
+            .map(([id, m]) => ({ id, market: m }))
+            .filter(({ market }) => {
+              const p = (market as any)?.addresses?.peggedToken as `0x${string}` | undefined;
+              return p && p.toLowerCase() === peggedToken.toLowerCase();
+            });
+          let best: null | {
+            marketId: string;
+            minter: `0x${string}`;
+            wrapped: `0x${string}`;
+            fee: bigint;
+            out: bigint;
+            feePct?: number;
+            tokenSymbol: string;
+          } = null;
+
+          for (const c of candidates) {
+            const minter = (c.market as any).addresses?.minter as `0x${string}` | undefined;
+            const wrapped = (c.market as any).addresses?.wrappedCollateralToken as `0x${string}` | undefined;
+            if (!minter || !wrapped) continue;
+            const dry = (await publicClient.readContract({
+              address: minter,
+              abi: minterABI,
+              functionName: "redeemPeggedTokenDryRun",
+              args: [amount],
+            })) as [bigint, bigint, bigint, bigint, bigint, bigint, bigint];
+            const fee = dry?.[1] ?? 0n;
+            const out = dry?.[4] ?? 0n;
+            const denom = fee + out;
+            const feePct = denom > 0n ? (Number(fee) / Number(denom)) * 100 : undefined;
+            const tokenSymbol = (c.market as any)?.peggedToken?.symbol || "ha";
+
+            if (
+              !best ||
+              (feePct !== undefined &&
+                best.feePct !== undefined &&
+                feePct < best.feePct - 1e-9) ||
+              (feePct !== undefined && best.feePct === undefined) ||
+              (feePct === best.feePct && out > best.out)
+            ) {
+              best = { marketId: c.id, minter, wrapped, fee, out, feePct, tokenSymbol };
+            }
+          }
+          if (!best) throw new Error("Failed to compute redeem dry run");
+          redeemPeggedPlan.push({
+            peggedToken,
+            amount,
+            minter: best.minter,
+            wrappedCollateralToken: best.wrapped,
+            expectedOut: best.out,
+            fee: best.fee,
+            feePct: best.feePct,
+            marketId: best.marketId,
+            tokenSymbol: best.tokenSymbol,
+          });
+          wrappedByToken.set(best.wrapped, (wrappedByToken.get(best.wrapped) ?? 0n) + best.out);
+        }
+
+        // Mint target token per wrapped collateral token via best market (lowest fee %)
+        const mintPlan: Array<{
+          wrappedToken: `0x${string}`;
+          amount: bigint;
+          minter: `0x${string}`;
+          expectedMint: bigint;
+          fee: bigint;
+          feePct?: number;
+          marketId: string;
+          collateralSymbol: string;
+        }> = [];
+
+        const targetMintMarkets = anchorMarkets
+          .map(([id, m]) => ({ id, market: m }))
+          .filter(({ market }) => {
+            const p = (market as any)?.addresses?.peggedToken as `0x${string}` | undefined;
+            const minter = (market as any)?.addresses?.minter as `0x${string}` | undefined;
+            const wrapped = (market as any)?.addresses?.wrappedCollateralToken as `0x${string}` | undefined;
+            return !!p && !!minter && !!wrapped && p.toLowerCase() === targetPegged.toLowerCase();
+          });
+
+        for (const [wrappedToken, amount] of wrappedByToken.entries()) {
+          if (amount <= 0n) continue;
+          const candidates = targetMintMarkets.filter(({ market }) => {
+            const w = (market as any)?.addresses?.wrappedCollateralToken as `0x${string}` | undefined;
+            return w && w.toLowerCase() === wrappedToken.toLowerCase();
+          });
+          if (candidates.length === 0) continue;
+          let best: null | {
+            marketId: string;
+            minter: `0x${string}`;
+            minted: bigint;
+            fee: bigint;
+            feePct?: number;
+            collateralSymbol: string;
+          } = null;
+
+          for (const c of candidates) {
+            const minter = (c.market as any).addresses?.minter as `0x${string}` | undefined;
+            if (!minter) continue;
+            const dry = (await publicClient.readContract({
+              address: minter,
+              abi: minterABI,
+              functionName: "mintPeggedTokenDryRun",
+              args: [amount],
+            })) as [bigint, bigint, bigint, bigint, bigint, bigint];
+            const fee = dry?.[1] ?? 0n;
+            const taken = dry?.[2] ?? 0n;
+            const minted = dry?.[3] ?? 0n;
+            const feePct = taken > 0n ? (Number(fee) / Number(taken)) * 100 : undefined;
+            const collateralSymbol = (c.market as any)?.collateral?.symbol || "collateral";
+
+            if (
+              !best ||
+              (feePct !== undefined &&
+                best.feePct !== undefined &&
+                feePct < best.feePct - 1e-9) ||
+              (feePct !== undefined && best.feePct === undefined) ||
+              (feePct === best.feePct && minted > best.minted)
+            ) {
+              best = { marketId: c.id, minter, minted, fee, feePct, collateralSymbol };
+            }
+          }
+          if (!best) continue;
+          mintPlan.push({
+            wrappedToken,
+            amount,
+            minter: best.minter,
+            expectedMint: best.minted,
+            fee: best.fee,
+            feePct: best.feePct,
+            marketId: best.marketId,
+            collateralSymbol: best.collateralSymbol,
+          });
+        }
+
+        const fees = [
+          ...redeemLeveragedPlan.map((p) => {
+            const market = anchorMarkets.find(([id]) => id === p.marketId)?.[1];
+            const tokenSymbol = market?.collateral?.symbol || "collateral";
+            const feePct =
+              p.fee + p.expectedOut > 0n
+                ? (Number(p.fee) / Number(p.fee + p.expectedOut)) * 100
+                : undefined;
+            return {
+              id: `redeem-hs-${p.marketId}`,
+              label: `Redeem leveraged (${p.marketId})`,
+              tokenSymbol,
+              feeFormatted: formatTokenAmount(p.fee),
+              feePercentage: feePct,
+              details: `Redeem ${formatTokenAmount(p.amount)} hs → ${formatTokenAmount(p.expectedOut)} ${tokenSymbol}`,
+            };
+          }),
+          ...redeemPeggedPlan.map((p) => {
+            const market = anchorMarkets.find(([id]) => id === p.marketId)?.[1];
+            const tokenSymbol = market?.collateral?.symbol || "collateral";
+            return {
+              id: `redeem-ha-${p.peggedToken.toLowerCase()}`,
+              label: `Redeem ${p.tokenSymbol} (${p.marketId})`,
+              tokenSymbol,
+              feeFormatted: formatTokenAmount(p.fee),
+              feePercentage: p.feePct,
+              details: `Redeem ${formatTokenAmount(p.amount)} ${p.tokenSymbol} → ${formatTokenAmount(p.expectedOut)} ${tokenSymbol}`,
+            };
+          }),
+          ...mintPlan.map((p) => ({
+            id: `mint-${p.wrappedToken.toLowerCase()}`,
+            label: `Mint ${(targetMarket as any)?.peggedToken?.symbol || "ha"} (${p.marketId})`,
+            tokenSymbol: p.collateralSymbol,
+            feeFormatted: formatTokenAmount(p.fee),
+            feePercentage: p.feePct,
+            details: `Mint ${formatTokenAmount(p.expectedMint)} from ${formatTokenAmount(p.amount)} ${p.collateralSymbol}`,
+          })),
+        ];
+
+        setAdvancedPreflight({
+          key,
+          isLoading: false,
+          fees,
+          plan: {
+            targetMarketId: args.targetMarketId,
+            allocations: args.allocations,
+            selectedClaimPools: args.selectedClaimPools,
+            redeemPegged: redeemPeggedPlan.map((p) => ({
+              peggedToken: p.peggedToken,
+              amount: p.amount,
+              minter: p.minter,
+              wrappedCollateralToken: p.wrappedCollateralToken,
+              expectedOut: p.expectedOut,
+            })),
+            redeemLeveraged: redeemLeveragedPlan.map((p) => ({
+              marketId: p.marketId,
+              leveragedToken: p.leveragedToken,
+              amount: p.amount,
+              minter: p.minter,
+              expectedOut: p.expectedOut,
+            })),
+            mint: mintPlan.map((p) => ({
+              wrappedToken: p.wrappedToken,
+              amount: p.amount,
+              minter: p.minter,
+              expectedMint: p.expectedMint,
+            })),
+          },
+        });
+      } catch (e: any) {
+        setAdvancedPreflight({
+          key,
+          isLoading: false,
+          error: e?.message || "Failed to calculate fees",
+          fees: [],
+        });
+      }
+    },
+    [anchorMarkets, formatTokenAmount, getPoolRewardTokens, publicClient]
+  );
+
+  const runSimplePreflight = useCallback(
+    async (args: {
+      selectedClaimPools: Array<{ marketId: string; poolType: "collateral" | "sail" }>;
+    }) => {
+      if (!publicClient) {
+        setSimplePreflight({
+          key: "",
+          isLoading: false,
+          error: "Public client not available",
+          fees: [],
+        });
+        return;
+      }
+
+      const key = JSON.stringify({
+        c: args.selectedClaimPools
+          .slice()
+          .sort((x, y) =>
+            `${x.marketId}-${x.poolType}`.localeCompare(`${y.marketId}-${y.poolType}`)
+          ),
+      });
+
+      setSimplePreflight({
+        key,
+        isLoading: true,
+        fees: [],
+      });
+
+      try {
+        // Aggregate claimable rewards from selected pools using `allPoolRewards`
+        const leveragedByMarket = new Map<string, bigint>();
+        const wrappedByMarket = new Map<string, bigint>();
+
+        for (const { marketId, poolType } of args.selectedClaimPools) {
+          const market = anchorMarkets.find(([id]) => id === marketId)?.[1];
+          if (!market) continue;
+          const poolAddress =
+            poolType === "collateral"
+              ? (market.addresses?.stabilityPoolCollateral as `0x${string}` | undefined)
+              : (market.addresses?.stabilityPoolLeveraged as `0x${string}` | undefined);
+          if (!poolAddress) continue;
+
+          const leveragedTokenAddr = market.addresses?.leveragedToken as `0x${string}` | undefined;
+          const wrappedTokenAddr =
+            market.addresses?.wrappedCollateralToken as `0x${string}` | undefined;
+          if (!wrappedTokenAddr) continue;
+
+          const rts = getPoolRewardTokens(poolAddress);
+          for (const rt of rts) {
+            if (!rt.claimable || rt.claimable <= 0n) continue;
+            const addr = (rt.address as `0x${string}`).toLowerCase() as `0x${string}`;
+            if (leveragedTokenAddr && addr === leveragedTokenAddr.toLowerCase()) {
+              leveragedByMarket.set(
+                marketId,
+                (leveragedByMarket.get(marketId) ?? 0n) + rt.claimable
+              );
+            } else if (addr === wrappedTokenAddr.toLowerCase()) {
+              wrappedByMarket.set(
+                marketId,
+                (wrappedByMarket.get(marketId) ?? 0n) + rt.claimable
+              );
+            } else {
+              // pegged token rewards have no protocol fee for conversion, so ignore here
+            }
+          }
+        }
+
+        const fees: Array<{
+          id: string;
+          label: string;
+          tokenSymbol: string;
+          feeFormatted: string;
+          feePercentage?: number;
+          details?: string;
+        }> = [];
+
+        for (const [marketId, leveragedAmount] of leveragedByMarket.entries()) {
+          if (leveragedAmount <= 0n) continue;
+          const market = anchorMarkets.find(([id]) => id === marketId)?.[1];
+          const minter = market?.addresses?.minter as `0x${string}` | undefined;
+          if (!market || !minter) continue;
+          const collateralSymbol = market?.collateral?.symbol || "collateral";
+
+          const dry = (await publicClient.readContract({
+            address: minter,
+            abi: minterABI,
+            functionName: "redeemLeveragedTokenDryRun",
+            args: [leveragedAmount],
+          })) as [bigint, bigint, bigint, bigint, bigint, bigint];
+          const fee = dry?.[1] ?? 0n;
+          const out = dry?.[3] ?? 0n;
+          const feePct =
+            fee + out > 0n ? (Number(fee) / Number(fee + out)) * 100 : undefined;
+
+          fees.push({
+            id: `simple-redeem-hs-${marketId}`,
+            label: `Redeem leveraged (${marketId})`,
+            tokenSymbol: collateralSymbol,
+            feeFormatted: formatTokenAmount(fee),
+            feePercentage: feePct,
+            details: `Redeem ${formatTokenAmount(leveragedAmount)} hs → ${formatTokenAmount(out)} ${collateralSymbol}`,
+          });
+
+          // Redemption produces wrapped collateral which will be minted into pegged
+          wrappedByMarket.set(marketId, (wrappedByMarket.get(marketId) ?? 0n) + out);
+        }
+
+        for (const [marketId, wrappedAmount] of wrappedByMarket.entries()) {
+          if (wrappedAmount <= 0n) continue;
+          const market = anchorMarkets.find(([id]) => id === marketId)?.[1];
+          const minter = market?.addresses?.minter as `0x${string}` | undefined;
+          if (!market || !minter) continue;
+          const collateralSymbol = market?.collateral?.symbol || "collateral";
+          const peggedSymbol = market?.peggedToken?.symbol || "ha";
+
+          const dry = (await publicClient.readContract({
+            address: minter,
+            abi: minterABI,
+            functionName: "mintPeggedTokenDryRun",
+            args: [wrappedAmount],
+          })) as [bigint, bigint, bigint, bigint, bigint, bigint];
+          const fee = dry?.[1] ?? 0n;
+          const taken = dry?.[2] ?? 0n;
+          const minted = dry?.[3] ?? 0n;
+          const feePct = taken > 0n ? (Number(fee) / Number(taken)) * 100 : undefined;
+
+          fees.push({
+            id: `simple-mint-${marketId}`,
+            label: `Mint ${peggedSymbol} (${marketId})`,
+            tokenSymbol: collateralSymbol,
+            feeFormatted: formatTokenAmount(fee),
+            feePercentage: feePct,
+            details: `Mint ${formatTokenAmount(minted)} ${peggedSymbol} from ${formatTokenAmount(wrappedAmount)} ${collateralSymbol}`,
+          });
+        }
+
+        setSimplePreflight({
+          key,
+          isLoading: false,
+          fees,
+        });
+      } catch (e: any) {
+        setSimplePreflight({
+          key,
+          isLoading: false,
+          error: e?.message || "Failed to calculate fees",
+          fees: [],
+        });
+      }
+    },
+    [anchorMarkets, formatTokenAmount, getPoolRewardTokens, publicClient]
+  );
+
+  const handleCompoundAllKeepPerToken = useCallback(
+    async (
+      selectedPools: Array<{ marketId: string; poolType: "collateral" | "sail" }>,
+      allocations: Array<{ poolAddress: `0x${string}`; percentage: number }>
+    ) => {
+      if (!address || !publicClient) throw new Error("Wallet not connected");
+
+      const selectedByMarket = getSelectedPoolsByMarket(selectedPools);
+      const marketsToProcess = Array.from(selectedByMarket.keys());
+      if (marketsToProcess.length === 0) return;
+
+      // Snapshot initial balances so we only act on newly-claimed rewards.
+      const initialByMarket = new Map<
+        string,
+        { pegged: bigint; leveraged: bigint; wrapped: bigint }
+      >();
+      for (const marketId of marketsToProcess) {
+        const market = anchorMarkets.find(([id]) => id === marketId)?.[1];
+        if (!market) continue;
+        const peggedTokenAddress = market.addresses?.peggedToken as `0x${string}` | undefined;
+        const leveragedTokenAddress = market.addresses?.leveragedToken as `0x${string}` | undefined;
+        const wrappedCollateralToken = market.addresses?.wrappedCollateralToken as `0x${string}` | undefined;
+        if (!peggedTokenAddress || !wrappedCollateralToken) continue;
+        const pegged = await readErc20Balance(peggedTokenAddress);
+        const leveraged = leveragedTokenAddress ? await readErc20Balance(leveragedTokenAddress) : 0n;
+        const wrapped = await readErc20Balance(wrappedCollateralToken);
+        initialByMarket.set(marketId, { pegged, leveraged, wrapped });
+      }
+
+      const steps: TransactionStep[] = [];
+      for (const marketId of marketsToProcess) {
+        const poolTypes = selectedByMarket.get(marketId) ?? [];
+        for (const poolType of poolTypes) {
+          steps.push({
+            id: `claim-${marketId}-${poolType}`,
+            label: `Claim rewards from ${marketId} ${poolType} pool`,
+            status: "pending",
+          });
+        }
+      }
+      steps.push({
+        id: "compound",
+        label: "Redeem / Mint / Deposit",
+        status: "pending",
+      });
+
+      setTransactionProgress({
+        isOpen: true,
+        title: "Compounding Rewards",
+        steps,
+        currentStepIndex: 0,
+      });
+
+      // Step 1: claim from each selected pool
+      let stepIndex = 0;
+      for (const marketId of marketsToProcess) {
+        const market = anchorMarkets.find(([id]) => id === marketId)?.[1];
+        if (!market) continue;
+        const poolTypes = selectedByMarket.get(marketId) ?? [];
+        for (const poolType of poolTypes) {
+          const stepId = `claim-${marketId}-${poolType}`;
+          setCurrentStep(stepIndex);
+          updateProgressStep(stepId, { status: "in_progress" });
+
+          const poolAddress =
+            poolType === "collateral"
+              ? (market.addresses?.stabilityPoolCollateral as `0x${string}` | undefined)
+              : (market.addresses?.stabilityPoolLeveraged as `0x${string}` | undefined);
+          if (!poolAddress) {
+            updateProgressStep(stepId, { status: "error", error: "Pool address not found" });
+            stepIndex++;
+            continue;
+          }
+
+          const hash = await writeContractAsync({
+            address: poolAddress,
+            abi: rewardsABI,
+            functionName: "claim",
+          });
+          updateProgressStep(stepId, { status: "in_progress", txHash: hash as string });
+          await publicClient.waitForTransactionReceipt({ hash: hash as `0x${string}` });
+          updateProgressStep(stepId, { status: "completed", txHash: hash as string });
+          stepIndex++;
+        }
+      }
+
+      // Step 2: per-market redeem/mint/deposit using the chosen pool list (by address)
+      setCurrentStep(stepIndex);
+      updateProgressStep("compound", { status: "in_progress" });
+
+      for (const marketId of marketsToProcess) {
+        const market = anchorMarkets.find(([id]) => id === marketId)?.[1];
+        if (!market) continue;
+
+        const minterAddress = market.addresses?.minter as `0x${string}` | undefined;
+        const peggedTokenAddress = market.addresses?.peggedToken as `0x${string}` | undefined;
+        const leveragedTokenAddress = market.addresses?.leveragedToken as `0x${string}` | undefined;
+        const wrappedCollateralToken = market.addresses?.wrappedCollateralToken as `0x${string}` | undefined;
+        const collateralPoolAddress = market.addresses?.stabilityPoolCollateral as `0x${string}` | undefined;
+        const sailPoolAddress = market.addresses?.stabilityPoolLeveraged as `0x${string}` | undefined;
+
+        if (!minterAddress || !peggedTokenAddress || !wrappedCollateralToken) continue;
+
+        const initial = initialByMarket.get(marketId);
+        if (!initial) continue;
+        const peggedAfterClaim = await readErc20Balance(peggedTokenAddress);
+        const leveragedAfterClaim = leveragedTokenAddress ? await readErc20Balance(leveragedTokenAddress) : 0n;
+        const wrappedAfterClaim = await readErc20Balance(wrappedCollateralToken);
+
+        const claimedPegged = peggedAfterClaim > initial.pegged ? peggedAfterClaim - initial.pegged : 0n;
+        const claimedLeveraged =
+          leveragedAfterClaim > initial.leveraged ? leveragedAfterClaim - initial.leveraged : 0n;
+        // wrapped delta will be re-read after redemptions; keep initial baseline
+        void wrappedAfterClaim;
+
+        // Redeem leveraged -> wrapped collateral
+        if (claimedLeveraged > 0n && leveragedTokenAddress) {
+          await ensureAllowance(leveragedTokenAddress, minterAddress, claimedLeveraged);
+          // Compute min out via dry run
+          let minOut = 0n;
+          try {
+            const dry = (await publicClient.readContract({
+              address: minterAddress,
+              abi: minterABI,
+              functionName: "redeemLeveragedTokenDryRun",
+              args: [claimedLeveraged],
+            })) as [bigint, bigint, bigint, bigint, bigint, bigint];
+            if (dry && Array.isArray(dry) && dry.length >= 4) {
+              const returned = dry[3] as bigint;
+              minOut = (returned * 99n) / 100n;
+            }
+          } catch {}
+
+          const redeemHash = await writeContractAsync({
+            address: minterAddress,
+            abi: minterABI,
+            functionName: "redeemLeveragedToken",
+            args: [claimedLeveraged, address, minOut],
+          });
+          await publicClient.waitForTransactionReceipt({ hash: redeemHash as `0x${string}` });
+        }
+
+        // Mint pegged from *new* wrapped collateral (claims + redemptions)
+        const wrappedAfterRedeem = await readErc20Balance(wrappedCollateralToken);
+        const collateralToMint = wrappedAfterRedeem > initial.wrapped ? wrappedAfterRedeem - initial.wrapped : 0n;
+        if (collateralToMint > 0n) {
+          await ensureAllowance(wrappedCollateralToken, minterAddress, collateralToMint);
+          let minPeggedOut = 0n;
+          try {
+            const dry = (await publicClient.readContract({
+              address: minterAddress,
+              abi: minterABI,
+              functionName: "mintPeggedTokenDryRun",
+              args: [collateralToMint],
+            })) as [bigint, bigint, bigint, bigint, bigint, bigint];
+            if (dry && Array.isArray(dry) && dry.length >= 4) {
+              const peggedMinted = dry[3] as bigint;
+              minPeggedOut = (peggedMinted * 99n) / 100n;
+            }
+          } catch {}
+
+          const mintHash = await writeContractAsync({
+            address: minterAddress,
+            abi: minterABI,
+            functionName: "mintPeggedToken",
+            args: [collateralToMint, address, minPeggedOut],
+          });
+          await publicClient.waitForTransactionReceipt({ hash: mintHash as `0x${string}` });
+        }
+
+        const peggedAfterMint = await readErc20Balance(peggedTokenAddress);
+        const totalPeggedToDeposit = peggedAfterMint > initial.pegged ? peggedAfterMint - initial.pegged : 0n;
+        if (totalPeggedToDeposit <= 0n) continue;
+
+        // Deposit to selected pools that belong to this market (collateral/sail pools for this market)
+        const validPoolSet = new Set<string>(
+          [collateralPoolAddress, sailPoolAddress]
+            .filter(Boolean)
+            .map((x) => (x as string).toLowerCase())
+        );
+        const active = allocations
+          .filter((a) => a.percentage > 0)
+          .filter((a) => validPoolSet.has(a.poolAddress.toLowerCase()));
+        const sum = active.reduce((s, a) => s + a.percentage, 0);
+        if (sum === 0) continue;
+
+        for (const a of active) {
+          const poolAddress = a.poolAddress as `0x${string}`;
+          const pct = (a.percentage * 100) / sum;
+          const amt = (totalPeggedToDeposit * BigInt(Math.round(pct))) / 100n;
+          if (amt <= 0n) continue;
+          await ensureAllowance(peggedTokenAddress, poolAddress, amt);
+          const depositHash = await writeContractAsync({
+            address: poolAddress,
+            abi: STABILITY_POOL_ABI,
+            functionName: "deposit",
+            args: [amt, address, 0n],
+          });
+          await publicClient.waitForTransactionReceipt({ hash: depositHash as `0x${string}` });
+        }
+      }
+
+      updateProgressStep("compound", { status: "completed" });
+    },
+    [
+      address,
+      publicClient,
+      anchorMarkets,
+      writeContractAsync,
+      updateProgressStep,
+      setCurrentStep,
+      setTransactionProgress,
+      ensureAllowance,
+      readErc20Balance,
+      getSelectedPoolsByMarket,
+      getPoolRewardTokens,
+    ]
+  );
+
+  const handleCompoundAllToSingleToken = useCallback(
+    async (
+      selectedPools: Array<{ marketId: string; poolType: "collateral" | "sail" }>,
+      targetMarketId: string,
+      allocations: Array<{ poolAddress: `0x${string}`; percentage: number }>,
+      preflightPlan?: NonNullable<typeof advancedPreflight>["plan"]
+    ) => {
+      if (!address || !publicClient) throw new Error("Wallet not connected");
+
+      const targetMarket = anchorMarkets.find(([id]) => id === targetMarketId)?.[1];
+      if (!targetMarket) throw new Error("Target market not found");
+
+      const targetPegged = targetMarket.addresses?.peggedToken as `0x${string}` | undefined;
+      const targetCollateralPool = targetMarket.addresses?.stabilityPoolCollateral as `0x${string}` | undefined;
+      const targetSailPool = targetMarket.addresses?.stabilityPoolLeveraged as `0x${string}` | undefined;
+
+      if (!targetPegged) {
+        throw new Error("Missing target market addresses");
+      }
+
+      const selectedByMarket = getSelectedPoolsByMarket(selectedPools);
+      const marketsToProcess = Array.from(selectedByMarket.keys());
+      if (marketsToProcess.length === 0) return;
+
+      // Snapshot balances so we only act on newly-claimed rewards.
+      // NOTE: pegged tokens can be shared across multiple markets, so we snapshot per-token-address to avoid double counting.
+      const initialPeggedByToken = new Map<`0x${string}`, bigint>();
+      const initialLeveragedByMarket = new Map<string, bigint>();
+      const initialWrappedByToken = new Map<`0x${string}`, bigint>();
+
+      for (const marketId of marketsToProcess) {
+        const m = anchorMarkets.find(([id]) => id === marketId)?.[1];
+        if (!m) continue;
+        const peggedTokenAddress = m.addresses?.peggedToken as `0x${string}` | undefined;
+        const leveragedTokenAddress = m.addresses?.leveragedToken as `0x${string}` | undefined;
+        const wrappedCollateralToken = m.addresses?.wrappedCollateralToken as `0x${string}` | undefined;
+
+        if (peggedTokenAddress && !initialPeggedByToken.has(peggedTokenAddress)) {
+          initialPeggedByToken.set(peggedTokenAddress, await readErc20Balance(peggedTokenAddress));
+        }
+        if (leveragedTokenAddress) {
+          initialLeveragedByMarket.set(marketId, await readErc20Balance(leveragedTokenAddress));
+        }
+        if (wrappedCollateralToken && !initialWrappedByToken.has(wrappedCollateralToken)) {
+          initialWrappedByToken.set(wrappedCollateralToken, await readErc20Balance(wrappedCollateralToken));
+        }
+      }
+
+      const claimSteps: TransactionStep[] = [];
+      for (const marketId of marketsToProcess) {
+        const poolTypes = selectedByMarket.get(marketId) ?? [];
+        for (const poolType of poolTypes) {
+          claimSteps.push({
+            id: `claim-${marketId}-${poolType}`,
+            label: `Claim rewards from ${marketId} ${poolType} pool`,
+            status: "pending",
+          });
+        }
+      }
+
+      // If we have a preflight plan (computed before continuing), show the full set of steps up front.
+      // This prevents the progress modal from only showing claim steps during the initial phase.
+      const preActionSteps: TransactionStep[] = preflightPlan
+        ? [
+            ...preflightPlan.redeemLeveraged.map((p) => ({
+              id: `redeem-hs-${p.marketId}`,
+              label: `Redeem leveraged rewards (${p.marketId})`,
+              status: "pending" as const,
+              details: "Redeem leveraged rewards → wrapped collateral",
+            })),
+            ...preflightPlan.redeemPegged.map((p) => {
+              const tokenSymbol =
+                anchorMarkets.find(([_, m]) => {
+                  const addr = (m as any)?.addresses?.peggedToken as `0x${string}` | undefined;
+                  return addr && addr.toLowerCase() === p.peggedToken.toLowerCase();
+                })?.[1]?.peggedToken?.symbol || "ha";
+              return {
+                id: `redeem-ha-${p.peggedToken.slice(2, 8)}`,
+                label: `Redeem ${tokenSymbol} → collateral`,
+                status: "pending" as const,
+                details: "Redeem non-target Anchor tokens → wrapped collateral",
+              };
+            }),
+            ...preflightPlan.mint.map((p) => ({
+              id: `mint-${p.wrappedToken.slice(2, 8)}`,
+              label: `Mint ${(targetMarket.peggedToken?.symbol || "ha")} from collateral`,
+              status: "pending" as const,
+              details: "Mint target Anchor token from wrapped collateral",
+            })),
+            ...allocations
+              .filter((a) => a.percentage > 0)
+              .map((a) => ({
+                id: `deposit-${a.poolAddress.toLowerCase()}`,
+                label: "Deposit to selected pool",
+                status: "pending" as const,
+                details: `${a.percentage}% allocation`,
+              })),
+          ]
+        : [];
+
+      setTransactionProgress({
+        isOpen: true,
+        title: "Compounding Rewards",
+        steps: [...claimSteps, ...preActionSteps],
+        currentStepIndex: 0,
+      });
+
+      // Step 1: claim from each selected pool
+      let stepIndex = 0;
+      for (const marketId of marketsToProcess) {
+        const market = anchorMarkets.find(([id]) => id === marketId)?.[1];
+        if (!market) continue;
+        const poolTypes = selectedByMarket.get(marketId) ?? [];
+        for (const poolType of poolTypes) {
+          const stepId = `claim-${marketId}-${poolType}`;
+          setCurrentStep(stepIndex);
+          updateProgressStep(stepId, { status: "in_progress" });
+
+          const poolAddress =
+            poolType === "collateral"
+              ? (market.addresses?.stabilityPoolCollateral as `0x${string}` | undefined)
+              : (market.addresses?.stabilityPoolLeveraged as `0x${string}` | undefined);
+          if (!poolAddress) {
+            updateProgressStep(stepId, { status: "error", error: "Pool address not found" });
+            stepIndex++;
+            continue;
+          }
+
+          const hash = await writeContractAsync({
+            address: poolAddress,
+            abi: rewardsABI,
+            functionName: "claim",
+          });
+          updateProgressStep(stepId, { status: "in_progress", txHash: hash as string });
+          await publicClient.waitForTransactionReceipt({ hash: hash as `0x${string}` });
+          updateProgressStep(stepId, { status: "completed", txHash: hash as string });
+          stepIndex++;
+        }
+      }
+
+      const initialTargetPegged = await readErc20Balance(targetPegged);
+
+      // 2a) Redeem leveraged tokens (must use the market minter)
+      type RedeemLeveragedPlan = {
+        id: string;
+        marketId: string;
+        minter: `0x${string}`;
+        leveragedToken: `0x${string}`;
+        amount: bigint;
+        fee: bigint;
+        expectedOut: bigint;
+        minOut: bigint;
+      };
+      const leveragedPlans: RedeemLeveragedPlan[] = [];
+      for (const marketId of marketsToProcess) {
+        const market = anchorMarkets.find(([id]) => id === marketId)?.[1];
+        if (!market) continue;
+        const minterAddress = market.addresses?.minter as `0x${string}` | undefined;
+        const leveragedTokenAddress = market.addresses?.leveragedToken as `0x${string}` | undefined;
+        if (!minterAddress || !leveragedTokenAddress) continue;
+
+        const initialLeveraged = initialLeveragedByMarket.get(marketId) ?? 0n;
+        const leveragedAfterClaim = await readErc20Balance(leveragedTokenAddress);
+        const claimedLeveraged =
+          leveragedAfterClaim > initialLeveraged ? leveragedAfterClaim - initialLeveraged : 0n;
+        if (claimedLeveraged <= 0n) continue;
+
+        // No post-claim dry-run: use the preflight ratios if available.
+        let fee = 0n;
+        let expectedOut = 0n;
+        if (preflightPlan) {
+          const pre = preflightPlan.redeemLeveraged?.find((x) => x.marketId === marketId);
+          expectedOut =
+            pre && pre.amount > 0n ? (pre.expectedOut * claimedLeveraged) / pre.amount : 0n;
+        } else {
+          try {
+            const dry = (await publicClient.readContract({
+              address: minterAddress,
+              abi: minterABI,
+              functionName: "redeemLeveragedTokenDryRun",
+              args: [claimedLeveraged],
+            })) as [bigint, bigint, bigint, bigint, bigint, bigint];
+            if (dry && Array.isArray(dry) && dry.length >= 4) {
+              fee = dry[1] as bigint; // wrappedFee
+              const returned = dry[3] as bigint;
+              expectedOut = returned;
+            }
+          } catch {}
+        }
+        const minOut = expectedOut > 0n ? (expectedOut * 99n) / 100n : 0n;
+
+        leveragedPlans.push({
+          id: `redeem-hs-${marketId}`,
+          marketId,
+          minter: minterAddress,
+          leveragedToken: leveragedTokenAddress,
+          amount: claimedLeveraged,
+          fee,
+          expectedOut,
+          minOut,
+        });
+      }
+
+      // 2b) Redeem non-target pegged tokens using the best market by dry-run (max collateral returned)
+      const claimedPeggedByToken = new Map<`0x${string}`, bigint>();
+      for (const [token, initial] of initialPeggedByToken.entries()) {
+        const after = await readErc20Balance(token);
+        const delta = after > initial ? after - initial : 0n;
+        if (delta > 0n) claimedPeggedByToken.set(token, delta);
+      }
+
+      type RedeemPeggedPlan = {
+        id: string;
+        peggedToken: `0x${string}`;
+        amount: bigint;
+        chosenMarketId: string;
+        minter: `0x${string}`;
+        wrappedCollateralToken: `0x${string}`;
+        fee: bigint;
+        feePct?: number;
+        expectedOut: bigint;
+        minOut: bigint;
+        tokenSymbol: string;
+      };
+      const peggedPlans: RedeemPeggedPlan[] = [];
+
+      const formatToken = (amount: bigint): string => {
+        const num = Number(amount) / 1e18;
+        if (!Number.isFinite(num) || num === 0) return "0";
+        if (num >= 1) return num.toLocaleString(undefined, { maximumFractionDigits: 6 });
+        return num.toLocaleString(undefined, { maximumFractionDigits: 8, useGrouping: false }).replace(/\.?0+$/, "");
+      };
+
+      for (const [peggedTokenAddr, amount] of claimedPeggedByToken.entries()) {
+        if (peggedTokenAddr.toLowerCase() === targetPegged.toLowerCase()) continue; // keep target token
+
+        let chosenMinter: `0x${string}` | undefined;
+        let chosenWrapped: `0x${string}` | undefined;
+        let chosenMarketId: string | undefined;
+        let expectedOut = 0n;
+        let fee = 0n;
+        let feePct: number | undefined;
+
+        if (preflightPlan) {
+          const pre = preflightPlan.redeemPegged?.find(
+            (x) => x.peggedToken.toLowerCase() === peggedTokenAddr.toLowerCase()
+          );
+          if (!pre) throw new Error("Missing preflight plan for pegged redemption");
+          chosenMinter = pre.minter;
+          chosenWrapped = pre.wrappedCollateralToken;
+          expectedOut = pre.amount > 0n ? (pre.expectedOut * amount) / pre.amount : 0n;
+          chosenMarketId =
+            anchorMarkets.find(
+              ([id, m]) =>
+                ((m as any).addresses?.minter as `0x${string}` | undefined)?.toLowerCase() ===
+                chosenMinter!.toLowerCase()
+            )?.[0] || "preflight";
+        } else {
+          // Candidate minters for this pegged token
+          const candidates = anchorMarkets
+            .map(([id, m]) => ({ id, market: m }))
+            .filter(({ market }) => {
+              const p = (market as any).addresses?.peggedToken as `0x${string}` | undefined;
+              const minter = (market as any).addresses?.minter as `0x${string}` | undefined;
+              return !!p && !!minter && p.toLowerCase() === peggedTokenAddr.toLowerCase();
+            });
+
+          if (candidates.length === 0) {
+            throw new Error("No redeem market found for a claimed pegged token");
+          }
+
+          let best: {
+            marketId: string;
+            minter: `0x${string}`;
+            wrappedCollateralToken: `0x${string}`;
+            collateralOut: bigint;
+            fee: bigint;
+            feePct?: number;
+          } | null = null;
+
+          for (const c of candidates) {
+            const minter = (c.market as any).addresses?.minter as `0x${string}` | undefined;
+            const wrapped = (c.market as any).addresses?.wrappedCollateralToken as
+              | `0x${string}`
+              | undefined;
+            if (!minter || !wrapped) continue;
+            try {
+              const dry = (await publicClient.readContract({
+                address: minter,
+                abi: minterABI,
+                functionName: "redeemPeggedTokenDryRun",
+                args: [amount],
+              })) as [bigint, bigint, bigint, bigint, bigint, bigint, bigint] | undefined;
+              const fee = dry && Array.isArray(dry) && dry.length >= 2 ? (dry[1] as bigint) : 0n;
+              const returned =
+                dry && Array.isArray(dry) && dry.length >= 5 ? (dry[4] as bigint) : 0n;
+              const denom = fee + returned;
+              const feePct = denom > 0n ? (Number(fee) / Number(denom)) * 100 : undefined;
+
+              // Choose the lowest fee percent; tie-break on best net out.
+              if (
+                !best ||
+                (feePct !== undefined &&
+                  best.feePct !== undefined &&
+                  feePct < best.feePct - 1e-9) ||
+                (feePct !== undefined && best.feePct === undefined) ||
+                (feePct === best.feePct && returned > best.collateralOut)
+              ) {
+                best = {
+                  marketId: c.id,
+                  minter,
+                  wrappedCollateralToken: wrapped,
+                  collateralOut: returned,
+                  fee,
+                  feePct,
+                };
+              }
+            } catch {
+              // ignore failed dry run candidates
+            }
+          }
+
+          if (!best) {
+            throw new Error("Failed to dry-run redeem on all candidate markets");
+          }
+
+          chosenMinter = best.minter;
+          chosenWrapped = best.wrappedCollateralToken;
+          chosenMarketId = best.marketId;
+          expectedOut = best.collateralOut;
+          fee = best.fee;
+          feePct = best.feePct;
+        }
+
+        const minOut = expectedOut > 0n ? (expectedOut * 99n) / 100n : 0n;
+        const tokenSymbol =
+          anchorMarkets.find(([_, m]) => {
+            const p = (m as any).addresses?.peggedToken as `0x${string}` | undefined;
+            return p && p.toLowerCase() === peggedTokenAddr.toLowerCase();
+          })?.[1]?.peggedToken?.symbol || "ha";
+
+        peggedPlans.push({
+          id: `redeem-ha-${peggedTokenAddr.slice(2, 8)}`,
+          peggedToken: peggedTokenAddr,
+          amount,
+          chosenMarketId: chosenMarketId || "preflight",
+          minter: chosenMinter!,
+          wrappedCollateralToken: chosenWrapped!,
+          fee,
+          feePct,
+          expectedOut,
+          minOut,
+          tokenSymbol,
+        });
+
+        // Track this wrapped collateral token for minting deltas later
+        if (chosenWrapped && !initialWrappedByToken.has(chosenWrapped)) {
+          initialWrappedByToken.set(
+            chosenWrapped,
+            await readErc20Balance(chosenWrapped)
+          );
+        }
+      }
+
+      // Determine all wrapped collateral token deltas (claims + redemptions)
+      const wrappedDeltas: Array<{ token: `0x${string}`; amount: bigint }> = [];
+      for (const [token, initial] of initialWrappedByToken.entries()) {
+        const after = await readErc20Balance(token);
+        const delta = after > initial ? after - initial : 0n;
+        if (delta > 0n) wrappedDeltas.push({ token, amount: delta });
+      }
+
+      // Candidate mint markets for the target token (may include multiple collaterals)
+      const targetMintMarkets = anchorMarkets
+        .map(([id, m]) => ({ id, market: m }))
+        .filter(({ market }) => {
+          const p = (market as any).addresses?.peggedToken as `0x${string}` | undefined;
+          const minter = (market as any).addresses?.minter as `0x${string}` | undefined;
+          const wrapped = (market as any).addresses?.wrappedCollateralToken as `0x${string}` | undefined;
+          return !!p && !!minter && !!wrapped && p.toLowerCase() === targetPegged.toLowerCase();
+        });
+
+      type MintPlan = {
+        id: string;
+        wrappedToken: `0x${string}`;
+        amount: bigint;
+        chosenMarketId: string;
+        minter: `0x${string}`;
+        fee: bigint;
+        feePct?: number;
+        expectedMint: bigint;
+        minPeggedOut: bigint;
+      };
+      const mintPlans: MintPlan[] = [];
+
+      for (const { token: wrappedToken, amount } of wrappedDeltas) {
+        let chosenMinter: `0x${string}` | undefined;
+        let expectedMint = 0n;
+        let fee = 0n;
+        let feePct: number | undefined;
+
+        if (preflightPlan) {
+          const pre = preflightPlan.mint?.find(
+            (x) => x.wrappedToken.toLowerCase() === wrappedToken.toLowerCase()
+          );
+          if (!pre) throw new Error("Missing preflight plan for mint");
+          chosenMinter = pre.minter;
+          expectedMint = pre.amount > 0n ? (pre.expectedMint * amount) / pre.amount : 0n;
+        } else {
+          // Find candidate minters that accept this wrapped collateral for the target token
+          const candidates = targetMintMarkets
+            .map(({ market }) => ({
+              minter: (market as any).addresses?.minter as `0x${string}` | undefined,
+              wrapped: (market as any).addresses?.wrappedCollateralToken as `0x${string}` | undefined,
+              marketId: (market as any).id as string | undefined,
+            }))
+            .filter((x) => !!x.minter && !!x.wrapped && x.wrapped.toLowerCase() === wrappedToken.toLowerCase()) as Array<{minter:`0x${string}`; wrapped:`0x${string}`}>;
+
+          if (candidates.length === 0) {
+            throw new Error("No mint market found for one of the collateral types produced by redemption");
+          }
+
+          let best: { minter: `0x${string}`; peggedOut: bigint; fee: bigint; feePct?: number } | null = null;
+          for (const c of candidates) {
+            try {
+              const dry = (await publicClient.readContract({
+                address: c.minter,
+                abi: minterABI,
+                functionName: "mintPeggedTokenDryRun",
+                args: [amount],
+              })) as [bigint, bigint, bigint, bigint, bigint, bigint] | undefined;
+              const fee = dry && Array.isArray(dry) && dry.length >= 2 ? (dry[1] as bigint) : 0n;
+              const taken = dry && Array.isArray(dry) && dry.length >= 3 ? (dry[2] as bigint) : 0n;
+              const minted = dry && Array.isArray(dry) && dry.length >= 4 ? (dry[3] as bigint) : 0n;
+              const feePct = taken > 0n ? (Number(fee) / Number(taken)) * 100 : undefined;
+
+              if (
+                !best ||
+                (feePct !== undefined &&
+                  best.feePct !== undefined &&
+                  feePct < best.feePct - 1e-9) ||
+                (feePct !== undefined && best.feePct === undefined) ||
+                (feePct === best.feePct && minted > best.peggedOut)
+              ) {
+                best = { minter: c.minter, peggedOut: minted, fee, feePct };
+              }
+            } catch {
+              // ignore failed candidates
+            }
+          }
+
+          if (!best) throw new Error("Failed to dry-run mint on all candidate markets");
+          chosenMinter = best.minter;
+          expectedMint = best.peggedOut;
+          fee = best.fee;
+          feePct = best.feePct;
+        }
+
+        const minPeggedOut = expectedMint > 0n ? (expectedMint * 99n) / 100n : 0n;
+        mintPlans.push({
+          id: `mint-${wrappedToken.slice(2, 8)}`,
+          wrappedToken,
+          amount,
+          chosenMarketId: targetMarketId,
+          minter: chosenMinter!,
+          fee,
+          feePct,
+          expectedMint,
+          minPeggedOut,
+        });
+      }
+
+      // Deposit steps can be expanded to show per-pool approvals/deposits; for now show per-pool deposit steps
+      const depositSteps: TransactionStep[] = allocations
+        .filter((a) => a.percentage > 0)
+        .map((a) => ({
+          id: `deposit-${a.poolAddress.toLowerCase()}`,
+          label: "Deposit to selected pool",
+          status: "pending" as const,
+          details: `${a.percentage}% allocation`,
+        }));
+
+      // Replace the steps list with explicit action steps including fees
+      const actionSteps: TransactionStep[] = [
+        ...leveragedPlans.map((p) => ({
+          id: p.id,
+          label: `Redeem leveraged rewards (${p.marketId})`,
+          status: "pending" as const,
+          details: `Redeem ${formatToken(p.amount)} hs → wrapped collateral`,
+          fee:
+            p.fee > 0n
+              ? {
+                  amount: p.fee,
+                  formatted: formatToken(p.fee),
+                  percentage:
+                    p.fee + p.expectedOut > 0n
+                      ? (Number(p.fee) / Number(p.fee + p.expectedOut)) * 100
+                      : undefined,
+                  tokenSymbol: targetMarket?.collateral?.symbol || "collateral",
+                }
+              : undefined,
+        })),
+        ...peggedPlans.map((p) => ({
+          id: p.id,
+          label: `Redeem ${p.tokenSymbol} → collateral`,
+          status: "pending" as const,
+          details: `Using ${p.chosenMarketId}: redeem ${formatToken(p.amount)} ${p.tokenSymbol} → ${formatToken(p.expectedOut)} wrapped collateral`,
+          fee:
+            p.fee > 0n
+              ? {
+                  amount: p.fee,
+                  formatted: formatToken(p.fee),
+                  percentage: p.feePct,
+                  tokenSymbol: targetMarket?.collateral?.symbol || "collateral",
+                }
+              : undefined,
+        })),
+        ...mintPlans.map((p) => ({
+          id: p.id,
+          label: `Mint ${(targetMarket.peggedToken?.symbol || "ha")} from collateral`,
+          status: "pending" as const,
+          details: `Mint ${formatToken(p.expectedMint)} ${(targetMarket.peggedToken?.symbol || "ha")} from ${formatToken(p.amount)} wrapped collateral`,
+          fee:
+            p.fee > 0n
+              ? {
+                  amount: p.fee,
+                  formatted: formatToken(p.fee),
+                  percentage: p.feePct,
+                  tokenSymbol: targetMarket?.collateral?.symbol || "collateral",
+                }
+              : undefined,
+        })),
+        ...depositSteps,
+      ];
+
+      setTransactionProgress({
+        isOpen: true,
+        title: "Compounding Rewards",
+        steps: [
+          ...claimSteps.map((s) => ({ ...s, status: "completed" as const })),
+          ...actionSteps,
+        ],
+        currentStepIndex: claimSteps.length,
+      });
+
+      // Execute leveraged redeems
+      for (const p of leveragedPlans) {
+        setCurrentStep(claimSteps.length + actionSteps.findIndex((s) => s.id === p.id));
+        updateProgressStep(p.id, { status: "in_progress" });
+        await ensureAllowance(p.leveragedToken, p.minter, p.amount);
+        const hash = await writeContractAsync({
+          address: p.minter,
+          abi: minterABI,
+          functionName: "redeemLeveragedToken",
+          args: [p.amount, address, p.minOut],
+        });
+        updateProgressStep(p.id, { status: "in_progress", txHash: hash as string });
+        await publicClient.waitForTransactionReceipt({ hash: hash as `0x${string}` });
+        updateProgressStep(p.id, { status: "completed", txHash: hash as string });
+      }
+
+      // Execute pegged redeems
+      for (const p of peggedPlans) {
+        setCurrentStep(claimSteps.length + actionSteps.findIndex((s) => s.id === p.id));
+        updateProgressStep(p.id, { status: "in_progress" });
+        await ensureAllowance(p.peggedToken, p.minter, p.amount);
+        const hash = await writeContractAsync({
+          address: p.minter,
+          abi: minterABI,
+          functionName: "redeemPeggedToken",
+          args: [p.amount, address, p.minOut],
+        });
+        updateProgressStep(p.id, { status: "in_progress", txHash: hash as string });
+        await publicClient.waitForTransactionReceipt({ hash: hash as `0x${string}` });
+        updateProgressStep(p.id, { status: "completed", txHash: hash as string });
+      }
+
+      // Execute mints
+      for (const p of mintPlans) {
+        setCurrentStep(claimSteps.length + actionSteps.findIndex((s) => s.id === p.id));
+        updateProgressStep(p.id, { status: "in_progress" });
+        await ensureAllowance(p.wrappedToken, p.minter, p.amount);
+        const hash = await writeContractAsync({
+          address: p.minter,
+          abi: minterABI,
+          functionName: "mintPeggedToken",
+          args: [p.amount, address, p.minPeggedOut],
+        });
+        updateProgressStep(p.id, { status: "in_progress", txHash: hash as string });
+        await publicClient.waitForTransactionReceipt({ hash: hash as `0x${string}` });
+        updateProgressStep(p.id, { status: "completed", txHash: hash as string });
+      }
+
+      // Step 4: deposit target pegged into selected pools (by address)
+      // Recompute how much target pegged we actually ended up with and deposit according to allocation.
+      const targetPeggedAfterMint = await readErc20Balance(targetPegged);
+      const totalPeggedToDeposit =
+        targetPeggedAfterMint > initialTargetPegged
+          ? targetPeggedAfterMint - initialTargetPegged
+          : 0n;
+      if (totalPeggedToDeposit > 0n) {
+        // Only deposit into pools that match the chosen target token (same pegged token address).
+        // We assume the modal only lists valid pools, but still normalize percentages defensively.
+        const active = allocations.filter((a) => a.percentage > 0);
+        const sum = active.reduce((s, a) => s + a.percentage, 0);
+        if (sum === 0) return;
+
+        for (const a of active) {
+          const poolAddress = a.poolAddress as `0x${string}`;
+          const stepId = `deposit-${poolAddress.toLowerCase()}`;
+          const pct = (a.percentage * 100) / sum;
+          const amt = (totalPeggedToDeposit * BigInt(Math.round(pct))) / 100n;
+          if (amt <= 0n) continue;
+          try {
+            // Show progress for the specific deposit row (approval + deposit happen here).
+            const idx = actionSteps.findIndex((s) => s.id === stepId);
+            if (idx >= 0) setCurrentStep(claimSteps.length + idx);
+            updateProgressStep(stepId, {
+              status: "in_progress",
+              details: `${a.percentage}% allocation (approving & depositing…)`,
+            });
+
+            await ensureAllowance(targetPegged, poolAddress, amt);
+            updateProgressStep(stepId, {
+              status: "in_progress",
+              details: `${a.percentage}% allocation (depositing…)`,
+            });
+
+            const depositHash = await writeContractAsync({
+              address: poolAddress,
+              abi: STABILITY_POOL_ABI,
+              functionName: "deposit",
+              args: [amt, address, 0n],
+            });
+            await publicClient.waitForTransactionReceipt({ hash: depositHash as `0x${string}` });
+
+            updateProgressStep(stepId, {
+              status: "completed",
+              txHash: depositHash as string,
+              details: `${a.percentage}% allocation (${formatToken(amt)} deposited)`,
+            });
+          } catch (e: any) {
+            updateProgressStep(stepId, {
+              status: "error",
+              error: e?.message || "Deposit failed",
+            });
+            throw e;
+          }
+        }
+      }
+    },
+    [
+      address,
+      publicClient,
+      anchorMarkets,
+      writeContractAsync,
+      updateProgressStep,
+      setCurrentStep,
+      setTransactionProgress,
+      ensureAllowance,
+      readErc20Balance,
+      getSelectedPoolsByMarket,
+      getPoolRewardTokens,
+    ]
+  );
+
   // Individual market claim handlers
   const handleClaimMarketBasicClaim = async () => {
     if (!address || !selectedMarketForClaim || isClaiming) return;
@@ -1980,6 +3736,8 @@ export default function AnchorPage() {
             // For blended APR calculation
             let totalWeightedAPR = 0; // Sum of (depositUSD * APR)
             let totalDepositUSD = 0; // Sum of depositUSD
+            // Total stability pool deposits (USD). Excludes wallet balances.
+            let totalStabilityPoolDepositsUSD = 0;
             // Track individual positions for tooltip
             const positionAPRs: Array<{
               poolType: "collateral" | "sail";
@@ -2405,6 +4163,11 @@ export default function AnchorPage() {
                   positionData?.collateralPoolUSD || 0;
                 const sailPoolDepositUSD = positionData?.sailPoolUSD || 0;
 
+                // Total deposits should reflect *all* stability pool deposits (regardless of APR),
+                // and should NOT include wallet balances.
+                totalStabilityPoolDepositsUSD +=
+                  (collateralPoolDepositUSD || 0) + (sailPoolDepositUSD || 0);
+
                 // Calculate rewards USD from all reward tokens
                 // Use the aggregated rewards from useAllStabilityPoolRewards
                 if (hasCollateralPool) {
@@ -2563,7 +4326,19 @@ export default function AnchorPage() {
 
                   {/* Combined Content Box */}
                   <div className="bg-[#17395F] p-3 md:col-span-1 lg:col-span-2">
-                    <div className="grid grid-cols-[1fr_1fr_1fr] gap-3 pl-2">
+                    <div className="grid grid-cols-[1fr_1fr_1fr_1fr] gap-3 pl-2">
+                      {/* Total Deposits */}
+                      <div className="flex flex-col items-center justify-center">
+                        <div className="text-xs text-white/70 mb-1.5 text-center font-medium">
+                          Total Deposits
+                        </div>
+                        <div className="text-lg font-bold text-white font-mono text-center">
+                          {totalStabilityPoolDepositsUSD > 0
+                            ? formatCompactUSD(totalStabilityPoolDepositsUSD)
+                            : "$0.00"}
+                        </div>
+                      </div>
+
                       {/* Claimable Value */}
                       <div className="flex flex-col items-center justify-center">
                         <div className="text-xs text-white/70 mb-1.5 text-center font-medium">
@@ -5711,202 +7486,212 @@ export default function AnchorPage() {
           isOpen={isClaimAllModalOpen}
           onClose={() => setIsClaimAllModalOpen(false)}
           onBasicClaim={handleClaimAll}
-          onCompound={handleCompoundAll}
-          onBuyTide={handleBuyTide}
-          positions={(() => {
-            // Build positions array using allPoolRewards from useAllStabilityPoolRewards
-            const positions: Array<{
-              marketId: string;
-              market: any;
-              poolType: "collateral" | "sail";
-              rewards: bigint;
-              rewardsUSD: number;
-              deposit: bigint;
-              depositUSD: number;
-              rewardTokens: Array<{
-                symbol: string;
-                claimable: bigint;
-                claimableFormatted: string;
-              }>;
-            }> = [];
+          onCompound={(selectedPools) => {
+            const selectedKey = new Set(
+              selectedPools.map((p) => `${p.marketId}-${p.poolType}`)
+            );
+            const selectedPositions = claimAllPositions.filter((p) =>
+              selectedKey.has(`${p.marketId}-${p.poolType}`)
+            );
 
-            if (reads && anchorMarkets && allPoolRewards) {
-              anchorMarkets.forEach(([id, m], mi) => {
-                const hasCollateralPool = !!(m as any).addresses
-                  ?.stabilityPoolCollateral;
-                const hasSailPool = !!(m as any).addresses
-                  ?.stabilityPoolLeveraged;
+            const selectedMarketIds = Array.from(
+              new Set(selectedPositions.map((p) => p.marketId))
+            );
 
-                // Calculate offset for this market to get deposit data
-                let offset = 0;
-                for (let i = 0; i < mi; i++) {
-                  const prevMarket = anchorMarkets[i][1];
-                  const prevHasCollateral = !!(prevMarket as any).addresses
-                    ?.stabilityPoolCollateral;
-                  const prevHasSail = !!(prevMarket as any).addresses
-                    ?.stabilityPoolLeveraged;
-                  const prevHasPriceOracle = !!(prevMarket as any).addresses
-                    ?.collateralPrice;
-                  offset += 4;
-                  if (prevHasCollateral) offset += 3;
-                  if (prevHasSail) offset += 3;
-                  if (prevHasPriceOracle) offset += 1;
-                }
-
-                const baseOffset = offset;
-                const peggedTokenPrice = reads?.[baseOffset + 3]?.result as
-                  | bigint
-                  | undefined;
-                let currentOffset = baseOffset + 4;
-
-                // Get price oracle for USD calculations
-                const hasPriceOracle = !!(m as any).addresses?.collateralPrice;
-                const collateralPriceDecimals = 18;
-                let collateralPrice: bigint | undefined;
-                let priceOffset = currentOffset;
-                if (hasCollateralPool) priceOffset += 3;
-                if (hasSailPool) priceOffset += 3;
-                if (hasPriceOracle) {
-                  const latestAnswerResult = reads?.[priceOffset]?.result;
-                  if (
-                    latestAnswerResult !== undefined &&
-                    latestAnswerResult !== null
-                  ) {
-                    if (Array.isArray(latestAnswerResult)) {
-                      collateralPrice = latestAnswerResult[1] as bigint;
-                    } else if (typeof latestAnswerResult === "object") {
-                      const obj = latestAnswerResult as {
-                        maxUnderlyingPrice?: bigint;
-                      };
-                      collateralPrice = obj.maxUnderlyingPrice;
-                    } else if (typeof latestAnswerResult === "bigint") {
-                      collateralPrice = latestAnswerResult;
-                    }
-                  }
-                }
-
-                // Collateral pool position
-                if (hasCollateralPool) {
-                  const collateralPoolAddress = (m as any).addresses
-                    ?.stabilityPoolCollateral as `0x${string}`;
-                  const collateralPoolDeposit = reads?.[currentOffset]
-                    ?.result as bigint | undefined;
-
-                  // Get rewards from allPoolRewards
-                  const poolReward = allPoolRewards.find(
-                    (pr) =>
-                      pr.poolAddress.toLowerCase() ===
-                      collateralPoolAddress.toLowerCase()
-                  );
-
-                  let depositUSD = 0;
-                  let rewardsUSD = poolReward?.claimableValue || 0;
-
-                  // Calculate total rewards as bigint (sum of all reward tokens)
-                  const totalRewards =
-                    poolReward?.rewardTokens.reduce(
-                      (sum, token) => sum + token.claimable,
-                      0n
-                    ) || 0n;
-
-                  if (
-                    collateralPoolDeposit &&
-                    collateralPrice &&
-                    collateralPriceDecimals !== undefined
-                  ) {
-                    const price =
-                      Number(collateralPrice) /
-                      10 ** (Number(collateralPriceDecimals) || 8);
-                    const depositAmount = Number(collateralPoolDeposit) / 1e18;
-                    depositUSD = depositAmount * price;
-                  }
-
-                  // Only include if there are rewards
-                  if (poolReward && poolReward.claimableValue > 0) {
-                    positions.push({
-                      marketId: id,
-                      market: m,
-                      poolType: "collateral",
-                      rewards: totalRewards,
-                      rewardsUSD,
-                      deposit: collateralPoolDeposit || 0n,
-                      depositUSD,
-                      rewardTokens: poolReward.rewardTokens.map((token) => ({
-                        symbol: token.symbol,
-                        claimable: token.claimable,
-                        claimableFormatted: formatEther(token.claimable),
-                      })),
-                    });
-                  }
-
-                  currentOffset += 3;
-                }
-
-                // Sail pool position
-                if (hasSailPool) {
-                  const sailPoolAddress = (m as any).addresses
-                    ?.stabilityPoolLeveraged as `0x${string}`;
-                  const sailPoolDeposit = reads?.[currentOffset]?.result as
-                    | bigint
-                    | undefined;
-
-                  // Get rewards from allPoolRewards
-                  const poolReward = allPoolRewards.find(
-                    (pr) =>
-                      pr.poolAddress.toLowerCase() ===
-                      sailPoolAddress.toLowerCase()
-                  );
-
-                  let depositUSD = 0;
-                  let rewardsUSD = poolReward?.claimableValue || 0;
-
-                  // Calculate total rewards as bigint (sum of all reward tokens)
-                  const totalRewards =
-                    poolReward?.rewardTokens.reduce(
-                      (sum, token) => sum + token.claimable,
-                      0n
-                    ) || 0n;
-
-                  if (
-                    sailPoolDeposit &&
-                    peggedTokenPrice &&
-                    collateralPrice &&
-                    collateralPriceDecimals !== undefined
-                  ) {
-                    const peggedPrice = Number(peggedTokenPrice) / 1e18;
-                    const collateralPriceNum =
-                      Number(collateralPrice) /
-                      10 ** (Number(collateralPriceDecimals) || 8);
-                    const depositAmount = Number(sailPoolDeposit) / 1e18;
-                    depositUSD =
-                      depositAmount * (peggedPrice * collateralPriceNum);
-                  }
-
-                  // Only include if there are rewards
-                  if (poolReward && poolReward.claimableValue > 0) {
-                    positions.push({
-                      marketId: id,
-                      market: m,
-                      poolType: "sail",
-                      rewards: totalRewards,
-                      rewardsUSD,
-                      deposit: sailPoolDeposit || 0n,
-                      depositUSD,
-                      rewardTokens: poolReward.rewardTokens.map((token) => ({
-                        symbol: token.symbol,
-                        claimable: token.claimable,
-                        claimableFormatted: formatEther(token.claimable),
-                      })),
-                    });
-                  }
-                }
-              });
+            // Build token options grouped by pegged token address, and include APRs for *all* pools across *all* markets for that token.
+            const tokenAddrToRepresentativeMarketId = new Map<string, string>();
+            for (const marketId of selectedMarketIds) {
+              const market = anchorMarkets.find(([id]) => id === marketId)?.[1];
+              const peggedTokenAddr = (market as any)?.addresses?.peggedToken as
+                | `0x${string}`
+                | undefined;
+              if (!peggedTokenAddr) continue;
+              if (!tokenAddrToRepresentativeMarketId.has(peggedTokenAddr.toLowerCase())) {
+                tokenAddrToRepresentativeMarketId.set(peggedTokenAddr.toLowerCase(), marketId);
+              }
             }
 
-            return positions;
-          })()}
+            const options: CompoundTargetOption[] = Array.from(
+              tokenAddrToRepresentativeMarketId.entries()
+            ).map(([peggedTokenAddrLower, representativeMarketId]) => {
+              // Find *all* markets that share this pegged token
+              const marketsForToken = anchorMarkets.filter(([_, m]) => {
+                const p = (m as any)?.addresses?.peggedToken as `0x${string}` | undefined;
+                return p && p.toLowerCase() === peggedTokenAddrLower;
+              });
+
+              const symbol =
+                anchorMarkets.find(([id]) => id === representativeMarketId)?.[1]
+                  ?.peggedToken?.symbol || representativeMarketId;
+
+              const pools = marketsForToken.flatMap(([mid, m]) => {
+                const collateralSymbol = (m as any)?.collateral?.symbol || "collateral";
+                const collateralPoolAddress = (m as any).addresses
+                  ?.stabilityPoolCollateral as `0x${string}` | undefined;
+                const sailPoolAddress = (m as any).addresses
+                  ?.stabilityPoolLeveraged as `0x${string}` | undefined;
+
+                // Prefer the APR used on the Anchor page (from `useAnchorMarketData`), which falls back to
+                // contract APRs when live reward APRs are unavailable.
+                const marketData = marketsDataMap.get(mid);
+                const collateralAprFromMarketData =
+                  marketData?.collateralPoolAPR
+                    ? (marketData.collateralPoolAPR.collateral || 0) +
+                      (marketData.collateralPoolAPR.steam || 0)
+                    : undefined;
+                const sailAprFromMarketData =
+                  marketData?.sailPoolAPR
+                    ? (marketData.sailPoolAPR.collateral || 0) +
+                      (marketData.sailPoolAPR.steam || 0)
+                    : undefined;
+
+                const items: Array<{
+                  marketId: string;
+                  collateralSymbol: string;
+                  poolType: "collateral" | "sail";
+                  apr?: number;
+                }> = [];
+
+                if (collateralPoolAddress) {
+                  const apr =
+                    collateralAprFromMarketData ??
+                    allPoolRewards?.find(
+                      (r) =>
+                        r.poolAddress.toLowerCase() ===
+                        collateralPoolAddress.toLowerCase()
+                    )?.totalAPR;
+                  items.push({
+                    marketId: mid,
+                    collateralSymbol,
+                    poolType: "collateral",
+                    poolAddress: collateralPoolAddress,
+                    apr,
+                  });
+                }
+                if (sailPoolAddress) {
+                  const apr =
+                    sailAprFromMarketData ??
+                    allPoolRewards?.find(
+                      (r) =>
+                        r.poolAddress.toLowerCase() === sailPoolAddress.toLowerCase()
+                    )?.totalAPR;
+                  items.push({
+                    marketId: mid,
+                    collateralSymbol,
+                    poolType: "sail",
+                    poolAddress: sailPoolAddress,
+                    apr,
+                  });
+                }
+                return items;
+              });
+
+              return {
+                marketId: representativeMarketId,
+                symbol,
+                pools,
+              };
+            });
+
+            setCompoundTargetModal({
+              selectedPools,
+              positions: selectedPositions as CompoundSelectedPosition[],
+              options,
+            });
+
+            setIsClaimAllModalOpen(false);
+          }}
+          onBuyTide={handleBuyTide}
+          positions={claimAllPositions}
           isLoading={isClaimingAll || isCompoundingAll}
         />
+
+        {compoundTargetModal && (
+          <CompoundTargetTokenModal
+            isOpen={true}
+            onClose={() => {
+              setCompoundTargetModal(null);
+              // allow user to go back to pool selection step
+              setIsClaimAllModalOpen(true);
+            }}
+            positions={compoundTargetModal.positions}
+            options={compoundTargetModal.options}
+            selectedClaimPools={compoundTargetModal.selectedPools}
+            preflight={
+              advancedPreflight
+                ? {
+                    key: advancedPreflight.key,
+                    isLoading: advancedPreflight.isLoading,
+                    error: advancedPreflight.error,
+                    fees: advancedPreflight.fees,
+                  }
+                : null
+            }
+            onPreflight={runAdvancedPreflight}
+            simplePreflight={
+              simplePreflight
+                ? {
+                    key: simplePreflight.key,
+                    isLoading: simplePreflight.isLoading,
+                    error: simplePreflight.error,
+                    fees: simplePreflight.fees,
+                  }
+                : null
+            }
+            onSimplePreflight={runSimplePreflight}
+            onContinue={({ mode, targetMarketId, allocations }) => {
+              // Advanced compound: allocations are selected inline, so skip the next modal entirely.
+              if (mode === "single-token" && targetMarketId && allocations) {
+                setCompoundTargetModal(null);
+                void (async () => {
+                  try {
+                    const preflight =
+                      advancedPreflight?.isLoading
+                        ? undefined
+                        : advancedPreflight?.plan &&
+                          advancedPreflight.plan.targetMarketId === targetMarketId
+                        ? advancedPreflight.plan
+                        : undefined;
+                    await handleCompoundAllToSingleToken(
+                      compoundTargetModal.selectedPools,
+                      targetMarketId,
+                      allocations,
+                      preflight
+                    );
+                  } catch (error: any) {
+                    setTransactionProgress({
+                      isOpen: true,
+                      title: "Compounding Rewards",
+                      steps: [
+                        {
+                          id: "error",
+                          label: "Error",
+                          status: "error",
+                          error: error?.message || "An error occurred",
+                        },
+                      ],
+                      currentStepIndex: 0,
+                    });
+                  }
+                })();
+                return;
+              }
+
+              // Simple compound (and any other modes) continue to the next modal as before.
+              setCompoundIntent({
+                mode,
+                selectedPools: compoundTargetModal.selectedPools,
+                targetMarketId,
+              });
+
+              const marketForPoolSelection = compoundTargetModal.positions[0]?.market;
+              if (marketForPoolSelection) {
+                handleCompoundRewards(marketForPoolSelection, "collateral", 0n);
+              }
+              setCompoundTargetModal(null);
+            }}
+          />
+        )}
 
         {selectedMarketForClaim && (
           <AnchorClaimMarketModal
@@ -5929,15 +7714,61 @@ export default function AnchorPage() {
             isOpen={true}
             onClose={() => {
               setCompoundPoolSelection(null);
+              setCompoundIntent(null);
             }}
             onConfirm={async (allocations) => {
               setCompoundPoolSelection(null);
               try {
-                // Calculate reward amount from all pools
+                // If we're coming from the Claim All -> Compound flow, branch based on intent.
+                if (compoundIntent?.mode === "single-token" && compoundIntent.targetMarketId) {
+                  await handleCompoundAllToSingleToken(
+                    compoundIntent.selectedPools,
+                    compoundIntent.targetMarketId,
+                    allocations
+                  );
+                  setCompoundIntent(null);
+                  return;
+                }
+
+                if (compoundIntent?.mode === "keep-per-token") {
+                  await handleCompoundAllKeepPerToken(
+                    compoundIntent.selectedPools,
+                    allocations
+                  );
+                  setCompoundIntent(null);
+                  return;
+                }
+
+                // Default: original single-market compound confirm flow
                 const totalRewardAmount = BigInt(0); // Will be calculated in handleCompoundConfirm
+                const market = compoundPoolSelection.market as any;
+                const collateralPoolAddress = market?.addresses
+                  ?.stabilityPoolCollateral as `0x${string}` | undefined;
+                const sailPoolAddress = market?.addresses
+                  ?.stabilityPoolLeveraged as `0x${string}` | undefined;
+
+                const mappedAllocations = allocations
+                  .map((a) => {
+                    const poolId =
+                      collateralPoolAddress &&
+                      a.poolAddress.toLowerCase() ===
+                        collateralPoolAddress.toLowerCase()
+                        ? "collateral"
+                        : sailPoolAddress &&
+                            a.poolAddress.toLowerCase() ===
+                              sailPoolAddress.toLowerCase()
+                          ? "sail"
+                          : null;
+                    return poolId ? { poolId, percentage: a.percentage } : null;
+                  })
+                  .filter(Boolean) as Array<{
+                  poolId: "collateral" | "sail";
+                  percentage: number;
+                }>;
+
                 await handleCompoundConfirm(
                   compoundPoolSelection.market,
-                  allocations,
+                  mappedAllocations,
                   totalRewardAmount
                 );
               } catch (error: any) {

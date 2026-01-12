@@ -95,7 +95,7 @@ export const AnchorClaimAllModal = ({
  onClick={onClose}
  />
 
-        <div className="relative bg-white shadow-2xl w-full max-w-4xl mx-2 sm:mx-4 animate-in fade-in-0 scale-in-95 duration-200 flex flex-col max-h-[95vh] sm:max-h-[90vh] rounded-lg">
+        <div className="relative bg-white shadow-2xl w-full max-w-4xl mx-2 sm:mx-4 animate-in fade-in-0 scale-in-95 duration-200 flex flex-col max-h-[95vh] sm:max-h-[90vh] rounded-none">
           <div className="flex items-center justify-between p-3 sm:p-4 lg:p-6 border-b border-[#1E4775]/20">
  <h2 className="text-2xl font-bold text-[#1E4775]">Claim Rewards</h2>
  <button

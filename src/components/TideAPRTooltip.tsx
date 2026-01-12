@@ -210,7 +210,7 @@ export default function TideAPRTooltip({
         <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50">
           <div
             id="fdv-modal"
-            className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-2xl"
+            className="bg-white rounded-none p-6 max-w-md w-full mx-4 shadow-2xl"
           >
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold text-[#1E4775]">
