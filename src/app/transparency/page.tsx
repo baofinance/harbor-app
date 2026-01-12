@@ -698,7 +698,7 @@ function MarketCard({
 
  <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
  {/* Token Prices & Supply */}
- <div className="bg-white p-2.5 space-y-2">
+ <div className="bg-white p-2.5 space-y-2 lg:row-span-2">
  <h4 className="text-[#1E4775] font-semibold text-xs uppercase tracking-wider mb-2">
  Prices & Supply
  </h4>
@@ -818,11 +818,11 @@ function MarketCard({
 
     {/* Distribution Pie Chart */}
     {distributionData.length > 0 && (
-      <div className="mt-2">
+      <div className="mt-2 mb-1">
         <h5 className="text-[#1E4775] font-semibold text-[10px] uppercase tracking-wider mb-1.5">
           Supply Distribution
         </h5>
-        <div className="w-full" style={{ height: "180px" }}>
+        <div className="w-full" style={{ height: "220px" }}>
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
@@ -831,7 +831,7 @@ function MarketCard({
                 cy="50%"
                 labelLine={false}
                 label={false}
-                outerRadius={65}
+                outerRadius={80}
                 fill="#8884d8"
                 dataKey="value"
               >
@@ -840,11 +840,11 @@ function MarketCard({
                   if (entry.name === "Not Deposited") {
                     color = "#1E4775"; // harbor-blue
                   } else if (entry.name === "Collateral Pool") {
-                    color = "#B8EBD5"; // harbor-mint (seafoam green)
+                    color = "#9ED5BE"; // toned down seafoam green
                   } else if (entry.name === "Sail Pool") {
                     color = "#FF8A7A"; // harbor-coral (pearl orange)
                   } else if (entry.name === "Sail Supply") {
-                    color = "#FCD34D"; // yellow sun
+                    color = "#E9C46A"; // yellow
                   }
                   return <Cell key={`cell-${index}`} fill={color} stroke="#1E4775" strokeWidth={entry.name === "Sail Pool" ? 0 : 0} />;
                 })}
@@ -863,16 +863,17 @@ function MarketCard({
                 wrapperStyle={{ 
                   fontSize: '9px', 
                   paddingTop: '8px',
-                  paddingBottom: '8px',
+                  paddingBottom: '4px',
                   paddingLeft: '8px',
                   paddingRight: '8px',
                   backgroundColor: 'rgba(30, 71, 117, 0.05)', // #1E4775/5
                   borderRadius: '4px',
                   marginTop: '8px',
+                  marginBottom: '0px',
                   display: 'flex',
                   justifyContent: 'center',
                   flexWrap: 'nowrap',
-                  gap: '16px',
+                  gap: '32px',
                   overflow: 'hidden'
                 }}
                 layout="horizontal"
@@ -974,13 +975,19 @@ function MarketCard({
  </div>
  );
  })}
+ </div>
+ </div>
 
- {/* Anchor Supply TVL Row with Bar Visualization */}
- <div className="space-y-2 mt-2 pt-2 border-t border-[#1E4775]/10">
+ {/* Yield (Anchor Supply) */}
+ <div className="bg-white p-2.5 space-y-2 lg:col-span-2">
+ <h4 className="text-[#1E4775] font-semibold text-xs uppercase tracking-wider mb-2">
+ Anchor Supply
+ </h4>
+ <div className="space-y-2">
   <div className="flex flex-col gap-2">
    <div className="flex items-center gap-2">
     <span className="text-[#1E4775] font-semibold text-[10px] w-12">
-     Anchor supply
+     Yield
     </span>
     <div className="grid grid-cols-5 gap-1.5 text-xs flex-1">
      {(() => {
@@ -998,7 +1005,7 @@ function MarketCard({
 
       const categories = [
         { name: "Not Deposited", value: anchorNotDeposited, color: "#1E4775" },
-        { name: "Collateral Pool", value: collateralPoolTVL, color: "#B8EBD5" },
+        { name: "Collateral Pool", value: collateralPoolTVL, color: "#9ED5BE" },
         { name: "Sail Pool", value: sailPoolTVL, color: "#FF8A7A" },
       ];
 
@@ -1129,8 +1136,8 @@ function MarketCard({
           )}
           {collateralPoolPercent > 0 && (
             <div 
-              className="absolute top-0 bottom-0 bg-[#B8EBD5]"
-              style={{ left: `${notDepositedPercent}%`, width: `${collateralPoolPercent}%` }}
+              className="absolute top-0 bottom-0"
+              style={{ backgroundColor: "#9ED5BE", left: `${notDepositedPercent}%`, width: `${collateralPoolPercent}%` }}
             />
           )}
           {sailPoolPercent > 0 && (
@@ -1178,7 +1185,6 @@ function MarketCard({
     );
    })()}
   </div>
- </div>
  </div>
  </div>
  </div>
