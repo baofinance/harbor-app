@@ -6653,47 +6653,79 @@ export default function AnchorPage() {
                                     Your Positions
                                   </div>
                                   <div className="space-y-2">
-                                    {/* Collateral Pool Deposit - aggregated */}
-                                    {totalCollateralPoolDeposit > 0n && (
-                                      <div className="flex justify-between items-center text-xs">
-                                        <span className="text-[#1E4775]/70">
-                                          Collateral Pool:
-                                        </span>
-                                        <div className="text-right">
-                                          <div className="font-semibold text-[#1E4775] font-mono">
-                                            {formatCompactUSD(
-                                              totalCollateralPoolDepositUSD
-                                            )}
-                                          </div>
-                                          <div className="text-[10px] text-[#1E4775]/50 font-mono">
-                                            {formatToken(
-                                              totalCollateralPoolDeposit
-                                            )}{" "}
-                                            {haSymbol}
-                                          </div>
-                                        </div>
-                                      </div>
-                                    )}
+                                    {(() => {
+                                      // Show one row per (marketId, poolType) so we don't collapse positions
+                                      // across different markets in the same ha-token group.
+                                      const hasMultipleMarkets =
+                                        activeMarketsData.length > 1;
 
-                                    {/* Sail Pool Deposit - aggregated */}
-                                    {totalSailPoolDeposit > 0n && (
-                                      <div className="flex justify-between items-center text-xs">
-                                        <span className="text-[#1E4775]/70">
-                                          Sail Pool:
-                                        </span>
-                                        <div className="text-right">
-                                          <div className="font-semibold text-[#1E4775] font-mono">
-                                            {formatCompactUSD(
-                                              totalSailPoolDepositUSD
-                                            )}
-                                          </div>
-                                          <div className="text-[10px] text-[#1E4775]/50 font-mono">
-                                            {formatToken(totalSailPoolDeposit)}{" "}
-                                            {haSymbol}
+                                      const rows: Array<{
+                                        key: string;
+                                        label: string;
+                                        deposit: bigint;
+                                        depositUSD: number;
+                                      }> = [];
+
+                                      activeMarketsData.forEach((md) => {
+                                        const marketLabel =
+                                          md.market?.collateral?.symbol ||
+                                          md.marketId;
+
+                                        if (
+                                          md.collateralPoolDeposit &&
+                                          md.collateralPoolDeposit > 0n
+                                        ) {
+                                          rows.push({
+                                            key: `${md.marketId}-collateral`,
+                                            label: `Collateral Pool${
+                                              hasMultipleMarkets
+                                                ? ` (${marketLabel})`
+                                                : ""
+                                            }`,
+                                            deposit: md.collateralPoolDeposit,
+                                            depositUSD:
+                                              md.collateralPoolDepositUSD || 0,
+                                          });
+                                        }
+
+                                        if (
+                                          md.sailPoolDeposit &&
+                                          md.sailPoolDeposit > 0n
+                                        ) {
+                                          rows.push({
+                                            key: `${md.marketId}-sail`,
+                                            label: `Sail Pool${
+                                              hasMultipleMarkets
+                                                ? ` (${marketLabel})`
+                                                : ""
+                                            }`,
+                                            deposit: md.sailPoolDeposit,
+                                            depositUSD: md.sailPoolDepositUSD || 0,
+                                          });
+                                        }
+                                      });
+
+                                      if (rows.length === 0) return null;
+
+                                      return rows.map((r) => (
+                                        <div
+                                          key={r.key}
+                                          className="flex justify-between items-center text-xs"
+                                        >
+                                          <span className="text-[#1E4775]/70">
+                                            {r.label}:
+                                          </span>
+                                          <div className="text-right">
+                                            <div className="font-semibold text-[#1E4775] font-mono">
+                                              {formatCompactUSD(r.depositUSD)}
+                                            </div>
+                                            <div className="text-[10px] text-[#1E4775]/50 font-mono">
+                                              {formatToken(r.deposit)} {haSymbol}
+                                            </div>
                                           </div>
                                         </div>
-                                      </div>
-                                    )}
+                                      ));
+                                    })()}
                                   </div>
                                 </div>
                               )}
