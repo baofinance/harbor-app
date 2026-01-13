@@ -3721,59 +3721,8 @@ export default function AnchorPage() {
 
   return (
     <>
-      <div className="relative">
-        {/* Background waves + vertical gradient (Anchor page only) */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-screen -z-10 overflow-hidden"
-        >
-          {/* Light-to-dark ocean gradient */}
-          <div className="absolute inset-0 bg-gradient-to-b from-[#2E6AA3] via-[#1E4775] to-[#0B1F33]" />
-
-          {/* Subtle wave overlays */}
-          <svg
-            className="absolute top-0 left-0 w-full h-[260px] opacity-[0.14]"
-            viewBox="0 0 1440 260"
-            preserveAspectRatio="none"
-          >
-            <path
-              d="M0,180 C240,140 480,220 720,180 C960,140 1200,220 1440,180 L1440,260 L0,260 Z"
-              fill="rgba(255,255,255,0.22)"
-            />
-            <path
-              d="M0,210 C240,170 480,250 720,210 C960,170 1200,250 1440,210 L1440,260 L0,260 Z"
-              fill="rgba(255,255,255,0.14)"
-            />
-          </svg>
-
-          <svg
-            className="absolute top-[220px] left-0 w-full h-[320px] opacity-[0.10]"
-            viewBox="0 0 1440 320"
-            preserveAspectRatio="none"
-          >
-            <path
-              d="M0,220 C240,190 480,260 720,220 C960,180 1200,260 1440,220 L1440,320 L0,320 Z"
-              fill="rgba(255,255,255,0.14)"
-            />
-          </svg>
-
-          <svg
-            className="absolute top-[520px] left-0 w-full h-[420px] opacity-[0.06]"
-            viewBox="0 0 1440 420"
-            preserveAspectRatio="none"
-          >
-            <path
-              d="M0,300 C260,260 520,360 780,300 C1040,240 1280,360 1440,300 L1440,420 L0,420 Z"
-              fill="rgba(255,255,255,0.12)"
-            />
-          </svg>
-
-          {/* Soft darkening as we go down */}
-          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/25" />
-        </div>
-
-        <div className="min-h-screen text-white max-w-[1300px] mx-auto font-sans relative">
-          <main className="container mx-auto px-4 sm:px-10 pb-6">
+      <div className="min-h-screen text-white max-w-[1300px] mx-auto font-sans relative">
+        <main className="container mx-auto px-4 sm:px-10 pb-6">
           {/* Header */}
           <div className="mb-2">
             {/* Title - Full Row */}
@@ -8347,7 +8296,6 @@ export default function AnchorPage() {
             </div>
           </div>
         )}
-        </div>
       </div>
     </>
   );
