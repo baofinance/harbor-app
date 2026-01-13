@@ -3739,57 +3739,55 @@ export default function AnchorPage() {
               </p>
             </div>
 
-            {/* Mint/Secure/Earn/Redeem capsule */}
-            <div className="border border-white/30 bg-white/22 backdrop-blur-sm rounded-[24px] md:rounded-full overflow-hidden">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 divide-y divide-white/15 md:divide-y-0 md:divide-x md:divide-white/20">
-                <div className="p-4">
-                  <div className="flex items-center justify-center mb-2">
-                    <BanknotesIcon className="w-6 h-6 text-white mr-2" />
-                    <h2 className="font-bold text-white text-lg text-center">
-                      Mint
-                    </h2>
-                  </div>
-                  <p className="text-sm text-white/80 text-center">
-                    Mint a pegged token with a supported asset
-                  </p>
+            {/* Mint/Secure/Earn/Redeem capsules */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
+              <div className="relative overflow-visible rounded-[24px] md:rounded-full border border-white/30 bg-white/22 backdrop-blur-sm p-4 before:content-[''] before:absolute before:inset-[-12px] before:rounded-[28px] md:before:rounded-full before:bg-white/10 before:blur-2xl before:opacity-60 before:-z-10">
+                <div className="flex items-center justify-center mb-2">
+                  <BanknotesIcon className="w-6 h-6 text-white mr-2" />
+                  <h2 className="font-bold text-white text-lg text-center">
+                    Mint
+                  </h2>
                 </div>
+                <p className="text-sm text-white/80 text-center">
+                  Mint a pegged token with a supported asset
+                </p>
+              </div>
 
-                <div className="p-4">
-                  <div className="flex items-center justify-center mb-2">
-                    <ShieldCheckIcon className="w-6 h-6 text-white mr-2" />
-                    <h2 className="font-bold text-white text-lg text-center">
-                      Secure
-                    </h2>
-                  </div>
-                  <p className="text-sm text-white/80 text-center">
-                    Deposit into a stability pool to secure the protocol
-                  </p>
+              <div className="relative overflow-visible rounded-[24px] md:rounded-full border border-white/30 bg-white/22 backdrop-blur-sm p-4 before:content-[''] before:absolute before:inset-[-12px] before:rounded-[28px] md:before:rounded-full before:bg-white/10 before:blur-2xl before:opacity-60 before:-z-10">
+                <div className="flex items-center justify-center mb-2">
+                  <ShieldCheckIcon className="w-6 h-6 text-white mr-2" />
+                  <h2 className="font-bold text-white text-lg text-center">
+                    Secure
+                  </h2>
                 </div>
+                <p className="text-sm text-white/80 text-center">
+                  Deposit into a stability pool to secure the protocol
+                </p>
+              </div>
 
-                <div className="p-4">
-                  <div className="flex items-center justify-center mb-2">
-                    <CurrencyDollarIcon className="w-6 h-6 text-white mr-2" />
-                    <h2 className="font-bold text-white text-lg text-center">
-                      Earn
-                    </h2>
-                  </div>
-                  <p className="text-sm text-white/80 text-center">
-                    Earn real yield from collateral and trading fees for helping
-                    secure the protocol
-                  </p>
+              <div className="relative overflow-visible rounded-[24px] md:rounded-full border border-white/30 bg-white/22 backdrop-blur-sm p-4 before:content-[''] before:absolute before:inset-[-12px] before:rounded-[28px] md:before:rounded-full before:bg-white/10 before:blur-2xl before:opacity-60 before:-z-10">
+                <div className="flex items-center justify-center mb-2">
+                  <CurrencyDollarIcon className="w-6 h-6 text-white mr-2" />
+                  <h2 className="font-bold text-white text-lg text-center">
+                    Earn
+                  </h2>
                 </div>
+                <p className="text-sm text-white/80 text-center">
+                  Earn real yield from collateral and trading fees for helping
+                  secure the protocol
+                </p>
+              </div>
 
-                <div className="p-4">
-                  <div className="flex items-center justify-center mb-2">
-                    <ArrowPathIcon className="w-6 h-6 text-white mr-2" />
-                    <h2 className="font-bold text-white text-lg text-center">
-                      Redeem
-                    </h2>
-                  </div>
-                  <p className="text-sm text-white/80 text-center">
-                    Redeem for collateral at any time
-                  </p>
+              <div className="relative overflow-visible rounded-[24px] md:rounded-full border border-white/30 bg-white/22 backdrop-blur-sm p-4 before:content-[''] before:absolute before:inset-[-12px] before:rounded-[28px] md:before:rounded-full before:bg-white/10 before:blur-2xl before:opacity-60 before:-z-10">
+                <div className="flex items-center justify-center mb-2">
+                  <ArrowPathIcon className="w-6 h-6 text-white mr-2" />
+                  <h2 className="font-bold text-white text-lg text-center">
+                    Redeem
+                  </h2>
                 </div>
+                <p className="text-sm text-white/80 text-center">
+                  Redeem for collateral at any time
+                </p>
               </div>
             </div>
           </div>
