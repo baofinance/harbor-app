@@ -3801,7 +3801,7 @@ export default function AnchorPage() {
 
           {/* Stats strip */}
           <div className="mb-2 grid grid-cols-2 md:grid-cols-5 gap-2">
-            <div className="col-span-2 md:col-span-1 bg-[#FF8A7A] p-2.5 flex items-center justify-center">
+            <div className="col-span-2 md:col-span-1 bg-[#142F4D] p-2.5 flex items-center justify-center">
               <div className="text-white text-center">
                 <div className="font-bold font-mono text-lg leading-tight">
                   Stats
