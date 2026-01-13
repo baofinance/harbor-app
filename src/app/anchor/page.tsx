@@ -3800,53 +3800,56 @@ export default function AnchorPage() {
           <div className="border-t border-white/10 my-2"></div>
 
           {/* Stats strip */}
-          <div className="mb-2 grid grid-cols-2 md:grid-cols-5 gap-2">
-            <div className="col-span-2 md:col-span-1 bg-[#142F4D] p-2.5 flex items-center justify-center">
-              <div className="text-white text-center">
-                <div className="font-bold font-mono text-lg leading-tight">
-                  Stats
-                </div>
-              </div>
-            </div>
-
-            {/* Combined stats box */}
-            <div className="col-span-2 md:col-span-4 bg-[#142F4D] px-2 py-2">
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-y-2 lg:gap-y-0 lg:divide-x lg:divide-white/15">
-                <div className="flex flex-col items-center justify-center text-center px-2">
-                  <div className="text-[11px] text-white/60 uppercase tracking-widest mt-0.5">
-                    Yield Generating TVL
-                  </div>
-                  <div className="text-[11px] font-semibold text-white font-mono mt-1">
-                    {formatCompactUSD(anchorStats.yieldGeneratingTVLUSD)}
+          <div className="mb-2">
+            <div className="border border-white/30 bg-white/10 backdrop-blur-sm rounded-[24px] md:rounded-full overflow-hidden">
+              <div className="grid grid-cols-2 md:grid-cols-5">
+                <div className="col-span-2 md:col-span-1 px-4 py-3 flex items-center justify-center md:justify-start md:border-r md:border-white/20">
+                  <div className="font-bold font-mono text-white text-lg leading-tight">
+                    Stats
                   </div>
                 </div>
 
-                <div className="flex flex-col items-center justify-center text-center px-2">
-                  <div className="text-[11px] text-white/60 uppercase tracking-widest mt-0.5">
-                    Stability Pool TVL
-                  </div>
-                  <div className="text-[11px] font-semibold text-white font-mono mt-1">
-                    {formatCompactUSD(anchorStats.stabilityPoolTVLUSD)}
-                  </div>
-                </div>
+                <div className="col-span-2 md:col-span-4 px-2 py-2">
+                  <div className="grid grid-cols-2 md:grid-cols-4 divide-y divide-white/15 md:divide-y-0 md:divide-x md:divide-white/15">
+                    <div className="flex flex-col items-center justify-center text-center px-2 py-1.5 md:py-0">
+                      <div className="text-[11px] text-white/80 uppercase tracking-widest">
+                        Yield Generating TVL
+                      </div>
+                      <div className="text-[11px] font-semibold text-white font-mono mt-1">
+                        {formatCompactUSD(anchorStats.yieldGeneratingTVLUSD)}
+                      </div>
+                    </div>
 
-                <div className="flex flex-col items-center justify-center text-center px-2">
-                  <div className="text-[11px] text-white/60 uppercase tracking-widest mt-0.5">
-                    Avg Yield Concentration
-                  </div>
-                  <div className="text-[11px] font-semibold text-white font-mono mt-1">
-                    {anchorStats.yieldConcentration > 0
-                      ? `${anchorStats.yieldConcentration.toFixed(2)}x`
-                      : "-"}
-                  </div>
-                </div>
+                    <div className="flex flex-col items-center justify-center text-center px-2 py-1.5 md:py-0">
+                      <div className="text-[11px] text-white/80 uppercase tracking-widest">
+                        Stability Pool TVL
+                      </div>
+                      <div className="text-[11px] font-semibold text-white font-mono mt-1">
+                        {formatCompactUSD(anchorStats.stabilityPoolTVLUSD)}
+                      </div>
+                    </div>
 
-                <div className="flex flex-col items-center justify-center text-center px-2">
-                  <div className="text-[11px] text-white/60 uppercase tracking-widest mt-0.5">
-                    Highest APR Pool
-                  </div>
-                  <div className="text-[11px] font-semibold text-white font-mono mt-1">
-                    {anchorStats.bestApr > 0 ? `${anchorStats.bestApr.toFixed(2)}%` : "-"}
+                    <div className="flex flex-col items-center justify-center text-center px-2 py-1.5 md:py-0">
+                      <div className="text-[11px] text-white/80 uppercase tracking-widest">
+                        Avg Yield Concentration
+                      </div>
+                      <div className="text-[11px] font-semibold text-white font-mono mt-1">
+                        {anchorStats.yieldConcentration > 0
+                          ? `${anchorStats.yieldConcentration.toFixed(2)}x`
+                          : "-"}
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col items-center justify-center text-center px-2 py-1.5 md:py-0">
+                      <div className="text-[11px] text-white/80 uppercase tracking-widest">
+                        Highest APR Pool
+                      </div>
+                      <div className="text-[11px] font-semibold text-white font-mono mt-1">
+                        {anchorStats.bestApr > 0
+                          ? `${anchorStats.bestApr.toFixed(2)}%`
+                          : "-"}
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -4409,73 +4412,72 @@ export default function AnchorPage() {
 
             return (
               <div className="mb-2">
-                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-2 items-stretch">
-                  {/* Rewards Header Box */}
-                  <div className="bg-[#FF8A7A] p-2.5 flex items-center justify-center gap-2 md:col-span-1 lg:col-span-1 min-h-[84px]">
-                    <h2 className="font-bold font-mono text-white text-2xl text-center">
-                      Rewards
-                    </h2>
-                    <InfoTooltip
-                      label={
-                        <div className="space-y-3">
-                          <div>
-                            <h3 className="font-bold text-lg mb-2">
-                              Anchor Ledger Marks
-                            </h3>
-                            <p className="text-white/90 leading-relaxed">
-                              Anchor Ledger Marks are earned by holding ha
-                              tokens (pegged tokens) and depositing into
-                              stability pools.
-                            </p>
-                          </div>
-
-                          <div className="border-t border-white/20 pt-3">
-                            <p className="text-white/90 leading-relaxed mb-2">
-                              Each mark represents your contribution to
-                              stabilizing Harbor markets through token holdings
-                              and pool deposits.
-                            </p>
-                          </div>
-
-                          <div className="space-y-2">
-                            <div className="flex items-start gap-2">
-                              <span className="text-white/70 mt-0.5">•</span>
+                <div className="border border-white/30 bg-white/10 backdrop-blur-sm rounded-[24px] md:rounded-full overflow-hidden">
+                  <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 divide-y divide-white/15 md:divide-y-0 md:divide-x md:divide-white/20">
+                    {/* Rewards Header */}
+                    <div className="p-3 flex items-center justify-center gap-2 min-h-[84px]">
+                      <h2 className="font-bold font-mono text-white text-2xl text-center">
+                        Rewards
+                      </h2>
+                      <InfoTooltip
+                        label={
+                          <div className="space-y-3">
+                            <div>
+                              <h3 className="font-bold text-lg mb-2">
+                                Anchor Ledger Marks
+                              </h3>
                               <p className="text-white/90 leading-relaxed">
-                                The more you contribute, the deeper your mark on
-                                the ledger.
+                                Anchor Ledger Marks are earned by holding ha
+                                tokens (pegged tokens) and depositing into
+                                stability pools.
                               </p>
                             </div>
-                            <div className="flex items-start gap-2">
-                              <span className="text-white/70 mt-0.5">•</span>
-                              <p className="text-white/90 leading-relaxed">
-                                When $TIDE surfaces, these marks will convert
-                                into your share of rewards and governance power.
+
+                            <div className="border-t border-white/20 pt-3">
+                              <p className="text-white/90 leading-relaxed mb-2">
+                                Each mark represents your contribution to
+                                stabilizing Harbor markets through token holdings
+                                and pool deposits.
+                              </p>
+                            </div>
+
+                            <div className="space-y-2">
+                              <div className="flex items-start gap-2">
+                                <span className="text-white/70 mt-0.5">•</span>
+                                <p className="text-white/90 leading-relaxed">
+                                  The more you contribute, the deeper your mark on
+                                  the ledger.
+                                </p>
+                              </div>
+                              <div className="flex items-start gap-2">
+                                <span className="text-white/70 mt-0.5">•</span>
+                                <p className="text-white/90 leading-relaxed">
+                                  When $TIDE surfaces, these marks will convert
+                                  into your share of rewards and governance power.
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="border-t border-white/20 pt-3">
+                              <p className="text-white/80 italic leading-relaxed">
+                                Think of them as a record of your journey — every
+                                mark, a line in Harbor's logbook.
                               </p>
                             </div>
                           </div>
+                        }
+                        side="right"
+                      >
+                        <QuestionMarkCircleIcon className="w-5 h-5 text-white cursor-help" />
+                      </InfoTooltip>
+                    </div>
 
-                          <div className="border-t border-white/20 pt-3">
-                            <p className="text-white/80 italic leading-relaxed">
-                              Think of them as a record of your journey — every
-                              mark, a line in Harbor's logbook.
-                            </p>
-                          </div>
-                        </div>
-                      }
-                      side="right"
-                    >
-                      <QuestionMarkCircleIcon className="w-5 h-5 text-white cursor-help" />
-                    </InfoTooltip>
-                  </div>
-
-                  {/* Combined Content: 3 metrics in one box */}
-                  <div className="md:col-span-1 lg:col-span-2">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 items-stretch">
-                      <div className="bg-[#0F253D] px-3 py-2 min-h-[84px] flex items-center justify-center lg:col-span-4">
-                        <div className="grid grid-cols-4 w-full divide-x divide-white/15">
+                    {/* Combined metrics */}
+                    <div className="p-3 md:col-span-1 lg:col-span-2 flex items-center justify-center min-h-[84px]">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 w-full divide-y divide-white/15 sm:divide-y-0 sm:divide-x sm:divide-white/15">
                           {/* Total Deposits */}
-                          <div className="flex flex-col items-center justify-center text-center px-2">
-                            <div className="text-[11px] text-white/60 uppercase tracking-widest">
+                          <div className="flex flex-col items-center justify-center text-center px-2 py-1.5 sm:py-0">
+                            <div className="text-[11px] text-white/80 uppercase tracking-widest">
                               Total Deposits
                             </div>
                             <div className="text-xs font-semibold text-white font-mono mt-1">
@@ -4486,8 +4488,8 @@ export default function AnchorPage() {
                           </div>
 
                           {/* Claimable Value */}
-                          <div className="flex flex-col items-center justify-center text-center px-2">
-                            <div className="text-[11px] text-white/60 uppercase tracking-widest">
+                          <div className="flex flex-col items-center justify-center text-center px-2 py-1.5 sm:py-0">
+                            <div className="text-[11px] text-white/80 uppercase tracking-widest">
                               Claimable Value
                             </div>
                             <div className="text-xs font-semibold text-white font-mono mt-1">
@@ -4496,8 +4498,8 @@ export default function AnchorPage() {
                           </div>
 
                           {/* vAPR */}
-                          <div className="flex flex-col items-center justify-center text-center px-2">
-                            <div className="text-[11px] text-white/60 uppercase tracking-widest font-medium flex items-center justify-center gap-1">
+                          <div className="flex flex-col items-center justify-center text-center px-2 py-1.5 sm:py-0">
+                            <div className="text-[11px] text-white/80 uppercase tracking-widest font-medium flex items-center justify-center gap-1">
                               vAPR
                               <SimpleTooltip
                                 label={
@@ -4621,53 +4623,52 @@ export default function AnchorPage() {
                           </div>
 
                           {/* Claim */}
-                          <div className="flex flex-col items-center justify-center text-center px-2">
+                          <div className="flex flex-col items-center justify-center text-center px-2 py-1.5 sm:py-0">
                             <button
                               onClick={() => {
                                 setIsClaimAllModalOpen(true);
                               }}
                               disabled={isClaimingAll || isCompoundingAll}
-                              className="px-4 py-1.5 text-xs font-medium bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white disabled:bg-[#FF8A7A]/40 disabled:text-white/70 disabled:cursor-not-allowed transition-colors rounded-full whitespace-nowrap"
+                              className="px-5 py-2 text-xs font-semibold bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white disabled:bg-[#FF8A7A]/40 disabled:text-white/70 disabled:cursor-not-allowed transition-colors rounded-full whitespace-nowrap"
                             >
                               Claim
                             </button>
                           </div>
-                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  {/* Anchor Ledger Marks Box */}
-                  <div className="bg-[#0F253D] p-2.5 md:col-span-1 lg:col-span-1 min-h-[84px] flex flex-col justify-center">
-                    <div className="text-[11px] text-white/60 uppercase tracking-widest mb-0.5 text-center">
-                      Anchor Ledger Marks
-                    </div>
-                    <div className="text-sm font-bold text-white font-mono text-center tabular-nums">
-                      {!ANCHOR_MARKS_ENABLED ? (
-                        "0"
-                      ) : !mounted || isLoadingLedgerMarks ? (
-                        <span className="text-white/50">-</span>
-                      ) : totalAnchorLedgerMarks > 0 ? (
-                        totalAnchorLedgerMarks.toLocaleString(undefined, {
-                          minimumFractionDigits:
-                            totalAnchorLedgerMarks < 100 ? 2 : 0,
-                          maximumFractionDigits:
-                            totalAnchorLedgerMarks < 100 ? 2 : 0,
-                        })
-                      ) : (
-                        "0"
-                      )}
-                    </div>
-                    <div className="text-[10px] text-white/50 text-center mt-0.5">
-                      {!ANCHOR_MARKS_ENABLED
-                        ? "0 marks/day"
-                        : !mounted || isLoadingLedgerMarks
-                        ? ""
-                        : totalAnchorLedgerMarksPerDay > 0
-                        ? `${totalAnchorLedgerMarksPerDay.toLocaleString(undefined, {
-                            maximumFractionDigits: 2,
-                          })} marks/day`
-                        : "0 marks/day"}
+                    {/* Anchor Ledger Marks */}
+                    <div className="p-3 min-h-[84px] flex flex-col justify-center">
+                      <div className="text-[11px] text-white/80 uppercase tracking-widest mb-0.5 text-center">
+                        Anchor Ledger Marks
+                      </div>
+                      <div className="text-sm font-bold text-white font-mono text-center tabular-nums">
+                        {!ANCHOR_MARKS_ENABLED ? (
+                          "0"
+                        ) : !mounted || isLoadingLedgerMarks ? (
+                          <span className="text-white/50">-</span>
+                        ) : totalAnchorLedgerMarks > 0 ? (
+                          totalAnchorLedgerMarks.toLocaleString(undefined, {
+                            minimumFractionDigits:
+                              totalAnchorLedgerMarks < 100 ? 2 : 0,
+                            maximumFractionDigits:
+                              totalAnchorLedgerMarks < 100 ? 2 : 0,
+                          })
+                        ) : (
+                          "0"
+                        )}
+                      </div>
+                      <div className="text-[10px] text-white/60 text-center mt-0.5">
+                        {!ANCHOR_MARKS_ENABLED
+                          ? "0 marks/day"
+                          : !mounted || isLoadingLedgerMarks
+                          ? ""
+                          : totalAnchorLedgerMarksPerDay > 0
+                          ? `${totalAnchorLedgerMarksPerDay.toLocaleString(undefined, {
+                              maximumFractionDigits: 2,
+                            })} marks/day`
+                          : "0 marks/day"}
+                      </div>
                     </div>
                   </div>
                 </div>
