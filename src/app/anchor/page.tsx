@@ -3801,7 +3801,7 @@ export default function AnchorPage() {
 
           {/* Stats strip */}
           <div className="mb-2 grid grid-cols-2 md:grid-cols-5 gap-2">
-            <div className="col-span-2 md:col-span-1 bg-[#17395F] p-2.5 flex items-center justify-center">
+            <div className="col-span-2 md:col-span-1 bg-[#142F4D] p-2.5 flex items-center justify-center">
               <div className="text-white text-center">
                 <div className="font-bold font-mono text-lg leading-tight">
                   Stats
@@ -3809,7 +3809,7 @@ export default function AnchorPage() {
               </div>
             </div>
 
-            <div className="bg-[#1A2F4F] px-3 py-2 flex flex-col items-center justify-center text-center">
+            <div className="bg-[#142F4D] px-3 py-2 flex flex-col items-center justify-center text-center">
               <div className="text-[11px] font-semibold text-white font-mono">
                 {formatCompactUSD(anchorStats.yieldGeneratingTVLUSD)}
               </div>
@@ -3818,7 +3818,7 @@ export default function AnchorPage() {
               </div>
             </div>
 
-            <div className="bg-[#1A2F4F] px-3 py-2 flex flex-col items-center justify-center text-center">
+            <div className="bg-[#142F4D] px-3 py-2 flex flex-col items-center justify-center text-center">
               <div className="text-[11px] font-semibold text-white font-mono">
                 {formatCompactUSD(anchorStats.stabilityPoolTVLUSD)}
               </div>
@@ -3827,7 +3827,7 @@ export default function AnchorPage() {
               </div>
             </div>
 
-            <div className="bg-[#1A2F4F] px-3 py-2 flex flex-col items-center justify-center text-center">
+            <div className="bg-[#142F4D] px-3 py-2 flex flex-col items-center justify-center text-center">
               <div className="text-[11px] font-semibold text-white font-mono">
                 {anchorStats.yieldConcentration > 0
                   ? `${anchorStats.yieldConcentration.toFixed(2)}x`
@@ -3838,7 +3838,7 @@ export default function AnchorPage() {
               </div>
             </div>
 
-            <div className="bg-[#1A2F4F] px-3 py-2 flex flex-col items-center justify-center text-center">
+            <div className="bg-[#142F4D] px-3 py-2 flex flex-col items-center justify-center text-center">
               <div className="text-[11px] font-semibold text-white font-mono">
                 {anchorStats.bestApr > 0 ? `${anchorStats.bestApr.toFixed(2)}%` : "-"}
               </div>
