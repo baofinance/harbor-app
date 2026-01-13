@@ -3739,55 +3739,49 @@ export default function AnchorPage() {
               </p>
             </div>
 
-            {/* Mint/Secure/Earn/Redeem capsules */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
-              <div className="relative overflow-visible rounded-[24px] md:rounded-full border-2 border-white/40 bg-white/22 backdrop-blur-sm p-4 before:content-[''] before:absolute before:inset-[-12px] before:rounded-[28px] md:before:rounded-full before:bg-white/10 before:blur-2xl before:opacity-60 before:-z-10">
-                <div className="flex items-center justify-center mb-2">
-                  <BanknotesIcon className="w-6 h-6 text-white mr-2" />
-                  <h2 className="font-bold text-white text-lg text-center">
-                    Mint
-                  </h2>
+            {/* Mint/Secure/Earn/Redeem capsule (compact) */}
+            <div className="relative overflow-visible rounded-[24px] md:rounded-full border-2 border-white/40 bg-white/22 backdrop-blur-sm px-4 py-3 before:content-[''] before:absolute before:inset-[-12px] before:rounded-[28px] md:before:rounded-full before:bg-white/10 before:blur-2xl before:opacity-60 before:-z-10">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-0 lg:divide-x lg:divide-white/20">
+                <div className="flex flex-col items-center justify-center text-center px-2">
+                  <div className="flex items-center justify-center gap-2">
+                    <BanknotesIcon className="w-5 h-5 text-white" />
+                    <h2 className="font-bold text-white text-base">Mint</h2>
+                  </div>
+                  <p className="text-xs text-white/75 mt-1">
+                    Mint a pegged token with a supported asset
+                  </p>
                 </div>
-                <p className="text-sm text-white/80 text-center">
-                  Mint a pegged token with a supported asset
-                </p>
-              </div>
 
-              <div className="relative overflow-visible rounded-[24px] md:rounded-full border-2 border-white/40 bg-white/22 backdrop-blur-sm p-4 before:content-[''] before:absolute before:inset-[-12px] before:rounded-[28px] md:before:rounded-full before:bg-white/10 before:blur-2xl before:opacity-60 before:-z-10">
-                <div className="flex items-center justify-center mb-2">
-                  <ShieldCheckIcon className="w-6 h-6 text-white mr-2" />
-                  <h2 className="font-bold text-white text-lg text-center">
-                    Secure
-                  </h2>
+                <div className="flex flex-col items-center justify-center text-center px-2">
+                  <div className="flex items-center justify-center gap-2">
+                    <ShieldCheckIcon className="w-5 h-5 text-white" />
+                    <h2 className="font-bold text-white text-base">Secure</h2>
+                  </div>
+                  <p className="text-xs text-white/75 mt-1">
+                    Deposit into a stability pool to secure the protocol
+                  </p>
                 </div>
-                <p className="text-sm text-white/80 text-center">
-                  Deposit into a stability pool to secure the protocol
-                </p>
-              </div>
 
-              <div className="relative overflow-visible rounded-[24px] md:rounded-full border-2 border-white/40 bg-white/22 backdrop-blur-sm p-4 before:content-[''] before:absolute before:inset-[-12px] before:rounded-[28px] md:before:rounded-full before:bg-white/10 before:blur-2xl before:opacity-60 before:-z-10">
-                <div className="flex items-center justify-center mb-2">
-                  <CurrencyDollarIcon className="w-6 h-6 text-white mr-2" />
-                  <h2 className="font-bold text-white text-lg text-center">
-                    Earn
-                  </h2>
+                <div className="flex flex-col items-center justify-center text-center px-2">
+                  <div className="flex items-center justify-center gap-2">
+                    <CurrencyDollarIcon className="w-5 h-5 text-white" />
+                    <h2 className="font-bold text-white text-base">Earn</h2>
+                  </div>
+                  <p className="text-xs text-white/75 mt-1">
+                    Earn real yield from collateral and trading fees for helping
+                    secure the protocol
+                  </p>
                 </div>
-                <p className="text-sm text-white/80 text-center">
-                  Earn real yield from collateral and trading fees for helping
-                  secure the protocol
-                </p>
-              </div>
 
-              <div className="relative overflow-visible rounded-[24px] md:rounded-full border-2 border-white/40 bg-white/22 backdrop-blur-sm p-4 before:content-[''] before:absolute before:inset-[-12px] before:rounded-[28px] md:before:rounded-full before:bg-white/10 before:blur-2xl before:opacity-60 before:-z-10">
-                <div className="flex items-center justify-center mb-2">
-                  <ArrowPathIcon className="w-6 h-6 text-white mr-2" />
-                  <h2 className="font-bold text-white text-lg text-center">
-                    Redeem
-                  </h2>
+                <div className="flex flex-col items-center justify-center text-center px-2">
+                  <div className="flex items-center justify-center gap-2">
+                    <ArrowPathIcon className="w-5 h-5 text-white" />
+                    <h2 className="font-bold text-white text-base">Redeem</h2>
+                  </div>
+                  <p className="text-xs text-white/75 mt-1">
+                    Redeem for collateral at any time
+                  </p>
                 </div>
-                <p className="text-sm text-white/80 text-center">
-                  Redeem for collateral at any time
-                </p>
               </div>
             </div>
           </div>
@@ -3797,7 +3791,7 @@ export default function AnchorPage() {
 
           {/* Stats strip */}
           <div className="mb-2">
-            <div className="border-2 border-white/40 bg-white/10 backdrop-blur-sm rounded-[24px] md:rounded-full overflow-hidden">
+            <div className="border-2 border-white/40 bg-white/7 backdrop-blur-sm rounded-[24px] md:rounded-full overflow-hidden">
               <div className="grid grid-cols-2 md:grid-cols-5">
                 <div className="col-span-2 md:col-span-1 px-4 py-3 flex items-center justify-center md:border-r md:border-white/20">
                   <div className="font-bold font-mono text-white text-lg leading-tight">
@@ -4408,7 +4402,7 @@ export default function AnchorPage() {
 
             return (
               <div className="mb-2">
-                <div className="border-2 border-white/40 bg-white/4 backdrop-blur-sm rounded-[24px] md:rounded-full overflow-hidden">
+                <div className="border-2 border-white/40 bg-white/3 backdrop-blur-sm rounded-[24px] md:rounded-full overflow-hidden">
                   <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 divide-y divide-white/15 md:divide-y-0 md:divide-x md:divide-white/20">
                     {/* Rewards Header */}
                     <div className="p-3 flex items-center justify-center gap-2 min-h-[84px]">
