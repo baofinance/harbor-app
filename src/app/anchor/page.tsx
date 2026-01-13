@@ -3797,48 +3797,58 @@ export default function AnchorPage() {
           </div>
 
           {/* Stats strip */}
-          <div className="mb-2">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
-              <div className="bg-[#17395F] p-4">
-                <div className="text-xs text-white/70 mb-1.5 text-center font-medium">
-                  Yield Generating TVL
+          <div className="mb-2 overflow-hidden rounded-xl border border-white/15 bg-black/30 backdrop-blur-md shadow-[0_10px_30px_rgba(0,0,0,0.35)]">
+            <div className="h-0.5 bg-gradient-to-r from-[#9ED5BE] via-[#FF8A7A] to-[#1E4775] opacity-80" />
+            <div className="p-3">
+              <div className="flex items-center justify-between gap-3 mb-2">
+                <div className="text-xs text-white/70 uppercase tracking-widest font-semibold">
+                  Protocol Stats
                 </div>
-                <div className="text-lg font-bold text-white font-mono text-center">
-                  {formatCompactUSD(anchorStats.yieldGeneratingTVLUSD)}
-                </div>
-              </div>
-              <div className="bg-[#17395F] p-4">
-                <div className="text-xs text-white/70 mb-1.5 text-center font-medium">
-                  Total Stability Pool TVL
-                </div>
-                <div className="text-lg font-bold text-white font-mono text-center">
-                  {formatCompactUSD(anchorStats.stabilityPoolTVLUSD)}
+                <div className="text-[10px] text-white/50 font-mono">
+                  terminal view
                 </div>
               </div>
-              <div className="bg-[#17395F] p-4">
-                <div className="text-xs text-white/70 mb-1.5 text-center font-medium">
-                  Avg Yield Concentration
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 border border-white/10 rounded-lg overflow-hidden">
+                <div className="px-4 py-3 border-b border-white/10 sm:border-b-0 sm:border-r border-white/10">
+                  <div className="text-[11px] text-white/60 uppercase tracking-widest">
+                    Yield Generating TVL
+                  </div>
+                  <div className="text-xl font-semibold text-white font-mono mt-1">
+                    {formatCompactUSD(anchorStats.yieldGeneratingTVLUSD)}
+                  </div>
                 </div>
-                <div className="text-lg font-bold text-white font-mono text-center">
-                  {anchorStats.yieldConcentration > 0
-                    ? `${anchorStats.yieldConcentration.toFixed(2)}x`
-                    : "-"}
+                <div className="px-4 py-3 border-b border-white/10 lg:border-b-0 lg:border-r border-white/10">
+                  <div className="text-[11px] text-white/60 uppercase tracking-widest">
+                    Stability Pool TVL
+                  </div>
+                  <div className="text-xl font-semibold text-white font-mono mt-1">
+                    {formatCompactUSD(anchorStats.stabilityPoolTVLUSD)}
+                  </div>
                 </div>
-                <div className="text-[10px] text-white/60 text-center mt-1">
-                  Yield TVL / Pool TVL
+                <div className="px-4 py-3 border-b border-white/10 sm:border-b-0 sm:border-r border-white/10">
+                  <div className="text-[11px] text-white/60 uppercase tracking-widest">
+                    Avg Yield Concentration
+                  </div>
+                  <div className="text-xl font-semibold text-white font-mono mt-1">
+                    {anchorStats.yieldConcentration > 0
+                      ? `${anchorStats.yieldConcentration.toFixed(2)}x`
+                      : "-"}
+                  </div>
+                  <div className="text-[10px] text-white/45 font-mono mt-1">
+                    Yield / Pool
+                  </div>
                 </div>
-              </div>
-              <div className="bg-[#17395F] p-4">
-                <div className="text-xs text-white/70 mb-1.5 text-center font-medium">
-                  Highest APR Stability Pool
-                </div>
-                <div className="text-lg font-bold text-white font-mono text-center">
-                  {anchorStats.bestApr > 0
-                    ? `${anchorStats.bestApr.toFixed(2)}%`
-                    : "-"}
-                </div>
-                <div className="text-[10px] text-white/60 text-center mt-1 truncate">
-                  {anchorStats.bestAprLabel || ""}
+                <div className="px-4 py-3">
+                  <div className="text-[11px] text-white/60 uppercase tracking-widest">
+                    Highest APR Pool
+                  </div>
+                  <div className="text-xl font-semibold text-white font-mono mt-1">
+                    {anchorStats.bestApr > 0 ? `${anchorStats.bestApr.toFixed(2)}%` : "-"}
+                  </div>
+                  <div className="text-[10px] text-white/45 font-mono mt-1 truncate">
+                    {anchorStats.bestAprLabel || ""}
+                  </div>
                 </div>
               </div>
             </div>
@@ -4402,10 +4412,12 @@ export default function AnchorPage() {
               totalDepositUSD > 0 ? totalWeightedAPR / totalDepositUSD : 0;
 
             return (
-              <div className="mb-2">
+              <div className="mb-2 overflow-hidden rounded-xl border border-white/15 bg-black/30 backdrop-blur-md shadow-[0_10px_30px_rgba(0,0,0,0.35)]">
+                <div className="h-0.5 bg-gradient-to-r from-[#1E4775] via-[#FF8A7A] to-[#9ED5BE] opacity-80" />
+                <div className="p-3">
                 <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-2">
                   {/* Rewards Header Box */}
-                  <div className="bg-[#FF8A7A] p-3 flex items-center justify-center gap-2 md:col-span-1 lg:col-span-1">
+                  <div className="bg-black/20 border border-white/10 rounded-lg p-3 flex items-center justify-center gap-2 md:col-span-1 lg:col-span-1">
                     <h2 className="font-bold font-mono text-white text-2xl text-center">
                       Rewards
                     </h2>
@@ -4463,14 +4475,14 @@ export default function AnchorPage() {
                   </div>
 
                   {/* Combined Content Box */}
-                  <div className="bg-[#17395F] p-3 md:col-span-1 lg:col-span-2">
-                    <div className="grid grid-cols-[1fr_1fr_1fr_1fr] gap-3 pl-2">
+                  <div className="bg-black/20 border border-white/10 rounded-lg p-3 md:col-span-1 lg:col-span-2">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-0 rounded-md overflow-hidden border border-white/10">
                       {/* Total Deposits */}
-                      <div className="flex flex-col items-center justify-center">
-                        <div className="text-xs text-white/70 mb-1.5 text-center font-medium">
+                      <div className="flex flex-col items-center justify-center px-3 py-2 border-b border-white/10 sm:border-b-0 sm:border-r border-white/10">
+                        <div className="text-[11px] text-white/60 uppercase tracking-widest text-center">
                           Total Deposits
                         </div>
-                        <div className="text-lg font-bold text-white font-mono text-center">
+                        <div className="text-lg font-semibold text-white font-mono text-center mt-1">
                           {totalStabilityPoolDepositsUSD > 0
                             ? formatCompactUSD(totalStabilityPoolDepositsUSD)
                             : "$0.00"}
@@ -4478,11 +4490,11 @@ export default function AnchorPage() {
                       </div>
 
                       {/* Claimable Value */}
-                      <div className="flex flex-col items-center justify-center">
-                        <div className="text-xs text-white/70 mb-1.5 text-center font-medium">
+                      <div className="flex flex-col items-center justify-center px-3 py-2 border-b border-white/10 lg:border-b-0 lg:border-r border-white/10">
+                        <div className="text-[11px] text-white/60 uppercase tracking-widest text-center">
                           Claimable Value
                         </div>
-                        <div className="text-lg font-bold text-white font-mono text-center">
+                        <div className="text-lg font-semibold text-white font-mono text-center mt-1">
                           $
                           {totalRewardsForBar > 0
                             ? totalRewardsForBar.toFixed(2)
@@ -4491,8 +4503,8 @@ export default function AnchorPage() {
                       </div>
 
                       {/* vAPR */}
-                      <div className="flex flex-col items-center justify-center">
-                        <div className="text-xs text-white/70 mb-1.5 text-center font-medium flex items-center justify-center gap-1">
+                      <div className="flex flex-col items-center justify-center px-3 py-2 border-b border-white/10 sm:border-b-0 sm:border-r border-white/10">
+                        <div className="text-[11px] text-white/60 uppercase tracking-widest text-center font-medium flex items-center justify-center gap-1">
                           vAPR
                           <SimpleTooltip
                             label={
@@ -4610,7 +4622,7 @@ export default function AnchorPage() {
                             </span>
                           </SimpleTooltip>
                         </div>
-                        <div className="text-lg font-bold text-white font-mono text-center">
+                        <div className="text-lg font-semibold text-white font-mono text-center mt-1">
                           {blendedAPRForBar > 0
                             ? `${blendedAPRForBar.toFixed(2)}%`
                             : "-"}
@@ -4618,8 +4630,8 @@ export default function AnchorPage() {
                       </div>
 
                       {/* Claim Button */}
-                      <div className="flex flex-col items-center justify-center">
-                        <div className="text-xs text-white/70 mb-1.5 text-center font-medium">
+                      <div className="flex flex-col items-center justify-center px-3 py-2">
+                        <div className="text-[11px] text-white/60 uppercase tracking-widest text-center">
                           Action
                         </div>
                         <button
@@ -4627,7 +4639,7 @@ export default function AnchorPage() {
                             setIsClaimAllModalOpen(true);
                           }}
                           disabled={isClaimingAll || isCompoundingAll}
-                          className="px-4 py-1.5 text-xs font-medium bg-white text-[#1E4775] border border-white hover:bg-white/90 disabled:bg-gray-100 disabled:text-gray-400 disabled:border-gray-300 disabled:cursor-not-allowed transition-colors rounded-full whitespace-nowrap"
+                          className="mt-1 px-4 py-1.5 text-xs font-medium bg-white/10 text-white border border-white/20 hover:bg-white/15 disabled:bg-white/5 disabled:text-white/40 disabled:border-white/10 disabled:cursor-not-allowed transition-colors rounded-full whitespace-nowrap"
                         >
                           Claim
                         </button>
@@ -4636,8 +4648,8 @@ export default function AnchorPage() {
                   </div>
 
                   {/* Anchor Ledger Marks Box */}
-                  <div className="bg-[#17395F] p-3 md:col-span-1 lg:col-span-1">
-                    <div className="text-xs text-white/70 mb-0.5 text-center">
+                  <div className="bg-black/20 border border-white/10 rounded-lg p-3 md:col-span-1 lg:col-span-1">
+                    <div className="text-[11px] text-white/60 uppercase tracking-widest mb-0.5 text-center">
                       Anchor Ledger Marks
                     </div>
                     <div className="text-base font-bold text-white font-mono text-center tabular-nums">
@@ -4668,6 +4680,7 @@ export default function AnchorPage() {
                         : "0 marks/day"}
                     </div>
                   </div>
+                </div>
                 </div>
 
                 {activeAnchorBoostEndTimestamp && (
