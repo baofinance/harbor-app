@@ -5788,6 +5788,14 @@ export const AnchorDepositWithdrawModal = ({
           const needsZapApproval = (anyTokenDeposit.useETHZap && !anyTokenDeposit.isNativeETH && !anyTokenDeposit.needsSwap) || // stETH direct
             (anyTokenDeposit.useUSDCZap && !anyTokenDeposit.isNativeETH); // USDC/fxUSD (always needs approval)
           
+          // If user selected a stability pool, we should complete the full flow (mint + deposit)
+          // and show it in the progress modal.
+          const shouldDepositToPool = simpleMode
+            ? selectedStabilityPool &&
+              selectedStabilityPool.poolType !== "none" &&
+              !!stabilityPoolAddress
+            : depositInStabilityPool && !mintOnly;
+
           // Set up progress modal before zap transaction
           // Determine the actual asset being zapped (after swap if applicable)
           let zapAssetName: string;
@@ -5804,13 +5812,15 @@ export const AnchorDepositWithdrawModal = ({
             mode: "collateral",
             includeApproveCollateral: needsZapApproval,
             includeMint: true,
-            includeApprovePegged: false,
-            includeDeposit: false, // Zap transactions skip deposit (mint only)
+            // If a pool was selected, we want the full flow visible and executed.
+            // Approval might be skipped at runtime if allowance is already sufficient.
+            includeApprovePegged: !!shouldDepositToPool,
+            includeDeposit: !!shouldDepositToPool,
             includeDirectApprove: false,
             includeDirectDeposit: false,
             useZap: true,
             zapAsset: zapAssetName,
-            title: "Mint pegged token",
+            title: shouldDepositToPool ? "Mint & Deposit" : "Mint pegged token",
           });
           setProgressModalOpen(true);
           
@@ -6041,6 +6051,16 @@ export const AnchorDepositWithdrawModal = ({
               throw new Error("Wrong network. Please switch to Ethereum Mainnet.");
             }
             
+            // Track pegged token balance before zap so we can compute minted amount for deposit.
+            const balanceBeforeZap = peggedTokenAddress
+              ? ((await publicClient?.readContract({
+                  address: peggedTokenAddress as `0x${string}`,
+                  abi: ERC20_ABI,
+                  functionName: "balanceOf",
+                  args: [address as `0x${string}`],
+                })) as bigint | undefined)
+              : undefined;
+
             // Call the correct zap function based on asset type
             let zapHash: `0x${string}`;
             if (isActuallyETH) {
@@ -6125,8 +6145,73 @@ export const AnchorDepositWithdrawModal = ({
             
             await publicClient?.waitForTransactionReceipt({ hash: zapHash });
             setTxHashes((prev) => ({ ...prev, mint: zapHash }));
-            
-            // Skip normal mint flow
+
+            // If a pool was selected, continue by depositing the freshly minted pegged tokens.
+            if (shouldDepositToPool) {
+              if (!stabilityPoolAddress) {
+                throw new Error(
+                  "Stability pool address not found. Cannot deposit to stability pool."
+                );
+              }
+              if (!peggedTokenAddress) {
+                throw new Error(
+                  "Pegged token address not found. Cannot deposit to stability pool."
+                );
+              }
+
+              // Wait a bit for state to update after transaction
+              await new Promise((resolve) => setTimeout(resolve, 2000));
+              const balanceAfterZap = (await publicClient?.readContract({
+                address: peggedTokenAddress as `0x${string}`,
+                abi: ERC20_ABI,
+                functionName: "balanceOf",
+                args: [address as `0x${string}`],
+              })) as bigint;
+
+              const minted =
+                balanceBeforeZap !== undefined
+                  ? balanceAfterZap - balanceBeforeZap
+                  : balanceAfterZap;
+              const depositAmount = minted > 0n ? minted : balanceAfterZap;
+
+              if (depositAmount <= 0n) {
+                throw new Error(
+                  "Mint succeeded but could not determine minted amount to deposit."
+                );
+              }
+
+              // Approve pegged token for pool if needed
+              const currentAllowance = (await publicClient?.readContract({
+                address: peggedTokenAddress as `0x${string}`,
+                abi: ERC20_ABI,
+                functionName: "allowance",
+                args: [address as `0x${string}`, stabilityPoolAddress],
+              })) as bigint;
+
+              if (currentAllowance < depositAmount) {
+                setStep("approvingPegged");
+                const approveHash = await writeContractAsync({
+                  address: peggedTokenAddress as `0x${string}`,
+                  abi: ERC20_ABI,
+                  functionName: "approve",
+                  args: [stabilityPoolAddress, depositAmount],
+                });
+                setTxHashes((prev) => ({ ...prev, approvePegged: approveHash }));
+                await publicClient?.waitForTransactionReceipt({ hash: approveHash });
+              }
+
+              // Deposit to stability pool
+              setStep("depositing");
+              const depositHash = await writeContractAsync({
+                address: stabilityPoolAddress,
+                abi: STABILITY_POOL_ABI,
+                functionName: "deposit",
+                args: [depositAmount, address as `0x${string}`, 0n],
+              });
+              setTxHashes((prev) => ({ ...prev, deposit: depositHash }));
+              await publicClient?.waitForTransactionReceipt({ hash: depositHash });
+            }
+
             setStep("success");
             if (onSuccess) onSuccess();
             return;
@@ -6217,6 +6302,16 @@ export const AnchorDepositWithdrawModal = ({
               throw new Error("Wrong network. Please switch to Ethereum Mainnet.");
             }
             
+            // Track pegged token balance before zap so we can compute minted amount for deposit.
+            const balanceBeforeZap = peggedTokenAddress
+              ? ((await publicClient?.readContract({
+                  address: peggedTokenAddress as `0x${string}`,
+                  abi: ERC20_ABI,
+                  functionName: "balanceOf",
+                  args: [address as `0x${string}`],
+                })) as bigint | undefined)
+              : undefined;
+
             // Call the correct zap function based on asset type
             let zapHash: `0x${string}`;
             if (isActuallyUSDC) {
@@ -6249,8 +6344,70 @@ export const AnchorDepositWithdrawModal = ({
             
             await publicClient?.waitForTransactionReceipt({ hash: zapHash });
             setTxHashes((prev) => ({ ...prev, mint: zapHash }));
-            
-            // Skip normal mint flow
+
+            // If a pool was selected, continue by depositing the freshly minted pegged tokens.
+            if (shouldDepositToPool) {
+              if (!stabilityPoolAddress) {
+                throw new Error(
+                  "Stability pool address not found. Cannot deposit to stability pool."
+                );
+              }
+              if (!peggedTokenAddress) {
+                throw new Error(
+                  "Pegged token address not found. Cannot deposit to stability pool."
+                );
+              }
+
+              await new Promise((resolve) => setTimeout(resolve, 2000));
+              const balanceAfterZap = (await publicClient?.readContract({
+                address: peggedTokenAddress as `0x${string}`,
+                abi: ERC20_ABI,
+                functionName: "balanceOf",
+                args: [address as `0x${string}`],
+              })) as bigint;
+
+              const minted =
+                balanceBeforeZap !== undefined
+                  ? balanceAfterZap - balanceBeforeZap
+                  : balanceAfterZap;
+              const depositAmount = minted > 0n ? minted : balanceAfterZap;
+
+              if (depositAmount <= 0n) {
+                throw new Error(
+                  "Mint succeeded but could not determine minted amount to deposit."
+                );
+              }
+
+              const currentAllowance = (await publicClient?.readContract({
+                address: peggedTokenAddress as `0x${string}`,
+                abi: ERC20_ABI,
+                functionName: "allowance",
+                args: [address as `0x${string}`, stabilityPoolAddress],
+              })) as bigint;
+
+              if (currentAllowance < depositAmount) {
+                setStep("approvingPegged");
+                const approveHash = await writeContractAsync({
+                  address: peggedTokenAddress as `0x${string}`,
+                  abi: ERC20_ABI,
+                  functionName: "approve",
+                  args: [stabilityPoolAddress, depositAmount],
+                });
+                setTxHashes((prev) => ({ ...prev, approvePegged: approveHash }));
+                await publicClient?.waitForTransactionReceipt({ hash: approveHash });
+              }
+
+              setStep("depositing");
+              const depositHash = await writeContractAsync({
+                address: stabilityPoolAddress,
+                abi: STABILITY_POOL_ABI,
+                functionName: "deposit",
+                args: [depositAmount, address as `0x${string}`, 0n],
+              });
+              setTxHashes((prev) => ({ ...prev, deposit: depositHash }));
+              await publicClient?.waitForTransactionReceipt({ hash: depositHash });
+            }
+
             setStep("success");
             if (onSuccess) onSuccess();
             return;
