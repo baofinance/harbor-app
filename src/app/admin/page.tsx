@@ -6,12 +6,37 @@ import {
  useWriteContract,
  useReadContract,
  useWaitForTransactionReceipt,
+ useContractReads,
 } from "wagmi";
 import { parseEther, formatEther } from "viem";
 import { markets } from "../../config/markets";
 import WalletButton from "../../components/WalletButton";
 import Navigation from "../../components/Navigation";
 import Link from "next/link";
+
+const MINTER_FEES_READS_ABI = [
+  {
+    inputs: [],
+    name: "harvestable",
+    outputs: [{ name: "wrappedAmount", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "feeReceiver",
+    outputs: [{ type: "address" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "WRAPPED_COLLATERAL_TOKEN",
+    outputs: [{ type: "address" }],
+    stateMutability: "view",
+    type: "function",
+  },
+] as const;
 
 const minterABI = [
  {
@@ -172,6 +197,120 @@ export default function Admin() {
  useEffect(() => {
  setMounted(true);
  }, []);
+
+ // ---------------------------------------------------------------------------
+ // Fees + Harvestable summary (per market) - shown above "System Controls"
+ // ---------------------------------------------------------------------------
+ const marketOptions = Object.entries(markets)
+   .filter(([, m]) => (m as any)?.addresses?.minter)
+   .map(([id, m]) => ({
+     id,
+     name: (m as any)?.name ?? id,
+     minter: (m as any)?.addresses?.minter as `0x${string}`,
+   }));
+
+ const minterReads = marketOptions.flatMap((m) => [
+   { address: m.minter, abi: MINTER_FEES_READS_ABI, functionName: "harvestable" as const },
+   { address: m.minter, abi: MINTER_FEES_READS_ABI, functionName: "feeReceiver" as const },
+   { address: m.minter, abi: MINTER_FEES_READS_ABI, functionName: "WRAPPED_COLLATERAL_TOKEN" as const },
+ ]);
+
+ const { data: minterReadData, isLoading: isLoadingMinterReads } = useContractReads({
+   contracts: minterReads,
+   query: {
+     enabled: mounted && isConnected && minterReads.length > 0,
+     refetchInterval: 30000,
+     staleTime: 15000,
+     retry: 1,
+     allowFailure: true,
+   } as any,
+ });
+
+ const feeBalanceReads = (minterReadData
+   ? marketOptions
+       .map((m, i) => {
+         const base = i * 3;
+         const feeReceiver =
+           minterReadData?.[base + 1]?.status === "success"
+             ? (minterReadData?.[base + 1]?.result as `0x${string}` | undefined)
+             : undefined;
+         const wrappedToken =
+           minterReadData?.[base + 2]?.status === "success"
+             ? (minterReadData?.[base + 2]?.result as `0x${string}` | undefined)
+             : undefined;
+         if (!feeReceiver || !wrappedToken) return null;
+         return {
+           marketIndex: i,
+           wrappedToken,
+           feeReceiver,
+           contract: {
+             address: wrappedToken,
+             abi: [
+               {
+                 inputs: [{ type: "address" }],
+                 name: "balanceOf",
+                 outputs: [{ type: "uint256" }],
+                 stateMutability: "view",
+                 type: "function",
+               },
+             ] as const,
+             functionName: "balanceOf" as const,
+             args: [feeReceiver],
+           },
+         };
+       })
+       .filter((x): x is NonNullable<typeof x> => !!x)
+   : []);
+
+ const { data: feeBalanceData, isLoading: isLoadingFeeBalances } = useContractReads({
+   contracts: feeBalanceReads.map((x) => x.contract),
+   query: {
+     enabled: mounted && isConnected && feeBalanceReads.length > 0,
+     refetchInterval: 30000,
+     staleTime: 15000,
+     retry: 1,
+     allowFailure: true,
+   } as any,
+ });
+
+ const feesSummaryRows = (() => {
+   const feeBalByMarketIndex = new Map<number, bigint>();
+   feeBalanceReads.forEach((meta, idx) => {
+     const res = feeBalanceData?.[idx];
+     const bal =
+       res?.status === "success" && res.result !== undefined && res.result !== null
+         ? (res.result as bigint)
+         : 0n;
+     feeBalByMarketIndex.set(meta.marketIndex, bal);
+   });
+
+   return marketOptions.map((m, i) => {
+     const base = i * 3;
+     const harvestable =
+       minterReadData?.[base]?.status === "success"
+         ? (minterReadData?.[base]?.result as bigint | undefined)
+         : undefined;
+     const feeReceiver =
+       minterReadData?.[base + 1]?.status === "success"
+         ? (minterReadData?.[base + 1]?.result as `0x${string}` | undefined)
+         : undefined;
+     const wrappedToken =
+       minterReadData?.[base + 2]?.status === "success"
+         ? (minterReadData?.[base + 2]?.result as `0x${string}` | undefined)
+         : undefined;
+     const feeBalance = feeBalByMarketIndex.get(i) ?? 0n;
+     const harvest = harvestable ?? 0n;
+     const total = feeBalance + harvest;
+     return {
+       ...m,
+       harvestable: harvest,
+       feeReceiver,
+       wrappedToken,
+       feeBalance,
+       total,
+     };
+   });
+ })();
 
  // Get the minter address from the first market
  const minterAddress = (markets as any)[Object.keys(markets)[0]].addresses
@@ -461,6 +600,56 @@ export default function Admin() {
  </div>
  ) : (
  <div className="space-y-4">
+   {/* Fees & Harvestable summary (per market) */}
+   <div className="bg-zinc-900/50 p-4 sm:p-6">
+     <div className="flex items-center justify-between gap-4 mb-3">
+       <div>
+         <h2 className="text-lg font-medium text-white font-geo">
+           Fees & Harvestable
+         </h2>
+         <div className="text-xs text-white/60 mt-1">
+           `harvestable()` on Minter + wrapped collateral token balance at `feeReceiver()`
+         </div>
+       </div>
+       {(isLoadingMinterReads || isLoadingFeeBalances) && (
+         <div className="text-xs text-white/60">Loading…</div>
+       )}
+     </div>
+
+     <div className="overflow-x-auto">
+       <table className="w-full text-sm">
+         <thead>
+           <tr className="text-xs text-white/60 border-b border-white/10">
+             <th className="text-left py-2 pr-4">Market</th>
+             <th className="text-right py-2 pr-4">Harvestable</th>
+             <th className="text-right py-2 pr-4">Fees</th>
+             <th className="text-right py-2 pr-4">Total</th>
+             <th className="text-left py-2">Fee Receiver</th>
+           </tr>
+         </thead>
+         <tbody>
+           {feesSummaryRows.map((r) => (
+             <tr key={r.id} className="border-t border-white/5">
+               <td className="py-2 pr-4 text-white">{r.name}</td>
+               <td className="py-2 pr-4 text-right font-mono text-white">
+                 {formatEther(r.harvestable)}
+               </td>
+               <td className="py-2 pr-4 text-right font-mono text-white">
+                 {formatEther(r.feeBalance)}
+               </td>
+               <td className="py-2 pr-4 text-right font-mono text-white">
+                 {formatEther(r.total)}
+               </td>
+               <td className="py-2 text-xs text-white/60 font-mono">
+                 {r.feeReceiver ?? "-"}
+               </td>
+             </tr>
+           ))}
+         </tbody>
+       </table>
+     </div>
+   </div>
+
  <div className="bg-zinc-900/50 p-4 sm:p-6">
  <h2 className="text-lg font-medium text-white mb-4 font-geo">
  System Controls
