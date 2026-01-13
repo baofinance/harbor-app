@@ -3797,7 +3797,7 @@ export default function AnchorPage() {
           </div>
 
           {/* Stats strip */}
-          <div className="mb-2 overflow-hidden border border-white/15 bg-black/30 backdrop-blur-md shadow-[0_10px_30px_rgba(0,0,0,0.35)]">
+          <div className="mb-2 overflow-hidden bg-black/30 backdrop-blur-md shadow-[0_10px_30px_rgba(0,0,0,0.35)]">
             <div className="p-2.5">
               <div className="flex items-center justify-between gap-3 mb-2">
                 <div className="text-[11px] text-white/70 uppercase tracking-widest font-semibold">
@@ -4413,7 +4413,7 @@ export default function AnchorPage() {
               totalDepositUSD > 0 ? totalWeightedAPR / totalDepositUSD : 0;
 
             return (
-              <div className="mb-2 overflow-hidden border border-white/15 bg-black/30 backdrop-blur-md shadow-[0_10px_30px_rgba(0,0,0,0.35)]">
+              <div className="mb-2 overflow-hidden bg-black/30 backdrop-blur-md shadow-[0_10px_30px_rgba(0,0,0,0.35)]">
                 <div className="p-2.5">
                 <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-2">
                   {/* Rewards Header Box */}
