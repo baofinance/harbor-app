@@ -4471,8 +4471,8 @@ export default function AnchorPage() {
                   {/* Combined Content: 3 metrics in one box */}
                   <div className="md:col-span-1 lg:col-span-2">
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 items-stretch">
-                      <div className="bg-black/30 px-3 py-2 min-h-[84px] flex items-center justify-center lg:col-span-3">
-                        <div className="grid grid-cols-3 w-full divide-x divide-white/15">
+                      <div className="bg-black/30 px-3 py-2 min-h-[84px] flex items-center justify-center lg:col-span-4">
+                        <div className="grid grid-cols-4 w-full divide-x divide-white/15">
                           {/* Total Deposits */}
                           <div className="flex flex-col items-center justify-center text-center px-2">
                             <div className="text-[11px] text-white/60 uppercase tracking-widest">
@@ -4619,20 +4619,20 @@ export default function AnchorPage() {
                               {blendedAPRForBar > 0 ? `${blendedAPRForBar.toFixed(2)}%` : "-"}
                             </div>
                           </div>
-                        </div>
-                      </div>
 
-                      {/* Claim Button (separate box) */}
-                      <div className="bg-black/30 px-3 py-2 flex flex-col items-center justify-center text-center min-h-[84px]">
-                        <button
-                          onClick={() => {
-                            setIsClaimAllModalOpen(true);
-                          }}
-                          disabled={isClaimingAll || isCompoundingAll}
-                          className="px-4 py-1.5 text-xs font-medium bg-white/10 text-white border border-white/20 hover:bg-white/15 disabled:bg-white/5 disabled:text-white/40 disabled:border-white/10 disabled:cursor-not-allowed transition-colors rounded-full whitespace-nowrap"
-                        >
-                          Claim
-                        </button>
+                          {/* Claim */}
+                          <div className="flex flex-col items-center justify-center text-center px-2">
+                            <button
+                              onClick={() => {
+                                setIsClaimAllModalOpen(true);
+                              }}
+                              disabled={isClaimingAll || isCompoundingAll}
+                              className="px-4 py-1.5 text-xs font-medium bg-white/10 text-white border border-white/20 hover:bg-white/15 disabled:bg-white/5 disabled:text-white/40 disabled:border-white/10 disabled:cursor-not-allowed transition-colors rounded-full whitespace-nowrap"
+                            >
+                              Claim
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
