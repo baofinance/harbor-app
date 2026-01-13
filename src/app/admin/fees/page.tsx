@@ -2,10 +2,28 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useAccount, useReadContract, useWriteContract } from "wagmi";
+import { useAccount, useContractReads, useReadContract, useWriteContract } from "wagmi";
 import { minterABI } from "@/abis/minter";
 import { markets } from "@/config/markets";
 import WalletButton from "@/components/WalletButton";
+import { formatUnits } from "viem";
+
+const ERC20_META_ABI = [
+  {
+    type: "function",
+    name: "decimals",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ type: "uint8" }],
+  },
+  {
+    type: "function",
+    name: "balanceOf",
+    stateMutability: "view",
+    inputs: [{ type: "address" }],
+    outputs: [{ type: "uint256" }],
+  },
+] as const;
 
 const WAD = 10n ** 18n;
 
@@ -262,6 +280,190 @@ export default function AdminFeesPage() {
 
   const minterAddress = selectedMarket?.minter;
 
+  // ---------------------------------------------------------------------------
+  // Harvestable + Fee receiver balances (per market)
+  // ---------------------------------------------------------------------------
+  const marketMinterReads = useMemo(() => {
+    return marketOptions.flatMap((m) => [
+      {
+        address: m.minter,
+        abi: minterABI,
+        functionName: "harvestable" as const,
+      },
+      {
+        address: m.minter,
+        abi: minterABI,
+        functionName: "feeReceiver" as const,
+      },
+      {
+        address: m.minter,
+        abi: minterABI,
+        functionName: "WRAPPED_COLLATERAL_TOKEN" as const,
+      },
+    ]);
+  }, [marketOptions]);
+
+  const {
+    data: marketMinterReadData,
+    isLoading: isLoadingMarketMinterReads,
+    isError: isMarketMinterReadsError,
+    error: marketMinterReadsError,
+  } = useContractReads({
+    contracts: marketMinterReads,
+    query: {
+      enabled: mounted && isConnected && marketMinterReads.length > 0,
+      refetchInterval: 30_000,
+      staleTime: 15_000,
+      retry: 1,
+      allowFailure: true,
+    } as any,
+  });
+
+  const marketFeeRows = useMemo(() => {
+    const rows: Array<{
+      id: string;
+      name: string;
+      minter: `0x${string}`;
+      harvestable?: bigint;
+      feeReceiver?: `0x${string}`;
+      wrappedToken?: `0x${string}`;
+    }> = [];
+
+    for (let i = 0; i < marketOptions.length; i++) {
+      const opt = marketOptions[i];
+      const base = i * 3;
+      const harvestable =
+        marketMinterReadData?.[base]?.status === "success"
+          ? (marketMinterReadData?.[base]?.result as bigint | undefined)
+          : undefined;
+      const feeReceiver =
+        marketMinterReadData?.[base + 1]?.status === "success"
+          ? (marketMinterReadData?.[base + 1]?.result as `0x${string}` | undefined)
+          : undefined;
+      const wrappedToken =
+        marketMinterReadData?.[base + 2]?.status === "success"
+          ? (marketMinterReadData?.[base + 2]?.result as `0x${string}` | undefined)
+          : undefined;
+
+      rows.push({
+        id: opt.id,
+        name: opt.name,
+        minter: opt.minter,
+        harvestable,
+        feeReceiver,
+        wrappedToken,
+      });
+    }
+    return rows;
+  }, [marketOptions, marketMinterReadData]);
+
+  const tokenMetaReads = useMemo(() => {
+    const tokens = Array.from(
+      new Set(
+        marketFeeRows
+          .map((r) => r.wrappedToken?.toLowerCase())
+          .filter((x): x is string => !!x)
+      )
+    ) as `0x${string}`[];
+
+    const reads: any[] = [];
+    // decimals per unique token
+    for (const t of tokens) {
+      reads.push({
+        address: t,
+        abi: ERC20_META_ABI,
+        functionName: "decimals",
+      });
+    }
+    // balanceOf per (token, feeReceiver)
+    for (const r of marketFeeRows) {
+      if (!r.wrappedToken || !r.feeReceiver) continue;
+      reads.push({
+        address: r.wrappedToken,
+        abi: ERC20_META_ABI,
+        functionName: "balanceOf",
+        args: [r.feeReceiver],
+      });
+    }
+    return { tokens, reads };
+  }, [marketFeeRows]);
+
+  const {
+    data: tokenMetaReadData,
+    isLoading: isLoadingTokenMetaReads,
+  } = useContractReads({
+    contracts: tokenMetaReads.reads,
+    query: {
+      enabled:
+        mounted &&
+        isConnected &&
+        tokenMetaReads.reads.length > 0 &&
+        !isLoadingMarketMinterReads,
+      refetchInterval: 30_000,
+      staleTime: 15_000,
+      retry: 1,
+      allowFailure: true,
+    } as any,
+  });
+
+  const feeSummaryRows = useMemo(() => {
+    const decimalsByToken = new Map<string, number>();
+    const balanceByKey = new Map<string, bigint>();
+
+    // First chunk: decimals per unique token
+    for (let i = 0; i < tokenMetaReads.tokens.length; i++) {
+      const token = tokenMetaReads.tokens[i];
+      const res = tokenMetaReadData?.[i];
+      const decRaw =
+        res?.status === "success" ? (res.result as number | bigint | undefined) : undefined;
+      const dec =
+        typeof decRaw === "bigint"
+          ? Number(decRaw)
+          : typeof decRaw === "number"
+            ? decRaw
+            : 18;
+      decimalsByToken.set(token.toLowerCase(), dec);
+    }
+
+    // Second chunk: balances
+    let cursor = tokenMetaReads.tokens.length;
+    for (const r of marketFeeRows) {
+      if (!r.wrappedToken || !r.feeReceiver) continue;
+      const res = tokenMetaReadData?.[cursor];
+      cursor += 1;
+      const bal =
+        res?.status === "success" && res.result !== undefined && res.result !== null
+          ? (res.result as bigint)
+          : 0n;
+      balanceByKey.set(
+        `${r.wrappedToken.toLowerCase()}-${r.feeReceiver.toLowerCase()}`,
+        bal
+      );
+    }
+
+    return marketFeeRows.map((r) => {
+      const token = r.wrappedToken?.toLowerCase();
+      const dec = token ? decimalsByToken.get(token) ?? 18 : 18;
+      const feeBal =
+        r.wrappedToken && r.feeReceiver
+          ? balanceByKey.get(
+              `${r.wrappedToken.toLowerCase()}-${r.feeReceiver.toLowerCase()}`
+            ) ?? 0n
+          : 0n;
+      const harvestable = r.harvestable ?? 0n;
+      const total = feeBal + harvestable;
+      return {
+        ...r,
+        decimals: dec,
+        feeBalance: feeBal,
+        total,
+        harvestableFormatted: formatUnits(harvestable, dec),
+        feeBalanceFormatted: formatUnits(feeBal, dec),
+        totalFormatted: formatUnits(total, dec),
+      };
+    });
+  }, [marketFeeRows, tokenMetaReads.tokens, tokenMetaReadData]);
+
   const { data: owner } = useReadContract({
     address: minterAddress,
     abi: minterABI,
@@ -396,6 +598,77 @@ export default function AdminFeesPage() {
               Back to Admin
             </button>
           </Link>
+        </div>
+
+        {/* Fees + Harvestable summary */}
+        <div className="mb-6 bg-zinc-900/50 border border-white/10 p-4">
+          <div className="flex items-center justify-between gap-4 mb-3">
+            <div>
+              <div className="text-sm font-medium text-white">
+                Fees & Harvestable (per market)
+              </div>
+              <div className="text-xs text-white/60">
+                Harvestable = `Minter.harvestable()`. Fees = `WRAPPED_COLLATERAL_TOKEN.balanceOf(feeReceiver)`.
+              </div>
+            </div>
+            {(isLoadingMarketMinterReads || isLoadingTokenMetaReads) && (
+              <div className="text-xs text-white/60">Loading…</div>
+            )}
+          </div>
+
+          {isMarketMinterReadsError && (
+            <div className="text-xs text-red-300">
+              Failed to load fee data:{" "}
+              {marketMinterReadsError instanceof Error
+                ? marketMinterReadsError.message
+                : String(marketMinterReadsError)}
+            </div>
+          )}
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-xs text-white/60 border-b border-white/10">
+                  <th className="text-left py-2 pr-4">Market</th>
+                  <th className="text-right py-2 pr-4">Harvestable</th>
+                  <th className="text-right py-2 pr-4">Fees (feeReceiver)</th>
+                  <th className="text-right py-2 pr-4">Total</th>
+                  <th className="text-left py-2">Wrapped token</th>
+                </tr>
+              </thead>
+              <tbody>
+                {feeSummaryRows.map((r) => (
+                  <tr key={r.id} className="border-t border-white/5">
+                    <td className="py-2 pr-4 text-white">{r.name}</td>
+                    <td className="py-2 pr-4 text-right font-mono text-white">
+                      {r.harvestableFormatted}
+                    </td>
+                    <td className="py-2 pr-4 text-right font-mono text-white">
+                      {r.feeBalanceFormatted}
+                      {r.feeReceiver ? (
+                        <span className="ml-2 text-[10px] text-white/50 font-sans">
+                          {r.feeReceiver.slice(0, 6)}…{r.feeReceiver.slice(-4)}
+                        </span>
+                      ) : null}
+                    </td>
+                    <td className="py-2 pr-4 text-right font-mono text-white">
+                      {r.totalFormatted}
+                    </td>
+                    <td className="py-2 text-xs text-white/60 font-mono">
+                      {r.wrappedToken ?? "-"}
+                    </td>
+                  </tr>
+                ))}
+                {feeSummaryRows.length === 0 && (
+                  <tr>
+                    <td className="py-3 text-xs text-white/60" colSpan={5}>
+                      No markets found.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
 
         {!isConnected ? (
