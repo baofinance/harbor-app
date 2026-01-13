@@ -3801,7 +3801,7 @@ export default function AnchorPage() {
 
           {/* Stats strip */}
           <div className="mb-2 grid grid-cols-2 md:grid-cols-5 gap-2">
-            <div className="col-span-2 md:col-span-1 bg-[#163A60] p-2.5 flex items-center justify-center">
+            <div className="col-span-2 md:col-span-1 bg-[#142F4D] p-2.5 flex items-center justify-center">
               <div className="text-white text-center">
                 <div className="font-bold font-mono text-lg leading-tight">
                   Stats
@@ -3810,7 +3810,7 @@ export default function AnchorPage() {
             </div>
 
             {/* Combined stats box */}
-            <div className="col-span-2 md:col-span-4 bg-[#163A60] px-2 py-2">
+            <div className="col-span-2 md:col-span-4 bg-[#142F4D] px-2 py-2">
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-y-2 lg:gap-y-0 lg:divide-x lg:divide-white/15">
                 <div className="flex flex-col items-center justify-center text-center px-2">
                   <div className="text-[11px] text-white/60 uppercase tracking-widest mt-0.5">
