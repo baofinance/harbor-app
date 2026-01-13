@@ -3742,7 +3742,7 @@ export default function AnchorPage() {
             {/* Four Boxes */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
               {/* Mint Box */}
-              <div className="bg-[#17395F] p-4">
+              <div className="bg-[#17395F] p-4 shadow-[0_10px_30px_rgba(0,0,0,0.35)]">
                 <div className="flex items-center justify-center mb-2">
                   <BanknotesIcon className="w-6 h-6 text-white mr-2" />
                   <h2 className="font-bold text-white text-lg text-center">
@@ -3755,7 +3755,7 @@ export default function AnchorPage() {
               </div>
 
               {/* Secure Box */}
-              <div className="bg-[#17395F] p-4">
+              <div className="bg-[#17395F] p-4 shadow-[0_10px_30px_rgba(0,0,0,0.35)]">
                 <div className="flex items-center justify-center mb-2">
                   <ShieldCheckIcon className="w-6 h-6 text-white mr-2" />
                   <h2 className="font-bold text-white text-lg text-center">
@@ -3768,7 +3768,7 @@ export default function AnchorPage() {
               </div>
 
               {/* Earn Box */}
-              <div className="bg-[#17395F] p-4">
+              <div className="bg-[#17395F] p-4 shadow-[0_10px_30px_rgba(0,0,0,0.35)]">
                 <div className="flex items-center justify-center mb-2">
                   <CurrencyDollarIcon className="w-6 h-6 text-white mr-2" />
                   <h2 className="font-bold text-white text-lg text-center">
@@ -3782,7 +3782,7 @@ export default function AnchorPage() {
               </div>
 
               {/* Redeem Box */}
-              <div className="bg-[#17395F] p-4">
+              <div className="bg-[#17395F] p-4 shadow-[0_10px_30px_rgba(0,0,0,0.35)]">
                 <div className="flex items-center justify-center mb-2">
                   <ArrowPathIcon className="w-6 h-6 text-white mr-2" />
                   <h2 className="font-bold text-white text-lg text-center">
@@ -3797,57 +3797,50 @@ export default function AnchorPage() {
           </div>
 
           {/* Stats strip */}
-          <div className="mb-2 overflow-hidden bg-black/30 backdrop-blur-md shadow-[0_10px_30px_rgba(0,0,0,0.35)]">
-            <div className="p-2.5">
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-2 md:gap-0 md:divide-x md:divide-white/10">
-                {/* Header tile (like Rewards) */}
-                <div className="col-span-2 md:col-span-1 bg-black/20 p-2.5 flex items-center justify-center">
-                  <div className="text-white text-center">
-                    <div className="font-bold font-mono text-lg leading-tight">
-                      Protocol
-                    </div>
-                    <div className="font-bold font-mono text-lg leading-tight -mt-0.5">
-                      Stats
-                    </div>
-                  </div>
+          <div className="mb-2 grid grid-cols-2 md:grid-cols-5 gap-2">
+            <div className="col-span-2 md:col-span-1 bg-black/20 backdrop-blur-md p-2.5 flex items-center justify-center shadow-[0_10px_30px_rgba(0,0,0,0.35)]">
+              <div className="text-white text-center">
+                <div className="font-bold font-mono text-lg leading-tight">
+                  Stats
                 </div>
+              </div>
+            </div>
 
-                <div className="flex flex-col items-center justify-center text-center px-3 py-2">
-                  <div className="text-sm font-semibold text-white font-mono">
-                    {formatCompactUSD(anchorStats.yieldGeneratingTVLUSD)}
-                  </div>
-                  <div className="text-[11px] text-white/60 uppercase tracking-widest mt-0.5">
-                    Yield Generating TVL
-                  </div>
-                </div>
-                <div className="flex flex-col items-center justify-center text-center px-3 py-2">
-                  <div className="text-sm font-semibold text-white font-mono">
-                    {formatCompactUSD(anchorStats.stabilityPoolTVLUSD)}
-                  </div>
-                  <div className="text-[11px] text-white/60 uppercase tracking-widest mt-0.5">
-                    Stability Pool TVL
-                  </div>
-                </div>
-                <div className="flex flex-col items-center justify-center text-center px-3 py-2">
-                  <div className="text-sm font-semibold text-white font-mono">
-                    {anchorStats.yieldConcentration > 0
-                      ? `${anchorStats.yieldConcentration.toFixed(2)}x`
-                      : "-"}
-                  </div>
-                  <div className="text-[11px] text-white/60 uppercase tracking-widest mt-0.5">
-                    Avg Yield Concentration
-                  </div>
-                </div>
-                <div className="flex flex-col items-center justify-center text-center px-3 py-2">
-                  <div className="text-sm font-semibold text-white font-mono">
-                    {anchorStats.bestApr > 0
-                      ? `${anchorStats.bestApr.toFixed(2)}%`
-                      : "-"}
-                  </div>
-                  <div className="text-[11px] text-white/60 uppercase tracking-widest mt-0.5">
-                    Highest APR Pool
-                  </div>
-                </div>
+            <div className="bg-black/20 backdrop-blur-md px-3 py-2 flex flex-col items-center justify-center text-center shadow-[0_10px_30px_rgba(0,0,0,0.35)]">
+              <div className="text-xs font-semibold text-white font-mono">
+                {formatCompactUSD(anchorStats.yieldGeneratingTVLUSD)}
+              </div>
+              <div className="text-[11px] text-white/60 uppercase tracking-widest mt-0.5">
+                Yield Generating TVL
+              </div>
+            </div>
+
+            <div className="bg-black/20 backdrop-blur-md px-3 py-2 flex flex-col items-center justify-center text-center shadow-[0_10px_30px_rgba(0,0,0,0.35)]">
+              <div className="text-xs font-semibold text-white font-mono">
+                {formatCompactUSD(anchorStats.stabilityPoolTVLUSD)}
+              </div>
+              <div className="text-[11px] text-white/60 uppercase tracking-widest mt-0.5">
+                Stability Pool TVL
+              </div>
+            </div>
+
+            <div className="bg-black/20 backdrop-blur-md px-3 py-2 flex flex-col items-center justify-center text-center shadow-[0_10px_30px_rgba(0,0,0,0.35)]">
+              <div className="text-xs font-semibold text-white font-mono">
+                {anchorStats.yieldConcentration > 0
+                  ? `${anchorStats.yieldConcentration.toFixed(2)}x`
+                  : "-"}
+              </div>
+              <div className="text-[11px] text-white/60 uppercase tracking-widest mt-0.5">
+                Avg Yield Concentration
+              </div>
+            </div>
+
+            <div className="bg-black/20 backdrop-blur-md px-3 py-2 flex flex-col items-center justify-center text-center shadow-[0_10px_30px_rgba(0,0,0,0.35)]">
+              <div className="text-xs font-semibold text-white font-mono">
+                {anchorStats.bestApr > 0 ? `${anchorStats.bestApr.toFixed(2)}%` : "-"}
+              </div>
+              <div className="text-[11px] text-white/60 uppercase tracking-widest mt-0.5">
+                Highest APR Pool
               </div>
             </div>
           </div>
@@ -4410,11 +4403,10 @@ export default function AnchorPage() {
               totalDepositUSD > 0 ? totalWeightedAPR / totalDepositUSD : 0;
 
             return (
-              <div className="mb-2 overflow-hidden bg-black/30 backdrop-blur-md shadow-[0_10px_30px_rgba(0,0,0,0.35)]">
-                <div className="p-2.5">
-                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 md:gap-0 md:divide-x md:divide-white/10 gap-2">
+              <div className="mb-2">
+                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-2">
                   {/* Rewards Header Box */}
-                  <div className="bg-black/20 p-2.5 flex items-center justify-center gap-2 md:col-span-1 lg:col-span-1">
+                  <div className="bg-black/30 backdrop-blur-md p-2.5 flex items-center justify-center gap-2 md:col-span-1 lg:col-span-1 shadow-[0_10px_30px_rgba(0,0,0,0.35)]">
                     <h2 className="font-bold font-mono text-white text-2xl text-center">
                       Rewards
                     </h2>
@@ -4472,14 +4464,14 @@ export default function AnchorPage() {
                   </div>
 
                   {/* Combined Content Box */}
-                  <div className="bg-black/20 p-2.5 md:col-span-1 lg:col-span-2">
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-0 overflow-hidden sm:divide-x sm:divide-white/10">
+                  <div className="bg-black/30 backdrop-blur-md p-2.5 md:col-span-1 lg:col-span-2 shadow-[0_10px_30px_rgba(0,0,0,0.35)]">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                       {/* Total Deposits */}
-                      <div className="flex flex-col items-center justify-center text-center px-3 py-2">
+                      <div className="bg-black/30 px-3 py-2 flex flex-col items-center justify-center text-center shadow-[0_10px_30px_rgba(0,0,0,0.35)]">
                         <div className="text-[11px] text-white/60 uppercase tracking-widest text-center">
                           Total Deposits
                         </div>
-                        <div className="text-sm font-semibold text-white font-mono text-center mt-1">
+                        <div className="text-xs font-semibold text-white font-mono text-center mt-1">
                           {totalStabilityPoolDepositsUSD > 0
                             ? formatCompactUSD(totalStabilityPoolDepositsUSD)
                             : "$0.00"}
@@ -4487,11 +4479,11 @@ export default function AnchorPage() {
                       </div>
 
                       {/* Claimable Value */}
-                      <div className="flex flex-col items-center justify-center text-center px-3 py-2">
+                      <div className="bg-black/30 px-3 py-2 flex flex-col items-center justify-center text-center shadow-[0_10px_30px_rgba(0,0,0,0.35)]">
                         <div className="text-[11px] text-white/60 uppercase tracking-widest text-center">
                           Claimable Value
                         </div>
-                        <div className="text-sm font-semibold text-white font-mono text-center mt-1">
+                        <div className="text-xs font-semibold text-white font-mono text-center mt-1">
                           $
                           {totalRewardsForBar > 0
                             ? totalRewardsForBar.toFixed(2)
@@ -4500,7 +4492,7 @@ export default function AnchorPage() {
                       </div>
 
                       {/* vAPR */}
-                      <div className="flex flex-col items-center justify-center text-center px-3 py-2">
+                      <div className="bg-black/30 px-3 py-2 flex flex-col items-center justify-center text-center shadow-[0_10px_30px_rgba(0,0,0,0.35)]">
                         <div className="text-[11px] text-white/60 uppercase tracking-widest text-center font-medium flex items-center justify-center gap-1">
                           vAPR
                           <SimpleTooltip
@@ -4619,7 +4611,7 @@ export default function AnchorPage() {
                             </span>
                           </SimpleTooltip>
                         </div>
-                        <div className="text-sm font-semibold text-white font-mono text-center mt-1">
+                        <div className="text-xs font-semibold text-white font-mono text-center mt-1">
                           {blendedAPRForBar > 0
                             ? `${blendedAPRForBar.toFixed(2)}%`
                             : "-"}
@@ -4627,7 +4619,7 @@ export default function AnchorPage() {
                       </div>
 
                       {/* Claim Button */}
-                      <div className="flex flex-col items-center justify-center text-center px-3 py-2">
+                      <div className="bg-black/30 px-3 py-2 flex flex-col items-center justify-center text-center shadow-[0_10px_30px_rgba(0,0,0,0.35)]">
                         <div className="text-[11px] text-white/60 uppercase tracking-widest text-center">
                           Action
                         </div>
@@ -4645,7 +4637,7 @@ export default function AnchorPage() {
                   </div>
 
                   {/* Anchor Ledger Marks Box */}
-                  <div className="bg-black/20 p-2.5 md:col-span-1 lg:col-span-1">
+                  <div className="bg-black/30 backdrop-blur-md p-2.5 md:col-span-1 lg:col-span-1 shadow-[0_10px_30px_rgba(0,0,0,0.35)]">
                     <div className="text-[11px] text-white/60 uppercase tracking-widest mb-0.5 text-center">
                       Anchor Ledger Marks
                     </div>
