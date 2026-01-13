@@ -3809,41 +3809,46 @@ export default function AnchorPage() {
               </div>
             </div>
 
-            <div className="bg-[#142F4D] px-3 py-2 flex flex-col items-center justify-center text-center">
-              <div className="text-[11px] font-semibold text-white font-mono">
-                {formatCompactUSD(anchorStats.yieldGeneratingTVLUSD)}
-              </div>
-              <div className="text-[11px] text-white/60 uppercase tracking-widest mt-0.5">
-                Yield Generating TVL
-              </div>
-            </div>
+            {/* Combined stats box */}
+            <div className="col-span-2 md:col-span-4 bg-[#142F4D] px-2 py-2">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-y-2 lg:gap-y-0 lg:divide-x lg:divide-white/15">
+                <div className="flex flex-col items-center justify-center text-center px-2">
+                  <div className="text-[11px] font-semibold text-white font-mono">
+                    {formatCompactUSD(anchorStats.yieldGeneratingTVLUSD)}
+                  </div>
+                  <div className="text-[11px] text-white/60 uppercase tracking-widest mt-0.5">
+                    Yield Generating TVL
+                  </div>
+                </div>
 
-            <div className="bg-[#142F4D] px-3 py-2 flex flex-col items-center justify-center text-center">
-              <div className="text-[11px] font-semibold text-white font-mono">
-                {formatCompactUSD(anchorStats.stabilityPoolTVLUSD)}
-              </div>
-              <div className="text-[11px] text-white/60 uppercase tracking-widest mt-0.5">
-                Stability Pool TVL
-              </div>
-            </div>
+                <div className="flex flex-col items-center justify-center text-center px-2">
+                  <div className="text-[11px] font-semibold text-white font-mono">
+                    {formatCompactUSD(anchorStats.stabilityPoolTVLUSD)}
+                  </div>
+                  <div className="text-[11px] text-white/60 uppercase tracking-widest mt-0.5">
+                    Stability Pool TVL
+                  </div>
+                </div>
 
-            <div className="bg-[#142F4D] px-3 py-2 flex flex-col items-center justify-center text-center">
-              <div className="text-[11px] font-semibold text-white font-mono">
-                {anchorStats.yieldConcentration > 0
-                  ? `${anchorStats.yieldConcentration.toFixed(2)}x`
-                  : "-"}
-              </div>
-              <div className="text-[11px] text-white/60 uppercase tracking-widest mt-0.5">
-                Avg Yield Concentration
-              </div>
-            </div>
+                <div className="flex flex-col items-center justify-center text-center px-2">
+                  <div className="text-[11px] font-semibold text-white font-mono">
+                    {anchorStats.yieldConcentration > 0
+                      ? `${anchorStats.yieldConcentration.toFixed(2)}x`
+                      : "-"}
+                  </div>
+                  <div className="text-[11px] text-white/60 uppercase tracking-widest mt-0.5">
+                    Avg Yield Concentration
+                  </div>
+                </div>
 
-            <div className="bg-[#142F4D] px-3 py-2 flex flex-col items-center justify-center text-center">
-              <div className="text-[11px] font-semibold text-white font-mono">
-                {anchorStats.bestApr > 0 ? `${anchorStats.bestApr.toFixed(2)}%` : "-"}
-              </div>
-              <div className="text-[11px] text-white/60 uppercase tracking-widest mt-0.5">
-                Highest APR Pool
+                <div className="flex flex-col items-center justify-center text-center px-2">
+                  <div className="text-[11px] font-semibold text-white font-mono">
+                    {anchorStats.bestApr > 0 ? `${anchorStats.bestApr.toFixed(2)}%` : "-"}
+                  </div>
+                  <div className="text-[11px] text-white/60 uppercase tracking-widest mt-0.5">
+                    Highest APR Pool
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -4463,40 +4468,39 @@ export default function AnchorPage() {
                     </InfoTooltip>
                   </div>
 
-                  {/* Combined Content (no wrapper box) */}
+                  {/* Combined Content: 3 metrics in one box */}
                   <div className="md:col-span-1 lg:col-span-2">
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                      {/* Total Deposits */}
-                      <div className="bg-black/30 px-3 py-2 flex flex-col items-center justify-center text-center min-h-[84px]">
-                        <div className="text-[11px] text-white/60 uppercase tracking-widest text-center">
-                          Total Deposits
-                        </div>
-                        <div className="text-xs font-semibold text-white font-mono text-center mt-1">
-                          {totalStabilityPoolDepositsUSD > 0
-                            ? formatCompactUSD(totalStabilityPoolDepositsUSD)
-                            : "$0.00"}
-                        </div>
-                      </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 items-stretch">
+                      <div className="bg-black/30 px-3 py-2 min-h-[84px] flex items-center justify-center lg:col-span-3">
+                        <div className="grid grid-cols-3 w-full divide-x divide-white/15">
+                          {/* Total Deposits */}
+                          <div className="flex flex-col items-center justify-center text-center px-2">
+                            <div className="text-[11px] text-white/60 uppercase tracking-widest">
+                              Total Deposits
+                            </div>
+                            <div className="text-xs font-semibold text-white font-mono mt-1">
+                              {totalStabilityPoolDepositsUSD > 0
+                                ? formatCompactUSD(totalStabilityPoolDepositsUSD)
+                                : "$0.00"}
+                            </div>
+                          </div>
 
-                      {/* Claimable Value */}
-                      <div className="bg-black/30 px-3 py-2 flex flex-col items-center justify-center text-center min-h-[84px]">
-                        <div className="text-[11px] text-white/60 uppercase tracking-widest text-center">
-                          Claimable Value
-                        </div>
-                        <div className="text-xs font-semibold text-white font-mono text-center mt-1">
-                          $
-                          {totalRewardsForBar > 0
-                            ? totalRewardsForBar.toFixed(2)
-                            : "0.00"}
-                        </div>
-                      </div>
+                          {/* Claimable Value */}
+                          <div className="flex flex-col items-center justify-center text-center px-2">
+                            <div className="text-[11px] text-white/60 uppercase tracking-widest">
+                              Claimable Value
+                            </div>
+                            <div className="text-xs font-semibold text-white font-mono mt-1">
+                              ${totalRewardsForBar > 0 ? totalRewardsForBar.toFixed(2) : "0.00"}
+                            </div>
+                          </div>
 
-                      {/* vAPR */}
-                      <div className="bg-black/30 px-3 py-2 flex flex-col items-center justify-center text-center min-h-[84px]">
-                        <div className="text-[11px] text-white/60 uppercase tracking-widest text-center font-medium flex items-center justify-center gap-1">
-                          vAPR
-                          <SimpleTooltip
-                            label={
+                          {/* vAPR */}
+                          <div className="flex flex-col items-center justify-center text-center px-2">
+                            <div className="text-[11px] text-white/60 uppercase tracking-widest font-medium flex items-center justify-center gap-1">
+                              vAPR
+                              <SimpleTooltip
+                                label={
                               <div className="text-left">
                                 <div className="font-semibold mb-1">
                                   Blended APR from Your Positions
@@ -4604,28 +4608,28 @@ export default function AnchorPage() {
                                     </div>
                                   )}
                               </div>
-                            }
-                          >
-                            <span className="text-white/50 cursor-help text-xs">
-                              [?]
-                            </span>
-                          </SimpleTooltip>
-                        </div>
-                        <div className="text-xs font-semibold text-white font-mono text-center mt-1">
-                          {blendedAPRForBar > 0
-                            ? `${blendedAPRForBar.toFixed(2)}%`
-                            : "-"}
+                                }
+                              >
+                                <span className="text-white/50 cursor-help text-xs">
+                                  [?]
+                                </span>
+                              </SimpleTooltip>
+                            </div>
+                            <div className="text-xs font-semibold text-white font-mono mt-1">
+                              {blendedAPRForBar > 0 ? `${blendedAPRForBar.toFixed(2)}%` : "-"}
+                            </div>
+                          </div>
                         </div>
                       </div>
 
-                      {/* Claim Button */}
+                      {/* Claim Button (separate box) */}
                       <div className="bg-black/30 px-3 py-2 flex flex-col items-center justify-center text-center min-h-[84px]">
                         <button
                           onClick={() => {
                             setIsClaimAllModalOpen(true);
                           }}
                           disabled={isClaimingAll || isCompoundingAll}
-                          className="mt-1 px-4 py-1.5 text-xs font-medium bg-white/10 text-white border border-white/20 hover:bg-white/15 disabled:bg-white/5 disabled:text-white/40 disabled:border-white/10 disabled:cursor-not-allowed transition-colors rounded-full whitespace-nowrap"
+                          className="px-4 py-1.5 text-xs font-medium bg-white/10 text-white border border-white/20 hover:bg-white/15 disabled:bg-white/5 disabled:text-white/40 disabled:border-white/10 disabled:cursor-not-allowed transition-colors rounded-full whitespace-nowrap"
                         >
                           Claim
                         </button>
