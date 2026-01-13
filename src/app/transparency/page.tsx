@@ -538,14 +538,14 @@ function MarketCard({
     }
     if (collateralPoolTVL > 0n) {
       data.push({
-        name: "Collateral Pool",
+        name: "Collateral SP",
         value: Number(collateralPoolTVL) / 1e18,
         rawValue: collateralPoolTVL,
       });
     }
     if (sailPoolTVL > 0n) {
       data.push({
-        name: "Sail Pool",
+        name: "Sail SP",
         value: Number(sailPoolTVL) / 1e18,
         rawValue: sailPoolTVL,
       });
@@ -839,14 +839,14 @@ function MarketCard({
                   let color = "#1E4775"; // harbor-blue (default)
                   if (entry.name === "Not Deposited") {
                     color = "#1E4775"; // harbor-blue
-                  } else if (entry.name === "Collateral Pool") {
+                  } else if (entry.name === "Collateral SP") {
                     color = "#9ED5BE"; // toned down seafoam green
-                  } else if (entry.name === "Sail Pool") {
+                  } else if (entry.name === "Sail SP") {
                     color = "#FF8A7A"; // harbor-coral (pearl orange)
                   } else if (entry.name === "Sail Supply") {
                     color = "#E9C46A"; // yellow
                   }
-                  return <Cell key={`cell-${index}`} fill={color} stroke="#1E4775" strokeWidth={entry.name === "Sail Pool" ? 0 : 0} />;
+                  return <Cell key={`cell-${index}`} fill={color} stroke="#1E4775" strokeWidth={entry.name === "Sail SP" ? 0 : 0} />;
                 })}
               </Pie>
               <Tooltip 
@@ -917,7 +917,7 @@ function MarketCard({
  </span>
  <div className="grid grid-cols-5 gap-1.5 text-xs flex-1">
  <div className="bg-[#1E4775]/5 p-1.5 text-center">
- <div className="text-[#1E4775]/60 text-[9px]">TVL (USD)</div>
+ <div className="text-[#1E4775]/60 text-[9px]">Anchor Token TVL</div>
  <div className="text-[#1E4775] font-mono font-semibold text-[10px]">
  {formatCompactUSD((Number(pool.tvl) / 1e18) * poolTokenPriceUSD)} ({formatTokenBalanceMax2Decimals(pool.tvl)} {market.marketName?.toLowerCase().includes("btc") ? "haBTC" : "haETH"})
  </div>
@@ -1008,8 +1008,8 @@ function MarketCard({
 
       const categories = [
         { name: "Not Deposited", value: anchorNotDeposited, color: "#1E4775" },
-        { name: "Collateral Pool", value: collateralPoolTVL, color: "#9ED5BE" },
-        { name: "Sail Pool", value: sailPoolTVL, color: "#FF8A7A" },
+        { name: "Collateral SP", value: collateralPoolTVL, color: "#9ED5BE" },
+        { name: "Sail SP", value: sailPoolTVL, color: "#FF8A7A" },
       ];
 
       // Calculate percentages for bar (based on Anchor Supply only, no Sail Supply)
@@ -1021,7 +1021,7 @@ function MarketCard({
       const collateralPoolPercent = anchorSupplyNum > 0 ? (collateralPoolNum / anchorSupplyNum) * 100 : 0;
       const sailPoolPercent = anchorSupplyNum > 0 ? (sailPoolNum / anchorSupplyNum) * 100 : 0;
 
-      // TVL Yield Generator: Full TVL (minter's total collateral) converted to wrapped collateral token
+      // Yield Generating Collateral: Full TVL (minter's total collateral) converted to wrapped collateral token
       // Use the minter's total collateral TVL (totalTVLUSD) and wrapped collateral amount
       const tvlYieldGeneratorUSD = totalTVLUSD; // Full minter TVL in USD
       // collateralTokensWrapped is already in token units (not wei), convert to wei for formatting
@@ -1030,28 +1030,25 @@ function MarketCard({
 
       return (
         <>
-          {/* First box: TVL USD */}
+          {/* First box: Yield Generating Collateral */}
           <div className="bg-[#1E4775]/5 p-1.5 text-center">
-            <div className="text-[#1E4775]/60 text-[9px]">TVL USD</div>
-            <div className="text-[#1E4775] font-mono font-semibold text-[10px]">
-              {formatCompactUSD(totalTVL)}
-            </div>
-            <div className="text-[#1E4775]/70 font-mono text-[9px] mt-0.5">
-              {formatTokenBalanceMax2Decimals(anchorSupply)} {tokenSymbol}
-            </div>
-            <div className="text-[#1E4775]/60 font-mono text-[9px]">
-              100.0%
-            </div>
-          </div>
-
-          {/* Second box: TVL Yield Generator */}
-          <div className="bg-[#1E4775]/5 p-1.5 text-center">
-            <div className="text-[#1E4775]/60 text-[9px]">TVL Yield Generator</div>
+            <div className="text-[#1E4775]/60 text-[9px]">Yield Generating Collateral</div>
             <div className="text-[#1E4775] font-mono font-semibold text-[10px]">
               {formatCompactUSD(tvlYieldGeneratorUSD)}
             </div>
             <div className="text-[#1E4775]/70 font-mono text-[9px] mt-0.5">
               {formatTokenBalanceMax2Decimals(tvlYieldGeneratorWrappedTokenWei)} {wrappedCollateralSymbol}
+            </div>
+          </div>
+
+          {/* Second box: Anchor Token TVL */}
+          <div className="bg-[#1E4775]/5 p-1.5 text-center">
+            <div className="text-[#1E4775]/60 text-[9px]">Anchor Token TVL</div>
+            <div className="text-[#1E4775] font-mono font-semibold text-[10px]">
+              {formatCompactUSD(totalTVL)}
+            </div>
+            <div className="text-[#1E4775]/70 font-mono text-[9px] mt-0.5">
+              {formatTokenBalanceMax2Decimals(anchorSupply)} {tokenSymbol}
             </div>
           </div>
 
@@ -1151,7 +1148,7 @@ function MarketCard({
           )}
 
           {/* Vertical pipe/divider between yield and no yield - extends 10px above and below bar */}
-          {/* No yield = Not Deposited; Yield = Collateral Pool + Sail Pool */}
+          {/* No yield = Not Deposited; Yield = Collateral SP + Sail SP */}
           <div 
             className="absolute w-0.5 bg-red-500 z-10"
             style={{ 
@@ -1174,13 +1171,13 @@ function MarketCard({
             className="absolute text-center"
             style={{ left: `${notDepositedPercent}%`, width: `${collateralPoolPercent}%` }}
           >
-            Collateral Pool
+            Collateral SP
           </div>
           <div 
             className="absolute text-center"
             style={{ left: `${notDepositedPercent + collateralPoolPercent}%`, width: `${sailPoolPercent}%` }}
           >
-            Sail Pool
+            Sail SP
           </div>
         </div>
        </div>
