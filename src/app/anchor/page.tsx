@@ -3799,18 +3799,21 @@ export default function AnchorPage() {
           {/* Stats strip */}
           <div className="mb-2 overflow-hidden bg-black/30 backdrop-blur-md shadow-[0_10px_30px_rgba(0,0,0,0.35)]">
             <div className="p-2.5">
-              <div className="flex items-center justify-between gap-3 mb-2">
-                <div className="text-[11px] text-white/70 uppercase tracking-widest font-semibold">
-                  Protocol Stats
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-2 md:gap-0 md:divide-x md:divide-white/10">
+                {/* Header tile (like Rewards) */}
+                <div className="col-span-2 md:col-span-1 bg-black/20 p-2.5 flex items-center justify-center">
+                  <div className="text-white text-center">
+                    <div className="font-bold font-mono text-lg leading-tight">
+                      Protocol
+                    </div>
+                    <div className="font-bold font-mono text-lg leading-tight -mt-0.5">
+                      Stats
+                    </div>
+                  </div>
                 </div>
-                <div className="text-[10px] text-white/50 font-mono">
-                  terminal view
-                </div>
-              </div>
 
-              <div className="grid grid-cols-2 lg:grid-cols-4 overflow-hidden sm:divide-x sm:divide-white/10">
                 <div className="flex flex-col items-center justify-center text-center px-3 py-2">
-                  <div className="text-base font-semibold text-white font-mono">
+                  <div className="text-sm font-semibold text-white font-mono">
                     {formatCompactUSD(anchorStats.yieldGeneratingTVLUSD)}
                   </div>
                   <div className="text-[11px] text-white/60 uppercase tracking-widest mt-0.5">
@@ -3818,7 +3821,7 @@ export default function AnchorPage() {
                   </div>
                 </div>
                 <div className="flex flex-col items-center justify-center text-center px-3 py-2">
-                  <div className="text-base font-semibold text-white font-mono">
+                  <div className="text-sm font-semibold text-white font-mono">
                     {formatCompactUSD(anchorStats.stabilityPoolTVLUSD)}
                   </div>
                   <div className="text-[11px] text-white/60 uppercase tracking-widest mt-0.5">
@@ -3826,7 +3829,7 @@ export default function AnchorPage() {
                   </div>
                 </div>
                 <div className="flex flex-col items-center justify-center text-center px-3 py-2">
-                  <div className="text-base font-semibold text-white font-mono">
+                  <div className="text-sm font-semibold text-white font-mono">
                     {anchorStats.yieldConcentration > 0
                       ? `${anchorStats.yieldConcentration.toFixed(2)}x`
                       : "-"}
@@ -3836,7 +3839,7 @@ export default function AnchorPage() {
                   </div>
                 </div>
                 <div className="flex flex-col items-center justify-center text-center px-3 py-2">
-                  <div className="text-base font-semibold text-white font-mono">
+                  <div className="text-sm font-semibold text-white font-mono">
                     {anchorStats.bestApr > 0
                       ? `${anchorStats.bestApr.toFixed(2)}%`
                       : "-"}
@@ -4476,7 +4479,7 @@ export default function AnchorPage() {
                         <div className="text-[11px] text-white/60 uppercase tracking-widest text-center">
                           Total Deposits
                         </div>
-                        <div className="text-base font-semibold text-white font-mono text-center mt-1">
+                        <div className="text-sm font-semibold text-white font-mono text-center mt-1">
                           {totalStabilityPoolDepositsUSD > 0
                             ? formatCompactUSD(totalStabilityPoolDepositsUSD)
                             : "$0.00"}
@@ -4488,7 +4491,7 @@ export default function AnchorPage() {
                         <div className="text-[11px] text-white/60 uppercase tracking-widest text-center">
                           Claimable Value
                         </div>
-                        <div className="text-base font-semibold text-white font-mono text-center mt-1">
+                        <div className="text-sm font-semibold text-white font-mono text-center mt-1">
                           $
                           {totalRewardsForBar > 0
                             ? totalRewardsForBar.toFixed(2)
@@ -4616,7 +4619,7 @@ export default function AnchorPage() {
                             </span>
                           </SimpleTooltip>
                         </div>
-                        <div className="text-base font-semibold text-white font-mono text-center mt-1">
+                        <div className="text-sm font-semibold text-white font-mono text-center mt-1">
                           {blendedAPRForBar > 0
                             ? `${blendedAPRForBar.toFixed(2)}%`
                             : "-"}
@@ -4646,7 +4649,7 @@ export default function AnchorPage() {
                     <div className="text-[11px] text-white/60 uppercase tracking-widest mb-0.5 text-center">
                       Anchor Ledger Marks
                     </div>
-                    <div className="text-base font-bold text-white font-mono text-center tabular-nums">
+                    <div className="text-sm font-bold text-white font-mono text-center tabular-nums">
                       {!ANCHOR_MARKS_ENABLED ? (
                         "0"
                       ) : !mounted || isLoadingLedgerMarks ? (
