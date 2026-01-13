@@ -3740,7 +3740,7 @@ export default function AnchorPage() {
             </div>
 
             {/* Mint/Secure/Earn/Redeem capsule */}
-            <div className="border border-white/30 bg-white/14 backdrop-blur-sm rounded-[24px] md:rounded-full overflow-hidden">
+            <div className="border border-white/30 bg-white/22 backdrop-blur-sm rounded-[24px] md:rounded-full overflow-hidden">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 divide-y divide-white/15 md:divide-y-0 md:divide-x md:divide-white/20">
                 <div className="p-4">
                   <div className="flex items-center justify-center mb-2">
@@ -3799,7 +3799,7 @@ export default function AnchorPage() {
 
           {/* Stats strip */}
           <div className="mb-2">
-            <div className="border border-white/30 bg-white/10 backdrop-blur-sm rounded-[24px] md:rounded-full overflow-hidden">
+            <div className="border border-white/30 bg-white/14 backdrop-blur-sm rounded-[24px] md:rounded-full overflow-hidden">
               <div className="grid grid-cols-2 md:grid-cols-5">
                 <div className="col-span-2 md:col-span-1 px-4 py-3 flex items-center justify-center md:border-r md:border-white/20">
                   <div className="font-bold font-mono text-white text-lg leading-tight">
@@ -4410,7 +4410,7 @@ export default function AnchorPage() {
 
             return (
               <div className="mb-2">
-                <div className="border border-white/30 bg-white/8 backdrop-blur-sm rounded-[24px] md:rounded-full overflow-hidden">
+                <div className="border border-white/30 bg-white/6 backdrop-blur-sm rounded-[24px] md:rounded-full overflow-hidden">
                   <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 divide-y divide-white/15 md:divide-y-0 md:divide-x md:divide-white/20">
                     {/* Rewards Header */}
                     <div className="p-3 flex items-center justify-center gap-2 min-h-[84px]">
