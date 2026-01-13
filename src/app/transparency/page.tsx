@@ -862,6 +862,7 @@ function MarketCard({
               <Legend 
                 wrapperStyle={{ 
                   fontSize: '9px', 
+                  color: '#1E4775',
                   paddingTop: '8px',
                   paddingBottom: '4px',
                   paddingLeft: '8px',
@@ -878,7 +879,9 @@ function MarketCard({
                 }}
                 layout="horizontal"
                 iconType="circle"
-                formatter={(value: string) => value}
+                formatter={(value: string) => (
+                  <span style={{ color: "#1E4775" }}>{value}</span>
+                )}
               />
             </PieChart>
           </ResponsiveContainer>
@@ -1160,7 +1163,7 @@ function MarketCard({
         </div>
 
         {/* Pool names below bar - aligned with segments */}
-        <div className="relative flex text-[8px] text-[#1E4775]/60 px-1" style={{ height: '16px' }}>
+        <div className="relative flex text-[8px] text-[#1E4775] px-1" style={{ height: '16px' }}>
           <div 
             className="absolute text-center"
             style={{ left: '0%', width: `${notDepositedPercent}%` }}
