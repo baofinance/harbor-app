@@ -4670,7 +4670,6 @@ export default function AnchorPage() {
                     </div>
                   </div>
                 </div>
-                </div>
 
                 {activeAnchorBoostEndTimestamp && (
                   <div className="mt-2 w-full min-w-0">
