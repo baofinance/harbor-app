@@ -8664,7 +8664,7 @@ export const AnchorDepositWithdrawModal = ({
                             <p className="mt-2 text-xs text-[#1E4775]/60 flex items-center gap-1">
                               <span>ℹ️</span>
                               <span>
-                                This will be converted to{""}
+                                This will be converted to{" "}
                                 {activeWrappedCollateralSymbol} on deposit
                               </span>
                             </p>
@@ -8673,10 +8673,10 @@ export const AnchorDepositWithdrawModal = ({
                           <p className="mt-2 text-xs text-[#1E4775]/60 flex items-center gap-1">
                             <span>ℹ️</span>
                             <span>
-                              Depositing{""}
+                              Depositing{" "}
                               {marketForDepositAsset?.peggedToken?.symbol ||
                                 "ha"}
-                              {""}
+                              {" "}
                               directly to stability pool. No minting required.
                             </span>
                           </p>
@@ -9195,11 +9195,11 @@ export const AnchorDepositWithdrawModal = ({
                                             </p>
                                             <div className="space-y-2 text-sm">
                                               <p>
-                                                A{""}
+                                                A{" "}
                                                 {pool.poolType === "collateral"
                                                   ? "collateral"
                                                   : "sail"}
-                                                {""}
+                                                {" "}
                                                 pool holds anchor tokens (ha
                                                 tokens) and provides stability
                                                 to the market.
@@ -9208,7 +9208,7 @@ export const AnchorDepositWithdrawModal = ({
                                                 <span className="font-medium">
                                                   Rewards:
                                                 </span>
-                                                {""}
+                                                {" "}
                                                 By depositing in this pool, you
                                                 earn rewards for providing
                                                 liquidity for rebalances.
@@ -9217,15 +9217,15 @@ export const AnchorDepositWithdrawModal = ({
                                                 <span className="font-medium">
                                                   Rebalancing:
                                                 </span>
-                                                {""}
+                                                {" "}
                                                 When the market reaches its
                                                 minimum collateral ratio, it
                                                 rebalances by converting your
-                                                anchor tokens to{""}
+                                                anchor tokens to{" "}
                                                 {pool.poolType === "collateral"
-                                                  ? "collateral"
+                                                  ? "market collateral"
                                                   : "sail tokens (hs tokens)"}
-                                                {""}
+                                                {" "}
                                                 at market rates.
                                               </p>
                                             </div>
@@ -9407,7 +9407,7 @@ export const AnchorDepositWithdrawModal = ({
                                   {expectedMintOutput
                                     ? formatEther(expectedMintOutput)
                                     : "..."}
-                                  {""}
+                                  {" "}
                                   {peggedTokenSymbol}
                                 </span>
                               </div>
@@ -9553,7 +9553,7 @@ export const AnchorDepositWithdrawModal = ({
                                 {expectedMintOutput
                                   ? formatEther(expectedMintOutput)
                                   : "..."}
-                                {""}
+                                {" "}
                                 {peggedTokenSymbol}
                               </span>
                             </div>
@@ -10443,7 +10443,7 @@ export const AnchorDepositWithdrawModal = ({
                           )
                         ).map((symbol) => (
                           <option key={symbol} value={symbol}>
-                            {symbol} -{""}
+                            {symbol} -{" "}
                             {marketsForToken.find(
                               ({ market: m }) =>
                                 m?.collateral?.symbol === symbol
@@ -10523,11 +10523,11 @@ export const AnchorDepositWithdrawModal = ({
                             activeTab === "deposit" &&
                             depositInStabilityPool && (
                               <div className="mt-2 text-xs text-[#1E4775]/60">
-                                Deposited to:{""}
+                                Deposited to:{" "}
                                 {bestPoolType === "collateral"
                                   ? "Collateral"
                                   : "Sail"}
-                                {""}
+                                {" "}
                                 pool (optimized for best yield)
                               </div>
                             )}
@@ -10664,7 +10664,7 @@ export const AnchorDepositWithdrawModal = ({
                                     <span className="font-bold font-mono text-[#1E4775]">
                                       {fee.feePercent.toFixed(2)}% (
                                       {formatEther(fee.amount)}
-                                      {""}
+                                      {" "}
                                       {peggedTokenSymbol})
                                     </span>
                                   </div>
@@ -10717,13 +10717,13 @@ export const AnchorDepositWithdrawModal = ({
                   depositInStabilityPool && (
                     <div className="mt-1.5 p-2 bg-[rgb(var(--surface-selected-rgb))]/30 border border-[rgb(var(--surface-selected-border-rgb))]/50">
                       <p className="text-xs text-[#1E4775]/70">
-                        Optimized for best yield: Depositing to{""}
+                        Optimized for best yield: Depositing to{" "}
                         <span className="font-semibold">
                           {bestPoolType === "collateral"
                             ? "Collateral"
                             : "Sail"}
                         </span>
-                        {""}
+                        {" "}
                         pool
                       </p>
                     </div>
@@ -10887,12 +10887,12 @@ export const AnchorDepositWithdrawModal = ({
                                 <span className="font-semibold">
                                   Collateral stability pool
                                 </span>
-                                {""}
-                                converts anchor tokens to{""}
+                                {" "}
+                                converts anchor tokens to{" "}
                                 <span className="font-semibold">
                                   market collateral
                                 </span>
-                                {""}
+                                {" "}
                                 at market rates when the market reaches its
                                 minimum collateral ratio.
                               </>
@@ -10901,12 +10901,12 @@ export const AnchorDepositWithdrawModal = ({
                                 <span className="font-semibold">
                                   Sail stability pool
                                 </span>
-                                {""}
-                                converts anchor tokens to{""}
+                                {" "}
+                                converts anchor tokens to{" "}
                                 <span className="font-semibold">
                                   Sail tokens
                                 </span>
-                                {""}
+                                {" "}
                                 at market rates when the market reaches its
                                 minimum collateral ratio.
                               </>
@@ -10981,12 +10981,12 @@ export const AnchorDepositWithdrawModal = ({
                             <span className="font-semibold">
                               Collateral stability pool
                             </span>
-                            {""}
-                            converts anchor tokens to{""}
+                            {" "}
+                            converts anchor tokens to{" "}
                             <span className="font-semibold">
                               market collateral
                             </span>
-                            {""}
+                            {" "}
                             at market rates when the market reaches its minimum
                             collateral ratio.
                           </>
@@ -10995,10 +10995,10 @@ export const AnchorDepositWithdrawModal = ({
                             <span className="font-semibold">
                               Sail stability pool
                             </span>
-                            {""}
-                            converts anchor tokens to{""}
+                            {" "}
+                            converts anchor tokens to{" "}
                             <span className="font-semibold">Sail tokens</span>
-                            {""}
+                            {" "}
                             at market rates when the market reaches its minimum
                             collateral ratio.
                           </>
@@ -11070,7 +11070,7 @@ export const AnchorDepositWithdrawModal = ({
 
                 {txHash && (
                   <div className="text-xs text-center text-[#1E4775]/70">
-                    Tx:{""}
+                    Tx:{" "}
                     <a
                       href={`https://etherscan.io/tx/${txHash}`}
                       target="_blank"
@@ -11084,13 +11084,13 @@ export const AnchorDepositWithdrawModal = ({
 
                 {step === "success" && (
                   <div className="p-3 bg-[rgb(var(--surface-selected-rgb))]/20 border border-[rgb(var(--surface-selected-border-rgb))]/30 text-[#1E4775] text-sm text-center">
-                    ✅{""}
+                    ✅{" "}
                     {activeTab === "deposit"
                       ? "Mint"
                       : activeTab === "withdraw"
                       ? "Withdraw"
                       : "Redeem"}
-                    {""}
+                    {" "}
                     successful!
                   </div>
                 )}

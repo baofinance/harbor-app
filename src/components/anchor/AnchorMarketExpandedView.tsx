@@ -585,7 +585,7 @@ export function AnchorMarketExpandedView({
                             const amount = parseFloat(reward.claimableFormatted);
                             return amount < 100 ? amount.toFixed(2) : amount.toFixed(6);
                           })()}
-                          {""}
+                          {" "}
                           {reward.symbol}
                         </div>
                         {reward.claimableUSD > 0 && (
@@ -701,7 +701,7 @@ export function AnchorMarketExpandedView({
                             const amount = parseFloat(reward.claimableFormatted);
                             return amount < 100 ? amount.toFixed(2) : amount.toFixed(6);
                           })()}
-                          {""}
+                          {" "}
                           {reward.symbol}
                         </div>
                         {reward.claimableUSD > 0 && (
@@ -810,7 +810,7 @@ export function AnchorMarketExpandedView({
                 {collateralPoolDeposit && collateralPoolDeposit > 0n && (
                   <div className="text-xs text-[#1E4775]/70 font-mono">
                     {formatToken(collateralPoolDeposit)}
-                    {""}
+                    {" "}
                     {market.peggedToken?.symbol || "ha"}
                   </div>
                 )}
@@ -834,7 +834,7 @@ export function AnchorMarketExpandedView({
                 {sailPoolDeposit && sailPoolDeposit > 0n && (
                   <div className="text-xs text-[#1E4775]/70 font-mono">
                     {formatToken(sailPoolDeposit)}
-                    {""}
+                    {" "}
                     {market.peggedToken?.symbol || "ha"}
                   </div>
                 )}

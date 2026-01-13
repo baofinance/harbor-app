@@ -470,7 +470,7 @@ Available: {formatTokenAmount(userDeposit, collateralSymbol).display}
  {/* Transaction Hash */}
  {txHash && (
  <div className="text-xs text-center text-[#1E4775]/70">
- Tx:{""}
+ Tx:{" "}
  <a
  href={`https://etherscan.io/tx/${txHash}`}
  target="_blank"

@@ -4404,11 +4404,11 @@ export default function AnchorPage() {
                                       <>
                                         {positionAPRs.map((pos, idx) => (
                                           <div key={idx}>
-                                            •{""}
+                                            •{" "}
                                             {pos.poolType === "collateral"
                                               ? "Collateral"
                                               : "Sail"}
-                                            {""}
+                                            {" "}
                                             Pool ({pos.marketId}): {" "}
                                             {pos.apr.toFixed(2)}% (
                                             {formatCompactUSD(pos.depositUSD)})
@@ -4435,7 +4435,7 @@ export default function AnchorPage() {
                                   projectedAPR.harvestableAmount > 0n &&
                                   blendedAPRForBar <= 0 && (
                                     <div className="mt-2 pt-2 border-t border-white/20 text-xs opacity-90">
-                                      Projected APR (next 7 days):{""}
+                                      Projected APR (next 7 days):{" "}
                                       {projectedAPR.collateralPoolAPR !==
                                         null &&
                                         `${projectedAPR.collateralPoolAPR.toFixed(
@@ -4451,12 +4451,12 @@ export default function AnchorPage() {
                                           2
                                         )}% (Sail)`}
                                       <br />
-                                      Based on{""}
+                                      Based on{" "}
                                       {(
                                         Number(projectedAPR.harvestableAmount) /
                                         1e18
                                       ).toFixed(4)}
-                                      {""}
+                                      {" "}
                                       wstETH harvestable.
                                       {projectedAPR.remainingDays !== null &&
                                         ` ~${projectedAPR.remainingDays.toFixed(
@@ -4966,7 +4966,7 @@ export default function AnchorPage() {
                                   {hasCollateral && (
                                     <span className="ml-2">
                                       {formatToken(collateralRewards)}
-                                      {""}
+                                      {" "}
                                       {collateralSymbol}
                                     </span>
                                   )}
@@ -5984,13 +5984,13 @@ export default function AnchorPage() {
                                         projectedAPR.collateralRewards7Day >
                                           0n && (
                                           <div>
-                                            • Collateral Pool:{""}
+                                            • Collateral Pool:{" "}
                                             {(
                                               Number(
                                                 projectedAPR.collateralRewards7Day
                                               ) / 1e18
                                             ).toFixed(4)}
-                                            {""}
+                                            {" "}
                                             wstETH streaming over 7 days
                                           </div>
                                         )}
@@ -5999,13 +5999,13 @@ export default function AnchorPage() {
                                         projectedAPR.leveragedRewards7Day >
                                           0n && (
                                           <div>
-                                            • Sail Pool:{""}
+                                            • Sail Pool:{" "}
                                             {(
                                               Number(
                                                 projectedAPR.leveragedRewards7Day
                                               ) / 1e18
                                             ).toFixed(4)}
-                                            {""}
+                                            {" "}
                                             wstETH streaming over 7 days
                                           </div>
                                         )}
@@ -6222,7 +6222,7 @@ export default function AnchorPage() {
                                       </div>
                                       <div className="space-y-1">
                                         <div>
-                                          • Collateral Pool:{""}
+                                          • Collateral Pool:{" "}
                                           {projectedAPR.collateralPoolAPR !==
                                           null
                                             ? `${projectedAPR.collateralPoolAPR.toFixed(
@@ -6231,7 +6231,7 @@ export default function AnchorPage() {
                                             : "-"}
                                         </div>
                                         <div>
-                                          • Sail Pool:{""}
+                                          • Sail Pool:{" "}
                                           {projectedAPR.leveragedPoolAPR !==
                                           null
                                             ? `${projectedAPR.leveragedPoolAPR.toFixed(
@@ -6244,13 +6244,13 @@ export default function AnchorPage() {
                                         null &&
                                         projectedAPR.harvestableAmount > 0n && (
                                           <div className="mt-1 text-xs opacity-80">
-                                            Based on{""}
+                                            Based on{" "}
                                             {(
                                               Number(
                                                 projectedAPR.harvestableAmount
                                               ) / 1e18
                                             ).toFixed(4)}
-                                            {""}
+                                            {" "}
                                             wstETH harvestable.
                                             {projectedAPR.remainingDays !==
                                               null &&
@@ -7859,17 +7859,17 @@ export default function AnchorPage() {
               </div>
               <p className="text-sm text-[#1E4775]/80">
                 Withdrawing now will incur the early withdrawal fee. The
-                fee-free window opens in{""}
+                fee-free window opens in{" "}
                 {formatTimeRemaining(Number(earlyWithdrawModal.start) * 1000)}
-                {""}
-                and closes at{""}
+                {" "}
+                and closes at{" "}
                 {formatDateTime(
                   new Date(Number(earlyWithdrawModal.end) * 1000)
                 )}
                 .
               </p>
               <div className="text-xs text-[#1E4775]/70 mt-2">
-                Fee:{""}
+                Fee:{" "}
                 {(Number(earlyWithdrawModal.earlyWithdrawFee) / 1e16).toFixed(
                   2
                 )}
@@ -7933,7 +7933,7 @@ export default function AnchorPage() {
                   {withdrawAmountModal?.maxAmount !== undefined && (
                     <span className="text-sm text-[#1E4775]/70">
                       Balance: {formatToken(withdrawAmountModal.maxAmount)}
-                      {""}
+                      {" "}
                       {withdrawAmountModal.symbol || "pegged"}
                     </span>
                   )}

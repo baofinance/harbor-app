@@ -1409,7 +1409,7 @@ maximumFractionDigits: 2,
  </div>
  ) : error ? (
  <div className="bg-white p-8 text-center text-red-500">
- Error loading leaderboard:{""}
+ Error loading leaderboard:{" "}
  {error instanceof Error ? error.message :"Unknown error"}
  </div>
  ) : leaderboardData.length === 0 ? (

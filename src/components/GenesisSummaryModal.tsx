@@ -57,7 +57,7 @@ export default function GenesisSummaryModal({
  </div>
  </div>
  <p>
- Both tokens are now{""}
+ Both tokens are now{" "}
  <span className="text-white font-medium">fully functional</span> and
  tradeable.
  </p>

@@ -1720,7 +1720,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                             From
                           </label>
                           <span className="text-sm text-zinc-500">
-                            Balance:{""}
+                            Balance:{" "}
                             {isCollateralAtTop ? (
                               <>
                                 {formatBalance(
@@ -1728,7 +1728,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                                     | bigint
                                     | undefined
                                 )}
-                                {""}
+                                {" "}
                                 wstETH
                               </>
                             ) : (
@@ -1738,7 +1738,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                                     | bigint
                                     | undefined
                                 )}
-                                {""}
+                                {" "}
                                 {marketInfoData?.peggedToken.name || "haUSD"}
                               </>
                             )}
@@ -1837,7 +1837,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                             To
                           </label>
                           <span className="text-sm text-zinc-500">
-                            Balance:{""}
+                            Balance:{" "}
                             {isCollateralAtTop ? (
                               <>
                                 {formatBalance(
@@ -1845,7 +1845,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                                     | bigint
                                     | undefined
                                 )}
-                                {""}
+                                {" "}
                                 {marketInfoData?.peggedToken.name || "haUSD"}
                               </>
                             ) : (
@@ -1855,7 +1855,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                                     | bigint
                                     | undefined
                                 )}
-                                {""}
+                                {" "}
                                 wstETH
                               </>
                             )}
@@ -1999,7 +1999,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                             From
                           </label>
                           <span className="text-sm text-zinc-500">
-                            Balance:{""}
+                            Balance:{" "}
                             {isCollateralAtTop ? (
                               <>
                                 {formatBalance(
@@ -2007,7 +2007,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                                     | bigint
                                     | undefined
                                 )}
-                                {""}
+                                {" "}
                                 wstETH
                               </>
                             ) : (
@@ -2017,7 +2017,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                                     | bigint
                                     | undefined
                                 )}
-                                {""}
+                                {" "}
                                 {marketInfoData?.leveragedToken.name ||
                                   "steamedETH"}
                               </>
@@ -2118,7 +2118,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                             To
                           </label>
                           <span className="text-sm text-zinc-500">
-                            Balance:{""}
+                            Balance:{" "}
                             {isCollateralAtTop ? (
                               <>
                                 {formatBalance(
@@ -2126,7 +2126,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                                     | bigint
                                     | undefined
                                 )}
-                                {""}
+                                {" "}
                                 {marketInfoData?.leveragedToken.name ||
                                   "steamedETH"}
                               </>
@@ -2137,7 +2137,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                                     | bigint
                                     | undefined
                                 )}
-                                {""}
+                                {" "}
                                 wstETH
                               </>
                             )}

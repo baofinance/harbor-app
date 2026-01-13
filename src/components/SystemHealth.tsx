@@ -333,8 +333,8 @@ function SystemHealth({
  <Value
  type="collateralTokens"
  marketId={marketId}
- collateralTokenBalance={collateralTokenBalance}
- />{""}
+              collateralTokenBalance={collateralTokenBalance}
+            />{" "}
  wstETH
  </div>
  </div>
@@ -374,8 +374,8 @@ function SystemHealth({
  <Value
  type="leveragedTokens"
  marketId={marketId}
- collateralTokenBalance={collateralTokenBalance}
- />{""}
+              collateralTokenBalance={collateralTokenBalance}
+            />{" "}
  tokens
  </div>
  </div>
