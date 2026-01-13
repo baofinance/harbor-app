@@ -598,6 +598,96 @@ export default function AnchorPage() {
     ethPrice
   );
 
+  // ---------------------------------------------------------------------------
+  // Anchor stats strip (protocol-level)
+  // ---------------------------------------------------------------------------
+  const anchorStats = useMemo(() => {
+    const safeEthPrice = ethPrice && ethPrice > 0 ? ethPrice : null;
+
+    let yieldGeneratingTVLUSD = 0;
+    let stabilityPoolTVLUSD = 0;
+
+    let bestApr = 0;
+    let bestAprLabel: string | null = null;
+
+    for (const md of allMarketsData) {
+      const collateralSymbol = md.market?.collateral?.symbol?.toLowerCase?.() || "";
+      const isFxUSDMarket = collateralSymbol === "fxusd" || collateralSymbol === "fxsave";
+      const isWstETHMarket = collateralSymbol === "wsteth" || collateralSymbol === "steth";
+
+      // -------- Yield Generating TVL (minter collateral) --------
+      if (md.collateralValue) {
+        if (isFxUSDMarket) {
+          // collateralValue is in fxUSD units (≈ $1)
+          yieldGeneratingTVLUSD += Number(md.collateralValue) / 1e18;
+        } else if (isWstETHMarket && md.wrappedRate) {
+          const wrappedRateNum = Number(md.wrappedRate) / 1e18;
+          const stETHAmount = Number(md.collateralValue) / 1e18; // underlying-equivalent
+          const wstETHAmount =
+            wrappedRateNum > 0 ? stETHAmount / wrappedRateNum : stETHAmount;
+          const wstETHPriceUSD =
+            safeEthPrice !== null ? safeEthPrice * wrappedRateNum : 0;
+          if (wstETHPriceUSD > 0) {
+            yieldGeneratingTVLUSD += wstETHAmount * wstETHPriceUSD;
+          }
+        } else if (md.collateralPrice) {
+          // collateralPrice is maxUnderlyingPrice (18dp) => USD price per token
+          const priceUSD = Number(md.collateralPrice) / 1e18;
+          const amount = Number(md.collateralValue) / 1e18;
+          if (priceUSD > 0 && Number.isFinite(priceUSD)) {
+            yieldGeneratingTVLUSD += amount * priceUSD;
+          }
+        }
+      }
+
+      // -------- Total Stability Pool TVL (protocol) --------
+      const peggedUSD =
+        peggedPriceUSDMap && peggedPriceUSDMap[md.marketId]
+          ? Number(peggedPriceUSDMap[md.marketId]) / 1e18
+          : 0;
+
+      if (peggedUSD > 0) {
+        if (md.collateralPoolTVL) {
+          stabilityPoolTVLUSD += (Number(md.collateralPoolTVL) / 1e18) * peggedUSD;
+        }
+        if (md.sailPoolTVL) {
+          stabilityPoolTVLUSD += (Number(md.sailPoolTVL) / 1e18) * peggedUSD;
+        }
+      }
+
+      // -------- Highest APR Stability Pool (protocol) --------
+      const collateralApr =
+        md.collateralPoolAPR
+          ? (md.collateralPoolAPR.collateral || 0) + (md.collateralPoolAPR.steam || 0)
+          : 0;
+      const sailApr =
+        md.sailPoolAPR
+          ? (md.sailPoolAPR.collateral || 0) + (md.sailPoolAPR.steam || 0)
+          : 0;
+
+      const symbol = md.market?.peggedToken?.symbol || md.marketId;
+      if (collateralApr > bestApr) {
+        bestApr = collateralApr;
+        bestAprLabel = `${symbol} Collateral SP`;
+      }
+      if (sailApr > bestApr) {
+        bestApr = sailApr;
+        bestAprLabel = `${symbol} Sail SP`;
+      }
+    }
+
+    const yieldConcentration =
+      stabilityPoolTVLUSD > 0 ? yieldGeneratingTVLUSD / stabilityPoolTVLUSD : 0;
+
+    return {
+      yieldGeneratingTVLUSD,
+      stabilityPoolTVLUSD,
+      yieldConcentration,
+      bestApr,
+      bestAprLabel,
+    };
+  }, [allMarketsData, peggedPriceUSDMap, ethPrice]);
+
   // Create a map for quick lookup: marketId -> marketData
   const marketsDataMap = useMemo(() => {
     const map = new Map<string, (typeof allMarketsData)[0]>();
@@ -3702,6 +3792,54 @@ export default function AnchorPage() {
                 <p className="text-sm text-white/80 text-center">
                   Redeem for collateral at any time
                 </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Stats strip */}
+          <div className="mb-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
+              <div className="bg-[#17395F] p-4">
+                <div className="text-xs text-white/70 mb-1.5 text-center font-medium">
+                  Yield Generating TVL
+                </div>
+                <div className="text-lg font-bold text-white font-mono text-center">
+                  {formatCompactUSD(anchorStats.yieldGeneratingTVLUSD)}
+                </div>
+              </div>
+              <div className="bg-[#17395F] p-4">
+                <div className="text-xs text-white/70 mb-1.5 text-center font-medium">
+                  Total Stability Pool TVL
+                </div>
+                <div className="text-lg font-bold text-white font-mono text-center">
+                  {formatCompactUSD(anchorStats.stabilityPoolTVLUSD)}
+                </div>
+              </div>
+              <div className="bg-[#17395F] p-4">
+                <div className="text-xs text-white/70 mb-1.5 text-center font-medium">
+                  Avg Yield Concentration
+                </div>
+                <div className="text-lg font-bold text-white font-mono text-center">
+                  {anchorStats.yieldConcentration > 0
+                    ? `${anchorStats.yieldConcentration.toFixed(2)}x`
+                    : "-"}
+                </div>
+                <div className="text-[10px] text-white/60 text-center mt-1">
+                  Yield TVL / Pool TVL
+                </div>
+              </div>
+              <div className="bg-[#17395F] p-4">
+                <div className="text-xs text-white/70 mb-1.5 text-center font-medium">
+                  Highest APR Stability Pool
+                </div>
+                <div className="text-lg font-bold text-white font-mono text-center">
+                  {anchorStats.bestApr > 0
+                    ? `${anchorStats.bestApr.toFixed(2)}%`
+                    : "-"}
+                </div>
+                <div className="text-[10px] text-white/60 text-center mt-1 truncate">
+                  {anchorStats.bestAprLabel || ""}
+                </div>
               </div>
             </div>
           </div>

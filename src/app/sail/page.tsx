@@ -26,6 +26,7 @@ import SimpleTooltip from "@/components/SimpleTooltip";
 import { getLogoPath } from "@/components/shared";
 import { SailManageModal } from "@/components/SailManageModal";
 import { useSailPositionPnL } from "@/hooks/useSailPositionPnL";
+import { useSailPositionsPnLSummary } from "@/hooks/useSailPositionsPnLSummary";
 import { useMultipleTokenPrices } from "@/hooks/useTokenPrices";
 import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
 import { useCollateralPrice } from "@/hooks/useCollateralPrice";
@@ -1053,6 +1054,9 @@ export default function SailPage() {
     "mint"
   );
 
+  // Aggregate PnL across all user Sail positions (subgraph)
+  const sailPnLSummary = useSailPositionsPnLSummary(isConnected);
+
   // Get sail marks from subgraph
   const {
     sailBalances,
@@ -1405,6 +1409,40 @@ export default function SailPage() {
     return map;
   }, [userDepositReads, userDepositContracts]);
 
+  // ---------------------------------------------------------------------------
+  // Sail user stats (aggregated)
+  // ---------------------------------------------------------------------------
+  const sailUserStats = useMemo(() => {
+    let totalPositionsUSD = 0;
+    let weightedLeverageSum = 0;
+    let positionsCount = 0;
+
+    sailMarkets.forEach(([id], marketIndex) => {
+      const userDeposit = userDepositMap.get(marketIndex);
+      if (!userDeposit || userDeposit <= 0n) return;
+
+      const baseOffset = marketOffsets.get(marketIndex) ?? 0;
+      const leverageRatio = reads?.[baseOffset]?.result as bigint | undefined;
+      const leverage = leverageRatio ? Number(leverageRatio) / 1e18 : 0;
+
+      const tokenPrices = tokenPricesByMarket[id];
+      const priceUSD = tokenPrices?.leveragedPriceUSD ?? 0;
+      if (!priceUSD || priceUSD <= 0) return;
+
+      const valueUSD = (Number(userDeposit) / 1e18) * priceUSD;
+      if (!Number.isFinite(valueUSD) || valueUSD <= 0) return;
+
+      positionsCount += 1;
+      totalPositionsUSD += valueUSD;
+      weightedLeverageSum += valueUSD * leverage;
+    });
+
+    const averageLeverage =
+      totalPositionsUSD > 0 ? weightedLeverageSum / totalPositionsUSD : 0;
+
+    return { totalPositionsUSD, averageLeverage, positionsCount };
+  }, [sailMarkets, userDepositMap, marketOffsets, reads, tokenPricesByMarket]);
+
   return (
     <>
       <Head>
@@ -1500,6 +1538,64 @@ export default function SailPage() {
                 <p className="text-sm text-white/80 text-center">
                   Redeem sail tokens for collateral at any time
                 </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Stats strip (user) */}
+          <div className="mb-2">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+              <div className="bg-[#17395F] p-4">
+                <div className="text-xs text-white/70 mb-1.5 text-center font-medium">
+                  Total Sail Positions
+                </div>
+                <div className="text-lg font-bold text-white font-mono text-center">
+                  ${sailUserStats.totalPositionsUSD.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                </div>
+              </div>
+              <div className="bg-[#17395F] p-4">
+                <div className="text-xs text-white/70 mb-1.5 text-center font-medium">
+                  Total PnL
+                </div>
+                {(() => {
+                  const pnl = sailPnLSummary.totalPnLUSD;
+                  const isPos = pnl >= 0;
+                  const pnlText = `${isPos ? "+" : "-"}$${Math.abs(pnl).toLocaleString(undefined, {
+                    maximumFractionDigits: 2,
+                  })}`;
+                  return (
+                    <>
+                      <div
+                        className={`text-lg font-bold font-mono text-center ${
+                          isPos ? "text-green-300" : "text-red-300"
+                        }`}
+                        title={sailPnLSummary.error ? sailPnLSummary.error : undefined}
+                      >
+                        {sailPnLSummary.isLoading
+                          ? "Loading..."
+                          : sailPnLSummary.error
+                          ? "-"
+                          : pnlText}
+                      </div>
+                      <div className="text-[10px] text-white/60 text-center mt-1">
+                        Realized + Unrealized
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+              <div className="bg-[#17395F] p-4">
+                <div className="text-xs text-white/70 mb-1.5 text-center font-medium">
+                  Average Leverage
+                </div>
+                <div className="text-lg font-bold text-white font-mono text-center">
+                  {sailUserStats.totalPositionsUSD > 0
+                    ? `${sailUserStats.averageLeverage.toFixed(2)}x`
+                    : "-"}
+                </div>
+                <div className="text-[10px] text-white/60 text-center mt-1">
+                  Weighted by position size
+                </div>
               </div>
             </div>
           </div>
