@@ -3739,59 +3739,57 @@ export default function AnchorPage() {
               </p>
             </div>
 
-            {/* Four Boxes */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
-              {/* Mint Box */}
-              <div className="bg-[#17395F] p-4">
-                <div className="flex items-center justify-center mb-2">
-                  <BanknotesIcon className="w-6 h-6 text-white mr-2" />
-                  <h2 className="font-bold text-white text-lg text-center">
-                    Mint
-                  </h2>
+            {/* Mint/Secure/Earn/Redeem capsule */}
+            <div className="border border-white/30 bg-white/14 backdrop-blur-sm rounded-[24px] md:rounded-full overflow-hidden">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 divide-y divide-white/15 md:divide-y-0 md:divide-x md:divide-white/20">
+                <div className="p-4">
+                  <div className="flex items-center justify-center mb-2">
+                    <BanknotesIcon className="w-6 h-6 text-white mr-2" />
+                    <h2 className="font-bold text-white text-lg text-center">
+                      Mint
+                    </h2>
+                  </div>
+                  <p className="text-sm text-white/80 text-center">
+                    Mint a pegged token with a supported asset
+                  </p>
                 </div>
-                <p className="text-sm text-white/80 text-center">
-                  Mint a pegged token with a supported asset
-                </p>
-              </div>
 
-              {/* Secure Box */}
-              <div className="bg-[#17395F] p-4">
-                <div className="flex items-center justify-center mb-2">
-                  <ShieldCheckIcon className="w-6 h-6 text-white mr-2" />
-                  <h2 className="font-bold text-white text-lg text-center">
-                    Secure
-                  </h2>
+                <div className="p-4">
+                  <div className="flex items-center justify-center mb-2">
+                    <ShieldCheckIcon className="w-6 h-6 text-white mr-2" />
+                    <h2 className="font-bold text-white text-lg text-center">
+                      Secure
+                    </h2>
+                  </div>
+                  <p className="text-sm text-white/80 text-center">
+                    Deposit into a stability pool to secure the protocol
+                  </p>
                 </div>
-                <p className="text-sm text-white/80 text-center">
-                  Deposit into a stability pool to secure the protocol
-                </p>
-              </div>
 
-              {/* Earn Box */}
-              <div className="bg-[#17395F] p-4">
-                <div className="flex items-center justify-center mb-2">
-                  <CurrencyDollarIcon className="w-6 h-6 text-white mr-2" />
-                  <h2 className="font-bold text-white text-lg text-center">
-                    Earn
-                  </h2>
+                <div className="p-4">
+                  <div className="flex items-center justify-center mb-2">
+                    <CurrencyDollarIcon className="w-6 h-6 text-white mr-2" />
+                    <h2 className="font-bold text-white text-lg text-center">
+                      Earn
+                    </h2>
+                  </div>
+                  <p className="text-sm text-white/80 text-center">
+                    Earn real yield from collateral and trading fees for helping
+                    secure the protocol
+                  </p>
                 </div>
-                <p className="text-sm text-white/80 text-center">
-                  Earn real yield from collateral and trading fees for helping
-                  secure the protocol
-                </p>
-              </div>
 
-              {/* Redeem Box */}
-              <div className="bg-[#17395F] p-4">
-                <div className="flex items-center justify-center mb-2">
-                  <ArrowPathIcon className="w-6 h-6 text-white mr-2" />
-                  <h2 className="font-bold text-white text-lg text-center">
-                    Redeem
-                  </h2>
+                <div className="p-4">
+                  <div className="flex items-center justify-center mb-2">
+                    <ArrowPathIcon className="w-6 h-6 text-white mr-2" />
+                    <h2 className="font-bold text-white text-lg text-center">
+                      Redeem
+                    </h2>
+                  </div>
+                  <p className="text-sm text-white/80 text-center">
+                    Redeem for collateral at any time
+                  </p>
                 </div>
-                <p className="text-sm text-white/80 text-center">
-                  Redeem for collateral at any time
-                </p>
               </div>
             </div>
           </div>
@@ -3803,7 +3801,7 @@ export default function AnchorPage() {
           <div className="mb-2">
             <div className="border border-white/30 bg-white/10 backdrop-blur-sm rounded-[24px] md:rounded-full overflow-hidden">
               <div className="grid grid-cols-2 md:grid-cols-5">
-                <div className="col-span-2 md:col-span-1 px-4 py-3 flex items-center justify-center md:justify-start md:border-r md:border-white/20">
+                <div className="col-span-2 md:col-span-1 px-4 py-3 flex items-center justify-center md:border-r md:border-white/20">
                   <div className="font-bold font-mono text-white text-lg leading-tight">
                     Stats
                   </div>
@@ -4412,7 +4410,7 @@ export default function AnchorPage() {
 
             return (
               <div className="mb-2">
-                <div className="border border-white/30 bg-white/10 backdrop-blur-sm rounded-[24px] md:rounded-full overflow-hidden">
+                <div className="border border-white/30 bg-white/8 backdrop-blur-sm rounded-[24px] md:rounded-full overflow-hidden">
                   <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 divide-y divide-white/15 md:divide-y-0 md:divide-x md:divide-white/20">
                     {/* Rewards Header */}
                     <div className="p-3 flex items-center justify-center gap-2 min-h-[84px]">
