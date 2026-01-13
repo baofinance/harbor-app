@@ -3801,7 +3801,7 @@ export default function AnchorPage() {
 
           {/* Stats strip */}
           <div className="mb-2 grid grid-cols-2 md:grid-cols-5 gap-2">
-            <div className="col-span-2 md:col-span-1 bg-[#142F4D] p-2.5 flex items-center justify-center">
+            <div className="col-span-2 md:col-span-1 bg-[#163A60] p-2.5 flex items-center justify-center">
               <div className="text-white text-center">
                 <div className="font-bold font-mono text-lg leading-tight">
                   Stats
@@ -3810,7 +3810,7 @@ export default function AnchorPage() {
             </div>
 
             {/* Combined stats box */}
-            <div className="col-span-2 md:col-span-4 bg-[#142F4D] px-2 py-2">
+            <div className="col-span-2 md:col-span-4 bg-[#163A60] px-2 py-2">
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-y-2 lg:gap-y-0 lg:divide-x lg:divide-white/15">
                 <div className="flex flex-col items-center justify-center text-center px-2">
                   <div className="text-[11px] font-semibold text-white font-mono">
@@ -4411,7 +4411,7 @@ export default function AnchorPage() {
               <div className="mb-2">
                 <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-2 items-stretch">
                   {/* Rewards Header Box */}
-                  <div className="bg-black/30 p-2.5 flex items-center justify-center gap-2 md:col-span-1 lg:col-span-1 min-h-[84px]">
+                  <div className="bg-[#0F253D] p-2.5 flex items-center justify-center gap-2 md:col-span-1 lg:col-span-1 min-h-[84px]">
                     <h2 className="font-bold font-mono text-white text-2xl text-center">
                       Rewards
                     </h2>
@@ -4471,7 +4471,7 @@ export default function AnchorPage() {
                   {/* Combined Content: 3 metrics in one box */}
                   <div className="md:col-span-1 lg:col-span-2">
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 items-stretch">
-                      <div className="bg-black/30 px-3 py-2 min-h-[84px] flex items-center justify-center lg:col-span-4">
+                      <div className="bg-[#0F253D] px-3 py-2 min-h-[84px] flex items-center justify-center lg:col-span-4">
                         <div className="grid grid-cols-4 w-full divide-x divide-white/15">
                           {/* Total Deposits */}
                           <div className="flex flex-col items-center justify-center text-center px-2">
@@ -4627,7 +4627,7 @@ export default function AnchorPage() {
                                 setIsClaimAllModalOpen(true);
                               }}
                               disabled={isClaimingAll || isCompoundingAll}
-                              className="px-4 py-1.5 text-xs font-medium bg-white/10 text-white border border-white/20 hover:bg-white/15 disabled:bg-white/5 disabled:text-white/40 disabled:border-white/10 disabled:cursor-not-allowed transition-colors rounded-full whitespace-nowrap"
+                              className="px-4 py-1.5 text-xs font-medium bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white disabled:bg-[#FF8A7A]/40 disabled:text-white/70 disabled:cursor-not-allowed transition-colors rounded-full whitespace-nowrap"
                             >
                               Claim
                             </button>
@@ -4638,7 +4638,7 @@ export default function AnchorPage() {
                   </div>
 
                   {/* Anchor Ledger Marks Box */}
-                  <div className="bg-black/30 p-2.5 md:col-span-1 lg:col-span-1 min-h-[84px] flex flex-col justify-center">
+                  <div className="bg-[#0F253D] p-2.5 md:col-span-1 lg:col-span-1 min-h-[84px] flex flex-col justify-center">
                     <div className="text-[11px] text-white/60 uppercase tracking-widest mb-0.5 text-center">
                       Anchor Ledger Marks
                     </div>
