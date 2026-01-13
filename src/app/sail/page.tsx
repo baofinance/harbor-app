@@ -1045,7 +1045,7 @@ function SailMarketExpandedView({
 
 export default function SailPage() {
   const { address, isConnected } = useAccount();
-  const [expandedMarket, setExpandedMarket] = useState<string | null>(null);
+  const [expandedMarkets, setExpandedMarkets] = useState<string[]>([]);
   const [manageModalOpen, setManageModalOpen] = useState(false);
   const [selectedMarketId, setSelectedMarketId] = useState<string | null>(null);
   const [selectedMarket, setSelectedMarket] = useState<any>(null);
@@ -1763,10 +1763,12 @@ export default function SailPage() {
                           hasToken={hasToken}
                           reads={reads}
                           userDeposit={userDeposit}
-                          isExpanded={expandedMarket === id}
+                          isExpanded={expandedMarkets.includes(id)}
                           onToggleExpand={() =>
-                                setExpandedMarket(
-                                  expandedMarket === id ? null : id
+                                setExpandedMarkets((prev) =>
+                                  prev.includes(id)
+                                    ? prev.filter((x) => x !== id)
+                                    : [...prev, id]
                                 )
                           }
                           onManageClick={() => {

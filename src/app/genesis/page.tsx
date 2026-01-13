@@ -516,7 +516,7 @@ export default function GenesisIndexPage() {
     initialTab?: "deposit" | "withdraw";
   } | null>(null);
   const [now, setNow] = useState(new Date());
-  const [expandedMarket, setExpandedMarket] = useState<string | null>(null);
+  const [expandedMarkets, setExpandedMarkets] = useState<string[]>([]);
   const [mounted, setMounted] = useState(false);
   const [claimingMarket, setClaimingMarket] = useState<string | null>(null);
   const [claimModal, setClaimModal] = useState<{
@@ -2430,7 +2430,7 @@ export default function GenesisIndexPage() {
                   }
                 }
 
-                const isExpanded = expandedMarket === id;
+                const isExpanded = expandedMarkets.includes(id);
                 const acceptedAssets = getAcceptedDepositAssets(mkt);
 
                 // Show all markets (no skipping)
@@ -2444,7 +2444,11 @@ export default function GenesisIndexPage() {
                           ? "bg-[rgb(var(--surface-selected-rgb))]"
                           : "bg-white hover:bg-[rgb(var(--surface-selected-rgb))]"
                       }`}
-                      onClick={() => setExpandedMarket(isExpanded ? null : id)}
+                      onClick={() =>
+                        setExpandedMarkets((prev) =>
+                          prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+                        )
+                      }
                     >
                       {/* Mobile Card Layout (< md) */}
                       <div className="md:hidden space-y-1.5">

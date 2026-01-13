@@ -135,7 +135,7 @@ export default function AnchorPage() {
   const publicClient = usePublicClient();
 
   // CoinGecko prices are now provided by useAnchorPrices hook (see below)
-  const [expandedMarket, setExpandedMarket] = useState<string | null>(null);
+  const [expandedMarkets, setExpandedMarkets] = useState<string[]>([]);
   const [manageModal, setManageModal] = useState<{
     marketId: string;
     market: any;
@@ -5552,7 +5552,7 @@ export default function AnchorPage() {
                 const peggedTokenSymbol = firstMarket?.peggedToken?.symbol;
                 const collateralSymbol = firstMarket?.collateral?.symbol || "";
 
-                const isExpanded = expandedMarket === symbol;
+                const isExpanded = expandedMarkets.includes(symbol);
 
                 return (
                   <React.Fragment key={symbol}>
@@ -5566,7 +5566,11 @@ export default function AnchorPage() {
                         // Expand unless clicking on a button or element that stops propagation
                         const target = e.target as HTMLElement;
                         if (target.closest('button') === null && target.closest('[onclick]') === null) {
-                          setExpandedMarket(isExpanded ? null : symbol);
+                          setExpandedMarkets((prev) =>
+                            prev.includes(symbol)
+                              ? prev.filter((s) => s !== symbol)
+                              : [...prev, symbol]
+                          );
                         }
                       }}
                     >
@@ -5600,6 +5604,7 @@ export default function AnchorPage() {
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
+                                if (!isConnected) return;
                                 const enrichedAllMarkets = marketList.map((m) => {
                                   const marketData = marketsData.find(
                                     (md) => md.marketId === m.marketId
@@ -5626,7 +5631,12 @@ export default function AnchorPage() {
                                   allMarkets: enrichedAllMarkets,
                                 });
                               }}
-                              className="px-3 py-1.5 text-xs font-medium bg-[#1E4775] text-white hover:bg-[#17395F] transition-colors rounded-full whitespace-nowrap"
+                              disabled={!isConnected}
+                              className={`px-3 py-1.5 text-xs font-medium transition-colors rounded-full whitespace-nowrap ${
+                                !isConnected
+                                  ? "bg-[#1E4775]/40 text-white/80 cursor-not-allowed"
+                                  : "bg-[#1E4775] text-white hover:bg-[#17395F]"
+                              }`}
                             >
                               Manage
                             </button>
@@ -5828,6 +5838,7 @@ export default function AnchorPage() {
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
+                              if (!isConnected) return;
                               const enrichedAllMarkets = marketList.map((m) => {
                                 const marketData = marketsData.find((md) => md.marketId === m.marketId);
                                 return {
@@ -5848,7 +5859,12 @@ export default function AnchorPage() {
                                 allMarkets: enrichedAllMarkets,
                               });
                             }}
-                            className="px-3 py-1.5 text-xs font-medium bg-[#1E4775] text-white hover:bg-[#17395F] transition-colors rounded-full whitespace-nowrap"
+                            disabled={!isConnected}
+                            className={`px-3 py-1.5 text-xs font-medium transition-colors rounded-full whitespace-nowrap ${
+                              !isConnected
+                                ? "bg-[#1E4775]/40 text-white/80 cursor-not-allowed"
+                                : "bg-[#1E4775] text-white hover:bg-[#17395F]"
+                            }`}
                           >
                             Manage
                           </button>
