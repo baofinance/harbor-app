@@ -2,17 +2,24 @@
 import {
   Disclosure,
   DisclosureButton,
-  DisclosurePanel
+  DisclosurePanel,
+  Menu,
+  MenuButton,
+  MenuItem,
+  MenuItems,
 } from "@headlessui/react";
-import { Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline";
+import { Bars3Icon, BellIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import CurrencySelect from "./CurrencySelect";
 import { useCurrency } from "@/contexts/CurrencyContext";
-import { ConnectWallet } from "@/components/Wallet";
+import WalletButton from "./WalletButton";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
+import { Geo } from "next/font/google";
+import { ConnectWallet } from "@/components/Wallet";
 
 export default function Example() {
-  const { options } = useCurrency();
+  const { code, setCode, options } = useCurrency();
   const pathname = usePathname();
 
   const isActive = (href: string) => {
@@ -99,7 +106,7 @@ export default function Example() {
             </div>
           </div>
           <div className="hidden sm:ml-6 sm:block">
-            <ConnectWallet />
+            <WalletButton />
           </div>
           <div className="-mr-2 flex sm:hidden">
             {/* Mobile menu button */}
@@ -131,7 +138,7 @@ export default function Example() {
             </DisclosureButton>
           </div>
           <div className="flex items-center justify-center mb-4 flex-shrink-0">
-            <ConnectWallet />
+            <WalletButton />
           </div>
           <div className="flex flex-col w-full items-stretch justify-center space-y-2.5 py-2">
             <DisclosureButton

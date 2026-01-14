@@ -10,7 +10,7 @@ import {
 } from "wagmi";
 import { parseEther, formatEther } from "viem";
 import { markets } from "../../config/markets";
-import Wallet from "../../components/Wallet";
+import WalletButton from "../../components/WalletButton";
 import Navigation from "../../components/Navigation";
 import Link from "next/link";
 
@@ -572,7 +572,7 @@ export default function Admin() {
  Please connect your wallet to access admin functions
  </p>
  <div className="inline-block">
- <Wallet />
+ <WalletButton />
  </div>
  </div>
  </main>
@@ -595,7 +595,7 @@ export default function Admin() {
  Please connect your wallet to access admin functions
  </p>
  <div className="inline-block">
- <Wallet />
+ <WalletButton />
  </div>
  </div>
  ) : (
