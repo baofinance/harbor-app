@@ -59,7 +59,6 @@ dataSources:
           filter:
             kind: polling
             every: 300
-            every: 300
       file: ./src/minterPnL.ts
   
   # Genesis - ETH/fxUSD market
