@@ -14,6 +14,7 @@ import {
 import { BigDecimal, BigInt, Bytes, ethereum, Address } from "@graphprotocol/graph-ts";
 import { WrappedPriceOracle } from "../generated/Genesis_ETH_fxUSD/WrappedPriceOracle";
 import { ChainlinkAggregator } from "../generated/HaToken_haETH/ChainlinkAggregator";
+import { setMarketBoostWindow, ANCHOR_BOOST_MULTIPLIER, SAIL_BOOST_MULTIPLIER } from "./marksBoost";
 
 // Constants
 const MARKS_PER_DOLLAR_PER_DAY = BigDecimal.fromString("10");
@@ -23,6 +24,130 @@ const EARLY_BONUS_THRESHOLD_FXSAVE = BigDecimal.fromString("250000"); // 250k fx
 const EARLY_BONUS_THRESHOLD_WSTETH = BigDecimal.fromString("70"); // 70 wstETH tokens (not USD)
 const SECONDS_PER_DAY = BigDecimal.fromString("86400");
 const E18 = BigDecimal.fromString("1000000000000000000"); // 10^18
+
+// 8 days (boost duration, per product rules)
+const BOOST_DURATION_SECONDS = BigInt.fromI32(8 * 24 * 60 * 60);
+
+/**
+ * Hardcoded mapping from Genesis contract -> market sources (v1).
+ * This enforces the rule: boosts start exactly at GenesisEnd.timestamp and last 8 days,
+ * for ALL sources in the market (ha token + both pools + sail token).
+ *
+ * Note: This is intentionally explicit; if/when new markets are added, extend this mapping.
+ */
+function applyMarketBoostWindowsFromGenesisEnd(
+  genesisAddress: Address,
+  genesisEndTimestamp: BigInt
+): void {
+  const addr = genesisAddress.toHexString().toLowerCase();
+  const start = genesisEndTimestamp;
+  const end = genesisEndTimestamp.plus(BOOST_DURATION_SECONDS);
+
+  // Production v1: ETH/fxUSD (haETH + ETH pools + hsFXUSD-ETH)
+  if (addr == "0xc9df4f62474cf6cde6c064db29416a9f4f27ebdc") {
+    // haETH
+    setMarketBoostWindow(
+      "haToken",
+      Bytes.fromHexString("0x7a53ebc85453dd006824084c4f4be758fcf8a5b5"),
+      start,
+      end,
+      ANCHOR_BOOST_MULTIPLIER
+    );
+    // pools
+    setMarketBoostWindow(
+      "stabilityPoolCollateral",
+      Bytes.fromHexString("0x1f985cf7c10a81de1940da581208d2855d263d72"),
+      start,
+      end,
+      ANCHOR_BOOST_MULTIPLIER
+    );
+    setMarketBoostWindow(
+      "stabilityPoolLeveraged",
+      Bytes.fromHexString("0x438b29ec7a1770ddba37d792f1a6e76231ef8e06"),
+      start,
+      end,
+      ANCHOR_BOOST_MULTIPLIER
+    );
+    // sail token
+    setMarketBoostWindow(
+      "sailToken",
+      Bytes.fromHexString("0x0cd6bb1a0cfd95e2779edc6d17b664b481f2eb4c"),
+      start,
+      end,
+      SAIL_BOOST_MULTIPLIER
+    );
+  }
+
+  // Production v1: BTC/fxUSD (haBTC + BTC fxUSD pools + hsFXUSD-BTC)
+  if (addr == "0x42cc9a19b358a2a918f891d8a6199d8b05f0bc1c") {
+    // haBTC
+    setMarketBoostWindow(
+      "haToken",
+      Bytes.fromHexString("0x25ba4a826e1a1346dca2ab530831dbff9c08bea7"),
+      start,
+      end,
+      ANCHOR_BOOST_MULTIPLIER
+    );
+    // pools
+    setMarketBoostWindow(
+      "stabilityPoolCollateral",
+      Bytes.fromHexString("0x86561cdb34ebe8b9ababb0dd7bea299fa8532a49"),
+      start,
+      end,
+      ANCHOR_BOOST_MULTIPLIER
+    );
+    setMarketBoostWindow(
+      "stabilityPoolLeveraged",
+      Bytes.fromHexString("0x9e56f1e1e80ebf165a1daa99f9787b41cd5bfe40"),
+      start,
+      end,
+      ANCHOR_BOOST_MULTIPLIER
+    );
+    // sail token
+    setMarketBoostWindow(
+      "sailToken",
+      Bytes.fromHexString("0x9567c243f647f9ac37efb7fc26bd9551dce0be1b"),
+      start,
+      end,
+      SAIL_BOOST_MULTIPLIER
+    );
+  }
+
+  // Production v1: BTC/stETH (haBTC + BTC stETH pools + hsSTETH-BTC)
+  if (addr == "0xc64fc46eed431e92c1b5e24dc296b5985ce6cc00") {
+    // haBTC (same token as BTC markets)
+    setMarketBoostWindow(
+      "haToken",
+      Bytes.fromHexString("0x25ba4a826e1a1346dca2ab530831dbff9c08bea7"),
+      start,
+      end,
+      ANCHOR_BOOST_MULTIPLIER
+    );
+    // pools
+    setMarketBoostWindow(
+      "stabilityPoolCollateral",
+      Bytes.fromHexString("0x667ceb303193996697a5938cd6e17255eeacef51"),
+      start,
+      end,
+      ANCHOR_BOOST_MULTIPLIER
+    );
+    setMarketBoostWindow(
+      "stabilityPoolLeveraged",
+      Bytes.fromHexString("0xcb4f3e21de158bf858aa03e63e4cec7342177013"),
+      start,
+      end,
+      ANCHOR_BOOST_MULTIPLIER
+    );
+    // sail token
+    setMarketBoostWindow(
+      "sailToken",
+      Bytes.fromHexString("0x817adae288ed46b8618aaeffe75acd26a0a1b0fd"),
+      start,
+      end,
+      SAIL_BOOST_MULTIPLIER
+    );
+  }
+}
 
 // Price oracle addresses for each genesis contract
 // Returns the price oracle address for a given genesis contract, or empty string if not found
@@ -657,6 +782,9 @@ export function handleGenesisEnd(event: GenesisEndsEvent): void {
   genesisEnd.txHash = txHash;
   genesisEnd.blockNumber = blockNumber;
   genesisEnd.save();
+
+  // Enforce market boost windows: exactly 8 days from GenesisEnd.timestamp for all sources in this market.
+  applyMarketBoostWindowsFromGenesisEnd(contractAddress, timestamp);
   
   // Process all users from UserList
   const userList = UserList.load(contractAddressString);

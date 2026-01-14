@@ -27,10 +27,12 @@ import {
   getOrCreateMarketBoostWindow,
 } from "./marksBoost";
 import { ensureUserRegistered } from "./userRegistry";
+import { accrueWithBoostWindow } from "./marksAccrual";
 
 // Constants
 const SECONDS_PER_DAY = BigDecimal.fromString("86400");
 const DEFAULT_MULTIPLIER = BigDecimal.fromString("5.0"); // 5x for sail tokens (default)
+const PROMO_MULTIPLIER = BigDecimal.fromString("2.0"); // Additional 2x promo (wallet hsTokens only)
 const DEFAULT_MARKS_PER_DOLLAR_PER_DAY = BigDecimal.fromString("1.0");
 const ONE_ETHER = BigDecimal.fromString("1000000000000000000");
 
@@ -169,8 +171,10 @@ function getSailTokenMultiplier(tokenAddress: Bytes, timestamp: BigInt): BigDeci
     multiplier.updatedBy = null;
     multiplier.save();
   }
+  // Promo is global for sail token WALLET positions only (hsTokens). Stacks on top of boost windows.
+  const promo = PROMO_MULTIPLIER;
   const boost = getActiveBoostMultiplier("sailToken", tokenAddress, timestamp);
-  return multiplier.multiplier.times(boost);
+  return multiplier.multiplier.times(promo).times(boost);
 }
 
 // Helper to accumulate marks (daily snapshot approach)
@@ -188,7 +192,10 @@ function accumulateMarks(
   }
 
   const multiplier = getSailTokenMultiplier(balance.tokenAddress, currentTimestamp);
-  const marksPerDollarPerDay = DEFAULT_MARKS_PER_DOLLAR_PER_DAY.times(multiplier);
+  // Base marks/$/day excluding the market boost window (boost is handled by accrueWithBoostWindow).
+  const baseMarksPerDollarPerDay = DEFAULT_MARKS_PER_DOLLAR_PER_DAY.times(
+    multiplier.div(getActiveBoostMultiplier("sailToken", balance.tokenAddress, currentTimestamp))
+  );
 
   const lastUpdate = balance.lastUpdated.gt(BigInt.fromI32(0))
     ? balance.lastUpdated
@@ -207,21 +214,21 @@ function accumulateMarks(
   // Marks are awarded for all time held, including partial days
   // Frontend will estimate marks between graph updates
   if (currentTimestamp.gt(lastUpdate)) {
-    const timeSinceLastUpdate = currentTimestamp.minus(lastUpdate);
-    const daysSinceLastUpdate = timeSinceLastUpdate.toBigDecimal().div(SECONDS_PER_DAY);
-
-    // Count all time (including partial days)
-    // If someone holds tokens for 2 hours, they get marks for 2/24 of a day
-    if (daysSinceLastUpdate.gt(BigDecimal.fromString("0"))) {
-      const marksAccumulated = balance.balanceUSD.times(marksPerDollarPerDay).times(daysSinceLastUpdate);
-      balance.accumulatedMarks = balance.accumulatedMarks.plus(marksAccumulated);
-      balance.totalMarksEarned = balance.totalMarksEarned.plus(marksAccumulated);
-
-      // Update lastUpdated to current timestamp (continuous tracking)
-      balance.lastUpdated = currentTimestamp;
+    const earned = accrueWithBoostWindow(
+      "sailToken",
+      balance.tokenAddress,
+      lastUpdate,
+      currentTimestamp,
+      balance.balanceUSD,
+      baseMarksPerDollarPerDay
+    );
+    if (earned.gt(BigDecimal.fromString("0"))) {
+      balance.accumulatedMarks = balance.accumulatedMarks.plus(earned);
+      balance.totalMarksEarned = balance.totalMarksEarned.plus(earned);
     }
   }
-  balance.marksPerDay = balance.balanceUSD.times(marksPerDollarPerDay);
+  // Current rate (includes promo + current boost window if active)
+  balance.marksPerDay = balance.balanceUSD.times(DEFAULT_MARKS_PER_DOLLAR_PER_DAY.times(multiplier));
   balance.save();
 }
 

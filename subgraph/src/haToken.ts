@@ -23,6 +23,7 @@ import {
   getOrCreateMarketBoostWindow,
 } from "./marksBoost";
 import { ensureUserRegistered } from "./userRegistry";
+import { accrueWithBoostWindow } from "./marksAccrual";
 // import { runDailyMarksUpdate } from "./dailyUpdate";
 
 // Constants
@@ -140,7 +141,10 @@ function accumulateMarks(
   
   // Get multiplier
   const multiplier = getHaTokenMultiplier(balance.tokenAddress, currentTimestamp);
-  const marksPerDollarPerDay = DEFAULT_MARKS_PER_DOLLAR_PER_DAY.times(multiplier);
+  const currentBoost = getActiveBoostMultiplier("haToken", balance.tokenAddress, currentTimestamp);
+  const baseMarksPerDollarPerDay = DEFAULT_MARKS_PER_DOLLAR_PER_DAY.times(
+    multiplier.div(currentBoost)
+  );
   
   // Calculate time since last update
   const lastUpdate = balance.lastUpdated.gt(BigInt.fromI32(0)) 
@@ -161,27 +165,25 @@ function accumulateMarks(
   // Marks are awarded for all time held, including partial days
   // Frontend will estimate marks between graph updates
   if (currentTimestamp.gt(lastUpdate)) {
-    const timeSinceLastUpdate = currentTimestamp.minus(lastUpdate);
-    const timeSinceLastUpdateBD = timeSinceLastUpdate.toBigDecimal();
-    const daysSinceLastUpdate = timeSinceLastUpdateBD.div(SECONDS_PER_DAY);
-    
-    // Only count full days (snapshot approach - like polling once per day)
-    // This means if someone holds tokens for 1.5 days, they get marks for 1 full day
-    // Count all time (including partial days)
-    // If someone holds tokens for 2 hours, they get marks for 2/24 of a day
-    if (daysSinceLastUpdate.gt(BigDecimal.fromString("0"))) {
-      // Use the balance USD from the last snapshot (the balance held during this time)
-      const marksAccumulated = balance.balanceUSD.times(marksPerDollarPerDay).times(daysSinceLastUpdate);
-      balance.accumulatedMarks = balance.accumulatedMarks.plus(marksAccumulated);
-      balance.totalMarksEarned = balance.totalMarksEarned.plus(marksAccumulated);
-      
-      // Update lastUpdated to current timestamp (continuous tracking)
-      balance.lastUpdated = currentTimestamp;
+    const earned = accrueWithBoostWindow(
+      "haToken",
+      balance.tokenAddress,
+      lastUpdate,
+      currentTimestamp,
+      balance.balanceUSD,
+      baseMarksPerDollarPerDay
+    );
+    if (earned.gt(BigDecimal.fromString("0"))) {
+      balance.accumulatedMarks = balance.accumulatedMarks.plus(earned);
+      balance.totalMarksEarned = balance.totalMarksEarned.plus(earned);
     }
+    balance.lastUpdated = currentTimestamp;
   }
   
   // Update marks per day rate based on current balance
-  balance.marksPerDay = balance.balanceUSD.times(marksPerDollarPerDay);
+  balance.marksPerDay = balance.balanceUSD.times(
+    DEFAULT_MARKS_PER_DOLLAR_PER_DAY.times(multiplier)
+  );
   balance.save();
 }
 

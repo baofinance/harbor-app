@@ -13,6 +13,27 @@ export function getBoostWindowId(sourceType: string, sourceAddress: Bytes): stri
   return `${sourceType}-${sourceAddress.toHexString()}`;
 }
 
+export function setMarketBoostWindow(
+  sourceType: string,
+  sourceAddress: Bytes,
+  startTimestamp: BigInt,
+  endTimestamp: BigInt,
+  boostMultiplier: BigDecimal
+): MarketBoostWindow {
+  const id = getBoostWindowId(sourceType, sourceAddress);
+  let w = MarketBoostWindow.load(id);
+  if (w == null) {
+    w = new MarketBoostWindow(id);
+    w.sourceType = sourceType;
+    w.sourceAddress = sourceAddress;
+  }
+  w.startTimestamp = startTimestamp;
+  w.endTimestamp = endTimestamp;
+  w.boostMultiplier = boostMultiplier;
+  w.save();
+  return w;
+}
+
 /**
  * Get or create a per-market boost window, setting start/end on first activity.
  *

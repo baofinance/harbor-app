@@ -3,11 +3,13 @@ import { ChainlinkAggregator } from "../generated/Minter_ETH_fxUSD/ChainlinkAggr
 import { Minter } from "../generated/Minter_ETH_fxUSD/Minter";
 import { HaTokenBalance, PriceFeed, SailTokenBalance, StabilityPoolDeposit, UserList } from "../generated/schema";
 import { getActiveBoostMultiplier } from "./marksBoost";
+import { accrueWithBoostWindow } from "./marksAccrual";
 
 const ONE_DAY = BigInt.fromI32(86400);
 const ONE_E18 = BigDecimal.fromString("1000000000000000000");
 const SECONDS_PER_DAY_BD = BigDecimal.fromString("86400");
 const DEFAULT_MARKS_PER_DOLLAR_PER_DAY = BigDecimal.fromString("1.0");
+const SAIL_PROMO_MULTIPLIER = BigDecimal.fromString("2.0"); // hsTokens: additional 2x promo (stackable with boost)
 
 // Singleton key (we reuse PriceFeed as a lightweight singleton store)
 const LAST_DAILY_KEY = "lastDailyMarksUpdate";
@@ -85,11 +87,8 @@ function haPriceUsd(token: Address): BigDecimal {
   return BigDecimal.fromString("1.0");
 }
 
-function accrue(lastUpdated: BigInt, now: BigInt, balanceUSD: BigDecimal, marksPerDollarPerDay: BigDecimal): BigDecimal {
-  if (lastUpdated.equals(BigInt.fromI32(0)) || !now.gt(lastUpdated)) return BigDecimal.fromString("0");
-  const days = now.minus(lastUpdated).toBigDecimal().div(SECONDS_PER_DAY_BD);
-  if (days.le(BigDecimal.fromString("0"))) return BigDecimal.fromString("0");
-  return balanceUSD.times(marksPerDollarPerDay).times(days);
+function accrue(lastUpdated: BigInt, now: BigInt, balanceUSD: BigDecimal, baseMarksPerDollarPerDay: BigDecimal, sourceType: string, sourceAddress: Bytes): BigDecimal {
+  return accrueWithBoostWindow(sourceType, sourceAddress, lastUpdated, now, balanceUSD, baseMarksPerDollarPerDay);
 }
 
 function updateHaBalances(token: Address, now: BigInt, priceUsd: BigDecimal): void {
@@ -97,6 +96,7 @@ function updateHaBalances(token: Address, now: BigInt, priceUsd: BigDecimal): vo
   if (list == null) return;
   const boost = getActiveBoostMultiplier("haToken", token as Bytes, now);
   const mpd = DEFAULT_MARKS_PER_DOLLAR_PER_DAY.times(BigDecimal.fromString("1.0").times(boost));
+  const baseMpd = DEFAULT_MARKS_PER_DOLLAR_PER_DAY.times(BigDecimal.fromString("1.0"));
   const users = list.users;
   for (let i = 0; i < users.length; i++) {
     const user = users[i];
@@ -104,7 +104,7 @@ function updateHaBalances(token: Address, now: BigInt, priceUsd: BigDecimal): vo
     const b = HaTokenBalance.load(id);
     if (b == null) continue;
     const last = b.lastUpdated.gt(BigInt.fromI32(0)) ? b.lastUpdated : b.firstSeenAt;
-    const earned = accrue(last, now, b.balanceUSD, mpd);
+    const earned = accrue(last, now, b.balanceUSD, baseMpd, "haToken", token as Bytes);
     if (earned.gt(BigDecimal.fromString("0"))) {
       b.accumulatedMarks = b.accumulatedMarks.plus(earned);
       b.totalMarksEarned = b.totalMarksEarned.plus(earned);
@@ -121,7 +121,8 @@ function updateHsBalances(token: Address, now: BigInt, priceUsd: BigDecimal): vo
   const list = UserList.load((token as Bytes).toHexString());
   if (list == null) return;
   const boost = getActiveBoostMultiplier("sailToken", token as Bytes, now);
-  const mpd = DEFAULT_MARKS_PER_DOLLAR_PER_DAY.times(BigDecimal.fromString("5.0").times(boost));
+  const baseMpd = DEFAULT_MARKS_PER_DOLLAR_PER_DAY.times(BigDecimal.fromString("5.0").times(SAIL_PROMO_MULTIPLIER));
+  const mpd = baseMpd.times(boost);
   const users = list.users;
   for (let i = 0; i < users.length; i++) {
     const user = users[i];
@@ -129,7 +130,7 @@ function updateHsBalances(token: Address, now: BigInt, priceUsd: BigDecimal): vo
     const b = SailTokenBalance.load(id);
     if (b == null) continue;
     const last = b.lastUpdated.gt(BigInt.fromI32(0)) ? b.lastUpdated : b.firstSeenAt;
-    const earned = accrue(last, now, b.balanceUSD, mpd);
+    const earned = accrue(last, now, b.balanceUSD, baseMpd, "sailToken", token as Bytes);
     if (earned.gt(BigDecimal.fromString("0"))) {
       b.accumulatedMarks = b.accumulatedMarks.plus(earned);
       b.totalMarksEarned = b.totalMarksEarned.plus(earned);
@@ -171,6 +172,7 @@ function updatePoolDeposits(pool: Address, now: BigInt, assetUsd: BigDecimal): v
   const st = poolType(pool);
   const boost = getActiveBoostMultiplier(st, pool as Bytes, now);
   const mpd = DEFAULT_MARKS_PER_DOLLAR_PER_DAY.times(BigDecimal.fromString("1.0").times(boost));
+  const baseMpd = DEFAULT_MARKS_PER_DOLLAR_PER_DAY.times(BigDecimal.fromString("1.0"));
   const users = list.users;
   for (let i = 0; i < users.length; i++) {
     const user = users[i];
@@ -178,7 +180,7 @@ function updatePoolDeposits(pool: Address, now: BigInt, assetUsd: BigDecimal): v
     const d = StabilityPoolDeposit.load(id);
     if (d == null) continue;
     const last = d.lastUpdated.gt(BigInt.fromI32(0)) ? d.lastUpdated : d.firstDepositAt;
-    const earned = accrue(last, now, d.balanceUSD, mpd);
+    const earned = accrue(last, now, d.balanceUSD, baseMpd, st, pool as Bytes);
     if (earned.gt(BigDecimal.fromString("0"))) {
       d.accumulatedMarks = d.accumulatedMarks.plus(earned);
       d.totalMarksEarned = d.totalMarksEarned.plus(earned);
