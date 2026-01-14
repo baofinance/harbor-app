@@ -61,7 +61,7 @@ export default function InfoTooltip({
  <div
  role="tooltip"
  className={
-"pointer-events-none absolute z-20 bg-gray-900 px-6 py-4 text-base text-white shadow-xl opacity-0 transition-opacity duration-150 min-w-[400px] max-w-2xl border border-gray-700" +
+"pointer-events-none absolute z-50 bg-gray-900 px-6 py-4 text-base text-white shadow-xl opacity-0 transition-opacity duration-150 min-w-[400px] max-w-2xl border border-gray-700" +
  positionClasses.container +
 " group-hover:opacity-100 group-focus-within:opacity-100"
  }

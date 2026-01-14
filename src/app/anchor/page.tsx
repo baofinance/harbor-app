@@ -4131,7 +4131,7 @@ export default function AnchorPage() {
             </div>
 
             {/* Mint/Secure/Earn/Redeem (separate boxy tiles) */}
-            <div className="mt-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
+            <div className="mt-3 grid grid-cols-1 lg:grid-cols-4 gap-2">
               <div className="bg-black/[0.10] backdrop-blur-sm rounded-none overflow-hidden px-3 py-2 flex flex-col items-center justify-center text-center">
                 <div className="flex items-center justify-center gap-2">
                   <BanknotesIcon className="w-5 h-5 text-white" />
@@ -4179,7 +4179,7 @@ export default function AnchorPage() {
           </div>
 
           {/* Stats boxes */}
-          <div className="mb-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+          <div className="mb-2 grid grid-cols-1 lg:grid-cols-4 gap-2">
             <div className="bg-black/20 backdrop-blur-sm rounded-none overflow-hidden px-3 py-2">
               <div className="flex flex-col items-center justify-center text-center">
                 <div className="text-[11px] text-white/80 uppercase tracking-widest">
@@ -4786,7 +4786,7 @@ export default function AnchorPage() {
             return (
               <div className="mb-2">
                 <div className="bg-black/30 backdrop-blur-sm rounded-none overflow-visible border border-white/50">
-                  <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 divide-y divide-white/15 md:divide-y-0 md:divide-x md:divide-white/20">
+                  <div className="grid grid-cols-1 divide-y divide-white/15">
                     {/* Rewards Header */}
                     <div className="p-3 flex items-center justify-center gap-2">
                       <h2 className="font-bold font-mono text-white text-lg leading-tight text-center">
@@ -4840,13 +4840,13 @@ export default function AnchorPage() {
                             </div>
                           </div>
                         }
-                        side="top"
+                        side="right"
                       />
                     </div>
 
                     {/* Combined metrics */}
                     <div className="p-3 md:col-span-1 lg:col-span-2 flex items-center justify-center">
-                      <div className="grid grid-cols-2 sm:grid-cols-4 w-full divide-y divide-white/15 sm:divide-y-0 sm:divide-x sm:divide-white/15">
+                      <div className="grid grid-cols-1 w-full divide-y divide-white/15">
                         {/* Total Deposits */}
                         <div className="flex flex-col items-center justify-center text-center px-2 py-1.5 sm:py-0">
                           <div className="text-[11px] text-white/80 uppercase tracking-widest">

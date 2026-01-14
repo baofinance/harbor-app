@@ -489,16 +489,16 @@ function SailMarketRow({
   return (
     <div key={id}>
       <div
-        className={`p-3 overflow-x-auto transition cursor-pointer ${
+        className={`p-3 overflow-visible sm:overflow-x-auto transition cursor-pointer ${
           isExpanded
             ? "bg-[rgb(var(--surface-selected-rgb))]"
             : "bg-white hover:bg-[rgb(var(--surface-selected-rgb))]"
         }`}
         onClick={onToggleExpand}
       >
-        <div className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr] gap-4 items-center text-sm">
-          <div className="whitespace-nowrap min-w-0 overflow-hidden">
-            <div className="flex items-center justify-center gap-1.5">
+        <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_1fr_1fr_1fr] gap-2 sm:gap-4 items-center text-sm">
+          <div className="min-w-0">
+            <div className="flex items-center justify-start sm:justify-center gap-1.5 flex-wrap">
               <SimpleTooltip label={market.leveragedToken.symbol}>
                 <Image
                   src={getLogoPath(market.leveragedToken.symbol)}
@@ -518,12 +518,12 @@ function SailMarketRow({
               )}
             </div>
           </div>
-          <div className="text-center min-w-0">
+          <div className="text-left sm:text-center min-w-0">
             <span className="text-[#1E4775] font-medium text-xs font-mono">
               {formatLeverage(leverageRatio)}
             </span>
           </div>
-          <div className="text-center min-w-0">
+          <div className="text-left sm:text-center min-w-0">
             <span className="text-[#1E4775] font-medium text-xs font-mono">
               {userDeposit
                 ? `${formatToken(userDeposit)} ${
@@ -532,7 +532,7 @@ function SailMarketRow({
                 : "-"}
             </span>
           </div>
-          <div className="text-center min-w-0">
+          <div className="text-left sm:text-center min-w-0">
             <div className="text-[#1E4775] font-medium text-xs font-mono">
               {userDeposit && currentValueUSD !== undefined
                 ? formatUSD(currentValueUSD)
@@ -547,7 +547,7 @@ function SailMarketRow({
             )}
           </div>
           <div
-            className="text-center min-w-0"
+            className="text-left sm:text-center min-w-0"
             onClick={(e) => e.stopPropagation()}
           >
             <button
@@ -873,7 +873,7 @@ function SailMarketExpandedView({
 
   return (
     <div className="bg-[rgb(var(--surface-selected-rgb))] p-4 border-t border-white/20 mt-2">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+      <div className="grid grid-cols-1 gap-2">
         {/* Left: Market Info & PnL */}
         <div className="space-y-2 flex flex-col">
           {/* Description Box */}
@@ -1614,7 +1614,7 @@ export default function SailPage() {
             )}
 
             {/* Five Boxes */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-2">
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-2">
               {/* Mint Box */}
               <div className="bg-black/[0.10] backdrop-blur-sm rounded-none overflow-hidden px-3 py-2">
                 <div className="flex items-center justify-center gap-2">
@@ -1689,7 +1689,7 @@ export default function SailPage() {
 
           {/* Stats boxes (user) */}
           {isConnected && (
-            <div className="mb-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+            <div className="mb-2 grid grid-cols-1 lg:grid-cols-4 gap-2">
               <div className="bg-black/20 backdrop-blur-sm rounded-none overflow-hidden px-3 py-2">
                 <div className="flex flex-col items-center justify-center text-center">
                   <div className="text-[11px] text-white/80 uppercase tracking-widest">
@@ -1782,7 +1782,7 @@ export default function SailPage() {
           {/* Sail Marks Bar (Anchor-rewards style) */}
           <div className="mb-2">
             <div className="bg-black/30 backdrop-blur-sm rounded-none overflow-visible border border-white/50">
-              <div className="grid grid-cols-1 md:grid-cols-3 divide-y divide-white/15 md:divide-y-0 md:divide-x md:divide-white/20">
+              <div className="grid grid-cols-1 divide-y divide-white/15">
                 <div className="p-3 flex items-center justify-center gap-2">
                   <h2 className="font-bold font-mono text-white text-lg leading-tight text-center">
                     Sail Marks
@@ -1822,7 +1822,7 @@ export default function SailPage() {
                         </div>
                       </div>
                     }
-                    side="top"
+                    side="right"
                   />
                 </div>
 

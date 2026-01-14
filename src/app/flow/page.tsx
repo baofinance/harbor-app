@@ -139,7 +139,7 @@ export default function FlowPage() {
                 Oracle feeds and price data for Harbor markets
               </p>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-2">
               <div className="bg-black/[0.10] backdrop-blur-sm rounded-none overflow-hidden p-4 sm:p-3 md:p-4 flex flex-col">
                 <div className="flex items-center justify-center gap-2">
                   <HandRaisedIcon className="w-5 h-5 text-white flex-shrink-0" />
