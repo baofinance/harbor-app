@@ -208,7 +208,10 @@ function accumulateMarks(
   if (lastUpdate.equals(BigInt.fromI32(0))) {
     balance.firstSeenAt = currentTimestamp;
     balance.lastUpdated = currentTimestamp;
-    balance.marksPerDay = balance.balanceUSD.times(marksPerDollarPerDay);
+    // Current rate (includes promo + boost via multiplier)
+    balance.marksPerDay = balance.balanceUSD.times(
+      DEFAULT_MARKS_PER_DOLLAR_PER_DAY.times(multiplier)
+    );
     balance.accumulatedMarks = BigDecimal.fromString("0");
     balance.save();
     return;

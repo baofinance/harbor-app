@@ -58,11 +58,8 @@ export function accrueWithBoostWindow(
   const boostedDays = boostedSeconds.toBigDecimal().div(SECONDS_PER_DAY_BD);
   const unboostedDays = unboostedSeconds.toBigDecimal().div(SECONDS_PER_DAY_BD);
 
-  let boostedMult = ONE_BD;
-  // AssemblyScript typing: store fields can be nullable at runtime.
-  if (w.boostMultiplier != null) {
-    boostedMult = w.boostMultiplier as BigDecimal;
-  }
+  // Schema marks this as non-null; we always set boostMultiplier when creating/updating windows.
+  const boostedMult = w.boostMultiplier as BigDecimal;
 
   const earnedUnboosted = balanceUSD
     .times(baseMarksPerDollarPerDay)
