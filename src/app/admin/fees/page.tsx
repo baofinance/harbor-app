@@ -5,8 +5,8 @@ import Link from "next/link";
 import { useAccount, useContractReads, useReadContract, useWriteContract } from "wagmi";
 import { minterABI } from "@/abis/minter";
 import { markets } from "@/config/markets";
-import WalletButton from "@/components/WalletButton";
 import { formatUnits } from "viem";
+import { ConnectWallet } from "@/components/Wallet";
 
 const ERC20_META_ABI = [
   {
@@ -677,7 +677,7 @@ export default function AdminFeesPage() {
               Please connect your wallet to access admin functions
             </p>
             <div className="inline-block">
-              <WalletButton />
+              <ConnectWallet />
             </div>
           </div>
         ) : (

@@ -6,7 +6,7 @@ import { useAccount, useContractReads, useContractWrite } from "wagmi";
 import { parseEther } from "viem";
 import Link from "next/link";
 import Image from "next/image";
-import WalletButton from "../../components/WalletButton";
+import Wallet from "../../components/Wallet";
 import Navigation from "../../components/Navigation";
 
 const geo = Geo({
@@ -528,7 +528,7 @@ export default function Staking() {
               </div>
             ) : (
               <div className="text-center">
-                <WalletButton />
+                <Wallet />
               </div>
             )}
           </div>
