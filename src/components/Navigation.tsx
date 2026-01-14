@@ -102,14 +102,6 @@ export default function Example() {
                 >
                   Transparency
                 </Link>
-                <a
-                  href="https://docs.harborfinance.io/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-3 py-2 text-sm font-medium text-white hover:bg-white/20 hover:text-white"
-                >
-                  Docs
-                </a>
               </div>
             </div>
           </div>
@@ -221,14 +213,6 @@ export default function Example() {
             >
               Transparency
             </DisclosureButton>
-            <a
-              href="https://docs.harborfinance.io/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block w-full max-w-sm mx-auto px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 text-white bg-white/10 hover:bg-white/20 text-center"
-            >
-              Docs
-            </a>
           </div>
         </div>
       </DisclosurePanel>

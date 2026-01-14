@@ -3,14 +3,21 @@ import { ChainlinkAggregator } from "../generated/Minter_ETH_fxUSD/ChainlinkAggr
 import { Minter } from "../generated/Minter_ETH_fxUSD/Minter";
 import { HaTokenBalance, PriceFeed, SailTokenBalance, StabilityPoolDeposit, UserList } from "../generated/schema";
 import { getActiveBoostMultiplier } from "./marksBoost";
+import { accrueWithBoostWindow } from "./marksAccrual";
 
+const ONE_HOUR = BigInt.fromI32(3600);
 const ONE_DAY = BigInt.fromI32(86400);
 const ONE_E18 = BigDecimal.fromString("1000000000000000000");
 const SECONDS_PER_DAY_BD = BigDecimal.fromString("86400");
 const DEFAULT_MARKS_PER_DOLLAR_PER_DAY = BigDecimal.fromString("1.0");
+const SAIL_PROMO_MULTIPLIER = BigDecimal.fromString("2.0"); // hsTokens: additional 2x promo (stackable with boost)
+// Promo starts at (new subgraph deploy time). This gate prevents backdating during reindex.
+// Update this constant when you redeploy a new promo start.
+const SAIL_PROMO_START_TIMESTAMP = BigInt.fromI32(1768355397);
 
-// Singleton key (we reuse PriceFeed as a lightweight singleton store)
+// Singleton keys (we reuse PriceFeed as a lightweight singleton store)
 const LAST_DAILY_KEY = "lastDailyMarksUpdate";
+const LAST_HOURLY_SAIL_KEY = "lastHourlySailMarksUpdate";
 
 // Chainlink feeds (mainnet, 8 decimals)
 const ETH_USD_FEED = Address.fromString("0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419");
@@ -35,10 +42,10 @@ const POOL_LEV_BTC_FXUSD = Address.fromString("0x9e56F1E1E80EBf165A1dAa99F9787B4
 const POOL_COLL_BTC_STETH = Address.fromString("0x667Ceb303193996697A5938cD6e17255EeAcef51");
 const POOL_LEV_BTC_STETH = Address.fromString("0xCB4F3e21DE158bf858Aa03E63e4cEc7342177013");
 
-function getOrCreateTracker(): PriceFeed {
-  let t = PriceFeed.load(LAST_DAILY_KEY);
+function getOrCreateTracker(id: string): PriceFeed {
+  let t = PriceFeed.load(id);
   if (t == null) {
-    t = new PriceFeed(LAST_DAILY_KEY);
+    t = new PriceFeed(id);
     t.tokenAddress = Bytes.fromHexString("0x0000000000000000000000000000000000000000");
     t.priceFeedAddress = Bytes.fromHexString("0x0000000000000000000000000000000000000000");
     t.priceUSD = BigDecimal.fromString("0");
@@ -85,11 +92,8 @@ function haPriceUsd(token: Address): BigDecimal {
   return BigDecimal.fromString("1.0");
 }
 
-function accrue(lastUpdated: BigInt, now: BigInt, balanceUSD: BigDecimal, marksPerDollarPerDay: BigDecimal): BigDecimal {
-  if (lastUpdated.equals(BigInt.fromI32(0)) || !now.gt(lastUpdated)) return BigDecimal.fromString("0");
-  const days = now.minus(lastUpdated).toBigDecimal().div(SECONDS_PER_DAY_BD);
-  if (days.le(BigDecimal.fromString("0"))) return BigDecimal.fromString("0");
-  return balanceUSD.times(marksPerDollarPerDay).times(days);
+function accrue(lastUpdated: BigInt, now: BigInt, balanceUSD: BigDecimal, baseMarksPerDollarPerDay: BigDecimal, sourceType: string, sourceAddress: Bytes): BigDecimal {
+  return accrueWithBoostWindow(sourceType, sourceAddress, lastUpdated, now, balanceUSD, baseMarksPerDollarPerDay);
 }
 
 function updateHaBalances(token: Address, now: BigInt, priceUsd: BigDecimal): void {
@@ -97,6 +101,7 @@ function updateHaBalances(token: Address, now: BigInt, priceUsd: BigDecimal): vo
   if (list == null) return;
   const boost = getActiveBoostMultiplier("haToken", token as Bytes, now);
   const mpd = DEFAULT_MARKS_PER_DOLLAR_PER_DAY.times(BigDecimal.fromString("1.0").times(boost));
+  const baseMpd = DEFAULT_MARKS_PER_DOLLAR_PER_DAY.times(BigDecimal.fromString("1.0"));
   const users = list.users;
   for (let i = 0; i < users.length; i++) {
     const user = users[i];
@@ -104,7 +109,7 @@ function updateHaBalances(token: Address, now: BigInt, priceUsd: BigDecimal): vo
     const b = HaTokenBalance.load(id);
     if (b == null) continue;
     const last = b.lastUpdated.gt(BigInt.fromI32(0)) ? b.lastUpdated : b.firstSeenAt;
-    const earned = accrue(last, now, b.balanceUSD, mpd);
+    const earned = accrue(last, now, b.balanceUSD, baseMpd, "haToken", token as Bytes);
     if (earned.gt(BigDecimal.fromString("0"))) {
       b.accumulatedMarks = b.accumulatedMarks.plus(earned);
       b.totalMarksEarned = b.totalMarksEarned.plus(earned);
@@ -121,7 +126,9 @@ function updateHsBalances(token: Address, now: BigInt, priceUsd: BigDecimal): vo
   const list = UserList.load((token as Bytes).toHexString());
   if (list == null) return;
   const boost = getActiveBoostMultiplier("sailToken", token as Bytes, now);
-  const mpd = DEFAULT_MARKS_PER_DOLLAR_PER_DAY.times(BigDecimal.fromString("5.0").times(boost));
+  const promo = now.ge(SAIL_PROMO_START_TIMESTAMP) ? SAIL_PROMO_MULTIPLIER : BigDecimal.fromString("1.0");
+  const baseMpd = DEFAULT_MARKS_PER_DOLLAR_PER_DAY.times(BigDecimal.fromString("5.0").times(promo));
+  const mpd = baseMpd.times(boost);
   const users = list.users;
   for (let i = 0; i < users.length; i++) {
     const user = users[i];
@@ -129,7 +136,7 @@ function updateHsBalances(token: Address, now: BigInt, priceUsd: BigDecimal): vo
     const b = SailTokenBalance.load(id);
     if (b == null) continue;
     const last = b.lastUpdated.gt(BigInt.fromI32(0)) ? b.lastUpdated : b.firstSeenAt;
-    const earned = accrue(last, now, b.balanceUSD, mpd);
+    const earned = accrue(last, now, b.balanceUSD, baseMpd, "sailToken", token as Bytes);
     if (earned.gt(BigDecimal.fromString("0"))) {
       b.accumulatedMarks = b.accumulatedMarks.plus(earned);
       b.totalMarksEarned = b.totalMarksEarned.plus(earned);
@@ -171,6 +178,7 @@ function updatePoolDeposits(pool: Address, now: BigInt, assetUsd: BigDecimal): v
   const st = poolType(pool);
   const boost = getActiveBoostMultiplier(st, pool as Bytes, now);
   const mpd = DEFAULT_MARKS_PER_DOLLAR_PER_DAY.times(BigDecimal.fromString("1.0").times(boost));
+  const baseMpd = DEFAULT_MARKS_PER_DOLLAR_PER_DAY.times(BigDecimal.fromString("1.0"));
   const users = list.users;
   for (let i = 0; i < users.length; i++) {
     const user = users[i];
@@ -178,7 +186,7 @@ function updatePoolDeposits(pool: Address, now: BigInt, assetUsd: BigDecimal): v
     const d = StabilityPoolDeposit.load(id);
     if (d == null) continue;
     const last = d.lastUpdated.gt(BigInt.fromI32(0)) ? d.lastUpdated : d.firstDepositAt;
-    const earned = accrue(last, now, d.balanceUSD, mpd);
+    const earned = accrue(last, now, d.balanceUSD, baseMpd, st, pool as Bytes);
     if (earned.gt(BigDecimal.fromString("0"))) {
       d.accumulatedMarks = d.accumulatedMarks.plus(earned);
       d.totalMarksEarned = d.totalMarksEarned.plus(earned);
@@ -192,7 +200,7 @@ function updatePoolDeposits(pool: Address, now: BigInt, assetUsd: BigDecimal): v
 }
 
 export function runDailyMarksUpdate(block: ethereum.Block): void {
-  const t = getOrCreateTracker();
+  const t = getOrCreateTracker(LAST_DAILY_KEY);
   const now = block.timestamp;
   if (now.minus(t.lastUpdated).lt(ONE_DAY)) return;
 
@@ -216,6 +224,30 @@ export function runDailyMarksUpdate(block: ethereum.Block): void {
     const assetUsd = poolAssetUsd(p, haEthUsd, haBtcUsd, hsEthUsd, hsBtcUsd, hsStethUsd);
     if (assetUsd.gt(BigDecimal.fromString("0"))) updatePoolDeposits(p, now, assetUsd);
   }
+
+  t.lastUpdated = now;
+  t.save();
+}
+
+/**
+ * Hourly refresh of Sail (hsToken) balances/marks.
+ * This makes rule changes (like the sail promo) reflect for users even if they don't transact.
+ *
+ * Note: This iterates over UserList for each hsToken, so it updates "all known holders" of each token.
+ */
+export function runHourlySailMarksUpdate(block: ethereum.Block): void {
+  const t = getOrCreateTracker(LAST_HOURLY_SAIL_KEY);
+  const now = block.timestamp;
+  if (now.minus(t.lastUpdated).lt(ONE_HOUR)) return;
+
+  const hsEthUsd = hsPriceUsd(HS_FXUSD_ETH);
+  const hsBtcUsd = hsPriceUsd(HS_FXUSD_BTC);
+  const hsStethUsd = hsPriceUsd(HS_STETH_BTC);
+
+  // Update sail token holders (wallet balances)
+  if (hsEthUsd.gt(BigDecimal.fromString("0"))) updateHsBalances(HS_FXUSD_ETH, now, hsEthUsd);
+  if (hsBtcUsd.gt(BigDecimal.fromString("0"))) updateHsBalances(HS_FXUSD_BTC, now, hsBtcUsd);
+  if (hsStethUsd.gt(BigDecimal.fromString("0"))) updateHsBalances(HS_STETH_BTC, now, hsStethUsd);
 
   t.lastUpdated = now;
   t.save();

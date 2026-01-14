@@ -452,7 +452,7 @@ function MarketCard({
  market.rebalanceThreshold
  );
 
-  const tokenPrices = tokenPricesByMarket[market.marketId];
+ const tokenPrices = tokenPricesByMarket[market.marketId];
 
   const marketCfg = (marketsConfig as any)?.[market.marketId];
   const collateralHeldSymbol: string =
@@ -647,38 +647,38 @@ function MarketCard({
  </div>
  </div>
 
-{/* Collateral Ratio */}
-<div className="text-center">
-<div className="text-[#1E4775] font-mono text-sm font-semibold">
-{formatCollateralRatio(market.collateralRatio)}
-</div>
-</div>
+ {/* Collateral Ratio */}
+ <div className="text-center">
+ <div className="text-[#1E4775] font-mono text-sm font-semibold">
+ {formatCollateralRatio(market.collateralRatio)}
+ </div>
+ </div>
 
-{/* Leverage Ratio */}
-<div className="text-center">
-<div className="text-[#1E4775] font-mono text-sm font-semibold">
-{formatLeverageRatio(market.leverageRatio)}
-</div>
-</div>
+ {/* Leverage Ratio */}
+ <div className="text-center">
+ <div className="text-[#1E4775] font-mono text-sm font-semibold">
+ {formatLeverageRatio(market.leverageRatio)}
+ </div>
+ </div>
 
-{/* TVL */}
-<div className="text-center">
-<div className="text-[#1E4775] font-mono text-sm font-semibold">
-{formatCompactUSD(totalTVLUSD)}
+ {/* TVL */}
+ <div className="text-center">
+ <div className="text-[#1E4775] font-mono text-sm font-semibold">
+ {formatCompactUSD(totalTVLUSD)}
 {collateralHeldWrapped > 0n && (
  <span className="text-[#1E4775]/60 text-xs ml-1">
  ({formatTokenBalanceMax2Decimals(collateralHeldWrapped)} {collateralHeldSymbol || ""})
  </span>
 )}
-</div>
-</div>
+ </div>
+ </div>
 
-{/* Rebalance Threshold */}
-<div className="text-center">
-<div className="text-[#1E4775] font-mono text-sm font-semibold">
-{formatCollateralRatio(market.rebalanceThreshold)}
-</div>
-</div>
+ {/* Rebalance Threshold */}
+ <div className="text-center">
+ <div className="text-[#1E4775] font-mono text-sm font-semibold">
+ {formatCollateralRatio(market.rebalanceThreshold)}
+ </div>
+ </div>
 
  {/* Health Status */}
  <div className="text-center">
@@ -813,8 +813,8 @@ function MarketCard({
  {formatTokenBalanceMax2Decimals(market.leveragedTokenBalance)}
  </div>
  </div>
-    </div>
-    </div>
+ </div>
+ </div>
 
     {/* Distribution Pie Chart */}
     {distributionData.length > 0 && (
@@ -885,12 +885,12 @@ function MarketCard({
               />
             </PieChart>
           </ResponsiveContainer>
-        </div>
-      </div>
+ </div>
+ </div>
     )}
-  </div>
+ </div>
 
-  {/* Stability Pools */}
+ {/* Stability Pools */}
  <div className="bg-white p-2.5 space-y-2 lg:col-span-2">
  <h4 className="text-[#1E4775] font-semibold text-xs uppercase tracking-wider mb-2">
  Stability Pools
@@ -1069,10 +1069,10 @@ function MarketCard({
                 </div>
                 <div className="text-[#1E4775]/60 font-mono text-[9px]">
                   {percent}%
-                </div>
-              </div>
-            );
-          })}
+ </div>
+ </div>
+ );
+ })}
         </>
       );
      })()}
@@ -1251,8 +1251,8 @@ export default function TransparencyPage() {
        const pegTarget =
          (marketsConfig as any)?.[m.marketId]?.pegTarget || "USD";
        return {
-         marketId: m.marketId,
-         minterAddress: m.minterAddress,
+       marketId: m.marketId,
+       minterAddress: m.minterAddress,
          pegTarget,
        };
      })
@@ -1470,56 +1470,56 @@ export default function TransparencyPage() {
 
  {/* Check if any markets have finished genesis (have collateral) */}
  {!isLoading && finishedMarkets.length === 0 ? (
-   <div className="bg-[#17395F] border border-white/10 p-6 rounded-lg text-center">
-     <p className="text-white text-lg font-medium">
-       Maiden Voyage in progress for Harbor's first markets - coming soon!
-     </p>
-   </div>
+       <div className="bg-[#17395F] border border-white/10 p-6 rounded-lg text-center">
+         <p className="text-white text-lg font-medium">
+           Maiden Voyage in progress for Harbor's first markets - coming soon!
+         </p>
+       </div>
  ) : (
    <>
-     {finishedMarkets.length > 0 && (
+       {finishedMarkets.length > 0 && (
        <div className="hidden lg:block bg-white p-2 mb-2">
          <div className="grid grid-cols-[1.3fr_1fr_1fr_1fr_1fr_1fr_auto] gap-4 items-center uppercase tracking-wider text-[10px] text-[#1E4775] font-bold">
            <div className="text-center">Market</div>
-           <div className="text-center">Collateral Ratio</div>
-           <div className="text-center">Leverage</div>
-           <div className="text-center">TVL (USD)</div>
-           <div className="text-center">Threshold</div>
-           <div className="text-center">Health</div>
+             <div className="text-center">Collateral Ratio</div>
+             <div className="text-center">Leverage</div>
+            <div className="text-center">TVL (USD)</div>
+             <div className="text-center">Threshold</div>
+             <div className="text-center">Health</div>
+           </div>
          </div>
-       </div>
-     )}
+       )}
 
-     {isLoading && finishedMarkets.length === 0 ? (
-       <div className="space-y-2">
-         {[1, 2].map((i) => (
-           <div key={i} className="animate-pulse h-14 bg-white/10" />
-         ))}
-       </div>
-     ) : (
-       <div className="space-y-2">
-         {finishedMarkets.map((market) => (
-           <MarketCard
-             key={market.marketId}
-             market={market}
-             pools={pools.filter(
-               (p) =>
-                 p.address === market.stabilityPoolCollateralAddress ||
-                 p.address === market.stabilityPoolLeveragedAddress
-             )}
-             userPools={userPools}
+       {isLoading && finishedMarkets.length === 0 ? (
+         <div className="space-y-2">
+           {[1, 2].map((i) => (
+             <div key={i} className="animate-pulse h-14 bg-white/10" />
+           ))}
+         </div>
+       ) : (
+         <div className="space-y-2">
+           {finishedMarkets.map((market) => (
+             <MarketCard
+               key={market.marketId}
+               market={market}
+               pools={pools.filter(
+                 (p) =>
+                   p.address === market.stabilityPoolCollateralAddress ||
+                   p.address === market.stabilityPoolLeveragedAddress
+               )}
+               userPools={userPools}
              tokenPricesByMarket={tokenPricesByMarket as any}
-             fxSAVEPrice={fxSAVEPrice}
-             wstETHPrice={wstETHPrice}
-             stETHPrice={stETHPrice}
-             btcPrice={btcPrice || undefined}
-             ethPrice={ethPrice || undefined}
+               fxSAVEPrice={fxSAVEPrice}
+               wstETHPrice={wstETHPrice}
+               stETHPrice={stETHPrice}
+               btcPrice={btcPrice || undefined}
+               ethPrice={ethPrice || undefined}
              poolRewardsMap={poolRewardsMap}
-           />
-         ))}
-       </div>
-     )}
-   </>
+             />
+           ))}
+         </div>
+       )}
+     </>
  )}
  </main>
  </div>

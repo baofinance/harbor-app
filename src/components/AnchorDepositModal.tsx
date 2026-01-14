@@ -536,7 +536,7 @@ export const AnchorDepositModal = ({
  <div className="flex justify-between items-center text-xs">
  <span className="text-[#1E4775]/70">Amount</span>
  <span className="text-[#1E4775]/70">
- Balance: {formatEther(balance)}{""}
+ Balance: {formatEther(balance)}{" "}
  {selectedDepositAsset ==="pegged"
  ? peggedTokenSymbol
  : collateralSymbol}
@@ -602,7 +602,7 @@ export const AnchorDepositModal = ({
  <p className="text-xs text-[#1E4775]/80">
  <span className="font-semibold">
  Direct {peggedTokenSymbol} deposit
- </span>{""}
+ </span>{" "}
  will go to the selected stability pool.
  </p>
  </div>
@@ -661,17 +661,17 @@ export const AnchorDepositModal = ({
  <>
  <span className="font-semibold">
  Collateral stability pool
- </span>{""}
- redeems to{""}
- <span className="font-semibold">market collateral</span>{""}
+ </span>{" "}
+ redeems to{" "}
+ <span className="font-semibold">market collateral</span>{" "}
  when the market is below min collateral ratio.
  </>
  ) : (
  <>
  <span className="font-semibold">
  Sail stability pool
- </span>{""}
- redeems to{""}
+ </span>{" "}
+ redeems to{" "}
  <span className="font-semibold">Sail tokens</span> when
  the market is below min collateral ratio.
  </>
@@ -714,7 +714,7 @@ export const AnchorDepositModal = ({
  After deposit:
  </span>
  <span className="text-sm font-semibold text-[#1E4775]">
- {formatEther(currentDeposit + depositAmount)}{""}
+ {formatEther(currentDeposit + depositAmount)}{" "}
  {peggedTokenSymbol}
  </span>
  </div>
@@ -740,7 +740,7 @@ export const AnchorDepositModal = ({
 
  {txHash && (
  <div className="text-xs text-center text-[#1E4775]/70">
- Tx:{""}
+ Tx:{" "}
  <a
  href={`https://etherscan.io/tx/${txHash}`}
  target="_blank"

@@ -1641,7 +1641,7 @@ const { maxRate: fxSAVERate } = useCollateralPrice(
  {activeTab ==="mint" && (
  <div className="text-xs text-[#1E4775]">
  <span className="flex items-center gap-1.5">
- Mint Fee:{""}
+ Mint Fee:{" "}
  <span
  className={`font-semibold ${
  mintFeePercentage > 2
@@ -1656,7 +1656,7 @@ const { maxRate: fxSAVERate } = useCollateralPrice(
  :"-"}
  {parsedAmount && parsedAmount > 0n && mintFee > 0n && (
  <span className="ml-1 font-normal text-[#1E4775]/60">
- ({formatDisplay(mintFee, 4)}{""}
+ ({formatDisplay(mintFee, 4)}{" "}
  {selectedDepositAsset || collateralSymbol})
  </span>
  )}
@@ -1668,7 +1668,7 @@ const { maxRate: fxSAVERate } = useCollateralPrice(
  {activeTab ==="redeem" && (
  <div className="text-xs text-[#1E4775]">
  <span className="flex items-center gap-1.5">
- Redeem Fee:{""}
+ Redeem Fee:{" "}
  <span
  className={`font-semibold ${
  redeemFeePercentage > 2

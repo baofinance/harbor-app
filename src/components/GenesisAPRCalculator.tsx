@@ -69,7 +69,7 @@ export default function GenesisAPRCalculator({
  <div className="text-white font-semibold">
  {aprEstimates.rewardsToUser.toLocaleString(undefined, {
  maximumFractionDigits: 2,
- })}{""}
+                })}{" "}
  {rewardTokenSymbol}
  </div>
  </div>

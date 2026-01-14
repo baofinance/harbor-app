@@ -6145,7 +6145,7 @@ export const AnchorDepositWithdrawModal = ({
             
             await publicClient?.waitForTransactionReceipt({ hash: zapHash });
             setTxHashes((prev) => ({ ...prev, mint: zapHash }));
-
+            
             // If a pool was selected, continue by depositing the freshly minted pegged tokens.
             if (shouldDepositToPool) {
               if (!stabilityPoolAddress) {
@@ -6344,7 +6344,7 @@ export const AnchorDepositWithdrawModal = ({
             
             await publicClient?.waitForTransactionReceipt({ hash: zapHash });
             setTxHashes((prev) => ({ ...prev, mint: zapHash }));
-
+            
             // If a pool was selected, continue by depositing the freshly minted pegged tokens.
             if (shouldDepositToPool) {
               if (!stabilityPoolAddress) {
@@ -8664,7 +8664,7 @@ export const AnchorDepositWithdrawModal = ({
                             <p className="mt-2 text-xs text-[#1E4775]/60 flex items-center gap-1">
                               <span>ℹ️</span>
                               <span>
-                                This will be converted to{""}
+                                This will be converted to{" "}
                                 {activeWrappedCollateralSymbol} on deposit
                               </span>
                             </p>
@@ -8673,10 +8673,10 @@ export const AnchorDepositWithdrawModal = ({
                           <p className="mt-2 text-xs text-[#1E4775]/60 flex items-center gap-1">
                             <span>ℹ️</span>
                             <span>
-                              Depositing{""}
+                              Depositing{" "}
                               {marketForDepositAsset?.peggedToken?.symbol ||
                                 "ha"}
-                              {""}
+                              {" "}
                               directly to stability pool. No minting required.
                             </span>
                           </p>
@@ -9195,11 +9195,11 @@ export const AnchorDepositWithdrawModal = ({
                                             </p>
                                             <div className="space-y-2 text-sm">
                                               <p>
-                                                A{""}
+                                                A{" "}
                                                 {pool.poolType === "collateral"
                                                   ? "collateral"
                                                   : "sail"}
-                                                {""}
+                                                {" "}
                                                 pool holds anchor tokens (ha
                                                 tokens) and provides stability
                                                 to the market.
@@ -9208,7 +9208,7 @@ export const AnchorDepositWithdrawModal = ({
                                                 <span className="font-medium">
                                                   Rewards:
                                                 </span>
-                                                {""}
+                                                {" "}
                                                 By depositing in this pool, you
                                                 earn rewards for providing
                                                 liquidity for rebalances.
@@ -9217,15 +9217,15 @@ export const AnchorDepositWithdrawModal = ({
                                                 <span className="font-medium">
                                                   Rebalancing:
                                                 </span>
-                                                {""}
+                                                {" "}
                                                 When the market reaches its
                                                 minimum collateral ratio, it
                                                 rebalances by converting your
-                                                anchor tokens to{""}
+                                                anchor tokens to{" "}
                                                 {pool.poolType === "collateral"
-                                                  ? "collateral"
+                                                  ? "market collateral"
                                                   : "sail tokens (hs tokens)"}
-                                                {""}
+                                                {" "}
                                                 at market rates.
                                               </p>
                                             </div>
@@ -9407,7 +9407,7 @@ export const AnchorDepositWithdrawModal = ({
                                   {expectedMintOutput
                                     ? formatEther(expectedMintOutput)
                                     : "..."}
-                                  {""}
+                                  {" "}
                                   {peggedTokenSymbol}
                                 </span>
                               </div>
@@ -9553,7 +9553,7 @@ export const AnchorDepositWithdrawModal = ({
                                 {expectedMintOutput
                                   ? formatEther(expectedMintOutput)
                                   : "..."}
-                                {""}
+                                {" "}
                                 {peggedTokenSymbol}
                               </span>
                             </div>
@@ -9853,7 +9853,7 @@ export const AnchorDepositWithdrawModal = ({
                       if (poolRows.length === 0) return null;
 
                       return (
-                        <div className="p-3 bg-[#17395F]/5 border border-[#17395F]/20">
+                      <div className="p-3 bg-[#17395F]/5 border border-[#17395F]/20">
                           <div className="text-xs font-semibold text-[#1E4775] mb-2">
                             Your stability pool positions
                           </div>
@@ -9917,10 +9917,10 @@ export const AnchorDepositWithdrawModal = ({
                                 >
                                   <div className="flex items-center justify-between px-3 py-2">
                                     <div className="flex items-center gap-3 min-w-0">
-                                      <input
-                                        type="checkbox"
+                            <input
+                              type="checkbox"
                                         checked={isSelected}
-                                        onChange={(e) => {
+                              onChange={(e) => {
                                           const checked = e.target.checked;
 
                                           // Switching markets: reset to only the selected pool
@@ -9928,8 +9928,8 @@ export const AnchorDepositWithdrawModal = ({
                                             p.marketId !== selectedMarketId;
                                           if (switchingMarket) {
                                             setSelectedMarketId(p.marketId);
-                                            setSelectedPositions((prev) => ({
-                                              ...prev,
+                                setSelectedPositions((prev) => ({
+                                  ...prev,
                                               collateralPool:
                                                 checked &&
                                                 p.poolType === "collateral",
@@ -9943,13 +9943,13 @@ export const AnchorDepositWithdrawModal = ({
                                             setWithdrawFromSailPool(
                                               checked && p.poolType === "sail"
                                             );
-                                            setPositionAmounts((prev) => ({
-                                              ...prev,
+                                  setPositionAmounts((prev) => ({
+                                    ...prev,
                                               collateralPool: "",
                                               sailPool: "",
                                             }));
                                             setWithdrawalMethods((prev) => ({
-                                              ...prev,
+                                  ...prev,
                                               collateralPool: "immediate",
                                               sailPool: "immediate",
                                             }));
@@ -9958,16 +9958,16 @@ export const AnchorDepositWithdrawModal = ({
 
                                           // Same market: toggle this pool only
                                           if (p.poolType === "collateral") {
-                                            setSelectedPositions((prev) => ({
-                                              ...prev,
+                                  setSelectedPositions((prev) => ({
+                                    ...prev,
                                               collateralPool: checked,
                                             }));
                                             setWithdrawFromCollateralPool(checked);
                                             if (!checked) {
-                                              setPositionAmounts((prev) => ({
-                                                ...prev,
-                                                collateralPool: "",
-                                              }));
+                                    setPositionAmounts((prev) => ({
+                                      ...prev,
+                                      collateralPool: "",
+                                    }));
                                             }
                                           } else {
                                             setSelectedPositions((prev) => ({
@@ -9981,46 +9981,46 @@ export const AnchorDepositWithdrawModal = ({
                                                 sailPool: "",
                                               }));
                                             }
-                                          }
-                                        }}
-                                        disabled={isProcessing}
-                                        className="w-5 h-5 text-[#1E4775] border-[#1E4775]/30 focus:ring-2 focus:ring-[#1E4775]/20 focus:ring-offset-0 cursor-pointer disabled:opacity-50"
-                                      />
+                                  }
+                                }}
+                                disabled={isProcessing}
+                                className="w-5 h-5 text-[#1E4775] border-[#1E4775]/30 focus:ring-2 focus:ring-[#1E4775]/20 focus:ring-offset-0 cursor-pointer disabled:opacity-50"
+                              />
                                       <div className="min-w-0">
                                         <div className="text-sm font-medium text-[#1E4775] truncate">
                                           {poolLabel}{" "}
                                           <span className="text-[#1E4775]/50">
                                             ({marketLabel})
-                                          </span>
-                                        </div>
+                              </span>
+                            </div>
                                       </div>
                                     </div>
                                     <div className="text-sm text-[#1E4775]/70 font-mono flex-shrink-0">
                                       {formatTokenAmount18(p.balance)}{" "}
-                                      {peggedTokenSymbol}
-                                    </div>
-                                  </div>
+                              {peggedTokenSymbol}
+                            </div>
+                          </div>
 
                                   {isSelected && (
                                     <div className="px-3 pb-3">
-                                      {/* Withdrawal Method Toggle */}
-                                      <div className="flex items-center bg-[#17395F]/10 p-1 mb-2">
-                                        <button
-                                          type="button"
-                                          onClick={() =>
-                                            setWithdrawalMethods((prev) => ({
-                                              ...prev,
+                              {/* Withdrawal Method Toggle */}
+                              <div className="flex items-center bg-[#17395F]/10 p-1 mb-2">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setWithdrawalMethods((prev) => ({
+                                      ...prev,
                                               [modeKey]: "immediate",
-                                            }))
-                                          }
-                                          disabled={isProcessing}
-                                          className={`flex-1 px-3 py-1.5 text-xs font-medium transition-all ${
+                                    }))
+                                  }
+                                  disabled={isProcessing}
+                                  className={`flex-1 px-3 py-1.5 text-xs font-medium transition-all ${
                                             isImmediate
-                                              ? "bg-[#1E4775] text-white shadow-sm"
-                                              : "text-[#1E4775]/70 hover:text-[#1E4775]"
-                                          } disabled:opacity-50 disabled:cursor-not-allowed`}
-                                        >
-                                          Early Withdraw
+                                      ? "bg-[#1E4775] text-white shadow-sm"
+                                      : "text-[#1E4775]/70 hover:text-[#1E4775]"
+                                  } disabled:opacity-50 disabled:cursor-not-allowed`}
+                                >
+                                  Early Withdraw
                                           {(() => {
                                             const display = getFeeFreeDisplay(
                                               request,
@@ -10028,26 +10028,26 @@ export const AnchorDepositWithdrawModal = ({
                                             );
                                             return ` (${display})`;
                                           })()}
-                                        </button>
-                                        <button
-                                          type="button"
-                                          onClick={() =>
-                                            setWithdrawalMethods((prev) => ({
-                                              ...prev,
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setWithdrawalMethods((prev) => ({
+                                      ...prev,
                                               [modeKey]: "request",
-                                            }))
-                                          }
-                                          disabled={isProcessing}
-                                          className={`flex-1 px-3 py-1.5 text-xs font-medium transition-all ${
+                                    }))
+                                  }
+                                  disabled={isProcessing}
+                                  className={`flex-1 px-3 py-1.5 text-xs font-medium transition-all ${
                                             !isImmediate
-                                              ? "bg-[#1E4775] text-white shadow-sm"
-                                              : "text-[#1E4775]/70 hover:text-[#1E4775]"
-                                          } disabled:opacity-50 disabled:cursor-not-allowed`}
-                                        >
+                                      ? "bg-[#1E4775] text-white shadow-sm"
+                                      : "text-[#1E4775]/70 hover:text-[#1E4775]"
+                                  } disabled:opacity-50 disabled:cursor-not-allowed`}
+                                >
                                           Request Withdraw
                                           {getRequestStatusText(request)}
-                                        </button>
-                                      </div>
+                                </button>
+                              </div>
 
                                       {/* Window status banner */}
                                       {(() => {
@@ -10072,48 +10072,48 @@ export const AnchorDepositWithdrawModal = ({
                                         return null;
                                       })()}
 
-                                      {/* Amount input - only show for immediate withdrawals */}
+                              {/* Amount input - only show for immediate withdrawals */}
                                       {isImmediate && (
-                                        <div className="relative mt-2">
-                                          <input
-                                            type="text"
+                                <div className="relative mt-2">
+                                  <input
+                                    type="text"
                                             value={amountValue}
-                                            onChange={(e) =>
-                                              handlePositionAmountChange(
+                                    onChange={(e) =>
+                                      handlePositionAmountChange(
                                                 modeKey as any,
-                                                e.target.value,
+                                        e.target.value,
                                                 immediateCap
-                                              )
-                                            }
-                                            placeholder="0.0"
-                                            className={`w-full h-10 px-3 pr-16 bg-white text-[#1E4775] border focus:ring-2 focus:outline-none text-sm font-mono ${
+                                      )
+                                    }
+                                    placeholder="0.0"
+                                    className={`w-full h-10 px-3 pr-16 bg-white text-[#1E4775] border focus:ring-2 focus:outline-none text-sm font-mono ${
                                               exceeds
-                                                ? "border-red-500 focus:border-red-500 focus:ring-red-200"
-                                                : "border-[#1E4775]/30 focus:border-[#1E4775] focus:ring-[#1E4775]/20"
-                                            }`}
-                                            disabled={isProcessing}
-                                          />
-                                          <button
-                                            onClick={() => {
-                                              setPositionAmounts((prev) => ({
-                                                ...prev,
+                                        ? "border-red-500 focus:border-red-500 focus:ring-red-200"
+                                        : "border-[#1E4775]/30 focus:border-[#1E4775] focus:ring-[#1E4775]/20"
+                                    }`}
+                                    disabled={isProcessing}
+                                  />
+                                  <button
+                                    onClick={() => {
+                                      setPositionAmounts((prev) => ({
+                                        ...prev,
                                                 [modeKey]: formatEther(
                                                   immediateCap
-                                                ),
-                                              }));
-                                            }}
-                                            className="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 text-xs bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white transition-colors disabled:bg-gray-300 disabled:text-gray-500 rounded-full"
+                                        ),
+                                      }));
+                                    }}
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 text-xs bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white transition-colors disabled:bg-gray-300 disabled:text-gray-500 rounded-full"
                                             disabled={
                                               isProcessing || immediateCap === 0n
                                             }
-                                          >
-                                            MAX
-                                          </button>
-                                        </div>
-                                      )}
+                                  >
+                                    MAX
+                                  </button>
+                                </div>
+                              )}
 
                                       {isImmediate && immediateCap === 0n && (
-                                        <p className="text-[10px] text-[#1E4775]/60 mt-1">
+                                <p className="text-[10px] text-[#1E4775]/60 mt-1">
                                           Early withdraw is temporarily unavailable:
                                           the pool is at its minimum total supply.
                                           Use Request (free) or wait for TVL to
@@ -10134,11 +10134,11 @@ export const AnchorDepositWithdrawModal = ({
                                             {window
                                               ? formatDuration(window[0])
                                               : "..."}{" "}
-                                            delay.
-                                          </p>
-                                        )}
-                                    </div>
-                                  )}
+                                  delay.
+                                </p>
+                          )}
+                        </div>
+                      )}
                                 </div>
                               );
                             })}
@@ -10149,73 +10149,73 @@ export const AnchorDepositWithdrawModal = ({
 
                     {/* Wallet Position (ha tokens) - Only show if NOT"Withdraw only" */}
                     {!withdrawOnly && peggedBalance > 0n && (
-                      <div className="p-3 bg-[#17395F]/5 border border-[#17395F]/20">
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-3">
-                            <input
-                              type="checkbox"
+                        <div className="p-3 bg-[#17395F]/5 border border-[#17395F]/20">
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-3">
+                              <input
+                                type="checkbox"
                               checked={selectedPositions.wallet}
-                              onChange={(e) => {
-                                setSelectedPositions((prev) => ({
-                                  ...prev,
-                                  wallet: e.target.checked,
-                                }));
-                                if (!e.target.checked) {
-                                  setPositionAmounts((prev) => ({
+                                onChange={(e) => {
+                                  setSelectedPositions((prev) => ({
                                     ...prev,
-                                    wallet: "",
+                                  wallet: e.target.checked,
                                   }));
-                                }
-                              }}
-                              disabled={isProcessing}
-                              className="w-5 h-5 text-[#1E4775] border-[#1E4775]/30 focus:ring-2 focus:ring-[#1E4775]/20 focus:ring-offset-0 cursor-pointer disabled:opacity-50"
-                            />
-                            <span className="text-sm font-medium text-[#1E4775]">
+                                  if (!e.target.checked) {
+                                    setPositionAmounts((prev) => ({
+                                      ...prev,
+                                    wallet: "",
+                                    }));
+                                  }
+                                }}
+                                disabled={isProcessing}
+                                className="w-5 h-5 text-[#1E4775] border-[#1E4775]/30 focus:ring-2 focus:ring-[#1E4775]/20 focus:ring-offset-0 cursor-pointer disabled:opacity-50"
+                              />
+                              <span className="text-sm font-medium text-[#1E4775]">
                               In Wallet
-                            </span>
-                          </div>
-                          <div className="text-sm text-[#1E4775]/70 font-mono">
+                              </span>
+                            </div>
+                            <div className="text-sm text-[#1E4775]/70 font-mono">
                             Balance: {formatTokenAmount18(peggedBalance)}
-                            {" "}
-                            {peggedTokenSymbol}
+                              {" "}
+                              {peggedTokenSymbol}
+                            </div>
                           </div>
-                        </div>
                         {selectedPositions.wallet && (
-                          <div className="relative mt-2">
-                            <input
-                              type="text"
+                                <div className="relative mt-2">
+                                  <input
+                                    type="text"
                               value={positionAmounts.wallet}
-                              onChange={(e) =>
-                                handlePositionAmountChange(
+                                    onChange={(e) =>
+                                      handlePositionAmountChange(
                                   "wallet",
-                                  e.target.value,
+                                        e.target.value,
                                   peggedBalance
-                                )
-                              }
-                              placeholder="0.0"
-                              className={`w-full h-10 px-3 pr-16 bg-white text-[#1E4775] border focus:ring-2 focus:outline-none text-sm font-mono ${
+                                      )
+                                    }
+                                    placeholder="0.0"
+                                    className={`w-full h-10 px-3 pr-16 bg-white text-[#1E4775] border focus:ring-2 focus:outline-none text-sm font-mono ${
                                 positionExceedsBalance.wallet
-                                  ? "border-red-500 focus:border-red-500 focus:ring-red-200"
-                                  : "border-[#1E4775]/30 focus:border-[#1E4775] focus:ring-[#1E4775]/20"
-                              }`}
-                              disabled={isProcessing}
-                            />
-                            <button
-                              onClick={() => {
-                                setPositionAmounts((prev) => ({
-                                  ...prev,
+                                        ? "border-red-500 focus:border-red-500 focus:ring-red-200"
+                                        : "border-[#1E4775]/30 focus:border-[#1E4775] focus:ring-[#1E4775]/20"
+                                    }`}
+                                    disabled={isProcessing}
+                                  />
+                                  <button
+                                    onClick={() => {
+                                      setPositionAmounts((prev) => ({
+                                        ...prev,
                                   wallet: formatEther(peggedBalance),
-                                }));
-                              }}
-                              className="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 text-xs bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white transition-colors disabled:bg-gray-300 disabled:text-gray-500 rounded-full"
-                              disabled={isProcessing}
-                            >
-                              MAX
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    )}
+                                      }));
+                                    }}
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 text-xs bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white transition-colors disabled:bg-gray-300 disabled:text-gray-500 rounded-full"
+                                    disabled={isProcessing}
+                                  >
+                                    MAX
+                                  </button>
+                                </div>
+                          )}
+                        </div>
+                      )}
 
                     {/* Pool position controls are now rendered inline above */}
 
@@ -10443,7 +10443,7 @@ export const AnchorDepositWithdrawModal = ({
                           )
                         ).map((symbol) => (
                           <option key={symbol} value={symbol}>
-                            {symbol} -{""}
+                            {symbol} -{" "}
                             {marketsForToken.find(
                               ({ market: m }) =>
                                 m?.collateral?.symbol === symbol
@@ -10523,11 +10523,11 @@ export const AnchorDepositWithdrawModal = ({
                             activeTab === "deposit" &&
                             depositInStabilityPool && (
                               <div className="mt-2 text-xs text-[#1E4775]/60">
-                                Deposited to:{""}
+                                Deposited to:{" "}
                                 {bestPoolType === "collateral"
                                   ? "Collateral"
                                   : "Sail"}
-                                {""}
+                                {" "}
                                 pool (optimized for best yield)
                               </div>
                             )}
@@ -10664,7 +10664,7 @@ export const AnchorDepositWithdrawModal = ({
                                     <span className="font-bold font-mono text-[#1E4775]">
                                       {fee.feePercent.toFixed(2)}% (
                                       {formatEther(fee.amount)}
-                                      {""}
+                                      {" "}
                                       {peggedTokenSymbol})
                                     </span>
                                   </div>
@@ -10717,13 +10717,13 @@ export const AnchorDepositWithdrawModal = ({
                   depositInStabilityPool && (
                     <div className="mt-1.5 p-2 bg-[rgb(var(--surface-selected-rgb))]/30 border border-[rgb(var(--surface-selected-border-rgb))]/50">
                       <p className="text-xs text-[#1E4775]/70">
-                        Optimized for best yield: Depositing to{""}
+                        Optimized for best yield: Depositing to{" "}
                         <span className="font-semibold">
                           {bestPoolType === "collateral"
                             ? "Collateral"
                             : "Sail"}
                         </span>
-                        {""}
+                        {" "}
                         pool
                       </p>
                     </div>
@@ -10887,12 +10887,12 @@ export const AnchorDepositWithdrawModal = ({
                                 <span className="font-semibold">
                                   Collateral stability pool
                                 </span>
-                                {""}
-                                converts anchor tokens to{""}
+                                {" "}
+                                converts anchor tokens to{" "}
                                 <span className="font-semibold">
                                   market collateral
                                 </span>
-                                {""}
+                                {" "}
                                 at market rates when the market reaches its
                                 minimum collateral ratio.
                               </>
@@ -10901,12 +10901,12 @@ export const AnchorDepositWithdrawModal = ({
                                 <span className="font-semibold">
                                   Sail stability pool
                                 </span>
-                                {""}
-                                converts anchor tokens to{""}
+                                {" "}
+                                converts anchor tokens to{" "}
                                 <span className="font-semibold">
                                   Sail tokens
                                 </span>
-                                {""}
+                                {" "}
                                 at market rates when the market reaches its
                                 minimum collateral ratio.
                               </>
@@ -10981,12 +10981,12 @@ export const AnchorDepositWithdrawModal = ({
                             <span className="font-semibold">
                               Collateral stability pool
                             </span>
-                            {""}
-                            converts anchor tokens to{""}
+                            {" "}
+                            converts anchor tokens to{" "}
                             <span className="font-semibold">
                               market collateral
                             </span>
-                            {""}
+                            {" "}
                             at market rates when the market reaches its minimum
                             collateral ratio.
                           </>
@@ -10995,10 +10995,10 @@ export const AnchorDepositWithdrawModal = ({
                             <span className="font-semibold">
                               Sail stability pool
                             </span>
-                            {""}
-                            converts anchor tokens to{""}
+                            {" "}
+                            converts anchor tokens to{" "}
                             <span className="font-semibold">Sail tokens</span>
-                            {""}
+                            {" "}
                             at market rates when the market reaches its minimum
                             collateral ratio.
                           </>
@@ -11070,7 +11070,7 @@ export const AnchorDepositWithdrawModal = ({
 
                 {txHash && (
                   <div className="text-xs text-center text-[#1E4775]/70">
-                    Tx:{""}
+                    Tx:{" "}
                     <a
                       href={`https://etherscan.io/tx/${txHash}`}
                       target="_blank"
@@ -11084,13 +11084,13 @@ export const AnchorDepositWithdrawModal = ({
 
                 {step === "success" && (
                   <div className="p-3 bg-[rgb(var(--surface-selected-rgb))]/20 border border-[rgb(var(--surface-selected-border-rgb))]/30 text-[#1E4775] text-sm text-center">
-                    ✅{""}
+                    ✅{" "}
                     {activeTab === "deposit"
                       ? "Mint"
                       : activeTab === "withdraw"
                       ? "Withdraw"
                       : "Redeem"}
-                    {""}
+                    {" "}
                     successful!
                   </div>
                 )}

@@ -75,9 +75,9 @@ export default async function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
  <body
- className={`antialiased font-sans bg-[#1E4775] text-white relative overflow-x-hidden`}
+ className={`antialiased font-sans bg-[#1E4775] text-white relative overflow-x-hidden min-h-screen flex flex-col`}
  >
- <div className="relative z-10">
+ <div className="relative z-10 flex min-h-screen flex-col">
  <ContextProvider cookies={cookies}>
  <Navigation />
  <FadeContent
@@ -85,9 +85,51 @@ export default async function RootLayout({
  duration={500}
  easing="ease-out"
  initialOpacity={0}
+ className="flex-1"
  >
  {children}
  </FadeContent>
+ <footer className="mt-8 border-t border-white/20">
+   <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+     <div className="flex justify-center mb-4">
+       <a
+         href="https://www.harborfinance.io/#:~:text=and%20many%20more.-,View%20audit%20report,-Banking%20and%20Crypto"
+         target="_blank"
+         rel="noopener noreferrer"
+         className="inline-flex items-center rounded-full bg-[#FF8A7A] px-3 py-1 text-xs font-semibold text-white hover:bg-[#E07A6A] transition-colors"
+       >
+         Audited by Sherlock
+       </a>
+     </div>
+
+     <div className="flex flex-col sm:flex-row items-center justify-center gap-4 text-sm text-white/70">
+       <a
+         href="https://docs.harborfinance.io/"
+         target="_blank"
+         rel="noopener noreferrer"
+         className="hover:text-white transition-colors"
+       >
+         Docs
+       </a>
+       <a
+         href="https://discord.com/invite/BW3P62vJXT"
+         target="_blank"
+         rel="noopener noreferrer"
+         className="hover:text-white transition-colors"
+       >
+         Discord
+       </a>
+       <a
+         href="https://x.com/0xHarborFi"
+         target="_blank"
+         rel="noopener noreferrer"
+         className="hover:text-white transition-colors"
+       >
+         X
+       </a>
+     </div>
+   </div>
+ </footer>
  </ContextProvider>
  </div>
  </body>

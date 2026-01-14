@@ -516,7 +516,7 @@ export default function GenesisIndexPage() {
     initialTab?: "deposit" | "withdraw";
   } | null>(null);
   const [now, setNow] = useState(new Date());
-  const [expandedMarket, setExpandedMarket] = useState<string | null>(null);
+  const [expandedMarkets, setExpandedMarkets] = useState<string[]>([]);
   const [mounted, setMounted] = useState(false);
   const [claimingMarket, setClaimingMarket] = useState<string | null>(null);
   const [claimModal, setClaimModal] = useState<{
@@ -1041,124 +1041,62 @@ export default function GenesisIndexPage() {
       <main className="container mx-auto px-4 sm:px-10 pb-6">
         {/* Header */}
         <div className="mb-2">
-          {/* Title Row with Social Buttons */}
-          <div className="p-4 flex items-center justify-between mb-0">
-            <div className="hidden md:block w-[120px]" /> {/* Spacer for centering */}
-            <h1 className="font-bold font-mono text-white text-5xl sm:text-6xl md:text-7xl text-center flex-1">
+          {/* Title Row */}
+          <div className="p-4 flex items-center justify-center mb-0">
+            <h1 className="font-bold font-mono text-white text-5xl sm:text-6xl md:text-7xl text-center">
               Maiden Voyage
             </h1>
-            {/* Compact Social Buttons */}
-            <div className="hidden md:flex flex-col items-end gap-2 w-[120px]">
-              <div className="text-white text-xs font-medium whitespace-nowrap">
-                follow to stay up to date
-              </div>
-              <div className="flex items-center justify-center gap-2 w-full">
-                <a
-                  href="https://x.com/0xharborfi"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="p-2 bg-black hover:bg-gray-800 text-white  transition-colors"
-                  title="Follow @0xharborfi on X"
-                >
-                  <svg
-                    className="w-4 h-4"
-                    viewBox="0 0 24 24"
-                    fill="currentColor"
-                  >
-                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-                  </svg>
-                </a>
-                <a
-                  href="https://discord.com/invite/BW3P62vJXT"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="p-2 bg-[#5865F2] hover:bg-[#4752C4] text-white  transition-colors"
-                  title="Join Discord"
-                >
-                  <svg
-                    className="w-4 h-4"
-                    viewBox="0 0 24 24"
-                    fill="currentColor"
-                  >
-                    <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z" />
-                  </svg>
-                </a>
-              </div>
-            </div>
           </div>
 
           {/* Subheader */}
-          <div className="flex items-center justify-between mb-2 -mt-2">
-            <div className="hidden md:block w-[120px]" /> {/* Spacer matching header */}
-            <p className="text-white/80 text-lg text-center flex-1">
+          <div className="flex items-center justify-center mb-2 -mt-2">
+            <p className="text-white/80 text-lg text-center">
               Earn rewards for providing initial liquidity for new markets
             </p>
-            <div className="hidden md:block w-[120px]" /> {/* Spacer matching header */}
           </div>
 
           {/* Three Boxes */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 mb-2 relative">
             {/* Deposit Box */}
-            <div className="bg-[#17395F] p-4 sm:p-3 md:p-4 flex flex-col relative">
-              <div className="flex items-center justify-center mb-2">
-                <BanknotesIcon className="w-5 h-5 sm:w-4 sm:h-4 md:w-6 md:h-6 text-white mr-1.5 sm:mr-1 md:mr-2 flex-shrink-0" />
-                <h2 className="font-bold text-white text-lg sm:text-sm md:text-base lg:text-lg text-center">
-                  Deposit
-                </h2>
+            <div className="bg-black/[0.10] backdrop-blur-sm rounded-none overflow-hidden px-3 py-2 flex flex-col items-center justify-center text-center relative">
+              <div className="flex items-center justify-center gap-2">
+                <BanknotesIcon className="w-5 h-5 text-white" />
+                <h2 className="font-bold text-white text-base">Deposit</h2>
               </div>
-              <div className="flex-1 flex items-center">
-                <p className="text-sm sm:text-xs md:text-sm text-white/80 text-center w-full">
-                  Deposit{" "}
-                  <span className="font-semibold text-white">any token</span>{" "}
-                  via Velora
-                </p>
-              </div>
-              {/* Chevron pointing right, overlapping edge */}
-              <div className="hidden lg:block absolute right-0 top-1/2 transform translate-x-[62.5%] -translate-y-1/2 z-10">
-                <ChevronRightIcon className="w-12 h-12 text-[#FF8A7A] stroke-[3]" />
-              </div>
+              <p className="text-xs text-white/75 mt-1">
+                Deposit <span className="font-semibold text-white">any token</span>{" "}
+                via Velora
+              </p>
+              {/* Chevron removed */}
             </div>
 
             {/* Earn Box */}
-            <div className="bg-[#17395F] p-4 sm:p-3 md:p-4 flex flex-col relative">
-              <div className="flex items-center justify-center mb-2">
-                <CurrencyDollarIcon className="w-5 h-5 sm:w-4 sm:h-4 md:w-6 md:h-6 text-white mr-1.5 sm:mr-1 md:mr-2 flex-shrink-0" />
-                <h2 className="font-bold text-white text-lg sm:text-sm md:text-base lg:text-lg text-center">
-                  Earn Ledger Marks
-                </h2>
+            <div className="bg-black/[0.10] backdrop-blur-sm rounded-none overflow-hidden px-3 py-2 flex flex-col items-center justify-center text-center relative">
+              <div className="flex items-center justify-center gap-2">
+                <CurrencyDollarIcon className="w-5 h-5 text-white" />
+                <h2 className="font-bold text-white text-base">Earn Ledger Marks</h2>
               </div>
-              <div className="flex-1 flex items-center justify-center">
-                <div className="text-sm sm:text-xs md:text-sm text-white/80 text-center leading-relaxed space-y-1 w-full">
-                  <div className="text-center">
-                    and share up to 10% of the token supply.
-                  </div>
-                  <div className="text-xs text-white/60 mt-1 text-center">
-                    (TGE 12 weeks after launch)
-                </div>
-                </div>
-              </div>
-              {/* Chevron pointing right, overlapping edge */}
-              <div className="hidden lg:block absolute right-0 top-1/2 transform translate-x-[62.5%] -translate-y-1/2 z-10">
-                <ChevronRightIcon className="w-12 h-12 text-[#FF8A7A] stroke-[3]" />
-              </div>
+              <p className="text-xs text-white/75 mt-1">
+                and share up to 10% of the token supply.
+              </p>
+              <p className="text-xs text-white/60 mt-1">
+                (TGE 12 weeks after launch)
+              </p>
+              {/* Chevron removed */}
             </div>
 
             {/* After Maiden Voyage Box */}
-            <div className="bg-[#17395F] p-4 sm:p-3 md:p-4 flex flex-col relative">
-              <div className="flex items-center justify-center mb-2">
-                <ArrowPathIcon className="w-5 h-5 sm:w-4 sm:h-4 md:w-6 md:h-6 text-white mr-1.5 sm:mr-1 md:mr-2 flex-shrink-0" />
-                <h2 className="font-bold text-white text-lg sm:text-sm md:text-base lg:text-lg text-center">
-                  After Maiden Voyage
-                </h2>
+            <div className="bg-black/[0.10] backdrop-blur-sm rounded-none overflow-hidden px-3 py-2 flex flex-col items-center justify-center text-center relative">
+              <div className="flex items-center justify-center gap-2">
+                <ArrowPathIcon className="w-5 h-5 text-white" />
+                <h2 className="font-bold text-white text-base">After Maiden Voyage</h2>
               </div>
-              <div className="flex-1 flex flex-col justify-between">
-                <p className="text-sm sm:text-xs md:text-sm text-white/80 text-center mb-1">
-                  Claim ha + hs tokens. Value = deposit value.
-                </p>
-                <p className="text-sm sm:text-xs md:text-sm text-white/80 text-center font-semibold">
-                  Earn real yield and more marks!
-                </p>
-              </div>
+              <p className="text-xs text-white/75 mt-1">
+                Claim ha + hs tokens. Value = deposit value.
+              </p>
+              <p className="text-xs text-white/75 mt-1 font-semibold">
+                Earn real yield and more marks!
+              </p>
             </div>
 
           </div>
@@ -1379,167 +1317,141 @@ export default function GenesisIndexPage() {
           }
 
           return (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2 mb-2">
-              {/* Header Box */}
-              <div className="bg-[#FF8A7A] p-3 flex items-center justify-center gap-2 sm:col-span-2 md:col-span-1">
-                <h2 className="font-bold font-mono text-white text-2xl text-center">
-                  Ledger Marks
-                </h2>
-                <InfoTooltip
-                  label={
-                    <div className="space-y-3">
-                      <div>
-                        <h3 className="font-bold text-lg mb-2">Ledger Marks</h3>
-                        <p className="text-white/90 leading-relaxed">
-                          A ledger is both a record of truth and a core DeFi
-                          symbol — and a mark is what every sailor leaves behind
-                          on a voyage.
-                        </p>
-                      </div>
-
-                      <div className="border-t border-white/20 pt-3">
-                        <p className="text-white/90 leading-relaxed mb-2">
-                          Each Ledger Mark is proof that you were here early,
-                          helping stabilize the first Harbor markets and guide
-                          them through calm launch conditions.
-                        </p>
-                      </div>
-
-                      <div className="space-y-2">
-                        <div className="flex items-start gap-2">
-                          <span className="text-white/70 mt-0.5">•</span>
-                          <p className="text-white/90 leading-relaxed">
-                            The more you contribute, the deeper your mark on the
-                            ledger.
-                          </p>
+            <div className="mb-2">
+              <div className="bg-black/30 backdrop-blur-sm rounded-none overflow-hidden border border-white/50">
+                <div className="grid grid-cols-1 md:grid-cols-4 divide-y divide-white/15 md:divide-y-0 md:divide-x md:divide-white/20">
+                  {/* Header */}
+                  <div className="p-3 flex items-center justify-center gap-2">
+                    <h2 className="font-bold font-mono text-white text-lg leading-tight text-center">
+                      Ledger Marks
+                    </h2>
+                    <InfoTooltip
+                      label={
+                        <div className="space-y-3">
+                          <div>
+                            <h3 className="font-bold text-lg mb-2">Ledger Marks</h3>
+                            <p className="text-white/90 leading-relaxed">
+                              A ledger is both a record of truth and a core DeFi
+                              symbol — and a mark is what every sailor leaves behind
+                              on a voyage.
+                            </p>
+                          </div>
+                          <div className="border-t border-white/20 pt-3">
+                            <p className="text-white/90 leading-relaxed mb-2">
+                              Each Ledger Mark is proof that you were here early,
+                              helping stabilize the first Harbor markets and guide
+                              them through calm launch conditions.
+                            </p>
+                          </div>
+                          <div className="space-y-2">
+                            <div className="flex items-start gap-2">
+                              <span className="text-white/70 mt-0.5">•</span>
+                              <p className="text-white/90 leading-relaxed">
+                                The more you contribute, the deeper your mark on the
+                                ledger.
+                              </p>
+                            </div>
+                            <div className="flex items-start gap-2">
+                              <span className="text-white/70 mt-0.5">•</span>
+                              <p className="text-white/90 leading-relaxed">
+                                When $TIDE surfaces, these marks will convert into
+                                your share of rewards and governance power.
+                              </p>
+                            </div>
+                          </div>
+                          <div className="border-t border-white/20 pt-3">
+                            <p className="text-white/80 italic leading-relaxed">
+                              Think of them as a record of your journey — every
+                              mark, a line in Harbor's logbook.
+                            </p>
+                          </div>
                         </div>
-                        <div className="flex items-start gap-2">
-                          <span className="text-white/70 mt-0.5">•</span>
-                          <p className="text-white/90 leading-relaxed">
-                            When $TIDE surfaces, these marks will convert into
-                            your share of rewards and governance power.
-                          </p>
-                        </div>
-                      </div>
+                      }
+                      side="right"
+                    />
+                  </div>
 
-                      <div className="border-t border-white/20 pt-3">
-                        <p className="text-white/80 italic leading-relaxed">
-                          Think of them as a record of your journey — every
-                          mark, a line in Harbor's logbook.
-                        </p>
-                      </div>
+                  <div className="p-3 flex flex-col items-center justify-center text-center">
+                    <div className="text-[11px] text-white/80 uppercase tracking-widest">
+                      Current Maiden Voyage Marks
                     </div>
-                  }
-                  side="right"
-                >
-                  <QuestionMarkCircleIcon className="w-5 h-5 text-white cursor-help" />
-                </InfoTooltip>
-              </div>
+                    <div className="text-sm font-semibold text-white font-mono mt-1">
+                      {!mounted || isLoadingMarks ? (
+                        <span className="text-white/50">-</span>
+                      ) : totalCurrentMarks > 0 ? (
+                        totalCurrentMarks.toLocaleString(undefined, {
+                          minimumFractionDigits: totalCurrentMarks < 100 ? 2 : 0,
+                          maximumFractionDigits: totalCurrentMarks < 100 ? 2 : 0,
+                        })
+                      ) : (
+                        "0"
+                      )}
+                    </div>
+                  </div>
 
-              {/* Current Marks Box */}
-              <div className="bg-[#17395F] p-3 flex flex-col">
-                <div className="text-xs font-medium text-white/70 uppercase tracking-wider mb-0.5 text-center">
-                  Current Maiden Voyage Marks
-                </div>
-                <div className="text-sm font-bold text-white font-mono text-center flex-1 flex items-center justify-center">
-                  {!mounted || isLoadingMarks ? (
-                    <span className="text-white/50">-</span>
-                  ) : totalCurrentMarks > 0 ? (
-                    totalCurrentMarks.toLocaleString(undefined, {
-                      minimumFractionDigits: totalCurrentMarks < 100 ? 2 : 0,
-                      maximumFractionDigits: totalCurrentMarks < 100 ? 2 : 0,
-                    })
-                  ) : (
-                    "0"
-                  )}
-                </div>
-              </div>
+                  <div className="p-3 flex flex-col items-center justify-center text-center">
+                    <div className="text-[11px] text-white/80 uppercase tracking-widest">
+                      Marks per Day
+                    </div>
+                    <div className="text-sm font-semibold text-white font-mono mt-1">
+                      {!mounted || isLoadingMarks ? (
+                        <span className="text-white/50">-</span>
+                      ) : totalMarksPerDay > 0 ? (
+                        totalMarksPerDay.toLocaleString(undefined, {
+                          maximumFractionDigits: 2,
+                        })
+                      ) : (
+                        "0"
+                      )}
+                    </div>
+                  </div>
 
-              {/* Marks per Day Box */}
-              <div className="bg-[#17395F] p-3 flex flex-col">
-                <div className="text-xs font-medium text-white/70 uppercase tracking-wider mb-0.5 text-center">
-                  Marks per Day
-                </div>
-                <div className="text-sm font-bold text-white font-mono text-center flex-1 flex items-center justify-center gap-1">
-                  {!mounted || isLoadingMarks ? (
-                    <span className="text-white/50">-</span>
-                  ) : totalMarksPerDay > 0 ? (
-                    <>
-                      {totalMarksPerDay.toLocaleString(undefined, {
-                      maximumFractionDigits: 2,
-                      })}
-                      <span className="text-xs text-white/70 font-medium">
-                        {" "}(<span>10</span>
-                        <Image
-                          src="/icons/marks.png"
-                          alt="Marks"
-                          width={14}
-                          height={14}
-                          className="flex-shrink-0 inline-block mx-0.5"
-                        />
-                        <span>/$/day</span>)
-                      </span>
-                    </>
-                  ) : (
-                    "0"
-                  )}
-                </div>
-              </div>
-
-              {/* Bonus at End of Genesis Marks Box */}
-              <div className="bg-[#17395F] p-3 flex flex-col">
-                <div className="text-xs font-medium text-white/70 uppercase tracking-wider mb-0.5 text-center flex items-center justify-center gap-1">
-                  Bonus at the end of Maiden Voyage
-                  {anyInProcessing && (
-                    <SimpleTooltip label="Bonus marks will be applied once processing is complete and tokens are claimable.">
-                      <ClockIcon className="w-3 h-3 text-yellow-400 cursor-help" />
-                    </SimpleTooltip>
-                  )}
-                </div>
-                <div className="text-sm font-bold text-white font-mono text-center flex-1 flex items-center justify-center min-h-[1.5rem] gap-1">
-                  {!mounted || isLoadingMarks ? (
-                    <span className="text-white/50">-</span>
-                  ) : allContractsEnded && isConnected && totalCurrentMarks > 0 ? (
-                    <span className="text-white/50">Applied</span>
-                  ) : totalBonusAtEnd > 0 ? (
-                    <>
-                      {totalBonusAtEnd.toLocaleString(undefined, {
-                      maximumFractionDigits: 0,
-                      })}
-                      <span className="text-xs text-white/70 font-medium">
-                        {" "}(100{" "}
-                        <Image
-                          src="/icons/marks.png"
-                          alt="Marks"
-                          width={14}
-                          height={14}
-                          className="flex-shrink-0 inline-block mx-0.5"
-                        />
-                        <span>/$</span>)
-                      </span>
-                    </>
-                  ) : (
-                    "0"
-                  )}
-                </div>
-                
-                {/* Early Deposit Bonus - shown in small highlighted text */}
-                {mounted && !isLoadingMarks && (
-                  <>
-                    {!allContractsEnded && totalEarlyBonusEstimate > 0 && (
-                      <div className="text-xs text-green-300 mt-1 text-center bg-green-900/30 border border-green-500/30 px-2 py-0.5">
-                        Early deposit bonus: +{totalEarlyBonusEstimate.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                      </div>
+                  <div className="p-3 flex flex-col items-center justify-center text-center">
+                    <div className="text-[11px] text-white/80 uppercase tracking-widest flex items-center justify-center gap-1">
+                      Bonus at end
+                      {anyInProcessing && (
+                        <SimpleTooltip label="Bonus marks will be applied once processing is complete and tokens are claimable.">
+                          <ClockIcon className="w-3 h-3 text-yellow-400 cursor-help" />
+                        </SimpleTooltip>
+                      )}
+                    </div>
+                    <div className="text-sm font-semibold text-white font-mono mt-1">
+                      {!mounted || isLoadingMarks ? (
+                        <span className="text-white/50">-</span>
+                      ) : allContractsEnded && isConnected && totalCurrentMarks > 0 ? (
+                        <span className="text-white/60">Applied</span>
+                      ) : totalBonusAtEnd > 0 ? (
+                        totalBonusAtEnd.toLocaleString(undefined, {
+                          maximumFractionDigits: 0,
+                        })
+                      ) : (
+                        "0"
+                      )}
+                    </div>
+                    {mounted && !isLoadingMarks && (
+                      <>
+                        {!allContractsEnded && totalEarlyBonusEstimate > 0 && (
+                          <div className="text-[10px] text-green-300 mt-0.5">
+                            Early deposit bonus: +
+                            {totalEarlyBonusEstimate.toLocaleString(undefined, {
+                              maximumFractionDigits: 0,
+                            })}
+                          </div>
+                        )}
+                        {allContractsEnded && totalEarlyBonusMarks > 0 && (
+                          <div className="text-[10px] text-green-300 mt-0.5">
+                            Early deposit bonus:{" "}
+                            {totalEarlyBonusMarks.toLocaleString(undefined, {
+                              maximumFractionDigits: 0,
+                            })}
+                          </div>
+                        )}
+                      </>
                     )}
-                    {allContractsEnded && totalEarlyBonusMarks > 0 && (
-                      <div className="text-xs text-green-300 mt-1 text-center bg-green-900/30 px-2 py-0.5">
-                        Early deposit bonus: {totalEarlyBonusMarks.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                      </div>
-                    )}
-                  </>
-                )}
+                  </div>
+                </div>
               </div>
-            </div>
+              </div>
           );
         })()}
 
@@ -2430,7 +2342,7 @@ export default function GenesisIndexPage() {
                   }
                 }
 
-                const isExpanded = expandedMarket === id;
+                const isExpanded = expandedMarkets.includes(id);
                 const acceptedAssets = getAcceptedDepositAssets(mkt);
 
                 // Show all markets (no skipping)
@@ -2444,7 +2356,11 @@ export default function GenesisIndexPage() {
                           ? "bg-[rgb(var(--surface-selected-rgb))]"
                           : "bg-white hover:bg-[rgb(var(--surface-selected-rgb))]"
                       }`}
-                      onClick={() => setExpandedMarket(isExpanded ? null : id)}
+                      onClick={() =>
+                        setExpandedMarkets((prev) =>
+                          prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+                        )
+                      }
                     >
                       {/* Mobile Card Layout (< md) */}
                       <div className="md:hidden space-y-1.5">

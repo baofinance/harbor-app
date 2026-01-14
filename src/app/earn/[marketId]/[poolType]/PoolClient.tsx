@@ -722,7 +722,7 @@ export default function PoolClient({ marketId, poolType }: PoolClientProps) {
             </div>
             <div className="text-white font-mono text-lg">
               {formatAmount(poolWithData?.userDeposit)}
-              {""}
+              {" "}
               <span className="text-white/70">{tokenSymbol}</span>
             </div>
           </div>

@@ -282,7 +282,7 @@ function GenesisActionTabs({
  :"-"}
  </div>
  <div>
- Your share:{""}
+ Your share:{" "}
  {roiBreakdown
  ? roiBreakdown.userSharePct.toFixed(2)
  :"-"}
@@ -367,7 +367,7 @@ function GenesisActionTabs({
  <div className="flex items-center justify-between">
  <div className="flex items-center gap-2">
  <span className="text-sm text-white font-mono">
- {formatAmount(claimableLeveraged)}{""}
+ {formatAmount(claimableLeveraged)}{" "}
  {leveragedTokenSymbol}
  </span>
  <Image
@@ -911,7 +911,7 @@ export default function GenesisMarketPage({ params }: PageProps) {
  )}
  {claimTx && (
  <p className="mt-2 text-xs text-white/50">
- Tx:{""}
+ Tx:{" "}
  <a
  href={`https://etherscan.io/tx/${claimTx}`}
  target="_blank"

@@ -170,7 +170,7 @@ export const AnchorClaimAllModal = ({
  {amount.toLocaleString(undefined, {
  maximumFractionDigits: amount >= 1 ? 2 : 6,
  minimumFractionDigits: 0,
- })}{""}
+              })}{" "}
  {token.symbol}
  </div>
  );

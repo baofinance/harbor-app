@@ -24,7 +24,7 @@ import {
   PriceTracker,
   MinterHourlyTracker,
 } from "../generated/schema";
-import { runDailyMarksUpdate } from "./dailyMarksUpdate";
+import { runDailyMarksUpdate, runHourlySailMarksUpdate } from "./dailyMarksUpdate";
 
 const ZERO_BI = BigInt.fromI32(0);
 const ZERO_BD = BigDecimal.fromString("0");
@@ -330,6 +330,8 @@ function createGenesisLot(
 export function handleBlock(block: ethereum.Block): void {
   // Daily marks snapshot update (price-at-the-time accumulation)
   runDailyMarksUpdate(block);
+  // Hourly sail marks refresh (ensures promo/rate changes reflect without user tx)
+  runHourlySailMarksUpdate(block);
 
   const minterAddress = dataSource.address();
   const hourTs = block.timestamp.div(HOUR_SECONDS).times(HOUR_SECONDS);
