@@ -7,10 +7,12 @@ export function MarksBoostBadge({
   multiplier,
   endTimestamp,
   className = "",
+  infoText,
 }: {
-  multiplier: number;
+  multiplier?: number;
   endTimestamp?: number; // unix seconds
   className?: string;
+  infoText?: string; // Optional info text when no boost (e.g., "1 mark / dollar / day")
 }) {
   const timeText = useMemo(() => {
     if (!endTimestamp) return null;
@@ -33,7 +35,14 @@ export function MarksBoostBadge({
       ].join(" ")}
     >
       <span>
-        <span className="font-bold">Qualify for a $TIDE airdrop:</span> Earn Ledger Marks for all positions • <span className="font-bold">{multiplier}x marks boost</span> {timeText ? `• ${timeText}` : ""}
+        <span className="font-bold">Qualify for a $TIDE airdrop:</span> Earn Ledger Marks for all positions
+        {multiplier ? (
+          <>
+            {" "}• <span className="font-bold">{multiplier}x marks boost</span> {timeText ? `• ${timeText}` : ""}
+          </>
+        ) : infoText ? (
+          <> • {infoText}</>
+        ) : null}
       </span>
     </div>
   );

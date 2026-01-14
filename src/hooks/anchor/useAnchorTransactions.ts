@@ -718,11 +718,11 @@ export function useAnchorTransactions({
 
         marketWithRewards = market;
         poolTypeWithRewards = poolType;
-        totalRewardAmount = poolReward.rewardTokens.reduce(
-          (sum, rt) => sum + rt.claimable,
-          0n
-        );
-        break;
+          totalRewardAmount = poolReward.rewardTokens.reduce(
+            (sum, rt) => sum + rt.claimable,
+            0n
+          );
+          break;
       }
 
       if (!marketWithRewards) {

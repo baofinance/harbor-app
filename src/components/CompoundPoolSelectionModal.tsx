@@ -79,7 +79,7 @@ export const CompoundPoolSelectionModal = ({
      poolAddress: addr as `0x${string}`,
      percentage: percentages.get(addr) || 0,
    }));
-   onConfirm(allocationArray);
+ onConfirm(allocationArray);
  };
 
  const togglePool = (addr: string) => {
@@ -180,13 +180,13 @@ export const CompoundPoolSelectionModal = ({
                <div className="min-w-0">
                  <div className="font-semibold text-[#1E4775] truncate">
                    {p.name}
-                 </div>
+ </div>
                  <div className="text-xs text-[#1E4775]/70 mt-1">
                    APR: {p.apr !== undefined ? `${p.apr.toFixed(2)}%` : "—"}
                    {"  "}•{"  "}
                    TVL: {p.tvlUSD !== undefined ? formatCompactUSD(p.tvlUSD) : "—"}
-                 </div>
-               </div>
+ </div>
+ </div>
              </label>
 
              {showPct && (
@@ -200,18 +200,18 @@ export const CompoundPoolSelectionModal = ({
                    className="w-20 px-2 py-1 border border-[#1E4775]/30 text-[#1E4775] text-sm"
                  />
                  <span className="text-sm text-[#1E4775]/70">%</span>
-               </div>
-             )}
-           </div>
-         </div>
+ </div>
+ )}
+ </div>
+ </div>
        );
      })}
      {selected.size > 1 && (
-       <div className="text-xs text-[#1E4775]/70">
+ <div className="text-xs text-[#1E4775]/70">
          Total: {totalPct}% {pctError ? <span className="text-rose-600">({pctError})</span> : null}
-       </div>
-     )}
-   </div>
+ </div>
+ )}
+ </div>
  )}
 
  <div className="flex gap-2 pt-2">
