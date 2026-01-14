@@ -58,7 +58,8 @@ dataSources:
         - handler: handleBlock
           filter:
             kind: polling
-            every: 1000
+            every: 300
+            every: 300
       file: ./src/minterPnL.ts
   
   # Genesis - ETH/fxUSD market
