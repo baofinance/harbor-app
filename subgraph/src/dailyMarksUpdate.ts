@@ -10,6 +10,9 @@ const ONE_E18 = BigDecimal.fromString("1000000000000000000");
 const SECONDS_PER_DAY_BD = BigDecimal.fromString("86400");
 const DEFAULT_MARKS_PER_DOLLAR_PER_DAY = BigDecimal.fromString("1.0");
 const SAIL_PROMO_MULTIPLIER = BigDecimal.fromString("2.0"); // hsTokens: additional 2x promo (stackable with boost)
+// Promo starts at (new subgraph deploy time). This gate prevents backdating during reindex.
+// Update this constant when you redeploy a new promo start.
+const SAIL_PROMO_START_TIMESTAMP = BigInt.fromI32(1768355397);
 
 // Singleton key (we reuse PriceFeed as a lightweight singleton store)
 const LAST_DAILY_KEY = "lastDailyMarksUpdate";
@@ -121,7 +124,8 @@ function updateHsBalances(token: Address, now: BigInt, priceUsd: BigDecimal): vo
   const list = UserList.load((token as Bytes).toHexString());
   if (list == null) return;
   const boost = getActiveBoostMultiplier("sailToken", token as Bytes, now);
-  const baseMpd = DEFAULT_MARKS_PER_DOLLAR_PER_DAY.times(BigDecimal.fromString("5.0").times(SAIL_PROMO_MULTIPLIER));
+  const promo = now.ge(SAIL_PROMO_START_TIMESTAMP) ? SAIL_PROMO_MULTIPLIER : BigDecimal.fromString("1.0");
+  const baseMpd = DEFAULT_MARKS_PER_DOLLAR_PER_DAY.times(BigDecimal.fromString("5.0").times(promo));
   const mpd = baseMpd.times(boost);
   const users = list.users;
   for (let i = 0; i < users.length; i++) {

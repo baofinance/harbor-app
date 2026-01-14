@@ -33,6 +33,10 @@ import { accrueWithBoostWindow } from "./marksAccrual";
 const SECONDS_PER_DAY = BigDecimal.fromString("86400");
 const DEFAULT_MULTIPLIER = BigDecimal.fromString("5.0"); // 5x for sail tokens (default)
 const PROMO_MULTIPLIER = BigDecimal.fromString("2.0"); // Additional 2x promo (wallet hsTokens only)
+const ONE_BD = BigDecimal.fromString("1.0");
+// Promo starts at (new subgraph deploy time). This gate prevents backdating during reindex.
+// Update this constant when you redeploy a new promo start.
+const SAIL_PROMO_START_TIMESTAMP = BigInt.fromI32(1768355397);
 const DEFAULT_MARKS_PER_DOLLAR_PER_DAY = BigDecimal.fromString("1.0");
 const ONE_ETHER = BigDecimal.fromString("1000000000000000000");
 
@@ -172,7 +176,7 @@ function getSailTokenMultiplier(tokenAddress: Bytes, timestamp: BigInt): BigDeci
     multiplier.save();
   }
   // Promo is global for sail token WALLET positions only (hsTokens). Stacks on top of boost windows.
-  const promo = PROMO_MULTIPLIER;
+  const promo = timestamp.ge(SAIL_PROMO_START_TIMESTAMP) ? PROMO_MULTIPLIER : ONE_BD;
   const boost = getActiveBoostMultiplier("sailToken", tokenAddress, timestamp);
   return multiplier.multiplier.times(promo).times(boost);
 }
