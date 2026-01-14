@@ -140,15 +140,15 @@ export default function FlowPage() {
               </p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
-              <div className="bg-[#FF8A7A] p-4 sm:p-3 md:p-4 flex flex-col border border-[#1E4775]/10">
-                <div className="flex items-center justify-center mb-2">
-                  <HandRaisedIcon className="w-5 h-5 sm:w-4 sm:h-4 md:w-6 md:h-6 text-white mr-1.5 sm:mr-1 md:mr-2 flex-shrink-0" />
-                  <h2 className="font-bold text-white text-lg sm:text-sm md:text-base lg:text-lg text-center">
+              <div className="bg-black/[0.10] backdrop-blur-sm rounded-none overflow-hidden p-4 sm:p-3 md:p-4 flex flex-col">
+                <div className="flex items-center justify-center gap-2">
+                  <HandRaisedIcon className="w-5 h-5 text-white flex-shrink-0" />
+                  <h2 className="font-bold text-white text-base text-center">
                     Vote
                   </h2>
                 </div>
                 <div className="flex-1 flex items-center">
-                  <p className="text-sm sm:text-xs md:text-sm text-white/90 text-center w-full">
+                  <p className="text-xs text-white/75 text-center w-full mt-1">
                     Vote for the markets you want to see go live next
                   </p>
                 </div>

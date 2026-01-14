@@ -1474,131 +1474,73 @@ export default function SailPage() {
             {/* Five Boxes */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-2">
               {/* Mint Box */}
-              <div className="bg-[#17395F] p-4">
-                <div className="flex items-center justify-center mb-2">
-                  <BanknotesIcon className="w-6 h-6 text-white mr-2" />
-                  <h2 className="font-bold text-white text-lg text-center">
+              <div className="bg-black/[0.10] backdrop-blur-sm rounded-none overflow-hidden px-3 py-2">
+                <div className="flex items-center justify-center gap-2">
+                  <BanknotesIcon className="w-5 h-5 text-white" />
+                  <h2 className="font-bold text-white text-base text-center">
                     Mint
                   </h2>
                 </div>
-                <p className="text-sm text-white/80 text-center">
-                  Mint leveraged tokens with amplified exposure to price
-                  movements
+                <p className="text-xs text-white/75 text-center mt-1">
+                  Mint leveraged tokens with amplified exposure to price movements
                 </p>
               </div>
 
               {/* Leverage Box */}
-              <div className="bg-[#17395F] p-4">
-                <div className="flex items-center justify-center mb-2">
-                  <CurrencyDollarIcon className="w-6 h-6 text-white mr-2" />
-                  <h2 className="font-bold text-white text-lg text-center">
+              <div className="bg-black/[0.10] backdrop-blur-sm rounded-none overflow-hidden px-3 py-2">
+                <div className="flex items-center justify-center gap-2">
+                  <CurrencyDollarIcon className="w-5 h-5 text-white" />
+                  <h2 className="font-bold text-white text-base text-center">
                     No funding fees
                   </h2>
                 </div>
-                <p className="text-sm text-white/80 text-center">
+                <p className="text-xs text-white/75 text-center mt-1">
                   Funding fee free leverage
                 </p>
               </div>
 
               {/* Auto Rebalancing Box */}
-              <div className="bg-[#17395F] p-4">
-                <div className="flex items-center justify-center mb-2">
-                  <ShieldCheckIcon className="w-6 h-6 text-white mr-2" />
-                  <h2 className="font-bold text-white text-lg text-center">
+              <div className="bg-black/[0.10] backdrop-blur-sm rounded-none overflow-hidden px-3 py-2">
+                <div className="flex items-center justify-center gap-2">
+                  <ShieldCheckIcon className="w-5 h-5 text-white" />
+                  <h2 className="font-bold text-white text-base text-center">
                     Auto rebalancing
                   </h2>
                 </div>
-                <p className="text-sm text-white/80 text-center">
-                  Positions automatically rebalance to protect you from
-                  liquidation
+                <p className="text-xs text-white/75 text-center mt-1">
+                  Positions automatically rebalance to protect you from liquidation
                 </p>
               </div>
 
               {/* Ledger Marks Box */}
-              <div className="bg-[#17395F] p-4">
-                <div className="flex items-center justify-center mb-2">
-                  <StarIcon className="w-6 h-6 text-white mr-2" />
-                  <h2 className="font-bold text-white text-lg text-center">
+              <div className="bg-black/[0.10] backdrop-blur-sm rounded-none overflow-hidden px-3 py-2">
+                <div className="flex items-center justify-center gap-2">
+                  <StarIcon className="w-5 h-5 text-white" />
+                  <h2 className="font-bold text-white text-base text-center">
                     Ledger Marks
                   </h2>
                 </div>
-                <p className="text-sm text-white/80 text-center">
+                <p className="text-xs text-white/75 text-center mt-1">
                   Earn Ledger marks for deposits: 5 per dollar per day
                 </p>
               </div>
 
               {/* Redeem Box */}
-              <div className="bg-[#17395F] p-4">
-                <div className="flex items-center justify-center mb-2">
-                  <ArrowPathIcon className="w-6 h-6 text-white mr-2" />
-                  <h2 className="font-bold text-white text-lg text-center">
+              <div className="bg-black/[0.10] backdrop-blur-sm rounded-none overflow-hidden px-3 py-2">
+                <div className="flex items-center justify-center gap-2">
+                  <ArrowPathIcon className="w-5 h-5 text-white" />
+                  <h2 className="font-bold text-white text-base text-center">
                     Redeem
                   </h2>
                 </div>
-                <p className="text-sm text-white/80 text-center">
+                <p className="text-xs text-white/75 text-center mt-1">
                   Redeem sail tokens for collateral at any time
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Stats strip (user) */}
-          <div className="mb-2">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-              <div className="bg-[#17395F] p-4">
-                <div className="text-xs text-white/70 mb-1.5 text-center font-medium">
-                  Total Sail Positions
-                </div>
-                <div className="text-lg font-bold text-white font-mono text-center">
-                  ${sailUserStats.totalPositionsUSD.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                </div>
-              </div>
-              <div className="bg-[#17395F] p-4">
-                <div className="text-xs text-white/70 mb-1.5 text-center font-medium">
-                  Total PnL
-                </div>
-                {(() => {
-                  const pnl = sailPnLSummary.totalPnLUSD;
-                  const isPos = pnl >= 0;
-                  const pnlText = `${isPos ? "+" : "-"}$${Math.abs(pnl).toLocaleString(undefined, {
-                    maximumFractionDigits: 2,
-                  })}`;
-                  return (
-                    <>
-                      <div
-                        className={`text-lg font-bold font-mono text-center ${
-                          isPos ? "text-green-300" : "text-red-300"
-                        }`}
-                        title={sailPnLSummary.error ? sailPnLSummary.error : undefined}
-                      >
-                        {sailPnLSummary.isLoading
-                          ? "Loading..."
-                          : sailPnLSummary.error
-                          ? "-"
-                          : pnlText}
-                      </div>
-                      <div className="text-[10px] text-white/60 text-center mt-1">
-                        Realized + Unrealized
-                      </div>
-                    </>
-                  );
-                })()}
-              </div>
-              <div className="bg-[#17395F] p-4">
-                <div className="text-xs text-white/70 mb-1.5 text-center font-medium">
-                  Average Leverage
-                </div>
-                <div className="text-lg font-bold text-white font-mono text-center">
-                  {sailUserStats.totalPositionsUSD > 0
-                    ? `${sailUserStats.averageLeverage.toFixed(2)}x`
-                    : "-"}
-                </div>
-                <div className="text-[10px] text-white/60 text-center mt-1">
-                  Weighted by position size
-                </div>
-              </div>
-            </div>
-          </div>
+          {/* Stats strip (user) - hidden for now */}
 
           {/* Divider */}
           <div className="border-t border-white/10 my-2"></div>
@@ -1622,84 +1564,83 @@ export default function SailPage() {
             </div>
           )}
 
-          {/* Sail Marks Section */}
-          <div className="grid grid-cols-3 gap-2 mb-2">
-            {/* Header Box */}
-            <div className="bg-[#FF8A7A] p-3 flex items-center justify-center gap-2">
-              <h2 className="font-bold font-mono text-white text-2xl text-center">
-                Sail Marks
-              </h2>
-              <InfoTooltip
-                label={
-                  <div className="space-y-3">
-                    <div>
-                      <h3 className="font-bold text-lg mb-2">Sail Marks</h3>
-                      <p className="text-white/90 leading-relaxed">
-                        Earn marks for holding Sail tokens. Sail marks are
-                        earned at 1 mark per dollar per day (with a 5x
-                        multiplier).
-                      </p>
-                    </div>
-
-                    <div className="border-t border-white/20 pt-3">
-                      <p className="text-white/90 leading-relaxed mb-2">
-                        Sail marks track your contribution to the Harbor
-                        ecosystem through leveraged token positions.
-                      </p>
-                    </div>
-
-                    <div className="space-y-2">
-                      <div className="flex items-start gap-2">
-                        <span className="text-white/70 mt-0.5">•</span>
-                        <p className="text-white/90 leading-relaxed">
-                          The more Sail tokens you hold, the more marks you
-                          earn.
-                        </p>
+          {/* Sail Marks Bar (Anchor-rewards style) */}
+          <div className="mb-2">
+            <div className="bg-black/30 backdrop-blur-sm rounded-none overflow-hidden">
+              <div className="grid grid-cols-1 md:grid-cols-3 divide-y divide-white/15 md:divide-y-0 md:divide-x md:divide-white/20">
+                <div className="p-3 flex items-center justify-center gap-2">
+                  <h2 className="font-bold font-mono text-white text-lg leading-tight text-center">
+                    Sail Marks
+                  </h2>
+                  <InfoTooltip
+                    label={
+                      <div className="space-y-3">
+                        <div>
+                          <h3 className="font-bold text-lg mb-2">Sail Marks</h3>
+                          <p className="text-white/90 leading-relaxed">
+                            Earn marks for holding Sail tokens. Sail marks are
+                            earned at 1 mark per dollar per day (with a 5x
+                            multiplier).
+                          </p>
+                        </div>
+                        <div className="border-t border-white/20 pt-3">
+                          <p className="text-white/90 leading-relaxed mb-2">
+                            Sail marks track your contribution to the Harbor
+                            ecosystem through leveraged token positions.
+                          </p>
+                        </div>
+                        <div className="space-y-2">
+                          <div className="flex items-start gap-2">
+                            <span className="text-white/70 mt-0.5">•</span>
+                            <p className="text-white/90 leading-relaxed">
+                              The more Sail tokens you hold, the more marks you
+                              earn.
+                            </p>
+                          </div>
+                          <div className="flex items-start gap-2">
+                            <span className="text-white/70 mt-0.5">•</span>
+                            <p className="text-white/90 leading-relaxed">
+                              When $TIDE surfaces, these marks will convert into
+                              your share of rewards and governance power.
+                            </p>
+                          </div>
+                        </div>
                       </div>
-                      <div className="flex items-start gap-2">
-                        <span className="text-white/70 mt-0.5">•</span>
-                        <p className="text-white/90 leading-relaxed">
-                          When $TIDE surfaces, these marks will convert into
-                          your share of rewards and governance power.
-                        </p>
-                      </div>
-                    </div>
+                    }
+                    side="right"
+                  />
+                </div>
+
+                <div className="p-3 flex flex-col items-center justify-center text-center">
+                  <div className="text-[11px] text-white/80 uppercase tracking-widest">
+                    Current Sail Marks
                   </div>
-                }
-                side="right"
-              />
-            </div>
+                  <div className="text-sm font-semibold text-white font-mono mt-1">
+                    {isLoadingSailMarks
+                      ? "-"
+                      : totalSailMarks > 0
+                      ? totalSailMarks.toLocaleString(undefined, {
+                          minimumFractionDigits: totalSailMarks < 100 ? 2 : 0,
+                          maximumFractionDigits: totalSailMarks < 100 ? 2 : 0,
+                        })
+                      : "0"}
+                  </div>
+                </div>
 
-            {/* Current Sail Marks Box */}
-            <div className="bg-[#17395F] p-3">
-              <div className="text-xs text-white/70 mb-0.5 text-center">
-                Current Sail Marks
-              </div>
-              <div className="text-base font-bold text-white font-mono text-center">
-                {isLoadingSailMarks
-                  ? "-"
-                  : totalSailMarks > 0
-                  ? totalSailMarks.toLocaleString(undefined, {
-                      minimumFractionDigits: totalSailMarks < 100 ? 2 : 0,
-                      maximumFractionDigits: totalSailMarks < 100 ? 2 : 0,
-                    })
-                  : "0"}
-              </div>
-            </div>
-
-            {/* Sail Marks per Day Box */}
-            <div className="bg-[#17395F] p-3">
-              <div className="text-xs text-white/70 mb-0.5 text-center">
-                Sail Marks per Day
-              </div>
-              <div className="text-base font-bold text-white font-mono text-center">
-                {isLoadingSailMarks
-                  ? "-"
-                  : sailMarksPerDay > 0
-                  ? sailMarksPerDay.toLocaleString(undefined, {
-                      maximumFractionDigits: 2,
-                    })
-                  : "0"}
+                <div className="p-3 flex flex-col items-center justify-center text-center">
+                  <div className="text-[11px] text-white/80 uppercase tracking-widest">
+                    Sail Marks per Day
+                  </div>
+                  <div className="text-sm font-semibold text-white font-mono mt-1">
+                    {isLoadingSailMarks
+                      ? "-"
+                      : sailMarksPerDay > 0
+                      ? sailMarksPerDay.toLocaleString(undefined, {
+                          maximumFractionDigits: 2,
+                        })
+                      : "0"}
+                  </div>
+                </div>
               </div>
             </div>
           </div>

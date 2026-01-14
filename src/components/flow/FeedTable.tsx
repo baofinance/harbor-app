@@ -123,44 +123,44 @@ function FeedRow({
 }) {
   const network = feed.network;
   const baseAsset = feed.baseAsset;
-  const pair = parsePair(feed.label);
-  const status = feed.status || "available";
+        const pair = parsePair(feed.label);
+        const status = feed.status || "available";
   const feedId =
     canonicalizeFeedId(buildFeedId(network, feed.address)) ??
     buildFeedId(network, feed.address);
-  const totalPoints = votesTotals[feedId] ?? 0;
-  const myPoints = myAllocations[feedId] ?? 0;
+        const totalPoints = votesTotals[feedId] ?? 0;
+        const myPoints = myAllocations[feedId] ?? 0;
 
-  // Find the index in the original feeds array for this network and base asset
-  const networkFeeds = feedsConfig[network as keyof typeof feedsConfig];
+        // Find the index in the original feeds array for this network and base asset
+        const networkFeeds = feedsConfig[network as keyof typeof feedsConfig];
   const baseAssetFeeds = networkFeeds?.[baseAsset as keyof typeof networkFeeds];
-  const feedIndex = baseAssetFeeds
-    ? baseAssetFeeds.findIndex((f: any) => f.address === feed.address)
-    : -1;
+        const feedIndex = baseAssetFeeds
+          ? baseAssetFeeds.findIndex((f: any) => f.address === feed.address)
+          : -1;
 
-  const isFeedExpanded =
-    expanded?.network === network &&
-    expanded?.token === baseAsset &&
-    expanded?.feedIndex === feedIndex;
+        const isFeedExpanded =
+          expanded?.network === network &&
+          expanded?.token === baseAsset &&
+          expanded?.feedIndex === feedIndex;
 
   const marketId = getMarketIdFromFeedLabel(feed.label);
   const isActive = status === "active" && marketId !== null;
 
-  return (
+        return (
     <div className="space-y-2">
-      {/* Feed card (like Anchor/Sail market bars) */}
-      <div
-        className={`border border-[#1E4775]/10 transition-colors cursor-pointer ${
-          isFeedExpanded
-            ? "bg-[rgb(var(--surface-selected-rgb))]"
-            : "bg-white hover:bg-[rgb(var(--surface-selected-rgb))]"
-        }`}
-        onClick={() =>
-          setExpanded(
+            {/* Feed card (like Anchor/Sail market bars) */}
+            <div
+              className={`border border-[#1E4775]/10 transition-colors cursor-pointer ${
+                isFeedExpanded
+                  ? "bg-[rgb(var(--surface-selected-rgb))]"
+                  : "bg-white hover:bg-[rgb(var(--surface-selected-rgb))]"
+              }`}
+              onClick={() =>
+                setExpanded(
             isFeedExpanded ? null : { network, token: baseAsset, feedIndex }
-          )
-        }
-      >
+                )
+              }
+            >
               <div className="hidden lg:block py-2 px-3">
                 {/* Desktop layout */}
                 <div className={`grid gap-3 items-center text-sm ${
@@ -260,13 +260,13 @@ function FeedRow({
                         return "-";
                       }
                       return (
-                        <SimpleTooltip
-                          label={`1 ${getTokenFullName(
-                            pair.base
+                      <SimpleTooltip
+                        label={`1 ${getTokenFullName(
+                          pair.base
                           )} = ${feedPrice} ${getTokenFullName(pair.quote)}`}
-                        >
+                      >
                           <span>{`1 ${pair.base} = ${feedPrice} ${pair.quote}`}</span>
-                        </SimpleTooltip>
+                      </SimpleTooltip>
                       );
                     })()}
                   </div>
@@ -284,11 +284,11 @@ function FeedRow({
                   </div>
 
                   {!isActive && (
-                    <div className="text-center">
+                  <div className="text-center">
                       <div className="font-mono font-semibold text-[#1E4775] text-sm">
                         {totalPoints}
-                      </div>
                     </div>
+                  </div>
                   )}
 
                   <div
@@ -313,51 +313,51 @@ function FeedRow({
                         </Link>
                       </>
                     ) : (
-                      <button
-                        className={`px-4 py-2 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
+                    <button
+                      className={`px-4 py-2 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
                           isConnected && !voteDisabledReason
-                            ? "bg-[#FF8A7A] text-white hover:bg-[#FF6B5A]"
-                            : "bg-[#FF8A7A]/30 text-white/50 cursor-not-allowed"
-                        }`}
-                        onClick={(e) => {
-                          e.stopPropagation();
+                          ? "bg-[#FF8A7A] text-white hover:bg-[#FF6B5A]"
+                          : "bg-[#FF8A7A]/30 text-white/50 cursor-not-allowed"
+                      }`}
+                      onClick={(e) => {
+                        e.stopPropagation();
                           if (!isConnected || voteDisabledReason) return;
-                          onOpenVote(feedId);
-                        }}
-                        title={
+                        onOpenVote(feedId);
+                      }}
+                      title={
                           voteDisabledReason
                             ? voteDisabledReason
                             : isConnected
-                            ? `Allocate vote points (remaining ${remainingPoints})`
-                            : "Connect wallet to vote"
-                        }
-                      >
-                        Vote{myPoints > 0 ? ` (${myPoints})` : ""}
-                      </button>
+                          ? `Allocate vote points (remaining ${remainingPoints})`
+                          : "Connect wallet to vote"
+                      }
+                    >
+                      Vote{myPoints > 0 ? ` (${myPoints})` : ""}
+                    </button>
                     )}
                   </div>
+                  </div>
                 </div>
-              </div>
 
               {/* Mobile layout (< lg): 2-line bar */}
-              <div className="lg:hidden p-3 space-y-2">
+                <div className="lg:hidden p-3 space-y-2">
                 {/* Line 1: market name + chevron, then status tag + chain */}
-                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2 min-w-0 flex-1">
-                    <TokenIcon
-                      src={getLogoPath(pair.base)}
-                      alt={pair.base}
-                      width={20}
-                      height={20}
-                      className="rounded-full flex-shrink-0"
-                    />
-                    <TokenIcon
-                      src={getLogoPath(pair.quote)}
-                      alt={pair.quote}
-                      width={20}
-                      height={20}
-                      className="rounded-full flex-shrink-0 -ml-2"
-                    />
+                      <TokenIcon
+                        src={getLogoPath(pair.base)}
+                        alt={pair.base}
+                        width={20}
+                        height={20}
+                        className="rounded-full flex-shrink-0"
+                      />
+                      <TokenIcon
+                        src={getLogoPath(pair.quote)}
+                        alt={pair.quote}
+                        width={20}
+                        height={20}
+                        className="rounded-full flex-shrink-0 -ml-2"
+                      />
                     <SimpleTooltip
                       label={`${getTokenFullName(pair.base)} / ${getTokenFullName(
                         pair.quote
@@ -367,11 +367,11 @@ function FeedRow({
                         {feed.label}
                       </span>
                     </SimpleTooltip>
-                    {isFeedExpanded ? (
+                      {isFeedExpanded ? (
                       <ChevronUpIcon className="w-5 h-5 text-[#1E4775]/70 flex-shrink-0" />
-                    ) : (
+                      ) : (
                       <ChevronDownIcon className="w-5 h-5 text-[#1E4775]/70 flex-shrink-0" />
-                    )}
+                      )}
                   </div>
 
                   <div className="flex items-center gap-2 flex-shrink-0">
@@ -385,12 +385,12 @@ function FeedRow({
                       {status === "active" ? "Active" : "Available"}
                     </span>
                     <div className="text-[10px] text-[#1E4775]/70 whitespace-nowrap">
-                      {network === "mainnet"
-                        ? "ETH Mainnet"
-                        : network.charAt(0).toUpperCase() + network.slice(1)}
+                        {network === "mainnet"
+                          ? "ETH Mainnet"
+                          : network.charAt(0).toUpperCase() + network.slice(1)}
+                      </div>
                     </div>
-                  </div>
-                </div>
+                      </div>
 
                 {/* Line 2: price, total votes (with header), vote button */}
                 <div className="flex items-end justify-between gap-3">
@@ -426,8 +426,8 @@ function FeedRow({
                           return feedPrice === "-" ? "-" : `1 ${pair.base} = ${feedPrice} ${pair.quote}`;
                         })()
                       )}
+                      </div>
                     </div>
-                  </div>
 
                   <div className="flex-shrink-0 text-right">
                     <div className="text-[#1E4775]/60 text-[9px] uppercase tracking-wider">
@@ -440,8 +440,8 @@ function FeedRow({
 
                   <div
                     className="flex items-center gap-2 flex-shrink-0"
-                    onClick={(e) => e.stopPropagation()}
-                  >
+                      onClick={(e) => e.stopPropagation()}
+                    >
                     {isActive ? (
                       <>
                         <Link
@@ -501,7 +501,7 @@ function FeedRow({
                 </div>
               </div>
             )}
-    </div>
+          </div>
   );
 }
 

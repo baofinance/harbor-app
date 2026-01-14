@@ -14,7 +14,6 @@ import {
  useAnchorLedgerMarks,
 } from "@/hooks/useAnchorLedgerMarks";
 import { useMarketBoostWindows } from "@/hooks/useMarketBoostWindows";
-import { MarksBoostBadge } from "@/components/MarksBoostBadge";
 import { CONTRACTS } from "@/config/contracts";
 
 // GraphQL queries for leaderboard
@@ -1073,28 +1072,11 @@ return total;
             </p>
           </div>
 
-          {(activeAnchorBoostEndTimestamp || activeSailBoostEndTimestamp) && (
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-2 mb-2 min-w-0">
-              {activeAnchorBoostEndTimestamp && (
-                <MarksBoostBadge
-                  multiplier={10}
-                  endTimestamp={activeAnchorBoostEndTimestamp}
-                  className="sm:w-fit"
-                />
-              )}
-              {activeSailBoostEndTimestamp && (
-                <MarksBoostBadge
-                  multiplier={2}
-                  endTimestamp={activeSailBoostEndTimestamp}
-                  className="sm:w-fit"
-                />
-              )}
-            </div>
-          )}
+          {/** Boost bar removed */}
         </div>
 
           {/* Explainer Section */}
-          <div className="bg-[#17395F] p-4 mb-2">
+          <div className="bg-black/[0.10] backdrop-blur-sm rounded-none overflow-hidden p-4 mb-2">
             <div className="flex items-start gap-3">
               <Image
                 src="/icons/marks.png"
