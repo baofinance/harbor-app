@@ -251,3 +251,7 @@
     @apply min-h-[44px] min-w-[44px];
   }
 }
+
+.wallet-icon:has(.wallet-icon-client) .wallet-placeholder {
+    display: none;
+}

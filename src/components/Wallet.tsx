@@ -34,11 +34,21 @@ function WalletOption({ connector, onClick }: { connector: Connector; onClick: (
  connector.getProvider().then((provider) => setReady(!!provider))
  }, [connector])
 
+<<<<<<< HEAD
  return (
  <button disabled={!ready} onClick={onClick} className="flex items-center gap-4 text-white hover:text-black text-lg">
  <WalletIcon name={connector.name} /> {connector.name}
  </button>
  )
+=======
+    return (
+        <button disabled={!ready} onClick={onClick}
+                className="w-full flex items-center gap-2 px-3 py-2 bg-white/10 text-white enabled:hover:bg-[#FF8A7A]/20 text-md disabled:opacity-50 rounded-full"
+        >
+            <WalletIcon name={connector.name}/> {connector.name}
+        </button>
+    )
+>>>>>>> 8bfa692 (Adding UI improvements to wallet connect)
 }
 
 export function ConnectWallet() {
@@ -55,6 +65,7 @@ export function ConnectWallet() {
 }
 
 
+<<<<<<< HEAD
 function WalletIcon({ name }: { name: string }) {
  const variant ='branded';
 
@@ -65,6 +76,17 @@ function WalletIcon({ name }: { name: string }) {
  <WalletIconClient name={name} size={24} variant={variant} />
  </div>
  );
+=======
+function WalletIcon({name}: { name: string }) {
+    return (
+        <div className="wallet-icon rounded-xs">
+            <div className="wallet-placeholder h-5 w-5 flex items-center justify-center">
+                <Wallet className="h-4 w-4 text-white/60" />
+            </div>
+            <WalletIconClient name={name} size={20} variant="branded" />
+        </div>
+    );
+>>>>>>> 8bfa692 (Adding UI improvements to wallet connect)
 };
 
 function ConnectButton() {
