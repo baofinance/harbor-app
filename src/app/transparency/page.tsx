@@ -653,12 +653,23 @@ function MarketCard({
             depeg point (100% collateral ratio).
           </p>
           <p>
-            For example, an ETH-pegged token with USD collateral could
-            withstand a 50% ETH price drop if volatility protection is 50%.
+            For example, an ETH-pegged token with USD collateral is protected
+            against ETH price spikes (ETH becoming more expensive relative to
+            USD).
+          </p>
+          <p>
+            This accounts for stability pools that can rebalance and improve
+            the collateral ratio during adverse price movements.
+          </p>
+          <p className="text-xs text-gray-400 italic">
+            Higher percentage = more protection. Assumes no additional deposits
+            or withdrawals.
           </p>
         </div>
       }
-    />
+    >
+      <span className="text-[#1E4775]/30 cursor-help">[?]</span>
+    </InfoTooltip>
   </div>
   <div className="text-[#1E4775] font-mono font-semibold text-[11px] whitespace-nowrap">
     {volatilityProtection}
@@ -1559,13 +1570,24 @@ const { data: volatilityProtectionMap } = useMultipleVolatilityProtection(
                       reaching the depeg point (100% collateral ratio).
                     </p>
                     <p>
-                      For example, an ETH-pegged token with USD collateral could
-                      withstand a 50% ETH price drop if volatility protection is
-                      50%.
+                      For example, an ETH-pegged token with USD collateral is
+                      protected against ETH price spikes (ETH becoming more
+                      expensive relative to USD).
+                    </p>
+                    <p>
+                      This accounts for stability pools that can rebalance and
+                      improve the collateral ratio during adverse price
+                      movements.
+                    </p>
+                    <p className="text-xs text-gray-400 italic">
+                      Higher percentage = more protection. Assumes no
+                      additional deposits or withdrawals.
                     </p>
                   </div>
                 }
-              />
+              >
+                <span className="text-[#1E4775]/30 cursor-help">[?]</span>
+              </InfoTooltip>
             </div>
             <div className="text-center">TVL (USD)</div>
              <div className="text-center">Threshold</div>
