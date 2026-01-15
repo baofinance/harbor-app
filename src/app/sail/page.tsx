@@ -489,16 +489,16 @@ function SailMarketRow({
   return (
     <div key={id}>
       <div
-        className={`p-3 overflow-x-auto transition cursor-pointer ${
+        className={`p-3 overflow-visible sm:overflow-x-auto transition cursor-pointer relative ${
           isExpanded
             ? "bg-[rgb(var(--surface-selected-rgb))]"
             : "bg-white hover:bg-[rgb(var(--surface-selected-rgb))]"
         }`}
         onClick={onToggleExpand}
       >
-        <div className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr] gap-4 items-center text-sm">
-          <div className="whitespace-nowrap min-w-0 overflow-hidden">
-            <div className="flex items-center justify-center gap-1.5">
+        <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_1fr_1fr_1fr] gap-2 sm:gap-4 items-center text-sm pr-6">
+          <div className="min-w-0">
+            <div className="flex items-center justify-start sm:justify-center gap-1.5 flex-wrap">
               <SimpleTooltip label={market.leveragedToken.symbol}>
                 <Image
                   src={getLogoPath(market.leveragedToken.symbol)}
@@ -511,19 +511,14 @@ function SailMarketRow({
               <span className="text-[#1E4775] font-medium text-sm lg:text-base">
                 Short {shortSide}
               </span>
-              {isExpanded ? (
-                <ChevronUpIcon className="w-5 h-5 text-[#1E4775] flex-shrink-0" />
-              ) : (
-                <ChevronDownIcon className="w-5 h-5 text-[#1E4775] flex-shrink-0" />
-              )}
             </div>
           </div>
-          <div className="text-center min-w-0">
+          <div className="text-left sm:text-center min-w-0">
             <span className="text-[#1E4775] font-medium text-xs font-mono">
               {formatLeverage(leverageRatio)}
             </span>
           </div>
-          <div className="text-center min-w-0">
+          <div className="text-left sm:text-center min-w-0">
             <span className="text-[#1E4775] font-medium text-xs font-mono">
               {userDeposit
                 ? `${formatToken(userDeposit)} ${
@@ -532,7 +527,7 @@ function SailMarketRow({
                 : "-"}
             </span>
           </div>
-          <div className="text-center min-w-0">
+          <div className="text-left sm:text-center min-w-0">
             <div className="text-[#1E4775] font-medium text-xs font-mono">
               {userDeposit && currentValueUSD !== undefined
                 ? formatUSD(currentValueUSD)
@@ -547,7 +542,7 @@ function SailMarketRow({
             )}
           </div>
           <div
-            className="text-center min-w-0"
+            className="text-left sm:text-center min-w-0"
             onClick={(e) => e.stopPropagation()}
           >
             <button
@@ -561,6 +556,13 @@ function SailMarketRow({
               Manage
             </button>
           </div>
+        </div>
+        <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[#1E4775]">
+          {isExpanded ? (
+            <ChevronUpIcon className="w-5 h-5" />
+          ) : (
+            <ChevronDownIcon className="w-5 h-5" />
+          )}
         </div>
       </div>
 
@@ -1665,7 +1667,7 @@ export default function SailPage() {
                   </h2>
                 </div>
                 <p className="text-xs text-white/75 text-center mt-1">
-                  Earn Ledger marks for deposits: 5 per dollar per day
+                  Earn Ledger marks for deposits: 10 per dollar per day
                 </p>
               </div>
 
@@ -1791,25 +1793,29 @@ export default function SailPage() {
                     label={
                       <div className="space-y-3">
                         <div>
-                          <h3 className="font-bold text-lg mb-2">Sail Marks</h3>
+                          <h3 className="font-bold text-lg mb-2">
+                            Anchor Ledger Marks
+                          </h3>
                           <p className="text-white/90 leading-relaxed">
-                            Earn marks for holding Sail tokens. Sail marks are
-                            earned at 1 mark per dollar per day (with a 5x
-                            multiplier).
+                            Anchor Ledger Marks are earned by holding ha tokens
+                            (pegged tokens) and depositing into stability pools.
                           </p>
                         </div>
+
                         <div className="border-t border-white/20 pt-3">
                           <p className="text-white/90 leading-relaxed mb-2">
-                            Sail marks track your contribution to the Harbor
-                            ecosystem through leveraged token positions.
+                            Each mark represents your contribution to
+                            stabilizing Harbor markets through token holdings
+                            and pool deposits.
                           </p>
                         </div>
+
                         <div className="space-y-2">
                           <div className="flex items-start gap-2">
                             <span className="text-white/70 mt-0.5">•</span>
                             <p className="text-white/90 leading-relaxed">
-                              The more Sail tokens you hold, the more marks you
-                              earn.
+                              The more you contribute, the deeper your mark on
+                              the ledger.
                             </p>
                           </div>
                           <div className="flex items-start gap-2">
@@ -1820,9 +1826,16 @@ export default function SailPage() {
                             </p>
                           </div>
                         </div>
+
+                        <div className="border-t border-white/20 pt-3">
+                          <p className="text-white/80 italic leading-relaxed">
+                            Think of them as a record of your journey — every
+                            mark, a line in Harbor&apos;s logbook.
+                          </p>
+                        </div>
                       </div>
                     }
-                    side="top"
+                    side="right"
                   />
                 </div>
 
@@ -1986,7 +1999,7 @@ export default function SailPage() {
                                   {activeSailBoostEndTimestamp ||
                                   sailMarksPerDay >= 9.5
                                     ? "10 marks / dollar / day (2x boost applied!)"
-                                    : "5 marks / dollar / day"}
+                                    : "10 marks / dollar / day"}
                                 </span>
                               </span>
                             </div>

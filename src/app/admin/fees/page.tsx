@@ -464,6 +464,31 @@ export default function AdminFeesPage() {
     });
   }, [marketFeeRows, tokenMetaReads.tokens, tokenMetaReadData]);
 
+  const feeTotalsByToken = useMemo(() => {
+    const totals = new Map<
+      string,
+      { token: string; decimals: number; amount: bigint }
+    >();
+
+    feeSummaryRows.forEach((r) => {
+      if (!r.wrappedToken) return;
+      const key = r.wrappedToken.toLowerCase();
+      const current = totals.get(key);
+      const nextAmount = (current?.amount ?? 0n) + (r.feeBalance ?? 0n);
+      const decimals = current?.decimals ?? r.decimals ?? 18;
+      totals.set(key, {
+        token: r.wrappedToken,
+        decimals,
+        amount: nextAmount,
+      });
+    });
+
+    return Array.from(totals.values()).map((t) => ({
+      ...t,
+      amountFormatted: formatUnits(t.amount, t.decimals),
+    }));
+  }, [feeSummaryRows]);
+
   const { data: owner } = useReadContract({
     address: minterAddress,
     abi: minterABI,
@@ -605,10 +630,10 @@ export default function AdminFeesPage() {
           <div className="flex items-center justify-between gap-4 mb-3">
             <div>
               <div className="text-sm font-medium text-white">
-                Fees & Harvestable (per market)
+                Fees (shared) & Harvestable (per market)
               </div>
               <div className="text-xs text-white/60">
-                Harvestable = `Minter.harvestable()`. Fees = `WRAPPED_COLLATERAL_TOKEN.balanceOf(feeReceiver)`.
+                Harvestable = `Minter.harvestable()` per market. Fees are shared across markets by token.
               </div>
             </div>
             {(isLoadingMarketMinterReads || isLoadingTokenMetaReads) && (
@@ -625,49 +650,74 @@ export default function AdminFeesPage() {
             </div>
           )}
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-xs text-white/60 border-b border-white/10">
-                  <th className="text-left py-2 pr-4">Market</th>
-                  <th className="text-right py-2 pr-4">Harvestable</th>
-                  <th className="text-right py-2 pr-4">Fees (feeReceiver)</th>
-                  <th className="text-right py-2 pr-4">Total</th>
-                  <th className="text-left py-2">Wrapped token</th>
-                </tr>
-              </thead>
-              <tbody>
-                {feeSummaryRows.map((r) => (
-                  <tr key={r.id} className="border-t border-white/5">
-                    <td className="py-2 pr-4 text-white">{r.name}</td>
-                    <td className="py-2 pr-4 text-right font-mono text-white">
-                      {r.harvestableFormatted}
-                    </td>
-                    <td className="py-2 pr-4 text-right font-mono text-white">
-                      {r.feeBalanceFormatted}
-                      {r.feeReceiver ? (
-                        <span className="ml-2 text-[10px] text-white/50 font-sans">
-                          {r.feeReceiver.slice(0, 6)}…{r.feeReceiver.slice(-4)}
-                        </span>
-                      ) : null}
-                    </td>
-                    <td className="py-2 pr-4 text-right font-mono text-white">
-                      {r.totalFormatted}
-                    </td>
-                    <td className="py-2 text-xs text-white/60 font-mono">
-                      {r.wrappedToken ?? "-"}
-                    </td>
+          <div className="grid grid-cols-1 gap-4">
+            <div className="overflow-x-auto">
+              <div className="text-xs text-white/60 mb-2">
+                Harvestable (per market)
+              </div>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-xs text-white/60 border-b border-white/10">
+                    <th className="text-left py-2 pr-4">Market</th>
+                    <th className="text-right py-2 pr-4">Harvestable</th>
+                    <th className="text-left py-2">Wrapped token</th>
                   </tr>
-                ))}
-                {feeSummaryRows.length === 0 && (
-                  <tr>
-                    <td className="py-3 text-xs text-white/60" colSpan={5}>
-                      No markets found.
-                    </td>
+                </thead>
+                <tbody>
+                  {feeSummaryRows.map((r) => (
+                    <tr key={r.id} className="border-t border-white/5">
+                      <td className="py-2 pr-4 text-white">{r.name}</td>
+                      <td className="py-2 pr-4 text-right font-mono text-white">
+                        {r.harvestableFormatted}
+                      </td>
+                      <td className="py-2 text-xs text-white/60 font-mono">
+                        {r.wrappedToken ?? "-"}
+                      </td>
+                    </tr>
+                  ))}
+                  {feeSummaryRows.length === 0 && (
+                    <tr>
+                      <td className="py-3 text-xs text-white/60" colSpan={3}>
+                        No markets found.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="overflow-x-auto">
+              <div className="text-xs text-white/60 mb-2">
+                Fees collected (shared across markets)
+              </div>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-xs text-white/60 border-b border-white/10">
+                    <th className="text-left py-2 pr-4">Token</th>
+                    <th className="text-right py-2">Amount</th>
                   </tr>
-                )}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {feeTotalsByToken.map((t) => (
+                    <tr key={t.token} className="border-t border-white/5">
+                      <td className="py-2 pr-4 text-xs text-white/60 font-mono">
+                        {t.token}
+                      </td>
+                      <td className="py-2 text-right font-mono text-white">
+                        {t.amountFormatted}
+                      </td>
+                    </tr>
+                  ))}
+                  {feeTotalsByToken.length === 0 && (
+                    <tr>
+                      <td className="py-3 text-xs text-white/60" colSpan={2}>
+                        No fees found.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
 

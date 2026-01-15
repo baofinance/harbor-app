@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
  useAccount,
  useWriteContract,
@@ -13,6 +13,7 @@ import { markets } from "../../config/markets";
 import WalletButton from "../../components/WalletButton";
 import Navigation from "../../components/Navigation";
 import Link from "next/link";
+import { formatTimeRemaining } from "@/utils/formatters";
 
 const MINTER_FEES_READS_ABI = [
   {
@@ -159,6 +160,28 @@ const mockPriceFeedABI = [
  },
 ] as const;
 
+const STABILITY_POOL_REWARDS_ABI = [
+  {
+    type: "function",
+    name: "activeRewardTokens",
+    inputs: [],
+    outputs: [{ name: "", type: "address[]", internalType: "address[]" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "rewardData",
+    inputs: [{ name: "rewardToken", type: "address", internalType: "address" }],
+    outputs: [
+      { name: "lastUpdate", type: "uint256", internalType: "uint256" },
+      { name: "finishAt", type: "uint256", internalType: "uint256" },
+      { name: "rate", type: "uint256", internalType: "uint256" },
+      { name: "queued", type: "uint256", internalType: "uint256" },
+    ],
+    stateMutability: "view",
+  },
+] as const;
+
 // Add a helper function to safely parse numbers
 const safeParseEther = (value: string): bigint => {
  try {
@@ -209,6 +232,42 @@ export default function Admin() {
      minter: (m as any)?.addresses?.minter as `0x${string}`,
    }));
 
+  const poolOptions = Object.entries(markets).flatMap(([id, m]) => {
+    const marketName = (m as any)?.name ?? id;
+    const collateralPool = (m as any)?.addresses?.stabilityPoolCollateral as
+      | `0x${string}`
+      | undefined;
+    const sailPool = (m as any)?.addresses?.stabilityPoolLeveraged as
+      | `0x${string}`
+      | undefined;
+    const pools: Array<{
+      id: string;
+      marketId: string;
+      marketName: string;
+      poolType: "collateral" | "sail";
+      address: `0x${string}`;
+    }> = [];
+    if (collateralPool) {
+      pools.push({
+        id: `${id}-collateral`,
+        marketId: id,
+        marketName,
+        poolType: "collateral",
+        address: collateralPool,
+      });
+    }
+    if (sailPool) {
+      pools.push({
+        id: `${id}-sail`,
+        marketId: id,
+        marketName,
+        poolType: "sail",
+        address: sailPool,
+      });
+    }
+    return pools;
+  });
+
  const minterReads = marketOptions.flatMap((m) => [
    { address: m.minter, abi: MINTER_FEES_READS_ABI, functionName: "harvestable" as const },
    { address: m.minter, abi: MINTER_FEES_READS_ABI, functionName: "feeReceiver" as const },
@@ -225,6 +284,105 @@ export default function Admin() {
      allowFailure: true,
    } as any,
  });
+
+  const { data: poolRewardTokensData, isLoading: isLoadingPoolRewardTokens } =
+    useContractReads({
+      contracts: poolOptions.map((p) => ({
+        address: p.address,
+        abi: STABILITY_POOL_REWARDS_ABI,
+        functionName: "activeRewardTokens" as const,
+      })),
+      query: {
+        enabled: mounted && isConnected && poolOptions.length > 0,
+        refetchInterval: 30000,
+        staleTime: 15000,
+        retry: 1,
+        allowFailure: true,
+      } as any,
+    });
+
+  const poolRewardTokens = useMemo(() => {
+    return poolOptions.map((_, idx) => {
+      const res = poolRewardTokensData?.[idx];
+      if (res?.status === "success" && Array.isArray(res.result)) {
+        return res.result as `0x${string}`[];
+      }
+      return [] as `0x${string}`[];
+    });
+  }, [poolOptions, poolRewardTokensData]);
+
+  const rewardDataMeta = useMemo(() => {
+    const meta: Array<{
+      poolIndex: number;
+      rewardToken: `0x${string}`;
+      contract: {
+        address: `0x${string}`;
+        abi: typeof STABILITY_POOL_REWARDS_ABI;
+        functionName: "rewardData";
+        args: [`0x${string}`];
+      };
+    }> = [];
+    poolRewardTokens.forEach((tokens, poolIndex) => {
+      tokens.forEach((token) => {
+        meta.push({
+          poolIndex,
+          rewardToken: token,
+          contract: {
+            address: poolOptions[poolIndex].address,
+            abi: STABILITY_POOL_REWARDS_ABI,
+            functionName: "rewardData",
+            args: [token],
+          },
+        });
+      });
+    });
+    return meta;
+  }, [poolRewardTokens, poolOptions]);
+
+  const { data: rewardDataReads, isLoading: isLoadingRewardData } =
+    useContractReads({
+      contracts: rewardDataMeta.map((m) => m.contract),
+      query: {
+        enabled: mounted && isConnected && rewardDataMeta.length > 0,
+        refetchInterval: 30000,
+        staleTime: 15000,
+        retry: 1,
+        allowFailure: true,
+      } as any,
+    });
+
+  const poolStreamingRows = useMemo(() => {
+    const maxFinishByPool = new Map<number, bigint>();
+    rewardDataMeta.forEach((meta, idx) => {
+      const res = rewardDataReads?.[idx];
+      const tuple = res?.status === "success" ? res.result : undefined;
+      const finishAt =
+        Array.isArray(tuple) && tuple.length > 1
+          ? (tuple[1] as bigint)
+          : 0n;
+      const current = maxFinishByPool.get(meta.poolIndex) ?? 0n;
+      if (finishAt > current) {
+        maxFinishByPool.set(meta.poolIndex, finishAt);
+      }
+    });
+
+    const now = new Date();
+    return poolOptions.map((pool, idx) => {
+      const finishAt = maxFinishByPool.get(idx) ?? 0n;
+      const timeLeft =
+        finishAt > 0n
+          ? formatTimeRemaining(
+              new Date(Number(finishAt) * 1000).toISOString(),
+              now
+            )
+          : "-";
+      return {
+        ...pool,
+        finishAt,
+        timeLeft,
+      };
+    });
+  }, [poolOptions, rewardDataMeta, rewardDataReads]);
 
  const feeBalanceReads = (minterReadData
    ? marketOptions
@@ -599,9 +757,58 @@ export default function Admin() {
  </div>
  </div>
  ) : (
- <div className="space-y-4">
-   {/* Fees & Harvestable summary (per market) */}
-   <div className="bg-zinc-900/50 p-4 sm:p-6">
+  <div className="space-y-4">
+    {/* Rewards Streaming (per pool) */}
+    <div className="bg-zinc-900/50 p-4 sm:p-6">
+      <div className="flex items-center justify-between gap-4 mb-3">
+        <div>
+          <h2 className="text-lg font-medium text-white font-geo">
+            Rewards Streaming (per stability pool)
+          </h2>
+          <div className="text-xs text-white/60 mt-1">
+            Time remaining until the current reward stream finishes.
+          </div>
+        </div>
+        {(isLoadingPoolRewardTokens || isLoadingRewardData) && (
+          <div className="text-xs text-white/60">Loading…</div>
+        )}
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-xs text-white/60 border-b border-white/10">
+              <th className="text-left py-2 pr-4">Market</th>
+              <th className="text-left py-2 pr-4">Pool</th>
+              <th className="text-right py-2">Time left</th>
+            </tr>
+          </thead>
+          <tbody>
+            {poolStreamingRows.map((row) => (
+              <tr key={row.id} className="border-t border-white/5">
+                <td className="py-2 pr-4 text-white">{row.marketName}</td>
+                <td className="py-2 pr-4 text-white capitalize">
+                  {row.poolType === "collateral" ? "Anchor" : "Sail"}
+                </td>
+                <td className="py-2 text-right text-white font-mono">
+                  {row.timeLeft}
+                </td>
+              </tr>
+            ))}
+            {poolStreamingRows.length === 0 && (
+              <tr>
+                <td className="py-3 text-xs text-white/60" colSpan={3}>
+                  No pools found.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    {/* Fees & Harvestable summary (per market) */}
+    <div className="bg-zinc-900/50 p-4 sm:p-6">
      <div className="flex items-center justify-between gap-4 mb-3">
        <div>
          <h2 className="text-lg font-medium text-white font-geo">
