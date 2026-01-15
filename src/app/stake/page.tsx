@@ -1,13 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Geo } from "next/font/google";
 import { useAccount, useContractReads, useContractWrite } from "wagmi";
 import { parseEther } from "viem";
-import Link from "next/link";
-import Image from "next/image";
-import WalletButton from "../../components/WalletButton";
-import Navigation from "../../components/Navigation";
+import { ConnectWallet }  from "../../components/Wallet";
 
 const geo = Geo({
   subsets: ["latin"],
@@ -528,7 +525,7 @@ export default function Staking() {
               </div>
             ) : (
               <div className="text-center">
-                <WalletButton />
+                <ConnectWallet />
               </div>
             )}
           </div>
