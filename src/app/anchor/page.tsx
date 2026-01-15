@@ -4131,7 +4131,7 @@ export default function AnchorPage() {
             </div>
 
             {/* Mint/Secure/Earn/Redeem (separate boxy tiles) */}
-            <div className="mt-3 grid grid-cols-1 lg:grid-cols-4 gap-2">
+            <div className="mt-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
               <div className="bg-black/[0.10] backdrop-blur-sm rounded-none overflow-hidden px-3 py-2 flex flex-col items-center justify-center text-center">
                 <div className="flex items-center justify-center gap-2">
                   <BanknotesIcon className="w-5 h-5 text-white" />
@@ -4179,7 +4179,7 @@ export default function AnchorPage() {
           </div>
 
           {/* Stats boxes */}
-          <div className="mb-2 grid grid-cols-1 lg:grid-cols-4 gap-2">
+          <div className="mb-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
             <div className="bg-black/20 backdrop-blur-sm rounded-none overflow-hidden px-3 py-2">
               <div className="flex flex-col items-center justify-center text-center">
                 <div className="text-[11px] text-white/80 uppercase tracking-widest">

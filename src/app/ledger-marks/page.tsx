@@ -1175,7 +1175,7 @@ return total;
 isLoadingGenesisMarks ? (
  <p className="text-[#1E4775]/70 text-sm">Loading your marks...</p>
  ) : (
-<div className="grid grid-cols-1 lg:grid-cols-5 gap-2 sm:gap-3">
+<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 sm:gap-3">
 <div className="bg-white p-2">
 <div className="text-xs text-[#1E4775]/70 mb-0.5 text-center">
 Maiden Voyage Marks per Day

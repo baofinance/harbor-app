@@ -873,7 +873,7 @@ function SailMarketExpandedView({
 
   return (
     <div className="bg-[rgb(var(--surface-selected-rgb))] p-4 border-t border-white/20 mt-2">
-      <div className="grid grid-cols-1 gap-2">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
         {/* Left: Market Info & PnL */}
         <div className="space-y-2 flex flex-col">
           {/* Description Box */}
@@ -1614,7 +1614,7 @@ export default function SailPage() {
             )}
 
             {/* Five Boxes */}
-            <div className="grid grid-cols-1 lg:grid-cols-5 gap-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-2">
               {/* Mint Box */}
               <div className="bg-black/[0.10] backdrop-blur-sm rounded-none overflow-hidden px-3 py-2">
                 <div className="flex items-center justify-center gap-2">
@@ -1665,7 +1665,7 @@ export default function SailPage() {
                   </h2>
                 </div>
                 <p className="text-xs text-white/75 text-center mt-1">
-                  Earn Ledger marks for deposits: 5 per dollar per day
+                  Earn Ledger marks for deposits: 10 per dollar per day
                 </p>
               </div>
 
@@ -1689,7 +1689,7 @@ export default function SailPage() {
 
           {/* Stats boxes (user) */}
           {isConnected && (
-            <div className="mb-2 grid grid-cols-1 lg:grid-cols-4 gap-2">
+            <div className="mb-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
               <div className="bg-black/20 backdrop-blur-sm rounded-none overflow-hidden px-3 py-2">
                 <div className="flex flex-col items-center justify-center text-center">
                   <div className="text-[11px] text-white/80 uppercase tracking-widest">
@@ -1986,7 +1986,7 @@ export default function SailPage() {
                                   {activeSailBoostEndTimestamp ||
                                   sailMarksPerDay >= 9.5
                                     ? "10 marks / dollar / day (2x boost applied!)"
-                                    : "5 marks / dollar / day"}
+                                    : "10 marks / dollar / day"}
                                 </span>
                               </span>
                             </div>

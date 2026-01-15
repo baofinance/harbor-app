@@ -40,7 +40,7 @@ export function GenesisAdminPage() {
  <h2 className="text-lg font-medium text-white mb-4 font-geo">
  Genesis Status
  </h2>
- <div className="grid grid-cols-1 gap-4">
+ <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
  <div>
  <span className="text-white/70">Status:</span>
  <span

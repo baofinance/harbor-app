@@ -1078,7 +1078,7 @@ export default function GenesisIndexPage() {
           </div>
 
           {/* Three Boxes */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-2 mb-2 relative">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 mb-2 relative">
             {/* Deposit Box */}
             <div className="bg-black/[0.10] backdrop-blur-sm rounded-none overflow-hidden px-3 py-2 flex flex-col items-center justify-center text-center relative">
               <div className="flex items-center justify-center gap-2">

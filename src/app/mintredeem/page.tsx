@@ -57,7 +57,7 @@ export default function MintRedeemPage() {
 
  {/* Content */}
  <section>
- <div className="grid grid-cols-1 gap-4 items-start">
+ <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
  {/* Left: Form */}
  <div className="p-3 sm:p-4">
  <div className="flex mb-3 gap-4">
