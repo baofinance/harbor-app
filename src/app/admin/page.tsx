@@ -5,13 +5,11 @@ import {
  useAccount,
  useWriteContract,
  useReadContract,
- useWaitForTransactionReceipt,
  useContractReads,
 } from "wagmi";
 import { parseEther, formatEther } from "viem";
 import { markets } from "../../config/markets";
-import WalletButton from "../../components/WalletButton";
-import Navigation from "../../components/Navigation";
+import { ConnectWallet } from "@/components/Wallet";
 import Link from "next/link";
 import { formatTimeRemaining } from "@/utils/formatters";
 
@@ -730,7 +728,7 @@ export default function Admin() {
  Please connect your wallet to access admin functions
  </p>
  <div className="inline-block">
- <WalletButton />
+ <ConnectWallet />
  </div>
  </div>
  </main>
@@ -753,7 +751,7 @@ export default function Admin() {
  Please connect your wallet to access admin functions
  </p>
  <div className="inline-block">
- <WalletButton />
+ <ConnectWallet />
  </div>
  </div>
  ) : (
