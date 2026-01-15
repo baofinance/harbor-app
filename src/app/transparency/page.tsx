@@ -668,7 +668,7 @@ function MarketCard({
         </div>
       }
     >
-      <span className="text-[#1E4775]/30 cursor-help">[?]</span>
+      <span className="text-[#1E4775]/70 cursor-help">[?]</span>
     </InfoTooltip>
   </div>
   <div className="text-[#1E4775] font-mono font-semibold text-[11px] whitespace-nowrap">
@@ -1586,7 +1586,7 @@ const { data: volatilityProtectionMap } = useMultipleVolatilityProtection(
                   </div>
                 }
               >
-                <span className="text-[#1E4775]/30 cursor-help">[?]</span>
+                <span className="text-[#1E4775]/70 cursor-help">[?]</span>
               </InfoTooltip>
             </div>
             <div className="text-center">TVL (USD)</div>
