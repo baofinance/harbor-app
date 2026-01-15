@@ -35,6 +35,7 @@ import InfoTooltip from "@/components/InfoTooltip";
 import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
 import { markets as marketsConfig } from "@/config/markets";
 import { useMultipleTokenPrices } from "@/hooks/useTokenPrices";
+import { useMultipleVolatilityProtection } from "@/hooks/useVolatilityProtection";
 import { useReadContract, useAccount } from "wagmi";
 import { minterABI } from "@/abis/minter";
 import Image from "next/image";
@@ -414,6 +415,7 @@ function MarketCard({
  pools,
  userPools,
  tokenPricesByMarket,
+  volatilityProtectionMap,
  fxSAVEPrice,
  wstETHPrice,
   stETHPrice,
@@ -435,6 +437,7 @@ function MarketCard({
      error: boolean;
    }
  >;
+  volatilityProtectionMap: Map<string, { protection: string }>;
  fxSAVEPrice?: number;
  wstETHPrice?: number;
   stETHPrice?: number;
@@ -457,6 +460,13 @@ function MarketCard({
   const marketCfg = (marketsConfig as any)?.[market.marketId];
   const collateralHeldSymbol: string =
     marketCfg?.collateral?.symbol || marketCfg?.collateral?.underlyingSymbol || "";
+
+  const minterAddress =
+    (market.minterAddress as `0x${string}` | undefined) ??
+    (marketCfg?.addresses?.minter as `0x${string}` | undefined);
+  const volatilityProtection = minterAddress
+    ? volatilityProtectionMap.get(minterAddress.toLowerCase())?.protection ?? "-"
+    : "-";
 
   // collateralTokenBalance is in underlying-equivalent units (fxUSD for fxSAVE markets, stETH for wstETH markets)
   // Convert to wrapped collateral units using avgRate (underlying per wrapped)
@@ -590,7 +600,7 @@ function MarketCard({
  </div>
  </div>
 
- <div className="grid grid-cols-[1.15fr_0.65fr_1.65fr_0.95fr] gap-x-2 gap-y-0 text-[10px]">
+<div className="grid grid-cols-[1.15fr_0.65fr_1.65fr_0.95fr_0.95fr] gap-x-2 gap-y-0 text-[10px]">
  <div className="flex flex-col gap-0.5 min-w-0">
  <div className="text-[#1E4775]/60 font-semibold text-[9px] whitespace-nowrap">
  Collateral Ratio
@@ -629,10 +639,46 @@ function MarketCard({
  {formatCollateralRatio(market.rebalanceThreshold)}
  </div>
  </div>
+<div className="flex flex-col gap-0.5 min-w-0 items-end text-right">
+  <div className="text-[#1E4775]/60 font-semibold text-[9px] whitespace-nowrap flex items-center justify-end gap-1">
+    Vol. Prot.
+    <InfoTooltip
+      side="top"
+      label={
+        <div className="space-y-2">
+          <p className="font-semibold mb-1">Volatility Protection</p>
+          <p>
+            The percentage adverse price movement between collateral and the
+            pegged token that the system can withstand before reaching the
+            depeg point (100% collateral ratio).
+          </p>
+          <p>
+            For example, an ETH-pegged token with USD collateral is protected
+            against ETH price spikes (ETH becoming more expensive relative to
+            USD).
+          </p>
+          <p>
+            This accounts for stability pools that can rebalance and improve
+            the collateral ratio during adverse price movements.
+          </p>
+          <p className="text-xs text-gray-400 italic">
+            Higher percentage = more protection. Assumes no additional deposits
+            or withdrawals.
+          </p>
+        </div>
+      }
+    >
+      <span className="text-[#1E4775]/70 cursor-help">[?]</span>
+    </InfoTooltip>
+  </div>
+  <div className="text-[#1E4775] font-mono font-semibold text-[11px] whitespace-nowrap">
+    {volatilityProtection}
+  </div>
+</div>
  </div>
  </div>
 
- <div className="hidden lg:grid grid-cols-[1.3fr_1fr_1fr_1fr_1fr_1fr_auto] gap-4 items-center text-sm">
+<div className="hidden lg:grid grid-cols-[1.3fr_1fr_1fr_1fr_1fr_1fr_1fr_auto] gap-4 items-center text-sm">
  {/* Market Name */}
  <div className="whitespace-nowrap min-w-0 overflow-hidden">
  <div className="flex items-center justify-center gap-2">
@@ -660,6 +706,13 @@ function MarketCard({
  {formatLeverageRatio(market.leverageRatio)}
  </div>
  </div>
+
+{/* Volatility Protection */}
+<div className="text-center">
+  <div className="text-[#1E4775] font-mono text-sm font-semibold">
+    {volatilityProtection}
+  </div>
+</div>
 
  {/* TVL */}
  <div className="text-center">
@@ -1261,6 +1314,27 @@ export default function TransparencyPage() {
  const tokenPricesByMarket = useMultipleTokenPrices(tokenPriceInputs as any);
  const { address: userAddress } = useAccount();
 
+const volatilityMarkets = useMemo(
+  () =>
+    finishedMarkets.map((m) => ({
+      minterAddress: m.minterAddress as `0x${string}` | undefined,
+      collateralPoolAddress: m.stabilityPoolCollateralAddress as
+        | `0x${string}`
+        | undefined,
+      sailPoolAddress: m.stabilityPoolLeveragedAddress as
+        | `0x${string}`
+        | undefined,
+    })),
+  [finishedMarkets]
+);
+const { data: volatilityProtectionMap } = useMultipleVolatilityProtection(
+  volatilityMarkets,
+  {
+    enabled: finishedMarkets.length > 0,
+    refetchInterval: 30000,
+  }
+);
+
  // Build all pools from all markets for APR calculation (same approach as anchor page)
  const allPoolsForRewards = useMemo(() => {
    if (finishedMarkets.length === 0) return [];
@@ -1478,11 +1552,43 @@ export default function TransparencyPage() {
  ) : (
    <>
        {finishedMarkets.length > 0 && (
-       <div className="hidden lg:block bg-white p-2 mb-2">
-         <div className="grid grid-cols-[1.3fr_1fr_1fr_1fr_1fr_1fr_auto] gap-4 items-center uppercase tracking-wider text-[10px] text-[#1E4775] font-bold">
+        <div className="hidden lg:block bg-white p-2 mb-2">
+          <div className="grid grid-cols-[1.3fr_1fr_1fr_1fr_1fr_1fr_1fr_auto] gap-4 items-center uppercase tracking-wider text-[10px] text-[#1E4775] font-bold">
            <div className="text-center">Market</div>
              <div className="text-center">Collateral Ratio</div>
              <div className="text-center">Leverage</div>
+            <div className="flex items-center justify-center gap-1">
+              <span>Vol. Protection</span>
+              <InfoTooltip
+                side="top"
+                label={
+                  <div className="space-y-2">
+                    <p className="font-semibold mb-1">Volatility Protection</p>
+                    <p>
+                      The percentage adverse price movement between collateral
+                      and the pegged token that the system can withstand before
+                      reaching the depeg point (100% collateral ratio).
+                    </p>
+                    <p>
+                      For example, an ETH-pegged token with USD collateral is
+                      protected against ETH price spikes (ETH becoming more
+                      expensive relative to USD).
+                    </p>
+                    <p>
+                      This accounts for stability pools that can rebalance and
+                      improve the collateral ratio during adverse price
+                      movements.
+                    </p>
+                    <p className="text-xs text-gray-400 italic">
+                      Higher percentage = more protection. Assumes no
+                      additional deposits or withdrawals.
+                    </p>
+                  </div>
+                }
+              >
+                <span className="text-[#1E4775]/70 cursor-help">[?]</span>
+              </InfoTooltip>
+            </div>
             <div className="text-center">TVL (USD)</div>
              <div className="text-center">Threshold</div>
              <div className="text-center">Health</div>
@@ -1508,7 +1614,8 @@ export default function TransparencyPage() {
                    p.address === market.stabilityPoolLeveragedAddress
                )}
                userPools={userPools}
-             tokenPricesByMarket={tokenPricesByMarket as any}
+              tokenPricesByMarket={tokenPricesByMarket as any}
+              volatilityProtectionMap={volatilityProtectionMap}
                fxSAVEPrice={fxSAVEPrice}
                wstETHPrice={wstETHPrice}
                stETHPrice={stETHPrice}

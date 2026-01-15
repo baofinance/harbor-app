@@ -1,12 +1,17 @@
-import React from "react";
+import React, { useMemo } from "react";
 import Image from "next/image";
+import { useQuery } from "@tanstack/react-query";
+import { usePublicClient } from "wagmi";
 import { usePoolRewardTokens } from "@/hooks/usePoolRewardTokens";
 import SimpleTooltip from "@/components/SimpleTooltip";
 import { getLogoPath } from "@/components/shared";
+import { stabilityPoolABI } from "@/abis/stabilityPool";
+import { ERC20_ABI } from "@/config/contracts";
 
 interface RewardTokensDisplayProps {
   collateralPool: `0x${string}` | undefined;
   sailPool: `0x${string}` | undefined;
+  poolAddresses?: Array<`0x${string}`>;
   iconSize?: number;
   className?: string;
 }
@@ -14,9 +19,11 @@ interface RewardTokensDisplayProps {
 export function RewardTokensDisplay({
   collateralPool,
   sailPool,
+  poolAddresses,
   iconSize = 24,
   className = "",
 }: RewardTokensDisplayProps) {
+  const publicClient = usePublicClient();
   const { data: collateralRewardTokens = [], isLoading: isLoadingCollateral } =
     usePoolRewardTokens({
       poolAddress: collateralPool,
@@ -28,21 +35,111 @@ export function RewardTokensDisplay({
       enabled: !!sailPool,
     });
 
-  // Combine and deduplicate reward tokens, keeping full token info
-  const rewardTokenMap = new Map<
-    string,
-    { symbol: string; displayName: string; name?: string }
-  >();
-  [...collateralRewardTokens, ...sailRewardTokens].forEach((token) => {
-    if (token.symbol && !rewardTokenMap.has(token.symbol.toLowerCase())) {
-      rewardTokenMap.set(token.symbol.toLowerCase(), {
-        symbol: token.symbol,
-        displayName: token.displayName || token.name || token.symbol,
-        name: token.name,
-      });
-    }
+  const normalizedPoolAddresses = useMemo(() => {
+    return (poolAddresses ?? [])
+      .map((addr) => addr.toLowerCase() as `0x${string}`)
+      .filter(Boolean);
+  }, [poolAddresses]);
+
+  const { data: multiPoolTokens = [] } = useQuery({
+    queryKey: [
+      "reward-tokens-by-pools",
+      normalizedPoolAddresses.join(","),
+    ],
+    enabled: normalizedPoolAddresses.length > 0 && !!publicClient,
+    queryFn: async () => {
+      if (!publicClient || normalizedPoolAddresses.length === 0) return [];
+
+      const tokenMap = new Map<
+        string,
+        { symbol: string; displayName: string; name?: string }
+      >();
+
+      for (const poolAddress of normalizedPoolAddresses) {
+        let rewardTokenAddresses: `0x${string}`[] = [];
+        try {
+          rewardTokenAddresses = (await publicClient.readContract({
+            address: poolAddress,
+            abi: stabilityPoolABI,
+            functionName: "activeRewardTokens",
+            args: [],
+          })) as `0x${string}`[];
+        } catch {
+          continue;
+        }
+
+        for (const tokenAddress of rewardTokenAddresses) {
+          let symbol: string | undefined;
+          let name: string | undefined;
+
+          try {
+            symbol = (await publicClient.readContract({
+              address: tokenAddress,
+              abi: ERC20_ABI,
+              functionName: "symbol",
+              args: [],
+            })) as string;
+          } catch {}
+
+          try {
+            name = (await publicClient.readContract({
+              address: tokenAddress,
+              abi: ERC20_ABI,
+              functionName: "name",
+              args: [],
+            })) as string;
+          } catch {}
+
+          const displayName =
+            symbol && symbol.length > 0 && symbol !== "UNKNOWN"
+              ? symbol
+              : name && name.length > 0
+              ? name
+              : tokenAddress.slice(0, 6) + "..." + tokenAddress.slice(-4);
+
+          const mapKey = (symbol || displayName).toLowerCase();
+          if (!tokenMap.has(mapKey)) {
+            tokenMap.set(mapKey, {
+              symbol: symbol || displayName,
+              displayName,
+              name,
+            });
+          }
+        }
+      }
+
+      return Array.from(tokenMap.values());
+    },
+    refetchInterval: 60000,
+    retry: 2,
   });
-  const allRewardTokens = Array.from(rewardTokenMap.values());
+
+  // Combine and deduplicate reward tokens, keeping full token info
+  const allRewardTokens = useMemo(() => {
+    const rewardTokenMap = new Map<
+      string,
+      { symbol: string; displayName: string; name?: string }
+    >();
+    const sourceTokens =
+      normalizedPoolAddresses.length > 0
+        ? multiPoolTokens
+        : [...collateralRewardTokens, ...sailRewardTokens];
+    sourceTokens.forEach((token) => {
+      if (token.symbol && !rewardTokenMap.has(token.symbol.toLowerCase())) {
+        rewardTokenMap.set(token.symbol.toLowerCase(), {
+          symbol: token.symbol,
+          displayName: token.displayName || token.name || token.symbol,
+          name: token.name,
+        });
+      }
+    });
+    return Array.from(rewardTokenMap.values());
+  }, [
+    collateralRewardTokens,
+    sailRewardTokens,
+    multiPoolTokens,
+    normalizedPoolAddresses.length,
+  ]);
 
   return (
     <div

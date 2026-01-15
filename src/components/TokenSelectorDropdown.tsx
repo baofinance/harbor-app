@@ -129,7 +129,7 @@ export function TokenSelectorDropdown({
           {groups.map((group, groupIdx) => (
             <div key={groupIdx}>
               {groups.length > 1 && (
-                <div className="px-4 py-2 bg-[#1E4775]/5 text-xs font-semibold text-[#1E4775]/70 uppercase tracking-wider sticky top-0">
+                <div className="px-4 py-2 bg-[#1E4775]/5 text-xs font-semibold text-[#1E4775]/70 uppercase tracking-wider">
                   {group.label}
                 </div>
               )}

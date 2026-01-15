@@ -24,7 +24,7 @@
     "@tailwindcss/postcss": "^4.1.5",
     "@tanstack/react-query": "^5.83.0",
     "@web3icons/core": "^4.0.14",
-    "@web3icons/react": "^4.1.12",
+    "@web3icons/react": "^4.0.14",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "fastestsmallesttextencoderdecoder": "^1.0.22",
