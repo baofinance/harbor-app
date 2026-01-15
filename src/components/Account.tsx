@@ -5,7 +5,7 @@ import {useMemo, useState} from "react";
 import NetworkIconClient from "@/components/NetworkIconClient";
 import * as React from "react";
 import DecryptedText from "@/components/DecryptedText";
-import {Check, Copy, Wallet} from "lucide-react";
+import {Check, Copy, LogOut, Wallet} from "lucide-react";
 
 function AccountModal({showModal, setShowModal}: { showModal: boolean, setShowModal: (show: boolean) => void }) {
     const [copied, setCopied] = useState(false);
@@ -70,49 +70,48 @@ function AccountModal({showModal, setShowModal}: { showModal: boolean, setShowMo
                             </h3>
                         </div>
 
-                        <div className="p-6 overflow-y-auto flex-1">
+                        <div className="p-6 overflow-y-auto flex flex-col gap-2 flex-1">
 
-                        <div className="flex items-center justify-between">
-                            <div className="text-sm text-white/80">
-                                <div className="font-mono">
-                                    {displayAddr ? (
-                                        <DecryptedText
-                                            text={displayAddr}
-                                            parentClassName="inline-block"
-                                            className=""
-                                            encryptedClassName="text-white/40"
-                                            animateOn="hover"
-                                        />
-                                    ) : (
-                                        <span className="text-white/40">—</span>
-                                    )}
+                            <div className="flex items-center justify-between">
+                                <div className="text-sm text-white/80">
+                                    <div className="font-mono">
+                                        {displayAddr ? (
+                                            <DecryptedText
+                                                text={displayAddr}
+                                                parentClassName="inline-block"
+                                                className=""
+                                                encryptedClassName="text-white/40"
+                                                animateOn="hover"
+                                            />
+                                        ) : (
+                                            <span className="text-white/40">—</span>
+                                        )}
+                                    </div>
                                 </div>
+                                <button
+                                    onClick={handleCopy}
+                                    className="inline-flex items-center gap-4 px-2 py-1 text-xs bg-white/10 hover:bg-white/20 rounded-full"
+                                >
+                                    {copied ? (
+                                        <>
+                                            <Check className="h-3.5 w-3.5"/> Copied
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Copy className="h-3.5 w-3.5"/> Copy
+                                        </>
+                                    )}
+                                </button>
                             </div>
-                            <button
-                                onClick={handleCopy}
-                                className="inline-flex items-center gap-4 px-2 py-1 text-xs bg-white/10 hover:bg-white/20 rounded-full"
-                            >
-                                {copied ? (
-                                    <>
-                                        <Check className="h-3.5 w-3.5"/> Copied
-                                    </>
-                                ) : (
-                                    <>
-                                        <Copy className="h-3.5 w-3.5"/> Copy
-                                    </>
-                                )}
-                            </button>
-                        </div>
-                        </div>
-
-                        <div className="bg-white/5 p-3">
-                            <div className="text-xs text-white/60">Balance</div>
-                            <div className="font-mono text-white">
-                                {balance
-                                    ? `${Number(balance.value) / 10 ** balance.decimals} ${
-                                        balance.symbol
-                                    }`
-                                    : "—"}
+                            <div className="bg-white/5 p-3">
+                                <div className="text-xs text-white/60">Balance</div>
+                                <div className="font-mono text-white">
+                                    {balance
+                                        ? `${Number(balance.value) / 10 ** balance.decimals} ${
+                                            balance.symbol
+                                        }`
+                                        : "—"}
+                                </div>
                             </div>
                         </div>
 
@@ -126,12 +125,12 @@ function AccountModal({showModal, setShowModal}: { showModal: boolean, setShowMo
                             <NetworkOptions/>
                         </div>
 
-                        <div className="px-6 py-4 flex items-center justify-center bg-[#153A5F]">
+                        <div className="px-6 py-4 flex items-center justify-center ">
                             <button
                                 onClick={() => disconnect()}
-                                className="font-semibold hover:text-gray-900"
+                                className="w-full bg-[#153A5F] inline-flex items-center justify-center gap-4 px-3 py-2 hover:bg-white/20 rounded-full"
                             >
-                                Disconnect
+                                <LogOut className="h-4 w-4" /> Disconnect
                             </button>
                         </div>
                     </div>
@@ -155,7 +154,7 @@ function NetworkOptions() {
                     <button
                         disabled={!switchChain || network.id === chain?.id}
                         onClick={() => switchChain({chainId: network.id})}
-                        className="flex items-center gap-4 text-white hover:text-black disabled:opacity-50"
+                        className="w-full flex items-center gap-2 px-3 py-2 bg-white/10 text-white enabled:hover:bg-[#FF8A7A]/20 text-md disabled:opacity-50 rounded-full"
                     >
                         <NetworkIcon name={network.name}/>
                         {network.name}
@@ -169,12 +168,11 @@ function NetworkOptions() {
 }
 
 function NetworkIcon({name}: { name: string }) {
-    const variant = 'branded';
     const resolvedName = name === 'Anvil' ? 'Ethereum' : name;
 
     return (
-        <div className="bg-white-xs">
-            <NetworkIconClient name={resolvedName} size={24} variant={variant}/>
+        <div className="bg-white-xs rounded-xs">
+            <NetworkIconClient name={resolvedName} size={24} variant="branded"/>
         </div>
     );
 }

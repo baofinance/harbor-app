@@ -70,7 +70,8 @@ function WalletOption({connector, onClick}: { connector: Connector; onClick: () 
 
     return (
         <button disabled={!ready} onClick={onClick}
-                className="flex items-center gap-2 text-white hover:text-black text-md">
+                className="w-full flex items-center gap-2 px-3 py-2 bg-white/10 text-white enabled:hover:bg-[#FF8A7A]/20 text-md disabled:opacity-50 rounded-full"
+        >
             <WalletIcon name={connector.name}/> {connector.name}
         </button>
     )
@@ -84,13 +85,12 @@ export function ConnectWallet() {
 
 
 function WalletIcon({name}: { name: string }) {
-    const variant = 'branded';
-
-    if (name === 'Injected') return <div className="w-6 h-6"/>;
-
     return (
-        <div className="bg-white rounded-xs">
-            <WalletIconClient name={name} size={16} variant={variant}/>
+        <div className="wallet-icon rounded-xs">
+            <div className="wallet-placeholder h-5 w-5 flex items-center justify-center">
+                <Wallet className="h-4 w-4 text-white/60" />
+            </div>
+            <WalletIconClient name={name} size={20} variant="branded" />
         </div>
     );
 };
