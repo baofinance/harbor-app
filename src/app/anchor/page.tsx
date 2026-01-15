@@ -6159,6 +6159,13 @@ export default function AnchorPage() {
 
                     const isExpanded = expandedMarkets.includes(symbol);
 
+                    const rewardPoolAddresses = marketList
+                      .map(
+                        ({ market }) =>
+                          market.addresses?.stabilityPoolCollateral
+                      )
+                      .filter(Boolean) as `0x${string}`[];
+
                     return (
                       <React.Fragment key={symbol}>
                         <div
@@ -6351,6 +6358,7 @@ export default function AnchorPage() {
                                   <RewardTokensDisplay
                                     collateralPool={collateralPoolAddress}
                                     sailPool={sailPoolAddress}
+                                    poolAddresses={rewardPoolAddresses}
                                     iconSize={16}
                                     className="justify-end gap-1"
                                   />
@@ -6497,6 +6505,7 @@ export default function AnchorPage() {
                                     <RewardTokensDisplay
                                       collateralPool={collateralPoolAddress}
                                       sailPool={sailPoolAddress}
+                                      poolAddresses={rewardPoolAddresses}
                                       iconSize={16}
                                       className="justify-center gap-1"
                                     />
@@ -7190,6 +7199,7 @@ export default function AnchorPage() {
                             <RewardTokensDisplay
                               collateralPool={collateralPoolAddress}
                               sailPool={sailPoolAddress}
+                              poolAddresses={rewardPoolAddresses}
                             />
                             <div className="text-center min-w-0">
                               <span className="text-[#1E4775] font-medium text-xs font-mono">
