@@ -38,6 +38,7 @@ type ReferralSummary = {
     rebateMaxFees: number;
     rebateMinFeeUsd: number;
   };
+  store?: "memory" | "upstash";
 };
 
 const parseUsdE18 = (value?: string | null) =>
@@ -213,6 +214,12 @@ export default function ReferralsPage() {
               {" "}
               <span className="font-mono">{referralLinkPrefix}CODE</span>.
             </p>
+            {summary?.store === "memory" && (
+              <p className="text-xs text-[#FF8A7A]">
+                Referral storage is running in-memory on this environment. Codes
+                may not persist. Enable Upstash for production-like testing.
+              </p>
+            )}
           </div>
 
           <div className="bg-white border border-[#1E4775]/10 rounded-lg p-6 space-y-3">

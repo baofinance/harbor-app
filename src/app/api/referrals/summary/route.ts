@@ -2,7 +2,7 @@ export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
 import { isAddress } from "viem";
-import { getReferralsStore } from "@/lib/referralsStore";
+import { getReferralsStore, getReferralsStoreMode } from "@/lib/referralsStore";
 import { getReferralEarningsStore } from "@/lib/referralEarningsStore";
 
 function jsonError(message: string, status = 400) {
@@ -34,6 +34,7 @@ export async function GET(req: Request) {
       rebate,
       referrerTotals: totals,
       settings,
+      store: getReferralsStoreMode(),
     });
   } catch (err: any) {
     return NextResponse.json(

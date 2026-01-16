@@ -2,7 +2,7 @@ export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
 import { isAddress, verifyTypedData } from "viem";
-import { getReferralsStore } from "@/lib/referralsStore";
+import { getReferralsStore, getReferralsStoreMode } from "@/lib/referralsStore";
 import {
   buildReferralCodeCreateTypedData,
   type ReferralCodeCreateMessage,
@@ -23,7 +23,7 @@ export async function GET(req: Request) {
   try {
     const store = getReferralsStore();
     const codes = await store.listCodes(address);
-    return NextResponse.json({ codes });
+    return NextResponse.json({ codes, store: getReferralsStoreMode() });
   } catch (err: any) {
     return NextResponse.json(
       { error: err?.message || "Failed to fetch referral codes" },
@@ -72,7 +72,7 @@ export async function POST(req: Request) {
     if (!ok) return jsonError("Invalid or expired nonce", 401);
 
     const code = await store.createCode(referrer, label);
-    return NextResponse.json({ code });
+    return NextResponse.json({ code, store: getReferralsStoreMode() });
   } catch (err: any) {
     return NextResponse.json(
       { error: err?.message || "Failed to create referral code" },
