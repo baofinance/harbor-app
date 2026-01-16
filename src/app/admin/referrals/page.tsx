@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import InfoTooltip from "@/components/InfoTooltip";
 
 type ApiResult = {
   message?: string;
@@ -312,14 +313,20 @@ export default function AdminReferralsPage() {
                 disabled={loading}
                 onClick={loadSettings}
               >
-                Refresh
+                <span className="inline-flex items-center gap-2">
+                  Refresh
+                  <InfoTooltip label="Reload referral settings from storage (use after changes are made elsewhere)." />
+                </span>
               </button>
               <button
                 className="px-3 py-1.5 rounded-full bg-[#1E4775] text-white text-xs"
                 disabled={loading}
                 onClick={saveSettings}
               >
-                Save
+                <span className="inline-flex items-center gap-2">
+                  Save
+                  <InfoTooltip label="Persist referral settings (percentages, limits, thresholds) used for calculations." />
+                </span>
               </button>
             </div>
           </div>
@@ -431,91 +438,130 @@ export default function AdminReferralsPage() {
             disabled={loading}
             onClick={() => callAdmin("/api/referrals/yield/sync", { method: "POST" })}
           >
-            Sync Yield
+            <span className="inline-flex items-center gap-2">
+              Sync Yield
+              <InfoTooltip label="Replays deposit/withdraw activity to update yield accruals. Run before payouts or after heavy deposit activity." />
+            </span>
           </button>
           <button
             className="px-4 py-2 rounded-full bg-[#1E4775] text-white text-sm"
             disabled={loading}
             onClick={() => callAdmin("/api/referrals/marks/sync", { method: "POST" })}
           >
-            Sync Marks
+            <span className="inline-flex items-center gap-2">
+              Sync Marks
+              <InfoTooltip label="Syncs marks events from the subgraph and applies referrer marks share. Run before payouts." />
+            </span>
           </button>
           <button
             className="px-4 py-2 rounded-full bg-[#1E4775] text-white text-sm"
             disabled={loading || runningBatch}
             onClick={runMonthlyBatch}
           >
-            {runningBatch ? "Running Batch..." : "Run Monthly Batch"}
+            <span className="inline-flex items-center gap-2">
+              {runningBatch ? "Running Batch..." : "Run Monthly Batch"}
+              <InfoTooltip label="Runs yield sync + marks sync, then refreshes payout summary (no download)." />
+            </span>
           </button>
           <button
             className="px-4 py-2 rounded-full bg-[#1E4775] text-white text-sm"
             disabled={loading || runningBatch}
             onClick={runMonthlyBatchAndDownload}
           >
-            {runningBatch ? "Working..." : "Run Batch + Download"}
+            <span className="inline-flex items-center gap-2">
+              {runningBatch ? "Working..." : "Run Batch + Download"}
+              <InfoTooltip label="Runs the monthly batch and downloads the combined payout CSV." />
+            </span>
           </button>
           <button
             className="px-4 py-2 rounded-full bg-[#FF8A7A] text-white text-sm"
             disabled={loading}
             onClick={() => callAdmin("/api/referrals/earnings/payouts")}
           >
-            View Payouts
+            <span className="inline-flex items-center gap-2">
+              View Payouts
+              <InfoTooltip label="Preview eligible referrer payouts (fee + yield) with totals." />
+            </span>
           </button>
           <button
             className="px-4 py-2 rounded-full bg-[#FF8A7A] text-white text-sm"
             disabled={loading}
             onClick={() => callAdmin("/api/referrals/earnings/rebates")}
           >
-            View Rebates
+            <span className="inline-flex items-center gap-2">
+              View Rebates
+              <InfoTooltip label="Preview eligible user rebates (fee rebates owed to referred users)." />
+            </span>
           </button>
           <button
             className="px-4 py-2 rounded-full bg-[#FF8A7A] text-white text-sm"
             disabled={loading}
             onClick={() => callAdmin("/api/referrals/earnings/export?format=csv")}
           >
-            Export CSV
+            <span className="inline-flex items-center gap-2">
+              Export CSV
+              <InfoTooltip label="Preview referrer payout CSV in the output panel (no download)." />
+            </span>
           </button>
           <button
             className="px-4 py-2 rounded-full bg-[#FF8A7A] text-white text-sm"
             disabled={loading}
             onClick={() => exportBatch("csv")}
           >
-            Download Batch CSV
+            <span className="inline-flex items-center gap-2">
+              Download Batch CSV
+              <InfoTooltip label="Download combined referrer + rebate payout list for multisend." />
+            </span>
           </button>
           <button
             className="px-4 py-2 rounded-full bg-[#FF8A7A] text-white text-sm"
             disabled={loading}
             onClick={() => exportBatch("json")}
           >
-            Download Batch JSON
+            <span className="inline-flex items-center gap-2">
+              Download Batch JSON
+              <InfoTooltip label="Download combined payout list as JSON for scripts/tools." />
+            </span>
           </button>
           <button
             className="px-4 py-2 rounded-full bg-[#FF8A7A] text-white text-sm"
             disabled={loading}
             onClick={() => exportReferrers("csv")}
           >
-            Download Referrers CSV
+            <span className="inline-flex items-center gap-2">
+              Download Referrers CSV
+              <InfoTooltip label="Download referrer-only payouts (fees + yield) as CSV." />
+            </span>
           </button>
           <button
             className="px-4 py-2 rounded-full bg-[#FF8A7A] text-white text-sm"
             disabled={loading}
             onClick={() => exportRebates("csv")}
           >
-            Download Rebates CSV
+            <span className="inline-flex items-center gap-2">
+              Download Rebates CSV
+              <InfoTooltip label="Download rebates owed to referred users as CSV." />
+            </span>
           </button>
           <button
             className="px-4 py-2 rounded-full bg-[#FF8A7A] text-white text-sm"
             disabled={loading}
             onClick={() => exportReferrers("json")}
           >
-            Download Referrers JSON
+            <span className="inline-flex items-center gap-2">
+              Download Referrers JSON
+              <InfoTooltip label="Download referrer-only payouts as JSON." />
+            </span>
           </button>
           <button
             className="px-4 py-2 rounded-full bg-[#FF8A7A] text-white text-sm"
             disabled={loading}
             onClick={() => exportRebates("json")}
           >
-            Download Rebates JSON
+            <span className="inline-flex items-center gap-2">
+              Download Rebates JSON
+              <InfoTooltip label="Download rebates owed to referred users as JSON." />
+            </span>
           </button>
         </div>
 
