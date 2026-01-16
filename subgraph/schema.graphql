@@ -203,6 +203,17 @@ type UserTotalMarks @entity(immutable: false) {
   lastUpdated: BigInt! # Last block timestamp when updated
 }
 
+# Marks event log (for referral attribution)
+type MarksEvent @entity(immutable: true) {
+  id: ID! # "{user}-{timestamp}-{eventType}-{logIndex}"
+  user: Bytes!
+  amount: BigInt! # Marks credited (positive) or forfeited (negative if used)
+  eventType: String! # "genesis" | "anchor" | "sail" | "stabilityPool" | "bonus" | "forfeit"
+  timestamp: BigInt!
+  txHash: Bytes!
+  blockNumber: BigInt!
+}
+
 # ============ Entities for Sail Token Price History & PnL ============
 
 # Track each mint/redeem/genesis event with price data (for price charts)

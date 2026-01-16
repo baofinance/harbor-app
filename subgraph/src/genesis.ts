@@ -15,6 +15,7 @@ import { BigDecimal, BigInt, Bytes, ethereum, Address } from "@graphprotocol/gra
 import { WrappedPriceOracle } from "../generated/Genesis_ETH_fxUSD/WrappedPriceOracle";
 import { ChainlinkAggregator } from "../generated/HaToken_haETH/ChainlinkAggregator";
 import { setMarketBoostWindow, ANCHOR_BOOST_MULTIPLIER, SAIL_BOOST_MULTIPLIER } from "./marksBoost";
+import { createMarksEvent, toE18BigInt } from "./marksEvents";
 
 // Constants
 const MARKS_PER_DOLLAR_PER_DAY = BigDecimal.fromString("10");
@@ -763,6 +764,19 @@ export function handleWithdraw(event: WithdrawEvent): void {
   
   userMarks.lastUpdated = timestamp;
   userMarks.save();
+
+  // Log marks forfeited event
+  if (marksForfeited.gt(BigDecimal.fromString("0"))) {
+    createMarksEvent({
+      id: `${userAddress.toHexString()}-${txHash.toHexString()}-${event.logIndex.toString()}-forfeit`,
+      user: userAddress,
+      amountE18: toE18BigInt(marksForfeited),
+      eventType: "forfeit",
+      timestamp,
+      blockNumber,
+      txHash,
+    });
+  }
 }
 
 export function handleGenesisEnd(event: GenesisEndsEvent): void {

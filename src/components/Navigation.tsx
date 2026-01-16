@@ -81,6 +81,13 @@ export default function Example() {
                   Marks Leaderboard
                 </Link>
                 <Link
+                  href="/referrals"
+                  className={linkClass("/referrals")}
+                  aria-current={isActive("/referrals") ? "page" : undefined}
+                >
+                  Referrals
+                </Link>
+                <Link
                   href="/transparency"
                   className={linkClass("/transparency")}
                   aria-current={isActive("/transparency") ? "page" : undefined}
@@ -185,6 +192,18 @@ export default function Example() {
               aria-current={isActive("/ledger-marks") ? "page" : undefined}
             >
               Marks Leaderboard
+            </DisclosureButton>
+            <DisclosureButton
+              as={Link}
+              href="/referrals"
+              className={`block w-full max-w-sm mx-auto px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 text-center ${
+                isActive("/referrals")
+                  ? "text-[#1E4775] bg-white"
+                  : "text-white bg-white/10 hover:bg-white/20"
+              }`}
+              aria-current={isActive("/referrals") ? "page" : undefined}
+            >
+              Referrals
             </DisclosureButton>
             <DisclosureButton
               as={Link}

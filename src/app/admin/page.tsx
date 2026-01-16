@@ -756,6 +756,22 @@ export default function Admin() {
  </div>
  ) : (
   <div className="space-y-4">
+    <div className="bg-zinc-900/50 p-4 sm:p-6">
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h2 className="text-lg font-medium text-white font-geo">Referral Admin</h2>
+          <div className="text-xs text-white/60 mt-1">
+            Manage referral settings, sync, and payouts.
+          </div>
+        </div>
+        <Link
+          href="/admin/referrals"
+          className="px-4 py-2 rounded-full bg-white text-[#1E4775] text-sm font-medium"
+        >
+          Open Referrals
+        </Link>
+      </div>
+    </div>
     {/* Rewards Streaming (per pool) */}
     <div className="bg-zinc-900/50 p-4 sm:p-6">
       <div className="flex items-center justify-between gap-4 mb-3">

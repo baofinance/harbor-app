@@ -4,6 +4,7 @@ import { Minter } from "../generated/Minter_ETH_fxUSD/Minter";
 import { HaTokenBalance, PriceFeed, SailTokenBalance, StabilityPoolDeposit, UserList } from "../generated/schema";
 import { getActiveBoostMultiplier } from "./marksBoost";
 import { accrueWithBoostWindow } from "./marksAccrual";
+import { createMarksEvent, toE18BigInt } from "./marksEvents";
 
 const ONE_HOUR = BigInt.fromI32(3600);
 const ONE_DAY = BigInt.fromI32(86400);
@@ -96,7 +97,7 @@ function accrue(lastUpdated: BigInt, now: BigInt, balanceUSD: BigDecimal, baseMa
   return accrueWithBoostWindow(sourceType, sourceAddress, lastUpdated, now, balanceUSD, baseMarksPerDollarPerDay);
 }
 
-function updateHaBalances(token: Address, now: BigInt, priceUsd: BigDecimal): void {
+function updateHaBalances(token: Address, now: BigInt, priceUsd: BigDecimal, blockNumber: BigInt): void {
   const list = UserList.load((token as Bytes).toHexString());
   if (list == null) return;
   const boost = getActiveBoostMultiplier("haToken", token as Bytes, now);
@@ -113,6 +114,14 @@ function updateHaBalances(token: Address, now: BigInt, priceUsd: BigDecimal): vo
     if (earned.gt(BigDecimal.fromString("0"))) {
       b.accumulatedMarks = b.accumulatedMarks.plus(earned);
       b.totalMarksEarned = b.totalMarksEarned.plus(earned);
+      createMarksEvent({
+        id: `${user.toHexString()}-${token.toHexString()}-${now.toString()}-anchor`,
+        user,
+        amountE18: toE18BigInt(earned),
+        eventType: "anchor",
+        timestamp: now,
+        blockNumber,
+      });
     }
     const amount = b.balance.toBigDecimal().div(ONE_E18);
     b.balanceUSD = amount.times(priceUsd);
@@ -122,7 +131,7 @@ function updateHaBalances(token: Address, now: BigInt, priceUsd: BigDecimal): vo
   }
 }
 
-function updateHsBalances(token: Address, now: BigInt, priceUsd: BigDecimal): void {
+function updateHsBalances(token: Address, now: BigInt, priceUsd: BigDecimal, blockNumber: BigInt): void {
   const list = UserList.load((token as Bytes).toHexString());
   if (list == null) return;
   const boost = getActiveBoostMultiplier("sailToken", token as Bytes, now);
@@ -140,6 +149,14 @@ function updateHsBalances(token: Address, now: BigInt, priceUsd: BigDecimal): vo
     if (earned.gt(BigDecimal.fromString("0"))) {
       b.accumulatedMarks = b.accumulatedMarks.plus(earned);
       b.totalMarksEarned = b.totalMarksEarned.plus(earned);
+      createMarksEvent({
+        id: `${user.toHexString()}-${token.toHexString()}-${now.toString()}-sail`,
+        user,
+        amountE18: toE18BigInt(earned),
+        eventType: "sail",
+        timestamp: now,
+        blockNumber,
+      });
     }
     const amount = b.balance.toBigDecimal().div(ONE_E18);
     b.balanceUSD = amount.times(priceUsd);
@@ -172,7 +189,7 @@ function poolAssetUsd(
   return BigDecimal.fromString("0");
 }
 
-function updatePoolDeposits(pool: Address, now: BigInt, assetUsd: BigDecimal): void {
+function updatePoolDeposits(pool: Address, now: BigInt, assetUsd: BigDecimal, blockNumber: BigInt): void {
   const list = UserList.load((pool as Bytes).toHexString());
   if (list == null) return;
   const st = poolType(pool);
@@ -190,6 +207,14 @@ function updatePoolDeposits(pool: Address, now: BigInt, assetUsd: BigDecimal): v
     if (earned.gt(BigDecimal.fromString("0"))) {
       d.accumulatedMarks = d.accumulatedMarks.plus(earned);
       d.totalMarksEarned = d.totalMarksEarned.plus(earned);
+      createMarksEvent({
+        id: `${user.toHexString()}-${pool.toHexString()}-${now.toString()}-pool`,
+        user,
+        amountE18: toE18BigInt(earned),
+        eventType: "stabilityPool",
+        timestamp: now,
+        blockNumber,
+      });
     }
     const amount = d.balance.toBigDecimal().div(ONE_E18);
     d.balanceUSD = amount.times(assetUsd);
@@ -202,6 +227,7 @@ function updatePoolDeposits(pool: Address, now: BigInt, assetUsd: BigDecimal): v
 export function runDailyMarksUpdate(block: ethereum.Block): void {
   const t = getOrCreateTracker(LAST_DAILY_KEY);
   const now = block.timestamp;
+  const blockNumber = block.number;
   if (now.minus(t.lastUpdated).lt(ONE_DAY)) return;
 
   // Snapshot prices once per day.
@@ -212,17 +238,17 @@ export function runDailyMarksUpdate(block: ethereum.Block): void {
   const hsStethUsd = hsPriceUsd(HS_STETH_BTC);
 
   // Roll user marks forward + refresh snapshots for the new price.
-  updateHaBalances(HAETH, now, haEthUsd);
-  updateHaBalances(HABTC, now, haBtcUsd);
-  updateHsBalances(HS_FXUSD_ETH, now, hsEthUsd);
-  updateHsBalances(HS_FXUSD_BTC, now, hsBtcUsd);
-  updateHsBalances(HS_STETH_BTC, now, hsStethUsd);
+  updateHaBalances(HAETH, now, haEthUsd, blockNumber);
+  updateHaBalances(HABTC, now, haBtcUsd, blockNumber);
+  updateHsBalances(HS_FXUSD_ETH, now, hsEthUsd, blockNumber);
+  updateHsBalances(HS_FXUSD_BTC, now, hsBtcUsd, blockNumber);
+  updateHsBalances(HS_STETH_BTC, now, hsStethUsd, blockNumber);
 
   const pools: Address[] = [POOL_COLL_ETH_FXUSD, POOL_LEV_ETH_FXUSD, POOL_COLL_BTC_FXUSD, POOL_LEV_BTC_FXUSD, POOL_COLL_BTC_STETH, POOL_LEV_BTC_STETH];
   for (let i = 0; i < pools.length; i++) {
     const p = pools[i];
     const assetUsd = poolAssetUsd(p, haEthUsd, haBtcUsd, hsEthUsd, hsBtcUsd, hsStethUsd);
-    if (assetUsd.gt(BigDecimal.fromString("0"))) updatePoolDeposits(p, now, assetUsd);
+    if (assetUsd.gt(BigDecimal.fromString("0"))) updatePoolDeposits(p, now, assetUsd, blockNumber);
   }
 
   t.lastUpdated = now;
