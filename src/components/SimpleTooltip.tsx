@@ -3,27 +3,49 @@
 import React, { useState, useRef, useEffect } from "react";
 
 export type SimpleTooltipProps = {
- label: React.ReactNode;
- children: React.ReactNode;
- className?: string;
- side?:"top" |"bottom" |"left" |"right";
+  label: React.ReactNode;
+  children: React.ReactNode;
+  className?: string;
+  side?: "top" | "bottom" | "left" | "right";
+  maxHeight?: number | string;
+  maxWidth?: number | string;
+  centerOnMobile?: boolean;
 };
 
 export default function SimpleTooltip({
- label,
- children,
- className ="",
- side ="bottom",
+  label,
+  children,
+  className = "",
+  side = "bottom",
+  maxHeight,
+  maxWidth,
+  centerOnMobile = false,
 }: SimpleTooltipProps) {
  const [isVisible, setIsVisible] = useState(false);
  const [position, setPosition] = useState({ top: 0, left: 0 });
+ const [isMobileCentered, setIsMobileCentered] = useState(false);
  const triggerRef = useRef<HTMLSpanElement>(null);
  const tooltipRef = useRef<HTMLDivElement>(null);
 
  useEffect(() => {
- if (isVisible && triggerRef.current) {
+ if (!isVisible || !triggerRef.current) return;
+
+ if (
+  centerOnMobile &&
+  typeof window !== "undefined" &&
+  window.innerWidth < 768
+ ) {
+  setPosition({
+    top: window.innerHeight / 2,
+    left: window.innerWidth / 2,
+  });
+  setIsMobileCentered(true);
+  return;
+ }
+
+ setIsMobileCentered(false);
  const rect = triggerRef.current.getBoundingClientRect();
- if (side ==="right") {
+  if (side ==="right") {
  setPosition({
      top: rect.top + rect.height / 2,
      left: rect.right + 8,
@@ -31,7 +53,7 @@ export default function SimpleTooltip({
  } else if (side ==="left") {
  setPosition({
      top: rect.top + rect.height / 2,
-     left: rect.left - 8,
+      left: rect.left - 8,
  });
  } else if (side ==="top") {
  setPosition({
@@ -42,11 +64,10 @@ export default function SimpleTooltip({
  // bottom (default)
  setPosition({
      top: rect.bottom + 4,
-     left: rect.left + rect.width / 2,
+     left: rect.right - 8,
  });
  }
- }
- }, [isVisible, side]);
+ }, [isVisible, side, centerOnMobile]);
 
  return (
  <>
@@ -62,29 +83,36 @@ export default function SimpleTooltip({
  <div
  ref={tooltipRef}
  role="tooltip"
- className="pointer-events-none fixed z-[9999] bg-gray-900 px-3 py-2 text-sm text-white shadow-xl border border-gray-700 max-w-xs"
+  className="fixed z-[9999] bg-gray-900 px-3 py-2 text-sm text-white shadow-xl border border-gray-700 pointer-events-auto"
  style={{
  top: `${position.top}px`,
  left: `${position.left}px`,
- transform:
- side ==="right" || side ==="left"
- ?"translate(0, -50%)"
+   transform: isMobileCentered
+    ? "translate(-50%, -50%)"
+    : side ==="right"
+     ?"translate(0, -50%)"
+     : side ==="left"
+     ?"translate(-100%, -50%)"
  : side ==="top"
  ?"translate(-50%, -100%)"
  :"translate(-50%, 0)",
+   maxHeight: maxHeight ?? "70vh",
+   maxWidth: maxWidth ?? "20rem",
  }}
+  onMouseEnter={() => setIsVisible(true)}
+  onMouseLeave={() => setIsVisible(false)}
  >
  <span className="text-white font-medium break-words">{label}</span>
- {side ==="right" && (
+ {!isMobileCentered && side ==="right" && (
  <span className="absolute left-0 top-1/2 -translate-x-1 -translate-y-1/2 h-2 w-2 rotate-45 bg-gray-900 border-l border-b border-gray-700" />
  )}
- {side ==="left" && (
+ {!isMobileCentered && side ==="left" && (
  <span className="absolute right-0 top-1/2 translate-x-1 -translate-y-1/2 h-2 w-2 rotate-45 bg-gray-900 border-r border-t border-gray-700" />
  )}
- {side ==="top" && (
+ {!isMobileCentered && side ==="top" && (
  <span className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1 h-2 w-2 rotate-45 bg-gray-900 border-r border-t border-gray-700" />
  )}
- {side ==="bottom" && (
+ {!isMobileCentered && side ==="bottom" && (
  <span className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1 h-2 w-2 rotate-45 bg-gray-900 border-l border-b border-gray-700" />
  )}
  </div>

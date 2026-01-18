@@ -123,6 +123,90 @@ const minterABI = [
   },
 ] as const;
 
+const WAD = 10n ** 18n;
+type FeeBand = {
+  lowerBound: bigint;
+  upperBound?: bigint;
+  ratio: bigint;
+};
+
+function bandsFromConfig(config: any): FeeBand[] {
+  if (!config) return [];
+  const bounds: bigint[] = Array.isArray(config.collateralRatioBandUpperBounds)
+    ? (config.collateralRatioBandUpperBounds as bigint[])
+    : [];
+  const ratiosRaw: unknown =
+    (config as any).incentiveRatios ?? (config as any).incentiveRates;
+  const ratios: bigint[] = Array.isArray(ratiosRaw) ? (ratiosRaw as bigint[]) : [];
+  if (ratios.length === 0) return [];
+
+  const bands: FeeBand[] = [];
+  let prev = 0n;
+  for (let i = 0; i < ratios.length; i++) {
+    const isLast = i === ratios.length - 1;
+    const upper = !isLast ? bounds[i] : undefined;
+    bands.push({ lowerBound: prev, upperBound: upper, ratio: ratios[i] });
+    if (upper !== undefined) prev = upper;
+  }
+  return bands;
+}
+
+function getCurrentFee(bands: FeeBand[] | undefined, currentCR?: bigint) {
+  if (!bands || bands.length === 0 || !currentCR) return undefined;
+  return (
+    bands.find(
+      (b) =>
+        currentCR >= b.lowerBound &&
+        (b.upperBound === undefined || currentCR <= b.upperBound)
+    )?.ratio ?? bands[bands.length - 1]?.ratio
+  );
+}
+
+function FeeBandBadge({
+  ratio,
+  isMintSail = false,
+  lowerBound = 0n,
+  upperBound,
+}: {
+  ratio: bigint;
+  isMintSail?: boolean;
+  lowerBound?: bigint;
+  upperBound?: bigint;
+}) {
+  const pct = Number(ratio) / 1e16;
+  const isZeroToHundredRange = lowerBound === 0n && upperBound !== undefined;
+  const tolerance = 10n ** 14n;
+  const is100PercentOrClose = ratio >= WAD - tolerance && ratio <= WAD;
+  const shouldBlockMintSail =
+    isMintSail && isZeroToHundredRange && is100PercentOrClose;
+
+  const isBlocked = ratio >= WAD || shouldBlockMintSail;
+  const isDiscount = ratio < 0n;
+  const isFree = ratio === 0n;
+
+  const className = isBlocked
+    ? "bg-red-500/30 text-red-700 font-semibold"
+    : isDiscount
+    ? "bg-green-500/30 text-green-700 font-semibold"
+    : isFree
+    ? "bg-blue-500/30 text-blue-700 font-semibold"
+    : "bg-orange-500/30 text-orange-700 font-semibold";
+
+  const label = isBlocked
+    ? "Blocked"
+    : isFree
+    ? "Free"
+    : isDiscount
+    ? `${pct.toFixed(2)}% discount`
+    : `${pct.toFixed(2)}% fee`;
+
+  return (
+    <span className={`px-1.5 py-0.5 rounded text-[9px] ${className}`}>
+      {label}
+    </span>
+  );
+}
+
 const erc20ABI = [
   {
     inputs: [{ name: "account", type: "address" }],
@@ -308,7 +392,8 @@ function getShortSide(market: any): string {
 // Format PnL for display
 function formatPnL(value: number): { text: string; color: string } {
   const isPositive = value >= 0;
-  const text = `${isPositive ? "+" : ""}$${Math.abs(value).toLocaleString(
+  const sign = isPositive ? "+" : "-";
+  const text = `${sign}$${Math.abs(value).toLocaleString(
     undefined,
     {
       minimumFractionDigits: 2,
@@ -389,6 +474,36 @@ function SailMarketRow({
     },
   });
 
+  const minterAddress = (market as any).addresses?.minter as
+    | `0x${string}`
+    | undefined;
+  const { data: minterConfigData } = useContractRead({
+    address: minterAddress,
+    abi: minterABI,
+    functionName: "config",
+    query: {
+      enabled: !!minterAddress,
+    },
+  });
+
+  const feeBands = useMemo(() => {
+    if (!minterConfigData) return null;
+    const cfg = minterConfigData as any;
+    return {
+      mintLeveraged: bandsFromConfig(cfg.mintLeveragedIncentiveConfig),
+      redeemLeveraged: bandsFromConfig(cfg.redeemLeveragedIncentiveConfig),
+    };
+  }, [minterConfigData]);
+
+  const mintFeeRatio = useMemo(
+    () => getCurrentFee(feeBands?.mintLeveraged, collateralRatio),
+    [feeBands, collateralRatio]
+  );
+  const redeemFeeRatio = useMemo(
+    () => getCurrentFee(feeBands?.redeemLeveraged, collateralRatio),
+    [feeBands, collateralRatio]
+  );
+
   if (hasOracle) {
     const oracleRead = reads?.[baseOffset + oracleOffset];
     const oracleResult = oracleRead?.result;
@@ -434,6 +549,7 @@ function SailMarketRow({
     ? (reads?.[baseOffset + tokenOffset + 1]?.result as bigint | undefined)
     : undefined;
   const shortSide = parseShortSide(tokenName, market);
+  const longSide = parseLongSide(tokenName, market);
 
   // Calculate current value in USD using token price from hook
   let currentValueUSD: number | undefined;
@@ -486,39 +602,335 @@ function SailMarketRow({
   const pnlFormatted =
     pnlData.unrealizedPnL !== 0 ? formatPnL(pnlData.unrealizedPnL) : null;
 
+  const renderFeeValue = (
+    ratio: bigint | undefined,
+    short = false,
+    showQuestion = false
+  ) => {
+    if (ratio === undefined) {
+      return (
+        <span className="text-[#1E4775] font-medium text-[10px] font-mono">
+          -
+        </span>
+      );
+    }
+    const pct = Number(ratio) / 1e16;
+    const isFree = ratio === 0n;
+    const isDiscount = ratio < 0n;
+    const label = isFree
+      ? "Free"
+      : isDiscount
+      ? `${Math.abs(pct).toFixed(2)}% discount`
+      : short
+      ? `${pct.toFixed(2)}%`
+      : `${pct.toFixed(2)}% fee`;
+    const className =
+      isFree || isDiscount
+        ? "bg-[#A8F3DC] text-[#0B2A2F] border-2 border-[#6ED6B5] rounded-full"
+        : "text-[#1E4775]";
+    return (
+      <span
+        className={`px-1.5 py-0.5 rounded text-[9px] font-semibold whitespace-nowrap inline-flex items-center gap-1 ${className}`}
+      >
+        {label}
+        {showQuestion && (
+          <span className="text-inherit text-[9px]">[?]</span>
+        )}
+      </span>
+    );
+  };
+
+  const renderFeeBands = (
+    title: string,
+    bands: FeeBand[] | undefined,
+    isMintSail = false
+  ) => {
+    if (!bands || bands.length === 0) {
+      return (
+        <div className="bg-white p-2">
+          <h5 className="text-[#1E4775] font-semibold text-[10px] uppercase tracking-wider mb-1.5">
+            {title}
+          </h5>
+          <div className="text-[10px] text-[#1E4775]/60">Loading…</div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="bg-white p-2">
+        <h5 className="text-[#1E4775] font-semibold text-[10px] uppercase tracking-wider mb-1.5">
+          {title}
+        </h5>
+        <div className="space-y-1">
+          {bands.map((b, idx) => {
+            const active =
+              collateralRatio &&
+              collateralRatio >= b.lowerBound &&
+              (b.upperBound === undefined || collateralRatio <= b.upperBound);
+            const range = b.upperBound
+              ? `${formatRatio(b.lowerBound)} – ${formatRatio(b.upperBound)}`
+              : `> ${formatRatio(b.lowerBound)}`;
+            return (
+              <div
+                key={idx}
+                className={`flex items-center justify-between text-[10px] px-2 py-1 rounded ${
+                  active
+                    ? "bg-[#1E4775]/10 border border-[#1E4775]/30"
+                    : "bg-[#1E4775]/5"
+                }`}
+              >
+                <span className="text-[#1E4775]/70 font-mono">{range}</span>
+                <FeeBandBadge
+                  ratio={b.ratio}
+                  isMintSail={isMintSail}
+                  lowerBound={b.lowerBound}
+                  upperBound={b.upperBound}
+                />
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div key={id}>
       <div
-        className={`p-3 overflow-visible sm:overflow-x-auto transition cursor-pointer relative ${
+        className={`py-2 px-2 overflow-visible sm:overflow-x-auto transition cursor-pointer relative group ${
           isExpanded
-            ? "bg-[rgb(var(--surface-selected-rgb))]"
-            : "bg-white hover:bg-[rgb(var(--surface-selected-rgb))]"
+            ? "bg-white md:bg-[rgb(var(--surface-selected-rgb))]"
+            : "bg-white md:hover:bg-[rgb(var(--surface-selected-rgb))]"
         }`}
         onClick={onToggleExpand}
       >
-        <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_1fr_1fr_1fr] gap-2 sm:gap-4 items-center text-sm pr-6">
-          <div className="min-w-0">
-            <div className="flex items-center justify-start sm:justify-center gap-1.5 flex-wrap">
+        {/* Mobile layout */}
+          <div className="lg:hidden relative">
+            <div
+              className={`absolute -inset-x-2 -inset-y-2 bg-[rgba(30,71,117,0.06)] opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20 ${
+                isExpanded ? "opacity-100" : ""
+              }`}
+            />
+            <div className="px-3 pt-0 relative z-10">
+              <div className="relative flex items-stretch w-full gap-2">
+                <div className="relative flex items-stretch flex-1 h-[calc(100%+16px)] -mt-2">
+                <div className="flex items-center justify-between px-3 py-3 min-h-[52px] text-[#0B2A2F] w-1/2 bg-[linear-gradient(90deg,#FFFFFF_0%,#A8F3DC_33%,#A8F3DC_100%)]">
+                  <div className="flex flex-col items-start gap-0.5 relative z-10 text-[#1E4775]">
+                    <span className="text-[10px] uppercase tracking-wide text-[#1E4775]/60">
+                      V.lev
+                    </span>
+                    <span className="text-sm font-mono font-semibold">
+                      {formatLeverage(leverageRatio)}
+                    </span>
+                  </div>
+                  <div className="flex flex-col items-end gap-0.5 relative z-10 pr-2">
+                    <span className="text-[10px] uppercase tracking-wide text-[#0B2A2F]/60">
+                      Long
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <Image
+                        src={getLogoPath(longSide)}
+                        alt={longSide}
+                        width={26}
+                        height={26}
+                        className={`flex-shrink-0 rounded-full ${
+                          longSide.toLowerCase() === "fxusd"
+                            ? "mix-blend-multiply bg-transparent"
+                            : ""
+                        } ${
+                          longSide.toLowerCase() === "btc"
+                            ? "border border-[#1E4775]/60"
+                            : ""
+                        }`}
+                      />
+                      <span className="text-base font-semibold">{longSide}</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="relative flex items-center justify-start px-3 py-3 min-h-[52px] text-[#0B2A2F] w-1/2 bg-[linear-gradient(90deg,#FFC0B5_0%,#FFC0B5_67%,#FFFFFF_100%)]">
+                  <div className="flex flex-col items-start gap-0.5 relative z-10 pl-2">
+                    <span className="text-[10px] uppercase tracking-wide text-[#0B2A2F]/60">
+                      Short
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <Image
+                        src={getLogoPath(shortSide)}
+                        alt={shortSide}
+                        width={26}
+                        height={26}
+                        className={`flex-shrink-0 rounded-full ${
+                          shortSide.toLowerCase() === "btc"
+                            ? "border border-[#1E4775]/60"
+                            : ""
+                        }`}
+                      />
+                      <span className="text-base font-semibold">{shortSide}</span>
+                    </div>
+                  </div>
+                  <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                    {mintFeeRatio === 0n && (
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#A8F3DC] text-[#0B2A2F] border-2 border-[#1E4775] mt-1">
+                        Free to mint
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div className="absolute inset-y-0 left-1/2 w-12 -translate-x-1/2 -skew-x-12 z-0">
+                  <div className="absolute inset-0 bg-[linear-gradient(90deg,#A8F3DC_0%,#A8F3DC_48%,#FFC0B5_52%,#FFC0B5_100%)]" />
+                  <div className="absolute left-1/2 inset-y-0 w-1.5 -translate-x-1/2 bg-[#1E4775]" />
+                </div>
+                </div>
+              </div>
+            </div>
+            <div className="pt-0 space-y-0 text-xs">
+              <div className="bg-white text-[#1E4775] rounded-none px-3 py-2 text-[13px] -mx-2 -mb-2 border-t-2 border-[#1E4775]">
+                <div className="flex items-center gap-2">
+                  <span className="text-[#1E4775]/70 whitespace-nowrap font-semibold text-[15px]">
+                    Your Position:
+                  </span>
+                  <span className="font-mono">
+                    {userDeposit && currentValueUSD !== undefined
+                      ? formatUSD(currentValueUSD)
+                      : "-"}
+                  </span>
+                  <span className="text-[#1E4775]/70">
+                    {userDeposit
+                      ? `(${formatToken(userDeposit)} ${
+                          market.leveragedToken?.symbol || ""
+                        })`
+                      : "(-)"}
+                  </span>
+                  <span className="ml-auto font-mono">
+                    <span
+                      className={
+                        userDeposit && pnlFormatted && !pnlData.isLoading
+                          ? pnlFormatted.color
+                          : undefined
+                      }
+                    >
+                      {userDeposit && pnlFormatted && !pnlData.isLoading
+                        ? `${pnlFormatted.text} (${
+                            pnlData.unrealizedPnLPercent >= 0 ? "+" : ""
+                          }${pnlData.unrealizedPnLPercent.toFixed(1)}%)`
+                        : "-"}
+                    </span>
+                  </span>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 items-center -mx-2 pt-2 pb-0">
+                <div className="flex items-center justify-center">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onToggleExpand();
+                    }}
+                    className="px-4 py-1.5 text-sm font-semibold text-[#1E4775] bg-white border-2 border-[#1E4775] rounded-full inline-flex items-center gap-1 whitespace-nowrap min-w-[160px] justify-center"
+                  >
+                    More details
+                    {isExpanded ? (
+                      <ChevronUpIcon className="w-4 h-4 text-[#1E4775] stroke-[2.5]" />
+                    ) : (
+                      <ChevronDownIcon className="w-4 h-4 text-[#1E4775] stroke-[2.5]" />
+                    )}
+                  </button>
+                </div>
+                <div className="flex items-center justify-center pr-2">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onManageClick();
+                    }}
+                    disabled={!isConnected}
+                    className="px-4 py-2 text-sm font-semibold bg-[#1E4775] text-white hover:bg-[#17395F] disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors rounded-full whitespace-nowrap min-w-[160px] justify-center"
+                  >
+                    Manage
+                  </button>
+                </div>
+              </div>
+            </div>
+        </div>
+
+        {/* Desktop / tablet layout */}
+        <div className="hidden lg:grid grid-cols-[2fr_1fr_0.9fr_1fr_1fr_0.9fr_0.8fr] gap-2 md:gap-4 items-stretch text-sm md:justify-items-center">
+          <div className="min-w-0 flex items-center w-full sm:justify-self-stretch">
+            <div className="flex items-stretch w-full h-full">
+              <div
+                className={`relative flex items-stretch w-full h-[calc(100%+16px)] -my-2 -ml-2 after:absolute after:inset-0 after:bg-[rgba(30,71,117,0.06)] after:opacity-0 group-hover:after:opacity-100 after:transition-opacity ${
+                  isExpanded ? "after:opacity-100" : ""
+                }`}
+              >
+                <div className="flex items-center justify-end px-3 py-2 text-[#0B2A2F] w-1/2 bg-[linear-gradient(90deg,#FFFFFF_0%,#A8F3DC_33%,#A8F3DC_100%)]">
+                  <div className="flex items-center gap-2 relative z-10 pr-2">
+                    <Image
+                      src={getLogoPath(longSide)}
+                      alt={longSide}
+                      width={18}
+                      height={18}
+                      className={`flex-shrink-0 rounded-full ${
+                        longSide.toLowerCase() === "fxusd"
+                          ? "mix-blend-multiply bg-transparent"
+                          : ""
+                      } ${
+                        longSide.toLowerCase() === "btc"
+                          ? "border border-[#1E4775]/60"
+                          : ""
+                      }`}
+                    />
+                    <span className="text-xs font-semibold">{longSide}</span>
+                  </div>
+                </div>
+                <div className="relative flex items-center justify-start px-3 py-2 text-[#0B2A2F] w-1/2 bg-[linear-gradient(90deg,#FFC0B5_0%,#FFC0B5_67%,#FFFFFF_100%)]">
+                  <div className="flex items-center gap-2 relative z-10 pl-2">
+                    <Image
+                      src={getLogoPath(shortSide)}
+                      alt={shortSide}
+                      width={18}
+                      height={18}
+                      className={`flex-shrink-0 rounded-full ${
+                        shortSide.toLowerCase() === "btc"
+                          ? "border border-[#1E4775]/60"
+                          : ""
+                      }`}
+                    />
+                    <span className="text-xs font-semibold">{shortSide}</span>
+                  </div>
+                  <div className="ml-2 text-[#1E4775] z-10">
+                    {isExpanded ? (
+                      <ChevronUpIcon className="w-5 h-5" />
+                    ) : (
+                      <ChevronDownIcon className="w-5 h-5" />
+                    )}
+                  </div>
+                </div>
+                <div className="absolute inset-y-0 left-1/2 w-12 -translate-x-1/2 -skew-x-12 z-0">
+                  <div className="absolute inset-0 bg-[linear-gradient(90deg,#A8F3DC_0%,#A8F3DC_48%,#FFC0B5_52%,#FFC0B5_100%)]" />
+                  <div className="absolute left-1/2 top-0 h-full w-1.5 -translate-x-1/2 bg-[#1E4775]" />
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="text-center min-w-0 flex items-center justify-center">
+            <div className="flex items-center gap-1.5 justify-center">
               <SimpleTooltip label={market.leveragedToken.symbol}>
                 <Image
                   src={getLogoPath(market.leveragedToken.symbol)}
                   alt={market.leveragedToken.symbol}
-                  width={20}
-                  height={20}
+                  width={18}
+                  height={18}
                   className="flex-shrink-0 cursor-help"
                 />
               </SimpleTooltip>
-              <span className="text-[#1E4775] font-medium text-sm lg:text-base">
-                Short {shortSide}
+              <span className="text-[#1E4775] font-medium text-xs font-mono">
+                {market.leveragedToken.symbol}
               </span>
             </div>
           </div>
-          <div className="text-left sm:text-center min-w-0">
+          <div className="text-center min-w-0 flex items-center justify-center">
             <span className="text-[#1E4775] font-medium text-xs font-mono">
               {formatLeverage(leverageRatio)}
             </span>
           </div>
-          <div className="text-left sm:text-center min-w-0">
+          <div className="text-center min-w-0 flex items-center justify-center">
             <span className="text-[#1E4775] font-medium text-xs font-mono">
               {userDeposit
                 ? `${formatToken(userDeposit)} ${
@@ -527,22 +939,76 @@ function SailMarketRow({
                 : "-"}
             </span>
           </div>
-          <div className="text-left sm:text-center min-w-0">
+          <div className="text-center min-w-0 flex flex-col items-center justify-center leading-tight">
             <div className="text-[#1E4775] font-medium text-xs font-mono">
               {userDeposit && currentValueUSD !== undefined
                 ? formatUSD(currentValueUSD)
                 : "-"}
             </div>
-            {userDeposit && pnlFormatted && !pnlData.isLoading && (
-              <div className={`text-[10px] font-mono ${pnlFormatted.color}`}>
+            {userDeposit && pnlFormatted && !pnlData.isLoading ? (
+              <div className={`text-[11px] font-mono ${pnlFormatted.color}`}>
                 {pnlFormatted.text} (
                 {pnlData.unrealizedPnLPercent >= 0 ? "+" : ""}
                 {pnlData.unrealizedPnLPercent.toFixed(1)}%)
               </div>
+            ) : (
+              <span className="text-[#1E4775]/50 text-[10px] font-mono">
+                -
+              </span>
             )}
           </div>
+          <div className="text-center min-w-0 flex items-center justify-center">
+            <div className="flex items-center gap-2">
+              <SimpleTooltip
+                side="left"
+                maxHeight="none"
+                maxWidth={720}
+                label={
+                  <div className="space-y-1.5">
+                    <div className="text-[10px] text-white/80">
+                      Current CR:{" "}
+                      <span className="font-mono font-semibold">
+                        {formatRatio(collateralRatio)}
+                      </span>
+                    </div>
+                    <div className="min-w-[260px]">
+                      {renderFeeBands("Mint Fees", feeBands?.mintLeveraged, true)}
+                    </div>
+                  </div>
+                }
+              >
+                <span className="cursor-help">
+                  {renderFeeValue(mintFeeRatio, true, true)}
+                </span>
+              </SimpleTooltip>
+              <span className="text-[#1E4775]/60 text-xs">/</span>
+              <SimpleTooltip
+                side="left"
+                maxHeight="none"
+                maxWidth={720}
+                label={
+                  <div className="space-y-1.5">
+                    <div className="text-[10px] text-white/80">
+                      Current CR:{" "}
+                      <span className="font-mono font-semibold">
+                        {formatRatio(collateralRatio)}
+                      </span>
+                    </div>
+                    <div className="min-w-[260px]">
+                      {renderFeeBands("Redeem Fees", feeBands?.redeemLeveraged)}
+                    </div>
+                  </div>
+                }
+              >
+                <span className="cursor-help text-[#1E4775] text-[10px] font-semibold inline-flex items-center gap-0">
+                  {renderFeeValue(redeemFeeRatio, true)}
+                  <span className="-ml-1">[?]</span>
+                </span>
+              </SimpleTooltip>
+            </div>
+          </div>
           <div
-            className="text-left sm:text-center min-w-0"
+            className="text-center min-w-0 flex items-center justify-center"
             onClick={(e) => e.stopPropagation()}
           >
             <button
@@ -556,13 +1022,6 @@ function SailMarketRow({
               Manage
             </button>
           </div>
-        </div>
-        <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[#1E4775]">
-          {isExpanded ? (
-            <ChevronUpIcon className="w-5 h-5" />
-          ) : (
-            <ChevronDownIcon className="w-5 h-5" />
-          )}
         </div>
       </div>
 
@@ -663,9 +1122,6 @@ function SailMarketExpandedView({
   const minterAddress = (market as any).addresses?.minter as
     | `0x${string}`
     | undefined;
-  const stabilityPoolManagerAddress = (market as any).addresses
-    ?.stabilityPoolManager as `0x${string}` | undefined;
-
   const { data: minterConfigData } = useContractRead({
     address: minterAddress,
     abi: minterABI,
@@ -674,6 +1130,8 @@ function SailMarketExpandedView({
       enabled: !!minterAddress,
     },
   });
+  const stabilityPoolManagerAddress = (market as any).addresses
+    ?.stabilityPoolManager as `0x${string}` | undefined;
 
   // Import STABILITY_POOL_MANAGER_ABI dynamically to avoid adding to top-level imports
   const stabilityPoolManagerABI = [
@@ -893,6 +1351,21 @@ function SailMarketExpandedView({
             </p>
           </div>
 
+          {/* Mobile: Price Chart below description */}
+          <div className="bg-white p-3 flex flex-col md:hidden">
+            <h3 className="text-[#1E4775] font-semibold mb-3 text-sm">
+              {market.leveragedToken?.symbol || "Token"} (short{" "}
+              {getShortSide(market)} against {getLongSide(market)})
+            </h3>
+            <div className="flex-1 min-h-72">
+              <PriceChart
+                tokenType="STEAMED"
+                selectedToken={market.leveragedToken?.symbol || ""}
+                marketId={marketId}
+              />
+            </div>
+          </div>
+
           {/* PnL Details - only show if user has position */}
           {hasPosition && pnlData && (
             <div className="bg-white p-4 flex-1">
@@ -934,17 +1407,17 @@ function SailMarketExpandedView({
                   !pnlData.error &&
                   pnlData.realizedPnL &&
                   pnlData.realizedPnL !== 0 && (
-                    <>
-                      <div className="text-[#1E4775]/70">Realized PnL:</div>
-                      <div
-                        className={`font-mono text-right ${
-                          formatPnL(pnlData.realizedPnL).color
-                        }`}
-                      >
-                        {formatPnL(pnlData.realizedPnL).text}
-                      </div>
-                    </>
-                  )}
+                  <>
+                    <div className="text-[#1E4775]/70">Realized PnL:</div>
+                    <div
+                      className={`font-mono text-right ${
+                        formatPnL(pnlData.realizedPnL).color
+                      }`}
+                    >
+                      {formatPnL(pnlData.realizedPnL).text}
+                    </div>
+                  </>
+                )}
                 <div className="col-span-2 border-t border-[#1E4775]/10 pt-1.5">
                   <div className="grid grid-cols-2 gap-x-4 text-xs">
                     <div />
@@ -987,8 +1460,8 @@ function SailMarketExpandedView({
                         : 1.0;
                     const wrappedAmount =
                       wrappedRateNum > 0
-                        ? underlyingAmount / wrappedRateNum
-                        : underlyingAmount;
+                      ? underlyingAmount / wrappedRateNum
+                      : underlyingAmount;
                     return `${formatToken(
                       BigInt(Math.floor(wrappedAmount * 1e18))
                     )} ${market.collateral?.symbol || "ETH"}`;
@@ -1035,7 +1508,7 @@ function SailMarketExpandedView({
         </div>
 
         {/* Right: Price Chart */}
-        <div className="bg-white p-3 flex flex-col">
+        <div className="bg-white p-3 flex flex-col hidden md:flex">
           <h3 className="text-[#1E4775] font-semibold mb-3 text-sm">
             {market.leveragedToken?.symbol || "Token"} (short{" "}
             {getShortSide(market)} against {getLongSide(market)})
@@ -1099,8 +1572,8 @@ export default function SailPage() {
         sailBalancesCount: sailBalances.length,
         sailBalances: sailBalances.map(
           (b: { tokenAddress: string; estimatedMarks: number }) => ({
-            token: b.tokenAddress,
-            marks: b.estimatedMarks,
+          token: b.tokenAddress,
+          marks: b.estimatedMarks,
           })
         ),
       });
@@ -1402,8 +1875,8 @@ export default function SailPage() {
   const anvilUserDepositReads = useContractReads({
     contracts: userDepositContractArray,
     query: {
-      enabled: sailMarkets.length > 0 && !!address && useAnvil,
-      refetchInterval: 5000,
+    enabled: sailMarkets.length > 0 && !!address && useAnvil,
+    refetchInterval: 5000,
     },
   });
 
@@ -1691,7 +2164,7 @@ export default function SailPage() {
 
           {/* Stats boxes (user) */}
           {isConnected && (
-            <div className="mb-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+            <div className="mb-2 grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2">
               <div className="bg-black/20 backdrop-blur-sm rounded-none overflow-hidden px-3 py-2">
                 <div className="flex flex-col items-center justify-center text-center">
                   <div className="text-[11px] text-white/80 uppercase tracking-widest">
@@ -1790,6 +2263,7 @@ export default function SailPage() {
                     Sail Marks
                   </h2>
                   <InfoTooltip
+                    centerOnMobile
                     label={
                       <div className="space-y-3">
                         <div>
@@ -1876,26 +2350,20 @@ export default function SailPage() {
           {/* Divider */}
           <div className="border-t border-white/10 mb-3"></div>
 
-          {/* Markets List - Grouped by Long Side */}
+          {/* Markets List */}
           <section className="space-y-4">
             {(() => {
               // Check if any markets have finished genesis (have collateral)
-              const hasAnyFinishedMarkets = Object.entries(groupedMarkets).some(
-                ([_, markets]) => {
-                  return markets.some(([id]) => {
-                    const globalIndex = sailMarkets.findIndex(
-                      ([marketId]) => marketId === id
-                    );
-                    const baseOffset = marketOffsets.get(globalIndex) ?? 0;
-                    const collateralValue = reads?.[baseOffset + 3]?.result as
-                      | bigint
-                      | undefined;
-                    return (
-                      collateralValue !== undefined && collateralValue > 0n
-                    );
-                  });
-                }
-              );
+              const hasAnyFinishedMarkets = sailMarkets.some(([id]) => {
+                  const globalIndex = sailMarkets.findIndex(
+                    ([marketId]) => marketId === id
+                  );
+                  const baseOffset = marketOffsets.get(globalIndex) ?? 0;
+                  const collateralValue = reads?.[baseOffset + 3]?.result as
+                    | bigint
+                    | undefined;
+                return collateralValue !== undefined && collateralValue > 0n;
+                });
 
               // Show loading state while fetching market data
               if (isLoadingReads) {
@@ -1937,10 +2405,7 @@ export default function SailPage() {
               }
 
               // Otherwise, show markets as usual
-              const marketEntries = Object.entries(groupedMarkets);
-              return marketEntries.map(([longSide, markets], groupIndex) => {
-                // Filter to only show markets where genesis has completed (has collateral)
-                const activeMarkets = markets.filter(([id]) => {
+              const activeMarkets = sailMarkets.filter(([id]) => {
                   const globalIndex = sailMarkets.findIndex(
                     ([marketId]) => marketId === id
                   );
@@ -1948,134 +2413,119 @@ export default function SailPage() {
                   const collateralValue = reads?.[baseOffset + 3]?.result as
                     | bigint
                     | undefined;
-                  return collateralValue !== undefined && collateralValue > 0n;
+                return collateralValue !== undefined && collateralValue > 0n;
                 });
 
-                // Skip this group if no markets have completed genesis
-                if (activeMarkets.length === 0) {
-                  return null;
-                }
-
-                const isFirstGroup = groupIndex === 0;
-
-                return (
-                  <div key={longSide}>
-                    <div className="pt-4 mb-3 flex items-center justify-between gap-3">
-                      <h2 className="text-xs font-medium text-white/70 uppercase tracking-wider">
-                        Long {longSide}
-                      </h2>
-                      {isFirstGroup && (
-                        <SimpleTooltip
-                          label={
-                            <div className="text-left max-w-xs">
-                              <div className="font-semibold mb-1">
-                                Ledger Marks
-                              </div>
-                              <div className="text-xs text-white/90">
-                                Earned by holding sail tokens. Used to qualify
-                                for future rewards.
-                              </div>
-                            </div>
-                          }
-                        >
-                          <div className="cursor-help bg-black/35 hover:bg-black/40 border border-white/25 backdrop-blur-sm px-3 py-1.5 rounded-full transition-colors">
-                            <div className="flex items-center gap-2 text-white/90 text-sm whitespace-nowrap">
-                              <Image
-                                src="/icons/marks.png"
-                                alt="Marks"
-                                width={18}
-                                height={18}
-                                className="opacity-95"
-                              />
-                              <span>
-                                <span className="font-semibold">
-                                  Earn Ledger Marks
-                                </span>{" "}
-                                <span className="text-white/70">
-                                  for all positions
-                                </span>{" "}
-                                <span className="text-white/60">
-                                  •{" "}
-                                  {activeSailBoostEndTimestamp ||
-                                  sailMarksPerDay >= 9.5
-                                    ? "10 marks / dollar / day (2x boost applied!)"
-                                    : "10 marks / dollar / day"}
-                                </span>
-                              </span>
-                            </div>
+              return (
+                <div>
+                  <div className="pt-4 mb-3 flex items-center justify-end">
+                    <SimpleTooltip
+                      centerOnMobile
+                      label={
+                        <div className="text-left max-w-xs">
+                          <div className="font-semibold mb-1">Ledger Marks</div>
+                          <div className="text-xs text-white/90">
+                            Earned by holding sail tokens. Used to qualify for
+                            future rewards.
                           </div>
-                        </SimpleTooltip>
-                      )}
-                    </div>
-
-                    {/* Header Row */}
-                    <div className="hidden md:block bg-white py-1.5 px-2 overflow-x-auto mb-2">
-                      <div className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr] gap-4 items-center uppercase tracking-wider text-[10px] lg:text-[11px] text-[#1E4775] font-semibold">
-                        <div className="min-w-0 text-center">Token</div>
-                        <div className="text-center min-w-0">Leverage</div>
-                        <div className="text-center min-w-0">Your Position</div>
-                        <div className="text-center min-w-0">Current Value</div>
-                        <div className="text-center min-w-0">Action</div>
-                      </div>
-                    </div>
-
-                    {/* Market Rows */}
-                    <div className="space-y-2">
-                      {activeMarkets.map(([id, m]) => {
-                        const globalIndex = sailMarkets.findIndex(
-                          ([marketId]) => marketId === id
-                        );
-                        const userDeposit = userDepositMap.get(globalIndex);
-                        const baseOffset = marketOffsets.get(globalIndex) ?? 0;
-
-                        // Check if this market has oracle and token addresses
-                        const priceOracle = (m as any).addresses
-                          ?.collateralPrice as `0x${string}` | undefined;
-                        const leveragedTokenAddress = (m as any).addresses
-                          ?.leveragedToken as `0x${string}` | undefined;
-                        const isValidAddress = (addr: any): boolean =>
-                          addr &&
-                          typeof addr === "string" &&
-                          addr.startsWith("0x") &&
-                          addr.length === 42;
-                        const hasOracle = isValidAddress(priceOracle);
-                        const hasToken = isValidAddress(leveragedTokenAddress);
-
-                        const tokenPrices = tokenPricesByMarket[id];
-
-                        return (
-                          <SailMarketRow
-                            key={id}
-                            id={id}
-                            market={m}
-                            baseOffset={baseOffset}
-                            hasOracle={hasOracle}
-                            hasToken={hasToken}
-                            reads={reads}
-                            userDeposit={userDeposit}
-                            isExpanded={expandedMarkets.includes(id)}
-                            onToggleExpand={() =>
-                              setExpandedMarkets((prev) =>
-                                prev.includes(id)
-                                  ? prev.filter((x) => x !== id)
-                                  : [...prev, id]
-                              )
-                            }
-                            onManageClick={() => {
-                              setSelectedMarketId(id);
-                              setSelectedMarket(m);
-                              setManageModalTab("mint");
-                              setManageModalOpen(true);
-                            }}
-                            isConnected={isConnected}
-                            tokenPrices={tokenPrices}
+                        </div>
+                      }
+                    >
+                      <div className="cursor-help bg-black/35 hover:bg-black/40 border border-white/25 backdrop-blur-sm px-2 py-1 rounded-full transition-colors">
+                        <div className="flex items-center gap-1.5 text-white/90 text-sm whitespace-nowrap">
+                          <Image
+                            src="/icons/marks.png"
+                            alt="Marks"
+                            width={18}
+                            height={18}
+                            className="opacity-95"
                           />
-                        );
-                      })}
+                          <span>
+                            <span className="font-semibold">
+                              All positions earn Ledger Marks
+                            </span>{" "}
+                            <span className="text-white/60">
+                              •{" "}
+                              {activeSailBoostEndTimestamp ||
+                              sailMarksPerDay >= 9.5
+                                ? "10 / $ / day"
+                                : "10 / $ / day"}
+                            </span>
+                          </span>
+                        </div>
+                      </div>
+                    </SimpleTooltip>
+                  </div>
+
+                  {/* Header Row */}
+                  <div className="hidden md:block bg-white py-1.5 px-2 overflow-x-auto mb-2">
+                  <div className="grid grid-cols-[2fr_1fr_0.9fr_1fr_1fr_0.9fr_0.8fr] gap-4 items-center uppercase tracking-wider text-[10px] lg:text-[11px] text-[#1E4775] font-semibold">
+                      <div className="min-w-0 text-center">Long / Short</div>
+                      <div className="text-center min-w-0">Token</div>
+                      <div className="text-center min-w-0">Leverage</div>
+                      <div className="text-center min-w-0">Your Position</div>
+                      <div className="text-center min-w-0">Current Value</div>
+                    <div className="text-center min-w-0">Mint/Redeem Fee</div>
+                      <div className="text-center min-w-0">Action</div>
                     </div>
                   </div>
-                );
-              });
+
+                  {/* Market Rows */}
+                  <div className="space-y-2">
+                    {activeMarkets.map(([id, m]) => {
+                      const globalIndex = sailMarkets.findIndex(
+                        ([marketId]) => marketId === id
+                      );
+                      const userDeposit = userDepositMap.get(globalIndex);
+                      const baseOffset = marketOffsets.get(globalIndex) ?? 0;
+
+                      // Check if this market has oracle and token addresses
+                      const priceOracle = (m as any).addresses
+                        ?.collateralPrice as `0x${string}` | undefined;
+                      const leveragedTokenAddress = (m as any).addresses
+                        ?.leveragedToken as `0x${string}` | undefined;
+                      const isValidAddress = (addr: any): boolean =>
+                        addr &&
+                        typeof addr === "string" &&
+                        addr.startsWith("0x") &&
+                        addr.length === 42;
+                      const hasOracle = isValidAddress(priceOracle);
+                      const hasToken = isValidAddress(leveragedTokenAddress);
+
+                      const tokenPrices = tokenPricesByMarket[id];
+
+                      return (
+                        <SailMarketRow
+                          key={id}
+                          id={id}
+                          market={m}
+                          baseOffset={baseOffset}
+                          hasOracle={hasOracle}
+                          hasToken={hasToken}
+                          reads={reads}
+                          userDeposit={userDeposit}
+                          isExpanded={expandedMarkets.includes(id)}
+                          onToggleExpand={() =>
+                                setExpandedMarkets((prev) =>
+                                  prev.includes(id)
+                                    ? prev.filter((x) => x !== id)
+                                    : [...prev, id]
+                                )
+                          }
+                          onManageClick={() => {
+                            setSelectedMarketId(id);
+                            setSelectedMarket(m);
+                            setManageModalTab("mint");
+                            setManageModalOpen(true);
+                          }}
+                          isConnected={isConnected}
+                          tokenPrices={tokenPrices}
+                        />
+                      );
+                    })}
+                  </div>
+                </div>
+              );
             })()}
           </section>
         </main>

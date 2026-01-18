@@ -4,21 +4,24 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 export type InfoTooltipProps = {
-  label: React.ReactNode;
+ label: React.ReactNode;
   children?: React.ReactNode;
-  className?: string;
+ className?: string;
   side?: "top" | "bottom" | "left" | "right";
+  centerOnMobile?: boolean;
 };
 
 export default function InfoTooltip({
-  label,
+ label,
   children,
-  className,
+ className,
   side = "top",
+  centerOnMobile = false,
 }: InfoTooltipProps) {
   const [isVisible, setIsVisible] = useState(false);
   const [position, setPosition] = useState({ top: 0, left: 0 });
   const [isMounted, setIsMounted] = useState(false);
+  const [isMobileCentered, setIsMobileCentered] = useState(false);
   const triggerRef = useRef<HTMLSpanElement>(null);
 
   useEffect(() => {
@@ -29,6 +32,20 @@ export default function InfoTooltip({
     if (!triggerRef.current) return;
     const rect = triggerRef.current.getBoundingClientRect();
 
+    if (
+      centerOnMobile &&
+      typeof window !== "undefined" &&
+      window.innerWidth < 768
+    ) {
+      setPosition({
+        top: window.innerHeight / 2,
+        left: window.innerWidth / 2,
+      });
+      setIsMobileCentered(true);
+      return;
+    }
+
+    setIsMobileCentered(false);
     if (side === "right") {
       setPosition({
         top: rect.top + rect.height / 2,
@@ -50,7 +67,7 @@ export default function InfoTooltip({
         left: rect.left + rect.width / 2,
       });
     }
-  }, [side]);
+  }, [side, centerOnMobile]);
 
   useEffect(() => {
     if (!isVisible) return;
@@ -75,35 +92,36 @@ export default function InfoTooltip({
       style={{
         top: `${position.top}px`,
         left: `${position.left}px`,
-        transform:
-          side === "right" || side === "left"
-            ? "translate(0, -50%)"
-            : side === "bottom"
-            ? "translate(-50%, 0)"
-            : "translate(-50%, -100%)",
+        transform: isMobileCentered
+          ? "translate(-50%, -50%)"
+          : side === "right" || side === "left"
+          ? "translate(0, -50%)"
+          : side === "bottom"
+          ? "translate(-50%, 0)"
+          : "translate(-50%, -100%)",
       }}
     >
       <div className="break-words whitespace-normal leading-relaxed">
         {label}
       </div>
-      {side === "right" && (
+      {!isMobileCentered && side === "right" && (
         <span className="absolute left-0 top-1/2 -translate-x-1 -translate-y-1/2 h-3 w-3 rotate-45 bg-gray-900 border-l border-b border-gray-700" />
       )}
-      {side === "left" && (
+      {!isMobileCentered && side === "left" && (
         <span className="absolute right-0 top-1/2 translate-x-1 -translate-y-1/2 h-3 w-3 rotate-45 bg-gray-900 border-r border-t border-gray-700" />
       )}
-      {side === "bottom" && (
+      {!isMobileCentered && side === "bottom" && (
         <span className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1 h-3 w-3 rotate-45 bg-gray-900 border-l border-b border-gray-700" />
       )}
-      {side === "top" && (
+      {!isMobileCentered && side === "top" && (
         <span className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1 h-3 w-3 rotate-45 bg-gray-900 border-r border-t border-gray-700" />
       )}
     </div>
   );
 
-  return (
+ return (
     <>
-      <span
+ <span
         ref={triggerRef}
         className={"relative inline-flex items-center" + (className ?? "")}
         onMouseEnter={() => setIsVisible(true)}
@@ -116,28 +134,28 @@ export default function InfoTooltip({
             {children}
           </span>
         ) : (
-          <span
-            tabIndex={0}
-            className="inline-flex h-5 w-5 items-center justify-center text-white/60 hover:text-white focus:outline-none focus-visible:ring-1 focus-visible:ring-white/30"
-            aria-label="Info"
-          >
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={2}
-              className="h-3.5 w-3.5"
-            >
-              <circle cx="12" cy="12" r="10" />
-              <path d="M12 16v-4" />
-              <path d="M12 8h.01" />
-            </svg>
-          </span>
+ <span
+ tabIndex={0}
+ className="inline-flex h-5 w-5 items-center justify-center text-white/60 hover:text-white focus:outline-none focus-visible:ring-1 focus-visible:ring-white/30"
+ aria-label="Info"
+ >
+ <svg
+ viewBox="0 0 24 24"
+ fill="none"
+ stroke="currentColor"
+ strokeWidth={2}
+ className="h-3.5 w-3.5"
+ >
+ <circle cx="12" cy="12" r="10" />
+ <path d="M12 16v-4" />
+ <path d="M12 8h.01" />
+ </svg>
+ </span>
         )}
-      </span>
+ </span>
       {isMounted && tooltip
         ? createPortal(tooltip, document.body)
         : null}
     </>
-  );
+ );
 }
