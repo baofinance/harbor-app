@@ -112,27 +112,27 @@ export function RewardTokensDisplay({
     },
     refetchInterval: 60000,
     retry: 2,
-  });
+    });
 
   // Combine and deduplicate reward tokens, keeping full token info
   const allRewardTokens = useMemo(() => {
-    const rewardTokenMap = new Map<
-      string,
-      { symbol: string; displayName: string; name?: string }
-    >();
+  const rewardTokenMap = new Map<
+    string,
+    { symbol: string; displayName: string; name?: string }
+  >();
     const sourceTokens =
       normalizedPoolAddresses.length > 0
         ? multiPoolTokens
         : [...collateralRewardTokens, ...sailRewardTokens];
     sourceTokens.forEach((token) => {
-      if (token.symbol && !rewardTokenMap.has(token.symbol.toLowerCase())) {
-        rewardTokenMap.set(token.symbol.toLowerCase(), {
-          symbol: token.symbol,
-          displayName: token.displayName || token.name || token.symbol,
-          name: token.name,
-        });
-      }
-    });
+    if (token.symbol && !rewardTokenMap.has(token.symbol.toLowerCase())) {
+      rewardTokenMap.set(token.symbol.toLowerCase(), {
+        symbol: token.symbol,
+        displayName: token.displayName || token.name || token.symbol,
+        name: token.name,
+      });
+    }
+  });
     return Array.from(rewardTokenMap.values());
   }, [
     collateralRewardTokens,
