@@ -51,8 +51,8 @@ export const markets = {
       collateralToken: contractsMarkets["eth-fxusd"].addresses.collateralToken, // fxUSD
       wrappedCollateralToken: contractsMarkets["eth-fxusd"].addresses.wrappedCollateralToken, // fxSAVE
       genesisZap: contractsMarkets["eth-fxusd"].addresses.genesisZap, // GenesisUSDCZap_v2 for ETH/fxUSD
-      peggedTokenZap: contractsMarkets["eth-fxusd"].addresses.peggedTokenZap, // MinterUSDCZap_v2 for ETH/fxUSD
-      leveragedTokenZap: contractsMarkets["eth-fxusd"].addresses.leveragedTokenZap, // MinterUSDCZap_v2 for ETH/fxUSD
+      peggedTokenZap: contractsMarkets["eth-fxusd"].addresses.peggedTokenZap, // MinterUSDCZap_v3 for ETH/fxUSD (includes stability pool zaps)
+      leveragedTokenZap: contractsMarkets["eth-fxusd"].addresses.leveragedTokenZap, // MinterUSDCZap_v3 for ETH/fxUSD (includes stability pool zaps)
     },
     startBlock: contractsMarkets["eth-fxusd"].startBlock,
     peggedToken: {
@@ -206,8 +206,8 @@ export const markets = {
       collateralToken: contractsMarkets["btc-steth"].addresses.collateralToken, // wstETH (underlying collateral token)
       wrappedCollateralToken: contractsMarkets["btc-steth"].addresses.wrappedCollateralToken, // wstETH (deposited)
       genesisZap: contractsMarkets["btc-steth"].addresses.genesisZap, // GenesisETHZap_v3 for BTC/stETH
-      peggedTokenZap: contractsMarkets["btc-steth"].addresses.peggedTokenZap, // MinterETHZap_v2 for BTC/stETH
-      leveragedTokenZap: contractsMarkets["btc-steth"].addresses.leveragedTokenZap, // MinterETHZap_v2 for BTC/stETH
+      peggedTokenZap: contractsMarkets["btc-steth"].addresses.peggedTokenZap, // MinterETHZap_v3 for BTC/stETH (includes stability pool zaps)
+      leveragedTokenZap: contractsMarkets["btc-steth"].addresses.leveragedTokenZap, // MinterETHZap_v3 for BTC/stETH (includes stability pool zaps)
     },
     startBlock: contractsMarkets["btc-steth"].startBlock,
     peggedToken: {

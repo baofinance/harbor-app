@@ -22,6 +22,8 @@ import { minterABI } from "@/abis/minter";
 import { ERC20_ABI } from "@/abis/shared";
 import { MINTER_ETH_ZAP_V2_ABI, MINTER_USDC_ZAP_V2_ABI } from "@/config/contracts";
 import { parseUnits } from "viem";
+import { calculateDeadline, STETH_ZAP_PERMIT_ABI, USDC_ZAP_PERMIT_ABI } from "@/utils/permit";
+import { usePermitOrApproval } from "@/hooks/usePermitOrApproval";
 
 // Constants (to be moved from page.tsx)
 const tokens = {
@@ -136,6 +138,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
   const chainId = useChainId();
   const { data: walletClient } = useWalletClient({ chainId });
   const publicClient = usePublicClient({ chainId });
+  const { handlePermitOrApproval } = usePermitOrApproval();
 
   // State variables previously in App component, now local to MintRedeemForm
   const [isFlipped, setIsFlipped] = useState(false);
@@ -1229,7 +1232,6 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                 });
                 setTransactionHash(hash);
               } else if (isStETH) {
-                // Need approval for stETH first
                 // Use underlyingCollateralToken (stETH), not wrappedCollateralToken (wstETH)
                 let stETHAddress = marketInfo?.addresses?.underlyingCollateralToken as `0x${string}` | undefined;
                 
@@ -1242,32 +1244,64 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                   throw new Error("stETH address not found. Please ensure you're depositing to a wstETH market.");
                 }
                 
-                // Check and approve stETH if needed
-                const stETHAllowance = await publicClient?.readContract({
-                  address: stETHAddress,
-                  abi: ERC20_ABI,
-                  functionName: "allowance",
-                  args: [userAddress as `0x${string}`, zapAddress],
-                });
+                // Try to use permit first, fallback to approval if not supported or fails
+                const permitResult = await handlePermitOrApproval(stETHAddress, zapAddress, parsedAmount);
+                let usePermit = permitResult?.usePermit && !!permitResult.permitSig && !!permitResult.deadline;
                 
-                const allowanceBigInt = (stETHAllowance as bigint) || 0n;
-                if (allowanceBigInt < parsedAmount) {
-                  const approveHash = await writeContractAsync({
-                    address: stETHAddress,
-                    abi: ERC20_ABI,
-                    functionName: "approve",
-                    args: [zapAddress, parsedAmount],
-                  });
-                  await publicClient?.waitForTransactionReceipt({ hash: approveHash });
+                if (usePermit && permitResult.permitSig && permitResult.deadline) {
+                  // Use permit function - zapStEthToPeggedWithPermit
+                  try {
+                    const hash = await writeContractAsync({
+                      address: zapAddress,
+                      abi: [...MINTER_ETH_ZAP_V2_ABI, ...STETH_ZAP_PERMIT_ABI] as const,
+                      functionName: "zapStEthToPeggedWithPermit",
+                      args: [
+                        parsedAmount,
+                        userAddress as `0x${string}`,
+                        minPeggedOut,
+                        permitResult.deadline,
+                        permitResult.permitSig.v,
+                        permitResult.permitSig.r,
+                        permitResult.permitSig.s,
+                      ],
+                    });
+                    setTransactionHash(hash);
+                  } catch (permitError) {
+                    console.error("Permit zap failed, falling back to approval:", permitError);
+                    // Fall through to approval flow below
+                    usePermit = false;
+                  }
                 }
                 
-                const hash = await writeContractAsync({
-                  address: zapAddress,
-                  abi: MINTER_ETH_ZAP_V2_ABI,
-                  functionName: "zapStEthToPegged",
-                  args: [parsedAmount, userAddress as `0x${string}`, minPeggedOut],
-                });
-                setTransactionHash(hash);
+                if (!usePermit) {
+                  // Fallback: Use traditional approval + zap
+                  const stETHAllowance = await publicClient?.readContract({
+                    address: stETHAddress,
+                    abi: ERC20_ABI,
+                    functionName: "allowance",
+                    args: [userAddress as `0x${string}`, zapAddress],
+                  });
+                  
+                  const allowanceBigInt = (stETHAllowance as bigint) || 0n;
+                  if (allowanceBigInt < parsedAmount) {
+                    setPendingStep("approval");
+                    const approveHash = await writeContractAsync({
+                      address: stETHAddress,
+                      abi: ERC20_ABI,
+                      functionName: "approve",
+                      args: [zapAddress, parsedAmount],
+                    });
+                    await publicClient?.waitForTransactionReceipt({ hash: approveHash });
+                  }
+                  
+                  const hash = await writeContractAsync({
+                    address: zapAddress,
+                    abi: MINTER_ETH_ZAP_V2_ABI,
+                    functionName: "zapStEthToPegged",
+                    args: [parsedAmount, userAddress as `0x${string}`, minPeggedOut],
+                  });
+                  setTransactionHash(hash);
+                }
               }
             } else {
               // Mint leveraged token via zap
@@ -1313,32 +1347,64 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                   throw new Error("stETH address not found. Please ensure you're depositing to a wstETH market.");
                 }
                 
-                // Check and approve stETH if needed
-                const stETHAllowance = await publicClient?.readContract({
-                  address: stETHAddress,
-                  abi: ERC20_ABI,
-                  functionName: "allowance",
-                  args: [userAddress as `0x${string}`, zapAddress],
-                });
+                // Try to use permit first, fallback to approval if not supported or fails
+                const permitResult = await handlePermitOrApproval(stETHAddress, zapAddress, parsedAmount);
+                let usePermit = permitResult?.usePermit && !!permitResult.permitSig && !!permitResult.deadline;
                 
-                const allowanceBigInt = (stETHAllowance as bigint) || 0n;
-                if (allowanceBigInt < parsedAmount) {
-                  const approveHash = await writeContractAsync({
-                    address: stETHAddress,
-                    abi: ERC20_ABI,
-                    functionName: "approve",
-                    args: [zapAddress, parsedAmount],
-                  });
-                  await publicClient?.waitForTransactionReceipt({ hash: approveHash });
+                if (usePermit && permitResult.permitSig && permitResult.deadline) {
+                  // Use permit function - zapStEthToLeveragedWithPermit
+                  try {
+                    const hash = await writeContractAsync({
+                      address: zapAddress,
+                      abi: [...MINTER_ETH_ZAP_V2_ABI, ...STETH_ZAP_PERMIT_ABI] as const,
+                      functionName: "zapStEthToLeveragedWithPermit",
+                      args: [
+                        parsedAmount,
+                        userAddress as `0x${string}`,
+                        minLeveragedOut,
+                        permitResult.deadline,
+                        permitResult.permitSig.v,
+                        permitResult.permitSig.r,
+                        permitResult.permitSig.s,
+                      ],
+                    });
+                    setTransactionHash(hash);
+                  } catch (permitError) {
+                    console.error("Permit zap failed, falling back to approval:", permitError);
+                    // Fall through to approval flow below
+                    usePermit = false;
+                  }
                 }
                 
-                const hash = await writeContractAsync({
-                  address: zapAddress,
-                  abi: MINTER_ETH_ZAP_V2_ABI,
-                  functionName: "zapStEthToLeveraged",
-                  args: [parsedAmount, userAddress as `0x${string}`, minLeveragedOut],
-                });
-                setTransactionHash(hash);
+                if (!usePermit) {
+                  // Fallback: Use traditional approval + zap
+                  const stETHAllowance = await publicClient?.readContract({
+                    address: stETHAddress,
+                    abi: ERC20_ABI,
+                    functionName: "allowance",
+                    args: [userAddress as `0x${string}`, zapAddress],
+                  });
+                  
+                  const allowanceBigInt = (stETHAllowance as bigint) || 0n;
+                  if (allowanceBigInt < parsedAmount) {
+                    setPendingStep("approval");
+                    const approveHash = await writeContractAsync({
+                      address: stETHAddress,
+                      abi: ERC20_ABI,
+                      functionName: "approve",
+                      args: [zapAddress, parsedAmount],
+                    });
+                    await publicClient?.waitForTransactionReceipt({ hash: approveHash });
+                  }
+                  
+                  const hash = await writeContractAsync({
+                    address: zapAddress,
+                    abi: MINTER_ETH_ZAP_V2_ABI,
+                    functionName: "zapStEthToLeveraged",
+                    args: [parsedAmount, userAddress as `0x${string}`, minLeveragedOut],
+                  });
+                  setTransactionHash(hash);
+                }
               }
             }
           } else if (useUSDCZap) {
@@ -1383,41 +1449,98 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                 throw new Error("Asset address not found for approval");
               }
               
-              // Check and approve asset if needed
-              const currentAllowance = await publicClient?.readContract({
-                address: assetAddressForApproval,
-                abi: ERC20_ABI,
-                functionName: "allowance",
-                args: [userAddress as `0x${string}`, zapAddress],
-              });
+              // Try to use permit first, fallback to approval if not supported or fails
+              const permitResult = await handlePermitOrApproval(assetAddressForApproval, zapAddress, amountForZap);
+              let usePermit = permitResult?.usePermit && !!permitResult.permitSig;
               
-              const allowanceBigInt = (currentAllowance as bigint) || 0n;
-              if (allowanceBigInt < amountForZap) {
-                const approveHash = await writeContractAsync({
-                  address: assetAddressForApproval,
-                  abi: ERC20_ABI,
-                  functionName: "approve",
-                  args: [zapAddress, amountForZap],
-                });
-                await publicClient?.waitForTransactionReceipt({ hash: approveHash });
+              // Calculate minFxSaveOut for permit functions (1% slippage buffer)
+              // This is needed for the permit versions of USDC/fxUSD zap functions
+              const minFxSaveOut = (amountForZap * 99n) / 100n;
+              const deadline = permitResult?.deadline || calculateDeadline(3600);
+              
+              if (usePermit && permitResult.permitSig) {
+                // Use permit functions - requires minFxSaveOut parameter
+                try {
+                  if (isActuallyUSDC) {
+                    const hash = await writeContractAsync({
+                      address: zapAddress,
+                      abi: [...MINTER_USDC_ZAP_V2_ABI, ...USDC_ZAP_PERMIT_ABI] as const,
+                      functionName: "zapUsdcToPeggedWithPermit",
+                      args: [
+                        amountForZap,
+                        minFxSaveOut,
+                        userAddress as `0x${string}`,
+                        minPeggedOut,
+                        deadline,
+                        permitResult.permitSig.v,
+                        permitResult.permitSig.r,
+                        permitResult.permitSig.s,
+                      ],
+                    });
+                    setTransactionHash(hash);
+                  } else if (isActuallyFxUSD) {
+                    const hash = await writeContractAsync({
+                      address: zapAddress,
+                      abi: [...MINTER_USDC_ZAP_V2_ABI, ...USDC_ZAP_PERMIT_ABI] as const,
+                      functionName: "zapFxUsdToPeggedWithPermit",
+                      args: [
+                        amountForZap,
+                        minFxSaveOut,
+                        userAddress as `0x${string}`,
+                        minPeggedOut,
+                        deadline,
+                        permitResult.permitSig.v,
+                        permitResult.permitSig.r,
+                        permitResult.permitSig.s,
+                      ],
+                    });
+                    setTransactionHash(hash);
+                  }
+                } catch (permitError) {
+                  console.error("Permit zap failed, falling back to approval:", permitError);
+                  // Fall through to approval flow below
+                  usePermit = false;
+                }
               }
               
-              if (isActuallyUSDC) {
-                const hash = await writeContractAsync({
-                  address: zapAddress,
-                  abi: MINTER_USDC_ZAP_V2_ABI,
-                  functionName: "zapUsdcToPegged",
-                  args: [amountForZap, userAddress as `0x${string}`, minPeggedOut],
+              if (!usePermit) {
+                // Fallback: Use traditional approval + zap
+                const currentAllowance = await publicClient?.readContract({
+                  address: assetAddressForApproval,
+                  abi: ERC20_ABI,
+                  functionName: "allowance",
+                  args: [userAddress as `0x${string}`, zapAddress],
                 });
-                setTransactionHash(hash);
-              } else if (isActuallyFxUSD) {
-                const hash = await writeContractAsync({
-                  address: zapAddress,
-                  abi: MINTER_USDC_ZAP_V2_ABI,
-                  functionName: "zapFxUsdToPegged",
-                  args: [amountForZap, userAddress as `0x${string}`, minPeggedOut],
-                });
-                setTransactionHash(hash);
+                
+                const allowanceBigInt = (currentAllowance as bigint) || 0n;
+                if (allowanceBigInt < amountForZap) {
+                  setPendingStep("approval");
+                  const approveHash = await writeContractAsync({
+                    address: assetAddressForApproval,
+                    abi: ERC20_ABI,
+                    functionName: "approve",
+                    args: [zapAddress, amountForZap],
+                  });
+                  await publicClient?.waitForTransactionReceipt({ hash: approveHash });
+                }
+                
+                if (isActuallyUSDC) {
+                  const hash = await writeContractAsync({
+                    address: zapAddress,
+                    abi: MINTER_USDC_ZAP_V2_ABI,
+                    functionName: "zapUsdcToPegged",
+                    args: [amountForZap, userAddress as `0x${string}`, minPeggedOut],
+                  });
+                  setTransactionHash(hash);
+                } else if (isActuallyFxUSD) {
+                  const hash = await writeContractAsync({
+                    address: zapAddress,
+                    abi: MINTER_USDC_ZAP_V2_ABI,
+                    functionName: "zapFxUsdToPegged",
+                    args: [amountForZap, userAddress as `0x${string}`, minPeggedOut],
+                  });
+                  setTransactionHash(hash);
+                }
               }
             } else {
               // Mint leveraged token via zap
@@ -1455,41 +1578,98 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                 throw new Error("Asset address not found for approval");
               }
               
-              // Check and approve asset if needed
-              const currentAllowance = await publicClient?.readContract({
-                address: assetAddressForApproval,
-                abi: ERC20_ABI,
-                functionName: "allowance",
-                args: [userAddress as `0x${string}`, zapAddress],
-              });
+              // Try to use permit first, fallback to approval if not supported or fails
+              const permitResult = await handlePermitOrApproval(assetAddressForApproval, zapAddress, amountForZap);
+              let usePermit = permitResult?.usePermit && !!permitResult.permitSig;
               
-              const allowanceBigInt = (currentAllowance as bigint) || 0n;
-              if (allowanceBigInt < amountForZap) {
-                const approveHash = await writeContractAsync({
-                  address: assetAddressForApproval,
-                  abi: ERC20_ABI,
-                  functionName: "approve",
-                  args: [zapAddress, amountForZap],
-                });
-                await publicClient?.waitForTransactionReceipt({ hash: approveHash });
+              // Calculate minFxSaveOut for permit functions (1% slippage buffer)
+              // This is needed for the permit versions of USDC/fxUSD zap functions
+              const minFxSaveOut = (amountForZap * 99n) / 100n;
+              const deadline = permitResult?.deadline || calculateDeadline(3600);
+              
+              if (usePermit && permitResult.permitSig) {
+                // Use permit functions - requires minFxSaveOut parameter
+                try {
+                  if (isActuallyUSDC) {
+                    const hash = await writeContractAsync({
+                      address: zapAddress,
+                      abi: [...MINTER_USDC_ZAP_V2_ABI, ...USDC_ZAP_PERMIT_ABI] as const,
+                      functionName: "zapUsdcToLeveragedWithPermit",
+                      args: [
+                        amountForZap,
+                        minFxSaveOut,
+                        userAddress as `0x${string}`,
+                        minLeveragedOut,
+                        deadline,
+                        permitResult.permitSig.v,
+                        permitResult.permitSig.r,
+                        permitResult.permitSig.s,
+                      ],
+                    });
+                    setTransactionHash(hash);
+                  } else if (isActuallyFxUSD) {
+                    const hash = await writeContractAsync({
+                      address: zapAddress,
+                      abi: [...MINTER_USDC_ZAP_V2_ABI, ...USDC_ZAP_PERMIT_ABI] as const,
+                      functionName: "zapFxUsdToLeveragedWithPermit",
+                      args: [
+                        amountForZap,
+                        minFxSaveOut,
+                        userAddress as `0x${string}`,
+                        minLeveragedOut,
+                        deadline,
+                        permitResult.permitSig.v,
+                        permitResult.permitSig.r,
+                        permitResult.permitSig.s,
+                      ],
+                    });
+                    setTransactionHash(hash);
+                  }
+                } catch (permitError) {
+                  console.error("Permit zap failed, falling back to approval:", permitError);
+                  // Fall through to approval flow below
+                  usePermit = false;
+                }
               }
               
-              if (isActuallyUSDC) {
-                const hash = await writeContractAsync({
-                  address: zapAddress,
-                  abi: MINTER_USDC_ZAP_V2_ABI,
-                  functionName: "zapUsdcToLeveraged",
-                  args: [amountForZap, userAddress as `0x${string}`, minLeveragedOut],
+              if (!usePermit) {
+                // Fallback: Use traditional approval + zap
+                const currentAllowance = await publicClient?.readContract({
+                  address: assetAddressForApproval,
+                  abi: ERC20_ABI,
+                  functionName: "allowance",
+                  args: [userAddress as `0x${string}`, zapAddress],
                 });
-                setTransactionHash(hash);
-              } else if (isActuallyFxUSD) {
-                const hash = await writeContractAsync({
-                  address: zapAddress,
-                  abi: MINTER_USDC_ZAP_V2_ABI,
-                  functionName: "zapFxUsdToLeveraged",
-                  args: [amountForZap, userAddress as `0x${string}`, minLeveragedOut],
-                });
-                setTransactionHash(hash);
+                
+                const allowanceBigInt = (currentAllowance as bigint) || 0n;
+                if (allowanceBigInt < amountForZap) {
+                  setPendingStep("approval");
+                  const approveHash = await writeContractAsync({
+                    address: assetAddressForApproval,
+                    abi: ERC20_ABI,
+                    functionName: "approve",
+                    args: [zapAddress, amountForZap],
+                  });
+                  await publicClient?.waitForTransactionReceipt({ hash: approveHash });
+                }
+                
+                if (isActuallyUSDC) {
+                  const hash = await writeContractAsync({
+                    address: zapAddress,
+                    abi: MINTER_USDC_ZAP_V2_ABI,
+                    functionName: "zapUsdcToLeveraged",
+                    args: [amountForZap, userAddress as `0x${string}`, minLeveragedOut],
+                  });
+                  setTransactionHash(hash);
+                } else if (isActuallyFxUSD) {
+                  const hash = await writeContractAsync({
+                    address: zapAddress,
+                    abi: MINTER_USDC_ZAP_V2_ABI,
+                    functionName: "zapFxUsdToLeveraged",
+                    args: [amountForZap, userAddress as `0x${string}`, minLeveragedOut],
+                  });
+                  setTransactionHash(hash);
+                }
               }
             }
           }

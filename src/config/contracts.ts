@@ -138,8 +138,8 @@ const productionMarkets: Markets = {
       rebalancePoolLeveraged: "0x0000000000000000000000000000000000000000", // Not deployed yet
       collateralPrice: "0x71437C90F1E0785dd691FD02f7bE0B90cd14c097", // Using priceOracle
       genesisZap: "0x424D373141a845eB2822B2a8e5ED0f529Ece4F7a", // GenesisUSDCZap_v2 for ETH/fxUSD
-      peggedTokenZap: "0x3df39f74e9538414bccA0ec71abcA3B487B89a86" as `0x${string}`, // MinterUSDCZap_v2 for ETH/fxUSD
-      leveragedTokenZap: "0x3df39f74e9538414bccA0ec71abcA3B487B89a86" as `0x${string}`, // MinterUSDCZap_v2 for ETH/fxUSD (same contract)
+      peggedTokenZap: "0x97C79691407Aea845FaA24C8A905bC3151034ADD" as `0x${string}`, // MinterUSDCZap_v3 for ETH/fxUSD (includes stability pool zaps)
+      leveragedTokenZap: "0x97C79691407Aea845FaA24C8A905bC3151034ADD" as `0x${string}`, // MinterUSDCZap_v3 for ETH/fxUSD (same contract, includes stability pool zaps)
     },
     genesis: {
       startDate: "2025-12-19T22:00:59Z", // From deployment timestamp
@@ -234,8 +234,8 @@ const productionMarkets: Markets = {
       rebalancePoolLeveraged: "0x0000000000000000000000000000000000000000", // Not deployed yet
       collateralPrice: "0xE370289aF2145A5B2F0F7a4a900eBfD478A156dB", // Using priceOracle
       genesisZap: "0x8Ee0D6AD1d15b3515Ba81CCE16Bba344Deea6781", // GenesisETHZap_v3 for BTC/stETH
-      peggedTokenZap: "0x922790df9a3bc5949847a4e9a7d01cf7379831ce" as `0x${string}`, // MinterETHZap_v2 for BTC/stETH
-      leveragedTokenZap: "0x922790df9a3bc5949847a4e9a7d01cf7379831ce" as `0x${string}`, // MinterETHZap_v2 for BTC/stETH (same contract)
+      peggedTokenZap: "0x803ecCE255901F352FAf339fc8a5C87Adf0083B7" as `0x${string}`, // MinterETHZap_v3 for BTC/stETH (includes stability pool zaps)
+      leveragedTokenZap: "0x803ecCE255901F352FAf339fc8a5C87Adf0083B7" as `0x${string}`, // MinterETHZap_v3 for BTC/stETH (same contract, includes stability pool zaps)
     },
     genesis: {
       startDate: "2025-12-19T21:17:47Z", // From deployment timestamp
