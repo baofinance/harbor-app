@@ -25,6 +25,7 @@ import InfoTooltip from "@/components/InfoTooltip";
 import SimpleTooltip from "@/components/SimpleTooltip";
 import { getLogoPath } from "@/components/shared";
 import { SailManageModal } from "@/components/SailManageModal";
+import { minterABI } from "@/abis/minter";
 import { useSailPositionPnL } from "@/hooks/useSailPositionPnL";
 import { useSailPositionsPnLSummary } from "@/hooks/useSailPositionsPnLSummary";
 import { useMultipleTokenPrices } from "@/hooks/useTokenPrices";
@@ -45,83 +46,6 @@ interface PnLData {
   isLoading: boolean;
   error?: string;
 }
-
-const minterABI = [
-  {
-    inputs: [],
-    name: "leverageRatio",
-    outputs: [{ type: "uint256", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "leveragedTokenPrice",
-    outputs: [{ type: "uint256", name: "nav", internalType: "uint256" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "collateralRatio",
-    outputs: [{ type: "uint256", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "collateralTokenBalance",
-    outputs: [{ type: "uint256", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "config",
-    outputs: [
-      {
-        components: [
-          {
-            components: [
-              { name: "collateralRatioBandUpperBounds", type: "uint256[]" },
-              { name: "incentiveRates", type: "uint256[]" },
-            ],
-            name: "mintPeggedIncentiveConfig",
-            type: "tuple",
-          },
-          {
-            components: [
-              { name: "collateralRatioBandUpperBounds", type: "uint256[]" },
-              { name: "incentiveRates", type: "uint256[]" },
-            ],
-            name: "redeemPeggedIncentiveConfig",
-            type: "tuple",
-          },
-          {
-            components: [
-              { name: "collateralRatioBandUpperBounds", type: "uint256[]" },
-              { name: "incentiveRates", type: "uint256[]" },
-            ],
-            name: "mintLeveragedIncentiveConfig",
-            type: "tuple",
-          },
-          {
-            components: [
-              { name: "collateralRatioBandUpperBounds", type: "uint256[]" },
-              { name: "incentiveRates", type: "uint256[]" },
-            ],
-            name: "redeemLeveragedIncentiveConfig",
-            type: "tuple",
-          },
-        ],
-        name: "",
-        type: "tuple",
-      },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
 
 const WAD = 10n ** 18n;
 type FeeBand = {
@@ -176,7 +100,8 @@ function FeeBandBadge({
   const pct = Number(ratio) / 1e16;
   const isZeroToHundredRange = lowerBound === 0n && upperBound !== undefined;
   const tolerance = 10n ** 14n;
-  const is100PercentOrClose = ratio >= WAD - tolerance && ratio <= WAD;
+  const ratioAbs = ratio < 0n ? -ratio : ratio;
+  const is100PercentOrClose = ratioAbs >= WAD - tolerance && ratioAbs <= WAD;
   const shouldBlockMintSail =
     isMintSail && isZeroToHundredRange && is100PercentOrClose;
 
@@ -291,7 +216,7 @@ function formatToken(
 }
 
 function formatRatio(value: bigint | undefined): string {
-  if (!value) return "-";
+  if (value === undefined) return "-";
   const percentage = Number(value) / 1e16;
   return `${percentage.toFixed(2)}%`;
 }
