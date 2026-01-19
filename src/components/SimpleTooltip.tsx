@@ -28,15 +28,33 @@ export default function SimpleTooltip({
  const tooltipRef = useRef<HTMLDivElement>(null);
 
  useEffect(() => {
+  if (!isVisible) return;
+  const handlePointerDown = (event: PointerEvent) => {
+    const target = event.target as Node;
+    if (
+      triggerRef.current?.contains(target) ||
+      tooltipRef.current?.contains(target)
+    ) {
+      return;
+    }
+    setIsVisible(false);
+  };
+  document.addEventListener("pointerdown", handlePointerDown);
+  return () => {
+    document.removeEventListener("pointerdown", handlePointerDown);
+  };
+ }, [isVisible]);
+
+ useEffect(() => {
  if (!isVisible || !triggerRef.current) return;
 
  if (
   centerOnMobile &&
   typeof window !== "undefined" &&
-  window.innerWidth < 768
+  window.innerWidth < 1024
  ) {
   setPosition({
-    top: window.innerHeight / 2,
+    top: window.scrollY + window.innerHeight / 2,
     left: window.innerWidth / 2,
   });
   setIsMobileCentered(true);
@@ -76,6 +94,10 @@ export default function SimpleTooltip({
  className={`relative inline-flex items-center group ${className}`}
  onMouseEnter={() => setIsVisible(true)}
  onMouseLeave={() => setIsVisible(false)}
+ onClick={(event) => {
+  event.stopPropagation();
+  setIsVisible((prev) => !prev);
+ }}
  >
  {children}
  </span>
@@ -101,6 +123,7 @@ export default function SimpleTooltip({
  }}
   onMouseEnter={() => setIsVisible(true)}
   onMouseLeave={() => setIsVisible(false)}
+  onClick={(event) => event.stopPropagation()}
  >
  <span className="text-white font-medium break-words">{label}</span>
  {!isMobileCentered && side ==="right" && (

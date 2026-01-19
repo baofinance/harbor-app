@@ -697,7 +697,7 @@ function SailMarketRow({
   return (
     <div key={id}>
       <div
-        className={`py-2 px-2 overflow-visible sm:overflow-x-auto transition cursor-pointer relative group ${
+        className={`py-2 px-2 overflow-visible transition cursor-pointer relative group ${
           isExpanded
             ? "bg-white md:bg-[rgb(var(--surface-selected-rgb))]"
             : "bg-white md:hover:bg-[rgb(var(--surface-selected-rgb))]"
@@ -705,16 +705,16 @@ function SailMarketRow({
         onClick={onToggleExpand}
       >
         {/* Mobile layout */}
-          <div className="lg:hidden relative">
+          <div className="lg:hidden relative overflow-visible">
             <div
-              className={`absolute -inset-x-2 -inset-y-2 bg-[rgba(30,71,117,0.06)] opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20 ${
+              className={`absolute -inset-x-2 -inset-y-2 bg-[rgba(30,71,117,0.06)] opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-[100] ${
                 isExpanded ? "opacity-100" : ""
               }`}
             />
-            <div className="px-3 pt-0 relative z-10">
-              <div className="relative flex items-stretch w-full gap-2">
-                <div className="relative flex items-stretch flex-1 h-[calc(100%+16px)] -mt-2">
-                <div className="flex items-center justify-between px-3 py-3 min-h-[52px] text-[#0B2A2F] w-1/2 bg-[linear-gradient(90deg,#FFFFFF_0%,#A8F3DC_33%,#A8F3DC_100%)]">
+            <div className="px-3 pt-0 relative overflow-visible">
+              <div className="relative flex items-stretch w-full gap-2 overflow-visible">
+                <div className="relative flex items-stretch flex-1 h-[calc(100%+16px)] -mt-2 overflow-visible">
+                <div className="flex items-center justify-between px-3 py-3 min-h-[52px] text-[#0B2A2F] w-1/2 bg-[linear-gradient(90deg,#FFFFFF_0%,#A8F3DC_33%,#A8F3DC_100%)] relative overflow-visible">
                   <div className="flex flex-col items-start gap-0.5 relative z-10 text-[#1E4775]">
                     <span className="text-[10px] uppercase tracking-wide text-[#1E4775]/60">
                       V.lev
@@ -743,11 +743,13 @@ function SailMarketRow({
                             : ""
                         }`}
                       />
-                      <span className="text-base font-semibold">{longSide}</span>
+                      <span className="text-[#1E4775] font-semibold text-base">
+                        {longSide}
+                      </span>
                     </div>
                   </div>
                 </div>
-                <div className="relative flex items-center justify-start px-3 py-3 min-h-[52px] text-[#0B2A2F] w-1/2 bg-[linear-gradient(90deg,#FFC0B5_0%,#FFC0B5_67%,#FFFFFF_100%)]">
+                <div className="relative flex items-center justify-start px-3 py-3 min-h-[52px] text-[#0B2A2F] w-1/2 bg-[linear-gradient(90deg,#FFC0B5_0%,#FFC0B5_67%,#FFFFFF_100%)] overflow-visible">
                   <div className="flex flex-col items-start gap-0.5 relative z-10 pl-2">
                     <span className="text-[10px] uppercase tracking-wide text-[#0B2A2F]/60">
                       Short
@@ -764,10 +766,16 @@ function SailMarketRow({
                             : ""
                         }`}
                       />
-                      <span className="text-base font-semibold">{shortSide}</span>
+                      <span className="text-[#1E4775] font-semibold text-base">
+                        {shortSide}
+                      </span>
                     </div>
                   </div>
-                  <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                  <div 
+                    className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-2 z-10 pointer-events-auto"
+                    onClick={(e) => e.stopPropagation()}
+                    onMouseEnter={(e) => e.stopPropagation()}
+                  >
                     {mintFeeRatio === 0n && (
                       <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#A8F3DC] text-[#0B2A2F] border-2 border-[#1E4775] mt-1">
                         Free to mint
@@ -783,7 +791,7 @@ function SailMarketRow({
               </div>
             </div>
             <div className="pt-0 space-y-0 text-xs">
-              <div className="bg-white text-[#1E4775] rounded-none px-3 py-2 text-[13px] -mx-2 -mb-2 border-t-2 border-[#1E4775]">
+              <div className="bg-white text-[#1E4775] rounded-none px-3 py-3 text-[13px] -mx-2 -mb-2 border-t-2 border-[#1E4775]">
                 <div className="flex items-center gap-2">
                   <span className="text-[#1E4775]/70 whitespace-nowrap font-semibold text-[15px]">
                     Your Position:
@@ -851,15 +859,15 @@ function SailMarketRow({
         </div>
 
         {/* Desktop / tablet layout */}
-        <div className="hidden lg:grid grid-cols-[2fr_1fr_0.9fr_1fr_1fr_0.9fr_0.8fr] gap-2 md:gap-4 items-stretch text-sm md:justify-items-center">
-          <div className="min-w-0 flex items-center w-full sm:justify-self-stretch">
-            <div className="flex items-stretch w-full h-full">
+        <div className="hidden lg:grid grid-cols-[2fr_1fr_0.9fr_1fr_1fr_0.9fr_0.8fr] gap-2 md:gap-4 items-stretch text-sm md:justify-items-center overflow-visible">
+          <div className="min-w-0 flex items-center w-full sm:justify-self-stretch overflow-visible">
+            <div className="flex items-stretch w-full h-full overflow-visible">
               <div
-                className={`relative flex items-stretch w-full h-[calc(100%+16px)] -my-2 -ml-2 after:absolute after:inset-0 after:bg-[rgba(30,71,117,0.06)] after:opacity-0 group-hover:after:opacity-100 after:transition-opacity ${
+                className={`relative flex items-stretch w-full h-[calc(100%+16px)] -my-2 -ml-2 after:absolute after:inset-0 after:bg-[rgba(30,71,117,0.06)] after:opacity-0 group-hover:after:opacity-100 after:transition-opacity overflow-visible ${
                   isExpanded ? "after:opacity-100" : ""
                 }`}
               >
-                <div className="flex items-center justify-end px-3 py-2 text-[#0B2A2F] w-1/2 bg-[linear-gradient(90deg,#FFFFFF_0%,#A8F3DC_33%,#A8F3DC_100%)]">
+                <div className="flex items-center justify-end px-3 py-2 text-[#0B2A2F] w-1/2 bg-[linear-gradient(90deg,#FFFFFF_0%,#A8F3DC_33%,#A8F3DC_100%)] overflow-visible">
                   <div className="flex items-center gap-2 relative z-10 pr-2">
                     <Image
                       src={getLogoPath(longSide)}
@@ -876,10 +884,12 @@ function SailMarketRow({
                           : ""
                       }`}
                     />
-                    <span className="text-xs font-semibold">{longSide}</span>
+                    <span className="text-[#1E4775] font-medium text-sm lg:text-base">
+                      {longSide}
+                    </span>
                   </div>
                 </div>
-                <div className="relative flex items-center justify-start px-3 py-2 text-[#0B2A2F] w-1/2 bg-[linear-gradient(90deg,#FFC0B5_0%,#FFC0B5_67%,#FFFFFF_100%)]">
+                <div className="relative flex items-center justify-start px-3 py-2 text-[#0B2A2F] w-1/2 bg-[linear-gradient(90deg,#FFC0B5_0%,#FFC0B5_67%,#FFFFFF_100%)] overflow-visible">
                   <div className="flex items-center gap-2 relative z-10 pl-2">
                     <Image
                       src={getLogoPath(shortSide)}
@@ -892,7 +902,9 @@ function SailMarketRow({
                           : ""
                       }`}
                     />
-                    <span className="text-xs font-semibold">{shortSide}</span>
+                    <span className="text-[#1E4775] font-medium text-sm lg:text-base">
+                      {shortSide}
+                    </span>
                   </div>
                   <div className="ml-2 text-[#1E4775] z-10">
                     {isExpanded ? (
@@ -958,7 +970,7 @@ function SailMarketRow({
             )}
           </div>
           <div className="text-center min-w-0 flex items-center justify-center">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center">
               <SimpleTooltip
                 side="left"
                 maxHeight="none"
@@ -977,34 +989,36 @@ function SailMarketRow({
                   </div>
                 }
               >
-                <span className="cursor-help">
+                <span className="cursor-help mr-1">
                   {renderFeeValue(mintFeeRatio, true, true)}
                 </span>
               </SimpleTooltip>
               <span className="text-[#1E4775]/60 text-xs">/</span>
-              <SimpleTooltip
-                side="left"
-                maxHeight="none"
-                maxWidth={720}
-                label={
-                  <div className="space-y-1.5">
-                    <div className="text-[10px] text-white/80">
-                      Current CR:{" "}
-                      <span className="font-mono font-semibold">
-                        {formatRatio(collateralRatio)}
-                      </span>
+              <div className="-ml-1">
+                <SimpleTooltip
+                  side="left"
+                  maxHeight="none"
+                  maxWidth={720}
+                  label={
+                    <div className="space-y-1.5">
+                      <div className="text-[10px] text-white/80">
+                        Current CR:{" "}
+                        <span className="font-mono font-semibold">
+                          {formatRatio(collateralRatio)}
+                        </span>
+                      </div>
+                      <div className="min-w-[260px]">
+                        {renderFeeBands("Redeem Fees", feeBands?.redeemLeveraged)}
+                      </div>
                     </div>
-                    <div className="min-w-[260px]">
-                      {renderFeeBands("Redeem Fees", feeBands?.redeemLeveraged)}
-                    </div>
-                  </div>
-                }
-              >
-                <span className="cursor-help text-[#1E4775] text-[10px] font-semibold inline-flex items-center gap-0">
-                  {renderFeeValue(redeemFeeRatio, true)}
-                  <span className="-ml-1">[?]</span>
-                </span>
-              </SimpleTooltip>
+                  }
+                >
+                  <span className="cursor-help text-[#1E4775] text-[10px] font-semibold inline-flex items-center gap-0">
+                    {renderFeeValue(redeemFeeRatio, true)}
+                    <span className="-ml-1">[?]</span>
+                  </span>
+                </SimpleTooltip>
+              </div>
             </div>
           </div>
           <div
@@ -1017,7 +1031,7 @@ function SailMarketRow({
                 onManageClick();
               }}
               disabled={!isConnected}
-              className="px-4 py-2 text-xs font-medium bg-[#1E4775] text-white hover:bg-[#17395F] disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors rounded-full whitespace-nowrap"
+              className="px-4 py-2 text-sm font-semibold bg-[#1E4775] text-white hover:bg-[#17395F] disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors rounded-full whitespace-nowrap"
             >
               Manage
             </button>
