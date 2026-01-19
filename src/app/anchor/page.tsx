@@ -4846,10 +4846,10 @@ export default function AnchorPage() {
 
                     {/* Combined metrics */}
                     <div className="px-3 pt-0 pb-0 sm:p-3 md:col-span-1 lg:col-span-2 flex items-center justify-center">
-                      <div className="grid grid-cols-2 sm:grid-cols-4 w-full sm:divide-x sm:divide-white/15 grid-rows-[auto_1fr_auto_1fr] sm:grid-rows-none">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 w-full grid-rows-[auto_1fr_auto_1fr] sm:grid-rows-none">
                         <div className="col-span-2 border-t border-white/15 sm:hidden -mx-3 h-px" />
                         {/* Total Deposits */}
-                        <div className="flex flex-col items-center justify-center text-center px-2 pt-1 pb-1 sm:py-0 h-full min-h-[60px]">
+                        <div className="flex flex-col items-center justify-center text-center px-2 pt-1 pb-1 sm:py-0 h-full min-h-[60px] sm:border-r sm:border-white/15">
                           <div className="text-[11px] text-white/80 uppercase tracking-widest">
                             Total Deposits
                           </div>
@@ -4876,7 +4876,7 @@ export default function AnchorPage() {
                       <div className="col-span-2 border-t border-white/15 sm:hidden -mx-3 h-px" />
 
                       {/* vAPR */}
-                        <div className="flex flex-col items-center justify-center text-center px-2 pt-1 pb-0 sm:py-0 h-full min-h-[60px]">
+                        <div className="flex flex-col items-center justify-center text-center px-2 pt-1 pb-0 sm:py-0 h-full min-h-[60px] sm:border-l sm:border-white/15">
                           <div className="text-[11px] text-white/80 uppercase tracking-widest font-medium flex items-center justify-center gap-1">
                           vAPR
                           <SimpleTooltip
@@ -5013,7 +5013,7 @@ export default function AnchorPage() {
                       </div>
 
                         {/* Claim */}
-                        <div className="flex flex-col items-center justify-center text-center px-2 pt-1 pb-0 sm:py-0 h-full min-h-[60px]">
+                        <div className="flex flex-col items-center justify-center text-center px-2 pt-1 pb-0 sm:py-0 h-full min-h-[60px] sm:border-l sm:border-white/15">
                         <button
                           onClick={() => {
                             setIsClaimAllModalOpen(true);
