@@ -104,31 +104,31 @@ export const GenesisDepositModal = ({
    }
  }, [isOpen]);
 
+// Reset state when modal opens - assume user wants to start fresh
 useEffect(() => {
-  if (!isOpen || !progressStorageKey || typeof window === "undefined") return;
-  const raw = window.localStorage.getItem(progressStorageKey);
-  if (!raw) return;
-  try {
-    const parsed = JSON.parse(raw) as {
-      step?: ModalStep;
-      progressSteps?: TransactionStep[];
-      currentStepIndex?: number;
-      txHash?: string | null;
-      successfulDepositAmount?: string;
-    };
-    if (!parsed.step || !parsed.progressSteps) return;
-    setStep(parsed.step);
-    setProgressSteps(parsed.progressSteps);
-    setCurrentStepIndex(parsed.currentStepIndex ?? 0);
-    setTxHash(parsed.txHash ?? null);
-    setSuccessfulDepositAmount(parsed.successfulDepositAmount ?? "");
-    if (parsed.step === "approving" || parsed.step === "depositing") {
-      setProgressModalOpen(true);
-    }
-  } catch {
+  if (!isOpen) return;
+  
+  // Reset all state to start fresh
+  setAmount("");
+  setSelectedAsset(collateralSymbol);
+  setCustomTokenAddress("");
+  setShowCustomTokenInput(false);
+  setSlippageTolerance(0.5);
+  setSlippageInputValue("0.5");
+  setShowSlippageInput(false);
+  setStep("input");
+  setError(null);
+  setTxHash(null);
+  setSuccessfulDepositAmount("");
+  setProgressModalOpen(false);
+  setProgressSteps([]);
+  setCurrentStepIndex(0);
+  
+  // Clear any stored progress
+  if (progressStorageKey && typeof window !== "undefined") {
     window.localStorage.removeItem(progressStorageKey);
   }
-}, [isOpen, progressStorageKey]);
+}, [isOpen, collateralSymbol, progressStorageKey]);
 
 useEffect(() => {
   if (!progressStorageKey || typeof window === "undefined") return;
@@ -1101,6 +1101,7 @@ const preDepositBalance = userCurrentDeposit;
   } catch (err: any) {
     setError(err.message || "Swap failed. Please try again.");
     setStep("error");
+    setProgressModalOpen(false);
     setProgressSteps((prev) =>
       prev.map((s) =>
         s.id === "swap" ? { ...s, status: "error", error: err.message } : s
@@ -1364,10 +1365,17 @@ setSuccessfulDepositAmount(actualDepositedAmount);
 
  // Handle user rejection first
  if (isUserRejection(err)) {
- errorMessage ="Transaction was rejected. Please try again.";
- setError(errorMessage);
- setStep("error");
- return;
+   errorMessage ="Transaction was rejected. Please try again.";
+   setError(errorMessage);
+   setStep("error");
+   setProgressModalOpen(false);
+   setProgressSteps([]);
+   setCurrentStepIndex(0);
+   // Clear stored progress on rejection
+   if (progressStorageKey && typeof window !== "undefined") {
+     window.localStorage.removeItem(progressStorageKey);
+   }
+   return;
  }
 
  // Check for RPC errors by examining error properties
@@ -1419,6 +1427,13 @@ setSuccessfulDepositAmount(actualDepositedAmount);
  }
  setError(errorMessage);
  setStep("error");
+ setProgressModalOpen(false);
+ setProgressSteps([]);
+ setCurrentStepIndex(0);
+ // Clear stored progress on error
+ if (progressStorageKey && typeof window !== "undefined") {
+   window.localStorage.removeItem(progressStorageKey);
+ }
  return;
  }
 
@@ -1503,6 +1518,7 @@ setSuccessfulDepositAmount(actualDepositedAmount);
 
  setError(errorMessage);
  setStep("error");
+ setProgressModalOpen(false);
  setProgressSteps((prev) =>
  prev.map((s, idx) =>
  idx === currentStepIndex
@@ -1510,6 +1526,10 @@ setSuccessfulDepositAmount(actualDepositedAmount);
  : s
  )
  );
+ // Clear stored progress on error
+ if (progressStorageKey && typeof window !== "undefined") {
+   window.localStorage.removeItem(progressStorageKey);
+ }
  }
  };
 
