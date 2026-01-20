@@ -138,8 +138,8 @@ const productionMarkets: Markets = {
       rebalancePoolLeveraged: "0x0000000000000000000000000000000000000000", // Not deployed yet
       collateralPrice: "0x71437C90F1E0785dd691FD02f7bE0B90cd14c097", // Using priceOracle
       genesisZap: "0x424D373141a845eB2822B2a8e5ED0f529Ece4F7a", // GenesisUSDCZap_v2 for ETH/fxUSD
-      peggedTokenZap: "0x97C79691407Aea845FaA24C8A905bC3151034ADD" as `0x${string}`, // MinterUSDCZap_v3 for ETH/fxUSD (includes stability pool zaps)
-      leveragedTokenZap: "0x97C79691407Aea845FaA24C8A905bC3151034ADD" as `0x${string}`, // MinterUSDCZap_v3 for ETH/fxUSD (same contract, includes stability pool zaps)
+      peggedTokenZap: "0x81253f3Fc43D5e399610beE4D7a235826A7663b8" as `0x${string}`, // MinterUSDCZap_v3 for ETH/fxUSD (includes stability pool zaps)
+      leveragedTokenZap: "0x81253f3Fc43D5e399610beE4D7a235826A7663b8" as `0x${string}`, // MinterUSDCZap_v3 for ETH/fxUSD (same contract, includes stability pool zaps)
     },
     genesis: {
       startDate: "2025-12-19T22:00:59Z", // From deployment timestamp
@@ -186,8 +186,8 @@ const productionMarkets: Markets = {
       rebalancePoolLeveraged: "0x0000000000000000000000000000000000000000", // Not deployed yet
       collateralPrice: "0x8F76a260c5D21586aFfF18f880FFC808D0524A73", // Using priceOracle
       genesisZap: "0xF012a1BA66a411404FEae0a2AeD68dEB18D7de32", // GenesisUSDCZap_v2 for BTC/fxUSD
-      peggedTokenZap: "0x9243Ed7d94bb59b27A6FE31B76010Dbef796Fc5C" as `0x${string}`, // MinterUSDCZap_v2 for BTC/fxUSD
-      leveragedTokenZap: "0x9243Ed7d94bb59b27A6FE31B76010Dbef796Fc5C" as `0x${string}`, // MinterUSDCZap_v2 for BTC/fxUSD (same contract)
+      peggedTokenZap: "0x7e4f98217A085F1a06332EDff805513b6Ea79357" as `0x${string}`, // MinterUSDCZap_v3 for BTC/fxUSD
+      leveragedTokenZap: "0x7e4f98217A085F1a06332EDff805513b6Ea79357" as `0x${string}`, // MinterUSDCZap_v3 for BTC/fxUSD (same contract)
     },
     genesis: {
       startDate: "2025-12-19T21:38:23Z", // From deployment timestamp
@@ -234,8 +234,8 @@ const productionMarkets: Markets = {
       rebalancePoolLeveraged: "0x0000000000000000000000000000000000000000", // Not deployed yet
       collateralPrice: "0xE370289aF2145A5B2F0F7a4a900eBfD478A156dB", // Using priceOracle
       genesisZap: "0x8Ee0D6AD1d15b3515Ba81CCE16Bba344Deea6781", // GenesisETHZap_v3 for BTC/stETH
-      peggedTokenZap: "0x803ecCE255901F352FAf339fc8a5C87Adf0083B7" as `0x${string}`, // MinterETHZap_v3 for BTC/stETH (includes stability pool zaps)
-      leveragedTokenZap: "0x803ecCE255901F352FAf339fc8a5C87Adf0083B7" as `0x${string}`, // MinterETHZap_v3 for BTC/stETH (same contract, includes stability pool zaps)
+      peggedTokenZap: "0x9Af8FBF66Bf3645f505D58614D7a13D411b99907" as `0x${string}`, // MinterETHZap_v3 for BTC/stETH (includes stability pool zaps)
+      leveragedTokenZap: "0x9Af8FBF66Bf3645f505D58614D7a13D411b99907" as `0x${string}`, // MinterETHZap_v3 for BTC/stETH (same contract, includes stability pool zaps)
     },
     genesis: {
       startDate: "2025-12-19T21:17:47Z", // From deployment timestamp
@@ -279,8 +279,9 @@ const productionMarkets: Markets = {
       rebalancePoolCollateral: "0x0000000000000000000000000000000000000000", // placeholder
       rebalancePoolLeveraged: "0x0000000000000000000000000000000000000000", // placeholder
       collateralPrice: "0x0000000000000000000000000000000000000000", // placeholder
-      peggedTokenZap: "0x82b8aB2c8b4781f2B3d52e7807d4aFa5704912D0" as `0x${string}`, // MinterUSDCZap_v2 for GOLD/fxUSD
-      leveragedTokenZap: "0x82b8aB2c8b4781f2B3d52e7807d4aFa5704912D0" as `0x${string}`, // MinterUSDCZap_v2 for GOLD/fxUSD (same contract)
+      genesisZap: "0x1048a287DDefF38E9A5c1e564A83f6978a2DC1eF", // GenesisUSDCZap_v4 for GOLD
+      peggedTokenZap: "0xf0ff6D8d707D81d87caf2faa2447253f283f8873" as `0x${string}`, // MinterUSDCZap_v3 for GOLD/fxUSD
+      leveragedTokenZap: "0xf0ff6D8d707D81d87caf2faa2447253f283f8873" as `0x${string}`, // MinterUSDCZap_v3 for GOLD/fxUSD (same contract)
     },
     genesis: {
       startDate: "2026-02-01T00:00:00Z", // Placeholder - Coming Soon
@@ -321,6 +322,9 @@ const productionMarkets: Markets = {
       rebalancePoolCollateral: "0x0000000000000000000000000000000000000000", // placeholder
       rebalancePoolLeveraged: "0x0000000000000000000000000000000000000000", // placeholder
       collateralPrice: "0x0000000000000000000000000000000000000000", // placeholder
+      genesisZap: "0xCDf5BdcD7A035C2F20782e607D4f9F8f26280f93", // GenesisETHZap_v4 for GOLD
+      peggedTokenZap: "0x3ce5e801A89eA0AC36fC29C12562695d4E6F0fec" as `0x${string}`, // MinterETHZap_v3 for GOLD/stETH
+      leveragedTokenZap: "0x3ce5e801A89eA0AC36fC29C12562695d4E6F0fec" as `0x${string}`, // MinterETHZap_v3 for GOLD/stETH (same contract)
     },
     genesis: {
       startDate: "2026-02-01T00:00:00Z", // Placeholder - Coming Soon
@@ -361,6 +365,9 @@ const productionMarkets: Markets = {
       rebalancePoolCollateral: "0x0000000000000000000000000000000000000000", // placeholder
       rebalancePoolLeveraged: "0x0000000000000000000000000000000000000000", // placeholder
       collateralPrice: "0x0000000000000000000000000000000000000000", // placeholder
+      genesisZap: "0x173B98E27dF83DC6fC930c1465F65cd10aA21657", // GenesisETHZap_v4 for EUR
+      peggedTokenZap: "0x31bd3B75672bAfbBa1b2F27789DCBF6ee7429D74" as `0x${string}`, // MinterETHZap_v3 for EUR/stETH
+      leveragedTokenZap: "0x31bd3B75672bAfbBa1b2F27789DCBF6ee7429D74" as `0x${string}`, // MinterETHZap_v3 for EUR/stETH (same contract)
     },
     genesis: {
       startDate: "2026-02-01T00:00:00Z", // Placeholder - Coming Soon
@@ -401,8 +408,9 @@ const productionMarkets: Markets = {
       rebalancePoolCollateral: "0x0000000000000000000000000000000000000000", // placeholder
       rebalancePoolLeveraged: "0x0000000000000000000000000000000000000000", // placeholder
       collateralPrice: "0x0000000000000000000000000000000000000000", // placeholder
-      peggedTokenZap: "0xA70dc2f2a40695669A1f453E3777b10B63Fa400A" as `0x${string}`, // MinterUSDCZap_v2 for EUR/fxUSD
-      leveragedTokenZap: "0xA70dc2f2a40695669A1f453E3777b10B63Fa400A" as `0x${string}`, // MinterUSDCZap_v2 for EUR/fxUSD (same contract)
+      genesisZap: "0xE4f3Ce4F27f6bB520668F35101052831C80802ca", // GenesisUSDCZap_v4 for EUR
+      peggedTokenZap: "0x64118b5B2794088CA93D41C9f2264212dc92512f" as `0x${string}`, // MinterUSDCZap_v3 for EUR/fxUSD
+      leveragedTokenZap: "0x64118b5B2794088CA93D41C9f2264212dc92512f" as `0x${string}`, // MinterUSDCZap_v3 for EUR/fxUSD (same contract)
     },
     genesis: {
       startDate: "2026-02-01T00:00:00Z", // Placeholder - Coming Soon

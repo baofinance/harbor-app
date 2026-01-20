@@ -799,7 +799,8 @@ export const AnchorDepositModal = ({
 
  {/* Permit/Approval Toggle (only show when using stability pool zap) */}
  {canUseStabilityPoolZap && (
- <div className="flex items-center gap-3 pt-2 border-t border-[#1E4775]/10">
+ <div className="space-y-2 pt-2 border-t border-[#1E4775]/10">
+ <div className="flex items-center gap-3">
  <span className="text-xs text-[#1E4775]/70">Approval method:</span>
  <div className="flex items-center bg-[#17395F]/10 p-1">
  <button
@@ -829,6 +830,17 @@ export const AnchorDepositModal = ({
  Approve
  </button>
  </div>
+ </div>
+ {/* Warning for stETH/wstETH with smart accounts (EIP-7702) */}
+ {(isWstETHMarket || selectedDepositAsset === "collateral") && preferPermit && (
+ <div className="flex items-start gap-2 p-2 bg-amber-50 border border-amber-200 rounded text-xs">
+ <span className="text-amber-600 mt-0.5">⚠️</span>
+ <span className="text-amber-800">
+ If you're using a smart account with EIP-7702 delegation enabled, permit may fail. 
+ Choose <strong>Approve</strong> for reliable transactions.
+ </span>
+ </div>
+ )}
  </div>
  )}
 
