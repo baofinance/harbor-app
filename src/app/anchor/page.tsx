@@ -78,11 +78,6 @@ import {
   STABILITY_POOL_MANAGER_ABI,
   WRAPPED_PRICE_ORACLE_ABI,
 } from "@/abis/shared";
-import { MINTER_ETH_ZAP_V2_ABI, MINTER_USDC_ZAP_V2_ABI } from "@/config/contracts";
-import {
-  STABILITY_POOL_ZAP_ABI,
-  STABILITY_POOL_ZAP_PERMIT_ABI,
-} from "@/utils/permit";
 import Image from "next/image";
 import { useProjectedAPR } from "@/hooks/useProjectedAPR";
 import { useAnchorLedgerMarks } from "@/hooks/useAnchorLedgerMarks";
@@ -111,7 +106,6 @@ import { useAnchorContractReads } from "@/hooks/anchor/useAnchorContractReads";
 import { useAnchorRewards } from "@/hooks/anchor/useAnchorRewards";
 import { useAnchorMarks } from "@/hooks/anchor/useAnchorMarks";
 import { useAnchorTransactions } from "@/hooks/anchor/useAnchorTransactions";
-import { usePermitOrApproval } from "@/hooks/usePermitOrApproval";
 import { RewardTokensDisplay } from "@/components/anchor/RewardTokensDisplay";
 import { AnchorMarketExpandedView } from "@/components/anchor/AnchorMarketExpandedView";
 import { useAnchorTokenMetadata } from "@/hooks/anchor/useAnchorTokenMetadata";
@@ -144,7 +138,6 @@ export default function AnchorPage() {
   const { address, isConnected } = useAccount();
   const { writeContractAsync } = useWriteContract();
   const publicClient = usePublicClient();
-  const { handlePermitOrApproval } = usePermitOrApproval();
 
   // CoinGecko prices are now provided by useAnchorPrices hook (see below)
   const [expandedMarkets, setExpandedMarkets] = useState<string[]>([]);
@@ -955,16 +948,10 @@ export default function AnchorPage() {
     const collateralAddress = market.addresses?.collateralToken as
       | `0x${string}`
       | undefined;
-    const wrappedCollateralAddress = market.addresses?.wrappedCollateralToken as
-      | `0x${string}`
-      | undefined;
     const peggedTokenAddress = market.addresses?.peggedToken as
       | `0x${string}`
       | undefined;
     const leveragedTokenAddress = market.addresses?.leveragedToken as
-      | `0x${string}`
-      | undefined;
-    const zapAddress = market.addresses?.peggedTokenZap as
       | `0x${string}`
       | undefined;
 
@@ -979,9 +966,6 @@ export default function AnchorPage() {
       "collateral";
     const leveragedSymbol =
       market.leveragedToken?.symbol || market.sail?.symbol || "sail";
-    const collateralSymbolLower = collateralSymbol.toLowerCase();
-    const isFxSAVEMarket = collateralSymbolLower === "fxsave";
-    const isWstETHMarket = collateralSymbolLower === "wsteth";
 
     // Validate allocations
     if (allocations.length === 0) {
@@ -1864,237 +1848,77 @@ export default function AnchorPage() {
 
       if (!expectedOutput) throw new Error("Failed to calculate mint output");
 
-      let usedZapForCollateral = false;
+      // Approve collateral for minter if needed
+      if (cancelRef.current) throw new Error("Cancelled by user");
+      currentStepIndex = findStepIndex("approve-collateral");
+      setCurrentStep(currentStepIndex);
+      updateProgressStep("approve-collateral", { status: "in_progress" });
+      const allowance = (await publicClient?.readContract({
+        address: collateralAddress,
+        abi: ERC20_ABI,
+        functionName: "allowance",
+        args: [address, minterAddress],
+      })) as bigint | undefined;
 
-      const shouldTryStabilityPoolZap =
-        totalCollateralForMinting > 0n &&
-        activeAllocations.length === 1 &&
-        activeAllocations[0].percentage === 100 &&
-        zapAddress &&
-        wrappedCollateralAddress &&
-        (isFxSAVEMarket || isWstETHMarket);
-
-      if (shouldTryStabilityPoolZap) {
-        const onlyAllocation = activeAllocations[0];
-        const targetPoolAddress =
-          onlyAllocation.poolId === "collateral"
-            ? collateralPoolAddress
-            : sailPoolAddress;
-
-        if (targetPoolAddress) {
-          const minPeggedOut = (expectedOutput * 99n) / 100n;
-          const minStabilityPoolOut = minPeggedOut;
-
-          let permitResult = null;
-          let usePermit = false;
-
-          if (cancelRef.current) throw new Error("Cancelled by user");
-          permitResult = await handlePermitOrApproval(
-            wrappedCollateralAddress,
-            zapAddress,
-            totalCollateralForMinting
-          );
-          usePermit = !!(
-            permitResult?.usePermit &&
-            permitResult.permitSig &&
-            permitResult.deadline
-          );
-
-          // Step: approve collateral or mark permit usage
-          currentStepIndex = findStepIndex("approve-collateral");
-          setCurrentStep(currentStepIndex);
-          updateProgressStep("approve-collateral", { status: "in_progress" });
-
-          if (usePermit) {
-            updateProgressStep("approve-collateral", {
-              status: "completed",
-              details: "Permit used",
-            });
-          } else {
-            const allowance = (await publicClient?.readContract({
-              address: wrappedCollateralAddress,
-              abi: ERC20_ABI,
-              functionName: "allowance",
-              args: [address, zapAddress],
-            })) as bigint | undefined;
-
-            if (!allowance || allowance < totalCollateralForMinting) {
-              const approveHash = await writeContractAsync({
-                address: wrappedCollateralAddress,
-                abi: ERC20_ABI,
-                functionName: "approve",
-                args: [zapAddress, totalCollateralForMinting],
-              });
-              updateProgressStep("approve-collateral", {
-                status: "in_progress",
-                txHash: approveHash as string,
-                details: "Waiting for transaction confirmation...",
-              });
-              await publicClient?.waitForTransactionReceipt({
-                hash: approveHash as `0x${string}`,
-              });
-              updateProgressStep("approve-collateral", {
-                status: "completed",
-                txHash: approveHash as string,
-                details: "Transaction confirmed",
-              });
-            } else {
-              updateProgressStep("approve-collateral", {
-                status: "completed",
-                details: "Already approved",
-              });
-            }
-          }
-
-          // Step: zap to stability pool (uses mint step slot)
-          if (cancelRef.current) throw new Error("Cancelled by user");
-          currentStepIndex = findStepIndex("mint");
-          setCurrentStep(currentStepIndex);
-          updateProgressStep("mint", { status: "in_progress" });
-
-          const zapAbi = isWstETHMarket
-            ? MINTER_ETH_ZAP_V2_ABI
-            : MINTER_USDC_ZAP_V2_ABI;
-          const zapFunctionName = isWstETHMarket
-            ? "zapWstEthToStabilityPool"
-            : "zapFxSaveToStabilityPool";
-          const zapPermitFunctionName = isWstETHMarket
-            ? "zapWstEthToStabilityPoolWithPermit"
-            : "zapFxSaveToStabilityPoolWithPermit";
-
-          const zapHash = await writeContractAsync({
-            address: zapAddress,
-            abi: usePermit
-              ? ([...zapAbi, ...STABILITY_POOL_ZAP_ABI, ...STABILITY_POOL_ZAP_PERMIT_ABI] as const)
-              : ([...zapAbi, ...STABILITY_POOL_ZAP_ABI] as const),
-            functionName: usePermit ? zapPermitFunctionName : zapFunctionName,
-            args: usePermit
-              ? [
-                  totalCollateralForMinting,
-                  address,
-                  minPeggedOut,
-                  targetPoolAddress,
-                  minStabilityPoolOut,
-                  permitResult.deadline,
-                  permitResult.permitSig.v,
-                  permitResult.permitSig.r,
-                  permitResult.permitSig.s,
-                ]
-              : [
-                  totalCollateralForMinting,
-                  address,
-                  minPeggedOut,
-                  targetPoolAddress,
-                  minStabilityPoolOut,
-                ],
-          });
-
-          updateProgressStep("mint", {
-            status: "in_progress",
-            txHash: zapHash as string,
-            details: "Waiting for transaction confirmation...",
-          });
-          await publicClient?.waitForTransactionReceipt({
-            hash: zapHash as `0x${string}`,
-          });
-          updateProgressStep("mint", {
-            status: "completed",
-            txHash: zapHash as string,
-            details: "Transaction confirmed",
-          });
-          usedZapForCollateral = true;
-        }
-      }
-
-      if (!usedZapForCollateral) {
-        // Approve collateral for minter if needed
-        if (cancelRef.current) throw new Error("Cancelled by user");
-        currentStepIndex = findStepIndex("approve-collateral");
-        setCurrentStep(currentStepIndex);
-        updateProgressStep("approve-collateral", { status: "in_progress" });
-        const allowance = (await publicClient?.readContract({
+      if (cancelRef.current) throw new Error("Cancelled by user");
+      if (!allowance || allowance < totalCollateralForMinting) {
+        const approveHash = await writeContractAsync({
           address: collateralAddress,
           abi: ERC20_ABI,
-          functionName: "allowance",
-          args: [address, minterAddress],
-        })) as bigint | undefined;
-
-        if (cancelRef.current) throw new Error("Cancelled by user");
-        if (!allowance || allowance < totalCollateralForMinting) {
-          const approveHash = await writeContractAsync({
-            address: collateralAddress,
-            abi: ERC20_ABI,
-            functionName: "approve",
-            args: [minterAddress, totalCollateralForMinting],
-          });
-          updateProgressStep("approve-collateral", {
-            status: "in_progress",
-            txHash: approveHash as string,
-            details: "Waiting for transaction confirmation...",
-          });
-          await publicClient?.waitForTransactionReceipt({
-            hash: approveHash as `0x${string}`,
-          });
-          updateProgressStep("approve-collateral", {
-            status: "completed",
-            txHash: approveHash as string,
-            details: "Transaction confirmed",
-          });
-        } else {
-          updateProgressStep("approve-collateral", {
-            status: "completed",
-            details: "Already approved",
-          });
-        }
-
-        // Mint pegged tokens
-        if (cancelRef.current) throw new Error("Cancelled by user");
-        currentStepIndex = findStepIndex("mint");
-        setCurrentStep(currentStepIndex);
-        updateProgressStep("mint", { status: "in_progress" });
-        const minPeggedOut = (expectedOutput * 99n) / 100n;
-        const mintHash = await writeContractAsync({
-          address: minterAddress,
-          abi: minterABI,
-          functionName: "mintPeggedToken",
-          args: [totalCollateralForMinting, address, minPeggedOut],
+          functionName: "approve",
+          args: [minterAddress, totalCollateralForMinting],
         });
-        updateProgressStep("mint", {
+        updateProgressStep("approve-collateral", {
           status: "in_progress",
-          txHash: mintHash as string,
+          txHash: approveHash as string,
           details: "Waiting for transaction confirmation...",
         });
         await publicClient?.waitForTransactionReceipt({
-          hash: mintHash as `0x${string}`,
+          hash: approveHash as `0x${string}`,
         });
-        updateProgressStep("mint", {
+        updateProgressStep("approve-collateral", {
           status: "completed",
-          txHash: mintHash as string,
+          txHash: approveHash as string,
           details: "Transaction confirmed",
+        });
+      } else {
+        updateProgressStep("approve-collateral", {
+          status: "completed",
+          details: "Already approved",
         });
       }
 
+      // Mint pegged tokens
+      if (cancelRef.current) throw new Error("Cancelled by user");
+      currentStepIndex = findStepIndex("mint");
+      setCurrentStep(currentStepIndex);
+      updateProgressStep("mint", { status: "in_progress" });
+      const minPeggedOut = (expectedOutput * 99n) / 100n;
+      const mintHash = await writeContractAsync({
+        address: minterAddress,
+        abi: minterABI,
+        functionName: "mintPeggedToken",
+        args: [totalCollateralForMinting, address, minPeggedOut],
+      });
+      updateProgressStep("mint", {
+        status: "in_progress",
+        txHash: mintHash as string,
+        details: "Waiting for transaction confirmation...",
+      });
+      await publicClient?.waitForTransactionReceipt({
+        hash: mintHash as `0x${string}`,
+      });
+      updateProgressStep("mint", {
+        status: "completed",
+        txHash: mintHash as string,
+        details: "Transaction confirmed",
+      });
+
       // Step 4: Approve and deposit to each stability pool
       // Use only ha tokens from this flow: claimed ha rewards + newly minted ha
-      const mintedHaFromThisFlow = usedZapForCollateral ? 0n : expectedOutput || 0n;
+      const mintedHaFromThisFlow = expectedOutput || 0n;
       const depositAmount = haReceived + mintedHaFromThisFlow;
       if (depositAmount === 0n) {
-        if (usedZapForCollateral && haReceived === 0n) {
-          activeAllocations.forEach((allocation) => {
-            updateProgressStep(`approve-pegged-${allocation.poolId}`, {
-              status: "completed",
-              details: "Handled by zap",
-            });
-            updateProgressStep(`deposit-${allocation.poolId}`, {
-              status: "completed",
-              details: "Handled by zap",
-            });
-          });
-          // No ha tokens to deposit after zap
-          await new Promise((resolve) => setTimeout(resolve, 2000));
-          await Promise.all([refetchReads(), refetchUserDeposits()]);
-          return;
-        }
         throw new Error("No ha tokens from rewards/mint to deposit");
       }
 

@@ -531,6 +531,7 @@ export const AnchorDepositWithdrawModal = ({
     "collateral" | "sail"
   >("collateral");
   const [preferPermit, setPreferPermit] = useState(true); // Default to permit, but allow user override
+  const enableStabilityPoolZaps = false; // Temporarily disable stability pool zaps (use mint + deposit)
 
   // Withdraw/Redeem tab options
   // Default: withdraw from pools + redeem selected ha tokens to collateral.
@@ -5840,7 +5841,8 @@ export const AnchorDepositWithdrawModal = ({
           }
           
           // Check early if we'll use stability pool zap to configure progress modal correctly
-          const willUseStabilityPoolZap = shouldDepositToPool && stabilityPoolAddress;
+          const willUseStabilityPoolZap =
+            enableStabilityPoolZaps && shouldDepositToPool && stabilityPoolAddress;
           const willUsePermitForStabilityPoolZap = preferPermit; // User preference (actual check happens later)
           const needsApprovalForStabilityPoolZap = needsZapApproval && !willUsePermitForStabilityPoolZap;
           
@@ -6089,194 +6091,34 @@ export const AnchorDepositWithdrawModal = ({
               throw new Error("Wrong network. Please switch to Ethereum Mainnet.");
             }
             
-            // Check if we should use stability pool zap (direct zap to pool) or minting zap (mint first, then deposit)
-            // If shouldDepositToPool is true, use stability pool zaps; otherwise use minting zaps
-            if (shouldDepositToPool && stabilityPoolAddress) {
-              // Use stability pool zaps: zapEthToStabilityPool or zapStEthToStabilityPool
-              // This combines: approve/mint/approve/deposit (4 tx) into 1-2 tx
-              
-              if (!stabilityPoolAddress) {
-                throw new Error("Stability pool address not found. Cannot deposit to stability pool.");
-              }
-              
-              // Calculate minStabilityPoolOut (same as minPeggedOut since all minted tokens are deposited)
-              const minStabilityPoolOut = minPeggedOut;
-              
-              let zapHash: `0x${string}`;
-              
-              if (isActuallyETH) {
-                // ETH stability pool zap (payable, no permit needed)
-                debugTx("zap/ethToStabilityPool", {
-                  zapAddress,
-                  function: "zapEthToStabilityPool",
-                  args: [address, minPeggedOut.toString(), stabilityPoolAddress, minStabilityPoolOut.toString()],
-                  value: swappedAmount.toString(),
-                });
-                zapHash = await writeContractAsync({
-                  address: zapAddress,
-                  abi: [...MINTER_ETH_ZAP_V2_ABI, ...STABILITY_POOL_ZAP_ABI] as const,
-                  functionName: "zapEthToStabilityPool",
-                  args: [
-                    address as `0x${string}`,
-                    minPeggedOut,
-                    stabilityPoolAddress,
-                    minStabilityPoolOut,
-                  ],
-                  value: swappedAmount,
-                });
-              } else if (isActuallyStETH) {
-                // stETH stability pool zap (with permit support)
-                // Get stETH address for approval/permit
-                let stETHAddress = marketForDepositAsset?.addresses?.underlyingCollateralToken as `0x${string}` | undefined;
-                if (!stETHAddress) {
-                  const selectedMarket = marketsForToken.find((x) => x.marketId === selectedMarketId)?.market;
-                  stETHAddress = selectedMarket?.addresses?.underlyingCollateralToken as `0x${string}` | undefined;
-                }
-                if (!stETHAddress && zapAddress) {
-                  const marketByZap = marketsForToken.find(
-                    ({ market: m }) => 
-                      m?.addresses?.peggedTokenZap?.toLowerCase() === zapAddress.toLowerCase() ||
-                      m?.addresses?.leveragedTokenZap?.toLowerCase() === zapAddress.toLowerCase()
-                  )?.market;
-                  stETHAddress = marketByZap?.addresses?.underlyingCollateralToken as `0x${string}` | undefined;
-                }
-                if (!stETHAddress) {
-                  stETHAddress = "0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84" as `0x${string}`;
-                }
-                
-                if (!stETHAddress) throw new Error("stETH address not found. Please ensure you're depositing to a wstETH market.");
-                
-                // Try permit first if preferred, fallback to approval
-                let usePermit = preferPermit;
-                let permitResult = null;
-                if (preferPermit) {
-                  permitResult = await handlePermitOrApproval(
-                    stETHAddress,
-                    zapAddress,
-                    swappedAmount
-                  );
-                  usePermit = permitResult?.usePermit && !!permitResult.permitSig && !!permitResult.deadline;
-                }
-                
-                if (usePermit && permitResult.permitSig && permitResult.deadline) {
-                  try {
-                    debugTx("zap/stEthToStabilityPoolWithPermit", {
-                      zapAddress,
-                      function: "zapStEthToStabilityPoolWithPermit",
-                      args: [swappedAmount.toString(), address, minPeggedOut.toString(), stabilityPoolAddress, minStabilityPoolOut.toString()],
-                    });
-                    zapHash = await writeContractAsync({
-                      address: zapAddress,
-                      abi: [...MINTER_ETH_ZAP_V2_ABI, ...STABILITY_POOL_ZAP_ABI, ...STABILITY_POOL_ZAP_PERMIT_ABI] as const,
-                      functionName: "zapStEthToStabilityPoolWithPermit",
-                      args: [
-                        swappedAmount,
-                        address as `0x${string}`,
-                        minPeggedOut,
-                        stabilityPoolAddress,
-                        minStabilityPoolOut,
-                        permitResult.deadline,
-                        permitResult.permitSig.v,
-                        permitResult.permitSig.r,
-                        permitResult.permitSig.s,
-                      ],
-                    });
-                  } catch (permitError: any) {
-                    // If permit transaction fails (e.g., due to EIP-7702), fall back to approval
-                    const errorMessage = permitError?.message?.toLowerCase() || "";
-                    const isEIP7702Error = 
-                      errorMessage.includes("7702") ||
-                      errorMessage.includes("delegation") ||
-                      errorMessage.includes("eip-7702") ||
-                      errorMessage.includes("invalid signature") ||
-                      permitError?.code === -32603;
-                    
-                    if (isEIP7702Error || permitError instanceof Error) {
-                      console.warn("Permit transaction failed (possibly EIP-7702), falling back to approval:", permitError);
-                      // Fall through to approval flow below
-                      usePermit = false;
-                    } else {
-                      throw permitError; // Re-throw if it's not a permit-related error
-                    }
-                  }
-                }
-                
-                // If permit failed or wasn't used, fall back to approval
-                if (!zapHash || (!usePermit || !permitResult?.permitSig || !permitResult?.deadline)) {
-                  // Fallback to approval
-                  const stETHAllowance = await publicClient?.readContract({
-                    address: stETHAddress,
-                    abi: ERC20_ABI,
-                    functionName: "allowance",
-                    args: [address as `0x${string}`, zapAddress],
-                  });
-                  const allowanceBigInt = (stETHAllowance as bigint) || 0n;
-                  if (allowanceBigInt < swappedAmount) {
-                    setStep("approving");
-                    const approveHash = await writeContractAsync({
-                      address: stETHAddress,
-                      abi: ERC20_ABI,
-                      functionName: "approve",
-                      args: [zapAddress, swappedAmount],
-                    });
-                    setTxHashes((prev) => ({ ...prev, approveCollateral: approveHash }));
-                    await publicClient?.waitForTransactionReceipt({ hash: approveHash });
-                    setStep("minting");
-                  }
-                  
-                  debugTx("zap/stEthToStabilityPool", {
-                    zapAddress,
-                    function: "zapStEthToStabilityPool",
-                    args: [swappedAmount.toString(), address, minPeggedOut.toString(), stabilityPoolAddress, minStabilityPoolOut.toString()],
-                  });
-                  zapHash = await writeContractAsync({
-                    address: zapAddress,
-                    abi: [...MINTER_ETH_ZAP_V2_ABI, ...STABILITY_POOL_ZAP_ABI] as const,
-                    functionName: "zapStEthToStabilityPool",
-                    args: [
-                      swappedAmount,
-                      address as `0x${string}`,
-                      minPeggedOut,
-                      stabilityPoolAddress,
-                      minStabilityPoolOut,
-                    ],
-                  });
-                }
-              } else {
-                throw new Error("Invalid asset for ETH/stETH stability pool zap");
-              }
-              
-              await publicClient?.waitForTransactionReceipt({ hash: zapHash });
-              setTxHashes((prev) => ({ ...prev, mint: zapHash }));
-            } else {
-              // Use minting zaps (mint pegged token, then optionally deposit to pool)
-              // Track pegged token balance before zap so we can compute minted amount for deposit.
-              const balanceBeforeZap = peggedTokenAddress
-                ? ((await publicClient?.readContract({
-                    address: peggedTokenAddress as `0x${string}`,
-                    abi: ERC20_ABI,
-                    functionName: "balanceOf",
-                    args: [address as `0x${string}`],
-                  })) as bigint | undefined)
-                : undefined;
+            // Use minting zaps (mint pegged token, then optionally deposit to pool)
+            // Track pegged token balance before zap so we can compute minted amount for deposit.
+            const balanceBeforeZap = peggedTokenAddress
+              ? ((await publicClient?.readContract({
+                  address: peggedTokenAddress as `0x${string}`,
+                  abi: ERC20_ABI,
+                  functionName: "balanceOf",
+                  args: [address as `0x${string}`],
+                })) as bigint | undefined)
+              : undefined;
 
-              // Call the correct zap function based on asset type (minting zaps)
-              let zapHash: `0x${string}`;
-              if (isActuallyETH) {
-                debugTx("zap/ethToPegged", {
-                  zapAddress,
-                  function: "zapEthToPegged",
-                  args: [address, minPeggedOut.toString()],
-                  value: swappedAmount.toString(),
-                });
-                zapHash = await writeContractAsync({
-                address: zapAddress,
-                  abi: MINTER_ETH_ZAP_V2_ABI,
-                  functionName: "zapEthToPegged",
-                  args: [address as `0x${string}`, minPeggedOut],
-                value: swappedAmount,
+            // Call the correct zap function based on asset type (minting zaps)
+            let zapHash: `0x${string}`;
+            if (isActuallyETH) {
+              debugTx("zap/ethToPegged", {
+                zapAddress,
+                function: "zapEthToPegged",
+                args: [address, minPeggedOut.toString()],
+                value: swappedAmount.toString(),
               });
-              } else if (isActuallyStETH) {
+              zapHash = await writeContractAsync({
+              address: zapAddress,
+                abi: MINTER_ETH_ZAP_V2_ABI,
+                functionName: "zapEthToPegged",
+                args: [address as `0x${string}`, minPeggedOut],
+              value: swappedAmount,
+            });
+            } else if (isActuallyStETH) {
                 // Use underlyingCollateralToken (stETH), not wrappedCollateralToken (wstETH)
                 // Try marketForDepositAsset first, then selectedMarket, then find market by zap address
                 let stETHAddress = marketForDepositAsset?.addresses?.underlyingCollateralToken as `0x${string}` | undefined;
@@ -6388,590 +6230,279 @@ export const AnchorDepositWithdrawModal = ({
               
               // If a pool was selected, continue by depositing the freshly minted pegged tokens.
               if (shouldDepositToPool) {
-              if (!stabilityPoolAddress) {
-                throw new Error(
-                  "Stability pool address not found. Cannot deposit to stability pool."
-                );
-              }
-              if (!peggedTokenAddress) {
-                throw new Error(
-                  "Pegged token address not found. Cannot deposit to stability pool."
-                );
-              }
+                if (!stabilityPoolAddress) {
+                  throw new Error(
+                    "Stability pool address not found. Cannot deposit to stability pool."
+                  );
+                }
+                if (!peggedTokenAddress) {
+                  throw new Error(
+                    "Pegged token address not found. Cannot deposit to stability pool."
+                  );
+                }
 
-              // Wait a bit for state to update after transaction
-              await new Promise((resolve) => setTimeout(resolve, 2000));
-              const balanceAfterZap = (await publicClient?.readContract({
-                address: peggedTokenAddress as `0x${string}`,
-                abi: ERC20_ABI,
-                functionName: "balanceOf",
-                args: [address as `0x${string}`],
-              })) as bigint;
-
-              const minted =
-                balanceBeforeZap !== undefined
-                  ? balanceAfterZap - balanceBeforeZap
-                  : balanceAfterZap;
-              const depositAmount = minted > 0n ? minted : balanceAfterZap;
-
-              if (depositAmount <= 0n) {
-                throw new Error(
-                  "Mint succeeded but could not determine minted amount to deposit."
-                );
-              }
-
-              // Approve pegged token for pool if needed
-              const currentAllowance = (await publicClient?.readContract({
-                address: peggedTokenAddress as `0x${string}`,
-                abi: ERC20_ABI,
-                functionName: "allowance",
-                args: [address as `0x${string}`, stabilityPoolAddress],
-              })) as bigint;
-
-              if (currentAllowance < depositAmount) {
-                setStep("approvingPegged");
-                const approveHash = await writeContractAsync({
+                // Wait a bit for state to update after transaction
+                await new Promise((resolve) => setTimeout(resolve, 2000));
+                const balanceAfterZap = (await publicClient?.readContract({
                   address: peggedTokenAddress as `0x${string}`,
                   abi: ERC20_ABI,
-                  functionName: "approve",
-                  args: [stabilityPoolAddress, depositAmount],
+                  functionName: "balanceOf",
+                  args: [address as `0x${string}`],
+                })) as bigint;
+
+                const minted =
+                  balanceBeforeZap !== undefined
+                    ? balanceAfterZap - balanceBeforeZap
+                    : balanceAfterZap;
+                const depositAmount = minted > 0n ? minted : balanceAfterZap;
+
+                if (depositAmount <= 0n) {
+                  throw new Error(
+                    "Mint succeeded but could not determine minted amount to deposit."
+                  );
+                }
+
+                // Approve pegged token for pool if needed
+                const currentAllowance = (await publicClient?.readContract({
+                  address: peggedTokenAddress as `0x${string}`,
+                  abi: ERC20_ABI,
+                  functionName: "allowance",
+                  args: [address as `0x${string}`, stabilityPoolAddress],
+                })) as bigint;
+
+                if (currentAllowance < depositAmount) {
+                  setStep("approvingPegged");
+                  const approveHash = await writeContractAsync({
+                    address: peggedTokenAddress as `0x${string}`,
+                    abi: ERC20_ABI,
+                    functionName: "approve",
+                    args: [stabilityPoolAddress, depositAmount],
+                  });
+                  setTxHashes((prev) => ({ ...prev, approvePegged: approveHash }));
+                  await publicClient?.waitForTransactionReceipt({ hash: approveHash });
+                }
+
+                // Deposit to stability pool
+                setStep("depositing");
+                const depositHash = await writeContractAsync({
+                  address: stabilityPoolAddress,
+                  abi: STABILITY_POOL_ABI,
+                  functionName: "deposit",
+                  args: [depositAmount, address as `0x${string}`, 0n],
                 });
-                setTxHashes((prev) => ({ ...prev, approvePegged: approveHash }));
-                await publicClient?.waitForTransactionReceipt({ hash: approveHash });
+                setTxHashes((prev) => ({ ...prev, deposit: depositHash }));
+                await publicClient?.waitForTransactionReceipt({ hash: depositHash });
               }
 
-              // Deposit to stability pool
-              setStep("depositing");
-              const depositHash = await writeContractAsync({
-                address: stabilityPoolAddress,
-                abi: STABILITY_POOL_ABI,
-                functionName: "deposit",
-                args: [depositAmount, address as `0x${string}`, 0n],
-              });
-              setTxHashes((prev) => ({ ...prev, deposit: depositHash }));
-              await publicClient?.waitForTransactionReceipt({ hash: depositHash });
-            }
-            }
+              setStep("success");
+              if (onSuccess) onSuccess();
+            } else if (anyTokenDeposit.useUSDCZap) {
+              // USDC/fxUSD Zap: USDC → fxUSD → fxSAVE → Minter OR fxUSD → fxSAVE → Minter (via peggedTokenZap)
+              const USDC_ADDRESS = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" as `0x${string}`;
+              const isActuallyUSDC = anyTokenDeposit.needsSwap
+                ? true
+                : (anyTokenDeposit.selectedAssetAddress?.toLowerCase() === USDC_ADDRESS.toLowerCase());
+              const isActuallyFxUSD = !isActuallyUSDC && !anyTokenDeposit.needsSwap;
 
-          setStep("success");
-          if (onSuccess) onSuccess();
-        } else if (anyTokenDeposit.useUSDCZap) {
-            // USDC/fxUSD Zap: USDC → fxUSD → fxSAVE → Minter OR fxUSD → fxSAVE → Minter (via peggedTokenZap)
-            // Determine which asset we're actually zapping (USDC or fxUSD)
-            const USDC_ADDRESS = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" as `0x${string}`;
-            const isActuallyUSDC = anyTokenDeposit.needsSwap 
-              ? true // After swap, we always have USDC
-              : (anyTokenDeposit.selectedAssetAddress?.toLowerCase() === USDC_ADDRESS.toLowerCase());
-            const isActuallyFxUSD = !isActuallyUSDC && !anyTokenDeposit.needsSwap;
-            
-            // Get the asset address for approval
-            const assetAddressForApproval = anyTokenDeposit.needsSwap 
-              ? USDC_ADDRESS 
-              : (anyTokenDeposit.selectedAssetAddress as `0x${string}`);
-            
-            if (!assetAddressForApproval) {
-              throw new Error("Asset address not found for approval");
-            }
-            
-            // Ensure progress modal is open and configured for USDC zap
-            // Note: Progress config should already be set at line 5823-5838, but verify it's correct
-            // For minting zap path (not stability pool zap), we want: approve, mint, approve pegged, deposit
-            const needsZapApprovalForUSDC = !anyTokenDeposit.isNativeETH; // USDC/fxUSD always needs approval
-            
-            // Ensure step is set (progress modal requires step !== "input")
-            if (step === "input") {
-              setStep(needsZapApprovalForUSDC ? "approving" : "minting");
-            }
-            
-            // Ensure progress modal is open if not already
-            if (!progressModalOpen) {
-              // Determine zap asset name
-              const zapAssetName = anyTokenDeposit.needsSwap ? "USDC" : (anyTokenDeposit.selectedAsset?.toUpperCase() || "USDC");
-              
-              setProgressConfig({
-                mode: "collateral",
-                includeApproveCollateral: needsZapApprovalForUSDC,
-                includeMint: true, // Zap handles mint
-                includeApprovePegged: !!shouldDepositToPool, // Only if depositing to pool
-                includeDeposit: !!shouldDepositToPool, // Only if depositing to pool
-                includeDirectApprove: false,
-                includeDirectDeposit: false,
-                useZap: true,
-                zapAsset: zapAssetName,
-                title: shouldDepositToPool ? "Mint & Deposit" : "Mint pegged token",
-              });
-              setProgressModalOpen(true);
-            }
-            
-              // Check network before sending transaction
+              const assetAddressForApproval = anyTokenDeposit.needsSwap
+                ? USDC_ADDRESS
+                : (anyTokenDeposit.selectedAssetAddress as `0x${string}`);
+
+              if (!assetAddressForApproval) {
+                throw new Error("Asset address not found for approval");
+              }
+
+              const needsZapApprovalForUSDC = !anyTokenDeposit.isNativeETH;
+
+              if (step === "input") {
+                setStep(needsZapApprovalForUSDC ? "approving" : "minting");
+              }
+
+              if (!progressModalOpen) {
+                const zapAssetName = anyTokenDeposit.needsSwap
+                  ? "USDC"
+                  : (anyTokenDeposit.selectedAsset?.toUpperCase() || "USDC");
+
+                setProgressConfig({
+                  mode: "collateral",
+                  includeApproveCollateral: needsZapApprovalForUSDC,
+                  includeMint: true,
+                  includeApprovePegged: !!shouldDepositToPool,
+                  includeDeposit: !!shouldDepositToPool,
+                  includeDirectApprove: false,
+                  includeDirectDeposit: false,
+                  useZap: true,
+                  zapAsset: zapAssetName,
+                  title: shouldDepositToPool ? "Mint & Deposit" : "Mint pegged token",
+                });
+                setProgressModalOpen(true);
+              }
+
               if (!(await ensureCorrectNetwork())) {
                 throw new Error("Wrong network. Please switch to Ethereum Mainnet.");
               }
-            
-            // Calculate minPeggedOut for minter zap
-            // Use swapDryRunOutput or expectedMintOutput from swap dry run if available (accounts for actual conversion and fees)
-            // Otherwise fall back to estimation
-            let minPeggedOut: bigint;
-            let actualExpectedOutput: bigint | undefined;
-            
-            // Prefer swapDryRunOutput directly (most reliable for swap deposits)
-            if (swapDryRunOutput && Array.isArray(swapDryRunOutput) && swapDryRunOutput.length >= 4) {
-              actualExpectedOutput = swapDryRunOutput[3] as bigint; // peggedMinted from dry run
-            } else if (expectedMintOutput && expectedMintOutput > 0n) {
-              actualExpectedOutput = expectedMintOutput;
-            }
-            
-            if (actualExpectedOutput && actualExpectedOutput > 0n) {
-              // Use actual expected output from dry run and apply slippage tolerance
-              // NOTE: Dynamic fees can change if collateral ratio crosses bands between dry run and execution
-              // We use higher slippage tolerance to account for potential fee increases
-              const slippageBps = Math.max(slippageTolerance || 1, 2.0); // Increased from 0.5% to 2% minimum
-              minPeggedOut = (actualExpectedOutput * BigInt(Math.floor((100 - slippageBps) * 100))) / 10000n;
-            } else {
-              // Fallback: estimate based on asset type
-              if (isActuallyUSDC) {
-                // USDC has 6 decimals, pegged tokens have 18 decimals
-                const usdcAmountIn18Decimals = swappedAmount * 10n ** 12n; // Convert 6 to 18 decimals
-                // Estimate: account for conversion (USDC → fxUSD 1:1) and minting fees (~0.25%)
-                const estimatedPeggedOut = (usdcAmountIn18Decimals * 9975n) / 10000n; // Estimate 0.25% fee
+
+              let minPeggedOut: bigint;
+              let actualExpectedOutput: bigint | undefined;
+
+              if (
+                swapDryRunOutput &&
+                Array.isArray(swapDryRunOutput) &&
+                swapDryRunOutput.length >= 4
+              ) {
+                actualExpectedOutput = swapDryRunOutput[3] as bigint;
+              } else if (expectedMintOutput && expectedMintOutput > 0n) {
+                actualExpectedOutput = expectedMintOutput;
+              }
+
+              if (actualExpectedOutput && actualExpectedOutput > 0n) {
                 const slippageBps = Math.max(slippageTolerance || 1, 2.0);
-                minPeggedOut = (estimatedPeggedOut * BigInt(Math.floor((100 - slippageBps) * 100))) / 10000n;
+                minPeggedOut =
+                  (actualExpectedOutput *
+                    BigInt(Math.floor((100 - slippageBps) * 100))) /
+                  10000n;
               } else {
-                // fxUSD already in 18 decimals
-                // Estimate: account for conversion (fxUSD → fxSAVE) and minting fees (~0.25%)
-                const estimatedPeggedOut = (swappedAmount * 9975n) / 10000n; // Estimate 0.25% fee
-                const slippageBps = Math.max(slippageTolerance || 1, 2.0);
-                minPeggedOut = (estimatedPeggedOut * BigInt(Math.floor((100 - slippageBps) * 100))) / 10000n;
-              }
-            }
-            
-            // Check network before sending transaction
-            if (!(await ensureCorrectNetwork())) {
-              throw new Error("Wrong network. Please switch to Ethereum Mainnet.");
-            }
-            
-            // Check if we should use stability pool zap (direct zap to pool) or minting zap (mint first, then deposit)
-            // If shouldDepositToPool is true, use stability pool zaps; otherwise use minting zaps
-            if (shouldDepositToPool && stabilityPoolAddress) {
-              // Use stability pool zaps: zapUsdcToStabilityPool or zapFxUsdToStabilityPool
-              // This combines: approve/mint/approve/deposit (4 tx) into 1-2 tx
-              
-              // Ensure progress modal is open and configured (it should already be set at line 5818, but verify)
-              if (!progressModalOpen) {
-                setProgressModalOpen(true);
-              }
-              
-              if (!stabilityPoolAddress) {
-                throw new Error("Stability pool address not found. Cannot deposit to stability pool.");
-              }
-              
-              // Calculate minFxSaveOut for USDC/fxUSD stability pool zaps
-              // minFxSaveOut is the minimum fxSAVE output from USDC/fxUSD conversion
-              const minFxSaveOut = calculateMinFxSaveOut(
-                swappedAmount,
-                fxSAVERate,
-                isActuallyUSDC,
-                100 // 1% slippage (100 bps)
-              );
-              
-              // Calculate minStabilityPoolOut (same as minPeggedOut since all minted tokens are deposited)
-              const minStabilityPoolOut = minPeggedOut;
-              
-              let zapHash: `0x${string}`;
-              
-              if (isActuallyUSDC) {
-                // USDC stability pool zap (with permit support)
-                // Try permit first if preferred, otherwise check allowance and approve if needed
-                let usePermit = false;
-                let permitResult = null;
-                
-                if (preferPermit) {
-                  permitResult = await handlePermitOrApproval(
-                    assetAddressForApproval,
-                    zapAddress,
-                    swappedAmount
-                  );
-                  usePermit = permitResult?.usePermit && !!permitResult.permitSig && !!permitResult.deadline;
-                }
-                
-                // If not using permit, check allowance and approve if needed
-                if (!usePermit) {
-                  const currentAllowance = await publicClient?.readContract({
-                    address: assetAddressForApproval,
-                    abi: ERC20_ABI,
-                    functionName: "allowance",
-                    args: [address as `0x${string}`, zapAddress],
-                  });
-                  const allowanceBigInt = (currentAllowance as bigint) || 0n;
-                  if (allowanceBigInt < swappedAmount) {
-                    setStep("approving");
-                    const zapApproveHash = await writeContractAsync({
-                      address: assetAddressForApproval,
-                      abi: ERC20_ABI,
-                      functionName: "approve",
-                      args: [zapAddress, swappedAmount],
-                    });
-                    setTxHashes((prev) => ({ ...prev, approveCollateral: zapApproveHash }));
-                    await publicClient?.waitForTransactionReceipt({ hash: zapApproveHash });
-                    setStep("minting");
-                  }
-                }
-                
-                if (usePermit && permitResult.permitSig && permitResult.deadline) {
-                  debugTx("zap/usdcToStabilityPoolWithPermit", {
-                    zapAddress,
-                    function: "zapUsdcToStabilityPoolWithPermit",
-                    args: [swappedAmount.toString(), minFxSaveOut.toString(), address, minPeggedOut.toString(), stabilityPoolAddress, minStabilityPoolOut.toString()],
-                  });
-                  zapHash = await writeContractAsync({
-                    address: zapAddress,
-                    abi: [...MINTER_USDC_ZAP_V2_ABI, ...STABILITY_POOL_ZAP_ABI, ...STABILITY_POOL_ZAP_PERMIT_ABI] as const,
-                    functionName: "zapUsdcToStabilityPoolWithPermit",
-                    args: [
-                      swappedAmount,
-                      minFxSaveOut,
-                      address as `0x${string}`,
-                      minPeggedOut,
-                      stabilityPoolAddress,
-                      minStabilityPoolOut,
-                      permitResult.deadline,
-                      permitResult.permitSig.v,
-                      permitResult.permitSig.r,
-                      permitResult.permitSig.s,
-                    ],
-                  });
-                } else {
-                  // Already checked allowance and approved if needed above (lines 6474-6495)
-                  debugTx("zap/usdcToStabilityPool", {
-                    zapAddress,
-                    function: "zapUsdcToStabilityPool",
-                    args: [swappedAmount.toString(), minFxSaveOut.toString(), address, minPeggedOut.toString(), stabilityPoolAddress, minStabilityPoolOut.toString()],
-                  });
-                  zapHash = await writeContractAsync({
-                    address: zapAddress,
-                    abi: [...MINTER_USDC_ZAP_V2_ABI, ...STABILITY_POOL_ZAP_ABI] as const,
-                    functionName: "zapUsdcToStabilityPool",
-                    args: [
-                      swappedAmount,
-                      minFxSaveOut,
-                      address as `0x${string}`,
-                      minPeggedOut,
-                      stabilityPoolAddress,
-                      minStabilityPoolOut,
-                    ],
-                  });
-                }
-              } else if (isActuallyFxUSD) {
-                // fxUSD stability pool zap (with permit support)
-                let usePermit = preferPermit;
-                let permitResult = null;
-                if (preferPermit) {
-                  permitResult = await handlePermitOrApproval(
-                    assetAddressForApproval,
-                    zapAddress,
-                    swappedAmount
-                  );
-                  usePermit = permitResult?.usePermit && !!permitResult.permitSig && !!permitResult.deadline;
-                }
-                
-                if (usePermit && permitResult.permitSig && permitResult.deadline) {
-                  debugTx("zap/fxUsdToStabilityPoolWithPermit", {
-                    zapAddress,
-                    function: "zapFxUsdToStabilityPoolWithPermit",
-                    args: [swappedAmount.toString(), minFxSaveOut.toString(), address, minPeggedOut.toString(), stabilityPoolAddress, minStabilityPoolOut.toString()],
-                  });
-                  zapHash = await writeContractAsync({
-                    address: zapAddress,
-                    abi: [...MINTER_USDC_ZAP_V2_ABI, ...STABILITY_POOL_ZAP_ABI, ...STABILITY_POOL_ZAP_PERMIT_ABI] as const,
-                    functionName: "zapFxUsdToStabilityPoolWithPermit",
-                    args: [
-                      swappedAmount,
-                      minFxSaveOut,
-                      address as `0x${string}`,
-                      minPeggedOut,
-                      stabilityPoolAddress,
-                      minStabilityPoolOut,
-                      permitResult.deadline,
-                      permitResult.permitSig.v,
-                      permitResult.permitSig.r,
-                      permitResult.permitSig.s,
-                    ],
-                  });
-                } else {
-                  // Fallback to approval - check allowance and approve if needed
-                  const currentAllowance = await publicClient?.readContract({
-                    address: assetAddressForApproval,
-                    abi: ERC20_ABI,
-                    functionName: "allowance",
-                    args: [address as `0x${string}`, zapAddress],
-                  });
-                  const allowanceBigInt = (currentAllowance as bigint) || 0n;
-                  if (allowanceBigInt < swappedAmount) {
-                    setStep("approving");
-                    const zapApproveHash = await writeContractAsync({
-                      address: assetAddressForApproval,
-                      abi: ERC20_ABI,
-                      functionName: "approve",
-                      args: [zapAddress, swappedAmount],
-                    });
-                    setTxHashes((prev) => ({ ...prev, approveCollateral: zapApproveHash }));
-                    await publicClient?.waitForTransactionReceipt({ hash: zapApproveHash });
-                    setStep("minting");
-                  }
-                  
-                  debugTx("zap/fxUsdToStabilityPool", {
-                    zapAddress,
-                    function: "zapFxUsdToStabilityPool",
-                    args: [swappedAmount.toString(), minFxSaveOut.toString(), address, minPeggedOut.toString(), stabilityPoolAddress, minStabilityPoolOut.toString()],
-                  });
-                  zapHash = await writeContractAsync({
-                    address: zapAddress,
-                    abi: [...MINTER_USDC_ZAP_V2_ABI, ...STABILITY_POOL_ZAP_ABI] as const,
-                    functionName: "zapFxUsdToStabilityPool",
-                    args: [
-                      swappedAmount,
-                      minFxSaveOut,
-                      address as `0x${string}`,
-                      minPeggedOut,
-                      stabilityPoolAddress,
-                      minStabilityPoolOut,
-                    ],
-                  });
-                }
-              } else {
-                throw new Error("Invalid asset for USDC/fxUSD stability pool zap");
-              }
-              
-              await publicClient?.waitForTransactionReceipt({ hash: zapHash });
-              setTxHashes((prev) => ({ ...prev, mint: zapHash }));
-            } else {
-              // Use minting zaps (mint pegged token, then optionally deposit to pool)
-              // Track pegged token balance before zap so we can compute minted amount for deposit.
-              const balanceBeforeZap = peggedTokenAddress
-                ? ((await publicClient?.readContract({
-                    address: peggedTokenAddress as `0x${string}`,
-                    abi: ERC20_ABI,
-                    functionName: "balanceOf",
-                    args: [address as `0x${string}`],
-                  })) as bigint | undefined)
-                : undefined;
-
-              // Call the correct zap function based on asset type (minting zaps)
-              let zapHash: `0x${string}`;
-              let usePermit = false;
-              let permitResult = null;
-              let minFxSaveOut: bigint | null = null;
-
-              if (preferPermit) {
-                permitResult = await handlePermitOrApproval(
-                  assetAddressForApproval,
-                  zapAddress,
-                  swappedAmount
-                );
-                usePermit =
-                  permitResult?.usePermit &&
-                  !!permitResult.permitSig &&
-                  !!permitResult.deadline;
-
-                if (usePermit) {
-                  try {
-                    minFxSaveOut = calculateMinFxSaveOut(
-                      swappedAmount,
-                      fxSAVERate || 0n,
-                      isActuallyUSDC,
-                      100
-                    );
-                  } catch (calcError) {
-                    console.warn(
-                      "minFxSaveOut calculation failed, falling back to approval:",
-                      calcError
-                    );
-                    usePermit = false;
-                  }
-                }
-              }
-
-              if (usePermit && permitResult?.permitSig && permitResult?.deadline && minFxSaveOut !== null) {
-                try {
-                  if (isActuallyUSDC) {
-                    setStep("minting");
-                    debugTx("zap/usdcToPeggedWithPermit", {
-                      zapAddress,
-                      function: "zapUsdcToPeggedWithPermit",
-                      args: [swappedAmount.toString(), minFxSaveOut.toString(), address, minPeggedOut.toString()],
-                    });
-                    zapHash = await writeContractAsync({
-                      address: zapAddress,
-                      abi: [...MINTER_USDC_ZAP_V2_ABI, ...USDC_ZAP_PERMIT_ABI] as const,
-                      functionName: "zapUsdcToPeggedWithPermit",
-                      args: [
-                        swappedAmount,
-                        minFxSaveOut,
-                        address as `0x${string}`,
-                        minPeggedOut,
-                        permitResult.deadline,
-                        permitResult.permitSig.v,
-                        permitResult.permitSig.r,
-                        permitResult.permitSig.s,
-                      ],
-                    });
-                  } else if (isActuallyFxUSD) {
-                    setStep("minting");
-                    debugTx("zap/fxUsdToPeggedWithPermit", {
-                      zapAddress,
-                      function: "zapFxUsdToPeggedWithPermit",
-                      args: [swappedAmount.toString(), minFxSaveOut.toString(), address, minPeggedOut.toString()],
-                    });
-                    zapHash = await writeContractAsync({
-                      address: zapAddress,
-                      abi: [...MINTER_USDC_ZAP_V2_ABI, ...USDC_ZAP_PERMIT_ABI] as const,
-                      functionName: "zapFxUsdToPeggedWithPermit",
-                      args: [
-                        swappedAmount,
-                        minFxSaveOut,
-                        address as `0x${string}`,
-                        minPeggedOut,
-                        permitResult.deadline,
-                        permitResult.permitSig.v,
-                        permitResult.permitSig.r,
-                        permitResult.permitSig.s,
-                      ],
-                    });
-                  } else {
-                    throw new Error("Invalid asset for USDC/fxUSD zap");
-                  }
-                } catch (permitError) {
-                  console.warn("Permit zap failed, falling back to approval:", permitError);
-                  usePermit = false;
-                }
-              }
-
-              if (!usePermit) {
-                // For minting zaps, we need approval first if not already done
-                const currentAllowance = await publicClient?.readContract({
-                  address: assetAddressForApproval,
-                  abi: ERC20_ABI,
-                  functionName: "allowance",
-                  args: [address as `0x${string}`, zapAddress],
-                });
-                const allowanceBigInt = (currentAllowance as bigint) || 0n;
-                if (allowanceBigInt < swappedAmount) {
-                  setStep("approving");
-                  const zapApproveHash = await writeContractAsync({
-                    address: assetAddressForApproval,
-                    abi: ERC20_ABI,
-                    functionName: "approve",
-                    args: [zapAddress, swappedAmount],
-                  });
-                  setTxHashes((prev) => ({ ...prev, approveCollateral: zapApproveHash }));
-                  await publicClient?.waitForTransactionReceipt({ hash: zapApproveHash });
-                  setStep("minting");
-                }
-
-                // Set step to "minting" for the zap transaction
-                setStep("minting");
-                
                 if (isActuallyUSDC) {
-                  debugTx("zap/usdcToPegged", {
-                    zapAddress,
-                    function: "zapUsdcToPegged",
-                    args: [swappedAmount.toString(), address, minPeggedOut.toString()],
-                  });
-                  zapHash = await writeContractAsync({
-                    address: zapAddress,
-                    abi: MINTER_USDC_ZAP_V2_ABI,
-                    functionName: "zapUsdcToPegged",
-                    args: [swappedAmount, address as `0x${string}`, minPeggedOut],
-                  });
-                } else if (isActuallyFxUSD) {
-                  debugTx("zap/fxUsdToPegged", {
-                    zapAddress,
-                    function: "zapFxUsdToPegged",
-                    args: [swappedAmount.toString(), address, minPeggedOut.toString()],
-                  });
-                  zapHash = await writeContractAsync({
-                    address: zapAddress,
-                    abi: MINTER_USDC_ZAP_V2_ABI,
-                    functionName: "zapFxUsdToPegged",
-                    args: [swappedAmount, address as `0x${string}`, minPeggedOut],
-                  });
+                  const usdcAmountIn18Decimals = swappedAmount * 10n ** 12n;
+                  const estimatedPeggedOut =
+                    (usdcAmountIn18Decimals * 9975n) / 10000n;
+                  const slippageBps = Math.max(slippageTolerance || 1, 2.0);
+                  minPeggedOut =
+                    (estimatedPeggedOut *
+                      BigInt(Math.floor((100 - slippageBps) * 100))) /
+                    10000n;
                 } else {
-                  throw new Error("Invalid asset for USDC/fxUSD zap");
+                  const estimatedPeggedOut = (swappedAmount * 9975n) / 10000n;
+                  const slippageBps = Math.max(slippageTolerance || 1, 2.0);
+                  minPeggedOut =
+                    (estimatedPeggedOut *
+                      BigInt(Math.floor((100 - slippageBps) * 100))) /
+                    10000n;
                 }
               }
-              
-              await publicClient?.waitForTransactionReceipt({ hash: zapHash });
-              setTxHashes((prev) => ({ ...prev, mint: zapHash }));
-              
-              // If a pool was selected, continue by depositing the freshly minted pegged tokens.
-              if (shouldDepositToPool) {
-              if (!stabilityPoolAddress) {
-                throw new Error(
-                  "Stability pool address not found. Cannot deposit to stability pool."
-                );
-              }
-              if (!peggedTokenAddress) {
-                throw new Error(
-                  "Pegged token address not found. Cannot deposit to stability pool."
-                );
-              }
 
-              await new Promise((resolve) => setTimeout(resolve, 2000));
-              const balanceAfterZap = (await publicClient?.readContract({
-                address: peggedTokenAddress as `0x${string}`,
-                abi: ERC20_ABI,
-                functionName: "balanceOf",
-                args: [address as `0x${string}`],
-              })) as bigint;
-
-              const minted =
-                balanceBeforeZap !== undefined
-                  ? balanceAfterZap - balanceBeforeZap
-                  : balanceAfterZap;
-              const depositAmount = minted > 0n ? minted : balanceAfterZap;
-
-              if (depositAmount <= 0n) {
-                throw new Error(
-                  "Mint succeeded but could not determine minted amount to deposit."
-                );
-              }
-
-              const currentAllowance = (await publicClient?.readContract({
-                address: peggedTokenAddress as `0x${string}`,
+              // Approve if needed (no stability pool zaps)
+              const currentAllowance = await publicClient?.readContract({
+                address: assetAddressForApproval,
                 abi: ERC20_ABI,
                 functionName: "allowance",
-                args: [address as `0x${string}`, stabilityPoolAddress],
-              })) as bigint;
-
-              if (currentAllowance < depositAmount) {
-                setStep("approvingPegged");
-                const approveHash = await writeContractAsync({
-                  address: peggedTokenAddress as `0x${string}`,
+                args: [address as `0x${string}`, zapAddress],
+              });
+              const allowanceBigInt = (currentAllowance as bigint) || 0n;
+              if (allowanceBigInt < swappedAmount) {
+                setStep("approving");
+                const zapApproveHash = await writeContractAsync({
+                  address: assetAddressForApproval,
                   abi: ERC20_ABI,
                   functionName: "approve",
-                  args: [stabilityPoolAddress, depositAmount],
+                  args: [zapAddress, swappedAmount],
                 });
-                setTxHashes((prev) => ({ ...prev, approvePegged: approveHash }));
-                await publicClient?.waitForTransactionReceipt({ hash: approveHash });
+                setTxHashes((prev) => ({ ...prev, approveCollateral: zapApproveHash }));
+                await publicClient?.waitForTransactionReceipt({ hash: zapApproveHash });
               }
 
-              setStep("depositing");
-              const depositHash = await writeContractAsync({
-                address: stabilityPoolAddress,
-                abi: STABILITY_POOL_ABI,
-                functionName: "deposit",
-                args: [depositAmount, address as `0x${string}`, 0n],
-              });
-              setTxHashes((prev) => ({ ...prev, deposit: depositHash }));
-              await publicClient?.waitForTransactionReceipt({ hash: depositHash });
-            }
+              setStep("minting");
+              let zapHash: `0x${string}`;
+              if (isActuallyUSDC) {
+                debugTx("zap/usdcToPegged", {
+                  zapAddress,
+                  function: "zapUsdcToPegged",
+                  args: [swappedAmount.toString(), address, minPeggedOut.toString()],
+                });
+                zapHash = await writeContractAsync({
+                  address: zapAddress,
+                  abi: MINTER_USDC_ZAP_V2_ABI,
+                  functionName: "zapUsdcToPegged",
+                  args: [swappedAmount, address as `0x${string}`, minPeggedOut],
+                });
+              } else if (isActuallyFxUSD) {
+                debugTx("zap/fxUsdToPegged", {
+                  zapAddress,
+                  function: "zapFxUsdToPegged",
+                  args: [swappedAmount.toString(), address, minPeggedOut.toString()],
+                });
+                zapHash = await writeContractAsync({
+                  address: zapAddress,
+                  abi: MINTER_USDC_ZAP_V2_ABI,
+                  functionName: "zapFxUsdToPegged",
+                  args: [swappedAmount, address as `0x${string}`, minPeggedOut],
+                });
+              } else {
+                throw new Error("Invalid asset for USDC/fxUSD zap");
+              }
 
-            setStep("success");
-            if (onSuccess) onSuccess();
-            return;
+              await publicClient?.waitForTransactionReceipt({ hash: zapHash });
+              setTxHashes((prev) => ({ ...prev, mint: zapHash }));
+
+              if (shouldDepositToPool) {
+                if (!stabilityPoolAddress) {
+                  throw new Error(
+                    "Stability pool address not found. Cannot deposit to stability pool."
+                  );
+                }
+                if (!peggedTokenAddress) {
+                  throw new Error(
+                    "Pegged token address not found. Cannot deposit to stability pool."
+                  );
+                }
+
+                await new Promise((resolve) => setTimeout(resolve, 2000));
+                const balanceAfterZap = (await publicClient?.readContract({
+                  address: peggedTokenAddress as `0x${string}`,
+                  abi: ERC20_ABI,
+                  functionName: "balanceOf",
+                  args: [address as `0x${string}`],
+                })) as bigint;
+
+                const minted =
+                  balanceBeforeZap !== undefined
+                    ? balanceAfterZap - balanceBeforeZap
+                    : balanceAfterZap;
+                const depositAmount = minted > 0n ? minted : balanceAfterZap;
+
+                if (depositAmount <= 0n) {
+                  throw new Error(
+                    "Mint succeeded but could not determine minted amount to deposit."
+                  );
+                }
+
+                const poolAllowance = (await publicClient?.readContract({
+                  address: peggedTokenAddress as `0x${string}`,
+                  abi: ERC20_ABI,
+                  functionName: "allowance",
+                  args: [address as `0x${string}`, stabilityPoolAddress],
+                })) as bigint;
+
+                if (poolAllowance < depositAmount) {
+                  setStep("approvingPegged");
+                  const approveHash = await writeContractAsync({
+                    address: peggedTokenAddress as `0x${string}`,
+                    abi: ERC20_ABI,
+                    functionName: "approve",
+                    args: [stabilityPoolAddress, depositAmount],
+                  });
+                  setTxHashes((prev) => ({ ...prev, approvePegged: approveHash }));
+                  await publicClient?.waitForTransactionReceipt({ hash: approveHash });
+                }
+
+                setStep("depositing");
+                const depositHash = await writeContractAsync({
+                  address: stabilityPoolAddress,
+                  abi: STABILITY_POOL_ABI,
+                  functionName: "deposit",
+                  args: [depositAmount, address as `0x${string}`, 0n],
+                });
+                setTxHashes((prev) => ({ ...prev, deposit: depositHash }));
+                await publicClient?.waitForTransactionReceipt({ hash: depositHash });
+              }
+
+              setStep("success");
+              if (onSuccess) onSuccess();
+              return;
+            }
           }
         }
-        
+
         const includeApprovePegged =
           shouldDepositToPool && needsPeggedTokenApproval;
         const includeDeposit = shouldDepositToPool;
@@ -7251,6 +6782,7 @@ export const AnchorDepositWithdrawModal = ({
         // Check if we should use stability pool zaps for direct wrapped collateral deposits (fxSAVE/wstETH)
         // This combines: approve collateral → mint pegged → approve pegged → deposit to pool (4 tx) into 1-2 tx
         const canUseWrappedCollateralStabilityPoolZap = 
+          enableStabilityPoolZaps &&
           !useZap && 
           isWrappedCollateral && 
           shouldDepositToPool && 
@@ -8138,8 +7670,6 @@ export const AnchorDepositWithdrawModal = ({
             hash: poolDepositHash,
           });
         }
-      }
-      }
 
       setStep("success");
       if (onSuccess) {

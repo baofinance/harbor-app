@@ -49,6 +49,7 @@ export const AnchorDepositModal = ({
 "collateral" |"sail"
   >("collateral");
   const [preferPermit, setPreferPermit] = useState(true); // Default to permit, but allow user override
+  const enableStabilityPoolZaps = false; // Temporarily disable stability pool zaps (use mint + deposit)
 
   const publicClient = usePublicClient();
   const { handlePermitOrApproval } = usePermitOrApproval();
@@ -239,8 +240,9 @@ export const AnchorDepositModal = ({
 
  // Check if we can use stability pool zap (for wstETH or fxSAVE markets)
  // This is needed in JSX to conditionally show the permit/approval toggle
- const canUseStabilityPoolZap = 
-   depositInStabilityPool && 
+const canUseStabilityPoolZap = 
+  enableStabilityPoolZaps &&
+  depositInStabilityPool && 
    stabilityPoolAddress && 
    peggedTokenZapAddress && 
    (isWstETHMarket || isFxSAVEMarket) &&
