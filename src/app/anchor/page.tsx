@@ -5030,8 +5030,8 @@ export default function AnchorPage() {
                     {/* Anchor Ledger Marks */}
                     <div className="p-3 min-h-[60px] flex flex-col justify-center border-t border-white/15 md:border-t-0">
                       <div className="text-[11px] text-white/80 uppercase tracking-widest mb-0.5 text-center">
-                      Anchor Ledger Marks
-                    </div>
+                        Anchor Ledger Marks
+                      </div>
                       <div className="flex items-baseline justify-center gap-2 text-sm font-bold text-white font-mono tabular-nums">
                         <span>
                       {!ANCHOR_MARKS_ENABLED ? (

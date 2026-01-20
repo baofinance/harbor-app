@@ -86,6 +86,10 @@ export const GenesisDepositModal = ({
  const [currentStepIndex, setCurrentStepIndex] = useState(0);
  const [successfulDepositAmount, setSuccessfulDepositAmount] =
  useState<string>("");
+ const progressStorageKey =
+  address && genesisAddress
+    ? `genesisDepositProgress:${address.toLowerCase()}:${genesisAddress.toLowerCase()}`
+    : null;
 
  // Delay contract reads until modal is fully mounted to avoid fetch errors
  const [mounted, setMounted] = useState(false);
@@ -100,10 +104,66 @@ export const GenesisDepositModal = ({
    }
  }, [isOpen]);
 
+useEffect(() => {
+  if (!isOpen || !progressStorageKey || typeof window === "undefined") return;
+  const raw = window.localStorage.getItem(progressStorageKey);
+  if (!raw) return;
+  try {
+    const parsed = JSON.parse(raw) as {
+      step?: ModalStep;
+      progressSteps?: TransactionStep[];
+      currentStepIndex?: number;
+      txHash?: string | null;
+      successfulDepositAmount?: string;
+    };
+    if (!parsed.step || !parsed.progressSteps) return;
+    setStep(parsed.step);
+    setProgressSteps(parsed.progressSteps);
+    setCurrentStepIndex(parsed.currentStepIndex ?? 0);
+    setTxHash(parsed.txHash ?? null);
+    setSuccessfulDepositAmount(parsed.successfulDepositAmount ?? "");
+    if (parsed.step === "approving" || parsed.step === "depositing") {
+      setProgressModalOpen(true);
+    }
+  } catch {
+    window.localStorage.removeItem(progressStorageKey);
+  }
+}, [isOpen, progressStorageKey]);
+
+useEffect(() => {
+  if (!progressStorageKey || typeof window === "undefined") return;
+  const isProcessing = step === "approving" || step === "depositing";
+  if (!isProcessing) {
+    window.localStorage.removeItem(progressStorageKey);
+    return;
+  }
+  const payload = {
+    step,
+    progressSteps,
+    currentStepIndex,
+    txHash,
+    successfulDepositAmount,
+  };
+  window.localStorage.setItem(progressStorageKey, JSON.stringify(payload));
+}, [
+  progressStorageKey,
+  step,
+  progressSteps,
+  currentStepIndex,
+  txHash,
+  successfulDepositAmount,
+]);
+
 // Fetch CoinGecko price (primary source)
 const { price: coinGeckoPrice, isLoading: isCoinGeckoLoading } = useCoinGeckoPrice(
   coinGeckoId || "",
   60000 // Refresh every 60 seconds
+);
+// Fallback for wstETH markets if wrapped-steth price is missing
+const shouldFetchStEthPrice = collateralSymbol.toLowerCase() === "wsteth";
+const { price: stEthCoinGeckoPrice } = useCoinGeckoPrice(
+  shouldFetchStEthPrice ? "lido-staked-ethereum-steth" : "",
+  60000
 );
 
 // Get collateral price from oracle (fallback)
@@ -339,6 +399,7 @@ const coinGeckoIsWrappedToken = coinGeckoId && (
   ((coinGeckoId.toLowerCase() === "fxsave" || coinGeckoId.toLowerCase() === "fx-usd-saving") && collateralSymbol.toLowerCase() === "fxsave")
 );
 
+const isWstETH = collateralSymbol.toLowerCase() === "wsteth";
 // For wstETH: CoinGecko returns wstETH price directly (~$3,607), so use it as-is
 // For fxSAVE: CoinGecko returns fxUSD price ($1.00), so multiply by wrapped rate to get fxSAVE price
 // Only use oracle calculation if CoinGecko is not available
@@ -347,6 +408,16 @@ const wrappedTokenPriceUSD = (() => {
   // If CoinGecko returns the wrapped token price directly (e.g., "wrapped-steth" for wstETH)
   if (coinGeckoIsWrappedToken && coinGeckoPrice != null) {
     return coinGeckoPrice; // Use CoinGecko price directly, no wrapped rate multiplication
+  }
+
+  // Fallback for wstETH: use stETH price * wrapped rate if wrapped-steth is missing
+  if (
+    isWstETH &&
+    stEthCoinGeckoPrice != null &&
+    wrappedRate &&
+    wrappedRate > 0n
+  ) {
+    return stEthCoinGeckoPrice * (Number(wrappedRate) / 1e18);
   }
   
   // If CoinGecko returns underlying price (e.g., "fxusd" for fxSAVE)
@@ -674,7 +745,12 @@ const newTotalDepositActual: bigint = userCurrentDeposit + actualCollateralDepos
  selectedAsset.toLowerCase() !== collateralSymbol.toLowerCase();
 
  const handleClose = () => {
- if (step ==="approving" || step ==="depositing") return; // Prevent closing during transactions
+ const isProcessing = step === "approving" || step === "depositing";
+ if (isProcessing) {
+   setProgressModalOpen(false);
+   onClose();
+   return;
+ }
  setAmount("");
  setSelectedAsset(collateralSymbol);
  setCustomTokenAddress("");
