@@ -439,6 +439,7 @@ export const markets = {
       feeReceiver: contractsMarkets["steth-eur"].addresses.feeReceiver,
       collateralToken: contractsMarkets["steth-eur"].addresses.collateralToken,
       wrappedCollateralToken: contractsMarkets["steth-eur"].addresses.wrappedCollateralToken,
+      genesisZap: contractsMarkets["steth-eur"].addresses.genesisZap, // GenesisETHZap_v4 for EUR
     },
     peggedToken: {
       name: "Harbor Anchored EUR",
@@ -511,6 +512,7 @@ export const markets = {
       feeReceiver: contractsMarkets["fxusd-eur"].addresses.feeReceiver,
       collateralToken: contractsMarkets["fxusd-eur"].addresses.collateralToken,
       wrappedCollateralToken: contractsMarkets["fxusd-eur"].addresses.wrappedCollateralToken,
+      genesisZap: contractsMarkets["fxusd-eur"].addresses.genesisZap, // GenesisUSDCZap_v4 for EUR
     },
     peggedToken: {
       name: "Harbor Anchored EUR",
