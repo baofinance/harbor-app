@@ -5564,16 +5564,28 @@ export default function AnchorPage() {
 
               const tokenAddressLower = peggedTokenAddress.toLowerCase();
               const walletBalance = marketData.userDeposit || 0n;
-              const walletBalanceUSD = marketData.haTokenBalanceUSD || 0;
 
               // Include if wallet has balance (regardless of pool deposits - they are separate)
               if (walletBalance > 0n) {
                 if (!walletPositionsByToken.has(tokenAddressLower)) {
+                  // Use the max balance across all markets (should be same for same token)
+                  // Calculate USD from the actual balance to avoid double counting
+                  const balanceNum = Number(walletBalance) / 1e18;
+                  // Get price for this token from merged price map
+                  let priceUSD = 1; // Default $1 for USD-pegged
+                  if (mergedPeggedPriceMap) {
+                    const price = mergedPeggedPriceMap.get(peggedTokenAddress.toLowerCase());
+                    if (price !== undefined) {
+                      priceUSD = Number(price) / 1e18;
+                    }
+                  }
+                  const balanceUSD = balanceNum * priceUSD;
+                  
                   walletPositionsByToken.set(tokenAddressLower, {
                     tokenAddress: peggedTokenAddress,
                     symbol: marketData.market?.peggedToken?.symbol || "ha",
                     balance: walletBalance,
-                    balanceUSD: walletBalanceUSD,
+                    balanceUSD: balanceUSD,
                     markets: [],
                   });
                 }
@@ -5583,9 +5595,19 @@ export default function AnchorPage() {
                   market: marketData.market,
                   marketData,
                 });
-                // Use the highest balance/USD value (should be same across markets for same token)
-                if (walletBalanceUSD > position.balanceUSD) {
-                  position.balanceUSD = walletBalanceUSD;
+                // Use the highest balance (should be same across markets for same token)
+                if (walletBalance > position.balance) {
+                  position.balance = walletBalance;
+                  // Recalculate USD when balance updates
+                  const balanceNum = Number(walletBalance) / 1e18;
+                  let priceUSD = 1; // Default $1 for USD-pegged
+                  if (mergedPeggedPriceMap) {
+                    const price = mergedPeggedPriceMap.get(peggedTokenAddress.toLowerCase());
+                    if (price !== undefined) {
+                      priceUSD = Number(price) / 1e18;
+                    }
+                  }
+                  position.balanceUSD = balanceNum * priceUSD;
                 }
               }
             });
