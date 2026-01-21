@@ -55,11 +55,11 @@ export function useAnchorPrices(
     return eurMarket ? (eurMarket[1] as any)?.addresses?.collateralPrice as `0x${string}` | undefined : undefined;
   }, [anchorMarkets]);
   
-  // Read the EUR oracle to get fxUSD price in EUR, then convert to EUR/USD
-  // The fxUSD/EUR oracle returns fxUSD price in EUR terms
-  const { data: eurOracleData } = useContractRead({
+  // Read the EUR oracle - this is likely a Chainlink EUR/USD feed
+  // Try Chainlink ABI first (standard latestAnswer with 8 decimals)
+  const { data: eurOracleDataChainlink } = useContractRead({
     address: eurMarketOracleAddress,
-    abi: WRAPPED_PRICE_ORACLE_ABI,
+    abi: CHAINLINK_ORACLE_ABI,
     functionName: "latestAnswer",
     query: {
       enabled: !!eurMarketOracleAddress,
@@ -68,41 +68,50 @@ export function useAnchorPrices(
     },
   });
   
+  // Also try Harbor oracle ABI in case it's a wrapped oracle
+  const { data: eurOracleDataHarbor } = useContractRead({
+    address: eurMarketOracleAddress,
+    abi: WRAPPED_PRICE_ORACLE_ABI,
+    functionName: "latestAnswer",
+    query: {
+      enabled: !!eurMarketOracleAddress && !eurOracleDataChainlink, // Only if Chainlink fails
+      staleTime: 60_000,
+      gcTime: 300_000,
+    },
+  });
+  
+  // Prefer Chainlink data if available
+  const eurOracleData = eurOracleDataChainlink || eurOracleDataHarbor;
+  
   // Calculate EUR/USD from oracle
   // The oracle at 0x71437C90F1E0785dd691FD02f7bE0B90cd14c097 is a Chainlink EUR/USD feed
-  // It returns EUR/USD directly (8 decimals for Chainlink, or 18 decimals if Harbor oracle)
+  // Chainlink EUR/USD feeds return EUR/USD directly with 8 decimals
   const eurPriceFromOracle = useMemo(() => {
     if (!eurOracleData) return null;
     
     if (Array.isArray(eurOracleData)) {
-      // Harbor oracle returns tuple [minUnderlyingPrice, maxUnderlyingPrice, minWrappedRate, maxWrappedRate]
-      // For fxUSD/EUR market, this might be a Harbor oracle that returns fxUSD in EUR
-      // But if it's actually a Chainlink EUR/USD feed wrapped, we need to check
-      // For now, try using maxUnderlyingPrice as EUR/USD directly (might already be in USD)
+      // Harbor oracle returns tuple - this shouldn't happen for Chainlink, but handle it
       const price = eurOracleData[1] as bigint; // maxUnderlyingPrice
       if (price && price > 0n) {
         const priceNum = Number(price) / 1e18;
-        // If price is reasonable (between 0.5 and 2.0), it's likely EUR/USD directly
-        // If price is very small (< 0.5), it might be fxUSD in EUR, so invert it
+        // EUR/USD should be around 1.0-1.2
         if (priceNum > 0.5 && priceNum < 2.0) {
-          return priceNum; // Use directly as EUR/USD
-        } else if (priceNum > 0 && priceNum <= 0.5) {
-          return 1 / priceNum; // Invert if it's fxUSD in EUR
+          return priceNum;
         }
       }
     } else if (typeof eurOracleData === "bigint") {
-      // Standard Chainlink oracle - check if it's 8 decimals (Chainlink) or 18 decimals
       // Chainlink EUR/USD uses 8 decimals
       const price8Dec = Number(eurOracleData) / 1e8;
-      const price18Dec = Number(eurOracleData) / 1e18;
       
-      // Chainlink EUR/USD should be around 1.0-1.2, so check which makes sense
+      // Chainlink EUR/USD should be around 1.0-1.2 USD per EUR
       if (price8Dec > 0.5 && price8Dec < 2.0) {
         return price8Dec; // Use 8 decimals (Chainlink format)
-      } else if (price18Dec > 0.5 && price18Dec < 2.0) {
-        return price18Dec; // Use 18 decimals
-      } else if (price18Dec > 0 && price18Dec <= 0.5) {
-        return 1 / price18Dec; // Invert if it's fxUSD in EUR
+      }
+      
+      // Fallback: try 18 decimals in case it's a different format
+      const price18Dec = Number(eurOracleData) / 1e18;
+      if (price18Dec > 0.5 && price18Dec < 2.0) {
+        return price18Dec;
       }
     }
     return null;
