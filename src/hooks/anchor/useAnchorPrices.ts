@@ -452,6 +452,9 @@ export function useAnchorPrices(
           console.warn(
             `[peggedPriceUSDMap] Market ${id} (${peggedTokenSymbol}): EUR price not available (eurPrice=${eurPrice}), will use fallback`
           );
+          console.warn(
+            `[peggedPriceUSDMap] EUR price breakdown - oracle: ${eurPriceFromOracle}, CoinGecko: ${eurPriceCoinGecko}, final: ${eurPrice}`
+          );
         }
       } else if (isBTCPegged && !btcPrice) {
         // BTC-pegged token but BTC price not loaded yet - don't use collateral price calculation

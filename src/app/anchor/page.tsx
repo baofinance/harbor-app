@@ -5579,9 +5579,21 @@ export default function AnchorPage() {
                   const price = mergedPeggedPriceMap?.[marketData.marketId] ?? peggedPriceUSDMap?.[marketData.marketId];
                   if (price !== undefined && price > 0n) {
                     priceUSD = Number(price) / 1e18;
+                    if (process.env.NODE_ENV === "development" && pegTarget === "eur") {
+                      console.log(`[anchor page] haEUR price from map: marketId=${marketData.marketId}, price=${price.toString()}, priceUSD=${priceUSD}, eurPrice=${eurPrice}`);
+                    }
                   } else if (pegTarget === "eur" && eurPrice) {
                     // EUR-pegged but price not in map yet - use EUR price directly as fallback
                     priceUSD = eurPrice;
+                    if (process.env.NODE_ENV === "development") {
+                      console.log(`[anchor page] haEUR price from fallback: marketId=${marketData.marketId}, eurPrice=${eurPrice}, priceUSD=${priceUSD}`);
+                      console.log(`[anchor page] mergedPeggedPriceMap keys:`, Object.keys(mergedPeggedPriceMap || {}));
+                      console.log(`[anchor page] peggedPriceUSDMap keys:`, Object.keys(peggedPriceUSDMap || {}));
+                    }
+                  } else if (pegTarget === "eur") {
+                    if (process.env.NODE_ENV === "development") {
+                      console.warn(`[anchor page] haEUR price not found: marketId=${marketData.marketId}, price=${price?.toString() || 'undefined'}, eurPrice=${eurPrice}, using default $1`);
+                    }
                   }
                   const balanceUSD = balanceNum * priceUSD;
                   
@@ -5609,9 +5621,19 @@ export default function AnchorPage() {
                   const price = mergedPeggedPriceMap?.[marketData.marketId] ?? peggedPriceUSDMap?.[marketData.marketId];
                   if (price !== undefined && price > 0n) {
                     priceUSD = Number(price) / 1e18;
+                    if (process.env.NODE_ENV === "development" && pegTarget === "eur") {
+                      console.log(`[anchor page] haEUR price from map (update): marketId=${marketData.marketId}, price=${price.toString()}, priceUSD=${priceUSD}, eurPrice=${eurPrice}`);
+                    }
                   } else if (pegTarget === "eur" && eurPrice) {
                     // EUR-pegged but price not in map yet - use EUR price directly as fallback
                     priceUSD = eurPrice;
+                    if (process.env.NODE_ENV === "development") {
+                      console.log(`[anchor page] haEUR price from fallback (update): marketId=${marketData.marketId}, eurPrice=${eurPrice}, priceUSD=${priceUSD}`);
+                    }
+                  } else if (pegTarget === "eur") {
+                    if (process.env.NODE_ENV === "development") {
+                      console.warn(`[anchor page] haEUR price not found (update): marketId=${marketData.marketId}, price=${price?.toString() || 'undefined'}, eurPrice=${eurPrice}, using default $1`);
+                    }
                   }
                   position.balanceUSD = balanceNum * priceUSD;
                 }
