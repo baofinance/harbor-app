@@ -50,7 +50,11 @@ export function usePermitOrApproval() {
 
       try {
         // Check if token supports permit
-        const supportsPermit = await checkPermitSupport(publicClient, tokenAddress);
+        const supportsPermit = await checkPermitSupport(
+          publicClient,
+          tokenAddress,
+          address as `0x${string}`
+        );
 
         if (!supportsPermit) {
           // Token doesn't support permit, use approval
@@ -107,8 +111,36 @@ export function usePermitOrApproval() {
           permitSig,
           deadline,
         };
-      } catch (error) {
-        console.error("Error in permit flow, falling back to approval:", error);
+      } catch (error: any) {
+        const errorMessage = error?.message?.toLowerCase?.() || "";
+        const errorName = error?.name || "";
+        const isUserRejected =
+          errorName === "UserRejectedRequestError" ||
+          errorMessage.includes("user rejected") ||
+          errorMessage.includes("user denied") ||
+          errorMessage.includes("rejected the request") ||
+          errorMessage.includes("denied request");
+
+        // User cancelled signature - silently fall back to approval
+        if (isUserRejected) {
+          return { usePermit: false };
+        }
+
+        // Check for EIP-7702 related errors or other permit failures
+        const isEIP7702Error =
+          errorMessage.includes("7702") ||
+          errorMessage.includes("delegation") ||
+          errorMessage.includes("eip-7702") ||
+          error?.code === -32603; // RPC errors
+
+        if (isEIP7702Error) {
+          console.warn(
+            "Permit failed due to EIP-7702 delegation or similar issue, falling back to approval:",
+            error
+          );
+        } else {
+          console.error("Error in permit flow, falling back to approval:", error);
+        }
         return { usePermit: false };
       }
     },

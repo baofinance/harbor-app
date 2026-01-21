@@ -25,25 +25,32 @@ export interface PermitData {
  */
 export async function checkPermitSupport(
   publicClient: PublicClient,
-  tokenAddress: Address
+  tokenAddress: Address,
+  owner?: Address
 ): Promise<boolean> {
   try {
-    // Check for DOMAIN_SEPARATOR (required for EIP-2612)
-    await publicClient.readContract({
-      address: tokenAddress,
-      abi: [
-        {
-          inputs: [],
-          name: "DOMAIN_SEPARATOR",
-          outputs: [{ type: "bytes32", name: "" }],
-          stateMutability: "view",
-          type: "function",
-        },
-      ],
-      functionName: "DOMAIN_SEPARATOR",
-    });
-    
+    // Best-effort check for DOMAIN_SEPARATOR (some tokens may behave differently)
+    try {
+      await publicClient.readContract({
+        address: tokenAddress,
+        abi: [
+          {
+            inputs: [],
+            name: "DOMAIN_SEPARATOR",
+            outputs: [{ type: "bytes32", name: "" }],
+            stateMutability: "view",
+            type: "function",
+          },
+        ],
+        functionName: "DOMAIN_SEPARATOR",
+      });
+    } catch {
+      // We still allow permit if nonces are present.
+    }
+
     // Check for nonces function (required for EIP-2612)
+    const nonceOwner =
+      owner || ("0x0000000000000000000000000000000000000000" as Address);
     await publicClient.readContract({
       address: tokenAddress,
       abi: [
@@ -56,7 +63,7 @@ export async function checkPermitSupport(
         },
       ],
       functionName: "nonces",
-      args: ["0x0000000000000000000000000000000000000000"],
+      args: [nonceOwner],
     });
     
     return true;
@@ -237,6 +244,7 @@ export async function signPermit(
 
     // Request signature from wallet
     const signature = await walletClient.signTypedData({
+      account: walletClient.account ?? permitData.owner,
       domain: permitDomain,
       types,
       primaryType: "Permit",
@@ -251,8 +259,20 @@ export async function signPermit(
     }
 
     return parsed;
-  } catch (error) {
-    console.error("Error signing permit:", error);
+  } catch (error: any) {
+    // Check for EIP-7702 related errors
+    const errorMessage = error?.message?.toLowerCase() || "";
+    const isEIP7702Error = 
+      errorMessage.includes("7702") ||
+      errorMessage.includes("delegation") ||
+      errorMessage.includes("eip-7702") ||
+      error?.code === -32603; // RPC errors
+    
+    if (isEIP7702Error) {
+      console.warn("Permit signing failed due to EIP-7702 delegation or similar issue, falling back to approval:", error);
+    } else {
+      console.error("Error signing permit:", error);
+    }
     return null;
   }
 }

@@ -11,13 +11,6 @@ import {
 } from "wagmi";
 import { BaseError, ContractFunctionRevertedError } from "viem";
 import { ERC20_ABI, STABILITY_POOL_ABI, MINTER_ABI } from "@/abis/shared";
-import { MINTER_ETH_ZAP_V2_ABI, MINTER_USDC_ZAP_V2_ABI } from "@/config/contracts";
-import {
-  STABILITY_POOL_ZAP_ABI,
-  STABILITY_POOL_ZAP_PERMIT_ABI,
-  calculateDeadline,
-} from "@/utils/permit";
-import { usePermitOrApproval } from "@/hooks/usePermitOrApproval";
 
 interface AnchorDepositModalProps {
  isOpen: boolean;
@@ -44,33 +37,18 @@ export const AnchorDepositModal = ({
  const [step, setStep] = useState<ModalStep>("input");
  const [error, setError] = useState<string | null>(null);
  const [txHash, setTxHash] = useState<string | null>(null);
-  const [depositInStabilityPool, setDepositInStabilityPool] = useState(true);
-  const [stabilityPoolType, setStabilityPoolType] = useState<
+ const [depositInStabilityPool, setDepositInStabilityPool] = useState(true);
+ const [stabilityPoolType, setStabilityPoolType] = useState<
 "collateral" |"sail"
-  >("collateral");
-  const [preferPermit, setPreferPermit] = useState(true); // Default to permit, but allow user override
+ >("collateral");
 
-  const publicClient = usePublicClient();
-  const { handlePermitOrApproval } = usePermitOrApproval();
+ const publicClient = usePublicClient();
 
-  const minterAddress = market?.addresses?.minter;
-  const collateralAddress = market?.addresses?.collateralToken;
-  const wrappedCollateralAddress = market?.addresses?.wrappedCollateralToken;
-  const peggedTokenAddress = market?.addresses?.peggedToken;
-  const peggedTokenZapAddress = market?.addresses?.peggedTokenZap;
-  const collateralSymbol = market?.collateral?.symbol ||"ETH";
-  const peggedTokenSymbol = market?.peggedToken?.symbol ||"ha";
-  
-  // Determine market type for zap function selection
-  const collateralSymbolLower = collateralSymbol.toLowerCase();
-  const isWstETHMarket = collateralSymbolLower === "wsteth" || collateralSymbolLower === "steth";
-  const isFxSAVEMarket = collateralSymbolLower === "fxsave" || collateralSymbolLower === "fxusd";
-  
-  // For wstETH markets, use wrappedCollateralToken (wstETH) for stability pool zaps
-  // For fxSAVE markets, check if wrappedCollateralToken (fxSAVE) can be used
-  const depositTokenAddress = isWstETHMarket && wrappedCollateralAddress
-    ? wrappedCollateralAddress
-    : collateralAddress;
+ const minterAddress = market?.addresses?.minter;
+ const collateralAddress = market?.addresses?.collateralToken;
+ const peggedTokenAddress = market?.addresses?.peggedToken;
+ const collateralSymbol = market?.collateral?.symbol ||"ETH";
+ const peggedTokenSymbol = market?.peggedToken?.symbol ||"ha";
 
  // When depositing ha tokens directly, we must deposit to stability pool
  const isDirectPeggedDeposit = selectedDepositAsset ==="pegged";
@@ -237,15 +215,6 @@ export const AnchorDepositModal = ({
 
  const currentDeposit = currentDepositData || 0n;
 
- // Check if we can use stability pool zap (for wstETH or fxSAVE markets)
- // This is needed in JSX to conditionally show the permit/approval toggle
- const canUseStabilityPoolZap = 
-   depositInStabilityPool && 
-   stabilityPoolAddress && 
-   peggedTokenZapAddress && 
-   (isWstETHMarket || isFxSAVEMarket) &&
-   wrappedCollateralAddress;
-
  // Calculate current deposit USD value and ledger marks per day
  // Ledger Marks: 1 ledger mark per dollar per day
  // peggedTokenPrice is in 18 decimals, representing collateral value per pegged token
@@ -272,7 +241,6 @@ export const AnchorDepositModal = ({
  setTxHash(null);
  setDepositInStabilityPool(true);
  setStabilityPoolType("collateral");
- setPreferPermit(true); // Reset to default (permit preferred)
  onClose();
  };
 
@@ -360,197 +328,86 @@ export const AnchorDepositModal = ({
  await publicClient?.waitForTransactionReceipt({
  hash: poolDepositHash,
  });
-    } else {
-    // Collateral deposit flow: mint then optionally deposit to stability pool
-    // Use canUseStabilityPoolZap calculated at component level
-    if (canUseStabilityPoolZap && expectedOutput) {
-      // Use stability pool zap: zapWstEthToStabilityPool or zapFxSaveToStabilityPool
-      // This combines: approve collateral → mint pegged → approve pegged → deposit to pool (4 tx) into 1-2 tx
-      
-      setStep("depositing");
-      setError(null);
-      setTxHash(null);
+ } else {
+ // Collateral deposit flow: mint then optionally deposit to stability pool
+ // Step 1: Approve collateral token for minter (if needed)
+ if (needsApproval) {
+ setStep("approving");
+ setError(null);
+ setTxHash(null);
+ const approveHash = await writeContractAsync({
+ address: collateralAddress as `0x${string}`,
+ abi: ERC20_ABI,
+ functionName:"approve",
+ args: [minterAddress as `0x${string}`, amountBigInt],
+ });
+ setTxHash(approveHash);
+ await publicClient?.waitForTransactionReceipt({ hash: approveHash });
+ await refetchAllowance();
+ await new Promise((resolve) => setTimeout(resolve, 1000));
+ await refetchAllowance();
+ }
 
-      // Calculate minimum outputs with slippage tolerance (1%)
-      const minPeggedOut = expectedOutput
-        ? (expectedOutput * 99n) / 100n
-        : 0n;
-      // minStabilityPoolOut is the minimum amount deposited to stability pool (same as expectedOutput with slippage)
-      const minStabilityPoolOut = expectedOutput
-        ? (expectedOutput * 99n) / 100n
-        : 0n;
+ // Step 2: Mint pegged token
+ setStep("depositing");
+ setError(null);
+ setTxHash(null);
 
-      // Determine which zap function and ABI to use based on market type
-      const isWstETH = isWstETHMarket;
-      const zapABI = isWstETH ? MINTER_ETH_ZAP_V2_ABI : MINTER_USDC_ZAP_V2_ABI;
-      const zapFunctionName = isWstETH ? "zapWstEthToStabilityPool" : "zapFxSaveToStabilityPool";
-      const zapPermitFunctionName = isWstETH ? "zapWstEthToStabilityPoolWithPermit" : "zapFxSaveToStabilityPoolWithPermit";
+ // Calculate minimum output (with 1% slippage tolerance)
+ const minPeggedOut = expectedOutput
+ ? (expectedOutput * 99n) / 100n
+ : 0n;
 
-      // Try to use permit if user prefers it and it's available, otherwise use approval
-      let usePermit = preferPermit;
-      let permitResult = null;
-      
-      if (preferPermit) {
-        permitResult = await handlePermitOrApproval(
-          wrappedCollateralAddress as `0x${string}`,
-          peggedTokenZapAddress as `0x${string}`,
-          amountBigInt
-        );
-        // Only use permit if it's actually supported and signature was generated
-        usePermit = permitResult?.usePermit && !!permitResult.permitSig && !!permitResult.deadline;
-      }
+ const mintHash = await writeContractAsync({
+ address: minterAddress as `0x${string}`,
+ abi: MINTER_ABI,
+ functionName:"mintPeggedToken",
+ args: [amountBigInt, address as `0x${string}`, minPeggedOut],
+ });
+ setTxHash(mintHash);
+ await publicClient?.waitForTransactionReceipt({ hash: mintHash });
 
-      if (usePermit && permitResult.permitSig && permitResult.deadline) {
-        // Use permit function - zapWstEthToStabilityPoolWithPermit or zapFxSaveToStabilityPoolWithPermit
-        try {
-          const zapHash = await writeContractAsync({
-            address: peggedTokenZapAddress as `0x${string}`,
-            abi: [...zapABI, ...STABILITY_POOL_ZAP_ABI, ...STABILITY_POOL_ZAP_PERMIT_ABI] as const,
-            functionName: zapPermitFunctionName,
-            args: [
-              amountBigInt,
-              address as `0x${string}`,
-              minPeggedOut,
-              stabilityPoolAddress,
-              minStabilityPoolOut,
-              permitResult.deadline,
-              permitResult.permitSig.v,
-              permitResult.permitSig.r,
-              permitResult.permitSig.s,
-            ],
-          });
-          setTxHash(zapHash);
-          await publicClient?.waitForTransactionReceipt({ hash: zapHash });
-        } catch (permitError) {
-          console.error("Permit stability pool zap failed, falling back to approval:", permitError);
-          usePermit = false;
-        }
-      }
+ // Refetch to get updated pegged token balance
+ await new Promise((resolve) => setTimeout(resolve, 1000));
 
-      if (!usePermit) {
-        // Fallback: Use traditional approval + stability pool zap
-        const collateralAllowance = await publicClient?.readContract({
-          address: wrappedCollateralAddress as `0x${string}`,
-          abi: ERC20_ABI,
-          functionName: "allowance",
-          args: [address as `0x${string}`, peggedTokenZapAddress as `0x${string}`],
-        });
+ // Step 3: If depositing to stability pool, approve and deposit
+ if (depositInStabilityPool && stabilityPoolAddress && expectedOutput) {
+ // Check if we need to approve pegged token for stability pool
+ if (needsPeggedTokenApproval) {
+ setStep("approving");
+ setError(null);
+ setTxHash(null);
+ const approvePeggedHash = await writeContractAsync({
+ address: peggedTokenAddress as `0x${string}`,
+ abi: ERC20_ABI,
+ functionName:"approve",
+ args: [stabilityPoolAddress, expectedOutput],
+ });
+ setTxHash(approvePeggedHash);
+ await publicClient?.waitForTransactionReceipt({
+ hash: approvePeggedHash,
+ });
+ await refetchPeggedTokenAllowance();
+ await new Promise((resolve) => setTimeout(resolve, 1000));
+ await refetchPeggedTokenAllowance();
+ }
 
-        const allowanceBigInt = (collateralAllowance as bigint) || 0n;
-        if (allowanceBigInt < amountBigInt) {
-          setStep("approving");
-          setError(null);
-          setTxHash(null);
-          const approveHash = await writeContractAsync({
-            address: wrappedCollateralAddress as `0x${string}`,
-            abi: ERC20_ABI,
-            functionName: "approve",
-            args: [peggedTokenZapAddress as `0x${string}`, amountBigInt],
-          });
-          setTxHash(approveHash);
-          await publicClient?.waitForTransactionReceipt({ hash: approveHash });
-        }
-
-        // Use stability pool zap (no permit)
-        setStep("depositing");
-        setError(null);
-        setTxHash(null);
-        const zapHash = await writeContractAsync({
-          address: peggedTokenZapAddress as `0x${string}`,
-          abi: [...zapABI, ...STABILITY_POOL_ZAP_ABI] as const,
-          functionName: zapFunctionName,
-          args: [
-            amountBigInt,
-            address as `0x${string}`,
-            minPeggedOut,
-            stabilityPoolAddress,
-            minStabilityPoolOut,
-          ],
-        });
-        setTxHash(zapHash);
-        await publicClient?.waitForTransactionReceipt({ hash: zapHash });
-      }
-    } else {
-      // Traditional flow: mint then optionally deposit to stability pool (fallback if zap not available)
-      // Step 1: Approve collateral token for minter (if needed)
-      if (needsApproval) {
-        setStep("approving");
-        setError(null);
-        setTxHash(null);
-        const approveHash = await writeContractAsync({
-          address: collateralAddress as `0x${string}`,
-          abi: ERC20_ABI,
-          functionName:"approve",
-          args: [minterAddress as `0x${string}`, amountBigInt],
-        });
-        setTxHash(approveHash);
-        await publicClient?.waitForTransactionReceipt({ hash: approveHash });
-        await refetchAllowance();
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        await refetchAllowance();
-      }
-
-      // Step 2: Mint pegged token
-      setStep("depositing");
-      setError(null);
-      setTxHash(null);
-
-      // Calculate minimum output (with 1% slippage tolerance)
-      const minPeggedOut = expectedOutput
-        ? (expectedOutput * 99n) / 100n
-        : 0n;
-
-      const mintHash = await writeContractAsync({
-        address: minterAddress as `0x${string}`,
-        abi: MINTER_ABI,
-        functionName:"mintPeggedToken",
-        args: [amountBigInt, address as `0x${string}`, minPeggedOut],
-      });
-      setTxHash(mintHash);
-      await publicClient?.waitForTransactionReceipt({ hash: mintHash });
-
-      // Refetch to get updated pegged token balance
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      // Step 3: If depositing to stability pool, approve and deposit
-      if (depositInStabilityPool && stabilityPoolAddress && expectedOutput) {
-        // Check if we need to approve pegged token for stability pool
-        if (needsPeggedTokenApproval) {
-          setStep("approving");
-          setError(null);
-          setTxHash(null);
-          const approvePeggedHash = await writeContractAsync({
-            address: peggedTokenAddress as `0x${string}`,
-            abi: ERC20_ABI,
-            functionName:"approve",
-            args: [stabilityPoolAddress, expectedOutput],
-          });
-          setTxHash(approvePeggedHash);
-          await publicClient?.waitForTransactionReceipt({
-            hash: approvePeggedHash,
-          });
-          await refetchPeggedTokenAllowance();
-          await new Promise((resolve) => setTimeout(resolve, 1000));
-          await refetchPeggedTokenAllowance();
-        }
-
-        // Deposit pegged token to stability pool
-        setStep("depositing");
-        setError(null);
-        setTxHash(null);
-        const poolDepositHash = await writeContractAsync({
-          address: stabilityPoolAddress,
-          abi: STABILITY_POOL_ABI,
-          functionName:"deposit",
-          args: [expectedOutput, address as `0x${string}`, 0n],
-        });
-        setTxHash(poolDepositHash);
-        await publicClient?.waitForTransactionReceipt({
-          hash: poolDepositHash,
-        });
-      }
-    }
-    }
+ // Deposit pegged token to stability pool
+ setStep("depositing");
+ setError(null);
+ setTxHash(null);
+ const poolDepositHash = await writeContractAsync({
+ address: stabilityPoolAddress,
+ abi: STABILITY_POOL_ABI,
+ functionName:"deposit",
+ args: [expectedOutput, address as `0x${string}`, 0n],
+ });
+ setTxHash(poolDepositHash);
+ await publicClient?.waitForTransactionReceipt({
+ hash: poolDepositHash,
+ });
+ }
+ }
 
  setStep("success");
  if (onSuccess) {
@@ -796,41 +653,6 @@ export const AnchorDepositModal = ({
  </button>
  </div>
  </div>
-
- {/* Permit/Approval Toggle (only show when using stability pool zap) */}
- {canUseStabilityPoolZap && (
- <div className="flex items-center gap-3 pt-2 border-t border-[#1E4775]/10">
- <span className="text-xs text-[#1E4775]/70">Approval method:</span>
- <div className="flex items-center bg-[#17395F]/10 p-1">
- <button
- type="button"
- onClick={() => setPreferPermit(true)}
- disabled={step ==="approving" || step ==="depositing"}
- className={`px-3 py-1.5 text-xs font-medium transition-all ${
- preferPermit
- ?"bg-[#1E4775] text-white shadow-sm"
- :"text-[#1E4775]/70 hover:text-[#1E4775]"
- } disabled:opacity-50 disabled:cursor-not-allowed`}
- title="Use permit signature for gasless approval (1 transaction)"
- >
- Permit
- </button>
- <button
- type="button"
- onClick={() => setPreferPermit(false)}
- disabled={step ==="approving" || step ==="depositing"}
- className={`px-3 py-1.5 text-xs font-medium transition-all ${
- !preferPermit
- ?"bg-[#1E4775] text-white shadow-sm"
- :"text-[#1E4775]/70 hover:text-[#1E4775]"
- } disabled:opacity-50 disabled:cursor-not-allowed`}
- title="Use traditional ERC20 approve (2 transactions)"
- >
- Approve
- </button>
- </div>
- </div>
- )}
 
  {/* Explainer */}
  <div className="p-3 bg-[#17395F]/5 border border-[#17395F]/20">
