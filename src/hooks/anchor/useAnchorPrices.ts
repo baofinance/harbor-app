@@ -300,6 +300,14 @@ export function useAnchorPrices(
           );
         }
         // Don't set a price - let it fall through to the fallback
+      } else if (isEURPegged && !eurPrice) {
+        // EUR-pegged token but EUR price not loaded yet - don't use collateral price calculation
+        if (isDebug) {
+          console.warn(
+            `[peggedPriceUSDMap] Market ${id} (${peggedTokenSymbol}): EUR/USD exchange rate not available yet (eurPrice=${eurPrice}), skipping price calculation`
+          );
+        }
+        // Don't set a price - let it fall through to the fallback
       } else if (peggedTokenPrice && collateralPriceUSD > 0) {
         // For other tokens, calculate USD price: peggedTokenPrice (in collateral units) * collateralPriceUSD
         const peggedPriceInCollateral = Number(peggedTokenPrice) / 1e18;
@@ -311,13 +319,6 @@ export function useAnchorPrices(
         if (isDebug) {
           console.warn(
             `[peggedPriceUSDMap] Market ${id} (${peggedTokenSymbol}): ETH price not available yet`
-          );
-        }
-      } else if (isEURPegged && !eurPrice) {
-        // EUR-pegged token but EUR price not loaded yet - log warning
-        if (isDebug) {
-          console.warn(
-            `[peggedPriceUSDMap] Market ${id} (${peggedTokenSymbol}): EUR/USD exchange rate not available yet`
           );
         }
       } else if (peggedTokenPrice) {
@@ -377,6 +378,7 @@ export function useAnchorPrices(
     mergedPeggedPriceMap,
     ethPrice,
     btcPrice,
+    eurPrice,
     fxUSDPrice,
     fxSAVEPrice,
     usdcPrice,

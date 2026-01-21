@@ -89,7 +89,7 @@ import { useMarketPositions } from "@/hooks/useMarketPositions";
 import { useMultipleTokenPrices } from "@/hooks/useTokenPrices";
 import { useFxSAVEAPR } from "@/hooks/useFxSAVEAPR";
 import { useWstETHAPR } from "@/hooks/useWstETHAPR";
-import { useCoinGeckoPrices } from "@/hooks/useCoinGeckoPrice";
+import { useCoinGeckoPrices, useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
 import { useContractReads as useWagmiContractReads } from "wagmi";
 import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
 import {
@@ -443,6 +443,7 @@ export default function AnchorPage() {
     mergedPeggedPriceMap,
     ethPrice,
     btcPrice,
+    eurPrice,
     fxUSDPrice,
     fxSAVEPrice,
     usdcPrice,
@@ -5572,10 +5573,15 @@ export default function AnchorPage() {
                   // Calculate USD from the actual balance to avoid double counting
                   const balanceNum = Number(walletBalance) / 1e18;
                   // Get price for this token from price map (keyed by marketId)
+                  // Check if EUR-pegged and use EUR price if available
+                  const pegTarget = (marketData.market as any)?.pegTarget?.toLowerCase();
                   let priceUSD = 1; // Default $1 for USD-pegged
                   const price = mergedPeggedPriceMap?.[marketData.marketId] ?? peggedPriceUSDMap?.[marketData.marketId];
-                  if (price !== undefined) {
+                  if (price !== undefined && price > 0n) {
                     priceUSD = Number(price) / 1e18;
+                  } else if (pegTarget === "eur" && eurPrice) {
+                    // EUR-pegged but price not in map yet - use EUR price directly as fallback
+                    priceUSD = eurPrice;
                   }
                   const balanceUSD = balanceNum * priceUSD;
                   
@@ -5598,10 +5604,14 @@ export default function AnchorPage() {
                   position.balance = walletBalance;
                   // Recalculate USD when balance updates
                   const balanceNum = Number(walletBalance) / 1e18;
+                  const pegTarget = (marketData.market as any)?.pegTarget?.toLowerCase();
                   let priceUSD = 1; // Default $1 for USD-pegged
                   const price = mergedPeggedPriceMap?.[marketData.marketId] ?? peggedPriceUSDMap?.[marketData.marketId];
-                  if (price !== undefined) {
+                  if (price !== undefined && price > 0n) {
                     priceUSD = Number(price) / 1e18;
+                  } else if (pegTarget === "eur" && eurPrice) {
+                    // EUR-pegged but price not in map yet - use EUR price directly as fallback
+                    priceUSD = eurPrice;
                   }
                   position.balanceUSD = balanceNum * priceUSD;
                 }
