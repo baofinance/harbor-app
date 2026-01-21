@@ -26,6 +26,9 @@ export function useAnchorPrices(
   const { price: usdcPrice } = useCoinGeckoPrice("usd-coin");
   const { price: ethPriceCoinGecko } = useCoinGeckoPrice("ethereum");
   const { price: btcPriceCoinGecko } = useCoinGeckoPrice("bitcoin", 120000);
+  // Use EUR-pegged stablecoin (EURS) to get EUR/USD exchange rate
+  // EURS is pegged 1:1 to EUR, so its USD price approximates EUR/USD
+  const { price: eurPrice } = useCoinGeckoPrice("stasis-euro"); // EUR/USD exchange rate via EURS
 
   // Fetch Chainlink ETH/USD as fallback
   const { data: chainlinkEthPriceData } = useContractRead({
@@ -249,14 +252,16 @@ export function useAnchorPrices(
       
       // For ETH-pegged tokens (e.g., haETH), use ETH price directly
       // For BTC-pegged tokens (e.g., haBTC), use BTC price directly
+      // For EUR-pegged tokens (e.g., haEUR), use EUR/USD exchange rate
       const peggedTokenSymbol = m.peggedToken?.symbol?.toLowerCase() || "";
       const pegTarget = (m as any)?.pegTarget?.toLowerCase() || "";
       const isETHPegged = pegTarget === "eth" || pegTarget === "ethereum" || peggedTokenSymbol.includes("eth") || peggedTokenSymbol === "haeth";
       const isBTCPegged = pegTarget === "btc" || pegTarget === "bitcoin" || peggedTokenSymbol.includes("btc") || peggedTokenSymbol === "habtc";
+      const isEURPegged = pegTarget === "eur" || pegTarget === "euro" || peggedTokenSymbol.includes("eur") || peggedTokenSymbol === "haeur";
       
       if (isDebug) {
         console.log(
-          `[peggedPriceUSDMap] Market ${id}: symbol="${peggedTokenSymbol}", pegTarget="${pegTarget}", isETHPegged=${isETHPegged}, isBTCPegged=${isBTCPegged}, ethPrice=${ethPrice}, btcPrice=${btcPrice}`
+          `[peggedPriceUSDMap] Market ${id}: symbol="${peggedTokenSymbol}", pegTarget="${pegTarget}", isETHPegged=${isETHPegged}, isBTCPegged=${isBTCPegged}, isEURPegged=${isEURPegged}, ethPrice=${ethPrice}, btcPrice=${btcPrice}, eurPrice=${eurPrice}`
         );
       }
       
@@ -276,6 +281,15 @@ export function useAnchorPrices(
         if (isDebug) {
           console.log(
             `[peggedPriceUSDMap] Market ${id} (${peggedTokenSymbol}): Using BTC price directly: $${btcPrice} = ${btcPriceInWei.toString()}`
+          );
+        }
+      } else if (isEURPegged && eurPrice) {
+        // haEUR is pegged to EUR, so price = EUR/USD exchange rate
+        const eurPriceInWei = BigInt(Math.floor(eurPrice * 1e18));
+        map[id] = eurPriceInWei;
+        if (isDebug) {
+          console.log(
+            `[peggedPriceUSDMap] Market ${id} (${peggedTokenSymbol}): Using EUR/USD exchange rate: $${eurPrice} = ${eurPriceInWei.toString()}`
           );
         }
       } else if (isBTCPegged && !btcPrice) {
@@ -299,6 +313,13 @@ export function useAnchorPrices(
             `[peggedPriceUSDMap] Market ${id} (${peggedTokenSymbol}): ETH price not available yet`
           );
         }
+      } else if (isEURPegged && !eurPrice) {
+        // EUR-pegged token but EUR price not loaded yet - log warning
+        if (isDebug) {
+          console.warn(
+            `[peggedPriceUSDMap] Market ${id} (${peggedTokenSymbol}): EUR/USD exchange rate not available yet`
+          );
+        }
       } else if (peggedTokenPrice) {
         // Fallback: if collateral price unavailable, assume $1 peg
         map[id] = peggedTokenPrice;
@@ -319,6 +340,7 @@ export function useAnchorPrices(
     usdcPrice,
     ethPrice,
     btcPrice,
+    eurPrice,
     isDebug,
   ]);
 
