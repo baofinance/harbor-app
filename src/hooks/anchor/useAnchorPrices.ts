@@ -46,9 +46,16 @@ export function useAnchorPrices(
   // Get EUR/USD rate from fxUSD/EUR market oracle (read from batched reads array)
   // Find the fxUSD/EUR market and extract its oracle data from the batched reads
   const eurPriceFromOracle = useMemo(() => {
-    if (!reads) {
+    if (!reads || !Array.isArray(reads) || reads.length === 0) {
       if (isDebug) {
-        console.log("[useAnchorPrices] No reads available for EUR oracle");
+        console.log("[useAnchorPrices] No reads available for EUR oracle", { reads: reads ? `array(${reads.length})` : 'null/undefined' });
+      }
+      return null;
+    }
+
+    if (!anchorMarkets || anchorMarkets.length === 0) {
+      if (isDebug) {
+        console.log("[useAnchorPrices] No anchorMarkets available");
       }
       return null;
     }
@@ -57,31 +64,52 @@ export function useAnchorPrices(
     const eurMarketIndex = anchorMarkets.findIndex(([id, m]) => {
       const pegTarget = (m as any)?.pegTarget?.toLowerCase();
       const collateralSymbol = m.collateral?.symbol?.toLowerCase() || "";
-      return (pegTarget === "eur" || pegTarget === "euro") && 
+      const matches = (pegTarget === "eur" || pegTarget === "euro") && 
              (collateralSymbol === "fxusd" || collateralSymbol === "fxsave");
+      if (isDebug && matches) {
+        console.log(`[useAnchorPrices] Found EUR market: ${id}, pegTarget: ${pegTarget}, collateralSymbol: ${collateralSymbol}`);
+      }
+      return matches;
     });
 
     if (eurMarketIndex === -1) {
       if (isDebug) {
-        console.log("[useAnchorPrices] EUR market not found in anchorMarkets");
+        console.log("[useAnchorPrices] EUR market not found in anchorMarkets", {
+          marketCount: anchorMarkets.length,
+          marketIds: anchorMarkets.map(([id]) => id),
+          pegTargets: anchorMarkets.map(([_, m]) => (m as any)?.pegTarget),
+          collateralSymbols: anchorMarkets.map(([_, m]) => m.collateral?.symbol),
+        });
       }
       return null;
     }
 
     const eurMarket = anchorMarkets[eurMarketIndex];
-    const hasPriceOracle = !!(eurMarket[1] as any).addresses?.collateralPrice;
+    const eurMarketId = eurMarket[0];
+    const eurMarketConfig = eurMarket[1];
+    const oracleAddress = (eurMarketConfig as any).addresses?.collateralPrice;
+    const hasPriceOracle = !!oracleAddress;
     
     if (!hasPriceOracle) {
       if (isDebug) {
-        console.log("[useAnchorPrices] EUR market has no price oracle");
+        console.log("[useAnchorPrices] EUR market has no price oracle", { marketId: eurMarketId });
       }
       return null;
     }
 
+    if (isDebug) {
+      console.log(`[useAnchorPrices] EUR market found: ${eurMarketId}, oracle: ${oracleAddress}, index: ${eurMarketIndex}`);
+    }
+
     // Calculate offset to oracle reads (same logic as in peggedPriceUSDMap)
     let priceOracleOffset = 0;
+    if (isDebug) {
+      console.log(`[useAnchorPrices] Calculating offset for EUR market at index ${eurMarketIndex}, total markets: ${anchorMarkets.length}, total reads: ${reads.length}`);
+    }
+    
     for (let i = 0; i <= eurMarketIndex; i++) {
       const market = anchorMarkets[i][1];
+      const marketId = anchorMarkets[i][0];
       const prevHasStabilityPoolManager = !!(market as any).addresses?.stabilityPoolManager;
       const prevHasCollateral = !!(market as any).addresses?.stabilityPoolCollateral;
       const prevHasSail = !!(market as any).addresses?.stabilityPoolLeveraged;
@@ -90,43 +118,64 @@ export function useAnchorPrices(
       const prevCollateralSymbol = market.collateral?.symbol?.toLowerCase() || "";
       const prevIsFxUSDMarket = prevCollateralSymbol === "fxusd" || prevCollateralSymbol === "fxsave";
       
+      let marketReads = 0;
+      
       if (i < eurMarketIndex) {
         // For previous markets, count all their reads
-        priceOracleOffset += 5; // minter reads
-        if (prevHasStabilityPoolManager) priceOracleOffset += 1;
+        marketReads += 5; // minter reads
+        if (prevHasStabilityPoolManager) marketReads += 1;
         if (prevHasCollateral) {
-          priceOracleOffset += 4;
-          if (prevPeggedTokenAddress) priceOracleOffset += 1;
+          marketReads += 4;
+          if (prevPeggedTokenAddress) marketReads += 1;
         }
         if (prevHasSail) {
-          priceOracleOffset += 4;
-          if (prevPeggedTokenAddress) priceOracleOffset += 1;
+          marketReads += 4;
+          if (prevPeggedTokenAddress) marketReads += 1;
         }
         if (prevHasPriceOracle) {
-          priceOracleOffset += 1; // latestAnswer
-          if (prevIsFxUSDMarket) priceOracleOffset += 1; // getPrice
+          marketReads += 1; // latestAnswer
+          if (prevIsFxUSDMarket) marketReads += 1; // getPrice
+        }
+        priceOracleOffset += marketReads;
+        if (isDebug) {
+          console.log(`[useAnchorPrices] Market ${i} (${marketId}): +${marketReads} reads, offset now: ${priceOracleOffset}`);
         }
       } else {
         // For current market, count up to oracle
-        priceOracleOffset += 5; // minter reads
-        if (prevHasStabilityPoolManager) priceOracleOffset += 1;
+        marketReads += 5; // minter reads
+        if (prevHasStabilityPoolManager) marketReads += 1;
         if (prevHasCollateral) {
-          priceOracleOffset += 4;
-          if (prevPeggedTokenAddress) priceOracleOffset += 1;
+          marketReads += 4;
+          if (prevPeggedTokenAddress) marketReads += 1;
         }
         if (prevHasSail) {
-          priceOracleOffset += 4;
-          if (prevPeggedTokenAddress) priceOracleOffset += 1;
+          marketReads += 4;
+          if (prevPeggedTokenAddress) marketReads += 1;
+        }
+        priceOracleOffset += marketReads;
+        if (isDebug) {
+          console.log(`[useAnchorPrices] EUR market ${i} (${marketId}): +${marketReads} reads up to oracle, final offset: ${priceOracleOffset}`);
         }
         // Now we're at the oracle position
         break;
       }
     }
 
+    if (priceOracleOffset >= reads.length) {
+      if (isDebug) {
+        console.warn(`[useAnchorPrices] Calculated offset ${priceOracleOffset} exceeds reads array length ${reads.length}`);
+      }
+      return null;
+    }
+
     const latestAnswerResult = reads?.[priceOracleOffset]?.result;
+    const readStatus = reads?.[priceOracleOffset]?.status;
     
     if (isDebug) {
-      console.log(`[useAnchorPrices] EUR oracle read from batched reads - offset: ${priceOracleOffset}, result: ${latestAnswerResult ? (Array.isArray(latestAnswerResult) ? 'tuple' : latestAnswerResult.toString()) : 'null'}`);
+      console.log(`[useAnchorPrices] EUR oracle read from batched reads - offset: ${priceOracleOffset}/${reads.length}, status: ${readStatus}, result: ${latestAnswerResult ? (Array.isArray(latestAnswerResult) ? `tuple[${latestAnswerResult.length}]` : latestAnswerResult.toString()) : 'null'}`);
+      if (latestAnswerResult && Array.isArray(latestAnswerResult)) {
+        console.log(`[useAnchorPrices] EUR oracle tuple values:`, latestAnswerResult.map((v, i) => `[${i}]: ${v.toString()}`));
+      }
     }
 
     if (!latestAnswerResult) {
