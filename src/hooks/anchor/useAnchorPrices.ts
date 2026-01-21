@@ -61,7 +61,7 @@ export function useAnchorPrices(
   
   // Read the EUR oracle - this is likely a Chainlink EUR/USD feed
   // Try Chainlink ABI first (standard latestAnswer with 8 decimals)
-  const { data: eurOracleDataChainlink } = useContractRead({
+  const { data: eurOracleDataChainlink, isError: isChainlinkError } = useContractRead({
     address: eurMarketOracleAddress,
     abi: CHAINLINK_ORACLE_ABI,
     functionName: "latestAnswer",
@@ -73,19 +73,24 @@ export function useAnchorPrices(
   });
   
   // Also try Harbor oracle ABI in case it's a wrapped oracle
+  // Enable if Chainlink failed OR if Chainlink returned null/undefined
   const { data: eurOracleDataHarbor } = useContractRead({
     address: eurMarketOracleAddress,
     abi: WRAPPED_PRICE_ORACLE_ABI,
     functionName: "latestAnswer",
     query: {
-      enabled: !!eurMarketOracleAddress && !eurOracleDataChainlink, // Only if Chainlink fails
+      enabled: !!eurMarketOracleAddress && (isChainlinkError || !eurOracleDataChainlink),
       staleTime: 60_000,
       gcTime: 300_000,
     },
   });
   
-  // Prefer Chainlink data if available
+  // Prefer Chainlink data if available, otherwise use Harbor
   const eurOracleData = eurOracleDataChainlink || eurOracleDataHarbor;
+  
+  if (isDebug && eurMarketOracleAddress) {
+    console.log(`[useAnchorPrices] EUR oracle reads - Chainlink: ${eurOracleDataChainlink?.toString() || 'null'}, Harbor: ${eurOracleDataHarbor ? (Array.isArray(eurOracleDataHarbor) ? 'tuple' : eurOracleDataHarbor.toString()) : 'null'}, Chainlink error: ${isChainlinkError}`);
+  }
   
   // Calculate EUR/USD from oracle
   // The oracle at 0x71437C90F1E0785dd691FD02f7bE0B90cd14c097 is a Chainlink EUR/USD feed
