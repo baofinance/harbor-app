@@ -1151,14 +1151,24 @@ const { maxRate: fxSAVERate } = useCollateralPrice(
             address: zapAddress,
             abi: MINTER_USDC_ZAP_V2_ABI,
             functionName: "zapUsdcToLeveraged",
-            args: [amountForMint, address as `0x${string}`, minOutput],
+            args: [
+              amountForMint,
+              minFxSaveOut,
+              address as `0x${string}`,
+              minOutput,
+            ],
           });
         } else if (isActuallyFxUSD) {
           mintHash = await writeContractAsync({
             address: zapAddress,
             abi: MINTER_USDC_ZAP_V2_ABI,
             functionName: "zapFxUsdToLeveraged",
-            args: [amountForMint, address as `0x${string}`, minOutput],
+            args: [
+              amountForMint,
+              minFxSaveOut,
+              address as `0x${string}`,
+              minOutput,
+            ],
           });
         } else {
           throw new Error("Invalid asset for USDC zap");

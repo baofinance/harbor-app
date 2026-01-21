@@ -1529,7 +1529,12 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                     address: zapAddress,
                     abi: MINTER_USDC_ZAP_V2_ABI,
                     functionName: "zapUsdcToPegged",
-                    args: [amountForZap, userAddress as `0x${string}`, minPeggedOut],
+                    args: [
+                      amountForZap,
+                      minFxSaveOut,
+                      userAddress as `0x${string}`,
+                      minPeggedOut,
+                    ],
                   });
                   setTransactionHash(hash);
                 } else if (isActuallyFxUSD) {
@@ -1537,7 +1542,12 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                     address: zapAddress,
                     abi: MINTER_USDC_ZAP_V2_ABI,
                     functionName: "zapFxUsdToPegged",
-                    args: [amountForZap, userAddress as `0x${string}`, minPeggedOut],
+                    args: [
+                      amountForZap,
+                      minFxSaveOut,
+                      userAddress as `0x${string}`,
+                      minPeggedOut,
+                    ],
                   });
                   setTransactionHash(hash);
                 }
@@ -1658,7 +1668,12 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                     address: zapAddress,
                     abi: MINTER_USDC_ZAP_V2_ABI,
                     functionName: "zapUsdcToLeveraged",
-                    args: [amountForZap, userAddress as `0x${string}`, minLeveragedOut],
+                    args: [
+                      amountForZap,
+                      minFxSaveOut,
+                      userAddress as `0x${string}`,
+                      minLeveragedOut,
+                    ],
                   });
                   setTransactionHash(hash);
                 } else if (isActuallyFxUSD) {
@@ -1666,7 +1681,12 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                     address: zapAddress,
                     abi: MINTER_USDC_ZAP_V2_ABI,
                     functionName: "zapFxUsdToLeveraged",
-                    args: [amountForZap, userAddress as `0x${string}`, minLeveragedOut],
+                    args: [
+                      amountForZap,
+                      minFxSaveOut,
+                      userAddress as `0x${string}`,
+                      minLeveragedOut,
+                    ],
                   });
                   setTransactionHash(hash);
                 }
