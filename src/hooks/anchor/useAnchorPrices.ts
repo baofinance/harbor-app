@@ -52,8 +52,12 @@ export function useAnchorPrices(
       return (pegTarget === "eur" || pegTarget === "euro") && 
              (collateralSymbol === "fxusd" || collateralSymbol === "fxsave");
     });
-    return eurMarket ? (eurMarket[1] as any)?.addresses?.collateralPrice as `0x${string}` | undefined : undefined;
-  }, [anchorMarkets]);
+    const oracleAddr = eurMarket ? (eurMarket[1] as any)?.addresses?.collateralPrice as `0x${string}` | undefined : undefined;
+    if (isDebug) {
+      console.log(`[useAnchorPrices] Found EUR market: ${eurMarket?.[0]}, oracle address: ${oracleAddr}`);
+    }
+    return oracleAddr;
+  }, [anchorMarkets, isDebug]);
   
   // Read the EUR oracle - this is likely a Chainlink EUR/USD feed
   // Try Chainlink ABI first (standard latestAnswer with 8 decimals)
@@ -87,13 +91,21 @@ export function useAnchorPrices(
   // The oracle at 0x71437C90F1E0785dd691FD02f7bE0B90cd14c097 is a Chainlink EUR/USD feed
   // Chainlink EUR/USD feeds return EUR/USD directly with 8 decimals
   const eurPriceFromOracle = useMemo(() => {
-    if (!eurOracleData) return null;
+    if (!eurOracleData) {
+      if (isDebug) {
+        console.log("[useAnchorPrices] EUR oracle data not available");
+      }
+      return null;
+    }
     
     if (Array.isArray(eurOracleData)) {
       // Harbor oracle returns tuple - this shouldn't happen for Chainlink, but handle it
       const price = eurOracleData[1] as bigint; // maxUnderlyingPrice
       if (price && price > 0n) {
         const priceNum = Number(price) / 1e18;
+        if (isDebug) {
+          console.log(`[useAnchorPrices] EUR oracle returned tuple, price (18dec): ${priceNum}`);
+        }
         // EUR/USD should be around 1.0-1.2
         if (priceNum > 0.5 && priceNum < 2.0) {
           return priceNum;
@@ -102,24 +114,42 @@ export function useAnchorPrices(
     } else if (typeof eurOracleData === "bigint") {
       // Chainlink EUR/USD uses 8 decimals
       const price8Dec = Number(eurOracleData) / 1e8;
+      const price18Dec = Number(eurOracleData) / 1e18;
+      
+      if (isDebug) {
+        console.log(`[useAnchorPrices] EUR oracle raw: ${eurOracleData.toString()}, 8dec: ${price8Dec}, 18dec: ${price18Dec}`);
+      }
       
       // Chainlink EUR/USD should be around 1.0-1.2 USD per EUR
       if (price8Dec > 0.5 && price8Dec < 2.0) {
+        if (isDebug) {
+          console.log(`[useAnchorPrices] Using EUR/USD from Chainlink (8dec): ${price8Dec}`);
+        }
         return price8Dec; // Use 8 decimals (Chainlink format)
       }
       
       // Fallback: try 18 decimals in case it's a different format
-      const price18Dec = Number(eurOracleData) / 1e18;
       if (price18Dec > 0.5 && price18Dec < 2.0) {
+        if (isDebug) {
+          console.log(`[useAnchorPrices] Using EUR/USD from oracle (18dec): ${price18Dec}`);
+        }
         return price18Dec;
+      }
+      
+      if (isDebug) {
+        console.warn(`[useAnchorPrices] EUR oracle price out of range: 8dec=${price8Dec}, 18dec=${price18Dec}`);
       }
     }
     return null;
-  }, [eurOracleData]);
+  }, [eurOracleData, isDebug]);
   
   // Use oracle price if available, otherwise fall back to CoinGecko
   const { price: eurPriceCoinGecko } = useCoinGeckoPrice("stasis-euro");
   const eurPrice = eurPriceFromOracle ?? eurPriceCoinGecko;
+  
+  if (isDebug) {
+    console.log(`[useAnchorPrices] EUR price - oracle: ${eurPriceFromOracle}, CoinGecko: ${eurPriceCoinGecko}, final: ${eurPrice}`);
+  }
 
   // Fetch Chainlink ETH/USD as fallback
   const { data: chainlinkEthPriceData } = useContractRead({
