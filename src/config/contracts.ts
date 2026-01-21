@@ -263,19 +263,19 @@ const productionMarkets: Markets = {
     description: "fxUSD pegged to GOLD collateral",
     startBlock: 0, // Placeholder - will be updated when deployed
     addresses: {
-      wrappedCollateralToken: "0x0000000000000000000000000000000000000000", // placeholder
-      collateralToken: "0x0000000000000000000000000000000000000000", // GOLD (placeholder)
-      underlyingCollateralToken: "0x0000000000000000000000000000000000000000", // GOLD (placeholder)
-      feeReceiver: "0x0000000000000000000000000000000000000000", // placeholder
-      genesis: "0x0000000000000000000000000000000000000000", // placeholder
-      leveragedToken: "0x0000000000000000000000000000000000000000", // placeholder
+      wrappedCollateralToken: "0x7743e50F534a7f9F1791DdE7dCD89F7783Eefc39", // fxSAVE (deposited)
+      collateralToken: "0x085780639CC2cACd35E474e71f4d000e2405d8f6", // fxUSD
+      underlyingCollateralToken: "0x085780639CC2cACd35E474e71f4d000e2405d8f6", // fxUSD (underlying)
+      feeReceiver: "0x8C5EF0342543A509e5548c71A66dE7D8A69c6B70", // minterFeeReceiver
+      genesis: "0x2cbF457112Ef5A16cfcA10Fb173d56a5cc9DAa66",
+      leveragedToken: "0x85730Af3A7d7A872Ee1D84306E0575f1E00C0980", // hsFXUSD-GOLD
       minter: "0x880600E0c803d836E305B7c242FC095Eed234A8f" as `0x${string}`, // GOLD/fxUSD minter
       owner: "0x0000000000000000000000000000000000000000", // placeholder
-      peggedToken: "0x0000000000000000000000000000000000000000", // placeholder
-      priceOracle: "0x0000000000000000000000000000000000000000", // placeholder
-      stabilityPoolCollateral: "0x0000000000000000000000000000000000000000", // placeholder
-      stabilityPoolLeveraged: "0x0000000000000000000000000000000000000000", // placeholder
-      reservePool: "0x0000000000000000000000000000000000000000", // placeholder
+      peggedToken: "0x5b66D86932aE5D9751da588d91D494950554061d", // haGOLD
+      priceOracle: "0x1f7F62889E599E51b9e21B27d589Fa521516D147", // fxUSD/GOLD
+      stabilityPoolCollateral: "0xC1EF32d4B959F2200efDeDdedadA226461d14DaC",
+      stabilityPoolLeveraged: "0x5bDED171f1c08B903b466593B0E022F9FdE8399c",
+      reservePool: "0xc033e81ED555D6db63A3E0Af9795454C7BdF094a",
       rebalancePoolCollateral: "0x0000000000000000000000000000000000000000", // placeholder
       rebalancePoolLeveraged: "0x0000000000000000000000000000000000000000", // placeholder
       collateralPrice: "0x0000000000000000000000000000000000000000", // placeholder
@@ -284,8 +284,8 @@ const productionMarkets: Markets = {
       leveragedTokenZap: "0xf0ff6D8d707D81d87caf2faa2447253f283f8873" as `0x${string}`, // MinterUSDCZap_v3 for GOLD/fxUSD (same contract)
     },
     genesis: {
-      startDate: "2026-02-01T00:00:00Z", // Placeholder - Coming Soon
-      endDate: "2026-02-08T20:00:00Z", // Placeholder - Coming Soon
+      startDate: "2026-01-21T00:00:00Z",
+      endDate: "2026-01-31T00:00:00Z",
       rewards: {
         pegged: {
           symbol: "haGOLD",
@@ -306,19 +306,19 @@ const productionMarkets: Markets = {
     description: "stETH pegged to GOLD collateral",
     startBlock: 0, // Placeholder - will be updated when deployed
     addresses: {
-      wrappedCollateralToken: "0x0000000000000000000000000000000000000000", // placeholder
-      collateralToken: "0x0000000000000000000000000000000000000000", // wstETH (placeholder)
-      underlyingCollateralToken: "0x0000000000000000000000000000000000000000", // stETH (placeholder)
+      wrappedCollateralToken: "0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0", // wstETH (deposited)
+      collateralToken: "0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0", // wstETH
+      underlyingCollateralToken: "0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84", // stETH
       feeReceiver: "0x0000000000000000000000000000000000000000", // placeholder
-      genesis: "0x0000000000000000000000000000000000000000", // placeholder
-      leveragedToken: "0x0000000000000000000000000000000000000000", // placeholder
-      minter: "0x0000000000000000000000000000000000000000", // placeholder
+      genesis: "0x8Ad6b177137A6c33070c27d98355717849Ce526c",
+      leveragedToken: "0x94460C6477cdA339DA0e7E39f6Aa66EF047e2F6a", // hsSTETH-GOLD
+      minter: "0xB315DC4698DF45A477d8bb4B0Bc694C4D1Be91b5",
       owner: "0x0000000000000000000000000000000000000000", // placeholder
-      peggedToken: "0x0000000000000000000000000000000000000000", // placeholder
-      priceOracle: "0x0000000000000000000000000000000000000000", // placeholder
-      stabilityPoolCollateral: "0x0000000000000000000000000000000000000000", // placeholder
-      stabilityPoolLeveraged: "0x0000000000000000000000000000000000000000", // placeholder
-      reservePool: "0x0000000000000000000000000000000000000000", // placeholder
+      peggedToken: "0x5b66D86932aE5D9751da588d91D494950554061d", // haGOLD
+      priceOracle: "0x4ebde6143C5E366264ba7416FdEa18BC27C04A31", // stETH/GOLD
+      stabilityPoolCollateral: "0x215C28DcCe0041eF9a17277CA271F100d9F345CF",
+      stabilityPoolLeveraged: "0x2af96e906D568c92E53e96bB2878ce35E05dE69a",
+      reservePool: "0x8224E5264FdD99547a21fFf34bDB60e78faB1609",
       rebalancePoolCollateral: "0x0000000000000000000000000000000000000000", // placeholder
       rebalancePoolLeveraged: "0x0000000000000000000000000000000000000000", // placeholder
       collateralPrice: "0x0000000000000000000000000000000000000000", // placeholder
@@ -327,8 +327,8 @@ const productionMarkets: Markets = {
       leveragedTokenZap: "0x3ce5e801A89eA0AC36fC29C12562695d4E6F0fec" as `0x${string}`, // MinterETHZap_v3 for GOLD/stETH (same contract)
     },
     genesis: {
-      startDate: "2026-02-01T00:00:00Z", // Placeholder - Coming Soon
-      endDate: "2026-02-08T20:00:00Z", // Placeholder - Coming Soon
+      startDate: "2026-01-21T00:00:00Z",
+      endDate: "2026-01-31T00:00:00Z",
       rewards: {
         pegged: {
           symbol: "haGOLD",
@@ -349,19 +349,19 @@ const productionMarkets: Markets = {
     description: "stETH pegged to EUR collateral",
     startBlock: 0, // Placeholder - will be updated when deployed
     addresses: {
-      wrappedCollateralToken: "0x0000000000000000000000000000000000000000", // placeholder
-      collateralToken: "0x0000000000000000000000000000000000000000", // wstETH (placeholder)
-      underlyingCollateralToken: "0x0000000000000000000000000000000000000000", // stETH (placeholder)
+      wrappedCollateralToken: "0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0", // wstETH (deposited)
+      collateralToken: "0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0", // wstETH
+      underlyingCollateralToken: "0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84", // stETH
       feeReceiver: "0x0000000000000000000000000000000000000000", // placeholder
-      genesis: "0x0000000000000000000000000000000000000000", // placeholder
-      leveragedToken: "0x0000000000000000000000000000000000000000", // placeholder
-      minter: "0x0000000000000000000000000000000000000000", // placeholder
+      genesis: "0xf4F97218a00213a57A32E4606aAecC99e1805A89",
+      leveragedToken: "0xEA23FaAf5e464488ECc29883760238B68410D92b", // hsSTETH-EUR
+      minter: "0x68911ea33E11bc77e07f6dA4db6cd23d723641cE",
       owner: "0x0000000000000000000000000000000000000000", // placeholder
-      peggedToken: "0x0000000000000000000000000000000000000000", // placeholder
-      priceOracle: "0x0000000000000000000000000000000000000000", // placeholder
-      stabilityPoolCollateral: "0x0000000000000000000000000000000000000000", // placeholder
-      stabilityPoolLeveraged: "0x0000000000000000000000000000000000000000", // placeholder
-      reservePool: "0x0000000000000000000000000000000000000000", // placeholder
+      peggedToken: "0x83Fd69E0FF5767972b46E61C6833408361bF7346", // haEUR
+      priceOracle: "0x5e27965689B4B8B425d98fbc676fE22d74caf7C7", // stETH/EUR
+      stabilityPoolCollateral: "0x000564B33FFde65E6c3b718166856654e039D69B",
+      stabilityPoolLeveraged: "0x7553fb328ef35aF1c2ac4E91e53d6a6B62DFDdEa",
+      reservePool: "0xdfE995CdAa4D956C0673428cA999782239b0C03D",
       rebalancePoolCollateral: "0x0000000000000000000000000000000000000000", // placeholder
       rebalancePoolLeveraged: "0x0000000000000000000000000000000000000000", // placeholder
       collateralPrice: "0x0000000000000000000000000000000000000000", // placeholder
@@ -370,8 +370,8 @@ const productionMarkets: Markets = {
       leveragedTokenZap: "0x31bd3B75672bAfbBa1b2F27789DCBF6ee7429D74" as `0x${string}`, // MinterETHZap_v3 for EUR/stETH (same contract)
     },
     genesis: {
-      startDate: "2026-02-01T00:00:00Z", // Placeholder - Coming Soon
-      endDate: "2026-02-08T20:00:00Z", // Placeholder - Coming Soon
+      startDate: "2026-01-21T00:00:00Z",
+      endDate: "2026-01-31T00:00:00Z",
       rewards: {
         pegged: {
           symbol: "haEUR",
@@ -392,19 +392,19 @@ const productionMarkets: Markets = {
     description: "fxUSD pegged to EUR collateral",
     startBlock: 0, // Placeholder - will be updated when deployed
     addresses: {
-      wrappedCollateralToken: "0x0000000000000000000000000000000000000000", // placeholder
-      collateralToken: "0x0000000000000000000000000000000000000000", // fxUSD (placeholder)
-      underlyingCollateralToken: "0x0000000000000000000000000000000000000000", // fxSAVE (placeholder)
-      feeReceiver: "0x0000000000000000000000000000000000000000", // placeholder
-      genesis: "0x0000000000000000000000000000000000000000", // placeholder
-      leveragedToken: "0x0000000000000000000000000000000000000000", // placeholder
+      wrappedCollateralToken: "0x7743e50F534a7f9F1791DdE7dCD89F7783Eefc39", // fxSAVE (deposited)
+      collateralToken: "0x085780639CC2cACd35E474e71f4d000e2405d8f6", // fxUSD
+      underlyingCollateralToken: "0x085780639CC2cACd35E474e71f4d000e2405d8f6", // fxUSD (underlying)
+      feeReceiver: "0x43dfDB5059777A8B8819d8D8ff2c9ACCFEb766CB", // minterFeeReceiver
+      genesis: "0xa9EB43Ed6Ba3B953a82741F3e226C1d6B029699b",
+      leveragedToken: "0x7A7C1f2502c19193C44662A2Aff51c2B76fDDAEA", // hsFXUSD-EUR
       minter: "0xDEFB2C04062350678965CBF38A216Cc50723B246" as `0x${string}`, // EUR/fxUSD minter
       owner: "0x0000000000000000000000000000000000000000", // placeholder
-      peggedToken: "0x0000000000000000000000000000000000000000", // placeholder
-      priceOracle: "0x0000000000000000000000000000000000000000", // placeholder
-      stabilityPoolCollateral: "0x0000000000000000000000000000000000000000", // placeholder
-      stabilityPoolLeveraged: "0x0000000000000000000000000000000000000000", // placeholder
-      reservePool: "0x0000000000000000000000000000000000000000", // placeholder
+      peggedToken: "0x83Fd69E0FF5767972b46E61C6833408361bF7346", // haEUR
+      priceOracle: "0x305454F8B46Aa3485D8B350D8E832459974F5e9F", // fxUSD/EUR
+      stabilityPoolCollateral: "0xe60054E6b518f67411834282cE1557381f050B13",
+      stabilityPoolLeveraged: "0xc5e0dA7e0a178850438E5E97ed59b6eb2562e88E",
+      reservePool: "0x27cA37538358F90d45cAA886fB58CC08ffe2dD2f",
       rebalancePoolCollateral: "0x0000000000000000000000000000000000000000", // placeholder
       rebalancePoolLeveraged: "0x0000000000000000000000000000000000000000", // placeholder
       collateralPrice: "0x0000000000000000000000000000000000000000", // placeholder
@@ -413,8 +413,8 @@ const productionMarkets: Markets = {
       leveragedTokenZap: "0x64118b5B2794088CA93D41C9f2264212dc92512f" as `0x${string}`, // MinterUSDCZap_v3 for EUR/fxUSD (same contract)
     },
     genesis: {
-      startDate: "2026-02-01T00:00:00Z", // Placeholder - Coming Soon
-      endDate: "2026-02-08T20:00:00Z", // Placeholder - Coming Soon
+      startDate: "2026-01-21T00:00:00Z",
+      endDate: "2026-01-31T00:00:00Z",
       rewards: {
         pegged: {
           symbol: "haEUR",
@@ -435,19 +435,19 @@ const productionMarkets: Markets = {
     description: "stETH pegged to MCAP collateral",
     startBlock: 0, // Placeholder - will be updated when deployed
     addresses: {
-      wrappedCollateralToken: "0x0000000000000000000000000000000000000000", // placeholder
-      collateralToken: "0x0000000000000000000000000000000000000000", // wstETH (placeholder)
-      underlyingCollateralToken: "0x0000000000000000000000000000000000000000", // stETH (placeholder)
+      wrappedCollateralToken: "0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0", // wstETH (deposited)
+      collateralToken: "0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0", // wstETH
+      underlyingCollateralToken: "0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84", // stETH
       feeReceiver: "0x0000000000000000000000000000000000000000", // placeholder
-      genesis: "0x0000000000000000000000000000000000000000", // placeholder
-      leveragedToken: "0x0000000000000000000000000000000000000000", // placeholder
-      minter: "0x0000000000000000000000000000000000000000", // placeholder
+      genesis: "0xa6c02dE8E3150C6ffA9C80F98185d42653CB438d",
+      leveragedToken: "0x4dc51cAa3551a9D01eebaA801c63b59A64028745", // hsSTETH-MCAP
+      minter: "0xe37e34Ab0AaaabAc0e20c911349c1dEfAD0691B6",
       owner: "0x0000000000000000000000000000000000000000", // placeholder
-      peggedToken: "0x0000000000000000000000000000000000000000", // placeholder
-      priceOracle: "0x0000000000000000000000000000000000000000", // placeholder
-      stabilityPoolCollateral: "0x0000000000000000000000000000000000000000", // placeholder
-      stabilityPoolLeveraged: "0x0000000000000000000000000000000000000000", // placeholder
-      reservePool: "0x0000000000000000000000000000000000000000", // placeholder
+      peggedToken: "0x0C5CC55959DBDE5d9fa05064da754D6A298E9833", // haMCAP
+      priceOracle: "0x4fe6fa14db0D3C8a4709A4F3e37C1c862381859F", // stETH/MCAP
+      stabilityPoolCollateral: "0x4cFf4948A0EA73Ee109327b56da0bead8c323189",
+      stabilityPoolLeveraged: "0x505bfC99D2FB1A1424b2A4AA81303346df4f27E9",
+      reservePool: "0x9B7fFA713d504F4DdC4f54c6dF6b1a9971d8B728",
       rebalancePoolCollateral: "0x0000000000000000000000000000000000000000", // placeholder
       rebalancePoolLeveraged: "0x0000000000000000000000000000000000000000", // placeholder
       collateralPrice: "0x0000000000000000000000000000000000000000", // placeholder
@@ -475,19 +475,19 @@ const productionMarkets: Markets = {
     description: "fxUSD pegged to MCAP collateral",
     startBlock: 0, // Placeholder - will be updated when deployed
     addresses: {
-      wrappedCollateralToken: "0x0000000000000000000000000000000000000000", // placeholder
-      collateralToken: "0x0000000000000000000000000000000000000000", // fxUSD (placeholder)
-      underlyingCollateralToken: "0x0000000000000000000000000000000000000000", // fxSAVE (placeholder)
+      wrappedCollateralToken: "0x7743e50F534a7f9F1791DdE7dCD89F7783Eefc39", // fxSAVE (deposited)
+      collateralToken: "0x085780639CC2cACd35E474e71f4d000e2405d8f6", // fxUSD
+      underlyingCollateralToken: "0x085780639CC2cACd35E474e71f4d000e2405d8f6", // fxUSD (underlying)
       feeReceiver: "0x0000000000000000000000000000000000000000", // placeholder
-      genesis: "0x0000000000000000000000000000000000000000", // placeholder
-      leveragedToken: "0x0000000000000000000000000000000000000000", // placeholder
-      minter: "0x0000000000000000000000000000000000000000", // placeholder
+      genesis: "0x7Bfb831E6360D4600C7b9b200F8AcA6f89CecdA4",
+      leveragedToken: "0x410cA79c92665E7f502Cbc59e4f6edfCb97F5ddd", // hsFXUSD-MCAP
+      minter: "0x3d3EAe3a4Ee52ef703216c62EFEC3157694606dE",
       owner: "0x0000000000000000000000000000000000000000", // placeholder
-      peggedToken: "0x0000000000000000000000000000000000000000", // placeholder
-      priceOracle: "0x0000000000000000000000000000000000000000", // placeholder
-      stabilityPoolCollateral: "0x0000000000000000000000000000000000000000", // placeholder
-      stabilityPoolLeveraged: "0x0000000000000000000000000000000000000000", // placeholder
-      reservePool: "0x0000000000000000000000000000000000000000", // placeholder
+      peggedToken: "0x0C5CC55959DBDE5d9fa05064da754D6A298E9833", // haMCAP
+      priceOracle: "0x88430c0F09A6D603c43E2816F2EA9Ab45dB7e1a8", // fxUSD/MCAP
+      stabilityPoolCollateral: "0x7928a145Eed1374f5594c799290419B80fCd03f0",
+      stabilityPoolLeveraged: "0x8CF0C5F1394E137389D6dbfE91c56D00dEcdDAD8",
+      reservePool: "0xBC645796937B0883dAE66CE3f8211891Cbc0324C",
       rebalancePoolCollateral: "0x0000000000000000000000000000000000000000", // placeholder
       rebalancePoolLeveraged: "0x0000000000000000000000000000000000000000", // placeholder
       collateralPrice: "0x0000000000000000000000000000000000000000", // placeholder
@@ -502,6 +502,86 @@ const productionMarkets: Markets = {
         },
         leveraged: {
           symbol: "hsFXUSD-MCAP",
+          amount: "1000000",
+        },
+      },
+      collateralRatio: 1.0,
+      leverageRatio: 2 * 1e18,
+    },
+  },
+  "fxusd-silver": {
+    id: "fxusd-silver",
+    name: "fxUSD/SILVER",
+    description: "fxUSD pegged to SILVER collateral",
+    startBlock: 0, // Placeholder - will be updated when deployed
+    addresses: {
+      wrappedCollateralToken: "0x7743e50F534a7f9F1791DdE7dCD89F7783Eefc39", // fxSAVE (deposited)
+      collateralToken: "0x085780639CC2cACd35E474e71f4d000e2405d8f6", // fxUSD
+      underlyingCollateralToken: "0x085780639CC2cACd35E474e71f4d000e2405d8f6", // fxUSD (underlying)
+      feeReceiver: "0x0000000000000000000000000000000000000000", // placeholder
+      genesis: "0x66d18B9Dd5d1cd51957DFea0e0373b54E06118C8",
+      leveragedToken: "0x74692d22a0CB924e4299785cc299291e560dF9cf", // hsFXUSD-SILVER
+      minter: "0x177bb50574CDA129BDd0B0F50d4E061d38AA75Ef",
+      owner: "0x0000000000000000000000000000000000000000", // placeholder
+      peggedToken: "0x7dE413B0Abee6f685a8ff7fB53330E3C56523e74", // haSILVER
+      priceOracle: "0x14816ff286f2eA46AB48c3275401Fd4b1ef817B5", // fxUSD/SILVER
+      stabilityPoolCollateral: "0x7619664fe05c9cbDA5B622455856D7CA11Cb8800",
+      stabilityPoolLeveraged: "0x24AEf2d27146497B18df180791424b1010bf1889",
+      reservePool: "0xDBF9F31795DAEa636e3e1305f897BFa8D2aA017d",
+      rebalancePoolCollateral: "0x0000000000000000000000000000000000000000", // placeholder
+      rebalancePoolLeveraged: "0x0000000000000000000000000000000000000000", // placeholder
+      collateralPrice: "0x0000000000000000000000000000000000000000", // placeholder
+    },
+    genesis: {
+      startDate: "2026-02-01T00:00:00Z", // Placeholder - Coming Soon
+      endDate: "2026-02-08T20:00:00Z", // Placeholder - Coming Soon
+      rewards: {
+        pegged: {
+          symbol: "haSILVER",
+          amount: "1000000",
+        },
+        leveraged: {
+          symbol: "hsFXUSD-SILVER",
+          amount: "1000000",
+        },
+      },
+      collateralRatio: 1.0,
+      leverageRatio: 2 * 1e18,
+    },
+  },
+  "steth-silver": {
+    id: "steth-silver",
+    name: "stETH/SILVER",
+    description: "stETH pegged to SILVER collateral",
+    startBlock: 0, // Placeholder - will be updated when deployed
+    addresses: {
+      wrappedCollateralToken: "0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0", // wstETH (deposited)
+      collateralToken: "0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0", // wstETH
+      underlyingCollateralToken: "0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84", // stETH
+      feeReceiver: "0x0000000000000000000000000000000000000000", // placeholder
+      genesis: "0x8f655Ca32A1Fa8032955989c19e91886F26439dc",
+      leveragedToken: "0x5BB5672be4553E648c1D20F093826faf77386d34", // hsSTETH-SILVER
+      minter: "0x1c0067BEe039A293804b8BE951B368D2Ec65b3e9",
+      owner: "0x0000000000000000000000000000000000000000", // placeholder
+      peggedToken: "0x7dE413B0Abee6f685a8ff7fB53330E3C56523e74", // haSILVER
+      priceOracle: "0x7223E17bD4527AcbE44644300eA0F09A4AeBC995", // stETH/SILVER
+      stabilityPoolCollateral: "0x1C9c1cF9aa9fc86dF980086CbC5a5607522cFc3E",
+      stabilityPoolLeveraged: "0x4C0F988b3c0C58F5ea323238E9d62B79582738e6",
+      reservePool: "0x77AC9343621402B938d5A39727Da76891aFFA419",
+      rebalancePoolCollateral: "0x0000000000000000000000000000000000000000", // placeholder
+      rebalancePoolLeveraged: "0x0000000000000000000000000000000000000000", // placeholder
+      collateralPrice: "0x0000000000000000000000000000000000000000", // placeholder
+    },
+    genesis: {
+      startDate: "2026-02-01T00:00:00Z", // Placeholder - Coming Soon
+      endDate: "2026-02-08T20:00:00Z", // Placeholder - Coming Soon
+      rewards: {
+        pegged: {
+          symbol: "haSILVER",
+          amount: "1000000",
+        },
+        leveraged: {
+          symbol: "hsSTETH-SILVER",
           amount: "1000000",
         },
       },
