@@ -7869,7 +7869,7 @@ export default function AnchorPage() {
                           const usdPriceFromMap =
                             peggedPriceUSDMap[marketData.marketId];
                           // Get peg target for fallback pricing
-                          const pegTarget = (marketData.market as any)?.pegTarget?.toLowerCase() || "";
+                          const pricePegTarget = (marketData.market as any)?.pegTarget?.toLowerCase() || "";
                           const peggedSymbolLower = marketData.market?.peggedToken?.symbol?.toLowerCase() || "";
                           const btcUsdFallback = btcPrice || 0;
                           const ethUsdFallback = ethPrice || 0;
@@ -7878,11 +7878,11 @@ export default function AnchorPage() {
                           const peggedPriceUSD =
                             usdPriceFromMap && usdPriceFromMap > 0n
                               ? Number(usdPriceFromMap) / 1e18
-                              : (pegTarget === "btc" || peggedSymbolLower.includes("btc")) && btcUsdFallback > 0
+                              : (pricePegTarget === "btc" || peggedSymbolLower.includes("btc")) && btcUsdFallback > 0
                               ? btcUsdFallback
-                              : (pegTarget === "eth" || peggedSymbolLower.includes("eth")) && ethUsdFallback > 0
+                              : (pricePegTarget === "eth" || peggedSymbolLower.includes("eth")) && ethUsdFallback > 0
                               ? ethUsdFallback
-                              : (pegTarget === "eur" || peggedSymbolLower.includes("eur")) && eurUsdFallback > 0
+                              : (pricePegTarget === "eur" || peggedSymbolLower.includes("eur")) && eurUsdFallback > 0
                               ? eurUsdFallback
                               : positionData?.peggedTokenPrice &&
                                 positionData.peggedTokenPrice > 0n
@@ -7925,6 +7925,7 @@ export default function AnchorPage() {
                                   peggedPriceUSDMap[marketData.marketId];
                                 // Extra robustness: if the USD map is missing/zero for haBTC/haETH/haEUR,
                                 // fall back to CoinGecko peg-target USD price.
+                                const tvlPegTarget = (marketData.market as any)?.pegTarget?.toLowerCase() || "";
                                 const peggedSymbolLower =
                                         marketData.market?.peggedToken?.symbol?.toLowerCase?.() ||
                                         "";
@@ -7936,13 +7937,13 @@ export default function AnchorPage() {
                                         tvlUsdPriceFromMap &&
                                         tvlUsdPriceFromMap > 0n
                                     ? Number(tvlUsdPriceFromMap) / 1e18
-                                    : peggedSymbolLower.includes("btc") &&
+                                    : (tvlPegTarget === "btc" || peggedSymbolLower.includes("btc")) &&
                                       btcUsdFallback > 0
                                     ? btcUsdFallback
-                                    : peggedSymbolLower.includes("eth") &&
+                                    : (tvlPegTarget === "eth" || peggedSymbolLower.includes("eth")) &&
                                       ethUsdFallback > 0
                                     ? ethUsdFallback
-                                    : peggedSymbolLower.includes("eur") &&
+                                    : (tvlPegTarget === "eur" || peggedSymbolLower.includes("eur")) &&
                                       eurUsdFallback > 0
                                     ? eurUsdFallback
                                     : positionData?.peggedTokenPrice &&
