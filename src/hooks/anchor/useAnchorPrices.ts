@@ -292,6 +292,13 @@ export function useAnchorPrices(
             `[peggedPriceUSDMap] Market ${id} (${peggedTokenSymbol}): Using EUR/USD exchange rate: $${eurPrice} = ${eurPriceInWei.toString()}`
           );
         }
+      } else if (isEURPegged) {
+        // EUR-pegged but price not loaded - log for debugging
+        if (isDebug) {
+          console.warn(
+            `[peggedPriceUSDMap] Market ${id} (${peggedTokenSymbol}): EUR price not available (eurPrice=${eurPrice}), will use fallback`
+          );
+        }
       } else if (isBTCPegged && !btcPrice) {
         // BTC-pegged token but BTC price not loaded yet - don't use collateral price calculation
         if (isDebug) {
