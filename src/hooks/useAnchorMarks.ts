@@ -181,14 +181,22 @@ export function useAnchorMarks() {
     let sailPoolBalance = 0n;
     let priceUSD = 0;
 
+    // Track which pegged tokens we've already seen to avoid double counting
+    // (e.g., both EUR markets use the same haEUR token)
+    const seenPeggedTokens = new Set<string>();
+
     let readIndex = 0;
 
     marketConfigs.forEach((config) => {
-      // ha token balance
+      // ha token balance - only count each unique token once
       if (config.peggedToken && reads[readIndex]) {
-        const result = reads[readIndex];
-        if (result?.status === "success" && result.result) {
-          haTokenBalance += result.result as bigint;
+        const tokenAddress = config.peggedToken.toLowerCase();
+        if (!seenPeggedTokens.has(tokenAddress)) {
+          seenPeggedTokens.add(tokenAddress);
+          const result = reads[readIndex];
+          if (result?.status === "success" && result.result) {
+            haTokenBalance += result.result as bigint;
+          }
         }
         readIndex++;
       }
@@ -281,6 +289,10 @@ export function useAnchorMarks() {
     error,
     refetch,
   };
+}
+
+
+
 }
 
 
