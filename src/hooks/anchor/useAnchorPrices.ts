@@ -3,6 +3,22 @@ import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
 import { useContractRead } from "wagmi";
 import { CHAINLINK_ORACLE_ABI } from "@/abis/shared";
 
+// Harbor wrapped price oracle ABI (returns tuple)
+const WRAPPED_PRICE_ORACLE_ABI = [
+  {
+    inputs: [],
+    name: "latestAnswer",
+    outputs: [
+      { type: "uint256", name: "minUnderlyingPrice" },
+      { type: "uint256", name: "maxUnderlyingPrice" },
+      { type: "uint256", name: "minWrappedRate" },
+      { type: "uint256", name: "maxWrappedRate" },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+] as const;
+
 // Chainlink ETH/USD Oracle on Mainnet
 const CHAINLINK_ETH_USD_ORACLE = "0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419" as `0x${string}`;
 
@@ -26,9 +42,61 @@ export function useAnchorPrices(
   const { price: usdcPrice } = useCoinGeckoPrice("usd-coin");
   const { price: ethPriceCoinGecko } = useCoinGeckoPrice("ethereum");
   const { price: btcPriceCoinGecko } = useCoinGeckoPrice("bitcoin", 120000);
-  // Use EUR-pegged stablecoin (EURS) to get EUR/USD exchange rate
-  // EURS is pegged 1:1 to EUR, so its USD price approximates EUR/USD
-  const { price: eurPrice } = useCoinGeckoPrice("stasis-euro"); // EUR/USD exchange rate via EURS
+  
+  // Get EUR/USD rate from fxUSD/EUR market oracle (same as used on map room page)
+  // Find the fxUSD/EUR market's oracle address
+  const eurMarketOracleAddress = useMemo(() => {
+    const eurMarket = anchorMarkets.find(([id, m]) => {
+      const pegTarget = (m as any)?.pegTarget?.toLowerCase();
+      const collateralSymbol = m.collateral?.symbol?.toLowerCase() || "";
+      return (pegTarget === "eur" || pegTarget === "euro") && 
+             (collateralSymbol === "fxusd" || collateralSymbol === "fxsave");
+    });
+    return eurMarket ? (eurMarket[1] as any)?.addresses?.collateralPrice as `0x${string}` | undefined : undefined;
+  }, [anchorMarkets]);
+  
+  // Read the EUR oracle to get fxUSD price in EUR, then convert to EUR/USD
+  // The fxUSD/EUR oracle returns fxUSD price in EUR terms
+  const { data: eurOracleData } = useContractRead({
+    address: eurMarketOracleAddress,
+    abi: WRAPPED_PRICE_ORACLE_ABI,
+    functionName: "latestAnswer",
+    query: {
+      enabled: !!eurMarketOracleAddress,
+      staleTime: 60_000, // 1 minute
+      gcTime: 300_000, // 5 minutes
+    },
+  });
+  
+  // Calculate EUR/USD from oracle: if oracle returns fxUSD price in EUR, then EUR/USD = 1 / (fxUSD in EUR)
+  // The oracle returns [minUnderlyingPrice, maxUnderlyingPrice, minWrappedRate, maxWrappedRate]
+  // For fxUSD/EUR, maxUnderlyingPrice should be fxUSD price in EUR (e.g., 0.92 EUR per fxUSD)
+  // So EUR/USD = 1 / (fxUSD in EUR) = 1 / maxUnderlyingPrice
+  const eurPriceFromOracle = useMemo(() => {
+    if (!eurOracleData) return null;
+    let fxUSDInEUR: bigint | undefined;
+    
+    if (Array.isArray(eurOracleData)) {
+      // Harbor oracle returns tuple
+      fxUSDInEUR = eurOracleData[1] as bigint; // maxUnderlyingPrice
+    } else if (typeof eurOracleData === "bigint") {
+      // Standard Chainlink oracle
+      fxUSDInEUR = eurOracleData;
+    }
+    
+    if (fxUSDInEUR && fxUSDInEUR > 0n) {
+      // Convert to number and calculate EUR/USD = 1 / (fxUSD in EUR)
+      const fxUSDInEURNum = Number(fxUSDInEUR) / 1e18;
+      if (fxUSDInEURNum > 0) {
+        return 1 / fxUSDInEURNum;
+      }
+    }
+    return null;
+  }, [eurOracleData]);
+  
+  // Use oracle price if available, otherwise fall back to CoinGecko
+  const { price: eurPriceCoinGecko } = useCoinGeckoPrice("stasis-euro");
+  const eurPrice = eurPriceFromOracle ?? eurPriceCoinGecko;
 
   // Fetch Chainlink ETH/USD as fallback
   const { data: chainlinkEthPriceData } = useContractRead({
