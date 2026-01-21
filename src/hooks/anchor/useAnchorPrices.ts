@@ -43,85 +43,105 @@ export function useAnchorPrices(
   const { price: ethPriceCoinGecko } = useCoinGeckoPrice("ethereum");
   const { price: btcPriceCoinGecko } = useCoinGeckoPrice("bitcoin", 120000);
   
-  // Get EUR/USD rate from fxUSD/EUR market oracle (same as used on map room page)
-  // Find the fxUSD/EUR market's oracle address
-  const eurMarketOracleAddress = useMemo(() => {
-    const eurMarket = anchorMarkets.find(([id, m]) => {
+  // Get EUR/USD rate from fxUSD/EUR market oracle (read from batched reads array)
+  // Find the fxUSD/EUR market and extract its oracle data from the batched reads
+  const eurPriceFromOracle = useMemo(() => {
+    if (!reads) {
+      if (isDebug) {
+        console.log("[useAnchorPrices] No reads available for EUR oracle");
+      }
+      return null;
+    }
+
+    // Find the EUR market index
+    const eurMarketIndex = anchorMarkets.findIndex(([id, m]) => {
       const pegTarget = (m as any)?.pegTarget?.toLowerCase();
       const collateralSymbol = m.collateral?.symbol?.toLowerCase() || "";
       return (pegTarget === "eur" || pegTarget === "euro") && 
              (collateralSymbol === "fxusd" || collateralSymbol === "fxsave");
     });
-    const oracleAddr = eurMarket ? (eurMarket[1] as any)?.addresses?.collateralPrice as `0x${string}` | undefined : undefined;
-    if (isDebug) {
-      console.log(`[useAnchorPrices] Found EUR market: ${eurMarket?.[0]}, oracle address: ${oracleAddr}`);
-    }
-    return oracleAddr;
-  }, [anchorMarkets, isDebug]);
-  
-  // Read the EUR oracle decimals first to determine the correct format
-  const { data: eurOracleDecimals } = useContractRead({
-    address: eurMarketOracleAddress,
-    abi: CHAINLINK_ORACLE_ABI,
-    functionName: "decimals",
-    query: {
-      enabled: !!eurMarketOracleAddress,
-      staleTime: 300_000, // 5 minutes - decimals don't change
-      gcTime: 600_000, // 10 minutes
-    },
-  });
-  
-  // Read the EUR oracle - this is likely a Chainlink EUR/USD feed
-  // Try Chainlink ABI first (standard latestAnswer)
-  const { data: eurOracleDataChainlink, isError: isChainlinkError } = useContractRead({
-    address: eurMarketOracleAddress,
-    abi: CHAINLINK_ORACLE_ABI,
-    functionName: "latestAnswer",
-    query: {
-      enabled: !!eurMarketOracleAddress,
-      staleTime: 60_000, // 1 minute
-      gcTime: 300_000, // 5 minutes
-    },
-  });
-  
-  // Also try Harbor oracle ABI in case it's a wrapped oracle
-  // Enable if Chainlink failed OR if Chainlink returned null/undefined
-  const { data: eurOracleDataHarbor } = useContractRead({
-    address: eurMarketOracleAddress,
-    abi: WRAPPED_PRICE_ORACLE_ABI,
-    functionName: "latestAnswer",
-    query: {
-      enabled: !!eurMarketOracleAddress && (isChainlinkError || !eurOracleDataChainlink),
-      staleTime: 60_000,
-      gcTime: 300_000,
-    },
-  });
-  
-  // Prefer Chainlink data if available, otherwise use Harbor
-  const eurOracleData = eurOracleDataChainlink || eurOracleDataHarbor;
-  
-  if (isDebug && eurMarketOracleAddress) {
-    console.log(`[useAnchorPrices] EUR oracle reads - decimals: ${eurOracleDecimals}, Chainlink: ${eurOracleDataChainlink?.toString() || 'null'}, Harbor: ${eurOracleDataHarbor ? (Array.isArray(eurOracleDataHarbor) ? 'tuple' : eurOracleDataHarbor.toString()) : 'null'}, Chainlink error: ${isChainlinkError}`);
-  }
-  
-  // Calculate EUR/USD from oracle
-  // The oracle at 0x71437C90F1E0785dd691FD02f7bE0B90cd14c097 is a Chainlink EUR/USD feed
-  // Use the decimals() function to determine the correct decimal format
-  const eurPriceFromOracle = useMemo(() => {
-    if (!eurOracleData) {
+
+    if (eurMarketIndex === -1) {
       if (isDebug) {
-        console.log("[useAnchorPrices] EUR oracle data not available");
+        console.log("[useAnchorPrices] EUR market not found in anchorMarkets");
       }
       return null;
     }
+
+    const eurMarket = anchorMarkets[eurMarketIndex];
+    const hasPriceOracle = !!(eurMarket[1] as any).addresses?.collateralPrice;
     
-    if (Array.isArray(eurOracleData)) {
+    if (!hasPriceOracle) {
+      if (isDebug) {
+        console.log("[useAnchorPrices] EUR market has no price oracle");
+      }
+      return null;
+    }
+
+    // Calculate offset to oracle reads (same logic as in peggedPriceUSDMap)
+    let priceOracleOffset = 0;
+    for (let i = 0; i <= eurMarketIndex; i++) {
+      const market = anchorMarkets[i][1];
+      const prevHasStabilityPoolManager = !!(market as any).addresses?.stabilityPoolManager;
+      const prevHasCollateral = !!(market as any).addresses?.stabilityPoolCollateral;
+      const prevHasSail = !!(market as any).addresses?.stabilityPoolLeveraged;
+      const prevPeggedTokenAddress = (market as any)?.addresses?.peggedToken;
+      const prevHasPriceOracle = !!(market as any).addresses?.collateralPrice;
+      const prevCollateralSymbol = market.collateral?.symbol?.toLowerCase() || "";
+      const prevIsFxUSDMarket = prevCollateralSymbol === "fxusd" || prevCollateralSymbol === "fxsave";
+      
+      if (i < eurMarketIndex) {
+        // For previous markets, count all their reads
+        priceOracleOffset += 5; // minter reads
+        if (prevHasStabilityPoolManager) priceOracleOffset += 1;
+        if (prevHasCollateral) {
+          priceOracleOffset += 4;
+          if (prevPeggedTokenAddress) priceOracleOffset += 1;
+        }
+        if (prevHasSail) {
+          priceOracleOffset += 4;
+          if (prevPeggedTokenAddress) priceOracleOffset += 1;
+        }
+        if (prevHasPriceOracle) {
+          priceOracleOffset += 1; // latestAnswer
+          if (prevIsFxUSDMarket) priceOracleOffset += 1; // getPrice
+        }
+      } else {
+        // For current market, count up to oracle
+        priceOracleOffset += 5; // minter reads
+        if (prevHasStabilityPoolManager) priceOracleOffset += 1;
+        if (prevHasCollateral) {
+          priceOracleOffset += 4;
+          if (prevPeggedTokenAddress) priceOracleOffset += 1;
+        }
+        if (prevHasSail) {
+          priceOracleOffset += 4;
+          if (prevPeggedTokenAddress) priceOracleOffset += 1;
+        }
+        // Now we're at the oracle position
+        break;
+      }
+    }
+
+    const latestAnswerResult = reads?.[priceOracleOffset]?.result;
+    
+    if (isDebug) {
+      console.log(`[useAnchorPrices] EUR oracle read from batched reads - offset: ${priceOracleOffset}, result: ${latestAnswerResult ? (Array.isArray(latestAnswerResult) ? 'tuple' : latestAnswerResult.toString()) : 'null'}`);
+    }
+
+    if (!latestAnswerResult) {
+      if (isDebug) {
+        console.log("[useAnchorPrices] EUR oracle data not available in reads array");
+      }
+      return null;
+    }
+
+    // Process the oracle data
+    if (Array.isArray(latestAnswerResult)) {
       // Harbor oracle returns tuple [minUnderlyingPrice, maxUnderlyingPrice, minWrappedRate, maxWrappedRate]
       // For fxUSD/EUR market, maxUnderlyingPrice is fxUSD price in EUR terms (18 decimals)
-      // To get EUR/USD, we need to invert: if 1 fxUSD = X EUR, then 1 EUR = 1/X USD
-      // But wait - if fxUSD is pegged to USD (~$1), then X should be ~1/EUR_USD
-      // Actually, for EUR/USD conversion, we need: if 1 fxUSD = X EUR, and 1 fxUSD = $1, then 1 EUR = $1/X
-      const price = eurOracleData[1] as bigint; // maxUnderlyingPrice (fxUSD in EUR)
+      // To get EUR/USD: if 1 fxUSD = X EUR and 1 fxUSD = $1, then 1 EUR = $1/X
+      const price = latestAnswerResult[1] as bigint; // maxUnderlyingPrice (fxUSD in EUR)
       if (price && price > 0n) {
         const fxUsdInEur = Number(price) / 1e18;
         if (isDebug) {
@@ -140,19 +160,32 @@ export function useAnchorPrices(
           }
         }
       }
-    } else if (typeof eurOracleData === "bigint") {
-      // Chainlink oracle - use decimals() to determine format
-      const decimals = eurOracleDecimals ?? 8; // Default to 8 for Chainlink if not available
-      const priceNum = Number(eurOracleData) / (10 ** Number(decimals));
+    } else if (typeof latestAnswerResult === "bigint") {
+      // Chainlink oracle - typically 8 decimals for EUR/USD
+      // Try 8 decimals first (standard Chainlink format)
+      let priceNum = Number(latestAnswerResult) / 1e8;
       
       if (isDebug) {
-        console.log(`[useAnchorPrices] EUR oracle raw: ${eurOracleData.toString()}, decimals: ${decimals}, price: ${priceNum}`);
+        console.log(`[useAnchorPrices] EUR oracle raw: ${latestAnswerResult.toString()}, trying 8 decimals: ${priceNum}`);
       }
       
       // Chainlink EUR/USD should be around 1.0-1.2 USD per EUR
       if (priceNum > 0.5 && priceNum < 2.0) {
         if (isDebug) {
-          console.log(`[useAnchorPrices] Using EUR/USD from Chainlink (${decimals}dec): ${priceNum}`);
+          console.log(`[useAnchorPrices] Using EUR/USD from Chainlink (8dec): ${priceNum}`);
+        }
+        return priceNum;
+      }
+      
+      // Try 18 decimals in case it's a different format
+      priceNum = Number(latestAnswerResult) / 1e18;
+      if (isDebug) {
+        console.log(`[useAnchorPrices] Trying 18 decimals: ${priceNum}`);
+      }
+      
+      if (priceNum > 0.5 && priceNum < 2.0) {
+        if (isDebug) {
+          console.log(`[useAnchorPrices] Using EUR/USD from Chainlink (18dec): ${priceNum}`);
         }
         return priceNum;
       }
@@ -170,11 +203,12 @@ export function useAnchorPrices(
       }
       
       if (isDebug) {
-        console.warn(`[useAnchorPrices] EUR oracle price out of range: ${priceNum} (${decimals} decimals)`);
+        console.warn(`[useAnchorPrices] EUR oracle price out of range: ${priceNum} (tried 8 and 18 decimals)`);
       }
     }
+    
     return null;
-  }, [eurOracleData, eurOracleDecimals, isDebug]);
+  }, [reads, anchorMarkets, isDebug]);
   
   // Use oracle price if available, otherwise fall back to CoinGecko
   const { price: eurPriceCoinGecko } = useCoinGeckoPrice("stasis-euro");
@@ -451,9 +485,6 @@ export function useAnchorPrices(
         if (isDebug) {
           console.warn(
             `[peggedPriceUSDMap] Market ${id} (${peggedTokenSymbol}): EUR price not available (eurPrice=${eurPrice}), will use fallback`
-          );
-          console.warn(
-            `[peggedPriceUSDMap] EUR price breakdown - oracle: ${eurPriceFromOracle}, CoinGecko: ${eurPriceCoinGecko}, final: ${eurPrice}`
           );
         }
       } else if (isBTCPegged && !btcPrice) {
