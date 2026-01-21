@@ -7868,9 +7868,22 @@ export default function AnchorPage() {
                           // This matches how useMarketPositions calculates walletHaUSD
                           const usdPriceFromMap =
                             peggedPriceUSDMap[marketData.marketId];
+                          // Get peg target for fallback pricing
+                          const pegTarget = (marketData.market as any)?.pegTarget?.toLowerCase() || "";
+                          const peggedSymbolLower = marketData.market?.peggedToken?.symbol?.toLowerCase() || "";
+                          const btcUsdFallback = btcPrice || 0;
+                          const ethUsdFallback = ethPrice || 0;
+                          const eurUsdFallback = eurPrice || 0;
+                          
                           const peggedPriceUSD =
                             usdPriceFromMap && usdPriceFromMap > 0n
                               ? Number(usdPriceFromMap) / 1e18
+                              : (pegTarget === "btc" || peggedSymbolLower.includes("btc")) && btcUsdFallback > 0
+                              ? btcUsdFallback
+                              : (pegTarget === "eth" || peggedSymbolLower.includes("eth")) && ethUsdFallback > 0
+                              ? ethUsdFallback
+                              : (pegTarget === "eur" || peggedSymbolLower.includes("eur")) && eurUsdFallback > 0
+                              ? eurUsdFallback
                               : positionData?.peggedTokenPrice &&
                                 positionData.peggedTokenPrice > 0n
                               ? Number(positionData.peggedTokenPrice) / 1e18
@@ -7910,13 +7923,14 @@ export default function AnchorPage() {
                                 // Use the same CR-aware USD pricing as positions (prefer peggedPriceUSDMap; fallback to contract reads)
                                 const tvlUsdPriceFromMap =
                                   peggedPriceUSDMap[marketData.marketId];
-                                // Extra robustness: if the USD map is missing/zero for haBTC/haETH,
+                                // Extra robustness: if the USD map is missing/zero for haBTC/haETH/haEUR,
                                 // fall back to CoinGecko peg-target USD price.
                                 const peggedSymbolLower =
                                         marketData.market?.peggedToken?.symbol?.toLowerCase?.() ||
                                         "";
                                 const btcUsdFallback = btcPrice || 0;
                                 const ethUsdFallback = ethPrice || 0;
+                                const eurUsdFallback = eurPrice || 0;
 
                                 const peggedPriceUSD =
                                         tvlUsdPriceFromMap &&
@@ -7928,6 +7942,9 @@ export default function AnchorPage() {
                                     : peggedSymbolLower.includes("eth") &&
                                       ethUsdFallback > 0
                                     ? ethUsdFallback
+                                    : peggedSymbolLower.includes("eur") &&
+                                      eurUsdFallback > 0
+                                    ? eurUsdFallback
                                     : positionData?.peggedTokenPrice &&
                                       positionData.peggedTokenPrice > 0n
                                           ? Number(
