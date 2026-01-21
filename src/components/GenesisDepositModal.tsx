@@ -1187,12 +1187,13 @@ setTxHash(null);
       
       // Apply 1% slippage buffer (99% of expected)
       const minWstETHOut = (expectedWstETH * 99n) / 100n;
+      const minEthEquivalentOut = (ethAmount * 99n) / 100n;
       
       depositHash = await writeContractAsync({
         address: genesisZapAddress,
         abi: ZAP_ABI,
         functionName:"zapEth",
-        args: [address as `0x${string}`, minWstETHOut],
+        args: [address as `0x${string}`, minWstETHOut, minEthEquivalentOut],
         value: ethAmount,
       });
       
