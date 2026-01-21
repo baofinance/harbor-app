@@ -52,6 +52,9 @@ export function getLogoPath(symbol: string): string {
   if (normalizedSymbol === "habtc") {
     return "/icons/haBTC.png";
   }
+  if (normalizedSymbol === "haeur") {
+    return "/icons/haEUR.png";
+  }
   if (normalizedSymbol === "hapb") {
     return "/icons/haETH.png";
   }

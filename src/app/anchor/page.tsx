@@ -5572,27 +5572,87 @@ export default function AnchorPage() {
                   // Use the max balance across all markets (should be same for same token)
                   // Calculate USD from the actual balance to avoid double counting
                   const balanceNum = Number(walletBalance) / 1e18;
-                  // Get price for this token from price map (keyed by marketId)
-                  // Check if EUR-pegged and use EUR price if available
+                  // Get price for this token - use consistent price source per token, not per market
                   const pegTarget = (marketData.market as any)?.pegTarget?.toLowerCase();
                   let priceUSD = 1; // Default $1 for USD-pegged
-                  const price = mergedPeggedPriceMap?.[marketData.marketId] ?? peggedPriceUSDMap?.[marketData.marketId];
-                  if (price !== undefined && price > 0n) {
-                    priceUSD = Number(price) / 1e18;
-                    if (process.env.NODE_ENV === "development" && pegTarget === "eur") {
-                      console.log(`[anchor page] haEUR price from map: marketId=${marketData.marketId}, price=${price.toString()}, priceUSD=${priceUSD}, eurPrice=${eurPrice}`);
+                  
+                  // For EUR-pegged tokens, use eurPrice directly to ensure consistency across markets
+                  console.log(`[anchor page] Token ${tokenAddressLower} (${marketData.market?.peggedToken?.symbol}): pegTarget="${pegTarget}", eurPrice=${eurPrice}, btcPrice=${btcPrice}, ethPrice=${ethPrice}`);
+                  
+                  if (pegTarget === "eur" || pegTarget === "euro") {
+                    if (eurPrice) {
+                      priceUSD = eurPrice;
+                      console.log(`[anchor page] haEUR: Using eurPrice=${eurPrice}, balanceNum=${balanceNum}, balanceUSD=${balanceNum * priceUSD}`);
+                    } else {
+                      console.warn(`[anchor page] haEUR: eurPrice is null/undefined! Checking fallback...`);
+                      // Fallback: try to get price from map, but log warning
+                      const priceMarket = allMarketsData.find((md) => {
+                        const mdTokenAddress = (md.market as any)?.addresses?.peggedToken?.toLowerCase();
+                        return mdTokenAddress === tokenAddressLower;
+                      });
+                      if (priceMarket) {
+                        const price = mergedPeggedPriceMap?.[priceMarket.marketId] ?? peggedPriceUSDMap?.[priceMarket.marketId];
+                        console.warn(`[anchor page] haEUR: priceMarket=${priceMarket.marketId}, price from map=${price?.toString() || 'undefined'}`);
+                        if (price !== undefined && price > 0n) {
+                          priceUSD = Number(price) / 1e18;
+                          console.warn(`[anchor page] haEUR: eurPrice not available, using map price=${priceUSD} for marketId=${priceMarket.marketId}`);
+                        } else {
+                          console.warn(`[anchor page] haEUR: No price available (eurPrice=${eurPrice}, map price=${price?.toString() || 'undefined'}), using default $1`);
+                        }
+                      } else {
+                        console.warn(`[anchor page] haEUR: No priceMarket found for token ${tokenAddressLower}`);
+                      }
                     }
-                  } else if (pegTarget === "eur" && eurPrice) {
-                    // EUR-pegged but price not in map yet - use EUR price directly as fallback
-                    priceUSD = eurPrice;
-                    if (process.env.NODE_ENV === "development") {
-                      console.log(`[anchor page] haEUR price from fallback: marketId=${marketData.marketId}, eurPrice=${eurPrice}, priceUSD=${priceUSD}`);
-                      console.log(`[anchor page] mergedPeggedPriceMap keys:`, Object.keys(mergedPeggedPriceMap || {}));
-                      console.log(`[anchor page] peggedPriceUSDMap keys:`, Object.keys(peggedPriceUSDMap || {}));
+                  } else if (pegTarget === "btc" || pegTarget === "bitcoin") {
+                    // For BTC-pegged tokens, use btcPrice directly to ensure consistency across markets (same as EUR)
+                    if (btcPrice) {
+                      priceUSD = btcPrice;
+                      console.log(`[anchor page] haBTC: Using btcPrice=${btcPrice}, balanceNum=${balanceNum}, balanceUSD=${balanceNum * priceUSD}`);
+                    } else {
+                      // Fallback: try to get price from map
+                      const priceMarket = allMarketsData.find((md) => {
+                        const mdTokenAddress = (md.market as any)?.addresses?.peggedToken?.toLowerCase();
+                        return mdTokenAddress === tokenAddressLower;
+                      });
+                      if (priceMarket) {
+                        const price = mergedPeggedPriceMap?.[priceMarket.marketId] ?? peggedPriceUSDMap?.[priceMarket.marketId];
+                        if (price !== undefined && price > 0n) {
+                          priceUSD = Number(price) / 1e18;
+                          console.warn(`[anchor page] haBTC: btcPrice not available, using map price=${priceUSD} for marketId=${priceMarket.marketId}`);
+                        }
+                      }
                     }
-                  } else if (pegTarget === "eur") {
-                    if (process.env.NODE_ENV === "development") {
-                      console.warn(`[anchor page] haEUR price not found: marketId=${marketData.marketId}, price=${price?.toString() || 'undefined'}, eurPrice=${eurPrice}, using default $1`);
+                  } else if (pegTarget === "eth" || pegTarget === "ethereum") {
+                    // For ETH-pegged tokens, use ethPrice directly to ensure consistency across markets
+                    if (ethPrice) {
+                      priceUSD = ethPrice;
+                      console.log(`[anchor page] haETH: Using ethPrice=${ethPrice}, balanceNum=${balanceNum}, balanceUSD=${balanceNum * priceUSD}`);
+                    } else {
+                      // Fallback: try to get price from map
+                      const priceMarket = allMarketsData.find((md) => {
+                        const mdTokenAddress = (md.market as any)?.addresses?.peggedToken?.toLowerCase();
+                        return mdTokenAddress === tokenAddressLower;
+                      });
+                      if (priceMarket) {
+                        const price = mergedPeggedPriceMap?.[priceMarket.marketId] ?? peggedPriceUSDMap?.[priceMarket.marketId];
+                        if (price !== undefined && price > 0n) {
+                          priceUSD = Number(price) / 1e18;
+                          console.warn(`[anchor page] haETH: ethPrice not available, using map price=${priceUSD} for marketId=${priceMarket.marketId}`);
+                        }
+                      }
+                    }
+                  } else {
+                    // For other tokens (USD-pegged), try to get price from any market using this token
+                    // Find the first market with a price for this token
+                    const priceMarket = allMarketsData.find((md) => {
+                      const mdTokenAddress = (md.market as any)?.addresses?.peggedToken?.toLowerCase();
+                      return mdTokenAddress === tokenAddressLower;
+                    });
+                    if (priceMarket) {
+                      const price = mergedPeggedPriceMap?.[priceMarket.marketId] ?? peggedPriceUSDMap?.[priceMarket.marketId];
+                      if (price !== undefined && price > 0n) {
+                        priceUSD = Number(price) / 1e18;
+                      }
                     }
                   }
                   const balanceUSD = balanceNum * priceUSD;
@@ -5606,37 +5666,30 @@ export default function AnchorPage() {
                   });
                 }
                 const position = walletPositionsByToken.get(tokenAddressLower)!;
+                // Just add this market to the list - don't recalculate anything
+                // The USD value was already calculated correctly when the entry was first created
+                console.log(`[anchor page] Token ${tokenAddressLower} (${position.symbol}): Adding market ${marketData.marketId}, existing balanceUSD=${position.balanceUSD}, NOT recalculating`);
                 position.markets.push({
                   marketId: marketData.marketId,
                   market: marketData.market,
                   marketData,
                 });
-                // Use the highest balance (should be same across markets for same token)
+                // Only update balance if it's actually higher (should be same for same token across markets)
+                // But DO NOT recalculate USD - it was already calculated correctly when the entry was created
+                // Recalculating would cause double counting when multiple markets use the same token
                 if (walletBalance > position.balance) {
+                  // This should rarely happen since same token should have same balance across markets
+                  // If it does happen, maintain the same price per token to avoid inconsistencies
+                  const existingPricePerToken = position.balanceUSD / (Number(position.balance) / 1e18);
                   position.balance = walletBalance;
-                  // Recalculate USD when balance updates
-                  const balanceNum = Number(walletBalance) / 1e18;
-                  const pegTarget = (marketData.market as any)?.pegTarget?.toLowerCase();
-                  let priceUSD = 1; // Default $1 for USD-pegged
-                  const price = mergedPeggedPriceMap?.[marketData.marketId] ?? peggedPriceUSDMap?.[marketData.marketId];
-                  if (price !== undefined && price > 0n) {
-                    priceUSD = Number(price) / 1e18;
-                    if (process.env.NODE_ENV === "development" && pegTarget === "eur") {
-                      console.log(`[anchor page] haEUR price from map (update): marketId=${marketData.marketId}, price=${price.toString()}, priceUSD=${priceUSD}, eurPrice=${eurPrice}`);
-                    }
-                  } else if (pegTarget === "eur" && eurPrice) {
-                    // EUR-pegged but price not in map yet - use EUR price directly as fallback
-                    priceUSD = eurPrice;
-                    if (process.env.NODE_ENV === "development") {
-                      console.log(`[anchor page] haEUR price from fallback (update): marketId=${marketData.marketId}, eurPrice=${eurPrice}, priceUSD=${priceUSD}`);
-                    }
-                  } else if (pegTarget === "eur") {
-                    if (process.env.NODE_ENV === "development") {
-                      console.warn(`[anchor page] haEUR price not found (update): marketId=${marketData.marketId}, price=${price?.toString() || 'undefined'}, eurPrice=${eurPrice}, using default $1`);
-                    }
+                  if (existingPricePerToken > 0) {
+                    // Use the same price per token that was used initially
+                    position.balanceUSD = (Number(walletBalance) / 1e18) * existingPricePerToken;
+                    console.log(`[anchor page] Token ${tokenAddressLower}: Balance increased, updated USD using existing price ${existingPricePerToken}`);
                   }
-                  position.balanceUSD = balanceNum * priceUSD;
+                  // If existingPricePerToken is 0 or invalid, leave balanceUSD as is (shouldn't happen)
                 }
+                // If balance is same or lower, do nothing - USD was already calculated correctly
               }
             });
 

@@ -11555,17 +11555,6 @@ export const AnchorDepositWithdrawModal = ({
             )}
           </div>
 
-          {step === "success" && (
-            <div className="flex gap-3 p-4 border-t border-[#1E4775]/20">
-              <button
-                onClick={handleClose}
-                className="flex-1 py-2 px-4 bg-[#1E4775] hover:bg-[#17395F] text-white font-medium transition-colors rounded-full"
-              >
-                Close
-              </button>
-            </div>
-          )}
-
           {step !== "success" && !simpleMode && (
             <div className="flex gap-3 p-4 border-t border-[#1E4775]/20">
               {isProcessing ? (
