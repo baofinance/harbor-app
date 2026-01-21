@@ -5839,7 +5839,6 @@ export const AnchorDepositWithdrawModal = ({
             // Otherwise fall back to estimation
             let minPeggedOut: bigint;
             let actualExpectedOutput: bigint | undefined;
-            const minFxSaveOut = (swappedAmount * 99n) / 100n;
             
             // For direct ETH deposits, try to get dry run output
             // First check if we have a dry run for the direct deposit amount
@@ -6224,6 +6223,7 @@ export const AnchorDepositWithdrawModal = ({
               ? true // After swap, we always have USDC
               : (anyTokenDeposit.selectedAssetAddress?.toLowerCase() === USDC_ADDRESS.toLowerCase());
             const isActuallyFxUSD = !isActuallyUSDC && !anyTokenDeposit.needsSwap;
+            const minFxSaveOut = (swappedAmount * 99n) / 100n;
             
             // Get the asset address for approval
             const assetAddressForApproval = anyTokenDeposit.needsSwap 
