@@ -68,27 +68,41 @@ export function useAnchorPrices(
     },
   });
   
-  // Calculate EUR/USD from oracle: if oracle returns fxUSD price in EUR, then EUR/USD = 1 / (fxUSD in EUR)
-  // The oracle returns [minUnderlyingPrice, maxUnderlyingPrice, minWrappedRate, maxWrappedRate]
-  // For fxUSD/EUR, maxUnderlyingPrice should be fxUSD price in EUR (e.g., 0.92 EUR per fxUSD)
-  // So EUR/USD = 1 / (fxUSD in EUR) = 1 / maxUnderlyingPrice
+  // Calculate EUR/USD from oracle
+  // The oracle at 0x71437C90F1E0785dd691FD02f7bE0B90cd14c097 is a Chainlink EUR/USD feed
+  // It returns EUR/USD directly (8 decimals for Chainlink, or 18 decimals if Harbor oracle)
   const eurPriceFromOracle = useMemo(() => {
     if (!eurOracleData) return null;
-    let fxUSDInEUR: bigint | undefined;
     
     if (Array.isArray(eurOracleData)) {
-      // Harbor oracle returns tuple
-      fxUSDInEUR = eurOracleData[1] as bigint; // maxUnderlyingPrice
+      // Harbor oracle returns tuple [minUnderlyingPrice, maxUnderlyingPrice, minWrappedRate, maxWrappedRate]
+      // For fxUSD/EUR market, this might be a Harbor oracle that returns fxUSD in EUR
+      // But if it's actually a Chainlink EUR/USD feed wrapped, we need to check
+      // For now, try using maxUnderlyingPrice as EUR/USD directly (might already be in USD)
+      const price = eurOracleData[1] as bigint; // maxUnderlyingPrice
+      if (price && price > 0n) {
+        const priceNum = Number(price) / 1e18;
+        // If price is reasonable (between 0.5 and 2.0), it's likely EUR/USD directly
+        // If price is very small (< 0.5), it might be fxUSD in EUR, so invert it
+        if (priceNum > 0.5 && priceNum < 2.0) {
+          return priceNum; // Use directly as EUR/USD
+        } else if (priceNum > 0 && priceNum <= 0.5) {
+          return 1 / priceNum; // Invert if it's fxUSD in EUR
+        }
+      }
     } else if (typeof eurOracleData === "bigint") {
-      // Standard Chainlink oracle
-      fxUSDInEUR = eurOracleData;
-    }
-    
-    if (fxUSDInEUR && fxUSDInEUR > 0n) {
-      // Convert to number and calculate EUR/USD = 1 / (fxUSD in EUR)
-      const fxUSDInEURNum = Number(fxUSDInEUR) / 1e18;
-      if (fxUSDInEURNum > 0) {
-        return 1 / fxUSDInEURNum;
+      // Standard Chainlink oracle - check if it's 8 decimals (Chainlink) or 18 decimals
+      // Chainlink EUR/USD uses 8 decimals
+      const price8Dec = Number(eurOracleData) / 1e8;
+      const price18Dec = Number(eurOracleData) / 1e18;
+      
+      // Chainlink EUR/USD should be around 1.0-1.2, so check which makes sense
+      if (price8Dec > 0.5 && price8Dec < 2.0) {
+        return price8Dec; // Use 8 decimals (Chainlink format)
+      } else if (price18Dec > 0.5 && price18Dec < 2.0) {
+        return price18Dec; // Use 18 decimals
+      } else if (price18Dec > 0 && price18Dec <= 0.5) {
+        return 1 / price18Dec; // Invert if it's fxUSD in EUR
       }
     }
     return null;
