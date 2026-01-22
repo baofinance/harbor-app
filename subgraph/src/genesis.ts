@@ -22,11 +22,47 @@ const BONUS_MARKS_PER_DOLLAR = BigDecimal.fromString("100"); // 100 marks per do
 const EARLY_BONUS_MARKS_PER_DOLLAR = BigDecimal.fromString("100"); // 100 marks per dollar for early depositors
 const EARLY_BONUS_THRESHOLD_FXSAVE = BigDecimal.fromString("250000"); // 250k fxUSD tokens (not USD)
 const EARLY_BONUS_THRESHOLD_WSTETH = BigDecimal.fromString("70"); // 70 wstETH tokens (not USD)
+const EARLY_BONUS_THRESHOLD_FXSAVE_EUR = BigDecimal.fromString("50000"); // 50k fxUSD tokens (EUR markets)
+const EARLY_BONUS_THRESHOLD_WSTETH_EUR = BigDecimal.fromString("14"); // ~50k USD in wstETH (EUR markets)
 const SECONDS_PER_DAY = BigDecimal.fromString("86400");
 const E18 = BigDecimal.fromString("1000000000000000000"); // 10^18
 
 // 8 days (boost duration, per product rules)
 const BOOST_DURATION_SECONDS = BigInt.fromI32(8 * 24 * 60 * 60);
+
+function getCampaignId(contractAddress: Bytes): string {
+  const address = contractAddress.toHexString().toLowerCase();
+  // Launch Maiden Voyage (first 3 markets)
+  if (address == "0xc9df4f62474cf6cde6c064db29416a9f4f27ebdc") {
+    return "launch-maiden-voyage";
+  }
+  if (address == "0x42cc9a19b358a2a918f891d8a6199d8b05f0bc1c") {
+    return "launch-maiden-voyage";
+  }
+  if (address == "0xc64fc46eed431e92c1b5e24dc296b5985ce6cc00") {
+    return "launch-maiden-voyage";
+  }
+
+  // Euro Maiden Voyage
+  if (address == "0xb97d346dbc599e78c9c33b86be6c796f2d141ecc") {
+    return "euro-maiden-voyage";
+  }
+  if (address == "0xd2858dda2025e2fb31069705d905e860cebfcfef") {
+    return "euro-maiden-voyage";
+  }
+
+  return "unknown-maiden-voyage";
+}
+
+function getCampaignLabel(campaignId: string): string {
+  if (campaignId == "launch-maiden-voyage") {
+    return "Launch Maiden Voyage";
+  }
+  if (campaignId == "euro-maiden-voyage") {
+    return "Euro Maiden Voyage";
+  }
+  return "Unknown Maiden Voyage";
+}
 
 /**
  * Hardcoded mapping from Genesis contract -> market sources (v1).
@@ -214,7 +250,7 @@ function getFallbackPrice(genesisAddress: string): BigDecimal {
  * @param block - The current block
  * @returns Wrapped token price in USD, or fallback price if oracle fails
  */
-function getWrappedTokenPriceUSD(genesisAddress: Bytes, block: ethereum.Block): BigDecimal {
+export function getWrappedTokenPriceUSD(genesisAddress: Bytes, block: ethereum.Block): BigDecimal {
   const genesisAddressStr = genesisAddress.toHexString();
   
   // IMPORTANT: The oracle returns the pegged asset price (haETH/haBTC) instead of the underlying collateral
@@ -418,8 +454,11 @@ function getOrCreateUserMarks(
   const id = `${contractAddress.toHexString()}-${userAddress.toHexString()}`;
   let userMarks = UserHarborMarks.load(id);
   if (userMarks == null) {
+    const campaignId = getCampaignId(contractAddress);
     userMarks = new UserHarborMarks(id);
     userMarks.contractAddress = contractAddress;
+    userMarks.campaignId = campaignId;
+    userMarks.campaignLabel = getCampaignLabel(campaignId);
     userMarks.user = userAddress;
     userMarks.currentMarks = BigDecimal.fromString("0");
     userMarks.marksPerDay = BigDecimal.fromString("0");
@@ -449,6 +488,7 @@ function getCollateralSymbol(genesisAddress: string): string {
   // Production v1: ETH/fxUSD and BTC/fxUSD markets use fxSAVE
   if (addr == "0xc9df4f62474cf6cde6c064db29416a9f4f27ebdc" || // ETH/fxUSD (production v1)
       addr == "0x42cc9a19b358a2a918f891d8a6199d8b05f0bc1c" || // BTC/fxUSD (production v1)
+      addr == "0xb97d346dbc599e78c9c33b86be6c796f2d141ecc" || // fxUSD/EUR
       // Legacy test contracts (for backward compatibility)
       addr == "0x5f4398e1d3e33f93e3d7ee710d797e2a154cb073" ||
       addr == "0x288c61c3b3684ff21adf38d878c81457b19bd2fe" ||
@@ -457,11 +497,27 @@ function getCollateralSymbol(genesisAddress: string): string {
   }
   // Production v1: BTC/stETH market uses wstETH
   if (addr == "0xc64fc46eed431e92c1b5e24dc296b5985ce6cc00" || // BTC/stETH (production v1)
+      addr == "0xd2858dda2025e2fb31069705d905e860cebfcfef" || // stETH/EUR
       // Legacy test contract (for backward compatibility)
       addr == "0x9ae0b57ceada0056dbe21edcd638476fcba3ccc0") {
     return "wstETH";
   }
   return "unknown";
+}
+
+function getEarlyBonusThresholdAmount(
+  contractAddress: Bytes,
+  collateralSymbol: string
+): BigDecimal {
+  const addr = contractAddress.toHexString().toLowerCase();
+  if (addr == "0xd2858dda2025e2fb31069705d905e860cebfcfef") {
+    return EARLY_BONUS_THRESHOLD_WSTETH_EUR;
+  }
+  if (addr == "0xb97d346dbc599e78c9c33b86be6c796f2d141ecc") {
+    return EARLY_BONUS_THRESHOLD_FXSAVE_EUR;
+  }
+  const isFxSAVE = collateralSymbol == "fxSAVE";
+  return isFxSAVE ? EARLY_BONUS_THRESHOLD_FXSAVE : EARLY_BONUS_THRESHOLD_WSTETH;
 }
 
 // Helper to get or create market bonus status
@@ -482,10 +538,10 @@ function getOrCreateMarketBonusStatus(
   // Determine collateral type and set threshold (in token amounts, not USD)
   // Update even if entity exists (fixes entities created with "unknown")
   const collateralSymbol = getCollateralSymbol(contractAddress.toHexString());
-  const isFxSAVE = collateralSymbol == "fxSAVE";
-  marketBonus.thresholdAmount = isFxSAVE 
-    ? EARLY_BONUS_THRESHOLD_FXSAVE 
-    : EARLY_BONUS_THRESHOLD_WSTETH;
+  marketBonus.thresholdAmount = getEarlyBonusThresholdAmount(
+    contractAddress,
+    collateralSymbol
+  );
   marketBonus.thresholdToken = collateralSymbol;
   
   return marketBonus;
@@ -503,6 +559,9 @@ export function handleDeposit(event: DepositEvent): void {
   const depositId = `${contractAddress.toHexString()}-${userAddress.toHexString()}-${txHash.toHexString()}-${event.logIndex.toString()}`;
   const deposit = new Deposit(depositId);
   deposit.contractAddress = contractAddress;
+  const depositCampaignId = getCampaignId(contractAddress);
+  deposit.campaignId = depositCampaignId;
+  deposit.campaignLabel = getCampaignLabel(depositCampaignId);
   deposit.user = userAddress;
   deposit.amount = amount;
   deposit.amountUSD = null;
@@ -647,6 +706,9 @@ export function handleWithdraw(event: WithdrawEvent): void {
   const withdrawalId = `${contractAddress.toHexString()}-${userAddress.toHexString()}-${txHash.toHexString()}-${event.logIndex.toString()}`;
   const withdrawal = new Withdrawal(withdrawalId);
   withdrawal.contractAddress = contractAddress;
+  const withdrawalCampaignId = getCampaignId(contractAddress);
+  withdrawal.campaignId = withdrawalCampaignId;
+  withdrawal.campaignLabel = getCampaignLabel(withdrawalCampaignId);
   withdrawal.user = userAddress;
   withdrawal.amount = amount;
   withdrawal.amountUSD = null;
@@ -778,6 +840,9 @@ export function handleGenesisEnd(event: GenesisEndsEvent): void {
     genesisEnd = new GenesisEnd(contractAddressString);
   }
   genesisEnd.contractAddress = contractAddress;
+  const genesisCampaignId = getCampaignId(contractAddress);
+  genesisEnd.campaignId = genesisCampaignId;
+  genesisEnd.campaignLabel = getCampaignLabel(genesisCampaignId);
   genesisEnd.timestamp = timestamp;
   genesisEnd.txHash = txHash;
   genesisEnd.blockNumber = blockNumber;

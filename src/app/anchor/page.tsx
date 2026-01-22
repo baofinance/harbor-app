@@ -89,7 +89,7 @@ import { useMarketPositions } from "@/hooks/useMarketPositions";
 import { useMultipleTokenPrices } from "@/hooks/useTokenPrices";
 import { useFxSAVEAPR } from "@/hooks/useFxSAVEAPR";
 import { useWstETHAPR } from "@/hooks/useWstETHAPR";
-import { useCoinGeckoPrices } from "@/hooks/useCoinGeckoPrice";
+import { useCoinGeckoPrices, useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
 import { useContractReads as useWagmiContractReads } from "wagmi";
 import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
 import {
@@ -443,6 +443,7 @@ export default function AnchorPage() {
     mergedPeggedPriceMap,
     ethPrice,
     btcPrice,
+    eurPrice,
     fxUSDPrice,
     fxSAVEPrice,
     usdcPrice,
@@ -472,7 +473,7 @@ export default function AnchorPage() {
 
   const { totalAnchorLedgerMarks, totalAnchorLedgerMarksPerDay } =
     useMemo(() => {
-      const totalMarks =
+    const totalMarks =
         (haLedgerBalances ?? []).reduce(
           (sum: number, b: any) => sum + (b.estimatedMarks ?? 0),
           0
@@ -482,7 +483,7 @@ export default function AnchorPage() {
           0
         );
 
-      const totalPerDay =
+    const totalPerDay =
         (haLedgerBalances ?? []).reduce(
           (sum: number, b: any) => sum + (b.marksPerDay ?? 0),
           0
@@ -496,7 +497,7 @@ export default function AnchorPage() {
         totalAnchorLedgerMarks: totalMarks,
         totalAnchorLedgerMarksPerDay: totalPerDay,
       };
-    }, [haLedgerBalances, poolLedgerDeposits]);
+  }, [haLedgerBalances, poolLedgerDeposits]);
 
   // Keep for backward compatibility
   const maidenVoyageMarksPerDay = maidenVoyageMarksPerDayFromHook;
@@ -701,7 +702,7 @@ export default function AnchorPage() {
   const collateralPriceOracleAddresses = useMemo(() => {
     return anchorMarkets.map(
       ([_, market]) =>
-        (market as any).addresses?.collateralPrice as `0x${string}` | undefined
+      (market as any).addresses?.collateralPrice as `0x${string}` | undefined
     );
   }, [anchorMarkets]);
 
@@ -4179,7 +4180,7 @@ export default function AnchorPage() {
           </div>
 
           {/* Stats boxes */}
-          <div className="mb-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+          <div className="mb-2 grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2">
             <div className="bg-black/20 backdrop-blur-sm rounded-none overflow-hidden px-3 py-2">
               <div className="flex flex-col items-center justify-center text-center">
                 <div className="text-[11px] text-white/80 uppercase tracking-widest">
@@ -4786,69 +4787,70 @@ export default function AnchorPage() {
             return (
               <div className="mb-2">
                 <div className="bg-black/30 backdrop-blur-sm rounded-none overflow-visible border border-white/50">
-                  <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 divide-y divide-white/15 md:divide-y-0 md:divide-x md:divide-white/20">
+                  <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 lg:divide-x lg:divide-white/20">
                     {/* Rewards Header */}
-                    <div className="p-3 flex items-center justify-center gap-2">
-                      <h2 className="font-bold font-mono text-white text-lg leading-tight text-center">
-                        Rewards
-                      </h2>
-                      <InfoTooltip
-                        label={
-                          <div className="space-y-3">
-                            <div>
-                              <h3 className="font-bold text-lg mb-2">
-                                Anchor Ledger Marks
-                              </h3>
-                              <p className="text-white/90 leading-relaxed">
-                                Anchor Ledger Marks are earned by holding ha
-                                tokens (pegged tokens) and depositing into
-                                stability pools.
-                              </p>
-                            </div>
+                    <div className="px-3 py-1 min-h-[60px] flex items-center justify-center gap-2">
+                      <h2 className="font-bold font-mono text-white text-lg leading-none text-center">
+                      Rewards
+                    </h2>
+                    <InfoTooltip
+                      label={
+                        <div className="space-y-3">
+                          <div>
+                            <h3 className="font-bold text-lg mb-2">
+                              Anchor Ledger Marks
+                            </h3>
+                            <p className="text-white/90 leading-relaxed">
+                              Anchor Ledger Marks are earned by holding ha
+                              tokens (pegged tokens) and depositing into
+                              stability pools.
+                            </p>
+                          </div>
 
-                            <div className="border-t border-white/20 pt-3">
-                              <p className="text-white/90 leading-relaxed mb-2">
-                                Each mark represents your contribution to
+                          <div className="border-t border-white/20 pt-3">
+                            <p className="text-white/90 leading-relaxed mb-2">
+                              Each mark represents your contribution to
                                 stabilizing Harbor markets through token
                                 holdings and pool deposits.
-                              </p>
-                            </div>
+                            </p>
+                          </div>
 
-                            <div className="space-y-2">
-                              <div className="flex items-start gap-2">
-                                <span className="text-white/70 mt-0.5">•</span>
-                                <p className="text-white/90 leading-relaxed">
+                          <div className="space-y-2">
+                            <div className="flex items-start gap-2">
+                              <span className="text-white/70 mt-0.5">•</span>
+                              <p className="text-white/90 leading-relaxed">
                                   The more you contribute, the deeper your mark
                                   on the ledger.
-                                </p>
-                              </div>
-                              <div className="flex items-start gap-2">
-                                <span className="text-white/70 mt-0.5">•</span>
-                                <p className="text-white/90 leading-relaxed">
-                                  When $TIDE surfaces, these marks will convert
+                              </p>
+                            </div>
+                            <div className="flex items-start gap-2">
+                              <span className="text-white/70 mt-0.5">•</span>
+                              <p className="text-white/90 leading-relaxed">
+                                When $TIDE surfaces, these marks will convert
                                   into your share of rewards and governance
                                   power.
-                                </p>
-                              </div>
-                            </div>
-
-                            <div className="border-t border-white/20 pt-3">
-                              <p className="text-white/80 italic leading-relaxed">
-                                Think of them as a record of your journey —
-                                every mark, a line in Harbor's logbook.
                               </p>
                             </div>
                           </div>
-                        }
-                        side="right"
+
+                          <div className="border-t border-white/20 pt-3">
+                            <p className="text-white/80 italic leading-relaxed">
+                                Think of them as a record of your journey —
+                                every mark, a line in Harbor's logbook.
+                            </p>
+                          </div>
+                        </div>
+                      }
+                      side="right"
                       />
-                    </div>
+                  </div>
 
                     {/* Combined metrics */}
-                    <div className="p-3 md:col-span-1 lg:col-span-2 flex items-center justify-center">
-                      <div className="grid grid-cols-2 sm:grid-cols-4 w-full divide-y divide-white/15 sm:divide-y-0 sm:divide-x sm:divide-white/15">
+                    <div className="px-3 pt-0 pb-0 sm:p-3 md:col-span-1 lg:col-span-2 flex items-center justify-center">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 w-full grid-rows-[auto_1fr_auto_1fr] sm:grid-rows-none">
+                        <div className="col-span-2 border-t border-white/15 sm:hidden -mx-3 h-px" />
                         {/* Total Deposits */}
-                        <div className="flex flex-col items-center justify-center text-center px-2 py-1.5 sm:py-0">
+                        <div className="flex flex-col items-center justify-center text-center px-2 pt-1 pb-1 sm:py-0 h-full min-h-[60px] sm:border-r sm:border-white/15">
                           <div className="text-[11px] text-white/80 uppercase tracking-widest">
                             Total Deposits
                           </div>
@@ -4860,203 +4862,206 @@ export default function AnchorPage() {
                         </div>
 
                         {/* Claimable Value */}
-                        <div className="flex flex-col items-center justify-center text-center px-2 py-1.5 sm:py-0">
+                        <div className="flex flex-col items-center justify-center text-center px-2 pt-1 pb-1 sm:py-0 h-full min-h-[60px]">
                           <div className="text-[11px] text-white/80 uppercase tracking-widest">
-                            Claimable Value
-                          </div>
-                          <div className="text-sm font-semibold text-white font-mono mt-1">
-                            $
-                            {totalRewardsForBar > 0
-                              ? totalRewardsForBar.toFixed(2)
-                              : "0.00"}
-                          </div>
+                          Claimable Value
                         </div>
+                          <div className="text-sm font-semibold text-white font-mono mt-1">
+                          $
+                          {totalRewardsForBar > 0
+                            ? totalRewardsForBar.toFixed(2)
+                            : "0.00"}
+                        </div>
+                      </div>
 
-                        {/* vAPR */}
-                        <div className="flex flex-col items-center justify-center text-center px-2 py-1.5 sm:py-0">
+                      <div className="col-span-2 border-t border-white/15 sm:hidden -mx-3 h-px" />
+
+                      {/* vAPR */}
+                        <div className="flex flex-col items-center justify-center text-center px-2 pt-1 pb-0 sm:py-0 h-full min-h-[60px] sm:border-l sm:border-white/15">
                           <div className="text-[11px] text-white/80 uppercase tracking-widest font-medium flex items-center justify-center gap-1">
-                            vAPR
-                            <SimpleTooltip
-                              label={
-                                <div className="text-left">
-                                  <div className="font-semibold mb-1">
-                                    Blended APR from Your Positions
-                                  </div>
-                                  {positionAPRs.length > 0 ? (
-                                    <div className="text-xs space-y-1">
-                                      {positionAPRs.length > 10 ? (
-                                        // If more than 10 positions, show summary
-                                        <>
-                                          <div>
+                          vAPR
+                          <InfoTooltip
+                            side="left"
+                            label={
+                              <div className="text-left">
+                                <div className="font-semibold mb-1">
+                                  Blended APR from Your Positions
+                                </div>
+                                {positionAPRs.length > 0 ? (
+                                  <div className="text-xs space-y-1">
+                                    {positionAPRs.length > 10 ? (
+                                      // If more than 10 positions, show summary
+                                      <>
+                                        <div>
                                             • Total positions:{" "}
                                             {positionAPRs.length}
-                                          </div>
-                                          {(() => {
+                                        </div>
+                                        {(() => {
                                             const collateralCount =
                                               positionAPRs.filter(
                                                 (pos) =>
                                                   pos.poolType === "collateral"
-                                              ).length;
+                                          ).length;
                                             const sailCount =
                                               positionAPRs.filter(
-                                                (pos) => pos.poolType === "sail"
-                                              ).length;
-                                            return (
-                                              <>
-                                                {collateralCount > 0 && (
-                                                  <div className="ml-2">
+                                            (pos) => pos.poolType === "sail"
+                                          ).length;
+                                          return (
+                                            <>
+                                              {collateralCount > 0 && (
+                                                <div className="ml-2">
                                                     - Collateral:{" "}
                                                     {collateralCount}
-                                                  </div>
-                                                )}
-                                                {sailCount > 0 && (
-                                                  <div className="ml-2">
-                                                    - Sail: {sailCount}
-                                                  </div>
-                                                )}
-                                              </>
-                                            );
-                                          })()}
-                                          <div className="mt-2 pt-2 border-t border-white/20 font-semibold">
+                                                </div>
+                                              )}
+                                              {sailCount > 0 && (
+                                                <div className="ml-2">
+                                                  - Sail: {sailCount}
+                                                </div>
+                                              )}
+                                            </>
+                                          );
+                                        })()}
+                                        <div className="mt-2 pt-2 border-t border-white/20 font-semibold">
                                             Weighted Average:{" "}
-                                            {blendedAPRForBar > 0
+                                          {blendedAPRForBar > 0
                                               ? `${blendedAPRForBar.toFixed(
                                                   2
                                                 )}%`
-                                              : "-"}
-                                          </div>
-                                        </>
-                                      ) : (
-                                        // If 10 or fewer positions, show individual positions
-                                        <>
-                                          {positionAPRs.map((pos, idx) => (
-                                            <div key={idx}>
+                                            : "-"}
+                                        </div>
+                                      </>
+                                    ) : (
+                                      // If 10 or fewer positions, show individual positions
+                                      <>
+                                        {positionAPRs.map((pos, idx) => (
+                                          <div key={idx}>
                                               •{" "}
-                                              {pos.poolType === "collateral"
-                                                ? "Collateral"
+                                            {pos.poolType === "collateral"
+                                              ? "Collateral"
                                                 : "Sail"}{" "}
                                               Pool ({pos.marketId}):{" "}
-                                              {pos.apr.toFixed(2)}% (
+                                            {pos.apr.toFixed(2)}% (
                                               {formatCompactUSD(pos.depositUSD)}
                                               )
-                                            </div>
-                                          ))}
-                                          <div className="mt-2 pt-2 border-t border-white/20 font-semibold">
+                                          </div>
+                                        ))}
+                                        <div className="mt-2 pt-2 border-t border-white/20 font-semibold">
                                             Weighted Average:{" "}
-                                            {blendedAPRForBar > 0
+                                          {blendedAPRForBar > 0
                                               ? `${blendedAPRForBar.toFixed(
                                                   2
                                                 )}%`
-                                              : "-"}
-                                          </div>
-                                        </>
-                                      )}
-                                    </div>
-                                  ) : (
-                                    <div className="text-xs">
-                                      No stability pool positions found
-                                    </div>
-                                  )}
-                                  {/** Hide projected APRs while live reward APRs are still loading */}
-                                  {!showLiveAprLoading &&
-                                    !isErrorAllRewards &&
-                                    projectedAPR.harvestableAmount !== null &&
-                                    projectedAPR.harvestableAmount > 0n &&
-                                    blendedAPRForBar <= 0 && (
-                                      <div className="mt-2 pt-2 border-t border-white/20 text-xs opacity-90">
+                                            : "-"}
+                                        </div>
+                                      </>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <div className="text-xs">
+                                    No stability pool positions found
+                                  </div>
+                                )}
+                                {/** Hide projected APRs while live reward APRs are still loading */}
+                                {!showLiveAprLoading &&
+                                  !isErrorAllRewards &&
+                                  projectedAPR.harvestableAmount !== null &&
+                                  projectedAPR.harvestableAmount > 0n &&
+                                  blendedAPRForBar <= 0 && (
+                                    <div className="mt-2 pt-2 border-t border-white/20 text-xs opacity-90">
                                         Projected APR (next 7 days):{" "}
-                                        {projectedAPR.collateralPoolAPR !==
+                                      {projectedAPR.collateralPoolAPR !==
+                                        null &&
+                                        `${projectedAPR.collateralPoolAPR.toFixed(
+                                          2
+                                        )}% (Collateral)`}
+                                      {projectedAPR.collateralPoolAPR !==
+                                        null &&
+                                        projectedAPR.leveragedPoolAPR !==
                                           null &&
-                                          `${projectedAPR.collateralPoolAPR.toFixed(
-                                            2
-                                          )}% (Collateral)`}
-                                        {projectedAPR.collateralPoolAPR !==
-                                          null &&
-                                          projectedAPR.leveragedPoolAPR !==
-                                            null &&
-                                          " /"}
+                                        " /"}
                                         {projectedAPR.leveragedPoolAPR !==
                                           null &&
-                                          `${projectedAPR.leveragedPoolAPR.toFixed(
-                                            2
-                                          )}% (Sail)`}
-                                        <br />
+                                        `${projectedAPR.leveragedPoolAPR.toFixed(
+                                          2
+                                        )}% (Sail)`}
+                                      <br />
                                         Based on{" "}
-                                        {(
+                                      {(
                                           Number(
                                             projectedAPR.harvestableAmount
                                           ) / 1e18
                                         ).toFixed(4)}{" "}
-                                        wstETH harvestable.
-                                        {projectedAPR.remainingDays !== null &&
-                                          ` ~${projectedAPR.remainingDays.toFixed(
-                                            1
-                                          )} days until harvest.`}
-                                      </div>
-                                    )}
-                                </div>
-                              }
-                            >
-                              <span className="text-white/50 cursor-help text-xs">
-                                [?]
-                              </span>
-                            </SimpleTooltip>
-                          </div>
-                          <div className="text-sm font-semibold text-white font-mono mt-1">
-                            {blendedAPRForBar > 0
-                              ? `${blendedAPRForBar.toFixed(2)}%`
-                              : "-"}
-                          </div>
-                        </div>
-
-                        {/* Claim */}
-                        <div className="flex flex-col items-center justify-center text-center px-2 py-1.5 sm:py-0">
-                          <button
-                            onClick={() => {
-                              setIsClaimAllModalOpen(true);
-                            }}
-                            disabled={isClaimingAll || isCompoundingAll}
-                            className="px-5 py-2 text-xs font-semibold bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white disabled:bg-[#FF8A7A]/40 disabled:text-white/70 disabled:cursor-not-allowed transition-colors rounded-full whitespace-nowrap"
+                                      wstETH harvestable.
+                                      {projectedAPR.remainingDays !== null &&
+                                        ` ~${projectedAPR.remainingDays.toFixed(
+                                          1
+                                        )} days until harvest.`}
+                                    </div>
+                                  )}
+                              </div>
+                            }
                           >
-                            Claim
-                          </button>
+                            <span className="text-white/50 cursor-help text-xs">
+                              [?]
+                            </span>
+                          </InfoTooltip>
+                        </div>
+                          <div className="text-sm font-semibold text-white font-mono mt-1">
+                          {blendedAPRForBar > 0
+                            ? `${blendedAPRForBar.toFixed(2)}%`
+                            : "-"}
                         </div>
                       </div>
+
+                        {/* Claim */}
+                        <div className="flex flex-col items-center justify-center text-center px-2 pt-1 pb-0 sm:py-0 h-full min-h-[60px] sm:border-l sm:border-white/15">
+                        <button
+                          onClick={() => {
+                            setIsClaimAllModalOpen(true);
+                          }}
+                          disabled={isClaimingAll || isCompoundingAll}
+                            className="px-5 py-2 text-xs font-semibold bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white disabled:bg-[#FF8A7A]/40 disabled:text-white/70 disabled:cursor-not-allowed transition-colors rounded-full whitespace-nowrap"
+                        >
+                          Claim
+                        </button>
+                      </div>
                     </div>
+                  </div>
 
                     {/* Anchor Ledger Marks */}
-                    <div className="p-3 flex flex-col justify-center">
+                    <div className="p-3 min-h-[60px] flex flex-col justify-center border-t border-white/15 md:border-t-0">
                       <div className="text-[11px] text-white/80 uppercase tracking-widest mb-0.5 text-center">
                         Anchor Ledger Marks
                       </div>
                       <div className="flex items-baseline justify-center gap-2 text-sm font-bold text-white font-mono tabular-nums">
                         <span>
-                          {!ANCHOR_MARKS_ENABLED ? (
-                            "0"
-                          ) : !mounted || isLoadingLedgerMarks ? (
-                            <span className="text-white/50">-</span>
-                          ) : totalAnchorLedgerMarks > 0 ? (
-                            totalAnchorLedgerMarks.toLocaleString(undefined, {
-                              minimumFractionDigits:
-                                totalAnchorLedgerMarks < 100 ? 2 : 0,
-                              maximumFractionDigits:
-                                totalAnchorLedgerMarks < 100 ? 2 : 0,
-                            })
-                          ) : (
-                            "0"
-                          )}
+                      {!ANCHOR_MARKS_ENABLED ? (
+                        "0"
+                      ) : !mounted || isLoadingLedgerMarks ? (
+                        <span className="text-white/50">-</span>
+                      ) : totalAnchorLedgerMarks > 0 ? (
+                        totalAnchorLedgerMarks.toLocaleString(undefined, {
+                          minimumFractionDigits:
+                            totalAnchorLedgerMarks < 100 ? 2 : 0,
+                          maximumFractionDigits:
+                            totalAnchorLedgerMarks < 100 ? 2 : 0,
+                        })
+                      ) : (
+                        "0"
+                      )}
                         </span>
 
                         {(() => {
                           const marksPerDayText = !ANCHOR_MARKS_ENABLED
-                            ? "0 marks/day"
-                            : !mounted || isLoadingLedgerMarks
-                            ? ""
-                            : totalAnchorLedgerMarksPerDay > 0
+                        ? "0 marks/day"
+                        : !mounted || isLoadingLedgerMarks
+                        ? ""
+                        : totalAnchorLedgerMarksPerDay > 0
                             ? `${totalAnchorLedgerMarksPerDay.toLocaleString(
                                 undefined,
                                 {
-                                  maximumFractionDigits: 2,
+                            maximumFractionDigits: 2,
                                 }
                               )} marks/day`
                             : "0 marks/day";
@@ -5069,10 +5074,10 @@ export default function AnchorPage() {
                             </span>
                           );
                         })()}
-                      </div>
                     </div>
                   </div>
                 </div>
+                  </div>
               </div>
             );
           })()}
@@ -5561,29 +5566,131 @@ export default function AnchorPage() {
 
               const tokenAddressLower = peggedTokenAddress.toLowerCase();
               const walletBalance = marketData.userDeposit || 0n;
-              const walletBalanceUSD = marketData.haTokenBalanceUSD || 0;
 
               // Include if wallet has balance (regardless of pool deposits - they are separate)
               if (walletBalance > 0n) {
                 if (!walletPositionsByToken.has(tokenAddressLower)) {
+                  // Use the max balance across all markets (should be same for same token)
+                  // Calculate USD from the actual balance to avoid double counting
+                  const balanceNum = Number(walletBalance) / 1e18;
+                  // Get price for this token - use consistent price source per token, not per market
+                  const pegTarget = (marketData.market as any)?.pegTarget?.toLowerCase();
+                  let priceUSD = 1; // Default $1 for USD-pegged
+                  
+                  // For EUR-pegged tokens, use eurPrice directly to ensure consistency across markets
+                  console.log(`[anchor page] Token ${tokenAddressLower} (${marketData.market?.peggedToken?.symbol}): pegTarget="${pegTarget}", eurPrice=${eurPrice}, btcPrice=${btcPrice}, ethPrice=${ethPrice}`);
+                  
+                  if (pegTarget === "eur" || pegTarget === "euro") {
+                    if (eurPrice) {
+                      priceUSD = eurPrice;
+                      console.log(`[anchor page] haEUR: Using eurPrice=${eurPrice}, balanceNum=${balanceNum}, balanceUSD=${balanceNum * priceUSD}`);
+                    } else {
+                      console.warn(`[anchor page] haEUR: eurPrice is null/undefined! Checking fallback...`);
+                      // Fallback: try to get price from map, but log warning
+                      const priceMarket = allMarketsData.find((md) => {
+                        const mdTokenAddress = (md.market as any)?.addresses?.peggedToken?.toLowerCase();
+                        return mdTokenAddress === tokenAddressLower;
+                      });
+                      if (priceMarket) {
+                        const price = mergedPeggedPriceMap?.[priceMarket.marketId] ?? peggedPriceUSDMap?.[priceMarket.marketId];
+                        console.warn(`[anchor page] haEUR: priceMarket=${priceMarket.marketId}, price from map=${price?.toString() || 'undefined'}`);
+                        if (price !== undefined && price > 0n) {
+                          priceUSD = Number(price) / 1e18;
+                          console.warn(`[anchor page] haEUR: eurPrice not available, using map price=${priceUSD} for marketId=${priceMarket.marketId}`);
+                        } else {
+                          console.warn(`[anchor page] haEUR: No price available (eurPrice=${eurPrice}, map price=${price?.toString() || 'undefined'}), using default $1`);
+                        }
+                      } else {
+                        console.warn(`[anchor page] haEUR: No priceMarket found for token ${tokenAddressLower}`);
+                      }
+                    }
+                  } else if (pegTarget === "btc" || pegTarget === "bitcoin") {
+                    // For BTC-pegged tokens, use btcPrice directly to ensure consistency across markets (same as EUR)
+                    if (btcPrice) {
+                      priceUSD = btcPrice;
+                      console.log(`[anchor page] haBTC: Using btcPrice=${btcPrice}, balanceNum=${balanceNum}, balanceUSD=${balanceNum * priceUSD}`);
+                    } else {
+                      // Fallback: try to get price from map
+                      const priceMarket = allMarketsData.find((md) => {
+                        const mdTokenAddress = (md.market as any)?.addresses?.peggedToken?.toLowerCase();
+                        return mdTokenAddress === tokenAddressLower;
+                      });
+                      if (priceMarket) {
+                        const price = mergedPeggedPriceMap?.[priceMarket.marketId] ?? peggedPriceUSDMap?.[priceMarket.marketId];
+                        if (price !== undefined && price > 0n) {
+                          priceUSD = Number(price) / 1e18;
+                          console.warn(`[anchor page] haBTC: btcPrice not available, using map price=${priceUSD} for marketId=${priceMarket.marketId}`);
+                        }
+                      }
+                    }
+                  } else if (pegTarget === "eth" || pegTarget === "ethereum") {
+                    // For ETH-pegged tokens, use ethPrice directly to ensure consistency across markets
+                    if (ethPrice) {
+                      priceUSD = ethPrice;
+                      console.log(`[anchor page] haETH: Using ethPrice=${ethPrice}, balanceNum=${balanceNum}, balanceUSD=${balanceNum * priceUSD}`);
+                    } else {
+                      // Fallback: try to get price from map
+                      const priceMarket = allMarketsData.find((md) => {
+                        const mdTokenAddress = (md.market as any)?.addresses?.peggedToken?.toLowerCase();
+                        return mdTokenAddress === tokenAddressLower;
+                      });
+                      if (priceMarket) {
+                        const price = mergedPeggedPriceMap?.[priceMarket.marketId] ?? peggedPriceUSDMap?.[priceMarket.marketId];
+                        if (price !== undefined && price > 0n) {
+                          priceUSD = Number(price) / 1e18;
+                          console.warn(`[anchor page] haETH: ethPrice not available, using map price=${priceUSD} for marketId=${priceMarket.marketId}`);
+                        }
+                      }
+                    }
+                  } else {
+                    // For other tokens (USD-pegged), try to get price from any market using this token
+                    // Find the first market with a price for this token
+                    const priceMarket = allMarketsData.find((md) => {
+                      const mdTokenAddress = (md.market as any)?.addresses?.peggedToken?.toLowerCase();
+                      return mdTokenAddress === tokenAddressLower;
+                    });
+                    if (priceMarket) {
+                      const price = mergedPeggedPriceMap?.[priceMarket.marketId] ?? peggedPriceUSDMap?.[priceMarket.marketId];
+                      if (price !== undefined && price > 0n) {
+                        priceUSD = Number(price) / 1e18;
+                      }
+                    }
+                  }
+                  const balanceUSD = balanceNum * priceUSD;
+                  
                   walletPositionsByToken.set(tokenAddressLower, {
                     tokenAddress: peggedTokenAddress,
                     symbol: marketData.market?.peggedToken?.symbol || "ha",
                     balance: walletBalance,
-                    balanceUSD: walletBalanceUSD,
+                    balanceUSD: balanceUSD,
                     markets: [],
                   });
                 }
                 const position = walletPositionsByToken.get(tokenAddressLower)!;
+                // Just add this market to the list - don't recalculate anything
+                // The USD value was already calculated correctly when the entry was first created
+                console.log(`[anchor page] Token ${tokenAddressLower} (${position.symbol}): Adding market ${marketData.marketId}, existing balanceUSD=${position.balanceUSD}, NOT recalculating`);
                 position.markets.push({
                   marketId: marketData.marketId,
                   market: marketData.market,
                   marketData,
                 });
-                // Use the highest balance/USD value (should be same across markets for same token)
-                if (walletBalanceUSD > position.balanceUSD) {
-                  position.balanceUSD = walletBalanceUSD;
+                // Only update balance if it's actually higher (should be same for same token across markets)
+                // But DO NOT recalculate USD - it was already calculated correctly when the entry was created
+                // Recalculating would cause double counting when multiple markets use the same token
+                if (walletBalance > position.balance) {
+                  // This should rarely happen since same token should have same balance across markets
+                  // If it does happen, maintain the same price per token to avoid inconsistencies
+                  const existingPricePerToken = position.balanceUSD / (Number(position.balance) / 1e18);
+                  position.balance = walletBalance;
+                  if (existingPricePerToken > 0) {
+                    // Use the same price per token that was used initially
+                    position.balanceUSD = (Number(walletBalance) / 1e18) * existingPricePerToken;
+                    console.log(`[anchor page] Token ${tokenAddressLower}: Balance increased, updated USD using existing price ${existingPricePerToken}`);
+                  }
+                  // If existingPricePerToken is 0 or invalid, leave balanceUSD as is (shouldn't happen)
                 }
+                // If balance is same or lower, do nothing - USD was already calculated correctly
               }
             });
 
@@ -5602,151 +5709,151 @@ export default function AnchorPage() {
                   {/* Token positions */}
                   {Array.from(walletPositionsByToken.values()).map(
                     (position) => {
-                      const firstMarket = position.markets[0];
-                      const marketData = firstMarket.marketData;
+                    const firstMarket = position.markets[0];
+                    const marketData = firstMarket.marketData;
 
-                      return (
-                        <div
-                          key={position.tokenAddress}
-                          className="bg-white border border-[#1E4775]/10 p-3 hover:bg-[rgb(var(--surface-selected-rgb))] transition-colors"
-                        >
-                          {/* Desktop layout (>= lg) - matches market bars grid */}
-                          <div className="hidden lg:grid grid-cols-[1fr_1fr_1fr_1fr_1fr_1fr_1fr] gap-4 items-center text-sm">
-                            {/* Token */}
-                            <div className="whitespace-nowrap min-w-0 overflow-hidden">
-                              <div className="flex items-center justify-center gap-1.5">
-                                <SimpleTooltip label={position.symbol}>
-                                  <Image
-                                    src={getLogoPath(position.symbol)}
-                                    alt={position.symbol}
-                                    width={20}
-                                    height={20}
-                                    className="flex-shrink-0 cursor-help"
-                                  />
-                                </SimpleTooltip>
-                                <span className="text-[#1E4775] font-medium text-sm lg:text-base">
-                                  {position.symbol}
-                                </span>
-                              </div>
-                            </div>
-
-                            {/* Deposit Assets - Info text */}
-                            <div className="text-center min-w-0">
-                              <span className="text-xs text-[#1E4775]/60 whitespace-nowrap">
-                                Deposit in a stability pool to earn yield
+                    return (
+                      <div
+                        key={position.tokenAddress}
+                        className="bg-white border border-[#1E4775]/10 p-3 hover:bg-[rgb(var(--surface-selected-rgb))] transition-colors"
+                      >
+                        {/* Desktop layout (>= lg) - matches market bars grid */}
+                        <div className="hidden lg:grid grid-cols-[1fr_1fr_1fr_1fr_1fr_1fr_1fr] gap-4 items-center text-sm">
+                          {/* Token */}
+                          <div className="whitespace-nowrap min-w-0 overflow-hidden">
+                            <div className="flex items-center justify-center gap-1.5">
+                              <SimpleTooltip label={position.symbol}>
+                                <Image
+                                  src={getLogoPath(position.symbol)}
+                                  alt={position.symbol}
+                                  width={20}
+                                  height={20}
+                                  className="flex-shrink-0 cursor-help"
+                                />
+                              </SimpleTooltip>
+                              <span className="text-[#1E4775] font-medium text-sm lg:text-base">
+                                {position.symbol}
                               </span>
-                            </div>
-
-                            {/* APR - empty */}
-                            <div></div>
-
-                            {/* Earnings - empty */}
-                            <div></div>
-
-                            {/* Reward Assets - empty */}
-                            <div></div>
-
-                            {/* Position */}
-                            <div className="text-center min-w-0">
-                              <span className="text-[#1E4775] font-medium text-xs font-mono">
-                                {formatToken(position.balance)}{" "}
-                                {position.symbol} (
-                                {formatCompactUSD(position.balanceUSD)})
-                              </span>
-                            </div>
-
-                            {/* Actions */}
-                            <div
-                              className="text-center min-w-0 flex items-center justify-center gap-1.5 pr-2"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  const enrichedMarkets = position.markets.map(
-                                    (m) => ({
-                                      marketId: m.marketId,
-                                      market: {
-                                        ...m.market,
-                                        wrappedRate: m.marketData?.wrappedRate,
-                                      },
-                                    })
-                                  );
-                                  setManageModal({
-                                    marketId: firstMarket.marketId,
-                                    market: {
-                                      ...firstMarket.market,
-                                      wrappedRate: marketData?.wrappedRate,
-                                    },
-                                    initialTab: "deposit",
-                                    simpleMode: true,
-                                    bestPoolType: "collateral",
-                                    allMarkets: enrichedMarkets,
-                                    // Default the modal deposit-asset selector to the ha token.
-                                    // (Some flows otherwise default to collateral, which is confusing here.)
-                                    initialDepositAsset:
-                                      firstMarket.market?.peggedToken?.symbol ||
-                                      position.symbol,
-                                  });
-                                }}
-                                className="px-3 py-1.5 text-xs font-medium bg-[#1E4775] text-white hover:bg-[#17395F] transition-colors rounded-full whitespace-nowrap"
-                              >
-                                Deposit
-                              </button>
                             </div>
                           </div>
 
-                          {/* Medium/narrow layout (md to < lg) - matches market bars grid */}
-                          <div className="hidden md:grid lg:hidden grid-cols-[1fr_1fr_1fr_1fr] gap-4 items-center text-sm">
-                            {/* Token */}
-                            <div className="whitespace-nowrap min-w-0 overflow-hidden">
-                              <div className="flex items-center justify-center gap-1.5">
-                                <SimpleTooltip label={position.symbol}>
-                                  <Image
-                                    src={getLogoPath(position.symbol)}
-                                    alt={position.symbol}
-                                    width={20}
-                                    height={20}
-                                    className="flex-shrink-0 cursor-help"
-                                  />
-                                </SimpleTooltip>
-                                <span className="text-[#1E4775] font-medium text-sm">
-                                  {position.symbol}
-                                </span>
-                              </div>
-                            </div>
+                          {/* Deposit Assets - Info text */}
+                          <div className="text-center min-w-0">
+                            <span className="text-xs text-[#1E4775]/60 whitespace-nowrap">
+                              Deposit in a stability pool to earn yield
+                            </span>
+                          </div>
 
-                            {/* APR - Info text */}
-                            <div className="text-center min-w-0">
-                              <span className="text-xs text-[#1E4775]/60 whitespace-nowrap">
-                                Deposit in a stability pool to earn yield
-                              </span>
-                            </div>
+                          {/* APR - empty */}
+                          <div></div>
 
-                            {/* Position */}
-                            <div className="text-center min-w-0">
-                              <span className="text-[#1E4775] font-medium text-xs font-mono">
+                          {/* Earnings - empty */}
+                          <div></div>
+
+                          {/* Reward Assets - empty */}
+                          <div></div>
+
+                          {/* Position */}
+                          <div className="text-center min-w-0">
+                            <span className="text-[#1E4775] font-medium text-xs font-mono">
                                 {formatToken(position.balance)}{" "}
                                 {position.symbol} (
                                 {formatCompactUSD(position.balanceUSD)})
-                              </span>
-                            </div>
+                            </span>
+                          </div>
 
-                            {/* Actions */}
-                            <div
-                              className="text-center min-w-0 flex items-center justify-center gap-1.5 pr-2"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
+                          {/* Actions */}
+                          <div
+                            className="text-center min-w-0 flex items-center justify-center gap-1.5 pr-2"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
                                   const enrichedMarkets = position.markets.map(
                                     (m) => ({
-                                      marketId: m.marketId,
-                                      market: {
-                                        ...m.market,
-                                        wrappedRate: m.marketData?.wrappedRate,
-                                      },
+                                  marketId: m.marketId,
+                                  market: {
+                                    ...m.market,
+                                    wrappedRate: m.marketData?.wrappedRate,
+                                  },
+                                    })
+                                  );
+                                setManageModal({
+                                  marketId: firstMarket.marketId,
+                                  market: {
+                                    ...firstMarket.market,
+                                    wrappedRate: marketData?.wrappedRate,
+                                  },
+                                  initialTab: "deposit",
+                                  simpleMode: true,
+                                  bestPoolType: "collateral",
+                                  allMarkets: enrichedMarkets,
+                                  // Default the modal deposit-asset selector to the ha token.
+                                  // (Some flows otherwise default to collateral, which is confusing here.)
+                                    initialDepositAsset:
+                                      firstMarket.market?.peggedToken?.symbol ||
+                                      position.symbol,
+                                });
+                              }}
+                              className="px-4 py-2 text-sm font-semibold bg-[#1E4775] text-white hover:bg-[#17395F] disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors rounded-full whitespace-nowrap"
+                            >
+                              Deposit
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Medium/narrow layout (md to < lg) - matches market bars grid */}
+                        <div className="hidden md:grid lg:hidden grid-cols-[1fr_1fr_1fr_1fr] gap-4 items-center text-sm">
+                          {/* Token */}
+                          <div className="whitespace-nowrap min-w-0 overflow-hidden">
+                            <div className="flex items-center justify-center gap-1.5">
+                              <SimpleTooltip label={position.symbol}>
+                                <Image
+                                  src={getLogoPath(position.symbol)}
+                                  alt={position.symbol}
+                                  width={20}
+                                  height={20}
+                                  className="flex-shrink-0 cursor-help"
+                                />
+                              </SimpleTooltip>
+                              <span className="text-[#1E4775] font-medium text-sm">
+                                {position.symbol}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* APR - Info text */}
+                          <div className="text-center min-w-0">
+                            <span className="text-xs text-[#1E4775]/60 whitespace-nowrap">
+                              Deposit in a stability pool to earn yield
+                            </span>
+                          </div>
+
+                          {/* Position */}
+                          <div className="text-center min-w-0">
+                            <span className="text-[#1E4775] font-medium text-xs font-mono">
+                                {formatToken(position.balance)}{" "}
+                                {position.symbol} (
+                                {formatCompactUSD(position.balanceUSD)})
+                            </span>
+                          </div>
+
+                          {/* Actions */}
+                          <div
+                            className="text-center min-w-0 flex items-center justify-center gap-1.5 pr-2"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                  const enrichedMarkets = position.markets.map(
+                                    (m) => ({
+                                  marketId: m.marketId,
+                                  market: {
+                                    ...m.market,
+                                    wrappedRate: m.marketData?.wrappedRate,
+                                  },
                                     })
                                   );
                                   setManageModal({
@@ -5764,7 +5871,7 @@ export default function AnchorPage() {
                                       position.symbol,
                                   });
                                 }}
-                                className="px-3 py-1.5 text-xs font-medium bg-[#1E4775] text-white hover:bg-[#17395F] transition-colors rounded-full whitespace-nowrap"
+                                className="px-4 py-2 text-sm font-semibold bg-[#1E4775] text-white hover:bg-[#17395F] disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors rounded-full whitespace-nowrap"
                               >
                                 Deposit
                               </button>
@@ -5772,72 +5879,72 @@ export default function AnchorPage() {
                           </div>
 
                           {/* Mobile layout (< md) */}
-                          <div className="md:hidden space-y-2">
-                            <div className="flex items-center justify-between gap-3">
-                              <div className="flex items-center gap-2 min-w-0 flex-1">
-                                <SimpleTooltip label={position.symbol}>
-                                  <Image
-                                    src={getLogoPath(position.symbol)}
-                                    alt={position.symbol}
-                                    width={20}
-                                    height={20}
-                                    className="flex-shrink-0 cursor-help"
-                                  />
-                                </SimpleTooltip>
-                                <span className="text-[#1E4775] font-medium text-sm truncate">
-                                  {position.symbol}
-                                </span>
-                                <span className="text-xs text-[#1E4775]/60 hidden sm:inline ml-2 whitespace-nowrap">
-                                  Deposit in a stability pool to earn yield
-                                </span>
-                              </div>
-                              <div
-                                className="flex items-center justify-end flex-shrink-0"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
+                        <div className="md:hidden space-y-2">
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-2 min-w-0 flex-1">
+                              <SimpleTooltip label={position.symbol}>
+                                <Image
+                                  src={getLogoPath(position.symbol)}
+                                  alt={position.symbol}
+                                  width={20}
+                                  height={20}
+                                  className="flex-shrink-0 cursor-help"
+                                />
+                              </SimpleTooltip>
+                              <span className="text-[#1E4775] font-medium text-sm truncate">
+                                {position.symbol}
+                              </span>
+                              <span className="text-xs text-[#1E4775]/60 hidden sm:inline ml-2 whitespace-nowrap">
+                                Deposit in a stability pool to earn yield
+                              </span>
+                            </div>
+                            <div
+                              className="flex items-center justify-end flex-shrink-0"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
                                     const enrichedMarkets =
                                       position.markets.map((m) => ({
-                                        marketId: m.marketId,
-                                        market: {
-                                          ...m.market,
+                                    marketId: m.marketId,
+                                    market: {
+                                      ...m.market,
                                           wrappedRate:
                                             m.marketData?.wrappedRate,
-                                        },
-                                      }));
-                                    setManageModal({
-                                      marketId: firstMarket.marketId,
-                                      market: {
-                                        ...firstMarket.market,
-                                        wrappedRate: marketData?.wrappedRate,
-                                      },
-                                      initialTab: "deposit",
-                                      simpleMode: true,
-                                      bestPoolType: "collateral",
-                                      allMarkets: enrichedMarkets,
-                                      initialDepositAsset:
+                                    },
+                                  }));
+                                  setManageModal({
+                                    marketId: firstMarket.marketId,
+                                    market: {
+                                      ...firstMarket.market,
+                                      wrappedRate: marketData?.wrappedRate,
+                                    },
+                                    initialTab: "deposit",
+                                    simpleMode: true,
+                                    bestPoolType: "collateral",
+                                    allMarkets: enrichedMarkets,
+                                    initialDepositAsset:
                                         firstMarket.market?.peggedToken
                                           ?.symbol || position.symbol,
-                                    });
-                                  }}
-                                  className="px-3 py-1.5 text-xs font-medium bg-[#1E4775] text-white hover:bg-[#17395F] transition-colors rounded-full whitespace-nowrap"
-                                >
-                                  Deposit
-                                </button>
-                              </div>
-                            </div>
-                            <div className="text-xs text-[#1E4775]/60">
-                              {formatToken(position.balance)} {position.symbol}{" "}
-                              ({formatCompactUSD(position.balanceUSD)})
-                            </div>
-                            <div className="text-xs text-[#1E4775]/60 sm:hidden">
-                              Deposit in a stability pool to earn yield
+                                  });
+                                }}
+                                className="px-4 py-2 text-sm font-semibold bg-[#1E4775] text-white hover:bg-[#17395F] disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors rounded-full whitespace-nowrap"
+                              >
+                                Deposit
+                              </button>
                             </div>
                           </div>
+                          <div className="text-xs text-[#1E4775]/60">
+                              {formatToken(position.balance)} {position.symbol}{" "}
+                              ({formatCompactUSD(position.balanceUSD)})
+                          </div>
+                          <div className="text-xs text-[#1E4775]/60 sm:hidden">
+                            Deposit in a stability pool to earn yield
+                          </div>
                         </div>
-                      );
+                      </div>
+                    );
                     }
                   )}
                 </div>
@@ -5851,7 +5958,7 @@ export default function AnchorPage() {
           {/* Markets List */}
           <section className="space-y-2 overflow-visible">
             {/* Stability Pools Header */}
-            <div className="mb-3 flex items-center justify-between gap-3">
+            <div className="pt-4 mb-3 flex items-center justify-between gap-3">
               <h2 className="text-xs font-medium text-white/70 uppercase tracking-wider">
                 Stability Pools
               </h2>
@@ -5867,8 +5974,8 @@ export default function AnchorPage() {
                   </div>
                 }
               >
-                <div className="cursor-help bg-black/35 hover:bg-black/40 border border-white/25 backdrop-blur-sm px-3 py-1.5 rounded-full transition-colors">
-                  <div className="flex items-center gap-2 text-white/90 text-sm whitespace-nowrap">
+                <div className="cursor-help bg-[#E67A6B] hover:bg-[#D66A5B] border border-white backdrop-blur-sm px-2 py-1 rounded-full transition-colors">
+                  <div className="flex items-center gap-1.5 text-white text-sm whitespace-nowrap">
                     <Image
                       src="/icons/marks.png"
                       alt="Marks"
@@ -5877,11 +5984,10 @@ export default function AnchorPage() {
                       className="opacity-95"
                     />
                     <span>
-                      <span className="font-semibold">Earn Ledger Marks</span>{" "}
-                      <span className="text-white/70">for all positions</span>{" "}
-                      <span className="text-white/60">
-                        • 1 mark / dollar / day
-                      </span>
+                      <span className="font-semibold">
+                        All positions earn Ledger Marks
+                      </span>{" "}
+                      <span className="text-white/90">• 1 / $ / day</span>
                     </span>
                   </div>
                 </div>
@@ -5978,182 +6084,182 @@ export default function AnchorPage() {
                     </div>
                   </div>
                   {Object.entries(groups).map(([symbol, marketList]) => {
-                    // Collect all data for markets in this group from the hook
-                    const marketsData = marketList
-                      .map(({ marketId }) => marketsDataMap.get(marketId))
+                // Collect all data for markets in this group from the hook
+                const marketsData = marketList
+                  .map(({ marketId }) => marketsDataMap.get(marketId))
                       .filter(
                         (m): m is NonNullable<typeof m> => m !== undefined
                       );
 
-                    // Use all markets in the group (not just those with collateral > 0)
-                    // This ensures all markets are displayed in the expanded view
-                    const activeMarketsData = marketsData;
+                // Use all markets in the group (not just those with collateral > 0)
+                // This ensures all markets are displayed in the expanded view
+                const activeMarketsData = marketsData;
 
-                    // Skip this group if no markets exist
-                    if (activeMarketsData.length === 0) {
-                      return null;
-                    }
+                // Skip this group if no markets exist
+                if (activeMarketsData.length === 0) {
+                  return null;
+                }
 
-                    // Calculate combined values - only include stability pool deposits (not wallet balances)
-                    const combinedPositionUSD = activeMarketsData.reduce(
-                      (sum, m) => {
+                // Calculate combined values - only include stability pool deposits (not wallet balances)
+                const combinedPositionUSD = activeMarketsData.reduce(
+                  (sum, m) => {
                         return (
                           sum +
                           m.collateralPoolDepositUSD +
                           m.sailPoolDepositUSD
                         );
-                      },
-                      0
-                    );
-                    // Also track total token amounts (for display when USD isn't available) - only pool deposits
-                    const combinedPositionTokens = activeMarketsData.reduce(
-                      (sum, m) =>
-                        sum +
-                        Number(m.collateralPoolDeposit || 0n) / 1e18 +
-                        Number(m.sailPoolDeposit || 0n) / 1e18,
-                      0
-                    );
-                    const combinedRewardsUSD = activeMarketsData.reduce(
+                  },
+                  0
+                );
+                // Also track total token amounts (for display when USD isn't available) - only pool deposits
+                const combinedPositionTokens = activeMarketsData.reduce(
+                  (sum, m) =>
+                    sum +
+                    Number(m.collateralPoolDeposit || 0n) / 1e18 +
+                    Number(m.sailPoolDeposit || 0n) / 1e18,
+                  0
+                );
+                const combinedRewardsUSD = activeMarketsData.reduce(
                       (sum, m) =>
                         sum + m.collateralRewardsUSD + m.sailRewardsUSD,
-                      0
-                    );
+                  0
+                );
 
-                    // Calculate APR ranges across all markets in group
-                    const allMinAPRs = activeMarketsData
-                      .map((m) => m.minAPR)
-                      .filter((v) => v > 0);
-                    const allMaxAPRs = activeMarketsData
-                      .map((m) => m.maxAPR)
-                      .filter((v) => v > 0);
-                    const minAPR =
-                      allMinAPRs.length > 0 ? Math.min(...allMinAPRs) : 0;
-                    const maxAPR =
-                      allMaxAPRs.length > 0 ? Math.max(...allMaxAPRs) : 0;
+                // Calculate APR ranges across all markets in group
+                const allMinAPRs = activeMarketsData
+                  .map((m) => m.minAPR)
+                  .filter((v) => v > 0);
+                const allMaxAPRs = activeMarketsData
+                  .map((m) => m.maxAPR)
+                  .filter((v) => v > 0);
+                const minAPR =
+                  allMinAPRs.length > 0 ? Math.min(...allMinAPRs) : 0;
+                const maxAPR =
+                  allMaxAPRs.length > 0 ? Math.max(...allMaxAPRs) : 0;
 
-                    // Collect actual APRs from stability pools for tooltip
-                    const collateralPoolAPRs = activeMarketsData
-                      .map((m) => m.collateralPoolAPR)
-                      .filter(
-                        (apr): apr is { collateral: number; steam: number } =>
-                          apr !== undefined
-                      )
-                      .map((apr) => apr.collateral + apr.steam)
-                      .filter((v) => v > 0);
-                    const sailPoolAPRs = activeMarketsData
-                      .map((m) => m.sailPoolAPR)
-                      .filter(
-                        (apr): apr is { collateral: number; steam: number } =>
-                          apr !== undefined
-                      )
-                      .map((apr) => apr.collateral + apr.steam)
-                      .filter((v) => v > 0);
-                    const collateralPoolAPRMin =
-                      collateralPoolAPRs.length > 0
-                        ? Math.min(...collateralPoolAPRs)
-                        : null;
-                    const collateralPoolAPRMax =
-                      collateralPoolAPRs.length > 0
-                        ? Math.max(...collateralPoolAPRs)
-                        : null;
-                    const sailPoolAPRMin =
+                // Collect actual APRs from stability pools for tooltip
+                const collateralPoolAPRs = activeMarketsData
+                  .map((m) => m.collateralPoolAPR)
+                  .filter(
+                    (apr): apr is { collateral: number; steam: number } =>
+                      apr !== undefined
+                  )
+                  .map((apr) => apr.collateral + apr.steam)
+                  .filter((v) => v > 0);
+                const sailPoolAPRs = activeMarketsData
+                  .map((m) => m.sailPoolAPR)
+                  .filter(
+                    (apr): apr is { collateral: number; steam: number } =>
+                      apr !== undefined
+                  )
+                  .map((apr) => apr.collateral + apr.steam)
+                  .filter((v) => v > 0);
+                const collateralPoolAPRMin =
+                  collateralPoolAPRs.length > 0
+                    ? Math.min(...collateralPoolAPRs)
+                    : null;
+                const collateralPoolAPRMax =
+                  collateralPoolAPRs.length > 0
+                    ? Math.max(...collateralPoolAPRs)
+                    : null;
+                const sailPoolAPRMin =
                       sailPoolAPRs.length > 0
                         ? Math.min(...sailPoolAPRs)
                         : null;
-                    const sailPoolAPRMax =
+                const sailPoolAPRMax =
                       sailPoolAPRs.length > 0
                         ? Math.max(...sailPoolAPRs)
                         : null;
 
-                    // Calculate projected APR ranges
-                    const allMinProjectedAPRs = activeMarketsData
-                      .map((m) => m.minProjectedAPR)
-                      .filter((v): v is number => v !== null && v > 0);
-                    const allMaxProjectedAPRs = activeMarketsData
-                      .map((m) => m.maxProjectedAPR)
-                      .filter((v): v is number => v !== null && v > 0);
-                    const minProjectedAPR =
-                      allMinProjectedAPRs.length > 0
-                        ? Math.min(...allMinProjectedAPRs)
-                        : null;
-                    const maxProjectedAPR =
-                      allMaxProjectedAPRs.length > 0
-                        ? Math.max(...allMaxProjectedAPRs)
-                        : null;
+                // Calculate projected APR ranges
+                const allMinProjectedAPRs = activeMarketsData
+                  .map((m) => m.minProjectedAPR)
+                  .filter((v): v is number => v !== null && v > 0);
+                const allMaxProjectedAPRs = activeMarketsData
+                  .map((m) => m.maxProjectedAPR)
+                  .filter((v): v is number => v !== null && v > 0);
+                const minProjectedAPR =
+                  allMinProjectedAPRs.length > 0
+                    ? Math.min(...allMinProjectedAPRs)
+                    : null;
+                const maxProjectedAPR =
+                  allMaxProjectedAPRs.length > 0
+                    ? Math.max(...allMaxProjectedAPRs)
+                    : null;
 
-                    // Collect all unique wrapped collateral assets (only show wrapped collateral, not all accepted assets)
-                    const assetMap = new Map<
-                      string,
-                      { symbol: string; name: string }
-                    >();
-                    marketList.forEach(({ market }) => {
-                      // Only show wrapped collateral (fxSAVE, wstETH)
-                      if (market?.collateral?.symbol) {
-                        const wrappedCollateral = {
-                          symbol: market.collateral.symbol,
+                // Collect all unique wrapped collateral assets (only show wrapped collateral, not all accepted assets)
+                const assetMap = new Map<
+                  string,
+                  { symbol: string; name: string }
+                >();
+                marketList.forEach(({ market }) => {
+                  // Only show wrapped collateral (fxSAVE, wstETH)
+                  if (market?.collateral?.symbol) {
+                    const wrappedCollateral = {
+                      symbol: market.collateral.symbol,
                           name:
                             market.collateral.name || market.collateral.symbol,
-                        };
-                        if (!assetMap.has(wrappedCollateral.symbol)) {
+                    };
+                    if (!assetMap.has(wrappedCollateral.symbol)) {
                           assetMap.set(
                             wrappedCollateral.symbol,
                             wrappedCollateral
                           );
-                        }
-                      }
-                    });
-                    const allDepositAssets = Array.from(assetMap.values());
+                    }
+                  }
+                });
+                const allDepositAssets = Array.from(assetMap.values());
 
-                    // Collect all unique reward tokens from pools for markets in this group
-                    const firstMarket = marketList[0]?.market;
-
-                    // Helper function to get directly zappable assets (no slippage)
-                    // Excludes wrapped collateral since it's already shown in the main deposit assets view
+                // Collect all unique reward tokens from pools for markets in this group
+                const firstMarket = marketList[0]?.market;
+                
+                // Helper function to get directly zappable assets (no slippage)
+                // Excludes wrapped collateral since it's already shown in the main deposit assets view
                     const getDirectlyZappableAssets = (
                       market: any
                     ): Array<{ symbol: string; name: string }> => {
                       const collateralSymbol =
                         market?.collateral?.symbol?.toLowerCase() || "";
-                      const isFxSAVEMarket = collateralSymbol === "fxsave";
-                      const isWstETHMarket = collateralSymbol === "wsteth";
-
-                      if (isFxSAVEMarket) {
-                        // Exclude fxSAVE (wrapped collateral) - only show USDC and fxUSD
-                        return [
-                          { symbol: "USDC", name: "USD Coin" },
-                          { symbol: "fxUSD", name: "f(x) USD" },
-                        ];
-                      } else if (isWstETHMarket) {
-                        // Exclude wstETH (wrapped collateral) - only show ETH and stETH
-                        return [
-                          { symbol: "ETH", name: "Ethereum" },
-                          { symbol: "stETH", name: "Lido Staked ETH" },
-                        ];
-                      }
-                      return [];
-                    };
-
-                    // Collect zappable assets from all markets in the group
-                    const zappableAssetsMap = new Map<
-                      string,
-                      { symbol: string; name: string }
-                    >();
-                    marketList.forEach(({ market }) => {
-                      const zappableAssets = getDirectlyZappableAssets(market);
-                      zappableAssets.forEach((asset) => {
-                        if (!zappableAssetsMap.has(asset.symbol)) {
-                          zappableAssetsMap.set(asset.symbol, asset);
-                        }
-                      });
-                    });
+                  const isFxSAVEMarket = collateralSymbol === "fxsave";
+                  const isWstETHMarket = collateralSymbol === "wsteth";
+                  
+                  if (isFxSAVEMarket) {
+                    // Exclude fxSAVE (wrapped collateral) - only show USDC and fxUSD
+                    return [
+                      { symbol: "USDC", name: "USD Coin" },
+                      { symbol: "fxUSD", name: "f(x) USD" },
+                    ];
+                  } else if (isWstETHMarket) {
+                    // Exclude wstETH (wrapped collateral) - only show ETH and stETH
+                    return [
+                      { symbol: "ETH", name: "Ethereum" },
+                      { symbol: "stETH", name: "Lido Staked ETH" },
+                    ];
+                  }
+                  return [];
+                };
+                
+                // Collect zappable assets from all markets in the group
+                const zappableAssetsMap = new Map<
+                  string,
+                  { symbol: string; name: string }
+                >();
+                marketList.forEach(({ market }) => {
+                  const zappableAssets = getDirectlyZappableAssets(market);
+                  zappableAssets.forEach((asset) => {
+                    if (!zappableAssetsMap.has(asset.symbol)) {
+                      zappableAssetsMap.set(asset.symbol, asset);
+                    }
+                  });
+                });
                     const directlyZappableAssets = Array.from(
                       zappableAssetsMap.values()
                     );
-                    const collateralPoolAddress = firstMarket?.addresses
-                      ?.stabilityPoolCollateral as `0x${string}` | undefined;
-                    const sailPoolAddress = firstMarket?.addresses
-                      ?.stabilityPoolLeveraged as `0x${string}` | undefined;
-                    const peggedTokenSymbol = firstMarket?.peggedToken?.symbol;
+                const collateralPoolAddress = firstMarket?.addresses
+                  ?.stabilityPoolCollateral as `0x${string}` | undefined;
+                const sailPoolAddress = firstMarket?.addresses
+                  ?.stabilityPoolLeveraged as `0x${string}` | undefined;
+                const peggedTokenSymbol = firstMarket?.peggedToken?.symbol;
                     const collateralSymbol =
                       firstMarket?.collateral?.symbol || "";
 
@@ -6166,17 +6272,17 @@ export default function AnchorPage() {
                       )
                       .filter(Boolean) as `0x${string}`[];
 
-                    return (
-                      <React.Fragment key={symbol}>
-                        <div
-                          className={`p-3 overflow-visible md:overflow-x-auto transition cursor-pointer ${
-                            isExpanded
-                              ? "bg-[rgb(var(--surface-selected-rgb))]"
-                              : "bg-white hover:bg-[rgb(var(--surface-selected-rgb))]"
-                          }`}
-                          onClick={(e) => {
-                            // Expand unless clicking on a button or element that stops propagation
-                            const target = e.target as HTMLElement;
+                return (
+                  <React.Fragment key={symbol}>
+                    <div
+                      className={`p-3 overflow-visible md:overflow-x-auto transition cursor-pointer ${
+                        isExpanded
+                          ? "bg-[rgb(var(--surface-selected-rgb))]"
+                          : "bg-white hover:bg-[rgb(var(--surface-selected-rgb))]"
+                      }`}
+                      onClick={(e) => {
+                        // Expand unless clicking on a button or element that stops propagation
+                        const target = e.target as HTMLElement;
                             if (
                               target.closest("button") === null &&
                               target.closest("[onclick]") === null
@@ -6186,101 +6292,97 @@ export default function AnchorPage() {
                                   ? prev.filter((s) => s !== symbol)
                                   : [...prev, symbol]
                               );
-                            }
-                          }}
-                        >
-                          {/* Mobile card layout (< md) - modeled after Maiden Voyage page */}
-                          <div className="md:hidden space-y-3">
-                            <div className="flex items-center justify-between gap-3">
-                              <div className="flex items-center gap-2 min-w-0">
+                        }
+                      }}
+                    >
+                      {/* Mobile card layout (< md) - modeled after Maiden Voyage page */}
+                      <div className="md:hidden space-y-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-2 min-w-0">
                                 <SimpleTooltip
                                   label={peggedTokenSymbol || symbol}
                                 >
-                                  <Image
+                              <Image
                                     src={getLogoPath(
                                       peggedTokenSymbol || symbol
                                     )}
-                                    alt={peggedTokenSymbol || symbol}
-                                    width={20}
-                                    height={20}
-                                    className="flex-shrink-0 cursor-help"
-                                  />
-                                </SimpleTooltip>
-                                <span className="text-[#1E4775] font-semibold text-base truncate">
-                                  {symbol}
-                                </span>
-                                {isExpanded ? (
-                                  <ChevronUpIcon className="w-5 h-5 text-[#1E4775] flex-shrink-0" />
-                                ) : (
-                                  <ChevronDownIcon className="w-5 h-5 text-[#1E4775] flex-shrink-0" />
-                                )}
-                              </div>
+                                alt={peggedTokenSymbol || symbol}
+                                width={20}
+                                height={20}
+                                className="flex-shrink-0 cursor-help"
+                              />
+                            </SimpleTooltip>
+                            <span className="text-[#1E4775] font-semibold text-base truncate">
+                              {symbol}
+                            </span>
+                            {isExpanded ? (
+                              <ChevronUpIcon className="w-5 h-5 text-[#1E4775] flex-shrink-0" />
+                            ) : (
+                              <ChevronDownIcon className="w-5 h-5 text-[#1E4775] flex-shrink-0" />
+                            )}
+                          </div>
 
-                              <div
-                                className="flex items-center justify-end flex-shrink-0"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
+                          <div
+                            className="flex items-center justify-end flex-shrink-0"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
                                     if (!isConnected) return;
                                     const enrichedAllMarkets = marketList.map(
                                       (m) => {
-                                        const marketData = marketsData.find(
-                                          (md) => md.marketId === m.marketId
-                                        );
-                                        return {
-                                          marketId: m.marketId,
-                                          market: {
-                                            ...m.market,
+                                  const marketData = marketsData.find(
+                                    (md) => md.marketId === m.marketId
+                                  );
+                                  return {
+                                    marketId: m.marketId,
+                                    market: {
+                                      ...m.market,
                                             wrappedRate:
                                               marketData?.wrappedRate,
-                                          },
-                                        };
+                                    },
+                                  };
                                       }
                                     );
-                                    setManageModal({
-                                      marketId: marketList[0].marketId,
-                                      market: {
-                                        ...marketList[0].market,
-                                        wrappedRate: marketsData.find(
+                                setManageModal({
+                                  marketId: marketList[0].marketId,
+                                  market: {
+                                    ...marketList[0].market,
+                                    wrappedRate: marketsData.find(
                                           (md) =>
                                             md.marketId ===
                                             marketList[0].marketId
-                                        )?.wrappedRate,
-                                      },
-                                      initialTab: "deposit",
-                                      simpleMode: true,
-                                      bestPoolType: "collateral",
-                                      allMarkets: enrichedAllMarkets,
-                                    });
-                                  }}
+                                    )?.wrappedRate,
+                                  },
+                                  initialTab: "deposit",
+                                  simpleMode: true,
+                                  bestPoolType: "collateral",
+                                  allMarkets: enrichedAllMarkets,
+                                });
+                              }}
                                   disabled={!isConnected}
-                                  className={`px-3 py-1.5 text-xs font-medium transition-colors rounded-full whitespace-nowrap ${
-                                    !isConnected
-                                      ? "bg-[#1E4775]/40 text-white/80 cursor-not-allowed"
-                                      : "bg-[#1E4775] text-white hover:bg-[#17395F]"
-                                  }`}
-                                >
-                                  Manage
-                                </button>
-                              </div>
-                            </div>
-
-                            {/* Mobile stats: single row, headers above values */}
-                            <div
-                              className="flex items-stretch justify-between gap-3 whitespace-nowrap"
-                              onClick={(e) => e.stopPropagation()}
+                                  className="px-4 py-2 text-sm font-semibold bg-[#1E4775] text-white hover:bg-[#17395F] disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors rounded-full whitespace-nowrap"
                             >
-                              <div className="flex flex-col items-end leading-tight min-w-0">
-                                <div className="text-[10px] text-[#1E4775]/60 font-semibold uppercase tracking-wide">
-                                  APR
-                                </div>
-                                <div className="text-[#1E4775] font-semibold text-sm font-mono">
-                                  {(() => {
+                              Manage
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Mobile stats: single row, headers above values */}
+                        <div
+                          className="flex items-stretch justify-between gap-3 whitespace-nowrap"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <div className="flex flex-col items-end leading-tight min-w-0">
+                            <div className="text-[10px] text-[#1E4775]/60 font-semibold uppercase tracking-wide">
+                              APR
+                            </div>
+                            <div className="text-[#1E4775] font-semibold text-sm font-mono">
+                              {(() => {
                                     const hasCurrentAPR =
                                       minAPR > 0 || maxAPR > 0;
-                                    const hasProjectedAPR =
+                                const hasProjectedAPR =
                                       (minProjectedAPR !== null &&
                                         minProjectedAPR > 0) ||
                                       (maxProjectedAPR !== null &&
@@ -6293,16 +6395,16 @@ export default function AnchorPage() {
                                         return `${min.toFixed(
                                           1
                                         )}% - ${max.toFixed(1)}%`;
-                                      return `${max.toFixed(1)}%`;
-                                    };
+                                  return `${max.toFixed(1)}%`;
+                                };
                                     const currentStr = hasCurrentAPR
                                       ? formatRange(minAPR, maxAPR)
                                       : "";
-                                    const projMin =
+                                const projMin =
                                       minProjectedAPR !== null
                                         ? minProjectedAPR
                                         : maxProjectedAPR ?? 0;
-                                    const projMax =
+                                const projMax =
                                       maxProjectedAPR !== null
                                         ? maxProjectedAPR
                                         : minProjectedAPR ?? 0;
@@ -6315,92 +6417,92 @@ export default function AnchorPage() {
                                       return projectedStr
                                         ? `Proj ${projectedStr}`
                                         : "-";
-                                    // Don't show projected APR if we have LIVE APRs
-                                    return currentStr || "-";
-                                  })()}
-                                </div>
-                              </div>
-
-                              <div className="flex flex-col items-end leading-tight min-w-0">
-                                <div className="text-[10px] text-[#1E4775]/60 font-semibold uppercase tracking-wide">
-                                  Position
-                                </div>
-                                <div className="text-[#1E4775] font-semibold text-sm font-mono">
-                                  {combinedPositionUSD > 0
-                                    ? formatCompactUSD(combinedPositionUSD)
-                                    : combinedPositionTokens > 0
-                                    ? `${combinedPositionTokens.toLocaleString(
-                                        undefined,
-                                        {
-                                          maximumFractionDigits: 2,
-                                        }
-                                      )} ${symbol}`
-                                    : "-"}
-                                </div>
-                              </div>
-
-                              <div className="flex flex-col items-end leading-tight min-w-0">
-                                <div className="text-[10px] text-[#1E4775]/60 font-semibold uppercase tracking-wide">
-                                  Earnings
-                                </div>
-                                <div className="text-[#1E4775] font-semibold text-sm font-mono">
-                                  {combinedRewardsUSD > 0
-                                    ? `$${combinedRewardsUSD.toFixed(2)}`
-                                    : "-"}
-                                </div>
-                              </div>
-
-                              <div className="flex flex-col items-end leading-tight min-w-0">
-                                <div className="text-[10px] text-[#1E4775]/60 font-semibold uppercase tracking-wide">
-                                  Rewards
-                                </div>
-                                <div className="mt-0.5 flex items-center justify-end">
-                                  <RewardTokensDisplay
-                                    collateralPool={collateralPoolAddress}
-                                    sailPool={sailPoolAddress}
-                                    poolAddresses={rewardPoolAddresses}
-                                    iconSize={16}
-                                    className="justify-end gap-1"
-                                  />
-                                </div>
-                              </div>
+                                // Don't show projected APR if we have LIVE APRs
+                                return currentStr || "-";
+                              })()}
                             </div>
                           </div>
 
-                          {/* Medium / narrow layout (md to < lg) */}
-                          <div className="hidden md:grid lg:hidden grid-cols-[1fr_1fr_1fr_1fr] gap-4 items-center text-sm">
-                            <div className="whitespace-nowrap min-w-0 overflow-hidden">
-                              <div className="flex items-center justify-center gap-1.5">
+                          <div className="flex flex-col items-end leading-tight min-w-0">
+                            <div className="text-[10px] text-[#1E4775]/60 font-semibold uppercase tracking-wide">
+                              Position
+                            </div>
+                            <div className="text-[#1E4775] font-semibold text-sm font-mono">
+                              {combinedPositionUSD > 0
+                                ? formatCompactUSD(combinedPositionUSD)
+                                : combinedPositionTokens > 0
+                                    ? `${combinedPositionTokens.toLocaleString(
+                                        undefined,
+                                        {
+                                    maximumFractionDigits: 2,
+                                        }
+                                      )} ${symbol}`
+                                : "-"}
+                            </div>
+                          </div>
+
+                          <div className="flex flex-col items-end leading-tight min-w-0">
+                            <div className="text-[10px] text-[#1E4775]/60 font-semibold uppercase tracking-wide">
+                              Earnings
+                            </div>
+                            <div className="text-[#1E4775] font-semibold text-sm font-mono">
+                                  {combinedRewardsUSD > 0
+                                    ? `$${combinedRewardsUSD.toFixed(2)}`
+                                    : "-"}
+                            </div>
+                          </div>
+
+                          <div className="flex flex-col items-end leading-tight min-w-0">
+                            <div className="text-[10px] text-[#1E4775]/60 font-semibold uppercase tracking-wide">
+                              Rewards
+                            </div>
+                            <div className="mt-0.5 flex items-center justify-end">
+                              <RewardTokensDisplay
+                                collateralPool={collateralPoolAddress}
+                                sailPool={sailPoolAddress}
+                                    poolAddresses={rewardPoolAddresses}
+                                iconSize={16}
+                                className="justify-end gap-1"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Medium / narrow layout (md to < lg) */}
+                      <div className="hidden md:grid lg:hidden grid-cols-[1fr_1fr_1fr_1fr] gap-4 items-center text-sm">
+                        <div className="whitespace-nowrap min-w-0 overflow-hidden">
+                          <div className="flex items-center justify-center gap-1.5">
                                 <SimpleTooltip
                                   label={peggedTokenSymbol || symbol}
                                 >
-                                  <Image
+                              <Image
                                     src={getLogoPath(
                                       peggedTokenSymbol || symbol
                                     )}
-                                    alt={peggedTokenSymbol || symbol}
-                                    width={20}
-                                    height={20}
-                                    className="flex-shrink-0 cursor-help"
-                                  />
-                                </SimpleTooltip>
-                                <span className="text-[#1E4775] font-medium text-sm">
-                                  {symbol}
-                                </span>
-                                {isExpanded ? (
-                                  <ChevronUpIcon className="w-5 h-5 text-[#1E4775] flex-shrink-0" />
-                                ) : (
-                                  <ChevronDownIcon className="w-5 h-5 text-[#1E4775] flex-shrink-0" />
-                                )}
-                              </div>
-                            </div>
-                            <div
-                              className="text-center min-w-0"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              {(() => {
-                                const hasCurrentAPR = minAPR > 0 || maxAPR > 0;
-                                const hasProjectedAPR =
+                                alt={peggedTokenSymbol || symbol}
+                                width={20}
+                                height={20}
+                                className="flex-shrink-0 cursor-help"
+                              />
+                            </SimpleTooltip>
+                            <span className="text-[#1E4775] font-medium text-sm">
+                              {symbol}
+                            </span>
+                            {isExpanded ? (
+                              <ChevronUpIcon className="w-5 h-5 text-[#1E4775] flex-shrink-0" />
+                            ) : (
+                              <ChevronDownIcon className="w-5 h-5 text-[#1E4775] flex-shrink-0" />
+                            )}
+                          </div>
+                        </div>
+                        <div
+                          className="text-center min-w-0"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {(() => {
+                            const hasCurrentAPR = minAPR > 0 || maxAPR > 0;
+                            const hasProjectedAPR =
                                   (minProjectedAPR !== null &&
                                     minProjectedAPR > 0) ||
                                   (maxProjectedAPR !== null &&
@@ -6409,16 +6511,747 @@ export default function AnchorPage() {
                                   min: number,
                                   max: number
                                 ) => {
-                                  if (min > 0 && min !== max) {
+                              if (min > 0 && min !== max) {
                                     return `${min.toFixed(1)}% - ${max.toFixed(
                                       1
                                     )}%`;
-                                  }
-                                  return `${max.toFixed(1)}%`;
-                                };
+                              }
+                              return `${max.toFixed(1)}%`;
+                            };
                                 const currentStr = hasCurrentAPR
                                   ? formatRange(minAPR, maxAPR)
                                   : "";
+                            const projMin =
+                                  minProjectedAPR !== null
+                                    ? minProjectedAPR
+                                    : maxProjectedAPR ?? 0;
+                            const projMax =
+                                  maxProjectedAPR !== null
+                                    ? maxProjectedAPR
+                                    : minProjectedAPR ?? 0;
+                                const projectedStr = hasProjectedAPR
+                                  ? formatRange(projMin, projMax)
+                                  : "";
+
+                            if (!hasCurrentAPR && !hasProjectedAPR) {
+                                  return (
+                                    <span className="text-[#1E4775] font-bold text-sm font-mono">
+                                      -
+                                    </span>
+                                  );
+                            }
+
+                            if (!hasCurrentAPR && hasProjectedAPR) {
+                              return (
+                                <div className="flex flex-col items-center leading-tight">
+                                      <div className="text-[10px] text-[#1E4775]/60 font-semibold">
+                                        Proj
+                                      </div>
+                                  <div className="text-[#1E4775] font-bold text-sm font-mono">
+                                    {projectedStr}
+                                  </div>
+                                </div>
+                              );
+                            }
+
+                            // Don't show projected APR if we have LIVE APRs
+                            if (hasCurrentAPR) {
+                              return (
+                                <span className="text-[#1E4775] font-bold text-sm font-mono">
+                                  {currentStr}
+                                </span>
+                              );
+                            }
+
+                            return (
+                              <span className="text-[#1E4775] font-bold text-sm font-mono">
+                                {currentStr || "-"}
+                              </span>
+                            );
+                          })()}
+                        </div>
+                        <div className="text-center min-w-0">
+                          <div className="inline-flex items-stretch justify-center gap-4 whitespace-nowrap">
+                            <div className="flex flex-col items-center leading-tight">
+                              <div className="text-[10px] text-[#1E4775]/60 font-semibold uppercase tracking-wide">
+                                Position
+                              </div>
+                              <div className="text-[#1E4775] font-medium text-xs font-mono">
+                                {combinedPositionUSD > 0
+                                  ? formatCompactUSD(combinedPositionUSD)
+                                  : combinedPositionTokens > 0
+                                      ? `${combinedPositionTokens.toLocaleString(
+                                          undefined,
+                                          {
+                                      maximumFractionDigits: 2,
+                                          }
+                                        )} ${symbol}`
+                                  : "-"}
+                              </div>
+                            </div>
+                            <div className="flex flex-col items-center leading-tight">
+                              <div className="text-[10px] text-[#1E4775]/60 font-semibold uppercase tracking-wide">
+                                Earnings
+                              </div>
+                              <div className="text-[#1E4775] font-medium text-xs font-mono">
+                                    {combinedRewardsUSD > 0
+                                      ? `$${combinedRewardsUSD.toFixed(2)}`
+                                      : "-"}
+                              </div>
+                            </div>
+                            <div className="flex flex-col items-center leading-tight">
+                              <div className="text-[10px] text-[#1E4775]/60 font-semibold uppercase tracking-wide">
+                                Rewards
+                              </div>
+                              <div className="mt-0.5 flex items-center justify-center">
+                                <RewardTokensDisplay
+                                  collateralPool={collateralPoolAddress}
+                                  sailPool={sailPoolAddress}
+                                      poolAddresses={rewardPoolAddresses}
+                                  iconSize={16}
+                                  className="justify-center gap-1"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        <div
+                          className="text-center min-w-0 flex items-center justify-center gap-1.5 pr-2"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                                  if (!isConnected) return;
+                                  const enrichedAllMarkets = marketList.map(
+                                    (m) => {
+                                      const marketData = marketsData.find(
+                                        (md) => md.marketId === m.marketId
+                                      );
+                                return {
+                                  marketId: m.marketId,
+                                        market: {
+                                          ...m.market,
+                                          wrappedRate: marketData?.wrappedRate,
+                                        },
+                                };
+                                    }
+                                  );
+                              setManageModal({
+                                marketId: marketList[0].marketId,
+                                market: {
+                                  ...marketList[0].market,
+                                      wrappedRate: marketsData.find(
+                                        (md) =>
+                                          md.marketId === marketList[0].marketId
+                                      )?.wrappedRate,
+                                },
+                                initialTab: "deposit",
+                                simpleMode: true,
+                                bestPoolType: "collateral",
+                                allMarkets: enrichedAllMarkets,
+                              });
+                            }}
+                                disabled={!isConnected}
+                                className="px-4 py-2 text-sm font-semibold bg-[#1E4775] text-white hover:bg-[#17395F] disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors rounded-full whitespace-nowrap"
+                          >
+                            Manage
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Desktop layout (>= lg) */}
+                      <div className="hidden lg:grid grid-cols-[1fr_1fr_1fr_1fr_1fr_1fr_1fr] gap-4 items-center text-sm">
+                        <div className="whitespace-nowrap min-w-0 overflow-hidden">
+                          <div className="flex items-center justify-center gap-1.5">
+                                <SimpleTooltip
+                                  label={peggedTokenSymbol || symbol}
+                                >
+                              <Image
+                                    src={getLogoPath(
+                                      peggedTokenSymbol || symbol
+                                    )}
+                                alt={peggedTokenSymbol || symbol}
+                                width={20}
+                                height={20}
+                                className="flex-shrink-0 cursor-help"
+                              />
+                            </SimpleTooltip>
+                            <span className="text-[#1E4775] font-medium text-sm lg:text-base">
+                              {symbol}
+                            </span>
+                            {isExpanded ? (
+                              <ChevronUpIcon className="w-5 h-5 text-[#1E4775] flex-shrink-0" />
+                            ) : (
+                              <ChevronDownIcon className="w-5 h-5 text-[#1E4775] flex-shrink-0" />
+                            )}
+                          </div>
+                        </div>
+                        <div
+                          className="flex items-center justify-center gap-1.5 min-w-0"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {allDepositAssets.map((asset) => {
+                            return (
+                              <SimpleTooltip
+                                key={asset.symbol}
+                                label={
+                                  <div>
+                                    <div className="font-semibold mb-1">
+                                      {asset.name}
+                                    </div>
+                                    <div className="text-xs opacity-90">
+                                          Collateral is owned by the market and
+                                      your position is swapped for{" "}
+                                          {peggedTokenSymbol || "haTOKENS"}.
+                                    </div>
+                                  </div>
+                                }
+                              >
+                                <Image
+                                  src={getLogoPath(asset.symbol)}
+                                  alt={asset.name}
+                                  width={20}
+                                  height={20}
+                                  className="flex-shrink-0 cursor-help rounded-full"
+                                />
+                              </SimpleTooltip>
+                            );
+                          })}
+                          <SimpleTooltip
+                            label={
+                              <div>
+                                <div className="font-semibold mb-1">
+                                  Any Token Supported
+                                </div>
+                                <div className="text-xs opacity-90 space-y-2">
+                                  {directlyZappableAssets.length > 0 && (
+                                    <div>
+                                      <div className="font-semibold mb-1">
+                                        Direct zap (no slippage):
+                                      </div>
+                                      <div className="flex items-center gap-1.5 flex-wrap">
+                                            {directlyZappableAssets.map(
+                                              (asset) => (
+                                          <div
+                                            key={asset.symbol}
+                                            className="flex items-center gap-1"
+                                          >
+                                            <Image
+                                                    src={getLogoPath(
+                                                      asset.symbol
+                                                    )}
+                                              alt={asset.name}
+                                              width={16}
+                                              height={16}
+                                              className="flex-shrink-0 rounded-full"
+                                            />
+                                            <span>{asset.symbol}</span>
+                                          </div>
+                                              )
+                                            )}
+                                      </div>
+                                    </div>
+                                  )}
+                                  <div>
+                                    Other ERC20 tokens can be deposited via
+                                        ParaSwap and will be automatically
+                                        swapped to {collateralSymbol}.
+                                  </div>
+                                </div>
+                              </div>
+                            }
+                          >
+                            <div className="flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] font-semibold uppercase tracking-wide cursor-help whitespace-nowrap">
+                              <ArrowPathIcon className="w-3 h-3" />
+                              <span>Any Token</span>
+                            </div>
+                          </SimpleTooltip>
+                        </div>
+                        <div
+                          className="text-center min-w-0"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <SimpleTooltip
+                            label={
+                              <div className="text-left">
+                                <div className="font-semibold mb-1">
+                                  APR by Pool
+                                </div>
+                                {showLiveAprLoading ? (
+                                      <div className="text-xs">
+                                        Loading live APRs…
+                                      </div>
+                                ) : projectedAPR.hasRewardsNoTVL ? (
+                                  <div className="text-xs space-y-2">
+                                    <div className="bg-green-500/20 border border-green-500/30 px-2 py-1">
+                                      <span className="font-semibold text-green-400">
+                                        Rewards waiting!
+                                      </span>
+                                      <div className="mt-1 text-green-300">
+                                            No deposits yet - first depositors
+                                            will receive maximum APR
+                                      </div>
+                                    </div>
+                                    <div className="space-y-1">
+                                      {projectedAPR.collateralRewards7Day !==
+                                        null &&
+                                        projectedAPR.collateralRewards7Day >
+                                          0n && (
+                                          <div>
+                                                • Collateral Pool:{" "}
+                                            {(
+                                              Number(
+                                                projectedAPR.collateralRewards7Day
+                                              ) / 1e18
+                                                ).toFixed(4)}{" "}
+                                            wstETH streaming over 7 days
+                                          </div>
+                                        )}
+                                      {projectedAPR.leveragedRewards7Day !==
+                                        null &&
+                                        projectedAPR.leveragedRewards7Day >
+                                          0n && (
+                                          <div>
+                                                • Sail Pool:{" "}
+                                            {(
+                                              Number(
+                                                projectedAPR.leveragedRewards7Day
+                                              ) / 1e18
+                                                ).toFixed(4)}{" "}
+                                            wstETH streaming over 7 days
+                                          </div>
+                                        )}
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="text-xs space-y-1">
+                                    {/* Collateral Pool APR with reward tokens - aggregate across all markets */}
+                                    {(() => {
+                                      // Collect all reward token APRs from all collateral pools in the group
+                                      const allCollateralRewardTokenAPRs: Array<{
+                                        symbol: string;
+                                        apr: number;
+                                      }> = [];
+                                      
+                                      marketList.forEach(({ market }) => {
+                                            const poolAddress = (market as any)
+                                              ?.addresses
+                                              ?.stabilityPoolCollateral as
+                                              | `0x${string}`
+                                              | undefined;
+                                        if (poolAddress) {
+                                              const poolReward =
+                                                poolRewardsMap.get(poolAddress);
+                                          if (poolReward?.rewardTokenAPRs) {
+                                                allCollateralRewardTokenAPRs.push(
+                                                  ...poolReward.rewardTokenAPRs
+                                                );
+                                          }
+                                        }
+                                      });
+
+                                          if (
+                                            allCollateralRewardTokenAPRs.length ===
+                                            0
+                                          ) {
+                                        return (
+                                          <div>
+                                                <div className="font-semibold">
+                                                  • Collateral Pool:
+                                                </div>
+                                            <div className="ml-2 mt-0.5">
+                                              {showLiveAprLoading
+                                                ? "Loading"
+                                                    : collateralPoolAPRMin !==
+                                                        null &&
+                                                      collateralPoolAPRMax !==
+                                                        null
+                                                ? collateralPoolAPRMin ===
+                                                  collateralPoolAPRMax
+                                                      ? `${collateralPoolAPRMin.toFixed(
+                                                          2
+                                                        )}%`
+                                                      : `${collateralPoolAPRMin.toFixed(
+                                                          2
+                                                        )}% - ${collateralPoolAPRMax.toFixed(
+                                                          2
+                                                        )}%`
+                                                : "-"}
+                                            </div>
+                                          </div>
+                                        );
+                                      }
+
+                                      // Group by symbol and get min/max APR per token
+                                          const tokenAPRMap = new Map<
+                                            string,
+                                            { min: number; max: number }
+                                          >();
+                                          allCollateralRewardTokenAPRs.forEach(
+                                            ({ symbol, apr }) => {
+                                        if (!tokenAPRMap.has(symbol)) {
+                                                tokenAPRMap.set(symbol, {
+                                                  min: apr,
+                                                  max: apr,
+                                                });
+                                        } else {
+                                                const existing =
+                                                  tokenAPRMap.get(symbol)!;
+                                          tokenAPRMap.set(symbol, {
+                                                  min: Math.min(
+                                                    existing.min,
+                                                    apr
+                                                  ),
+                                                  max: Math.max(
+                                                    existing.max,
+                                                    apr
+                                                  ),
+                                          });
+                                        }
+                                            }
+                                          );
+
+                                          const uniqueTokens = Array.from(
+                                            tokenAPRMap.entries()
+                                          ).map(([symbol, { min, max }]) => ({
+                                        symbol,
+                                        min,
+                                        max,
+                                        avg: (min + max) / 2,
+                                      }));
+
+                                      // Sort by average APR to show lowest first
+                                          uniqueTokens.sort(
+                                            (a, b) => a.avg - b.avg
+                                          );
+
+                                      // Always show only MIN and MAX across all tokens
+                                          const allAPRs = uniqueTokens.flatMap(
+                                            (t) => [t.min, t.max]
+                                          );
+                                          const globalMin = Math.min(
+                                            ...allAPRs
+                                          );
+                                          const globalMax = Math.max(
+                                            ...allAPRs
+                                          );
+                                      
+                                      // Find which tokens correspond to min and max
+                                          const minToken =
+                                            uniqueTokens.find(
+                                              (t) =>
+                                                t.min === globalMin ||
+                                                t.max === globalMin
+                                            ) || uniqueTokens[0];
+                                          const maxToken =
+                                            uniqueTokens.find(
+                                              (t) =>
+                                                t.min === globalMax ||
+                                                t.max === globalMax
+                                            ) ||
+                                            uniqueTokens[
+                                              uniqueTokens.length - 1
+                                            ];
+
+                                      if (uniqueTokens.length === 1) {
+                                        const token = uniqueTokens[0];
+                                        return (
+                                          <div>
+                                                <div className="font-semibold">
+                                                  • Collateral Pool:
+                                                </div>
+                                            <div className="ml-2 mt-0.5">
+                                              {token.min === token.max
+                                                ? `${token.min.toFixed(2)}%`
+                                                    : `${token.min.toFixed(
+                                                        2
+                                                      )}% - ${token.max.toFixed(
+                                                        2
+                                                      )}%`}{" "}
+                                                  ({token.symbol})
+                                            </div>
+                                          </div>
+                                        );
+                                      }
+
+                                      // Multiple tokens - show only MIN and MAX
+                                      return (
+                                        <div>
+                                              <div className="font-semibold">
+                                                • Collateral Pool:
+                                              </div>
+                                          <div className="ml-2 mt-0.5">
+                                                {globalMin.toFixed(2)}% (
+                                                {minToken.symbol}) -{" "}
+                                                {globalMax.toFixed(2)}% (
+                                                {maxToken.symbol})
+                                          </div>
+                                        </div>
+                                      );
+                                    })()}
+
+                                    {/* Sail Pool APR with reward tokens - aggregate across all markets */}
+                                    {(() => {
+                                      // Collect all reward token APRs from all sail pools in the group
+                                      const allSailRewardTokenAPRs: Array<{
+                                        symbol: string;
+                                        apr: number;
+                                      }> = [];
+                                      
+                                      marketList.forEach(({ market }) => {
+                                            const poolAddress = (market as any)
+                                              ?.addresses
+                                              ?.stabilityPoolLeveraged as
+                                              | `0x${string}`
+                                              | undefined;
+                                        if (poolAddress) {
+                                              const poolReward =
+                                                poolRewardsMap.get(poolAddress);
+                                          if (poolReward?.rewardTokenAPRs) {
+                                                allSailRewardTokenAPRs.push(
+                                                  ...poolReward.rewardTokenAPRs
+                                                );
+                                          }
+                                        }
+                                      });
+
+                                          if (
+                                            allSailRewardTokenAPRs.length === 0
+                                          ) {
+                                        return (
+                                          <div>
+                                                <div className="font-semibold">
+                                                  • Sail Pool:
+                                                </div>
+                                            <div className="ml-2 mt-0.5">
+                                              {showLiveAprLoading
+                                                ? "Loading"
+                                                : sailPoolAPRMin !== null &&
+                                                  sailPoolAPRMax !== null
+                                                    ? sailPoolAPRMin ===
+                                                      sailPoolAPRMax
+                                                      ? `${sailPoolAPRMin.toFixed(
+                                                          2
+                                                        )}%`
+                                                      : `${sailPoolAPRMin.toFixed(
+                                                          2
+                                                        )}% - ${sailPoolAPRMax.toFixed(
+                                                          2
+                                                        )}%`
+                                                : "-"}
+                                            </div>
+                                          </div>
+                                        );
+                                      }
+
+                                      // Group by symbol and get min/max APR per token
+                                          const tokenAPRMap = new Map<
+                                            string,
+                                            { min: number; max: number }
+                                          >();
+                                          allSailRewardTokenAPRs.forEach(
+                                            ({ symbol, apr }) => {
+                                        if (!tokenAPRMap.has(symbol)) {
+                                                tokenAPRMap.set(symbol, {
+                                                  min: apr,
+                                                  max: apr,
+                                                });
+                                        } else {
+                                                const existing =
+                                                  tokenAPRMap.get(symbol)!;
+                                          tokenAPRMap.set(symbol, {
+                                                  min: Math.min(
+                                                    existing.min,
+                                                    apr
+                                                  ),
+                                                  max: Math.max(
+                                                    existing.max,
+                                                    apr
+                                                  ),
+                                          });
+                                        }
+                                            }
+                                          );
+
+                                          const uniqueTokens = Array.from(
+                                            tokenAPRMap.entries()
+                                          ).map(([symbol, { min, max }]) => ({
+                                        symbol,
+                                        min,
+                                        max,
+                                        avg: (min + max) / 2,
+                                      }));
+
+                                      // Sort by average APR to show lowest first
+                                          uniqueTokens.sort(
+                                            (a, b) => a.avg - b.avg
+                                          );
+
+                                      // Always show only MIN and MAX across all tokens
+                                          const allAPRs = uniqueTokens.flatMap(
+                                            (t) => [t.min, t.max]
+                                          );
+                                          const globalMin = Math.min(
+                                            ...allAPRs
+                                          );
+                                          const globalMax = Math.max(
+                                            ...allAPRs
+                                          );
+                                      
+                                      // Find which tokens correspond to min and max
+                                          const minToken =
+                                            uniqueTokens.find(
+                                              (t) =>
+                                                t.min === globalMin ||
+                                                t.max === globalMin
+                                            ) || uniqueTokens[0];
+                                          const maxToken =
+                                            uniqueTokens.find(
+                                              (t) =>
+                                                t.min === globalMax ||
+                                                t.max === globalMax
+                                            ) ||
+                                            uniqueTokens[
+                                              uniqueTokens.length - 1
+                                            ];
+
+                                      if (uniqueTokens.length === 1) {
+                                        const token = uniqueTokens[0];
+                                        return (
+                                          <div>
+                                                <div className="font-semibold">
+                                                  • Sail Pool:
+                                                </div>
+                                            <div className="ml-2 mt-0.5">
+                                              {token.min === token.max
+                                                ? `${token.min.toFixed(2)}%`
+                                                    : `${token.min.toFixed(
+                                                        2
+                                                      )}% - ${token.max.toFixed(
+                                                        2
+                                                      )}%`}{" "}
+                                                  ({token.symbol})
+                                            </div>
+                                          </div>
+                                        );
+                                      }
+
+                                      // Multiple tokens - show only MIN and MAX
+                                      return (
+                                        <div>
+                                              <div className="font-semibold">
+                                                • Sail Pool:
+                                              </div>
+                                          <div className="ml-2 mt-0.5">
+                                                {globalMin.toFixed(2)}% (
+                                                {minToken.symbol}) -{" "}
+                                                {globalMax.toFixed(2)}% (
+                                                {maxToken.symbol})
+                                          </div>
+                                        </div>
+                                      );
+                                    })()}
+                                  </div>
+                                )}
+                                {/* Only show Projected APR if we don't have LIVE APRs (and live APRs are not loading) */}
+                                {!showLiveAprLoading &&
+                                  !isErrorAllRewards &&
+                                  !projectedAPR.hasRewardsNoTVL &&
+                                      minAPR === 0 &&
+                                      maxAPR === 0 &&
+                                      (projectedAPR.collateralPoolAPR !==
+                                        null ||
+                                        projectedAPR.leveragedPoolAPR !==
+                                          null) && (
+                                    <div className="mt-2 pt-2 border-t border-white/20 text-xs opacity-90">
+                                      <div className="font-semibold mb-1">
+                                        Projected APR (next 7 days)
+                                      </div>
+                                      <div className="space-y-1">
+                                        <div>
+                                              • Collateral Pool:{" "}
+                                          {projectedAPR.collateralPoolAPR !==
+                                          null
+                                            ? `${projectedAPR.collateralPoolAPR.toFixed(
+                                                2
+                                              )}%`
+                                            : "-"}
+                                        </div>
+                                        <div>
+                                              • Sail Pool:{" "}
+                                          {projectedAPR.leveragedPoolAPR !==
+                                          null
+                                            ? `${projectedAPR.leveragedPoolAPR.toFixed(
+                                                2
+                                              )}%`
+                                            : "-"}
+                                        </div>
+                                      </div>
+                                      {projectedAPR.harvestableAmount !==
+                                        null &&
+                                            projectedAPR.harvestableAmount >
+                                              0n && (
+                                          <div className="mt-1 text-xs opacity-80">
+                                                Based on{" "}
+                                            {(
+                                              Number(
+                                                projectedAPR.harvestableAmount
+                                              ) / 1e18
+                                                ).toFixed(4)}{" "}
+                                            wstETH harvestable.
+                                            {projectedAPR.remainingDays !==
+                                              null &&
+                                              ` ~${projectedAPR.remainingDays.toFixed(
+                                                1
+                                              )} days until harvest.`}
+                                          </div>
+                                        )}
+                                    </div>
+                                  )}
+                              </div>
+                            }
+                          >
+                            <span
+                              className={`font-medium text-xs font-mono cursor-help ${
+                                projectedAPR.hasRewardsNoTVL
+                                  ? "text-green-600 font-bold"
+                                  : "text-[#1E4775]"
+                              }`}
+                            >
+                              {(() => {
+                                if (showLiveAprLoading) {
+                                  return "Loading";
+                                }
+                                // Special case: rewards waiting with no TVL
+                                if (projectedAPR.hasRewardsNoTVL) {
+                                  return "10k%+";
+                                }
+
+                                    const hasCurrentAPR =
+                                      minAPR > 0 || maxAPR > 0;
+                                const hasProjectedAPR =
+                                  (minProjectedAPR !== null &&
+                                    minProjectedAPR > 0) ||
+                                  (maxProjectedAPR !== null &&
+                                    maxProjectedAPR > 0);
+
+                                const formatRange = (
+                                  min: number,
+                                  max: number
+                                ): string => {
+                                  if (min > 0 && min !== max) {
+                                        return `${min.toFixed(
+                                      1
+                                        )}% - ${max.toFixed(1)}%`;
+                                  }
+                                  return `${max.toFixed(1)}%`;
+                                };
+
+                                const currentStr = hasCurrentAPR
+                                  ? formatRange(minAPR, maxAPR)
+                                  : "";
+
                                 const projMin =
                                   minProjectedAPR !== null
                                     ? minProjectedAPR
@@ -6432,1116 +7265,381 @@ export default function AnchorPage() {
                                   : "";
 
                                 if (!hasCurrentAPR && !hasProjectedAPR) {
-                                  return (
-                                    <span className="text-[#1E4775] font-bold text-sm font-mono">
-                                      -
-                                    </span>
-                                  );
+                                  return "-";
                                 }
 
                                 if (!hasCurrentAPR && hasProjectedAPR) {
-                                  return (
-                                    <div className="flex flex-col items-center leading-tight">
-                                      <div className="text-[10px] text-[#1E4775]/60 font-semibold">
-                                        Proj
-                                      </div>
-                                      <div className="text-[#1E4775] font-bold text-sm font-mono">
-                                        {projectedStr}
-                                      </div>
-                                    </div>
-                                  );
-                                }
-
-                                // Don't show projected APR if we have LIVE APRs
-                                if (hasCurrentAPR) {
-                                  return (
-                                    <span className="text-[#1E4775] font-bold text-sm font-mono">
-                                      {currentStr}
-                                    </span>
-                                  );
-                                }
-
-                                return (
-                                  <span className="text-[#1E4775] font-bold text-sm font-mono">
-                                    {currentStr || "-"}
-                                  </span>
-                                );
-                              })()}
-                            </div>
-                            <div className="text-center min-w-0">
-                              <div className="inline-flex items-stretch justify-center gap-4 whitespace-nowrap">
-                                <div className="flex flex-col items-center leading-tight">
-                                  <div className="text-[10px] text-[#1E4775]/60 font-semibold uppercase tracking-wide">
-                                    Position
-                                  </div>
-                                  <div className="text-[#1E4775] font-medium text-xs font-mono">
-                                    {combinedPositionUSD > 0
-                                      ? formatCompactUSD(combinedPositionUSD)
-                                      : combinedPositionTokens > 0
-                                      ? `${combinedPositionTokens.toLocaleString(
-                                          undefined,
-                                          {
-                                            maximumFractionDigits: 2,
-                                          }
-                                        )} ${symbol}`
-                                      : "-"}
-                                  </div>
-                                </div>
-                                <div className="flex flex-col items-center leading-tight">
-                                  <div className="text-[10px] text-[#1E4775]/60 font-semibold uppercase tracking-wide">
-                                    Earnings
-                                  </div>
-                                  <div className="text-[#1E4775] font-medium text-xs font-mono">
-                                    {combinedRewardsUSD > 0
-                                      ? `$${combinedRewardsUSD.toFixed(2)}`
-                                      : "-"}
-                                  </div>
-                                </div>
-                                <div className="flex flex-col items-center leading-tight">
-                                  <div className="text-[10px] text-[#1E4775]/60 font-semibold uppercase tracking-wide">
-                                    Rewards
-                                  </div>
-                                  <div className="mt-0.5 flex items-center justify-center">
-                                    <RewardTokensDisplay
-                                      collateralPool={collateralPoolAddress}
-                                      sailPool={sailPoolAddress}
-                                      poolAddresses={rewardPoolAddresses}
-                                      iconSize={16}
-                                      className="justify-center gap-1"
-                                    />
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                            <div
-                              className="text-center min-w-0 flex items-center justify-center gap-1.5 pr-2"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (!isConnected) return;
-                                  const enrichedAllMarkets = marketList.map(
-                                    (m) => {
-                                      const marketData = marketsData.find(
-                                        (md) => md.marketId === m.marketId
-                                      );
-                                      return {
-                                        marketId: m.marketId,
-                                        market: {
-                                          ...m.market,
-                                          wrappedRate: marketData?.wrappedRate,
-                                        },
-                                      };
-                                    }
-                                  );
-                                  setManageModal({
-                                    marketId: marketList[0].marketId,
-                                    market: {
-                                      ...marketList[0].market,
-                                      wrappedRate: marketsData.find(
-                                        (md) =>
-                                          md.marketId === marketList[0].marketId
-                                      )?.wrappedRate,
-                                    },
-                                    initialTab: "deposit",
-                                    simpleMode: true,
-                                    bestPoolType: "collateral",
-                                    allMarkets: enrichedAllMarkets,
-                                  });
-                                }}
-                                disabled={!isConnected}
-                                className={`px-3 py-1.5 text-xs font-medium transition-colors rounded-full whitespace-nowrap ${
-                                  !isConnected
-                                    ? "bg-[#1E4775]/40 text-white/80 cursor-not-allowed"
-                                    : "bg-[#1E4775] text-white hover:bg-[#17395F]"
-                                }`}
-                              >
-                                Manage
-                              </button>
-                            </div>
-                          </div>
-
-                          {/* Desktop layout (>= lg) */}
-                          <div className="hidden lg:grid grid-cols-[1fr_1fr_1fr_1fr_1fr_1fr_1fr] gap-4 items-center text-sm">
-                            <div className="whitespace-nowrap min-w-0 overflow-hidden">
-                              <div className="flex items-center justify-center gap-1.5">
-                                <SimpleTooltip
-                                  label={peggedTokenSymbol || symbol}
-                                >
-                                  <Image
-                                    src={getLogoPath(
-                                      peggedTokenSymbol || symbol
-                                    )}
-                                    alt={peggedTokenSymbol || symbol}
-                                    width={20}
-                                    height={20}
-                                    className="flex-shrink-0 cursor-help"
-                                  />
-                                </SimpleTooltip>
-                                <span className="text-[#1E4775] font-medium text-sm lg:text-base">
-                                  {symbol}
-                                </span>
-                                {isExpanded ? (
-                                  <ChevronUpIcon className="w-5 h-5 text-[#1E4775] flex-shrink-0" />
-                                ) : (
-                                  <ChevronDownIcon className="w-5 h-5 text-[#1E4775] flex-shrink-0" />
-                                )}
-                              </div>
-                            </div>
-                            <div
-                              className="flex items-center justify-center gap-1.5 min-w-0"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              {allDepositAssets.map((asset) => {
-                                return (
-                                  <SimpleTooltip
-                                    key={asset.symbol}
-                                    label={
-                                      <div>
-                                        <div className="font-semibold mb-1">
-                                          {asset.name}
-                                        </div>
-                                        <div className="text-xs opacity-90">
-                                          Collateral is owned by the market and
-                                          your position is swapped for{" "}
-                                          {peggedTokenSymbol || "haTOKENS"}.
-                                        </div>
-                                      </div>
-                                    }
-                                  >
-                                    <Image
-                                      src={getLogoPath(asset.symbol)}
-                                      alt={asset.name}
-                                      width={20}
-                                      height={20}
-                                      className="flex-shrink-0 cursor-help rounded-full"
-                                    />
-                                  </SimpleTooltip>
-                                );
-                              })}
-                              <SimpleTooltip
-                                label={
-                                  <div>
-                                    <div className="font-semibold mb-1">
-                                      Any Token Supported
-                                    </div>
-                                    <div className="text-xs opacity-90 space-y-2">
-                                      {directlyZappableAssets.length > 0 && (
-                                        <div>
-                                          <div className="font-semibold mb-1">
-                                            Direct zap (no slippage):
-                                          </div>
-                                          <div className="flex items-center gap-1.5 flex-wrap">
-                                            {directlyZappableAssets.map(
-                                              (asset) => (
-                                                <div
-                                                  key={asset.symbol}
-                                                  className="flex items-center gap-1"
-                                                >
-                                                  <Image
-                                                    src={getLogoPath(
-                                                      asset.symbol
-                                                    )}
-                                                    alt={asset.name}
-                                                    width={16}
-                                                    height={16}
-                                                    className="flex-shrink-0 rounded-full"
-                                                  />
-                                                  <span>{asset.symbol}</span>
-                                                </div>
-                                              )
-                                            )}
-                                          </div>
-                                        </div>
-                                      )}
-                                      <div>
-                                        Other ERC20 tokens can be deposited via
-                                        ParaSwap and will be automatically
-                                        swapped to {collateralSymbol}.
-                                      </div>
-                                    </div>
-                                  </div>
-                                }
-                              >
-                                <div className="flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] font-semibold uppercase tracking-wide cursor-help whitespace-nowrap">
-                                  <ArrowPathIcon className="w-3 h-3" />
-                                  <span>Any Token</span>
-                                </div>
-                              </SimpleTooltip>
-                            </div>
-                            <div
-                              className="text-center min-w-0"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <SimpleTooltip
-                                label={
-                                  <div className="text-left">
-                                    <div className="font-semibold mb-1">
-                                      APR by Pool
-                                    </div>
-                                    {showLiveAprLoading ? (
-                                      <div className="text-xs">
-                                        Loading live APRs…
-                                      </div>
-                                    ) : projectedAPR.hasRewardsNoTVL ? (
-                                      <div className="text-xs space-y-2">
-                                        <div className="bg-green-500/20 border border-green-500/30 px-2 py-1">
-                                          <span className="font-semibold text-green-400">
-                                            Rewards waiting!
-                                          </span>
-                                          <div className="mt-1 text-green-300">
-                                            No deposits yet - first depositors
-                                            will receive maximum APR
-                                          </div>
-                                        </div>
-                                        <div className="space-y-1">
-                                          {projectedAPR.collateralRewards7Day !==
-                                            null &&
-                                            projectedAPR.collateralRewards7Day >
-                                              0n && (
-                                              <div>
-                                                • Collateral Pool:{" "}
-                                                {(
-                                                  Number(
-                                                    projectedAPR.collateralRewards7Day
-                                                  ) / 1e18
-                                                ).toFixed(4)}{" "}
-                                                wstETH streaming over 7 days
-                                              </div>
-                                            )}
-                                          {projectedAPR.leveragedRewards7Day !==
-                                            null &&
-                                            projectedAPR.leveragedRewards7Day >
-                                              0n && (
-                                              <div>
-                                                • Sail Pool:{" "}
-                                                {(
-                                                  Number(
-                                                    projectedAPR.leveragedRewards7Day
-                                                  ) / 1e18
-                                                ).toFixed(4)}{" "}
-                                                wstETH streaming over 7 days
-                                              </div>
-                                            )}
-                                        </div>
-                                      </div>
-                                    ) : (
-                                      <div className="text-xs space-y-1">
-                                        {/* Collateral Pool APR with reward tokens - aggregate across all markets */}
-                                        {(() => {
-                                          // Collect all reward token APRs from all collateral pools in the group
-                                          const allCollateralRewardTokenAPRs: Array<{
-                                            symbol: string;
-                                            apr: number;
-                                          }> = [];
-
-                                          marketList.forEach(({ market }) => {
-                                            const poolAddress = (market as any)
-                                              ?.addresses
-                                              ?.stabilityPoolCollateral as
-                                              | `0x${string}`
-                                              | undefined;
-                                            if (poolAddress) {
-                                              const poolReward =
-                                                poolRewardsMap.get(poolAddress);
-                                              if (poolReward?.rewardTokenAPRs) {
-                                                allCollateralRewardTokenAPRs.push(
-                                                  ...poolReward.rewardTokenAPRs
-                                                );
-                                              }
-                                            }
-                                          });
-
-                                          if (
-                                            allCollateralRewardTokenAPRs.length ===
-                                            0
-                                          ) {
-                                            return (
-                                              <div>
-                                                <div className="font-semibold">
-                                                  • Collateral Pool:
-                                                </div>
-                                                <div className="ml-2 mt-0.5">
-                                                  {showLiveAprLoading
-                                                    ? "Loading"
-                                                    : collateralPoolAPRMin !==
-                                                        null &&
-                                                      collateralPoolAPRMax !==
-                                                        null
-                                                    ? collateralPoolAPRMin ===
-                                                      collateralPoolAPRMax
-                                                      ? `${collateralPoolAPRMin.toFixed(
-                                                          2
-                                                        )}%`
-                                                      : `${collateralPoolAPRMin.toFixed(
-                                                          2
-                                                        )}% - ${collateralPoolAPRMax.toFixed(
-                                                          2
-                                                        )}%`
-                                                    : "-"}
-                                                </div>
-                                              </div>
-                                            );
-                                          }
-
-                                          // Group by symbol and get min/max APR per token
-                                          const tokenAPRMap = new Map<
-                                            string,
-                                            { min: number; max: number }
-                                          >();
-                                          allCollateralRewardTokenAPRs.forEach(
-                                            ({ symbol, apr }) => {
-                                              if (!tokenAPRMap.has(symbol)) {
-                                                tokenAPRMap.set(symbol, {
-                                                  min: apr,
-                                                  max: apr,
-                                                });
-                                              } else {
-                                                const existing =
-                                                  tokenAPRMap.get(symbol)!;
-                                                tokenAPRMap.set(symbol, {
-                                                  min: Math.min(
-                                                    existing.min,
-                                                    apr
-                                                  ),
-                                                  max: Math.max(
-                                                    existing.max,
-                                                    apr
-                                                  ),
-                                                });
-                                              }
-                                            }
-                                          );
-
-                                          const uniqueTokens = Array.from(
-                                            tokenAPRMap.entries()
-                                          ).map(([symbol, { min, max }]) => ({
-                                            symbol,
-                                            min,
-                                            max,
-                                            avg: (min + max) / 2,
-                                          }));
-
-                                          // Sort by average APR to show lowest first
-                                          uniqueTokens.sort(
-                                            (a, b) => a.avg - b.avg
-                                          );
-
-                                          // Always show only MIN and MAX across all tokens
-                                          const allAPRs = uniqueTokens.flatMap(
-                                            (t) => [t.min, t.max]
-                                          );
-                                          const globalMin = Math.min(
-                                            ...allAPRs
-                                          );
-                                          const globalMax = Math.max(
-                                            ...allAPRs
-                                          );
-
-                                          // Find which tokens correspond to min and max
-                                          const minToken =
-                                            uniqueTokens.find(
-                                              (t) =>
-                                                t.min === globalMin ||
-                                                t.max === globalMin
-                                            ) || uniqueTokens[0];
-                                          const maxToken =
-                                            uniqueTokens.find(
-                                              (t) =>
-                                                t.min === globalMax ||
-                                                t.max === globalMax
-                                            ) ||
-                                            uniqueTokens[
-                                              uniqueTokens.length - 1
-                                            ];
-
-                                          if (uniqueTokens.length === 1) {
-                                            const token = uniqueTokens[0];
-                                            return (
-                                              <div>
-                                                <div className="font-semibold">
-                                                  • Collateral Pool:
-                                                </div>
-                                                <div className="ml-2 mt-0.5">
-                                                  {token.min === token.max
-                                                    ? `${token.min.toFixed(2)}%`
-                                                    : `${token.min.toFixed(
-                                                        2
-                                                      )}% - ${token.max.toFixed(
-                                                        2
-                                                      )}%`}{" "}
-                                                  ({token.symbol})
-                                                </div>
-                                              </div>
-                                            );
-                                          }
-
-                                          // Multiple tokens - show only MIN and MAX
-                                          return (
-                                            <div>
-                                              <div className="font-semibold">
-                                                • Collateral Pool:
-                                              </div>
-                                              <div className="ml-2 mt-0.5">
-                                                {globalMin.toFixed(2)}% (
-                                                {minToken.symbol}) -{" "}
-                                                {globalMax.toFixed(2)}% (
-                                                {maxToken.symbol})
-                                              </div>
-                                            </div>
-                                          );
-                                        })()}
-
-                                        {/* Sail Pool APR with reward tokens - aggregate across all markets */}
-                                        {(() => {
-                                          // Collect all reward token APRs from all sail pools in the group
-                                          const allSailRewardTokenAPRs: Array<{
-                                            symbol: string;
-                                            apr: number;
-                                          }> = [];
-
-                                          marketList.forEach(({ market }) => {
-                                            const poolAddress = (market as any)
-                                              ?.addresses
-                                              ?.stabilityPoolLeveraged as
-                                              | `0x${string}`
-                                              | undefined;
-                                            if (poolAddress) {
-                                              const poolReward =
-                                                poolRewardsMap.get(poolAddress);
-                                              if (poolReward?.rewardTokenAPRs) {
-                                                allSailRewardTokenAPRs.push(
-                                                  ...poolReward.rewardTokenAPRs
-                                                );
-                                              }
-                                            }
-                                          });
-
-                                          if (
-                                            allSailRewardTokenAPRs.length === 0
-                                          ) {
-                                            return (
-                                              <div>
-                                                <div className="font-semibold">
-                                                  • Sail Pool:
-                                                </div>
-                                                <div className="ml-2 mt-0.5">
-                                                  {showLiveAprLoading
-                                                    ? "Loading"
-                                                    : sailPoolAPRMin !== null &&
-                                                      sailPoolAPRMax !== null
-                                                    ? sailPoolAPRMin ===
-                                                      sailPoolAPRMax
-                                                      ? `${sailPoolAPRMin.toFixed(
-                                                          2
-                                                        )}%`
-                                                      : `${sailPoolAPRMin.toFixed(
-                                                          2
-                                                        )}% - ${sailPoolAPRMax.toFixed(
-                                                          2
-                                                        )}%`
-                                                    : "-"}
-                                                </div>
-                                              </div>
-                                            );
-                                          }
-
-                                          // Group by symbol and get min/max APR per token
-                                          const tokenAPRMap = new Map<
-                                            string,
-                                            { min: number; max: number }
-                                          >();
-                                          allSailRewardTokenAPRs.forEach(
-                                            ({ symbol, apr }) => {
-                                              if (!tokenAPRMap.has(symbol)) {
-                                                tokenAPRMap.set(symbol, {
-                                                  min: apr,
-                                                  max: apr,
-                                                });
-                                              } else {
-                                                const existing =
-                                                  tokenAPRMap.get(symbol)!;
-                                                tokenAPRMap.set(symbol, {
-                                                  min: Math.min(
-                                                    existing.min,
-                                                    apr
-                                                  ),
-                                                  max: Math.max(
-                                                    existing.max,
-                                                    apr
-                                                  ),
-                                                });
-                                              }
-                                            }
-                                          );
-
-                                          const uniqueTokens = Array.from(
-                                            tokenAPRMap.entries()
-                                          ).map(([symbol, { min, max }]) => ({
-                                            symbol,
-                                            min,
-                                            max,
-                                            avg: (min + max) / 2,
-                                          }));
-
-                                          // Sort by average APR to show lowest first
-                                          uniqueTokens.sort(
-                                            (a, b) => a.avg - b.avg
-                                          );
-
-                                          // Always show only MIN and MAX across all tokens
-                                          const allAPRs = uniqueTokens.flatMap(
-                                            (t) => [t.min, t.max]
-                                          );
-                                          const globalMin = Math.min(
-                                            ...allAPRs
-                                          );
-                                          const globalMax = Math.max(
-                                            ...allAPRs
-                                          );
-
-                                          // Find which tokens correspond to min and max
-                                          const minToken =
-                                            uniqueTokens.find(
-                                              (t) =>
-                                                t.min === globalMin ||
-                                                t.max === globalMin
-                                            ) || uniqueTokens[0];
-                                          const maxToken =
-                                            uniqueTokens.find(
-                                              (t) =>
-                                                t.min === globalMax ||
-                                                t.max === globalMax
-                                            ) ||
-                                            uniqueTokens[
-                                              uniqueTokens.length - 1
-                                            ];
-
-                                          if (uniqueTokens.length === 1) {
-                                            const token = uniqueTokens[0];
-                                            return (
-                                              <div>
-                                                <div className="font-semibold">
-                                                  • Sail Pool:
-                                                </div>
-                                                <div className="ml-2 mt-0.5">
-                                                  {token.min === token.max
-                                                    ? `${token.min.toFixed(2)}%`
-                                                    : `${token.min.toFixed(
-                                                        2
-                                                      )}% - ${token.max.toFixed(
-                                                        2
-                                                      )}%`}{" "}
-                                                  ({token.symbol})
-                                                </div>
-                                              </div>
-                                            );
-                                          }
-
-                                          // Multiple tokens - show only MIN and MAX
-                                          return (
-                                            <div>
-                                              <div className="font-semibold">
-                                                • Sail Pool:
-                                              </div>
-                                              <div className="ml-2 mt-0.5">
-                                                {globalMin.toFixed(2)}% (
-                                                {minToken.symbol}) -{" "}
-                                                {globalMax.toFixed(2)}% (
-                                                {maxToken.symbol})
-                                              </div>
-                                            </div>
-                                          );
-                                        })()}
-                                      </div>
-                                    )}
-                                    {/* Only show Projected APR if we don't have LIVE APRs (and live APRs are not loading) */}
-                                    {!showLiveAprLoading &&
-                                      !isErrorAllRewards &&
-                                      !projectedAPR.hasRewardsNoTVL &&
-                                      minAPR === 0 &&
-                                      maxAPR === 0 &&
-                                      (projectedAPR.collateralPoolAPR !==
-                                        null ||
-                                        projectedAPR.leveragedPoolAPR !==
-                                          null) && (
-                                        <div className="mt-2 pt-2 border-t border-white/20 text-xs opacity-90">
-                                          <div className="font-semibold mb-1">
-                                            Projected APR (next 7 days)
-                                          </div>
-                                          <div className="space-y-1">
-                                            <div>
-                                              • Collateral Pool:{" "}
-                                              {projectedAPR.collateralPoolAPR !==
-                                              null
-                                                ? `${projectedAPR.collateralPoolAPR.toFixed(
-                                                    2
-                                                  )}%`
-                                                : "-"}
-                                            </div>
-                                            <div>
-                                              • Sail Pool:{" "}
-                                              {projectedAPR.leveragedPoolAPR !==
-                                              null
-                                                ? `${projectedAPR.leveragedPoolAPR.toFixed(
-                                                    2
-                                                  )}%`
-                                                : "-"}
-                                            </div>
-                                          </div>
-                                          {projectedAPR.harvestableAmount !==
-                                            null &&
-                                            projectedAPR.harvestableAmount >
-                                              0n && (
-                                              <div className="mt-1 text-xs opacity-80">
-                                                Based on{" "}
-                                                {(
-                                                  Number(
-                                                    projectedAPR.harvestableAmount
-                                                  ) / 1e18
-                                                ).toFixed(4)}{" "}
-                                                wstETH harvestable.
-                                                {projectedAPR.remainingDays !==
-                                                  null &&
-                                                  ` ~${projectedAPR.remainingDays.toFixed(
-                                                    1
-                                                  )} days until harvest.`}
-                                              </div>
-                                            )}
-                                        </div>
-                                      )}
-                                  </div>
-                                }
-                              >
-                                <span
-                                  className={`font-medium text-xs font-mono cursor-help ${
-                                    projectedAPR.hasRewardsNoTVL
-                                      ? "text-green-600 font-bold"
-                                      : "text-[#1E4775]"
-                                  }`}
-                                >
-                                  {(() => {
-                                    if (showLiveAprLoading) {
-                                      return "Loading";
-                                    }
-                                    // Special case: rewards waiting with no TVL
-                                    if (projectedAPR.hasRewardsNoTVL) {
-                                      return "10k%+";
-                                    }
-
-                                    const hasCurrentAPR =
-                                      minAPR > 0 || maxAPR > 0;
-                                    const hasProjectedAPR =
-                                      (minProjectedAPR !== null &&
-                                        minProjectedAPR > 0) ||
-                                      (maxProjectedAPR !== null &&
-                                        maxProjectedAPR > 0);
-
-                                    const formatRange = (
-                                      min: number,
-                                      max: number
-                                    ): string => {
-                                      if (min > 0 && min !== max) {
-                                        return `${min.toFixed(
-                                          1
-                                        )}% - ${max.toFixed(1)}%`;
-                                      }
-                                      return `${max.toFixed(1)}%`;
-                                    };
-
-                                    const currentStr = hasCurrentAPR
-                                      ? formatRange(minAPR, maxAPR)
-                                      : "";
-
-                                    const projMin =
-                                      minProjectedAPR !== null
-                                        ? minProjectedAPR
-                                        : maxProjectedAPR ?? 0;
-                                    const projMax =
-                                      maxProjectedAPR !== null
-                                        ? maxProjectedAPR
-                                        : minProjectedAPR ?? 0;
-                                    const projectedStr = hasProjectedAPR
-                                      ? formatRange(projMin, projMax)
-                                      : "";
-
-                                    if (!hasCurrentAPR && !hasProjectedAPR) {
-                                      return "-";
-                                    }
-
-                                    if (!hasCurrentAPR && hasProjectedAPR) {
                                       return projectedStr
                                         ? `Proj\n${projectedStr}`
                                         : "-";
-                                    }
+                                  }
 
-                                    // Don't show projected APR if we have LIVE APRs
-                                    if (hasCurrentAPR) {
-                                      return currentStr || "-";
-                                    }
+                                // Don't show projected APR if we have LIVE APRs
+                                if (hasCurrentAPR) {
+                                  return currentStr || "-";
+                                }
 
-                                    return currentStr || "-";
-                                  })()}
-                                </span>
-                              </SimpleTooltip>
-                            </div>
-                            <div
-                              className="text-center min-w-0"
-                              onClick={(e) => e.stopPropagation()}
-                            >
+                                return currentStr || "-";
+                              })()}
+                            </span>
+                          </SimpleTooltip>
+                        </div>
+                        <div
+                          className="text-center min-w-0"
+                          onClick={(e) => e.stopPropagation()}
+                        >
                               <div className="text-[#1E4775] font-medium text-xs font-mono">
-                                {combinedRewardsUSD > 0
-                                  ? `$${combinedRewardsUSD.toFixed(2)}`
-                                  : "-"}
-                              </div>
-                            </div>
-                            <RewardTokensDisplay
-                              collateralPool={collateralPoolAddress}
-                              sailPool={sailPoolAddress}
+                            {combinedRewardsUSD > 0
+                              ? `$${combinedRewardsUSD.toFixed(2)}`
+                              : "-"}
+                          </div>
+                        </div>
+                        <RewardTokensDisplay
+                          collateralPool={collateralPoolAddress}
+                          sailPool={sailPoolAddress}
                               poolAddresses={rewardPoolAddresses}
-                            />
-                            <div className="text-center min-w-0">
-                              <span className="text-[#1E4775] font-medium text-xs font-mono">
-                                {combinedPositionUSD > 0
-                                  ? formatCompactUSD(combinedPositionUSD)
-                                  : combinedPositionTokens > 0
-                                  ? `${combinedPositionTokens.toLocaleString(
-                                      undefined,
-                                      { maximumFractionDigits: 2 }
-                                    )} ${symbol}`
-                                  : "-"}
-                              </span>
-                            </div>
-                            <div
-                              className="text-center min-w-0 flex items-center justify-center gap-1.5 pr-2"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  // Find the wrappedRate from marketsData for each market
+                        />
+                        <div className="text-center min-w-0">
+                          <span className="text-[#1E4775] font-medium text-xs font-mono">
+                            {combinedPositionUSD > 0
+                              ? formatCompactUSD(combinedPositionUSD)
+                              : combinedPositionTokens > 0
+                              ? `${combinedPositionTokens.toLocaleString(
+                                  undefined,
+                                  { maximumFractionDigits: 2 }
+                                )} ${symbol}`
+                              : "-"}
+                          </span>
+                        </div>
+                        <div
+                          className="text-center min-w-0 flex items-center justify-center gap-1.5 pr-2"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              // Find the wrappedRate from marketsData for each market
                                   const enrichedAllMarkets = marketList.map(
                                     (m) => {
-                                      const marketData = marketsData.find(
-                                        (md) => md.marketId === m.marketId
-                                      );
-                                      return {
-                                        marketId: m.marketId,
-                                        market: {
-                                          ...m.market,
-                                          wrappedRate: marketData?.wrappedRate,
-                                        },
-                                      };
+                                const marketData = marketsData.find(
+                                  (md) => md.marketId === m.marketId
+                                );
+                                return {
+                                  marketId: m.marketId,
+                                  market: {
+                                    ...m.market,
+                                    wrappedRate: marketData?.wrappedRate,
+                                  },
+                                };
                                     }
                                   );
 
-                                  setManageModal({
-                                    marketId: marketList[0].marketId,
-                                    market: {
-                                      ...marketList[0].market,
-                                      wrappedRate: marketsData.find(
-                                        (md) =>
-                                          md.marketId === marketList[0].marketId
-                                      )?.wrappedRate,
-                                    },
-                                    initialTab: "deposit",
-                                    simpleMode: true,
-                                    bestPoolType: "collateral",
-                                    allMarkets: enrichedAllMarkets,
-                                  });
-                                }}
-                                className="px-3 py-1.5 text-xs font-medium bg-[#1E4775] text-white hover:bg-[#17395F] transition-colors rounded-full whitespace-nowrap"
-                              >
-                                Manage
-                              </button>
-                            </div>
-                          </div>
+                              setManageModal({
+                                marketId: marketList[0].marketId,
+                                market: {
+                                  ...marketList[0].market,
+                                  wrappedRate: marketsData.find(
+                                    (md) =>
+                                      md.marketId === marketList[0].marketId
+                                  )?.wrappedRate,
+                                },
+                                initialTab: "deposit",
+                                simpleMode: true,
+                                bestPoolType: "collateral",
+                                allMarkets: enrichedAllMarkets,
+                              });
+                            }}
+                            className="px-4 py-2 text-sm font-semibold bg-[#1E4775] text-white hover:bg-[#17395F] disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors rounded-full whitespace-nowrap"
+                          >
+                            Manage
+                          </button>
                         </div>
+                      </div>
+                    </div>
 
-                        {/* Expanded View - Show all markets in group */}
-                        {isExpanded && (
-                          <div className="bg-[rgb(var(--surface-selected-rgb))] p-4 border-t border-white/20">
-                            {/* Consolidated Your Positions - shown once for the group */}
-                            {(() => {
-                              // Aggregate pool deposits across all markets (wallet balances shown in separate section)
-                              const haSymbol =
+                    {/* Expanded View - Show all markets in group */}
+                    {isExpanded && (
+                      <div className="bg-[rgb(var(--surface-selected-rgb))] p-4 border-t border-white/20">
+                        {/* Consolidated Your Positions - shown once for the group */}
+                        {(() => {
+                          // Aggregate pool deposits across all markets (wallet balances shown in separate section)
+                          const haSymbol =
                                 activeMarketsData[0]?.market?.peggedToken
                                   ?.symbol || "ha";
 
-                              // Aggregate pool deposits across all markets
-                              let totalCollateralPoolDeposit = 0n;
-                              let totalCollateralPoolDepositUSD = 0;
-                              let totalSailPoolDeposit = 0n;
-                              let totalSailPoolDepositUSD = 0;
+                          // Aggregate pool deposits across all markets
+                          let totalCollateralPoolDeposit = 0n;
+                          let totalCollateralPoolDepositUSD = 0;
+                          let totalSailPoolDeposit = 0n;
+                          let totalSailPoolDepositUSD = 0;
 
-                              // Collect all withdrawal requests for this group
-                              const groupWithdrawalRequests: typeof withdrawalRequests =
-                                [];
+                          // Collect all withdrawal requests for this group
+                          const groupWithdrawalRequests: typeof withdrawalRequests =
+                            [];
 
-                              activeMarketsData.forEach((md) => {
-                                if (
-                                  md.collateralPoolDeposit &&
-                                  md.collateralPoolDeposit > 0n
-                                ) {
-                                  totalCollateralPoolDeposit +=
-                                    md.collateralPoolDeposit;
-                                  totalCollateralPoolDepositUSD +=
-                                    md.collateralPoolDepositUSD || 0;
-                                }
+                          activeMarketsData.forEach((md) => {
+                            if (
+                              md.collateralPoolDeposit &&
+                              md.collateralPoolDeposit > 0n
+                            ) {
+                              totalCollateralPoolDeposit +=
+                                md.collateralPoolDeposit;
+                              totalCollateralPoolDepositUSD +=
+                                md.collateralPoolDepositUSD || 0;
+                            }
                                 if (
                                   md.sailPoolDeposit &&
                                   md.sailPoolDeposit > 0n
                                 ) {
-                                  totalSailPoolDeposit += md.sailPoolDeposit;
-                                  totalSailPoolDepositUSD +=
-                                    md.sailPoolDepositUSD || 0;
-                                }
-                                // Collect withdrawal requests for this market
+                              totalSailPoolDeposit += md.sailPoolDeposit;
+                              totalSailPoolDepositUSD +=
+                                md.sailPoolDepositUSD || 0;
+                            }
+                            // Collect withdrawal requests for this market
                                 const marketRequests =
                                   withdrawalRequests.filter(
-                                    (req) =>
-                                      req.poolAddress.toLowerCase() ===
-                                        md.market.addresses?.stabilityPoolCollateral?.toLowerCase() ||
-                                      req.poolAddress.toLowerCase() ===
-                                        md.market.addresses?.stabilityPoolLeveraged?.toLowerCase()
-                                  );
-                                groupWithdrawalRequests.push(...marketRequests);
-                              });
+                              (req) =>
+                                req.poolAddress.toLowerCase() ===
+                                  md.market.addresses?.stabilityPoolCollateral?.toLowerCase() ||
+                                req.poolAddress.toLowerCase() ===
+                                  md.market.addresses?.stabilityPoolLeveraged?.toLowerCase()
+                            );
+                            groupWithdrawalRequests.push(...marketRequests);
+                          });
 
-                              const hasGroupPositions =
-                                totalCollateralPoolDepositUSD > 0 ||
-                                totalSailPoolDepositUSD > 0 ||
-                                totalCollateralPoolDeposit > 0n ||
-                                totalSailPoolDeposit > 0n;
+                          const hasGroupPositions =
+                            totalCollateralPoolDepositUSD > 0 ||
+                            totalSailPoolDepositUSD > 0 ||
+                            totalCollateralPoolDeposit > 0n ||
+                            totalSailPoolDeposit > 0n;
 
-                              if (
-                                !hasGroupPositions &&
-                                groupWithdrawalRequests.length === 0
-                              ) {
-                                return null;
-                              }
+                          if (
+                            !hasGroupPositions &&
+                            groupWithdrawalRequests.length === 0
+                          ) {
+                            return null;
+                          }
 
-                              return (
-                                <div className="mb-4">
-                                  {/* Withdrawal requests for the group */}
-                                  {groupWithdrawalRequests.length > 0 && (
-                                    <div className="bg-white border border-[#1E4775]/10 shadow-sm p-3 space-y-2 mb-3">
-                                      <div className="text-[10px] text-[#1E4775]/70 font-semibold uppercase tracking-wide">
-                                        Withdrawal Requests
-                                      </div>
-                                      <div className="space-y-1.5">
+                          return (
+                            <div className="mb-4">
+                              {/* Withdrawal requests for the group */}
+                              {groupWithdrawalRequests.length > 0 && (
+                                <div className="bg-white border border-[#1E4775]/10 shadow-sm p-3 space-y-2 mb-3">
+                                  <div className="text-[10px] text-[#1E4775]/70 font-semibold uppercase tracking-wide">
+                                    Withdrawal Requests
+                                  </div>
+                                  <div className="space-y-1.5">
                                         {groupWithdrawalRequests.map(
                                           (request) => {
-                                            // Find the market this request belongs to
-                                            const requestMarket =
-                                              activeMarketsData.find(
-                                                (md) =>
-                                                  request.poolAddress.toLowerCase() ===
-                                                    md.market.addresses?.stabilityPoolCollateral?.toLowerCase() ||
-                                                  request.poolAddress.toLowerCase() ===
-                                                    md.market.addresses?.stabilityPoolLeveraged?.toLowerCase()
-                                              );
-                                            const isCollateralPool =
-                                              request.poolAddress.toLowerCase() ===
-                                              requestMarket?.market.addresses?.stabilityPoolCollateral?.toLowerCase();
-                                            const poolType = isCollateralPool
-                                              ? "collateral"
-                                              : "sail";
+                                      // Find the market this request belongs to
+                                      const requestMarket =
+                                        activeMarketsData.find(
+                                          (md) =>
+                                            request.poolAddress.toLowerCase() ===
+                                              md.market.addresses?.stabilityPoolCollateral?.toLowerCase() ||
+                                            request.poolAddress.toLowerCase() ===
+                                              md.market.addresses?.stabilityPoolLeveraged?.toLowerCase()
+                                        );
+                                      const isCollateralPool =
+                                        request.poolAddress.toLowerCase() ===
+                                        requestMarket?.market.addresses?.stabilityPoolCollateral?.toLowerCase();
+                                      const poolType = isCollateralPool
+                                        ? "collateral"
+                                        : "sail";
                                             const startSec = Number(
                                               request.start
                                             );
-                                            const endSec = Number(request.end);
-                                            const isWindowOpen =
-                                              request.status === "window";
-                                            const countdownTarget =
-                                              request.status === "waiting"
-                                                ? startSec
-                                                : endSec;
-
-                                            const countdownLabel =
-                                              request.status === "waiting"
-                                                ? "Withdraw window opens"
-                                                : request.status === "window"
-                                                ? "Window closes in"
-                                                : "Window expired";
-                                            // Format time remaining without "ends in" prefix for waiting windows
-                                            const formatTimeOnly = (
-                                              endDate: Date,
-                                              currentDate: Date
-                                            ): string => {
+                                      const endSec = Number(request.end);
+                                      const isWindowOpen =
+                                        request.status === "window";
+                                      const countdownTarget =
+                                        request.status === "waiting"
+                                          ? startSec
+                                          : endSec;
+                                      
+                                      const countdownLabel =
+                                        request.status === "waiting"
+                                          ? "Free withdraw window opens"
+                                          : request.status === "window"
+                                          ? "Window closes in"
+                                          : "Window expired";
+                                      // Format time remaining without "ends in" prefix for waiting windows
+                                      const formatTimeOnly = (
+                                        endDate: Date,
+                                        currentDate: Date
+                                      ): string => {
                                               const diffMs =
                                                 endDate.getTime() -
                                                 currentDate.getTime();
-                                              if (diffMs <= 0) return "Ended";
-
+                                        if (diffMs <= 0) return "Ended";
+                                        
                                               const diffHours =
                                                 diffMs / (1000 * 60 * 60);
-                                              const diffDays = diffHours / 24;
+                                        const diffDays = diffHours / 24;
                                               const diffMinutes =
                                                 diffMs / (1000 * 60);
-
-                                              if (diffDays >= 2) {
+                                        
+                                        if (diffDays >= 2) {
                                                 return `${diffDays.toFixed(
                                                   1
                                                 )} days`;
-                                              } else if (diffHours >= 2) {
+                                        } else if (diffHours >= 2) {
                                                 return `${diffHours.toFixed(
                                                   1
                                                 )} hours`;
-                                              } else {
+                                        } else {
                                                 return `${diffMinutes.toFixed(
                                                   0
                                                 )} minutes`;
-                                              }
-                                            };
-
-                                            const countdownText =
-                                              countdownTarget > 0
-                                                ? request.status === "waiting"
-                                                  ? formatTimeOnly(
+                                        }
+                                      };
+                                      
+                                      const countdownText =
+                                        countdownTarget > 0
+                                          ? request.status === "waiting"
+                                            ? formatTimeOnly(
                                                       new Date(
                                                         countdownTarget * 1000
                                                       ),
-                                                      request.currentTime
-                                                        ? new Date(
+                                                request.currentTime
+                                                  ? new Date(
                                                             Number(
                                                               request.currentTime
                                                             ) * 1000
-                                                          )
-                                                        : new Date()
                                                     )
-                                                  : formatTimeRemaining(
-                                                      new Date(
-                                                        countdownTarget * 1000
-                                                      ).toISOString(),
-                                                      request.currentTime
-                                                        ? new Date(
-                                                            Number(
-                                                              request.currentTime
-                                                            ) * 1000
-                                                          )
-                                                        : new Date()
+                                                  : new Date()
+                                              )
+                                            : formatTimeRemaining(
+                                                new Date(
+                                                  countdownTarget * 1000
+                                                ).toISOString(),
+                                                request.currentTime
+                                                  ? new Date(
+                                                      Number(
+                                                        request.currentTime
+                                                      ) * 1000
                                                     )
-                                                : "Ended";
+                                                  : new Date()
+                                              )
+                                          : "Ended";
 
-                                            return (
-                                              <div
-                                                key={`${
-                                                  request.poolAddress
-                                                }-${request.start.toString()}`}
-                                                className="p-2 bg-[#FF8A7A]/10 border border-[#FF8A7A]/30 text-xs flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between"
-                                              >
-                                                <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2">
-                                                  <span className="text-[#1E4775] font-semibold">
-                                                    {poolType === "collateral"
-                                                      ? "Collateral"
-                                                      : "Sail"}{" "}
-                                                    Pool
-                                                    {requestMarket &&
-                                                      activeMarketsData.length >
-                                                        1 && (
-                                                        <span className="text-[#1E4775]/50 ml-1">
-                                                          (
-                                                          {requestMarket.market
+                                      return (
+                                        <div
+                                          key={`${
+                                            request.poolAddress
+                                          }-${request.start.toString()}`}
+                                          className="p-2 bg-[#FF8A7A]/10 border border-[#FF8A7A]/30 text-xs flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between"
+                                        >
+                                          <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2">
+                                            <span className="text-[#1E4775] font-semibold">
+                                              {poolType === "collateral"
+                                                ? "Collateral"
+                                                : "Sail"}{" "}
+                                              Pool
+                                              {requestMarket &&
+                                                activeMarketsData.length >
+                                                  1 && (
+                                                  <span className="text-[#1E4775]/50 ml-1">
+                                                    (
+                                                    {requestMarket.market
                                                             .collateral
                                                             ?.symbol || "?"}
-                                                          )
-                                                        </span>
-                                                      )}
+                                                    )
                                                   </span>
-                                                  <span
-                                                    className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${
+                                                )}
+                                            </span>
+                                            <span
+                                              className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${
                                                       request.status ===
                                                       "window"
-                                                        ? "bg-green-200 text-green-800 border-green-500"
+                                                  ? "bg-green-200 text-green-800 border-green-500"
                                                         : request.status ===
                                                           "waiting"
-                                                        ? "bg-amber-200 text-amber-800 border-amber-500"
-                                                        : "bg-gray-200 text-gray-700 border-gray-400"
-                                                    }`}
-                                                  >
-                                                    {request.status === "window"
-                                                      ? "Open"
+                                                  ? "bg-amber-200 text-amber-800 border-amber-500"
+                                                  : "bg-gray-200 text-gray-700 border-gray-400"
+                                              }`}
+                                            >
+                                              {request.status === "window"
+                                                ? "Open"
                                                       : request.status ===
                                                         "waiting"
-                                                      ? "Waiting"
-                                                      : "Expired"}
-                                                  </span>
-                                                  <span className="text-[11px] text-[#1E4775]/70">
+                                                ? "Waiting"
+                                                : "Expired"}
+                                            </span>
+                                            <span className="text-[11px] text-[#1E4775]/70">
                                                     {request.status ===
                                                     "waiting"
-                                                      ? `${countdownLabel} ${countdownText}`
+                                                ? `${countdownLabel} ${countdownText}`
                                                       : `${countdownLabel}: ${countdownText}`}
-                                                  </span>
-                                                </div>
-                                                <div className="flex gap-1.5">
-                                                  <button
-                                                    onClick={async () => {
-                                                      if (isWindowOpen) {
+                                            </span>
+                                          </div>
+                                          <div className="flex gap-1.5">
+                                            <button
+                                              onClick={async () => {
+                                                if (isWindowOpen) {
                                                         setWithdrawAmountInput(
                                                           ""
                                                         );
                                                         setWithdrawAmountError(
                                                           null
                                                         );
-                                                        const maxAmount =
+                                                  const maxAmount =
                                                           poolType ===
                                                           "collateral"
-                                                            ? requestMarket?.collateralPoolDeposit
-                                                            : requestMarket?.sailPoolDeposit;
-                                                        setWithdrawAmountModal({
-                                                          poolAddress:
-                                                            request.poolAddress,
-                                                          poolType,
-                                                          useEarly: false,
-                                                          symbol: haSymbol,
+                                                      ? requestMarket?.collateralPoolDeposit
+                                                      : requestMarket?.sailPoolDeposit;
+                                                  setWithdrawAmountModal({
+                                                    poolAddress:
+                                                      request.poolAddress,
+                                                    poolType,
+                                                    useEarly: false,
+                                                    symbol: haSymbol,
                                                           maxAmount:
                                                             maxAmount || 0n,
-                                                        });
-                                                      } else {
-                                                        setEarlyWithdrawModal({
-                                                          poolAddress:
-                                                            request.poolAddress,
-                                                          poolType,
-                                                          start: request.start,
-                                                          end: request.end,
-                                                          earlyWithdrawFee:
-                                                            request.earlyWithdrawFee,
-                                                          symbol: haSymbol,
-                                                          poolBalance:
+                                                  });
+                                                } else {
+                                                  setEarlyWithdrawModal({
+                                                    poolAddress:
+                                                      request.poolAddress,
+                                                    poolType,
+                                                    start: request.start,
+                                                    end: request.end,
+                                                    earlyWithdrawFee:
+                                                      request.earlyWithdrawFee,
+                                                    symbol: haSymbol,
+                                                    poolBalance:
                                                             (poolType ===
                                                             "collateral"
-                                                              ? requestMarket?.collateralPoolDeposit
-                                                              : requestMarket?.sailPoolDeposit) ||
-                                                            0n,
-                                                        });
-                                                      }
-                                                    }}
-                                                    className={`px-2 py-0.5 text-[10px] font-medium rounded-full ${
-                                                      isWindowOpen
-                                                        ? "bg-[#1E4775] text-white hover:bg-[#17395F]"
-                                                        : "bg-orange-500 text-white hover:bg-orange-600"
-                                                    } transition-colors whitespace-nowrap`}
-                                                  >
-                                                    Withdraw
-                                                  </button>
-                                                </div>
-                                              </div>
-                                            );
+                                                        ? requestMarket?.collateralPoolDeposit
+                                                        : requestMarket?.sailPoolDeposit) ||
+                                                      0n,
+                                                  });
+                                                }
+                                              }}
+                                              className={`px-2 py-0.5 text-sm font-semibold rounded-full ${
+                                                isWindowOpen
+                                                  ? "bg-[#1E4775] text-white hover:bg-[#17395F]"
+                                                  : "bg-orange-500 text-white hover:bg-orange-600"
+                                              } transition-colors whitespace-nowrap`}
+                                            >
+                                              Withdraw
+                                            </button>
+                                          </div>
+                                        </div>
+                                      );
                                           }
                                         )}
-                                      </div>
-                                    </div>
-                                  )}
+                                  </div>
+                                </div>
+                              )}
 
-                                  {/* Your Positions - consolidated (only stability pool deposits) */}
-                                  {hasGroupPositions && (
-                                    <div className="bg-white border border-[#1E4775]/10 shadow-sm p-3 space-y-2">
-                                      <div className="text-[10px] text-[#1E4775]/70 font-semibold uppercase tracking-wide">
-                                        Your Positions
-                                      </div>
-                                      <div className="space-y-2">
+                              {/* Your Positions - consolidated (only stability pool deposits) */}
+                              {hasGroupPositions && (
+                                <div className="bg-white border border-[#1E4775]/10 shadow-sm p-3 space-y-2">
+                                  <div className="text-[10px] text-[#1E4775]/70 font-semibold uppercase tracking-wide">
+                                    Your Positions
+                                  </div>
+                                  <div className="space-y-2">
                                         {(() => {
                                           // Show one row per (marketId, poolType) so we don't collapse positions
                                           // across different markets in the same ha-token group.
@@ -7604,71 +7702,71 @@ export default function AnchorPage() {
                                               key={r.key}
                                               className="flex justify-between items-center text-xs"
                                             >
-                                              <span className="text-[#1E4775]/70">
+                                        <span className="text-[#1E4775]/70">
                                                 {r.label}:
-                                              </span>
-                                              <div className="text-right">
-                                                <div className="font-semibold text-[#1E4775] font-mono">
-                                                  {formatCompactUSD(
+                                        </span>
+                                        <div className="text-right">
+                                          <div className="font-semibold text-[#1E4775] font-mono">
+                                            {formatCompactUSD(
                                                     r.depositUSD
-                                                  )}
-                                                </div>
-                                                <div className="text-[10px] text-[#1E4775]/50 font-mono">
+                                            )}
+                                          </div>
+                                          <div className="text-[10px] text-[#1E4775]/50 font-mono">
                                                   {formatToken(r.deposit)}{" "}
-                                                  {haSymbol}
-                                                </div>
-                                              </div>
-                                            </div>
+                                            {haSymbol}
+                                          </div>
+                                        </div>
+                                      </div>
                                           ));
                                         })()}
-                                      </div>
-                                    </div>
-                                  )}
+                                  </div>
                                 </div>
-                              );
-                            })()}
+                              )}
+                            </div>
+                          );
+                        })()}
 
-                            {activeMarketsData.map((marketData) => {
-                              // Get volatility protection from hook data
-                              const minterAddr =
-                                marketData.minterAddress?.toLowerCase();
-                              const volProtData = minterAddr
-                                ? volProtectionData?.get(minterAddr)
-                                : undefined;
-                              const volatilityProtection =
-                                volProtData?.protection ?? "-";
+                        {activeMarketsData.map((marketData) => {
+                          // Get volatility protection from hook data
+                          const minterAddr =
+                            marketData.minterAddress?.toLowerCase();
+                          const volProtData = minterAddr
+                            ? volProtectionData?.get(minterAddr)
+                            : undefined;
+                          const volatilityProtection =
+                            volProtData?.protection ?? "-";
 
-                              // Format min collateral ratio
-                              const minCollateralRatioFormatted =
-                                marketData.minCollateralRatio
-                                  ? `${(
+                          // Format min collateral ratio
+                          const minCollateralRatioFormatted =
+                            marketData.minCollateralRatio
+                              ? `${(
                                       Number(marketData.minCollateralRatio) /
                                       1e16
-                                    ).toFixed(2)}%`
-                                  : "-";
+                                ).toFixed(2)}%`
+                              : "-";
 
-                              // Detect if this is an fxUSD market
-                              const collateralSymbol =
-                                marketData.market.collateral?.symbol?.toLowerCase() ||
-                                "";
-                              const isFxUSDMarket =
-                                collateralSymbol === "fxusd" ||
-                                collateralSymbol === "fxsave";
+                          // Detect if this is an fxUSD market
+                          const collateralSymbol =
+                            marketData.market.collateral?.symbol?.toLowerCase() ||
+                            "";
+                          const isFxUSDMarket =
+                            collateralSymbol === "fxusd" ||
+                            collateralSymbol === "fxsave";
 
-                              // Get collateral price from the hook (same logic as genesis page)
+                          // Get collateral price from the hook (same logic as genesis page)
                               const collateralPriceOracleAddress = marketData
                                 .market.addresses?.collateralPrice as
-                                | `0x${string}`
-                                | undefined;
+                            | `0x${string}`
+                            | undefined;
                               const collateralPriceData =
                                 collateralPriceOracleAddress
                                   ? collateralPricesMap.get(
                                       collateralPriceOracleAddress.toLowerCase()
                                     )
-                                  : undefined;
+                            : undefined;
 
-                              // Get underlying price from hook (this is the underlying token price, e.g., fxUSD or stETH)
-                              // NOTE: The oracle returns price in peg token units (ETH or BTC), not USD
+                          // Get underlying price from hook (this is the underlying token price, e.g., fxUSD or stETH)
+                          // NOTE: The oracle returns price in peg token units (ETH or BTC), not USD
                               let underlyingPriceUSD =
                                 collateralPriceData?.priceUSD || 0;
                               const wrappedRate =
@@ -7677,9 +7775,9 @@ export default function AnchorPage() {
                               const wrappedRateNum = wrappedRate
                                 ? Number(wrappedRate) / 1e18
                                 : 1;
-
-                              // Convert oracle price from peg token units to USD
-                              // The oracle returns price in the peg token (ETH for ETH/fxUSD, BTC for BTC/fxUSD, etc.)
+                          
+                          // Convert oracle price from peg token units to USD
+                          // The oracle returns price in the peg token (ETH for ETH/fxUSD, BTC for BTC/fxUSD, etc.)
                               const pegTarget = (
                                 marketData.market as any
                               )?.pegTarget?.toLowerCase();
@@ -7687,52 +7785,52 @@ export default function AnchorPage() {
                                 pegTarget === "btc" || pegTarget === "bitcoin";
                               const isETHMarket =
                                 pegTarget === "eth" || pegTarget === "ethereum";
-
-                              if (underlyingPriceUSD > 0) {
-                                // Oracle price is in peg token units, convert to USD
-                                if (isBTCMarket) {
-                                  // Prefer Chainlink-backed btcPrice (from useAnchorPrices) over CoinGecko-only map.
-                                  const btcPriceUSD = btcPrice || 0;
-                                  if (btcPriceUSD > 0) {
+                          
+                          if (underlyingPriceUSD > 0) {
+                            // Oracle price is in peg token units, convert to USD
+                            if (isBTCMarket) {
+                              // Prefer Chainlink-backed btcPrice (from useAnchorPrices) over CoinGecko-only map.
+                              const btcPriceUSD = btcPrice || 0;
+                              if (btcPriceUSD > 0) {
                                     underlyingPriceUSD =
                                       underlyingPriceUSD * btcPriceUSD;
-                                  } else {
-                                    // Can't convert, use 0
-                                    underlyingPriceUSD = 0;
-                                  }
-                                } else if (isETHMarket) {
-                                  if (ethPrice && ethPrice > 0) {
+                              } else {
+                                // Can't convert, use 0
+                                underlyingPriceUSD = 0;
+                              }
+                            } else if (isETHMarket) {
+                              if (ethPrice && ethPrice > 0) {
                                     underlyingPriceUSD =
                                       underlyingPriceUSD * ethPrice;
-                                  } else {
-                                    // Can't convert, use 0
-                                    underlyingPriceUSD = 0;
-                                  }
-                                }
-                                // For other markets, assume oracle already returns USD price
+                              } else {
+                                // Can't convert, use 0
+                                underlyingPriceUSD = 0;
                               }
-
-                              // Fallback: For fxUSD markets, if we couldn't calculate from oracle, use $1.00
-                              if (isFxUSDMarket && underlyingPriceUSD === 0) {
-                                underlyingPriceUSD = 1.0;
-                              }
-
-                              // Check if CoinGecko has the wrapped token price directly
+                            }
+                            // For other markets, assume oracle already returns USD price
+                          }
+                          
+                          // Fallback: For fxUSD markets, if we couldn't calculate from oracle, use $1.00
+                          if (isFxUSDMarket && underlyingPriceUSD === 0) {
+                            underlyingPriceUSD = 1.0;
+                          }
+                          
+                          // Check if CoinGecko has the wrapped token price directly
                               const marketCoinGeckoId = (
                                 marketData.market as any
                               )?.coinGeckoId as string | undefined;
                               const coinGeckoReturnedPrice =
                                 marketCoinGeckoId &&
                                 coinGeckoPrices?.[marketCoinGeckoId];
-
-                              // Check if CoinGecko returned a price for the wrapped token (fxSAVE or wstETH)
+                          
+                          // Check if CoinGecko returned a price for the wrapped token (fxSAVE or wstETH)
                               const isWstETH =
                                 collateralSymbol.toLowerCase() === "wsteth";
                               const isFxSAVE =
                                 collateralSymbol.toLowerCase() === "fxsave";
-                              const coinGeckoIsWrappedToken =
-                                coinGeckoReturnedPrice &&
-                                marketCoinGeckoId &&
+                          const coinGeckoIsWrappedToken =
+                            coinGeckoReturnedPrice &&
+                            marketCoinGeckoId &&
                                 ((marketCoinGeckoId.toLowerCase() ===
                                   "wrapped-steth" &&
                                   isWstETH) ||
@@ -7741,31 +7839,31 @@ export default function AnchorPage() {
                                     marketCoinGeckoId.toLowerCase() ===
                                       "fxsave") &&
                                     isFxSAVE));
-
-                              // Fallback: Use stETH price from CoinGecko if wstETH price isn't available yet
+                          
+                          // Fallback: Use stETH price from CoinGecko if wstETH price isn't available yet
                               const stETHPrice =
                                 coinGeckoPrices?.["lido-staked-ethereum-steth"];
-                              const useStETHFallback =
-                                isWstETH &&
-                                !coinGeckoIsWrappedToken &&
-                                underlyingPriceUSD === 0 &&
-                                stETHPrice &&
-                                stETHPrice > 0 &&
-                                wrappedRate &&
-                                wrappedRate > 0n;
-
-                              // Calculate wrapped token price (same logic as genesis page)
-                              // collateralValue is in wrapped tokens, so we need wrapped token price
-                              let wrappedTokenPriceUSD = 0;
+                          const useStETHFallback =
+                            isWstETH &&
+                            !coinGeckoIsWrappedToken &&
+                            underlyingPriceUSD === 0 &&
+                            stETHPrice &&
+                            stETHPrice > 0 &&
+                            wrappedRate &&
+                            wrappedRate > 0n;
+                          
+                          // Calculate wrapped token price (same logic as genesis page)
+                          // collateralValue is in wrapped tokens, so we need wrapped token price
+                          let wrappedTokenPriceUSD = 0;
                               if (
                                 coinGeckoIsWrappedToken &&
                                 coinGeckoReturnedPrice &&
                                 coinGeckoReturnedPrice > 0
                               ) {
-                                // CoinGecko already returns wrapped token price (e.g., wstETH, fxSAVE)
-                                wrappedTokenPriceUSD = coinGeckoReturnedPrice;
-                              } else if (useStETHFallback) {
-                                // Use stETH price * wrapped rate as fallback while wstETH loads
+                            // CoinGecko already returns wrapped token price (e.g., wstETH, fxSAVE)
+                            wrappedTokenPriceUSD = coinGeckoReturnedPrice;
+                          } else if (useStETHFallback) {
+                            // Use stETH price * wrapped rate as fallback while wstETH loads
                                 wrappedTokenPriceUSD =
                                   stETHPrice * wrappedRateNum;
                               } else if (
@@ -7775,156 +7873,174 @@ export default function AnchorPage() {
                                 underlyingPriceUSD > 0 &&
                                 wrappedRate
                               ) {
-                                // While CoinGecko loads, use oracle * wrapped rate for wstETH or fxSAVE
+                            // While CoinGecko loads, use oracle * wrapped rate for wstETH or fxSAVE
                                 wrappedTokenPriceUSD =
                                   underlyingPriceUSD * wrappedRateNum;
                               } else if (
                                 wrappedRate &&
                                 underlyingPriceUSD > 0
                               ) {
-                                // Multiply underlying by wrapped rate (e.g., fxUSD -> fxSAVE, stETH -> wstETH)
+                            // Multiply underlying by wrapped rate (e.g., fxUSD -> fxSAVE, stETH -> wstETH)
                                 wrappedTokenPriceUSD =
                                   underlyingPriceUSD * wrappedRateNum;
                               } else if (
                                 coinGeckoLoading &&
                                 marketCoinGeckoId
                               ) {
-                                // Still loading CoinGecko, don't use fallback price yet
-                                wrappedTokenPriceUSD = 0;
-                              } else if (isFxSAVE) {
-                                // Hardcoded fallback for fxSAVE if everything fails
-                                wrappedTokenPriceUSD = 1.07;
-                              } else if (underlyingPriceUSD > 0) {
-                                // Fallback to underlying price if no wrapped rate
-                                wrappedTokenPriceUSD = underlyingPriceUSD;
-                              }
+                            // Still loading CoinGecko, don't use fallback price yet
+                            wrappedTokenPriceUSD = 0;
+                          } else if (isFxSAVE) {
+                            // Hardcoded fallback for fxSAVE if everything fails
+                            wrappedTokenPriceUSD = 1.07;
+                          } else if (underlyingPriceUSD > 0) {
+                            // Fallback to underlying price if no wrapped rate
+                            wrappedTokenPriceUSD = underlyingPriceUSD;
+                          }
+                          
+                          // Use wrapped token price for collateral value calculation (same as genesis page)
+                          const collateralPriceUSD = wrappedTokenPriceUSD;
 
-                              // Use wrapped token price for collateral value calculation (same as genesis page)
-                              const collateralPriceUSD = wrappedTokenPriceUSD;
+                          // Get user's position data for price calculation
+                          const positionData =
+                            marketPositions[marketData.marketId];
 
-                              // Get user's position data for price calculation
-                              const positionData =
-                                marketPositions[marketData.marketId];
+                          // Total ha tokens: Use totalDebt (total supply, matches peggedTokenBalance from minter)
+                          const totalHaTokens =
+                            marketData.totalDebt !== undefined
+                              ? Number(marketData.totalDebt) / 1e18
+                              : 0;
 
-                              // Total ha tokens: Use totalDebt (total supply, matches peggedTokenBalance from minter)
-                              const totalHaTokens =
-                                marketData.totalDebt !== undefined
-                                  ? Number(marketData.totalDebt) / 1e18
-                                  : 0;
+                          // Collateral value calculation
+                          // IMPORTANT: Minter.collateralTokenBalance() / collateralValue is returned in **underlying-equivalent units**
+                          // - fxUSD markets: returned value is in fxUSD units (even though the minter holds fxSAVE)
+                          // - wstETH markets: returned value is in stETH units (even though the minter holds wstETH)
+                          // This matches on-chain behavior: underlyingEq = wrappedBalance * wrappedRate (where wrappedRate is underlying per wrapped).
+                          const collateralTokensUnderlyingEq =
+                            marketData.collateralValue !== undefined
+                              ? Number(marketData.collateralValue) / 1e18
+                              : 0;
 
-                              // Collateral value calculation
-                              // IMPORTANT: Minter.collateralTokenBalance() / collateralValue is returned in **underlying-equivalent units**
-                              // - fxUSD markets: returned value is in fxUSD units (even though the minter holds fxSAVE)
-                              // - wstETH markets: returned value is in stETH units (even though the minter holds wstETH)
-                              // This matches on-chain behavior: underlyingEq = wrappedBalance * wrappedRate (where wrappedRate is underlying per wrapped).
-                              const collateralTokensUnderlyingEq =
-                                marketData.collateralValue !== undefined
-                                  ? Number(marketData.collateralValue) / 1e18
-                                  : 0;
-
-                              const collateralTokensWrapped =
-                                wrappedRateNum > 0
+                          const collateralTokensWrapped =
+                            wrappedRateNum > 0
                                   ? collateralTokensUnderlyingEq /
                                     wrappedRateNum
-                                  : collateralTokensUnderlyingEq;
+                              : collateralTokensUnderlyingEq;
+                          
+                          // Removed debug logging
 
-                              // Removed debug logging
-
-                              // Calculate collateral value USD.
-                              // We compute USD from the wrapped token price (fxSAVE/wstETH) and convert the underlying-equivalent amount back to wrapped.
-                              let collateralValueUSD = 0;
+                          // Calculate collateral value USD.
+                          // We compute USD from the wrapped token price (fxSAVE/wstETH) and convert the underlying-equivalent amount back to wrapped.
+                          let collateralValueUSD = 0;
                               if (
                                 collateralTokensWrapped > 0 &&
                                 collateralPriceUSD > 0
                               ) {
-                                collateralValueUSD =
-                                  collateralTokensWrapped * collateralPriceUSD;
-                              }
+                            collateralValueUSD =
+                              collateralTokensWrapped * collateralPriceUSD;
+                          }
 
-                              // Calculate total debt in USD (same calculation as market position)
-                              // Use peggedPriceUSDMap which contains USD prices (already converted)
-                              // This matches how useMarketPositions calculates walletHaUSD
-                              const usdPriceFromMap =
-                                peggedPriceUSDMap[marketData.marketId];
-                              const peggedPriceUSD =
-                                usdPriceFromMap && usdPriceFromMap > 0n
-                                  ? Number(usdPriceFromMap) / 1e18
-                                  : positionData?.peggedTokenPrice &&
-                                    positionData.peggedTokenPrice > 0n
-                                  ? Number(positionData.peggedTokenPrice) / 1e18
-                                  : marketData.peggedTokenPrice &&
-                                    marketData.peggedTokenPrice > 0n
-                                  ? Number(marketData.peggedTokenPrice) / 1e18
-                                  : 1; // Default to $1 peg
-                              // Use same calculation as positionData.walletHaUSD
+                          // Calculate total debt in USD (same calculation as market position)
+                          // Use peggedPriceUSDMap which contains USD prices (already converted)
+                          // This matches how useMarketPositions calculates walletHaUSD
+                          const usdPriceFromMap =
+                            peggedPriceUSDMap[marketData.marketId];
+                          // Get peg target for fallback pricing
+                          const pricePegTarget = (marketData.market as any)?.pegTarget?.toLowerCase() || "";
+                          const peggedSymbolLower = marketData.market?.peggedToken?.symbol?.toLowerCase() || "";
+                          const btcUsdFallback = btcPrice || 0;
+                          const ethUsdFallback = ethPrice || 0;
+                          const eurUsdFallback = eurPrice || 0;
+                          
+                          const peggedPriceUSD =
+                            usdPriceFromMap && usdPriceFromMap > 0n
+                              ? Number(usdPriceFromMap) / 1e18
+                              : (pricePegTarget === "btc" || peggedSymbolLower.includes("btc")) && btcUsdFallback > 0
+                              ? btcUsdFallback
+                              : (pricePegTarget === "eth" || peggedSymbolLower.includes("eth")) && ethUsdFallback > 0
+                              ? ethUsdFallback
+                              : (pricePegTarget === "eur" || peggedSymbolLower.includes("eur")) && eurUsdFallback > 0
+                              ? eurUsdFallback
+                              : positionData?.peggedTokenPrice &&
+                                positionData.peggedTokenPrice > 0n
+                              ? Number(positionData.peggedTokenPrice) / 1e18
+                              : marketData.peggedTokenPrice &&
+                                marketData.peggedTokenPrice > 0n
+                              ? Number(marketData.peggedTokenPrice) / 1e18
+                              : 1; // Default to $1 peg
+                          // Use same calculation as positionData.walletHaUSD
                               const totalDebtUSD =
                                 totalHaTokens * peggedPriceUSD;
 
-                              return (
-                                <React.Fragment key={marketData.marketId}>
+                          return (
+                            <React.Fragment key={marketData.marketId}>
                                   <div className="bg-white p-2 mb-2 border border-[#1E4775]/10">
-                                    <div className="flex items-center justify-end mb-2">
-                                      <button
-                                        onClick={() =>
-                                          setContractAddressesModal({
-                                            marketId: marketData.marketId,
-                                            market: marketData.market,
+                              <div className="flex items-center justify-end mb-2">
+                                <button
+                                  onClick={() =>
+                                    setContractAddressesModal({
+                                      marketId: marketData.marketId,
+                                      market: marketData.market,
                                             minterAddress:
                                               marketData.minterAddress ??
                                               ((marketData.market as any)
                                                 ?.addresses
                                                 ?.minter as string) ??
                                               "0x0000000000000000000000000000000000000000",
-                                          })
-                                        }
-                                        className="text-[#1E4775]/60 hover:text-[#1E4775] text-xs font-medium transition-colors flex items-center gap-1"
-                                      >
-                                        <span>Contracts</span>
-                                        <ArrowRightIcon className="w-3 h-3" />
-                                      </button>
-                                    </div>
-                                    {(() => {
-                                      // Calculate TVL in USD for both pools from stability pool contracts
-                                      // Use the same CR-aware USD pricing as positions (prefer peggedPriceUSDMap; fallback to contract reads)
-                                      const tvlUsdPriceFromMap =
-                                        peggedPriceUSDMap[marketData.marketId];
-                                      // Extra robustness: if the USD map is missing/zero for haBTC/haETH,
-                                      // fall back to CoinGecko peg-target USD price.
-                                      const peggedSymbolLower =
+                                    })
+                                  }
+                                  className="text-[#1E4775]/60 hover:text-[#1E4775] text-xs font-medium transition-colors flex items-center gap-1"
+                                >
+                                  <span>Contracts</span>
+                                  <ArrowRightIcon className="w-3 h-3" />
+                                </button>
+                              </div>
+                              {(() => {
+                                // Calculate TVL in USD for both pools from stability pool contracts
+                                // Use the same CR-aware USD pricing as positions (prefer peggedPriceUSDMap; fallback to contract reads)
+                                const tvlUsdPriceFromMap =
+                                  peggedPriceUSDMap[marketData.marketId];
+                                // Extra robustness: if the USD map is missing/zero for haBTC/haETH/haEUR,
+                                // fall back to CoinGecko peg-target USD price.
+                                const tvlPegTarget = (marketData.market as any)?.pegTarget?.toLowerCase() || "";
+                                const peggedSymbolLower =
                                         marketData.market?.peggedToken?.symbol?.toLowerCase?.() ||
                                         "";
-                                      const btcUsdFallback = btcPrice || 0;
-                                      const ethUsdFallback = ethPrice || 0;
+                                const btcUsdFallback = btcPrice || 0;
+                                const ethUsdFallback = ethPrice || 0;
+                                const eurUsdFallback = eurPrice || 0;
 
-                                      const peggedPriceUSD =
+                                const peggedPriceUSD =
                                         tvlUsdPriceFromMap &&
                                         tvlUsdPriceFromMap > 0n
-                                          ? Number(tvlUsdPriceFromMap) / 1e18
-                                          : peggedSymbolLower.includes("btc") &&
-                                            btcUsdFallback > 0
-                                          ? btcUsdFallback
-                                          : peggedSymbolLower.includes("eth") &&
-                                            ethUsdFallback > 0
-                                          ? ethUsdFallback
-                                          : positionData?.peggedTokenPrice &&
-                                            positionData.peggedTokenPrice > 0n
+                                    ? Number(tvlUsdPriceFromMap) / 1e18
+                                    : (tvlPegTarget === "btc" || peggedSymbolLower.includes("btc")) &&
+                                      btcUsdFallback > 0
+                                    ? btcUsdFallback
+                                    : (tvlPegTarget === "eth" || peggedSymbolLower.includes("eth")) &&
+                                      ethUsdFallback > 0
+                                    ? ethUsdFallback
+                                    : (tvlPegTarget === "eur" || peggedSymbolLower.includes("eur")) &&
+                                      eurUsdFallback > 0
+                                    ? eurUsdFallback
+                                    : positionData?.peggedTokenPrice &&
+                                      positionData.peggedTokenPrice > 0n
                                           ? Number(
                                               positionData.peggedTokenPrice
                                             ) / 1e18
-                                          : marketData.peggedTokenPrice &&
-                                            marketData.peggedTokenPrice > 0n
+                                    : marketData.peggedTokenPrice &&
+                                      marketData.peggedTokenPrice > 0n
                                           ? Number(
                                               marketData.peggedTokenPrice
                                             ) / 1e18
-                                          : 1; // fallback to $1 peg if price missing
+                                    : 1; // fallback to $1 peg if price missing
 
-                                      const collateralPoolTVLTokens =
-                                        marketData.collateralPoolTVL
+                                const collateralPoolTVLTokens =
+                                  marketData.collateralPoolTVL
                                           ? Number(
                                               marketData.collateralPoolTVL
                                             ) / 1e18
-                                          : 0;
-                                      const collateralPoolTVLUSD =
+                                    : 0;
+                                const collateralPoolTVLUSD =
                                         collateralPoolTVLTokens *
                                         peggedPriceUSD;
 
@@ -7932,26 +8048,26 @@ export default function AnchorPage() {
                                         marketData.sailPoolTVL
                                           ? Number(marketData.sailPoolTVL) /
                                             1e18
-                                          : 0;
-                                      const sailPoolTVLUSD =
-                                        sailPoolTVLTokens * peggedPriceUSD;
+                                  : 0;
+                                const sailPoolTVLUSD =
+                                  sailPoolTVLTokens * peggedPriceUSD;
 
-                                      // Dev-only debug to validate TVL reads, especially right after new pool deployments.
+                                // Dev-only debug to validate TVL reads, especially right after new pool deployments.
                                       if (
                                         process.env.NODE_ENV === "development"
                                       ) {
-                                        // eslint-disable-next-line no-console
-                                        console.log("[Anchor][TVL]", {
-                                          marketId: marketData.marketId,
+                                  // eslint-disable-next-line no-console
+                                  console.log("[Anchor][TVL]", {
+                                    marketId: marketData.marketId,
                                           collateralPoolTVL:
                                             marketData.collateralPoolTVL?.toString(),
                                           sailPoolTVL:
                                             marketData.sailPoolTVL?.toString(),
-                                          peggedPriceUSD,
-                                        });
-                                      }
+                                    peggedPriceUSD,
+                                  });
+                                }
 
-                                      // Calculate APR values for display
+                                // Calculate APR values for display
                                       const collateralPoolAddress = (
                                         marketData.market as any
                                       )?.addresses?.stabilityPoolCollateral as
@@ -7962,56 +8078,56 @@ export default function AnchorPage() {
                                       )?.addresses?.stabilityPoolLeveraged as
                                         | `0x${string}`
                                         | undefined;
-
+                                
                                       const collateralPoolReward =
                                         collateralPoolAddress
                                           ? poolRewardsMap.get(
                                               collateralPoolAddress
                                             )
-                                          : undefined;
-                                      const sailPoolReward = sailPoolAddress
-                                        ? poolRewardsMap.get(sailPoolAddress)
-                                        : undefined;
+                                  : undefined;
+                                const sailPoolReward = sailPoolAddress
+                                  ? poolRewardsMap.get(sailPoolAddress)
+                                  : undefined;
 
-                                      // Get APR values - use rewardTokenAPRs for per-token breakdown, or totalRewardAPR for single value
+                                // Get APR values - use rewardTokenAPRs for per-token breakdown, or totalRewardAPR for single value
                                       const collateralPoolAPR =
                                         collateralPoolReward?.totalRewardAPR ||
                                         0;
                                       const sailPoolAPR =
                                         sailPoolReward?.totalRewardAPR || 0;
 
-                                      return (
-                                        <>
-                                          {/* Row 1: Collateral, Min CR, Vol. Protection, Collateral Pool TVL, Sail Pool TVL */}
-                                          <div className="grid grid-cols-3 md:grid-cols-5 gap-1.5 mb-1.5">
-                                            <div className="bg-[#1E4775]/5 p-1.5 text-center">
-                                              <div className="text-[10px] text-[#1E4775]/70 mb-0.5">
-                                                Collateral
-                                              </div>
-                                              <div className="text-xs font-semibold text-[#1E4775]">
+                                return (
+                                  <>
+                                    {/* Row 1: Collateral, Min CR, Vol. Protection, Collateral Pool TVL, Sail Pool TVL */}
+                                    <div className="grid grid-cols-3 md:grid-cols-5 gap-1.5 mb-1.5">
+                                      <div className="bg-[#1E4775]/5 p-1.5 text-center">
+                                        <div className="text-[10px] text-[#1E4775]/70 mb-0.5">
+                                          Collateral
+                                        </div>
+                                        <div className="text-xs font-semibold text-[#1E4775]">
                                                 {marketData.market.collateral
                                                   ?.symbol || "ETH"}
-                                              </div>
-                                            </div>
-                                            <div className="bg-[#1E4775]/5 p-1.5 text-center">
-                                              <div className="text-[10px] text-[#1E4775]/70 mb-0.5">
-                                                Min CR
-                                              </div>
-                                              <div className="text-xs font-semibold text-[#1E4775]">
-                                                {minCollateralRatioFormatted}
-                                              </div>
-                                            </div>
-                                            <div className="bg-[#1E4775]/5 p-1.5 text-center">
-                                              <div className="text-[10px] text-[#1E4775]/70 mb-0.5 flex items-center justify-center gap-1">
-                                                Vol. Protection
-                                                <SimpleTooltip
-                                                  side="top"
-                                                  label={
-                                                    <div className="space-y-2">
-                                                      <p className="font-semibold mb-1">
-                                                        Volatility Protection
-                                                      </p>
-                                                      <p>
+                                        </div>
+                                      </div>
+                                      <div className="bg-[#1E4775]/5 p-1.5 text-center">
+                                        <div className="text-[10px] text-[#1E4775]/70 mb-0.5">
+                                          Min CR
+                                        </div>
+                                        <div className="text-xs font-semibold text-[#1E4775]">
+                                          {minCollateralRatioFormatted}
+                                        </div>
+                                      </div>
+                                      <div className="bg-[#1E4775]/5 p-1.5 text-center">
+                                        <div className="text-[10px] text-[#1E4775]/70 mb-0.5 flex items-center justify-center gap-1">
+                                          Vol. Protection
+                                          <SimpleTooltip
+                                            side="top"
+                                            label={
+                                              <div className="space-y-2">
+                                                <p className="font-semibold mb-1">
+                                                  Volatility Protection
+                                                </p>
+                                                <p>
                                                         The percentage adverse
                                                         price movement between
                                                         collateral and the
@@ -8020,8 +8136,8 @@ export default function AnchorPage() {
                                                         before reaching the
                                                         depeg point (100%
                                                         collateral ratio).
-                                                      </p>
-                                                      <p>
+                                                </p>
+                                                <p>
                                                         For example, an
                                                         ETH-pegged token with
                                                         USD collateral is
@@ -8029,243 +8145,243 @@ export default function AnchorPage() {
                                                         price spikes (ETH
                                                         becoming more expensive
                                                         relative to USD).
-                                                      </p>
-                                                      <p>
+                                                </p>
+                                                <p>
                                                         This accounts for
                                                         stability pools that can
                                                         rebalance and improve
                                                         the collateral ratio
                                                         during adverse price
                                                         movements.
-                                                      </p>
-                                                      <p className="text-xs text-gray-400 italic">
-                                                        Higher percentage = more
-                                                        protection. Assumes no
-                                                        additional deposits or
-                                                        withdrawals.
-                                                      </p>
-                                                    </div>
+                                                </p>
+                                                <p className="text-xs text-gray-400 italic">
+                                                  Higher percentage = more
+                                                  protection. Assumes no
+                                                  additional deposits or
+                                                  withdrawals.
+                                                </p>
+                                              </div>
+                                            }
+                                          >
+                                            <span className="text-[#1E4775]/30 cursor-help">
+                                              [?]
+                                            </span>
+                                          </SimpleTooltip>
+                                        </div>
+                                        <div className="text-xs font-semibold text-[#1E4775]">
+                                          {volatilityProtection}
+                                        </div>
+                                      </div>
+                                      <div className="bg-[#1E4775]/5 p-1.5 text-center">
+                                        <div className="text-[10px] text-[#1E4775]/70 mb-0.5">
+                                          Collateral Pool TVL
+                                        </div>
+                                        <SimpleTooltip
+                                          label={
+                                            collateralPoolTVLTokens > 0
+                                              ? `${collateralPoolTVLTokens.toLocaleString(
+                                                  undefined,
+                                                  {
+                                                    minimumFractionDigits: 2,
+                                                    maximumFractionDigits: 2,
                                                   }
-                                                >
-                                                  <span className="text-[#1E4775]/30 cursor-help">
-                                                    [?]
-                                                  </span>
-                                                </SimpleTooltip>
-                                              </div>
-                                              <div className="text-xs font-semibold text-[#1E4775]">
-                                                {volatilityProtection}
-                                              </div>
-                                            </div>
-                                            <div className="bg-[#1E4775]/5 p-1.5 text-center">
-                                              <div className="text-[10px] text-[#1E4775]/70 mb-0.5">
-                                                Collateral Pool TVL
-                                              </div>
-                                              <SimpleTooltip
-                                                label={
-                                                  collateralPoolTVLTokens > 0
-                                                    ? `${collateralPoolTVLTokens.toLocaleString(
-                                                        undefined,
-                                                        {
-                                                          minimumFractionDigits: 2,
-                                                          maximumFractionDigits: 2,
-                                                        }
-                                                      )} ${
+                                                )} ${
                                                         marketData.market
                                                           .peggedToken
-                                                          ?.symbol || "ha"
-                                                      }`
-                                                    : "No deposits"
-                                                }
-                                              >
-                                                <div className="text-xs font-semibold text-[#1E4775] cursor-help">
-                                                  {collateralPoolTVLUSD > 0
-                                                    ? collateralPoolTVLUSD < 100
+                                                    ?.symbol || "ha"
+                                                }`
+                                              : "No deposits"
+                                          }
+                                        >
+                                          <div className="text-xs font-semibold text-[#1E4775] cursor-help">
+                                            {collateralPoolTVLUSD > 0
+                                              ? collateralPoolTVLUSD < 100
                                                       ? `$${collateralPoolTVLUSD.toFixed(
                                                           2
                                                         )}`
                                                       : formatCompactUSD(
                                                           collateralPoolTVLUSD
                                                         )
-                                                    : collateralPoolTVLUSD === 0
-                                                    ? "$0.00"
-                                                    : "-"}
-                                                </div>
-                                              </SimpleTooltip>
-                                            </div>
-                                            <div className="bg-[#1E4775]/5 p-1.5 text-center">
-                                              <div className="text-[10px] text-[#1E4775]/70 mb-0.5">
-                                                Sail Pool TVL
-                                              </div>
-                                              <SimpleTooltip
-                                                label={
-                                                  sailPoolTVLTokens > 0
-                                                    ? `${sailPoolTVLTokens.toLocaleString(
-                                                        undefined,
-                                                        {
-                                                          minimumFractionDigits: 2,
-                                                          maximumFractionDigits: 2,
-                                                        }
-                                                      )} ${
+                                              : collateralPoolTVLUSD === 0
+                                              ? "$0.00"
+                                              : "-"}
+                                          </div>
+                                        </SimpleTooltip>
+                                      </div>
+                                      <div className="bg-[#1E4775]/5 p-1.5 text-center">
+                                        <div className="text-[10px] text-[#1E4775]/70 mb-0.5">
+                                          Sail Pool TVL
+                                        </div>
+                                        <SimpleTooltip
+                                          label={
+                                            sailPoolTVLTokens > 0
+                                              ? `${sailPoolTVLTokens.toLocaleString(
+                                                  undefined,
+                                                  {
+                                                    minimumFractionDigits: 2,
+                                                    maximumFractionDigits: 2,
+                                                  }
+                                                )} ${
                                                         marketData.market
                                                           .peggedToken
-                                                          ?.symbol || "ha"
-                                                      }`
-                                                    : "No deposits"
-                                                }
-                                              >
-                                                <div className="text-xs font-semibold text-[#1E4775] cursor-help">
-                                                  {sailPoolTVLUSD > 0
-                                                    ? sailPoolTVLUSD < 100
+                                                    ?.symbol || "ha"
+                                                }`
+                                              : "No deposits"
+                                          }
+                                        >
+                                          <div className="text-xs font-semibold text-[#1E4775] cursor-help">
+                                            {sailPoolTVLUSD > 0
+                                              ? sailPoolTVLUSD < 100
                                                       ? `$${sailPoolTVLUSD.toFixed(
                                                           2
                                                         )}`
                                                       : formatCompactUSD(
                                                           sailPoolTVLUSD
                                                         )
-                                                    : sailPoolTVLUSD === 0
-                                                    ? "$0.00"
-                                                    : "-"}
-                                                </div>
-                                              </SimpleTooltip>
-                                            </div>
+                                              : sailPoolTVLUSD === 0
+                                              ? "$0.00"
+                                              : "-"}
                                           </div>
+                                        </SimpleTooltip>
+                                      </div>
+                                    </div>
 
-                                          {/* Row 2: Collateral (USD), Current CR, Total haETH, Collateral Pool APR, Sail Pool APR */}
-                                          <div className="grid grid-cols-3 md:grid-cols-5 gap-1.5">
-                                            <div className="bg-[#1E4775]/5 p-1.5 text-center">
-                                              <div className="text-[10px] text-[#1E4775]/70 mb-0.5">
-                                                Collateral (USD)
-                                              </div>
-                                              <SimpleTooltip
-                                                label={
-                                                  <div className="space-y-1">
-                                                    <div>
-                                                      {collateralTokensUnderlyingEq.toLocaleString(
-                                                        undefined,
-                                                        {
-                                                          minimumFractionDigits: 2,
-                                                          maximumFractionDigits: 2,
-                                                        }
-                                                      )}{" "}
+                                    {/* Row 2: Collateral (USD), Current CR, Total haETH, Collateral Pool APR, Sail Pool APR */}
+                                    <div className="grid grid-cols-3 md:grid-cols-5 gap-1.5">
+                                      <div className="bg-[#1E4775]/5 p-1.5 text-center">
+                                        <div className="text-[10px] text-[#1E4775]/70 mb-0.5">
+                                          Collateral (USD)
+                                        </div>
+                                        <SimpleTooltip
+                                          label={
+                                            <div className="space-y-1">
+                                              <div>
+                                                {collateralTokensUnderlyingEq.toLocaleString(
+                                          undefined,
+                                          {
+                                            minimumFractionDigits: 2,
+                                            maximumFractionDigits: 2,
+                                          }
+                                              )}{" "}
                                                       {marketData.market
                                                         .collateral
-                                                        ?.underlyingSymbol ||
+                                                  ?.underlyingSymbol ||
                                                         (isFxUSDMarket
                                                           ? "fxUSD"
                                                           : "stETH")}{" "}
-                                                      (underlying)
-                                                    </div>
-                                                    <div className="text-white/70">
-                                                      {collateralTokensWrapped.toLocaleString(
-                                                        undefined,
-                                                        {
-                                                          minimumFractionDigits: 2,
-                                                          maximumFractionDigits: 2,
-                                                        }
-                                                      )}{" "}
+                                                (underlying)
+                                              </div>
+                                              <div className="text-white/70">
+                                                {collateralTokensWrapped.toLocaleString(
+                                                  undefined,
+                                                  {
+                                                    minimumFractionDigits: 2,
+                                                    maximumFractionDigits: 2,
+                                                  }
+                                                )}{" "}
                                                       {marketData.market
                                                         .collateral?.symbol ||
                                                         "ETH"}{" "}
-                                                      (wrapped)
-                                                    </div>
-                                                  </div>
-                                                }
-                                              >
-                                                <div className="text-xs font-semibold text-[#1E4775] cursor-help">
-                                                  {collateralValueUSD > 0
+                                                (wrapped)
+                                              </div>
+                                            </div>
+                                          }
+                                        >
+                                          <div className="text-xs font-semibold text-[#1E4775] cursor-help">
+                                            {collateralValueUSD > 0
                                                     ? `$${
                                                         collateralValueUSD < 100
                                                           ? collateralValueUSD.toFixed(
                                                               2
                                                             )
-                                                          : collateralValueUSD.toLocaleString(
-                                                              undefined,
-                                                              {
-                                                                minimumFractionDigits: 0,
-                                                                maximumFractionDigits: 0,
-                                                              }
+                                                  : collateralValueUSD.toLocaleString(
+                                                  undefined,
+                                                  {
+                                                    minimumFractionDigits: 0,
+                                                    maximumFractionDigits: 0,
+                                                  }
                                                             )
                                                       }`
-                                                    : collateralValueUSD === 0
-                                                    ? "$0.00"
-                                                    : "-"}
-                                                </div>
-                                              </SimpleTooltip>
-                                            </div>
-                                            <div className="bg-[#1E4775]/5 p-1.5 text-center">
-                                              <div className="text-[10px] text-[#1E4775]/70 mb-0.5">
-                                                Current CR
-                                              </div>
-                                              <div className="text-xs font-semibold text-[#1E4775]">
-                                                {formatRatio(
-                                                  marketData.collateralRatio
-                                                )}
-                                              </div>
-                                            </div>
-                                            <div className="bg-[#1E4775]/5 p-1.5 text-center">
-                                              <div className="text-[10px] text-[#1E4775]/70 mb-0.5">
-                                                Total{" "}
-                                                {marketData.market.peggedToken
-                                                  ?.symbol || "ha"}
-                                              </div>
-                                              <SimpleTooltip
-                                                label={
-                                                  totalDebtUSD > 0
-                                                    ? `$${totalDebtUSD.toLocaleString(
-                                                        undefined,
-                                                        {
-                                                          minimumFractionDigits: 0,
-                                                          maximumFractionDigits: 0,
-                                                        }
-                                                      )} USD`
-                                                    : "No tokens minted"
-                                                }
-                                              >
-                                                <div className="text-xs font-semibold text-[#1E4775] cursor-help">
-                                                  {totalHaTokens > 0
-                                                    ? totalHaTokens.toLocaleString(
-                                                        undefined,
-                                                        {
-                                                          minimumFractionDigits: 4,
-                                                          maximumFractionDigits: 4,
-                                                        }
-                                                      )
-                                                    : totalHaTokens === 0
-                                                    ? "0.0000"
-                                                    : "-"}
-                                                </div>
-                                              </SimpleTooltip>
-                                            </div>
-                                            <div className="bg-[#1E4775]/5 p-1.5 text-center">
-                                              <div className="text-[10px] text-[#1E4775]/70 mb-0.5 flex items-center justify-center gap-1">
-                                                Collateral Pool APR
-                                                <SimpleTooltip
-                                                  side="top"
-                                                  label={
-                                                    <div className="space-y-2">
-                                                      <p className="font-semibold mb-1">
+                                              : collateralValueUSD === 0
+                                              ? "$0.00"
+                                              : "-"}
+                                          </div>
+                                        </SimpleTooltip>
+                                      </div>
+                                      <div className="bg-[#1E4775]/5 p-1.5 text-center">
+                                        <div className="text-[10px] text-[#1E4775]/70 mb-0.5">
+                                          Current CR
+                                        </div>
+                                        <div className="text-xs font-semibold text-[#1E4775]">
+                                          {formatRatio(
+                                            marketData.collateralRatio
+                                          )}
+                                        </div>
+                                      </div>
+                                      <div className="bg-[#1E4775]/5 p-1.5 text-center">
+                                        <div className="text-[10px] text-[#1E4775]/70 mb-0.5">
+                                          Total{" "}
+                                          {marketData.market.peggedToken
+                                            ?.symbol || "ha"}
+                                        </div>
+                                        <SimpleTooltip
+                                          label={
+                                            totalDebtUSD > 0
+                                              ? `$${totalDebtUSD.toLocaleString(
+                                                  undefined,
+                                                  {
+                                                    minimumFractionDigits: 0,
+                                                    maximumFractionDigits: 0,
+                                                  }
+                                                )} USD`
+                                              : "No tokens minted"
+                                          }
+                                        >
+                                          <div className="text-xs font-semibold text-[#1E4775] cursor-help">
+                                            {totalHaTokens > 0
+                                              ? totalHaTokens.toLocaleString(
+                                                  undefined,
+                                                  {
+                                                    minimumFractionDigits: 4,
+                                                    maximumFractionDigits: 4,
+                                                  }
+                                                )
+                                              : totalHaTokens === 0
+                                              ? "0.0000"
+                                              : "-"}
+                                          </div>
+                                        </SimpleTooltip>
+                                      </div>
+                                      <div className="bg-[#1E4775]/5 p-1.5 text-center">
+                                        <div className="text-[10px] text-[#1E4775]/70 mb-0.5 flex items-center justify-center gap-1">
+                                          Collateral Pool APR
+                                          <SimpleTooltip
+                                            side="top"
+                                            label={
+                                              <div className="space-y-2">
+                                                <p className="font-semibold mb-1">
                                                         Collateral Pool APR
                                                         Calculation
-                                                      </p>
-                                                      <p>
+                                                </p>
+                                                <p>
                                                         The APR is calculated
                                                         from reward rates for
                                                         all active reward tokens
                                                         (e.g., fxSAVE, wstETH)
                                                         in the pool.
-                                                      </p>
-                                                      <p className="font-semibold mt-2">
-                                                        Formula:
-                                                      </p>
-                                                      <p className="text-xs font-mono bg-white/10 p-2 rounded">
+                                                </p>
+                                                <p className="font-semibold mt-2">
+                                                  Formula:
+                                                </p>
+                                                <p className="text-xs font-mono bg-white/10 p-2 rounded">
                                                         APR = (Annual Rewards
                                                         Value USD / Deposit
                                                         Value USD) × 100
-                                                      </p>
-                                                      <p className="text-xs mt-2">
-                                                        Where:
-                                                      </p>
-                                                      <ul className="text-xs space-y-1 list-disc list-inside ml-2">
+                                                </p>
+                                                <p className="text-xs mt-2">
+                                                  Where:
+                                                </p>
+                                                <ul className="text-xs space-y-1 list-disc list-inside ml-2">
                                                         <li>
                                                           Annual Rewards =
                                                           (rewardRate ×
@@ -8283,62 +8399,62 @@ export default function AnchorPage() {
                                                           APRs are summed to get
                                                           the total APR
                                                         </li>
-                                                      </ul>
-                                                      <p className="text-xs text-gray-400 italic mt-2">
+                                                </ul>
+                                                <p className="text-xs text-gray-400 italic mt-2">
                                                         The APR reflects the
                                                         annualized return from
                                                         all reward tokens
                                                         currently streaming into
                                                         the pool.
-                                                      </p>
-                                                    </div>
-                                                  }
-                                                >
-                                                  <span className="text-[#1E4775]/30 cursor-help">
-                                                    [?]
-                                                  </span>
-                                                </SimpleTooltip>
+                                                </p>
                                               </div>
-                                              <div className="text-xs font-semibold text-[#1E4775]">
-                                                {showLiveAprLoading
-                                                  ? "Loading"
-                                                  : collateralPoolAPR > 0
+                                            }
+                                          >
+                                            <span className="text-[#1E4775]/30 cursor-help">
+                                              [?]
+                                            </span>
+                                          </SimpleTooltip>
+                                        </div>
+                                        <div className="text-xs font-semibold text-[#1E4775]">
+                                          {showLiveAprLoading
+                                            ? "Loading"
+                                            : collateralPoolAPR > 0
                                                   ? `${collateralPoolAPR.toFixed(
                                                       2
                                                     )}%`
-                                                  : "-"}
-                                              </div>
-                                            </div>
-                                            <div className="bg-[#1E4775]/5 p-1.5 text-center">
-                                              <div className="text-[10px] text-[#1E4775]/70 mb-0.5 flex items-center justify-center gap-1">
-                                                Sail Pool APR
-                                                <SimpleTooltip
-                                                  side="top"
-                                                  label={
-                                                    <div className="space-y-2">
-                                                      <p className="font-semibold mb-1">
+                                            : "-"}
+                                        </div>
+                                      </div>
+                                      <div className="bg-[#1E4775]/5 p-1.5 text-center">
+                                        <div className="text-[10px] text-[#1E4775]/70 mb-0.5 flex items-center justify-center gap-1">
+                                          Sail Pool APR
+                                          <SimpleTooltip
+                                            side="top"
+                                            label={
+                                              <div className="space-y-2">
+                                                <p className="font-semibold mb-1">
                                                         Sail Pool APR
                                                         Calculation
-                                                      </p>
-                                                      <p>
+                                                </p>
+                                                <p>
                                                         The APR is calculated
                                                         from reward rates for
                                                         all active reward tokens
                                                         (e.g., fxSAVE, wstETH)
                                                         in the pool.
-                                                      </p>
-                                                      <p className="font-semibold mt-2">
-                                                        Formula:
-                                                      </p>
-                                                      <p className="text-xs font-mono bg-white/10 p-2 rounded">
+                                                </p>
+                                                <p className="font-semibold mt-2">
+                                                  Formula:
+                                                </p>
+                                                <p className="text-xs font-mono bg-white/10 p-2 rounded">
                                                         APR = (Annual Rewards
                                                         Value USD / Deposit
                                                         Value USD) × 100
-                                                      </p>
-                                                      <p className="text-xs mt-2">
-                                                        Where:
-                                                      </p>
-                                                      <ul className="text-xs space-y-1 list-disc list-inside ml-2">
+                                                </p>
+                                                <p className="text-xs mt-2">
+                                                  Where:
+                                                </p>
+                                                <ul className="text-xs space-y-1 list-disc list-inside ml-2">
                                                         <li>
                                                           Annual Rewards =
                                                           (rewardRate ×
@@ -8356,43 +8472,43 @@ export default function AnchorPage() {
                                                           APRs are summed to get
                                                           the total APR
                                                         </li>
-                                                      </ul>
-                                                      <p className="text-xs text-gray-400 italic mt-2">
+                                                </ul>
+                                                <p className="text-xs text-gray-400 italic mt-2">
                                                         The APR reflects the
                                                         annualized return from
                                                         all reward tokens
                                                         currently streaming into
                                                         the pool.
-                                                      </p>
-                                                    </div>
-                                                  }
-                                                >
-                                                  <span className="text-[#1E4775]/30 cursor-help">
-                                                    [?]
-                                                  </span>
-                                                </SimpleTooltip>
+                                                </p>
                                               </div>
-                                              <div className="text-xs font-semibold text-[#1E4775]">
-                                                {showLiveAprLoading
-                                                  ? "Loading"
-                                                  : sailPoolAPR > 0
-                                                  ? `${sailPoolAPR.toFixed(2)}%`
-                                                  : "-"}
-                                              </div>
-                                            </div>
-                                          </div>
-                                        </>
-                                      );
-                                    })()}
-                                  </div>
-                                </React.Fragment>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </React.Fragment>
-                    );
-                  })}
+                                            }
+                                          >
+                                            <span className="text-[#1E4775]/30 cursor-help">
+                                              [?]
+                                            </span>
+                                          </SimpleTooltip>
+                                        </div>
+                                        <div className="text-xs font-semibold text-[#1E4775]">
+                                          {showLiveAprLoading
+                                            ? "Loading"
+                                            : sailPoolAPR > 0
+                                            ? `${sailPoolAPR.toFixed(2)}%`
+                                            : "-"}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </>
+                                );
+                              })()}
+                            </div>
+                            </React.Fragment>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </React.Fragment>
+                );
+              })}
                 </>
               );
             })()}
@@ -8650,7 +8766,7 @@ export default function AnchorPage() {
               const pools = marketsForToken.flatMap(([mid, m]) => {
                 const collateralSymbol =
                   (m as any)?.collateral?.symbol || "collateral";
-                const collateralPoolAddress = (m as any).addresses
+                  const collateralPoolAddress = (m as any).addresses
                   ?.stabilityPoolCollateral as `0x${string}` | undefined;
                 const sailPoolAddress = (m as any).addresses
                   ?.stabilityPoolLeveraged as `0x${string}` | undefined;
@@ -8681,7 +8797,7 @@ export default function AnchorPage() {
                   items.push({
                     marketId: mid,
                     collateralSymbol,
-                    poolType: "collateral",
+                      poolType: "collateral",
                     poolAddress: collateralPoolAddress,
                     apr,
                   });
@@ -8800,7 +8916,7 @@ export default function AnchorPage() {
                 mode,
                 selectedPools: compoundTargetModal.selectedPools,
                 targetMarketId,
-              });
+                    });
 
               const marketForPoolSelection =
                 compoundTargetModal.positions[0]?.market;
@@ -8809,7 +8925,7 @@ export default function AnchorPage() {
               }
               setCompoundTargetModal(null);
             }}
-          />
+        />
         )}
 
         {selectedMarketForClaim && (

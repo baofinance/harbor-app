@@ -36,12 +36,18 @@ const nextConfig = {
     }
 
     // Exclude problematic connectors that use broken @noble/curves
+    const path = require("path");
     config.resolve.alias = {
       ...config.resolve.alias,
       "@wagmi/connectors/dist/esm/baseAccount": false,
       "@wagmi/connectors/dist/esm/coinbaseWallet": false,
       "@base-org/account": false,
       "@coinbase/wallet-sdk": false,
+      // Fix for @web3icons/react/dynamic - package exports point to dynamic/index.js but file is at dynamic.js
+      "@web3icons/react/dynamic": path.resolve(
+        __dirname,
+        "node_modules/@web3icons/react/dist/dynamic.js"
+      ),
     };
 
     return config;

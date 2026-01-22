@@ -87,10 +87,28 @@ function bandsFromConfig(config: any): FeeBand[] {
  return bands;
 }
 
-function FeeBandBadge({ ratio }: { ratio: bigint }) {
+function FeeBandBadge({ 
+  ratio, 
+  isMintSail = false, 
+  lowerBound = 0n, 
+  upperBound 
+}: { 
+  ratio: bigint;
+  isMintSail?: boolean;
+  lowerBound?: bigint;
+  upperBound?: bigint;
+}) {
  // ratio is WAD-scaled percent (1e18 = 100%)
  const pct = Number(ratio) / 1e16; // 1e16 => 1%
- const isBlocked = ratio >= WAD;
+ 
+ // For MINT SAIL in 0-100% range, show "Blocked" if fee is 100% or very close (e.g., 0.99999e18)
+ // Use a tolerance of 0.01% (1e14 in WAD terms) to catch values like 0.99999e18
+ const isZeroToHundredRange = lowerBound === 0n && upperBound !== undefined;
+ const tolerance = 10n ** 14n; // 0.01% in WAD terms
+ const is100PercentOrClose = ratio >= (WAD - tolerance) && ratio <= WAD;
+ const shouldBlockMintSail = isMintSail && isZeroToHundredRange && is100PercentOrClose;
+ 
+ const isBlocked = ratio >= WAD || shouldBlockMintSail;
  const isDiscount = ratio < 0n;
  const isFree = ratio === 0n;
 
@@ -163,6 +181,7 @@ function FeeTransparencyBands({
            const range = b.upperBound
              ? `${formatCollateralRatio(b.lowerBound)} – ${formatCollateralRatio(b.upperBound)}`
              : `> ${formatCollateralRatio(b.lowerBound)}`;
+           const isMintSail = title === "Mint Sail";
            return (
              <div
                key={idx}
@@ -171,7 +190,12 @@ function FeeTransparencyBands({
                }`}
              >
                <span className="text-[#1E4775]/70 font-mono">{range}</span>
-               <FeeBandBadge ratio={b.ratio} />
+               <FeeBandBadge 
+                 ratio={b.ratio} 
+                 isMintSail={isMintSail}
+                 lowerBound={b.lowerBound}
+                 upperBound={b.upperBound}
+               />
              </div>
            );
          })}
@@ -621,10 +645,10 @@ function MarketCard({
  <div className="text-[#1E4775]/60 font-semibold text-[9px] whitespace-nowrap">
  TVL
  </div>
- <div className="text-[#1E4775] font-mono font-semibold text-[11px] whitespace-nowrap overflow-hidden">
- <span className="whitespace-nowrap">{formatCompactUSD(totalTVLUSD)}</span>
+<div className="text-[#1E4775] font-mono font-semibold text-[11px] whitespace-nowrap flex items-baseline gap-1">
+<span className="whitespace-nowrap">{formatCompactUSD(totalTVLUSD)}</span>
  {collateralHeldWrapped > 0n && (
- <span className="text-[#1E4775]/60 text-[10px] ml-1 truncate inline-block max-w-full align-bottom">
+<span className="text-[#1E4775]/60 text-[10px] whitespace-nowrap align-bottom">
  ({formatTokenBalanceMax2Decimals(collateralHeldWrapped)}{" "}
  {collateralHeldSymbol || ""})
  </span>
@@ -716,13 +740,13 @@ function MarketCard({
 
  {/* TVL */}
  <div className="text-center">
- <div className="text-[#1E4775] font-mono text-sm font-semibold">
+ <div className="text-[#1E4775] font-mono text-sm font-semibold whitespace-nowrap inline-flex items-baseline gap-1">
  {formatCompactUSD(totalTVLUSD)}
-{collateralHeldWrapped > 0n && (
- <span className="text-[#1E4775]/60 text-xs ml-1">
+ {collateralHeldWrapped > 0n && (
+ <span className="text-[#1E4775]/60 text-xs whitespace-nowrap">
  ({formatTokenBalanceMax2Decimals(collateralHeldWrapped)} {collateralHeldSymbol || ""})
  </span>
-)}
+ )}
  </div>
  </div>
 

@@ -29,6 +29,7 @@ const ICONS: Record<string, string> = {
     // Harbor tokens - ha (pegged) tokens
     haeth: "/icons/haETH.png",
     habtc: "/icons/haBTC.png",
+    haeur: "/icons/haEUR.png",
     hapb: "/icons/haETH.png",
     // Harbor tokens - hs (leveraged) tokens
     "hsfxusd-eth": "/icons/hsUSDETH.png",

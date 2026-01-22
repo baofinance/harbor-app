@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useMemo, useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   useAccount,
   useContractReads,
@@ -517,6 +517,10 @@ function MarketExpandedView({
 export default function GenesisIndexPage() {
   const { address, isConnected } = useAccount();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const isAprRevealed =
+    process.env.NEXT_PUBLIC_MAIDEN_VOYAGE_APR_REVEALED === "true" ||
+    searchParams.get("apr") === "revealed";
   const [manageModal, setManageModal] = useState<{
     marketId: string;
     market: any;
@@ -693,6 +697,55 @@ export default function GenesisIndexPage() {
     enabled: genesisMarkets.length > 0,
     refetchInterval: 60000, // Refetch every 60 seconds - genesis doesn't end minute-to-minute
   });
+
+  // Calculate completed markets grouped by campaign (after reads is defined)
+  const completedByCampaign = useMemo(() => {
+    const completedMarkets: Array<[string, any, any]> = [];
+    
+    genesisMarkets.forEach(([id, mkt]) => {
+      const mi = genesisMarkets.findIndex((m) => m[0] === id);
+      const baseOffset = mi * (isConnected ? 3 : 1);
+      const contractReadResult = reads?.[baseOffset];
+      const contractSaysEnded =
+        contractReadResult?.status === "success"
+          ? (contractReadResult.result as boolean)
+          : undefined;
+
+      const marksForMarket = marksResults?.find(
+        (marks) =>
+          marks.genesisAddress?.toLowerCase() ===
+          (mkt as any).addresses?.genesis?.toLowerCase()
+      );
+      const userMarksData = marksForMarket?.data?.userHarborMarks;
+      const marks = Array.isArray(userMarksData)
+        ? userMarksData[0]
+        : userMarksData;
+      const subgraphSaysEnded = marks?.genesisEnded;
+
+      const isEnded =
+        contractSaysEnded !== undefined
+          ? contractSaysEnded
+          : subgraphSaysEnded ?? false;
+
+      if (isEnded) {
+        completedMarkets.push([id, mkt, marks]);
+      }
+    });
+
+    // Group by campaign from config (not subgraph)
+    const grouped = new Map<string, Array<[string, any, any]>>();
+    completedMarkets.forEach(([id, mkt, marks]) => {
+      // Use campaign from market config, fallback to subgraph, then "Other"
+      const marketConfig = (mkt as any);
+      const campaignLabel = marketConfig?.marksCampaign?.label || marks?.campaignLabel || "Other";
+      if (!grouped.has(campaignLabel)) {
+        grouped.set(campaignLabel, []);
+      }
+      grouped.get(campaignLabel)!.push([id, mkt, marks]);
+    });
+
+    return grouped;
+  }, [genesisMarkets, reads, isConnected, marksResults]);
 
   // Fetch collateral token addresses from genesis contracts
   const collateralTokenContracts = useMemo(() => {
@@ -1098,14 +1151,14 @@ export default function GenesisIndexPage() {
               <div className="flex items-center justify-center gap-2">
                 <CurrencyDollarIcon className="w-5 h-5 text-white" />
                 <h2 className="font-bold text-white text-base">
-                  Earn Ledger Marks
+                  Earn Maiden Voyage Marks
                 </h2>
               </div>
               <p className="text-xs text-white/75 mt-1">
-                and share up to 10% of the token supply.
+                and secure your share of the $TIDE airdrop
               </p>
               <p className="text-xs text-white/60 mt-1">
-                (TGE 12 weeks after launch)
+                (TGE Beginning Q2 2026)
               </p>
               {/* Chevron removed */}
             </div>
@@ -1153,6 +1206,115 @@ export default function GenesisIndexPage() {
         {/* Ledger Marks Section */}
         {(() => {
           // Calculate total marks from subgraph data (only maiden voyage/genesis marks)
+          // First, determine which campaign to show (prioritize active campaigns)
+          const campaignInfo = new Map<string, { label: string; isActive: boolean; marks: number; campaignId?: string }>();
+          
+          // First pass: collect campaign info to determine which campaign to display
+          if (process.env.NODE_ENV === "development") {
+            console.log("[Marks Results] Total results received", {
+              totalResults: marksResults?.length || 0,
+              genesisAddressesQueried: genesisAddresses,
+              results: marksResults?.map(r => ({
+                genesisAddress: r.genesisAddress,
+                hasData: !!r.data?.userHarborMarks,
+                campaignId: r.data?.userHarborMarks?.campaignId,
+                campaignLabel: r.data?.userHarborMarks?.campaignLabel,
+                currentDepositUSD: r.data?.userHarborMarks?.currentDepositUSD,
+                hasErrors: r.errors?.length > 0,
+              })) || [],
+            });
+          }
+          
+          if (marksResults && marksResults.length > 0 && !isLoadingMarks) {
+            marksResults.forEach((result) => {
+              const userMarksData = result.data?.userHarborMarks;
+              const marks = Array.isArray(userMarksData) ? userMarksData[0] : userMarksData;
+              
+              const market = genesisMarkets.find(
+                ([_, mkt]) =>
+                  (mkt as any).addresses?.genesis?.toLowerCase() ===
+                  result.genesisAddress?.toLowerCase()
+              );
+              
+              if (!market) return;
+              
+              // Use campaign from market config, fallback to subgraph
+              const marketConfig = market[1] as any;
+              const campaignLabel = marketConfig?.marksCampaign?.label || marks?.campaignLabel;
+              const campaignId = marketConfig?.marksCampaign?.id || marks?.campaignId;
+              
+              if (!campaignLabel) return;
+              
+              let contractSaysEnded: boolean | undefined;
+              const marketIndex = genesisMarkets.findIndex(([id]) => id === market[0]);
+              if (marketIndex >= 0) {
+                const baseOffset = marketIndex * (isConnected ? 3 : 1);
+                const contractReadResult = reads?.[baseOffset];
+                contractSaysEnded =
+                  contractReadResult?.status === "success"
+                    ? (contractReadResult.result as boolean)
+                    : undefined;
+              }
+              
+              const genesisEnded =
+                contractSaysEnded !== undefined
+                  ? contractSaysEnded
+                  : marks?.genesisEnded || false;
+              
+              const originalCurrentMarks = parseFloat(marks?.currentMarks || "0");
+              const currentDepositUSD = parseFloat(marks?.currentDepositUSD || "0");
+              const genesisStartDate = parseInt(marks?.genesisStartDate || "0");
+              const lastUpdated = parseInt(marks?.lastUpdated || "0");
+              const currentTime = Math.floor(Date.now() / 1000);
+              
+              let currentMarks = originalCurrentMarks;
+              if (!genesisEnded && currentDepositUSD > 0 && genesisStartDate > 0) {
+                const timeElapsed = currentTime - lastUpdated;
+                const daysElapsed = Math.max(0, timeElapsed / 86400);
+                const marksAccumulated = currentDepositUSD * 10 * daysElapsed;
+                currentMarks = currentMarks + marksAccumulated;
+              }
+              
+              const existing = campaignInfo.get(campaignLabel) || {
+                label: campaignLabel,
+                isActive: false,
+                marks: 0,
+                campaignId: campaignId,
+              };
+              existing.isActive = existing.isActive || !genesisEnded;
+              existing.marks += currentMarks;
+              campaignInfo.set(campaignLabel, existing);
+            });
+          }
+          
+          // Determine which campaign to show (prioritize active, then by marks)
+          const campaigns = Array.from(campaignInfo.values());
+          const activeCampaigns = campaigns.filter(c => c.isActive);
+          const campaignsToConsider = activeCampaigns.length > 0 ? activeCampaigns : campaigns;
+          campaignsToConsider.sort((a, b) => b.marks - a.marks);
+          const selectedCampaign = campaignsToConsider[0];
+          const selectedCampaignId = selectedCampaign?.campaignId;
+          
+          if (process.env.NODE_ENV === "development") {
+            console.log("[Campaign Selection]", {
+              allCampaigns: Array.from(campaignInfo.entries()).map(([label, info]) => ({
+                label,
+                campaignId: info.campaignId,
+                isActive: info.isActive,
+                marks: info.marks,
+              })),
+              selectedCampaign: selectedCampaign ? {
+                label: selectedCampaign.label,
+                campaignId: selectedCampaign.campaignId,
+                isActive: selectedCampaign.isActive,
+                marks: selectedCampaign.marks,
+              } : null,
+              selectedCampaignId,
+              totalMarksResults: marksResults?.length || 0,
+            });
+          }
+          
+          // Now calculate totals only for the selected campaign
           let totalCurrentMarks = 0;
           let totalMarksPerDay = 0;
           let totalBonusAtEnd = 0;
@@ -1195,23 +1357,48 @@ export default function GenesisIndexPage() {
                 : userMarksData;
 
               if (marks) {
-                // Read the original subgraph value ONCE at the start - don't mutate the object
-                const originalCurrentMarks = parseFloat(
-                  marks.currentMarks || "0"
-                );
-                const marksPerDayFromSubgraph = parseFloat(
-                  marks.marksPerDay || "0"
-                );
-                const bonusMarks = parseFloat(marks.bonusMarks || "0");
-
-                // Find the market to get contract's genesisIsEnded() status
+                // Find the market to get campaign from config
                 const market = genesisMarkets.find(
                   ([_, mkt]) =>
                     (mkt as any).addresses?.genesis?.toLowerCase() ===
                     result.genesisAddress?.toLowerCase()
                 );
+                
+                // Use campaign ID from market config, fallback to subgraph
+                const marketConfig = market?.[1] as any;
+                const marketCampaignId = marketConfig?.marksCampaign?.id || marks?.campaignId;
+                
+                // Only process marks from the selected campaign
+                if (selectedCampaignId && marketCampaignId !== selectedCampaignId) {
+                  if (process.env.NODE_ENV === "development") {
+                    console.log("[Campaign Filter] Skipping marks from different campaign", {
+                      genesisAddress: result.genesisAddress,
+                      marketCampaignId,
+                      selectedCampaignId,
+                      currentDepositUSD: marks.currentDepositUSD,
+                    });
+                  }
+                  return; // Skip marks from other campaigns
+                }
+                
+                if (process.env.NODE_ENV === "development") {
+                  console.log("[Campaign Marks] Processing marks for campaign", {
+                    genesisAddress: result.genesisAddress,
+                    campaignId: marks.campaignId,
+                    campaignLabel: marks.campaignLabel,
+                    currentDepositUSD: marks.currentDepositUSD,
+                    currentMarks: marks.currentMarks,
+                  });
+                }
+                
+                // Read the original subgraph value ONCE at the start - don't mutate the object
+                const originalCurrentMarks = parseFloat(
+                  marks.currentMarks || "0"
+                );
+                const bonusMarks = parseFloat(marks.bonusMarks || "0");
 
                 // Use contract's genesisIsEnded() as authoritative source
+                // (market already found above for campaign filtering)
                 // Fallback to subgraph value if contract read is not available
                 let contractSaysEnded: boolean | undefined;
                 if (market) {
@@ -1244,18 +1431,13 @@ export default function GenesisIndexPage() {
 
                 // Use subgraph's USD value - it's the source of truth
                 // The subgraph calculates currentDepositUSD using real-time oracle prices
-                // If it seems stale, it might be because:
-                // 1. The subgraph hasn't synced recent price updates
-                // 2. There haven't been deposit/withdraw events to trigger price recalculation
-                // 3. Different subgraph deployment/version between prod and localhost
                 const currentDepositUSD = parseFloat(
                   marks.currentDepositUSD || "0"
                 );
 
-                // Calculate marksPerDay directly from currentDepositUSD to ensure accuracy
-                // Marks accumulate at 10 marks per dollar per day
-                // If genesis has ended, marksPerDay should be 0 (no more marks accumulating)
-                const marksPerDay = genesisEnded ? 0 : currentDepositUSD * 10;
+                // Use subgraph's marksPerDay - it's the source of truth
+                // The subgraph updates this daily with current prices
+                const marksPerDay = parseFloat(marks.marksPerDay || "0");
 
                 // Calculate current marks dynamically based on time elapsed since last update
                 // Marks accumulate at 10 marks per dollar per day
@@ -1294,9 +1476,19 @@ export default function GenesisIndexPage() {
 
                 totalCurrentMarks += currentMarks;
                 totalMarksPerDay += marksPerDay;
+                
+                if (process.env.NODE_ENV === "development") {
+                  console.log("[Campaign Totals] After adding market", {
+                    genesisAddress: result.genesisAddress,
+                    marketDepositUSD: currentDepositUSD,
+                    marketMarksPerDay: marksPerDay,
+                    marketCurrentMarks: currentMarks,
+                    runningTotalMarks: totalCurrentMarks,
+                    runningTotalMarksPerDay: totalMarksPerDay,
+                  });
+                }
 
-                // Debug logging for marks calculation - compare subgraph values
-                // This helps identify if subgraph prices are stale on localhost vs production
+                // Debug logging for marks calculation
                 if (process.env.NODE_ENV === "development") {
                   const marksAccumulated = genesisEnded
                     ? 0
@@ -1307,8 +1499,7 @@ export default function GenesisIndexPage() {
                     calculatedCurrentMarks: currentMarks,
                     marksAccumulated: marksAccumulated,
                     subgraphCurrentDepositUSD: currentDepositUSD,
-                    subgraphMarksPerDay: marksPerDayFromSubgraph,
-                    calculatedMarksPerDay: marksPerDay,
+                    subgraphMarksPerDay: marksPerDay,
                     bonusAtEnd:
                       !genesisEnded && currentDepositUSD > 0
                         ? currentDepositUSD * 100
@@ -1326,7 +1517,7 @@ export default function GenesisIndexPage() {
                     daysElapsed:
                       lastUpdated > 0 ? (currentTime - lastUpdated) / 86400 : 0,
                     subgraphCurrentDeposit: marks.currentDeposit || "0",
-                    note: "Always starting from original subgraph value to prevent double-counting",
+                    note: "Subgraph is source of truth for currentDepositUSD and marksPerDay",
                   });
                 }
 
@@ -1421,7 +1612,21 @@ export default function GenesisIndexPage() {
 
                   <div className="p-3 flex flex-col items-center justify-center text-center">
                     <div className="text-[11px] text-white/80 uppercase tracking-widest">
-                      Current Maiden Voyage Marks
+                      {(() => {
+                        // Extract campaign name from label (remove "Maiden Voyage" if present)
+                        const extractCampaignName = (label: string): string => {
+                          // campaignLabel from subgraph is like "Launch Maiden Voyage" or "Euro Maiden Voyage"
+                          // We want just "Launch" or "Euro"
+                          return label.replace(/\s+Maiden Voyage\s*$/i, "").trim();
+                        };
+                        
+                        if (!selectedCampaign) {
+                          return "Current Maiden Voyage Marks";
+                        }
+                        
+                        const campaignName = extractCampaignName(selectedCampaign.label);
+                        return `${campaignName} Maiden Voyage Marks`;
+                      })()}
                     </div>
                     <div className="text-sm font-semibold text-white font-mono mt-1">
                       {!mounted || isLoadingMarks ? (
@@ -2099,11 +2304,60 @@ export default function GenesisIndexPage() {
                 hasLiveMarkets ||
                 hasEndedMarkets;
 
-              let lastWasEnded: boolean | null = null;
-              let activeHeaderRendered = false;
-              let endedHeaderRendered = false;
+              // Separate active and completed markets
+              const activeMarkets: Array<[string, any]> = [];
+              const completedMarkets: Array<[string, any, any]> = []; // [id, mkt, marks]
 
-              const marketRows = sortedMarkets.map(([id, mkt], idx) => {
+              sortedMarkets.forEach(([id, mkt]) => {
+                const mi = genesisMarkets.findIndex((m) => m[0] === id);
+                const baseOffset = mi * (isConnected ? 3 : 1);
+                const contractReadResult = reads?.[baseOffset];
+                const contractSaysEnded =
+                  contractReadResult?.status === "success"
+                    ? (contractReadResult.result as boolean)
+                    : undefined;
+
+                // Get marks data for campaign grouping
+                const marksForMarket = marksResults?.find(
+                  (marks) =>
+                    marks.genesisAddress?.toLowerCase() ===
+                    (mkt as any).addresses?.genesis?.toLowerCase()
+                );
+                const userMarksData = marksForMarket?.data?.userHarborMarks;
+                const marks = Array.isArray(userMarksData)
+                  ? userMarksData[0]
+                  : userMarksData;
+                const subgraphSaysEnded = marks?.genesisEnded;
+
+                const isEnded =
+                  contractSaysEnded !== undefined
+                    ? contractSaysEnded
+                    : subgraphSaysEnded ?? false;
+
+                if (isEnded) {
+                  completedMarkets.push([id, mkt, marks]);
+                } else {
+                  activeMarkets.push([id, mkt]);
+                }
+              });
+
+              // Note: completedByCampaign is now calculated in useMemo above
+
+              let activeHeaderRendered = false;
+              
+              // Get the active campaign name from the first active market
+              const activeCampaignName = activeMarkets.length > 0 
+                ? (() => {
+                    const firstMarket = activeMarkets[0];
+                    const firstMarketConfig = firstMarket[1] as any;
+                    const campaignLabel = firstMarketConfig?.marksCampaign?.label || "Genesis";
+                    // Extract campaign name (e.g., "Euro" from "Euro Maiden Voyage")
+                    const campaignName = campaignLabel.replace(/\s+Maiden Voyage.*/i, "").trim() || campaignLabel;
+                    return campaignName;
+                  })()
+                : null;
+
+              const marketRows = activeMarkets.map(([id, mkt], idx) => {
                 const mi = genesisMarkets.findIndex((m) => m[0] === id);
                 // Updated offset: [isEnded, balanceOf?, claimable?] - no totalDeposits anymore
                 const baseOffset = mi * (isConnected ? 3 : 1);
@@ -2126,11 +2380,8 @@ export default function GenesisIndexPage() {
                   : userMarksData;
                 const subgraphSaysEnded = marks?.genesisEnded;
 
-                // Use contract value if available, otherwise fall back to subgraph
-                const isEnded =
-                  contractSaysEnded !== undefined
-                    ? contractSaysEnded
-                    : subgraphSaysEnded ?? false;
+                // All markets in activeMarkets are active (not ended)
+                const isEnded = false;
 
                 // Check claimable tokens early to determine if market will be skipped
                 const claimableResult = isConnected
@@ -2143,40 +2394,37 @@ export default function GenesisIndexPage() {
                 const hasClaimable =
                   claimablePegged > 0n || claimableLeveraged > 0n;
 
-                // Show all ended markets (they may have been claimed already, but should still be visible)
-                // Always show ended markets so users can see completed events
                 const userDeposit = isConnected
                   ? (reads?.[baseOffset + 1]?.result as bigint | undefined)
                   : undefined;
-                const willBeSkipped = false; // Always show ended markets
 
                 // Add section header for active markets at the start
                 const activeHeader =
-                  showHeaders && !activeHeaderRendered && !isEnded ? (
+                  showHeaders && !activeHeaderRendered && activeMarkets.length > 0 ? (
                     <>
                       <div
                         key={`section-active`}
                         className="pt-4 mb-1 flex items-center justify-between gap-2"
                       >
-                        <h2 className="text-xs font-medium text-white/70 uppercase tracking-wider">
-                          Active Genesis Events
-                        </h2>
-                        <div className="text-xs text-green-300 bg-green-900/30 border border-green-500/30 px-2 py-0.5">
-                          <div className="flex items-center gap-1 flex-wrap">
-                            <span>Early Deposit Bonus!</span>
-                            <span>100</span>
-                            <Image
-                              src="/icons/marks.png"
-                              alt="Marks"
-                              width={14}
-                              height={14}
-                              className="flex-shrink-0"
-                            />
-                            <span>
-                              / $ for being one of the first to deposit in each
-                              market. (applied at the end of maiden voyage).
+                        <h2 className="text-xs font-medium text-white/70 uppercase tracking-wider flex items-center gap-2">
+                          Active Campaign:
+                          {activeCampaignName && (
+                            <span className="inline-flex items-center px-2.5 py-1 bg-[#E67A6B] hover:bg-[#D66A5B] border border-white text-white text-xs font-semibold uppercase tracking-wider rounded-full transition-colors">
+                              {activeCampaignName}
                             </span>
-                          </div>
+                          )}
+                        </h2>
+                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#E67A6B] hover:bg-[#D66A5B] border border-white text-white text-xs font-semibold uppercase tracking-wider rounded-full transition-colors">
+                          <span>Early Deposit Bonus!</span>
+                          <span>100</span>
+                          <Image
+                            src="/icons/marks.png"
+                            alt="Marks"
+                            width={14}
+                            height={14}
+                            className="flex-shrink-0"
+                          />
+                          <span>/ $.</span>
                         </div>
                       </div>
                       <div
@@ -2277,54 +2525,9 @@ export default function GenesisIndexPage() {
                     </>
                   ) : null;
 
-                // Add header for completed markets when transitioning from active to completed
-                const endedHeader =
-                  showHeaders &&
-                  !endedHeaderRendered &&
-                  isEnded &&
-                  (lastWasEnded === null || lastWasEnded !== isEnded) ? (
-                    <>
-                      <div key={`section-ended`} className="pt-4 mb-1">
-                        <h2 className="text-xs font-medium text-white/70 uppercase tracking-wider">
-                          Completed Genesis Events
-                        </h2>
-                      </div>
-                      <div
-                        key={`header-ended`}
-                        className="hidden md:block bg-white py-1.5 px-2 overflow-x-auto sticky top-0 z-10"
-                      >
-                        <div className="grid lg:grid-cols-[1.5fr_1fr_1fr_1.5fr_1fr] md:grid-cols-[120px_60px_60px_1fr_80px] gap-4 items-center uppercase tracking-wider text-[10px] lg:text-[11px] text-[#1E4775] font-semibold">
-                          <div className="min-w-0 text-center">Market</div>
-                          <div className="text-center min-w-0">
-                            Anchor
-                            <span className="hidden lg:inline"> Tokens</span>
-                          </div>
-                          <div className="text-center min-w-0">
-                            Sail
-                            <span className="hidden lg:inline"> Tokens</span>
-                          </div>
-                          <div className="min-w-0 text-center">
-                            Your Deposit
-                          </div>
-                          <div className="text-center min-w-0">Action</div>
-                        </div>
-                      </div>
-                    </>
-                  ) : null;
-
                 // Mark that we've rendered the active header
-                if (activeHeader && !willBeSkipped) {
+                if (activeHeader) {
                   activeHeaderRendered = true;
-                }
-
-                // Mark that we've rendered the ended header
-                if (endedHeader && !willBeSkipped) {
-                  endedHeaderRendered = true;
-                }
-
-                // Only update lastWasEnded if this market will actually be rendered
-                if (!willBeSkipped) {
-                  lastWasEnded = isEnded;
                 }
 
                 // Get token symbols from market configuration
@@ -2347,7 +2550,6 @@ export default function GenesisIndexPage() {
                 const totalDeposits = totalDepositsReads?.[mi]?.result as
                   | bigint
                   | undefined;
-                // userDeposit already defined above for willBeSkipped check
 
                 const genesisAddress = (mkt as any).addresses?.genesis;
                 // Use on-chain collateral token address from genesis contract, fallback to config
@@ -2572,7 +2774,6 @@ export default function GenesisIndexPage() {
                 return (
                   <React.Fragment key={id}>
                     {activeHeader}
-                    {endedHeader}
                     <div
                       className={`py-2.5 px-2 overflow-x-auto overflow-y-visible transition cursor-pointer ${
                         isExpanded
@@ -2916,7 +3117,7 @@ export default function GenesisIndexPage() {
                                   APR
                                 </div>
                                 {isValidAPR ? (
-                                  canShowCombinedAPR ? (
+                                  isAprRevealed && canShowCombinedAPR ? (
                                     <TideAPRTooltip
                                       underlyingAPR={underlyingAPR}
                                       userMarks={marksForAPR}
@@ -2981,12 +3182,20 @@ export default function GenesisIndexPage() {
                                             : ""
                                         }`}
                                       >
-                                        <span className="text-[#1E4775] font-semibold text-xs cursor-help">
+                                        <span className="text-[#1E4775] font-semibold text-xs cursor-help flex items-center gap-1">
                                           {isLoadingAPR
                                             ? "..."
                                             : `${(underlyingAPR * 100).toFixed(
                                                 2
                                               )}%`}
+                                          <span className="text-[#1E4775]/70">+</span>
+                                          <Image
+                                            src="/icons/marks.png"
+                                            alt="Marks"
+                                            width={20}
+                                            height={20}
+                                            className="inline-block"
+                                          />
                                         </span>
                                       </SimpleTooltip>
                                     </div>
@@ -3462,7 +3671,7 @@ export default function GenesisIndexPage() {
                               return (
                                 <div className="text-center">
                                   {isValidAPR ? (
-                                    canShowCombinedAPR ? (
+                                    isAprRevealed && canShowCombinedAPR ? (
                                       <TideAPRTooltip
                                         underlyingAPR={underlyingAPR}
                                         userMarks={marksForAPR}
@@ -3508,12 +3717,20 @@ export default function GenesisIndexPage() {
                                             : ""
                                         }`}
                                       >
-                                        <span className="text-[#1E4775] font-semibold text-xs cursor-help">
+                                        <span className="text-[#1E4775] font-semibold text-xs cursor-help flex items-center gap-1">
                                           {isLoadingAPR
                                             ? "..."
                                             : `${(underlyingAPR * 100).toFixed(
                                                 2
                                               )}%`}
+                                          <span className="text-[#1E4775]/70">+</span>
+                                          <Image
+                                            src="/icons/marks.png"
+                                            alt="Marks"
+                                            width={12}
+                                            height={12}
+                                            className="inline-block"
+                                          />
                                         </span>
                                       </SimpleTooltip>
                                     )
@@ -4060,7 +4277,7 @@ export default function GenesisIndexPage() {
                               return (
                                 <div className="text-center min-w-0">
                                   {isValidAPR ? (
-                                    canShowCombinedAPR ? (
+                                    isAprRevealed && canShowCombinedAPR ? (
                                       <TideAPRTooltip
                                         underlyingAPR={underlyingAPR}
                                         userMarks={marksForAPR}
@@ -4106,12 +4323,20 @@ export default function GenesisIndexPage() {
                                             : ""
                                         }`}
                                       >
-                                        <span className="text-[#1E4775] font-semibold text-xs cursor-help">
+                                        <span className="text-[#1E4775] font-semibold text-xs cursor-help flex items-center gap-1">
                                           {isLoadingAPR
                                             ? "..."
                                             : `${(underlyingAPR * 100).toFixed(
                                                 2
                                               )}%`}
+                                          <span className="text-[#1E4775]/70">+</span>
+                                          <Image
+                                            src="/icons/marks.png"
+                                            alt="Marks"
+                                            width={12}
+                                            height={12}
+                                            className="inline-block"
+                                          />
                                         </span>
                                       </SimpleTooltip>
                                     )
@@ -4671,9 +4896,8 @@ export default function GenesisIndexPage() {
                         </div>
                       </div>
 
-                      {/* Early Deposit Bonus Progress Bar - inside main market row - HIDDEN */}
-                      {false &&
-                        (() => {
+                      {/* Early Deposit Bonus Progress Bar - inside main market row */}
+                      {!isEnded && !isProcessing && (() => {
                           // Get market bonus status from the hook called at top level
                           const marketBonusData = bonusStatusResults?.find(
                             (status) =>
@@ -4682,13 +4906,33 @@ export default function GenesisIndexPage() {
                           );
                           const marketBonusStatus = marketBonusData?.data;
 
-                          if (!marketBonusStatus || isLoadingBonusStatus)
-                            return null;
+                          const collateralSymbolNormalized =
+                            collateralSymbol.toLowerCase();
+                          const isFxSAVE = collateralSymbolNormalized === "fxsave";
+                          const isEurMarket =
+                            id === "steth-eur" || id === "fxusd-eur";
+                          const thresholdAmount = isEurMarket
+                            ? isFxSAVE
+                              ? 50000
+                              : 14
+                            : isFxSAVE
+                            ? 250000
+                            : 70;
+                          const fallbackBonusStatus = {
+                            cumulativeDeposits: "0",
+                            thresholdAmount: String(thresholdAmount),
+                            thresholdToken: isFxSAVE ? "fxSAVE" : "wstETH",
+                            thresholdReached: false,
+                          };
+                          const effectiveBonusStatus =
+                            marketBonusStatus || fallbackBonusStatus;
+
+                          if (isLoadingBonusStatus) return null;
 
                           const bonusProgress = Math.min(
                             100,
-                            (Number(marketBonusStatus.cumulativeDeposits) /
-                              Number(marketBonusStatus.thresholdAmount)) *
+                            (Number(effectiveBonusStatus.cumulativeDeposits) /
+                              Number(effectiveBonusStatus.thresholdAmount)) *
                               100
                           );
 
@@ -4730,7 +4974,7 @@ export default function GenesisIndexPage() {
                                   <div className="flex-1 bg-gray-200 rounded-full h-1.5 min-w-[100px]">
                                     <div
                                       className={`h-1.5 rounded-full transition-all ${
-                                        marketBonusStatus.thresholdReached
+                                        effectiveBonusStatus.thresholdReached
                                           ? "bg-gray-400"
                                           : "bg-[#FF8A7A]"
                                       }`}
@@ -4739,14 +4983,14 @@ export default function GenesisIndexPage() {
                                   </div>
                                   <span className="text-[10px] text-[#1E4775]/70 whitespace-nowrap">
                                     {`${Number(
-                                      marketBonusStatus.cumulativeDeposits
+                                      effectiveBonusStatus.cumulativeDeposits
                                     ).toLocaleString(undefined, {
                                       maximumFractionDigits: 0,
                                     })} / ${Number(
-                                      marketBonusStatus.thresholdAmount
+                                      effectiveBonusStatus.thresholdAmount
                                     ).toLocaleString(undefined, {
                                       maximumFractionDigits: 0,
-                                    })} ${marketBonusStatus.thresholdToken}`}
+                                    })} ${effectiveBonusStatus.thresholdToken}`}
                                   </span>
 
                                   {/* User Qualification Status - on same line */}
@@ -4805,13 +5049,28 @@ export default function GenesisIndexPage() {
           </section>
         )}
 
-        {/* Coming Soon Markets Section */}
+        {/* Coming Next Markets Section */}
         {comingSoonMarkets.length > 0 && (
           <section className="space-y-2 overflow-visible mt-8">
             <div className="pt-4 mb-1">
-              <h2 className="text-xs font-medium text-white/70 uppercase tracking-wider">
-                Coming Soon
-              </h2>
+              <div className="flex items-center gap-2">
+                <h2 className="text-xs font-medium text-white/70 uppercase tracking-wider">
+                  Next Campaign:
+                </h2>
+                <span className="px-2.5 py-0.5 bg-[#E67A6B] hover:bg-[#D66A5B] border border-white text-white text-xs font-semibold uppercase tracking-wider rounded-full transition-colors">
+                  Metals
+                </span>
+              </div>
+            </div>
+            {/* Header row - hidden on mobile, shown on desktop */}
+            <div className="hidden md:block bg-white py-1.5 px-2 overflow-x-auto mb-0">
+              <div className="grid lg:grid-cols-[1.5fr_80px_0.9fr_1fr_0.9fr] md:grid-cols-[120px_80px_100px_1fr_90px] gap-4 items-center uppercase tracking-wider text-[10px] lg:text-[11px] text-[#1E4775] font-semibold">
+                <div className="min-w-0 text-center">Market</div>
+                <div className="text-center min-w-0 whitespace-nowrap">Proj. SP APR</div>
+                <div className="text-center min-w-0">Anchor Token</div>
+                <div className="text-center min-w-0">Sail Token</div>
+                <div className="text-center min-w-0">Status</div>
+              </div>
             </div>
             <div className="space-y-2">
               {comingSoonMarkets.map(([id, mkt]) => {
@@ -4819,12 +5078,40 @@ export default function GenesisIndexPage() {
                 const leveragedSymbol = mkt.leveragedToken?.symbol || "hsTOKEN";
                 const collateralSymbol = mkt.collateral?.symbol || "COLLATERAL";
 
-                // Format market name same as active genesis events (remove "hs" prefix from leveraged symbol)
-                const marketName =
-                  leveragedSymbol &&
-                  leveragedSymbol.toLowerCase().startsWith("hs")
-                    ? leveragedSymbol.slice(2)
-                    : leveragedSymbol || (mkt as any).name || id;
+                // Parse long/short sides from market config (similar to sail page)
+                const getLongSide = (market: any): string => {
+                  const desc = market.leveragedToken?.description || "";
+                  const match = desc.match(/Long\s+(\w+)/i);
+                  if (match) return match[1];
+                  const name = market.leveragedToken?.name || "";
+                  const versusMatch = name.match(/versus\s+(\w+)/i);
+                  if (versusMatch) return versusMatch[1];
+                  const symbol = market.leveragedToken?.symbol || "";
+                  const symbolMatch = symbol.match(/^hs([A-Z]+)-/i);
+                  if (symbolMatch) return symbolMatch[1];
+                  return "Other";
+                };
+
+                const getShortSide = (market: any): string => {
+                  const desc = market.leveragedToken?.description || "";
+                  const shortMatch = desc.match(/short\s+(\w+)/i);
+                  if (shortMatch) return shortMatch[1];
+                  const name = market.leveragedToken?.name || "";
+                  const nameShortMatch = name.match(/Short\s+(\w+)/i);
+                  if (nameShortMatch) return nameShortMatch[1];
+                  const longMatch = desc.match(/Long\s+\w+\s+vs\s+(\w+)/i);
+                  if (longMatch) return longMatch[1];
+                  const symbol = market.leveragedToken?.symbol || "";
+                  const symbolMatch = symbol.match(/^hs[A-Z]+-(.+)$/i);
+                  if (symbolMatch) return symbolMatch[1];
+                  return "Other";
+                };
+
+                const longSide = getLongSide(mkt);
+                const shortSide = getShortSide(mkt);
+                const sailDescription = longSide && shortSide 
+                  ? `Long ${longSide} / Short ${shortSide}`
+                  : leveragedSymbol;
 
                 // Calculate underlying APR for coming soon markets
                 const isWstETH = collateralSymbol.toLowerCase() === "wsteth";
@@ -4835,68 +5122,606 @@ export default function GenesisIndexPage() {
                   ? fxSAVEAPR
                   : null;
 
+                // Format market name
+                const marketName = `${collateralSymbol}-${mkt.pegTarget?.toUpperCase() || "TOKEN"}`;
+
                 return (
                   <div
                     key={id}
-                    className="bg-white p-4 rounded-none border border-white/10"
+                    className="bg-white py-2.5 px-2 rounded-none border border-white/10"
                   >
-                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                      {/* First row: Market title + token symbols on mobile, separate on desktop */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex flex-col md:flex-col gap-1">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <div className="text-[#1E4775] font-medium text-sm lg:text-base">
-                              {marketName}
-                            </div>
-                            <div className="flex items-center gap-2 text-xs text-[#1E4775]/70 md:hidden">
-                              <span>{peggedSymbol}</span>
-                              <span>+</span>
-                              <span>{leveragedSymbol}</span>
-                              <span className="text-[#1E4775]/50">
-                                ({collateralSymbol})
-                              </span>
-                            </div>
-                          </div>
-                          <div className="hidden md:flex items-center gap-2 text-xs text-[#1E4775]/70">
-                            <span>{peggedSymbol}</span>
-                            <span>+</span>
-                            <span>{leveragedSymbol}</span>
-                            <span className="text-[#1E4775]/50">
-                              ({collateralSymbol})
-                            </span>
-                          </div>
+                    {/* Desktop layout - grid matching active events */}
+                    <div className="hidden md:grid lg:grid-cols-[1.5fr_80px_0.9fr_1fr_0.9fr] md:grid-cols-[120px_80px_100px_1fr_90px] gap-4 items-center">
+                      {/* Market Column */}
+                      <div className="flex items-center gap-2 min-w-0 pl-4">
+                        <div className="text-[#1E4775] font-medium text-sm">
+                          {marketName}
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Image
+                            src={getLogoPath(collateralSymbol)}
+                            alt={collateralSymbol}
+                            width={20}
+                            height={20}
+                            className="flex-shrink-0 rounded-full"
+                          />
+                          <span className="text-[#1E4775]/60 text-xs">=</span>
+                          <Image
+                            src={getLogoPath(peggedSymbol)}
+                            alt={peggedSymbol}
+                            width={20}
+                            height={20}
+                            className="flex-shrink-0 rounded-full"
+                          />
+                          <span className="text-[#1E4775]/60 text-xs">+</span>
+                          <Image
+                            src={getLogoPath(leveragedSymbol)}
+                            alt={leveragedSymbol}
+                            width={20}
+                            height={20}
+                            className="flex-shrink-0 rounded-full"
+                          />
                         </div>
                       </div>
-                      {/* Second row on mobile: Projected APR + Coming Soon */}
-                      <div className="flex items-center gap-3 md:contents">
-                        {/* Projected APR */}
-                        {underlyingAPR !== null &&
-                          underlyingAPR !== undefined && (
-                            <div className="text-sm text-[#1E4775] text-center md:whitespace-nowrap flex-1 md:flex-none">
-                              <span className="font-semibold">
-                                Projected {peggedSymbol} APR (Stability pools):{" "}
-                                {(underlyingAPR * 2 * 100).toFixed(2)}% +
-                              </span>
-                              <Image
-                                src="/icons/marks.png"
-                                alt="Marks"
-                                width={18}
-                                height={18}
-                                className="inline-block ml-1 align-middle"
-                              />
-                            </div>
-                          )}
-                        <div className="bg-[#FF8A7A] px-6 md:px-12 py-2 md:self-auto flex-shrink-0">
-                          <span className="text-white font-semibold text-sm uppercase tracking-wider">
-                            Coming Soon
+
+                      {/* APR Column */}
+                      <div className="flex-shrink-0 text-center">
+                        {underlyingAPR !== null && underlyingAPR !== undefined ? (
+                          <div className="text-[#1E4775] font-semibold text-xs">
+                            {(underlyingAPR * 2 * 100).toFixed(2)}% +
+                            <Image
+                              src="/icons/marks.png"
+                              alt="Marks"
+                              width={20}
+                              height={20}
+                              className="inline-block ml-1 align-middle"
+                            />
+                          </div>
+                        ) : (
+                          <span className="text-xs text-gray-400">-</span>
+                        )}
+                      </div>
+
+                      {/* Anchor Token Column */}
+                      <div className="flex items-center justify-center gap-1.5 min-w-0">
+                        <Image
+                          src={getLogoPath(peggedSymbol)}
+                          alt={peggedSymbol}
+                          width={20}
+                          height={20}
+                          className="flex-shrink-0 rounded-full"
+                        />
+                        <span className="text-[#1E4775] font-semibold text-xs">
+                          {peggedSymbol}
+                        </span>
+                      </div>
+
+                      {/* Sail Token Column */}
+                      <div className="flex flex-col items-center gap-0.5 min-w-0">
+                        <div className="flex items-center justify-center gap-1.5">
+                          <Image
+                            src={getLogoPath(leveragedSymbol)}
+                            alt={leveragedSymbol}
+                            width={20}
+                            height={20}
+                            className="flex-shrink-0 rounded-full"
+                          />
+                          <span className="text-[#1E4775] font-semibold text-xs">
+                            {leveragedSymbol}
+                          </span>
+                        </div>
+                        <div className="text-[#1E4775]/60 text-[9px] italic text-center">
+                          {sailDescription}
+                        </div>
+                      </div>
+
+                      {/* Status Column */}
+                      <div className="flex-shrink-0 text-center">
+                        <div className="bg-[#FF8A7A] px-3 py-1 rounded-full inline-block">
+                          <span className="text-white font-semibold text-[10px] uppercase tracking-wider whitespace-nowrap">
+                            Coming Next
                           </span>
                         </div>
                       </div>
+                    </div>
+
+                    {/* Mobile layout */}
+                    <div className="md:hidden space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="text-[#1E4775] font-medium text-sm">
+                            {marketName}
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Image
+                              src={getLogoPath(collateralSymbol)}
+                              alt={collateralSymbol}
+                              width={20}
+                              height={20}
+                              className="flex-shrink-0 rounded-full"
+                            />
+                            <span className="text-[#1E4775]/60 text-xs">=</span>
+                            <Image
+                              src={getLogoPath(peggedSymbol)}
+                              alt={peggedSymbol}
+                              width={20}
+                              height={20}
+                              className="flex-shrink-0 rounded-full"
+                            />
+                            <span className="text-[#1E4775]/60 text-xs">+</span>
+                            <Image
+                              src={getLogoPath(leveragedSymbol)}
+                              alt={leveragedSymbol}
+                              width={20}
+                              height={20}
+                              className="flex-shrink-0 rounded-full"
+                            />
+                          </div>
+                        </div>
+                        <div className="bg-[#FF8A7A] px-3 py-1 rounded-full">
+                          <span className="text-white font-semibold text-[10px] uppercase tracking-wider">
+                            Coming Next
+                          </span>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <div className="text-[#1E4775]/70 text-[10px] mb-1">
+                            Anchor Token
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <Image
+                              src={getLogoPath(peggedSymbol)}
+                              alt={peggedSymbol}
+                              width={16}
+                              height={16}
+                              className="flex-shrink-0 rounded-full"
+                            />
+                            <span className="text-[#1E4775] font-semibold text-xs">
+                              {peggedSymbol}
+                            </span>
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-[#1E4775]/70 text-[10px] mb-1">
+                            Sail Token
+                          </div>
+                          <div className="flex flex-col gap-0.5">
+                            <div className="flex items-center gap-1.5">
+                              <Image
+                                src={getLogoPath(leveragedSymbol)}
+                                alt={leveragedSymbol}
+                                width={16}
+                                height={16}
+                                className="flex-shrink-0 rounded-full"
+                              />
+                              <span className="text-[#1E4775] font-semibold text-xs">
+                                {leveragedSymbol}
+                              </span>
+                            </div>
+                            <div className="text-[#1E4775]/60 text-[9px] italic">
+                              {sailDescription}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      {underlyingAPR !== null && underlyingAPR !== undefined && (
+                        <div className="text-sm text-[#1E4775]">
+                          <span className="font-semibold">
+                            Projected {peggedSymbol} APR:{" "}
+                            {(underlyingAPR * 2 * 100).toFixed(2)}% +
+                          </span>
+                          <Image
+                            src="/icons/marks.png"
+                            alt="Marks"
+                            width={18}
+                            height={18}
+                            className="inline-block ml-1 align-middle"
+                          />
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
               })}
             </div>
+          </section>
+        )}
+
+        {/* Completed Genesis Events - Grouped by Campaign */}
+        {completedByCampaign.size > 0 && (
+          <section className="space-y-4 overflow-visible mt-8">
+            {Array.from(completedByCampaign.entries()).map(([campaignLabel, markets]) => {
+              // Extract campaign name from label (e.g., "Launch Maiden Voyage" -> "Launch")
+              const campaignName = campaignLabel.replace(/\s+Maiden Voyage.*/i, "").trim() || campaignLabel;
+              
+              return (
+                <div key={campaignLabel} className="space-y-2">
+                  <div className="pt-4 mb-1">
+                    <h2 className="text-xs font-medium text-white/70 uppercase tracking-wider">
+                      Completed: {campaignName}
+                    </h2>
+                  </div>
+                  {/* Header row - hidden on mobile, shown on desktop */}
+                  <div className="hidden md:block bg-white py-1.5 px-2 overflow-x-auto mb-0">
+                    <div className="grid lg:grid-cols-[1.5fr_1fr_1fr_1.5fr_1fr] md:grid-cols-[120px_60px_60px_1fr_80px] gap-4 items-center uppercase tracking-wider text-[10px] lg:text-[11px] text-[#1E4775] font-semibold">
+                      <div className="min-w-0 text-center">Market</div>
+                      <div className="text-center min-w-0">
+                        Anchor
+                        <span className="hidden lg:inline"> Tokens</span>
+                      </div>
+                      <div className="text-center min-w-0">
+                        Sail
+                        <span className="hidden lg:inline"> Tokens</span>
+                      </div>
+                      <div className="min-w-0 text-center">
+                        Your Deposit
+                      </div>
+                      <div className="text-center min-w-0">Action</div>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    {markets.map(([id, mkt, marks]) => {
+                      // Reuse the same rendering logic from the active markets
+                      // We need to get all the same data for this market
+                      const mi = genesisMarkets.findIndex((m) => m[0] === id);
+                      const baseOffset = mi * (isConnected ? 3 : 1);
+                      const claimableResult = isConnected
+                        ? (reads?.[baseOffset + 2]?.result as [bigint, bigint] | undefined)
+                        : undefined;
+                      const claimablePegged = claimableResult?.[0] || 0n;
+                      const claimableLeveraged = claimableResult?.[1] || 0n;
+                      const hasClaimable = claimablePegged > 0n || claimableLeveraged > 0n;
+                      const userDeposit = isConnected
+                        ? (reads?.[baseOffset + 1]?.result as bigint | undefined)
+                        : undefined;
+
+                      // Get all the same market data
+                      const genesisAddress = (mkt as any).addresses?.genesis;
+                      const onChainCollateralAddress = collateralTokenReads?.[mi]?.result as `0x${string}` | undefined;
+                      const collateralAddress = onChainCollateralAddress || (mkt as any).addresses?.wrappedCollateralToken;
+                      const collateralSymbol = (mkt as any).collateral?.symbol || "ETH";
+                      const endDate = (mkt as any).genesis?.endDate;
+                      const oracleAddress = (mkt as any).addresses?.collateralPrice as `0x${string}` | undefined;
+                      const collateralPriceData = oracleAddress ? collateralPricesMap.get(oracleAddress.toLowerCase()) : undefined;
+                      const wrappedRate = collateralPriceData?.maxRate;
+                      const underlyingPriceFromOracle = collateralPriceData?.priceUSD || 0;
+                      const marketCoinGeckoId = (mkt as any)?.coinGeckoId as string | undefined;
+                      const underlyingSymbol = (mkt as any).collateral?.underlyingSymbol || collateralSymbol;
+
+                      // Calculate price (same logic as active markets)
+                      let underlyingPriceUSD = 0;
+                      if (underlyingSymbol.toLowerCase() === "fxusd") {
+                        underlyingPriceUSD = 1.0;
+                      } else if (marketCoinGeckoId && coinGeckoPrices[marketCoinGeckoId] && coinGeckoPrices[marketCoinGeckoId]! > 0) {
+                        underlyingPriceUSD = coinGeckoPrices[marketCoinGeckoId]!;
+                      } else if (underlyingPriceFromOracle > 0) {
+                        underlyingPriceUSD = underlyingPriceFromOracle;
+                      }
+
+                      const coinGeckoId = (mkt as any)?.coinGeckoId as string | undefined;
+                      const coinGeckoReturnedPrice = marketCoinGeckoId && coinGeckoPrices[marketCoinGeckoId];
+                      const coinGeckoIsWrappedToken = coinGeckoReturnedPrice && coinGeckoId && (
+                        (coinGeckoId.toLowerCase() === "wrapped-steth" && collateralSymbol.toLowerCase() === "wsteth") ||
+                        ((coinGeckoId.toLowerCase() === "fx-usd-saving" || coinGeckoId.toLowerCase() === "fxsave") && collateralSymbol.toLowerCase() === "fxsave")
+                      );
+                      const isWstETH = collateralSymbol.toLowerCase() === "wsteth";
+                      const isFxSAVE = collateralSymbol.toLowerCase() === "fxsave";
+                      const stETHPrice = coinGeckoPrices["lido-staked-ethereum-steth"];
+                      const useStETHFallback = isWstETH && !coinGeckoIsWrappedToken && underlyingPriceUSD === 0 && stETHPrice && stETHPrice > 0 && wrappedRate && wrappedRate > 0n;
+                      const wrappedTokenPriceUSD = coinGeckoIsWrappedToken && coinGeckoReturnedPrice && coinGeckoReturnedPrice > 0
+                        ? coinGeckoReturnedPrice
+                        : useStETHFallback
+                        ? stETHPrice * (Number(wrappedRate) / 1e18)
+                        : (isWstETH || isFxSAVE) && coinGeckoLoading && marketCoinGeckoId && underlyingPriceUSD > 0 && wrappedRate
+                        ? underlyingPriceUSD * (Number(wrappedRate) / 1e18)
+                        : wrappedRate && underlyingPriceUSD > 0
+                        ? underlyingPriceUSD * (Number(wrappedRate) / 1e18)
+                        : coinGeckoLoading && marketCoinGeckoId
+                        ? 0
+                        : isFxSAVE
+                        ? 1.07
+                        : underlyingPriceUSD;
+                      const collateralPriceUSD = wrappedTokenPriceUSD;
+                      const totalDeposits = totalDepositsReads?.[mi]?.result as bigint | undefined;
+                      const totalDepositsAmount = totalDeposits ? Number(formatEther(totalDeposits)) : 0;
+                      const totalDepositsUSD = totalDepositsAmount * collateralPriceUSD;
+                      const userDepositUSD = userDeposit && collateralPriceUSD > 0 ? Number(formatEther(userDeposit)) * collateralPriceUSD : 0;
+                      const rowPeggedSymbol = (mkt as any).peggedToken?.symbol || "ha";
+                      const rowLeveragedSymbol = (mkt as any).leveragedToken?.symbol || "hs";
+                      const displayMarketName = rowLeveragedSymbol && rowLeveragedSymbol.toLowerCase().startsWith("hs")
+                        ? rowLeveragedSymbol.slice(2)
+                        : rowLeveragedSymbol || (mkt as any).name || "Market";
+
+                      // Get token prices for claimable display
+                      const anchorTokenPriceUSD = 1; // Pegged tokens are always $1
+                      const sailTokenPriceUSD = collateralPriceUSD; // Leveraged tokens use collateral price
+
+                      return (
+                        <div
+                          key={id}
+                          className="bg-white py-2.5 px-2 rounded-none border border-white/10"
+                        >
+                          {/* Desktop layout */}
+                          <div className="hidden md:grid lg:grid-cols-[1.5fr_1fr_1fr_1.5fr_1fr] md:grid-cols-[120px_60px_60px_1fr_80px] gap-4 items-center">
+                            {/* Market Column */}
+                            <div className="flex items-center gap-2 min-w-0 pl-4">
+                              <div className="text-[#1E4775] font-medium text-sm">
+                                {displayMarketName}
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Image
+                                  src={getLogoPath(collateralSymbol)}
+                                  alt={collateralSymbol}
+                                  width={20}
+                                  height={20}
+                                  className="flex-shrink-0 rounded-full"
+                                />
+                                <span className="text-[#1E4775]/60 text-xs">=</span>
+                                <Image
+                                  src={getLogoPath(rowPeggedSymbol)}
+                                  alt={rowPeggedSymbol}
+                                  width={20}
+                                  height={20}
+                                  className="flex-shrink-0 rounded-full"
+                                />
+                                <span className="text-[#1E4775]/60 text-xs">+</span>
+                                <Image
+                                  src={getLogoPath(rowLeveragedSymbol)}
+                                  alt={rowLeveragedSymbol}
+                                  width={20}
+                                  height={20}
+                                  className="flex-shrink-0 rounded-full"
+                                />
+                              </div>
+                            </div>
+
+                            {/* Anchor Tokens Column */}
+                            <div className="flex items-center justify-center gap-1.5 min-w-0">
+                              <Image
+                                src={getLogoPath(rowPeggedSymbol)}
+                                alt={rowPeggedSymbol}
+                                width={20}
+                                height={20}
+                                className="flex-shrink-0 rounded-full"
+                              />
+                              <SimpleTooltip
+                                label={
+                                  claimablePegged > 0n && anchorTokenPriceUSD > 0
+                                    ? formatUSD(Number(formatEther(claimablePegged)) * anchorTokenPriceUSD)
+                                    : claimablePegged > 0n
+                                    ? `${formatToken(claimablePegged)} ${rowPeggedSymbol}`
+                                    : ""
+                                }
+                              >
+                                <div className="text-[#1E4775] font-semibold text-xs cursor-help">
+                                  {claimablePegged > 0n ? formatToken(claimablePegged) : "-"}
+                                </div>
+                              </SimpleTooltip>
+                            </div>
+
+                            {/* Sail Tokens Column */}
+                            <div className="flex items-center justify-center gap-1.5 min-w-0">
+                              <Image
+                                src={getLogoPath(rowLeveragedSymbol)}
+                                alt={rowLeveragedSymbol}
+                                width={20}
+                                height={20}
+                                className="flex-shrink-0 rounded-full"
+                              />
+                              <SimpleTooltip
+                                label={
+                                  claimableLeveraged > 0n && sailTokenPriceUSD > 0
+                                    ? formatUSD(Number(formatEther(claimableLeveraged)) * sailTokenPriceUSD)
+                                    : claimableLeveraged > 0n
+                                    ? `${formatToken(claimableLeveraged)} ${rowLeveragedSymbol}`
+                                    : ""
+                                }
+                              >
+                                <div className="text-[#1E4775] font-semibold text-xs cursor-help">
+                                  {claimableLeveraged > 0n ? formatToken(claimableLeveraged) : "-"}
+                                </div>
+                              </SimpleTooltip>
+                            </div>
+
+                            {/* Your Deposit Column */}
+                            <div className="flex items-center justify-center gap-1 min-w-0">
+                              <Image
+                                src={getLogoPath(collateralSymbol)}
+                                alt={collateralSymbol}
+                                width={14}
+                                height={14}
+                                className="flex-shrink-0 rounded-full"
+                              />
+                              <div className="text-[#1E4775] font-semibold text-xs">
+                                {userDeposit && userDeposit > 0n
+                                  ? collateralPriceUSD > 0
+                                    ? formatUSD(userDepositUSD)
+                                    : `${formatToken(userDeposit)} ${collateralSymbol}`
+                                  : "$0"}
+                              </div>
+                            </div>
+
+                            {/* Action Column */}
+                            <div className="flex-shrink-0 text-center">
+                              {hasClaimable ? (
+                                <button
+                                  onClick={async (e) => {
+                                    e.stopPropagation();
+                                    if (genesisAddress && address && hasClaimable) {
+                                      try {
+                                        setClaimingMarket(id);
+                                        setClaimModal({
+                                          open: true,
+                                          status: "pending",
+                                          marketId: id,
+                                        });
+                                        const tx = await writeContractAsync({
+                                          address: genesisAddress as `0x${string}`,
+                                          abi: GENESIS_ABI,
+                                          functionName: "claim",
+                                        });
+                                        setClaimModal({
+                                          open: true,
+                                          status: "success",
+                                          marketId: id,
+                                        });
+                                      } catch (error) {
+                                        setClaimModal({
+                                          open: true,
+                                          status: "error",
+                                          marketId: id,
+                                          errorMessage: (error as any)?.shortMessage || (error as any)?.message || "Claim failed",
+                                        });
+                                      } finally {
+                                        setClaimingMarket(null);
+                                      }
+                                    }
+                                  }}
+                                  disabled={!genesisAddress || !address || !hasClaimable || claimingMarket === id}
+                                  className="px-3 py-1.5 text-[10px] font-medium bg-[#1E4775] text-white hover:bg-[#17395F] disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors rounded-full whitespace-nowrap"
+                                >
+                                  {claimingMarket === id ? "Claiming..." : "Claim"}
+                                </button>
+                              ) : null}
+                            </div>
+                          </div>
+
+                          {/* Mobile layout */}
+                          <div className="md:hidden space-y-2">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <div className="text-[#1E4775] font-medium text-sm">
+                                  {displayMarketName}
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <Image
+                                    src={getLogoPath(collateralSymbol)}
+                                    alt={collateralSymbol}
+                                    width={20}
+                                    height={20}
+                                    className="flex-shrink-0 rounded-full"
+                                  />
+                                  <span className="text-[#1E4775]/60 text-xs">=</span>
+                                  <Image
+                                    src={getLogoPath(rowPeggedSymbol)}
+                                    alt={rowPeggedSymbol}
+                                    width={20}
+                                    height={20}
+                                    className="flex-shrink-0 rounded-full"
+                                  />
+                                  <span className="text-[#1E4775]/60 text-xs">+</span>
+                                  <Image
+                                    src={getLogoPath(rowLeveragedSymbol)}
+                                    alt={rowLeveragedSymbol}
+                                    width={20}
+                                    height={20}
+                                    className="flex-shrink-0 rounded-full"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                              <div>
+                                <div className="text-[#1E4775]/70 text-[10px] mb-1">Anchor</div>
+                                <div className="flex items-center gap-1.5">
+                                  <Image
+                                    src={getLogoPath(rowPeggedSymbol)}
+                                    alt={rowPeggedSymbol}
+                                    width={16}
+                                    height={16}
+                                    className="flex-shrink-0 rounded-full"
+                                  />
+                                  <span className="text-[#1E4775] font-semibold text-xs">
+                                    {claimablePegged > 0n ? formatToken(claimablePegged) : "-"}
+                                  </span>
+                                </div>
+                              </div>
+                              <div>
+                                <div className="text-[#1E4775]/70 text-[10px] mb-1">Sail</div>
+                                <div className="flex items-center gap-1.5">
+                                  <Image
+                                    src={getLogoPath(rowLeveragedSymbol)}
+                                    alt={rowLeveragedSymbol}
+                                    width={16}
+                                    height={16}
+                                    className="flex-shrink-0 rounded-full"
+                                  />
+                                  <span className="text-[#1E4775] font-semibold text-xs">
+                                    {claimableLeveraged > 0n ? formatToken(claimableLeveraged) : "-"}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <div className="text-[#1E4775]/70 text-[10px] flex items-center gap-1">
+                                  <Image
+                                    src={getLogoPath(collateralSymbol)}
+                                    alt={collateralSymbol}
+                                    width={14}
+                                    height={14}
+                                    className="flex-shrink-0 rounded-full"
+                                  />
+                                  <span>Your Deposit</span>
+                                </div>
+                                <div className="text-[#1E4775] font-semibold text-xs">
+                                  {userDeposit && userDeposit > 0n
+                                    ? collateralPriceUSD > 0
+                                      ? formatUSD(userDepositUSD)
+                                      : `${formatToken(userDeposit)} ${collateralSymbol}`
+                                    : "$0"}
+                                </div>
+                              </div>
+                              {hasClaimable && (
+                                <button
+                                  onClick={async (e) => {
+                                    e.stopPropagation();
+                                    if (genesisAddress && address && hasClaimable) {
+                                      try {
+                                        setClaimingMarket(id);
+                                        setClaimModal({
+                                          open: true,
+                                          status: "pending",
+                                          marketId: id,
+                                        });
+                                        const tx = await writeContractAsync({
+                                          address: genesisAddress as `0x${string}`,
+                                          abi: GENESIS_ABI,
+                                          functionName: "claim",
+                                        });
+                                        setClaimModal({
+                                          open: true,
+                                          status: "success",
+                                          marketId: id,
+                                        });
+                                      } catch (error) {
+                                        setClaimModal({
+                                          open: true,
+                                          status: "error",
+                                          marketId: id,
+                                          errorMessage: (error as any)?.shortMessage || (error as any)?.message || "Claim failed",
+                                        });
+                                      } finally {
+                                        setClaimingMarket(null);
+                                      }
+                                    }
+                                  }}
+                                  disabled={!genesisAddress || !address || !hasClaimable || claimingMarket === id}
+                                  className="px-3 py-1.5 text-[10px] font-medium bg-[#1E4775] text-white hover:bg-[#17395F] disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors rounded-full whitespace-nowrap"
+                                >
+                                  {claimingMarket === id ? "Claiming..." : "Claim"}
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
           </section>
         )}
       </main>

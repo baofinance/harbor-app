@@ -6223,6 +6223,7 @@ export const AnchorDepositWithdrawModal = ({
               ? true // After swap, we always have USDC
               : (anyTokenDeposit.selectedAssetAddress?.toLowerCase() === USDC_ADDRESS.toLowerCase());
             const isActuallyFxUSD = !isActuallyUSDC && !anyTokenDeposit.needsSwap;
+            const minFxSaveOut = (swappedAmount * 99n) / 100n;
             
             // Get the asset address for approval
             const assetAddressForApproval = anyTokenDeposit.needsSwap 
@@ -6318,25 +6319,45 @@ export const AnchorDepositWithdrawModal = ({
               debugTx("zap/usdcToPegged", {
                 zapAddress,
                 function: "zapUsdcToPegged",
-                args: [swappedAmount.toString(), address, minPeggedOut.toString()],
+                args: [
+                  swappedAmount.toString(),
+                  minFxSaveOut.toString(),
+                  address,
+                  minPeggedOut.toString(),
+                ],
               });
               zapHash = await writeContractAsync({
               address: zapAddress,
                 abi: MINTER_USDC_ZAP_V2_ABI,
                 functionName: "zapUsdcToPegged",
-                args: [swappedAmount, address as `0x${string}`, minPeggedOut],
+                args: [
+                  swappedAmount,
+                  minFxSaveOut,
+                  address as `0x${string}`,
+                  minPeggedOut,
+                ],
               });
             } else if (isActuallyFxUSD) {
               debugTx("zap/fxUsdToPegged", {
                 zapAddress,
                 function: "zapFxUsdToPegged",
-                args: [swappedAmount.toString(), address, minPeggedOut.toString()],
+                args: [
+                  swappedAmount.toString(),
+                  minFxSaveOut.toString(),
+                  address,
+                  minPeggedOut.toString(),
+                ],
               });
               zapHash = await writeContractAsync({
                 address: zapAddress,
                 abi: MINTER_USDC_ZAP_V2_ABI,
                 functionName: "zapFxUsdToPegged",
-                args: [swappedAmount, address as `0x${string}`, minPeggedOut],
+                args: [
+                  swappedAmount,
+                  minFxSaveOut,
+                  address as `0x${string}`,
+                  minPeggedOut,
+                ],
             });
             } else {
               throw new Error("Invalid asset for USDC/fxUSD zap");
@@ -6691,6 +6712,7 @@ export const AnchorDepositWithdrawModal = ({
         let mintHash: `0x${string}`;
 
         if (useZap && zapAddress) {
+          const minFxSaveOut = (amountBigInt * 99n) / 100n;
           // Use zap contract to mint
           if (useETHZap) {
             // ETH/stETH zap for wstETH markets
@@ -6737,25 +6759,45 @@ export const AnchorDepositWithdrawModal = ({
               debugTx("zap/usdcToPegged", {
                 zapAddress,
                 function: "zapUsdcToPegged",
-                args: [amountBigInt.toString(), address, minPeggedOut.toString()],
+                args: [
+                  amountBigInt.toString(),
+                  minFxSaveOut.toString(),
+                  address,
+                  minPeggedOut.toString(),
+                ],
               });
               mintHash = await writeContractAsync({
                 address: zapAddress,
                 abi: MINTER_USDC_ZAP_V2_ABI,
                 functionName: "zapUsdcToPegged",
-                args: [amountBigInt, address as `0x${string}`, minPeggedOut],
+                args: [
+                  amountBigInt,
+                  minFxSaveOut,
+                  address as `0x${string}`,
+                  minPeggedOut,
+                ],
               });
             } else if (isFxUSD) {
               debugTx("zap/fxUsdToPegged", {
                 zapAddress,
                 function: "zapFxUsdToPegged",
-                args: [amountBigInt.toString(), address, minPeggedOut.toString()],
+                args: [
+                  amountBigInt.toString(),
+                  minFxSaveOut.toString(),
+                  address,
+                  minPeggedOut.toString(),
+                ],
               });
               mintHash = await writeContractAsync({
                 address: zapAddress,
                 abi: MINTER_USDC_ZAP_V2_ABI,
                 functionName: "zapFxUsdToPegged",
-                args: [amountBigInt, address as `0x${string}`, minPeggedOut],
+                args: [
+                  amountBigInt,
+                  minFxSaveOut,
+                  address as `0x${string}`,
+                  minPeggedOut,
+                ],
               });
             } else {
               throw new Error("Invalid asset for USDC zap");
@@ -11097,17 +11139,6 @@ export const AnchorDepositWithdrawModal = ({
               </>
             )}
           </div>
-
-          {step === "success" && (
-            <div className="flex gap-3 p-4 border-t border-[#1E4775]/20">
-              <button
-                onClick={handleClose}
-                className="flex-1 py-2 px-4 bg-[#1E4775] hover:bg-[#17395F] text-white font-medium transition-colors rounded-full"
-              >
-                Close
-              </button>
-            </div>
-          )}
 
           {step !== "success" && !simpleMode && (
             <div className="flex gap-3 p-4 border-t border-[#1E4775]/20">
