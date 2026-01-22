@@ -89,7 +89,7 @@ import { useMarketPositions } from "@/hooks/useMarketPositions";
 import { useMultipleTokenPrices } from "@/hooks/useTokenPrices";
 import { useFxSAVEAPR } from "@/hooks/useFxSAVEAPR";
 import { useWstETHAPR } from "@/hooks/useWstETHAPR";
-import { useCoinGeckoPrices } from "@/hooks/useCoinGeckoPrice";
+import { useCoinGeckoPrices, useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
 import { useContractReads as useWagmiContractReads } from "wagmi";
 import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
 import {
@@ -443,6 +443,7 @@ export default function AnchorPage() {
     mergedPeggedPriceMap,
     ethPrice,
     btcPrice,
+    eurPrice,
     fxUSDPrice,
     fxSAVEPrice,
     usdcPrice,
@@ -4879,7 +4880,8 @@ export default function AnchorPage() {
                         <div className="flex flex-col items-center justify-center text-center px-2 pt-1 pb-0 sm:py-0 h-full min-h-[60px] sm:border-l sm:border-white/15">
                           <div className="text-[11px] text-white/80 uppercase tracking-widest font-medium flex items-center justify-center gap-1">
                           vAPR
-                          <SimpleTooltip
+                          <InfoTooltip
+                            side="left"
                             label={
                               <div className="text-left">
                                 <div className="font-semibold mb-1">
@@ -5003,7 +5005,7 @@ export default function AnchorPage() {
                             <span className="text-white/50 cursor-help text-xs">
                               [?]
                             </span>
-                          </SimpleTooltip>
+                          </InfoTooltip>
                         </div>
                           <div className="text-sm font-semibold text-white font-mono mt-1">
                           {blendedAPRForBar > 0
@@ -5030,8 +5032,8 @@ export default function AnchorPage() {
                     {/* Anchor Ledger Marks */}
                     <div className="p-3 min-h-[60px] flex flex-col justify-center border-t border-white/15 md:border-t-0">
                       <div className="text-[11px] text-white/80 uppercase tracking-widest mb-0.5 text-center">
-                      Anchor Ledger Marks
-                    </div>
+                        Anchor Ledger Marks
+                      </div>
                       <div className="flex items-baseline justify-center gap-2 text-sm font-bold text-white font-mono tabular-nums">
                         <span>
                       {!ANCHOR_MARKS_ENABLED ? (
@@ -5564,29 +5566,131 @@ export default function AnchorPage() {
 
               const tokenAddressLower = peggedTokenAddress.toLowerCase();
               const walletBalance = marketData.userDeposit || 0n;
-              const walletBalanceUSD = marketData.haTokenBalanceUSD || 0;
 
               // Include if wallet has balance (regardless of pool deposits - they are separate)
               if (walletBalance > 0n) {
                 if (!walletPositionsByToken.has(tokenAddressLower)) {
+                  // Use the max balance across all markets (should be same for same token)
+                  // Calculate USD from the actual balance to avoid double counting
+                  const balanceNum = Number(walletBalance) / 1e18;
+                  // Get price for this token - use consistent price source per token, not per market
+                  const pegTarget = (marketData.market as any)?.pegTarget?.toLowerCase();
+                  let priceUSD = 1; // Default $1 for USD-pegged
+                  
+                  // For EUR-pegged tokens, use eurPrice directly to ensure consistency across markets
+                  console.log(`[anchor page] Token ${tokenAddressLower} (${marketData.market?.peggedToken?.symbol}): pegTarget="${pegTarget}", eurPrice=${eurPrice}, btcPrice=${btcPrice}, ethPrice=${ethPrice}`);
+                  
+                  if (pegTarget === "eur" || pegTarget === "euro") {
+                    if (eurPrice) {
+                      priceUSD = eurPrice;
+                      console.log(`[anchor page] haEUR: Using eurPrice=${eurPrice}, balanceNum=${balanceNum}, balanceUSD=${balanceNum * priceUSD}`);
+                    } else {
+                      console.warn(`[anchor page] haEUR: eurPrice is null/undefined! Checking fallback...`);
+                      // Fallback: try to get price from map, but log warning
+                      const priceMarket = allMarketsData.find((md) => {
+                        const mdTokenAddress = (md.market as any)?.addresses?.peggedToken?.toLowerCase();
+                        return mdTokenAddress === tokenAddressLower;
+                      });
+                      if (priceMarket) {
+                        const price = mergedPeggedPriceMap?.[priceMarket.marketId] ?? peggedPriceUSDMap?.[priceMarket.marketId];
+                        console.warn(`[anchor page] haEUR: priceMarket=${priceMarket.marketId}, price from map=${price?.toString() || 'undefined'}`);
+                        if (price !== undefined && price > 0n) {
+                          priceUSD = Number(price) / 1e18;
+                          console.warn(`[anchor page] haEUR: eurPrice not available, using map price=${priceUSD} for marketId=${priceMarket.marketId}`);
+                        } else {
+                          console.warn(`[anchor page] haEUR: No price available (eurPrice=${eurPrice}, map price=${price?.toString() || 'undefined'}), using default $1`);
+                        }
+                      } else {
+                        console.warn(`[anchor page] haEUR: No priceMarket found for token ${tokenAddressLower}`);
+                      }
+                    }
+                  } else if (pegTarget === "btc" || pegTarget === "bitcoin") {
+                    // For BTC-pegged tokens, use btcPrice directly to ensure consistency across markets (same as EUR)
+                    if (btcPrice) {
+                      priceUSD = btcPrice;
+                      console.log(`[anchor page] haBTC: Using btcPrice=${btcPrice}, balanceNum=${balanceNum}, balanceUSD=${balanceNum * priceUSD}`);
+                    } else {
+                      // Fallback: try to get price from map
+                      const priceMarket = allMarketsData.find((md) => {
+                        const mdTokenAddress = (md.market as any)?.addresses?.peggedToken?.toLowerCase();
+                        return mdTokenAddress === tokenAddressLower;
+                      });
+                      if (priceMarket) {
+                        const price = mergedPeggedPriceMap?.[priceMarket.marketId] ?? peggedPriceUSDMap?.[priceMarket.marketId];
+                        if (price !== undefined && price > 0n) {
+                          priceUSD = Number(price) / 1e18;
+                          console.warn(`[anchor page] haBTC: btcPrice not available, using map price=${priceUSD} for marketId=${priceMarket.marketId}`);
+                        }
+                      }
+                    }
+                  } else if (pegTarget === "eth" || pegTarget === "ethereum") {
+                    // For ETH-pegged tokens, use ethPrice directly to ensure consistency across markets
+                    if (ethPrice) {
+                      priceUSD = ethPrice;
+                      console.log(`[anchor page] haETH: Using ethPrice=${ethPrice}, balanceNum=${balanceNum}, balanceUSD=${balanceNum * priceUSD}`);
+                    } else {
+                      // Fallback: try to get price from map
+                      const priceMarket = allMarketsData.find((md) => {
+                        const mdTokenAddress = (md.market as any)?.addresses?.peggedToken?.toLowerCase();
+                        return mdTokenAddress === tokenAddressLower;
+                      });
+                      if (priceMarket) {
+                        const price = mergedPeggedPriceMap?.[priceMarket.marketId] ?? peggedPriceUSDMap?.[priceMarket.marketId];
+                        if (price !== undefined && price > 0n) {
+                          priceUSD = Number(price) / 1e18;
+                          console.warn(`[anchor page] haETH: ethPrice not available, using map price=${priceUSD} for marketId=${priceMarket.marketId}`);
+                        }
+                      }
+                    }
+                  } else {
+                    // For other tokens (USD-pegged), try to get price from any market using this token
+                    // Find the first market with a price for this token
+                    const priceMarket = allMarketsData.find((md) => {
+                      const mdTokenAddress = (md.market as any)?.addresses?.peggedToken?.toLowerCase();
+                      return mdTokenAddress === tokenAddressLower;
+                    });
+                    if (priceMarket) {
+                      const price = mergedPeggedPriceMap?.[priceMarket.marketId] ?? peggedPriceUSDMap?.[priceMarket.marketId];
+                      if (price !== undefined && price > 0n) {
+                        priceUSD = Number(price) / 1e18;
+                      }
+                    }
+                  }
+                  const balanceUSD = balanceNum * priceUSD;
+                  
                   walletPositionsByToken.set(tokenAddressLower, {
                     tokenAddress: peggedTokenAddress,
                     symbol: marketData.market?.peggedToken?.symbol || "ha",
                     balance: walletBalance,
-                    balanceUSD: walletBalanceUSD,
+                    balanceUSD: balanceUSD,
                     markets: [],
                   });
                 }
                 const position = walletPositionsByToken.get(tokenAddressLower)!;
+                // Just add this market to the list - don't recalculate anything
+                // The USD value was already calculated correctly when the entry was first created
+                console.log(`[anchor page] Token ${tokenAddressLower} (${position.symbol}): Adding market ${marketData.marketId}, existing balanceUSD=${position.balanceUSD}, NOT recalculating`);
                 position.markets.push({
                   marketId: marketData.marketId,
                   market: marketData.market,
                   marketData,
                 });
-                // Use the highest balance/USD value (should be same across markets for same token)
-                if (walletBalanceUSD > position.balanceUSD) {
-                  position.balanceUSD = walletBalanceUSD;
+                // Only update balance if it's actually higher (should be same for same token across markets)
+                // But DO NOT recalculate USD - it was already calculated correctly when the entry was created
+                // Recalculating would cause double counting when multiple markets use the same token
+                if (walletBalance > position.balance) {
+                  // This should rarely happen since same token should have same balance across markets
+                  // If it does happen, maintain the same price per token to avoid inconsistencies
+                  const existingPricePerToken = position.balanceUSD / (Number(position.balance) / 1e18);
+                  position.balance = walletBalance;
+                  if (existingPricePerToken > 0) {
+                    // Use the same price per token that was used initially
+                    position.balanceUSD = (Number(walletBalance) / 1e18) * existingPricePerToken;
+                    console.log(`[anchor page] Token ${tokenAddressLower}: Balance increased, updated USD using existing price ${existingPricePerToken}`);
+                  }
+                  // If existingPricePerToken is 0 or invalid, leave balanceUSD as is (shouldn't happen)
                 }
+                // If balance is same or lower, do nothing - USD was already calculated correctly
               }
             });
 
@@ -5854,7 +5958,7 @@ export default function AnchorPage() {
           {/* Markets List */}
           <section className="space-y-2 overflow-visible">
             {/* Stability Pools Header */}
-            <div className="mb-3 flex items-center justify-between gap-3">
+            <div className="pt-4 mb-3 flex items-center justify-between gap-3">
               <h2 className="text-xs font-medium text-white/70 uppercase tracking-wider">
                 Stability Pools
               </h2>
@@ -5870,8 +5974,8 @@ export default function AnchorPage() {
                   </div>
                 }
               >
-                <div className="cursor-help bg-black/35 hover:bg-black/40 border border-white/25 backdrop-blur-sm px-2 py-1 rounded-full transition-colors">
-                  <div className="flex items-center gap-1.5 text-white/90 text-sm whitespace-nowrap">
+                <div className="cursor-help bg-[#E67A6B] hover:bg-[#D66A5B] border border-white backdrop-blur-sm px-2 py-1 rounded-full transition-colors">
+                  <div className="flex items-center gap-1.5 text-white text-sm whitespace-nowrap">
                     <Image
                       src="/icons/marks.png"
                       alt="Marks"
@@ -5883,7 +5987,7 @@ export default function AnchorPage() {
                       <span className="font-semibold">
                         All positions earn Ledger Marks
                       </span>{" "}
-                      <span className="text-white/60">• 1 / $ / day</span>
+                      <span className="text-white/90">• 1 / $ / day</span>
                     </span>
                   </div>
                 </div>
@@ -7355,7 +7459,7 @@ export default function AnchorPage() {
                                       
                                       const countdownLabel =
                                         request.status === "waiting"
-                                          ? "Withdraw window opens"
+                                          ? "Free withdraw window opens"
                                           : request.status === "window"
                                           ? "Window closes in"
                                           : "Window expired";
@@ -7512,7 +7616,7 @@ export default function AnchorPage() {
                                                   });
                                                 }
                                               }}
-                                              className={`px-2 py-0.5 text-[10px] font-medium rounded-full ${
+                                              className={`px-2 py-0.5 text-sm font-semibold rounded-full ${
                                                 isWindowOpen
                                                   ? "bg-[#1E4775] text-white hover:bg-[#17395F]"
                                                   : "bg-orange-500 text-white hover:bg-orange-600"
@@ -7840,9 +7944,22 @@ export default function AnchorPage() {
                           // This matches how useMarketPositions calculates walletHaUSD
                           const usdPriceFromMap =
                             peggedPriceUSDMap[marketData.marketId];
+                          // Get peg target for fallback pricing
+                          const pricePegTarget = (marketData.market as any)?.pegTarget?.toLowerCase() || "";
+                          const peggedSymbolLower = marketData.market?.peggedToken?.symbol?.toLowerCase() || "";
+                          const btcUsdFallback = btcPrice || 0;
+                          const ethUsdFallback = ethPrice || 0;
+                          const eurUsdFallback = eurPrice || 0;
+                          
                           const peggedPriceUSD =
                             usdPriceFromMap && usdPriceFromMap > 0n
                               ? Number(usdPriceFromMap) / 1e18
+                              : (pricePegTarget === "btc" || peggedSymbolLower.includes("btc")) && btcUsdFallback > 0
+                              ? btcUsdFallback
+                              : (pricePegTarget === "eth" || peggedSymbolLower.includes("eth")) && ethUsdFallback > 0
+                              ? ethUsdFallback
+                              : (pricePegTarget === "eur" || peggedSymbolLower.includes("eur")) && eurUsdFallback > 0
+                              ? eurUsdFallback
                               : positionData?.peggedTokenPrice &&
                                 positionData.peggedTokenPrice > 0n
                               ? Number(positionData.peggedTokenPrice) / 1e18
@@ -7882,24 +7999,29 @@ export default function AnchorPage() {
                                 // Use the same CR-aware USD pricing as positions (prefer peggedPriceUSDMap; fallback to contract reads)
                                 const tvlUsdPriceFromMap =
                                   peggedPriceUSDMap[marketData.marketId];
-                                // Extra robustness: if the USD map is missing/zero for haBTC/haETH,
+                                // Extra robustness: if the USD map is missing/zero for haBTC/haETH/haEUR,
                                 // fall back to CoinGecko peg-target USD price.
+                                const tvlPegTarget = (marketData.market as any)?.pegTarget?.toLowerCase() || "";
                                 const peggedSymbolLower =
                                         marketData.market?.peggedToken?.symbol?.toLowerCase?.() ||
                                         "";
                                 const btcUsdFallback = btcPrice || 0;
                                 const ethUsdFallback = ethPrice || 0;
+                                const eurUsdFallback = eurPrice || 0;
 
                                 const peggedPriceUSD =
                                         tvlUsdPriceFromMap &&
                                         tvlUsdPriceFromMap > 0n
                                     ? Number(tvlUsdPriceFromMap) / 1e18
-                                    : peggedSymbolLower.includes("btc") &&
+                                    : (tvlPegTarget === "btc" || peggedSymbolLower.includes("btc")) &&
                                       btcUsdFallback > 0
                                     ? btcUsdFallback
-                                    : peggedSymbolLower.includes("eth") &&
+                                    : (tvlPegTarget === "eth" || peggedSymbolLower.includes("eth")) &&
                                       ethUsdFallback > 0
                                     ? ethUsdFallback
+                                    : (tvlPegTarget === "eur" || peggedSymbolLower.includes("eur")) &&
+                                      eurUsdFallback > 0
+                                    ? eurUsdFallback
                                     : positionData?.peggedTokenPrice &&
                                       positionData.peggedTokenPrice > 0n
                                           ? Number(

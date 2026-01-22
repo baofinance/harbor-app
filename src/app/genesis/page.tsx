@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useMemo, useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   useAccount,
   useContractReads,
@@ -517,6 +517,10 @@ function MarketExpandedView({
 export default function GenesisIndexPage() {
   const { address, isConnected } = useAccount();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const isAprRevealed =
+    process.env.NEXT_PUBLIC_MAIDEN_VOYAGE_APR_REVEALED === "true" ||
+    searchParams.get("apr") === "revealed";
   const [manageModal, setManageModal] = useState<{
     marketId: string;
     market: any;
@@ -1098,14 +1102,14 @@ export default function GenesisIndexPage() {
               <div className="flex items-center justify-center gap-2">
                 <CurrencyDollarIcon className="w-5 h-5 text-white" />
                 <h2 className="font-bold text-white text-base">
-                  Earn Ledger Marks
+                  Earn Maiden Voyage Marks
                 </h2>
               </div>
               <p className="text-xs text-white/75 mt-1">
-                and share up to 10% of the token supply.
+                and secure your share of the $TIDE airdrop
               </p>
               <p className="text-xs text-white/60 mt-1">
-                (TGE 12 weeks after launch)
+                (TGE Beginning Q2 2026)
               </p>
               {/* Chevron removed */}
             </div>
@@ -1153,6 +1157,110 @@ export default function GenesisIndexPage() {
         {/* Ledger Marks Section */}
         {(() => {
           // Calculate total marks from subgraph data (only maiden voyage/genesis marks)
+          // First, determine which campaign to show (prioritize active campaigns)
+          const campaignInfo = new Map<string, { label: string; isActive: boolean; marks: number; campaignId?: string }>();
+          
+          // First pass: collect campaign info to determine which campaign to display
+          if (process.env.NODE_ENV === "development") {
+            console.log("[Marks Results] Total results received", {
+              totalResults: marksResults?.length || 0,
+              genesisAddressesQueried: genesisAddresses,
+              results: marksResults?.map(r => ({
+                genesisAddress: r.genesisAddress,
+                hasData: !!r.data?.userHarborMarks,
+                campaignId: r.data?.userHarborMarks?.campaignId,
+                campaignLabel: r.data?.userHarborMarks?.campaignLabel,
+                currentDepositUSD: r.data?.userHarborMarks?.currentDepositUSD,
+                hasErrors: r.errors?.length > 0,
+              })) || [],
+            });
+          }
+          
+          if (marksResults && marksResults.length > 0 && !isLoadingMarks) {
+            marksResults.forEach((result) => {
+              const userMarksData = result.data?.userHarborMarks;
+              const marks = Array.isArray(userMarksData) ? userMarksData[0] : userMarksData;
+              
+              if (marks && marks.campaignLabel) {
+                const market = genesisMarkets.find(
+                  ([_, mkt]) =>
+                    (mkt as any).addresses?.genesis?.toLowerCase() ===
+                    result.genesisAddress?.toLowerCase()
+                );
+                
+                let contractSaysEnded: boolean | undefined;
+                if (market) {
+                  const marketIndex = genesisMarkets.findIndex(([id]) => id === market[0]);
+                  if (marketIndex >= 0) {
+                    const baseOffset = marketIndex * (isConnected ? 3 : 1);
+                    const contractReadResult = reads?.[baseOffset];
+                    contractSaysEnded =
+                      contractReadResult?.status === "success"
+                        ? (contractReadResult.result as boolean)
+                        : undefined;
+                  }
+                }
+                
+                const genesisEnded =
+                  contractSaysEnded !== undefined
+                    ? contractSaysEnded
+                    : marks.genesisEnded || false;
+                
+                const originalCurrentMarks = parseFloat(marks.currentMarks || "0");
+                const currentDepositUSD = parseFloat(marks.currentDepositUSD || "0");
+                const genesisStartDate = parseInt(marks.genesisStartDate || "0");
+                const lastUpdated = parseInt(marks.lastUpdated || "0");
+                const currentTime = Math.floor(Date.now() / 1000);
+                
+                let currentMarks = originalCurrentMarks;
+                if (!genesisEnded && currentDepositUSD > 0 && genesisStartDate > 0) {
+                  const timeElapsed = currentTime - lastUpdated;
+                  const daysElapsed = Math.max(0, timeElapsed / 86400);
+                  const marksAccumulated = currentDepositUSD * 10 * daysElapsed;
+                  currentMarks = currentMarks + marksAccumulated;
+                }
+                
+                const existing = campaignInfo.get(marks.campaignLabel) || {
+                  label: marks.campaignLabel,
+                  isActive: false,
+                  marks: 0,
+                  campaignId: marks.campaignId,
+                };
+                existing.isActive = existing.isActive || !genesisEnded;
+                existing.marks += currentMarks;
+                campaignInfo.set(marks.campaignLabel, existing);
+              }
+            });
+          }
+          
+          // Determine which campaign to show (prioritize active, then by marks)
+          const campaigns = Array.from(campaignInfo.values());
+          const activeCampaigns = campaigns.filter(c => c.isActive);
+          const campaignsToConsider = activeCampaigns.length > 0 ? activeCampaigns : campaigns;
+          campaignsToConsider.sort((a, b) => b.marks - a.marks);
+          const selectedCampaign = campaignsToConsider[0];
+          const selectedCampaignId = selectedCampaign?.campaignId;
+          
+          if (process.env.NODE_ENV === "development") {
+            console.log("[Campaign Selection]", {
+              allCampaigns: Array.from(campaignInfo.entries()).map(([label, info]) => ({
+                label,
+                campaignId: info.campaignId,
+                isActive: info.isActive,
+                marks: info.marks,
+              })),
+              selectedCampaign: selectedCampaign ? {
+                label: selectedCampaign.label,
+                campaignId: selectedCampaign.campaignId,
+                isActive: selectedCampaign.isActive,
+                marks: selectedCampaign.marks,
+              } : null,
+              selectedCampaignId,
+              totalMarksResults: marksResults?.length || 0,
+            });
+          }
+          
+          // Now calculate totals only for the selected campaign
           let totalCurrentMarks = 0;
           let totalMarksPerDay = 0;
           let totalBonusAtEnd = 0;
@@ -1195,12 +1303,32 @@ export default function GenesisIndexPage() {
                 : userMarksData;
 
               if (marks) {
+                // Only process marks from the selected campaign
+                if (selectedCampaignId && marks.campaignId !== selectedCampaignId) {
+                  if (process.env.NODE_ENV === "development") {
+                    console.log("[Campaign Filter] Skipping marks from different campaign", {
+                      genesisAddress: result.genesisAddress,
+                      marksCampaignId: marks.campaignId,
+                      selectedCampaignId,
+                      currentDepositUSD: marks.currentDepositUSD,
+                    });
+                  }
+                  return; // Skip marks from other campaigns
+                }
+                
+                if (process.env.NODE_ENV === "development") {
+                  console.log("[Campaign Marks] Processing marks for campaign", {
+                    genesisAddress: result.genesisAddress,
+                    campaignId: marks.campaignId,
+                    campaignLabel: marks.campaignLabel,
+                    currentDepositUSD: marks.currentDepositUSD,
+                    currentMarks: marks.currentMarks,
+                  });
+                }
+                
                 // Read the original subgraph value ONCE at the start - don't mutate the object
                 const originalCurrentMarks = parseFloat(
                   marks.currentMarks || "0"
-                );
-                const marksPerDayFromSubgraph = parseFloat(
-                  marks.marksPerDay || "0"
                 );
                 const bonusMarks = parseFloat(marks.bonusMarks || "0");
 
@@ -1244,18 +1372,13 @@ export default function GenesisIndexPage() {
 
                 // Use subgraph's USD value - it's the source of truth
                 // The subgraph calculates currentDepositUSD using real-time oracle prices
-                // If it seems stale, it might be because:
-                // 1. The subgraph hasn't synced recent price updates
-                // 2. There haven't been deposit/withdraw events to trigger price recalculation
-                // 3. Different subgraph deployment/version between prod and localhost
                 const currentDepositUSD = parseFloat(
                   marks.currentDepositUSD || "0"
                 );
 
-                // Calculate marksPerDay directly from currentDepositUSD to ensure accuracy
-                // Marks accumulate at 10 marks per dollar per day
-                // If genesis has ended, marksPerDay should be 0 (no more marks accumulating)
-                const marksPerDay = genesisEnded ? 0 : currentDepositUSD * 10;
+                // Use subgraph's marksPerDay - it's the source of truth
+                // The subgraph updates this daily with current prices
+                const marksPerDay = parseFloat(marks.marksPerDay || "0");
 
                 // Calculate current marks dynamically based on time elapsed since last update
                 // Marks accumulate at 10 marks per dollar per day
@@ -1294,9 +1417,19 @@ export default function GenesisIndexPage() {
 
                 totalCurrentMarks += currentMarks;
                 totalMarksPerDay += marksPerDay;
+                
+                if (process.env.NODE_ENV === "development") {
+                  console.log("[Campaign Totals] After adding market", {
+                    genesisAddress: result.genesisAddress,
+                    marketDepositUSD: currentDepositUSD,
+                    marketMarksPerDay: marksPerDay,
+                    marketCurrentMarks: currentMarks,
+                    runningTotalMarks: totalCurrentMarks,
+                    runningTotalMarksPerDay: totalMarksPerDay,
+                  });
+                }
 
-                // Debug logging for marks calculation - compare subgraph values
-                // This helps identify if subgraph prices are stale on localhost vs production
+                // Debug logging for marks calculation
                 if (process.env.NODE_ENV === "development") {
                   const marksAccumulated = genesisEnded
                     ? 0
@@ -1307,8 +1440,7 @@ export default function GenesisIndexPage() {
                     calculatedCurrentMarks: currentMarks,
                     marksAccumulated: marksAccumulated,
                     subgraphCurrentDepositUSD: currentDepositUSD,
-                    subgraphMarksPerDay: marksPerDayFromSubgraph,
-                    calculatedMarksPerDay: marksPerDay,
+                    subgraphMarksPerDay: marksPerDay,
                     bonusAtEnd:
                       !genesisEnded && currentDepositUSD > 0
                         ? currentDepositUSD * 100
@@ -1326,7 +1458,7 @@ export default function GenesisIndexPage() {
                     daysElapsed:
                       lastUpdated > 0 ? (currentTime - lastUpdated) / 86400 : 0,
                     subgraphCurrentDeposit: marks.currentDeposit || "0",
-                    note: "Always starting from original subgraph value to prevent double-counting",
+                    note: "Subgraph is source of truth for currentDepositUSD and marksPerDay",
                   });
                 }
 
@@ -1421,7 +1553,21 @@ export default function GenesisIndexPage() {
 
                   <div className="p-3 flex flex-col items-center justify-center text-center">
                     <div className="text-[11px] text-white/80 uppercase tracking-widest">
-                      Current Maiden Voyage Marks
+                      {(() => {
+                        // Extract campaign name from label (remove "Maiden Voyage" if present)
+                        const extractCampaignName = (label: string): string => {
+                          // campaignLabel from subgraph is like "Launch Maiden Voyage" or "Euro Maiden Voyage"
+                          // We want just "Launch" or "Euro"
+                          return label.replace(/\s+Maiden Voyage\s*$/i, "").trim();
+                        };
+                        
+                        if (!selectedCampaign) {
+                          return "Current Maiden Voyage Marks";
+                        }
+                        
+                        const campaignName = extractCampaignName(selectedCampaign.label);
+                        return `${campaignName} Maiden Voyage Marks`;
+                      })()}
                     </div>
                     <div className="text-sm font-semibold text-white font-mono mt-1">
                       {!mounted || isLoadingMarks ? (
@@ -2916,7 +3062,7 @@ export default function GenesisIndexPage() {
                                   APR
                                 </div>
                                 {isValidAPR ? (
-                                  canShowCombinedAPR ? (
+                                  isAprRevealed && canShowCombinedAPR ? (
                                     <TideAPRTooltip
                                       underlyingAPR={underlyingAPR}
                                       userMarks={marksForAPR}
@@ -2981,12 +3127,20 @@ export default function GenesisIndexPage() {
                                             : ""
                                         }`}
                                       >
-                                        <span className="text-[#1E4775] font-semibold text-xs cursor-help">
+                                        <span className="text-[#1E4775] font-semibold text-xs cursor-help flex items-center gap-1">
                                           {isLoadingAPR
                                             ? "..."
                                             : `${(underlyingAPR * 100).toFixed(
                                                 2
                                               )}%`}
+                                          <span className="text-[#1E4775]/70">+</span>
+                                          <Image
+                                            src="/icons/marks.png"
+                                            alt="Marks"
+                                            width={12}
+                                            height={12}
+                                            className="inline-block"
+                                          />
                                         </span>
                                       </SimpleTooltip>
                                     </div>
@@ -3462,7 +3616,7 @@ export default function GenesisIndexPage() {
                               return (
                                 <div className="text-center">
                                   {isValidAPR ? (
-                                    canShowCombinedAPR ? (
+                                    isAprRevealed && canShowCombinedAPR ? (
                                       <TideAPRTooltip
                                         underlyingAPR={underlyingAPR}
                                         userMarks={marksForAPR}
@@ -3508,12 +3662,20 @@ export default function GenesisIndexPage() {
                                             : ""
                                         }`}
                                       >
-                                        <span className="text-[#1E4775] font-semibold text-xs cursor-help">
+                                        <span className="text-[#1E4775] font-semibold text-xs cursor-help flex items-center gap-1">
                                           {isLoadingAPR
                                             ? "..."
                                             : `${(underlyingAPR * 100).toFixed(
                                                 2
                                               )}%`}
+                                          <span className="text-[#1E4775]/70">+</span>
+                                          <Image
+                                            src="/icons/marks.png"
+                                            alt="Marks"
+                                            width={12}
+                                            height={12}
+                                            className="inline-block"
+                                          />
                                         </span>
                                       </SimpleTooltip>
                                     )
@@ -4060,7 +4222,7 @@ export default function GenesisIndexPage() {
                               return (
                                 <div className="text-center min-w-0">
                                   {isValidAPR ? (
-                                    canShowCombinedAPR ? (
+                                    isAprRevealed && canShowCombinedAPR ? (
                                       <TideAPRTooltip
                                         underlyingAPR={underlyingAPR}
                                         userMarks={marksForAPR}
@@ -4106,12 +4268,20 @@ export default function GenesisIndexPage() {
                                             : ""
                                         }`}
                                       >
-                                        <span className="text-[#1E4775] font-semibold text-xs cursor-help">
+                                        <span className="text-[#1E4775] font-semibold text-xs cursor-help flex items-center gap-1">
                                           {isLoadingAPR
                                             ? "..."
                                             : `${(underlyingAPR * 100).toFixed(
                                                 2
                                               )}%`}
+                                          <span className="text-[#1E4775]/70">+</span>
+                                          <Image
+                                            src="/icons/marks.png"
+                                            alt="Marks"
+                                            width={12}
+                                            height={12}
+                                            className="inline-block"
+                                          />
                                         </span>
                                       </SimpleTooltip>
                                     )
@@ -4671,9 +4841,8 @@ export default function GenesisIndexPage() {
                         </div>
                       </div>
 
-                      {/* Early Deposit Bonus Progress Bar - inside main market row - HIDDEN */}
-                      {false &&
-                        (() => {
+                      {/* Early Deposit Bonus Progress Bar - inside main market row */}
+                      {!isEnded && !isProcessing && (() => {
                           // Get market bonus status from the hook called at top level
                           const marketBonusData = bonusStatusResults?.find(
                             (status) =>
@@ -4682,13 +4851,33 @@ export default function GenesisIndexPage() {
                           );
                           const marketBonusStatus = marketBonusData?.data;
 
-                          if (!marketBonusStatus || isLoadingBonusStatus)
-                            return null;
+                          const collateralSymbolNormalized =
+                            collateralSymbol.toLowerCase();
+                          const isFxSAVE = collateralSymbolNormalized === "fxsave";
+                          const isEurMarket =
+                            id === "steth-eur" || id === "fxusd-eur";
+                          const thresholdAmount = isEurMarket
+                            ? isFxSAVE
+                              ? 50000
+                              : 14
+                            : isFxSAVE
+                            ? 250000
+                            : 70;
+                          const fallbackBonusStatus = {
+                            cumulativeDeposits: "0",
+                            thresholdAmount: String(thresholdAmount),
+                            thresholdToken: isFxSAVE ? "fxSAVE" : "wstETH",
+                            thresholdReached: false,
+                          };
+                          const effectiveBonusStatus =
+                            marketBonusStatus || fallbackBonusStatus;
+
+                          if (isLoadingBonusStatus) return null;
 
                           const bonusProgress = Math.min(
                             100,
-                            (Number(marketBonusStatus.cumulativeDeposits) /
-                              Number(marketBonusStatus.thresholdAmount)) *
+                            (Number(effectiveBonusStatus.cumulativeDeposits) /
+                              Number(effectiveBonusStatus.thresholdAmount)) *
                               100
                           );
 
@@ -4730,7 +4919,7 @@ export default function GenesisIndexPage() {
                                   <div className="flex-1 bg-gray-200 rounded-full h-1.5 min-w-[100px]">
                                     <div
                                       className={`h-1.5 rounded-full transition-all ${
-                                        marketBonusStatus.thresholdReached
+                                        effectiveBonusStatus.thresholdReached
                                           ? "bg-gray-400"
                                           : "bg-[#FF8A7A]"
                                       }`}
@@ -4739,14 +4928,14 @@ export default function GenesisIndexPage() {
                                   </div>
                                   <span className="text-[10px] text-[#1E4775]/70 whitespace-nowrap">
                                     {`${Number(
-                                      marketBonusStatus.cumulativeDeposits
+                                      effectiveBonusStatus.cumulativeDeposits
                                     ).toLocaleString(undefined, {
                                       maximumFractionDigits: 0,
                                     })} / ${Number(
-                                      marketBonusStatus.thresholdAmount
+                                      effectiveBonusStatus.thresholdAmount
                                     ).toLocaleString(undefined, {
                                       maximumFractionDigits: 0,
-                                    })} ${marketBonusStatus.thresholdToken}`}
+                                    })} ${effectiveBonusStatus.thresholdToken}`}
                                   </span>
 
                                   {/* User Qualification Status - on same line */}

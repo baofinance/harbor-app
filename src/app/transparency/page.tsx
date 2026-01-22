@@ -645,10 +645,10 @@ function MarketCard({
  <div className="text-[#1E4775]/60 font-semibold text-[9px] whitespace-nowrap">
  TVL
  </div>
- <div className="text-[#1E4775] font-mono font-semibold text-[11px] whitespace-nowrap overflow-hidden">
- <span className="whitespace-nowrap">{formatCompactUSD(totalTVLUSD)}</span>
+<div className="text-[#1E4775] font-mono font-semibold text-[11px] whitespace-nowrap flex items-baseline gap-1">
+<span className="whitespace-nowrap">{formatCompactUSD(totalTVLUSD)}</span>
  {collateralHeldWrapped > 0n && (
- <span className="text-[#1E4775]/60 text-[10px] ml-1 truncate inline-block max-w-full align-bottom">
+<span className="text-[#1E4775]/60 text-[10px] whitespace-nowrap align-bottom">
  ({formatTokenBalanceMax2Decimals(collateralHeldWrapped)}{" "}
  {collateralHeldSymbol || ""})
  </span>
@@ -740,13 +740,13 @@ function MarketCard({
 
  {/* TVL */}
  <div className="text-center">
- <div className="text-[#1E4775] font-mono text-sm font-semibold">
+ <div className="text-[#1E4775] font-mono text-sm font-semibold whitespace-nowrap inline-flex items-baseline gap-1">
  {formatCompactUSD(totalTVLUSD)}
-{collateralHeldWrapped > 0n && (
- <span className="text-[#1E4775]/60 text-xs ml-1">
+ {collateralHeldWrapped > 0n && (
+ <span className="text-[#1E4775]/60 text-xs whitespace-nowrap">
  ({formatTokenBalanceMax2Decimals(collateralHeldWrapped)} {collateralHeldSymbol || ""})
  </span>
-)}
+ )}
  </div>
  </div>
 

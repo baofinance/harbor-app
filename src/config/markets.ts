@@ -70,6 +70,10 @@ export const markets = {
       description:
         "100 ledger marks per dollar deposited at the end of genesis",
     },
+    marksCampaign: {
+      id: "launch-maiden-voyage",
+      label: "Launch Maiden Voyage",
+    },
     coinGeckoId: "fx-usd-saving", // CoinGecko ID for fxSAVE (the deposited token)
     genesis: {
       startDate: contractsMarkets["eth-fxusd"].genesis.startDate,
@@ -148,6 +152,10 @@ export const markets = {
       description:
         "100 ledger marks per dollar deposited at the end of genesis",
     },
+    marksCampaign: {
+      id: "launch-maiden-voyage",
+      label: "Launch Maiden Voyage",
+    },
     coinGeckoId: "fx-usd-saving", // CoinGecko ID for fxSAVE (the deposited token)
     genesis: {
       startDate: contractsMarkets["btc-fxusd"].genesis.startDate,
@@ -225,6 +233,10 @@ export const markets = {
       description:
         "100 ledger marks per dollar deposited at the end of genesis",
     },
+    marksCampaign: {
+      id: "launch-maiden-voyage",
+      label: "Launch Maiden Voyage",
+    },
     coinGeckoId: "wrapped-steth", // CoinGecko ID for wstETH
     genesis: {
       startDate: contractsMarkets["btc-steth"].genesis.startDate,
@@ -298,6 +310,10 @@ export const markets = {
       pointsPerDollar: 100,
       description: "100 ledger marks per dollar deposited at the end of genesis",
     },
+    marksCampaign: {
+      id: "gold-maiden-voyage",
+      label: "Gold Maiden Voyage",
+    },
     coinGeckoId: "fx-protocol-fxusd",
     genesis: {
       startDate: contractsMarkets["fxusd-gold"].genesis.startDate,
@@ -366,6 +382,10 @@ export const markets = {
       pointsPerDollar: 100,
       description: "100 ledger marks per dollar deposited at the end of genesis",
     },
+    marksCampaign: {
+      id: "gold-maiden-voyage",
+      label: "Gold Maiden Voyage",
+    },
     coinGeckoId: "wrapped-steth",
     genesis: {
       startDate: contractsMarkets["steth-gold"].genesis.startDate,
@@ -410,7 +430,7 @@ export const markets = {
       peggedToken: contractsMarkets["steth-eur"].addresses.peggedToken,
       leveragedToken: contractsMarkets["steth-eur"].addresses.leveragedToken,
       reservePool: contractsMarkets["steth-eur"].addresses.reservePool,
-      stabilityPoolManager: "0x29AAEe8b76A5970D7d5041F500512e2b9d70Aa94" as `0x${string}`,
+      stabilityPoolManager: "0x0Df9b94793Bc7b88FDa5286B472FeABE83Edf578" as `0x${string}`,
       stabilityPoolCollateral: contractsMarkets["steth-eur"].addresses.stabilityPoolCollateral,
       stabilityPoolLeveraged: contractsMarkets["steth-eur"].addresses.stabilityPoolLeveraged,
       genesis: contractsMarkets["steth-eur"].addresses.genesis,
@@ -419,21 +439,25 @@ export const markets = {
       feeReceiver: contractsMarkets["steth-eur"].addresses.feeReceiver,
       collateralToken: contractsMarkets["steth-eur"].addresses.collateralToken,
       wrappedCollateralToken: contractsMarkets["steth-eur"].addresses.wrappedCollateralToken,
-      genesisZap: contractsMarkets["steth-eur"].addresses.genesisZap,
+      genesisZap: contractsMarkets["steth-eur"].addresses.genesisZap, // GenesisETHZap_v4 for EUR
     },
     peggedToken: {
       name: "Harbor Anchored EUR",
       symbol: "haEUR",
-      description: "Pegged token (coming soon)",
+      description: "Pegged token (fetched from contract)",
     },
     leveragedToken: {
       name: "Harbor Sail stETH-EUR",
       symbol: "hsSTETH-EUR",
-      description: "Leveraged token (coming soon)",
+      description: "Leveraged token (fetched from contract)",
     },
     rewardPoints: {
       pointsPerDollar: 100,
       description: "100 ledger marks per dollar deposited at the end of genesis",
+    },
+    marksCampaign: {
+      id: "euro-maiden-voyage",
+      label: "Euro Maiden Voyage",
     },
     coinGeckoId: "wrapped-steth",
     genesis: {
@@ -479,7 +503,7 @@ export const markets = {
       peggedToken: contractsMarkets["fxusd-eur"].addresses.peggedToken,
       leveragedToken: contractsMarkets["fxusd-eur"].addresses.leveragedToken,
       reservePool: contractsMarkets["fxusd-eur"].addresses.reservePool,
-      stabilityPoolManager: "0x756766756880ceA06270Fd507b09Ef32714Ec7C2" as `0x${string}`,
+      stabilityPoolManager: "0x6d6A34706FB345121F9C96Ae9821Dca857285497" as `0x${string}`,
       stabilityPoolCollateral: contractsMarkets["fxusd-eur"].addresses.stabilityPoolCollateral,
       stabilityPoolLeveraged: contractsMarkets["fxusd-eur"].addresses.stabilityPoolLeveraged,
       genesis: contractsMarkets["fxusd-eur"].addresses.genesis,
@@ -488,21 +512,25 @@ export const markets = {
       feeReceiver: contractsMarkets["fxusd-eur"].addresses.feeReceiver,
       collateralToken: contractsMarkets["fxusd-eur"].addresses.collateralToken,
       wrappedCollateralToken: contractsMarkets["fxusd-eur"].addresses.wrappedCollateralToken,
-      genesisZap: contractsMarkets["fxusd-eur"].addresses.genesisZap,
+      genesisZap: contractsMarkets["fxusd-eur"].addresses.genesisZap, // GenesisUSDCZap_v4 for EUR
     },
     peggedToken: {
       name: "Harbor Anchored EUR",
       symbol: "haEUR",
-      description: "Pegged token (coming soon)",
+      description: "Pegged token (fetched from contract)",
     },
     leveragedToken: {
       name: "Harbor Sail fxUSD-EUR",
       symbol: "hsFXUSD-EUR",
-      description: "Leveraged token (coming soon)",
+      description: "Leveraged token (fetched from contract)",
     },
     rewardPoints: {
       pointsPerDollar: 100,
       description: "100 ledger marks per dollar deposited at the end of genesis",
+    },
+    marksCampaign: {
+      id: "euro-maiden-voyage",
+      label: "Euro Maiden Voyage",
     },
     coinGeckoId: "fx-protocol-fxusd",
     genesis: {
@@ -572,6 +600,10 @@ export const markets = {
       pointsPerDollar: 100,
       description: "100 ledger marks per dollar deposited at the end of genesis",
     },
+    marksCampaign: {
+      id: "mcap-maiden-voyage",
+      label: "MCAP Maiden Voyage",
+    },
     coinGeckoId: "wrapped-steth",
     genesis: {
       startDate: contractsMarkets["steth-mcap"].genesis.startDate,
@@ -639,6 +671,10 @@ export const markets = {
     rewardPoints: {
       pointsPerDollar: 100,
       description: "100 ledger marks per dollar deposited at the end of genesis",
+    },
+    marksCampaign: {
+      id: "mcap-maiden-voyage",
+      label: "MCAP Maiden Voyage",
     },
     coinGeckoId: "fx-protocol-fxusd",
     genesis: {
@@ -799,10 +835,19 @@ export type Market = (typeof markets)[keyof typeof markets];
 
 // Helper functions for genesis status
 export function getGenesisStatus(
-  market: Market,
+  market: Market | undefined,
   onChainGenesisEnded: boolean,
   isAdmin: boolean = false
 ) {
+  if (!market) {
+    return {
+      phase: "unknown" as const,
+      onChainStatus: "unknown" as const,
+      canClaim: false,
+      canDeposit: false,
+      canWithdraw: false,
+    };
+  }
   const now = new Date();
   const startDate = new Date(market.genesis.startDate);
   const endDate = new Date(market.genesis.endDate);
@@ -887,7 +932,7 @@ export function getGenesisPhaseInfo(phase: string) {
   }
 }
 
-export function isGenesisActive(market: Market) {
+export function isGenesisActive(market: Market | undefined) {
   const status = getGenesisStatus(market, false);
   return status.phase === "live";
 }

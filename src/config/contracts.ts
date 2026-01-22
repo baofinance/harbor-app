@@ -347,31 +347,29 @@ const productionMarkets: Markets = {
     id: "steth-eur",
     name: "stETH/EUR",
     description: "stETH pegged to EUR collateral",
-    startBlock: 0, // Placeholder - will be updated when deployed
+    startBlock: 24271147, // Current block when markets added
     addresses: {
       wrappedCollateralToken: "0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0", // wstETH (deposited)
       collateralToken: "0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0", // wstETH
-      underlyingCollateralToken: "0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84", // stETH
-      feeReceiver: "0x0000000000000000000000000000000000000000", // placeholder
-      genesis: "0xf4F97218a00213a57A32E4606aAecC99e1805A89",
-      leveragedToken: "0xEA23FaAf5e464488ECc29883760238B68410D92b", // hsSTETH-EUR
-      minter: "0x68911ea33E11bc77e07f6dA4db6cd23d723641cE",
-      owner: "0x0000000000000000000000000000000000000000", // placeholder
-      peggedToken: "0x83Fd69E0FF5767972b46E61C6833408361bF7346", // haEUR
-      priceOracle: "0x5e27965689B4B8B425d98fbc676fE22d74caf7C7", // stETH/EUR
-      stabilityPoolCollateral: "0x000564B33FFde65E6c3b718166856654e039D69B",
-      stabilityPoolLeveraged: "0x7553fb328ef35aF1c2ac4E91e53d6a6B62DFDdEa",
-      reservePool: "0xdfE995CdAa4D956C0673428cA999782239b0C03D",
+      underlyingCollateralToken: "0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84", // stETH (underlying)
+      feeReceiver: "0x0000000000000000000000000000000000000000", // TODO: update from deploy log
+      genesis: "0xD2858dda2025e2fb31069705D905E860CebFcFEF",
+      leveragedToken: "0x554DD5d0C6775b3Ec22bcbe88AD75C5393D0bCdD", // hsSTETH-EUR
+      minter: "0x4121983289A6a3C2b6b31BF73dEF2F5732aECcaa",
+      owner: "0x9bABfC1A1952a6ed2caC1922BFfE80c0506364a2",
+      peggedToken: "0xFfD8AC7E72F56B4ec78C20d549700E5956765816", // haEUR
+      priceOracle: "0xE370289aF2145A5B2F0F7a4a900eBfD478A156dB", // stETH price oracle
+      stabilityPoolCollateral: "0xc0661F721B9E3c187a58e11eFfF577E1566772BB",
+      stabilityPoolLeveraged: "0xD9796a19E43EE74DC533aCc9B78245D0b070BAeb",
+      reservePool: "0x1a6A26522AB0bbe0e3b03e5C45B2eCE0d7Cc2D03",
       rebalancePoolCollateral: "0x0000000000000000000000000000000000000000", // placeholder
       rebalancePoolLeveraged: "0x0000000000000000000000000000000000000000", // placeholder
-      collateralPrice: "0x0000000000000000000000000000000000000000", // placeholder
-      genesisZap: "0x173B98E27dF83DC6fC930c1465F65cd10aA21657", // GenesisETHZap_v4 for EUR
-      peggedTokenZap: "0x31bd3B75672bAfbBa1b2F27789DCBF6ee7429D74" as `0x${string}`, // MinterETHZap_v3 for EUR/stETH
-      leveragedTokenZap: "0x31bd3B75672bAfbBa1b2F27789DCBF6ee7429D74" as `0x${string}`, // MinterETHZap_v3 for EUR/stETH (same contract)
+      collateralPrice: "0xE370289aF2145A5B2F0F7a4a900eBfD478A156dB", // stETH price oracle
+      genesisZap: "0xa2D1b7cD7dD66C197c053A8Cd8045c5E00173747" as `0x${string}`, // GenesisETHZap_v4 for EUR
     },
     genesis: {
-      startDate: "2026-01-21T00:00:00Z",
-      endDate: "2026-01-31T00:00:00Z",
+      startDate: "2026-01-19T15:21:11Z", // From deployment timestamp
+      endDate: "2026-01-22T20:17:37Z", // 3 days from update time
       rewards: {
         pegged: {
           symbol: "haEUR",
@@ -390,31 +388,32 @@ const productionMarkets: Markets = {
     id: "fxusd-eur",
     name: "fxUSD/EUR",
     description: "fxUSD pegged to EUR collateral",
-    startBlock: 0, // Placeholder - will be updated when deployed
+    startBlock: 24271147, // Current block when markets added
     addresses: {
       wrappedCollateralToken: "0x7743e50F534a7f9F1791DdE7dCD89F7783Eefc39", // fxSAVE (deposited)
       collateralToken: "0x085780639CC2cACd35E474e71f4d000e2405d8f6", // fxUSD
       underlyingCollateralToken: "0x085780639CC2cACd35E474e71f4d000e2405d8f6", // fxUSD (underlying)
-      feeReceiver: "0x43dfDB5059777A8B8819d8D8ff2c9ACCFEb766CB", // minterFeeReceiver
-      genesis: "0xa9EB43Ed6Ba3B953a82741F3e226C1d6B029699b",
-      leveragedToken: "0x7A7C1f2502c19193C44662A2Aff51c2B76fDDAEA", // hsFXUSD-EUR
-      minter: "0xDEFB2C04062350678965CBF38A216Cc50723B246" as `0x${string}`, // EUR/fxUSD minter
-      owner: "0x0000000000000000000000000000000000000000", // placeholder
-      peggedToken: "0x83Fd69E0FF5767972b46E61C6833408361bF7346", // haEUR
-      priceOracle: "0x305454F8B46Aa3485D8B350D8E832459974F5e9F", // fxUSD/EUR
-      stabilityPoolCollateral: "0xe60054E6b518f67411834282cE1557381f050B13",
-      stabilityPoolLeveraged: "0xc5e0dA7e0a178850438E5E97ed59b6eb2562e88E",
-      reservePool: "0x27cA37538358F90d45cAA886fB58CC08ffe2dD2f",
+      feeReceiver: "0x0000000000000000000000000000000000000000", // TODO: update from deploy log
+      genesis: "0xb97D346DBC599e78C9c33B86BE6C796f2D141EcC",
+      leveragedToken: "0x545b84B6b38F223C52e014Db38d70dae58223343", // hsFXUSD-EUR
+      minter: "0x625F6a8720ADF2757Ef92739E324a965b380b623",
+      owner: "0x9bABfC1A1952a6ed2caC1922BFfE80c0506364a2",
+      peggedToken: "0xFfD8AC7E72F56B4ec78C20d549700E5956765816", // haEUR
+      priceOracle: "0x71437C90F1E0785dd691FD02f7bE0B90cd14c097", // fxUSD price oracle
+      stabilityPoolCollateral: "0x07b36FB22887C6aDCF2F2dF58de57d939a2f430F",
+      stabilityPoolLeveraged: "0xee21EBd088cA9F497C704061564d6F80C29F62Da",
+      reservePool: "0x51a02EB5Fd8e51d3B7977455d7D9Ba03a40e96A5",
       rebalancePoolCollateral: "0x0000000000000000000000000000000000000000", // placeholder
       rebalancePoolLeveraged: "0x0000000000000000000000000000000000000000", // placeholder
-      collateralPrice: "0x0000000000000000000000000000000000000000", // placeholder
-      genesisZap: "0xE4f3Ce4F27f6bB520668F35101052831C80802ca", // GenesisUSDCZap_v4 for EUR
+      collateralPrice: "0x71437C90F1E0785dd691FD02f7bE0B90cd14c097", // fxUSD price oracle
+      genesisZap: "0x15Cc8FCa219BCE4BCa3d6C689Cb34532D14DDaa9" as `0x${string}`, // GenesisUSDCZap_v4 for EUR
       peggedTokenZap: "0x64118b5B2794088CA93D41C9f2264212dc92512f" as `0x${string}`, // MinterUSDCZap_v3 for EUR/fxUSD
       leveragedTokenZap: "0x64118b5B2794088CA93D41C9f2264212dc92512f" as `0x${string}`, // MinterUSDCZap_v3 for EUR/fxUSD (same contract)
+
     },
     genesis: {
-      startDate: "2026-01-21T00:00:00Z",
-      endDate: "2026-01-31T00:00:00Z",
+      startDate: "2026-01-19T15:21:11Z", // From deployment timestamp
+      endDate: "2026-01-22T20:17:37Z", // 3 days from update time
       rewards: {
         pegged: {
           symbol: "haEUR",

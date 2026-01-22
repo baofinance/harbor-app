@@ -97,6 +97,10 @@ const [permitEnabled, setPermitEnabled] = useState(true);
  const [currentStepIndex, setCurrentStepIndex] = useState(0);
  const [successfulDepositAmount, setSuccessfulDepositAmount] =
  useState<string>("");
+ const progressStorageKey =
+  address && genesisAddress
+    ? `genesisDepositProgress:${address.toLowerCase()}:${genesisAddress.toLowerCase()}`
+    : null;
 
  // Delay contract reads until modal is fully mounted to avoid fetch errors
  const [mounted, setMounted] = useState(false);
@@ -111,10 +115,66 @@ const [permitEnabled, setPermitEnabled] = useState(true);
    }
  }, [isOpen]);
 
+// Reset state when modal opens - assume user wants to start fresh
+useEffect(() => {
+  if (!isOpen) return;
+  
+  // Reset all state to start fresh
+  setAmount("");
+  setSelectedAsset(collateralSymbol);
+  setCustomTokenAddress("");
+  setShowCustomTokenInput(false);
+  setSlippageTolerance(0.5);
+  setSlippageInputValue("0.5");
+  setShowSlippageInput(false);
+  setStep("input");
+  setError(null);
+  setTxHash(null);
+  setSuccessfulDepositAmount("");
+  setProgressModalOpen(false);
+  setProgressSteps([]);
+  setCurrentStepIndex(0);
+  
+  // Clear any stored progress
+  if (progressStorageKey && typeof window !== "undefined") {
+    window.localStorage.removeItem(progressStorageKey);
+  }
+}, [isOpen, collateralSymbol, progressStorageKey]);
+
+useEffect(() => {
+  if (!progressStorageKey || typeof window === "undefined") return;
+  const isProcessing = step === "approving" || step === "depositing";
+  if (!isProcessing) {
+    window.localStorage.removeItem(progressStorageKey);
+    return;
+  }
+  const payload = {
+    step,
+    progressSteps,
+    currentStepIndex,
+    txHash,
+    successfulDepositAmount,
+  };
+  window.localStorage.setItem(progressStorageKey, JSON.stringify(payload));
+}, [
+  progressStorageKey,
+  step,
+  progressSteps,
+  currentStepIndex,
+  txHash,
+  successfulDepositAmount,
+]);
+
 // Fetch CoinGecko price (primary source)
 const { price: coinGeckoPrice, isLoading: isCoinGeckoLoading } = useCoinGeckoPrice(
   coinGeckoId || "",
   60000 // Refresh every 60 seconds
+);
+// Fallback for wstETH markets if wrapped-steth price is missing
+const shouldFetchStEthPrice = collateralSymbol.toLowerCase() === "wsteth";
+const { price: stEthCoinGeckoPrice } = useCoinGeckoPrice(
+  shouldFetchStEthPrice ? "lido-staked-ethereum-steth" : "",
+  60000
 );
 
 // Get collateral price from oracle (fallback)
@@ -350,6 +410,7 @@ const coinGeckoIsWrappedToken = coinGeckoId && (
   ((coinGeckoId.toLowerCase() === "fxsave" || coinGeckoId.toLowerCase() === "fx-usd-saving") && collateralSymbol.toLowerCase() === "fxsave")
 );
 
+const isWstETH = collateralSymbol.toLowerCase() === "wsteth";
 // For wstETH: CoinGecko returns wstETH price directly (~$3,607), so use it as-is
 // For fxSAVE: CoinGecko returns fxUSD price ($1.00), so multiply by wrapped rate to get fxSAVE price
 // Only use oracle calculation if CoinGecko is not available
@@ -358,6 +419,16 @@ const wrappedTokenPriceUSD = (() => {
   // If CoinGecko returns the wrapped token price directly (e.g., "wrapped-steth" for wstETH)
   if (coinGeckoIsWrappedToken && coinGeckoPrice != null) {
     return coinGeckoPrice; // Use CoinGecko price directly, no wrapped rate multiplication
+  }
+
+  // Fallback for wstETH: use stETH price * wrapped rate if wrapped-steth is missing
+  if (
+    isWstETH &&
+    stEthCoinGeckoPrice != null &&
+    wrappedRate &&
+    wrappedRate > 0n
+  ) {
+    return stEthCoinGeckoPrice * (Number(wrappedRate) / 1e18);
   }
   
   // If CoinGecko returns underlying price (e.g., "fxusd" for fxSAVE)
@@ -693,7 +764,12 @@ const newTotalDepositActual: bigint = userCurrentDeposit + actualCollateralDepos
  selectedAsset.toLowerCase() !== collateralSymbol.toLowerCase();
 
  const handleClose = () => {
- if (step ==="approving" || step ==="depositing") return; // Prevent closing during transactions
+ const isProcessing = step === "approving" || step === "depositing";
+ if (isProcessing) {
+   setProgressModalOpen(false);
+   onClose();
+   return;
+ }
  setAmount("");
  setSelectedAsset(collateralSymbol);
  setCustomTokenAddress("");
@@ -1186,6 +1262,7 @@ if (shouldUsePermit && isValidSelectedAssetAddress && amountBigInt > 0n) {
   } catch (err: any) {
     setError(err.message || "Swap failed. Please try again.");
     setStep("error");
+    setProgressModalOpen(false);
     setProgressSteps((prev) =>
       prev.map((s) =>
         s.id === "swap" ? { ...s, status: "error", error: err.message } : s
@@ -1251,12 +1328,13 @@ setTxHash(null);
       
       // Apply 1% slippage buffer (99% of expected)
       const minWstETHOut = (expectedWstETH * 99n) / 100n;
+      const minEthEquivalentOut = (ethAmount * 99n) / 100n;
       
       depositHash = await writeContractAsync({
         address: genesisZapAddress,
         abi: ZAP_ABI,
         functionName:"zapEth",
-        args: [address as `0x${string}`, minWstETHOut],
+        args: [address as `0x${string}`, minWstETHOut, minEthEquivalentOut],
         value: ethAmount,
       });
       
@@ -1493,10 +1571,17 @@ setSuccessfulDepositAmount(actualDepositedAmount);
 
  // Handle user rejection first
  if (isUserRejection(err)) {
- errorMessage ="Transaction was rejected. Please try again.";
- setError(errorMessage);
- setStep("error");
- return;
+   errorMessage ="Transaction was rejected. Please try again.";
+   setError(errorMessage);
+   setStep("error");
+   setProgressModalOpen(false);
+   setProgressSteps([]);
+   setCurrentStepIndex(0);
+   // Clear stored progress on rejection
+   if (progressStorageKey && typeof window !== "undefined") {
+     window.localStorage.removeItem(progressStorageKey);
+   }
+   return;
  }
 
  // Check for RPC errors by examining error properties
@@ -1548,6 +1633,13 @@ setSuccessfulDepositAmount(actualDepositedAmount);
  }
  setError(errorMessage);
  setStep("error");
+ setProgressModalOpen(false);
+ setProgressSteps([]);
+ setCurrentStepIndex(0);
+ // Clear stored progress on error
+ if (progressStorageKey && typeof window !== "undefined") {
+   window.localStorage.removeItem(progressStorageKey);
+ }
  return;
  }
 
@@ -1632,6 +1724,7 @@ setSuccessfulDepositAmount(actualDepositedAmount);
 
  setError(errorMessage);
  setStep("error");
+ setProgressModalOpen(false);
  setProgressSteps((prev) =>
  prev.map((s, idx) =>
  idx === currentStepIndex
@@ -1639,6 +1732,10 @@ setSuccessfulDepositAmount(actualDepositedAmount);
  : s
  )
  );
+ // Clear stored progress on error
+ if (progressStorageKey && typeof window !== "undefined") {
+   window.localStorage.removeItem(progressStorageKey);
+ }
  }
  };
 

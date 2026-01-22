@@ -94,8 +94,10 @@ export default function InfoTooltip({
         left: `${position.left}px`,
         transform: isMobileCentered
           ? "translate(-50%, -50%)"
-          : side === "right" || side === "left"
+          : side === "right"
           ? "translate(0, -50%)"
+          : side === "left"
+          ? "translate(-100%, -50%)"
           : side === "bottom"
           ? "translate(-50%, 0)"
           : "translate(-50%, -100%)",
