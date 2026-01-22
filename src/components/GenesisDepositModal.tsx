@@ -97,6 +97,8 @@ const [permitEnabled, setPermitEnabled] = useState(true);
  const [currentStepIndex, setCurrentStepIndex] = useState(0);
  const [successfulDepositAmount, setSuccessfulDepositAmount] =
  useState<string>("");
+ const [successfulDepositToken, setSuccessfulDepositToken] =
+ useState<string>("");
  const progressStorageKey =
   address && genesisAddress
     ? `genesisDepositProgress:${address.toLowerCase()}:${genesisAddress.toLowerCase()}`
@@ -131,6 +133,7 @@ useEffect(() => {
   setError(null);
   setTxHash(null);
   setSuccessfulDepositAmount("");
+  setSuccessfulDepositToken("");
   setProgressModalOpen(false);
   setProgressSteps([]);
   setCurrentStepIndex(0);
@@ -174,6 +177,11 @@ const { price: coinGeckoPrice, isLoading: isCoinGeckoLoading } = useCoinGeckoPri
 const shouldFetchStEthPrice = collateralSymbol.toLowerCase() === "wsteth";
 const { price: stEthCoinGeckoPrice } = useCoinGeckoPrice(
   shouldFetchStEthPrice ? "lido-staked-ethereum-steth" : "",
+  60000
+);
+// Fetch price for fxSAVE if user might deposit it (for success message)
+const { price: fxSAVECoinGeckoPrice } = useCoinGeckoPrice(
+  "fx-usd-saving",
   60000
 );
 
@@ -1523,7 +1531,11 @@ if (isNativeETH || isStETH || isUSDC || isFXUSD) {
 }
 
  setStep("success");
-setSuccessfulDepositAmount(actualDepositedAmount);
+// Store the original amount and token the user deposited (before any swaps/conversions)
+// This ensures the success message shows what the user actually deposited (e.g., "1 fxSAVE")
+// rather than the converted collateral amount (e.g., "0.93 wstETH")
+setSuccessfulDepositAmount(amount); // Use original amount, not converted amount
+setSuccessfulDepositToken(selectedAsset); // Use the token user selected
  setProgressSteps((prev) =>
  prev.map((s) =>
  s.id ==="deposit"
@@ -1784,10 +1796,60 @@ setSuccessfulDepositAmount(actualDepositedAmount);
  };
 
  const renderSuccessContent = () => {
-// Format the success amount with USD
+// Format the success amount with USD using the original token that was deposited
+// Use the token the user selected (e.g., "fxSAVE") not the market's collateral (e.g., "wstETH")
+const depositToken = successfulDepositToken || selectedAsset || collateralSymbol;
+const depositTokenLower = depositToken.toLowerCase();
+
+// Get decimals for the deposit token - use the same logic as selectedTokenDecimals
+// If the deposit token matches selectedAsset, use selectedTokenDecimals
+// Otherwise, determine decimals based on token type
+const isDepositTokenUSDC = depositTokenLower === "usdc";
+const isDepositTokenETH = depositTokenLower === "eth";
+const depositTokenDecimalsValue = depositToken === selectedAsset 
+  ? selectedTokenDecimals // Use already-calculated decimals if it's the selected asset
+  : (isDepositTokenUSDC ? 6 : (isDepositTokenETH ? 18 : 18)); // Default to 18 for unknown tokens
+
+// Calculate price for the deposit token
+// If deposit token matches selectedAsset, use selectedAssetPriceUSD
+// Otherwise, use CoinGecko prices we already fetched or fallbacks
+let depositTokenPriceUSD = 0;
+if (depositToken === selectedAsset) {
+  // Use the price we already calculated for the selected asset
+  depositTokenPriceUSD = selectedAssetPriceUSD || 0;
+} else {
+  // Get price for the deposit token specifically using already-fetched prices
+  if (depositTokenLower === "fxsave") {
+    // Use CoinGecko fxSAVE price, or fallback to $1.08 (current fxSAVE price)
+    depositTokenPriceUSD = fxSAVECoinGeckoPrice || 1.08;
+  } else if (depositTokenLower === "wsteth") {
+    // Use CoinGecko wstETH price or stETH price * wrapped rate
+    depositTokenPriceUSD = coinGeckoPrice || (stEthCoinGeckoPrice && wrappedRate 
+      ? stEthCoinGeckoPrice * (Number(wrappedRate) / 1e18) 
+      : collateralPriceUSD);
+  } else if (depositTokenLower === "fxusd") {
+    depositTokenPriceUSD = 1.0;
+  } else if (depositTokenLower === "usdc") {
+    depositTokenPriceUSD = 1.0;
+  } else {
+    // Unknown token, try to use selectedAssetPriceUSD or collateralPriceUSD as fallback
+    depositTokenPriceUSD = selectedAssetPriceUSD || collateralPriceUSD || 0;
+  }
+}
+
+// Parse amount with correct decimals
 const successAmountNum = parseFloat(successfulDepositAmount || "0");
-const successAmountBigInt = successAmountNum > 0 ? parseEther(successfulDepositAmount) : 0n;
-const successFmt = formatTokenAmount(successAmountBigInt, collateralSymbol, collateralPriceUSD);
+const successAmountBigInt = successAmountNum > 0 
+  ? parseUnits(successfulDepositAmount, depositTokenDecimalsValue)
+  : 0n;
+
+const successFmt = formatTokenAmount(
+  successAmountBigInt, 
+  depositToken, 
+  depositTokenPriceUSD,
+  6, // maxDecimals
+  depositTokenDecimalsValue
+);
 
  return (
  <div className="space-y-4">

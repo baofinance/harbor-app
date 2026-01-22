@@ -311,8 +311,8 @@ export const markets = {
       description: "100 ledger marks per dollar deposited at the end of genesis",
     },
     marksCampaign: {
-      id: "gold-maiden-voyage",
-      label: "Gold Maiden Voyage",
+      id: "metals-maiden-voyage",
+      label: "Metals Maiden Voyage",
     },
     coinGeckoId: "fx-protocol-fxusd",
     genesis: {
@@ -383,8 +383,8 @@ export const markets = {
       description: "100 ledger marks per dollar deposited at the end of genesis",
     },
     marksCampaign: {
-      id: "gold-maiden-voyage",
-      label: "Gold Maiden Voyage",
+      id: "metals-maiden-voyage",
+      label: "Metals Maiden Voyage",
     },
     coinGeckoId: "wrapped-steth",
     genesis: {
@@ -744,6 +744,10 @@ export const markets = {
       pointsPerDollar: 100,
       description: "100 ledger marks per dollar deposited at the end of genesis",
     },
+    marksCampaign: {
+      id: "metals-maiden-voyage",
+      label: "Metals Maiden Voyage",
+    },
     coinGeckoId: "wrapped-steth",
     genesis: {
       startDate: contractsMarkets["steth-silver"].genesis.startDate,
@@ -811,6 +815,10 @@ export const markets = {
     rewardPoints: {
       pointsPerDollar: 100,
       description: "100 ledger marks per dollar deposited at the end of genesis",
+    },
+    marksCampaign: {
+      id: "metals-maiden-voyage",
+      label: "Metals Maiden Voyage",
     },
     coinGeckoId: "fx-protocol-fxusd",
     genesis: {

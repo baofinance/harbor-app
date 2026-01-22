@@ -186,7 +186,6 @@ export function TokenSelectorDropdown({
                 }}
                 className="w-full flex items-center gap-2 px-4 py-2 hover:bg-[#1E4775]/5 transition-colors text-left text-[#1E4775] font-medium"
               >
-                <span className="text-lg">+</span>
                 <span>{customOptionLabel}</span>
               </button>
             </div>
