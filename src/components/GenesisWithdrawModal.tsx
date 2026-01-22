@@ -14,9 +14,9 @@ import {
  TransactionProgressModal,
  TransactionStep,
 } from "./TransactionProgressModal";
-import { useCollateralPrice } from "@/hooks/useCollateralPrice";
 import { formatTokenAmount, formatBalance } from "@/utils/formatters";
-import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
+import { useWrappedCollateralPrice } from "@/hooks/useWrappedCollateralPrice";
+import { AmountInputBlock } from "@/components/AmountInputBlock";
 
 interface GenesisWithdrawalModalProps {
  isOpen: boolean;
@@ -68,61 +68,13 @@ priceOracleAddress,
  const [currentStepIndex, setCurrentStepIndex] = useState(0);
  const publicClient = usePublicClient();
 
-// Fetch CoinGecko price (primary source)
-const { price: coinGeckoPrice } = useCoinGeckoPrice(
-  coinGeckoId || "",
-  60000 // Refresh every 60 seconds
-);
-
-// Get collateral price from oracle (fallback)
-const oraclePriceData = useCollateralPrice(
-  priceOracleAddress as `0x${string}` | undefined,
-  { enabled: isOpen && !!priceOracleAddress }
-);
-
-// Determine if the collateral token is a wrapped asset (fxSAVE, wstETH)
-const isWrappedToken =
-  collateralSymbol.toLowerCase() === "fxsave" ||
-  collateralSymbol.toLowerCase() === "wsteth";
-
-// Check if CoinGecko ID is for the wrapped token itself (e.g., "wrapped-steth" for wstETH, "fx-usd-saving" for fxSAVE)
-// If so, CoinGecko already returns the wrapped token price, so we shouldn't multiply by wrapped rate
-const coinGeckoIsWrappedToken = coinGeckoId && (
-  (coinGeckoId.toLowerCase() === "wrapped-steth" && collateralSymbol.toLowerCase() === "wsteth") ||
-  ((coinGeckoId.toLowerCase() === "fxsave" || coinGeckoId.toLowerCase() === "fx-usd-saving") && collateralSymbol.toLowerCase() === "fxsave")
-);
-
-// Priority order for UNDERLYING price: CoinGecko → Hardcoded $1 (for fxUSD/fxSAVE) → Oracle
-// For fxSAVE (wrapped fxUSD), we use $1.00 as the underlying price
-const underlyingPriceUSD = coinGeckoPrice
-  ? coinGeckoPrice
-  : collateralSymbol.toLowerCase() === "fxusd" || collateralSymbol.toLowerCase() === "fxsave"
-  ? 1.0
-  : oraclePriceData.priceUSD;
-
-// Get wrapped rate from oracle to calculate wrapped token price
-const wrappedRate =
-  oraclePriceData?.maxRate !== undefined
-    ? Number(oraclePriceData.maxRate) / 1e18
-    : undefined;
-
-// Calculate wrapped collateral price
-// IMPORTANT: If CoinGecko returns the wrapped token price directly, use it without multiplying by wrapped rate
-// Otherwise, multiply underlying price by wrapped rate
-const collateralPriceUSD =
-  // If CoinGecko returns the wrapped token price directly (e.g., "wrapped-steth" for wstETH)
-  coinGeckoIsWrappedToken && coinGeckoPrice != null
-    ? coinGeckoPrice // Use CoinGecko price directly (already wrapped)
-    // If CoinGecko returns underlying price and we have wrapped rate, multiply
-    : coinGeckoPrice != null && !coinGeckoIsWrappedToken && wrappedRate
-    ? underlyingPriceUSD * wrappedRate
-    // If CoinGecko returns underlying price but no wrapped rate, use underlying price
-    : coinGeckoPrice != null && !coinGeckoIsWrappedToken
-    ? underlyingPriceUSD
-    // Fallback: use oracle price with wrapped rate if available
-    : isWrappedToken && wrappedRate && wrappedRate > 0
-    ? underlyingPriceUSD * wrappedRate
-    : underlyingPriceUSD;
+const wrappedPriceData = useWrappedCollateralPrice({
+  isOpen,
+  collateralSymbol,
+  coinGeckoId,
+  priceOracle: priceOracleAddress as `0x${string}` | undefined,
+});
+const collateralPriceUSD = wrappedPriceData.priceUSD;
 
  // Contract write hooks
  const { writeContractAsync } = useWriteContract();
@@ -349,34 +301,21 @@ const successUSD = successAmountNum > 0 && collateralPriceUSD > 0
 })()}
 
  {/* Amount Input */}
- <div className="space-y-2">
- {/* Available Balance */}
- <div className="flex justify-between items-center text-xs">
- <span className="text-[#1E4775]/70">Amount</span>
- <span className="text-[#1E4775]/70">
-Available: {formatTokenAmount(userDeposit, collateralSymbol).display}
- </span>
- </div>
- <div className="relative">
- <input
- type="text"
- value={amount}
- onChange={handleAmountChange}
- placeholder="0.0"
- className={`w-full h-12 px-4 pr-20 bg-white text-[#1E4775] border ${
- error ?"border-red-500" :"border-[#1E4775]/30"
- } focus:border-[#1E4775] focus:ring-2 focus:ring-[#1E4775]/20 focus:outline-none transition-all text-lg font-mono`}
- disabled={step ==="withdrawing"}
+ <AmountInputBlock
+   value={amount}
+   onChange={handleAmountChange}
+   onMax={handleMaxClick}
+   disabled={step === "withdrawing"}
+   error={error}
+   balanceContent={
+     <>
+       Available: {formatTokenAmount(userDeposit, collateralSymbol).display}
+     </>
+   }
+   inputClassName={`w-full h-12 px-4 pr-20 bg-white text-[#1E4775] border ${
+     error ? "border-red-500" : "border-[#1E4775]/30"
+   } focus:border-[#1E4775] focus:ring-2 focus:ring-[#1E4775]/20 focus:outline-none transition-all text-lg font-mono`}
  />
- <button
- onClick={handleMaxClick}
- className="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 text-xs bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white transition-colors disabled:bg-gray-300 disabled:text-gray-500 rounded-full"
- disabled={step ==="withdrawing"}
- >
- MAX
- </button>
- </div>
- </div>
 
  {/* Harbor Marks Warning - Always visible */}
  <div className="p-3 bg-orange-50 border border-orange-200 text-sm">
@@ -527,6 +466,7 @@ Available: {formatTokenAmount(userDeposit, collateralSymbol).display}
             title="Processing Withdrawal"
             steps={progressSteps}
             currentStepIndex={currentStepIndex}
+            progressVariant="horizontal"
             canCancel={false}
             errorMessage={error || undefined}
             renderSuccessContent={renderSuccessContent}
@@ -547,6 +487,7 @@ Available: {formatTokenAmount(userDeposit, collateralSymbol).display}
           title="Processing Withdrawal"
           steps={progressSteps}
           currentStepIndex={currentStepIndex}
+          progressVariant="horizontal"
           canCancel={true}
           errorMessage={error || undefined}
           renderSuccessContent={renderSuccessContent}

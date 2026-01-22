@@ -15,6 +15,11 @@ import { markets } from "../../config/markets";
 import { GenesisManageModal } from "@/components/GenesisManageModal";
 import { GENESIS_ABI, contracts } from "../../config/contracts";
 import {
+  GENESIS_ABI as GENESIS_READ_ABI,
+  ERC20_ABI,
+  CHAINLINK_ORACLE_ABI,
+} from "@/abis/shared";
+import {
   ArrowRightIcon,
   GiftIcon,
   ScaleIcon,
@@ -56,6 +61,7 @@ import { useFxSAVEAPR } from "@/hooks/useFxSAVEAPR";
 import { useTotalGenesisTVL } from "@/hooks/useTotalGenesisTVL";
 import { useTotalMaidenVoyageMarks } from "@/hooks/useTotalMaidenVoyageMarks";
 import TideAPRTooltip from "@/components/TideAPRTooltip";
+import { GenesisErrorBanner } from "@/components/GenesisErrorBanner";
 import {
   calculateTideAPR,
   calculateMarksForAPR,
@@ -69,130 +75,7 @@ import {
   TOTAL_TOKEN_SUPPLY,
   DEFAULT_FDV,
 } from "@/utils/tokenAllocation";
-
-// Helper function to get accepted deposit assets for a market
-// Now reads from market config instead of hardcoding
-function getAcceptedDepositAssets(
-  market: any
-): Array<{ symbol: string; name: string }> {
-  // Use acceptedAssets from market config if available
-  if (market?.acceptedAssets && Array.isArray(market.acceptedAssets)) {
-    return market.acceptedAssets;
-  }
-  // Fallback: return collateral token as the only accepted asset
-  if (market?.collateral?.symbol) {
-    return [
-      {
-        symbol: market.collateral.symbol,
-        name: market.collateral.name || market.collateral.symbol,
-      },
-    ];
-  }
-  return [];
-}
-
-// Minimal ABIs for summary reads
-// Note: totalDeposits() doesn't exist in IGenesis interface, so we removed it
-const genesisABI = [
-  {
-    inputs: [],
-    name: "genesisIsEnded",
-    outputs: [{ type: "bool", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [{ name: "depositor", type: "address" }],
-    name: "balanceOf",
-    outputs: [{ type: "uint256", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [{ name: "depositor", type: "address" }],
-    name: "claimable",
-    outputs: [
-      { type: "uint256", name: "peggedAmount" },
-      { type: "uint256", name: "leveragedAmount" },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "PEGGED_TOKEN",
-    outputs: [{ type: "address", name: "token" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "LEVERAGED_TOKEN",
-    outputs: [{ type: "address", name: "token" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "WRAPPED_COLLATERAL_TOKEN",
-    outputs: [{ type: "address", name: "token" }],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
-
-const erc20SymbolABI = [
-  {
-    inputs: [],
-    name: "symbol",
-    outputs: [{ type: "string", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
-
-// Standard Chainlink-style oracle ABI: latestAnswer returns a single price, decimals describes scaling
-// Harbor oracle returns tuple: (minUnderlyingPrice, maxUnderlyingPrice, minWrappedRate, maxWrappedRate)
-// Support both formats for backward compatibility
-const chainlinkOracleABI = [
-  {
-    inputs: [],
-    name: "decimals",
-    outputs: [{ type: "uint8", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "latestAnswer",
-    outputs: [
-      { type: "uint256", name: "" },
-      { type: "uint256", name: "" },
-      { type: "uint256", name: "" },
-      { type: "uint256", name: "" },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
-
-// Fallback ABI for single-value oracles (backward compatibility)
-const chainlinkOracleSingleValueABI = [
-  {
-    inputs: [],
-    name: "decimals",
-    outputs: [{ type: "uint8", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "latestAnswer",
-    outputs: [{ type: "int256", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
+import { getAcceptedDepositAssets } from "@/utils/markets";
 
 function MarketExpandedView({
   marketId,
@@ -235,17 +118,17 @@ function MarketExpandedView({
         ? [
             {
               address: genesisAddress as `0x${string}`,
-              abi: genesisABI,
+              abi: GENESIS_READ_ABI,
               functionName: "PEGGED_TOKEN" as const,
             },
             {
               address: genesisAddress as `0x${string}`,
-              abi: genesisABI,
+              abi: GENESIS_READ_ABI,
               functionName: "LEVERAGED_TOKEN" as const,
             },
             {
               address: genesisAddress as `0x${string}`,
-              abi: genesisABI,
+              abi: GENESIS_READ_ABI,
               functionName: "WRAPPED_COLLATERAL_TOKEN" as const,
             },
           ]
@@ -281,7 +164,7 @@ function MarketExpandedView({
         ? [
             {
               address: peggedTokenAddress,
-              abi: erc20SymbolABI,
+              abi: ERC20_ABI,
               functionName: "symbol" as const,
             },
           ]
@@ -293,7 +176,7 @@ function MarketExpandedView({
         ? [
             {
               address: leveragedTokenAddress,
-              abi: erc20SymbolABI,
+              abi: ERC20_ABI,
               functionName: "symbol" as const,
             },
           ]
@@ -305,7 +188,7 @@ function MarketExpandedView({
         ? [
             {
               address: collateralTokenAddress,
-              abi: erc20SymbolABI,
+              abi: ERC20_ABI,
               functionName: "symbol" as const,
             },
           ]
@@ -667,7 +550,7 @@ export default function GenesisIndexPage() {
       const base = [
         {
           address: g,
-          abi: genesisABI,
+          abi: GENESIS_READ_ABI,
           functionName: "genesisIsEnded" as const,
         },
       ];
@@ -676,13 +559,13 @@ export default function GenesisIndexPage() {
           ? [
               {
                 address: g,
-                abi: genesisABI,
+                abi: GENESIS_READ_ABI,
                 functionName: "balanceOf" as const,
                 args: [address as `0x${string}`],
               },
               {
                 address: g,
-                abi: genesisABI,
+                abi: GENESIS_READ_ABI,
                 functionName: "claimable" as const,
                 args: [address as `0x${string}`],
               },
@@ -761,7 +644,7 @@ export default function GenesisIndexPage() {
           return null;
         return {
           address: g,
-          abi: genesisABI,
+          abi: GENESIS_READ_ABI,
           functionName: "WRAPPED_COLLATERAL_TOKEN" as const,
         };
       })
@@ -773,18 +656,6 @@ export default function GenesisIndexPage() {
       contracts: collateralTokenContracts,
       enabled: genesisMarkets.length > 0,
     });
-
-  // Fetch total deposits by checking the balance of wrapped collateral token in genesis contract
-  // Since totalDeposits() doesn't exist in IGenesis, we get it from the token balance
-  const erc20BalanceABI = [
-    {
-      inputs: [{ name: "account", type: "address" }],
-      name: "balanceOf",
-      outputs: [{ type: "uint256" }],
-      stateMutability: "view",
-      type: "function",
-    },
-  ] as const;
 
   const totalDepositsContracts = useMemo(() => {
     return genesisMarkets.flatMap(([_, mkt], mi) => {
@@ -806,7 +677,7 @@ export default function GenesisIndexPage() {
       return [
         {
           address: wrappedCollateralAddress,
-          abi: erc20BalanceABI,
+          abi: ERC20_ABI,
           functionName: "balanceOf" as const,
           args: [g],
         },
@@ -1041,7 +912,7 @@ export default function GenesisIndexPage() {
   // Fetch Chainlink BTC/USD as fallback for BTC-pegged markets
   const { data: chainlinkBtcPriceData } = useContractRead({
     address: CHAINLINK_BTC_USD_ORACLE,
-    abi: chainlinkOracleSingleValueABI,
+    abi: CHAINLINK_ORACLE_ABI,
     functionName: "latestAnswer",
     query: {
       enabled: true,
@@ -2182,59 +2053,20 @@ export default function GenesisIndexPage() {
 
         {/* GraphQL Error Banner */}
         {combinedHasIndexerErrors && (
-          <div className="bg-[#FF8A7A]/10 border border-[#FF8A7A]/30 rounded-none p-3 mb-4">
-            <div className="flex items-start gap-3">
-              <div className="text-[#FF8A7A] text-xl mt-0.5">⚠️</div>
-              <div className="flex-1">
-                <p className="text-[#FF8A7A] font-semibold text-sm mb-1">
-                  Temporary Service Issue
-                </p>
-                <p className="text-white/70 text-xs mb-2">
-                  The Graph Network indexers are temporarily unavailable for
-                  some markets. Your Harbor Marks are safe and will display
-                  correctly once the service is restored. This is a temporary
-                  infrastructure issue, not a problem with your account.
-                </p>
-                {combinedMarketsWithIndexerErrors.length > 0 && (
-                  <div className="mt-2 pt-2 border-t border-[#FF8A7A]/20">
-                    <p className="text-[#FF8A7A]/90 text-xs font-medium mb-1">
-                      Markets affected:{" "}
-                      {combinedMarketsWithIndexerErrors
-                        .map(getMarketName)
-                        .join(", ")}
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
+          <GenesisErrorBanner
+            tone="danger"
+            title="Temporary Service Issue"
+            message="The Graph Network indexers are temporarily unavailable for some markets. Your Harbor Marks are safe and will display correctly once the service is restored. This is a temporary infrastructure issue, not a problem with your account."
+            markets={combinedMarketsWithIndexerErrors.map(getMarketName)}
+          />
         )}
         {combinedHasAnyErrors && !combinedHasIndexerErrors && (
-          <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-none p-3 mb-4">
-            <div className="flex items-start gap-3">
-              <div className="text-yellow-500 text-xl mt-0.5">⚠️</div>
-              <div className="flex-1">
-                <p className="text-yellow-500 font-semibold text-sm mb-1">
-                  Harbor Marks Data Unavailable
-                </p>
-                <p className="text-white/70 text-xs mb-2">
-                  Unable to load Harbor Marks data for some markets. Your
-                  positions and core functionality remain unaffected. Please try
-                  refreshing the page.
-                </p>
-                {combinedMarketsWithOtherErrors.length > 0 && (
-                  <div className="mt-2 pt-2 border-t border-yellow-500/20">
-                    <p className="text-yellow-500/90 text-xs font-medium mb-1">
-                      Markets affected:{" "}
-                      {combinedMarketsWithOtherErrors
-                        .map(getMarketName)
-                        .join(", ")}
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
+          <GenesisErrorBanner
+            tone="warning"
+            title="Harbor Marks Data Unavailable"
+            message="Unable to load Harbor Marks data for some markets. Your positions and core functionality remain unaffected. Please try refreshing the page."
+            markets={combinedMarketsWithOtherErrors.map(getMarketName)}
+          />
         )}
 
         {/* Divider */}
@@ -3288,10 +3120,7 @@ export default function GenesisIndexPage() {
                                   setManageModal({
                                     marketId: id,
                                     market: mkt,
-                                    initialTab:
-                                      userDeposit && userDeposit > 0n
-                                        ? "withdraw"
-                                        : "deposit",
+                                    initialTab: "deposit",
                                   });
                                 }}
                                 className="px-3 py-1.5 text-[10px] font-medium bg-[#1E4775] text-white hover:bg-[#17395F] transition-colors rounded-full whitespace-nowrap"
@@ -4021,10 +3850,7 @@ export default function GenesisIndexPage() {
                                   setManageModal({
                                     marketId: id,
                                     market: mkt,
-                                    initialTab:
-                                      userDeposit && userDeposit > 0n
-                                        ? "withdraw"
-                                        : "deposit",
+                                    initialTab: "deposit",
                                   });
                                 }}
                                 className="px-3 py-1.5 text-[10px] font-medium bg-[#1E4775] text-white hover:bg-[#17395F] transition-colors rounded-full whitespace-nowrap"
@@ -4880,10 +4706,7 @@ export default function GenesisIndexPage() {
                                   setManageModal({
                                     marketId: id,
                                     market: mkt,
-                                    initialTab:
-                                      userDeposit && userDeposit > 0n
-                                        ? "withdraw"
-                                        : "deposit",
+                                    initialTab: "deposit",
                                   });
                                 }}
                                 disabled={isEnded || !genesisAddress}

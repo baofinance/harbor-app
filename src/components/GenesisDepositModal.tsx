@@ -22,12 +22,12 @@ import {
   GENESIS_STETH_ZAP_PERMIT_ABI,
   GENESIS_USDC_ZAP_PERMIT_ABI,
 } from "@/abis";
-import { useCollateralPrice } from "@/hooks/useCollateralPrice";
 import {
  TransactionProgressModal,
  TransactionStep,
 } from "./TransactionProgressModal";
 import { formatTokenAmount, formatBalance, formatUSD } from "@/utils/formatters";
+import { useWrappedCollateralPrice } from "@/hooks/useWrappedCollateralPrice";
 import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
 import { useDefiLlamaSwap, getDefiLlamaSwapTx } from "@/hooks/useDefiLlamaSwap";
 import { useUserTokens, getTokenAddress, getTokenInfo, useTokenDecimals } from "@/hooks/useUserTokens";
@@ -36,6 +36,7 @@ import { TokenSelectorDropdown } from "@/components/TokenSelectorDropdown";
 import { usePermitOrApproval } from "@/hooks/usePermitOrApproval";
 import { InfoCallout } from "@/components/InfoCallout";
 import { Info, RefreshCw } from "lucide-react";
+import { AmountInputBlock } from "@/components/AmountInputBlock";
 
 interface GenesisDepositModalProps {
  isOpen: boolean;
@@ -168,11 +169,12 @@ useEffect(() => {
   successfulDepositAmount,
 ]);
 
-// Fetch CoinGecko price (primary source)
-const { price: coinGeckoPrice, isLoading: isCoinGeckoLoading } = useCoinGeckoPrice(
-  coinGeckoId || "",
-  60000 // Refresh every 60 seconds
-);
+const wrappedPriceData = useWrappedCollateralPrice({
+  isOpen,
+  collateralSymbol,
+  coinGeckoId,
+  priceOracle: marketAddresses?.priceOracle as `0x${string}` | undefined,
+});
 // Fallback for wstETH markets if wrapped-steth price is missing
 const shouldFetchStEthPrice = collateralSymbol.toLowerCase() === "wsteth";
 const { price: stEthCoinGeckoPrice } = useCoinGeckoPrice(
@@ -185,27 +187,18 @@ const { price: fxSAVECoinGeckoPrice } = useCoinGeckoPrice(
   60000
 );
 
-// Get collateral price from oracle (fallback)
-const oraclePriceData = useCollateralPrice(
-  marketAddresses?.priceOracle as `0x${string}` | undefined,
-  { enabled: isOpen && !!marketAddresses?.priceOracle }
-);
-
 // Priority order for underlying price: CoinGecko → fxUSD hardcoded $1 → Oracle
 // CoinGecko is the most reliable source for real-time prices
 // For fxSAVE markets: underlyingSymbol is "fxUSD", so check that
-const underlyingPriceUSD = coinGeckoPrice 
-  ? coinGeckoPrice 
-  : (underlyingSymbol?.toLowerCase() === "fxusd" || collateralSymbol.toLowerCase() === "fxusd")
-    ? 1.00 
-    : oraclePriceData.priceUSD;
+const underlyingPriceUSD = wrappedPriceData.underlyingPriceUSD;
 
-const wrappedRate = oraclePriceData.maxRate;
-const maxUnderlyingPrice = coinGeckoPrice
-  ? BigInt(Math.floor(coinGeckoPrice * 1e18))
+const wrappedRate = wrappedPriceData.wrappedRate;
+const coinGeckoPrice = wrappedPriceData.coinGeckoPrice;
+const maxUnderlyingPrice = wrappedPriceData.coinGeckoPrice
+  ? BigInt(Math.floor((wrappedPriceData.coinGeckoPrice ?? 0) * 1e18))
   : (underlyingSymbol?.toLowerCase() === "fxusd" || collateralSymbol.toLowerCase() === "fxusd")
     ? 1000000000000000000n // 1.0 in 18 decimals
-    : oraclePriceData.maxPrice;
+    : wrappedPriceData.oraclePriceData.maxPrice;
 
 // Get user's tokens early (before getAssetAddress uses it)
 const { tokens: userTokens, isLoading: isLoadingUserTokens } = useUserTokens();
@@ -413,53 +406,7 @@ const selectedAssetPriceUSD = isWrappedToken && wrappedRate && maxUnderlyingPric
 // Calculate wrapped token price: underlying price * wrapped rate
 // BUT: If CoinGecko ID is for the wrapped token itself (e.g., "wrapped-steth" for wstETH),
 // then CoinGecko already returns the wrapped token price, so don't multiply by wrapped rate
-const coinGeckoIsWrappedToken = coinGeckoId && (
-  (coinGeckoId.toLowerCase() === "wrapped-steth" && collateralSymbol.toLowerCase() === "wsteth") ||
-  ((coinGeckoId.toLowerCase() === "fxsave" || coinGeckoId.toLowerCase() === "fx-usd-saving") && collateralSymbol.toLowerCase() === "fxsave")
-);
-
-const isWstETH = collateralSymbol.toLowerCase() === "wsteth";
-// For wstETH: CoinGecko returns wstETH price directly (~$3,607), so use it as-is
-// For fxSAVE: CoinGecko returns fxUSD price ($1.00), so multiply by wrapped rate to get fxSAVE price
-// Only use oracle calculation if CoinGecko is not available
-// Priority: CoinGecko (if wrapped token) > CoinGecko (if underlying) > Oracle (with wrapped rate) > Oracle (underlying only)
-const wrappedTokenPriceUSD = (() => {
-  // If CoinGecko returns the wrapped token price directly (e.g., "wrapped-steth" for wstETH)
-  if (coinGeckoIsWrappedToken && coinGeckoPrice != null) {
-    return coinGeckoPrice; // Use CoinGecko price directly, no wrapped rate multiplication
-  }
-
-  // Fallback for wstETH: use stETH price * wrapped rate if wrapped-steth is missing
-  if (
-    isWstETH &&
-    stEthCoinGeckoPrice != null &&
-    wrappedRate &&
-    wrappedRate > 0n
-  ) {
-    return stEthCoinGeckoPrice * (Number(wrappedRate) / 1e18);
-  }
-  
-  // If CoinGecko returns underlying price (e.g., "fxusd" for fxSAVE)
-  // For fxSAVE markets: CoinGecko returns fxUSD ($1.00), multiply by wrapped rate to get fxSAVE price
-  if (coinGeckoPrice != null && !coinGeckoIsWrappedToken && wrappedRate) {
-    return coinGeckoPrice * (Number(wrappedRate) / 1e18);
-  }
-  
-  // If CoinGecko returns underlying price but no wrapped rate available
-  if (coinGeckoPrice != null && !coinGeckoIsWrappedToken) {
-    return coinGeckoPrice; // Use CoinGecko price as-is
-  }
-  
-  // Fallback to oracle: underlying price * wrapped rate
-  if (wrappedRate && underlyingPriceUSD > 0) {
-    return underlyingPriceUSD * (Number(wrappedRate) / 1e18);
-  }
-  
-  // Final fallback: underlying price only
-  return underlyingPriceUSD;
-})();
-
-const collateralPriceUSD = wrappedTokenPriceUSD;
+const collateralPriceUSD = wrappedPriceData.priceUSD;
 
 // Validate selected asset address
 const isValidSelectedAssetAddress = 
@@ -2025,66 +1972,38 @@ const successFmt = formatTokenAmount(
  </div>
 
  {/* Amount Input */}
- <div className="space-y-2">
- {/* Available Balance - AMM Style */}
- <div className="flex justify-between items-center text-xs">
- <span className="text-[#1E4775]/70">Amount</span>
- <span className="text-[#1E4775]/70">
- Balance:{" "}
-{isNativeETH ? (
-  // ETH balance display
-  isEthBalanceError ? (
-    <span className="text-red-500">Error loading balance</span>
-  ) : isEthBalanceLoading ? (
-    <span className="text-[#1E4775]/50">Loading...</span>
-  ) : (
-     formatBalance(balance, selectedAsset, 4, selectedTokenDecimals)
-  )
-) : (
-  // ERC20 balance display
-  balancesError ? (
- <span
- className="text-red-500"
- title={balancesError.message}
- >
- Error loading balance
- </span>
- ) : !mounted ? (
- <span className="text-[#1E4775]/50">Loading...</span>
- ) : (
-     formatBalance(balance, selectedAsset, 4, selectedTokenDecimals)
-  )
-)}
- </span>
- </div>
- <div className="relative">
- <input
- type="text"
- value={amount}
- onChange={handleAmountChange}
- placeholder="0.0"
- className={`w-full px-3 pr-20 py-2 bg-white text-[#1E4775] border ${
- error ?"border-red-500" :"border-[#1E4775]/30"
- } focus:border-[#1E4775] focus:ring-2 focus:ring-[#1E4775]/20 focus:outline-none transition-all text-lg font-mono`}
- disabled={
- step ==="approving" ||
- step ==="depositing" ||
- genesisEnded
- }
+ <AmountInputBlock
+   value={amount}
+   onChange={handleAmountChange}
+   onMax={handleMaxClick}
+   disabled={step === "approving" || step === "depositing" || genesisEnded}
+   error={error}
+   balanceContent={
+     <>
+       Balance:{" "}
+       {isNativeETH ? (
+         isEthBalanceError ? (
+           <span className="text-red-500">Error loading balance</span>
+         ) : isEthBalanceLoading ? (
+           <span className="text-[#1E4775]/50">Loading...</span>
+         ) : (
+           formatBalance(balance, selectedAsset, 4, selectedTokenDecimals)
+         )
+       ) : balancesError ? (
+         <span className="text-red-500" title={balancesError.message}>
+           Error loading balance
+         </span>
+       ) : !mounted ? (
+         <span className="text-[#1E4775]/50">Loading...</span>
+       ) : (
+         formatBalance(balance, selectedAsset, 4, selectedTokenDecimals)
+       )}
+     </>
+   }
+   inputClassName={`w-full px-3 pr-20 py-2 bg-white text-[#1E4775] border ${
+     error ? "border-red-500" : "border-[#1E4775]/30"
+   } focus:border-[#1E4775] focus:ring-2 focus:ring-[#1E4775]/20 focus:outline-none transition-all text-lg font-mono`}
  />
- <button
- onClick={handleMaxClick}
- className="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 text-xs bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white transition-colors disabled:bg-gray-300 disabled:text-gray-500 rounded-full"
- disabled={
- step ==="approving" ||
- step ==="depositing" ||
- genesisEnded
- }
- >
- MAX
- </button>
- </div>
- </div>
 
  {/* Permit toggle (direct USDC/FXUSD/stETH only) */}
  {showPermitToggle && (
@@ -2396,6 +2315,7 @@ const successFmt = formatTokenAmount(
             title="Processing Deposit"
             steps={progressSteps}
             currentStepIndex={currentStepIndex}
+            progressVariant="horizontal"
             canCancel={false}
             errorMessage={error || undefined}
             renderSuccessContent={renderSuccessContent}
@@ -2416,6 +2336,7 @@ const successFmt = formatTokenAmount(
           title="Processing Deposit"
           steps={progressSteps}
           currentStepIndex={currentStepIndex}
+          progressVariant="horizontal"
           canCancel={false}
           errorMessage={error || undefined}
           renderSuccessContent={renderSuccessContent}
