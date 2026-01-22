@@ -430,7 +430,7 @@ export const markets = {
       peggedToken: contractsMarkets["steth-eur"].addresses.peggedToken,
       leveragedToken: contractsMarkets["steth-eur"].addresses.leveragedToken,
       reservePool: contractsMarkets["steth-eur"].addresses.reservePool,
-      stabilityPoolManager: "0x0Df9b94793Bc7b88FDa5286B472FeABE83Edf578" as `0x${string}`,
+      stabilityPoolManager: "0x29AAEe8b76A5970D7d5041F500512e2b9d70Aa94" as `0x${string}`, // EUR::stETH::stabilityPoolManager from harbor_v1.state
       stabilityPoolCollateral: contractsMarkets["steth-eur"].addresses.stabilityPoolCollateral,
       stabilityPoolLeveraged: contractsMarkets["steth-eur"].addresses.stabilityPoolLeveraged,
       genesis: contractsMarkets["steth-eur"].addresses.genesis,
@@ -503,7 +503,7 @@ export const markets = {
       peggedToken: contractsMarkets["fxusd-eur"].addresses.peggedToken,
       leveragedToken: contractsMarkets["fxusd-eur"].addresses.leveragedToken,
       reservePool: contractsMarkets["fxusd-eur"].addresses.reservePool,
-      stabilityPoolManager: "0x6d6A34706FB345121F9C96Ae9821Dca857285497" as `0x${string}`,
+      stabilityPoolManager: "0x756766756880ceA06270Fd507b09Ef32714Ec7C2" as `0x${string}`, // EUR::fxUSD::stabilityPoolManager from harbor_v1.state
       stabilityPoolCollateral: contractsMarkets["fxusd-eur"].addresses.stabilityPoolCollateral,
       stabilityPoolLeveraged: contractsMarkets["fxusd-eur"].addresses.stabilityPoolLeveraged,
       genesis: contractsMarkets["fxusd-eur"].addresses.genesis,
