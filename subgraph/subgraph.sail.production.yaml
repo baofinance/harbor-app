@@ -255,7 +255,7 @@ dataSources:
     name: SailGenesis_stETH_EUR
     network: mainnet
     source:
-      address: "0xD2858dda2025e2fb31069705D905E860CebFcFEF"
+      address: "0xf4F97218a00213a57A32E4606aAecC99e1805A89" # EUR::stETH::genesis from harbor_v1.state
       abi: Genesis
       startBlock: 24271147
     mapping:
@@ -292,7 +292,7 @@ dataSources:
     name: Minter_stETH_EUR
     network: mainnet
     source:
-      address: "0x4121983289A6a3C2b6b31BF73dEF2F5732aECcaa"
+      address: "0x68911ea33E11bc77e07f6dA4db6cd23d723641cE" # EUR::stETH::minter from harbor_v1.state
       abi: Minter
       startBlock: 24271147
     mapping:
@@ -333,7 +333,7 @@ dataSources:
     name: SailGenesis_fxUSD_EUR
     network: mainnet
     source:
-      address: "0xb97D346DBC599e78C9c33B86BE6C796f2D141EcC"
+      address: "0xa9EB43Ed6Ba3B953a82741F3e226C1d6B029699b" # EUR::fxUSD::genesis from harbor_v1.state
       abi: Genesis
       startBlock: 24271147
     mapping:
@@ -370,7 +370,7 @@ dataSources:
     name: Minter_fxUSD_EUR
     network: mainnet
     source:
-      address: "0x625F6a8720ADF2757Ef92739E324a965b380b623"
+      address: "0xDEFB2C04062350678965CBF38A216Cc50723B246" # EUR::fxUSD::minter from harbor_v1.state
       abi: Minter
       startBlock: 24271147
     mapping:

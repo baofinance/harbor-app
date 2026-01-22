@@ -517,7 +517,7 @@ dataSources:
     name: Genesis_stETH_EUR
     network: mainnet
     source:
-      address: "0xD2858dda2025e2fb31069705D905E860CebFcFEF"
+      address: "0xf4F97218a00213a57A32E4606aAecC99e1805A89" # EUR::stETH::genesis from harbor_v1.state
       abi: Genesis
       startBlock: 24271147
     mapping:
@@ -555,7 +555,7 @@ dataSources:
     name: Genesis_fxUSD_EUR
     network: mainnet
     source:
-      address: "0xb97D346DBC599e78C9c33B86BE6C796f2D141EcC"
+      address: "0xa9EB43Ed6Ba3B953a82741F3e226C1d6B029699b" # EUR::fxUSD::genesis from harbor_v1.state
       abi: Genesis
       startBlock: 24271147
     mapping:
