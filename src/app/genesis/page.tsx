@@ -30,8 +30,6 @@ import {
   ChevronDownIcon,
   ChevronUpIcon,
   ChevronRightIcon,
-  BanknotesIcon,
-  CurrencyDollarIcon,
   ArrowPathIcon,
   StarIcon,
   QuestionMarkCircleIcon,
@@ -62,6 +60,10 @@ import { useTotalGenesisTVL } from "@/hooks/useTotalGenesisTVL";
 import { useTotalMaidenVoyageMarks } from "@/hooks/useTotalMaidenVoyageMarks";
 import TideAPRTooltip from "@/components/TideAPRTooltip";
 import { GenesisErrorBanner } from "@/components/GenesisErrorBanner";
+import { GenesisMarketExpandedView } from "@/components/GenesisMarketExpandedView";
+import { useSortedGenesisMarkets } from "@/hooks/useSortedGenesisMarkets";
+import { GenesisHeaderSummary } from "@/components/GenesisHeaderSummary";
+import { GenesisLedgerMarksSummary } from "@/components/GenesisLedgerMarksSummary";
 import {
   calculateTideAPR,
   calculateMarksForAPR,
@@ -76,326 +78,6 @@ import {
   DEFAULT_FDV,
 } from "@/utils/tokenAllocation";
 import { getAcceptedDepositAssets } from "@/utils/markets";
-
-function MarketExpandedView({
-  marketId,
-  market,
-  genesisAddress,
-  totalDeposits,
-  totalDepositsUSD,
-  userDeposit,
-  isConnected,
-  address,
-  endDate,
-  collateralSymbol,
-  collateralPriceUSD,
-  peggedSymbol,
-  leveragedSymbol,
-  underlyingAPR,
-}: {
-  marketId: string;
-  market: any;
-  genesisAddress: string | undefined;
-  totalDeposits: bigint | undefined;
-  totalDepositsUSD: number;
-  userDeposit: bigint | undefined;
-  isConnected: boolean;
-  address: string | undefined;
-  endDate: string | undefined;
-  collateralSymbol: string;
-  collateralPriceUSD: number;
-  peggedSymbol?: string;
-  leveragedSymbol?: string;
-  underlyingAPR?: number | null;
-}) {
-  // Fetch contract data for expanded view
-  const { data: expandedReads, error: expandedReadsError } = useContractReads({
-    contracts:
-      genesisAddress &&
-      typeof genesisAddress === "string" &&
-      genesisAddress.startsWith("0x") &&
-      genesisAddress.length === 42
-        ? [
-            {
-              address: genesisAddress as `0x${string}`,
-              abi: GENESIS_READ_ABI,
-              functionName: "PEGGED_TOKEN" as const,
-            },
-            {
-              address: genesisAddress as `0x${string}`,
-              abi: GENESIS_READ_ABI,
-              functionName: "LEVERAGED_TOKEN" as const,
-            },
-            {
-              address: genesisAddress as `0x${string}`,
-              abi: GENESIS_READ_ABI,
-              functionName: "WRAPPED_COLLATERAL_TOKEN" as const,
-            },
-          ]
-        : [],
-    query: {
-      enabled:
-        !!genesisAddress &&
-        typeof genesisAddress === "string" &&
-        genesisAddress.startsWith("0x") &&
-        genesisAddress.length === 42,
-      retry: 1,
-      retryOnMount: false,
-    },
-  });
-
-  const peggedTokenAddress = expandedReads?.[0]?.result as
-    | `0x${string}`
-    | undefined;
-  const leveragedTokenAddress = expandedReads?.[1]?.result as
-    | `0x${string}`
-    | undefined;
-  const collateralTokenAddress = expandedReads?.[2]?.result as
-    | `0x${string}`
-    | undefined;
-
-  // Get token symbols
-  const { data: tokenSymbols, error: tokenSymbolsError } = useContractReads({
-    contracts: [
-      ...(peggedTokenAddress &&
-      typeof peggedTokenAddress === "string" &&
-      peggedTokenAddress.startsWith("0x") &&
-      peggedTokenAddress.length === 42
-        ? [
-            {
-              address: peggedTokenAddress,
-              abi: ERC20_ABI,
-              functionName: "symbol" as const,
-            },
-          ]
-        : []),
-      ...(leveragedTokenAddress &&
-      typeof leveragedTokenAddress === "string" &&
-      leveragedTokenAddress.startsWith("0x") &&
-      leveragedTokenAddress.length === 42
-        ? [
-            {
-              address: leveragedTokenAddress,
-              abi: ERC20_ABI,
-              functionName: "symbol" as const,
-            },
-          ]
-        : []),
-      ...(collateralTokenAddress &&
-      typeof collateralTokenAddress === "string" &&
-      collateralTokenAddress.startsWith("0x") &&
-      collateralTokenAddress.length === 42
-        ? [
-            {
-              address: collateralTokenAddress,
-              abi: ERC20_ABI,
-              functionName: "symbol" as const,
-            },
-          ]
-        : []),
-    ],
-    query: {
-      enabled:
-        (!!peggedTokenAddress &&
-          typeof peggedTokenAddress === "string" &&
-          peggedTokenAddress.startsWith("0x") &&
-          peggedTokenAddress.length === 42) ||
-        (!!leveragedTokenAddress &&
-          typeof leveragedTokenAddress === "string" &&
-          leveragedTokenAddress.startsWith("0x") &&
-          leveragedTokenAddress.length === 42) ||
-        (!!collateralTokenAddress &&
-          typeof collateralTokenAddress === "string" &&
-          collateralTokenAddress.startsWith("0x") &&
-          collateralTokenAddress.length === 42),
-      retry: 1,
-      retryOnMount: false,
-    },
-  });
-
-  const peggedTokenSymbol =
-    peggedSymbol ||
-    (peggedTokenAddress && tokenSymbols?.[0]?.result
-      ? (tokenSymbols[0].result as string)
-      : market.peggedToken?.symbol) ||
-    "ha";
-  const leveragedTokenSymbol =
-    leveragedSymbol ||
-    (leveragedTokenAddress && tokenSymbols?.[1]?.result
-      ? (tokenSymbols[1].result as string)
-      : market.leveragedToken?.symbol) ||
-    "hs";
-  const collateralTokenSymbol =
-    collateralTokenAddress && tokenSymbols?.[2]?.result
-      ? (tokenSymbols[2].result as string)
-      : market.collateral?.symbol || "ETH";
-
-  // Calculate USD values
-  const userDepositAmount = userDeposit ? Number(formatEther(userDeposit)) : 0;
-  const userDepositUSD = userDepositAmount * collateralPriceUSD;
-
-  // Calculate ledger marks (dollar value x 100)
-  const estimatedLedgerMarks = userDepositUSD * 100;
-
-  // Calculate share of ledger marks (% of deposit)
-  const shareOfLedgerMarks =
-    totalDepositsUSD > 0 && userDepositUSD > 0
-      ? (userDepositUSD / totalDepositsUSD) * 100
-      : 0;
-
-  // Format end date/time
-  const formatEndDateTime = (dateString: string | undefined): string => {
-    if (!dateString) return "-";
-    try {
-      const date = new Date(dateString);
-      return date.toLocaleString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: true,
-      });
-    } catch {
-      return "-";
-    }
-  };
-
-  const addresses = market.addresses as Record<string, string | undefined>;
-
-  // Get market name for description - use leveraged token symbol without "hs" prefix
-  // This gives us "FXUSD-BTC" from "hsFXUSD-BTC", etc.
-  const marketName =
-    leveragedTokenSymbol && leveragedTokenSymbol.toLowerCase().startsWith("hs")
-      ? leveragedTokenSymbol.slice(2)
-      : leveragedTokenSymbol || (market as any).name || "Market";
-
-  return (
-    <div className="bg-[rgb(var(--surface-selected-rgb))] p-4 border-t border-white/20">
-      {/* Description Box */}
-      <div className="bg-white p-4 mb-2 border border-[#1E4775]/10">
-        <p className="text-xs text-[#1E4775] leading-relaxed">
-          Earn ledger marks for providing liquidity to the{" "}
-          <span className="font-semibold">{marketName}</span> market.{" "}
-          <span className="font-semibold">{collateralTokenSymbol}</span> is
-          split into equal portions of{" "}
-          <span className="font-semibold">{peggedTokenSymbol}</span> and{" "}
-          <span className="font-semibold">{leveragedTokenSymbol}</span>, which
-          are minted on claim. Until you claim, you have{" "}
-          <span className="font-semibold">{collateralTokenSymbol}</span>{" "}
-          exposure. After you claim your net exposure depends on the balance of
-          the market compared to your balance of{" "}
-          <span className="font-semibold">{peggedTokenSymbol}</span> and{" "}
-          <span className="font-semibold">{leveragedTokenSymbol}</span> tokens.
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-        {/* First Column: End Date/Time and Projected APR */}
-        <div className="flex flex-col gap-2 h-full">
-          {/* Genesis Info */}
-          <div className="bg-white p-2 flex flex-col justify-center">
-            <h3 className="text-[#1E4775] font-semibold mb-1 text-xs text-center">
-              End Date/Time
-            </h3>
-            <p className="text-sm font-bold text-[#1E4775] text-center">
-              {formatDateTime(endDate)}
-            </p>
-          </div>
-
-          {/* Projected Stability Pool APR */}
-          {underlyingAPR !== null && underlyingAPR !== undefined && (
-            <div className="text-xs text-white bg-[#1E4775] px-4 py-2 text-center flex-1 flex flex-col justify-center">
-              <div className="font-semibold mb-1">
-                Projected {peggedTokenSymbol} APR (Stability pools)
-              </div>
-              <div>
-                <span className="font-semibold">
-                  {(underlyingAPR * 2 * 100).toFixed(2)}% +
-                </span>
-                <Image
-                  src="/icons/marks.png"
-                  alt="Marks"
-                  width={14}
-                  height={14}
-                  className="inline-block ml-1 align-middle"
-                />
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Contract Info */}
-        <div className="bg-white p-2 flex flex-col">
-          <h3 className="text-[#1E4775] font-semibold mb-1 text-xs">
-            Contract Info
-          </h3>
-          <div>
-            <EtherscanLink label="Genesis" address={addresses.genesis} />
-            <EtherscanLink label="Minter" address={addresses.minter} />
-            <EtherscanLink
-              label="Collateral Token"
-              address={addresses.collateralToken}
-            />
-            <EtherscanLink label="ha Token" address={peggedTokenAddress} />
-            <EtherscanLink label="hs Token" address={leveragedTokenAddress} />
-          </div>
-        </div>
-
-        <div className="bg-white p-2 flex flex-col">
-          <h3 className="text-[#1E4775] font-semibold mb-1 text-xs">Tokens</h3>
-          <div className="space-y-1 text-xs flex-1 flex justify-center flex-col">
-            <div className="flex justify-between items-center">
-              <span className="text-[#1E4775]/70">Market Collateral:</span>
-              <div className="flex items-center gap-1.5">
-                <span className="text-[#1E4775] font-mono">
-                  {collateralTokenSymbol}
-                </span>
-                <Image
-                  src={getLogoPath(collateralTokenSymbol)}
-                  alt={collateralTokenSymbol}
-                  width={20}
-                  height={20}
-                  className="flex-shrink-0"
-                />
-              </div>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-[#1E4775]/70">ha Token:</span>
-              <div className="flex items-center gap-1.5">
-                <span className="text-[#1E4775] font-mono">
-                  {peggedTokenSymbol}
-                </span>
-                <Image
-                  src={getLogoPath(peggedTokenSymbol)}
-                  alt={peggedTokenSymbol}
-                  width={20}
-                  height={20}
-                  className="flex-shrink-0"
-                />
-              </div>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-[#1E4775]/70">hs Token:</span>
-              <div className="flex items-center gap-1.5">
-                <span className="text-[#1E4775] font-mono">
-                  {leveragedTokenSymbol}
-                </span>
-                <Image
-                  src={getLogoPath(leveragedTokenSymbol)}
-                  alt={leveragedTokenSymbol}
-                  width={20}
-                  height={20}
-                  className="flex-shrink-0"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 export default function GenesisIndexPage() {
   const { address, isConnected } = useAccount();
@@ -982,75 +664,18 @@ export default function GenesisIndexPage() {
     });
   }, [reads, isConnected, genesisMarkets]);
 
+  const { activeMarkets, showHeaders, activeCampaignName } =
+    useSortedGenesisMarkets({
+      genesisMarkets,
+      reads,
+      isConnected,
+      marksResults,
+    });
+
   return (
     <div className="min-h-screen text-white max-w-[1300px] mx-auto font-sans relative">
       <main className="container mx-auto px-4 sm:px-10 pb-6">
-        {/* Header */}
-        <div className="mb-2">
-          {/* Title Row */}
-          <div className="p-4 flex items-center justify-center mb-0">
-            <h1 className="font-bold font-mono text-white text-5xl sm:text-6xl md:text-7xl text-center">
-              Maiden Voyage
-            </h1>
-          </div>
-
-          {/* Subheader */}
-          <div className="flex items-center justify-center mb-2 -mt-2">
-            <p className="text-white/80 text-lg text-center">
-              Earn rewards for providing initial liquidity for new markets
-            </p>
-          </div>
-
-          {/* Three Boxes */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 mb-2 relative">
-            {/* Deposit Box */}
-            <div className="bg-black/[0.10] backdrop-blur-sm rounded-none overflow-hidden px-3 py-2 flex flex-col items-center justify-center text-center relative">
-              <div className="flex items-center justify-center gap-2">
-                <BanknotesIcon className="w-5 h-5 text-white" />
-                <h2 className="font-bold text-white text-base">Deposit</h2>
-              </div>
-              <p className="text-xs text-white/75 mt-1">
-                Deposit{" "}
-                <span className="font-semibold text-white">any token</span> via
-                Velora
-              </p>
-              {/* Chevron removed */}
-            </div>
-
-            {/* Earn Box */}
-            <div className="bg-black/[0.10] backdrop-blur-sm rounded-none overflow-hidden px-3 py-2 flex flex-col items-center justify-center text-center relative">
-              <div className="flex items-center justify-center gap-2">
-                <CurrencyDollarIcon className="w-5 h-5 text-white" />
-                <h2 className="font-bold text-white text-base">
-                  Earn Maiden Voyage Marks
-                </h2>
-              </div>
-              <p className="text-xs text-white/75 mt-1">
-                and secure your share of the $TIDE airdrop
-              </p>
-              <p className="text-xs text-white/60 mt-1">
-                (TGE Beginning Q2 2026)
-              </p>
-              {/* Chevron removed */}
-            </div>
-
-            {/* After Maiden Voyage Box */}
-            <div className="bg-black/[0.10] backdrop-blur-sm rounded-none overflow-hidden px-3 py-2 flex flex-col items-center justify-center text-center relative">
-              <div className="flex items-center justify-center gap-2">
-                <ArrowPathIcon className="w-5 h-5 text-white" />
-                <h2 className="font-bold text-white text-base">
-                  After Maiden Voyage
-                </h2>
-              </div>
-              <p className="text-xs text-white/75 mt-1">
-                Claim ha + hs tokens. Value = deposit value.
-              </p>
-              <p className="text-xs text-white/75 mt-1 font-semibold">
-                Earn real yield and more marks!
-              </p>
-            </div>
-          </div>
-        </div>
+        <GenesisHeaderSummary />
 
         {/* Divider */}
         <div className="border-t border-white/10 my-2"></div>
@@ -1425,161 +1050,19 @@ export default function GenesisIndexPage() {
           }
 
           return (
-            <div className="mb-2">
-              <div className="bg-black/30 backdrop-blur-sm rounded-none overflow-visible border border-white/50">
-                <div className="grid grid-cols-1 md:grid-cols-4 divide-y divide-white/15 md:divide-y-0 md:divide-x md:divide-white/20">
-                  {/* Header */}
-                  <div className="p-3 flex items-center justify-center gap-2">
-                    <h2 className="font-bold font-mono text-white text-lg leading-tight text-center">
-                      Ledger Marks
-                    </h2>
-                    <InfoTooltip
-                      label={
-                        <div className="space-y-3">
-                          <div>
-                            <h3 className="font-bold text-lg mb-2">
-                              Ledger Marks
-                            </h3>
-                            <p className="text-white/90 leading-relaxed">
-                              A ledger is both a record of truth and a core DeFi
-                              symbol — and a mark is what every sailor leaves
-                              behind on a voyage.
-                            </p>
-                          </div>
-                          <div className="border-t border-white/20 pt-3">
-                            <p className="text-white/90 leading-relaxed mb-2">
-                              Each Ledger Mark is proof that you were here
-                              early, helping stabilize the first Harbor markets
-                              and guide them through calm launch conditions.
-                            </p>
-                          </div>
-                          <div className="space-y-2">
-                            <div className="flex items-start gap-2">
-                              <span className="text-white/70 mt-0.5">•</span>
-                              <p className="text-white/90 leading-relaxed">
-                                The more you contribute, the deeper your mark on
-                                the ledger.
-                              </p>
-                            </div>
-                            <div className="flex items-start gap-2">
-                              <span className="text-white/70 mt-0.5">•</span>
-                              <p className="text-white/90 leading-relaxed">
-                                When $TIDE surfaces, these marks will convert
-                                into your share of rewards and governance power.
-                              </p>
-                            </div>
-                          </div>
-                          <div className="border-t border-white/20 pt-3">
-                            <p className="text-white/80 italic leading-relaxed">
-                              Think of them as a record of your journey — every
-                              mark, a line in Harbor's logbook.
-                            </p>
-                          </div>
-                        </div>
-                      }
-                      side="right"
-                    />
-                  </div>
-
-                  <div className="p-3 flex flex-col items-center justify-center text-center">
-                    <div className="text-[11px] text-white/80 uppercase tracking-widest">
-                      {(() => {
-                        // Extract campaign name from label (remove "Maiden Voyage" if present)
-                        const extractCampaignName = (label: string): string => {
-                          // campaignLabel from subgraph is like "Launch Maiden Voyage" or "Euro Maiden Voyage"
-                          // We want just "Launch" or "Euro"
-                          return label.replace(/\s+Maiden Voyage\s*$/i, "").trim();
-                        };
-                        
-                        if (!selectedCampaign) {
-                          return "Current Maiden Voyage Marks";
-                        }
-                        
-                        const campaignName = extractCampaignName(selectedCampaign.label);
-                        return `${campaignName} Maiden Voyage Marks`;
-                      })()}
-                    </div>
-                    <div className="text-sm font-semibold text-white font-mono mt-1">
-                      {!mounted || isLoadingMarks ? (
-                        <span className="text-white/50">-</span>
-                      ) : totalCurrentMarks > 0 ? (
-                        totalCurrentMarks.toLocaleString(undefined, {
-                          minimumFractionDigits:
-                            totalCurrentMarks < 100 ? 2 : 0,
-                          maximumFractionDigits:
-                            totalCurrentMarks < 100 ? 2 : 0,
-                        })
-                      ) : (
-                        "0"
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="p-3 flex flex-col items-center justify-center text-center">
-                    <div className="text-[11px] text-white/80 uppercase tracking-widest">
-                      Marks per Day
-                    </div>
-                    <div className="text-sm font-semibold text-white font-mono mt-1">
-                      {!mounted || isLoadingMarks ? (
-                        <span className="text-white/50">-</span>
-                      ) : totalMarksPerDay > 0 ? (
-                        totalMarksPerDay.toLocaleString(undefined, {
-                          maximumFractionDigits: 2,
-                        })
-                      ) : (
-                        "0"
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="p-3 flex flex-col items-center justify-center text-center">
-                    <div className="text-[11px] text-white/80 uppercase tracking-widest flex items-center justify-center gap-1">
-                      Bonus at end
-                      {anyInProcessing && (
-                        <SimpleTooltip label="Bonus marks will be applied once processing is complete and tokens are claimable.">
-                          <ClockIcon className="w-3 h-3 text-yellow-400 cursor-help" />
-                        </SimpleTooltip>
-                      )}
-                    </div>
-                    <div className="text-sm font-semibold text-white font-mono mt-1">
-                      {!mounted || isLoadingMarks ? (
-                        <span className="text-white/50">-</span>
-                      ) : allContractsEnded &&
-                        isConnected &&
-                        totalCurrentMarks > 0 ? (
-                        <span className="text-white/60">Applied</span>
-                      ) : totalBonusAtEnd > 0 ? (
-                        totalBonusAtEnd.toLocaleString(undefined, {
-                          maximumFractionDigits: 0,
-                        })
-                      ) : (
-                        "0"
-                      )}
-                    </div>
-                    {mounted && !isLoadingMarks && (
-                      <>
-                        {!allContractsEnded && totalEarlyBonusEstimate > 0 && (
-                          <div className="text-[10px] text-green-300 mt-0.5">
-                            Early deposit bonus: +
-                            {totalEarlyBonusEstimate.toLocaleString(undefined, {
-                              maximumFractionDigits: 0,
-                            })}
-                          </div>
-                        )}
-                        {allContractsEnded && totalEarlyBonusMarks > 0 && (
-                          <div className="text-[10px] text-green-300 mt-0.5">
-                            Early deposit bonus:{" "}
-                            {totalEarlyBonusMarks.toLocaleString(undefined, {
-                              maximumFractionDigits: 0,
-                            })}
-                          </div>
-                        )}
-                      </>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
+            <GenesisLedgerMarksSummary
+              selectedCampaign={selectedCampaign}
+              mounted={mounted}
+              isLoadingMarks={isLoadingMarks}
+              totalCurrentMarks={totalCurrentMarks}
+              totalMarksPerDay={totalMarksPerDay}
+              anyInProcessing={anyInProcessing}
+              allContractsEnded={allContractsEnded}
+              isConnected={isConnected}
+              totalBonusAtEnd={totalBonusAtEnd}
+              totalEarlyBonusEstimate={totalEarlyBonusEstimate}
+              totalEarlyBonusMarks={totalEarlyBonusMarks}
+            />
           );
         })()}
 
@@ -2078,116 +1561,7 @@ export default function GenesisIndexPage() {
             {/* Market Rows - sorted with running markets first, then completed markets */}
             {/* Within each section, markets with deposits are sorted to the top */}
             {(() => {
-              // Sort markets: running first, then completed
-              // Within each group, markets with deposits first
-              const sortedMarkets = [...genesisMarkets].sort((a, b) => {
-                const [_, mktA] = a;
-                const [__, mktB] = b;
-                const miA = genesisMarkets.findIndex((m) => m[0] === a[0]);
-                const miB = genesisMarkets.findIndex((m) => m[0] === b[0]);
-
-                const baseOffsetA = miA * (isConnected ? 3 : 1);
-                const baseOffsetB = miB * (isConnected ? 3 : 1);
-
-                const isEndedA =
-                  (reads?.[baseOffsetA]?.result as boolean) ?? false;
-                const isEndedB =
-                  (reads?.[baseOffsetB]?.result as boolean) ?? false;
-
-                // First, sort by ended status: running (not ended) first, then completed (ended)
-                if (isEndedA && !isEndedB) return 1; // A is ended, B is running -> B comes first
-                if (!isEndedA && isEndedB) return -1; // A is running, B is ended -> A comes first
-
-                // Within the same group (both running or both completed), sort by deposit
-                const userDepositA = isConnected
-                  ? (reads?.[baseOffsetA + 1]?.result as bigint | undefined)
-                  : undefined;
-                const userDepositB = isConnected
-                  ? (reads?.[baseOffsetB + 1]?.result as bigint | undefined)
-                  : undefined;
-
-                const hasDepositA = userDepositA && userDepositA > 0n;
-                const hasDepositB = userDepositB && userDepositB > 0n;
-
-                // Markets with deposits come first within their group
-                if (hasDepositA && !hasDepositB) return -1;
-                if (!hasDepositA && hasDepositB) return 1;
-
-                return 0;
-              });
-
-              // Check if we have ended markets
-              // Show ended markets regardless of claimable tokens (they may have been claimed)
-              const hasEndedMarkets = sortedMarkets.some((market) => {
-                const mi = genesisMarkets.findIndex((m) => m[0] === market[0]);
-                const baseOffset = mi * (isConnected ? 3 : 1);
-                const isEnded =
-                  (reads?.[baseOffset]?.result as boolean) ?? false;
-                return isEnded;
-              });
-              const hasLiveMarkets = sortedMarkets.some((market) => {
-                const mi = genesisMarkets.findIndex((m) => m[0] === market[0]);
-                const baseOffset = mi * (isConnected ? 3 : 1);
-                return !((reads?.[baseOffset]?.result as boolean) ?? false);
-              });
-              // Show headers if we have both types, OR if we have live markets, OR if we have only ended markets
-              const showHeaders =
-                (hasEndedMarkets && hasLiveMarkets) ||
-                hasLiveMarkets ||
-                hasEndedMarkets;
-
-              // Separate active and completed markets
-              const activeMarkets: Array<[string, any]> = [];
-              const completedMarkets: Array<[string, any, any]> = []; // [id, mkt, marks]
-
-              sortedMarkets.forEach(([id, mkt]) => {
-                const mi = genesisMarkets.findIndex((m) => m[0] === id);
-                const baseOffset = mi * (isConnected ? 3 : 1);
-                const contractReadResult = reads?.[baseOffset];
-                const contractSaysEnded =
-                  contractReadResult?.status === "success"
-                    ? (contractReadResult.result as boolean)
-                    : undefined;
-
-                // Get marks data for campaign grouping
-                const marksForMarket = marksResults?.find(
-                  (marks) =>
-                    marks.genesisAddress?.toLowerCase() ===
-                    (mkt as any).addresses?.genesis?.toLowerCase()
-                );
-                const userMarksData = marksForMarket?.data?.userHarborMarks;
-                const marks = Array.isArray(userMarksData)
-                  ? userMarksData[0]
-                  : userMarksData;
-                const subgraphSaysEnded = marks?.genesisEnded;
-
-                const isEnded =
-                  contractSaysEnded !== undefined
-                    ? contractSaysEnded
-                    : subgraphSaysEnded ?? false;
-
-                if (isEnded) {
-                  completedMarkets.push([id, mkt, marks]);
-                } else {
-                  activeMarkets.push([id, mkt]);
-                }
-              });
-
-              // Note: completedByCampaign is now calculated in useMemo above
-
               let activeHeaderRendered = false;
-              
-              // Get the active campaign name from the first active market
-              const activeCampaignName = activeMarkets.length > 0 
-                ? (() => {
-                    const firstMarket = activeMarkets[0];
-                    const firstMarketConfig = firstMarket[1] as any;
-                    const campaignLabel = firstMarketConfig?.marksCampaign?.label || "Genesis";
-                    // Extract campaign name (e.g., "Euro" from "Euro Maiden Voyage")
-                    const campaignName = campaignLabel.replace(/\s+Maiden Voyage.*/i, "").trim() || campaignLabel;
-                    return campaignName;
-                  })()
-                : null;
 
               const marketRows = activeMarkets.map(([id, mkt], idx) => {
                 const mi = genesisMarkets.findIndex((m) => m[0] === id);
@@ -4845,7 +4219,7 @@ export default function GenesisIndexPage() {
                           : null;
 
                         return (
-                          <MarketExpandedView
+                          <GenesisMarketExpandedView
                             marketId={id}
                             market={mkt}
                             genesisAddress={genesisAddress}
