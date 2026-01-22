@@ -2344,6 +2344,18 @@ export default function GenesisIndexPage() {
               // Note: completedByCampaign is now calculated in useMemo above
 
               let activeHeaderRendered = false;
+              
+              // Get the active campaign name from the first active market
+              const activeCampaignName = activeMarkets.length > 0 
+                ? (() => {
+                    const firstMarket = activeMarkets[0];
+                    const firstMarketConfig = firstMarket[1] as any;
+                    const campaignLabel = firstMarketConfig?.marksCampaign?.label || "Genesis";
+                    // Extract campaign name (e.g., "Euro" from "Euro Maiden Voyage")
+                    const campaignName = campaignLabel.replace(/\s+Maiden Voyage.*/i, "").trim() || campaignLabel;
+                    return campaignName;
+                  })()
+                : null;
 
               const marketRows = activeMarkets.map(([id, mkt], idx) => {
                 const mi = genesisMarkets.findIndex((m) => m[0] === id);
@@ -2394,8 +2406,13 @@ export default function GenesisIndexPage() {
                         key={`section-active`}
                         className="pt-4 mb-1 flex items-center justify-between gap-2"
                       >
-                        <h2 className="text-xs font-medium text-white/70 uppercase tracking-wider">
-                          Active Genesis Events
+                        <h2 className="text-xs font-medium text-white/70 uppercase tracking-wider flex items-center gap-2">
+                          Active Campaign:
+                          {activeCampaignName && (
+                            <span className="inline-flex items-center px-2.5 py-1 bg-[#E67A6B] hover:bg-[#D66A5B] border border-white text-white text-xs font-semibold uppercase tracking-wider rounded-full transition-colors">
+                              {activeCampaignName}
+                            </span>
+                          )}
                         </h2>
                         <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#E67A6B] hover:bg-[#D66A5B] border border-white text-white text-xs font-semibold uppercase tracking-wider rounded-full transition-colors">
                           <span>Early Deposit Bonus!</span>
@@ -5049,7 +5066,7 @@ export default function GenesisIndexPage() {
             <div className="hidden md:block bg-white py-1.5 px-2 overflow-x-auto mb-0">
               <div className="grid lg:grid-cols-[1.5fr_80px_0.9fr_1fr_0.9fr] md:grid-cols-[120px_80px_100px_1fr_90px] gap-4 items-center uppercase tracking-wider text-[10px] lg:text-[11px] text-[#1E4775] font-semibold">
                 <div className="min-w-0 text-center">Market</div>
-                <div className="text-center min-w-0">APR</div>
+                <div className="text-center min-w-0 whitespace-nowrap">Proj. SP APR</div>
                 <div className="text-center min-w-0">Anchor Token</div>
                 <div className="text-center min-w-0">Sail Token</div>
                 <div className="text-center min-w-0">Status</div>
@@ -5116,7 +5133,7 @@ export default function GenesisIndexPage() {
                     {/* Desktop layout - grid matching active events */}
                     <div className="hidden md:grid lg:grid-cols-[1.5fr_80px_0.9fr_1fr_0.9fr] md:grid-cols-[120px_80px_100px_1fr_90px] gap-4 items-center">
                       {/* Market Column */}
-                      <div className="flex items-center gap-2 min-w-0">
+                      <div className="flex items-center gap-2 min-w-0 pl-4">
                         <div className="text-[#1E4775] font-medium text-sm">
                           {marketName}
                         </div>
@@ -5428,7 +5445,7 @@ export default function GenesisIndexPage() {
                           {/* Desktop layout */}
                           <div className="hidden md:grid lg:grid-cols-[1.5fr_1fr_1fr_1.5fr_1fr] md:grid-cols-[120px_60px_60px_1fr_80px] gap-4 items-center">
                             {/* Market Column */}
-                            <div className="flex items-center gap-2 min-w-0">
+                            <div className="flex items-center gap-2 min-w-0 pl-4">
                               <div className="text-[#1E4775] font-medium text-sm">
                                 {displayMarketName}
                               </div>
