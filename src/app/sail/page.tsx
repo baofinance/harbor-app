@@ -774,7 +774,7 @@ function SailMarketRow({
                       onManageClick();
                     }}
                     disabled={!isConnected}
-                    className="px-4 py-2 text-sm font-semibold bg-[#1E4775] text-white hover:bg-[#17395F] disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors rounded-full whitespace-nowrap min-w-[160px] justify-center"
+                    className="px-4 py-2 text-sm font-semibold bg-[#1E4775] text-white hover:bg-[#17395F] disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors rounded-full whitespace-nowrap min-w-[160px] justify-center border-2 border-white disabled:border-gray-400"
                   >
                     Manage
                   </button>
@@ -956,7 +956,7 @@ function SailMarketRow({
                 onManageClick();
               }}
               disabled={!isConnected}
-              className="px-4 py-2 text-sm font-semibold bg-[#1E4775] text-white hover:bg-[#17395F] disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors rounded-full whitespace-nowrap"
+              className="px-4 py-2 text-sm font-semibold bg-[#1E4775] text-white hover:bg-[#17395F] disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors rounded-full whitespace-nowrap border-2 border-white disabled:border-gray-400"
             >
               Manage
             </button>
@@ -1474,6 +1474,8 @@ export default function SailPage() {
   const [manageModalTab, setManageModalTab] = useState<"mint" | "redeem">(
     "mint"
   );
+  const [longFilter, setLongFilter] = useState<string>("all");
+  const [shortFilter, setShortFilter] = useState<string>("all");
 
   // Aggregate PnL across all user Sail positions (subgraph)
   const sailPnLSummary = useSailPositionsPnLSummary(isConnected);
@@ -1591,6 +1593,23 @@ export default function SailPage() {
       groups[longSide].push([id, m]);
     });
     return groups;
+  }, [sailMarkets]);
+
+  // Get unique long and short sides for filter dropdowns
+  const uniqueLongSides = useMemo(() => {
+    const sides = new Set<string>();
+    sailMarkets.forEach(([_, m]) => {
+      sides.add(getLongSide(m));
+    });
+    return Array.from(sides).sort();
+  }, [sailMarkets]);
+
+  const uniqueShortSides = useMemo(() => {
+    const sides = new Set<string>();
+    sailMarkets.forEach(([_, m]) => {
+      sides.add(getShortSide(m));
+    });
+    return Array.from(sides).sort();
   }, [sailMarkets]);
 
   // Fetch contract data for all markets (ALWAYS 7 reads per market to ensure consistent offsets)
@@ -2195,7 +2214,7 @@ export default function SailPage() {
 
           {/* Sail Marks Bar (Anchor-rewards style) */}
           <div className="mb-2">
-            <div className="bg-black/30 backdrop-blur-sm rounded-none overflow-visible border border-white/50">
+            <div className="bg-black/30 backdrop-blur-sm rounded-none overflow-visible border border-white/40">
               <div className="grid grid-cols-1 md:grid-cols-3 divide-y divide-white/15 md:divide-y-0 md:divide-x md:divide-white/20">
                 <div className="p-3 flex items-center justify-center gap-2">
                   <h2 className="font-bold font-mono text-white text-lg leading-tight text-center">
@@ -2344,7 +2363,7 @@ export default function SailPage() {
               }
 
               // Otherwise, show markets as usual
-              const activeMarkets = sailMarkets.filter(([id]) => {
+              const activeMarkets = sailMarkets.filter(([id, m]) => {
                   const globalIndex = sailMarkets.findIndex(
                     ([marketId]) => marketId === id
                   );
@@ -2352,12 +2371,74 @@ export default function SailPage() {
                   const collateralValue = reads?.[baseOffset + 3]?.result as
                     | bigint
                     | undefined;
+                  
+                  // Filter by long side
+                  if (longFilter !== "all") {
+                    const longSide = getLongSide(m);
+                    if (longSide !== longFilter) return false;
+                  }
+                  
+                  // Filter by short side
+                  if (shortFilter !== "all") {
+                    const shortSide = getShortSide(m);
+                    if (shortSide !== shortFilter) return false;
+                  }
+                  
                 return collateralValue !== undefined && collateralValue > 0n;
                 });
 
               return (
                 <div>
-                  <div className="pt-4 mb-3 flex items-center justify-end">
+                  <div className="pt-4 mb-3 flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+                    {/* Filter Dropdowns */}
+                    <div className="flex items-center gap-2 w-full md:w-auto">
+                      {/* Long Filter */}
+                      <div className="relative">
+                        <select
+                          value={longFilter}
+                          onChange={(e) => setLongFilter(e.target.value)}
+                          className="bg-black/35 hover:bg-black/40 border border-white/40 backdrop-blur-sm pl-3 pr-8 py-1.5 text-white/90 text-sm focus:outline-none focus:ring-2 focus:ring-white/50 transition-colors cursor-pointer appearance-none"
+                        >
+                          <option value="all">All Long</option>
+                          {uniqueLongSides.map((side) => (
+                            <option key={side} value={side} className="bg-[#1E4775]">
+                              Long {side}
+                            </option>
+                          ))}
+                        </select>
+                        <ChevronDownIcon className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/90 pointer-events-none z-10" />
+                      </div>
+
+                      {/* Short Filter */}
+                      <div className="relative">
+                        <select
+                          value={shortFilter}
+                          onChange={(e) => setShortFilter(e.target.value)}
+                          className="bg-black/35 hover:bg-black/40 border border-white/40 backdrop-blur-sm pl-3 pr-8 py-1.5 text-white/90 text-sm focus:outline-none focus:ring-2 focus:ring-white/50 transition-colors cursor-pointer appearance-none"
+                        >
+                          <option value="all">All Short</option>
+                          {uniqueShortSides.map((side) => (
+                            <option key={side} value={side} className="bg-[#1E4775]">
+                              Short {side}
+                            </option>
+                          ))}
+                        </select>
+                        <ChevronDownIcon className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/90 pointer-events-none z-10" />
+                      </div>
+
+                      {/* Clear Filters */}
+                      <button
+                        onClick={() => {
+                          setLongFilter("all");
+                          setShortFilter("all");
+                        }}
+                        className="text-white/70 hover:text-white text-sm underline transition-colors cursor-pointer self-end"
+                      >
+                        Clear filters
+                      </button>
+                    </div>
+
+                    {/* Marks Pill */}
                     <SimpleTooltip
                       centerOnMobile
                       label={
@@ -2370,8 +2451,8 @@ export default function SailPage() {
                         </div>
                       }
                     >
-                      <div className="cursor-help bg-black/35 hover:bg-black/40 border border-white/25 backdrop-blur-sm px-2 py-1 rounded-full transition-colors">
-                        <div className="flex items-center gap-1.5 text-white/90 text-sm whitespace-nowrap">
+                      <div className="cursor-help bg-[#E67A6B] hover:bg-[#D66A5B] border border-white backdrop-blur-sm px-2 py-1 rounded-full transition-colors w-full md:w-auto">
+                        <div className="flex items-center justify-center md:justify-start gap-1.5 text-white text-sm whitespace-nowrap">
                           <Image
                             src="/icons/marks.png"
                             alt="Marks"
@@ -2383,7 +2464,7 @@ export default function SailPage() {
                             <span className="font-semibold">
                               All positions earn Ledger Marks
                             </span>{" "}
-                            <span className="text-white/60">
+                            <span className="text-white/90">
                               •{" "}
                               {activeSailBoostEndTimestamp ||
                               sailMarksPerDay >= 9.5

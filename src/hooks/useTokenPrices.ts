@@ -8,6 +8,7 @@ import { useCoinGeckoPrices } from "./useCoinGeckoPrice";
 const CHAINLINK_FEEDS = {
   ETH_USD: "0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419" as `0x${string}`,
   BTC_USD: "0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c" as `0x${string}`,
+  EUR_USD: "0x8f6F9C8af44f5f15a18d0fa93B5814a623Fa6353" as `0x${string}`, // fxUSD/EUR Chainlink feed
 } as const;
 
 const chainlinkABI = [
@@ -28,6 +29,13 @@ const chainlinkABI = [
       { name: "updatedAt", type: "uint256" },
       { name: "answeredInRound", type: "uint80" },
     ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "latestAnswer",
+    outputs: [{ name: "", type: "int256" }],
     stateMutability: "view",
     type: "function",
   },
@@ -81,11 +89,12 @@ export function useMultipleTokenPrices(
 
   // Determine which Chainlink feeds we need
   const needsChainlink = useMemo(() => {
-    const needs = { eth: false, btc: false };
+    const needs = { eth: false, btc: false, eur: false };
     markets.forEach((market) => {
       const target = market.pegTarget.toLowerCase();
       if (target === "eth" || target === "ethereum") needs.eth = true;
       if (target === "btc" || target === "bitcoin") needs.btc = true;
+      if (target === "eur" || target === "euro") needs.eur = true;
     });
     return needs;
   }, [markets]);
@@ -121,6 +130,20 @@ export function useMultipleTokenPrices(
         }
       );
     }
+    if (needsChainlink.eur) {
+      contracts.push(
+        {
+          address: CHAINLINK_FEEDS.EUR_USD,
+          abi: chainlinkABI,
+          functionName: "decimals" as const,
+        },
+        {
+          address: CHAINLINK_FEEDS.EUR_USD,
+          abi: chainlinkABI,
+          functionName: "latestAnswer" as const,
+        }
+      );
+    }
     return contracts;
   }, [needsChainlink]);
 
@@ -149,6 +172,8 @@ export function useMultipleTokenPrices(
         uniqueTargets.add("bitcoin");
       } else if (target === "eth" || target === "ethereum") {
         uniqueTargets.add("ethereum");
+      } else if (target === "eur" || target === "euro") {
+        uniqueTargets.add("stasis-euro");
       }
     });
     return Array.from(uniqueTargets);
@@ -158,13 +183,13 @@ export function useMultipleTokenPrices(
 
   // Parse Chainlink prices
   const chainlinkPrices = useMemo(() => {
-    const prices: { eth?: number; btc?: number } = {};
+    const prices: { eth?: number; btc?: number; eur?: number } = {};
     if (!chainlinkData) return prices;
 
     let offset = 0;
     
     // Parse ETH if requested
-    if (needsChainlink.eth && chainlinkData.length >= 2) {
+    if (needsChainlink.eth && chainlinkData.length >= offset + 2) {
       const decimalsResult = chainlinkData[offset];
       const roundDataResult = chainlinkData[offset + 1];
       
@@ -190,6 +215,86 @@ export function useMultipleTokenPrices(
         if (roundData && roundData[1]) {
           const price = Number(roundData[1]) / 10 ** decimals;
           prices.btc = price > 0 ? price : undefined;
+        }
+      }
+      offset += 2;
+    }
+
+    // Parse EUR if requested (uses latestAnswer, not latestRoundData)
+    // NOTE: The Chainlink feed 0x8f6F9C8af44f5f15a18d0fa93B5814a623Fa6353 returns EUR per USD
+    // (e.g., 0.93 EUR per 1 USD). We need to invert it to get USD per EUR for our calculation.
+    // Example: If feed returns 0.93 (EUR per USD), we invert to get 1/0.93 = 1.075 (USD per EUR)
+    if (needsChainlink.eur && chainlinkData.length >= offset + 2) {
+      const decimalsResult = chainlinkData[offset];
+      const answerResult = chainlinkData[offset + 1];
+      
+      // If answer succeeded, try to parse it (even if decimals failed)
+      if (answerResult?.status === "success") {
+        const answer = answerResult.result as bigint;
+        if (answer !== undefined && answer !== null) {
+          // Get decimals if available, otherwise default to 8 (standard Chainlink)
+          let decimals = 8; // Default to 8 decimals for Chainlink feeds
+          if (decimalsResult?.status === "success") {
+            decimals = decimalsResult.result as number;
+          }
+          
+          // Try 8 decimals first (standard Chainlink format)
+          let eurPerUsd = Number(answer) / 10 ** 8;
+          
+          // The feed returns EUR per USD (e.g., 0.93 EUR per 1 USD)
+          // We need USD per EUR, so we invert: 1 / eurPerUsd
+          // This should give us a value > 1.0 (typically ~1.08, but can be < 1.0 if EUR drops)
+          if (eurPerUsd > 0 && eurPerUsd < 10.0) {
+            const usdPerEur = 1 / eurPerUsd;
+            prices.eur = usdPerEur;
+            if (process.env.NODE_ENV === "development") {
+              console.log(`[useTokenPrices] EUR Chainlink price (8dec, inverted):`, {
+                rawAnswer: answer.toString(),
+                eurPerUsd,
+                usdPerEur,
+                interpretation: 'EUR/USD (inverted from EUR per USD)',
+              });
+            }
+          } else {
+            // Try 18 decimals in case it's a different format
+            eurPerUsd = Number(answer) / 10 ** 18;
+            if (eurPerUsd > 0 && eurPerUsd < 10.0) {
+              const usdPerEur = 1 / eurPerUsd;
+              prices.eur = usdPerEur;
+              if (process.env.NODE_ENV === "development") {
+                console.log(`[useTokenPrices] EUR Chainlink price (18dec, inverted):`, {
+                  rawAnswer: answer.toString(),
+                  eurPerUsd,
+                  usdPerEur,
+                  interpretation: 'EUR/USD (inverted from EUR per USD)',
+                });
+              }
+            } else {
+              if (process.env.NODE_ENV === "development") {
+                console.warn(`[useTokenPrices] EUR Chainlink price out of range:`, {
+                  eurPerUsd8dec: Number(answer) / 10 ** 8,
+                  eurPerUsd18dec: Number(answer) / 10 ** 18,
+                  rawAnswer: answer.toString(),
+                });
+              }
+            }
+          }
+        } else {
+          if (process.env.NODE_ENV === "development") {
+            console.warn(`[useTokenPrices] EUR Chainlink answer missing:`, {
+              answer,
+              hasAnswer: answer !== undefined && answer !== null,
+            });
+          }
+        }
+      } else {
+        if (process.env.NODE_ENV === "development") {
+          console.warn(`[useTokenPrices] EUR Chainlink read failed:`, {
+            decimalsStatus: decimalsResult?.status,
+            answerStatus: answerResult?.status,
+            decimalsError: decimalsResult?.error,
+            answerError: answerResult?.error,
+          });
         }
       }
     }
@@ -224,6 +329,22 @@ export function useMultipleTokenPrices(
           coinGeckoPrices.prices?.["ethereum"] || 
           chainlinkPrices.eth || 
           0;
+      } else if (target === "eur" || target === "euro") {
+        // Try Chainlink first (same feed as used in useAnchorPrices), fall back to CoinGecko
+        pegTargetUSD = 
+          chainlinkPrices.eur || 
+          coinGeckoPrices.prices?.["stasis-euro"] || 
+          0;
+        
+        // Debug logging for EUR markets
+        if (process.env.NODE_ENV === "development") {
+          console.log(`[useTokenPrices] EUR market ${market.marketId}:`, {
+            target,
+            chainlinkEur: chainlinkPrices.eur,
+            coinGeckoEur: coinGeckoPrices.prices?.["stasis-euro"],
+            finalPegTargetUSD: pegTargetUSD,
+          });
+        }
       }
 
       // Check if minter data is available

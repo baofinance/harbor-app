@@ -1,7 +1,7 @@
 type Deposit @entity(immutable: true) {
   id: ID! # {contractAddress}-{userAddress}-{txHash}-{logIndex}
   contractAddress: Bytes! # Genesis contract address
-  campaignId: String! # Maiden voyage campaign id
+  campaignId: String # Maiden voyage campaign id (optional for graft compatibility)
   campaignLabel: String # Maiden voyage campaign label
   user: Bytes! # User address
   amount: BigInt! # Amount deposited (in wei)
@@ -23,7 +23,7 @@ type Deposit @entity(immutable: true) {
 type Withdrawal @entity(immutable: true) {
   id: ID! # {contractAddress}-{userAddress}-{txHash}-{logIndex}
   contractAddress: Bytes! # Contract address
-  campaignId: String! # Maiden voyage campaign id
+  campaignId: String # Maiden voyage campaign id (optional for graft compatibility)
   campaignLabel: String # Maiden voyage campaign label
   user: Bytes! # User address
   amount: BigInt! # Amount withdrawn (in wei)
@@ -38,7 +38,7 @@ type Withdrawal @entity(immutable: true) {
 type GenesisEnd @entity(immutable: true) {
   id: ID! # {contractAddress}
   contractAddress: Bytes! # Genesis contract address
-  campaignId: String! # Maiden voyage campaign id
+  campaignId: String # Maiden voyage campaign id (optional for graft compatibility)
   campaignLabel: String # Maiden voyage campaign label
   timestamp: BigInt! # Block timestamp when genesis ended
   txHash: Bytes! # Transaction hash
@@ -61,7 +61,7 @@ type SailGenesisTotals @entity(immutable: false) {
 type UserHarborMarks @entity(immutable: false) {
   id: ID! # {contractAddress}-{userAddress}
   contractAddress: Bytes! # Contract address
-  campaignId: String! # Maiden voyage campaign id
+  campaignId: String # Maiden voyage campaign id (optional for graft compatibility)
   campaignLabel: String # Maiden voyage campaign label
   user: Bytes! # User address
   # Current marks
