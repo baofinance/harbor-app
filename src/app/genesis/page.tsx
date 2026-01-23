@@ -433,8 +433,8 @@ function MarketExpandedView({
                 <Image
                   src="/icons/marks.png"
                   alt="Marks"
-                  width={14}
-                  height={14}
+                  width={20}
+                  height={20}
                   className="inline-block ml-1 align-middle"
                 />
               </div>
@@ -2422,8 +2422,8 @@ export default function GenesisIndexPage() {
                           <Image
                             src="/icons/marks.png"
                             alt="Marks"
-                            width={14}
-                            height={14}
+                            width={20}
+                            height={20}
                             className="flex-shrink-0"
                           />
                           <span>/ $</span>
@@ -3729,8 +3729,8 @@ export default function GenesisIndexPage() {
                                           <Image
                                             src="/icons/marks.png"
                                             alt="Marks"
-                                            width={12}
-                                            height={12}
+                                            width={20}
+                                            height={20}
                                             className="inline-block"
                                           />
                                         </span>
@@ -4335,8 +4335,8 @@ export default function GenesisIndexPage() {
                                           <Image
                                             src="/icons/marks.png"
                                             alt="Marks"
-                                            width={12}
-                                            height={12}
+                                            width={20}
+                                            height={20}
                                             className="inline-block"
                                           />
                                         </span>
