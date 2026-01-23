@@ -1,6 +1,6 @@
 import React from "react";
 
-type InfoCalloutTone = "info" | "success" | "warning";
+type InfoCalloutTone = "info" | "success" | "warning" | "pearl";
 
 const toneStyles: Record<InfoCalloutTone, { wrapper: string; icon: string }> = {
   info: {
@@ -14,6 +14,10 @@ const toneStyles: Record<InfoCalloutTone, { wrapper: string; icon: string }> = {
   warning: {
     wrapper: "bg-amber-50 border-amber-200 text-amber-700",
     icon: "bg-amber-600 text-white",
+  },
+  pearl: {
+    wrapper: "bg-[#FFF1E5] border-[#F3C7A6] text-[#8A4B20]",
+    icon: "bg-[#D57A3D] text-white",
   },
 };
 

@@ -24,16 +24,31 @@ import Image from "next/image";
 import SimpleTooltip from "@/components/SimpleTooltip";
 import InfoTooltip from "@/components/InfoTooltip";
 import { ArrowPathIcon } from "@heroicons/react/24/outline";
+import {
+  Banknote,
+  Bell,
+  ChevronDown,
+  ChevronUp,
+  Info,
+  RefreshCw,
+} from "lucide-react";
 import { useAnchorLedgerMarks } from "@/hooks/useAnchorLedgerMarks";
 import { useAnyTokenDeposit } from "@/hooks/useAnyTokenDeposit";
 import { getDefiLlamaSwapTx } from "@/hooks/useDefiLlamaSwap";
 import { useCollateralPrice } from "@/hooks/useCollateralPrice";
 import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
+import { usePermitOrApproval } from "@/hooks/usePermitOrApproval";
 import {
   TransactionProgressModal,
   TransactionStep,
 } from "@/components/TransactionProgressModal";
 import { TokenSelectorDropdown } from "@/components/TokenSelectorDropdown";
+import { InfoCallout } from "@/components/InfoCallout";
+import {
+  calculateDeadline,
+  STETH_ZAP_PERMIT_ABI,
+  USDC_ZAP_PERMIT_ABI,
+} from "@/utils/permit";
 
 // -----------------------------------------------------------------------------
 // Debug logging helpers
@@ -441,6 +456,7 @@ export const AnchorDepositWithdrawModal = ({
   const defaultProgressConfig = {
     mode: null as "collateral" | "direct" | "withdraw" | null,
     includeApproveCollateral: false,
+    includePermitCollateral: false,
     includeMint: false,
     includeApprovePegged: false,
     includeDeposit: false,
@@ -503,6 +519,8 @@ export const AnchorDepositWithdrawModal = ({
 
   // Deposit/Mint tab options
   const [mintOnly, setMintOnly] = useState(false);
+  const [permitEnabled, setPermitEnabled] = useState(true);
+  const [showNotifications, setShowNotifications] = useState(true);
   const [depositInStabilityPool, setDepositInStabilityPool] = useState(true);
   const [stabilityPoolType, setStabilityPoolType] = useState<
     "collateral" | "sail"
@@ -584,6 +602,12 @@ export const AnchorDepositWithdrawModal = ({
       steps.push({ id, label, status: "pending", txHash });
 
     if (progressConfig.mode === "collateral") {
+      if (progressConfig.includePermitCollateral) {
+        const permitLabel = progressConfig.useZap && progressConfig.zapAsset
+          ? `Permit ${progressConfig.zapAsset.toUpperCase()} for zap`
+          : "Permit collateral token";
+        addStep("permit-collateral", permitLabel);
+      }
       if (progressConfig.includeApproveCollateral) {
         // Use zap-specific label if using zap
         const approveLabel = progressConfig.useZap && progressConfig.zapAsset
@@ -658,6 +682,9 @@ export const AnchorDepositWithdrawModal = ({
     // Determine current step index based on modal step state
     const getCurrentIndex = () => {
       const stepForIndex = step === "error" ? lastNonErrorStepRef.current : step;
+      const permitCollateralIndex = steps.findIndex(
+        (s) => s.id === "permit-collateral"
+      );
       const approveCollateralIndex = steps.findIndex(
         (s) => s.id === "approve-collateral"
       );
@@ -705,6 +732,7 @@ export const AnchorDepositWithdrawModal = ({
         // - collateral mode: approve collateral token
         // - direct mode: approve ha token
         // - withdraw/redeem mode: approve redeem
+        if (permitCollateralIndex >= 0) return permitCollateralIndex;
         if (approveCollateralIndex >= 0) return approveCollateralIndex;
         if (approveDirectIndex >= 0) return approveDirectIndex;
         if (approveRedeemIndex >= 0) return approveRedeemIndex;
@@ -767,6 +795,7 @@ export const AnchorDepositWithdrawModal = ({
   const [selectedRedeemAsset, setSelectedRedeemAsset] = useState<string>("");
 
   const publicClient = usePublicClient();
+  const { handlePermitOrApproval } = usePermitOrApproval();
 
   // Get all markets for this ha token (use allMarkets if provided, otherwise just the single market)
   const marketsForToken =
@@ -4708,6 +4737,11 @@ export const AnchorDepositWithdrawModal = ({
   const useZap = !!zapAddress && !isDirectPeggedDeposit && !isWrappedCollateral && activeTab === "deposit";
   const useETHZap = useZap && isWstETHMarket && (isNativeETH || isStETH);
   const useUSDCZap = useZap && isFxUSDMarket && (isUSDC || isFxUSD);
+
+  const showPermitToggle =
+    activeTab === "deposit" &&
+    mintOnly &&
+    (isStETH || isUSDC || isFxUSD);
   
   // Get fxSAVE rate for USDC zap calculations
   const priceOracleAddress = depositAssetMarket?.addresses?.collateralPrice as `0x${string}` | undefined;
@@ -5808,9 +5842,20 @@ export const AnchorDepositWithdrawModal = ({
             zapAssetName = anyTokenDeposit.selectedAsset?.toUpperCase() || "TOKEN";
           }
           
+          const permitEligible =
+            permitEnabled &&
+            mintOnly &&
+            ((anyTokenDeposit.useETHZap &&
+              !anyTokenDeposit.needsSwap &&
+              !anyTokenDeposit.isNativeETH) ||
+              (anyTokenDeposit.useUSDCZap &&
+                (selectedDepositAsset?.toLowerCase() === "usdc" ||
+                  selectedDepositAsset?.toLowerCase() === "fxusd")));
+
           setProgressConfig({
             mode: "collateral",
-            includeApproveCollateral: needsZapApproval,
+            includeApproveCollateral: needsZapApproval && !permitEligible,
+            includePermitCollateral: permitEligible,
             includeMint: true,
             // If a pool was selected, we want the full flow visible and executed.
             // Approval might be skipped at runtime if allowance is already sufficient.
@@ -6105,7 +6150,67 @@ export const AnchorDepositWithdrawModal = ({
               }
               
               if (!stETHAddress) throw new Error("stETH address not found. Please ensure you're depositing to a wstETH market.");
-              
+
+              if (permitEnabled && mintOnly) {
+                try {
+                  const permitResult = await handlePermitOrApproval(
+                    stETHAddress,
+                    zapAddress,
+                    swappedAmount
+                  );
+                  const usePermit =
+                    !!permitResult?.usePermit &&
+                    !!permitResult.permitSig &&
+                    !!permitResult.deadline;
+
+                  if (
+                    usePermit &&
+                    permitResult?.permitSig &&
+                    permitResult?.deadline
+                  ) {
+                    setProgressConfig((prev) => ({
+                      ...prev,
+                      includeApproveCollateral: false,
+                      includePermitCollateral: true,
+                    }));
+                    setStep("minting");
+                    const permitHash = await writeContractAsync({
+                      address: zapAddress,
+                      abi: STETH_ZAP_PERMIT_ABI,
+                      functionName: "zapStEthToPeggedWithPermit",
+                      args: [
+                        swappedAmount,
+                        address as `0x${string}`,
+                        minPeggedOut,
+                        permitResult.deadline,
+                        permitResult.permitSig.v,
+                        permitResult.permitSig.r,
+                        permitResult.permitSig.s,
+                      ],
+                    });
+                    setTxHashes((prev) => ({ ...prev, mint: permitHash }));
+                    await publicClient?.waitForTransactionReceipt({
+                      hash: permitHash,
+                    });
+                    setStep("success");
+                    if (onSuccess) onSuccess();
+                    return;
+                  }
+                } catch (permitError) {
+                  if (process.env.NODE_ENV === "development") {
+                    console.warn(
+                      "[handleMint] Permit rejected, fallback to approve:",
+                      permitError
+                    );
+                  }
+                }
+                setProgressConfig((prev) => ({
+                  ...prev,
+                  includePermitCollateral: false,
+                  includeApproveCollateral: needsZapApproval,
+                }));
+              }
+
               // Check and approve stETH if needed
               const stETHAllowance = await publicClient?.readContract({
                 address: stETHAddress,
@@ -6113,7 +6218,7 @@ export const AnchorDepositWithdrawModal = ({
                 functionName: "allowance",
                 args: [address as `0x${string}`, zapAddress],
               });
-              
+
               const allowanceBigInt = (stETHAllowance as bigint) || 0n;
               if (allowanceBigInt < swappedAmount) {
                 setStep("approving");
@@ -6239,28 +6344,6 @@ export const AnchorDepositWithdrawModal = ({
                 throw new Error("Wrong network. Please switch to Ethereum Mainnet.");
               }
               
-            // Read current allowance for the asset to zap contract
-            const currentAllowance = await publicClient?.readContract({
-              address: assetAddressForApproval,
-              abi: ERC20_ABI,
-              functionName: "allowance",
-              args: [address as `0x${string}`, zapAddress],
-            });
-            
-            const allowanceBigInt = (currentAllowance as bigint) || 0n;
-            if (allowanceBigInt < swappedAmount) {
-              setStep("approving");
-              const zapApproveHash = await writeContractAsync({
-                address: assetAddressForApproval,
-                abi: ERC20_ABI,
-                functionName: "approve",
-                args: [zapAddress, swappedAmount],
-              });
-              setTxHashes((prev) => ({ ...prev, approveCollateral: zapApproveHash }));
-              await publicClient?.waitForTransactionReceipt({ hash: zapApproveHash });
-              setStep("minting");
-            }
-            
             // Calculate minPeggedOut for minter zap
             // Use swapDryRunOutput or expectedMintOutput from swap dry run if available (accounts for actual conversion and fees)
             // Otherwise fall back to estimation
@@ -6301,6 +6384,88 @@ export const AnchorDepositWithdrawModal = ({
             // Check network before sending transaction
             if (!(await ensureCorrectNetwork())) {
               throw new Error("Wrong network. Please switch to Ethereum Mainnet.");
+            }
+
+            if (permitEnabled && mintOnly && (isActuallyUSDC || isActuallyFxUSD)) {
+              try {
+                const permitResult = await handlePermitOrApproval(
+                  assetAddressForApproval,
+                  zapAddress,
+                  swappedAmount
+                );
+                const usePermit =
+                  !!permitResult?.usePermit && !!permitResult.permitSig;
+
+                if (usePermit && permitResult?.permitSig) {
+                  setProgressConfig((prev) => ({
+                    ...prev,
+                    includeApproveCollateral: false,
+                    includePermitCollateral: true,
+                  }));
+                  setStep("minting");
+                  const deadline =
+                    permitResult.deadline || calculateDeadline(3600);
+                  const functionName = isActuallyUSDC
+                    ? "zapUsdcToPeggedWithPermit"
+                    : "zapFxUsdToPeggedWithPermit";
+                  const permitHash = await writeContractAsync({
+                    address: zapAddress,
+                    abi: USDC_ZAP_PERMIT_ABI,
+                    functionName,
+                    args: [
+                      swappedAmount,
+                      minFxSaveOut,
+                      address as `0x${string}`,
+                      minPeggedOut,
+                      deadline,
+                      permitResult.permitSig.v,
+                      permitResult.permitSig.r,
+                      permitResult.permitSig.s,
+                    ],
+                  });
+                  setTxHashes((prev) => ({ ...prev, mint: permitHash }));
+                  await publicClient?.waitForTransactionReceipt({
+                    hash: permitHash,
+                  });
+                  setStep("success");
+                  if (onSuccess) onSuccess();
+                  return;
+                }
+              } catch (permitError) {
+                if (process.env.NODE_ENV === "development") {
+                  console.warn(
+                    "[handleMint] Permit rejected, fallback to approve:",
+                    permitError
+                  );
+                }
+              }
+              setProgressConfig((prev) => ({
+                ...prev,
+                includePermitCollateral: false,
+                includeApproveCollateral: needsZapApproval,
+              }));
+            }
+
+            // Read current allowance for the asset to zap contract
+            const currentAllowance = await publicClient?.readContract({
+              address: assetAddressForApproval,
+              abi: ERC20_ABI,
+              functionName: "allowance",
+              args: [address as `0x${string}`, zapAddress],
+            });
+
+            const allowanceBigInt = (currentAllowance as bigint) || 0n;
+            if (allowanceBigInt < swappedAmount) {
+              setStep("approving");
+              const zapApproveHash = await writeContractAsync({
+                address: assetAddressForApproval,
+                abi: ERC20_ABI,
+                functionName: "approve",
+                args: [zapAddress, swappedAmount],
+              });
+              setTxHashes((prev) => ({ ...prev, approveCollateral: zapApproveHash }));
+              await publicClient?.waitForTransactionReceipt({ hash: zapApproveHash });
+              setStep("minting");
             }
             
             // Track pegged token balance before zap so we can compute minted amount for deposit.
@@ -8452,6 +8617,7 @@ export const AnchorDepositWithdrawModal = ({
           title={progressConfig.title || "Processing Transaction"}
           steps={progressSteps}
           currentStepIndex={currentProgressIndex}
+          progressVariant="horizontal"
           canCancel={false}
           errorMessage={
             error || undefined
@@ -8477,7 +8643,7 @@ export const AnchorDepositWithdrawModal = ({
           onClick={handleClose}
         />
 
-        <div className="relative bg-white shadow-2xl w-full max-w-xl mx-4 max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in-0 scale-in-95 duration-200">
+        <div className="relative bg-white shadow-2xl w-full max-w-md mx-2 sm:mx-4 max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in-0 scale-in-95 duration-200">
           {/* Header with tabs and close button */}
           <div className="flex items-center justify-between p-0 pt-3 px-3 border-b border-[#d1d7e5]">
             {/* Tab-style header - takes most of width but leaves room for X */}
@@ -8697,20 +8863,6 @@ export const AnchorDepositWithdrawModal = ({
                             </div>
                           );
                         })()}
-                        {selectedDepositAsset &&
-                          !anyTokenDeposit.needsSwap &&
-                          selectedDepositAsset !== activeCollateralSymbol &&
-                          selectedDepositAsset !==
-                            activeWrappedCollateralSymbol &&
-                          !isDirectPeggedDeposit && (
-                            <p className="mt-2 text-xs text-[#1E4775]/60 flex items-center gap-1">
-                              <span>ℹ️</span>
-                              <span>
-                                This will be converted to{" "}
-                                {activeWrappedCollateralSymbol} on deposit
-                              </span>
-                            </p>
-                          )}
                         {isDirectPeggedDeposit && (
                           <p className="mt-2 text-xs text-[#1E4775]/60 flex items-center gap-1">
                             <span>ℹ️</span>
@@ -8723,6 +8875,93 @@ export const AnchorDepositWithdrawModal = ({
                             </span>
                           </p>
                         )}
+
+                        <div className="mt-2 space-y-2">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setShowNotifications((prev) => !prev)
+                            }
+                            className="flex w-full items-center justify-between text-sm font-semibold text-[#1E4775]"
+                            aria-expanded={showNotifications}
+                          >
+                            <span>Notifications</span>
+                            <span className="flex items-center gap-2">
+                              {!showNotifications && (
+                                <span className="flex items-center gap-1 rounded-full bg-[#1E4775]/10 px-2 py-0.5 text-xs text-[#1E4775]">
+                                  <Bell className="h-3 w-3" />
+                                  {(!anyTokenDeposit.needsSwap ? 1 : 0) +
+                                    1 +
+                                    (selectedDepositAsset &&
+                                    !anyTokenDeposit.needsSwap &&
+                                    selectedDepositAsset !==
+                                      activeCollateralSymbol &&
+                                    selectedDepositAsset !==
+                                      activeWrappedCollateralSymbol &&
+                                    !isDirectPeggedDeposit
+                                      ? 1
+                                      : 0)}
+                                </span>
+                              )}
+                              {showNotifications ? (
+                                <ChevronUp className="h-4 w-4 text-[#1E4775]/70" />
+                              ) : (
+                                <ChevronDown className="h-4 w-4 text-[#1E4775]/70" />
+                              )}
+                            </span>
+                          </button>
+                          {showNotifications && (
+                            <div className="space-y-2">
+                              {!anyTokenDeposit.needsSwap && (
+                                <InfoCallout
+                                  tone="success"
+                                  title="Tip:"
+                                  icon={
+                                    <RefreshCw className="w-4 h-4 flex-shrink-0 mt-0.5 text-green-600" />
+                                  }
+                                >
+                                  You can deposit any ERC20 token!
+                                  Non-collateral tokens will be automatically
+                                  swapped via Velora.
+                                </InfoCallout>
+                              )}
+
+                              <InfoCallout
+                                title="Info:"
+                                icon={
+                                  <Info className="w-4 h-4 flex-shrink-0 mt-0.5 text-blue-600" />
+                                }
+                              >
+                                For large deposits, Harbor recommends using
+                                wstETH or fxSAVE instead of the built-in swap
+                                and zaps.
+                              </InfoCallout>
+
+                              {selectedDepositAsset &&
+                                !anyTokenDeposit.needsSwap &&
+                                selectedDepositAsset !==
+                                  activeCollateralSymbol &&
+                                selectedDepositAsset !==
+                                  activeWrappedCollateralSymbol &&
+                                !isDirectPeggedDeposit && (
+                                  <InfoCallout
+                                    tone="pearl"
+                                    icon={
+                                      <Banknote className="w-4 h-4 flex-shrink-0 mt-0.5 text-[#D57A3D]" />
+                                    }
+                                  >
+                                    <span className="font-semibold">
+                                      Deposit:
+                                    </span>{" "}
+                                    Your deposit will be converted to{" "}
+                                    {activeWrappedCollateralSymbol} on deposit.
+                                    Withdrawals will be in{" "}
+                                    {activeWrappedCollateralSymbol} only.
+                                  </InfoCallout>
+                                )}
+                            </div>
+                          )}
+                        </div>
                         {/* Fee Display for Selected Deposit Token */}
                         {selectedDepositAsset &&
                           !isDirectPeggedDeposit &&
@@ -8875,32 +9114,89 @@ export const AnchorDepositWithdrawModal = ({
 
                       {/* Mint Only Checkbox - Only show in Step 1, below amount input, and only if not depositing haToken directly */}
                       {currentStep === 1 && !isDirectPeggedDeposit && (
-                        <div className="pt-2">
-                          <label className="flex items-center gap-3 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={mintOnly}
-                              onChange={(e) => {
-                                setMintOnly(e.target.checked);
-                                setDepositInStabilityPool(!e.target.checked);
-                                if (e.target.checked) {
-                                  // Reset to step 1 if switching to mint only
-                                  setCurrentStep(1);
-                                }
-                              }}
-                              className="w-5 h-5 text-[#1E4775] border-[#1E4775]/30 focus:ring-2 focus:ring-[#1E4775]/20 focus:ring-offset-0 cursor-pointer"
-                              disabled={isProcessing}
-                            />
-                            <span className="text-sm font-medium text-[#1E4775]">
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between border border-[#1E4775]/20 bg-[#17395F]/5 px-3 py-2 text-xs">
+                            <div className="text-[#1E4775]/80">
                               Mint only (do not deposit to stability pool)
-                            </span>
-                          </label>
+                            </div>
+                            <label className="flex items-center gap-2 text-[#1E4775]/80">
+                              <span
+                                className={
+                                  mintOnly ? "text-[#1E4775]" : "text-[#1E4775]/60"
+                                }
+                              >
+                                {mintOnly ? "On" : "Off"}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setMintOnly((prev) => !prev);
+                                  setDepositInStabilityPool(mintOnly);
+                                  if (!mintOnly) {
+                                    setPermitEnabled(true);
+                                    setCurrentStep(1);
+                                  }
+                                }}
+                                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                                  mintOnly ? "bg-[#1E4775]" : "bg-[#1E4775]/30"
+                                }`}
+                                aria-pressed={mintOnly}
+                                aria-label="Toggle mint only"
+                                disabled={isProcessing}
+                              >
+                                <span
+                                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                    mintOnly ? "translate-x-4" : "translate-x-1"
+                                  }`}
+                                />
+                              </button>
+                            </label>
+                          </div>
                           {mintOnly && (
-                            <p className="mt-1.5 text-xs text-[#1E4775]/60 pl-8">
+                            <p className="text-xs text-[#1E4775]/60">
                               You'll receive ha tokens directly to your wallet.
                               No stability pool deposit required.
                             </p>
                           )}
+                        </div>
+                      )}
+
+                      {showPermitToggle && (
+                        <div className="flex items-center justify-between border border-[#1E4775]/20 bg-[#17395F]/5 px-3 py-2 text-xs">
+                          <div className="text-[#1E4775]/80">
+                            Use permit for approval (recommended)
+                          </div>
+                          <label className="flex items-center gap-2 text-[#1E4775]/80">
+                            <span
+                              className={
+                                permitEnabled
+                                  ? "text-[#1E4775]"
+                                  : "text-[#1E4775]/60"
+                              }
+                            >
+                              {permitEnabled ? "On" : "Off"}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setPermitEnabled((prev) => !prev)}
+                              className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                                permitEnabled
+                                  ? "bg-[#1E4775]"
+                                  : "bg-[#1E4775]/30"
+                              }`}
+                              aria-pressed={permitEnabled}
+                              aria-label="Toggle permit usage"
+                              disabled={isProcessing}
+                            >
+                              <span
+                                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                  permitEnabled
+                                    ? "translate-x-4"
+                                    : "translate-x-1"
+                                }`}
+                              />
+                            </button>
+                          </label>
                         </div>
                       )}
 

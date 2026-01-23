@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { AlertTriangle } from "lucide-react";
 import { parseEther, formatEther } from "viem";
 import {
  useAccount,
@@ -320,9 +321,7 @@ const successUSD = successAmountNum > 0 && collateralPriceUSD > 0
  {/* Harbor Marks Warning - Always visible */}
  <div className="p-3 bg-orange-50 border border-orange-200 text-sm">
  <div className="flex items-start gap-2">
- <span className="text-orange-600 font-bold text-base">
- ⚠️
- </span>
+ <AlertTriangle className="h-4 w-4 text-orange-600 mt-0.5 flex-shrink-0" />
  <div className="flex-1 space-y-1">
  <div className="font-medium text-orange-800">
  Harbor Marks Warning

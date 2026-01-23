@@ -35,7 +35,14 @@ import { useAnyTokenDeposit } from "@/hooks/useAnyTokenDeposit";
 import { TokenSelectorDropdown } from "@/components/TokenSelectorDropdown";
 import { usePermitOrApproval } from "@/hooks/usePermitOrApproval";
 import { InfoCallout } from "@/components/InfoCallout";
-import { Info, RefreshCw } from "lucide-react";
+import {
+  Banknote,
+  Bell,
+  ChevronDown,
+  ChevronUp,
+  Info,
+  RefreshCw,
+} from "lucide-react";
 import { AmountInputBlock } from "@/components/AmountInputBlock";
 
 interface GenesisDepositModalProps {
@@ -89,7 +96,8 @@ export const GenesisDepositModal = ({
  const [slippageTolerance, setSlippageTolerance] = useState<number>(0.5); // Default 0.5% slippage
  const [slippageInputValue, setSlippageInputValue] = useState<string>("0.5"); // String for input to allow typing "0"
  const [showSlippageInput, setShowSlippageInput] = useState(false);
-const [permitEnabled, setPermitEnabled] = useState(true);
+  const [permitEnabled, setPermitEnabled] = useState(true);
+  const [showNotifications, setShowNotifications] = useState(true);
  const [step, setStep] = useState<ModalStep>("input");
  const [error, setError] = useState<string | null>(null);
  const [txHash, setTxHash] = useState<string | null>(null);
@@ -807,6 +815,7 @@ const buildProgressSteps = (params: {
   includeApproval: boolean;
   includeSwap: boolean;
   needsSwapApproval: boolean;
+  includePermit: boolean;
 }) => {
   const steps: TransactionStep[] = [];
 
@@ -829,6 +838,13 @@ const buildProgressSteps = (params: {
     steps.push({
       id: "approve",
       label: `Approve ${selectedAsset}`,
+      status: "pending",
+    });
+  }
+  if (params.includePermit) {
+    steps.push({
+      id: "permit",
+      label: `Permit ${selectedAsset}`,
       status: "pending",
     });
   }
@@ -925,7 +941,33 @@ const preDepositBalance = userCurrentDeposit;
 let permitResult: { usePermit: boolean; permitSig?: { v: number; r: `0x${string}`; s: `0x${string}` }; deadline?: bigint } | null = null;
 let usePermit = false;
 let approvalCompleted = false;
-if (shouldUsePermit && isValidSelectedAssetAddress && amountBigInt > 0n) {
+
+const includeSwap = needsSwap && swapQuote;
+const needsSwapApproval = includeSwap && !isNativeETH; // Approve source token for swap (unless it's ETH)
+const includePermitAttempt =
+  !needsSwap && shouldUsePermit && isValidSelectedAssetAddress && amountBigInt > 0n;
+let permitSteps: TransactionStep[] | null = null;
+
+if (includePermitAttempt) {
+  const steps = buildProgressSteps({
+    includeApproval: false,
+    includeSwap: !!includeSwap,
+    needsSwapApproval,
+    includePermit: true,
+  });
+  permitSteps = steps;
+  setProgressSteps(steps);
+  const permitIndex = steps.findIndex((s) => s.id === "permit");
+  setCurrentStepIndex(permitIndex >= 0 ? permitIndex : 0);
+  setProgressModalOpen(true);
+  setProgressSteps((prev) =>
+    prev.map((s) =>
+      s.id === "permit" ? { ...s, status: "in_progress" } : s
+    )
+  );
+}
+
+if (includePermitAttempt) {
   try {
     permitResult = await handlePermitOrApproval(
       selectedAssetAddress as `0x${string}`,
@@ -939,18 +981,42 @@ if (shouldUsePermit && isValidSelectedAssetAddress && amountBigInt > 0n) {
   }
 }
 
- // Initialize progress modal steps
- const includeApproval = !isNativeETH && needsApproval && !needsSwap && !usePermit; // For direct deposits only
- const includeSwap = needsSwap && swapQuote;
- const needsSwapApproval = includeSwap && !isNativeETH; // Approve source token for swap (unless it's ETH)
- const steps = buildProgressSteps({
-   includeApproval,
-   includeSwap: !!includeSwap,
-   needsSwapApproval,
- });
- setProgressSteps(steps);
- setCurrentStepIndex(0);
- setProgressModalOpen(true);
+// Initialize/adjust progress modal steps
+const includeApproval = !isNativeETH && needsApproval && !needsSwap && !usePermit; // For direct deposits only
+const includePermit = !needsSwap && usePermit;
+
+if (includePermitAttempt) {
+  if (usePermit) {
+    setProgressSteps((prev) =>
+      prev.map((s) =>
+        s.id === "permit" ? { ...s, status: "completed" } : s
+      )
+    );
+    const depositIndex = (permitSteps || []).findIndex((s) => s.id === "deposit");
+    if (depositIndex >= 0) {
+      setCurrentStepIndex(depositIndex);
+    }
+  } else {
+    const fallbackSteps = buildProgressSteps({
+      includeApproval,
+      includeSwap: !!includeSwap,
+      needsSwapApproval,
+      includePermit: false,
+    });
+    setProgressSteps(fallbackSteps);
+    setCurrentStepIndex(0);
+  }
+} else {
+  const steps = buildProgressSteps({
+    includeApproval,
+    includeSwap: !!includeSwap,
+    needsSwapApproval,
+    includePermit,
+  });
+  setProgressSteps(steps);
+  setCurrentStepIndex(0);
+  setProgressModalOpen(true);
+}
 
  const tryPermitZap = async (params: {
    type: "steth" | "usdc" | "fxusd";
@@ -1021,7 +1087,7 @@ if (shouldUsePermit && isValidSelectedAssetAddress && amountBigInt > 0n) {
            s.id === "approveSwap" ? { ...s, status: "in_progress" } : s
          )
        );
-      setCurrentStepIndex(steps.findIndex((s) => s.id === "approveSwap"));
+      setCurrentStepIndex(progressSteps.findIndex((s) => s.id === "approveSwap"));
       setError(null);
       setTxHash(null);
       
@@ -1102,7 +1168,7 @@ if (shouldUsePermit && isValidSelectedAssetAddress && amountBigInt > 0n) {
          s.id === "swap" ? { ...s, status: "in_progress" } : s
        )
      );
-     setCurrentStepIndex(steps.findIndex((s) => s.id === "swap"));
+     setCurrentStepIndex(progressSteps.findIndex((s) => s.id === "swap"));
      setError(null);
      setTxHash(null);
      
@@ -1165,7 +1231,7 @@ if (shouldUsePermit && isValidSelectedAssetAddress && amountBigInt > 0n) {
     // For fxSAVE markets (USDC swap), we need to approve USDC for the zapper
     // For wstETH markets (ETH swap), no approval needed - ETH is native
     if (isFxSAVEMarket) {
-      setCurrentStepIndex(steps.findIndex((s) => s.id === "approveUSDC"));
+      setCurrentStepIndex(progressSteps.findIndex((s) => s.id === "approveUSDC"));
       setStep("approving");
       setProgressSteps((prev) =>
         prev.map((s) =>
@@ -1212,7 +1278,7 @@ if (shouldUsePermit && isValidSelectedAssetAddress && amountBigInt > 0n) {
       // For ETH swaps, no approval needed - go straight to deposit
     }
     
-    setCurrentStepIndex(steps.findIndex((s) => s.id === "deposit"));
+    setCurrentStepIndex(progressSteps.findIndex((s) => s.id === "deposit"));
     return true;
   } catch (err: any) {
     setError(err.message || "Swap failed. Please try again.");
@@ -1241,7 +1307,7 @@ if (!isNativeETH && needsApproval && !needsSwap && !usePermit) {
    amount: amountBigInt,
  });
  approvalCompleted = true;
- setCurrentStepIndex(steps.findIndex((s) => s.id ==="deposit"));
+ setCurrentStepIndex(progressSteps.findIndex((s) => s.id ==="deposit"));
  }
 
  setStep("depositing");
@@ -1250,7 +1316,7 @@ if (!isNativeETH && needsApproval && !needsSwap && !usePermit) {
  s.id ==="deposit" ? { ...s, status:"in_progress" } : s
  )
  );
-setCurrentStepIndex(steps.findIndex((s) => s.id ==="deposit"));
+setCurrentStepIndex(progressSteps.findIndex((s) => s.id ==="deposit"));
 setError(null);
 setTxHash(null);
 
@@ -1490,7 +1556,7 @@ setSuccessfulDepositToken(selectedAsset); // Use the token user selected
  : s
  )
  );
- setCurrentStepIndex(steps.findIndex((s) => s.id ==="deposit"));
+ setCurrentStepIndex(progressSteps.findIndex((s) => s.id ==="deposit"));
  if (onSuccess) {
  await onSuccess();
  }
@@ -1860,9 +1926,9 @@ const successFmt = formatTokenAmount(
 
  {/* Deposit Asset Selection */}
  <div className="space-y-2">
- <label className="text-sm text-[#1E4775]/70">
- Deposit Asset
- </label>
+<label className="text-sm font-semibold text-[#1E4775]">
+Select Deposit Token
+</label>
  {(() => {
    const filteredUserTokens = userTokens.filter(token => 
      !acceptedAssets.some(a => a.symbol.toUpperCase() === token.symbol.toUpperCase())
@@ -1944,35 +2010,72 @@ const successFmt = formatTokenAmount(
    </div>
  )}
  
- {/* Multi-token support notice */}
- {!needsSwap && (
-   <InfoCallout
-     tone="success"
-     title="Tip:"
-      icon={<RefreshCw className="w-4 h-4 flex-shrink-0 mt-0.5 text-green-600" />}
+ <div className="mt-2 space-y-2">
+   <button
+     type="button"
+     onClick={() => setShowNotifications((prev) => !prev)}
+     className="flex w-full items-center justify-between text-sm font-semibold text-[#1E4775]"
+     aria-expanded={showNotifications}
    >
-     You can deposit any ERC20 token! Non-collateral tokens will be automatically swapped via Velora.
-   </InfoCallout>
- )}
+     <span>Notifications</span>
+     <span className="flex items-center gap-2">
+       {!showNotifications && (
+         <span className="flex items-center gap-1 rounded-full bg-[#1E4775]/10 px-2 py-0.5 text-xs text-[#1E4775]">
+           <Bell className="h-3 w-3" />
+           {(!needsSwap ? 1 : 0) + 1 + (isNonCollateralAsset ? 1 : 0)}
+         </span>
+       )}
+       {showNotifications ? (
+         <ChevronUp className="h-4 w-4 text-[#1E4775]/70" />
+       ) : (
+         <ChevronDown className="h-4 w-4 text-[#1E4775]/70" />
+       )}
+     </span>
+   </button>
+   {showNotifications && (
+     <div className="space-y-2">
+       {!needsSwap && (
+         <InfoCallout
+           tone="success"
+           title="Tip:"
+           icon={
+             <RefreshCw className="w-4 h-4 flex-shrink-0 mt-0.5 text-green-600" />
+           }
+         >
+           You can deposit any ERC20 token! Non-collateral tokens will be
+           automatically swapped via Velora.
+         </InfoCallout>
+       )}
 
- {/* Large deposit recommendation */}
- <InfoCallout
-   title="Info:"
-   icon={<Info className="w-4 h-4 flex-shrink-0 mt-0.5 text-blue-600" />}
- >
-   For large deposits, Harbor recommends using wstETH or fxSAVE instead of the built-in swap and zaps.
- </InfoCallout>
- 
- {isNonCollateralAsset && (
- <div className="p-3 bg-[rgb(var(--surface-selected-rgb))]/20 border border-[rgb(var(--surface-selected-border-rgb))]/30 text-[#1E4775] text-sm">
- ℹ️ Your deposit will be converted to {wrappedCollateralSymbol || collateralSymbol} on
- deposit. Withdrawals will be in {wrappedCollateralSymbol || collateralSymbol} only.
+       <InfoCallout
+         title="Info:"
+         icon={<Info className="w-4 h-4 flex-shrink-0 mt-0.5 text-blue-600" />}
+       >
+         For large deposits, Harbor recommends using wstETH or fxSAVE instead of
+         the built-in swap and zaps.
+       </InfoCallout>
+
+       {isNonCollateralAsset && (
+         <InfoCallout
+           tone="pearl"
+           icon={
+             <Banknote className="w-4 h-4 flex-shrink-0 mt-0.5 text-[#D57A3D]" />
+           }
+         >
+           <span className="font-semibold">Deposit:</span> Your deposit will be
+           converted to {wrappedCollateralSymbol || collateralSymbol} on
+           deposit. Withdrawals will be in{" "}
+           {wrappedCollateralSymbol || collateralSymbol} only.
+         </InfoCallout>
+       )}
+     </div>
+   )}
  </div>
- )}
  </div>
 
  {/* Amount Input */}
- <AmountInputBlock
+<AmountInputBlock
+  label="Enter Amount"
    value={amount}
    onChange={handleAmountChange}
    onMax={handleMaxClick}
@@ -2007,7 +2110,7 @@ const successFmt = formatTokenAmount(
 
  {/* Permit toggle (direct USDC/FXUSD/stETH only) */}
  {showPermitToggle && (
-   <div className="flex items-center justify-between rounded-md border border-[#1E4775]/20 bg-[#17395F]/5 px-3 py-2 text-xs">
+   <div className="flex items-center justify-between border border-[#1E4775]/20 bg-[#17395F]/5 px-3 py-2 text-xs">
      <div className="text-[#1E4775]/80">
        Use permit (gasless approval) for this deposit
      </div>
