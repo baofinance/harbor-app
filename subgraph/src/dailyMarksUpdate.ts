@@ -37,7 +37,7 @@ const MINTER_BTC_FXUSD = Address.fromString("0x33e32ff4d0677862fa31582CC654a25b9
 const MINTER_BTC_STETH = Address.fromString("0xF42516EB885E737780EB864dd07cEc8628000919");
 
 const POOL_COLL_ETH_FXUSD = Address.fromString("0x1F985CF7C10A81DE1940da581208D2855D263D72");
-const POOL_LEV_ETH_FXUSD = Address.fromString("0x438B29EC7a1770dDbA37D792F1A6e76231Ef8E06");
+const POOL_LEV_ETH_FXUSD = Address.fromString("0x438B29EC7a1770dDbA37D792f1A6e76231Ef8E06");
 const POOL_COLL_BTC_FXUSD = Address.fromString("0x86561cdB34ebe8B9abAbb0DD7bEA299fA8532a49");
 const POOL_LEV_BTC_FXUSD = Address.fromString("0x9e56F1E1E80EBf165A1dAa99F9787B41cD5bFE40");
 const POOL_COLL_BTC_STETH = Address.fromString("0x667Ceb303193996697A5938cD6e17255EeAcef51");
@@ -47,9 +47,14 @@ const POOL_LEV_BTC_STETH = Address.fromString("0xCB4F3e21DE158bf858Aa03E63e4cEc7
 const GENESIS_ETH_FXUSD = Address.fromString("0xc9df4f62474cf6cde6c064db29416a9f4f27ebdc");
 const GENESIS_BTC_FXUSD = Address.fromString("0x42cc9a19b358a2a918f891d8a6199d8b05f0bc1c");
 const GENESIS_BTC_STETH = Address.fromString("0xc64fc46eed431e92c1b5e24dc296b5985ce6cc00");
+function addressFromString(value: string): Address {
+  const normalized = value.startsWith("0x") ? value : `0x${value}`;
+  return Address.fromString(normalized);
+}
+
 // Euro campaign
-const GENESIS_EUR_FXUSD = Address.fromString("0xb97d346dbc599e78c9c33b86be6c796f2d141ecc");
-const GENESIS_EUR_STETH = Address.fromString("0xd2858dda2025e2fb31069705d905e860cebfcfef");
+const GENESIS_EUR_FXUSD = Address.fromString("0xa9eb43ed6ba3b953a82741f3e226c1d6b029699b");
+const GENESIS_EUR_STETH = Address.fromString("0xf4f97218a00213a57a32e4606aaecc99e1805a89");
 
 function getOrCreateTracker(id: string): PriceFeed {
   let t = PriceFeed.load(id);
@@ -292,7 +297,13 @@ export function runDailyMarksUpdate(block: ethereum.Block): void {
   }
 
   // Update genesis deposits with current prices
-  const genesisContracts: Address[] = [GENESIS_ETH_FXUSD, GENESIS_BTC_FXUSD, GENESIS_BTC_STETH, GENESIS_EUR_FXUSD, GENESIS_EUR_STETH];
+  const genesisContracts: Address[] = [
+    GENESIS_ETH_FXUSD,
+    GENESIS_BTC_FXUSD,
+    GENESIS_BTC_STETH,
+    GENESIS_EUR_FXUSD,
+    GENESIS_EUR_STETH,
+  ];
   for (let i = 0; i < genesisContracts.length; i++) {
     const g = genesisContracts[i];
     updateGenesisDeposits(g, now, block);

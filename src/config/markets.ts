@@ -600,10 +600,7 @@ export const markets = {
       pointsPerDollar: 100,
       description: "100 ledger marks per dollar deposited at the end of genesis",
     },
-    marksCampaign: {
-      id: "mcap-maiden-voyage",
-      label: "MCAP Maiden Voyage",
-    },
+    // No maiden voyage campaign yet (future campaign)
     coinGeckoId: "wrapped-steth",
     genesis: {
       startDate: contractsMarkets["steth-mcap"].genesis.startDate,
@@ -672,10 +669,7 @@ export const markets = {
       pointsPerDollar: 100,
       description: "100 ledger marks per dollar deposited at the end of genesis",
     },
-    marksCampaign: {
-      id: "mcap-maiden-voyage",
-      label: "MCAP Maiden Voyage",
-    },
+    // No maiden voyage campaign yet (future campaign)
     coinGeckoId: "fx-protocol-fxusd",
     genesis: {
       startDate: contractsMarkets["fxusd-mcap"].genesis.startDate,

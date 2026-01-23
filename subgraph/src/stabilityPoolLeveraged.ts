@@ -7,7 +7,7 @@ import {
   Deposit as StabilityPoolDepositEvent,
   Withdraw as StabilityPoolWithdrawEvent,
   UserDepositChange as UserDepositChangeEvent,
-} from "../generated/StabilityPoolLeveraged/StabilityPool";
+} from "../generated/StabilityPoolLeveraged_ETH_fxUSD/StabilityPool";
 import {
   StabilityPoolDeposit,
   MarksMultiplier,

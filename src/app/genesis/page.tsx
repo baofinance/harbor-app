@@ -2424,7 +2424,7 @@ export default function GenesisIndexPage() {
                             height={14}
                             className="flex-shrink-0"
                           />
-                          <span>/ $.</span>
+                          <span>/ $</span>
                         </div>
                       </div>
                       <div
@@ -4914,7 +4914,7 @@ export default function GenesisIndexPage() {
                           const thresholdAmount = isEurMarket
                             ? isFxSAVE
                               ? 50000
-                              : 14
+                              : 15
                             : isFxSAVE
                             ? 250000
                             : 70;
@@ -4924,8 +4924,14 @@ export default function GenesisIndexPage() {
                             thresholdToken: isFxSAVE ? "fxSAVE" : "wstETH",
                             thresholdReached: false,
                           };
-                          const effectiveBonusStatus =
-                            marketBonusStatus || fallbackBonusStatus;
+                          // Use marketBonusStatus if available, but ensure thresholdToken is set correctly
+                          const effectiveBonusStatus = marketBonusStatus
+                            ? {
+                                ...marketBonusStatus,
+                                thresholdToken: marketBonusStatus.thresholdToken || (isFxSAVE ? "fxSAVE" : "wstETH"),
+                                thresholdAmount: marketBonusStatus.thresholdAmount || String(thresholdAmount),
+                              }
+                            : fallbackBonusStatus;
 
                           if (isLoadingBonusStatus) return null;
 

@@ -2,7 +2,7 @@ import {
   Deposit as DepositEvent,
   Withdraw as WithdrawEvent,
   GenesisEnds as GenesisEndsEvent,
-} from "../generated/Genesis/Genesis";
+} from "../generated/Genesis_ETH_fxUSD/Genesis";
 import {
   Deposit,
   Withdrawal,
@@ -16,14 +16,14 @@ import { WrappedPriceOracle } from "../generated/Genesis_ETH_fxUSD/WrappedPriceO
 import { ChainlinkAggregator } from "../generated/HaToken_haETH/ChainlinkAggregator";
 import { setMarketBoostWindow, ANCHOR_BOOST_MULTIPLIER, SAIL_BOOST_MULTIPLIER } from "./marksBoost";
 
-// Constants
+// Constants (v1.0.3)
 const MARKS_PER_DOLLAR_PER_DAY = BigDecimal.fromString("10");
 const BONUS_MARKS_PER_DOLLAR = BigDecimal.fromString("100"); // 100 marks per dollar bonus at genesis end
 const EARLY_BONUS_MARKS_PER_DOLLAR = BigDecimal.fromString("100"); // 100 marks per dollar for early depositors
 const EARLY_BONUS_THRESHOLD_FXSAVE = BigDecimal.fromString("250000"); // 250k fxUSD tokens (not USD)
 const EARLY_BONUS_THRESHOLD_WSTETH = BigDecimal.fromString("70"); // 70 wstETH tokens (not USD)
 const EARLY_BONUS_THRESHOLD_FXSAVE_EUR = BigDecimal.fromString("50000"); // 50k fxUSD tokens (EUR markets)
-const EARLY_BONUS_THRESHOLD_WSTETH_EUR = BigDecimal.fromString("14"); // ~50k USD in wstETH (EUR markets)
+const EARLY_BONUS_THRESHOLD_WSTETH_EUR = BigDecimal.fromString("15"); // ~50k USD in wstETH (EUR markets)
 const SECONDS_PER_DAY = BigDecimal.fromString("86400");
 const E18 = BigDecimal.fromString("1000000000000000000"); // 10^18
 
@@ -44,10 +44,12 @@ function getCampaignId(contractAddress: Bytes): string {
   }
 
   // Euro Maiden Voyage
-  if (address == "0xb97d346dbc599e78c9c33b86be6c796f2d141ecc") {
+  if (address == "0xf4f97218a00213a57a32e4606aaecc99e1805a89") {
+    // stETH-EUR genesis
     return "euro-maiden-voyage";
   }
-  if (address == "0xd2858dda2025e2fb31069705d905e860cebfcfef") {
+  if (address == "0xa9eb43ed6ba3b953a82741f3e226c1d6b029699b") {
+    // fxUSD-EUR genesis
     return "euro-maiden-voyage";
   }
 
@@ -488,7 +490,7 @@ function getCollateralSymbol(genesisAddress: string): string {
   // Production v1: ETH/fxUSD and BTC/fxUSD markets use fxSAVE
   if (addr == "0xc9df4f62474cf6cde6c064db29416a9f4f27ebdc" || // ETH/fxUSD (production v1)
       addr == "0x42cc9a19b358a2a918f891d8a6199d8b05f0bc1c" || // BTC/fxUSD (production v1)
-      addr == "0xb97d346dbc599e78c9c33b86be6c796f2d141ecc" || // fxUSD/EUR
+      addr == "0xa9eb43ed6ba3b953a82741f3e226c1d6b029699b" || // fxUSD/EUR (new)
       // Legacy test contracts (for backward compatibility)
       addr == "0x5f4398e1d3e33f93e3d7ee710d797e2a154cb073" ||
       addr == "0x288c61c3b3684ff21adf38d878c81457b19bd2fe" ||
@@ -497,7 +499,7 @@ function getCollateralSymbol(genesisAddress: string): string {
   }
   // Production v1: BTC/stETH market uses wstETH
   if (addr == "0xc64fc46eed431e92c1b5e24dc296b5985ce6cc00" || // BTC/stETH (production v1)
-      addr == "0xd2858dda2025e2fb31069705d905e860cebfcfef" || // stETH/EUR
+      addr == "0xf4f97218a00213a57a32e4606aaecc99e1805a89" || // stETH/EUR
       // Legacy test contract (for backward compatibility)
       addr == "0x9ae0b57ceada0056dbe21edcd638476fcba3ccc0") {
     return "wstETH";
@@ -510,10 +512,13 @@ function getEarlyBonusThresholdAmount(
   collateralSymbol: string
 ): BigDecimal {
   const addr = contractAddress.toHexString().toLowerCase();
-  if (addr == "0xd2858dda2025e2fb31069705d905e860cebfcfef") {
+  // EUR markets
+  if (addr == "0xf4f97218a00213a57a32e4606aaecc99e1805a89") {
+    // stETH-EUR genesis
     return EARLY_BONUS_THRESHOLD_WSTETH_EUR;
   }
-  if (addr == "0xb97d346dbc599e78c9c33b86be6c796f2d141ecc") {
+  if (addr == "0xa9eb43ed6ba3b953a82741f3e226c1d6b029699b") {
+    // fxUSD-EUR genesis
     return EARLY_BONUS_THRESHOLD_FXSAVE_EUR;
   }
   const isFxSAVE = collateralSymbol == "fxSAVE";
