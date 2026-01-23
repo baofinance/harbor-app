@@ -6,7 +6,7 @@
 
 import {
   Transfer as TransferEvent,
-} from "../generated/HaToken_haPB/ERC20";
+} from "../generated/HaToken_haETH/ERC20";
 import {
   updateHaTokenMarksInTotal,
 } from "./marksAggregation";
@@ -15,8 +15,8 @@ import {
   MarksMultiplier,
 } from "../generated/schema";
 import { BigDecimal, BigInt, Bytes, Address, ethereum } from "@graphprotocol/graph-ts";
-import { ERC20 } from "../generated/HaToken_haPB/ERC20";
-import { ChainlinkAggregator } from "../generated/HaToken_haPB/ChainlinkAggregator";
+import { ERC20 } from "../generated/HaToken_haETH/ERC20";
+import { ChainlinkAggregator } from "../generated/HaToken_haETH/ChainlinkAggregator";
 import {
   ANCHOR_BOOST_MULTIPLIER,
   getActiveBoostMultiplier,

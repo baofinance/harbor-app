@@ -212,7 +212,7 @@ export function useHarborMarks({
         const data = await retryGraphQLQuery(async () => {
       const response = await fetch(graphUrl, {
         method: "POST",
-        headers: getGraphHeaders(),
+        headers: getGraphHeaders(graphUrl),
         body: JSON.stringify({
           query: HARBOR_MARKS_QUERY,
           variables: {

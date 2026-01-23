@@ -38,6 +38,10 @@ const ICONS: Record<string, string> = {
     hsfxusdbtc: "/icons/hsUSDBTC.png",
     "hssteth-btc": "/icons/hsETHBTC.png",
     hsstethbtc: "/icons/hsETHBTC.png",
+    "hssteth-eur": "/icons/hsSTETHEUR.png",
+    hsstetheur: "/icons/hsSTETHEUR.png",
+    "hsfxusd-eur": "/icons/hsUSDeur.png",
+    hsfxusdeur: "/icons/hsUSDeur.png",
     hseth: "/icons/hsUSDETH.png", // Fallback for hsETH
 };
 
