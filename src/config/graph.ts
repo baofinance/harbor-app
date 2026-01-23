@@ -11,7 +11,7 @@ export const GRAPH_CONFIG = {
         ? process.env.NEXT_PUBLIC_GRAPH_URL_TEST2 ||
           process.env.NEXT_PUBLIC_GRAPH_URL
         : process.env.NEXT_PUBLIC_GRAPH_URL) ||
-      `https://gateway.thegraph.com/api/subgraphs/id/6XgXZkgr2SL1UWeriY6MsJV9aB2BUfemtMbsfuRq6uP1`,
+      `https://api.studio.thegraph.com/query/1718836/harbor-marks/version/latest`,
     chainId: 1,
     network: "mainnet",
   },
@@ -31,7 +31,7 @@ export const GRAPH_CONFIG = {
   production: {
     url:
       process.env.NEXT_PUBLIC_GRAPH_URL ||
-      `https://gateway.thegraph.com/api/subgraphs/id/6XgXZkgr2SL1UWeriY6MsJV9aB2BUfemtMbsfuRq6uP1`,
+      `https://api.studio.thegraph.com/query/1718836/harbor-marks/version/latest`,
     chainId: 1,
     network: "mainnet",
   },
@@ -63,6 +63,9 @@ export const CONTRACTS_WBTC = {
 
 // Get the Graph URL for marks (always production/mainnet)
 export const getGraphUrl = (): string => {
+  if (typeof window !== "undefined" && window.location.hostname === "localhost") {
+    return "https://api.studio.thegraph.com/query/1718836/harbor-marks/campaigns-v0.03";
+  }
   return GRAPH_CONFIG.marks.url;
 };
 

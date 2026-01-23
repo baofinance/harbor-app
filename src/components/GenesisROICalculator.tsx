@@ -217,7 +217,7 @@ export default function GenesisROICalculator({
  <div className="text-white font-mono">
  {totalDepositsStEth.toLocaleString(undefined, {
  maximumFractionDigits: 4,
- })}{""}
+                })}{" "}
  {collateralSymbol}
  </div>
  </div>
@@ -226,7 +226,7 @@ export default function GenesisROICalculator({
  <div className="text-white font-mono">
  {userDepositStEth.toLocaleString(undefined, {
  maximumFractionDigits: 4,
- })}{""}
+                })}{" "}
  {collateralSymbol}
  </div>
  </div>

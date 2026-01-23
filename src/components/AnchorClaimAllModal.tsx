@@ -95,7 +95,7 @@ export const AnchorClaimAllModal = ({
  onClick={onClose}
  />
 
-        <div className="relative bg-white shadow-2xl w-full max-w-4xl mx-2 sm:mx-4 animate-in fade-in-0 scale-in-95 duration-200 flex flex-col max-h-[95vh] sm:max-h-[90vh] rounded-lg">
+        <div className="relative bg-white shadow-2xl w-full max-w-4xl mx-2 sm:mx-4 animate-in fade-in-0 scale-in-95 duration-200 flex flex-col max-h-[95vh] sm:max-h-[90vh] rounded-none">
           <div className="flex items-center justify-between p-3 sm:p-4 lg:p-6 border-b border-[#1E4775]/20">
  <h2 className="text-2xl font-bold text-[#1E4775]">Claim Rewards</h2>
  <button
@@ -170,7 +170,7 @@ export const AnchorClaimAllModal = ({
  {amount.toLocaleString(undefined, {
  maximumFractionDigits: amount >= 1 ? 2 : 6,
  minimumFractionDigits: 0,
- })}{""}
+              })}{" "}
  {token.symbol}
  </div>
  );
@@ -249,7 +249,6 @@ export const AnchorClaimAllModal = ({
  <button
  onClick={() => {
  onCompound(selectedPoolsArray);
- onClose();
  }}
  disabled={isLoading || selectedPoolsArray.length === 0}
  className="w-full p-4 text-left bg-white border-2 border-[#1E4775] hover:bg-[#1E4775]/5 transition-colors flex items-center justify-between group disabled:opacity-50 disabled:cursor-not-allowed"

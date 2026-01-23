@@ -20,6 +20,7 @@ import {
   getOrCreateMarketBoostWindow,
 } from "./marksBoost";
 import { ensureUserRegistered } from "./userRegistry";
+import { accrueWithBoostWindow } from "./marksAccrual";
 
 // Constants
 const SECONDS_PER_DAY = BigDecimal.fromString("86400");
@@ -220,6 +221,7 @@ function accumulateMarks(
   const marksPerDollarPerDay = DEFAULT_MARKS_PER_DOLLAR_PER_DAY
     .times(DEFAULT_MULTIPLIER)
     .times(boost);
+  const baseMarksPerDollarPerDay = DEFAULT_MARKS_PER_DOLLAR_PER_DAY.times(DEFAULT_MULTIPLIER);
 
   const lastUpdate = deposit.lastUpdated.gt(BigInt.fromI32(0))
     ? deposit.lastUpdated
@@ -236,13 +238,17 @@ function accumulateMarks(
 
   // Calculate time since last update (continuous accumulation)
   if (currentTimestamp.gt(lastUpdate)) {
-    const timeSinceLastUpdate = currentTimestamp.minus(lastUpdate);
-    const daysSinceLastUpdate = timeSinceLastUpdate.toBigDecimal().div(SECONDS_PER_DAY);
-
-    if (daysSinceLastUpdate.gt(BigDecimal.fromString("0"))) {
-      const marksAccumulated = deposit.balanceUSD.times(marksPerDollarPerDay).times(daysSinceLastUpdate);
-      deposit.accumulatedMarks = deposit.accumulatedMarks.plus(marksAccumulated);
-      deposit.totalMarksEarned = deposit.totalMarksEarned.plus(marksAccumulated);
+    const earned = accrueWithBoostWindow(
+      "stabilityPoolCollateral",
+      deposit.poolAddress,
+      lastUpdate,
+      currentTimestamp,
+      deposit.balanceUSD,
+      baseMarksPerDollarPerDay
+    );
+    if (earned.gt(BigDecimal.fromString("0"))) {
+      deposit.accumulatedMarks = deposit.accumulatedMarks.plus(earned);
+      deposit.totalMarksEarned = deposit.totalMarksEarned.plus(earned);
     }
   }
   

@@ -35,8 +35,12 @@ import InfoTooltip from "@/components/InfoTooltip";
 import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
 import { markets as marketsConfig } from "@/config/markets";
 import { useMultipleTokenPrices } from "@/hooks/useTokenPrices";
-import { useReadContract } from "wagmi";
+import { useMultipleVolatilityProtection } from "@/hooks/useVolatilityProtection";
+import { useReadContract, useAccount } from "wagmi";
 import { minterABI } from "@/abis/minter";
+import Image from "next/image";
+import { useAllStabilityPoolRewards } from "@/hooks/useAllStabilityPoolRewards";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
 
 function formatUSD(value: number | undefined): string {
  if (value === undefined || !Number.isFinite(value)) return "-";
@@ -83,10 +87,28 @@ function bandsFromConfig(config: any): FeeBand[] {
  return bands;
 }
 
-function FeeBandBadge({ ratio }: { ratio: bigint }) {
+function FeeBandBadge({ 
+  ratio, 
+  isMintSail = false, 
+  lowerBound = 0n, 
+  upperBound 
+}: { 
+  ratio: bigint;
+  isMintSail?: boolean;
+  lowerBound?: bigint;
+  upperBound?: bigint;
+}) {
  // ratio is WAD-scaled percent (1e18 = 100%)
  const pct = Number(ratio) / 1e16; // 1e16 => 1%
- const isBlocked = ratio >= WAD;
+ 
+ // For MINT SAIL in 0-100% range, show "Blocked" if fee is 100% or very close (e.g., 0.99999e18)
+ // Use a tolerance of 0.01% (1e14 in WAD terms) to catch values like 0.99999e18
+ const isZeroToHundredRange = lowerBound === 0n && upperBound !== undefined;
+ const tolerance = 10n ** 14n; // 0.01% in WAD terms
+ const is100PercentOrClose = ratio >= (WAD - tolerance) && ratio <= WAD;
+ const shouldBlockMintSail = isMintSail && isZeroToHundredRange && is100PercentOrClose;
+ 
+ const isBlocked = ratio >= WAD || shouldBlockMintSail;
  const isDiscount = ratio < 0n;
  const isFree = ratio === 0n;
 
@@ -159,6 +181,7 @@ function FeeTransparencyBands({
            const range = b.upperBound
              ? `${formatCollateralRatio(b.lowerBound)} – ${formatCollateralRatio(b.upperBound)}`
              : `> ${formatCollateralRatio(b.lowerBound)}`;
+           const isMintSail = title === "Mint Sail";
            return (
              <div
                key={idx}
@@ -167,7 +190,12 @@ function FeeTransparencyBands({
                }`}
              >
                <span className="text-[#1E4775]/70 font-mono">{range}</span>
-               <FeeBandBadge ratio={b.ratio} />
+               <FeeBandBadge 
+                 ratio={b.ratio} 
+                 isMintSail={isMintSail}
+                 lowerBound={b.lowerBound}
+                 upperBound={b.upperBound}
+               />
              </div>
            );
          })}
@@ -411,11 +439,13 @@ function MarketCard({
  pools,
  userPools,
  tokenPricesByMarket,
+  volatilityProtectionMap,
  fxSAVEPrice,
  wstETHPrice,
   stETHPrice,
   btcPrice,
   ethPrice,
+  poolRewardsMap,
 }: {
  market: MarketTransparencyData;
  pools: PoolTransparencyData[];
@@ -431,15 +461,18 @@ function MarketCard({
      error: boolean;
    }
  >;
+  volatilityProtectionMap: Map<string, { protection: string }>;
  fxSAVEPrice?: number;
  wstETHPrice?: number;
   stETHPrice?: number;
   btcPrice?: number;
   ethPrice?: number;
+  poolRewardsMap: Map<`0x${string}`, { totalRewardAPR: number; poolAddress: `0x${string}` }>;
 }) {
  const [isExpanded, setIsExpanded] = useState(false);
 
  const avgPrice = (market.minPrice + market.maxPrice) / 2n;
+ const maxPrice = market.maxPrice; // Use maxPrice for collateral price (matches anchor page which uses maxUnderlyingPrice)
  const avgRate = (market.minRate + market.maxRate) / 2n;
  const healthStatus = getHealthColor(
  market.collateralRatio,
@@ -451,6 +484,13 @@ function MarketCard({
   const marketCfg = (marketsConfig as any)?.[market.marketId];
   const collateralHeldSymbol: string =
     marketCfg?.collateral?.symbol || marketCfg?.collateral?.underlyingSymbol || "";
+
+  const minterAddress =
+    (market.minterAddress as `0x${string}` | undefined) ??
+    (marketCfg?.addresses?.minter as `0x${string}` | undefined);
+  const volatilityProtection = minterAddress
+    ? volatilityProtectionMap.get(minterAddress.toLowerCase())?.protection ?? "-"
+    : "-";
 
   // collateralTokenBalance is in underlying-equivalent units (fxUSD for fxSAVE markets, stETH for wstETH markets)
   // Convert to wrapped collateral units using avgRate (underlying per wrapped)
@@ -508,6 +548,55 @@ function MarketCard({
  100
  : 0;
 
+  // Calculate distribution for pie chart: Anchor Supply (3 parts) + Sail Supply
+  const distributionData = useMemo(() => {
+    const anchorSupply = market.peggedTokenBalance; // Total haToken supply
+    const sailSupply = market.leveragedTokenBalance; // Total Sail token supply
+    const collateralPoolTVL = pools.find(p => p.type === "collateral")?.tvl || 0n;
+    const sailPoolTVL = pools.find(p => p.type === "leveraged")?.tvl || 0n;
+    
+    // Anchor Supply is divided into 3 parts:
+    const anchorNotDeposited = anchorSupply > (collateralPoolTVL + sailPoolTVL) 
+      ? anchorSupply - collateralPoolTVL - sailPoolTVL 
+      : 0n;
+
+    const data = [];
+    
+    // Anchor Supply parts (3 sections)
+    if (anchorNotDeposited > 0n) {
+      data.push({
+        name: "Not Deposited",
+        value: Number(anchorNotDeposited) / 1e18,
+        rawValue: anchorNotDeposited,
+      });
+    }
+    if (collateralPoolTVL > 0n) {
+      data.push({
+        name: "Collateral SP",
+        value: Number(collateralPoolTVL) / 1e18,
+        rawValue: collateralPoolTVL,
+      });
+    }
+    if (sailPoolTVL > 0n) {
+      data.push({
+        name: "Sail SP",
+        value: Number(sailPoolTVL) / 1e18,
+        rawValue: sailPoolTVL,
+      });
+    }
+    
+    // Sail Supply (as separate slice)
+    if (sailSupply > 0n) {
+      data.push({
+        name: "Sail Supply",
+        value: Number(sailSupply) / 1e18,
+        rawValue: sailSupply,
+      });
+    }
+
+    return data;
+  }, [market.peggedTokenBalance, market.leveragedTokenBalance, pools]);
+
  return (
  <div className="overflow-hidden">
  {/* Market Bar */}
@@ -535,7 +624,7 @@ function MarketCard({
  </div>
  </div>
 
- <div className="grid grid-cols-[1.15fr_0.65fr_1.65fr_0.95fr] gap-x-2 gap-y-0 text-[10px]">
+<div className="grid grid-cols-[1.15fr_0.65fr_1.65fr_0.95fr_0.95fr] gap-x-2 gap-y-0 text-[10px]">
  <div className="flex flex-col gap-0.5 min-w-0">
  <div className="text-[#1E4775]/60 font-semibold text-[9px] whitespace-nowrap">
  Collateral Ratio
@@ -556,10 +645,10 @@ function MarketCard({
  <div className="text-[#1E4775]/60 font-semibold text-[9px] whitespace-nowrap">
  TVL
  </div>
- <div className="text-[#1E4775] font-mono font-semibold text-[11px] whitespace-nowrap overflow-hidden">
- <span className="whitespace-nowrap">{formatCompactUSD(totalTVLUSD)}</span>
+<div className="text-[#1E4775] font-mono font-semibold text-[11px] whitespace-nowrap flex items-baseline gap-1">
+<span className="whitespace-nowrap">{formatCompactUSD(totalTVLUSD)}</span>
  {collateralHeldWrapped > 0n && (
- <span className="text-[#1E4775]/60 text-[10px] ml-1 truncate inline-block max-w-full align-bottom">
+<span className="text-[#1E4775]/60 text-[10px] whitespace-nowrap align-bottom">
  ({formatTokenBalanceMax2Decimals(collateralHeldWrapped)}{" "}
  {collateralHeldSymbol || ""})
  </span>
@@ -574,10 +663,46 @@ function MarketCard({
  {formatCollateralRatio(market.rebalanceThreshold)}
  </div>
  </div>
+<div className="flex flex-col gap-0.5 min-w-0 items-end text-right">
+  <div className="text-[#1E4775]/60 font-semibold text-[9px] whitespace-nowrap flex items-center justify-end gap-1">
+    Vol. Prot.
+    <InfoTooltip
+      side="top"
+      label={
+        <div className="space-y-2">
+          <p className="font-semibold mb-1">Volatility Protection</p>
+          <p>
+            The percentage adverse price movement between collateral and the
+            pegged token that the system can withstand before reaching the
+            depeg point (100% collateral ratio).
+          </p>
+          <p>
+            For example, an ETH-pegged token with USD collateral is protected
+            against ETH price spikes (ETH becoming more expensive relative to
+            USD).
+          </p>
+          <p>
+            This accounts for stability pools that can rebalance and improve
+            the collateral ratio during adverse price movements.
+          </p>
+          <p className="text-xs text-gray-400 italic">
+            Higher percentage = more protection. Assumes no additional deposits
+            or withdrawals.
+          </p>
+        </div>
+      }
+    >
+      <span className="text-[#1E4775]/70 cursor-help">[?]</span>
+    </InfoTooltip>
+  </div>
+  <div className="text-[#1E4775] font-mono font-semibold text-[11px] whitespace-nowrap">
+    {volatilityProtection}
+  </div>
+</div>
  </div>
  </div>
 
- <div className="hidden lg:grid grid-cols-[1.3fr_1fr_1fr_1fr_1fr_1fr_auto] gap-4 items-center text-sm">
+<div className="hidden lg:grid grid-cols-[1.3fr_1fr_1fr_1fr_1fr_1fr_1fr_auto] gap-4 items-center text-sm">
  {/* Market Name */}
  <div className="whitespace-nowrap min-w-0 overflow-hidden">
  <div className="flex items-center justify-center gap-2">
@@ -592,38 +717,45 @@ function MarketCard({
  </div>
  </div>
 
-{/* Collateral Ratio */}
+ {/* Collateral Ratio */}
+ <div className="text-center">
+ <div className="text-[#1E4775] font-mono text-sm font-semibold">
+ {formatCollateralRatio(market.collateralRatio)}
+ </div>
+ </div>
+
+ {/* Leverage Ratio */}
+ <div className="text-center">
+ <div className="text-[#1E4775] font-mono text-sm font-semibold">
+ {formatLeverageRatio(market.leverageRatio)}
+ </div>
+ </div>
+
+{/* Volatility Protection */}
 <div className="text-center">
-<div className="text-[#1E4775] font-mono text-sm font-semibold">
-{formatCollateralRatio(market.collateralRatio)}
-</div>
+  <div className="text-[#1E4775] font-mono text-sm font-semibold">
+    {volatilityProtection}
+  </div>
 </div>
 
-{/* Leverage Ratio */}
-<div className="text-center">
-<div className="text-[#1E4775] font-mono text-sm font-semibold">
-{formatLeverageRatio(market.leverageRatio)}
-</div>
-</div>
-
-{/* TVL */}
-<div className="text-center">
-<div className="text-[#1E4775] font-mono text-sm font-semibold">
-{formatCompactUSD(totalTVLUSD)}
-{collateralHeldWrapped > 0n && (
- <span className="text-[#1E4775]/60 text-xs ml-1">
+ {/* TVL */}
+ <div className="text-center">
+ <div className="text-[#1E4775] font-mono text-sm font-semibold whitespace-nowrap inline-flex items-baseline gap-1">
+ {formatCompactUSD(totalTVLUSD)}
+ {collateralHeldWrapped > 0n && (
+ <span className="text-[#1E4775]/60 text-xs whitespace-nowrap">
  ({formatTokenBalanceMax2Decimals(collateralHeldWrapped)} {collateralHeldSymbol || ""})
  </span>
-)}
-</div>
-</div>
+ )}
+ </div>
+ </div>
 
-{/* Rebalance Threshold */}
-<div className="text-center">
-<div className="text-[#1E4775] font-mono text-sm font-semibold">
-{formatCollateralRatio(market.rebalanceThreshold)}
-</div>
-</div>
+ {/* Rebalance Threshold */}
+ <div className="text-center">
+ <div className="text-[#1E4775] font-mono text-sm font-semibold">
+ {formatCollateralRatio(market.rebalanceThreshold)}
+ </div>
+ </div>
 
  {/* Health Status */}
  <div className="text-center">
@@ -643,7 +775,7 @@ function MarketCard({
 
  <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
  {/* Token Prices & Supply */}
- <div className="bg-white p-2.5 space-y-2">
+ <div className="bg-white p-2.5 space-y-2 lg:row-span-2">
  <h4 className="text-[#1E4775] font-semibold text-xs uppercase tracking-wider mb-2">
  Prices & Supply
  </h4>
@@ -672,19 +804,167 @@ function MarketCard({
  <div className="text-[#1E4775]/60 text-[9px]">
  Anchor Supply
  </div>
+ <div className="flex items-center justify-center gap-1">
+ {market.marketName?.toLowerCase().includes("btc") ? (
+ <Image
+ src="/icons/haBTC.png"
+ alt="haBTC"
+ width={16}
+ height={16}
+ className="flex-shrink-0"
+ />
+ ) : (
+ <Image
+ src="/icons/haETH.png"
+ alt="haETH"
+ width={16}
+ height={16}
+ className="flex-shrink-0"
+ />
+ )}
  <div className="text-[#1E4775] font-mono font-semibold text-[10px]">
  {formatTokenBalanceMax2Decimals(market.peggedTokenBalance)}
+ </div>
  </div>
  </div>
  <div className="bg-[#1E4775]/5 p-1.5 text-center">
  <div className="text-[#1E4775]/60 text-[9px]">
  Sail Supply
  </div>
+ <div className="flex items-center justify-center gap-1">
+ {(() => {
+   // Determine sail token icon based on market type
+   const marketIdLower = market.marketId.toLowerCase();
+   const isBtcMarket = marketIdLower.includes("btc");
+   const collateralLower = collateralHeldSymbol.toLowerCase();
+   
+   if (isBtcMarket) {
+     // BTC markets
+     if (collateralLower.includes("fxusd") || collateralLower.includes("fxsave")) {
+       return (
+         <Image
+           src="/icons/hsUSDBTC.png"
+           alt="hsUSDBTC"
+           width={16}
+           height={16}
+           className="flex-shrink-0"
+         />
+       );
+     } else if (collateralLower.includes("steth") || collateralLower.includes("wsteth")) {
+       return (
+         <Image
+           src="/icons/hsETHBTC.png"
+           alt="hsETHBTC"
+           width={16}
+           height={16}
+           className="flex-shrink-0"
+         />
+       );
+     }
+   } else {
+     // ETH markets
+     if (collateralLower.includes("fxusd") || collateralLower.includes("fxsave")) {
+       return (
+         <Image
+           src="/icons/hsUSDETH.png"
+           alt="hsUSDETH"
+           width={16}
+           height={16}
+           className="flex-shrink-0"
+         />
+       );
+     }
+   }
+   // Fallback to default
+   return (
+     <Image
+       src="/icons/hsUSDETH.png"
+       alt="hsToken"
+       width={16}
+       height={16}
+       className="flex-shrink-0"
+     />
+   );
+ })()}
  <div className="text-[#1E4775] font-mono font-semibold text-[10px]">
  {formatTokenBalanceMax2Decimals(market.leveragedTokenBalance)}
  </div>
  </div>
  </div>
+ </div>
+
+    {/* Distribution Pie Chart */}
+    {distributionData.length > 0 && (
+      <div className="mt-2 mb-1">
+        <h5 className="text-[#1E4775] font-semibold text-[10px] uppercase tracking-wider mb-1.5">
+          Supply Distribution
+        </h5>
+        <div className="w-full" style={{ height: "220px" }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={distributionData}
+                cx="50%"
+                cy="50%"
+                labelLine={false}
+                label={false}
+                outerRadius={80}
+                fill="#8884d8"
+                dataKey="value"
+              >
+                {distributionData.map((entry, index) => {
+                  let color = "#1E4775"; // harbor-blue (default)
+                  if (entry.name === "Not Deposited") {
+                    color = "#1E4775"; // harbor-blue
+                  } else if (entry.name === "Collateral SP") {
+                    color = "#9ED5BE"; // toned down seafoam green
+                  } else if (entry.name === "Sail SP") {
+                    color = "#FF8A7A"; // harbor-coral (pearl orange)
+                  } else if (entry.name === "Sail Supply") {
+                    color = "#E9C46A"; // yellow
+                  }
+                  return <Cell key={`cell-${index}`} fill={color} stroke="#1E4775" strokeWidth={entry.name === "Sail SP" ? 0 : 0} />;
+                })}
+              </Pie>
+              <Tooltip 
+                formatter={(value: number, name: string, props: any) => {
+                  const total = distributionData.reduce((sum, item) => sum + item.value, 0);
+                  const percent = total > 0 ? ((value / total) * 100).toFixed(1) : '0.0';
+                  return [
+                    `${percent}%`,
+                    name
+                  ];
+                }}
+              />
+              <Legend 
+                wrapperStyle={{ 
+                  fontSize: '9px', 
+                  color: '#1E4775',
+                  paddingTop: '8px',
+                  paddingBottom: '4px',
+                  paddingLeft: '8px',
+                  paddingRight: '8px',
+                  backgroundColor: 'rgba(30, 71, 117, 0.05)', // #1E4775/5
+                  borderRadius: '4px',
+                  marginTop: '8px',
+                  marginBottom: '0px',
+                  display: 'flex',
+                  justifyContent: 'center',
+                  flexWrap: 'nowrap',
+                  gap: '32px',
+                  overflow: 'hidden'
+                }}
+                layout="horizontal"
+                iconType="circle"
+                formatter={(value: string) => (
+                  <span style={{ color: "#1E4775" }}>{value}</span>
+                )}
+              />
+            </PieChart>
+          </ResponsiveContainer>
+ </div>
+ </div>
+    )}
  </div>
 
  {/* Stability Pools */}
@@ -697,10 +977,8 @@ function MarketCard({
  const userData = userPools?.find(
  (u) => u.poolAddress === pool.address
  );
- const poolTokenPriceUSD =
-  pool.type === "collateral"
-    ? tokenPrices?.peggedPriceUSD ?? 0
-    : tokenPrices?.leveragedPriceUSD ?? 0;
+ // Both collateral and sail pools hold haBTC/haETH tokens, so use peggedPriceUSD for both
+ const poolTokenPriceUSD = tokenPrices?.peggedPriceUSD ?? 0;
  const withdrawStatus = userData
  ? getWithdrawalRequestStatus(
  userData.withdrawalRequest.requestedAt,
@@ -714,11 +992,23 @@ function MarketCard({
  <span className="text-[#1E4775] font-semibold text-[10px] w-12">
  {pool.type ==="collateral" ?"Anchor" :"Sail"}
  </span>
- <div className="grid grid-cols-4 gap-1.5 text-xs flex-1">
+ <div className="grid grid-cols-5 gap-1.5 text-xs flex-1">
  <div className="bg-[#1E4775]/5 p-1.5 text-center">
- <div className="text-[#1E4775]/60 text-[9px]">TVL (USD)</div>
+ <div className="text-[#1E4775]/60 text-[9px]">Anchor Token TVL</div>
  <div className="text-[#1E4775] font-mono font-semibold text-[10px]">
  {formatCompactUSD((Number(pool.tvl) / 1e18) * poolTokenPriceUSD)} ({formatTokenBalanceMax2Decimals(pool.tvl)} {market.marketName?.toLowerCase().includes("btc") ? "haBTC" : "haETH"})
+ </div>
+ </div>
+ <div className="bg-[#1E4775]/5 p-1.5 text-center">
+ <div className="text-[#1E4775]/60 text-[9px]">APR</div>
+ <div className="text-[#1E4775] font-mono font-semibold text-[10px]">
+ {(() => {
+   // Get APR from poolRewardsMap (same as anchor page)
+   const poolReward = poolRewardsMap.get(pool.address);
+   const apr = poolReward?.totalRewardAPR ?? 0;
+   // Format APR same as anchor page: show value if > 0, otherwise "-"
+   return apr > 0 ? `${apr.toFixed(2)}%` : "-";
+ })()}
  </div>
  </div>
  <div className="bg-[#1E4775]/5 p-1.5 text-center">
@@ -765,6 +1055,213 @@ function MarketCard({
  </div>
  );
  })}
+ </div>
+ </div>
+
+ {/* Yield (Anchor Supply) */}
+ <div className="bg-white p-2.5 space-y-2 lg:col-span-2">
+ <h4 className="text-[#1E4775] font-semibold text-xs uppercase tracking-wider mb-2">
+ Anchor Supply
+ </h4>
+ <div className="space-y-2">
+  <div className="flex flex-col gap-2">
+   <div className="flex items-center gap-2">
+    <span className="text-[#1E4775] font-semibold text-[10px] w-12">
+     Yield
+    </span>
+    <div className="grid grid-cols-5 gap-1.5 text-xs flex-1">
+     {(() => {
+      const anchorSupply = market.peggedTokenBalance;
+      const collateralPoolTVL = pools.find(p => p.type === "collateral")?.tvl || 0n;
+      const sailPoolTVL = pools.find(p => p.type === "leveraged")?.tvl || 0n;
+      const anchorNotDeposited = anchorSupply > (collateralPoolTVL + sailPoolTVL) 
+        ? anchorSupply - collateralPoolTVL - sailPoolTVL 
+        : 0n;
+      
+      const anchorSupplyNum = Number(anchorSupply) / 1e18;
+      const poolTokenPriceUSD = tokenPrices?.peggedPriceUSD ?? 0;
+      const totalTVL = anchorSupplyNum * poolTokenPriceUSD;
+      const tokenSymbol = market.marketName?.toLowerCase().includes("btc") ? "haBTC" : "haETH";
+
+      const categories = [
+        { name: "Not Deposited", value: anchorNotDeposited, color: "#1E4775" },
+        { name: "Collateral SP", value: collateralPoolTVL, color: "#9ED5BE" },
+        { name: "Sail SP", value: sailPoolTVL, color: "#FF8A7A" },
+      ];
+
+      // Calculate percentages for bar (based on Anchor Supply only, no Sail Supply)
+      const notDepositedNum = Number(anchorNotDeposited) / 1e18;
+      const collateralPoolNum = Number(collateralPoolTVL) / 1e18;
+      const sailPoolNum = Number(sailPoolTVL) / 1e18;
+
+      const notDepositedPercent = anchorSupplyNum > 0 ? (notDepositedNum / anchorSupplyNum) * 100 : 0;
+      const collateralPoolPercent = anchorSupplyNum > 0 ? (collateralPoolNum / anchorSupplyNum) * 100 : 0;
+      const sailPoolPercent = anchorSupplyNum > 0 ? (sailPoolNum / anchorSupplyNum) * 100 : 0;
+
+      // Yield Generating Collateral: Full TVL (minter's total collateral) converted to wrapped collateral token
+      // Use the minter's total collateral TVL (totalTVLUSD) and wrapped collateral amount
+      const tvlYieldGeneratorUSD = totalTVLUSD; // Full minter TVL in USD
+      // collateralTokensWrapped is already in token units (not wei), convert to wei for formatting
+      const tvlYieldGeneratorWrappedTokenWei = BigInt(Math.floor(collateralTokensWrapped * 1e18));
+      const wrappedCollateralSymbol = market.marketId?.toLowerCase().includes("fxusd") || market.marketId?.toLowerCase().includes("fx-usd") ? "fxSAVE" : "wstETH";
+
+      return (
+        <>
+          {/* First box: Yield Generating Collateral */}
+          <div className="bg-[#1E4775]/5 p-1.5 text-center">
+            <div className="text-[#1E4775]/60 text-[9px]">Yield Generating Collateral</div>
+            <div className="text-[#1E4775] font-mono font-semibold text-[10px]">
+              {formatCompactUSD(tvlYieldGeneratorUSD)}
+            </div>
+            <div className="text-[#1E4775]/70 font-mono text-[9px] mt-0.5">
+              {formatTokenBalanceMax2Decimals(tvlYieldGeneratorWrappedTokenWei)} {wrappedCollateralSymbol}
+            </div>
+          </div>
+
+          {/* Second box: Anchor Token TVL */}
+          <div className="bg-[#1E4775]/5 p-1.5 text-center">
+            <div className="text-[#1E4775]/60 text-[9px]">Anchor Token TVL</div>
+            <div className="text-[#1E4775] font-mono font-semibold text-[10px]">
+              {formatCompactUSD(totalTVL)}
+            </div>
+            <div className="text-[#1E4775]/70 font-mono text-[9px] mt-0.5">
+              {formatTokenBalanceMax2Decimals(anchorSupply)} {tokenSymbol}
+            </div>
+          </div>
+
+          {/* Three category boxes */}
+          {categories.map((category) => {
+            const valueNum = Number(category.value) / 1e18;
+            const usdValue = valueNum * poolTokenPriceUSD;
+            const percent = anchorSupplyNum > 0 ? ((valueNum / anchorSupplyNum) * 100).toFixed(1) : "0.0";
+
+            return (
+              <div key={category.name} className="bg-[#1E4775]/5 p-1.5 text-center">
+                <div className="text-[#1E4775]/60 text-[9px]">{category.name}</div>
+                <div className="text-[#1E4775] font-mono font-semibold text-[10px]">
+                  {formatCompactUSD(usdValue)}
+                </div>
+                <div className="text-[#1E4775]/70 font-mono text-[9px] mt-0.5">
+                  {formatTokenBalanceMax2Decimals(category.value)} {tokenSymbol}
+                </div>
+                <div className="text-[#1E4775]/60 font-mono text-[9px]">
+                  {percent}%
+ </div>
+ </div>
+ );
+ })}
+        </>
+      );
+     })()}
+    </div>
+   </div>
+
+   {/* Bar visualization underneath */}
+   {(() => {
+    const anchorSupply = market.peggedTokenBalance;
+    const collateralPoolTVL = pools.find(p => p.type === "collateral")?.tvl || 0n;
+    const sailPoolTVL = pools.find(p => p.type === "leveraged")?.tvl || 0n;
+    const anchorNotDeposited = anchorSupply > (collateralPoolTVL + sailPoolTVL) 
+      ? anchorSupply - collateralPoolTVL - sailPoolTVL 
+      : 0n;
+    
+    const anchorSupplyNum = Number(anchorSupply) / 1e18;
+    const notDepositedNum = Number(anchorNotDeposited) / 1e18;
+    const collateralPoolNum = Number(collateralPoolTVL) / 1e18;
+    const sailPoolNum = Number(sailPoolTVL) / 1e18;
+
+    const notDepositedPercent = anchorSupplyNum > 0 ? (notDepositedNum / anchorSupplyNum) * 100 : 0;
+    const collateralPoolPercent = anchorSupplyNum > 0 ? (collateralPoolNum / anchorSupplyNum) * 100 : 0;
+    const sailPoolPercent = anchorSupplyNum > 0 ? (sailPoolNum / anchorSupplyNum) * 100 : 0;
+
+    return (
+      <div className="flex items-center gap-2">
+       <div className="w-12"></div>
+       <div className="flex-1 space-y-1">
+        {/* Yield/No Yield indicator above bar */}
+        <div className="relative flex items-center text-[8px] text-[#1E4775]/60 px-1" style={{ height: '14px' }}>
+          {/* No yield label on left with arrow, aligned to pipe */}
+          <span 
+            className="absolute whitespace-nowrap text-right"
+            style={{ 
+              right: `${100 - notDepositedPercent}%`,
+              paddingRight: '12px'
+            }}
+          >
+            ⟵ no yield
+          </span>
+          {/* Yield label on right with arrow, aligned to pipe */}
+          <span 
+            className="absolute whitespace-nowrap text-left"
+            style={{ 
+              left: `${notDepositedPercent}%`,
+              paddingLeft: '12px'
+            }}
+          >
+            yield ⟶
+          </span>
+        </div>
+
+        {/* Bar container */}
+        <div className="relative h-4 bg-[#1E4775]/10 rounded overflow-visible">
+          {/* Bar segments */}
+          {notDepositedPercent > 0 && (
+            <div 
+              className="absolute top-0 bottom-0 bg-[#1E4775] rounded-l"
+              style={{ left: '0%', width: `${notDepositedPercent}%` }}
+            />
+          )}
+          {collateralPoolPercent > 0 && (
+            <div 
+              className="absolute top-0 bottom-0"
+              style={{ backgroundColor: "#9ED5BE", left: `${notDepositedPercent}%`, width: `${collateralPoolPercent}%` }}
+            />
+          )}
+          {sailPoolPercent > 0 && (
+            <div 
+              className="absolute top-0 bottom-0 bg-[#FF8A7A] rounded-r"
+              style={{ left: `${notDepositedPercent + collateralPoolPercent}%`, width: `${sailPoolPercent}%` }}
+            />
+          )}
+
+          {/* Vertical pipe/divider between yield and no yield - extends 10px above and below bar */}
+          {/* No yield = Not Deposited; Yield = Collateral SP + Sail SP */}
+          <div 
+            className="absolute w-0.5 bg-red-500 z-10"
+            style={{ 
+              left: `${notDepositedPercent}%`,
+              top: '-10px',
+              bottom: '-10px'
+            }}
+          />
+        </div>
+
+        {/* Pool names below bar - aligned with segments */}
+        <div className="relative flex text-[8px] text-[#1E4775] px-1" style={{ height: '16px' }}>
+          <div 
+            className="absolute text-center"
+            style={{ left: '0%', width: `${notDepositedPercent}%` }}
+          >
+            Not Deposited
+          </div>
+          <div 
+            className="absolute text-center"
+            style={{ left: `${notDepositedPercent}%`, width: `${collateralPoolPercent}%` }}
+          >
+            Collateral SP
+          </div>
+          <div 
+            className="absolute text-center"
+            style={{ left: `${notDepositedPercent + collateralPoolPercent}%`, width: `${sailPoolPercent}%` }}
+          >
+            Sail SP
+          </div>
+        </div>
+       </div>
+      </div>
+    );
+   })()}
+  </div>
  </div>
  </div>
  </div>
@@ -814,6 +1311,7 @@ export default function TransparencyPage() {
 
  // Fetch wrapped collateral token prices for TVL calculation (same as Anchor page)
  const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving");
+ const { price: fxUSDPrice } = useCoinGeckoPrice("f-x-protocol-fxusd");
  const { price: wstETHPrice } = useCoinGeckoPrice("wrapped-steth");
  const { price: stETHPrice } = useCoinGeckoPrice("lido-staked-ethereum-steth");
  const { price: btcPrice } = useCoinGeckoPrice("bitcoin", 120000);
@@ -830,14 +1328,160 @@ export default function TransparencyPage() {
        const pegTarget =
          (marketsConfig as any)?.[m.marketId]?.pegTarget || "USD";
        return {
-         marketId: m.marketId,
-         minterAddress: m.minterAddress,
+       marketId: m.marketId,
+       minterAddress: m.minterAddress,
          pegTarget,
        };
      })
      .filter((x) => !!x.minterAddress);
  }, [finishedMarkets]);
  const tokenPricesByMarket = useMultipleTokenPrices(tokenPriceInputs as any);
+ const { address: userAddress } = useAccount();
+
+const volatilityMarkets = useMemo(
+  () =>
+    finishedMarkets.map((m) => ({
+      minterAddress: m.minterAddress as `0x${string}` | undefined,
+      collateralPoolAddress: m.stabilityPoolCollateralAddress as
+        | `0x${string}`
+        | undefined,
+      sailPoolAddress: m.stabilityPoolLeveragedAddress as
+        | `0x${string}`
+        | undefined,
+    })),
+  [finishedMarkets]
+);
+const { data: volatilityProtectionMap } = useMultipleVolatilityProtection(
+  volatilityMarkets,
+  {
+    enabled: finishedMarkets.length > 0,
+    refetchInterval: 30000,
+  }
+);
+
+ // Build all pools from all markets for APR calculation (same approach as anchor page)
+ const allPoolsForRewards = useMemo(() => {
+   if (finishedMarkets.length === 0) return [];
+
+   const poolsArray: Array<{
+     address: `0x${string}`;
+     poolType: "collateral" | "sail";
+     marketId: string;
+     peggedTokenPrice: bigint | undefined;
+     collateralPrice: bigint | undefined;
+     collateralPriceDecimals: number | undefined;
+     peggedTokenAddress: `0x${string}` | undefined;
+     collateralTokenAddress: `0x${string}` | undefined;
+   }> = [];
+
+   finishedMarkets.forEach((market) => {
+     const marketCfg = (marketsConfig as any)?.[market.marketId];
+     const maxPrice = market.maxPrice; // Use maxPrice (maxUnderlyingPrice) to match anchor page
+
+     // Get pools for this market
+     const marketPools = pools.filter(
+       (p) =>
+         p.address === market.stabilityPoolCollateralAddress ||
+         p.address === market.stabilityPoolLeveragedAddress
+     );
+
+     marketPools.forEach((pool) => {
+       poolsArray.push({
+         address: pool.address,
+         poolType: pool.type === "collateral" ? "collateral" as const : "sail" as const,
+         marketId: market.marketId,
+         peggedTokenPrice: market.peggedTokenPrice,
+         collateralPrice: maxPrice, // Using maxPrice (maxUnderlyingPrice) to match anchor page
+         collateralPriceDecimals: 18,
+         peggedTokenAddress: market.peggedTokenAddress,
+         collateralTokenAddress: marketCfg?.addresses?.wrappedCollateralToken as `0x${string}` | undefined,
+       });
+     });
+   });
+
+   return poolsArray;
+ }, [finishedMarkets, pools]);
+
+ // Build global token price map for all reward tokens (same as useAnchorRewards)
+ const globalTokenPriceMap = useMemo(() => {
+   const map = new Map<string, number>();
+
+   finishedMarkets.forEach((market) => {
+     const marketCfg = (marketsConfig as any)?.[market.marketId];
+     const collateralHeldSymbol = marketCfg?.collateral?.symbol || marketCfg?.collateral?.underlyingSymbol || "";
+     const maxPrice = market.maxPrice; // Use maxPrice to match anchor page
+
+     // Add pegged token price (in underlying asset units, not USD)
+     if (market.peggedTokenAddress && market.peggedTokenPrice) {
+       const price = Number(market.peggedTokenPrice) / 1e18;
+       map.set(market.peggedTokenAddress.toLowerCase(), price);
+     }
+
+     // Add wrapped collateral token price (reward tokens commonly include wrapped collateral, e.g. fxSAVE / wstETH)
+     const wrappedCollateralTokenAddress = marketCfg?.addresses?.wrappedCollateralToken as `0x${string}` | undefined;
+     const wrappedSymbol = collateralHeldSymbol.toLowerCase();
+     if (wrappedCollateralTokenAddress) {
+       let p: number | undefined;
+       if (wrappedSymbol === "fxsave") p = fxSAVEPrice ?? undefined;
+       else if (wrappedSymbol === "wsteth") p = wstETHPrice ?? undefined;
+       else if (wrappedSymbol === "steth") p = stETHPrice ?? undefined;
+       if (p && Number.isFinite(p) && p > 0) {
+         map.set(wrappedCollateralTokenAddress.toLowerCase(), p);
+       }
+     }
+
+     // Add collateral token price in USD if it might be used as a reward token
+     // For fxUSD markets: use CoinGecko USD price (~$1), not oracle price (which is in ETH units)
+     const collateralTokenAddress = marketCfg?.addresses?.collateralToken as `0x${string}` | undefined;
+     if (collateralTokenAddress) {
+       const collateralSymbol = collateralHeldSymbol.toLowerCase();
+       // For fxUSD, use CoinGecko price in USD
+       if (collateralSymbol === "fxusd") {
+         // fxUSD should be priced at ~$1 USD
+         const price = fxUSDPrice || 1.0;
+         if (price > 0) {
+           map.set(collateralTokenAddress.toLowerCase(), price);
+         }
+       }
+       // For stETH/wstETH, the price is already added via wrappedCollateralTokenAddress
+       // We don't need to add it again here
+     }
+   });
+
+   return map;
+ }, [finishedMarkets, fxSAVEPrice, fxUSDPrice, wstETHPrice, stETHPrice]);
+
+ // Build peggedPriceUSDMap for APR calculation
+ const peggedPriceUSDMap = useMemo(() => {
+   const map: Record<string, bigint | undefined> = {};
+   finishedMarkets.forEach((market) => {
+     const tokenPrices = tokenPricesByMarket[market.marketId];
+     if (tokenPrices?.peggedPriceUSD && tokenPrices.peggedPriceUSD > 0) {
+       map[market.marketId] = BigInt(Math.floor(tokenPrices.peggedPriceUSD * 1e18));
+     }
+   });
+   return map;
+ }, [finishedMarkets, tokenPricesByMarket]);
+
+ // Calculate APR for all pools at page level (same as anchor page)
+ const { data: allPoolRewards = [] } = useAllStabilityPoolRewards({
+   pools: allPoolsForRewards,
+   tokenPriceMap: globalTokenPriceMap, // Pass the token price map for reward token price lookup
+   ethPrice: ethPrice ?? undefined,
+   btcPrice: btcPrice ?? undefined,
+   peggedPriceUSDMap: Object.keys(peggedPriceUSDMap).length > 0 ? peggedPriceUSDMap : undefined,
+   enabled: finishedMarkets.length > 0 && allPoolsForRewards.length > 0,
+   overrideAddress: userAddress || ("0x0000000000000000000000000000000000000000" as `0x${string}`), // Use user address if available, otherwise dummy
+ });
+
+ // Create a map for quick lookup: poolAddress -> rewards (same as anchor page)
+ const poolRewardsMap = useMemo(() => {
+   const map = new Map<`0x${string}`, (typeof allPoolRewards)[0]>();
+   allPoolRewards.forEach((poolReward) => {
+     map.set(poolReward.poolAddress, poolReward);
+   });
+   return map;
+ }, [allPoolRewards]);
 
  return (
  <div className="min-h-screen text-white max-w-[1300px] mx-auto font-sans relative overflow-x-hidden">
@@ -898,7 +1542,7 @@ export default function TransparencyPage() {
 
  {/* Divider with refresh */}
  <div className="flex items-center justify-between border-t border-white/10 my-2 pt-2">
- <span className="text-white/40 text-[10px]">
+ <span className="text-white/40 text-[10px]" suppressHydrationWarning>
  Last updated: {new Date(lastUpdatedTimestamp).toLocaleString()}
  </span>
  <button
@@ -924,55 +1568,89 @@ export default function TransparencyPage() {
 
  {/* Check if any markets have finished genesis (have collateral) */}
  {!isLoading && finishedMarkets.length === 0 ? (
-   <div className="bg-[#17395F] border border-white/10 p-6 rounded-lg text-center">
-     <p className="text-white text-lg font-medium">
-       Maiden Voyage in progress for Harbor's first markets - coming soon!
-     </p>
-   </div>
+       <div className="bg-[#17395F] border border-white/10 p-6 rounded-lg text-center">
+         <p className="text-white text-lg font-medium">
+           Maiden Voyage in progress for Harbor's first markets - coming soon!
+         </p>
+       </div>
  ) : (
    <>
-     {finishedMarkets.length > 0 && (
-       <div className="hidden lg:block bg-white p-2 mb-2">
-         <div className="grid grid-cols-[1.3fr_1fr_1fr_1fr_1fr_1fr_auto] gap-4 items-center uppercase tracking-wider text-[10px] text-[#1E4775] font-bold">
+       {finishedMarkets.length > 0 && (
+        <div className="hidden lg:block bg-white p-2 mb-2">
+          <div className="grid grid-cols-[1.3fr_1fr_1fr_1fr_1fr_1fr_1fr_auto] gap-4 items-center uppercase tracking-wider text-[10px] text-[#1E4775] font-bold">
            <div className="text-center">Market</div>
-           <div className="text-center">Collateral Ratio</div>
-           <div className="text-center">Leverage</div>
-           <div className="text-center">TVL (USD)</div>
-           <div className="text-center">Threshold</div>
-           <div className="text-center">Health</div>
+             <div className="text-center">Collateral Ratio</div>
+             <div className="text-center">Leverage</div>
+            <div className="flex items-center justify-center gap-1">
+              <span>Vol. Protection</span>
+              <InfoTooltip
+                side="top"
+                label={
+                  <div className="space-y-2">
+                    <p className="font-semibold mb-1">Volatility Protection</p>
+                    <p>
+                      The percentage adverse price movement between collateral
+                      and the pegged token that the system can withstand before
+                      reaching the depeg point (100% collateral ratio).
+                    </p>
+                    <p>
+                      For example, an ETH-pegged token with USD collateral is
+                      protected against ETH price spikes (ETH becoming more
+                      expensive relative to USD).
+                    </p>
+                    <p>
+                      This accounts for stability pools that can rebalance and
+                      improve the collateral ratio during adverse price
+                      movements.
+                    </p>
+                    <p className="text-xs text-gray-400 italic">
+                      Higher percentage = more protection. Assumes no
+                      additional deposits or withdrawals.
+                    </p>
+                  </div>
+                }
+              >
+                <span className="text-[#1E4775]/70 cursor-help">[?]</span>
+              </InfoTooltip>
+            </div>
+            <div className="text-center">TVL (USD)</div>
+             <div className="text-center">Threshold</div>
+             <div className="text-center">Health</div>
+           </div>
          </div>
-       </div>
-     )}
+       )}
 
-     {isLoading && finishedMarkets.length === 0 ? (
-       <div className="space-y-2">
-         {[1, 2].map((i) => (
-           <div key={i} className="animate-pulse h-14 bg-white/10" />
-         ))}
-       </div>
-     ) : (
-       <div className="space-y-2">
-         {finishedMarkets.map((market) => (
-           <MarketCard
-             key={market.marketId}
-             market={market}
-             pools={pools.filter(
-               (p) =>
-                 p.address === market.stabilityPoolCollateralAddress ||
-                 p.address === market.stabilityPoolLeveragedAddress
-             )}
-             userPools={userPools}
-             tokenPricesByMarket={tokenPricesByMarket as any}
-             fxSAVEPrice={fxSAVEPrice}
-             wstETHPrice={wstETHPrice}
-             stETHPrice={stETHPrice}
-             btcPrice={btcPrice || undefined}
-             ethPrice={ethPrice || undefined}
-           />
-         ))}
-       </div>
-     )}
-   </>
+       {isLoading && finishedMarkets.length === 0 ? (
+         <div className="space-y-2">
+           {[1, 2].map((i) => (
+             <div key={i} className="animate-pulse h-14 bg-white/10" />
+           ))}
+         </div>
+       ) : (
+         <div className="space-y-2">
+           {finishedMarkets.map((market) => (
+             <MarketCard
+               key={market.marketId}
+               market={market}
+               pools={pools.filter(
+                 (p) =>
+                   p.address === market.stabilityPoolCollateralAddress ||
+                   p.address === market.stabilityPoolLeveragedAddress
+               )}
+               userPools={userPools}
+              tokenPricesByMarket={tokenPricesByMarket as any}
+              volatilityProtectionMap={volatilityProtectionMap}
+               fxSAVEPrice={fxSAVEPrice}
+               wstETHPrice={wstETHPrice}
+               stETHPrice={stETHPrice}
+               btcPrice={btcPrice || undefined}
+               ethPrice={ethPrice || undefined}
+             poolRewardsMap={poolRewardsMap}
+             />
+           ))}
+         </div>
+       )}
+     </>
  )}
  </main>
  </div>

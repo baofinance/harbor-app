@@ -47,7 +47,7 @@ export const AnchorWithdrawModal = ({
  abi: ERC20_ABI,
  functionName:"balanceOf",
  args: address ? [address] : undefined,
- query: { enabled: !!address && isOpen, refetchInterval: 5000 },
+ query: { enabled: !!address && isOpen, refetchInterval: 30000 },
  });
 
  // Calculate expected output
@@ -275,7 +275,7 @@ export const AnchorWithdrawModal = ({
 
  {txHash && (
  <div className="text-xs text-center text-[#1E4775]/70">
- Tx:{""}
+ Tx:{" "}
  <a
  href={`https://etherscan.io/tx/${txHash}`}
  target="_blank"

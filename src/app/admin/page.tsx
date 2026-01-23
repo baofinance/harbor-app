@@ -1,17 +1,41 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
  useAccount,
  useWriteContract,
  useReadContract,
- useWaitForTransactionReceipt,
+ useContractReads,
 } from "wagmi";
 import { parseEther, formatEther } from "viem";
 import { markets } from "../../config/markets";
-import WalletButton from "../../components/WalletButton";
-import Navigation from "../../components/Navigation";
+import { ConnectWallet } from "@/components/Wallet";
 import Link from "next/link";
+import { formatTimeRemaining } from "@/utils/formatters";
+
+const MINTER_FEES_READS_ABI = [
+  {
+    inputs: [],
+    name: "harvestable",
+    outputs: [{ name: "wrappedAmount", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "feeReceiver",
+    outputs: [{ type: "address" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "WRAPPED_COLLATERAL_TOKEN",
+    outputs: [{ type: "address" }],
+    stateMutability: "view",
+    type: "function",
+  },
+] as const;
 
 const minterABI = [
  {
@@ -134,6 +158,28 @@ const mockPriceFeedABI = [
  },
 ] as const;
 
+const STABILITY_POOL_REWARDS_ABI = [
+  {
+    type: "function",
+    name: "activeRewardTokens",
+    inputs: [],
+    outputs: [{ name: "", type: "address[]", internalType: "address[]" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "rewardData",
+    inputs: [{ name: "rewardToken", type: "address", internalType: "address" }],
+    outputs: [
+      { name: "lastUpdate", type: "uint256", internalType: "uint256" },
+      { name: "finishAt", type: "uint256", internalType: "uint256" },
+      { name: "rate", type: "uint256", internalType: "uint256" },
+      { name: "queued", type: "uint256", internalType: "uint256" },
+    ],
+    stateMutability: "view",
+  },
+] as const;
+
 // Add a helper function to safely parse numbers
 const safeParseEther = (value: string): bigint => {
  try {
@@ -172,6 +218,255 @@ export default function Admin() {
  useEffect(() => {
  setMounted(true);
  }, []);
+
+ // ---------------------------------------------------------------------------
+ // Fees + Harvestable summary (per market) - shown above "System Controls"
+ // ---------------------------------------------------------------------------
+ const marketOptions = Object.entries(markets)
+   .filter(([, m]) => (m as any)?.addresses?.minter)
+   .map(([id, m]) => ({
+     id,
+     name: (m as any)?.name ?? id,
+     minter: (m as any)?.addresses?.minter as `0x${string}`,
+   }));
+
+  const poolOptions = Object.entries(markets).flatMap(([id, m]) => {
+    const marketName = (m as any)?.name ?? id;
+    const collateralPool = (m as any)?.addresses?.stabilityPoolCollateral as
+      | `0x${string}`
+      | undefined;
+    const sailPool = (m as any)?.addresses?.stabilityPoolLeveraged as
+      | `0x${string}`
+      | undefined;
+    const pools: Array<{
+      id: string;
+      marketId: string;
+      marketName: string;
+      poolType: "collateral" | "sail";
+      address: `0x${string}`;
+    }> = [];
+    if (collateralPool) {
+      pools.push({
+        id: `${id}-collateral`,
+        marketId: id,
+        marketName,
+        poolType: "collateral",
+        address: collateralPool,
+      });
+    }
+    if (sailPool) {
+      pools.push({
+        id: `${id}-sail`,
+        marketId: id,
+        marketName,
+        poolType: "sail",
+        address: sailPool,
+      });
+    }
+    return pools;
+  });
+
+ const minterReads = marketOptions.flatMap((m) => [
+   { address: m.minter, abi: MINTER_FEES_READS_ABI, functionName: "harvestable" as const },
+   { address: m.minter, abi: MINTER_FEES_READS_ABI, functionName: "feeReceiver" as const },
+   { address: m.minter, abi: MINTER_FEES_READS_ABI, functionName: "WRAPPED_COLLATERAL_TOKEN" as const },
+ ]);
+
+ const { data: minterReadData, isLoading: isLoadingMinterReads } = useContractReads({
+   contracts: minterReads,
+   query: {
+     enabled: mounted && isConnected && minterReads.length > 0,
+     refetchInterval: 30000,
+     staleTime: 15000,
+     retry: 1,
+     allowFailure: true,
+   } as any,
+ });
+
+  const { data: poolRewardTokensData, isLoading: isLoadingPoolRewardTokens } =
+    useContractReads({
+      contracts: poolOptions.map((p) => ({
+        address: p.address,
+        abi: STABILITY_POOL_REWARDS_ABI,
+        functionName: "activeRewardTokens" as const,
+      })),
+      query: {
+        enabled: mounted && isConnected && poolOptions.length > 0,
+        refetchInterval: 30000,
+        staleTime: 15000,
+        retry: 1,
+        allowFailure: true,
+      } as any,
+    });
+
+  const poolRewardTokens = useMemo(() => {
+    return poolOptions.map((_, idx) => {
+      const res = poolRewardTokensData?.[idx];
+      if (res?.status === "success" && Array.isArray(res.result)) {
+        return res.result as `0x${string}`[];
+      }
+      return [] as `0x${string}`[];
+    });
+  }, [poolOptions, poolRewardTokensData]);
+
+  const rewardDataMeta = useMemo(() => {
+    const meta: Array<{
+      poolIndex: number;
+      rewardToken: `0x${string}`;
+      contract: {
+        address: `0x${string}`;
+        abi: typeof STABILITY_POOL_REWARDS_ABI;
+        functionName: "rewardData";
+        args: [`0x${string}`];
+      };
+    }> = [];
+    poolRewardTokens.forEach((tokens, poolIndex) => {
+      tokens.forEach((token) => {
+        meta.push({
+          poolIndex,
+          rewardToken: token,
+          contract: {
+            address: poolOptions[poolIndex].address,
+            abi: STABILITY_POOL_REWARDS_ABI,
+            functionName: "rewardData",
+            args: [token],
+          },
+        });
+      });
+    });
+    return meta;
+  }, [poolRewardTokens, poolOptions]);
+
+  const { data: rewardDataReads, isLoading: isLoadingRewardData } =
+    useContractReads({
+      contracts: rewardDataMeta.map((m) => m.contract),
+      query: {
+        enabled: mounted && isConnected && rewardDataMeta.length > 0,
+        refetchInterval: 30000,
+        staleTime: 15000,
+        retry: 1,
+        allowFailure: true,
+      } as any,
+    });
+
+  const poolStreamingRows = useMemo(() => {
+    const maxFinishByPool = new Map<number, bigint>();
+    rewardDataMeta.forEach((meta, idx) => {
+      const res = rewardDataReads?.[idx];
+      const tuple = res?.status === "success" ? res.result : undefined;
+      const finishAt =
+        Array.isArray(tuple) && tuple.length > 1
+          ? (tuple[1] as bigint)
+          : 0n;
+      const current = maxFinishByPool.get(meta.poolIndex) ?? 0n;
+      if (finishAt > current) {
+        maxFinishByPool.set(meta.poolIndex, finishAt);
+      }
+    });
+
+    const now = new Date();
+    return poolOptions.map((pool, idx) => {
+      const finishAt = maxFinishByPool.get(idx) ?? 0n;
+      const timeLeft =
+        finishAt > 0n
+          ? formatTimeRemaining(
+              new Date(Number(finishAt) * 1000).toISOString(),
+              now
+            )
+          : "-";
+      return {
+        ...pool,
+        finishAt,
+        timeLeft,
+      };
+    });
+  }, [poolOptions, rewardDataMeta, rewardDataReads]);
+
+ const feeBalanceReads = (minterReadData
+   ? marketOptions
+       .map((m, i) => {
+         const base = i * 3;
+         const feeReceiver =
+           minterReadData?.[base + 1]?.status === "success"
+             ? (minterReadData?.[base + 1]?.result as `0x${string}` | undefined)
+             : undefined;
+         const wrappedToken =
+           minterReadData?.[base + 2]?.status === "success"
+             ? (minterReadData?.[base + 2]?.result as `0x${string}` | undefined)
+             : undefined;
+         if (!feeReceiver || !wrappedToken) return null;
+         return {
+           marketIndex: i,
+           wrappedToken,
+           feeReceiver,
+           contract: {
+             address: wrappedToken,
+             abi: [
+               {
+                 inputs: [{ type: "address" }],
+                 name: "balanceOf",
+                 outputs: [{ type: "uint256" }],
+                 stateMutability: "view",
+                 type: "function",
+               },
+             ] as const,
+             functionName: "balanceOf" as const,
+             args: [feeReceiver],
+           },
+         };
+       })
+       .filter((x): x is NonNullable<typeof x> => !!x)
+   : []);
+
+ const { data: feeBalanceData, isLoading: isLoadingFeeBalances } = useContractReads({
+   contracts: feeBalanceReads.map((x) => x.contract),
+   query: {
+     enabled: mounted && isConnected && feeBalanceReads.length > 0,
+     refetchInterval: 30000,
+     staleTime: 15000,
+     retry: 1,
+     allowFailure: true,
+   } as any,
+ });
+
+ const feesSummaryRows = (() => {
+   const feeBalByMarketIndex = new Map<number, bigint>();
+   feeBalanceReads.forEach((meta, idx) => {
+     const res = feeBalanceData?.[idx];
+     const bal =
+       res?.status === "success" && res.result !== undefined && res.result !== null
+         ? (res.result as bigint)
+         : 0n;
+     feeBalByMarketIndex.set(meta.marketIndex, bal);
+   });
+
+   return marketOptions.map((m, i) => {
+     const base = i * 3;
+     const harvestable =
+       minterReadData?.[base]?.status === "success"
+         ? (minterReadData?.[base]?.result as bigint | undefined)
+         : undefined;
+     const feeReceiver =
+       minterReadData?.[base + 1]?.status === "success"
+         ? (minterReadData?.[base + 1]?.result as `0x${string}` | undefined)
+         : undefined;
+     const wrappedToken =
+       minterReadData?.[base + 2]?.status === "success"
+         ? (minterReadData?.[base + 2]?.result as `0x${string}` | undefined)
+         : undefined;
+     const feeBalance = feeBalByMarketIndex.get(i) ?? 0n;
+     const harvest = harvestable ?? 0n;
+     const total = feeBalance + harvest;
+     return {
+       ...m,
+       harvestable: harvest,
+       feeReceiver,
+       wrappedToken,
+       feeBalance,
+       total,
+     };
+   });
+ })();
 
  // Get the minter address from the first market
  const minterAddress = (markets as any)[Object.keys(markets)[0]].addresses
@@ -433,7 +728,7 @@ export default function Admin() {
  Please connect your wallet to access admin functions
  </p>
  <div className="inline-block">
- <WalletButton />
+ <ConnectWallet />
  </div>
  </div>
  </main>
@@ -456,11 +751,110 @@ export default function Admin() {
  Please connect your wallet to access admin functions
  </p>
  <div className="inline-block">
- <WalletButton />
+ <ConnectWallet />
  </div>
  </div>
  ) : (
- <div className="space-y-4">
+  <div className="space-y-4">
+    {/* Rewards Streaming (per pool) */}
+    <div className="bg-zinc-900/50 p-4 sm:p-6">
+      <div className="flex items-center justify-between gap-4 mb-3">
+        <div>
+          <h2 className="text-lg font-medium text-white font-geo">
+            Rewards Streaming (per stability pool)
+          </h2>
+          <div className="text-xs text-white/60 mt-1">
+            Time remaining until the current reward stream finishes.
+          </div>
+        </div>
+        {(isLoadingPoolRewardTokens || isLoadingRewardData) && (
+          <div className="text-xs text-white/60">Loading…</div>
+        )}
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-xs text-white/60 border-b border-white/10">
+              <th className="text-left py-2 pr-4">Market</th>
+              <th className="text-left py-2 pr-4">Pool</th>
+              <th className="text-right py-2">Time left</th>
+            </tr>
+          </thead>
+          <tbody>
+            {poolStreamingRows.map((row) => (
+              <tr key={row.id} className="border-t border-white/5">
+                <td className="py-2 pr-4 text-white">{row.marketName}</td>
+                <td className="py-2 pr-4 text-white capitalize">
+                  {row.poolType === "collateral" ? "Anchor" : "Sail"}
+                </td>
+                <td className="py-2 text-right text-white font-mono">
+                  {row.timeLeft}
+                </td>
+              </tr>
+            ))}
+            {poolStreamingRows.length === 0 && (
+              <tr>
+                <td className="py-3 text-xs text-white/60" colSpan={3}>
+                  No pools found.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    {/* Fees & Harvestable summary (per market) */}
+    <div className="bg-zinc-900/50 p-4 sm:p-6">
+     <div className="flex items-center justify-between gap-4 mb-3">
+       <div>
+         <h2 className="text-lg font-medium text-white font-geo">
+           Fees & Harvestable
+         </h2>
+         <div className="text-xs text-white/60 mt-1">
+           `harvestable()` on Minter + wrapped collateral token balance at `feeReceiver()`
+         </div>
+       </div>
+       {(isLoadingMinterReads || isLoadingFeeBalances) && (
+         <div className="text-xs text-white/60">Loading…</div>
+       )}
+     </div>
+
+     <div className="overflow-x-auto">
+       <table className="w-full text-sm">
+         <thead>
+           <tr className="text-xs text-white/60 border-b border-white/10">
+             <th className="text-left py-2 pr-4">Market</th>
+             <th className="text-right py-2 pr-4">Harvestable</th>
+             <th className="text-right py-2 pr-4">Fees</th>
+             <th className="text-right py-2 pr-4">Total</th>
+             <th className="text-left py-2">Fee Receiver</th>
+           </tr>
+         </thead>
+         <tbody>
+           {feesSummaryRows.map((r) => (
+             <tr key={r.id} className="border-t border-white/5">
+               <td className="py-2 pr-4 text-white">{r.name}</td>
+               <td className="py-2 pr-4 text-right font-mono text-white">
+                 {formatEther(r.harvestable)}
+               </td>
+               <td className="py-2 pr-4 text-right font-mono text-white">
+                 {formatEther(r.feeBalance)}
+               </td>
+               <td className="py-2 pr-4 text-right font-mono text-white">
+                 {formatEther(r.total)}
+               </td>
+               <td className="py-2 text-xs text-white/60 font-mono">
+                 {r.feeReceiver ?? "-"}
+               </td>
+             </tr>
+           ))}
+         </tbody>
+       </table>
+     </div>
+   </div>
+
  <div className="bg-zinc-900/50 p-4 sm:p-6">
  <h2 className="text-lg font-medium text-white mb-4 font-geo">
  System Controls

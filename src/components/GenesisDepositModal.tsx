@@ -14,7 +14,14 @@ import {
 } from "wagmi";
 import { BaseError, ContractFunctionRevertedError } from "viem";
 import { GENESIS_ABI, ERC20_ABI, contracts } from "../config/contracts";
-import { ZAP_ABI, STETH_ABI, WSTETH_ABI, USDC_ZAP_ABI } from "@/abis";
+import {
+  ZAP_ABI,
+  STETH_ABI,
+  WSTETH_ABI,
+  USDC_ZAP_ABI,
+  GENESIS_STETH_ZAP_PERMIT_ABI,
+  GENESIS_USDC_ZAP_PERMIT_ABI,
+} from "@/abis";
 import { useCollateralPrice } from "@/hooks/useCollateralPrice";
 import {
  TransactionProgressModal,
@@ -26,6 +33,9 @@ import { useDefiLlamaSwap, getDefiLlamaSwapTx } from "@/hooks/useDefiLlamaSwap";
 import { useUserTokens, getTokenAddress, getTokenInfo, useTokenDecimals } from "@/hooks/useUserTokens";
 import { useAnyTokenDeposit } from "@/hooks/useAnyTokenDeposit";
 import { TokenSelectorDropdown } from "@/components/TokenSelectorDropdown";
+import { usePermitOrApproval } from "@/hooks/usePermitOrApproval";
+import { InfoCallout } from "@/components/InfoCallout";
+import { Info, RefreshCw } from "lucide-react";
 
 interface GenesisDepositModalProps {
  isOpen: boolean;
@@ -78,6 +88,7 @@ export const GenesisDepositModal = ({
  const [slippageTolerance, setSlippageTolerance] = useState<number>(0.5); // Default 0.5% slippage
  const [slippageInputValue, setSlippageInputValue] = useState<string>("0.5"); // String for input to allow typing "0"
  const [showSlippageInput, setShowSlippageInput] = useState(false);
+const [permitEnabled, setPermitEnabled] = useState(true);
  const [step, setStep] = useState<ModalStep>("input");
  const [error, setError] = useState<string | null>(null);
  const [txHash, setTxHash] = useState<string | null>(null);
@@ -86,6 +97,12 @@ export const GenesisDepositModal = ({
  const [currentStepIndex, setCurrentStepIndex] = useState(0);
  const [successfulDepositAmount, setSuccessfulDepositAmount] =
  useState<string>("");
+ const [successfulDepositToken, setSuccessfulDepositToken] =
+ useState<string>("");
+ const progressStorageKey =
+  address && genesisAddress
+    ? `genesisDepositProgress:${address.toLowerCase()}:${genesisAddress.toLowerCase()}`
+    : null;
 
  // Delay contract reads until modal is fully mounted to avoid fetch errors
  const [mounted, setMounted] = useState(false);
@@ -100,10 +117,72 @@ export const GenesisDepositModal = ({
    }
  }, [isOpen]);
 
+// Reset state when modal opens - assume user wants to start fresh
+useEffect(() => {
+  if (!isOpen) return;
+  
+  // Reset all state to start fresh
+  setAmount("");
+  setSelectedAsset(collateralSymbol);
+  setCustomTokenAddress("");
+  setShowCustomTokenInput(false);
+  setSlippageTolerance(0.5);
+  setSlippageInputValue("0.5");
+  setShowSlippageInput(false);
+  setStep("input");
+  setError(null);
+  setTxHash(null);
+  setSuccessfulDepositAmount("");
+  setSuccessfulDepositToken("");
+  setProgressModalOpen(false);
+  setProgressSteps([]);
+  setCurrentStepIndex(0);
+  
+  // Clear any stored progress
+  if (progressStorageKey && typeof window !== "undefined") {
+    window.localStorage.removeItem(progressStorageKey);
+  }
+}, [isOpen, collateralSymbol, progressStorageKey]);
+
+useEffect(() => {
+  if (!progressStorageKey || typeof window === "undefined") return;
+  const isProcessing = step === "approving" || step === "depositing";
+  if (!isProcessing) {
+    window.localStorage.removeItem(progressStorageKey);
+    return;
+  }
+  const payload = {
+    step,
+    progressSteps,
+    currentStepIndex,
+    txHash,
+    successfulDepositAmount,
+  };
+  window.localStorage.setItem(progressStorageKey, JSON.stringify(payload));
+}, [
+  progressStorageKey,
+  step,
+  progressSteps,
+  currentStepIndex,
+  txHash,
+  successfulDepositAmount,
+]);
+
 // Fetch CoinGecko price (primary source)
 const { price: coinGeckoPrice, isLoading: isCoinGeckoLoading } = useCoinGeckoPrice(
   coinGeckoId || "",
   60000 // Refresh every 60 seconds
+);
+// Fallback for wstETH markets if wrapped-steth price is missing
+const shouldFetchStEthPrice = collateralSymbol.toLowerCase() === "wsteth";
+const { price: stEthCoinGeckoPrice } = useCoinGeckoPrice(
+  shouldFetchStEthPrice ? "lido-staked-ethereum-steth" : "",
+  60000
+);
+// Fetch price for fxSAVE if user might deposit it (for success message)
+const { price: fxSAVECoinGeckoPrice } = useCoinGeckoPrice(
+  "fx-usd-saving",
+  60000
 );
 
 // Get collateral price from oracle (fallback)
@@ -339,6 +418,7 @@ const coinGeckoIsWrappedToken = coinGeckoId && (
   ((coinGeckoId.toLowerCase() === "fxsave" || coinGeckoId.toLowerCase() === "fx-usd-saving") && collateralSymbol.toLowerCase() === "fxsave")
 );
 
+const isWstETH = collateralSymbol.toLowerCase() === "wsteth";
 // For wstETH: CoinGecko returns wstETH price directly (~$3,607), so use it as-is
 // For fxSAVE: CoinGecko returns fxUSD price ($1.00), so multiply by wrapped rate to get fxSAVE price
 // Only use oracle calculation if CoinGecko is not available
@@ -347,6 +427,16 @@ const wrappedTokenPriceUSD = (() => {
   // If CoinGecko returns the wrapped token price directly (e.g., "wrapped-steth" for wstETH)
   if (coinGeckoIsWrappedToken && coinGeckoPrice != null) {
     return coinGeckoPrice; // Use CoinGecko price directly, no wrapped rate multiplication
+  }
+
+  // Fallback for wstETH: use stETH price * wrapped rate if wrapped-steth is missing
+  if (
+    isWstETH &&
+    stEthCoinGeckoPrice != null &&
+    wrappedRate &&
+    wrappedRate > 0n
+  ) {
+    return stEthCoinGeckoPrice * (Number(wrappedRate) / 1e18);
   }
   
   // If CoinGecko returns underlying price (e.g., "fxusd" for fxSAVE)
@@ -542,6 +632,7 @@ const allowanceTarget = (useETHZap || useUSDCZap) && genesisZapAddress ? genesis
  // Contract write hooks
  const { writeContractAsync, isPending: isWritePending } = useWriteContract();
  const { sendTransactionAsync } = useSendTransaction();
+ const { handlePermitOrApproval } = usePermitOrApproval();
 
   // Use the balance from the asset balance map or custom token balance
   const balance = selectedAssetBalance;
@@ -554,6 +645,13 @@ const amountBigInt = amount && hasValidDecimals
   : 0n;
  const needsApproval =
  !isNativeETH && amountBigInt > 0 && amountBigInt > allowance;
+const canAttemptPermit =
+  !needsSwap &&
+  !isNativeETH &&
+  !!genesisZapAddress &&
+  ((isStETH && useETHZap) || ((isUSDC || isFXUSD) && useUSDCZap));
+const shouldUsePermit = permitEnabled && canAttemptPermit;
+const showPermitToggle = canAttemptPermit;
 const userCurrentDeposit: bigint = typeof currentDeposit === 'bigint' ? currentDeposit : 0n;
 
 // Calculate expected wstETH output for ETH deposits (for preview)
@@ -674,7 +772,12 @@ const newTotalDepositActual: bigint = userCurrentDeposit + actualCollateralDepos
  selectedAsset.toLowerCase() !== collateralSymbol.toLowerCase();
 
  const handleClose = () => {
- if (step ==="approving" || step ==="depositing") return; // Prevent closing during transactions
+ const isProcessing = step === "approving" || step === "depositing";
+ if (isProcessing) {
+   setProgressModalOpen(false);
+   onClose();
+   return;
+ }
  setAmount("");
  setSelectedAsset(collateralSymbol);
  setCustomTokenAddress("");
@@ -682,6 +785,7 @@ const newTotalDepositActual: bigint = userCurrentDeposit + actualCollateralDepos
  setSlippageTolerance(0.5);
  setSlippageInputValue("0.5");
  setShowSlippageInput(false);
+ setPermitEnabled(true);
  setStep("input");
  setError(null);
  setTxHash(null);
@@ -752,6 +856,110 @@ https://www.harborfinance.io/`;
  return true;
  };
 
+const buildProgressSteps = (params: {
+  includeApproval: boolean;
+  includeSwap: boolean;
+  needsSwapApproval: boolean;
+}) => {
+  const steps: TransactionStep[] = [];
+
+  if (params.needsSwapApproval) {
+    steps.push({
+      id: "approveSwap",
+      label: `Approve ${selectedAsset} for swap`,
+      status: "pending",
+    });
+  }
+  if (params.includeSwap) {
+    const swapTarget = isFxSAVEMarket ? "USDC" : "ETH";
+    steps.push({
+      id: "swap",
+      label: `Swap ${selectedAsset} → ${swapTarget}`,
+      status: "pending",
+    });
+  }
+  if (params.includeApproval) {
+    steps.push({
+      id: "approve",
+      label: `Approve ${selectedAsset}`,
+      status: "pending",
+    });
+  }
+  if (params.includeSwap && isFxSAVEMarket) {
+    steps.push({
+      id: "approveUSDC",
+      label: `Approve USDC for deposit`,
+      status: "pending",
+    });
+  }
+  steps.push({
+    id: "deposit",
+    label: "Deposit to Genesis",
+    status: "pending",
+  });
+
+  return steps;
+};
+
+const ensureFallbackApprovalSteps = (shouldIncludeApproval: boolean) => {
+  if (!shouldIncludeApproval) {
+    const fallbackSteps: TransactionStep[] = [
+      {
+        id: "approve",
+        label: `Approve ${selectedAsset}`,
+        status: "pending",
+      },
+      {
+        id: "deposit",
+        label: "Deposit to Genesis",
+        status: "pending",
+      },
+    ];
+    setProgressSteps(fallbackSteps);
+    setCurrentStepIndex(0);
+  }
+};
+
+const runApprovalStep = async (params: {
+  tokenAddress: `0x${string}`;
+  spender: `0x${string}`;
+  amount: bigint;
+  stepId?: string;
+}) => {
+  const stepId = params.stepId ?? "approve";
+
+  setStep("approving");
+  setProgressSteps((prev) =>
+    prev.map((s) =>
+      s.id === stepId ? { ...s, status: "in_progress" } : s
+    )
+  );
+  setError(null);
+  setTxHash(null);
+
+  const approveHash = await writeContractAsync({
+    address: params.tokenAddress,
+    abi: ERC20_ABI,
+    functionName: "approve",
+    args: [params.spender, params.amount],
+  });
+  setTxHash(approveHash);
+  await publicClient?.waitForTransactionReceipt({ hash: approveHash });
+  await refetchAllowance();
+  await new Promise((resolve) => setTimeout(resolve, 1000));
+  await refetchAllowance();
+
+  setProgressSteps((prev) =>
+    prev.map((s) =>
+      s.id === stepId
+        ? { ...s, status: "completed", txHash: approveHash }
+        : s
+    )
+  );
+
+  return approveHash;
+};
+
  const handleDeposit = async () => {
  if (!validateAmount()) return;
  
@@ -766,59 +974,97 @@ https://www.harborfinance.io/`;
 // This prevents race conditions with the refetching hook
 const preDepositBalance = userCurrentDeposit;
 
+// Prefer permit for direct USDC/FXUSD/stETH deposits, fallback to approval if needed
+let permitResult: { usePermit: boolean; permitSig?: { v: number; r: `0x${string}`; s: `0x${string}` }; deadline?: bigint } | null = null;
+let usePermit = false;
+let approvalCompleted = false;
+if (shouldUsePermit && isValidSelectedAssetAddress && amountBigInt > 0n) {
+  try {
+    permitResult = await handlePermitOrApproval(
+      selectedAssetAddress as `0x${string}`,
+      genesisZapAddress as `0x${string}`,
+      amountBigInt
+    );
+    usePermit = !!permitResult?.usePermit && !!permitResult?.permitSig && !!permitResult?.deadline;
+  } catch (permitError) {
+    console.warn("Permit precheck failed, falling back to approval:", permitError);
+    usePermit = false;
+  }
+}
+
  // Initialize progress modal steps
- const steps: TransactionStep[] = [];
- const includeApproval = !isNativeETH && needsApproval && !needsSwap; // For direct deposits only
+ const includeApproval = !isNativeETH && needsApproval && !needsSwap && !usePermit; // For direct deposits only
  const includeSwap = needsSwap && swapQuote;
  const needsSwapApproval = includeSwap && !isNativeETH; // Approve source token for swap (unless it's ETH)
- 
- // For swaps: first approve source token for ParaSwap, then swap
- if (needsSwapApproval) {
- steps.push({
- id:"approveSwap",
- label: `Approve ${selectedAsset} for swap`,
- status:"pending",
- });
- }
- if (includeSwap) {
- const swapTarget = isFxSAVEMarket ? "USDC" : "ETH";
- steps.push({
- id:"swap",
- label: `Swap ${selectedAsset} → ${swapTarget}`,
- status:"pending",
- });
- }
- // For direct deposits: approve after swap (if needed)
- if (includeApproval) {
- steps.push({
- id:"approve",
- label: `Approve ${selectedAsset}`,
- status:"pending",
- });
- }
- // For fxSAVE market swaps: approve USDC after swap
- if (includeSwap && isFxSAVEMarket) {
- steps.push({
- id:"approveUSDC",
- label: `Approve USDC for deposit`,
- status:"pending",
- });
- }
- steps.push({
- id:"deposit",
- label:"Deposit to Genesis",
- status:"pending",
+ const steps = buildProgressSteps({
+   includeApproval,
+   includeSwap: !!includeSwap,
+   needsSwapApproval,
  });
  setProgressSteps(steps);
  setCurrentStepIndex(0);
  setProgressModalOpen(true);
 
- // Execute swap if needed
- if (includeSwap && swapQuote && address) {
+ const tryPermitZap = async (params: {
+   type: "steth" | "usdc" | "fxusd";
+   amount: bigint;
+   minOut: bigint;
+ }) => {
+   if (!usePermit || !permitResult?.permitSig || !permitResult.deadline) {
+     return null;
+   }
+
+   try {
+     if (params.type === "steth") {
+       return await writeContractAsync({
+         address: genesisZapAddress as `0x${string}`,
+         abi: [...ZAP_ABI, ...GENESIS_STETH_ZAP_PERMIT_ABI] as const,
+         functionName: "zapStEthWithPermit",
+         args: [
+           params.amount,
+           address as `0x${string}`,
+           params.minOut,
+           permitResult.deadline,
+           permitResult.permitSig.v,
+           permitResult.permitSig.r,
+           permitResult.permitSig.s,
+         ],
+       });
+     }
+
+     return await writeContractAsync({
+       address: genesisZapAddress as `0x${string}`,
+       abi: [...USDC_ZAP_ABI, ...GENESIS_USDC_ZAP_PERMIT_ABI] as const,
+       functionName:
+         params.type === "fxusd"
+           ? "zapFxUsdToGenesisWithPermit"
+           : "zapUsdcToGenesisWithPermit",
+       args: [
+         params.amount,
+         params.minOut,
+         address as `0x${string}`,
+         permitResult.deadline,
+         permitResult.permitSig.v,
+         permitResult.permitSig.r,
+         permitResult.permitSig.s,
+       ],
+     });
+   } catch (permitError) {
+     console.error("Permit zap failed, falling back to approval:", permitError);
+     usePermit = false;
+     return null;
+   }
+ };
+
+ const executeSwapFlow = async () => {
+   if (!includeSwap || !swapQuote || !address) {
+     return true;
+   }
+
    try {
      const targetTokenSymbol = isFxSAVEMarket ? "USDC" : "ETH";
      const targetTokenDecimals = isFxSAVEMarket ? 6 : 18;
-     
+
      // Step 1: For ERC20 tokens, approve ParaSwap TokenTransferProxy BEFORE getting swap tx
      // (ParaSwap API checks allowance when building transaction and will fail if insufficient)
      if (!isNativeETH) {
@@ -889,8 +1135,6 @@ const preDepositBalance = userCurrentDeposit;
      // Step 3: Get fresh swap transaction data from ParaSwap RIGHT BEFORE sending
      // This ensures the transaction data is current and nonce will be handled correctly
      // Important: Get this AFTER approval is confirmed to ensure nonce is updated
-     const currentNonce = await publicClient?.getTransactionCount({ address });
-     
      const swapTx = await getDefiLlamaSwapTx(
        fromTokenForSwap,
        swapTargetToken as any,
@@ -1022,52 +1266,34 @@ const preDepositBalance = userCurrentDeposit;
     }
     
     setCurrentStepIndex(steps.findIndex((s) => s.id === "deposit"));
+    return true;
   } catch (err: any) {
     setError(err.message || "Swap failed. Please try again.");
     setStep("error");
+    setProgressModalOpen(false);
     setProgressSteps((prev) =>
       prev.map((s) =>
         s.id === "swap" ? { ...s, status: "error", error: err.message } : s
       )
     );
-    return;
+    return false;
   }
-}
+ };
+
+ // Execute swap if needed
+ const swapSucceeded = await executeSwapFlow();
+ if (!swapSucceeded) {
+   return;
+ }
 
 // For non-native tokens, check and approve if needed (only for direct deposits, not swaps)
-if (!isNativeETH && needsApproval && !needsSwap) {
- setStep("approving");
- setProgressSteps((prev) =>
- prev.map((s) =>
- s.id ==="approve" ? { ...s, status:"in_progress" } : s
- )
- );
- setError(null);
- setTxHash(null);
- const approveHash = await writeContractAsync({
- address: selectedAssetAddress as `0x${string}`,
- abi: ERC20_ABI,
- functionName:"approve",
-        args: [allowanceTarget as `0x${string}`, amountBigInt],
- // chainId intentionally omitted to let wallet infer the network
+if (!isNativeETH && needsApproval && !needsSwap && !usePermit) {
+ await runApprovalStep({
+   tokenAddress: selectedAssetAddress as `0x${string}`,
+   spender: allowanceTarget as `0x${string}`,
+   amount: amountBigInt,
  });
- setTxHash(approveHash);
- await publicClient?.waitForTransactionReceipt({ hash: approveHash });
- await refetchAllowance();
-
- // Give a moment for the blockchain state to update
- await new Promise((resolve) => setTimeout(resolve, 1000));
-
- // Force another refetch to ensure we have the latest allowance
- await refetchAllowance();
-
- setProgressSteps((prev) =>
- prev.map((s, idx) =>
- s.id ==="approve"
- ? { ...s, status:"completed", txHash: approveHash }
- : s
- )
- );
+ approvalCompleted = true;
  setCurrentStepIndex(steps.findIndex((s) => s.id ==="deposit"));
  }
 
@@ -1110,12 +1336,13 @@ setTxHash(null);
       
       // Apply 1% slippage buffer (99% of expected)
       const minWstETHOut = (expectedWstETH * 99n) / 100n;
+      const minEthEquivalentOut = (ethAmount * 99n) / 100n;
       
       depositHash = await writeContractAsync({
         address: genesisZapAddress,
         abi: ZAP_ABI,
         functionName:"zapEth",
-        args: [address as `0x${string}`, minWstETHOut],
+        args: [address as `0x${string}`, minWstETHOut, minEthEquivalentOut],
         value: ethAmount,
       });
       
@@ -1135,13 +1362,34 @@ setTxHash(null);
       
       // Apply 1% slippage buffer (99% of expected)
       const minWstETHOut = (expectedWstETH * 99n) / 100n;
-      
-      depositHash = await writeContractAsync({
-        address: genesisZapAddress,
-        abi: ZAP_ABI,
-        functionName:"zapStEth",
-        args: [amountBigInt, address as `0x${string}`, minWstETHOut],
+
+      const permitHash = await tryPermitZap({
+        type: "steth",
+        amount: amountBigInt,
+        minOut: minWstETHOut,
       });
+
+      if (permitHash) {
+        depositHash = permitHash;
+      } else {
+        if (!approvalCompleted && needsApproval) {
+          ensureFallbackApprovalSteps(includeApproval);
+          await runApprovalStep({
+            tokenAddress: selectedAssetAddress as `0x${string}`,
+            spender: allowanceTarget as `0x${string}`,
+            amount: amountBigInt,
+          });
+          approvalCompleted = true;
+          setCurrentStepIndex(1);
+        }
+
+        depositHash = await writeContractAsync({
+          address: genesisZapAddress,
+          abi: ZAP_ABI,
+          functionName:"zapStEth",
+          args: [amountBigInt, address as `0x${string}`, minWstETHOut],
+        });
+      }
     } else if ((isUSDC || needsSwap) && useUSDCZap && genesisZapAddress) {
       // Use zapUsdcToGenesis for USDC deposits with slippage protection
       // If this is after a swap, use the USDC amount from swap
@@ -1154,26 +1402,48 @@ setTxHash(null);
       // Calculate expected fxSAVE output from USDC amount
       // Note: previewZapUsdc doesn't exist on contract, so we calculate using wrappedRate
       // USDC is in 6 decimals, fxSAVE is in 18 decimals
-      if (!wrappedRate || wrappedRate === 0n) {
-        throw new Error("Unable to calculate expected output: wrappedRate not available");
+      const canCalculateMinOut = wrappedRate && wrappedRate > 0n;
+      let minFxSaveOut = 0n;
+      if (canCalculateMinOut) {
+        // Scale USDC from 6 to 18 decimals, then divide by wrappedRate
+        const usdcIn18Decimals = usdcAmount * 10n ** 12n;
+        const expectedFxSaveOut = (usdcIn18Decimals * 1000000000000000000n) / wrappedRate;
+        // Apply 1% slippage buffer (99% of expected)
+        minFxSaveOut = (expectedFxSaveOut * 99n) / 100n;
       }
-      
-      // Scale USDC from 6 to 18 decimals, then divide by wrappedRate
-      const usdcIn18Decimals = usdcAmount * 10n ** 12n;
-      const expectedFxSaveOut = (usdcIn18Decimals * 1000000000000000000n) / wrappedRate;
-      
-      // Apply 1% slippage buffer (99% of expected)
-      const minFxSaveOut = (expectedFxSaveOut * 99n) / 100n;
-      
-      // IMPORTANT: Pass USDC in native 6 decimals (usdcAmount), not scaled
-      // The preview function uses 18 decimals for calculation, but the actual
-      // zap function expects native USDC decimals and does internal scaling
-      depositHash = await writeContractAsync({
-        address: genesisZapAddress,
-        abi: USDC_ZAP_ABI,
-        functionName: "zapUsdcToGenesis",
-        args: [usdcAmount, minFxSaveOut, address as `0x${string}`],
-      });
+
+      const permitHash = !needsSwap && isUSDC
+        ? await tryPermitZap({
+            type: "usdc",
+            amount: usdcAmount,
+            minOut: minFxSaveOut,
+          })
+        : null;
+
+      if (permitHash) {
+        depositHash = permitHash;
+      } else {
+        if (!needsSwap && !approvalCompleted && needsApproval) {
+          ensureFallbackApprovalSteps(includeApproval);
+          await runApprovalStep({
+            tokenAddress: selectedAssetAddress as `0x${string}`,
+            spender: allowanceTarget as `0x${string}`,
+            amount: amountBigInt,
+          });
+          approvalCompleted = true;
+          setCurrentStepIndex(1);
+        }
+
+        // IMPORTANT: Pass USDC in native 6 decimals (usdcAmount), not scaled
+        // The preview function uses 18 decimals for calculation, but the actual
+        // zap function expects native USDC decimals and does internal scaling
+        depositHash = await writeContractAsync({
+          address: genesisZapAddress,
+          abi: USDC_ZAP_ABI,
+          functionName: "zapUsdcToGenesis",
+          args: [usdcAmount, minFxSaveOut, address as `0x${string}`],
+        });
+      }
       
       // Clean up swap amount
       if (needsSwap) {
@@ -1183,20 +1453,41 @@ setTxHash(null);
       // Use zapFxUsdToGenesis for FXUSD deposits with slippage protection
       // Calculate expected fxSAVE output: fxSAVE = FXUSD / wrappedRate
       // Both FXUSD and wrappedRate are in 18 decimals
-      if (!wrappedRate || wrappedRate === 0n) {
-        throw new Error("Unable to calculate expected output: wrappedRate not available");
+      const canCalculateMinOut = wrappedRate && wrappedRate > 0n;
+      let minFxSaveOut = 0n;
+      if (canCalculateMinOut) {
+        const expectedFxSaveOut = (amountBigInt * 1000000000000000000n) / wrappedRate;
+        // Apply 1% slippage buffer (99% of expected)
+        minFxSaveOut = (expectedFxSaveOut * 99n) / 100n;
       }
-      const expectedFxSaveOut = (amountBigInt * 1000000000000000000n) / wrappedRate;
-      
-      // Apply 1% slippage buffer (99% of expected)
-      const minFxSaveOut = (expectedFxSaveOut * 99n) / 100n;
-      
-      depositHash = await writeContractAsync({
-        address: genesisZapAddress,
-        abi: USDC_ZAP_ABI,
-        functionName: "zapFxUsdToGenesis",
-        args: [amountBigInt, minFxSaveOut, address as `0x${string}`],
+
+      const permitHash = await tryPermitZap({
+        type: "fxusd",
+        amount: amountBigInt,
+        minOut: minFxSaveOut,
       });
+
+      if (permitHash) {
+        depositHash = permitHash;
+      } else {
+        if (!approvalCompleted && needsApproval) {
+          ensureFallbackApprovalSteps(includeApproval);
+          await runApprovalStep({
+            tokenAddress: selectedAssetAddress as `0x${string}`,
+            spender: allowanceTarget as `0x${string}`,
+            amount: amountBigInt,
+          });
+          approvalCompleted = true;
+          setCurrentStepIndex(1);
+        }
+
+        depositHash = await writeContractAsync({
+          address: genesisZapAddress,
+          abi: USDC_ZAP_ABI,
+          functionName: "zapFxUsdToGenesis",
+          args: [amountBigInt, minFxSaveOut, address as `0x${string}`],
+        });
+      }
     } else {
       // For other tokens (wstETH, fxSAVE), use standard genesis deposit
       depositHash = await writeContractAsync({
@@ -1240,7 +1531,11 @@ if (isNativeETH || isStETH || isUSDC || isFXUSD) {
 }
 
  setStep("success");
-setSuccessfulDepositAmount(actualDepositedAmount);
+// Store the original amount and token the user deposited (before any swaps/conversions)
+// This ensures the success message shows what the user actually deposited (e.g., "1 fxSAVE")
+// rather than the converted collateral amount (e.g., "0.93 wstETH")
+setSuccessfulDepositAmount(amount); // Use original amount, not converted amount
+setSuccessfulDepositToken(selectedAsset); // Use the token user selected
  setProgressSteps((prev) =>
  prev.map((s) =>
  s.id ==="deposit"
@@ -1288,10 +1583,17 @@ setSuccessfulDepositAmount(actualDepositedAmount);
 
  // Handle user rejection first
  if (isUserRejection(err)) {
- errorMessage ="Transaction was rejected. Please try again.";
- setError(errorMessage);
- setStep("error");
- return;
+   errorMessage ="Transaction was rejected. Please try again.";
+   setError(errorMessage);
+   setStep("error");
+   setProgressModalOpen(false);
+   setProgressSteps([]);
+   setCurrentStepIndex(0);
+   // Clear stored progress on rejection
+   if (progressStorageKey && typeof window !== "undefined") {
+     window.localStorage.removeItem(progressStorageKey);
+   }
+   return;
  }
 
  // Check for RPC errors by examining error properties
@@ -1343,6 +1645,13 @@ setSuccessfulDepositAmount(actualDepositedAmount);
  }
  setError(errorMessage);
  setStep("error");
+ setProgressModalOpen(false);
+ setProgressSteps([]);
+ setCurrentStepIndex(0);
+ // Clear stored progress on error
+ if (progressStorageKey && typeof window !== "undefined") {
+   window.localStorage.removeItem(progressStorageKey);
+ }
  return;
  }
 
@@ -1427,6 +1736,7 @@ setSuccessfulDepositAmount(actualDepositedAmount);
 
  setError(errorMessage);
  setStep("error");
+ setProgressModalOpen(false);
  setProgressSteps((prev) =>
  prev.map((s, idx) =>
  idx === currentStepIndex
@@ -1434,6 +1744,10 @@ setSuccessfulDepositAmount(actualDepositedAmount);
  : s
  )
  );
+ // Clear stored progress on error
+ if (progressStorageKey && typeof window !== "undefined") {
+   window.localStorage.removeItem(progressStorageKey);
+ }
  }
  };
 
@@ -1451,7 +1765,7 @@ setSuccessfulDepositAmount(actualDepositedAmount);
  if (needsSwap) {
    return needsApproval ? "Approve, Swap & Deposit" : "Swap & Deposit";
  }
- return needsApproval ?"Approve & Deposit" :"Deposit";
+ return needsApproval && !canAttemptPermit ? "Approve & Deposit" : "Deposit";
  }
  };
 
@@ -1482,10 +1796,60 @@ setSuccessfulDepositAmount(actualDepositedAmount);
  };
 
  const renderSuccessContent = () => {
-// Format the success amount with USD
+// Format the success amount with USD using the original token that was deposited
+// Use the token the user selected (e.g., "fxSAVE") not the market's collateral (e.g., "wstETH")
+const depositToken = successfulDepositToken || selectedAsset || collateralSymbol;
+const depositTokenLower = depositToken.toLowerCase();
+
+// Get decimals for the deposit token - use the same logic as selectedTokenDecimals
+// If the deposit token matches selectedAsset, use selectedTokenDecimals
+// Otherwise, determine decimals based on token type
+const isDepositTokenUSDC = depositTokenLower === "usdc";
+const isDepositTokenETH = depositTokenLower === "eth";
+const depositTokenDecimalsValue = depositToken === selectedAsset 
+  ? selectedTokenDecimals // Use already-calculated decimals if it's the selected asset
+  : (isDepositTokenUSDC ? 6 : (isDepositTokenETH ? 18 : 18)); // Default to 18 for unknown tokens
+
+// Calculate price for the deposit token
+// If deposit token matches selectedAsset, use selectedAssetPriceUSD
+// Otherwise, use CoinGecko prices we already fetched or fallbacks
+let depositTokenPriceUSD = 0;
+if (depositToken === selectedAsset) {
+  // Use the price we already calculated for the selected asset
+  depositTokenPriceUSD = selectedAssetPriceUSD || 0;
+} else {
+  // Get price for the deposit token specifically using already-fetched prices
+  if (depositTokenLower === "fxsave") {
+    // Use CoinGecko fxSAVE price, or fallback to $1.08 (current fxSAVE price)
+    depositTokenPriceUSD = fxSAVECoinGeckoPrice || 1.08;
+  } else if (depositTokenLower === "wsteth") {
+    // Use CoinGecko wstETH price or stETH price * wrapped rate
+    depositTokenPriceUSD = coinGeckoPrice || (stEthCoinGeckoPrice && wrappedRate 
+      ? stEthCoinGeckoPrice * (Number(wrappedRate) / 1e18) 
+      : collateralPriceUSD);
+  } else if (depositTokenLower === "fxusd") {
+    depositTokenPriceUSD = 1.0;
+  } else if (depositTokenLower === "usdc") {
+    depositTokenPriceUSD = 1.0;
+  } else {
+    // Unknown token, try to use selectedAssetPriceUSD or collateralPriceUSD as fallback
+    depositTokenPriceUSD = selectedAssetPriceUSD || collateralPriceUSD || 0;
+  }
+}
+
+// Parse amount with correct decimals
 const successAmountNum = parseFloat(successfulDepositAmount || "0");
-const successAmountBigInt = successAmountNum > 0 ? parseEther(successfulDepositAmount) : 0n;
-const successFmt = formatTokenAmount(successAmountBigInt, collateralSymbol, collateralPriceUSD);
+const successAmountBigInt = successAmountNum > 0 
+  ? parseUnits(successfulDepositAmount, depositTokenDecimalsValue)
+  : 0n;
+
+const successFmt = formatTokenAmount(
+  successAmountBigInt, 
+  depositToken, 
+  depositTokenPriceUSD,
+  6, // maxDecimals
+  depositTokenDecimalsValue
+);
 
  return (
  <div className="space-y-4">
@@ -1635,15 +1999,22 @@ const successFmt = formatTokenAmount(successAmountBigInt, collateralSymbol, coll
  
  {/* Multi-token support notice */}
  {!needsSwap && (
-   <div className="p-2.5 bg-blue-50 border border-blue-200 text-xs text-blue-700">
-     <div className="flex items-start gap-2">
-       <ArrowPathIcon className="w-4 h-4 flex-shrink-0 mt-0.5" />
-       <div>
-         <span className="font-semibold">Tip:</span> You can deposit any ERC20 token! Non-collateral tokens will be automatically swapped via Velora.
-       </div>
-     </div>
-   </div>
+   <InfoCallout
+     tone="success"
+     title="Tip:"
+      icon={<RefreshCw className="w-4 h-4 flex-shrink-0 mt-0.5 text-green-600" />}
+   >
+     You can deposit any ERC20 token! Non-collateral tokens will be automatically swapped via Velora.
+   </InfoCallout>
  )}
+
+ {/* Large deposit recommendation */}
+ <InfoCallout
+   title="Info:"
+   icon={<Info className="w-4 h-4 flex-shrink-0 mt-0.5 text-blue-600" />}
+ >
+   For large deposits, Harbor recommends using wstETH or fxSAVE instead of the built-in swap and zaps.
+ </InfoCallout>
  
  {isNonCollateralAsset && (
  <div className="p-3 bg-[rgb(var(--surface-selected-rgb))]/20 border border-[rgb(var(--surface-selected-border-rgb))]/30 text-[#1E4775] text-sm">
@@ -1715,6 +2086,34 @@ const successFmt = formatTokenAmount(successAmountBigInt, collateralSymbol, coll
  </div>
  </div>
 
+ {/* Permit toggle (direct USDC/FXUSD/stETH only) */}
+ {showPermitToggle && (
+   <div className="flex items-center justify-between rounded-md border border-[#1E4775]/20 bg-[#17395F]/5 px-3 py-2 text-xs">
+     <div className="text-[#1E4775]/80">
+       Use permit (gasless approval) for this deposit
+     </div>
+     <label className="flex items-center gap-2 text-[#1E4775]/80">
+       <span className={permitEnabled ? "text-[#1E4775]" : "text-[#1E4775]/60"}>
+         {permitEnabled ? "On" : "Off"}
+       </span>
+       <button
+         type="button"
+         onClick={() => setPermitEnabled((prev) => !prev)}
+         className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+           permitEnabled ? "bg-[#1E4775]" : "bg-[#1E4775]/30"
+         }`}
+         aria-pressed={permitEnabled}
+         aria-label="Toggle permit usage"
+       >
+         <span
+           className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+             permitEnabled ? "translate-x-4" : "translate-x-1"
+           }`}
+         />
+       </button>
+     </label>
+   </div>
+ )}
 
  {/* Transaction Preview - Always visible */}
  <div className="p-3 bg-[#17395F]/10 border border-[#1E4775]/20 space-y-2 text-sm">
@@ -1910,7 +2309,7 @@ const successFmt = formatTokenAmount(successAmountBigInt, collateralSymbol, coll
  )}
 
  {/* Step Indicator */}
- {needsApproval &&
+ {needsApproval && !canAttemptPermit &&
  (step ==="approving" || step ==="depositing") && (
  <div className="space-y-2">
  <div className="flex items-center gap-4 text-sm">
@@ -1957,7 +2356,7 @@ const successFmt = formatTokenAmount(successAmountBigInt, collateralSymbol, coll
  {/* Transaction Hash */}
  {txHash && (
  <div className="text-xs text-center text-[#1E4775]/70">
- Tx:{""}
+ Tx:{" "}
  <a
  href={`https://etherscan.io/tx/${txHash}`}
  target="_blank"

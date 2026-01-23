@@ -5,6 +5,14 @@
 
 import { createPublicClient, http, defineChain } from "viem";
 
+// Multicall3 is used by viem's `client.multicall()`. Our custom chains must include it.
+// This address is standard across many EVM chains.
+const MULTICALL3 = {
+  address: "0xca11bde05977b3631167028862be2a173976ca11" as `0x${string}`,
+  // blockCreated is not required for calls; set to 0 to avoid incorrect gating.
+  blockCreated: 0,
+};
+
 // Mainnet RPC URL - defaults to Alchemy if not set in environment
 export const MAINNET_RPC_URL =
   process.env.NEXT_PUBLIC_MAINNET_RPC_URL ||
@@ -30,6 +38,9 @@ const mainnetChain = defineChain({
     name: "Ether",
     symbol: "ETH",
   },
+  contracts: {
+    multicall3: MULTICALL3,
+  },
   rpcUrls: {
     default: {
       http: [MAINNET_RPC_URL],
@@ -49,6 +60,9 @@ const arbitrumChain = defineChain({
     decimals: 18,
     name: "Ether",
     symbol: "ETH",
+  },
+  contracts: {
+    multicall3: MULTICALL3,
   },
   rpcUrls: {
     default: {
@@ -75,6 +89,9 @@ const baseChain = defineChain({
     decimals: 18,
     name: "Ether",
     symbol: "ETH",
+  },
+  contracts: {
+    multicall3: MULTICALL3,
   },
   rpcUrls: {
     default: {

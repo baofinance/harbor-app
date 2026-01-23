@@ -12,7 +12,10 @@ import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
  */
 export function useAnchorRewards(
   anchorMarkets: Array<[string, any]>,
-  reads: any
+  reads: any,
+  ethPrice?: number | null,
+  btcPrice?: number | null,
+  peggedPriceUSDMap?: Record<string, bigint | undefined>
 ) {
   // Reward token USD prices (used to compute claimableValue + APR)
   const { price: fxSAVEPriceUSD } = useCoinGeckoPrice("fx-usd-saving");
@@ -214,10 +217,29 @@ export function useAnchorRewards(
   ]);
 
   // Fetch all stability pool rewards
-  const { data: allPoolRewards = [], isLoading: isLoadingAllRewards } =
+  // Debug: log prices being passed
+  if (process.env.NODE_ENV === "development") {
+    console.log("[useAnchorRewards] Passing prices to useAllStabilityPoolRewards", {
+      ethPrice,
+      btcPrice,
+      poolsCount: allPoolsForRewards.length,
+      peggedPriceUSDMap: peggedPriceUSDMap ? Object.keys(peggedPriceUSDMap) : undefined,
+    });
+  }
+  
+  const {
+    data: allPoolRewards = [],
+    isLoading: isLoadingAllRewards,
+    isFetching: isFetchingAllRewards,
+    isError: isErrorAllRewards,
+    error: allRewardsError,
+  } =
     useAllStabilityPoolRewards({
       pools: allPoolsForRewards,
       tokenPriceMap: globalTokenPriceMap,
+      ethPrice: ethPrice || null,
+      btcPrice: btcPrice || null,
+      peggedPriceUSDMap: peggedPriceUSDMap,
       enabled: !!reads && allPoolsForRewards.length > 0,
     });
 
@@ -234,6 +256,9 @@ export function useAnchorRewards(
     allPoolRewards,
     poolRewardsMap,
     isLoadingAllRewards,
+    isFetchingAllRewards,
+    isErrorAllRewards,
+    allRewardsError,
     allPoolsForRewards,
     globalTokenPriceMap,
   };

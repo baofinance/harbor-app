@@ -14,6 +14,8 @@ import { BaseError, ContractFunctionRevertedError } from "viem";
 import { ERC20_ABI, MINTER_ABI } from "@/abis/shared";
 import { WSTETH_ABI } from "@/abis";
 import { MINTER_ETH_ZAP_V2_ABI, MINTER_USDC_ZAP_V2_ABI } from "@/config/contracts";
+import { STETH_ZAP_PERMIT_ABI, USDC_ZAP_PERMIT_ABI, calculateDeadline } from "@/utils/permit";
+import { usePermitOrApproval } from "@/hooks/usePermitOrApproval";
 import { useCollateralPrice } from "@/hooks/useCollateralPrice";
 import SimpleTooltip from "@/components/SimpleTooltip";
 import { ArrowPathIcon } from "@heroicons/react/24/outline";
@@ -66,10 +68,11 @@ export const SailManageModal = ({
  initialTab ="mint",
  onSuccess,
 }: SailManageModalProps) => {
- const { address, isConnected } = useAccount();
- const publicClient = usePublicClient();
- const { writeContractAsync } = useWriteContract();
- const { sendTransactionAsync } = useSendTransaction();
+  const { address, isConnected } = useAccount();
+  const publicClient = usePublicClient();
+  const { writeContractAsync } = useWriteContract();
+  const { sendTransactionAsync } = useSendTransaction();
+  const { handlePermitOrApproval } = usePermitOrApproval();
 
  const [activeTab, setActiveTab] = useState<"mint" |"redeem">(initialTab);
  const [amount, setAmount] = useState("");
@@ -961,37 +964,67 @@ const { maxRate: fxSAVERate } = useCollateralPrice(
            stETHAddress = "0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84" as `0x${string}`;
          }
          
-         if (!stETHAddress) {
-           throw new Error("stETH address not found. Please ensure you're depositing to a wstETH market.");
-         }
-         
-         // Check and approve stETH if needed
-         const stETHAllowance = await publicClient?.readContract({
-           address: stETHAddress,
-           abi: ERC20_ABI,
-           functionName: "allowance",
-           args: [address as `0x${string}`, zapAddress],
-         });
-         
-         const allowanceBigInt = (stETHAllowance as bigint) || 0n;
-         if (allowanceBigInt < amountForMint) {
-           updateProgressStep("approve", { status: "in_progress" });
-           const approveHash = await writeContractAsync({
-             address: stETHAddress,
-             abi: ERC20_ABI,
-             functionName: "approve",
-             args: [zapAddress, amountForMint],
-           });
-           updateProgressStep("approve", { status: "completed", txHash: approveHash });
-           await publicClient?.waitForTransactionReceipt({ hash: approveHash });
-         }
-         
-         mintHash = await writeContractAsync({
-           address: zapAddress,
-           abi: MINTER_ETH_ZAP_V2_ABI,
-           functionName: "zapStEthToLeveraged",
-           args: [amountForMint, address as `0x${string}`, minOutput],
-         });
+        if (!stETHAddress) {
+          throw new Error("stETH address not found. Please ensure you're depositing to a wstETH market.");
+        }
+        
+        // Try to use permit first, fallback to approval if not supported or fails
+        const permitResult = await handlePermitOrApproval(stETHAddress, zapAddress, amountForMint);
+        let usePermit = permitResult?.usePermit && !!permitResult.permitSig && !!permitResult.deadline;
+        
+        if (usePermit && permitResult.permitSig && permitResult.deadline) {
+          // Use permit function - zapStEthToLeveragedWithPermit
+          try {
+            mintHash = await writeContractAsync({
+              address: zapAddress,
+              abi: [...MINTER_ETH_ZAP_V2_ABI, ...STETH_ZAP_PERMIT_ABI] as const,
+              functionName: "zapStEthToLeveragedWithPermit",
+              args: [
+                amountForMint,
+                address as `0x${string}`,
+                minOutput,
+                permitResult.deadline,
+                permitResult.permitSig.v,
+                permitResult.permitSig.r,
+                permitResult.permitSig.s,
+              ],
+            });
+          } catch (permitError) {
+            console.error("Permit zap failed, falling back to approval:", permitError);
+            // Fall through to approval flow below
+            usePermit = false;
+          }
+        }
+        
+        if (!usePermit) {
+          // Fallback: Use traditional approval + zap
+          const stETHAllowance = await publicClient?.readContract({
+            address: stETHAddress,
+            abi: ERC20_ABI,
+            functionName: "allowance",
+            args: [address as `0x${string}`, zapAddress],
+          });
+          
+          const allowanceBigInt = (stETHAllowance as bigint) || 0n;
+          if (allowanceBigInt < amountForMint) {
+            updateProgressStep("approve", { status: "in_progress" });
+            const approveHash = await writeContractAsync({
+              address: stETHAddress,
+              abi: ERC20_ABI,
+              functionName: "approve",
+              args: [zapAddress, amountForMint],
+            });
+            updateProgressStep("approve", { status: "completed", txHash: approveHash });
+            await publicClient?.waitForTransactionReceipt({ hash: approveHash });
+          }
+          
+          mintHash = await writeContractAsync({
+            address: zapAddress,
+            abi: MINTER_ETH_ZAP_V2_ABI,
+            functionName: "zapStEthToLeveraged",
+            args: [amountForMint, address as `0x${string}`, minOutput],
+          });
+        }
        } else {
          throw new Error("Invalid asset for ETH zap");
        }
@@ -1015,66 +1048,132 @@ const { maxRate: fxSAVERate } = useCollateralPrice(
          throw new Error("Asset address not found for approval");
        }
        
-       // Both USDC and FXUSD approve to ZAPPER
-       const approvalTarget = zapAddress;
-       
-       // Check and approve asset if needed
-       const currentAllowance = await publicClient?.readContract({
-         address: assetAddressForApproval,
-         abi: ERC20_ABI,
-         functionName: "allowance",
-         args: [address as `0x${string}`, approvalTarget],
-       });
-       
-       const allowanceBigInt = (currentAllowance as bigint) || 0n;
-       if (allowanceBigInt < amountForMint) {
-         // Add approval step to progress modal if it doesn't exist
-         setProgressModal((prev) => {
-           if (!prev) return prev;
-           const hasApproveStep = prev.steps.some(s => s.id === "approve");
-           if (!hasApproveStep) {
-             // Insert approval step before mint step
-             const mintIndex = prev.steps.findIndex(s => s.id === "mint");
-             const newSteps = [...prev.steps];
-             newSteps.splice(mintIndex, 0, {
-               id: "approve",
-               label: `Approve ${isActuallyFxUSD ? "fxUSD" : "USDC"} for zap`,
-               status: "pending",
-               details: `Approve ${isActuallyFxUSD ? "fxUSD" : "USDC"} for minting via zap`,
-             });
-             return { ...prev, steps: newSteps };
-           }
-           return prev;
-         });
-         
-         updateProgressStep("approve", { status: "in_progress" });
-         const approveHash = await writeContractAsync({
-           address: assetAddressForApproval,
-           abi: ERC20_ABI,
-           functionName: "approve",
-           args: [approvalTarget, amountForMint],
-         });
-         updateProgressStep("approve", { status: "completed", txHash: approveHash });
-         await publicClient?.waitForTransactionReceipt({ hash: approveHash });
-       }
-       
-       if (isActuallyUSDC) {
-         mintHash = await writeContractAsync({
-           address: zapAddress,
-           abi: MINTER_USDC_ZAP_V2_ABI,
-           functionName: "zapUsdcToLeveraged",
-           args: [amountForMint, address as `0x${string}`, minOutput],
-         });
-       } else if (isActuallyFxUSD) {
-         mintHash = await writeContractAsync({
-           address: zapAddress,
-           abi: MINTER_USDC_ZAP_V2_ABI,
-           functionName: "zapFxUsdToLeveraged",
-           args: [amountForMint, address as `0x${string}`, minOutput],
-         });
-       } else {
-         throw new Error("Invalid asset for USDC zap");
-       }
+      // Try to use permit first, fallback to approval if not supported or fails
+      const permitResult = await handlePermitOrApproval(assetAddressForApproval, zapAddress, amountForMint);
+      let usePermit = permitResult?.usePermit && !!permitResult.permitSig;
+      
+      // Calculate minFxSaveOut for permit functions (1% slippage buffer)
+      // This is needed for the permit versions of USDC/fxUSD zap functions
+      const minFxSaveOut = (amountForMint * 99n) / 100n;
+      const deadline = permitResult?.deadline || calculateDeadline(3600);
+      
+      if (usePermit && permitResult.permitSig) {
+        // Use permit functions - requires minFxSaveOut parameter
+        try {
+          if (isActuallyUSDC) {
+            mintHash = await writeContractAsync({
+              address: zapAddress,
+              abi: [...MINTER_USDC_ZAP_V2_ABI, ...USDC_ZAP_PERMIT_ABI] as const,
+              functionName: "zapUsdcToLeveragedWithPermit",
+              args: [
+                amountForMint,
+                minFxSaveOut,
+                address as `0x${string}`,
+                minOutput,
+                deadline,
+                permitResult.permitSig.v,
+                permitResult.permitSig.r,
+                permitResult.permitSig.s,
+              ],
+            });
+          } else if (isActuallyFxUSD) {
+            mintHash = await writeContractAsync({
+              address: zapAddress,
+              abi: [...MINTER_USDC_ZAP_V2_ABI, ...USDC_ZAP_PERMIT_ABI] as const,
+              functionName: "zapFxUsdToLeveragedWithPermit",
+              args: [
+                amountForMint,
+                minFxSaveOut,
+                address as `0x${string}`,
+                minOutput,
+                deadline,
+                permitResult.permitSig.v,
+                permitResult.permitSig.r,
+                permitResult.permitSig.s,
+              ],
+            });
+          } else {
+            throw new Error("Invalid asset for USDC zap");
+          }
+        } catch (permitError) {
+          console.error("Permit zap failed, falling back to approval:", permitError);
+          // Fall through to approval flow below
+          usePermit = false;
+        }
+      }
+      
+      if (!usePermit) {
+        // Fallback: Use traditional approval + zap
+        const approvalTarget = zapAddress;
+        
+        // Check and approve asset if needed
+        const currentAllowance = await publicClient?.readContract({
+          address: assetAddressForApproval,
+          abi: ERC20_ABI,
+          functionName: "allowance",
+          args: [address as `0x${string}`, approvalTarget],
+        });
+        
+        const allowanceBigInt = (currentAllowance as bigint) || 0n;
+        if (allowanceBigInt < amountForMint) {
+          // Add approval step to progress modal if it doesn't exist
+          setProgressModal((prev) => {
+            if (!prev) return prev;
+            const hasApproveStep = prev.steps.some(s => s.id === "approve");
+            if (!hasApproveStep) {
+              // Insert approval step before mint step
+              const mintIndex = prev.steps.findIndex(s => s.id === "mint");
+              const newSteps = [...prev.steps];
+              newSteps.splice(mintIndex, 0, {
+                id: "approve",
+                label: `Approve ${isActuallyFxUSD ? "fxUSD" : "USDC"} for zap`,
+                status: "pending",
+                details: `Approve ${isActuallyFxUSD ? "fxUSD" : "USDC"} for minting via zap`,
+              });
+              return { ...prev, steps: newSteps };
+            }
+            return prev;
+          });
+          
+          updateProgressStep("approve", { status: "in_progress" });
+          const approveHash = await writeContractAsync({
+            address: assetAddressForApproval,
+            abi: ERC20_ABI,
+            functionName: "approve",
+            args: [approvalTarget, amountForMint],
+          });
+          updateProgressStep("approve", { status: "completed", txHash: approveHash });
+          await publicClient?.waitForTransactionReceipt({ hash: approveHash });
+        }
+        
+        if (isActuallyUSDC) {
+          mintHash = await writeContractAsync({
+            address: zapAddress,
+            abi: MINTER_USDC_ZAP_V2_ABI,
+            functionName: "zapUsdcToLeveraged",
+            args: [
+              amountForMint,
+              minFxSaveOut,
+              address as `0x${string}`,
+              minOutput,
+            ],
+          });
+        } else if (isActuallyFxUSD) {
+          mintHash = await writeContractAsync({
+            address: zapAddress,
+            abi: MINTER_USDC_ZAP_V2_ABI,
+            functionName: "zapFxUsdToLeveraged",
+            args: [
+              amountForMint,
+              minFxSaveOut,
+              address as `0x${string}`,
+              minOutput,
+            ],
+          });
+        } else {
+          throw new Error("Invalid asset for USDC zap");
+        }
+      }
      } else {
        throw new Error("Invalid zap configuration");
      }
@@ -1641,7 +1740,7 @@ const { maxRate: fxSAVERate } = useCollateralPrice(
  {activeTab ==="mint" && (
  <div className="text-xs text-[#1E4775]">
  <span className="flex items-center gap-1.5">
- Mint Fee:{""}
+ Mint Fee:{" "}
  <span
  className={`font-semibold ${
  mintFeePercentage > 2
@@ -1656,7 +1755,7 @@ const { maxRate: fxSAVERate } = useCollateralPrice(
  :"-"}
  {parsedAmount && parsedAmount > 0n && mintFee > 0n && (
  <span className="ml-1 font-normal text-[#1E4775]/60">
- ({formatDisplay(mintFee, 4)}{""}
+ ({formatDisplay(mintFee, 4)}{" "}
  {selectedDepositAsset || collateralSymbol})
  </span>
  )}
@@ -1668,7 +1767,7 @@ const { maxRate: fxSAVERate } = useCollateralPrice(
  {activeTab ==="redeem" && (
  <div className="text-xs text-[#1E4775]">
  <span className="flex items-center gap-1.5">
- Redeem Fee:{""}
+ Redeem Fee:{" "}
  <span
  className={`font-semibold ${
  redeemFeePercentage > 2
