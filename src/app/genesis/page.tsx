@@ -575,7 +575,9 @@ export default function GenesisIndexPage() {
   const comingSoonMarkets = useMemo(
     () =>
       Object.entries(markets).filter(
-        ([_, mkt]) => (mkt as any).status === "coming-soon"
+        ([_, mkt]) =>
+          (mkt as any).status === "coming-soon" &&
+          (mkt as any).marksCampaign?.id === "metals-maiden-voyage"
       ),
     []
   );

@@ -78,6 +78,12 @@ export function getLogoPath(symbol: string): string {
   if (normalizedSymbol === "hssteth-btc" || normalizedSymbol === "hsstethbtc") {
     return "/icons/hsETHBTC.png";
   }
+  if (normalizedSymbol === "hssteth-eur" || normalizedSymbol === "hsstetheur") {
+    return "/icons/hsSTETHEUR.png";
+  }
+  if (normalizedSymbol === "hsfxusd-eur" || normalizedSymbol === "hsfxusdeur") {
+    return "/icons/hsUSDeur.png";
+  }
   if (normalizedSymbol.startsWith("hs")) {
     return "/icons/hsUSDETH.png"; // Fallback for other hs tokens
   }
