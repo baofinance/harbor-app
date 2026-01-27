@@ -22,12 +22,12 @@ import {
   GENESIS_STETH_ZAP_PERMIT_ABI,
   GENESIS_USDC_ZAP_PERMIT_ABI,
 } from "@/abis";
-import { useCollateralPrice } from "@/hooks/useCollateralPrice";
 import {
  TransactionProgressModal,
  TransactionStep,
 } from "./TransactionProgressModal";
 import { formatTokenAmount, formatBalance, formatUSD } from "@/utils/formatters";
+import { useWrappedCollateralPrice } from "@/hooks/useWrappedCollateralPrice";
 import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
 import { useDefiLlamaSwap, getDefiLlamaSwapTx } from "@/hooks/useDefiLlamaSwap";
 import { useUserTokens, getTokenAddress, getTokenInfo, useTokenDecimals } from "@/hooks/useUserTokens";
@@ -35,7 +35,15 @@ import { useAnyTokenDeposit } from "@/hooks/useAnyTokenDeposit";
 import { TokenSelectorDropdown } from "@/components/TokenSelectorDropdown";
 import { usePermitOrApproval } from "@/hooks/usePermitOrApproval";
 import { InfoCallout } from "@/components/InfoCallout";
-import { Info, RefreshCw } from "lucide-react";
+import {
+  Banknote,
+  Bell,
+  ChevronDown,
+  ChevronUp,
+  Info,
+  RefreshCw,
+} from "lucide-react";
+import { AmountInputBlock } from "@/components/AmountInputBlock";
 
 interface GenesisDepositModalProps {
  isOpen: boolean;
@@ -88,7 +96,8 @@ export const GenesisDepositModal = ({
  const [slippageTolerance, setSlippageTolerance] = useState<number>(0.5); // Default 0.5% slippage
  const [slippageInputValue, setSlippageInputValue] = useState<string>("0.5"); // String for input to allow typing "0"
  const [showSlippageInput, setShowSlippageInput] = useState(false);
-const [permitEnabled, setPermitEnabled] = useState(true);
+  const [permitEnabled, setPermitEnabled] = useState(true);
+  const [showNotifications, setShowNotifications] = useState(true);
  const [step, setStep] = useState<ModalStep>("input");
  const [error, setError] = useState<string | null>(null);
  const [txHash, setTxHash] = useState<string | null>(null);
@@ -168,11 +177,12 @@ useEffect(() => {
   successfulDepositAmount,
 ]);
 
-// Fetch CoinGecko price (primary source)
-const { price: coinGeckoPrice, isLoading: isCoinGeckoLoading } = useCoinGeckoPrice(
-  coinGeckoId || "",
-  60000 // Refresh every 60 seconds
-);
+const wrappedPriceData = useWrappedCollateralPrice({
+  isOpen,
+  collateralSymbol,
+  coinGeckoId,
+  priceOracle: marketAddresses?.priceOracle as `0x${string}` | undefined,
+});
 // Fallback for wstETH markets if wrapped-steth price is missing
 const shouldFetchStEthPrice = collateralSymbol.toLowerCase() === "wsteth";
 const { price: stEthCoinGeckoPrice } = useCoinGeckoPrice(
@@ -185,27 +195,18 @@ const { price: fxSAVECoinGeckoPrice } = useCoinGeckoPrice(
   60000
 );
 
-// Get collateral price from oracle (fallback)
-const oraclePriceData = useCollateralPrice(
-  marketAddresses?.priceOracle as `0x${string}` | undefined,
-  { enabled: isOpen && !!marketAddresses?.priceOracle }
-);
-
 // Priority order for underlying price: CoinGecko → fxUSD hardcoded $1 → Oracle
 // CoinGecko is the most reliable source for real-time prices
 // For fxSAVE markets: underlyingSymbol is "fxUSD", so check that
-const underlyingPriceUSD = coinGeckoPrice 
-  ? coinGeckoPrice 
-  : (underlyingSymbol?.toLowerCase() === "fxusd" || collateralSymbol.toLowerCase() === "fxusd")
-    ? 1.00 
-    : oraclePriceData.priceUSD;
+const underlyingPriceUSD = wrappedPriceData.underlyingPriceUSD;
 
-const wrappedRate = oraclePriceData.maxRate;
-const maxUnderlyingPrice = coinGeckoPrice
-  ? BigInt(Math.floor(coinGeckoPrice * 1e18))
+const wrappedRate = wrappedPriceData.wrappedRate;
+const coinGeckoPrice = wrappedPriceData.coinGeckoPrice;
+const maxUnderlyingPrice = wrappedPriceData.coinGeckoPrice
+  ? BigInt(Math.floor((wrappedPriceData.coinGeckoPrice ?? 0) * 1e18))
   : (underlyingSymbol?.toLowerCase() === "fxusd" || collateralSymbol.toLowerCase() === "fxusd")
     ? 1000000000000000000n // 1.0 in 18 decimals
-    : oraclePriceData.maxPrice;
+    : wrappedPriceData.oraclePriceData.maxPrice;
 
 // Get user's tokens early (before getAssetAddress uses it)
 const { tokens: userTokens, isLoading: isLoadingUserTokens } = useUserTokens();
@@ -413,53 +414,7 @@ const selectedAssetPriceUSD = isWrappedToken && wrappedRate && maxUnderlyingPric
 // Calculate wrapped token price: underlying price * wrapped rate
 // BUT: If CoinGecko ID is for the wrapped token itself (e.g., "wrapped-steth" for wstETH),
 // then CoinGecko already returns the wrapped token price, so don't multiply by wrapped rate
-const coinGeckoIsWrappedToken = coinGeckoId && (
-  (coinGeckoId.toLowerCase() === "wrapped-steth" && collateralSymbol.toLowerCase() === "wsteth") ||
-  ((coinGeckoId.toLowerCase() === "fxsave" || coinGeckoId.toLowerCase() === "fx-usd-saving") && collateralSymbol.toLowerCase() === "fxsave")
-);
-
-const isWstETH = collateralSymbol.toLowerCase() === "wsteth";
-// For wstETH: CoinGecko returns wstETH price directly (~$3,607), so use it as-is
-// For fxSAVE: CoinGecko returns fxUSD price ($1.00), so multiply by wrapped rate to get fxSAVE price
-// Only use oracle calculation if CoinGecko is not available
-// Priority: CoinGecko (if wrapped token) > CoinGecko (if underlying) > Oracle (with wrapped rate) > Oracle (underlying only)
-const wrappedTokenPriceUSD = (() => {
-  // If CoinGecko returns the wrapped token price directly (e.g., "wrapped-steth" for wstETH)
-  if (coinGeckoIsWrappedToken && coinGeckoPrice != null) {
-    return coinGeckoPrice; // Use CoinGecko price directly, no wrapped rate multiplication
-  }
-
-  // Fallback for wstETH: use stETH price * wrapped rate if wrapped-steth is missing
-  if (
-    isWstETH &&
-    stEthCoinGeckoPrice != null &&
-    wrappedRate &&
-    wrappedRate > 0n
-  ) {
-    return stEthCoinGeckoPrice * (Number(wrappedRate) / 1e18);
-  }
-  
-  // If CoinGecko returns underlying price (e.g., "fxusd" for fxSAVE)
-  // For fxSAVE markets: CoinGecko returns fxUSD ($1.00), multiply by wrapped rate to get fxSAVE price
-  if (coinGeckoPrice != null && !coinGeckoIsWrappedToken && wrappedRate) {
-    return coinGeckoPrice * (Number(wrappedRate) / 1e18);
-  }
-  
-  // If CoinGecko returns underlying price but no wrapped rate available
-  if (coinGeckoPrice != null && !coinGeckoIsWrappedToken) {
-    return coinGeckoPrice; // Use CoinGecko price as-is
-  }
-  
-  // Fallback to oracle: underlying price * wrapped rate
-  if (wrappedRate && underlyingPriceUSD > 0) {
-    return underlyingPriceUSD * (Number(wrappedRate) / 1e18);
-  }
-  
-  // Final fallback: underlying price only
-  return underlyingPriceUSD;
-})();
-
-const collateralPriceUSD = wrappedTokenPriceUSD;
+const collateralPriceUSD = wrappedPriceData.priceUSD;
 
 // Validate selected asset address
 const isValidSelectedAssetAddress = 
@@ -860,6 +815,7 @@ const buildProgressSteps = (params: {
   includeApproval: boolean;
   includeSwap: boolean;
   needsSwapApproval: boolean;
+  includePermit: boolean;
 }) => {
   const steps: TransactionStep[] = [];
 
@@ -882,6 +838,13 @@ const buildProgressSteps = (params: {
     steps.push({
       id: "approve",
       label: `Approve ${selectedAsset}`,
+      status: "pending",
+    });
+  }
+  if (params.includePermit) {
+    steps.push({
+      id: "permit",
+      label: `Permit ${selectedAsset}`,
       status: "pending",
     });
   }
@@ -978,7 +941,33 @@ const preDepositBalance = userCurrentDeposit;
 let permitResult: { usePermit: boolean; permitSig?: { v: number; r: `0x${string}`; s: `0x${string}` }; deadline?: bigint } | null = null;
 let usePermit = false;
 let approvalCompleted = false;
-if (shouldUsePermit && isValidSelectedAssetAddress && amountBigInt > 0n) {
+
+const includeSwap = needsSwap && swapQuote;
+const needsSwapApproval = includeSwap && !isNativeETH; // Approve source token for swap (unless it's ETH)
+const includePermitAttempt =
+  !needsSwap && shouldUsePermit && isValidSelectedAssetAddress && amountBigInt > 0n;
+let permitSteps: TransactionStep[] | null = null;
+
+if (includePermitAttempt) {
+  const steps = buildProgressSteps({
+    includeApproval: false,
+    includeSwap: !!includeSwap,
+    needsSwapApproval,
+    includePermit: true,
+  });
+  permitSteps = steps;
+  setProgressSteps(steps);
+  const permitIndex = steps.findIndex((s) => s.id === "permit");
+  setCurrentStepIndex(permitIndex >= 0 ? permitIndex : 0);
+  setProgressModalOpen(true);
+  setProgressSteps((prev) =>
+    prev.map((s) =>
+      s.id === "permit" ? { ...s, status: "in_progress" } : s
+    )
+  );
+}
+
+if (includePermitAttempt) {
   try {
     permitResult = await handlePermitOrApproval(
       selectedAssetAddress as `0x${string}`,
@@ -992,18 +981,42 @@ if (shouldUsePermit && isValidSelectedAssetAddress && amountBigInt > 0n) {
   }
 }
 
- // Initialize progress modal steps
- const includeApproval = !isNativeETH && needsApproval && !needsSwap && !usePermit; // For direct deposits only
- const includeSwap = needsSwap && swapQuote;
- const needsSwapApproval = includeSwap && !isNativeETH; // Approve source token for swap (unless it's ETH)
- const steps = buildProgressSteps({
-   includeApproval,
-   includeSwap: !!includeSwap,
-   needsSwapApproval,
- });
- setProgressSteps(steps);
- setCurrentStepIndex(0);
- setProgressModalOpen(true);
+// Initialize/adjust progress modal steps
+const includeApproval = !isNativeETH && needsApproval && !needsSwap && !usePermit; // For direct deposits only
+const includePermit = !needsSwap && usePermit;
+
+if (includePermitAttempt) {
+  if (usePermit) {
+    setProgressSteps((prev) =>
+      prev.map((s) =>
+        s.id === "permit" ? { ...s, status: "completed" } : s
+      )
+    );
+    const depositIndex = (permitSteps || []).findIndex((s) => s.id === "deposit");
+    if (depositIndex >= 0) {
+      setCurrentStepIndex(depositIndex);
+    }
+  } else {
+    const fallbackSteps = buildProgressSteps({
+      includeApproval,
+      includeSwap: !!includeSwap,
+      needsSwapApproval,
+      includePermit: false,
+    });
+    setProgressSteps(fallbackSteps);
+    setCurrentStepIndex(0);
+  }
+} else {
+  const steps = buildProgressSteps({
+    includeApproval,
+    includeSwap: !!includeSwap,
+    needsSwapApproval,
+    includePermit,
+  });
+  setProgressSteps(steps);
+  setCurrentStepIndex(0);
+  setProgressModalOpen(true);
+}
 
  const tryPermitZap = async (params: {
    type: "steth" | "usdc" | "fxusd";
@@ -1074,7 +1087,7 @@ if (shouldUsePermit && isValidSelectedAssetAddress && amountBigInt > 0n) {
            s.id === "approveSwap" ? { ...s, status: "in_progress" } : s
          )
        );
-      setCurrentStepIndex(steps.findIndex((s) => s.id === "approveSwap"));
+      setCurrentStepIndex(progressSteps.findIndex((s) => s.id === "approveSwap"));
       setError(null);
       setTxHash(null);
       
@@ -1155,7 +1168,7 @@ if (shouldUsePermit && isValidSelectedAssetAddress && amountBigInt > 0n) {
          s.id === "swap" ? { ...s, status: "in_progress" } : s
        )
      );
-     setCurrentStepIndex(steps.findIndex((s) => s.id === "swap"));
+     setCurrentStepIndex(progressSteps.findIndex((s) => s.id === "swap"));
      setError(null);
      setTxHash(null);
      
@@ -1218,7 +1231,7 @@ if (shouldUsePermit && isValidSelectedAssetAddress && amountBigInt > 0n) {
     // For fxSAVE markets (USDC swap), we need to approve USDC for the zapper
     // For wstETH markets (ETH swap), no approval needed - ETH is native
     if (isFxSAVEMarket) {
-      setCurrentStepIndex(steps.findIndex((s) => s.id === "approveUSDC"));
+      setCurrentStepIndex(progressSteps.findIndex((s) => s.id === "approveUSDC"));
       setStep("approving");
       setProgressSteps((prev) =>
         prev.map((s) =>
@@ -1265,7 +1278,7 @@ if (shouldUsePermit && isValidSelectedAssetAddress && amountBigInt > 0n) {
       // For ETH swaps, no approval needed - go straight to deposit
     }
     
-    setCurrentStepIndex(steps.findIndex((s) => s.id === "deposit"));
+    setCurrentStepIndex(progressSteps.findIndex((s) => s.id === "deposit"));
     return true;
   } catch (err: any) {
     setError(err.message || "Swap failed. Please try again.");
@@ -1294,7 +1307,7 @@ if (!isNativeETH && needsApproval && !needsSwap && !usePermit) {
    amount: amountBigInt,
  });
  approvalCompleted = true;
- setCurrentStepIndex(steps.findIndex((s) => s.id ==="deposit"));
+ setCurrentStepIndex(progressSteps.findIndex((s) => s.id ==="deposit"));
  }
 
  setStep("depositing");
@@ -1303,7 +1316,7 @@ if (!isNativeETH && needsApproval && !needsSwap && !usePermit) {
  s.id ==="deposit" ? { ...s, status:"in_progress" } : s
  )
  );
-setCurrentStepIndex(steps.findIndex((s) => s.id ==="deposit"));
+setCurrentStepIndex(progressSteps.findIndex((s) => s.id ==="deposit"));
 setError(null);
 setTxHash(null);
 
@@ -1543,7 +1556,7 @@ setSuccessfulDepositToken(selectedAsset); // Use the token user selected
  : s
  )
  );
- setCurrentStepIndex(steps.findIndex((s) => s.id ==="deposit"));
+ setCurrentStepIndex(progressSteps.findIndex((s) => s.id ==="deposit"));
  if (onSuccess) {
  await onSuccess();
  }
@@ -1913,9 +1926,9 @@ const successFmt = formatTokenAmount(
 
  {/* Deposit Asset Selection */}
  <div className="space-y-2">
- <label className="text-sm text-[#1E4775]/70">
- Deposit Asset
- </label>
+<label className="text-sm font-semibold text-[#1E4775]">
+Select Deposit Token
+</label>
  {(() => {
    const filteredUserTokens = userTokens.filter(token => 
      !acceptedAssets.some(a => a.symbol.toUpperCase() === token.symbol.toUpperCase())
@@ -1997,98 +2010,107 @@ const successFmt = formatTokenAmount(
    </div>
  )}
  
- {/* Multi-token support notice */}
- {!needsSwap && (
-   <InfoCallout
-     tone="success"
-     title="Tip:"
-      icon={<RefreshCw className="w-4 h-4 flex-shrink-0 mt-0.5 text-green-600" />}
+ <div className="mt-2 space-y-2">
+   <button
+     type="button"
+     onClick={() => setShowNotifications((prev) => !prev)}
+     className="flex w-full items-center justify-between text-sm font-semibold text-[#1E4775]"
+     aria-expanded={showNotifications}
    >
-     You can deposit any ERC20 token! Non-collateral tokens will be automatically swapped via Velora.
-   </InfoCallout>
- )}
+     <span>Notifications</span>
+     <span className="flex items-center gap-2">
+       {!showNotifications && (
+         <span className="flex items-center gap-1 rounded-full bg-[#1E4775]/10 px-2 py-0.5 text-xs text-[#1E4775]">
+           <Bell className="h-3 w-3" />
+           {(!needsSwap ? 1 : 0) + 1 + (isNonCollateralAsset ? 1 : 0)}
+         </span>
+       )}
+       {showNotifications ? (
+         <ChevronUp className="h-4 w-4 text-[#1E4775]/70" />
+       ) : (
+         <ChevronDown className="h-4 w-4 text-[#1E4775]/70" />
+       )}
+     </span>
+   </button>
+   {showNotifications && (
+     <div className="space-y-2">
+       {!needsSwap && (
+         <InfoCallout
+           tone="success"
+           title="Tip:"
+           icon={
+             <RefreshCw className="w-4 h-4 flex-shrink-0 mt-0.5 text-green-600" />
+           }
+         >
+           You can deposit any ERC20 token! Non-collateral tokens will be
+           automatically swapped via Velora.
+         </InfoCallout>
+       )}
 
- {/* Large deposit recommendation */}
- <InfoCallout
-   title="Info:"
-   icon={<Info className="w-4 h-4 flex-shrink-0 mt-0.5 text-blue-600" />}
- >
-   For large deposits, Harbor recommends using wstETH or fxSAVE instead of the built-in swap and zaps.
- </InfoCallout>
- 
- {isNonCollateralAsset && (
- <div className="p-3 bg-[rgb(var(--surface-selected-rgb))]/20 border border-[rgb(var(--surface-selected-border-rgb))]/30 text-[#1E4775] text-sm">
- ℹ️ Your deposit will be converted to {wrappedCollateralSymbol || collateralSymbol} on
- deposit. Withdrawals will be in {wrappedCollateralSymbol || collateralSymbol} only.
+       <InfoCallout
+         title="Info:"
+         icon={<Info className="w-4 h-4 flex-shrink-0 mt-0.5 text-blue-600" />}
+       >
+         For large deposits, Harbor recommends using wstETH or fxSAVE instead of
+         the built-in swap and zaps.
+       </InfoCallout>
+
+       {isNonCollateralAsset && (
+         <InfoCallout
+           tone="pearl"
+           icon={
+             <Banknote className="w-4 h-4 flex-shrink-0 mt-0.5 text-[#D57A3D]" />
+           }
+         >
+           <span className="font-semibold">Deposit:</span> Your deposit will be
+           converted to {wrappedCollateralSymbol || collateralSymbol} on
+           deposit. Withdrawals will be in{" "}
+           {wrappedCollateralSymbol || collateralSymbol} only.
+         </InfoCallout>
+       )}
+     </div>
+   )}
  </div>
- )}
  </div>
 
  {/* Amount Input */}
- <div className="space-y-2">
- {/* Available Balance - AMM Style */}
- <div className="flex justify-between items-center text-xs">
- <span className="text-[#1E4775]/70">Amount</span>
- <span className="text-[#1E4775]/70">
- Balance:{" "}
-{isNativeETH ? (
-  // ETH balance display
-  isEthBalanceError ? (
-    <span className="text-red-500">Error loading balance</span>
-  ) : isEthBalanceLoading ? (
-    <span className="text-[#1E4775]/50">Loading...</span>
-  ) : (
-     formatBalance(balance, selectedAsset, 4, selectedTokenDecimals)
-  )
-) : (
-  // ERC20 balance display
-  balancesError ? (
- <span
- className="text-red-500"
- title={balancesError.message}
- >
- Error loading balance
- </span>
- ) : !mounted ? (
- <span className="text-[#1E4775]/50">Loading...</span>
- ) : (
-     formatBalance(balance, selectedAsset, 4, selectedTokenDecimals)
-  )
-)}
- </span>
- </div>
- <div className="relative">
- <input
- type="text"
- value={amount}
- onChange={handleAmountChange}
- placeholder="0.0"
- className={`w-full px-3 pr-20 py-2 bg-white text-[#1E4775] border ${
- error ?"border-red-500" :"border-[#1E4775]/30"
- } focus:border-[#1E4775] focus:ring-2 focus:ring-[#1E4775]/20 focus:outline-none transition-all text-lg font-mono`}
- disabled={
- step ==="approving" ||
- step ==="depositing" ||
- genesisEnded
- }
+<AmountInputBlock
+  label="Enter Amount"
+   value={amount}
+   onChange={handleAmountChange}
+   onMax={handleMaxClick}
+   disabled={step === "approving" || step === "depositing" || genesisEnded}
+   error={error}
+   balanceContent={
+     <>
+       Balance:{" "}
+       {isNativeETH ? (
+         isEthBalanceError ? (
+           <span className="text-red-500">Error loading balance</span>
+         ) : isEthBalanceLoading ? (
+           <span className="text-[#1E4775]/50">Loading...</span>
+         ) : (
+           formatBalance(balance, selectedAsset, 4, selectedTokenDecimals)
+         )
+       ) : balancesError ? (
+         <span className="text-red-500" title={balancesError.message}>
+           Error loading balance
+         </span>
+       ) : !mounted ? (
+         <span className="text-[#1E4775]/50">Loading...</span>
+       ) : (
+         formatBalance(balance, selectedAsset, 4, selectedTokenDecimals)
+       )}
+     </>
+   }
+   inputClassName={`w-full px-3 pr-20 py-2 bg-white text-[#1E4775] border ${
+     error ? "border-red-500" : "border-[#1E4775]/30"
+   } focus:border-[#1E4775] focus:ring-2 focus:ring-[#1E4775]/20 focus:outline-none transition-all text-lg font-mono`}
  />
- <button
- onClick={handleMaxClick}
- className="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 text-xs bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white transition-colors disabled:bg-gray-300 disabled:text-gray-500 rounded-full"
- disabled={
- step ==="approving" ||
- step ==="depositing" ||
- genesisEnded
- }
- >
- MAX
- </button>
- </div>
- </div>
 
  {/* Permit toggle (direct USDC/FXUSD/stETH only) */}
  {showPermitToggle && (
-   <div className="flex items-center justify-between rounded-md border border-[#1E4775]/20 bg-[#17395F]/5 px-3 py-2 text-xs">
+   <div className="flex items-center justify-between border border-[#1E4775]/20 bg-[#17395F]/5 px-3 py-2 text-xs">
      <div className="text-[#1E4775]/80">
        Use permit (gasless approval) for this deposit
      </div>
@@ -2396,6 +2418,7 @@ const successFmt = formatTokenAmount(
             title="Processing Deposit"
             steps={progressSteps}
             currentStepIndex={currentStepIndex}
+            progressVariant="horizontal"
             canCancel={false}
             errorMessage={error || undefined}
             renderSuccessContent={renderSuccessContent}
@@ -2416,6 +2439,7 @@ const successFmt = formatTokenAmount(
           title="Processing Deposit"
           steps={progressSteps}
           currentStepIndex={currentStepIndex}
+          progressVariant="horizontal"
           canCancel={false}
           errorMessage={error || undefined}
           renderSuccessContent={renderSuccessContent}

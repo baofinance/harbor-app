@@ -15,6 +15,11 @@ import { markets } from "../../config/markets";
 import { GenesisManageModal } from "@/components/GenesisManageModal";
 import { GENESIS_ABI, contracts } from "../../config/contracts";
 import {
+  GENESIS_ABI as GENESIS_READ_ABI,
+  ERC20_ABI,
+  CHAINLINK_ORACLE_ABI,
+} from "@/abis/shared";
+import {
   ArrowRightIcon,
   GiftIcon,
   ScaleIcon,
@@ -25,8 +30,6 @@ import {
   ChevronDownIcon,
   ChevronUpIcon,
   ChevronRightIcon,
-  BanknotesIcon,
-  CurrencyDollarIcon,
   ArrowPathIcon,
   StarIcon,
   QuestionMarkCircleIcon,
@@ -55,7 +58,13 @@ import { useWstETHAPR } from "@/hooks/useWstETHAPR";
 import { useFxSAVEAPR } from "@/hooks/useFxSAVEAPR";
 import { useTotalGenesisTVL } from "@/hooks/useTotalGenesisTVL";
 import { useTotalMaidenVoyageMarks } from "@/hooks/useTotalMaidenVoyageMarks";
+import { getAcceptedDepositAssets } from "@/utils/markets";
 import TideAPRTooltip from "@/components/TideAPRTooltip";
+import { GenesisErrorBanner } from "@/components/GenesisErrorBanner";
+import { GenesisMarketExpandedView } from "@/components/GenesisMarketExpandedView";
+import { useSortedGenesisMarkets } from "@/hooks/useSortedGenesisMarkets";
+import { GenesisHeaderSummary } from "@/components/GenesisHeaderSummary";
+import { GenesisLedgerMarksSummary } from "@/components/GenesisLedgerMarksSummary";
 import {
   calculateTideAPR,
   calculateMarksForAPR,
@@ -69,27 +78,6 @@ import {
   TOTAL_TOKEN_SUPPLY,
   DEFAULT_FDV,
 } from "@/utils/tokenAllocation";
-
-// Helper function to get accepted deposit assets for a market
-// Now reads from market config instead of hardcoding
-function getAcceptedDepositAssets(
-  market: any
-): Array<{ symbol: string; name: string }> {
-  // Use acceptedAssets from market config if available
-  if (market?.acceptedAssets && Array.isArray(market.acceptedAssets)) {
-    return market.acceptedAssets;
-  }
-  // Fallback: return collateral token as the only accepted asset
-  if (market?.collateral?.symbol) {
-    return [
-      {
-        symbol: market.collateral.symbol,
-        name: market.collateral.name || market.collateral.symbol,
-      },
-    ];
-  }
-  return [];
-}
 
 // Minimal ABIs for summary reads
 // Note: totalDeposits() doesn't exist in IGenesis interface, so we removed it
@@ -669,7 +657,7 @@ export default function GenesisIndexPage() {
       const base = [
         {
           address: g,
-          abi: genesisABI,
+          abi: GENESIS_READ_ABI,
           functionName: "genesisIsEnded" as const,
         },
       ];
@@ -678,13 +666,13 @@ export default function GenesisIndexPage() {
           ? [
               {
                 address: g,
-                abi: genesisABI,
+                abi: GENESIS_READ_ABI,
                 functionName: "balanceOf" as const,
                 args: [address as `0x${string}`],
               },
               {
                 address: g,
-                abi: genesisABI,
+                abi: GENESIS_READ_ABI,
                 functionName: "claimable" as const,
                 args: [address as `0x${string}`],
               },
@@ -763,7 +751,7 @@ export default function GenesisIndexPage() {
           return null;
         return {
           address: g,
-          abi: genesisABI,
+          abi: GENESIS_READ_ABI,
           functionName: "WRAPPED_COLLATERAL_TOKEN" as const,
         };
       })
@@ -775,18 +763,6 @@ export default function GenesisIndexPage() {
       contracts: collateralTokenContracts,
       enabled: genesisMarkets.length > 0,
     });
-
-  // Fetch total deposits by checking the balance of wrapped collateral token in genesis contract
-  // Since totalDeposits() doesn't exist in IGenesis, we get it from the token balance
-  const erc20BalanceABI = [
-    {
-      inputs: [{ name: "account", type: "address" }],
-      name: "balanceOf",
-      outputs: [{ type: "uint256" }],
-      stateMutability: "view",
-      type: "function",
-    },
-  ] as const;
 
   const totalDepositsContracts = useMemo(() => {
     return genesisMarkets.flatMap(([_, mkt], mi) => {
@@ -808,7 +784,7 @@ export default function GenesisIndexPage() {
       return [
         {
           address: wrappedCollateralAddress,
-          abi: erc20BalanceABI,
+          abi: ERC20_ABI,
           functionName: "balanceOf" as const,
           args: [g],
         },
@@ -1043,7 +1019,7 @@ export default function GenesisIndexPage() {
   // Fetch Chainlink BTC/USD as fallback for BTC-pegged markets
   const { data: chainlinkBtcPriceData } = useContractRead({
     address: CHAINLINK_BTC_USD_ORACLE,
-    abi: chainlinkOracleSingleValueABI,
+    abi: CHAINLINK_ORACLE_ABI,
     functionName: "latestAnswer",
     query: {
       enabled: true,
@@ -1113,75 +1089,18 @@ export default function GenesisIndexPage() {
     });
   }, [reads, isConnected, genesisMarkets]);
 
+  const { activeMarkets, showHeaders, activeCampaignName } =
+    useSortedGenesisMarkets({
+      genesisMarkets,
+      reads,
+      isConnected,
+      marksResults,
+    });
+
   return (
     <div className="min-h-screen text-white max-w-[1300px] mx-auto font-sans relative">
       <main className="container mx-auto px-4 sm:px-10 pb-6">
-        {/* Header */}
-        <div className="mb-2">
-          {/* Title Row */}
-          <div className="p-4 flex items-center justify-center mb-0">
-            <h1 className="font-bold font-mono text-white text-5xl sm:text-6xl md:text-7xl text-center">
-              Maiden Voyage
-            </h1>
-          </div>
-
-          {/* Subheader */}
-          <div className="flex items-center justify-center mb-2 -mt-2">
-            <p className="text-white/80 text-lg text-center">
-              Earn rewards for providing initial liquidity for new markets
-            </p>
-          </div>
-
-          {/* Three Boxes */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 mb-2 relative">
-            {/* Deposit Box */}
-            <div className="bg-black/[0.10] backdrop-blur-sm rounded-none overflow-hidden px-3 py-2 flex flex-col items-center justify-center text-center relative">
-              <div className="flex items-center justify-center gap-2">
-                <BanknotesIcon className="w-5 h-5 text-white" />
-                <h2 className="font-bold text-white text-base">Deposit</h2>
-              </div>
-              <p className="text-xs text-white/75 mt-1">
-                Deposit{" "}
-                <span className="font-semibold text-white">any token</span> via
-                Velora
-              </p>
-              {/* Chevron removed */}
-            </div>
-
-            {/* Earn Box */}
-            <div className="bg-black/[0.10] backdrop-blur-sm rounded-none overflow-hidden px-3 py-2 flex flex-col items-center justify-center text-center relative">
-              <div className="flex items-center justify-center gap-2">
-                <CurrencyDollarIcon className="w-5 h-5 text-white" />
-                <h2 className="font-bold text-white text-base">
-                  Earn Maiden Voyage Marks
-                </h2>
-              </div>
-              <p className="text-xs text-white/75 mt-1">
-                and secure your share of the $TIDE airdrop
-              </p>
-              <p className="text-xs text-white/60 mt-1">
-                (TGE Beginning Q2 2026)
-              </p>
-              {/* Chevron removed */}
-            </div>
-
-            {/* After Maiden Voyage Box */}
-            <div className="bg-black/[0.10] backdrop-blur-sm rounded-none overflow-hidden px-3 py-2 flex flex-col items-center justify-center text-center relative">
-              <div className="flex items-center justify-center gap-2">
-                <ArrowPathIcon className="w-5 h-5 text-white" />
-                <h2 className="font-bold text-white text-base">
-                  After Maiden Voyage
-                </h2>
-              </div>
-              <p className="text-xs text-white/75 mt-1">
-                Claim ha + hs tokens. Value = deposit value.
-              </p>
-              <p className="text-xs text-white/75 mt-1 font-semibold">
-                Earn real yield and more marks!
-              </p>
-            </div>
-          </div>
-        </div>
+        <GenesisHeaderSummary />
 
         {/* Divider */}
         <div className="border-t border-white/10 my-2"></div>
@@ -1556,161 +1475,19 @@ export default function GenesisIndexPage() {
           }
 
           return (
-            <div className="mb-2">
-              <div className="bg-black/30 backdrop-blur-sm rounded-none overflow-visible border border-white/50">
-                <div className="grid grid-cols-1 md:grid-cols-4 divide-y divide-white/15 md:divide-y-0 md:divide-x md:divide-white/20">
-                  {/* Header */}
-                  <div className="p-3 flex items-center justify-center gap-2">
-                    <h2 className="font-bold font-mono text-white text-lg leading-tight text-center">
-                      Ledger Marks
-                    </h2>
-                    <InfoTooltip
-                      label={
-                        <div className="space-y-3">
-                          <div>
-                            <h3 className="font-bold text-lg mb-2">
-                              Ledger Marks
-                            </h3>
-                            <p className="text-white/90 leading-relaxed">
-                              A ledger is both a record of truth and a core DeFi
-                              symbol — and a mark is what every sailor leaves
-                              behind on a voyage.
-                            </p>
-                          </div>
-                          <div className="border-t border-white/20 pt-3">
-                            <p className="text-white/90 leading-relaxed mb-2">
-                              Each Ledger Mark is proof that you were here
-                              early, helping stabilize the first Harbor markets
-                              and guide them through calm launch conditions.
-                            </p>
-                          </div>
-                          <div className="space-y-2">
-                            <div className="flex items-start gap-2">
-                              <span className="text-white/70 mt-0.5">•</span>
-                              <p className="text-white/90 leading-relaxed">
-                                The more you contribute, the deeper your mark on
-                                the ledger.
-                              </p>
-                            </div>
-                            <div className="flex items-start gap-2">
-                              <span className="text-white/70 mt-0.5">•</span>
-                              <p className="text-white/90 leading-relaxed">
-                                When $TIDE surfaces, these marks will convert
-                                into your share of rewards and governance power.
-                              </p>
-                            </div>
-                          </div>
-                          <div className="border-t border-white/20 pt-3">
-                            <p className="text-white/80 italic leading-relaxed">
-                              Think of them as a record of your journey — every
-                              mark, a line in Harbor's logbook.
-                            </p>
-                          </div>
-                        </div>
-                      }
-                      side="right"
-                    />
-                  </div>
-
-                  <div className="p-3 flex flex-col items-center justify-center text-center">
-                    <div className="text-[11px] text-white/80 uppercase tracking-widest">
-                      {(() => {
-                        // Extract campaign name from label (remove "Maiden Voyage" if present)
-                        const extractCampaignName = (label: string): string => {
-                          // campaignLabel from subgraph is like "Launch Maiden Voyage" or "Euro Maiden Voyage"
-                          // We want just "Launch" or "Euro"
-                          return label.replace(/\s+Maiden Voyage\s*$/i, "").trim();
-                        };
-                        
-                        if (!selectedCampaign) {
-                          return "Current Maiden Voyage Marks";
-                        }
-                        
-                        const campaignName = extractCampaignName(selectedCampaign.label);
-                        return `${campaignName} Maiden Voyage Marks`;
-                      })()}
-                    </div>
-                    <div className="text-sm font-semibold text-white font-mono mt-1">
-                      {!mounted || isLoadingMarks ? (
-                        <span className="text-white/50">-</span>
-                      ) : totalCurrentMarks > 0 ? (
-                        totalCurrentMarks.toLocaleString(undefined, {
-                          minimumFractionDigits:
-                            totalCurrentMarks < 100 ? 2 : 0,
-                          maximumFractionDigits:
-                            totalCurrentMarks < 100 ? 2 : 0,
-                        })
-                      ) : (
-                        "0"
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="p-3 flex flex-col items-center justify-center text-center">
-                    <div className="text-[11px] text-white/80 uppercase tracking-widest">
-                      Marks per Day
-                    </div>
-                    <div className="text-sm font-semibold text-white font-mono mt-1">
-                      {!mounted || isLoadingMarks ? (
-                        <span className="text-white/50">-</span>
-                      ) : totalMarksPerDay > 0 ? (
-                        totalMarksPerDay.toLocaleString(undefined, {
-                          maximumFractionDigits: 2,
-                        })
-                      ) : (
-                        "0"
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="p-3 flex flex-col items-center justify-center text-center">
-                    <div className="text-[11px] text-white/80 uppercase tracking-widest flex items-center justify-center gap-1">
-                      Bonus at end
-                      {anyInProcessing && (
-                        <SimpleTooltip label="Bonus marks will be applied once processing is complete and tokens are claimable.">
-                          <ClockIcon className="w-3 h-3 text-yellow-400 cursor-help" />
-                        </SimpleTooltip>
-                      )}
-                    </div>
-                    <div className="text-sm font-semibold text-white font-mono mt-1">
-                      {!mounted || isLoadingMarks ? (
-                        <span className="text-white/50">-</span>
-                      ) : allContractsEnded &&
-                        isConnected &&
-                        totalCurrentMarks > 0 ? (
-                        <span className="text-white/60">Applied</span>
-                      ) : totalBonusAtEnd > 0 ? (
-                        totalBonusAtEnd.toLocaleString(undefined, {
-                          maximumFractionDigits: 0,
-                        })
-                      ) : (
-                        "0"
-                      )}
-                    </div>
-                    {mounted && !isLoadingMarks && (
-                      <>
-                        {!allContractsEnded && totalEarlyBonusEstimate > 0 && (
-                          <div className="text-[10px] text-green-300 mt-0.5">
-                            Early deposit bonus: +
-                            {totalEarlyBonusEstimate.toLocaleString(undefined, {
-                              maximumFractionDigits: 0,
-                            })}
-                          </div>
-                        )}
-                        {allContractsEnded && totalEarlyBonusMarks > 0 && (
-                          <div className="text-[10px] text-green-300 mt-0.5">
-                            Early deposit bonus:{" "}
-                            {totalEarlyBonusMarks.toLocaleString(undefined, {
-                              maximumFractionDigits: 0,
-                            })}
-                          </div>
-                        )}
-                      </>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
+            <GenesisLedgerMarksSummary
+              selectedCampaign={selectedCampaign}
+              mounted={mounted}
+              isLoadingMarks={isLoadingMarks}
+              totalCurrentMarks={totalCurrentMarks}
+              totalMarksPerDay={totalMarksPerDay}
+              anyInProcessing={anyInProcessing}
+              allContractsEnded={allContractsEnded}
+              isConnected={isConnected}
+              totalBonusAtEnd={totalBonusAtEnd}
+              totalEarlyBonusEstimate={totalEarlyBonusEstimate}
+              totalEarlyBonusMarks={totalEarlyBonusMarks}
+            />
           );
         })()}
 
@@ -2184,59 +1961,20 @@ export default function GenesisIndexPage() {
 
         {/* GraphQL Error Banner */}
         {combinedHasIndexerErrors && (
-          <div className="bg-[#FF8A7A]/10 border border-[#FF8A7A]/30 rounded-none p-3 mb-4">
-            <div className="flex items-start gap-3">
-              <div className="text-[#FF8A7A] text-xl mt-0.5">⚠️</div>
-              <div className="flex-1">
-                <p className="text-[#FF8A7A] font-semibold text-sm mb-1">
-                  Temporary Service Issue
-                </p>
-                <p className="text-white/70 text-xs mb-2">
-                  The Graph Network indexers are temporarily unavailable for
-                  some markets. Your Harbor Marks are safe and will display
-                  correctly once the service is restored. This is a temporary
-                  infrastructure issue, not a problem with your account.
-                </p>
-                {combinedMarketsWithIndexerErrors.length > 0 && (
-                  <div className="mt-2 pt-2 border-t border-[#FF8A7A]/20">
-                    <p className="text-[#FF8A7A]/90 text-xs font-medium mb-1">
-                      Markets affected:{" "}
-                      {combinedMarketsWithIndexerErrors
-                        .map(getMarketName)
-                        .join(", ")}
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
+          <GenesisErrorBanner
+            tone="danger"
+            title="Temporary Service Issue"
+            message="The Graph Network indexers are temporarily unavailable for some markets. Your Harbor Marks are safe and will display correctly once the service is restored. This is a temporary infrastructure issue, not a problem with your account."
+            markets={combinedMarketsWithIndexerErrors.map(getMarketName)}
+          />
         )}
         {combinedHasAnyErrors && !combinedHasIndexerErrors && (
-          <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-none p-3 mb-4">
-            <div className="flex items-start gap-3">
-              <div className="text-yellow-500 text-xl mt-0.5">⚠️</div>
-              <div className="flex-1">
-                <p className="text-yellow-500 font-semibold text-sm mb-1">
-                  Harbor Marks Data Unavailable
-                </p>
-                <p className="text-white/70 text-xs mb-2">
-                  Unable to load Harbor Marks data for some markets. Your
-                  positions and core functionality remain unaffected. Please try
-                  refreshing the page.
-                </p>
-                {combinedMarketsWithOtherErrors.length > 0 && (
-                  <div className="mt-2 pt-2 border-t border-yellow-500/20">
-                    <p className="text-yellow-500/90 text-xs font-medium mb-1">
-                      Markets affected:{" "}
-                      {combinedMarketsWithOtherErrors
-                        .map(getMarketName)
-                        .join(", ")}
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
+          <GenesisErrorBanner
+            tone="warning"
+            title="Harbor Marks Data Unavailable"
+            message="Unable to load Harbor Marks data for some markets. Your positions and core functionality remain unaffected. Please try refreshing the page."
+            markets={combinedMarketsWithOtherErrors.map(getMarketName)}
+          />
         )}
 
         {/* Divider */}
@@ -2248,116 +1986,7 @@ export default function GenesisIndexPage() {
             {/* Market Rows - sorted with running markets first, then completed markets */}
             {/* Within each section, markets with deposits are sorted to the top */}
             {(() => {
-              // Sort markets: running first, then completed
-              // Within each group, markets with deposits first
-              const sortedMarkets = [...genesisMarkets].sort((a, b) => {
-                const [_, mktA] = a;
-                const [__, mktB] = b;
-                const miA = genesisMarkets.findIndex((m) => m[0] === a[0]);
-                const miB = genesisMarkets.findIndex((m) => m[0] === b[0]);
-
-                const baseOffsetA = miA * (isConnected ? 3 : 1);
-                const baseOffsetB = miB * (isConnected ? 3 : 1);
-
-                const isEndedA =
-                  (reads?.[baseOffsetA]?.result as boolean) ?? false;
-                const isEndedB =
-                  (reads?.[baseOffsetB]?.result as boolean) ?? false;
-
-                // First, sort by ended status: running (not ended) first, then completed (ended)
-                if (isEndedA && !isEndedB) return 1; // A is ended, B is running -> B comes first
-                if (!isEndedA && isEndedB) return -1; // A is running, B is ended -> A comes first
-
-                // Within the same group (both running or both completed), sort by deposit
-                const userDepositA = isConnected
-                  ? (reads?.[baseOffsetA + 1]?.result as bigint | undefined)
-                  : undefined;
-                const userDepositB = isConnected
-                  ? (reads?.[baseOffsetB + 1]?.result as bigint | undefined)
-                  : undefined;
-
-                const hasDepositA = userDepositA && userDepositA > 0n;
-                const hasDepositB = userDepositB && userDepositB > 0n;
-
-                // Markets with deposits come first within their group
-                if (hasDepositA && !hasDepositB) return -1;
-                if (!hasDepositA && hasDepositB) return 1;
-
-                return 0;
-              });
-
-              // Check if we have ended markets
-              // Show ended markets regardless of claimable tokens (they may have been claimed)
-              const hasEndedMarkets = sortedMarkets.some((market) => {
-                const mi = genesisMarkets.findIndex((m) => m[0] === market[0]);
-                const baseOffset = mi * (isConnected ? 3 : 1);
-                const isEnded =
-                  (reads?.[baseOffset]?.result as boolean) ?? false;
-                return isEnded;
-              });
-              const hasLiveMarkets = sortedMarkets.some((market) => {
-                const mi = genesisMarkets.findIndex((m) => m[0] === market[0]);
-                const baseOffset = mi * (isConnected ? 3 : 1);
-                return !((reads?.[baseOffset]?.result as boolean) ?? false);
-              });
-              // Show headers if we have both types, OR if we have live markets, OR if we have only ended markets
-              const showHeaders =
-                (hasEndedMarkets && hasLiveMarkets) ||
-                hasLiveMarkets ||
-                hasEndedMarkets;
-
-              // Separate active and completed markets
-              const activeMarkets: Array<[string, any]> = [];
-              const completedMarkets: Array<[string, any, any]> = []; // [id, mkt, marks]
-
-              sortedMarkets.forEach(([id, mkt]) => {
-                const mi = genesisMarkets.findIndex((m) => m[0] === id);
-                const baseOffset = mi * (isConnected ? 3 : 1);
-                const contractReadResult = reads?.[baseOffset];
-                const contractSaysEnded =
-                  contractReadResult?.status === "success"
-                    ? (contractReadResult.result as boolean)
-                    : undefined;
-
-                // Get marks data for campaign grouping
-                const marksForMarket = marksResults?.find(
-                  (marks) =>
-                    marks.genesisAddress?.toLowerCase() ===
-                    (mkt as any).addresses?.genesis?.toLowerCase()
-                );
-                const userMarksData = marksForMarket?.data?.userHarborMarks;
-                const marks = Array.isArray(userMarksData)
-                  ? userMarksData[0]
-                  : userMarksData;
-                const subgraphSaysEnded = marks?.genesisEnded;
-
-                const isEnded =
-                  contractSaysEnded !== undefined
-                    ? contractSaysEnded
-                    : subgraphSaysEnded ?? false;
-
-                if (isEnded) {
-                  completedMarkets.push([id, mkt, marks]);
-                } else {
-                  activeMarkets.push([id, mkt]);
-                }
-              });
-
-              // Note: completedByCampaign is now calculated in useMemo above
-
               let activeHeaderRendered = false;
-              
-              // Get the active campaign name from the first active market
-              const activeCampaignName = activeMarkets.length > 0 
-                ? (() => {
-                    const firstMarket = activeMarkets[0];
-                    const firstMarketConfig = firstMarket[1] as any;
-                    const campaignLabel = firstMarketConfig?.marksCampaign?.label || "Genesis";
-                    // Extract campaign name (e.g., "Euro" from "Euro Maiden Voyage")
-                    const campaignName = campaignLabel.replace(/\s+Maiden Voyage.*/i, "").trim() || campaignLabel;
-                    return campaignName;
-                  })()
-                : null;
 
               const marketRows = activeMarkets.map(([id, mkt], idx) => {
                 const mi = genesisMarkets.findIndex((m) => m[0] === id);
@@ -3313,10 +2942,7 @@ export default function GenesisIndexPage() {
                                   setManageModal({
                                     marketId: id,
                                     market: mkt,
-                                    initialTab:
-                                      userDeposit && userDeposit > 0n
-                                        ? "withdraw"
-                                        : "deposit",
+                                    initialTab: "deposit",
                                   });
                                 }}
                                 className="px-3 py-1.5 text-[10px] font-medium bg-[#1E4775] text-white hover:bg-[#17395F] transition-colors rounded-full whitespace-nowrap"
@@ -4046,10 +3672,7 @@ export default function GenesisIndexPage() {
                                   setManageModal({
                                     marketId: id,
                                     market: mkt,
-                                    initialTab:
-                                      userDeposit && userDeposit > 0n
-                                        ? "withdraw"
-                                        : "deposit",
+                                    initialTab: "deposit",
                                   });
                                 }}
                                 className="px-3 py-1.5 text-[10px] font-medium bg-[#1E4775] text-white hover:bg-[#17395F] transition-colors rounded-full whitespace-nowrap"
@@ -4905,10 +4528,7 @@ export default function GenesisIndexPage() {
                                   setManageModal({
                                     marketId: id,
                                     market: mkt,
-                                    initialTab:
-                                      userDeposit && userDeposit > 0n
-                                        ? "withdraw"
-                                        : "deposit",
+                                    initialTab: "deposit",
                                   });
                                 }}
                                 disabled={isEnded || !genesisAddress}
@@ -5053,7 +4673,7 @@ export default function GenesisIndexPage() {
                           : null;
 
                         return (
-                          <MarketExpandedView
+                          <GenesisMarketExpandedView
                             marketId={id}
                             market={mkt}
                             genesisAddress={genesisAddress}

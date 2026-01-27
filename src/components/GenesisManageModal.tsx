@@ -5,6 +5,7 @@ import { GenesisDepositModal } from "./GenesisDepositModal";
 import { GenesisWithdrawModal } from "./GenesisWithdrawModal";
 import { useContractRead } from "wagmi";
 import { useAccount } from "wagmi";
+import { getAcceptedDepositAssets } from "@/utils/markets";
 
 interface GenesisManageModalProps {
   isOpen: boolean;
@@ -31,24 +32,6 @@ const genesisABI = [
     type: "function",
   },
 ] as const;
-
-// Helper function to get accepted deposit assets from market config
-function getAcceptedDepositAssets(
-  market: any
-): Array<{ symbol: string; name: string }> {
-  if (market?.acceptedAssets && Array.isArray(market.acceptedAssets)) {
-    return market.acceptedAssets;
-  }
-  if (market?.collateral?.symbol) {
-    return [
-      {
-        symbol: market.collateral.symbol,
-        name: market.collateral.name || market.collateral.symbol,
-      },
-    ];
-  }
-  return [];
-}
 
 export const GenesisManageModal = ({
   isOpen,
