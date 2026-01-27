@@ -108,6 +108,7 @@ export function AnchorStabilityPools({ tokenSymbol }: AnchorStabilityPoolsProps)
 
       return {
         key: `${pool.marketId}-${pool.poolType}`,
+        marketId: pool.marketId,
         marketName,
         collateralSymbol,
         poolType: pool.poolType,
@@ -120,18 +121,20 @@ export function AnchorStabilityPools({ tokenSymbol }: AnchorStabilityPoolsProps)
   const groupedPools = useMemo(() => {
     const groups = new Map<string, typeof poolRows>();
     poolRows.forEach((pool) => {
-      const key = pool.rewardSymbols.length
-        ? pool.rewardSymbols.join("|").toLowerCase()
-        : "none";
-      const existing = groups.get(key) || [];
+      const existing = groups.get(pool.marketId) || [];
       existing.push(pool);
-      groups.set(key, existing);
+      groups.set(pool.marketId, existing);
     });
-    return Array.from(groups.entries()).map(([key, pools]) => ({
-      key,
-      rewardSymbols: pools[0]?.rewardSymbols ?? [],
-      pools,
-    }));
+    return Array.from(groups.entries()).map(([key, pools]) => {
+      const rewardSymbols = Array.from(
+        new Set(pools.flatMap((pool) => pool.rewardSymbols))
+      );
+      return {
+        key,
+        rewardSymbols,
+        pools,
+      };
+    });
   }, [poolRows]);
 
   if (anchorMarkets.length === 0) {
@@ -158,6 +161,15 @@ export function AnchorStabilityPools({ tokenSymbol }: AnchorStabilityPoolsProps)
         );
         const sailPool = group.pools.find((pool) => pool.poolType === "sail");
 
+        const fallbackSymbol =
+          collateralPool?.collateralSymbol || sailPool?.collateralSymbol || "";
+        const earnedSymbols =
+          group.rewardSymbols.length > 0
+            ? group.rewardSymbols
+            : fallbackSymbol
+            ? [fallbackSymbol]
+            : [];
+
         return (
           <div
             key={group.key}
@@ -168,8 +180,8 @@ export function AnchorStabilityPools({ tokenSymbol }: AnchorStabilityPoolsProps)
                 Earned tokens
               </div>
               <div className="flex flex-wrap items-center justify-center gap-3">
-                {group.rewardSymbols.length > 0 ? (
-                  group.rewardSymbols.map((symbol) => (
+                {earnedSymbols.length > 0 ? (
+                  earnedSymbols.map((symbol) => (
                     <Image
                       key={symbol}
                       src={getTokenIcon(symbol)}
