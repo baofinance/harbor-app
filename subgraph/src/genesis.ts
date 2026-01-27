@@ -213,6 +213,13 @@ function getPriceOracleAddress(genesisAddress: string): string {
   if (genesisAddress == "0x1454707877cdb966e29cea8a190c2169eeca4b8c") {
     return "0x56d1a2fc199ba05f84d2eb8eab5858d3d954030c"; // ETH/fxUSD (alternative address)
   }
+  // EUR markets (production v1)
+  if (genesisAddress == "0xf4f97218a00213a57a32e4606aaecc99e1805a89") {
+    return "0xe370289af2145a5b2f0f7a4a900ebfd478a156db"; // stETH/EUR (EUR::stETH::priceOracle)
+  }
+  if (genesisAddress == "0xa9eb43ed6ba3b953a82741f3e226c1d6b029699b") {
+    return "0x71437c90f1e0785dd691fd02f7be0b90cd14c097"; // fxUSD/EUR (EUR::fxUSD::priceOracle)
+  }
   return "";
 }
 
@@ -241,6 +248,13 @@ function getFallbackPrice(genesisAddress: string): BigDecimal {
   if (genesisAddress == "0x1454707877cdb966e29cea8a190c2169eeca4b8c") {
     return BigDecimal.fromString("1.07"); // fxSAVE ~$1.07
   }
+  // EUR markets (production v1)
+  if (genesisAddress == "0xf4f97218a00213a57a32e4606aaecc99e1805a89") {
+    return BigDecimal.fromString("3600"); // wstETH ~$3600 (stETH/EUR)
+  }
+  if (genesisAddress == "0xa9eb43ed6ba3b953a82741f3e226c1d6b029699b") {
+    return BigDecimal.fromString("1.07"); // fxSAVE ~$1.07 (fxUSD/EUR)
+  }
   return BigDecimal.fromString("1.0"); // Default fallback
 }
 
@@ -260,17 +274,21 @@ export function getWrappedTokenPriceUSD(genesisAddress: Bytes, block: ethereum.B
   // For wstETH markets: Oracle returns haBTC price, but we need wstETH price (~$3,600)
   // Solution: Use CoinGecko or hardcoded prices for underlying, then multiply by wrapped rate
   
-  // Determine if market is BTC-pegged (uses haBTC) or ETH-pegged (uses haETH)
+  // Determine if market is BTC-pegged (uses haBTC), ETH-pegged (uses haETH), or EUR-pegged (uses haEUR)
   // BTC-pegged markets: BTC/fxUSD, BTC/stETH
   // ETH-pegged markets: ETH/fxUSD
+  // EUR-pegged markets: stETH/EUR, fxUSD/EUR
   const isBTCPeggedMarket = genesisAddressStr == "0x42cc9a19b358a2a918f891d8a6199d8b05f0bc1c" || // BTC/fxUSD (production v1)
                              genesisAddressStr == "0xc64fc46eed431e92c1b5e24dc296b5985ce6cc00" || // BTC/stETH (production v1)
                              genesisAddressStr == "0x288c61c3b3684ff21adf38d878c81457b19bd2fe" || // BTC/fxUSD (legacy test)
                              genesisAddressStr == "0x9ae0b57ceada0056dbe21edcd638476fcba3ccc0"; // BTC/stETH (legacy test)
   
+  const isStethEurMarket = genesisAddressStr == "0xf4f97218a00213a57a32e4606aaecc99e1805a89"; // stETH/EUR (production v1)
+  
   // ETH/fxUSD and BTC/fxUSD markets use fxUSD as underlying collateral
   const isFxUSDMarket = genesisAddressStr == "0xc9df4f62474cf6cde6c064db29416a9f4f27ebdc" || // ETH/fxUSD (production v1)
                         genesisAddressStr == "0x42cc9a19b358a2a918f891d8a6199d8b05f0bc1c" || // BTC/fxUSD (production v1)
+                        genesisAddressStr == "0xa9eb43ed6ba3b953a82741f3e226c1d6b029699b" || // fxUSD/EUR (production v1)
                         genesisAddressStr == "0x5f4398e1d3e33f93e3d7ee710d797e2a154cb073" || // Legacy test
                         genesisAddressStr == "0x288c61c3b3684ff21adf38d878c81457b19bd2fe" || // Legacy test
                         genesisAddressStr == "0x1454707877cdb966e29cea8a190c2169eeca4b8c"; // Legacy test
@@ -287,7 +305,8 @@ export function getWrappedTokenPriceUSD(genesisAddress: Bytes, block: ethereum.B
     
     const oracleAddressStr = getPriceOracleAddress(genesisAddressStr);
     if (oracleAddressStr == "") {
-      return getFallbackPrice(genesisAddressStr);
+      // No oracle configured - return 0 to indicate pricing failure
+      return BigDecimal.fromString("0");
     }
     
     // Get fxSAVE rate from the market's oracle
@@ -296,7 +315,8 @@ export function getWrappedTokenPriceUSD(genesisAddress: Bytes, block: ethereum.B
     const result = oracle.try_latestAnswer();
     
     if (result.reverted) {
-      return getFallbackPrice(genesisAddressStr);
+      // Oracle call failed - return 0 to indicate pricing failure
+      return BigDecimal.fromString("0");
     }
     
     // Extract fxSAVE rate (18 decimals)
@@ -307,6 +327,7 @@ export function getWrappedTokenPriceUSD(genesisAddress: Bytes, block: ethereum.B
     
     // Determine if this is an ETH-pegged or BTC-pegged market
     const isETHMarket = genesisAddressStr == "0xc9df4f62474cf6cde6c064db29416a9f4f27ebdc" || // ETH/fxUSD (production v1)
+                        genesisAddressStr == "0xa9eb43ed6ba3b953a82741f3e226c1d6b029699b" || // fxUSD/EUR (production v1)
                         genesisAddressStr == "0x5f4398e1d3e33f93e3d7ee710d797e2a154cb073" || // Legacy test
                         genesisAddressStr == "0x1454707877cdb966e29cea8a190c2169eeca4b8c"; // Legacy test
     
@@ -320,8 +341,8 @@ export function getWrappedTokenPriceUSD(genesisAddress: Bytes, block: ethereum.B
       const ethUsdResult = ethUsdOracle.try_latestAnswer();
       
       if (ethUsdResult.reverted) {
-        // If Chainlink fails, use fallback
-        return getFallbackPrice(genesisAddressStr);
+        // Chainlink ETH/USD failed - return 0 to indicate pricing failure
+        return BigDecimal.fromString("0");
       }
       
       // Chainlink ETH/USD uses 8 decimals
@@ -334,23 +355,69 @@ export function getWrappedTokenPriceUSD(genesisAddress: Bytes, block: ethereum.B
       const btcUsdResult = btcUsdOracle.try_latestAnswer();
       
       if (btcUsdResult.reverted) {
-        // If Chainlink fails, use fallback
-        return getFallbackPrice(genesisAddressStr);
+        // Chainlink BTC/USD failed - return 0 to indicate pricing failure
+        return BigDecimal.fromString("0");
       }
       
       // Chainlink BTC/USD uses 8 decimals
       peggedTokenUsdPrice = btcUsdResult.value.toBigDecimal().div(BigDecimal.fromString("100000000")); // 10^8
     }
     
-    // Calculate fxSAVE price in USD: (fxSAVE/ETH or fxSAVE/BTC rate) × (ETH/USD or BTC/USD price)
-    const fxsaveUsdPrice = fxsaveRateDecimal.times(peggedTokenUsdPrice);
+    // Apply wrapped rate (fxSAVE NAV) to get fxSAVE price in USD
+    const maxWrappedRate = result.value.value3;
+    const wrappedRate = maxWrappedRate.toBigDecimal().div(E18);
+    
+    // Calculate fxSAVE price in USD: (fxSAVE/ETH or fxSAVE/BTC rate) × (ETH/USD or BTC/USD price) × NAV
+    const fxsaveUsdPrice = fxsaveRateDecimal.times(peggedTokenUsdPrice).times(wrappedRate);
     
     // Ensure we have a valid price
     if (fxsaveUsdPrice.le(BigDecimal.fromString("0"))) {
-      return getFallbackPrice(genesisAddressStr);
+      // Calculated price is invalid - return 0 to indicate pricing failure
+      return BigDecimal.fromString("0");
     }
     
     return fxsaveUsdPrice;
+  }
+  
+  if (isStethEurMarket) {
+    // stETH/EUR market: oracle returns stETH per wstETH (wrapped rate). Use ETH/USD to price wstETH in USD.
+    const oracleAddressStr = getPriceOracleAddress(genesisAddressStr);
+    if (oracleAddressStr == "") {
+      // No oracle configured - return 0 to indicate pricing failure
+      return BigDecimal.fromString("0");
+    }
+    
+    const oracleAddress = Address.fromString(oracleAddressStr);
+    const oracle = WrappedPriceOracle.bind(oracleAddress);
+    const result = oracle.try_latestAnswer();
+    
+    if (result.reverted) {
+      // Oracle call failed - return 0 to indicate pricing failure
+      return BigDecimal.fromString("0");
+    }
+    
+    const maxWrappedRate = result.value.value3;
+    const wrappedRate = maxWrappedRate.toBigDecimal().div(E18);
+    
+    // Get ETH/USD price from Chainlink
+    const ethUsdOracleAddress = Address.fromString("0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419");
+    const ethUsdOracle = ChainlinkAggregator.bind(ethUsdOracleAddress);
+    const ethUsdResult = ethUsdOracle.try_latestAnswer();
+    
+    if (ethUsdResult.reverted) {
+      // Chainlink ETH/USD failed - return 0 to indicate pricing failure
+      return BigDecimal.fromString("0");
+    }
+    
+    const ethUsdPrice = ethUsdResult.value.toBigDecimal().div(BigDecimal.fromString("100000000")); // 10^8
+    const wstethUsdPrice = ethUsdPrice.times(wrappedRate);
+    
+    if (wstethUsdPrice.le(BigDecimal.fromString("0"))) {
+      // Calculated price is invalid - return 0 to indicate pricing failure
+      return BigDecimal.fromString("0");
+    }
+    
+    return wstethUsdPrice;
   }
   
   if (isWstETHMarket) {
@@ -361,7 +428,8 @@ export function getWrappedTokenPriceUSD(genesisAddress: Bytes, block: ethereum.B
     
     const oracleAddressStr = getPriceOracleAddress(genesisAddressStr);
     if (oracleAddressStr == "") {
-      return getFallbackPrice(genesisAddressStr);
+      // No oracle configured - return 0 to indicate pricing failure
+      return BigDecimal.fromString("0");
     }
     
     // Get wstETH/BTC rate from the market's oracle
@@ -370,7 +438,8 @@ export function getWrappedTokenPriceUSD(genesisAddress: Bytes, block: ethereum.B
     const result = oracle.try_latestAnswer();
     
     if (result.reverted) {
-      return getFallbackPrice(genesisAddressStr);
+      // Oracle call failed - return 0 to indicate pricing failure
+      return BigDecimal.fromString("0");
     }
     
     // Extract wstETH/BTC rate (18 decimals)
@@ -388,10 +457,10 @@ export function getWrappedTokenPriceUSD(genesisAddress: Bytes, block: ethereum.B
     const btcUsdOracle = ChainlinkAggregator.bind(btcUsdOracleAddress);
     const btcUsdResult = btcUsdOracle.try_latestAnswer();
     
-    if (btcUsdResult.reverted) {
-      // If Chainlink fails, use fallback
-      return getFallbackPrice(genesisAddressStr);
-    }
+      if (btcUsdResult.reverted) {
+        // Chainlink BTC/USD failed - return 0 to indicate pricing failure
+        return BigDecimal.fromString("0");
+      }
     
     // Chainlink BTC/USD uses 8 decimals
     const btcUsdPrice = btcUsdResult.value.toBigDecimal().div(BigDecimal.fromString("100000000")); // 10^8
@@ -402,7 +471,8 @@ export function getWrappedTokenPriceUSD(genesisAddress: Bytes, block: ethereum.B
     
     // Ensure we have a valid price
     if (wstethUsdPrice.le(BigDecimal.fromString("0"))) {
-      return getFallbackPrice(genesisAddressStr);
+      // Calculated price is invalid - return 0 to indicate pricing failure
+      return BigDecimal.fromString("0");
     }
     
     return wstethUsdPrice;
@@ -411,9 +481,9 @@ export function getWrappedTokenPriceUSD(genesisAddress: Bytes, block: ethereum.B
   // For other markets, use oracle normally
   const oracleAddressStr = getPriceOracleAddress(genesisAddressStr);
   
-  // If no oracle configured, use fallback
+  // If no oracle configured, return 0 to indicate pricing failure
   if (oracleAddressStr == "") {
-    return getFallbackPrice(genesisAddressStr);
+    return BigDecimal.fromString("0");
   }
   
   // Bind to the price oracle contract
@@ -424,8 +494,8 @@ export function getWrappedTokenPriceUSD(genesisAddress: Bytes, block: ethereum.B
   const result = oracle.try_latestAnswer();
   
   if (result.reverted) {
-    // Oracle call failed, use fallback
-    return getFallbackPrice(genesisAddressStr);
+    // Oracle call failed - return 0 to indicate pricing failure
+    return BigDecimal.fromString("0");
   }
   
   // Extract values (all in 18 decimals)
@@ -442,7 +512,8 @@ export function getWrappedTokenPriceUSD(genesisAddress: Bytes, block: ethereum.B
   
   // Ensure we have a valid price
   if (wrappedTokenPriceUSD.le(BigDecimal.fromString("0"))) {
-    return getFallbackPrice(genesisAddressStr);
+    // Calculated price is invalid - return 0 to indicate pricing failure
+    return BigDecimal.fromString("0");
   }
   
   return wrappedTokenPriceUSD;

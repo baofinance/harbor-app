@@ -5798,7 +5798,7 @@ export default function AnchorPage() {
                               }}
                               className="px-4 py-2 text-sm font-semibold bg-[#1E4775] text-white hover:bg-[#17395F] disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors rounded-full whitespace-nowrap"
                             >
-                              Deposit
+                              Manage
                             </button>
                           </div>
                         </div>
@@ -5873,7 +5873,7 @@ export default function AnchorPage() {
                                 }}
                                 className="px-4 py-2 text-sm font-semibold bg-[#1E4775] text-white hover:bg-[#17395F] disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors rounded-full whitespace-nowrap"
                               >
-                                Deposit
+                                Manage
                               </button>
                             </div>
                           </div>
@@ -5931,7 +5931,7 @@ export default function AnchorPage() {
                                 }}
                                 className="px-4 py-2 text-sm font-semibold bg-[#1E4775] text-white hover:bg-[#17395F] disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors rounded-full whitespace-nowrap"
                               >
-                                Deposit
+                                Manage
                               </button>
                             </div>
                           </div>

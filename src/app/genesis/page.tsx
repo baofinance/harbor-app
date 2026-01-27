@@ -2406,9 +2406,44 @@ export default function GenesisIndexPage() {
                     <>
                       <div
                         key={`section-active`}
-                        className="pt-4 mb-1 flex items-center justify-between gap-2"
+                        className="pt-4 mb-1 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2"
                       >
-                        <h2 className="text-xs font-medium text-white/70 uppercase tracking-wider flex items-center gap-2">
+                        {/* Pills - shown first on narrow screens, on right on larger screens */}
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 order-1 sm:order-2">
+                          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#E67A6B] hover:bg-[#D66A5B] border border-white text-white text-xs font-semibold uppercase tracking-wider rounded-full transition-colors">
+                            <span>Earn 10</span>
+                            <Image
+                              src="/icons/marks.png"
+                              alt="Marks"
+                              width={16}
+                              height={16}
+                              className="flex-shrink-0"
+                            />
+                            <span>/$/day + 100</span>
+                            <Image
+                              src="/icons/marks.png"
+                              alt="Marks"
+                              width={16}
+                              height={16}
+                              className="flex-shrink-0"
+                            />
+                            <span>bonus on completion</span>
+                          </div>
+                          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#E67A6B] hover:bg-[#D66A5B] border border-white text-white text-xs font-semibold uppercase tracking-wider rounded-full transition-colors">
+                            <span>Early Deposit Bonus!</span>
+                            <span>100</span>
+                            <Image
+                              src="/icons/marks.png"
+                              alt="Marks"
+                              width={20}
+                              height={20}
+                              className="flex-shrink-0"
+                            />
+                            <span>/ $</span>
+                          </div>
+                        </div>
+                        {/* Header - shown second on narrow screens, on left on larger screens */}
+                        <h2 className="text-xs font-medium text-white/70 uppercase tracking-wider flex items-center gap-2 order-2 sm:order-1">
                           Active Campaign:
                           {activeCampaignName && (
                             <span className="inline-flex items-center px-2.5 py-1 bg-[#E67A6B] hover:bg-[#D66A5B] border border-white text-white text-xs font-semibold uppercase tracking-wider rounded-full transition-colors">
@@ -2416,18 +2451,6 @@ export default function GenesisIndexPage() {
                             </span>
                           )}
                         </h2>
-                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#E67A6B] hover:bg-[#D66A5B] border border-white text-white text-xs font-semibold uppercase tracking-wider rounded-full transition-colors">
-                          <span>Early Deposit Bonus!</span>
-                          <span>100</span>
-                          <Image
-                            src="/icons/marks.png"
-                            alt="Marks"
-                            width={20}
-                            height={20}
-                            className="flex-shrink-0"
-                          />
-                          <span>/ $</span>
-                        </div>
                       </div>
                       <div
                         key={`header-active`}
@@ -5139,7 +5162,7 @@ export default function GenesisIndexPage() {
                     className="bg-white py-2.5 px-2 rounded-none border border-white/10"
                   >
                     {/* Desktop layout - grid matching active events */}
-                    <div className="hidden md:grid lg:grid-cols-[1.5fr_80px_0.9fr_1fr_0.9fr] md:grid-cols-[120px_80px_100px_1fr_90px] gap-4 items-center">
+                    <div className="hidden md:grid lg:grid-cols-[1.5fr_80px_0.9fr_1fr_0.9fr] md:grid-cols-[120px_80px_100px_1fr_110px] gap-4 items-center">
                       {/* Market Column */}
                       <div className="flex items-center gap-2 min-w-0 pl-4">
                         <div className="text-[#1E4775] font-medium text-sm">
@@ -5224,8 +5247,8 @@ export default function GenesisIndexPage() {
                       </div>
 
                       {/* Status Column */}
-                      <div className="flex-shrink-0 text-center">
-                        <div className="bg-[#FF8A7A] px-3 py-1 rounded-full inline-block">
+                      <div className="flex-shrink-0 text-center min-w-0 overflow-hidden">
+                        <div className="bg-[#FF8A7A] px-2 md:px-3 py-1 rounded-full inline-block max-w-full">
                           <span className="text-white font-semibold text-[10px] uppercase tracking-wider whitespace-nowrap">
                             Coming Next
                           </span>

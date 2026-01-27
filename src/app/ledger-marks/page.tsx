@@ -1049,23 +1049,51 @@ const handleAnchorSailSort = (column: typeof anchorSailSortBy) => {
  <div className="flex items-start gap-2">
  <span className="text-white/70 mt-0.5">•</span>
  <p>
- <strong>Genesis Deposits:</strong> Earn 10 marks per
- dollar per day during genesis, plus 100 marks per dollar
- bonus at genesis end.
+ <strong>Maiden Voyage Deposits:</strong> Earn 10{" "}
+ <Image
+   src="/icons/marks.png"
+   alt="Marks"
+   width={14}
+   height={14}
+   className="inline-block align-middle mx-0.5"
+ />{" "}
+ per dollar per day during maiden voyage, plus 100{" "}
+ <Image
+   src="/icons/marks.png"
+   alt="Marks"
+   width={14}
+   height={14}
+   className="inline-block align-middle mx-0.5"
+ />{" "}
+ per dollar bonus at maiden voyage end.
  </p>
  </div>
                 <div className="flex items-start gap-2">
                   <span className="text-white/70 mt-0.5">•</span>
                   <p>
-                    <strong>Holding Anchor Tokens:</strong> Earn 1 mark per dollar
-                    per day.
+                    <strong>Holding Anchor Tokens:</strong> Earn 1{" "}
+                    <Image
+                      src="/icons/marks.png"
+                      alt="Marks"
+                      width={14}
+                      height={14}
+                      className="inline-block align-middle mx-0.5"
+                    />{" "}
+                    per dollar per day.
                   </p>
                 </div>
                 <div className="flex items-start gap-2">
                   <span className="text-white/70 mt-0.5">•</span>
                   <p>
-                    <strong>Holding Sail Tokens:</strong> Earn 5 marks per dollar
-                    per day.
+                    <strong>Holding Sail Tokens:</strong> Earn 10{" "}
+                    <Image
+                      src="/icons/marks.png"
+                      alt="Marks"
+                      width={14}
+                      height={14}
+                      className="inline-block align-middle mx-0.5"
+                    />{" "}
+                    per dollar per day.
                   </p>
                 </div>
  <div className="flex items-start gap-2">

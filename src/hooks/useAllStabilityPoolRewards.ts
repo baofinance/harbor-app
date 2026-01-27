@@ -75,12 +75,39 @@ export function useAllStabilityPoolRewards({
     }));
   }, [pools]);
 
+  // Create a stable key for token price availability (changes only when major prices load)
+  // This ensures APRs recalculate when critical prices (like wstETH USD) load for the first time
+  const priceAvailabilityKey = useMemo(() => {
+    const keys: string[] = [];
+    const allEntries: any[] = [];
+    if (tokenPriceMap) {
+      // Check if major collateral tokens have USD prices (> $1000 indicates USD, not ratio)
+      tokenPriceMap.forEach((price, addr) => {
+        allEntries.push({ addr, price, type: typeof price, over1000: price > 1000 });
+        if (price > 1000) {
+          keys.push(`${addr.slice(0, 10)}:loaded`);
+        }
+      });
+    }
+    const result = keys.sort().join("|") || "no-prices";
+    if (process.env.NODE_ENV === "development") {
+      console.log("[useAllStabilityPoolRewards] priceAvailabilityKey:", {
+        result,
+        tokenPriceMapSize: tokenPriceMap?.size,
+        pricesOver1000: keys.length,
+        allEntries,
+      });
+    }
+    return result;
+  }, [tokenPriceMap]);
+
   return useQuery({
     queryKey: [
       "all-stability-pool-rewards",
       stablePoolsKey,
       addressKey,
       overrideAddress ? "override" : "account",
+      priceAvailabilityKey,
     ],
     queryFn: async () => {
       // We can compute pool APRs without a connected wallet (skip per-user claimable).
@@ -454,8 +481,6 @@ export function useAllStabilityPoolRewards({
     },
     enabled: enabled && !!publicClient && pools.length > 0,
     refetchInterval: 30000, // Refetch every 30 seconds
-    // Keep last known values while refetching to avoid APR flicker.
-    placeholderData: (prev) => prev,
     retry: 1,
   });
 }

@@ -156,10 +156,37 @@ export function useAnchorRewards(
       if (wrappedCollateralTokenAddress) {
         let p: number | undefined;
         if (wrappedSymbol === "fxsave") p = fxSAVEPriceUSD ?? undefined;
-        else if (wrappedSymbol === "wsteth") p = wstETHPriceUSD ?? undefined;
+        else if (wrappedSymbol === "wsteth") {
+          p = wstETHPriceUSD ?? undefined;
+          // Fallback: calculate wstETH USD price from wrappedRate * ETH price
+          if ((!p || p === 0 || p < 100) && ethPrice && ethPrice > 0) {
+            const priceOracleOffset = calculatePriceOracleOffset(anchorMarkets, mi);
+            const latestAnswerResult = reads?.[priceOracleOffset]?.result;
+            if (latestAnswerResult && Array.isArray(latestAnswerResult)) {
+              const wrappedRate = latestAnswerResult[3] as bigint; // maxWrappedRate
+              if (wrappedRate && wrappedRate > 0n) {
+                const wrappedRateNum = Number(wrappedRate) / 1e18;
+                p = wrappedRateNum * ethPrice;
+                console.log("[useAnchorRewards] Calculated wstETH USD price from wrappedRate * ETH:", {
+                  marketId: id,
+                  wrappedRate: wrappedRateNum,
+                  ethPrice,
+                  calculatedPrice: p,
+                });
+              }
+            }
+          }
+        }
         else if (wrappedSymbol === "steth") p = stETHPriceUSD ?? undefined;
         if (p && Number.isFinite(p) && p > 0) {
           map.set(wrappedCollateralTokenAddress.toLowerCase(), p);
+          if (process.env.NODE_ENV === "development" && wrappedSymbol === "wsteth") {
+            console.log("[useAnchorRewards] Added wstETH to globalTokenPriceMap:", {
+              address: wrappedCollateralTokenAddress,
+              price: p,
+              source: wstETHPriceUSD ? "CoinGecko" : "wrappedRate * ETH",
+            });
+          }
         }
       }
 
@@ -191,7 +218,11 @@ export function useAnchorRewards(
 
         if (collateralPrice) {
           const price = Number(collateralPrice) / 10 ** collateralPriceDecimals;
-          map.set(collateralTokenAddress.toLowerCase(), price);
+          // Only set if we don't already have a USD price (> $1000)
+          const existing = map.get(collateralTokenAddress.toLowerCase());
+          if (!existing || existing < 1000) {
+            map.set(collateralTokenAddress.toLowerCase(), price);
+          }
 
           // Also add wstETH if it's a different address
           const wstETHAddress = (m as any).addresses?.wstETH as
@@ -201,11 +232,27 @@ export function useAnchorRewards(
             wstETHAddress &&
             wstETHAddress.toLowerCase() !== collateralTokenAddress.toLowerCase()
           ) {
-            map.set(wstETHAddress.toLowerCase(), price);
+            // Only set if we don't already have a USD price (> $1000)
+            const existing = map.get(wstETHAddress.toLowerCase());
+            if (!existing || existing < 1000) {
+              map.set(wstETHAddress.toLowerCase(), price);
+            }
           }
         }
       }
     });
+
+    if (process.env.NODE_ENV === "development") {
+      console.log("[useAnchorRewards] globalTokenPriceMap built:", {
+        size: map.size,
+        entries: Array.from(map.entries()).map(([addr, price]) => ({
+          address: addr,
+          price,
+          priceType: typeof price,
+          isOver1000: price > 1000,
+        })),
+      });
+    }
 
     return map;
   }, [
@@ -214,6 +261,7 @@ export function useAnchorRewards(
     fxSAVEPriceUSD,
     wstETHPriceUSD,
     stETHPriceUSD,
+    ethPrice,
   ]);
 
   // Fetch all stability pool rewards
@@ -224,6 +272,7 @@ export function useAnchorRewards(
       btcPrice,
       poolsCount: allPoolsForRewards.length,
       peggedPriceUSDMap: peggedPriceUSDMap ? Object.keys(peggedPriceUSDMap) : undefined,
+      globalTokenPriceMapSize: globalTokenPriceMap.size,
     });
   }
   
