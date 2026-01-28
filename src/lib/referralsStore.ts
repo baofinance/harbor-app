@@ -425,15 +425,6 @@ export function getReferralsStore(): ReferralsStore {
   return createUpstashStore();
 }
 
-export function getReferralsStoreMode(): "memory" | "upstash" {
-  const mode = process.env.REFERRALS_STORE || "upstash";
-  if (mode === "memory") return "memory";
-  const hasUpstash =
-    !!process.env.UPSTASH_REDIS_REST_URL &&
-    !!process.env.UPSTASH_REDIS_REST_TOKEN;
-  return hasUpstash ? "upstash" : "memory";
-}
-
 export function getReferralsStoreMode(): ReferralsStoreMode {
   const mode = process.env.REFERRALS_STORE || "upstash";
   if (mode === "memory") return "memory";
