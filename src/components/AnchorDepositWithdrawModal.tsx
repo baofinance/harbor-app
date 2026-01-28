@@ -11137,7 +11137,7 @@ export const AnchorDepositWithdrawModal = ({
                 {/* Withdraw Options - Only for Withdraw Tab */}
                 {activeTab === "withdraw" && (
                   <div className="space-y-3">
-                    <div className="flex items-center justify-center text-xs text-[#1E4775]/50 pb-3 border-b border-[#d1d7e5]">
+                    <div className="flex items-center justify-center text-xs text-[#1E4775]/50 pb-3">
                       <div className="text-[#1E4775] font-semibold">
                         Withdraw Collateral & Amount
                       </div>
