@@ -243,8 +243,8 @@ export async function GET(request: Request) {
       (m as any).addresses?.minter
   );
 
-  const comingSoonMarkets = marketEntries.filter(
-    ([, m]) => (m as any).status === "coming-soon"
+  const maidenVoyageMarkets = marketEntries.filter(
+    ([, m]) => !!(m as any)?.marksCampaign
   );
 
   const [coinGecko, chainlinkEth, chainlinkBtc, chainlinkEur, defillamaApys] =
@@ -436,7 +436,7 @@ export async function GET(request: Request) {
     }>
   >();
 
-  for (const [marketId, market] of comingSoonMarkets) {
+  for (const [marketId, market] of maidenVoyageMarkets) {
     const title =
       (market as any)?.marksCampaign?.label ||
       "Maiden Voyage";
@@ -448,6 +448,24 @@ export async function GET(request: Request) {
       projectedApr = defillamaApys.wstethApyPercent;
     }
 
+    const startDate = market?.genesis?.startDate
+      ? new Date(market.genesis.startDate).getTime()
+      : null;
+    const endDate = market?.genesis?.endDate
+      ? new Date(market.genesis.endDate).getTime()
+      : null;
+    const now = Date.now();
+    let phase: "live" | "coming-next" | "planned" = "planned";
+    if ((market as any).status === "coming-soon") {
+      phase = "planned";
+    } else if (startDate && now < startDate) {
+      phase = "coming-next";
+    } else if (endDate && now <= endDate) {
+      phase = "live";
+    } else if ((market as any).status === "genesis") {
+      phase = "live";
+    }
+
     const entry = {
       marketId,
       name: market.name,
@@ -456,6 +474,7 @@ export async function GET(request: Request) {
       projectedApr,
       longSide: parseLongSide(market),
       shortSide: parseShortSide(market),
+      phase,
     };
     const list = maidenVoyagesMap.get(title) || [];
     list.push(entry);
