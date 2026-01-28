@@ -75,7 +75,7 @@ export function usePermitOrApproval() {
           return { usePermit: false };
         }
 
-        // Get permit nonce
+        // Get current nonce from the token contract (0 for first permit, 1 for second, etc.)
         const nonce = await getPermitNonce(publicClient, tokenAddress, address as `0x${string}`);
 
         // Build permit domain

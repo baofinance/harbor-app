@@ -1935,6 +1935,11 @@ const successFmt = formatTokenAmount(
   // Deposit form content
   const formContent = (
     <div className="space-y-4 sm:space-y-6">
+      <div className="flex items-center justify-center text-xs text-[#1E4775]/50 pb-3 border-b border-[#d1d7e5]">
+        <div className="text-[#1E4775] font-semibold">
+          Deposit Collateral & Amount
+        </div>
+      </div>
  {/* Genesis Status Warning */}
  {genesisEnded && (
  <div className="p-3 bg-red-50 border border-red-500/30 text-red-600 text-sm">

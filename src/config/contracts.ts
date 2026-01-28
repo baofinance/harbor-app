@@ -1180,8 +1180,8 @@ export const MINTER_ETH_ZAP_V2_ABI = [
   { stateMutability: "payable", type: "receive" },
 ] as const;
 
-// Minter USDC Zap V2 – full ABI (permit + stability pool + custom errors). Re-exported from abis.
-export { MINTER_USDC_ZAP_V2_ABI } from "@/abis/minterUsdcZapV2";
+// Minter USDC Zap V3 – full ABI (permit + stability pool + custom errors). Re-exported from abis.
+export { MINTER_USDC_ZAP_V3_ABI } from "@/abis/minterUsdcZapV3";
 
 export const ERC20_ABI = [
   {

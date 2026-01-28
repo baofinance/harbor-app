@@ -298,6 +298,11 @@ const successUSD = successAmountNum > 0 && collateralPriceUSD > 0
   // Withdraw form content
   const formContent = (
     <div className="space-y-4 sm:space-y-6">
+      <div className="flex items-center justify-center text-xs text-[#1E4775]/50 pb-3 border-b border-[#d1d7e5]">
+        <div className="text-[#1E4775] font-semibold">
+          Withdraw Collateral & Amount
+        </div>
+      </div>
  {/* Balance */}
 {(() => {
   const depositFmt = formatTokenAmount(
@@ -307,7 +312,7 @@ const successUSD = successAmountNum > 0 && collateralPriceUSD > 0
   );
   return (
  <div className="flex justify-between items-center text-sm">
-      <span className="font-semibold text-[#1E4775]">Your Deposit:</span>
+      <span className="font-semibold text-[#1E4775]">Your Position:</span>
  <span className="text-[#1E4775]">
         {depositFmt.display}
         {depositFmt.usd && <span className="text-[#1E4775]/50 ml-1">({depositFmt.usd})</span>}

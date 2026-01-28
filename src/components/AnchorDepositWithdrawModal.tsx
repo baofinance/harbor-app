@@ -19,7 +19,7 @@ import { ERC20_ABI, STABILITY_POOL_ABI } from "@/abis/shared";
 import { stabilityPoolABI } from "@/abis/stabilityPool";
 import { aprABI } from "@/abis/apr";
 import { ZAP_ABI, USDC_ZAP_ABI, WSTETH_ABI } from "@/abis";
-import { MINTER_ETH_ZAP_V2_ABI, MINTER_USDC_ZAP_V2_ABI } from "@/config/contracts";
+import { MINTER_ETH_ZAP_V2_ABI, MINTER_USDC_ZAP_V3_ABI } from "@/config/contracts";
 import Image from "next/image";
 import SimpleTooltip from "@/components/SimpleTooltip";
 import InfoTooltip from "@/components/InfoTooltip";
@@ -6473,11 +6473,23 @@ export const AnchorDepositWithdrawModal = ({
               ? true // After swap, we always have USDC
               : (anyTokenDeposit.selectedAssetAddress?.toLowerCase() === USDC_ADDRESS.toLowerCase());
             const isActuallyFxUSD = !isActuallyUSDC && !anyTokenDeposit.needsSwap;
-            // Slippage on fxUSD→fxSAVE: 4% when fxUSD + mint fee 1% (trace shows permit OK, revert after transferFrom = minFxSave/minPegged), else 3%/1%
-            const minFxSaveSlipBps = (feePercentage !== undefined && feePercentage >= 1)
+            // minFxSaveOut must match zap conversion: fxSAVE = amount / wrappedRate (Genesis formula).
+            // Using % of input assumed 1:1 and caused SlippageExceeded for fxUSD (e.g. 5 fxUSD → ~4.65 fxSAVE, we required 4.8).
+            const wr = marketForDepositAsset?.wrappedRate ?? selectedMarket?.wrappedRate;
+            const minFxSaveSlipPct = (feePercentage !== undefined && feePercentage >= 1)
               ? (isActuallyFxUSD ? 4 : 3)
               : 1;
-            const minFxSaveOut = (swappedAmount * BigInt(100 - minFxSaveSlipBps) * 100n) / 10000n;
+            let minFxSaveOut: bigint;
+            if (wr && wr > 0n) {
+              const expectedFxSave =
+                isActuallyFxUSD
+                  ? (swappedAmount * 10n ** 18n) / wr
+                  : ((swappedAmount * 10n ** 12n) * 10n ** 18n) / wr;
+              minFxSaveOut = (expectedFxSave * BigInt(100 - minFxSaveSlipPct)) / 100n;
+            } else {
+              // Fallback when rate unavailable: use % of input (loose for fxUSD to avoid revert)
+              minFxSaveOut = (swappedAmount * BigInt(100 - (isActuallyFxUSD ? 15 : minFxSaveSlipPct)) * 100n) / 10000n;
+            }
             
             // Get the asset address for approval
             const assetAddressForApproval = anyTokenDeposit.needsSwap 
@@ -6599,7 +6611,7 @@ export const AnchorDepositWithdrawModal = ({
                     : "zapFxUsdToPeggedWithPermit";
                   const permitHash = await writeContractAsync({
                     address: zapAddress,
-                    abi: MINTER_USDC_ZAP_V2_ABI,
+                    abi: MINTER_USDC_ZAP_V3_ABI,
                     functionName,
                     args: [
                       swappedAmount,
@@ -6682,7 +6694,7 @@ export const AnchorDepositWithdrawModal = ({
               });
               zapHash = await writeContractAsync({
               address: zapAddress,
-                abi: MINTER_USDC_ZAP_V2_ABI,
+                abi: MINTER_USDC_ZAP_V3_ABI,
                 functionName: "zapUsdcToPegged",
                 args: [
                   swappedAmount,
@@ -6704,7 +6716,7 @@ export const AnchorDepositWithdrawModal = ({
               });
               zapHash = await writeContractAsync({
                 address: zapAddress,
-                abi: MINTER_USDC_ZAP_V2_ABI,
+                abi: MINTER_USDC_ZAP_V3_ABI,
                 functionName: "zapFxUsdToPegged",
                 args: [
                   swappedAmount,
@@ -7290,11 +7302,24 @@ export const AnchorDepositWithdrawModal = ({
         let mintHash: `0x${string}`;
 
         if (useZap && zapAddress) {
-          // Use 4% on fxUSD→fxSAVE when fxUSD + mint fee 1% (revert after permit = minFxSave), else 3%/1%
+          // minFxSaveOut: use wrappedRate like Genesis (expectedFxSave = amount / rate), not % of input
           const minFxSaveSlipPct = (useUSDCZap && feePercentage !== undefined && feePercentage >= 1)
             ? (isFxUSD ? 4 : 3)
             : 1;
-          const minFxSaveOut = (amountBigInt * BigInt(100 - minFxSaveSlipPct) * 100n) / 10000n;
+          let minFxSaveOut: bigint;
+          if (useUSDCZap) {
+            const wr = marketForDepositAsset?.wrappedRate ?? selectedMarket?.wrappedRate;
+            if (wr && wr > 0n) {
+              const expectedFxSave = isFxUSD
+                ? (amountBigInt * 10n ** 18n) / wr
+                : ((amountBigInt * 10n ** 12n) * 10n ** 18n) / wr;
+              minFxSaveOut = (expectedFxSave * BigInt(100 - minFxSaveSlipPct)) / 100n;
+            } else {
+              minFxSaveOut = (amountBigInt * BigInt(100 - (isFxUSD ? 15 : minFxSaveSlipPct)) * 100n) / 10000n;
+            }
+          } else {
+            minFxSaveOut = 0n; // unused for non–USDC/fxUSD zap
+          }
           // When mint fee is 1%, use 2% headroom on stability pool deposit minOut (ETH/stETH/wstETH/USDC/fxUSD/fxSAVE)
           const stabilityPoolSlip = (feePercentage !== undefined && feePercentage >= 1) ? 98n : 99n;
           // Use zap contract to mint
@@ -7533,7 +7558,7 @@ export const AnchorDepositWithdrawModal = ({
                 const deadline = zapPermit.deadline || calculateDeadline(3600);
                 mintHash = await writeContractAsync({
                   address: zapAddress,
-                  abi: MINTER_USDC_ZAP_V2_ABI,
+                  abi: MINTER_USDC_ZAP_V3_ABI,
                   functionName: "zapUsdcToPeggedWithPermit",
                   args: [
                     amountBigInt,
@@ -7549,7 +7574,7 @@ export const AnchorDepositWithdrawModal = ({
               } else {
                 mintHash = await writeContractAsync({
                   address: zapAddress,
-                  abi: MINTER_USDC_ZAP_V2_ABI,
+                  abi: MINTER_USDC_ZAP_V3_ABI,
                   functionName: "zapUsdcToPegged",
                   args: [
                     amountBigInt,
@@ -7574,7 +7599,7 @@ export const AnchorDepositWithdrawModal = ({
                 const deadline = zapPermit.deadline || calculateDeadline(3600);
                 mintHash = await writeContractAsync({
                   address: zapAddress,
-                  abi: MINTER_USDC_ZAP_V2_ABI,
+                  abi: MINTER_USDC_ZAP_V3_ABI,
                   functionName: "zapFxUsdToPeggedWithPermit",
                   args: [
                     amountBigInt,
@@ -7590,7 +7615,7 @@ export const AnchorDepositWithdrawModal = ({
               } else {
                 mintHash = await writeContractAsync({
                   address: zapAddress,
-                  abi: MINTER_USDC_ZAP_V2_ABI,
+                  abi: MINTER_USDC_ZAP_V3_ABI,
                   functionName: "zapFxUsdToPegged",
                   args: [
                     amountBigInt,
@@ -9484,7 +9509,7 @@ export const AnchorDepositWithdrawModal = ({
                       currentStep === 1 ? "text-[#1E4775] font-semibold" : ""
                     }`}
                   >
-                    1. Deposit Token & Amount
+                    1. Deposit Collateral & Amount
                   </div>
                   {!mintOnly && !skipRewardStep && (
                     <>
@@ -9562,7 +9587,7 @@ export const AnchorDepositWithdrawModal = ({
                   )}
                 </div>
 
-                {/* Step 1: Deposit Token & Amount */}
+                {/* Step 1: Deposit Collateral & Amount */}
                 {currentStep === 1 && (
                   <div className="space-y-4 animate-in fade-in-0 slide-in-from-right-2 duration-200">
                     <div className="space-y-3">
@@ -10137,6 +10162,12 @@ export const AnchorDepositWithdrawModal = ({
                                   </div>
                                 </div>
                               )}
+                              {/* Conversion: "X fxUSD ≈ Y haETH" — mint only, no deposit amount row */}
+                              {expectedMintOutput && expectedMintOutput > 0n && amount && parseFloat(amount) > 0 && (
+                                <div className="text-xs text-[#1E4775]/50 italic text-right">
+                                  ({parseFloat(amount).toFixed(6)} {selectedDepositAsset || collateralSymbol} ≈ {Number(formatEther(expectedMintOutput)).toFixed(6)} {peggedTokenSymbol})
+                                </div>
+                              )}
                               {/* Mint fee */}
                               {feePercentage !== undefined && amount && parseFloat(amount) > 0 && (
                                 <>
@@ -10698,20 +10729,28 @@ export const AnchorDepositWithdrawModal = ({
                                 </div>
                               )}
                               
-                              {/* + Deposit Amount */}
+                              {/* + Deposit Amount - show input amount (e.g. +5 fxUSD) like Genesis */}
                               {depositAmount > 0 && (
-                                <div className="flex justify-between items-baseline">
-                                  <span className="text-sm font-medium text-[#1E4775]/70">+ Deposit Amount:</span>
-                                  <span className="text-[#1E4775]">
-                                    +{depositAmount.toFixed(6)} {depositTokenSymbol}
-                                    {depositAmountUSD > 0 && <span className="text-[#1E4775]/50 ml-1">(+${depositAmountUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })})</span>}
-                                  </span>
+                                <div className="flex flex-col gap-0.5">
+                                  <div className="flex justify-between items-baseline">
+                                    <span className="text-sm font-medium text-[#1E4775]/70">+ Deposit Amount:</span>
+                                    <span className="text-[#1E4775]">
+                                      +{depositAmount.toFixed(6)} {depositTokenSymbol}
+                                      {depositAmountUSD > 0 && <span className="text-[#1E4775]/50 ml-1">(+${depositAmountUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })})</span>}
+                                    </span>
+                                  </div>
+                                  {/* Conversion to haETH - match Genesis: "(5.000000 fxUSD ≈ 0.001651 haETH)" */}
+                                  {expectedMintOutput && expectedMintOutput > 0n && (depositTokenSymbol?.toLowerCase() === "fxusd" || depositTokenSymbol?.toLowerCase() === "usdc") && (
+                                    <div className="text-xs text-[#1E4775]/50 italic text-right">
+                                      ({depositAmount.toFixed(6)} {depositTokenSymbol} ≈ {Number(formatEther(expectedMintOutput)).toFixed(6)} {peggedTokenSymbol})
+                                    </div>
+                                  )}
                                 </div>
                               )}
                               
                               {/* Separator - match Genesis styling */}
                               <div className="border-t border-[#1E4775]/30 pt-2">
-                                {/* Stability Pool Info - match Genesis Genesis: styling */}
+                                {/* Stability Pool Info - match Genesis: haETH (fxSAVE) */}
                                 {selectedStabilityPool && selectedRewardToken && (
                                   <div className="flex justify-between items-center mb-2">
                                     <span className="text-sm font-medium text-[#1E4775]/70">
@@ -10725,17 +10764,32 @@ export const AnchorDepositWithdrawModal = ({
                                   </div>
                                 )}
                                 
-                                {/* Total Deposit - match Genesis Total deposits: styling */}
+                                {/* Total Deposit - in haETH when depositing to stability pool (what actually gets deposited), like Genesis */}
                                 <div className="flex justify-between items-center">
                                   <span className="text-sm font-medium text-[#1E4775]/70">Total Deposit:</span>
                                   <div className="text-right">
-                                    <div className="text-lg font-bold text-[#1E4775] font-mono">
-                                      {totalDepositInDepositToken > 0 ? totalDepositInDepositToken.toFixed(6) : "0.000000"} {depositTokenSymbol}
-                                    </div>
-                                    {totalDepositUSD > 0 && (
-                                      <div className="text-xs text-[#1E4775]/50 font-mono">
-                                        ${totalDepositUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                      </div>
+                                    {expectedMintOutput && expectedMintOutput > 0n ? (
+                                      <>
+                                        <div className="text-lg font-bold text-[#1E4775] font-mono">
+                                          {Number(formatEther(expectedMintOutput)).toFixed(6)} {peggedTokenSymbol}
+                                        </div>
+                                        {totalDepositUSD > 0 && (
+                                          <div className="text-xs text-[#1E4775]/50 font-mono">
+                                            ${totalDepositUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                          </div>
+                                        )}
+                                      </>
+                                    ) : (
+                                      <>
+                                        <div className="text-lg font-bold text-[#1E4775] font-mono">
+                                          {totalDepositInDepositToken > 0 ? totalDepositInDepositToken.toFixed(6) : "0.000000"} {depositTokenSymbol}
+                                        </div>
+                                        {totalDepositUSD > 0 && (
+                                          <div className="text-xs text-[#1E4775]/50 font-mono">
+                                            ${totalDepositUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                          </div>
+                                        )}
+                                      </>
                                     )}
                                   </div>
                                 </div>
@@ -10799,6 +10853,13 @@ export const AnchorDepositWithdrawModal = ({
                           </div>
                         )}
 
+                        {/* Error - beneath transaction overview (match step 1; show when user cancels on Mint & Deposit) */}
+                        {error && (
+                          <div className="mt-3 p-3 bg-red-50 border border-red-500/30 text-red-600 text-sm text-center flex items-center justify-center gap-2">
+                            <AlertOctagon className="w-4 h-4 flex-shrink-0" aria-hidden />
+                            {error}
+                          </div>
+                        )}
 
                         <div className="flex gap-3">
                           {isProcessing ? (
@@ -10907,6 +10968,13 @@ export const AnchorDepositWithdrawModal = ({
                               })()}
                             </div>
                           </div>
+
+                          {/* Conversion: "X fxUSD ≈ Y haETH" — mint only */}
+                          {expectedMintOutput && expectedMintOutput > 0n && amount && parseFloat(amount) > 0 && (
+                            <div className="text-xs text-[#1E4775]/50 italic text-right">
+                              ({parseFloat(amount).toFixed(6)} {selectedDepositAsset || collateralSymbol} ≈ {Number(formatEther(expectedMintOutput)).toFixed(6)} {peggedTokenSymbol})
+                            </div>
+                          )}
 
                           {/* Mint Fee */}
                           {feePercentage !== undefined && (
@@ -11071,14 +11139,49 @@ export const AnchorDepositWithdrawModal = ({
                   <div className="space-y-3">
                     <div className="flex items-center justify-center text-xs text-[#1E4775]/50 pb-3 border-b border-[#d1d7e5]">
                       <div className="text-[#1E4775] font-semibold">
-                        Withdraw Token & Amount
+                        Withdraw Collateral & Amount
                       </div>
                     </div>
-                    <div className="p-2 bg-[#17395F]/5 border border-[#17395F]/20 text-xs text-[#1E4775]/80">
-                      Select positions to withdraw. If you include wallet tokens
-                      and/or do immediate pool withdrawals, we will
-                      automatically redeem the resulting ha tokens to
-                      collateral.
+                    <div className="space-y-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setShowNotifications((prev) => !prev)
+                        }
+                        className="flex w-full items-center justify-between text-sm font-semibold text-[#1E4775]"
+                        aria-expanded={showNotifications}
+                      >
+                        <span>Notifications</span>
+                        <span className="flex items-center gap-2">
+                          {!showNotifications && (
+                            <span className="flex items-center gap-1 bg-blue-100 px-2 py-0.5 text-xs text-blue-600">
+                              <Bell className="h-3 w-3" />
+                              1
+                            </span>
+                          )}
+                          {showNotifications ? (
+                            <ChevronUp className="h-4 w-4 text-[#1E4775]/70" />
+                          ) : (
+                            <ChevronDown className="h-4 w-4 text-[#1E4775]/70" />
+                          )}
+                        </span>
+                      </button>
+                      {showNotifications && (
+                        <div className="space-y-2">
+                          <InfoCallout
+                            tone="info"
+                            title="Info:"
+                            icon={
+                              <Info className="w-4 h-4 flex-shrink-0 mt-0.5 text-blue-600" />
+                            }
+                          >
+                            Select positions to withdraw. If you include wallet
+                            tokens and/or do immediate pool withdrawals, we will
+                            automatically redeem the resulting ha tokens to
+                            collateral.
+                          </InfoCallout>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
@@ -12374,6 +12477,12 @@ export const AnchorDepositWithdrawModal = ({
                                 <span className="text-xl font-bold text-[#1E4775] font-mono">
                                   ...
                                 </span>
+                              </div>
+                            )}
+                            {/* Conversion: "X fxUSD ≈ Y haETH" — mint only */}
+                            {expectedOutput && expectedOutput > 0n && amount && parseFloat(amount) > 0 && (
+                              <div className="text-xs text-[#1E4775]/50 italic text-right">
+                                ({parseFloat(amount).toFixed(6)} {selectedDepositAsset || collateralSymbol} ≈ {Number(formatEther(expectedOutput)).toFixed(6)} {outputSymbol})
                               </div>
                             )}
                             {/* Mint fee */}

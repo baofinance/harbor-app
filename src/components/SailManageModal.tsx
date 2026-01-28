@@ -13,14 +13,14 @@ import {
 import { BaseError, ContractFunctionRevertedError } from "viem";
 import { ERC20_ABI, MINTER_ABI } from "@/abis/shared";
 import { WSTETH_ABI } from "@/abis";
-import { MINTER_ETH_ZAP_V2_ABI, MINTER_USDC_ZAP_V2_ABI } from "@/config/contracts";
+import { MINTER_ETH_ZAP_V2_ABI, MINTER_USDC_ZAP_V3_ABI } from "@/config/contracts";
 import { STETH_ZAP_PERMIT_ABI, calculateDeadline } from "@/utils/permit";
 import { usePermitOrApproval } from "@/hooks/usePermitOrApproval";
 import { useCollateralPrice } from "@/hooks/useCollateralPrice";
 import SimpleTooltip from "@/components/SimpleTooltip";
 import { ArrowPathIcon } from "@heroicons/react/24/outline";
 import { InfoCallout } from "@/components/InfoCallout";
-import { AlertOctagon, RefreshCw } from "lucide-react";
+import { AlertOctagon, Bell, ChevronDown, ChevronUp, Info, RefreshCw } from "lucide-react";
 import {
   TransactionProgressModal,
   TransactionStep,
@@ -30,6 +30,7 @@ import { useUserTokens, useTokenDecimals } from "@/hooks/useUserTokens";
 import { formatBalance } from "@/utils/formatters";
 import { TokenSelectorDropdown } from "@/components/TokenSelectorDropdown";
 import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
+import { getLogoPath } from "@/lib/logos";
 
 interface SailManageModalProps {
  isOpen: boolean;
@@ -87,6 +88,8 @@ export const SailManageModal = ({
  const [step, setStep] = useState<ModalStep>("input");
  const [error, setError] = useState<string | null>(null);
  const [txHash, setTxHash] = useState<string | null>(null);
+ const [showNotifications, setShowNotifications] = useState(false);
+ const [permitEnabled, setPermitEnabled] = useState(true);
 
  // Progress modal state
  const [progressModal, setProgressModal] = useState<{
@@ -978,8 +981,10 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
           throw new Error("stETH address not found. Please ensure you're depositing to a wstETH market.");
         }
         
-        // Try to use permit first, fallback to approval if not supported or fails
-        const permitResult = await handlePermitOrApproval(stETHAddress, zapAddress, amountForMint);
+        // Try to use permit first when enabled, fallback to approval if not supported or fails
+        const permitResult = permitEnabled
+          ? await handlePermitOrApproval(stETHAddress, zapAddress, amountForMint)
+          : { usePermit: false };
         let usePermit = permitResult?.usePermit && !!permitResult.permitSig && !!permitResult.deadline;
         
         if (usePermit && permitResult.permitSig && permitResult.deadline) {
@@ -1054,12 +1059,14 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
          ? USDC_ADDRESS 
          : (market.addresses?.collateralToken as `0x${string}` | undefined);
        
-       if (!assetAddressForApproval) {
-         throw new Error("Asset address not found for approval");
-       }
-       
-      // Same permit flow as Genesis/Anchor: require deadline for zap…WithPermit (must match signed message).
-      const permitResult = await handlePermitOrApproval(assetAddressForApproval, zapAddress, amountForMint);
+      if (!assetAddressForApproval) {
+        throw new Error("Asset address not found for approval");
+      }
+      
+      // Same permit flow as Genesis/Anchor when enabled: require deadline for zap…WithPermit (must match signed message).
+      const permitResult = permitEnabled
+        ? await handlePermitOrApproval(assetAddressForApproval, zapAddress, amountForMint)
+        : { usePermit: false };
       let usePermit = permitResult?.usePermit && !!permitResult.permitSig && !!permitResult?.deadline;
       
       // Calculate minFxSaveOut for permit functions (1% slippage buffer)
@@ -1072,7 +1079,7 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
           if (isActuallyUSDC) {
             mintHash = await writeContractAsync({
               address: zapAddress,
-              abi: MINTER_USDC_ZAP_V2_ABI,
+              abi: MINTER_USDC_ZAP_V3_ABI,
               functionName: "zapUsdcToLeveragedWithPermit",
               args: [
                 amountForMint,
@@ -1088,7 +1095,7 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
           } else if (isActuallyFxUSD) {
             mintHash = await writeContractAsync({
               address: zapAddress,
-              abi: MINTER_USDC_ZAP_V2_ABI,
+              abi: MINTER_USDC_ZAP_V3_ABI,
               functionName: "zapFxUsdToLeveragedWithPermit",
               args: [
                 amountForMint,
@@ -1158,7 +1165,7 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
         if (isActuallyUSDC) {
           mintHash = await writeContractAsync({
             address: zapAddress,
-            abi: MINTER_USDC_ZAP_V2_ABI,
+            abi: MINTER_USDC_ZAP_V3_ABI,
             functionName: "zapUsdcToLeveraged",
             args: [
               amountForMint,
@@ -1170,7 +1177,7 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
         } else if (isActuallyFxUSD) {
           mintHash = await writeContractAsync({
             address: zapAddress,
-            abi: MINTER_USDC_ZAP_V2_ABI,
+            abi: MINTER_USDC_ZAP_V3_ABI,
             functionName: "zapFxUsdToLeveraged",
             args: [
               amountForMint,
@@ -1436,13 +1443,11 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
        Sail
      </div>
      <div className="flex items-center gap-2">
-       {market.leveragedToken.icon && (
-         <img
-           src={market.leveragedToken.icon}
-           alt={market.leveragedToken.symbol}
-           className="w-5 h-5 sm:w-6 sm:h-6"
-         />
-       )}
+       <img
+         src={(market.leveragedToken as { icon?: string })?.icon ?? getLogoPath(leveragedTokenSymbol)}
+         alt={market.leveragedToken.symbol}
+         className="w-5 h-5 sm:w-6 sm:h-6 rounded-full flex-shrink-0"
+       />
        <span className="text-sm sm:text-base font-semibold">
          {market.leveragedToken.symbol}
        </span>
@@ -1524,10 +1529,14 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
  </div>
  ) : (
  <div className="space-y-4">
+   <div className="flex items-center justify-center text-xs text-[#1E4775]/50 pb-3 border-b border-[#d1d7e5]">
+     <div className="text-[#1E4775] font-semibold">
+       {activeTab === "mint" ? "Deposit Collateral & Amount" : "Withdraw Collateral & Amount"}
+     </div>
+   </div>
  {/* Input Section */}
- <div>
+ <div className="space-y-3">
  {activeTab ==="mint" && (
- <div className="mb-3">
  <div className="space-y-2">
    <label className="text-sm font-semibold text-[#1E4775]">Select Deposit Token</label>
    {(() => {
@@ -1597,15 +1606,6 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
      </div>
    )}
 
-   {/* Any-token support notice */}
-   <InfoCallout
-     tone="success"
-     icon={<RefreshCw className="w-4 h-4 flex-shrink-0 mt-0.5 text-green-600" />}
-     title="Tip"
-   >
-     You can deposit any ERC20 token! Non-collateral tokens will be automatically swapped via Velora.
-   </InfoCallout>
-
    {/* Swap quote status */}
    {needsSwap && (
      <div className="text-xs text-[#1E4775]/70">
@@ -1619,12 +1619,69 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
      </div>
    )}
  </div>
- </div>
  )}
- <div className="flex justify-between items-center mb-1.5">
+
+ {/* Notifications - between deposit token and enter amount (match Anchor) */}
+ <div className="space-y-2">
+   <button
+     type="button"
+     onClick={() => setShowNotifications((prev) => !prev)}
+     className="flex w-full items-center justify-between text-sm font-semibold text-[#1E4775]"
+     aria-expanded={showNotifications}
+   >
+     <span>Notifications</span>
+     <span className="flex items-center gap-2">
+       {!showNotifications && (() => {
+         const notificationCount = activeTab === "mint" ? 2 : 1;
+         return (
+           <span className="flex items-center gap-1 bg-blue-100 px-2 py-0.5 text-xs text-blue-600">
+             <Bell className="h-3 w-3" />
+             {notificationCount}
+           </span>
+         );
+       })()}
+       {showNotifications ? (
+         <ChevronUp className="h-4 w-4 text-[#1E4775]/70" />
+       ) : (
+         <ChevronDown className="h-4 w-4 text-[#1E4775]/70" />
+       )}
+     </span>
+   </button>
+   {showNotifications && (
+     <div className="space-y-2">
+       {activeTab === "mint" && (
+         <>
+           <InfoCallout
+             tone="success"
+             icon={<RefreshCw className="w-4 h-4 flex-shrink-0 mt-0.5 text-green-600" />}
+             title="Tip"
+           >
+             You can deposit any ERC20 token! Non-collateral tokens will be automatically swapped via Velora.
+           </InfoCallout>
+           <InfoCallout
+             title="Info"
+             icon={<Info className="w-4 h-4 flex-shrink-0 mt-0.5 text-blue-600" />}
+           >
+             For large deposits, Harbor recommends using wstETH or fxSAVE instead of the built-in swap and zaps.
+           </InfoCallout>
+         </>
+       )}
+       {activeTab === "redeem" && (
+         <InfoCallout
+           title="Info"
+           icon={<Info className="w-4 h-4 flex-shrink-0 mt-0.5 text-blue-600" />}
+         >
+           You will receive collateral (e.g. {collateralSymbol}) in your wallet.
+         </InfoCallout>
+       )}
+     </div>
+   )}
+ </div>
+
+ <div className="flex justify-between items-center mb-1.5 mt-1">
  <label className="text-sm font-semibold text-[#1E4775]">
  {activeTab ==="mint" ?"Enter Amount" :"Enter Amount"}
- </label>
+</label>
  <span className="text-sm text-[#1E4775]/70">
  Balance:{" "}
  {activeTab === "mint"
@@ -1710,146 +1767,184 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
    }
  }}
  disabled={isProcessing || !currentBalance}
- className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1.5 text-sm bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white transition-colors disabled:bg-gray-300 disabled:text-gray-500 rounded-full font-medium"
+ className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1.5 text-sm bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white transition-colors disabled:bg-gray-300 disabled:text-gray-500 font-medium"
  >
  MAX
  </button>
  </div>
  </div>
 
- {/* Transaction Overview */}
- {activeTab ==="mint" && (
- <div className="p-2 bg-[rgb(var(--surface-selected-rgb))]/20 border border-[rgb(var(--surface-selected-border-rgb))]/40 space-y-2">
-   {/* You will receive */}
-   <div className="flex justify-between items-center">
-     <span className="text-sm font-medium text-[#1E4775]/70">
-       You will receive:
-     </span>
-     <div className="text-right">
-       <div className="text-lg font-bold text-[#1E4775] font-mono">
-         {expectedMintOutput && parsedAmount && parsedAmount > 0n
-           ? `${Number(formatEther(expectedMintOutput)).toFixed(6)} ${leveragedTokenSymbol}`
-           : "..."}
-       </div>
-       {(() => {
-         if (!expectedMintOutput || expectedMintOutput === 0n || !parsedAmount || parsedAmount === 0n) return null;
-         const leveragedAmount = Number(formatEther(expectedMintOutput));
-         // For leveraged tokens, we'd need a price - for now estimate from collateral price
-         // This is a simplified calculation - in reality leveraged token price would be different
-         const collateralSymbolLower = collateralSymbol.toLowerCase();
-         let priceUSD = 0;
-         if (collateralSymbolLower === "wsteth" || collateralSymbolLower === "steth") {
-           priceUSD = wstETHPrice || 0;
-         } else if (collateralSymbolLower === "fxsave") {
-           priceUSD = fxSAVEPrice || 0;
-         } else if (collateralSymbolLower === "eth") {
-           priceUSD = ethPrice || 0;
-         } else if (collateralSymbolLower === "usdc" || collateralSymbolLower === "fxusd") {
-           priceUSD = 1.0;
-         }
-         // Leveraged tokens are typically worth more than 1:1 with collateral, but for simplicity use collateral price
-         const usdValue = priceUSD > 0 ? leveragedAmount * priceUSD : 0;
-         return usdValue > 0 ? (
-           <div className="text-xs text-[#1E4775]/50 font-mono">
-             ${usdValue.toLocaleString(undefined, {
-               minimumFractionDigits: 2,
-               maximumFractionDigits: 2,
-             })}
-           </div>
-         ) : null;
-       })()}
+ {/* Permit toggle - mint only (match Anchor: text-xs, same switch size) */}
+ {activeTab === "mint" && (
+   <div className="flex items-center justify-between border border-[#1E4775]/20 bg-[#17395F]/5 px-3 py-2 text-xs">
+     <div className="text-[#1E4775]/80">
+       Use permit (gasless approval) for this deposit
      </div>
-   </div>
-
-   {/* Fee */}
-   {mintFeePercentage !== undefined && parsedAmount && parsedAmount > 0n && (
-     <div className="pt-2 border-t border-[#1E4775]/20">
-       <div className="flex justify-between items-center text-xs">
-         <span className="text-[#1E4775]/70">
-           Fee:
-         </span>
+     <label className="flex items-center gap-2 text-[#1E4775]/80 cursor-pointer">
+       <span className={permitEnabled ? "text-[#1E4775]" : "text-[#1E4775]/60"}>
+         {permitEnabled ? "On" : "Off"}
+       </span>
+       <button
+         type="button"
+         onClick={() => setPermitEnabled((prev) => !prev)}
+         className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+           permitEnabled ? "bg-[#1E4775]" : "bg-[#1E4775]/30"
+         }`}
+         aria-pressed={permitEnabled}
+         aria-label="Toggle permit usage"
+         disabled={isProcessing}
+       >
          <span
-           className={`font-bold font-mono ${
-             mintFeePercentage > 2
-               ? "text-red-600"
-               : "text-[#1E4775]"
+           className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+             permitEnabled ? "translate-x-4" : "translate-x-1"
            }`}
-         >
-           {mintFeePercentage.toFixed(2)}%
-           {mintFeePercentage > 2 && " ⚠️"}
-         </span>
-       </div>
-     </div>
-   )}
- </div>
+         />
+       </button>
+     </label>
+   </div>
  )}
 
- {activeTab ==="redeem" && (
- <div className="p-2 bg-[rgb(var(--surface-selected-rgb))]/20 border border-[rgb(var(--surface-selected-border-rgb))]/40 space-y-2">
-   {/* You will receive */}
-   <div className="flex justify-between items-center">
-     <span className="text-sm font-medium text-[#1E4775]/70">
-       You will receive:
-     </span>
-     <div className="text-right">
-       <div className="text-lg font-bold text-[#1E4775] font-mono">
-         {expectedRedeemOutput && parsedAmount && parsedAmount > 0n
-           ? `${Number(formatEther(expectedRedeemOutput)).toFixed(6)} ${collateralSymbol}`
-           : "..."}
-       </div>
-       {(() => {
-         if (!expectedRedeemOutput || expectedRedeemOutput === 0n || !parsedAmount || parsedAmount === 0n) return null;
-         const collateralAmount = Number(formatEther(expectedRedeemOutput));
-         const collateralSymbolLower = collateralSymbol.toLowerCase();
-         let priceUSD = 0;
-         if (collateralSymbolLower === "wsteth" || collateralSymbolLower === "steth") {
-           priceUSD = wstETHPrice || 0;
-         } else if (collateralSymbolLower === "fxsave") {
-           priceUSD = fxSAVEPrice || 0;
-         } else if (collateralSymbolLower === "eth") {
-           priceUSD = ethPrice || 0;
-         } else if (collateralSymbolLower === "usdc" || collateralSymbolLower === "fxusd") {
-           priceUSD = 1.0;
-         }
-         const usdValue = priceUSD > 0 ? collateralAmount * priceUSD : 0;
-         return usdValue > 0 ? (
-           <div className="text-xs text-[#1E4775]/50 font-mono">
-             ${usdValue.toLocaleString(undefined, {
-               minimumFractionDigits: 2,
-               maximumFractionDigits: 2,
-             })}
+ {/* Transaction Overview - Anchor-style spacing below */}
+ <div className="space-y-2 mt-2">
+   <label className="block text-sm font-semibold text-[#1E4775] mb-1.5">
+     Transaction Overview
+   </label>
+   <div className="p-2.5 bg-[#17395F]/5 border border-[#1E4775]/10">
+     {activeTab === "mint" && (
+       <div className="space-y-2">
+         <div className="flex justify-between items-center">
+           <span className="text-sm font-medium text-[#1E4775]/70">
+             You will receive:
+           </span>
+           <div className="text-right">
+             <div className="text-lg font-bold text-[#1E4775] font-mono">
+               {expectedMintOutput && parsedAmount && parsedAmount > 0n
+                 ? `${Number(formatEther(expectedMintOutput)).toFixed(6)} ${leveragedTokenSymbol}`
+                 : "..."}
+             </div>
+             {(() => {
+               if (!expectedMintOutput || expectedMintOutput === 0n || !parsedAmount || parsedAmount === 0n) return null;
+               const leveragedAmount = Number(formatEther(expectedMintOutput));
+               const depositTokenSym = (selectedDepositAsset || collateralSymbol)?.toLowerCase() ?? "";
+               let depositPriceUSD = 0;
+               if (depositTokenSym === "wsteth" || depositTokenSym === "steth") {
+                 depositPriceUSD = wstETHPrice || 0;
+               } else if (depositTokenSym === "fxsave") {
+                 depositPriceUSD = fxSAVEPrice || 0;
+               } else if (depositTokenSym === "eth" || depositTokenSym === "weth") {
+                 depositPriceUSD = ethPrice || 0;
+               } else if (depositTokenSym === "usdc" || depositTokenSym === "fxusd") {
+                 depositPriceUSD = 1.0;
+               }
+               const depositAmountNum = amount && parseFloat(amount) > 0 ? parseFloat(amount) : 0;
+               const usdValue = depositPriceUSD > 0 && depositAmountNum > 0
+                 ? depositAmountNum * depositPriceUSD
+                 : (() => {
+                     const col = collateralSymbol.toLowerCase();
+                     let p = 0;
+                     if (col === "wsteth" || col === "steth") p = wstETHPrice || 0;
+                     else if (col === "fxsave") p = fxSAVEPrice || 0;
+                     else if (col === "eth") p = ethPrice || 0;
+                     else if (col === "usdc" || col === "fxusd") p = 1.0;
+                     return p > 0 ? leveragedAmount * p : 0;
+                   })();
+               return usdValue > 0 ? (
+                 <div className="text-xs text-[#1E4775]/50 font-mono">
+                   ${usdValue.toLocaleString(undefined, {
+                     minimumFractionDigits: 2,
+                     maximumFractionDigits: 2,
+                   })}
+                 </div>
+               ) : null;
+             })()}
            </div>
-         ) : null;
-       })()}
-     </div>
-   </div>
-
-   {/* Fee */}
-   {redeemFeePercentage !== undefined && parsedAmount && parsedAmount > 0n && (
-     <div className="pt-2 border-t border-[#1E4775]/20">
-       <div className="flex justify-between items-center text-xs">
-         <span className="text-[#1E4775]/70">
-           Fee:
-         </span>
-         <span
-           className={`font-bold font-mono ${
-             redeemFeePercentage > 2
-               ? "text-red-600"
-               : "text-[#1E4775]"
-           }`}
-         >
-           {redeemFeePercentage.toFixed(2)}%
-           {redeemFeePercentage > 2 && " ⚠️"}
-         </span>
+         </div>
+         {expectedMintOutput && expectedMintOutput > 0n && amount && parseFloat(amount) > 0 && (
+           <div className="text-xs text-[#1E4775]/50 italic text-right">
+             ({parseFloat(amount).toFixed(6)} {selectedDepositAsset || collateralSymbol} ≈ {Number(formatEther(expectedMintOutput)).toFixed(6)} {leveragedTokenSymbol})
+           </div>
+         )}
+         {mintFeePercentage !== undefined && parsedAmount && parsedAmount > 0n && (
+           <div className="pt-2 border-t border-[#1E4775]/20">
+             <div className="flex justify-end items-center gap-2 text-xs text-right">
+               <span
+                 className={`font-bold font-mono ${
+                   mintFeePercentage > 2 ? "text-red-600" : "text-[#1E4775]"
+                 }`}
+               >
+                 Mint Fee: {mintFeePercentage.toFixed(2)}%
+                 {mintFeePercentage > 2 && " ⚠️"}
+               </span>
+             </div>
+           </div>
+         )}
        </div>
-     </div>
-   )}
+     )}
+     {activeTab === "redeem" && (
+       <div className="space-y-2">
+         <div className="flex justify-between items-center">
+           <span className="text-sm font-medium text-[#1E4775]/70">
+             You will receive:
+           </span>
+           <div className="text-right">
+             <div className="text-lg font-bold text-[#1E4775] font-mono">
+               {expectedRedeemOutput && parsedAmount && parsedAmount > 0n
+                 ? `${Number(formatEther(expectedRedeemOutput)).toFixed(6)} ${collateralSymbol}`
+                 : "..."}
+             </div>
+             {(() => {
+               if (!expectedRedeemOutput || expectedRedeemOutput === 0n || !parsedAmount || parsedAmount === 0n) return null;
+               const collateralAmount = Number(formatEther(expectedRedeemOutput));
+               const collateralSymbolLower = collateralSymbol.toLowerCase();
+               let priceUSD = 0;
+               if (collateralSymbolLower === "wsteth" || collateralSymbolLower === "steth") {
+                 priceUSD = wstETHPrice || 0;
+               } else if (collateralSymbolLower === "fxsave") {
+                 priceUSD = fxSAVEPrice || 0;
+               } else if (collateralSymbolLower === "eth") {
+                 priceUSD = ethPrice || 0;
+               } else if (collateralSymbolLower === "usdc" || collateralSymbolLower === "fxusd") {
+                 priceUSD = 1.0;
+               }
+               const usdValue = priceUSD > 0 ? collateralAmount * priceUSD : 0;
+               return usdValue > 0 ? (
+                 <div className="text-xs text-[#1E4775]/50 font-mono">
+                   ${usdValue.toLocaleString(undefined, {
+                     minimumFractionDigits: 2,
+                     maximumFractionDigits: 2,
+                   })}
+                 </div>
+               ) : null;
+             })()}
+           </div>
+         </div>
+         {expectedRedeemOutput && expectedRedeemOutput > 0n && amount && parseFloat(amount) > 0 && (
+           <div className="text-xs text-[#1E4775]/50 italic text-right">
+             ({parseFloat(amount).toFixed(6)} {leveragedTokenSymbol} ≈ {Number(formatEther(expectedRedeemOutput)).toFixed(6)} {collateralSymbol})
+           </div>
+         )}
+         {redeemFeePercentage !== undefined && parsedAmount && parsedAmount > 0n && (
+           <div className="pt-2 border-t border-[#1E4775]/20">
+             <div className="flex justify-end items-center gap-2 text-xs text-right">
+               <span
+                 className={`font-bold font-mono ${
+                   redeemFeePercentage > 2 ? "text-red-600" : "text-[#1E4775]"
+                 }`}
+               >
+                 Redemption Fee: {redeemFeePercentage.toFixed(2)}%
+                 {redeemFeePercentage > 2 && " ⚠️"}
+               </span>
+             </div>
+           </div>
+         )}
+       </div>
+     )}
+   </div>
  </div>
- )}
 
- {/* Error - beneath transaction overview (aligned with Genesis/Anchor) */}
+ {/* Error - beneath transaction overview (match Genesis/Anchor) */}
  {error && (
- <div className="mt-3 p-3 bg-red-50 border border-red-500/30 text-red-600 text-sm text-center flex items-center justify-center gap-2">
+ <div className="p-3 bg-red-50 border border-red-500/30 text-red-600 text-sm text-center flex items-center justify-center gap-2">
  <AlertOctagon className="w-4 h-4 flex-shrink-0" aria-hidden />
  {error}
  </div>
@@ -1869,9 +1964,9 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
  </div>
  )}
 
- {/* Action Buttons */}
+ {/* Action Buttons - no line above; Anchor-style mt-4 spacing */}
  {!isProcessing && (
- <div className="flex gap-3 pt-2 border-t border-[#1E4775]/20">
+ <div className="flex gap-3 mt-4">
  {(step ==="error" || step ==="input") && (
  <button
  onClick={step ==="error" ? handleCancel : handleClose}
@@ -1895,7 +1990,7 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
        parsedAmount &&
        parsedAmount > currentBalance)
  }
- className="flex-1 py-3 px-4 bg-[#1E4775] text-white font-semibold hover:bg-[#17395F] transition-colors disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
+ className="flex-1 py-3 px-4 bg-[#FF8A7A] text-white font-semibold hover:bg-[#FF6B5A] transition-colors disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
  >
  {step ==="error" ? "Try Again" : activeTab ==="mint" ? "Mint" : "Redeem"}
  </button>

@@ -1,9 +1,9 @@
 /**
- * Minter USDC Zap V2 – full ABI from deployed contract.
+ * Minter USDC Zap V3 – full ABI from deployed contract.
  * Includes permit + stability pool zaps and custom errors (SlippageExceeded, NoFxSaveReceived, etc.)
  * for accurate revert decoding.
  */
-export const MINTER_USDC_ZAP_V2_ABI = [
+export const MINTER_USDC_ZAP_V3_ABI = [
   { inputs: [{ internalType: "address", name: "minter_", type: "address" }], stateMutability: "nonpayable", type: "constructor" },
   { inputs: [{ internalType: "address", name: "target", type: "address" }], name: "AddressEmptyCode", type: "error" },
   { inputs: [], name: "AlreadyInitialized", type: "error" },

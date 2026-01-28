@@ -1,11 +1,13 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { Plus } from "lucide-react";
 import { GenesisDepositModal } from "./GenesisDepositModal";
 import { GenesisWithdrawModal } from "./GenesisWithdrawModal";
 import { useContractRead } from "wagmi";
 import { useAccount } from "wagmi";
 import { getAcceptedDepositAssets } from "@/utils/markets";
+import { getLogoPath } from "@/lib/logos";
 
 interface GenesisManageModalProps {
   isOpen: boolean;
@@ -141,16 +143,27 @@ export const GenesisManageModal = ({
               Genesis
             </div>
             <div className="flex items-center gap-2">
-              {market?.peggedToken?.icon && (
-                <img
-                  src={market.peggedToken.icon}
-                  alt={market.peggedToken.symbol}
-                  className="w-5 h-5 sm:w-6 sm:h-6"
-                />
-              )}
-              <span className="text-sm sm:text-base font-semibold">
+              <img
+                src={market?.peggedToken?.icon ?? getLogoPath(market?.peggedToken?.symbol ?? "")}
+                alt={market?.peggedToken?.symbol ?? ""}
+                className="w-5 h-5 sm:w-6 sm:h-6 rounded-full flex-shrink-0"
+              />
+              <span className="text-sm sm:text-base font-bold">
                 {market.peggedToken.symbol}
               </span>
+              {market?.leveragedToken?.symbol && (
+                <>
+                  <Plus className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0 text-white" strokeWidth={3} aria-hidden />
+                  <img
+                    src={(market.leveragedToken as { icon?: string })?.icon ?? getLogoPath(market.leveragedToken.symbol)}
+                    alt={market.leveragedToken.symbol}
+                    className="w-5 h-5 sm:w-6 sm:h-6 rounded-full flex-shrink-0"
+                  />
+                  <span className="text-sm sm:text-base font-bold">
+                    {market.leveragedToken.symbol}
+                  </span>
+                </>
+              )}
             </div>
           </div>
         )}
