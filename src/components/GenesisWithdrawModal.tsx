@@ -15,9 +15,11 @@ import {
  TransactionProgressModal,
  TransactionStep,
 } from "./TransactionProgressModal";
-import { formatTokenAmount, formatBalance } from "@/utils/formatters";
+import { formatTokenAmount, formatBalance, formatUSD } from "@/utils/formatters";
 import { useWrappedCollateralPrice } from "@/hooks/useWrappedCollateralPrice";
 import { AmountInputBlock } from "@/components/AmountInputBlock";
+import { InfoCallout } from "@/components/InfoCallout";
+import { AlertOctagon, ChevronUp, ChevronDown, Bell, RefreshCw, Info } from "lucide-react";
 
 interface GenesisWithdrawalModalProps {
  isOpen: boolean;
@@ -27,6 +29,7 @@ interface GenesisWithdrawalModalProps {
  userDeposit: bigint;
 priceOracleAddress?: string;
  coinGeckoId?: string;
+ peggedTokenSymbol?: string; // haToken symbol (e.g., "haETH", "haBTC", "haEUR")
  onSuccess?: () => void;
  embedded?: boolean;
 }
@@ -56,6 +59,7 @@ export const GenesisWithdrawModal = ({
  userDeposit,
 priceOracleAddress,
  coinGeckoId,
+ peggedTokenSymbol,
  onSuccess,
  embedded = false,
 }: GenesisWithdrawalModalProps) => {
@@ -67,6 +71,7 @@ priceOracleAddress,
  const [progressModalOpen, setProgressModalOpen] = useState(false);
  const [progressSteps, setProgressSteps] = useState<TransactionStep[]>([]);
  const [currentStepIndex, setCurrentStepIndex] = useState(0);
+ const [showNotifications, setShowNotifications] = useState(false);
  const publicClient = usePublicClient();
 
 const wrappedPriceData = useWrappedCollateralPrice({
@@ -222,30 +227,40 @@ const collateralPriceUSD = wrappedPriceData.priceUSD;
  console.error("Withdrawal error:", err);
  let errorMessage ="Transaction failed";
 
- if (err instanceof BaseError) {
- const revertError = err.walk(
- (err) => err instanceof ContractFunctionRevertedError
- );
- if (revertError instanceof ContractFunctionRevertedError) {
- errorMessage = `Contract error: ${
- revertError.data?.errorName ||"Unknown error"
- }`;
- } else {
- errorMessage = err.shortMessage || err.message;
- }
+ const errAny = err as { code?: number; message?: string; name?: string };
+ const errCode = typeof errAny?.code === "number" ? errAny.code : undefined;
+ const errMsg = (errAny?.message ?? "") + (errAny?.name ?? "");
+ const lowerMessage = errMsg.toLowerCase();
+ const isUserRejection =
+   lowerMessage.includes("user rejected") ||
+   lowerMessage.includes("user denied") ||
+   lowerMessage.includes("rejected the request") ||
+   errAny?.name === "UserRejectedRequestError" ||
+   errCode === 4001 ||
+   errCode === 4900;
+
+ if (isUserRejection) {
+   errorMessage = "Transaction was rejected. Please try again.";
+ } else if (err instanceof BaseError) {
+   const revertError = err.walk(
+     (e) => e instanceof ContractFunctionRevertedError
+   );
+   if (revertError instanceof ContractFunctionRevertedError) {
+     errorMessage = `Contract error: ${
+       revertError.data?.errorName || "Unknown error"
+     }`;
+   } else {
+     errorMessage = err.shortMessage || err.message;
+   }
  }
 
  setError(errorMessage);
  setStep("error");
- setProgressSteps((prev) =>
- prev.map((s, idx) =>
- idx === currentStepIndex
- ? { ...s, status:"error", error: errorMessage }
- : s
- )
- );
+ setProgressModalOpen(false);
+ setProgressSteps([]);
+ setCurrentStepIndex(0);
  }
- };
+};
 
  const renderSuccessContent = () => {
 // Format the success amount with USD
@@ -291,9 +306,9 @@ const successUSD = successAmountNum > 0 && collateralPriceUSD > 0
     collateralPriceUSD
   );
   return (
- <div className="text-sm text-[#1E4775]/70">
-      Your Deposit:{" "}
- <span className="font-medium text-[#1E4775]">
+ <div className="flex justify-between items-center text-sm">
+      <span className="font-semibold text-[#1E4775]">Your Deposit:</span>
+ <span className="text-[#1E4775]">
         {depositFmt.display}
         {depositFmt.usd && <span className="text-[#1E4775]/50 ml-1">({depositFmt.usd})</span>}
  </span>
@@ -301,8 +316,45 @@ const successUSD = successAmountNum > 0 && collateralPriceUSD > 0
   );
 })()}
 
+ {/* Notifications Section */}
+ <div className="space-y-2">
+   <button
+     type="button"
+     onClick={() => setShowNotifications((prev) => !prev)}
+     className="flex items-center justify-between w-full text-sm font-semibold text-[#1E4775] hover:text-[#17395F] transition-colors"
+     aria-expanded={showNotifications}
+   >
+     <span>Notifications</span>
+     <span className="flex items-center gap-2">
+       {!showNotifications && (
+         <span className="flex items-center gap-1 bg-amber-100 px-2 py-0.5 text-xs text-amber-600">
+           <Bell className="h-3 w-3" />
+           1
+         </span>
+       )}
+       {showNotifications ? (
+         <ChevronUp className="h-4 w-4 text-[#1E4775]/70" />
+       ) : (
+         <ChevronDown className="h-4 w-4 text-[#1E4775]/70" />
+       )}
+     </span>
+   </button>
+   {showNotifications && (
+     <div className="space-y-2">
+       <InfoCallout
+         tone="warning"
+         icon={<AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5 text-amber-600" />}
+         title="Harbor Marks Warning: "
+       >
+         Withdrawing forfeits any Harbor Marks for withdrawn assets. Only assets deposited at the end of Maiden Voyage are eligible for Harbor Marks earned throughout the Maiden Voyage period.
+       </InfoCallout>
+     </div>
+   )}
+ </div>
+
  {/* Amount Input */}
  <AmountInputBlock
+   label="Enter Amount"
    value={amount}
    onChange={handleAmountChange}
    onMax={handleMaxClick}
@@ -313,36 +365,21 @@ const successUSD = successAmountNum > 0 && collateralPriceUSD > 0
        Available: {formatTokenAmount(userDeposit, collateralSymbol).display}
      </>
    }
-   inputClassName={`w-full h-12 px-4 pr-20 bg-white text-[#1E4775] border ${
+   inputClassName={`w-full px-3 pr-20 py-2 bg-white text-[#1E4775] border ${
      error ? "border-red-500" : "border-[#1E4775]/30"
    } focus:border-[#1E4775] focus:ring-2 focus:ring-[#1E4775]/20 focus:outline-none transition-all text-lg font-mono`}
  />
 
- {/* Harbor Marks Warning - Always visible */}
- <div className="p-3 bg-orange-50 border border-orange-200 text-sm">
- <div className="flex items-start gap-2">
- <AlertTriangle className="h-4 w-4 text-orange-600 mt-0.5 flex-shrink-0" />
- <div className="flex-1 space-y-1">
- <div className="font-medium text-orange-800">
- Harbor Marks Warning
- </div>
- <div className="text-orange-700 text-xs leading-relaxed">
- Withdrawing forfeits any Harbor Marks for withdrawn
- assets. Only assets deposited at the end of Maiden Voyage
- are eligible for Harbor Marks earned throughout the Maiden
- Voyage period.
- </div>
- </div>
- </div>
- </div>
+{/* Transaction Overview */}
+{amount && parseFloat(amount ||"0") > 0 && (
+<div className="space-y-2">
+  <label className="block text-sm font-semibold text-[#1E4775] mb-1.5">
+    Transaction Overview
+  </label>
+  <div className="p-3 bg-[#17395F]/5 border border-[#1E4775]/10">
+    {/* Transaction Preview */}
+    <div className="space-y-2 text-sm">
 
- {/* Transaction Preview */}
- {amount && parseFloat(amount ||"0") > 0 && (
- <div className="space-y-3">
- <div className="p-3 bg-[#17395F]/10 border border-[#1E4775]/20 space-y-2 text-sm">
- <div className="font-medium text-[#1E4775]">
- Transaction Preview:
- </div>
 {(() => {
   const currentFmt = formatTokenAmount(
     userDeposit,
@@ -352,11 +389,11 @@ const successUSD = successAmountNum > 0 && collateralPriceUSD > 0
   return (
     <div className="flex justify-between items-baseline">
       <span className="text-[#1E4775]/70">Current Deposit:</span>
- <span className="text-[#1E4775]">
+      <span className="text-[#1E4775]">
         {currentFmt.display}
         {currentFmt.usd && <span className="text-[#1E4775]/50 ml-1">({currentFmt.usd})</span>}
- </span>
- </div>
+      </span>
+    </div>
   );
 })()}
 {(() => {
@@ -369,38 +406,50 @@ const successUSD = successAmountNum > 0 && collateralPriceUSD > 0
   return (
     <div className="flex justify-between items-baseline">
       <span className="text-[#1E4775]/70">- Withdraw Amount:</span>
- <span className="text-red-600">
+      <span className="text-[#1E4775]">
         -{withdrawFmt.display}
-        {withdrawFmt.usd && <span className="text-red-400 ml-1">(-{withdrawFmt.usd})</span>}
- </span>
- </div>
+        {withdrawFmt.usd && <span className="text-[#1E4775]/50 ml-1">(-{withdrawFmt.usd})</span>}
+      </span>
+    </div>
   );
 })()}
- <div className="border-t border-[#1E4775]/20 pt-2">
+<div className="border-t border-[#1E4775]/30 pt-2">
 {(() => {
   const remainingFmt = formatTokenAmount(
     remainingDeposit,
     collateralSymbol,
     collateralPriceUSD
   );
+  const remainingUSD = remainingDeposit > 0n && collateralPriceUSD > 0
+    ? (Number(remainingDeposit) / 1e18) * collateralPriceUSD
+    : 0;
+  const remainingUSDFormatted = remainingUSD > 0 ? formatUSD(remainingUSD) : null;
   return (
-    <div className="flex justify-between items-baseline font-medium">
-      <span className="text-[#1E4775]">Remaining Deposit:</span>
-      <span className={remainingDeposit === 0n ? "text-orange-600" : "text-[#1E4775]"}>
-        {remainingFmt.display}
-        {remainingFmt.usd && <span className={`font-normal ml-1 ${remainingDeposit === 0n ? "text-orange-400" : "text-[#1E4775]/50"}`}>({remainingFmt.usd})</span>}
- </span>
- </div>
+    <div className="flex justify-between items-center">
+      <span className="text-sm font-medium text-[#1E4775]/70">Remaining Deposit:</span>
+      <div className="text-right">
+        <div className={`text-lg font-bold font-mono ${remainingDeposit === 0n ? "text-orange-600" : "text-[#1E4775]"}`}>
+          {remainingFmt.display}
+        </div>
+        {remainingUSDFormatted && (
+          <div className={`text-xs font-mono ${remainingDeposit === 0n ? "text-orange-400" : "text-[#1E4775]/50"}`}>
+            {remainingUSDFormatted}
+          </div>
+        )}
+      </div>
+    </div>
   );
 })()}
- </div>
- </div>
- </div>
+</div>
+    </div>
+  </div>
+</div>
  )}
 
- {/* Error */}
+ {/* Error - beneath transaction overview */}
  {error && (
- <div className="p-3 bg-red-50 border border-red-500/30 text-red-600 text-sm">
+ <div className="p-3 bg-red-50 border border-red-500/30 text-red-600 text-sm text-center flex items-center justify-center gap-2">
+ <AlertOctagon className="w-4 h-4 flex-shrink-0" aria-hidden />
  {error}
  </div>
  )}
@@ -438,7 +487,7 @@ const successUSD = successAmountNum > 0 && collateralPriceUSD > 0
  userDeposit === 0n ||
  !!simulateError
  }
-          className={`w-full py-3 px-4 font-medium transition-colors rounded-full ${
+          className={`w-full py-3 px-4 font-semibold transition-colors ${
             step === "success"
               ? "bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white"
               : "bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white disabled:bg-gray-300 disabled:text-gray-500"

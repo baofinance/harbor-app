@@ -59,6 +59,7 @@ export const markets = {
       name: "Harbor Anchored ETH",
       symbol: "haETH",
       description: "Pegged token (fetched from contract)",
+      icon: "/icons/haETH.png",
     },
     leveragedToken: {
       name: "Harbor Sail fxUSD-ETH",
@@ -141,6 +142,7 @@ export const markets = {
       name: "Harbor Anchored BTC",
       symbol: "haBTC",
       description: "Pegged token (fetched from contract)",
+      icon: "/icons/haBTC.png",
     },
     leveragedToken: {
       name: "Harbor Sail fxUSD-BTC",
@@ -222,6 +224,7 @@ export const markets = {
       name: "Harbor Anchored BTC",
       symbol: "haBTC",
       description: "Pegged token (fetched from contract)",
+      icon: "/icons/haBTC.png",
     },
     leveragedToken: {
       name: "Harbor Sail stETH-BTC",
@@ -445,6 +448,7 @@ export const markets = {
       name: "Harbor Anchored EUR",
       symbol: "haEUR",
       description: "Pegged token (fetched from contract)",
+      icon: "/icons/haEUR.png",
     },
     leveragedToken: {
       name: "Harbor Sail stETH-EUR",
@@ -518,6 +522,7 @@ export const markets = {
       name: "Harbor Anchored EUR",
       symbol: "haEUR",
       description: "Pegged token (fetched from contract)",
+      icon: "/icons/haEUR.png",
     },
     leveragedToken: {
       name: "Harbor Sail fxUSD-EUR",

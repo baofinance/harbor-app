@@ -14,11 +14,13 @@ import { BaseError, ContractFunctionRevertedError } from "viem";
 import { ERC20_ABI, MINTER_ABI } from "@/abis/shared";
 import { WSTETH_ABI } from "@/abis";
 import { MINTER_ETH_ZAP_V2_ABI, MINTER_USDC_ZAP_V2_ABI } from "@/config/contracts";
-import { STETH_ZAP_PERMIT_ABI, USDC_ZAP_PERMIT_ABI, calculateDeadline } from "@/utils/permit";
+import { STETH_ZAP_PERMIT_ABI, calculateDeadline } from "@/utils/permit";
 import { usePermitOrApproval } from "@/hooks/usePermitOrApproval";
 import { useCollateralPrice } from "@/hooks/useCollateralPrice";
 import SimpleTooltip from "@/components/SimpleTooltip";
 import { ArrowPathIcon } from "@heroicons/react/24/outline";
+import { InfoCallout } from "@/components/InfoCallout";
+import { AlertOctagon, RefreshCw } from "lucide-react";
 import {
   TransactionProgressModal,
   TransactionStep,
@@ -27,6 +29,7 @@ import { useDefiLlamaSwap, getDefiLlamaSwapTx } from "@/hooks/useDefiLlamaSwap";
 import { useUserTokens, useTokenDecimals } from "@/hooks/useUserTokens";
 import { formatBalance } from "@/utils/formatters";
 import { TokenSelectorDropdown } from "@/components/TokenSelectorDropdown";
+import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
 
 interface SailManageModalProps {
  isOpen: boolean;
@@ -227,6 +230,11 @@ const { maxRate: fxSAVERate } = useCollateralPrice(
   priceOracleAddress,
   { enabled: useUSDCZap && !!priceOracleAddress }
 );
+
+// Get USD prices for overview display
+const { price: ethPrice } = useCoinGeckoPrice("ethereum", 120000);
+const { price: wstETHPrice } = useCoinGeckoPrice("wrapped-steth", 120000);
+const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
 
  // Token decimals (for parsing amounts, swap quoting, etc.)
  const tokenAddressForDecimals =
@@ -594,12 +602,14 @@ const { maxRate: fxSAVERate } = useCollateralPrice(
  }
  }, [isOpen, initialTab]);
 
- // Handle tab change
+ // Handle tab change (clear error when switching, aligned with Genesis/Anchor)
  const handleTabChange = (tab:"mint" |"redeem") => {
- if (step ==="input") {
+ if (step ==="input" || step ==="error") {
  setActiveTab(tab);
  setAmount("");
  setError(null);
+ setTxHash(null);
+ setStep("input");
  }
  };
 
@@ -1048,29 +1058,28 @@ const { maxRate: fxSAVERate } = useCollateralPrice(
          throw new Error("Asset address not found for approval");
        }
        
-      // Try to use permit first, fallback to approval if not supported or fails
+      // Same permit flow as Genesis/Anchor: require deadline for zap…WithPermit (must match signed message).
       const permitResult = await handlePermitOrApproval(assetAddressForApproval, zapAddress, amountForMint);
-      let usePermit = permitResult?.usePermit && !!permitResult.permitSig;
+      let usePermit = permitResult?.usePermit && !!permitResult.permitSig && !!permitResult?.deadline;
       
       // Calculate minFxSaveOut for permit functions (1% slippage buffer)
-      // This is needed for the permit versions of USDC/fxUSD zap functions
       const minFxSaveOut = (amountForMint * 99n) / 100n;
-      const deadline = permitResult?.deadline || calculateDeadline(3600);
       
-      if (usePermit && permitResult.permitSig) {
-        // Use permit functions - requires minFxSaveOut parameter
+      if (usePermit && permitResult.permitSig && permitResult.deadline) {
+        // Use permit functions - requires minFxSaveOut parameter; use exact signed deadline.
+        const permitDeadline = permitResult.deadline;
         try {
           if (isActuallyUSDC) {
             mintHash = await writeContractAsync({
               address: zapAddress,
-              abi: [...MINTER_USDC_ZAP_V2_ABI, ...USDC_ZAP_PERMIT_ABI] as const,
+              abi: MINTER_USDC_ZAP_V2_ABI,
               functionName: "zapUsdcToLeveragedWithPermit",
               args: [
                 amountForMint,
                 minFxSaveOut,
                 address as `0x${string}`,
                 minOutput,
-                deadline,
+                permitDeadline,
                 permitResult.permitSig.v,
                 permitResult.permitSig.r,
                 permitResult.permitSig.s,
@@ -1079,14 +1088,14 @@ const { maxRate: fxSAVERate } = useCollateralPrice(
           } else if (isActuallyFxUSD) {
             mintHash = await writeContractAsync({
               address: zapAddress,
-              abi: [...MINTER_USDC_ZAP_V2_ABI, ...USDC_ZAP_PERMIT_ABI] as const,
+              abi: MINTER_USDC_ZAP_V2_ABI,
               functionName: "zapFxUsdToLeveragedWithPermit",
               args: [
                 amountForMint,
                 minFxSaveOut,
                 address as `0x${string}`,
                 minOutput,
-                deadline,
+                permitDeadline,
                 permitResult.permitSig.v,
                 permitResult.permitSig.r,
                 permitResult.permitSig.s,
@@ -1212,7 +1221,7 @@ const { maxRate: fxSAVERate } = useCollateralPrice(
  const lowerMessage = (errMessage + " " + errShortMessage).toLowerCase();
  
  if (lowerMessage.includes("user rejected") || lowerMessage.includes("user denied") || lowerMessage.includes("rejected the request")) {
-   errorMessage = "Transaction cancelled";
+   errorMessage = "Transaction was rejected. Please try again.";
  } else if (err instanceof BaseError) {
    const revertError = err.walk(
      (e) => e instanceof ContractFunctionRevertedError
@@ -1220,16 +1229,12 @@ const { maxRate: fxSAVERate } = useCollateralPrice(
    if (revertError instanceof ContractFunctionRevertedError) {
      errorMessage = revertError.reason || revertError.data?.message || "Transaction failed";
    } else {
-     // Extract concise error message
      const msg = err.message || err.shortMessage || "Transaction failed";
-     // Remove verbose prefixes like "ContractFunctionExecutionError:"
      errorMessage = msg.replace(/^[^:]+:\s*/i, "").replace(/\s*\([^)]+\)$/, "") || "Transaction failed";
    }
  } else if (err instanceof Error) {
    errorMessage = err.message.replace(/^[^:]+:\s*/i, "").replace(/\s*\([^)]+\)$/, "") || "Transaction failed";
  }
- 
- // Log full error for debugging
  console.error("Full error details:", {
    error: err,
    message: errorMessage,
@@ -1239,16 +1244,9 @@ const { maxRate: fxSAVERate } = useCollateralPrice(
    depositAssetAddress,
    isFxUSD,
  });
- // Mark current step as error
- setProgressModal((prev) => {
- if (!prev) return prev;
- const newSteps = prev.steps.map((s) =>
- s.status ==="in_progress"
- ? { ...s, status:"error" as const, error: errorMessage }
- : s
- );
- return { ...prev, steps: newSteps };
- });
+ setProgressModal(null);
+ setError(errorMessage);
+ setStep("error");
  }
  };
 
@@ -1342,7 +1340,7 @@ const { maxRate: fxSAVERate } = useCollateralPrice(
  const lowerMessage = (errMessage + " " + errShortMessage).toLowerCase();
  
  if (lowerMessage.includes("user rejected") || lowerMessage.includes("user denied") || lowerMessage.includes("rejected the request")) {
-   errorMessage = "Transaction cancelled";
+   errorMessage = "Transaction was rejected. Please try again.";
  } else if (err instanceof BaseError) {
    const revertError = err.walk(
      (e) => e instanceof ContractFunctionRevertedError
@@ -1350,23 +1348,15 @@ const { maxRate: fxSAVERate } = useCollateralPrice(
    if (revertError instanceof ContractFunctionRevertedError) {
      errorMessage = revertError.reason || "Transaction failed";
    } else {
-     // Extract concise error message
      const msg = err.message || err.shortMessage || "Transaction failed";
      errorMessage = msg.replace(/^[^:]+:\s*/i, "").replace(/\s*\([^)]+\)$/, "") || "Transaction failed";
    }
  } else if (err instanceof Error) {
    errorMessage = err.message.replace(/^[^:]+:\s*/i, "").replace(/\s*\([^)]+\)$/, "") || "Transaction failed";
  }
- // Mark current step as error
- setProgressModal((prev) => {
- if (!prev) return prev;
- const newSteps = prev.steps.map((s) =>
- s.status ==="in_progress"
- ? { ...s, status:"error" as const, error: errorMessage }
- : s
- );
- return { ...prev, steps: newSteps };
- });
+ setProgressModal(null);
+ setError(errorMessage);
+ setStep("error");
  }
  };
 
@@ -1438,15 +1428,36 @@ const { maxRate: fxSAVERate } = useCollateralPrice(
  onClick={handleClose}
  />
 
- <div className="relative bg-white shadow-2xl w-full max-w-xl mx-4 animate-in fade-in-0 scale-in-95 duration-200 overflow-hidden">
+ <div className="relative bg-white shadow-2xl w-full max-w-md mx-2 sm:mx-4 animate-in fade-in-0 scale-in-95 duration-200 overflow-hidden">
+ {/* Protocol and Market Header */}
+ {market?.leveragedToken?.symbol && (
+   <div className="bg-[#1E4775] text-white px-3 sm:px-4 py-2 sm:py-2.5 flex items-center justify-between">
+     <div className="text-sm sm:text-base font-semibold">
+       Sail
+     </div>
+     <div className="flex items-center gap-2">
+       {market.leveragedToken.icon && (
+         <img
+           src={market.leveragedToken.icon}
+           alt={market.leveragedToken.symbol}
+           className="w-5 h-5 sm:w-6 sm:h-6"
+         />
+       )}
+       <span className="text-sm sm:text-base font-semibold">
+         {market.leveragedToken.symbol}
+       </span>
+     </div>
+   </div>
+ )}
+ 
  {/* Header with tabs and close button */}
- <div className="flex items-center justify-between p-0 pt-3 px-3 border-b border-[#d1d7e5]">
+ <div className="flex items-center justify-between p-0 pt-2 sm:pt-3 px-2 sm:px-3 border-b border-[#1E4775]/10">
  {/* Tab-style header - takes most of width but leaves room for X */}
- <div className="flex flex-1 mr-4 border border-[#d1d7e5] border-b-0 overflow-hidden">
+ <div className="flex flex-1 mr-2 sm:mr-4 border border-[#1E4775]/20 border-b-0 overflow-hidden">
  <button
  onClick={() => handleTabChange("mint")}
  disabled={isProcessing}
- className={`flex-1 py-3 text-base font-semibold transition-colors ${
+ className={`flex-1 py-2 sm:py-3 text-sm sm:text-base font-semibold transition-colors touch-target ${
  activeTab ==="mint"
  ?"bg-[#1E4775] text-white"
  :"bg-[#eef1f7] text-[#4b5a78]"
@@ -1457,7 +1468,7 @@ const { maxRate: fxSAVERate } = useCollateralPrice(
  <button
  onClick={() => handleTabChange("redeem")}
  disabled={isProcessing}
- className={`flex-1 py-3 text-base font-semibold transition-colors ${
+ className={`flex-1 py-2 sm:py-3 text-sm sm:text-base font-semibold transition-colors touch-target ${
  activeTab ==="redeem"
  ?"bg-[#1E4775] text-white"
  :"bg-[#eef1f7] text-[#4b5a78]"
@@ -1468,11 +1479,12 @@ const { maxRate: fxSAVERate } = useCollateralPrice(
  </div>
  <button
  onClick={handleClose}
- className="text-[#1E4775]/50 hover:text-[#1E4775] transition-colors disabled:opacity-30"
+ className="text-[#1E4775]/50 hover:text-[#1E4775] transition-colors flex-shrink-0 touch-target flex items-center justify-center w-6 h-6 sm:w-7 sm:h-7"
+ aria-label="Close modal"
  disabled={isProcessing}
  >
  <svg
- className="w-5 h-5"
+ className="w-5 h-5 sm:w-6 sm:h-6"
  fill="none"
  viewBox="0 0 24 24"
  stroke="currentColor"
@@ -1480,7 +1492,7 @@ const { maxRate: fxSAVERate } = useCollateralPrice(
  <path
  strokeLinecap="round"
  strokeLinejoin="round"
- strokeWidth={2}
+ strokeWidth={3}
  d="M6 18L18 6M6 6l12 12"
  />
  </svg>
@@ -1510,28 +1522,6 @@ const { maxRate: fxSAVERate } = useCollateralPrice(
  </a>
  )}
  </div>
- ) : step ==="error" ? (
- <div className="text-center py-8">
- <div className="text-6xl mb-4 text-red-500">✗</div>
- <h3 className="text-xl font-bold text-red-600 mb-2">
- Transaction Failed
- </h3>
- <p className="text-sm text-red-500 mb-4">{error}</p>
- <div className="flex gap-3">
- <button
- onClick={handleCancel}
- className="flex-1 py-2 px-4 bg-white text-[#1E4775] border-2 border-[#1E4775]/30 font-semibold hover:bg-[#1E4775]/5 transition-colors"
- >
- Cancel
- </button>
- <button
- onClick={activeTab ==="mint" ? handleMint : handleRedeem}
- className="flex-1 py-2 px-4 bg-[#1E4775] text-white font-semibold hover:bg-[#17395F] transition-colors"
- >
- Try Again
- </button>
- </div>
- </div>
  ) : (
  <div className="space-y-4">
  {/* Input Section */}
@@ -1539,7 +1529,7 @@ const { maxRate: fxSAVERate } = useCollateralPrice(
  {activeTab ==="mint" && (
  <div className="mb-3">
  <div className="space-y-2">
-   <label className="text-sm text-[#1E4775]/70">Deposit Asset</label>
+   <label className="text-sm font-semibold text-[#1E4775]">Select Deposit Token</label>
    {(() => {
      const tokenGroups = [
        ...(acceptedAssets.length > 0 ? [{
@@ -1608,15 +1598,13 @@ const { maxRate: fxSAVERate } = useCollateralPrice(
    )}
 
    {/* Any-token support notice */}
-   <div className="p-2.5 bg-blue-50 border border-blue-200 text-xs text-blue-700">
-     <div className="flex items-start gap-2">
-       <ArrowPathIcon className="w-4 h-4 flex-shrink-0 mt-0.5" />
-       <div>
-         <span className="font-semibold">Tip:</span> You can deposit any ERC20
-         token! Non-collateral tokens will be automatically swapped via Velora.
-       </div>
-     </div>
-   </div>
+   <InfoCallout
+     tone="success"
+     icon={<RefreshCw className="w-4 h-4 flex-shrink-0 mt-0.5 text-green-600" />}
+     title="Tip"
+   >
+     You can deposit any ERC20 token! Non-collateral tokens will be automatically swapped via Velora.
+   </InfoCallout>
 
    {/* Swap quote status */}
    {needsSwap && (
@@ -1635,7 +1623,7 @@ const { maxRate: fxSAVERate } = useCollateralPrice(
  )}
  <div className="flex justify-between items-center mb-1.5">
  <label className="text-sm font-semibold text-[#1E4775]">
- {activeTab ==="mint" ?"Deposit Amount" :"Redeem Amount"}
+ {activeTab ==="mint" ?"Enter Amount" :"Enter Amount"}
  </label>
  <span className="text-sm text-[#1E4775]/70">
  Balance:{" "}
@@ -1729,130 +1717,141 @@ const { maxRate: fxSAVERate } = useCollateralPrice(
  </div>
  </div>
 
- {/* Error Display */}
+ {/* Transaction Overview */}
+ {activeTab ==="mint" && (
+ <div className="p-2 bg-[rgb(var(--surface-selected-rgb))]/20 border border-[rgb(var(--surface-selected-border-rgb))]/40 space-y-2">
+   {/* You will receive */}
+   <div className="flex justify-between items-center">
+     <span className="text-sm font-medium text-[#1E4775]/70">
+       You will receive:
+     </span>
+     <div className="text-right">
+       <div className="text-lg font-bold text-[#1E4775] font-mono">
+         {expectedMintOutput && parsedAmount && parsedAmount > 0n
+           ? `${Number(formatEther(expectedMintOutput)).toFixed(6)} ${leveragedTokenSymbol}`
+           : "..."}
+       </div>
+       {(() => {
+         if (!expectedMintOutput || expectedMintOutput === 0n || !parsedAmount || parsedAmount === 0n) return null;
+         const leveragedAmount = Number(formatEther(expectedMintOutput));
+         // For leveraged tokens, we'd need a price - for now estimate from collateral price
+         // This is a simplified calculation - in reality leveraged token price would be different
+         const collateralSymbolLower = collateralSymbol.toLowerCase();
+         let priceUSD = 0;
+         if (collateralSymbolLower === "wsteth" || collateralSymbolLower === "steth") {
+           priceUSD = wstETHPrice || 0;
+         } else if (collateralSymbolLower === "fxsave") {
+           priceUSD = fxSAVEPrice || 0;
+         } else if (collateralSymbolLower === "eth") {
+           priceUSD = ethPrice || 0;
+         } else if (collateralSymbolLower === "usdc" || collateralSymbolLower === "fxusd") {
+           priceUSD = 1.0;
+         }
+         // Leveraged tokens are typically worth more than 1:1 with collateral, but for simplicity use collateral price
+         const usdValue = priceUSD > 0 ? leveragedAmount * priceUSD : 0;
+         return usdValue > 0 ? (
+           <div className="text-xs text-[#1E4775]/50 font-mono">
+             ${usdValue.toLocaleString(undefined, {
+               minimumFractionDigits: 2,
+               maximumFractionDigits: 2,
+             })}
+           </div>
+         ) : null;
+       })()}
+     </div>
+   </div>
+
+   {/* Fee */}
+   {mintFeePercentage !== undefined && parsedAmount && parsedAmount > 0n && (
+     <div className="pt-2 border-t border-[#1E4775]/20">
+       <div className="flex justify-between items-center text-xs">
+         <span className="text-[#1E4775]/70">
+           Fee:
+         </span>
+         <span
+           className={`font-bold font-mono ${
+             mintFeePercentage > 2
+               ? "text-red-600"
+               : "text-[#1E4775]"
+           }`}
+         >
+           {mintFeePercentage.toFixed(2)}%
+           {mintFeePercentage > 2 && " ⚠️"}
+         </span>
+       </div>
+     </div>
+   )}
+ </div>
+ )}
+
+ {activeTab ==="redeem" && (
+ <div className="p-2 bg-[rgb(var(--surface-selected-rgb))]/20 border border-[rgb(var(--surface-selected-border-rgb))]/40 space-y-2">
+   {/* You will receive */}
+   <div className="flex justify-between items-center">
+     <span className="text-sm font-medium text-[#1E4775]/70">
+       You will receive:
+     </span>
+     <div className="text-right">
+       <div className="text-lg font-bold text-[#1E4775] font-mono">
+         {expectedRedeemOutput && parsedAmount && parsedAmount > 0n
+           ? `${Number(formatEther(expectedRedeemOutput)).toFixed(6)} ${collateralSymbol}`
+           : "..."}
+       </div>
+       {(() => {
+         if (!expectedRedeemOutput || expectedRedeemOutput === 0n || !parsedAmount || parsedAmount === 0n) return null;
+         const collateralAmount = Number(formatEther(expectedRedeemOutput));
+         const collateralSymbolLower = collateralSymbol.toLowerCase();
+         let priceUSD = 0;
+         if (collateralSymbolLower === "wsteth" || collateralSymbolLower === "steth") {
+           priceUSD = wstETHPrice || 0;
+         } else if (collateralSymbolLower === "fxsave") {
+           priceUSD = fxSAVEPrice || 0;
+         } else if (collateralSymbolLower === "eth") {
+           priceUSD = ethPrice || 0;
+         } else if (collateralSymbolLower === "usdc" || collateralSymbolLower === "fxusd") {
+           priceUSD = 1.0;
+         }
+         const usdValue = priceUSD > 0 ? collateralAmount * priceUSD : 0;
+         return usdValue > 0 ? (
+           <div className="text-xs text-[#1E4775]/50 font-mono">
+             ${usdValue.toLocaleString(undefined, {
+               minimumFractionDigits: 2,
+               maximumFractionDigits: 2,
+             })}
+           </div>
+         ) : null;
+       })()}
+     </div>
+   </div>
+
+   {/* Fee */}
+   {redeemFeePercentage !== undefined && parsedAmount && parsedAmount > 0n && (
+     <div className="pt-2 border-t border-[#1E4775]/20">
+       <div className="flex justify-between items-center text-xs">
+         <span className="text-[#1E4775]/70">
+           Fee:
+         </span>
+         <span
+           className={`font-bold font-mono ${
+             redeemFeePercentage > 2
+               ? "text-red-600"
+               : "text-[#1E4775]"
+           }`}
+         >
+           {redeemFeePercentage.toFixed(2)}%
+           {redeemFeePercentage > 2 && " ⚠️"}
+         </span>
+       </div>
+     </div>
+   )}
+ </div>
+ )}
+
+ {/* Error - beneath transaction overview (aligned with Genesis/Anchor) */}
  {error && (
- <div className="p-2 bg-red-50 border border-red-200 text-xs text-red-600">
+ <div className="mt-3 p-3 bg-red-50 border border-red-500/30 text-red-600 text-sm text-center flex items-center justify-center gap-2">
+ <AlertOctagon className="w-4 h-4 flex-shrink-0" aria-hidden />
  {error}
- </div>
- )}
-
- {/* Fee Display */}
- {activeTab ==="mint" && (
- <div className="text-xs text-[#1E4775]">
- <span className="flex items-center gap-1.5">
- Mint Fee:{" "}
- <span
- className={`font-semibold ${
- mintFeePercentage > 2
- ?"text-red-600"
- :"text-[#1E4775]"
- }`}
- >
- {parsedAmount &&
- parsedAmount > 0n &&
- mintFeePercentage !== undefined
- ? `${mintFeePercentage.toFixed(2)}%`
- :"-"}
- {parsedAmount && parsedAmount > 0n && mintFee > 0n && (
- <span className="ml-1 font-normal text-[#1E4775]/60">
- ({formatDisplay(mintFee, 4)}{" "}
- {selectedDepositAsset || collateralSymbol})
- </span>
- )}
- </span>
- </span>
- </div>
- )}
-
- {activeTab ==="redeem" && (
- <div className="text-xs text-[#1E4775]">
- <span className="flex items-center gap-1.5">
- Redeem Fee:{" "}
- <span
- className={`font-semibold ${
- redeemFeePercentage > 2
- ?"text-red-600"
- :"text-[#1E4775]"
- }`}
- >
- {parsedAmount &&
- parsedAmount > 0n &&
- redeemFeePercentage !== undefined
- ? `${redeemFeePercentage.toFixed(2)}%`
- :"-"}
- {parsedAmount && parsedAmount > 0n && redeemFee > 0n && (
- <span className="ml-1 font-normal text-[#1E4775]/60">
- ({formatDisplay(redeemFee, 4)} {collateralSymbol})
- </span>
- )}
- </span>
- </span>
- </div>
- )}
-
- {/* Transaction Summary */}
- {activeTab ==="mint" && (
- <div className="p-2 bg-[#17395F]/5 border border-[#17395F]/20">
- <h4 className="text-xs font-semibold text-[#1E4775] mb-1.5">
- Transaction Summary
- </h4>
- <div className="space-y-1 text-xs text-[#1E4775]/80">
- <div className="flex justify-between">
- <span>You deposit:</span>
- <span className="font-mono">
- {parsedAmount && parsedAmount > 0n
- ? `${formatDisplay(parsedAmount, 4)} ${
- selectedDepositAsset || collateralSymbol
- }`
- :"0.00"}
- </span>
- </div>
- <div className="flex justify-between">
- <span>You receive:</span>
- <span className="font-mono">
- {expectedMintOutput && parsedAmount && parsedAmount > 0n
- ? `${formatDisplay(
- expectedMintOutput,
- 4
- )} ${leveragedTokenSymbol}`
- :"0.00"}
- </span>
- </div>
- </div>
- </div>
- )}
-
- {activeTab ==="redeem" && (
- <div className="p-2 bg-[#17395F]/5 border border-[#17395F]/20">
- <h4 className="text-xs font-semibold text-[#1E4775] mb-1.5">
- Transaction Summary
- </h4>
- <div className="space-y-1 text-xs text-[#1E4775]/80">
- <div className="flex justify-between">
- <span>You redeem:</span>
- <span className="font-mono">
- {parsedAmount && parsedAmount > 0n
- ? `${formatDisplay(
- parsedAmount,
- 4
- )} ${leveragedTokenSymbol}`
- :"0.00"}
- </span>
- </div>
- <div className="flex justify-between">
- <span>You receive:</span>
- <span className="font-mono">
- {expectedRedeemOutput &&
- parsedAmount &&
- parsedAmount > 0n
- ? `${formatDisplay(
- expectedRedeemOutput,
- 4
- )} ${collateralSymbol}`
- :"0.00"}
- </span>
- </div>
- </div>
  </div>
  )}
 
@@ -1875,7 +1874,7 @@ const { maxRate: fxSAVERate } = useCollateralPrice(
  <div className="flex gap-3 pt-2 border-t border-[#1E4775]/20">
  {(step ==="error" || step ==="input") && (
  <button
- onClick={handleClose}
+ onClick={step ==="error" ? handleCancel : handleClose}
  className="flex-1 py-3 px-4 bg-white text-[#1E4775] border-2 border-[#1E4775]/30 font-semibold hover:bg-[#1E4775]/5 transition-colors"
  >
  Cancel
@@ -1884,19 +1883,21 @@ const { maxRate: fxSAVERate } = useCollateralPrice(
  <button
  onClick={activeTab ==="mint" ? handleMint : handleRedeem}
  disabled={
- !isConnected ||
- !amount ||
- parseFloat(amount) <= 0 ||
- (activeTab ==="mint" &&
- parsedAmount &&
- parsedAmount > currentBalance) ||
- (activeTab ==="redeem" &&
- parsedAmount &&
- parsedAmount > currentBalance)
+ step ==="error"
+   ? false
+   : !isConnected ||
+     !amount ||
+     parseFloat(amount) <= 0 ||
+     (activeTab ==="mint" &&
+       parsedAmount &&
+       parsedAmount > currentBalance) ||
+     (activeTab ==="redeem" &&
+       parsedAmount &&
+       parsedAmount > currentBalance)
  }
  className="flex-1 py-3 px-4 bg-[#1E4775] text-white font-semibold hover:bg-[#17395F] transition-colors disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
  >
- {activeTab ==="mint" ?"Mint" :"Redeem"}
+ {step ==="error" ? "Try Again" : activeTab ==="mint" ? "Mint" : "Redeem"}
  </button>
  </div>
  )}
@@ -1920,6 +1921,7 @@ const { maxRate: fxSAVERate } = useCollateralPrice(
  title={progressModal.title}
  steps={progressModal.steps}
  currentStepIndex={progressModal.currentStepIndex}
+ progressVariant="horizontal"
  errorMessage={progressModal.steps.find(s => s.status === "error")?.error}
  />
  )}

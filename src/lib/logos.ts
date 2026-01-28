@@ -26,6 +26,7 @@ const ICONS: Record<string, string> = {
     mag7: "/icons/stock.svg", // Financial index - using stock icon
     "mag7.i26": "/icons/stock.svg", // Financial index variant
     bom5: "/icons/stock.svg", // Financial index - using stock icon
+    all: "/icons/logo-blue.svg", // "All pools" filter – Harbor logo (blue for visibility on white)
     // Harbor tokens - ha (pegged) tokens
     haeth: "/icons/haETH.png",
     habtc: "/icons/haBTC.png",
