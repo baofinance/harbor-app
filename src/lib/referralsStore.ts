@@ -1,4 +1,5 @@
 import { type Address, isAddress } from "viem";
+import { randomBytes } from "crypto";
 
 export type ReferralCode = {
   code: string;
@@ -90,8 +91,15 @@ function normalizeCode(code: string): string {
 }
 
 function generateCode(): string {
-  const bytes = crypto.randomBytes(5);
-  return bytes.toString("hex").toUpperCase();
+  const bytes = new Uint8Array(5);
+  if (globalThis.crypto && "getRandomValues" in globalThis.crypto) {
+    globalThis.crypto.getRandomValues(bytes);
+  } else {
+    bytes.set(randomBytes(5));
+  }
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0"))
+    .join("")
+    .toUpperCase();
 }
 
 async function upstashCommand<T = any>(cmd: any[]): Promise<T> {
