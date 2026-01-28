@@ -35,11 +35,20 @@ export const InfoCallout = ({
   children,
 }: InfoCalloutProps) => {
   const styles = toneStyles[tone];
+  // Support both JSX elements and component references (e.g. icon={RefreshCw}) to avoid "Objects are not valid as a React child"
+  const iconEl =
+    icon == null
+      ? null
+      : React.isValidElement(icon)
+        ? icon
+        : typeof icon === "function" || (typeof icon === "object" && icon !== null && "$$typeof" in icon)
+          ? React.createElement(icon as React.ComponentType<{ className?: string }>, { className: "w-4 h-4 flex-shrink-0" })
+          : icon;
 
   return (
     <div className={`p-2.5 border text-xs ${styles.wrapper}`}>
       <div className="flex items-start gap-2">
-        {icon ?? (
+        {iconEl ?? (
           <span
             className={`w-4 h-4 flex items-center justify-center rounded-full text-[10px] font-bold mt-0.5 ${styles.icon}`}
           >

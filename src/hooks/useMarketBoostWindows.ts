@@ -45,6 +45,10 @@ interface UseMarketBoostWindowsOptions {
   first?: number;
 }
 
+// Set NEXT_PUBLIC_DISABLE_MARKET_BOOST_SUBGRAPH=true in .env.local to skip subgraph for local builds
+const DEV_DISABLE_MARKET_BOOST_SUBGRAPH =
+  typeof process !== "undefined" && process.env.NEXT_PUBLIC_DISABLE_MARKET_BOOST_SUBGRAPH === "true";
+
 export function useMarketBoostWindows({
   enabled = true,
   graphUrl = getGraphUrl(),
@@ -52,9 +56,12 @@ export function useMarketBoostWindows({
   first = 100,
 }: UseMarketBoostWindowsOptions = {}) {
   return useQuery<{ marketBoostWindows: MarketBoostWindow[] }>({
-    queryKey: ["marketBoostWindows", graphUrl, ids?.join(",") ?? "ALL", first],
-    enabled: enabled && (!!ids ? ids.length > 0 : true),
+    queryKey: ["marketBoostWindows", graphUrl, ids?.join(",") ?? "ALL", first, DEV_DISABLE_MARKET_BOOST_SUBGRAPH],
+    enabled: !DEV_DISABLE_MARKET_BOOST_SUBGRAPH && enabled && (!!ids ? ids.length > 0 : true),
     queryFn: async () => {
+      if (DEV_DISABLE_MARKET_BOOST_SUBGRAPH) {
+        return { marketBoostWindows: [] };
+      }
       const query = ids && ids.length > 0 ? BOOST_WINDOWS_BY_IDS_QUERY : ALL_BOOST_WINDOWS_QUERY;
       const variables =
         ids && ids.length > 0
@@ -68,13 +75,16 @@ export function useMarketBoostWindows({
       });
 
       const json = await response.json();
-      if (!response.ok || json.errors) {
-        const errText = json?.errors ? JSON.stringify(json.errors) : await response.text();
+      if (!response.ok || (json && json.errors)) {
+        const errText = json?.errors ? JSON.stringify(json.errors) : String(response.statusText || "Unknown error");
         throw new Error(
           `[useMarketBoostWindows] Subgraph error: ${response.status} ${response.statusText} ${errText}`
         );
       }
-      return json.data as { marketBoostWindows: MarketBoostWindow[] };
+      // React Query forbids undefined – always return a defined value
+      const data = json && typeof json === "object" && "data" in json ? json.data : undefined;
+      const list = Array.isArray(data?.marketBoostWindows) ? data.marketBoostWindows : [];
+      return { marketBoostWindows: list };
     },
     staleTime: 30_000,
     refetchInterval: 60_000,

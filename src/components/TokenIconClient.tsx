@@ -31,7 +31,8 @@ export default function TokenIconClient({
   const isHarborToken = normalizedSymbol.startsWith('ha') || normalizedSymbol.startsWith('hs')
   
   // WETH might not be in web3icons or might not work properly, use local icon
-  const useLocalIcon = isHarborToken || normalizedSymbol === 'weth'
+  // "all" = "All pools" filter uses Harbor logo
+  const useLocalIcon = isHarborToken || normalizedSymbol === 'weth' || normalizedSymbol === 'all'
   
   // If it's a Harbor token or WETH, use local icons directly
   if (useLocalIcon) {
