@@ -39,6 +39,8 @@ const USER_MARKS_QUERY = `
  id
  user
  contractAddress
+ campaignId
+ campaignLabel
  currentMarks
  marksPerDay
  bonusMarks
@@ -48,6 +50,43 @@ const USER_MARKS_QUERY = `
  genesisEnded
  lastUpdated
  genesisStartDate
+ }
+ }
+`;
+
+const CAMPAIGN_USER_MARKS_QUERY = `
+ query GetCampaignUserMarks($userAddress: Bytes!, $campaignId: String!) {
+ userHarborMarks_collection(
+   first: 1000
+   where: { user: $userAddress, campaignId: $campaignId }
+ ) {
+   id
+   user
+   contractAddress
+   campaignId
+   campaignLabel
+   currentMarks
+   marksPerDay
+   bonusMarks
+   genesisEnded
+   lastUpdated
+ }
+ }
+`;
+
+const CAMPAIGN_LEADERBOARD_QUERY = `
+ query GetCampaignLeaderboard($campaignId: String!) {
+ userHarborMarks_collection(first: 1000, where: { campaignId: $campaignId }) {
+   id
+   user
+   contractAddress
+   campaignId
+   campaignLabel
+   currentMarks
+   marksPerDay
+   bonusMarks
+   genesisEnded
+   lastUpdated
  }
  }
 `;
@@ -117,6 +156,8 @@ interface UserMarksEntry {
  id: string;
  user: string;
  contractAddress: string;
+  campaignId?: string;
+  campaignLabel?: string;
  currentMarks: string;
  marksPerDay: string;
  bonusMarks: string;
@@ -272,10 +313,35 @@ export default function LedgerMarksLeaderboard() {
  const [currentChainTime, setCurrentChainTime] = useState<number | undefined>(
  undefined
  );
- const [sortBy, setSortBy] = useState<
-"total" |"genesis" |"anchor" |"sail" |"perDay"
+ const [leaderboardTab, setLeaderboardTab] = useState<
+  "campaigns" | "anchor-sail"
+ >("campaigns");
+ const [campaignTab, setCampaignTab] = useState<
+  "launch-maiden-voyage" | "euro-maiden-voyage"
+ >("launch-maiden-voyage");
+ const [campaignSortBy, setCampaignSortBy] = useState<
+  "total" | "perDay" | "bonus"
  >("total");
- const [sortDirection, setSortDirection] = useState<"asc" |"desc">("desc");
+ const [campaignSortDirection, setCampaignSortDirection] = useState<
+  "asc" | "desc"
+ >("desc");
+ const [anchorSailSortBy, setAnchorSailSortBy] = useState<
+  "total" | "anchor" | "sail" | "perDay"
+ >("total");
+ const [anchorSailSortDirection, setAnchorSailSortDirection] = useState<
+  "asc" | "desc"
+ >("desc");
+
+ const campaignTabs = [
+  {
+   id: "launch-maiden-voyage",
+   label: "Launch",
+   subtitle: "1% of $TIDE",
+  },
+  { id: "euro-maiden-voyage", label: "Euro" },
+ ] as const;
+ const activeCampaign =
+  campaignTabs.find((tab) => tab.id === campaignTab) ?? campaignTabs[0];
 
  // Get current blockchain timestamp (updates every second)
  useEffect(() => {
@@ -335,6 +401,17 @@ total += poolDeposits.reduce((sum, deposit) => sum + (deposit.estimatedMarks || 
 return total;
 }, [haBalances, poolDeposits]);
 
+ const totalSailLedgerMarks = useMemo(() => {
+ let total = 0;
+ if (sailBalances) {
+ total += sailBalances.reduce(
+ (sum, balance) => sum + calculateEstimatedMarks(balance, currentChainTime),
+ 0
+ );
+ }
+ return total;
+ }, [sailBalances, currentChainTime]);
+
  // Calculate sail marks per day (sail token holdings only)
  const sailMarksPerDay = useMemo(() => {
  let total = 0;
@@ -348,102 +425,101 @@ return total;
  return total;
  }, [sailBalances]);
 
- // Fetch genesis/maiden voyage marks per day for connected user
- const { data: genesisMarksData, isLoading: isLoadingGenesisMarks } =
- useQuery<{
- userHarborMarks: Array<{
- marksPerDay: string;
- }>;
- }>({
- queryKey: ["genesisMarksPerDay", address],
+const { data: campaignUserMarksData, isLoading: isLoadingCampaignMarks } =
+useQuery<{ userHarborMarks_collection: UserMarksEntry[] }>({
+ queryKey: ["campaignUserMarks", address, campaignTab],
  queryFn: async () => {
- if (!address) return { userHarborMarks: [] };
-
- // First, get all deposits to find unique user-contract pairs
- const depositsResponse = await fetch(graphUrl, {
+ if (!address) return { userHarborMarks_collection: [] };
+ const response = await fetch(graphUrl, {
  method:"POST",
  headers: getGraphHeaders(),
  body: JSON.stringify({
- query: `
- query GetUserDeposits($userAddress: Bytes!) {
- deposits(
- where: { user: $userAddress }
- first: 1000
- ) {
- id
- user
- contractAddress
- }
- }
- `,
- variables: { userAddress: address.toLowerCase() },
+ query: CAMPAIGN_USER_MARKS_QUERY,
+ variables: {
+ userAddress: address.toLowerCase(),
+ campaignId: campaignTab,
+ },
  }),
  });
-
- if (!depositsResponse.ok) {
- return { userHarborMarks: [] };
+ if (!response.ok) return { userHarborMarks_collection: [] };
+ const result = await response.json();
+ if (result.errors || !result.data?.userHarborMarks_collection) {
+ return { userHarborMarks_collection: [] };
  }
-
- const depositsResult = await depositsResponse.json();
- if (depositsResult.errors || !depositsResult.data?.deposits) {
- return { userHarborMarks: [] };
- }
-
- // Get unique contract addresses for this user
- const contractAddresses = new Set<string>();
- depositsResult.data.deposits.forEach((deposit: any) => {
- contractAddresses.add(deposit.contractAddress.toLowerCase());
- });
-
- // Fetch marks for each contract
- const marksPromises = Array.from(contractAddresses).map(
- async (contractAddr) => {
- const id = `${contractAddr}-${address.toLowerCase()}`;
- const marksResponse = await fetch(graphUrl, {
- method:"POST",
- headers: getGraphHeaders(),
- body: JSON.stringify({
- query: `
- query GetUserMarks($id: ID!) {
- userHarborMarks(id: $id) {
- marksPerDay
- }
- }
- `,
- variables: { id },
- }),
- });
-
- if (!marksResponse.ok) return null;
- const marksResult = await marksResponse.json();
- return marksResult.data?.userHarborMarks || null;
- }
- );
-
- const marks = await Promise.all(marksPromises);
- return {
- userHarborMarks: marks.filter(
- (m): m is { marksPerDay: string } => m !== null
- ),
- };
+ return result.data;
  },
  enabled: !!address && isConnected,
  refetchInterval: 60000,
+});
+
+const {
+ data: campaignLeaderboardMarksData,
+ isLoading: isLoadingCampaignLeaderboard,
+ error: campaignLeaderboardError,
+} =
+useQuery<{ userHarborMarks_collection: UserMarksEntry[] }>({
+ queryKey: ["campaignLeaderboard", campaignTab],
+ queryFn: async () => {
+ const response = await fetch(graphUrl, {
+ method:"POST",
+ headers: getGraphHeaders(),
+ body: JSON.stringify({
+ query: CAMPAIGN_LEADERBOARD_QUERY,
+ variables: { campaignId: campaignTab },
+ }),
  });
+ if (!response.ok) {
+ throw new Error(`GraphQL query failed: ${response.statusText}`);
+ }
+ const result = await response.json();
+ if (result.errors) {
+ const isIndexerErr = hasIndexerError(result.errors);
+ setHasIndexerErrors((prev) => prev || isIndexerErr);
+ setHasAnyErrors((prev) => prev || true);
+ return { userHarborMarks_collection: [] };
+ }
+ return result.data || { userHarborMarks_collection: [] };
+ },
+ refetchInterval: 30000,
+ staleTime: 10000,
+});
 
- // Calculate maiden voyage marks per day
- const maidenVoyageMarksPerDay = useMemo(() => {
- if (!genesisMarksData?.userHarborMarks) return 0;
- return genesisMarksData.userHarborMarks.reduce(
- (sum, entry) => sum + parseFloat(entry.marksPerDay ||"0"),
- 0
+const getLiveMarks = (entry: UserMarksEntry) => {
+ let currentMarks = parseFloat(entry.currentMarks ||"0");
+ const marksPerDay = parseFloat(entry.marksPerDay ||"0");
+ const bonusMarks = parseFloat(entry.bonusMarks ||"0");
+ const lastUpdated = parseInt(entry.lastUpdated ||"0");
+ const genesisEnded = entry.genesisEnded || false;
+ if (!genesisEnded && marksPerDay > 0 && lastUpdated > 0) {
+ const now = currentChainTime || Math.floor(Date.now() / 1000);
+ const timeElapsed = now - lastUpdated;
+ const daysElapsed = Math.max(0, timeElapsed / 86400);
+ currentMarks = currentMarks + marksPerDay * daysElapsed;
+ }
+ return {
+ currentMarks,
+ marksPerDay,
+ bonusMarks,
+ };
+};
+
+const campaignUserTotals = useMemo(() => {
+ const entries = campaignUserMarksData?.userHarborMarks_collection || [];
+ return entries.reduce(
+ (acc, entry) => {
+ const live = getLiveMarks(entry);
+ acc.totalMarks += live.currentMarks;
+ acc.marksPerDay += live.marksPerDay;
+ acc.bonusMarks += live.bonusMarks;
+ return acc;
+ },
+ { totalMarks: 0, marksPerDay: 0, bonusMarks: 0 }
  );
- }, [genesisMarksData]);
+}, [campaignUserMarksData, currentChainTime]);
 
- // Calculate total marks per day
- const totalMarksPerDay = useMemo(() => {
- return maidenVoyageMarksPerDay + anchorMarksPerDay + sailMarksPerDay;
- }, [maidenVoyageMarksPerDay, anchorMarksPerDay, sailMarksPerDay]);
+const anchorSailMarksPerDay = useMemo(() => {
+ return anchorMarksPerDay + sailMarksPerDay;
+}, [anchorMarksPerDay, sailMarksPerDay]);
 
  // Query genesis marks via deposits (userHarborMarks requires an ID, so we query deposits first)
  const {
@@ -710,12 +786,16 @@ return total;
     };
   }, [boostWindowsData]);
 
- const isLoading =
- isLoadingMarks ||
- isLoadingHaTokenBalances ||
- isLoadingStabilityPoolDeposits ||
- isLoadingSailTokenBalances;
- const error = marksError;
+ const isCampaignLoading = isLoadingCampaignLeaderboard;
+ const isAnchorSailLoading =
+  isLoadingHaTokenBalances ||
+  isLoadingStabilityPoolDeposits ||
+  isLoadingSailTokenBalances;
+ const isLoading = leaderboardTab === "campaigns"
+  ? isCampaignLoading
+  : isAnchorSailLoading;
+ const error =
+  leaderboardTab === "campaigns" ? campaignLeaderboardError : marksError;
 
  // Reset errors when all queries succeed
  // Reset errors only when queries succeed without errors AND no markets have errors
@@ -741,279 +821,183 @@ return total;
    }
  }, [isLoading, error, marksError, marksData, haTokenBalancesData, stabilityPoolDepositsData, sailTokenBalancesData, marketsWithErrors.size]);
 
- // Extract marks array from query result
- const marksArray = marksData?.userHarborMarks || [];
-
- // Process and aggregate user marks by wallet address
- const leaderboardData = useMemo(() => {
- const haTokenBalances = haTokenBalancesData?.haTokenBalances || [];
- const stabilityPoolDeposits =
- stabilityPoolDepositsData?.stabilityPoolDeposits || [];
- const sailTokenBalances = sailTokenBalancesData?.sailTokenBalances || [];
-
- // If no data at all, return empty
- if (
- (!marksArray || marksArray.length === 0) &&
- haTokenBalances.length === 0 &&
- stabilityPoolDeposits.length === 0 &&
- sailTokenBalances.length === 0
- ) {
-   return [];
- }
-
- // Group by user address
+const campaignLeaderboardData = useMemo(() => {
+ const entries = campaignLeaderboardMarksData?.userHarborMarks_collection || [];
+ if (entries.length === 0) return [];
  const userMap = new Map<
- string,
- {
- address: string;
- totalMarks: number;
- genesisMarks: number;
- anchorMarks: number;
- sailMarks: number;
- marksPerDay: number;
- }
+  string,
+  { address: string; totalMarks: number; marksPerDay: number; bonusMarks: number }
  >();
 
- marksArray.forEach((entry) => {
-   const userAddress = entry.user?.toLowerCase();
-   if (!userAddress) {
-     return;
-   }
+ entries.forEach((entry) => {
+  const userAddress = entry.user?.toLowerCase();
+  if (!userAddress) return;
+  if (isContractAddress(userAddress)) return;
 
-   // Filter out known contract addresses (they shouldn't be in the leaderboard)
-   if (isContractAddress(userAddress)) {
-     return;
-   }
+  const live = getLiveMarks(entry);
+  if (isNaN(live.currentMarks) || (live.currentMarks === 0 && live.marksPerDay === 0)) {
+    return;
+  }
 
- const contractType = getContractType(entry.contractAddress);
- const currentMarksRaw = entry.currentMarks ||"0";
- let currentMarks = parseFloat(currentMarksRaw);
- const marksPerDay = parseFloat(entry.marksPerDay ||"0");
- const currentDepositUSD = parseFloat(entry.currentDepositUSD ||"0");
- const genesisEnded = entry.genesisEnded || false;
- const lastUpdated = parseInt(entry.lastUpdated ||"0");
- const genesisStartDate = parseInt(entry.genesisStartDate ||"0");
+  if (!userMap.has(userAddress)) {
+    userMap.set(userAddress, {
+      address: entry.user?.toLowerCase() || userAddress,
+      totalMarks: 0,
+      marksPerDay: 0,
+      bonusMarks: 0,
+    });
+  }
 
- // Accumulate marks since last update using marksPerDay as the source of truth.
- // This avoids hardcoding genesis rates (e.g. 10x) and stays correct if rules change.
- if (!genesisEnded && marksPerDay > 0 && lastUpdated > 0) {
- const currentTime = currentChainTime || Math.floor(Date.now() / 1000);
- const timeElapsed = currentTime - lastUpdated;
- const daysElapsed = Math.max(0, timeElapsed / 86400); // Convert seconds to days
- const marksAccumulated = marksPerDay * daysElapsed;
- currentMarks = currentMarks + marksAccumulated;
- }
-
-   // Skip entries with zero or invalid marks, but allow if marksPerDay > 0 (user is earning marks)
-   if (isNaN(currentMarks) || (currentMarks === 0 && marksPerDay === 0)) {
-     return;
-   }
-
- if (!userMap.has(userAddress)) {
- userMap.set(userAddress, {
- address: entry.user?.toLowerCase() || userAddress, // Normalize to lowercase for consistency
- totalMarks: 0,
- genesisMarks: 0,
- anchorMarks: 0,
- sailMarks: 0,
- marksPerDay: 0,
- });
- }
-
- const user = userMap.get(userAddress)!;
- user.totalMarks += currentMarks;
- user.marksPerDay += marksPerDay;
-
- // Categorize marks by contract type
- // Note: Currently only genesis contracts are tracked in the subgraph
- // Anchor and Sail marks will be added when we extend the subgraph
- if (contractType ==="genesis") {
- user.genesisMarks += currentMarks;
- } else if (contractType ==="anchor") {
- user.anchorMarks += currentMarks;
- } else if (contractType ==="sail") {
- user.sailMarks += currentMarks;
- } else {
- // If unknown, assume it's genesis for now (since that's what we're tracking)
- user.genesisMarks += currentMarks;
- }
+  const user = userMap.get(userAddress)!;
+  user.totalMarks += live.currentMarks;
+  user.marksPerDay += live.marksPerDay;
+  user.bonusMarks += live.bonusMarks;
  });
 
- // Add ha token marks (using estimated marks for real-time display)
- haTokenBalances.forEach((balance) => {
- const userAddress = balance.user?.toLowerCase();
- if (!userAddress) return;
-
- // Filter out known contract addresses
- if (isContractAddress(userAddress)) {
-   return;
- }
-
- const estimatedMarks = calculateEstimatedMarks(balance, currentChainTime);
- const marksPerDay = parseFloat(balance.marksPerDay ||"0");
-
- // Don't skip if marksPerDay > 0 even if estimatedMarks is 0 (might be just starting)
- if (estimatedMarks === 0 && marksPerDay === 0) return;
-
- if (!userMap.has(userAddress)) {
- userMap.set(userAddress, {
- address: balance.user?.toLowerCase() || userAddress, // Normalize to lowercase for consistency
- totalMarks: 0,
- genesisMarks: 0,
- anchorMarks: 0,
- sailMarks: 0,
- marksPerDay: 0,
- });
- }
-
- const user = userMap.get(userAddress)!;
- user.totalMarks += estimatedMarks;
- user.anchorMarks += estimatedMarks; // ha tokens count as anchor marks
- user.marksPerDay += marksPerDay;
- });
-
- // Add stability pool marks (using estimated marks for real-time display)
- stabilityPoolDeposits.forEach((deposit) => {
- const userAddress = deposit.user?.toLowerCase();
- if (!userAddress) return;
-
- // Filter out known contract addresses
- if (isContractAddress(userAddress)) {
- return;
- }
-
- const estimatedMarks = calculateEstimatedMarks(deposit, currentChainTime);
- const marksPerDay = parseFloat(deposit.marksPerDay ||"0");
-
- // Don't skip if marksPerDay > 0 even if estimatedMarks is 0 (might be just starting)
- if (estimatedMarks === 0 && marksPerDay === 0) return;
-
- if (!userMap.has(userAddress)) {
- userMap.set(userAddress, {
- address: deposit.user?.toLowerCase() || userAddress, // Normalize to lowercase for consistency
- totalMarks: 0,
- genesisMarks: 0,
- anchorMarks: 0,
- sailMarks: 0,
- marksPerDay: 0,
- });
- }
-
- const user = userMap.get(userAddress)!;
- user.totalMarks += estimatedMarks;
-
- // Categorize stability pool deposits:
- // Both collateral pools and "sail" pools accept ha token deposits, so they count as ANCHOR marks.
- const poolType = deposit.poolType?.toLowerCase();
- // Default all pools to anchor marks.
- // Keep poolType for UI/debugging if needed.
- user.anchorMarks += estimatedMarks;
-
- // Always add marksPerDay to total marksPerDay
- user.marksPerDay += marksPerDay;
- });
-
- // Add sail token marks (using estimated marks for real-time display)
- sailTokenBalances.forEach((balance) => {
- const userAddress = balance.user?.toLowerCase();
- if (!userAddress) return;
-
- // Filter out known contract addresses
- if (isContractAddress(userAddress)) {
-   return;
- }
-
- const estimatedMarks = calculateEstimatedMarks(balance, currentChainTime);
- const marksPerDay = parseFloat(balance.marksPerDay ||"0");
-
- // Don't skip if marksPerDay > 0 even if estimatedMarks is 0 (might be just starting)
- if (estimatedMarks === 0 && marksPerDay === 0) return;
-
- if (!userMap.has(userAddress)) {
- userMap.set(userAddress, {
- address: balance.user?.toLowerCase() || userAddress, // Normalize to lowercase for consistency
- totalMarks: 0,
- genesisMarks: 0,
- anchorMarks: 0,
- sailMarks: 0,
- marksPerDay: 0,
- });
- }
-
- const user = userMap.get(userAddress)!;
- user.totalMarks += estimatedMarks;
- user.sailMarks += estimatedMarks; // sail tokens count as sail marks
- user.marksPerDay += marksPerDay;
- });
-
- // Convert to array, deduplicate by address (case-insensitive), and sort
- const userArray = Array.from(userMap.values());
-
- // Deduplicate by address (case-insensitive) - in case there are any edge cases
- const deduplicated = new Map<string, (typeof userArray)[0]>();
- userArray.forEach((user) => {
- const key = user.address.toLowerCase();
- if (!deduplicated.has(key)) {
- deduplicated.set(key, user);
- } else {
- // If duplicate found, merge the marks (shouldn't happen, but just in case)
- const existing = deduplicated.get(key)!;
- existing.totalMarks += user.totalMarks;
- existing.genesisMarks += user.genesisMarks;
- existing.anchorMarks += user.anchorMarks;
- existing.sailMarks += user.sailMarks;
- existing.marksPerDay += user.marksPerDay;
- }
- });
-
- const sorted = Array.from(deduplicated.values()).sort((a, b) => {
- let aValue: number;
- let bValue: number;
-
- switch (sortBy) {
- case"genesis":
- aValue = a.genesisMarks;
- bValue = b.genesisMarks;
- break;
- case"anchor":
- aValue = a.anchorMarks;
- bValue = b.anchorMarks;
- break;
- case"sail":
- aValue = a.sailMarks;
- bValue = b.sailMarks;
- break;
- case"perDay":
- aValue = a.marksPerDay;
- bValue = b.marksPerDay;
- break;
- default:
- aValue = a.totalMarks;
- bValue = b.totalMarks;
- }
-
- return sortDirection ==="desc" ? bValue - aValue : aValue - bValue;
+ const sorted = Array.from(userMap.values()).sort((a, b) => {
+  let aValue = 0;
+  let bValue = 0;
+  if (campaignSortBy === "perDay") {
+    aValue = a.marksPerDay;
+    bValue = b.marksPerDay;
+  } else if (campaignSortBy === "bonus") {
+    aValue = a.bonusMarks;
+    bValue = b.bonusMarks;
+  } else {
+    aValue = a.totalMarks;
+    bValue = b.totalMarks;
+  }
+  return campaignSortDirection === "desc" ? bValue - aValue : aValue - bValue;
  });
 
  return sorted;
- }, [
- marksArray,
+}, [campaignLeaderboardMarksData, campaignSortBy, campaignSortDirection, currentChainTime]);
+
+const anchorSailLeaderboardData = useMemo(() => {
+ const haTokenBalances = haTokenBalancesData?.haTokenBalances || [];
+ const stabilityPoolDeposits =
+  stabilityPoolDepositsData?.stabilityPoolDeposits || [];
+ const sailTokenBalances = sailTokenBalancesData?.sailTokenBalances || [];
+
+ if (
+  haTokenBalances.length === 0 &&
+  stabilityPoolDeposits.length === 0 &&
+  sailTokenBalances.length === 0
+ ) {
+  return [];
+ }
+
+ const userMap = new Map<
+  string,
+  { address: string; totalMarks: number; anchorMarks: number; sailMarks: number; marksPerDay: number }
+ >();
+
+ const ensureUser = (userAddress: string, rawAddress: string) => {
+  if (!userMap.has(userAddress)) {
+    userMap.set(userAddress, {
+      address: rawAddress,
+      totalMarks: 0,
+      anchorMarks: 0,
+      sailMarks: 0,
+      marksPerDay: 0,
+    });
+  }
+  return userMap.get(userAddress)!;
+ };
+
+ haTokenBalances.forEach((balance) => {
+  const userAddress = balance.user?.toLowerCase();
+  if (!userAddress) return;
+  if (isContractAddress(userAddress)) return;
+  const estimatedMarks = calculateEstimatedMarks(balance, currentChainTime);
+  const marksPerDay = parseFloat(balance.marksPerDay || "0");
+  if (estimatedMarks === 0 && marksPerDay === 0) return;
+  const user = ensureUser(userAddress, balance.user?.toLowerCase() || userAddress);
+  user.totalMarks += estimatedMarks;
+  user.anchorMarks += estimatedMarks;
+  user.marksPerDay += marksPerDay;
+ });
+
+ stabilityPoolDeposits.forEach((deposit) => {
+  const userAddress = deposit.user?.toLowerCase();
+  if (!userAddress) return;
+  if (isContractAddress(userAddress)) return;
+  const estimatedMarks = calculateEstimatedMarks(deposit, currentChainTime);
+  const marksPerDay = parseFloat(deposit.marksPerDay || "0");
+  if (estimatedMarks === 0 && marksPerDay === 0) return;
+  const user = ensureUser(userAddress, deposit.user?.toLowerCase() || userAddress);
+  user.totalMarks += estimatedMarks;
+  user.anchorMarks += estimatedMarks;
+  user.marksPerDay += marksPerDay;
+ });
+
+ sailTokenBalances.forEach((balance) => {
+  const userAddress = balance.user?.toLowerCase();
+  if (!userAddress) return;
+  if (isContractAddress(userAddress)) return;
+  const estimatedMarks = calculateEstimatedMarks(balance, currentChainTime);
+  const marksPerDay = parseFloat(balance.marksPerDay || "0");
+  if (estimatedMarks === 0 && marksPerDay === 0) return;
+  const user = ensureUser(userAddress, balance.user?.toLowerCase() || userAddress);
+  user.totalMarks += estimatedMarks;
+  user.sailMarks += estimatedMarks;
+  user.marksPerDay += marksPerDay;
+ });
+
+ const sorted = Array.from(userMap.values()).sort((a, b) => {
+  let aValue = 0;
+  let bValue = 0;
+  if (anchorSailSortBy === "anchor") {
+    aValue = a.anchorMarks;
+    bValue = b.anchorMarks;
+  } else if (anchorSailSortBy === "sail") {
+    aValue = a.sailMarks;
+    bValue = b.sailMarks;
+  } else if (anchorSailSortBy === "perDay") {
+    aValue = a.marksPerDay;
+    bValue = b.marksPerDay;
+  } else {
+    aValue = a.totalMarks;
+    bValue = b.totalMarks;
+  }
+  return anchorSailSortDirection === "desc" ? bValue - aValue : aValue - bValue;
+ });
+
+ return sorted;
+}, [
  haTokenBalancesData,
  stabilityPoolDepositsData,
  sailTokenBalancesData,
- sortBy,
- sortDirection,
- currentChainTime, // Recalculate when chain time updates
- ]);
+ anchorSailSortBy,
+ anchorSailSortDirection,
+ currentChainTime,
+]);
 
- const handleSort = (column: typeof sortBy) => {
- if (sortBy === column) {
- setSortDirection(sortDirection ==="desc" ?"asc" :"desc");
+const handleCampaignSort = (column: typeof campaignSortBy) => {
+ if (campaignSortBy === column) {
+  setCampaignSortDirection(
+    campaignSortDirection === "desc" ? "asc" : "desc"
+  );
  } else {
- setSortBy(column);
- setSortDirection("desc");
+  setCampaignSortBy(column);
+  setCampaignSortDirection("desc");
  }
- };
+};
+
+const handleAnchorSailSort = (column: typeof anchorSailSortBy) => {
+ if (anchorSailSortBy === column) {
+  setAnchorSailSortDirection(
+    anchorSailSortDirection === "desc" ? "asc" : "desc"
+  );
+ } else {
+  setAnchorSailSortBy(column);
+  setAnchorSailSortDirection("desc");
+ }
+};
+
+ const leaderboardRows =
+  leaderboardTab === "campaigns" ? campaignLeaderboardData : anchorSailLeaderboardData;
+ const leaderboardData = leaderboardRows;
 
  return (
  <div className="min-h-screen bg-[#1E4775] overflow-x-hidden">
@@ -1038,7 +1022,7 @@ return total;
         </div>
 
           {/* Explainer Section */}
-          <div className="bg-black/[0.10] backdrop-blur-sm rounded-none overflow-hidden p-4 mb-2">
+          <div className="bg-black/[0.10] border border-white/10 backdrop-blur-sm rounded-none overflow-hidden p-4 mb-4">
             <div className="flex items-start gap-3">
               <Image
                 src="/icons/marks.png"
@@ -1065,23 +1049,51 @@ return total;
  <div className="flex items-start gap-2">
  <span className="text-white/70 mt-0.5">•</span>
  <p>
- <strong>Genesis Deposits:</strong> Earn 10 marks per
- dollar per day during genesis, plus 100 marks per dollar
- bonus at genesis end.
+ <strong>Maiden Voyage Deposits:</strong> Earn 10{" "}
+ <Image
+   src="/icons/marks.png"
+   alt="Marks"
+   width={14}
+   height={14}
+   className="inline-block align-middle mx-0.5"
+ />{" "}
+ per dollar per day during maiden voyage, plus 100{" "}
+ <Image
+   src="/icons/marks.png"
+   alt="Marks"
+   width={14}
+   height={14}
+   className="inline-block align-middle mx-0.5"
+ />{" "}
+ per dollar bonus at maiden voyage end.
  </p>
  </div>
                 <div className="flex items-start gap-2">
                   <span className="text-white/70 mt-0.5">•</span>
                   <p>
-                    <strong>Holding Anchor Tokens:</strong> Earn 1 mark per dollar
-                    per day.
+                    <strong>Holding Anchor Tokens:</strong> Earn 1{" "}
+                    <Image
+                      src="/icons/marks.png"
+                      alt="Marks"
+                      width={14}
+                      height={14}
+                      className="inline-block align-middle mx-0.5"
+                    />{" "}
+                    per dollar per day.
                   </p>
                 </div>
                 <div className="flex items-start gap-2">
                   <span className="text-white/70 mt-0.5">•</span>
                   <p>
-                    <strong>Holding Sail Tokens:</strong> Earn 5 marks per dollar
-                    per day.
+                    <strong>Holding Sail Tokens:</strong> Earn 10{" "}
+                    <Image
+                      src="/icons/marks.png"
+                      alt="Marks"
+                      width={14}
+                      height={14}
+                      className="inline-block align-middle mx-0.5"
+                    />{" "}
+                    per dollar per day.
                   </p>
                 </div>
  <div className="flex items-start gap-2">
@@ -1162,91 +1174,208 @@ return total;
           </div>
         )}
 
+        <div className="bg-black/[0.10] border border-white/10 backdrop-blur-sm rounded-none overflow-hidden p-4 mb-2">
+        {/* Leaderboard Tabs */}
+        <div className="flex flex-col gap-2 mb-2">
+          <div className="flex items-center gap-4 border-b border-white/15">
+            <button
+              onClick={() => setLeaderboardTab("campaigns")}
+              className={`px-1 pb-2 pt-1 text-xs font-semibold border-b-2 -mb-px transition-colors ${
+                leaderboardTab === "campaigns"
+                  ? "text-white border-white"
+                  : "text-white/70 border-transparent hover:text-white hover:border-white/50"
+              }`}
+            >
+              Maiden Voyage Campaigns
+            </button>
+            <button
+              onClick={() => setLeaderboardTab("anchor-sail")}
+              className={`px-1 pb-2 pt-1 text-xs font-semibold border-b-2 -mb-px transition-colors ${
+                leaderboardTab === "anchor-sail"
+                  ? "text-white border-white"
+                  : "text-white/70 border-transparent hover:text-white hover:border-white/50"
+              }`}
+            >
+              Anchor &amp; Sail Marks
+            </button>
+          </div>
+          <div
+            className={`flex items-center gap-4 border-b border-white/10 min-h-[30px] overflow-x-auto ${
+              leaderboardTab === "campaigns"
+                ? "opacity-100"
+                : "opacity-0 pointer-events-none"
+            }`}
+          >
+            <div className="flex items-center gap-4 whitespace-nowrap">
+              {campaignTabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setCampaignTab(tab.id)}
+                  className={`px-1 pb-2 pt-1 text-xs font-semibold border-b-2 -mb-px transition-colors ${
+                    campaignTab === tab.id
+                      ? "text-white border-white"
+                      : "text-white/70 border-transparent hover:text-white hover:border-white/50"
+                  }`}
+                >
+                  <span>{tab.label}</span>
+                  {tab.subtitle && (
+                    <span className="ml-2 text-[10px] text-white/60">
+                      {tab.subtitle}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
         {/* Ledger Marks Summary */}
         {isConnected && (
- <div className="bg-[rgb(var(--surface-selected-rgb))] p-3 mb-2">
- <div className="flex items-start gap-2">
- <WalletIcon className="w-5 h-5 text-[#1E4775] flex-shrink-0 mt-0.5" />
- <div className="flex-1">
- <h3 className="font-bold text-base text-[#1E4775] mb-2">
- Ledger Marks Summary
- </h3>
-{isLoadingAnchorLedgerMarks ||
-isLoadingGenesisMarks ? (
- <p className="text-[#1E4775]/70 text-sm">Loading your marks...</p>
- ) : (
-<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 sm:gap-3">
-<div className="bg-white p-2">
-<div className="text-xs text-[#1E4775]/70 mb-0.5 text-center">
-Maiden Voyage Marks per Day
-</div>
-<div className="flex items-baseline gap-1 justify-center">
-<div className="text-base font-bold text-[#1E4775]">
-{maidenVoyageMarksPerDay.toLocaleString(undefined, {
-maximumFractionDigits: 2,
-})}
-</div>
-<div className="text-[10px] text-[#1E4775]/60">marks/day</div>
-</div>
-</div>
-<div className="bg-white p-2">
-<div className="text-xs text-[#1E4775]/70 mb-0.5 text-center">
-Anchor Marks per Day
-</div>
-<div className="flex items-baseline gap-1 justify-center">
-<div className="text-base font-bold text-[#1E4775]">
-{anchorMarksPerDay.toLocaleString(undefined, {
-maximumFractionDigits: 2,
-})}
-</div>
-<div className="text-[10px] text-[#1E4775]/60">marks/day</div>
-</div>
-</div>
-<div className="bg-white p-2">
-<div className="text-xs text-[#1E4775]/70 mb-0.5 text-center">
-Anchor Ledger Marks
-</div>
-<div className="flex items-baseline gap-1 justify-center">
-<div className="text-base font-bold text-[#1E4775]">
-{totalAnchorLedgerMarks.toLocaleString(undefined, {
-minimumFractionDigits: totalAnchorLedgerMarks < 100 ? 2 : 0,
-maximumFractionDigits: totalAnchorLedgerMarks < 100 ? 2 : 0,
-})}
-</div>
-</div>
-</div>
-<div className="bg-white p-2">
-<div className="text-xs text-[#1E4775]/70 mb-0.5 text-center">
-Sail Marks per Day
-</div>
-<div className="flex items-baseline gap-1 justify-center">
-<div className="text-base font-bold text-[#1E4775]">
-{sailMarksPerDay.toLocaleString(undefined, {
-maximumFractionDigits: 2,
-})}
-</div>
-<div className="text-[10px] text-[#1E4775]/60">marks/day</div>
-</div>
-</div>
-<div className="bg-[#1E4775] p-2">
-<div className="text-xs text-white/70 mb-0.5 text-center">
-Total Marks per Day
-</div>
-<div className="flex items-baseline gap-1 justify-center">
-<div className="text-base font-bold text-white">
-{totalMarksPerDay.toLocaleString(undefined, {
-maximumFractionDigits: 2,
-})}
-</div>
-<div className="text-[10px] text-white/60">marks/day</div>
-</div>
-</div>
-</div>
- )}
- </div>
- </div>
- </div>
+          <div className="bg-[rgb(var(--surface-selected-rgb))] p-3 mb-2">
+            <div className="flex items-start gap-2">
+              <WalletIcon className="w-5 h-5 text-[#1E4775] flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <h3 className="font-bold text-base text-[#1E4775] mb-2">
+                  {leaderboardTab === "campaigns"
+                    ? `${activeCampaign.label} Maiden Voyage Summary`
+                    : "Anchor & Sail Marks Summary"}
+                </h3>
+                {leaderboardTab === "campaigns" ? (
+                  isLoadingCampaignMarks ? (
+                    <p className="text-[#1E4775]/70 text-sm">
+                      Loading your marks...
+                    </p>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
+                      <div className="bg-white p-2">
+                        <div className="text-xs text-[#1E4775]/70 mb-0.5 text-center">
+                          {activeCampaign.label} Maiden Voyage Marks
+                        </div>
+                        <div className="flex items-baseline gap-1 justify-center">
+                          <div className="text-base font-bold text-[#1E4775]">
+                            {campaignUserTotals.totalMarks.toLocaleString(
+                              undefined,
+                              {
+                                minimumFractionDigits:
+                                  campaignUserTotals.totalMarks < 100 ? 2 : 0,
+                                maximumFractionDigits:
+                                  campaignUserTotals.totalMarks < 100 ? 2 : 0,
+                              }
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="bg-white p-2">
+                        <div className="text-xs text-[#1E4775]/70 mb-0.5 text-center">
+                          Marks per Day
+                        </div>
+                        <div className="flex items-baseline gap-1 justify-center">
+                          <div className="text-base font-bold text-[#1E4775]">
+                            {campaignUserTotals.marksPerDay.toLocaleString(
+                              undefined,
+                              {
+                                maximumFractionDigits: 2,
+                              }
+                            )}
+                          </div>
+                          <div className="text-[10px] text-[#1E4775]/60">
+                            marks/day
+                          </div>
+                        </div>
+                      </div>
+                      <div className="bg-white p-2">
+                        <div className="text-xs text-[#1E4775]/70 mb-0.5 text-center">
+                          Bonus at End
+                        </div>
+                        <div className="flex items-baseline gap-1 justify-center">
+                          <div className="text-base font-bold text-[#1E4775]">
+                            {campaignUserTotals.bonusMarks.toLocaleString(
+                              undefined,
+                              {
+                                minimumFractionDigits:
+                                  campaignUserTotals.bonusMarks < 100 ? 2 : 0,
+                                maximumFractionDigits:
+                                  campaignUserTotals.bonusMarks < 100 ? 2 : 0,
+                              }
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                ) : isLoadingAnchorLedgerMarks ? (
+                  <p className="text-[#1E4775]/70 text-sm">
+                    Loading your marks...
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
+                    <div className="bg-white p-2">
+                      <div className="text-xs text-[#1E4775]/70 mb-0.5 text-center">
+                        Anchor Marks per Day
+                      </div>
+                      <div className="flex items-baseline gap-1 justify-center">
+                        <div className="text-base font-bold text-[#1E4775]">
+                          {anchorMarksPerDay.toLocaleString(undefined, {
+                            maximumFractionDigits: 2,
+                          })}
+                        </div>
+                        <div className="text-[10px] text-[#1E4775]/60">
+                          marks/day
+                        </div>
+                      </div>
+                    </div>
+                    <div className="bg-white p-2">
+                      <div className="text-xs text-[#1E4775]/70 mb-0.5 text-center">
+                        Anchor Ledger Marks
+                      </div>
+                      <div className="flex items-baseline gap-1 justify-center">
+                        <div className="text-base font-bold text-[#1E4775]">
+                          {totalAnchorLedgerMarks.toLocaleString(undefined, {
+                            minimumFractionDigits:
+                              totalAnchorLedgerMarks < 100 ? 2 : 0,
+                            maximumFractionDigits:
+                              totalAnchorLedgerMarks < 100 ? 2 : 0,
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="bg-white p-2">
+                      <div className="text-xs text-[#1E4775]/70 mb-0.5 text-center">
+                        Sail Marks per Day
+                      </div>
+                      <div className="flex items-baseline gap-1 justify-center">
+                        <div className="text-base font-bold text-[#1E4775]">
+                          {sailMarksPerDay.toLocaleString(undefined, {
+                            maximumFractionDigits: 2,
+                          })}
+                        </div>
+                        <div className="text-[10px] text-[#1E4775]/60">
+                          marks/day
+                        </div>
+                      </div>
+                    </div>
+                    <div className="bg-[#1E4775] p-2">
+                      <div className="text-xs text-white/70 mb-0.5 text-center">
+                        Total Marks per Day
+                      </div>
+                      <div className="flex items-baseline gap-1 justify-center">
+                        <div className="text-base font-bold text-white">
+                          {anchorSailMarksPerDay.toLocaleString(undefined, {
+                            maximumFractionDigits: 2,
+                          })}
+                        </div>
+                        <div className="text-[10px] text-white/60">
+                          marks/day
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         )}
+        </div>
 
  {/* Divider */}
  <div className="border-t border-white/10 my-2"></div>
@@ -1254,97 +1383,170 @@ maximumFractionDigits: 2,
  {/* Leaderboard */}
  <section className="space-y-2 overflow-visible">
         {/* Mobile Header Row */}
-        <div className="md:hidden bg-white py-1.5 px-2 overflow-x-auto mb-0">
-          <div className="grid grid-cols-[auto_1fr_1fr_1fr] gap-2 sm:gap-4 items-center uppercase tracking-wider text-[10px] text-[#1E4775] font-semibold">
-            <div className="min-w-0 text-center pl-2">Rank</div>
-            <div className="min-w-0 text-center">Wallet</div>
-            <div
-              className="min-w-0 text-center cursor-pointer hover:opacity-70 transition-opacity"
-              onClick={() => handleSort("total")}
-            >
-              Total Marks
-              {sortBy ==="total" && (
-                <span className="ml-1">
-                  {sortDirection ==="desc" ?"↓" :"↑"}
-                </span>
-              )}
-            </div>
-            <div
-              className="min-w-0 text-center cursor-pointer hover:opacity-70 transition-opacity"
-              onClick={() => handleSort("perDay")}
-            >
-              Marks/Day
-              {sortBy ==="perDay" && (
-                <span className="ml-1">
-                  {sortDirection ==="desc" ?"↓" :"↑"}
-                </span>
-              )}
+        {leaderboardTab === "campaigns" ? (
+          <div className="md:hidden bg-white py-1.5 px-2 overflow-x-auto mb-0">
+            <div className="grid grid-cols-[auto_1fr_1fr_1fr_1fr] gap-2 sm:gap-4 items-center uppercase tracking-wider text-[10px] text-[#1E4775] font-semibold">
+              <div className="min-w-0 text-center pl-2">Rank</div>
+              <div className="min-w-0 text-center">Wallet</div>
+              <div
+                className="min-w-0 text-center cursor-pointer hover:opacity-70 transition-opacity"
+                onClick={() => handleCampaignSort("total")}
+              >
+                Total Marks
+                {campaignSortBy === "total" && (
+                  <span className="ml-1">
+                    {campaignSortDirection === "desc" ? "↓" : "↑"}
+                  </span>
+                )}
+              </div>
+              <div
+                className="min-w-0 text-center cursor-pointer hover:opacity-70 transition-opacity"
+                onClick={() => handleCampaignSort("perDay")}
+              >
+                Marks/Day
+                {campaignSortBy === "perDay" && (
+                  <span className="ml-1">
+                    {campaignSortDirection === "desc" ? "↓" : "↑"}
+                  </span>
+                )}
+              </div>
+              <div
+                className="min-w-0 text-center cursor-pointer hover:opacity-70 transition-opacity"
+                onClick={() => handleCampaignSort("bonus")}
+              >
+                Bonus
+                {campaignSortBy === "bonus" && (
+                  <span className="ml-1">
+                    {campaignSortDirection === "desc" ? "↓" : "↑"}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
-        </div>
+        ) : (
+          <div className="md:hidden bg-white py-1.5 px-2 overflow-x-auto mb-0">
+            <div className="grid grid-cols-[auto_1fr_1fr_1fr] gap-2 sm:gap-4 items-center uppercase tracking-wider text-[10px] text-[#1E4775] font-semibold">
+              <div className="min-w-0 text-center pl-2">Rank</div>
+              <div className="min-w-0 text-center">Wallet</div>
+              <div
+                className="min-w-0 text-center cursor-pointer hover:opacity-70 transition-opacity"
+                onClick={() => handleAnchorSailSort("total")}
+              >
+                Total Marks
+                {anchorSailSortBy === "total" && (
+                  <span className="ml-1">
+                    {anchorSailSortDirection === "desc" ? "↓" : "↑"}
+                  </span>
+                )}
+              </div>
+              <div
+                className="min-w-0 text-center cursor-pointer hover:opacity-70 transition-opacity"
+                onClick={() => handleAnchorSailSort("perDay")}
+              >
+                Marks/Day
+                {anchorSailSortBy === "perDay" && (
+                  <span className="ml-1">
+                    {anchorSailSortDirection === "desc" ? "↓" : "↑"}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Desktop Header Row */}
-        <div className="hidden md:block bg-white py-1.5 px-2 overflow-x-auto mb-0">
-          <div className="grid grid-cols-[auto_1fr_1fr_1fr_1fr_1fr_1fr] gap-4 items-center uppercase tracking-wider text-[10px] lg:text-[11px] text-[#1E4775] font-semibold">
-            <div className="min-w-0 text-center pl-6">Rank</div>
-            <div className="min-w-0 text-center">Wallet Address</div>
-            <div
- className="min-w-0 text-center cursor-pointer hover:opacity-70 transition-opacity"
- onClick={() => handleSort("total")}
- >
- Total Marks
- {sortBy ==="total" && (
- <span className="ml-1">
- {sortDirection ==="desc" ?"↓" :"↑"}
- </span>
- )}
- </div>
- <div
- className="min-w-0 text-center cursor-pointer hover:opacity-70 transition-opacity"
- onClick={() => handleSort("genesis")}
- >
- Genesis Marks
- {sortBy ==="genesis" && (
- <span className="ml-1">
- {sortDirection ==="desc" ?"↓" :"↑"}
- </span>
- )}
- </div>
- <div
- className="min-w-0 text-center cursor-pointer hover:opacity-70 transition-opacity"
- onClick={() => handleSort("anchor")}
- >
- Anchor Ledger Marks
- {sortBy ==="anchor" && (
- <span className="ml-1">
- {sortDirection ==="desc" ?"↓" :"↑"}
- </span>
- )}
- </div>
- <div
- className="min-w-0 text-center cursor-pointer hover:opacity-70 transition-opacity"
- onClick={() => handleSort("sail")}
- >
- Sail Marks
- {sortBy ==="sail" && (
- <span className="ml-1">
- {sortDirection ==="desc" ?"↓" :"↑"}
- </span>
- )}
- </div>
- <div
- className="min-w-0 text-center cursor-pointer hover:opacity-70 transition-opacity"
- onClick={() => handleSort("perDay")}
- >
- Marks Per Day
- {sortBy ==="perDay" && (
- <span className="ml-1">
- {sortDirection ==="desc" ?"↓" :"↑"}
- </span>
- )}
- </div>
- </div>
- </div>
+        {leaderboardTab === "campaigns" ? (
+          <div className="hidden md:block bg-white py-1.5 px-2 overflow-x-auto mb-0">
+            <div className="grid grid-cols-[auto_1fr_1fr_1fr_1fr] gap-4 items-center uppercase tracking-wider text-[10px] lg:text-[11px] text-[#1E4775] font-semibold">
+              <div className="min-w-0 text-center pl-6">Rank</div>
+              <div className="min-w-0 text-center">Wallet Address</div>
+              <div
+                className="min-w-0 text-center cursor-pointer hover:opacity-70 transition-opacity"
+                onClick={() => handleCampaignSort("total")}
+              >
+                Total Marks
+                {campaignSortBy === "total" && (
+                  <span className="ml-1">
+                    {campaignSortDirection === "desc" ? "↓" : "↑"}
+                  </span>
+                )}
+              </div>
+              <div
+                className="min-w-0 text-center cursor-pointer hover:opacity-70 transition-opacity"
+                onClick={() => handleCampaignSort("perDay")}
+              >
+                Marks Per Day
+                {campaignSortBy === "perDay" && (
+                  <span className="ml-1">
+                    {campaignSortDirection === "desc" ? "↓" : "↑"}
+                  </span>
+                )}
+              </div>
+              <div
+                className="min-w-0 text-center cursor-pointer hover:opacity-70 transition-opacity"
+                onClick={() => handleCampaignSort("bonus")}
+              >
+                Bonus at End
+                {campaignSortBy === "bonus" && (
+                  <span className="ml-1">
+                    {campaignSortDirection === "desc" ? "↓" : "↑"}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="hidden md:block bg-white py-1.5 px-2 overflow-x-auto mb-0">
+            <div className="grid grid-cols-[auto_1fr_1fr_1fr_1fr_1fr] gap-4 items-center uppercase tracking-wider text-[10px] lg:text-[11px] text-[#1E4775] font-semibold">
+              <div className="min-w-0 text-center pl-6">Rank</div>
+              <div className="min-w-0 text-center">Wallet Address</div>
+              <div
+                className="min-w-0 text-center cursor-pointer hover:opacity-70 transition-opacity"
+                onClick={() => handleAnchorSailSort("total")}
+              >
+                Total Marks
+                {anchorSailSortBy === "total" && (
+                  <span className="ml-1">
+                    {anchorSailSortDirection === "desc" ? "↓" : "↑"}
+                  </span>
+                )}
+              </div>
+              <div
+                className="min-w-0 text-center cursor-pointer hover:opacity-70 transition-opacity"
+                onClick={() => handleAnchorSailSort("anchor")}
+              >
+                Anchor Marks
+                {anchorSailSortBy === "anchor" && (
+                  <span className="ml-1">
+                    {anchorSailSortDirection === "desc" ? "↓" : "↑"}
+                  </span>
+                )}
+              </div>
+              <div
+                className="min-w-0 text-center cursor-pointer hover:opacity-70 transition-opacity"
+                onClick={() => handleAnchorSailSort("sail")}
+              >
+                Sail Marks
+                {anchorSailSortBy === "sail" && (
+                  <span className="ml-1">
+                    {anchorSailSortDirection === "desc" ? "↓" : "↑"}
+                  </span>
+                )}
+              </div>
+              <div
+                className="min-w-0 text-center cursor-pointer hover:opacity-70 transition-opacity"
+                onClick={() => handleAnchorSailSort("perDay")}
+              >
+                Marks Per Day
+                {anchorSailSortBy === "perDay" && (
+                  <span className="ml-1">
+                    {anchorSailSortDirection === "desc" ? "↓" : "↑"}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
  {/* Leaderboard Rows */}
  {isLoading ? (
@@ -1385,6 +1587,43 @@ maximumFractionDigits: 2,
  className="bg-white p-2 sm:p-3 overflow-x-auto"
  >
  {/* Mobile Row */}
+ {leaderboardTab === "campaigns" ? (
+   <div className="md:hidden grid grid-cols-[auto_1fr_1fr_1fr_1fr] gap-2 sm:gap-4 items-center text-sm text-[#1E4775]">
+     <div className="min-w-0 text-center font-medium pl-2">
+       <div className="flex items-center justify-center gap-1">
+         <span>{index + 1}</span>
+       </div>
+     </div>
+     <div className="min-w-0 text-center font-mono text-xs">
+       <a
+         href={`https://etherscan.io/address/${user.address}`}
+         target="_blank"
+         rel="noopener noreferrer"
+         className="hover:text-[#17395F] hover:underline"
+       >
+         {formatAddress(user.address)}
+       </a>
+     </div>
+     <div className="min-w-0 text-center font-bold font-mono text-xs">
+       {user.totalMarks.toLocaleString(undefined, {
+         minimumFractionDigits: user.totalMarks < 100 ? 2 : 0,
+         maximumFractionDigits: user.totalMarks < 100 ? 2 : 0,
+       })}
+     </div>
+     <div className="min-w-0 text-center font-mono text-xs">
+       {user.marksPerDay.toLocaleString(undefined, {
+         maximumFractionDigits: 2,
+       })}
+       /day
+     </div>
+     <div className="min-w-0 text-center font-mono text-xs">
+       {user.bonusMarks.toLocaleString(undefined, {
+         minimumFractionDigits: user.bonusMarks < 100 ? 2 : 0,
+         maximumFractionDigits: user.bonusMarks < 100 ? 2 : 0,
+       })}
+     </div>
+   </div>
+ ) : (
  <div className="md:hidden grid grid-cols-[auto_1fr_1fr_1fr] gap-2 sm:gap-4 items-center text-sm text-[#1E4775]">
    <div className="min-w-0 text-center font-medium pl-2">
      <div className="flex items-center justify-center gap-1">
@@ -1414,9 +1653,11 @@ maximumFractionDigits: 2,
      /day
    </div>
  </div>
+ )}
 
  {/* Desktop Row */}
- <div className="hidden md:grid grid-cols-[auto_1fr_1fr_1fr_1fr_1fr_1fr] gap-4 items-center text-sm text-[#1E4775]">
+ {leaderboardTab === "campaigns" ? (
+ <div className="hidden md:grid grid-cols-[auto_1fr_1fr_1fr_1fr] gap-4 items-center text-sm text-[#1E4775]">
  <div className="min-w-0 text-center font-medium pl-6">
  <div className="flex items-center justify-center gap-2">
  <span>{index + 1}</span>
@@ -1439,9 +1680,39 @@ maximumFractionDigits: 2,
  })}
  </div>
  <div className="min-w-0 text-center font-mono">
- {user.genesisMarks.toLocaleString(undefined, {
- minimumFractionDigits: user.genesisMarks < 100 ? 2 : 0,
- maximumFractionDigits: user.genesisMarks < 100 ? 2 : 0,
+ {user.marksPerDay.toLocaleString(undefined, {
+ maximumFractionDigits: 2,
+ })}
+ /day
+ </div>
+ <div className="min-w-0 text-center font-mono">
+ {user.bonusMarks.toLocaleString(undefined, {
+ minimumFractionDigits: user.bonusMarks < 100 ? 2 : 0,
+ maximumFractionDigits: user.bonusMarks < 100 ? 2 : 0,
+ })}
+ </div>
+ </div>
+ ) : (
+ <div className="hidden md:grid grid-cols-[auto_1fr_1fr_1fr_1fr_1fr] gap-4 items-center text-sm text-[#1E4775]">
+ <div className="min-w-0 text-center font-medium pl-6">
+ <div className="flex items-center justify-center gap-2">
+ <span>{index + 1}</span>
+ </div>
+ </div>
+ <div className="min-w-0 text-center font-mono">
+ <a 
+ href={`https://etherscan.io/address/${user.address}`}
+ target="_blank"
+ rel="noopener noreferrer"
+ className="hover:text-[#17395F] hover:underline"
+ >
+ {formatAddress(user.address)}
+ </a>
+ </div>
+ <div className="min-w-0 text-center font-bold font-mono">
+ {user.totalMarks.toLocaleString(undefined, {
+ minimumFractionDigits: user.totalMarks < 100 ? 2 : 0,
+ maximumFractionDigits: user.totalMarks < 100 ? 2 : 0,
  })}
  </div>
  <div className="min-w-0 text-center font-mono">
@@ -1463,6 +1734,7 @@ maximumFractionDigits: 2,
  /day
  </div>
  </div>
+ )}
  </div>
  ))
  )}

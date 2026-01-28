@@ -2,7 +2,7 @@ import {
   Deposit as DepositEvent,
   Withdraw as WithdrawEvent,
   GenesisEnds as GenesisEndsEvent,
-} from "../generated/Genesis/Genesis";
+} from "../generated/Genesis_ETH_fxUSD/Genesis";
 import {
   Deposit,
   Withdrawal,
@@ -17,17 +17,55 @@ import { ChainlinkAggregator } from "../generated/HaToken_haETH/ChainlinkAggrega
 import { setMarketBoostWindow, ANCHOR_BOOST_MULTIPLIER, SAIL_BOOST_MULTIPLIER } from "./marksBoost";
 import { createMarksEvent, toE18BigInt } from "./marksEvents";
 
-// Constants
+// Constants (v1.0.3)
 const MARKS_PER_DOLLAR_PER_DAY = BigDecimal.fromString("10");
 const BONUS_MARKS_PER_DOLLAR = BigDecimal.fromString("100"); // 100 marks per dollar bonus at genesis end
 const EARLY_BONUS_MARKS_PER_DOLLAR = BigDecimal.fromString("100"); // 100 marks per dollar for early depositors
 const EARLY_BONUS_THRESHOLD_FXSAVE = BigDecimal.fromString("250000"); // 250k fxUSD tokens (not USD)
 const EARLY_BONUS_THRESHOLD_WSTETH = BigDecimal.fromString("70"); // 70 wstETH tokens (not USD)
+const EARLY_BONUS_THRESHOLD_FXSAVE_EUR = BigDecimal.fromString("50000"); // 50k fxUSD tokens (EUR markets)
+const EARLY_BONUS_THRESHOLD_WSTETH_EUR = BigDecimal.fromString("15"); // ~50k USD in wstETH (EUR markets)
 const SECONDS_PER_DAY = BigDecimal.fromString("86400");
 const E18 = BigDecimal.fromString("1000000000000000000"); // 10^18
 
 // 8 days (boost duration, per product rules)
 const BOOST_DURATION_SECONDS = BigInt.fromI32(8 * 24 * 60 * 60);
+
+function getCampaignId(contractAddress: Bytes): string {
+  const address = contractAddress.toHexString().toLowerCase();
+  // Launch Maiden Voyage (first 3 markets)
+  if (address == "0xc9df4f62474cf6cde6c064db29416a9f4f27ebdc") {
+    return "launch-maiden-voyage";
+  }
+  if (address == "0x42cc9a19b358a2a918f891d8a6199d8b05f0bc1c") {
+    return "launch-maiden-voyage";
+  }
+  if (address == "0xc64fc46eed431e92c1b5e24dc296b5985ce6cc00") {
+    return "launch-maiden-voyage";
+  }
+
+  // Euro Maiden Voyage
+  if (address == "0xf4f97218a00213a57a32e4606aaecc99e1805a89") {
+    // stETH-EUR genesis
+    return "euro-maiden-voyage";
+  }
+  if (address == "0xa9eb43ed6ba3b953a82741f3e226c1d6b029699b") {
+    // fxUSD-EUR genesis
+    return "euro-maiden-voyage";
+  }
+
+  return "unknown-maiden-voyage";
+}
+
+function getCampaignLabel(campaignId: string): string {
+  if (campaignId == "launch-maiden-voyage") {
+    return "Launch Maiden Voyage";
+  }
+  if (campaignId == "euro-maiden-voyage") {
+    return "Euro Maiden Voyage";
+  }
+  return "Unknown Maiden Voyage";
+}
 
 /**
  * Hardcoded mapping from Genesis contract -> market sources (v1).
@@ -176,6 +214,13 @@ function getPriceOracleAddress(genesisAddress: string): string {
   if (genesisAddress == "0x1454707877cdb966e29cea8a190c2169eeca4b8c") {
     return "0x56d1a2fc199ba05f84d2eb8eab5858d3d954030c"; // ETH/fxUSD (alternative address)
   }
+  // EUR markets (production v1)
+  if (genesisAddress == "0xf4f97218a00213a57a32e4606aaecc99e1805a89") {
+    return "0xe370289af2145a5b2f0f7a4a900ebfd478a156db"; // stETH/EUR (EUR::stETH::priceOracle)
+  }
+  if (genesisAddress == "0xa9eb43ed6ba3b953a82741f3e226c1d6b029699b") {
+    return "0x71437c90f1e0785dd691fd02f7be0b90cd14c097"; // fxUSD/EUR (EUR::fxUSD::priceOracle)
+  }
   return "";
 }
 
@@ -204,6 +249,13 @@ function getFallbackPrice(genesisAddress: string): BigDecimal {
   if (genesisAddress == "0x1454707877cdb966e29cea8a190c2169eeca4b8c") {
     return BigDecimal.fromString("1.07"); // fxSAVE ~$1.07
   }
+  // EUR markets (production v1)
+  if (genesisAddress == "0xf4f97218a00213a57a32e4606aaecc99e1805a89") {
+    return BigDecimal.fromString("3600"); // wstETH ~$3600 (stETH/EUR)
+  }
+  if (genesisAddress == "0xa9eb43ed6ba3b953a82741f3e226c1d6b029699b") {
+    return BigDecimal.fromString("1.07"); // fxSAVE ~$1.07 (fxUSD/EUR)
+  }
   return BigDecimal.fromString("1.0"); // Default fallback
 }
 
@@ -215,7 +267,7 @@ function getFallbackPrice(genesisAddress: string): BigDecimal {
  * @param block - The current block
  * @returns Wrapped token price in USD, or fallback price if oracle fails
  */
-function getWrappedTokenPriceUSD(genesisAddress: Bytes, block: ethereum.Block): BigDecimal {
+export function getWrappedTokenPriceUSD(genesisAddress: Bytes, block: ethereum.Block): BigDecimal {
   const genesisAddressStr = genesisAddress.toHexString();
   
   // IMPORTANT: The oracle returns the pegged asset price (haETH/haBTC) instead of the underlying collateral
@@ -223,17 +275,21 @@ function getWrappedTokenPriceUSD(genesisAddress: Bytes, block: ethereum.Block): 
   // For wstETH markets: Oracle returns haBTC price, but we need wstETH price (~$3,600)
   // Solution: Use CoinGecko or hardcoded prices for underlying, then multiply by wrapped rate
   
-  // Determine if market is BTC-pegged (uses haBTC) or ETH-pegged (uses haETH)
+  // Determine if market is BTC-pegged (uses haBTC), ETH-pegged (uses haETH), or EUR-pegged (uses haEUR)
   // BTC-pegged markets: BTC/fxUSD, BTC/stETH
   // ETH-pegged markets: ETH/fxUSD
+  // EUR-pegged markets: stETH/EUR, fxUSD/EUR
   const isBTCPeggedMarket = genesisAddressStr == "0x42cc9a19b358a2a918f891d8a6199d8b05f0bc1c" || // BTC/fxUSD (production v1)
                              genesisAddressStr == "0xc64fc46eed431e92c1b5e24dc296b5985ce6cc00" || // BTC/stETH (production v1)
                              genesisAddressStr == "0x288c61c3b3684ff21adf38d878c81457b19bd2fe" || // BTC/fxUSD (legacy test)
                              genesisAddressStr == "0x9ae0b57ceada0056dbe21edcd638476fcba3ccc0"; // BTC/stETH (legacy test)
   
+  const isStethEurMarket = genesisAddressStr == "0xf4f97218a00213a57a32e4606aaecc99e1805a89"; // stETH/EUR (production v1)
+  
   // ETH/fxUSD and BTC/fxUSD markets use fxUSD as underlying collateral
   const isFxUSDMarket = genesisAddressStr == "0xc9df4f62474cf6cde6c064db29416a9f4f27ebdc" || // ETH/fxUSD (production v1)
                         genesisAddressStr == "0x42cc9a19b358a2a918f891d8a6199d8b05f0bc1c" || // BTC/fxUSD (production v1)
+                        genesisAddressStr == "0xa9eb43ed6ba3b953a82741f3e226c1d6b029699b" || // fxUSD/EUR (production v1)
                         genesisAddressStr == "0x5f4398e1d3e33f93e3d7ee710d797e2a154cb073" || // Legacy test
                         genesisAddressStr == "0x288c61c3b3684ff21adf38d878c81457b19bd2fe" || // Legacy test
                         genesisAddressStr == "0x1454707877cdb966e29cea8a190c2169eeca4b8c"; // Legacy test
@@ -250,7 +306,8 @@ function getWrappedTokenPriceUSD(genesisAddress: Bytes, block: ethereum.Block): 
     
     const oracleAddressStr = getPriceOracleAddress(genesisAddressStr);
     if (oracleAddressStr == "") {
-      return getFallbackPrice(genesisAddressStr);
+      // No oracle configured - return 0 to indicate pricing failure
+      return BigDecimal.fromString("0");
     }
     
     // Get fxSAVE rate from the market's oracle
@@ -259,7 +316,8 @@ function getWrappedTokenPriceUSD(genesisAddress: Bytes, block: ethereum.Block): 
     const result = oracle.try_latestAnswer();
     
     if (result.reverted) {
-      return getFallbackPrice(genesisAddressStr);
+      // Oracle call failed - return 0 to indicate pricing failure
+      return BigDecimal.fromString("0");
     }
     
     // Extract fxSAVE rate (18 decimals)
@@ -270,6 +328,7 @@ function getWrappedTokenPriceUSD(genesisAddress: Bytes, block: ethereum.Block): 
     
     // Determine if this is an ETH-pegged or BTC-pegged market
     const isETHMarket = genesisAddressStr == "0xc9df4f62474cf6cde6c064db29416a9f4f27ebdc" || // ETH/fxUSD (production v1)
+                        genesisAddressStr == "0xa9eb43ed6ba3b953a82741f3e226c1d6b029699b" || // fxUSD/EUR (production v1)
                         genesisAddressStr == "0x5f4398e1d3e33f93e3d7ee710d797e2a154cb073" || // Legacy test
                         genesisAddressStr == "0x1454707877cdb966e29cea8a190c2169eeca4b8c"; // Legacy test
     
@@ -283,8 +342,8 @@ function getWrappedTokenPriceUSD(genesisAddress: Bytes, block: ethereum.Block): 
       const ethUsdResult = ethUsdOracle.try_latestAnswer();
       
       if (ethUsdResult.reverted) {
-        // If Chainlink fails, use fallback
-        return getFallbackPrice(genesisAddressStr);
+        // Chainlink ETH/USD failed - return 0 to indicate pricing failure
+        return BigDecimal.fromString("0");
       }
       
       // Chainlink ETH/USD uses 8 decimals
@@ -297,23 +356,69 @@ function getWrappedTokenPriceUSD(genesisAddress: Bytes, block: ethereum.Block): 
       const btcUsdResult = btcUsdOracle.try_latestAnswer();
       
       if (btcUsdResult.reverted) {
-        // If Chainlink fails, use fallback
-        return getFallbackPrice(genesisAddressStr);
+        // Chainlink BTC/USD failed - return 0 to indicate pricing failure
+        return BigDecimal.fromString("0");
       }
       
       // Chainlink BTC/USD uses 8 decimals
       peggedTokenUsdPrice = btcUsdResult.value.toBigDecimal().div(BigDecimal.fromString("100000000")); // 10^8
     }
     
-    // Calculate fxSAVE price in USD: (fxSAVE/ETH or fxSAVE/BTC rate) × (ETH/USD or BTC/USD price)
-    const fxsaveUsdPrice = fxsaveRateDecimal.times(peggedTokenUsdPrice);
+    // Apply wrapped rate (fxSAVE NAV) to get fxSAVE price in USD
+    const maxWrappedRate = result.value.value3;
+    const wrappedRate = maxWrappedRate.toBigDecimal().div(E18);
+    
+    // Calculate fxSAVE price in USD: (fxSAVE/ETH or fxSAVE/BTC rate) × (ETH/USD or BTC/USD price) × NAV
+    const fxsaveUsdPrice = fxsaveRateDecimal.times(peggedTokenUsdPrice).times(wrappedRate);
     
     // Ensure we have a valid price
     if (fxsaveUsdPrice.le(BigDecimal.fromString("0"))) {
-      return getFallbackPrice(genesisAddressStr);
+      // Calculated price is invalid - return 0 to indicate pricing failure
+      return BigDecimal.fromString("0");
     }
     
     return fxsaveUsdPrice;
+  }
+  
+  if (isStethEurMarket) {
+    // stETH/EUR market: oracle returns stETH per wstETH (wrapped rate). Use ETH/USD to price wstETH in USD.
+    const oracleAddressStr = getPriceOracleAddress(genesisAddressStr);
+    if (oracleAddressStr == "") {
+      // No oracle configured - return 0 to indicate pricing failure
+      return BigDecimal.fromString("0");
+    }
+    
+    const oracleAddress = Address.fromString(oracleAddressStr);
+    const oracle = WrappedPriceOracle.bind(oracleAddress);
+    const result = oracle.try_latestAnswer();
+    
+    if (result.reverted) {
+      // Oracle call failed - return 0 to indicate pricing failure
+      return BigDecimal.fromString("0");
+    }
+    
+    const maxWrappedRate = result.value.value3;
+    const wrappedRate = maxWrappedRate.toBigDecimal().div(E18);
+    
+    // Get ETH/USD price from Chainlink
+    const ethUsdOracleAddress = Address.fromString("0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419");
+    const ethUsdOracle = ChainlinkAggregator.bind(ethUsdOracleAddress);
+    const ethUsdResult = ethUsdOracle.try_latestAnswer();
+    
+    if (ethUsdResult.reverted) {
+      // Chainlink ETH/USD failed - return 0 to indicate pricing failure
+      return BigDecimal.fromString("0");
+    }
+    
+    const ethUsdPrice = ethUsdResult.value.toBigDecimal().div(BigDecimal.fromString("100000000")); // 10^8
+    const wstethUsdPrice = ethUsdPrice.times(wrappedRate);
+    
+    if (wstethUsdPrice.le(BigDecimal.fromString("0"))) {
+      // Calculated price is invalid - return 0 to indicate pricing failure
+      return BigDecimal.fromString("0");
+    }
+    
+    return wstethUsdPrice;
   }
   
   if (isWstETHMarket) {
@@ -324,7 +429,8 @@ function getWrappedTokenPriceUSD(genesisAddress: Bytes, block: ethereum.Block): 
     
     const oracleAddressStr = getPriceOracleAddress(genesisAddressStr);
     if (oracleAddressStr == "") {
-      return getFallbackPrice(genesisAddressStr);
+      // No oracle configured - return 0 to indicate pricing failure
+      return BigDecimal.fromString("0");
     }
     
     // Get wstETH/BTC rate from the market's oracle
@@ -333,7 +439,8 @@ function getWrappedTokenPriceUSD(genesisAddress: Bytes, block: ethereum.Block): 
     const result = oracle.try_latestAnswer();
     
     if (result.reverted) {
-      return getFallbackPrice(genesisAddressStr);
+      // Oracle call failed - return 0 to indicate pricing failure
+      return BigDecimal.fromString("0");
     }
     
     // Extract wstETH/BTC rate (18 decimals)
@@ -351,10 +458,10 @@ function getWrappedTokenPriceUSD(genesisAddress: Bytes, block: ethereum.Block): 
     const btcUsdOracle = ChainlinkAggregator.bind(btcUsdOracleAddress);
     const btcUsdResult = btcUsdOracle.try_latestAnswer();
     
-    if (btcUsdResult.reverted) {
-      // If Chainlink fails, use fallback
-      return getFallbackPrice(genesisAddressStr);
-    }
+      if (btcUsdResult.reverted) {
+        // Chainlink BTC/USD failed - return 0 to indicate pricing failure
+        return BigDecimal.fromString("0");
+      }
     
     // Chainlink BTC/USD uses 8 decimals
     const btcUsdPrice = btcUsdResult.value.toBigDecimal().div(BigDecimal.fromString("100000000")); // 10^8
@@ -365,7 +472,8 @@ function getWrappedTokenPriceUSD(genesisAddress: Bytes, block: ethereum.Block): 
     
     // Ensure we have a valid price
     if (wstethUsdPrice.le(BigDecimal.fromString("0"))) {
-      return getFallbackPrice(genesisAddressStr);
+      // Calculated price is invalid - return 0 to indicate pricing failure
+      return BigDecimal.fromString("0");
     }
     
     return wstethUsdPrice;
@@ -374,9 +482,9 @@ function getWrappedTokenPriceUSD(genesisAddress: Bytes, block: ethereum.Block): 
   // For other markets, use oracle normally
   const oracleAddressStr = getPriceOracleAddress(genesisAddressStr);
   
-  // If no oracle configured, use fallback
+  // If no oracle configured, return 0 to indicate pricing failure
   if (oracleAddressStr == "") {
-    return getFallbackPrice(genesisAddressStr);
+    return BigDecimal.fromString("0");
   }
   
   // Bind to the price oracle contract
@@ -387,8 +495,8 @@ function getWrappedTokenPriceUSD(genesisAddress: Bytes, block: ethereum.Block): 
   const result = oracle.try_latestAnswer();
   
   if (result.reverted) {
-    // Oracle call failed, use fallback
-    return getFallbackPrice(genesisAddressStr);
+    // Oracle call failed - return 0 to indicate pricing failure
+    return BigDecimal.fromString("0");
   }
   
   // Extract values (all in 18 decimals)
@@ -405,7 +513,8 @@ function getWrappedTokenPriceUSD(genesisAddress: Bytes, block: ethereum.Block): 
   
   // Ensure we have a valid price
   if (wrappedTokenPriceUSD.le(BigDecimal.fromString("0"))) {
-    return getFallbackPrice(genesisAddressStr);
+    // Calculated price is invalid - return 0 to indicate pricing failure
+    return BigDecimal.fromString("0");
   }
   
   return wrappedTokenPriceUSD;
@@ -419,8 +528,11 @@ function getOrCreateUserMarks(
   const id = `${contractAddress.toHexString()}-${userAddress.toHexString()}`;
   let userMarks = UserHarborMarks.load(id);
   if (userMarks == null) {
+    const campaignId = getCampaignId(contractAddress);
     userMarks = new UserHarborMarks(id);
     userMarks.contractAddress = contractAddress;
+    userMarks.campaignId = campaignId;
+    userMarks.campaignLabel = getCampaignLabel(campaignId);
     userMarks.user = userAddress;
     userMarks.currentMarks = BigDecimal.fromString("0");
     userMarks.marksPerDay = BigDecimal.fromString("0");
@@ -450,6 +562,7 @@ function getCollateralSymbol(genesisAddress: string): string {
   // Production v1: ETH/fxUSD and BTC/fxUSD markets use fxSAVE
   if (addr == "0xc9df4f62474cf6cde6c064db29416a9f4f27ebdc" || // ETH/fxUSD (production v1)
       addr == "0x42cc9a19b358a2a918f891d8a6199d8b05f0bc1c" || // BTC/fxUSD (production v1)
+      addr == "0xa9eb43ed6ba3b953a82741f3e226c1d6b029699b" || // fxUSD/EUR (new)
       // Legacy test contracts (for backward compatibility)
       addr == "0x5f4398e1d3e33f93e3d7ee710d797e2a154cb073" ||
       addr == "0x288c61c3b3684ff21adf38d878c81457b19bd2fe" ||
@@ -458,11 +571,30 @@ function getCollateralSymbol(genesisAddress: string): string {
   }
   // Production v1: BTC/stETH market uses wstETH
   if (addr == "0xc64fc46eed431e92c1b5e24dc296b5985ce6cc00" || // BTC/stETH (production v1)
+      addr == "0xf4f97218a00213a57a32e4606aaecc99e1805a89" || // stETH/EUR
       // Legacy test contract (for backward compatibility)
       addr == "0x9ae0b57ceada0056dbe21edcd638476fcba3ccc0") {
     return "wstETH";
   }
   return "unknown";
+}
+
+function getEarlyBonusThresholdAmount(
+  contractAddress: Bytes,
+  collateralSymbol: string
+): BigDecimal {
+  const addr = contractAddress.toHexString().toLowerCase();
+  // EUR markets
+  if (addr == "0xf4f97218a00213a57a32e4606aaecc99e1805a89") {
+    // stETH-EUR genesis
+    return EARLY_BONUS_THRESHOLD_WSTETH_EUR;
+  }
+  if (addr == "0xa9eb43ed6ba3b953a82741f3e226c1d6b029699b") {
+    // fxUSD-EUR genesis
+    return EARLY_BONUS_THRESHOLD_FXSAVE_EUR;
+  }
+  const isFxSAVE = collateralSymbol == "fxSAVE";
+  return isFxSAVE ? EARLY_BONUS_THRESHOLD_FXSAVE : EARLY_BONUS_THRESHOLD_WSTETH;
 }
 
 // Helper to get or create market bonus status
@@ -483,10 +615,10 @@ function getOrCreateMarketBonusStatus(
   // Determine collateral type and set threshold (in token amounts, not USD)
   // Update even if entity exists (fixes entities created with "unknown")
   const collateralSymbol = getCollateralSymbol(contractAddress.toHexString());
-  const isFxSAVE = collateralSymbol == "fxSAVE";
-  marketBonus.thresholdAmount = isFxSAVE 
-    ? EARLY_BONUS_THRESHOLD_FXSAVE 
-    : EARLY_BONUS_THRESHOLD_WSTETH;
+  marketBonus.thresholdAmount = getEarlyBonusThresholdAmount(
+    contractAddress,
+    collateralSymbol
+  );
   marketBonus.thresholdToken = collateralSymbol;
   
   return marketBonus;
@@ -504,6 +636,9 @@ export function handleDeposit(event: DepositEvent): void {
   const depositId = `${contractAddress.toHexString()}-${userAddress.toHexString()}-${txHash.toHexString()}-${event.logIndex.toString()}`;
   const deposit = new Deposit(depositId);
   deposit.contractAddress = contractAddress;
+  const depositCampaignId = getCampaignId(contractAddress);
+  deposit.campaignId = depositCampaignId;
+  deposit.campaignLabel = getCampaignLabel(depositCampaignId);
   deposit.user = userAddress;
   deposit.amount = amount;
   deposit.amountUSD = null;
@@ -648,6 +783,9 @@ export function handleWithdraw(event: WithdrawEvent): void {
   const withdrawalId = `${contractAddress.toHexString()}-${userAddress.toHexString()}-${txHash.toHexString()}-${event.logIndex.toString()}`;
   const withdrawal = new Withdrawal(withdrawalId);
   withdrawal.contractAddress = contractAddress;
+  const withdrawalCampaignId = getCampaignId(contractAddress);
+  withdrawal.campaignId = withdrawalCampaignId;
+  withdrawal.campaignLabel = getCampaignLabel(withdrawalCampaignId);
   withdrawal.user = userAddress;
   withdrawal.amount = amount;
   withdrawal.amountUSD = null;
@@ -792,6 +930,9 @@ export function handleGenesisEnd(event: GenesisEndsEvent): void {
     genesisEnd = new GenesisEnd(contractAddressString);
   }
   genesisEnd.contractAddress = contractAddress;
+  const genesisCampaignId = getCampaignId(contractAddress);
+  genesisEnd.campaignId = genesisCampaignId;
+  genesisEnd.campaignLabel = getCampaignLabel(genesisCampaignId);
   genesisEnd.timestamp = timestamp;
   genesisEnd.txHash = txHash;
   genesisEnd.blockNumber = blockNumber;

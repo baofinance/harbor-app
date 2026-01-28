@@ -11,6 +11,7 @@ export * from "./rewards";
 export * from "./apr";
 export * from "./zap";
 export * from "./usdcZap";
+export * from "./genesisZapPermit";
 export * from "./oracleFeeds";
 
 

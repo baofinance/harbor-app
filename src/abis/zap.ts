@@ -1,15 +1,76 @@
 export const ZAP_ABI = [
   {
-    inputs: [
-      { internalType: "address", name: "genesis_", type: "address" },
-      { internalType: "address", name: "referral_", type: "address" },
-    ],
+    inputs: [{ internalType: "address", name: "genesis_", type: "address" }],
     stateMutability: "nonpayable",
     type: "constructor",
   },
   {
+    inputs: [{ internalType: "address", name: "target", type: "address" }],
+    name: "AddressEmptyCode",
+    type: "error",
+  },
+  {
     inputs: [],
-    name: "InvalidGenesisCollateral",
+    name: "AlreadyInitialized",
+    type: "error",
+  },
+  {
+    inputs: [],
+    name: "CannotCompleteTransfer",
+    type: "error",
+  },
+  {
+    inputs: [{ internalType: "address", name: "token", type: "address" }],
+    name: "CannotRescueProtectedToken",
+    type: "error",
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "expected", type: "address" },
+      { internalType: "address", name: "actual", type: "address" },
+    ],
+    name: "CollateralMismatch",
+    type: "error",
+  },
+  {
+    inputs: [{ internalType: "address", name: "implementation", type: "address" }],
+    name: "ERC1967InvalidImplementation",
+    type: "error",
+  },
+  {
+    inputs: [],
+    name: "ERC1967NonPayable",
+    type: "error",
+  },
+  {
+    inputs: [],
+    name: "FailedCall",
+    type: "error",
+  },
+  {
+    inputs: [],
+    name: "FunctionNotFound",
+    type: "error",
+  },
+  {
+    inputs: [
+      { internalType: "uint256", name: "have", type: "uint256" },
+      { internalType: "uint256", name: "wanted", type: "uint256" },
+    ],
+    name: "InsufficientBalance",
+    type: "error",
+  },
+  {
+    inputs: [],
+    name: "InvalidInitialization",
+    type: "error",
+  },
+  {
+    inputs: [
+      { internalType: "uint256", name: "expected", type: "uint256" },
+      { internalType: "uint256", name: "received", type: "uint256" },
+    ],
+    name: "MintMismatchExpected",
     type: "error",
   },
   {
@@ -18,13 +79,8 @@ export const ZAP_ABI = [
     type: "error",
   },
   {
-    inputs: [{ internalType: "address", name: "owner", type: "address" }],
-    name: "OwnableInvalidOwner",
-    type: "error",
-  },
-  {
-    inputs: [{ internalType: "address", name: "account", type: "address" }],
-    name: "OwnableUnauthorizedAccount",
+    inputs: [],
+    name: "NotInitializing",
     type: "error",
   },
   {
@@ -38,8 +94,34 @@ export const ZAP_ABI = [
     type: "error",
   },
   {
+    inputs: [
+      { internalType: "uint256", name: "received", type: "uint256" },
+      { internalType: "uint256", name: "minimum", type: "uint256" },
+    ],
+    name: "SlippageTooHighETHValue",
+    type: "error",
+  },
+  {
+    inputs: [
+      { internalType: "uint256", name: "received", type: "uint256" },
+      { internalType: "uint256", name: "minimum", type: "uint256" },
+    ],
+    name: "SlippageTooHighWstETH",
+    type: "error",
+  },
+  {
     inputs: [],
-    name: "SlippageTooHigh",
+    name: "UUPSUnauthorizedCallContext",
+    type: "error",
+  },
+  {
+    inputs: [{ internalType: "bytes32", name: "slot", type: "bytes32" }],
+    name: "UUPSUnsupportedProxiableUUID",
+    type: "error",
+  },
+  {
+    inputs: [],
+    name: "Unauthorized",
     type: "error",
   },
   {
@@ -51,6 +133,12 @@ export const ZAP_ABI = [
     inputs: [],
     name: "ZeroAmount",
     type: "error",
+  },
+  {
+    anonymous: false,
+    inputs: [{ indexed: false, internalType: "uint64", name: "version", type: "uint64" }],
+    name: "Initialized",
+    type: "event",
   },
   {
     anonymous: false,
@@ -72,13 +160,25 @@ export const ZAP_ABI = [
   },
   {
     anonymous: false,
+    inputs: [{ indexed: true, internalType: "address", name: "implementation", type: "address" }],
+    name: "Upgraded",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [{ indexed: true, internalType: "address", name: "implementation", type: "address" }],
+    name: "Upgraded",
+    type: "event",
+  },
+  {
+    anonymous: false,
     inputs: [
       { indexed: true, internalType: "address", name: "user", type: "address" },
       { indexed: true, internalType: "address", name: "receiver", type: "address" },
       { indexed: false, internalType: "uint256", name: "ethIn", type: "uint256" },
       { indexed: false, internalType: "uint256", name: "genesisSharesOut", type: "uint256" },
       { indexed: false, internalType: "uint256", name: "ethValueNow", type: "uint256" },
-      { indexed: false, internalType: "uint256", name: "stETHValueNow", type: "uint256" },
+      { indexed: false, internalType: "uint256", name: "stEthValueNow", type: "uint256" },
     ],
     name: "ZappedETH",
     type: "event",
@@ -91,10 +191,14 @@ export const ZAP_ABI = [
       { indexed: false, internalType: "uint256", name: "stEthIn", type: "uint256" },
       { indexed: false, internalType: "uint256", name: "genesisSharesOut", type: "uint256" },
       { indexed: false, internalType: "uint256", name: "ethValueNow", type: "uint256" },
-      { indexed: false, internalType: "uint256", name: "stETHValueNow", type: "uint256" },
+      { indexed: false, internalType: "uint256", name: "stEthValueNow", type: "uint256" },
     ],
     name: "ZappedStETH",
     type: "event",
+  },
+  {
+    stateMutability: "payable",
+    type: "fallback",
   },
   {
     inputs: [],
@@ -114,6 +218,13 @@ export const ZAP_ABI = [
     inputs: [],
     name: "STETH",
     outputs: [{ internalType: "address", name: "", type: "address" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "UPGRADE_INTERFACE_VERSION",
+    outputs: [{ internalType: "string", name: "", type: "string" }],
     stateMutability: "view",
     type: "function",
   },
@@ -139,9 +250,61 @@ export const ZAP_ABI = [
     type: "function",
   },
   {
+    inputs: [
+      { internalType: "address", name: "deployerOwner", type: "address" },
+      { internalType: "address", name: "pendingOwner", type: "address" },
+      { internalType: "address", name: "referral_", type: "address" },
+    ],
+    name: "initialize",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
     inputs: [],
     name: "owner",
-    outputs: [{ internalType: "address", name: "", type: "address" }],
+    outputs: [{ internalType: "address", name: "owner_", type: "address" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [{ internalType: "uint256", name: "ethAmount", type: "uint256" }],
+    name: "previewGenesisFromEth",
+    outputs: [
+      { internalType: "uint256", name: "sharesOut", type: "uint256" },
+      { internalType: "uint256", name: "wstEthAmount", type: "uint256" },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [{ internalType: "uint256", name: "stEthAmount", type: "uint256" }],
+    name: "previewGenesisFromStEth",
+    outputs: [
+      { internalType: "uint256", name: "sharesOut", type: "uint256" },
+      { internalType: "uint256", name: "wstEthAmount", type: "uint256" },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [{ internalType: "uint256", name: "ethAmount", type: "uint256" }],
+    name: "previewWstEthFromEth",
+    outputs: [{ internalType: "uint256", name: "wstEthAmount", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [{ internalType: "uint256", name: "stEthAmount", type: "uint256" }],
+    name: "previewWstEthFromStEth",
+    outputs: [{ internalType: "uint256", name: "wstEthAmount", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "proxiableUUID",
+    outputs: [{ internalType: "bytes32", name: "", type: "bytes32" }],
     stateMutability: "view",
     type: "function",
   },
@@ -150,13 +313,6 @@ export const ZAP_ABI = [
     name: "referral",
     outputs: [{ internalType: "address", name: "", type: "address" }],
     stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "renounceOwnership",
-    outputs: [],
-    stateMutability: "nonpayable",
     type: "function",
   },
   {
@@ -188,6 +344,13 @@ export const ZAP_ABI = [
     type: "function",
   },
   {
+    inputs: [{ internalType: "bytes4", name: "interfaceId", type: "bytes4" }],
+    name: "supportsInterface",
+    outputs: [{ internalType: "bool", name: "", type: "bool" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
     inputs: [],
     name: "totalValueETH",
     outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
@@ -195,10 +358,20 @@ export const ZAP_ABI = [
     type: "function",
   },
   {
-    inputs: [{ internalType: "address", name: "newOwner", type: "address" }],
+    inputs: [{ internalType: "address", name: "confirmOwner", type: "address" }],
     name: "transferOwnership",
     outputs: [],
     stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      { internalType: "address", name: "newImplementation", type: "address" },
+      { internalType: "bytes", name: "data", type: "bytes" },
+    ],
+    name: "upgradeToAndCall",
+    outputs: [],
+    stateMutability: "payable",
     type: "function",
   },
   {
@@ -212,10 +385,18 @@ export const ZAP_ABI = [
     inputs: [
       { internalType: "address", name: "receiver", type: "address" },
       { internalType: "uint256", name: "minWstEthOut", type: "uint256" },
+      { internalType: "uint256", name: "minEthEquivalentOut", type: "uint256" },
     ],
     name: "zapEth",
     outputs: [{ internalType: "uint256", name: "sharesOut", type: "uint256" }],
     stateMutability: "payable",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "zapName",
+    outputs: [{ internalType: "string", name: "", type: "string" }],
+    stateMutability: "view",
     type: "function",
   },
   {
@@ -225,6 +406,21 @@ export const ZAP_ABI = [
       { internalType: "uint256", name: "minWstEthOut", type: "uint256" },
     ],
     name: "zapStEth",
+    outputs: [{ internalType: "uint256", name: "sharesOut", type: "uint256" }],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      { internalType: "uint256", name: "stEthAmount", type: "uint256" },
+      { internalType: "address", name: "receiver", type: "address" },
+      { internalType: "uint256", name: "minWstEthOut", type: "uint256" },
+      { internalType: "uint256", name: "deadline", type: "uint256" },
+      { internalType: "uint8", name: "v", type: "uint8" },
+      { internalType: "bytes32", name: "r", type: "bytes32" },
+      { internalType: "bytes32", name: "s", type: "bytes32" },
+    ],
+    name: "zapStEthWithPermit",
     outputs: [{ internalType: "uint256", name: "sharesOut", type: "uint256" }],
     stateMutability: "nonpayable",
     type: "function",

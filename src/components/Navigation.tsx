@@ -50,28 +50,28 @@ export default function Example() {
                   className={linkClass("/genesis")}
                   aria-current={isActive("/genesis") ? "page" : undefined}
                 >
-                  Maiden Voyage
+                  New Market Rewards
                 </Link>
                 <Link
                   href="/anchor"
                   className={linkClass("/anchor")}
                   aria-current={isActive("/anchor") ? "page" : undefined}
                 >
-                  Anchor
+                  Earn
                 </Link>
                 <Link
                   href="/sail"
                   className={linkClass("/sail")}
                   aria-current={isActive("/sail") ? "page" : undefined}
                 >
-                  Sail
+                  Leverage
                 </Link>
                 <Link
                   href="/flow"
                   className={linkClass("/flow")}
                   aria-current={isActive("/flow") ? "page" : undefined}
                 >
-                  Map Room
+                  Vote for Markets
                 </Link>
                 <Link
                   href="/ledger-marks"
@@ -143,7 +143,7 @@ export default function Example() {
               }`}
               aria-current={isActive("/genesis") ? "page" : undefined}
             >
-              Maiden Voyage
+              New Market Rewards
             </DisclosureButton>
             <DisclosureButton
               as={Link}
@@ -155,7 +155,7 @@ export default function Example() {
               }`}
               aria-current={isActive("/anchor") ? "page" : undefined}
             >
-              Anchor
+              Earn
             </DisclosureButton>
             <DisclosureButton
               as={Link}
@@ -167,7 +167,7 @@ export default function Example() {
               }`}
               aria-current={isActive("/sail") ? "page" : undefined}
             >
-              Sail
+              Leverage
             </DisclosureButton>
             <DisclosureButton
               as={Link}
@@ -179,7 +179,7 @@ export default function Example() {
               }`}
               aria-current={isActive("/flow") ? "page" : undefined}
             >
-              Map Room
+              Vote for Markets
             </DisclosureButton>
             <DisclosureButton
               as={Link}

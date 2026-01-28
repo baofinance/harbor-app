@@ -6,7 +6,7 @@ import {
   Deposit as StabilityPoolDepositEvent,
   Withdraw as StabilityPoolWithdrawEvent,
   UserDepositChange as UserDepositChangeEvent,
-} from "../generated/StabilityPoolCollateral/StabilityPool";
+} from "../generated/StabilityPoolCollateral_ETH_fxUSD/StabilityPool";
 import { StabilityPoolDeposit, MarksMultiplier } from "../generated/schema";
 import { BigDecimal, BigInt, Bytes, Address, ethereum } from "@graphprotocol/graph-ts";
 import { StabilityPool } from "../generated/StabilityPoolCollateral_ETH_fxUSD/StabilityPool";

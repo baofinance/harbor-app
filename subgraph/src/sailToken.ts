@@ -7,8 +7,8 @@
  * The price is fetched from Minter.leveragedTokenPrice()
  */
 
-import { Transfer as TransferEvent } from "../generated/SailToken_hsPB/ERC20";
-import { ERC20 } from "../generated/SailToken_hsPB/ERC20";
+import { Transfer as TransferEvent } from "../generated/SailToken_hsSTETH_BTC/ERC20";
+import { ERC20 } from "../generated/SailToken_hsSTETH_BTC/ERC20";
 import { Minter } from "../generated/Minter_ETH_fxUSD/Minter";
 import { ChainlinkAggregator } from "../generated/Minter_ETH_fxUSD/ChainlinkAggregator";
 import {

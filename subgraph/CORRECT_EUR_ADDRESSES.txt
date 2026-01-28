@@ -1,0 +1,7 @@
+stETH-EUR genesis (from harbor_v1.state.json):
+Full: 0xf4F97218a00213a57A32E4606aAecC99e1805A89
+Lowercase: 0xf4f97218a00213a57a32e4606aaec99e1805a89
+
+fxUSD-EUR genesis (from harbor_v1.state.json):
+Full: 0xa9EB43Ed6Ba3B953a82741F3e226C1d6B029699b
+Lowercase: 0xa9eb43ed6ba3b953a82741f3e226c1d6b029699b

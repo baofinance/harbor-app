@@ -512,6 +512,82 @@ dataSources:
           handler: handleGenesisEnd
       file: ./src/genesis.ts
 
+  # Genesis - stETH/EUR market
+  - kind: ethereum
+    name: Genesis_stETH_EUR
+    network: mainnet
+    source:
+      address: "0xf4F97218a00213a57A32E4606aAecC99e1805A89" # EUR::stETH::genesis from harbor_v1.state
+      abi: Genesis
+      startBlock: 24271147
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - Deposit
+        - Withdrawal
+        - GenesisEnd
+        - UserHarborMarks
+        - UserList
+        - MarksMultiplier
+        - UserTotalMarks
+      abis:
+        - name: Genesis
+          file: ./abis/Genesis.json
+        - name: ERC20
+          file: ./abis/ERC20.json
+        - name: WrappedPriceOracle
+          file: ./abis/WrappedPriceOracle.json
+        - name: ChainlinkAggregator
+          file: ./abis/ChainlinkAggregator.json
+      eventHandlers:
+        - event: Deposit(indexed address,indexed address,uint256)
+          handler: handleDeposit
+        - event: Withdraw(indexed address,indexed address,uint256)
+          handler: handleWithdraw
+        - event: GenesisEnds()
+          handler: handleGenesisEnd
+      file: ./src/genesis.ts
+
+  # Genesis - fxUSD/EUR market
+  - kind: ethereum
+    name: Genesis_fxUSD_EUR
+    network: mainnet
+    source:
+      address: "0xa9EB43Ed6Ba3B953a82741F3e226C1d6B029699b" # EUR::fxUSD::genesis from harbor_v1.state
+      abi: Genesis
+      startBlock: 24271147
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - Deposit
+        - Withdrawal
+        - GenesisEnd
+        - UserHarborMarks
+        - UserList
+        - MarksMultiplier
+        - UserTotalMarks
+      abis:
+        - name: Genesis
+          file: ./abis/Genesis.json
+        - name: ERC20
+          file: ./abis/ERC20.json
+        - name: WrappedPriceOracle
+          file: ./abis/WrappedPriceOracle.json
+        - name: ChainlinkAggregator
+          file: ./abis/ChainlinkAggregator.json
+      eventHandlers:
+        - event: Deposit(indexed address,indexed address,uint256)
+          handler: handleDeposit
+        - event: Withdraw(indexed address,indexed address,uint256)
+          handler: handleWithdraw
+        - event: GenesisEnds()
+          handler: handleGenesisEnd
+      file: ./src/genesis.ts
+
   # Leveraged Token (hsSTETH-BTC) - sail token for BTC/stETH market
   # Note: haBTC is shared with BTC/fxUSD market, so we don't need to track it again
   - kind: ethereum

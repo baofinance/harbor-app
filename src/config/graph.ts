@@ -63,6 +63,9 @@ export const CONTRACTS_WBTC = {
 
 // Get the Graph URL for marks (always production/mainnet)
 export const getGraphUrl = (): string => {
+  if (typeof window !== "undefined" && window.location.hostname === "localhost") {
+    return "https://api.studio.thegraph.com/query/1718836/harbor-marks/campaigns-v0.03";
+  }
   return GRAPH_CONFIG.marks.url;
 };
 

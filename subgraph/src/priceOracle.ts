@@ -9,7 +9,7 @@
  */
 
 import { Address, BigDecimal, BigInt, Bytes } from "@graphprotocol/graph-ts";
-import { ChainlinkAggregator } from "../generated/HaToken_haPB/ChainlinkAggregator";
+import { ChainlinkAggregator } from "../generated/HaToken_haETH/ChainlinkAggregator";
 import { PriceFeed } from "../generated/schema";
 import { Minter } from "../generated/Minter_ETH_fxUSD/Minter";
 

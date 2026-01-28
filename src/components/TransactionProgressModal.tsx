@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { GenesisTransactionProgressSteps } from "./GenesisTransactionProgressSteps";
 import { formatEther } from "viem";
 
 export type TransactionStepStatus ="pending" |"in_progress" |"completed" |"error";
@@ -36,6 +37,7 @@ interface TransactionProgressModalProps {
   title: string;
   steps: TransactionStep[];
   currentStepIndex: number;
+  progressVariant?: "vertical" | "horizontal";
   showFeeInfo?: FeeInfo | FeeInfo[]; // Support single fee or array of fees
   onConfirmFee?: () => void;
   onCancel?: () => void;
@@ -52,6 +54,7 @@ export const TransactionProgressModal = ({
  title,
  steps,
  currentStepIndex,
+ progressVariant = "vertical",
  showFeeInfo,
  onConfirmFee,
  onCancel,
@@ -242,6 +245,12 @@ export const TransactionProgressModal = ({
  </div>
 
  <div className="p-6">
+ {progressVariant === "horizontal" ? (
+   <GenesisTransactionProgressSteps
+     steps={steps}
+     currentStepIndex={currentStepIndex}
+   />
+ ) : (
  <div className="space-y-2">
  {steps.map((step, index) => {
  const isActive = index === currentStepIndex;
@@ -365,6 +374,7 @@ export const TransactionProgressModal = ({
  );
  })}
  </div>
+ )}
 
  {steps.every((s) => s.status ==="completed") && (
  <div className="mt-6 p-4 bg-green-50 border border-green-200">

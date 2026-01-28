@@ -44,6 +44,12 @@ export function getLogoPath(symbol: string): string {
   ) {
     return "/icons/btc.png"; // Use BTC icon for Aave WBTC variants
   }
+  if (normalizedSymbol === "eur" || normalizedSymbol === "euro") {
+    return "/icons/eur.svg";
+  }
+  if (normalizedSymbol === "usd" || normalizedSymbol === "dollar") {
+    return "/icons/usd.svg";
+  }
 
   // Harbor tokens - ha (pegged) tokens
   if (normalizedSymbol === "haeth") {
@@ -51,6 +57,9 @@ export function getLogoPath(symbol: string): string {
   }
   if (normalizedSymbol === "habtc") {
     return "/icons/haBTC.png";
+  }
+  if (normalizedSymbol === "haeur") {
+    return "/icons/haEUR.png";
   }
   if (normalizedSymbol === "hapb") {
     return "/icons/haETH.png";
@@ -68,6 +77,12 @@ export function getLogoPath(symbol: string): string {
   }
   if (normalizedSymbol === "hssteth-btc" || normalizedSymbol === "hsstethbtc") {
     return "/icons/hsETHBTC.png";
+  }
+  if (normalizedSymbol === "hssteth-eur" || normalizedSymbol === "hsstetheur") {
+    return "/icons/hsSTETHEUR.png";
+  }
+  if (normalizedSymbol === "hsfxusd-eur" || normalizedSymbol === "hsfxusdeur") {
+    return "/icons/hsUSDeur.png";
   }
   if (normalizedSymbol.startsWith("hs")) {
     return "/icons/hsUSDETH.png"; // Fallback for other hs tokens

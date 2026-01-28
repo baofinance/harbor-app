@@ -29,6 +29,8 @@ const COMMON_TOKENS: Array<{
   { address: "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599" as Address, symbol: "WBTC", name: "Wrapped BTC", decimals: 8 },
   { address: "0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0" as Address, symbol: "wstETH", name: "Wrapped Staked ETH", decimals: 18 },
   { address: "0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84" as Address, symbol: "stETH", name: "Lido Staked Ether", decimals: 18 },
+  { address: "0x7743e50F534a7f9F1791DdE7dCD89F7783Eefc39" as Address, symbol: "fxSAVE", name: "f(x) USD Saving", decimals: 18 },
+  { address: "0x085780639CC2cACd35E474e71f4d000e2405d8f6" as Address, symbol: "fxUSD", name: "f(x) USD", decimals: 18 },
   // Add more common tokens as needed
 ];
 

@@ -1,10 +1,11 @@
 import { Address, BigDecimal, BigInt, Bytes, ethereum } from "@graphprotocol/graph-ts";
 import { ChainlinkAggregator } from "../generated/Minter_ETH_fxUSD/ChainlinkAggregator";
 import { Minter } from "../generated/Minter_ETH_fxUSD/Minter";
-import { HaTokenBalance, PriceFeed, SailTokenBalance, StabilityPoolDeposit, UserList } from "../generated/schema";
+import { HaTokenBalance, PriceFeed, SailTokenBalance, StabilityPoolDeposit, UserHarborMarks, UserList } from "../generated/schema";
 import { getActiveBoostMultiplier } from "./marksBoost";
 import { accrueWithBoostWindow } from "./marksAccrual";
 import { createMarksEvent, toE18BigInt } from "./marksEvents";
+import { getWrappedTokenPriceUSD } from "./genesis";
 
 const ONE_HOUR = BigInt.fromI32(3600);
 const ONE_DAY = BigInt.fromI32(86400);
@@ -37,11 +38,24 @@ const MINTER_BTC_FXUSD = Address.fromString("0x33e32ff4d0677862fa31582CC654a25b9
 const MINTER_BTC_STETH = Address.fromString("0xF42516EB885E737780EB864dd07cEc8628000919");
 
 const POOL_COLL_ETH_FXUSD = Address.fromString("0x1F985CF7C10A81DE1940da581208D2855D263D72");
-const POOL_LEV_ETH_FXUSD = Address.fromString("0x438B29EC7a1770dDbA37D792F1A6e76231Ef8E06");
+const POOL_LEV_ETH_FXUSD = Address.fromString("0x438B29EC7a1770dDbA37D792f1A6e76231Ef8E06");
 const POOL_COLL_BTC_FXUSD = Address.fromString("0x86561cdB34ebe8B9abAbb0DD7bEA299fA8532a49");
 const POOL_LEV_BTC_FXUSD = Address.fromString("0x9e56F1E1E80EBf165A1dAa99F9787B41cD5bFE40");
 const POOL_COLL_BTC_STETH = Address.fromString("0x667Ceb303193996697A5938cD6e17255EeAcef51");
 const POOL_LEV_BTC_STETH = Address.fromString("0xCB4F3e21DE158bf858Aa03E63e4cEc7342177013");
+
+// Genesis contracts (production v1)
+const GENESIS_ETH_FXUSD = Address.fromString("0xc9df4f62474cf6cde6c064db29416a9f4f27ebdc");
+const GENESIS_BTC_FXUSD = Address.fromString("0x42cc9a19b358a2a918f891d8a6199d8b05f0bc1c");
+const GENESIS_BTC_STETH = Address.fromString("0xc64fc46eed431e92c1b5e24dc296b5985ce6cc00");
+function addressFromString(value: string): Address {
+  const normalized = value.startsWith("0x") ? value : `0x${value}`;
+  return Address.fromString(normalized);
+}
+
+// Euro campaign
+const GENESIS_EUR_FXUSD = Address.fromString("0xa9eb43ed6ba3b953a82741f3e226c1d6b029699b");
+const GENESIS_EUR_STETH = Address.fromString("0xf4f97218a00213a57a32e4606aaecc99e1805a89");
 
 function getOrCreateTracker(id: string): PriceFeed {
   let t = PriceFeed.load(id);
@@ -224,6 +238,63 @@ function updatePoolDeposits(pool: Address, now: BigInt, assetUsd: BigDecimal, bl
   }
 }
 
+function updateGenesisDeposits(genesisAddress: Address, now: BigInt, block: ethereum.Block): void {
+  const list = UserList.load((genesisAddress as Bytes).toHexString());
+  if (list == null) return;
+  
+  // Get current wrapped token price for this genesis contract
+  const wrappedTokenPriceUSD = getWrappedTokenPriceUSD(genesisAddress as Bytes, block);
+  if (wrappedTokenPriceUSD.le(BigDecimal.fromString("0"))) return;
+  
+  const boost = getActiveBoostMultiplier("genesis", genesisAddress as Bytes, now);
+  const mpd = DEFAULT_MARKS_PER_DOLLAR_PER_DAY.times(BigDecimal.fromString("10.0").times(boost));
+  const baseMpd = DEFAULT_MARKS_PER_DOLLAR_PER_DAY.times(BigDecimal.fromString("10.0"));
+  const users = list.users;
+  
+  for (let i = 0; i < users.length; i++) {
+    const user = users[i];
+    const id = (genesisAddress as Bytes).toHexString().concat("-").concat(user.toHexString());
+    const userMarks = UserHarborMarks.load(id);
+    if (userMarks == null) continue;
+    
+    // Skip if genesis has ended (no marks accrual after end)
+    if (userMarks.genesisEnded) {
+      // Still update currentDepositUSD for display purposes, but marksPerDay stays 0
+      if (userMarks.currentDeposit.gt(BigInt.fromI32(0))) {
+        const amount = userMarks.currentDeposit.toBigDecimal().div(ONE_E18);
+        userMarks.currentDepositUSD = amount.times(wrappedTokenPriceUSD);
+        userMarks.marksPerDay = BigDecimal.fromString("0");
+        userMarks.lastUpdated = now;
+        userMarks.save();
+      }
+      continue;
+    }
+    
+    // Accumulate marks since last update
+    if (userMarks.genesisStartDate.gt(BigInt.fromI32(0)) && userMarks.currentDepositUSD.gt(BigDecimal.fromString("0"))) {
+      const last = userMarks.lastUpdated.gt(BigInt.fromI32(0)) ? userMarks.lastUpdated : userMarks.genesisStartDate;
+      const earned = accrue(last, now, userMarks.currentDepositUSD, baseMpd, "genesis", genesisAddress as Bytes);
+      if (earned.gt(BigDecimal.fromString("0"))) {
+        userMarks.currentMarks = userMarks.currentMarks.plus(earned);
+        userMarks.totalMarksEarned = userMarks.totalMarksEarned.plus(earned);
+      }
+    }
+    
+    // Update currentDepositUSD using current price
+    if (userMarks.currentDeposit.gt(BigInt.fromI32(0))) {
+      const amount = userMarks.currentDeposit.toBigDecimal().div(ONE_E18);
+      userMarks.currentDepositUSD = amount.times(wrappedTokenPriceUSD);
+      userMarks.marksPerDay = userMarks.currentDepositUSD.times(mpd);
+    } else {
+      userMarks.currentDepositUSD = BigDecimal.fromString("0");
+      userMarks.marksPerDay = BigDecimal.fromString("0");
+    }
+    
+    userMarks.lastUpdated = now;
+    userMarks.save();
+  }
+}
+
 export function runDailyMarksUpdate(block: ethereum.Block): void {
   const t = getOrCreateTracker(LAST_DAILY_KEY);
   const now = block.timestamp;
@@ -249,6 +320,19 @@ export function runDailyMarksUpdate(block: ethereum.Block): void {
     const p = pools[i];
     const assetUsd = poolAssetUsd(p, haEthUsd, haBtcUsd, hsEthUsd, hsBtcUsd, hsStethUsd);
     if (assetUsd.gt(BigDecimal.fromString("0"))) updatePoolDeposits(p, now, assetUsd, blockNumber);
+  }
+
+  // Update genesis deposits with current prices
+  const genesisContracts: Address[] = [
+    GENESIS_ETH_FXUSD,
+    GENESIS_BTC_FXUSD,
+    GENESIS_BTC_STETH,
+    GENESIS_EUR_FXUSD,
+    GENESIS_EUR_STETH,
+  ];
+  for (let i = 0; i < genesisContracts.length; i++) {
+    const g = genesisContracts[i];
+    updateGenesisDeposits(g, now, block);
   }
 
   t.lastUpdated = now;

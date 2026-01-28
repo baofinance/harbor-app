@@ -14,6 +14,8 @@ const HARBOR_MARKS_QUERY = `
     userHarborMarks(id: $genesisId) {
       id
       user
+      campaignId
+      campaignLabel
       currentMarks
       marksPerDay
       totalMarksEarned
@@ -134,6 +136,8 @@ interface HarborMarksData {
   userHarborMarks: {
     id: string;
     user: string;
+    campaignId?: string;
+    campaignLabel?: string;
     currentMarks: string;
     marksPerDay: string;
     totalMarksEarned: string;
@@ -208,7 +212,7 @@ export function useHarborMarks({
         const data = await retryGraphQLQuery(async () => {
       const response = await fetch(graphUrl, {
         method: "POST",
-        headers: getGraphHeaders(),
+        headers: getGraphHeaders(graphUrl),
         body: JSON.stringify({
           query: HARBOR_MARKS_QUERY,
           variables: {

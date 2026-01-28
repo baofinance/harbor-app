@@ -5,6 +5,8 @@ import { Geo } from "next/font/google";
 import Link from "next/link";
 import { formatEther } from "viem";
 import { useWaitForTransactionReceipt } from "wagmi";
+import { GenesisTransactionProgressSteps } from "./GenesisTransactionProgressSteps";
+import { TransactionStep } from "./TransactionProgressModal";
 
 const geo = Geo({
  subsets: ["latin"],
@@ -162,6 +164,32 @@ export default function GenesisClaimStatusModal({
  }
  };
 
+ const claimSteps: TransactionStep[] = [
+   { id: "sign", label: "Sign", status: "pending" },
+   { id: "confirm", label: "Confirm", status: "pending" },
+   { id: "complete", label: "Complete", status: "pending" },
+ ];
+
+ if (!transactionHash) {
+   claimSteps[0].status = "in_progress";
+ } else if (status === "pending") {
+   claimSteps[0].status = "completed";
+   claimSteps[1].status = "in_progress";
+ } else if (status === "completed") {
+   claimSteps.forEach((step) => {
+     step.status = "completed";
+   });
+ } else if (status === "error") {
+   claimSteps[0].status = transactionHash ? "completed" : "in_progress";
+   claimSteps[1].status = "error";
+ }
+
+ const claimCurrentStepIndex = claimSteps.findIndex(
+   (step) => step.status === "in_progress"
+ );
+ const currentClaimStepIndex =
+   claimCurrentStepIndex === -1 ? claimSteps.length - 1 : claimCurrentStepIndex;
+
  return (
  <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
  <div className="bg-zinc-900/50 max-w-md w-full p-6">
@@ -174,6 +202,14 @@ export default function GenesisClaimStatusModal({
  {getStatusTitle()}
  </h2>
  <p className="text-sm text-white/60">{getStatusDescription()}</p>
+ </div>
+
+ {/* Horizontal progress */}
+ <div className="mb-6">
+   <GenesisTransactionProgressSteps
+     steps={claimSteps}
+     currentStepIndex={currentClaimStepIndex}
+   />
  </div>
 
  {/* Transaction Hash */}
