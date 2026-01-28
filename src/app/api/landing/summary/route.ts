@@ -27,6 +27,20 @@ const FXSAVE_POOL_ID = "ee0b7069-f8f3-4aa2-a415-728f13e6cc3d";
 type CacheEntry = { timestampMs: number; data: unknown };
 const CACHE_TTL_MS = 30_000;
 const MAX_CACHE_KEYS = 10;
+const ALLOWED_ORIGINS = new Set([
+  "https://harborfinance.io",
+  "http://localhost:3000",
+  "http://localhost:3001",
+  "http://localhost:3002",
+  "http://localhost:3003",
+  "http://localhost:3004",
+  "http://localhost:3005",
+]);
+
+function getAllowedOrigin(request: Request): string | undefined {
+  const origin = request.headers.get("origin") || "";
+  return ALLOWED_ORIGINS.has(origin) ? origin : undefined;
+}
 
 function getCache(): Map<string, CacheEntry> {
   const g = globalThis as unknown as { __harborLandingCache?: Map<string, CacheEntry> };
@@ -197,16 +211,17 @@ function getPegTargetPriceUSD(
   return 1;
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   const cache = getCache();
   const cached = cache.get("landing-summary");
   const now = Date.now();
+  const allowOrigin = getAllowedOrigin(request);
   if (cached && now - cached.timestampMs < CACHE_TTL_MS) {
     return NextResponse.json(cached.data, {
       status: 200,
       headers: {
         "Cache-Control": "public, max-age=15, stale-while-revalidate=60",
-        "Access-Control-Allow-Origin": "https://harborfinance.io",
+        ...(allowOrigin ? { "Access-Control-Allow-Origin": allowOrigin } : {}),
       },
     });
   }
@@ -468,7 +483,7 @@ export async function GET() {
     status: 200,
     headers: {
       "Cache-Control": "public, max-age=15, stale-while-revalidate=60",
-      "Access-Control-Allow-Origin": "https://harborfinance.io",
+      ...(allowOrigin ? { "Access-Control-Allow-Origin": allowOrigin } : {}),
     },
   });
 }
