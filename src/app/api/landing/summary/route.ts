@@ -206,6 +206,7 @@ export async function GET() {
       status: 200,
       headers: {
         "Cache-Control": "public, max-age=15, stale-while-revalidate=60",
+        "Access-Control-Allow-Origin": "https://harborfinance.io",
       },
     });
   }
@@ -467,6 +468,7 @@ export async function GET() {
     status: 200,
     headers: {
       "Cache-Control": "public, max-age=15, stale-while-revalidate=60",
+      "Access-Control-Allow-Origin": "https://harborfinance.io",
     },
   });
 }
