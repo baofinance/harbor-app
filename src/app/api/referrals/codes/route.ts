@@ -44,6 +44,7 @@ export async function POST(req: Request) {
   const nonce = String(body?.nonce || "");
   const signature = String(body?.signature || "");
   const label = String(body?.label || "");
+  const requestedCode = String(body?.code || "");
 
   if (!isAddress(referrer)) return jsonError("Invalid referrer address");
   if (!nonce) return jsonError("Missing nonce");
@@ -51,10 +52,12 @@ export async function POST(req: Request) {
 
   try {
     const store = getReferralsStore();
+    const normalizedCode = requestedCode ? requestedCode.trim().toUpperCase() : "";
     const typed = buildReferralCodeCreateTypedData({
       referrer,
       nonce,
       label,
+      code: normalizedCode,
     } as ReferralCodeCreateMessage);
 
     const valid = await verifyTypedData({
@@ -71,7 +74,7 @@ export async function POST(req: Request) {
     const ok = await store.consumeNonce(referrer, nonce);
     if (!ok) return jsonError("Invalid or expired nonce", 401);
 
-    const code = await store.createCode(referrer, label);
+    const code = await store.createCode(referrer, label, normalizedCode || undefined);
     return NextResponse.json({ code, store: getReferralsStoreMode() });
   } catch (err: any) {
     return NextResponse.json(

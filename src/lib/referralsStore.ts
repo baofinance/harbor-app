@@ -40,7 +40,11 @@ export type ReferralsStore = {
   getSettings(): Promise<ReferralSettings>;
   setSettings(settings: Partial<ReferralSettings>): Promise<ReferralSettings>;
   listCodes(referrer: Address): Promise<ReferralCode[]>;
-  createCode(referrer: Address, label?: string): Promise<ReferralCode>;
+  createCode(
+    referrer: Address,
+    label?: string,
+    requestedCode?: string
+  ): Promise<ReferralCode>;
   getBinding(referred: Address): Promise<ReferralBinding | null>;
   bindReferral(
     referred: Address,
@@ -178,7 +182,7 @@ function createMemoryStore(): ReferralsStore {
       }
       return out.sort((a, b) => b.createdAt - a.createdAt);
     },
-    async createCode(referrer, label) {
+    async createCode(referrer, label, requestedCode) {
       const refKey = referrer.toLowerCase();
       const settings = await this.getSettings();
       const existingCodes = await this.listCodes(referrer);
@@ -188,9 +192,16 @@ function createMemoryStore(): ReferralsStore {
       }
 
       let code = "";
-      for (let i = 0; i < 5; i += 1) {
-        code = generateCode();
-        if (!codes.has(code)) break;
+      if (requestedCode) {
+        code = validateReferralCode(requestedCode);
+        if (codes.has(code)) {
+          throw new Error("Referral code is already taken.");
+        }
+      } else {
+        for (let i = 0; i < 5; i += 1) {
+          code = generateCode();
+          if (!codes.has(code)) break;
+        }
       }
       if (!code) throw new Error("Failed to generate referral code.");
 
@@ -304,7 +315,7 @@ function createUpstashStore(): ReferralsStore {
       }
       return out.sort((a, b) => b.createdAt - a.createdAt);
     },
-    async createCode(referrer, label) {
+    async createCode(referrer, label, requestedCode) {
       const settings = await this.getSettings();
       const existingCodes = await this.listCodes(referrer);
       const activeCount = existingCodes.filter((c) => c.active).length;
@@ -313,13 +324,24 @@ function createUpstashStore(): ReferralsStore {
       }
 
       let code = "";
-      for (let i = 0; i < 5; i += 1) {
-        code = generateCode();
+      if (requestedCode) {
+        code = validateReferralCode(requestedCode);
         const exists = await upstashCommand<string | null>([
           "GET",
           `${CODE_KEY_PREFIX}${code}`,
         ]);
-        if (!exists) break;
+        if (exists) {
+          throw new Error("Referral code is already taken.");
+        }
+      } else {
+        for (let i = 0; i < 5; i += 1) {
+          code = generateCode();
+          const exists = await upstashCommand<string | null>([
+            "GET",
+            `${CODE_KEY_PREFIX}${code}`,
+          ]);
+          if (!exists) break;
+        }
       }
       if (!code) throw new Error("Failed to generate referral code.");
 
@@ -454,6 +476,9 @@ export function validateReferralCode(code: string): string {
   const normalized = normalizeCode(code);
   if (!normalized || normalized.length < 6 || normalized.length > 12) {
     throw new Error("Invalid referral code.");
+  }
+  if (!/^[A-Z0-9]+$/.test(normalized)) {
+    throw new Error("Referral code must be A-Z or 0-9 only.");
   }
   return normalized;
 }

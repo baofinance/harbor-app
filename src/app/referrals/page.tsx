@@ -48,6 +48,7 @@ export default function ReferralsPage() {
   const { address, isConnected } = useAccount();
   const { signTypedDataAsync } = useSignTypedData();
   const [label, setLabel] = useState("");
+  const [customCode, setCustomCode] = useState("");
   const [bindCode, setBindCode] = useState("");
   const [summary, setSummary] = useState<ReferralSummary | null>(null);
   const [loading, setLoading] = useState(false);
@@ -96,6 +97,7 @@ export default function ReferralsPage() {
         referrer: address,
         nonce: nonceJson.nonce,
         label: label.trim(),
+        code: customCode.trim().toUpperCase(),
       });
       const signature = await signTypedDataAsync(typed as any);
 
@@ -107,11 +109,13 @@ export default function ReferralsPage() {
           nonce: nonceJson.nonce,
           signature,
           label: label.trim(),
+          code: customCode.trim(),
         }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || "Failed to create code");
       setLabel("");
+      setCustomCode("");
       await refresh();
       setMessage("Referral code created.");
     } catch (err: any) {
@@ -201,6 +205,12 @@ export default function ReferralsPage() {
                 value={label}
                 onChange={(e) => setLabel(e.target.value)}
               />
+              <input
+                className="flex-1 rounded-full border border-[#1E4775]/20 bg-white px-4 py-2 text-sm text-[#1E4775] placeholder:text-[#1E4775]/40"
+                placeholder="Custom code (optional)"
+                value={customCode}
+                onChange={(e) => setCustomCode(e.target.value)}
+              />
               <button
                 onClick={handleCreateCode}
                 disabled={loading}
@@ -209,6 +219,9 @@ export default function ReferralsPage() {
                 {loading ? "Working..." : "Generate"}
               </button>
             </div>
+            <p className="text-xs text-gray-500">
+              Custom codes: 6-12 chars, A-Z or 0-9 only.
+            </p>
             <p className="text-xs text-gray-500">
               Up to 10 active codes per wallet. Share links like
               {" "}

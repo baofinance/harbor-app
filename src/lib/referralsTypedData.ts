@@ -10,6 +10,7 @@ export type ReferralCodeCreateMessage = {
   referrer: Address;
   nonce: string;
   label: string;
+  code: string;
 };
 
 export type ReferralBindMessage = {
@@ -23,6 +24,7 @@ export const REFERRAL_CODE_CREATE_TYPES = {
     { name: "referrer", type: "address" },
     { name: "nonce", type: "string" },
     { name: "label", type: "string" },
+    { name: "code", type: "string" },
   ],
 } as const;
 
