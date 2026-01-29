@@ -19,8 +19,7 @@ import { usePermitOrApproval } from "@/hooks/usePermitOrApproval";
 import { useCollateralPrice } from "@/hooks/useCollateralPrice";
 import SimpleTooltip from "@/components/SimpleTooltip";
 import { ArrowPathIcon } from "@heroicons/react/24/outline";
-import { InfoCallout } from "@/components/InfoCallout";
-import { AlertOctagon, Bell, ChevronDown, ChevronUp, Info, RefreshCw } from "lucide-react";
+import { Info, RefreshCw } from "lucide-react";
 import {
   TransactionProgressModal,
   TransactionStep,
@@ -28,9 +27,23 @@ import {
 import { useDefiLlamaSwap, getDefiLlamaSwapTx } from "@/hooks/useDefiLlamaSwap";
 import { useUserTokens, useTokenDecimals } from "@/hooks/useUserTokens";
 import { formatBalance } from "@/utils/formatters";
+import { AmountInputBlock } from "@/components/AmountInputBlock";
 import { TokenSelectorDropdown } from "@/components/TokenSelectorDropdown";
 import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
 import { getLogoPath } from "@/lib/logos";
+import {
+  ActionButtons,
+  BaseManageModal,
+  type BaseManageModalConfig,
+  type BaseManageModalTabConfig,
+  type TabContentContext,
+  ErrorBanner,
+  NotificationsSection,
+  PermitToggle,
+  TransactionOverviewCard,
+  type NotificationItem,
+  type OverviewRow,
+} from "@/components/modal";
 
 interface SailManageModalProps {
  isOpen: boolean;
@@ -1428,84 +1441,16 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
  leveragedTokenBalance,
  ]);
 
- return (
- <div className="fixed inset-0 z-50 flex items-center justify-center">
- <div
- className="absolute inset-0 bg-black/40 backdrop-blur-sm"
- onClick={handleClose}
- />
+ const primaryToken = market?.leveragedToken
+   ? {
+       symbol: market.leveragedToken.symbol,
+       icon: (market.leveragedToken as { icon?: string })?.icon ?? getLogoPath(leveragedTokenSymbol),
+     }
+   : { symbol: leveragedTokenSymbol, icon: getLogoPath(leveragedTokenSymbol) };
 
- <div className="relative bg-white shadow-2xl w-full max-w-md mx-2 sm:mx-4 animate-in fade-in-0 scale-in-95 duration-200 overflow-hidden">
- {/* Protocol and Market Header */}
- {market?.leveragedToken?.symbol && (
-   <div className="bg-[#1E4775] text-white px-3 sm:px-4 py-2 sm:py-2.5 flex items-center justify-between">
-     <div className="text-sm sm:text-base font-semibold">
-       Sail
-     </div>
-     <div className="flex items-center gap-2">
-       <img
-         src={(market.leveragedToken as { icon?: string })?.icon ?? getLogoPath(leveragedTokenSymbol)}
-         alt={market.leveragedToken.symbol}
-         className="w-5 h-5 sm:w-6 sm:h-6 rounded-full flex-shrink-0"
-       />
-       <span className="text-sm sm:text-base font-semibold">
-         {market.leveragedToken.symbol}
-       </span>
-     </div>
-   </div>
- )}
- 
- {/* Header with tabs and close button */}
- <div className="flex items-center justify-between p-0 pt-2 sm:pt-3 px-2 sm:px-3 border-b border-[#1E4775]/10">
- {/* Tab-style header - takes most of width but leaves room for X */}
- <div className="flex flex-1 mr-2 sm:mr-4 border border-[#1E4775]/20 border-b-0 overflow-hidden">
- <button
- onClick={() => handleTabChange("mint")}
- disabled={isProcessing}
- className={`flex-1 py-2 sm:py-3 text-sm sm:text-base font-semibold transition-colors touch-target ${
- activeTab ==="mint"
- ?"bg-[#1E4775] text-white"
- :"bg-[#eef1f7] text-[#4b5a78]"
- } disabled:opacity-50 disabled:cursor-not-allowed`}
- >
- Mint
- </button>
- <button
- onClick={() => handleTabChange("redeem")}
- disabled={isProcessing}
- className={`flex-1 py-2 sm:py-3 text-sm sm:text-base font-semibold transition-colors touch-target ${
- activeTab ==="redeem"
- ?"bg-[#1E4775] text-white"
- :"bg-[#eef1f7] text-[#4b5a78]"
- } disabled:opacity-50 disabled:cursor-not-allowed`}
- >
- Redeem
- </button>
- </div>
- <button
- onClick={handleClose}
- className="text-[#1E4775]/50 hover:text-[#1E4775] transition-colors flex-shrink-0 touch-target flex items-center justify-center w-6 h-6 sm:w-7 sm:h-7"
- aria-label="Close modal"
- disabled={isProcessing}
- >
- <svg
- className="w-5 h-5 sm:w-6 sm:h-6"
- fill="none"
- viewBox="0 0 24 24"
- stroke="currentColor"
- >
- <path
- strokeLinecap="round"
- strokeLinejoin="round"
- strokeWidth={3}
- d="M6 18L18 6M6 6l12 12"
- />
- </svg>
- </button>
- </div>
-
- <div className="p-4">
- {step ==="success" ? (
+ const renderSailContent = (ctx: TabContentContext) => {
+   if (step === "success") {
+     return (
  <div className="text-center py-8">
  <div className="text-6xl mb-4">✓</div>
  <h3 className="text-xl font-bold text-[#1E4775] mb-2">
@@ -1527,13 +1472,10 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
  </a>
  )}
  </div>
- ) : (
+     );
+   }
+   return (
  <div className="space-y-4">
-   <div className="flex items-center justify-center text-xs text-[#1E4775]/50 pb-3 border-b border-[#d1d7e5]">
-     <div className="text-[#1E4775] font-semibold">
-       {activeTab === "mint" ? "Deposit Collateral & Amount" : "Withdraw Collateral & Amount"}
-     </div>
-   </div>
  {/* Input Section */}
  <div className="space-y-3">
  {activeTab ==="mint" && (
@@ -1622,333 +1564,215 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
  )}
 
  {/* Notifications - between deposit token and enter amount (match Anchor) */}
- <div className="space-y-2">
-   <button
-     type="button"
-     onClick={() => setShowNotifications((prev) => !prev)}
-     className="flex w-full items-center justify-between text-sm font-semibold text-[#1E4775]"
-     aria-expanded={showNotifications}
-   >
-     <span>Notifications</span>
-     <span className="flex items-center gap-2">
-       {!showNotifications && (() => {
-         const notificationCount = activeTab === "mint" ? 2 : 1;
-         return (
-           <span className="flex items-center gap-1 bg-blue-100 px-2 py-0.5 text-xs text-blue-600">
-             <Bell className="h-3 w-3" />
-             {notificationCount}
-           </span>
-         );
-       })()}
-       {showNotifications ? (
-         <ChevronUp className="h-4 w-4 text-[#1E4775]/70" />
-       ) : (
-         <ChevronDown className="h-4 w-4 text-[#1E4775]/70" />
-       )}
-     </span>
-   </button>
-   {showNotifications && (
-     <div className="space-y-2">
-       {activeTab === "mint" && (
-         <>
-           <InfoCallout
-             tone="success"
-             icon={<RefreshCw className="w-4 h-4 flex-shrink-0 mt-0.5 text-green-600" />}
-             title="Tip"
-           >
-             You can deposit any ERC20 token! Non-collateral tokens will be automatically swapped via Velora.
-           </InfoCallout>
-           <InfoCallout
-             title="Info"
-             icon={<Info className="w-4 h-4 flex-shrink-0 mt-0.5 text-blue-600" />}
-           >
-             For large deposits, Harbor recommends using wstETH or fxSAVE instead of the built-in swap and zaps.
-           </InfoCallout>
-         </>
-       )}
-       {activeTab === "redeem" && (
-         <InfoCallout
-           title="Info"
-           icon={<Info className="w-4 h-4 flex-shrink-0 mt-0.5 text-blue-600" />}
-         >
-           You will receive collateral (e.g. {collateralSymbol}) in your wallet.
-         </InfoCallout>
-       )}
-     </div>
-   )}
- </div>
+ <NotificationsSection
+   notifications={
+     activeTab === "mint"
+       ? ([
+           {
+             tone: "success" as const,
+             title: "Tip",
+             icon: <RefreshCw className="w-4 h-4 flex-shrink-0 mt-0.5 text-green-600" />,
+             content:
+               "You can deposit any ERC20 token! Non-collateral tokens will be automatically swapped via Velora.",
+           },
+           {
+             title: "Info",
+             icon: <Info className="w-4 h-4 flex-shrink-0 mt-0.5 text-blue-600" />,
+             content:
+               "For large deposits, Harbor recommends using wstETH or fxSAVE instead of the built-in swap and zaps.",
+           },
+         ] as NotificationItem[])
+       : ([
+           {
+             title: "Info",
+             icon: <Info className="w-4 h-4 flex-shrink-0 mt-0.5 text-blue-600" />,
+             content: `You will receive collateral (e.g. ${collateralSymbol}) in your wallet.`,
+           },
+         ] as NotificationItem[])
+   }
+   expanded={showNotifications}
+   onToggle={() => setShowNotifications((prev) => !prev)}
+   badgeCount={activeTab === "mint" ? 2 : 1}
+   badgeColor="blue"
+ />
 
- <div className="flex justify-between items-center mb-1.5 mt-1">
- <label className="text-sm font-semibold text-[#1E4775]">
- {activeTab ==="mint" ?"Enter Amount" :"Enter Amount"}
-</label>
- <span className="text-sm text-[#1E4775]/70">
- Balance:{" "}
- {activeTab === "mint"
-   ? formatBalance(
-       currentBalance,
-       selectedDepositAsset || collateralSymbol,
-       4,
-       selectedDepositAsset?.toLowerCase() === "usdc"
-         ? 6
-         : isNativeETH
-         ? 18
-         : selectedTokenDecimals ?? 18
-     )
-   : formatBalance(currentBalance, leveragedTokenSymbol, 4, 18)}
- </span>
- </div>
- <div className="relative">
- <input
- type="text"
- value={amount}
- onChange={(e) => {
- const value = e.target.value;
- if (value ==="" || /^\d*\.?\d*$/.test(value)) {
- // Cap at balance if value exceeds it
- if (value && currentBalance) {
- try {
-         const decimals =
-           activeTab === "redeem"
-             ? 18
-             : isNativeETH
+ <AmountInputBlock
+   label="Enter Amount"
+   value={amount}
+   onChange={(e) => {
+     const v = e.target.value;
+     if (v === "" || /^\d*\.?\d*$/.test(v)) {
+       if (v && currentBalance) {
+         try {
+           const decimals =
+             activeTab === "redeem"
+               ? 18
+               : isNativeETH
+                 ? 18
+                 : selectedDepositAsset?.toLowerCase() === "usdc"
+                   ? 6
+                   : selectedTokenDecimals ?? 18;
+           const parsed =
+             activeTab === "mint" && isNativeETH ? parseEther(v) : parseUnits(v, decimals);
+           if (parsed > currentBalance) {
+             const fmt =
+               activeTab === "mint" && isNativeETH
+                 ? formatEther(currentBalance)
+                 : formatUnits(currentBalance, decimals);
+             setAmount(fmt);
+             setError(null);
+             return;
+           }
+         } catch {
+           /* allow partial input */
+         }
+       }
+       setAmount(v);
+       setError(null);
+     }
+   }}
+   onMax={() => {
+     if (currentBalance) {
+       const decimals =
+         activeTab === "redeem"
+           ? 18
+           : isNativeETH
              ? 18
              : selectedDepositAsset?.toLowerCase() === "usdc"
-             ? 6
-             : selectedTokenDecimals ?? 18;
-         const parsed =
-           activeTab === "mint" && isNativeETH
-             ? parseEther(value)
-             : parseUnits(value, decimals);
-         if (parsed > currentBalance) {
-           const formatted =
-             activeTab === "mint" && isNativeETH
-               ? formatEther(currentBalance)
-               : formatUnits(currentBalance, decimals);
-           setAmount(formatted);
- setError(null);
- return;
- }
- } catch {
- // Allow partial input (e.g., trailing decimal)
- }
- }
- setAmount(value);
- setError(null);
- }
- }}
- placeholder="0.0"
- disabled={isProcessing}
- className={`w-full h-14 px-4 pr-24 bg-white text-[#1E4775] border-2 ${
- parsedAmount &&
- currentBalance &&
- parsedAmount > currentBalance
- ?"border-red-500 focus:ring-red-200"
- :"border-[#1E4775]/30 focus:ring-[#1E4775]/20"
- } focus:border-[#1E4775] focus:ring-2 focus:outline-none transition-all text-xl font-mono disabled:opacity-50`}
- />
- <button
- onClick={() => {
-   if (currentBalance) {
-     const decimals =
-       activeTab === "redeem"
-         ? 18
-         : isNativeETH
-         ? 18
-         : selectedDepositAsset?.toLowerCase() === "usdc"
-         ? 6
-         : selectedTokenDecimals ?? 18;
-     const formatted =
-       activeTab === "mint" && isNativeETH
-         ? formatEther(currentBalance)
-         : formatUnits(currentBalance, decimals);
-     setAmount(formatted);
-     setError(null);
+               ? 6
+               : selectedTokenDecimals ?? 18;
+       const fmt =
+         activeTab === "mint" && isNativeETH
+           ? formatEther(currentBalance)
+           : formatUnits(currentBalance, decimals);
+       setAmount(fmt);
+       setError(null);
+     }
+   }}
+   disabled={isProcessing}
+   balanceContent={
+     <>
+       Balance:{" "}
+       {activeTab === "mint"
+         ? formatBalance(
+             currentBalance,
+             selectedDepositAsset || collateralSymbol,
+             4,
+             selectedDepositAsset?.toLowerCase() === "usdc"
+               ? 6
+               : isNativeETH
+                 ? 18
+                 : selectedTokenDecimals ?? 18
+           )
+         : formatBalance(currentBalance, leveragedTokenSymbol, 4, 18)}
+     </>
    }
- }}
- disabled={isProcessing || !currentBalance}
- className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1.5 text-sm bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white transition-colors disabled:bg-gray-300 disabled:text-gray-500 font-medium"
- >
- MAX
- </button>
- </div>
- </div>
+   error={
+     parsedAmount && currentBalance && parsedAmount > currentBalance
+       ? "Amount exceeds balance"
+       : undefined
+   }
+   inputClassName={`w-full h-14 px-4 pr-24 bg-white text-[#1E4775] border-2 text-xl font-mono disabled:opacity-50 focus:ring-2 focus:outline-none transition-all ${
+     parsedAmount && currentBalance && parsedAmount > currentBalance
+       ? "border-red-500 focus:border-red-500 focus:ring-red-200"
+       : "border-[#1E4775]/30 focus:border-[#1E4775] focus:ring-[#1E4775]/20"
+   }`}
+   maxButtonClassName="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1.5 text-sm bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white transition-colors disabled:bg-gray-300 disabled:text-gray-500 font-medium rounded-none"
+ />
 
  {/* Permit toggle - mint only (match Anchor: text-xs, same switch size) */}
  {activeTab === "mint" && (
-   <div className="flex items-center justify-between border border-[#1E4775]/20 bg-[#17395F]/5 px-3 py-2 text-xs">
-     <div className="text-[#1E4775]/80">
-       Use permit (gasless approval) for this deposit
-     </div>
-     <label className="flex items-center gap-2 text-[#1E4775]/80 cursor-pointer">
-       <span className={permitEnabled ? "text-[#1E4775]" : "text-[#1E4775]/60"}>
-         {permitEnabled ? "On" : "Off"}
-       </span>
-       <button
-         type="button"
-         onClick={() => setPermitEnabled((prev) => !prev)}
-         className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-           permitEnabled ? "bg-[#1E4775]" : "bg-[#1E4775]/30"
-         }`}
-         aria-pressed={permitEnabled}
-         aria-label="Toggle permit usage"
-         disabled={isProcessing}
-       >
-         <span
-           className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-             permitEnabled ? "translate-x-4" : "translate-x-1"
-           }`}
-         />
-       </button>
-     </label>
-   </div>
+   <PermitToggle
+     enabled={permitEnabled}
+     onChange={setPermitEnabled}
+     disabled={isProcessing}
+   />
  )}
 
  {/* Transaction Overview - Anchor-style spacing below */}
- <div className="space-y-2 mt-2">
-   <label className="block text-sm font-semibold text-[#1E4775] mb-1.5">
-     Transaction Overview
-   </label>
-   <div className="p-2.5 bg-[#17395F]/5 border border-[#1E4775]/10">
-     {activeTab === "mint" && (
-       <div className="space-y-2">
-         <div className="flex justify-between items-center">
-           <span className="text-sm font-medium text-[#1E4775]/70">
-             You will receive:
-           </span>
-           <div className="text-right">
-             <div className="text-lg font-bold text-[#1E4775] font-mono">
-               {expectedMintOutput && parsedAmount && parsedAmount > 0n
-                 ? `${Number(formatEther(expectedMintOutput)).toFixed(6)} ${leveragedTokenSymbol}`
-                 : "..."}
-             </div>
-             {(() => {
-               if (!expectedMintOutput || expectedMintOutput === 0n || !parsedAmount || parsedAmount === 0n) return null;
-               const leveragedAmount = Number(formatEther(expectedMintOutput));
-               const depositTokenSym = (selectedDepositAsset || collateralSymbol)?.toLowerCase() ?? "";
-               let depositPriceUSD = 0;
-               if (depositTokenSym === "wsteth" || depositTokenSym === "steth") {
-                 depositPriceUSD = wstETHPrice || 0;
-               } else if (depositTokenSym === "fxsave") {
-                 depositPriceUSD = fxSAVEPrice || 0;
-               } else if (depositTokenSym === "eth" || depositTokenSym === "weth") {
-                 depositPriceUSD = ethPrice || 0;
-               } else if (depositTokenSym === "usdc" || depositTokenSym === "fxusd") {
-                 depositPriceUSD = 1.0;
-               }
-               const depositAmountNum = amount && parseFloat(amount) > 0 ? parseFloat(amount) : 0;
-               const usdValue = depositPriceUSD > 0 && depositAmountNum > 0
-                 ? depositAmountNum * depositPriceUSD
-                 : (() => {
-                     const col = collateralSymbol.toLowerCase();
-                     let p = 0;
-                     if (col === "wsteth" || col === "steth") p = wstETHPrice || 0;
-                     else if (col === "fxsave") p = fxSAVEPrice || 0;
-                     else if (col === "eth") p = ethPrice || 0;
-                     else if (col === "usdc" || col === "fxusd") p = 1.0;
-                     return p > 0 ? leveragedAmount * p : 0;
-                   })();
-               return usdValue > 0 ? (
-                 <div className="text-xs text-[#1E4775]/50 font-mono">
-                   ${usdValue.toLocaleString(undefined, {
-                     minimumFractionDigits: 2,
-                     maximumFractionDigits: 2,
-                   })}
-                 </div>
-               ) : null;
-             })()}
-           </div>
-         </div>
-         {expectedMintOutput && expectedMintOutput > 0n && amount && parseFloat(amount) > 0 && (
-           <div className="text-xs text-[#1E4775]/50 italic text-right">
-             ({parseFloat(amount).toFixed(6)} {selectedDepositAsset || collateralSymbol} ≈ {Number(formatEther(expectedMintOutput)).toFixed(6)} {leveragedTokenSymbol})
-           </div>
-         )}
-         {mintFeePercentage !== undefined && parsedAmount && parsedAmount > 0n && (
-           <div className="pt-2 border-t border-[#1E4775]/20">
-             <div className="flex justify-end items-center gap-2 text-xs text-right">
-               <span
-                 className={`font-bold font-mono ${
-                   mintFeePercentage > 2 ? "text-red-600" : "text-[#1E4775]"
-                 }`}
-               >
-                 Mint Fee: {mintFeePercentage.toFixed(2)}%
-                 {mintFeePercentage > 2 && " ⚠️"}
-               </span>
-             </div>
-           </div>
-         )}
-       </div>
-     )}
-     {activeTab === "redeem" && (
-       <div className="space-y-2">
-         <div className="flex justify-between items-center">
-           <span className="text-sm font-medium text-[#1E4775]/70">
-             You will receive:
-           </span>
-           <div className="text-right">
-             <div className="text-lg font-bold text-[#1E4775] font-mono">
-               {expectedRedeemOutput && parsedAmount && parsedAmount > 0n
-                 ? `${Number(formatEther(expectedRedeemOutput)).toFixed(6)} ${collateralSymbol}`
-                 : "..."}
-             </div>
-             {(() => {
-               if (!expectedRedeemOutput || expectedRedeemOutput === 0n || !parsedAmount || parsedAmount === 0n) return null;
-               const collateralAmount = Number(formatEther(expectedRedeemOutput));
-               const collateralSymbolLower = collateralSymbol.toLowerCase();
-               let priceUSD = 0;
-               if (collateralSymbolLower === "wsteth" || collateralSymbolLower === "steth") {
-                 priceUSD = wstETHPrice || 0;
-               } else if (collateralSymbolLower === "fxsave") {
-                 priceUSD = fxSAVEPrice || 0;
-               } else if (collateralSymbolLower === "eth") {
-                 priceUSD = ethPrice || 0;
-               } else if (collateralSymbolLower === "usdc" || collateralSymbolLower === "fxusd") {
-                 priceUSD = 1.0;
-               }
-               const usdValue = priceUSD > 0 ? collateralAmount * priceUSD : 0;
-               return usdValue > 0 ? (
-                 <div className="text-xs text-[#1E4775]/50 font-mono">
-                   ${usdValue.toLocaleString(undefined, {
-                     minimumFractionDigits: 2,
-                     maximumFractionDigits: 2,
-                   })}
-                 </div>
-               ) : null;
-             })()}
-           </div>
-         </div>
-         {expectedRedeemOutput && expectedRedeemOutput > 0n && amount && parseFloat(amount) > 0 && (
-           <div className="text-xs text-[#1E4775]/50 italic text-right">
-             ({parseFloat(amount).toFixed(6)} {leveragedTokenSymbol} ≈ {Number(formatEther(expectedRedeemOutput)).toFixed(6)} {collateralSymbol})
-           </div>
-         )}
-         {redeemFeePercentage !== undefined && parsedAmount && parsedAmount > 0n && (
-           <div className="pt-2 border-t border-[#1E4775]/20">
-             <div className="flex justify-end items-center gap-2 text-xs text-right">
-               <span
-                 className={`font-bold font-mono ${
-                   redeemFeePercentage > 2 ? "text-red-600" : "text-[#1E4775]"
-                 }`}
-               >
-                 Redemption Fee: {redeemFeePercentage.toFixed(2)}%
-                 {redeemFeePercentage > 2 && " ⚠️"}
-               </span>
-             </div>
-           </div>
-         )}
-       </div>
-     )}
-   </div>
- </div>
+ {(() => {
+   if (activeTab === "mint") {
+     const mintReceive =
+       expectedMintOutput && parsedAmount && parsedAmount > 0n
+         ? `${Number(formatEther(expectedMintOutput)).toFixed(6)} ${leveragedTokenSymbol}`
+         : "...";
+     let mintUsd: string | undefined;
+     if (expectedMintOutput && parsedAmount && parsedAmount > 0n) {
+       const leveragedAmount = Number(formatEther(expectedMintOutput));
+       const depositTokenSym = (selectedDepositAsset || collateralSymbol)?.toLowerCase() ?? "";
+       let depositPriceUSD = 0;
+       if (depositTokenSym === "wsteth" || depositTokenSym === "steth") depositPriceUSD = wstETHPrice || 0;
+       else if (depositTokenSym === "fxsave") depositPriceUSD = fxSAVEPrice || 0;
+       else if (depositTokenSym === "eth" || depositTokenSym === "weth") depositPriceUSD = ethPrice || 0;
+       else if (depositTokenSym === "usdc" || depositTokenSym === "fxusd") depositPriceUSD = 1.0;
+       const depositAmountNum = amount && parseFloat(amount) > 0 ? parseFloat(amount) : 0;
+       const usdValue =
+         depositPriceUSD > 0 && depositAmountNum > 0
+           ? depositAmountNum * depositPriceUSD
+           : (() => {
+               const col = collateralSymbol.toLowerCase();
+               let p = 0;
+               if (col === "wsteth" || col === "steth") p = wstETHPrice || 0;
+               else if (col === "fxsave") p = fxSAVEPrice || 0;
+               else if (col === "eth") p = ethPrice || 0;
+               else if (col === "usdc" || col === "fxusd") p = 1.0;
+               return p > 0 ? leveragedAmount * p : 0;
+             })();
+       if (usdValue > 0)
+         mintUsd = `$${usdValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+     }
+     const rows: OverviewRow[] = [{ label: "You will receive:", value: mintReceive, subValue: mintUsd }];
+     const conversionLine =
+       expectedMintOutput && expectedMintOutput > 0n && amount && parseFloat(amount) > 0
+         ? `(${parseFloat(amount).toFixed(6)} ${selectedDepositAsset || collateralSymbol} ≈ ${Number(formatEther(expectedMintOutput)).toFixed(6)} ${leveragedTokenSymbol})`
+         : undefined;
+     return (
+       <TransactionOverviewCard
+         rows={rows}
+         conversionLine={conversionLine}
+         conversionLineAlign="right"
+         feeLabel={mintFeePercentage != null ? "Mint Fee:" : undefined}
+         feeValue={mintFeePercentage != null ? `${mintFeePercentage.toFixed(2)}%` : undefined}
+         feeWarning={mintFeePercentage != null && mintFeePercentage > 2}
+       />
+     );
+   }
+   const redeemReceive =
+     expectedRedeemOutput && parsedAmount && parsedAmount > 0n
+       ? `${Number(formatEther(expectedRedeemOutput)).toFixed(6)} ${collateralSymbol}`
+       : "...";
+   let redeemUsd: string | undefined;
+   if (expectedRedeemOutput && parsedAmount && parsedAmount > 0n) {
+     const collateralAmount = Number(formatEther(expectedRedeemOutput));
+     const col = collateralSymbol.toLowerCase();
+     let priceUSD = 0;
+     if (col === "wsteth" || col === "steth") priceUSD = wstETHPrice || 0;
+     else if (col === "fxsave") priceUSD = fxSAVEPrice || 0;
+     else if (col === "eth") priceUSD = ethPrice || 0;
+     else if (col === "usdc" || col === "fxusd") priceUSD = 1.0;
+     const usdValue = priceUSD > 0 ? collateralAmount * priceUSD : 0;
+     if (usdValue > 0)
+       redeemUsd = `$${usdValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+   }
+   const rows: OverviewRow[] = [{ label: "You will receive:", value: redeemReceive, subValue: redeemUsd }];
+   const conversionLine =
+     expectedRedeemOutput && expectedRedeemOutput > 0n && amount && parseFloat(amount) > 0
+       ? `(${parseFloat(amount).toFixed(6)} ${leveragedTokenSymbol} ≈ ${Number(formatEther(expectedRedeemOutput)).toFixed(6)} ${collateralSymbol})`
+       : undefined;
+   return (
+     <TransactionOverviewCard
+       rows={rows}
+       conversionLine={conversionLine}
+       conversionLineAlign="right"
+       feeLabel={redeemFeePercentage != null ? "Redemption Fee:" : undefined}
+       feeValue={redeemFeePercentage != null ? `${redeemFeePercentage.toFixed(2)}%` : undefined}
+       feeWarning={redeemFeePercentage != null && redeemFeePercentage > 2}
+     />
+   );
+ })()}
 
  {/* Error - beneath transaction overview (match Genesis/Anchor) */}
- {error && (
- <div className="p-3 bg-red-50 border border-red-500/30 text-red-600 text-sm text-center flex items-center justify-center gap-2">
- <AlertOctagon className="w-4 h-4 flex-shrink-0" aria-hidden />
- {error}
- </div>
- )}
+ {error && <ErrorBanner message={error} />}
 
  {/* Processing Indicator - only show if progress modal is not open */}
  {isProcessing && !progressModal && (
@@ -1966,60 +1790,75 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
 
  {/* Action Buttons - no line above; Anchor-style mt-4 spacing */}
  {!isProcessing && (
- <div className="flex gap-3 mt-4">
- {(step ==="error" || step ==="input") && (
- <button
- onClick={step ==="error" ? handleCancel : handleClose}
- className="flex-1 py-3 px-4 bg-white text-[#1E4775] border-2 border-[#1E4775]/30 font-semibold hover:bg-[#1E4775]/5 transition-colors"
- >
- Cancel
- </button>
- )}
- <button
- onClick={activeTab ==="mint" ? handleMint : handleRedeem}
- disabled={
- step ==="error"
-   ? false
-   : !isConnected ||
-     !amount ||
-     parseFloat(amount) <= 0 ||
-     (activeTab ==="mint" &&
-       parsedAmount &&
-       parsedAmount > currentBalance) ||
-     (activeTab ==="redeem" &&
-       parsedAmount &&
-       parsedAmount > currentBalance)
- }
- className="flex-1 py-3 px-4 bg-[#FF8A7A] text-white font-semibold hover:bg-[#FF6B5A] transition-colors disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
- >
- {step ==="error" ? "Try Again" : activeTab ==="mint" ? "Mint" : "Redeem"}
- </button>
- </div>
- )}
- </div>
- )}
- </div>
- </div>
-
- {/* Transaction Progress Modal */}
- {progressModal && (
- <TransactionProgressModal
- isOpen={progressModal.isOpen}
- onClose={() => {
- setProgressModal(null);
- // Reset form if all steps completed
- if (progressModal.steps.every((s) => s.status ==="completed")) {
- setAmount("");
- setStep("input");
- }
- }}
- title={progressModal.title}
- steps={progressModal.steps}
- currentStepIndex={progressModal.currentStepIndex}
- progressVariant="horizontal"
- errorMessage={progressModal.steps.find(s => s.status === "error")?.error}
+ <ActionButtons
+   primaryLabel={step === "error" ? "Try Again" : activeTab === "mint" ? "Mint" : "Redeem"}
+   primaryAction={activeTab === "mint" ? handleMint : handleRedeem}
+   primaryDisabled={
+     step !== "error" &&
+     (!isConnected ||
+       !amount ||
+       parseFloat(amount) <= 0 ||
+       (activeTab === "mint" && !!parsedAmount && parsedAmount > currentBalance) ||
+       (activeTab === "redeem" && !!parsedAmount && parsedAmount > currentBalance))
+   }
+   secondaryLabel="Cancel"
+   secondaryAction={
+     step === "error" || step === "input"
+       ? () => (step === "error" ? handleCancel() : handleClose())
+       : undefined
+   }
+   variant="pearl"
  />
  )}
  </div>
+ </div>
+     );
+   };
+
+ const config: BaseManageModalConfig = {
+   protocol: "Sail",
+   header: { primaryToken },
+   tabs: [
+     {
+       id: "mint",
+       label: "Mint",
+       disabled: isProcessing,
+       sectionHeading: "Deposit Collateral & Amount",
+       renderContent: renderSailContent,
+     },
+     {
+       id: "redeem",
+       label: "Redeem",
+       disabled: isProcessing,
+       sectionHeading: "Withdraw Collateral & Amount",
+       renderContent: renderSailContent,
+     },
+   ],
+   initialTab,
+   sectionHeadingWithBorder: true,
+   onTabChange: (id) => handleTabChange(id as "mint" | "redeem"),
+ };
+
+ return (
+   <>
+     <BaseManageModal isOpen={isOpen} onClose={handleClose} config={config} />
+     {progressModal && (
+       <TransactionProgressModal
+         isOpen={progressModal.isOpen}
+         onClose={() => {
+           setProgressModal(null);
+           if (progressModal.steps.every((s) => s.status === "completed")) {
+             setAmount("");
+             setStep("input");
+           }
+         }}
+         title={progressModal.title}
+         steps={progressModal.steps}
+         currentStepIndex={progressModal.currentStepIndex}
+         progressVariant="horizontal"
+         errorMessage={progressModal.steps.find((s) => s.status === "error")?.error}
+       />
+     )}
+   </>
  );
 };

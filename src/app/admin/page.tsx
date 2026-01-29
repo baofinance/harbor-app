@@ -12,6 +12,7 @@ import { markets } from "../../config/markets";
 import { ConnectWallet } from "@/components/Wallet";
 import Link from "next/link";
 import { formatTimeRemaining } from "@/utils/formatters";
+import { ERC20_ABI } from "@/abis/shared";
 
 const MINTER_FEES_READS_ABI = [
   {
@@ -125,28 +126,6 @@ const minterABI = [
  },
 ] as const;
 
-const erc20ABI = [
- {
- inputs: [
- { name:"owner", type:"address" },
- { name:"spender", type:"address" },
- ],
- name:"allowance",
- outputs: [{ type:"uint256" }],
- stateMutability:"view",
- type:"function",
- },
- {
- inputs: [
- { name:"spender", type:"address" },
- { name:"amount", type:"uint256" },
- ],
- name:"approve",
- outputs: [{ type:"bool" }],
- stateMutability:"nonpayable",
- type:"function",
- },
-] as const;
 
 const mockPriceFeedABI = [
  {
@@ -535,7 +514,7 @@ export default function Admin() {
  const { data: allowance } = useReadContract({
  address: (markets as any)[Object.keys(markets)[0]].addresses
  .collateralToken as `0x${string}`,
- abi: erc20ABI,
+ abi: ERC20_ABI,
  functionName:"allowance",
  args: [address as `0x${string}`, minterAddress],
  });
@@ -690,7 +669,7 @@ export default function Admin() {
  approve({
  address: (markets as any)[Object.keys(markets)[0]].addresses
  .collateralToken as `0x${string}`,
- abi: erc20ABI,
+ abi: ERC20_ABI,
  functionName:"approve",
  args: [minterAddress, safeParseEther(approvalAmount)],
  });

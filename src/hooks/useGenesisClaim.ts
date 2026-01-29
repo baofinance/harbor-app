@@ -6,50 +6,7 @@ import {
   useWaitForTransactionReceipt,
 } from "wagmi";
 import { markets } from "../config/markets";
-
-const genesisABI = [
-  {
-    inputs: [{ name: "depositor", type: "address" }],
-    name: "balanceOf",
-    outputs: [{ type: "uint256", name: "share" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [{ name: "depositor", type: "address" }],
-    name: "claimable",
-    outputs: [
-      { type: "uint256", name: "peggedAmount" },
-      { type: "uint256", name: "leveragedAmount" },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "genesisIsEnded",
-    outputs: [{ type: "bool", name: "ended" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [{ name: "receiver", type: "address" }],
-    name: "claim",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [
-      { name: "receiver", type: "address" },
-      { name: "minCollateralOut", type: "uint256" },
-    ],
-    name: "withdraw",
-    outputs: [{ type: "uint256", name: "collateralOut" }],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-] as const;
+import { GENESIS_ABI } from "@/abis/shared";
 
 export function useGenesisClaim(marketId: string) {
   const { address } = useAccount();
@@ -58,14 +15,14 @@ export function useGenesisClaim(marketId: string) {
 
   const { data: genesisEnded } = useReadContract({
     address: market?.addresses.genesis as `0x${string}`,
-    abi: genesisABI,
+    abi: GENESIS_ABI,
     functionName: "genesisIsEnded",
     query: { enabled: !!market },
   });
 
   const { data: userShares } = useReadContract({
     address: market?.addresses.genesis as `0x${string}`,
-    abi: genesisABI,
+    abi: GENESIS_ABI,
     functionName: "balanceOf",
     args: address ? [address] : undefined,
     query: { enabled: !!market && !!address },
@@ -73,7 +30,7 @@ export function useGenesisClaim(marketId: string) {
 
   const { data: claimableAmounts } = useReadContract({
     address: market?.addresses.genesis as `0x${string}`,
-    abi: genesisABI,
+    abi: GENESIS_ABI,
     functionName: "claimable",
     args: address ? [address] : undefined,
     query: { enabled: !!market && !!address },
@@ -95,7 +52,7 @@ export function useGenesisClaim(marketId: string) {
 
     claim({
       address: market.addresses.genesis as `0x${string}`,
-      abi: genesisABI,
+      abi: GENESIS_ABI,
       functionName: "claim",
       args: [address],
     });
@@ -106,7 +63,7 @@ export function useGenesisClaim(marketId: string) {
 
     await claim({
       address: market.addresses.genesis as `0x${string}`,
-      abi: genesisABI,
+      abi: GENESIS_ABI,
       functionName: "withdraw",
       args: [address, minAmount],
     });

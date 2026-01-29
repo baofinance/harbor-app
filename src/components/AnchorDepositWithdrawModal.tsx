@@ -15,24 +15,22 @@ import {
 } from "wagmi";
 import { mainnet } from "wagmi/chains";
 import { BaseError, ContractFunctionRevertedError } from "viem";
-import { ERC20_ABI, STABILITY_POOL_ABI } from "@/abis/shared";
+import {
+  ERC20_ABI,
+  STABILITY_POOL_ABI,
+  MINTER_ABI,
+} from "@/abis/shared";
 import { stabilityPoolABI } from "@/abis/stabilityPool";
 import { aprABI } from "@/abis/apr";
 import { ZAP_ABI, USDC_ZAP_ABI, WSTETH_ABI } from "@/abis";
+import { ERC20_PERMIT_ABI } from "@/abis/erc20Permit";
+import { CHAINLINK_AGGREGATOR_ABI } from "@/abis/chainlinkAggregator";
 import { MINTER_ETH_ZAP_V2_ABI, MINTER_USDC_ZAP_V3_ABI } from "@/config/contracts";
 import Image from "next/image";
 import SimpleTooltip from "@/components/SimpleTooltip";
 import InfoTooltip from "@/components/InfoTooltip";
 import { ArrowPathIcon } from "@heroicons/react/24/outline";
-import {
-  Banknote,
-  Bell,
-  AlertOctagon,
-  ChevronDown,
-  ChevronUp,
-  Info,
-  RefreshCw,
-} from "lucide-react";
+import { Banknote, Info, RefreshCw } from "lucide-react";
 import { useAnchorLedgerMarks } from "@/hooks/useAnchorLedgerMarks";
 import { useAnyTokenDeposit } from "@/hooks/useAnyTokenDeposit";
 import { getDefiLlamaSwapTx } from "@/hooks/useDefiLlamaSwap";
@@ -44,31 +42,24 @@ import {
   TransactionStep,
 } from "@/components/TransactionProgressModal";
 import { TokenSelectorDropdown } from "@/components/TokenSelectorDropdown";
-import { InfoCallout } from "@/components/InfoCallout";
+import { AmountInputBlock } from "@/components/AmountInputBlock";
 import {
   calculateDeadline,
   STETH_ZAP_PERMIT_ABI,
   STABILITY_POOL_ZAP_ABI,
   STABILITY_POOL_ZAP_PERMIT_ABI,
 } from "@/utils/permit";
-
-const ERC20_PERMIT_ABI = [
-  {
-    inputs: [
-      { name: "owner", type: "address" },
-      { name: "spender", type: "address" },
-      { name: "value", type: "uint256" },
-      { name: "deadline", type: "uint256" },
-      { name: "v", type: "uint8" },
-      { name: "r", type: "bytes32" },
-      { name: "s", type: "bytes32" },
-    ],
-    name: "permit",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-] as const;
+import { getLogoPath } from "@/lib/logos";
+import {
+  BaseManageModal,
+  type BaseManageModalConfig,
+  type BaseManageModalTabConfig,
+  type TabContentContext,
+  ErrorBanner,
+  NotificationsSection,
+  PermitToggle,
+  type NotificationItem,
+} from "@/components/modal";
 
 // -----------------------------------------------------------------------------
 // Debug logging helpers
@@ -167,128 +158,12 @@ const WSTETH_TOKEN_ADDRESS =
 const STETH_TOKEN_ADDRESS =
   "0xae7ab96520de3a18e5e111b5eaab095312d7fe84" as `0x${string}`;
 
-const CHAINLINK_AGGREGATOR_ABI = [
-  {
-    inputs: [],
-    name: "decimals",
-    outputs: [{ type: "uint8" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "latestRoundData",
-    outputs: [
-      { name: "roundId", type: "uint80" },
-      { name: "answer", type: "int256" },
-      { name: "startedAt", type: "uint256" },
-      { name: "updatedAt", type: "uint256" },
-      { name: "answeredInRound", type: "uint80" },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
-
 const scaleChainlinkToUsdWei = (answer: bigint, decimals: number): bigint => {
   if (answer <= 0n) return 0n;
   if (decimals === 18) return answer;
   if (decimals < 18) return answer * 10n ** BigInt(18 - decimals);
   return answer / 10n ** BigInt(decimals - 18);
 };
-
-// Extended ERC20 ABI with symbol function
-const ERC20_ABI_WITH_SYMBOL = [
-  ...ERC20_ABI,
-  {
-    inputs: [],
-    name: "symbol",
-    outputs: [{ name: "", type: "string" }],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
-
-// Local copy of the minter ABI (includes mint, redeem, price, and dry-run helpers)
-const minterABI = [
-  {
-    inputs: [
-      { name: "collateralIn", type: "uint256" },
-      { name: "receiver", type: "address" },
-      { name: "minPeggedOut", type: "uint256" },
-    ],
-    name: "mintPeggedToken",
-    outputs: [{ type: "uint256", name: "peggedAmount" }],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [{ name: "collateralAmount", type: "uint256" }],
-    name: "calculateMintPeggedTokenOutput",
-    outputs: [{ type: "uint256", name: "peggedAmount" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [
-      { name: "peggedIn", type: "uint256" },
-      { name: "receiver", type: "address" },
-      { name: "minCollateralOut", type: "uint256" },
-    ],
-    name: "redeemPeggedToken",
-    outputs: [{ type: "uint256", name: "collateralAmount" }],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [{ name: "peggedAmount", type: "uint256" }],
-    name: "calculateRedeemPeggedTokenOutput",
-    outputs: [{ type: "uint256", name: "collateralAmount" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "peggedTokenPrice",
-    outputs: [{ type: "uint256", name: "nav", internalType: "uint256" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [
-      {
-        name: "wrappedCollateralIn",
-        type: "uint256",
-      },
-    ],
-    name: "mintPeggedTokenDryRun",
-    outputs: [
-      { name: "incentiveRatio", type: "int256" },
-      { name: "fee", type: "uint256" },
-      { name: "discount", type: "uint256" },
-      { name: "peggedMinted", type: "uint256" },
-      { name: "price", type: "uint256" },
-      { name: "rate", type: "uint256" },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [{ name: "peggedIn", type: "uint256" }],
-    name: "redeemPeggedTokenDryRun",
-    outputs: [
-      { name: "incentiveRatio", type: "int256" },
-      { name: "fee", type: "uint256" },
-      { name: "discount", type: "uint256" },
-      { name: "peggedRedeemed", type: "uint256" },
-      { name: "wrappedCollateralReturned", type: "uint256" },
-      { name: "price", type: "uint256" },
-      { name: "rate", type: "uint256" },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
 
 interface AnchorDepositWithdrawModalProps {
   isOpen: boolean;
@@ -1434,7 +1309,7 @@ export const AnchorDepositWithdrawModal = ({
 
     const contracts: Array<{
       address: `0x${string}`;
-      abi: typeof minterABI;
+      abi: typeof MINTER_ABI;
       functionName: "mintPeggedTokenDryRun";
       args: [bigint];
       marketId: string;
@@ -1454,7 +1329,7 @@ export const AnchorDepositWithdrawModal = ({
         
         contracts.push({
           address: minterAddr as `0x${string}`,
-          abi: minterABI,
+          abi: MINTER_ABI,
           functionName: "mintPeggedTokenDryRun" as const,
           args: [wrappedAmount] as const,
           marketId,
@@ -2776,7 +2651,7 @@ export const AnchorDepositWithdrawModal = ({
   // Get pegged token price to calculate USD value
   const { data: peggedTokenPrice } = useContractRead({
     address: minterAddressForPrice as `0x${string}`,
-    abi: minterABI,
+    abi: MINTER_ABI,
     functionName: "peggedTokenPrice",
     query: {
       enabled:
@@ -3102,7 +2977,7 @@ export const AnchorDepositWithdrawModal = ({
   const { data: rewardTokenSymbols } = useContractReads({
     contracts: rewardTokenAddresses.map((addr) => ({
       address: addr,
-      abi: ERC20_ABI_WITH_SYMBOL,
+      abi: ERC20_ABI,
       functionName: "symbol",
     })),
     query: {
@@ -3446,7 +3321,7 @@ export const AnchorDepositWithdrawModal = ({
   // Calculate expected output based on active tab - use Anvil hook when on Anvil
   const { data: anvilExpectedMintOutput } = useContractRead({
     address: minterAddress as `0x${string}`,
-    abi: minterABI,
+    abi: MINTER_ABI,
     functionName: "mintPeggedTokenDryRun",
     args: accurateDepositAmountInWrappedCollateral ? [accurateDepositAmountInWrappedCollateral] : undefined,
     enabled:
@@ -3461,7 +3336,7 @@ export const AnchorDepositWithdrawModal = ({
 
   const { data: regularExpectedMintOutput } = useContractRead({
     address: minterAddress as `0x${string}`,
-    abi: minterABI,
+    abi: MINTER_ABI,
     functionName: "mintPeggedTokenDryRun",
     args: accurateDepositAmountInWrappedCollateral ? [accurateDepositAmountInWrappedCollateral] : undefined,
     query: {
@@ -3554,7 +3429,7 @@ export const AnchorDepositWithdrawModal = ({
   // Only run when swap quote is ready and amount is debounced
   const { data: swapDryRunOutput } = useContractRead({
     address: minterAddress as `0x${string}`,
-    abi: minterABI,
+    abi: MINTER_ABI,
     functionName: "mintPeggedTokenDryRun",
     args: swappedAmountForDryRun ? [swappedAmountForDryRun] : undefined,
     query: {
@@ -3675,7 +3550,7 @@ export const AnchorDepositWithdrawModal = ({
   const { data: anvilRedeemDryRunData, error: anvilRedeemDryRunError } =
     useContractRead({
       address: redeemDryRunAddress,
-      abi: minterABI,
+      abi: MINTER_ABI,
       functionName: "redeemPeggedTokenDryRun",
       args: redeemInputAmount && redeemInputAmount > 0n ? [redeemInputAmount] : undefined,
       enabled: shouldUseAnvilHook && redeemDryRunEnabled && !!redeemInputAmount && redeemInputAmount > 0n,
@@ -3684,7 +3559,7 @@ export const AnchorDepositWithdrawModal = ({
   const { data: regularRedeemDryRunData, error: regularRedeemDryRunError } =
     useContractRead({
       address: redeemDryRunAddress,
-      abi: minterABI,
+      abi: MINTER_ABI,
       functionName: "redeemPeggedTokenDryRun",
       args: redeemInputAmount && redeemInputAmount > 0n ? [redeemInputAmount] : undefined,
       query: {
@@ -3764,7 +3639,7 @@ export const AnchorDepositWithdrawModal = ({
       : isValidMinterAddress
       ? (minterAddress as `0x${string}`)
       : undefined,
-    abi: minterABI,
+    abi: MINTER_ABI,
     functionName: "calculateRedeemPeggedTokenOutput",
     args: redeemInputAmount ? [redeemInputAmount] : undefined,
     query: {
@@ -3880,7 +3755,7 @@ export const AnchorDepositWithdrawModal = ({
 
   const { data: anvilDryRunData, error: anvilDryRunError } = useContractRead({
     address: feeMinterAddress as `0x${string}`,
-    abi: minterABI,
+    abi: MINTER_ABI,
     functionName: "mintPeggedTokenDryRun",
     args: amountForFeeDryRun ? [amountForFeeDryRun] : undefined,
     enabled: shouldUseAnvilHook && dryRunEnabled && !!amountForFeeDryRun,
@@ -3890,7 +3765,7 @@ export const AnchorDepositWithdrawModal = ({
   const { data: regularDryRunData, error: regularDryRunError } =
     useContractRead({
       address: feeMinterAddress as `0x${string}`,
-      abi: minterABI,
+      abi: MINTER_ABI,
       functionName: "mintPeggedTokenDryRun",
       args: amountForFeeDryRun ? [amountForFeeDryRun] : undefined,
       query: {
@@ -3963,7 +3838,7 @@ export const AnchorDepositWithdrawModal = ({
   // Fetch collateral ratio for the stability pool's market (only when pool is selected)
   const { data: collateralRatioData } = useContractRead({
     address: stabilityPoolMinterAddress as `0x${string}`,
-    abi: minterABI,
+    abi: MINTER_ABI,
     functionName: "collateralRatio",
     query: {
       enabled:
@@ -3980,7 +3855,7 @@ export const AnchorDepositWithdrawModal = ({
   // Fetch config to get minimum collateral ratio for the stability pool's market
   const { data: minterConfigData } = useContractRead({
     address: stabilityPoolMinterAddress as `0x${string}`,
-    abi: minterABI,
+    abi: MINTER_ABI,
     functionName: "config",
     query: {
       enabled:
@@ -6017,7 +5892,7 @@ export const AnchorDepositWithdrawModal = ({
                     // Read dry run synchronously with actual wstETH amount
                     const dryRunResult = await publicClient.readContract({
                       address: marketForDryRun.addresses.minter as `0x${string}`,
-                      abi: minterABI,
+                      abi: MINTER_ABI,
                       functionName: "mintPeggedTokenDryRun",
                       args: [wstEthAmount as bigint],
             });
@@ -6040,7 +5915,7 @@ export const AnchorDepositWithdrawModal = ({
                       const wstEthAmount = (swappedAmount * 10n ** 18n) / wrappedRate;
                       const dryRunResult = await publicClient.readContract({
                         address: marketForDryRun.addresses.minter as `0x${string}`,
-                        abi: minterABI,
+                        abi: MINTER_ABI,
                         functionName: "mintPeggedTokenDryRun",
                         args: [wstEthAmount],
                       });
@@ -7725,7 +7600,7 @@ export const AnchorDepositWithdrawModal = ({
 
           mintHash = await writeContractAsync({
             address: minterAddress as `0x${string}`,
-            abi: minterABI,
+            abi: MINTER_ABI,
             functionName: "mintPeggedToken",
             args: [amountBigInt, address as `0x${string}`, minPeggedOut],
           });
@@ -8124,7 +7999,7 @@ export const AnchorDepositWithdrawModal = ({
                 try {
                   poolAssetSymbol = (await readClient?.readContract({
                     address: poolAssetToken,
-                    abi: ERC20_ABI_WITH_SYMBOL,
+                    abi: ERC20_ABI,
                     functionName: "symbol",
                   })) as string;
                 } catch {}
@@ -8918,7 +8793,7 @@ export const AnchorDepositWithdrawModal = ({
         try {
           const freshDryRunResult = (await client.readContract({
             address: minterAddress as `0x${string}`,
-            abi: minterABI,
+            abi: MINTER_ABI,
             functionName: "redeemPeggedTokenDryRun",
               args: [redeemAmount],
             })) as [bigint, bigint, bigint, bigint, bigint, bigint, bigint] | undefined;
@@ -8933,7 +8808,7 @@ export const AnchorDepositWithdrawModal = ({
         try {
           redeemHash = await writeContractAsync({
             address: minterAddress as `0x${string}`,
-            abi: minterABI,
+            abi: MINTER_ABI,
             functionName: "redeemPeggedToken",
               args: [redeemAmount, address as `0x${string}`, minCollateralOut],
           });
@@ -8944,7 +8819,7 @@ export const AnchorDepositWithdrawModal = ({
           );
           redeemHash = await writeContractAsync({
             address: minterAddress as `0x${string}`,
-            abi: minterABI,
+            abi: MINTER_ABI,
             functionName: "redeemPeggedToken",
               args: [redeemAmount, address as `0x${string}`, 0n],
           });
@@ -9140,7 +9015,7 @@ export const AnchorDepositWithdrawModal = ({
       try {
         redeemHash = await writeContractAsync({
           address: targetMinterAddress as `0x${string}`,
-          abi: minterABI,
+          abi: MINTER_ABI,
           functionName: "redeemPeggedToken",
           args: [redeemAmount, address as `0x${string}`, minCollateralOut],
         });
@@ -9155,7 +9030,7 @@ export const AnchorDepositWithdrawModal = ({
           }
           redeemHash = await writeContractAsync({
             address: targetMinterAddress as `0x${string}`,
-            abi: minterABI,
+            abi: MINTER_ABI,
             functionName: "redeemPeggedToken",
             args: [redeemAmount, address as `0x${string}`, 0n],
           });
@@ -9413,92 +9288,14 @@ export const AnchorDepositWithdrawModal = ({
       )}
 
       {/* Main Modal - hide when progress modal is showing */}
-      {!showProgressModal && isOpen && (
-      <div className="fixed inset-0 z-50 flex items-center justify-center">
-        <div
-          className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-          onClick={handleClose}
-        />
-
-        <div className="relative bg-white shadow-2xl w-full max-w-md mx-2 sm:mx-4 max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in-0 scale-in-95 duration-200">
-          {/* Protocol and Market Header */}
-          {(() => {
-            const currentMarket = selectedMarket || market;
-            const peggedToken = currentMarket?.peggedToken;
-            if (!peggedToken?.symbol) return null;
-            return (
-              <div className="bg-[#1E4775] text-white px-3 sm:px-4 py-2 sm:py-2.5 flex items-center justify-between">
-                <div className="text-sm sm:text-base font-semibold">
-                  Anchor
-                </div>
-                <div className="flex items-center gap-2">
-                  {peggedToken.icon && (
-                    <img
-                      src={peggedToken.icon}
-                      alt={peggedToken.symbol}
-                      className="w-5 h-5 sm:w-6 sm:h-6"
-                    />
-                  )}
-                  <span className="text-sm sm:text-base font-semibold">
-                    {peggedToken.symbol}
-                  </span>
-                </div>
-              </div>
-            );
-          })()}
-          
-          {/* Header with tabs and close button */}
-          <div className="flex items-center justify-between p-0 pt-2 sm:pt-3 px-2 sm:px-3 border-b border-[#1E4775]/10">
-            {/* Tab-style header - takes most of width but leaves room for X */}
-            <div className="flex flex-1 mr-2 sm:mr-4 border border-[#1E4775]/20 border-b-0 overflow-hidden">
-              <button
-                onClick={() => handleTabChange("deposit")}
-                disabled={isProcessing}
-                className={`flex-1 py-2 sm:py-3 text-sm sm:text-base font-semibold transition-colors touch-target ${
-                  activeTab === "deposit"
-                    ? "bg-[#1E4775] text-white"
-                    : "bg-[#eef1f7] text-[#4b5a78]"
-                } disabled:opacity-50 disabled:cursor-not-allowed`}
-              >
-                Deposit
-              </button>
-              <button
-                onClick={() => handleTabChange("withdraw")}
-                disabled={isProcessing}
-                className={`flex-1 py-2 sm:py-3 text-sm sm:text-base font-semibold transition-colors touch-target ${
-                  activeTab === "withdraw"
-                    ? "bg-[#1E4775] text-white"
-                    : "bg-[#eef1f7] text-[#4b5a78]"
-                } disabled:opacity-50 disabled:cursor-not-allowed`}
-              >
-                Withdraw
-              </button>
-            </div>
-            <button
-              onClick={handleClose}
-              className="text-[#1E4775]/50 hover:text-[#1E4775] transition-colors flex-shrink-0 touch-target flex items-center justify-center w-6 h-6 sm:w-7 sm:h-7"
-              aria-label="Close modal"
-              title={
-                isProcessing ? "Close modal (will cancel transaction)" : "Close"
-              }
-            >
-              <svg
-                className="w-5 h-5 sm:w-6 sm:h-6"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={3}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
-            </button>
-          </div>
-
-          <div className="p-5 flex-1 overflow-y-auto">
+      {!showProgressModal && isOpen && (() => {
+        const currentMarket = selectedMarket || market;
+        const pegged = currentMarket?.peggedToken;
+        const primaryToken = pegged
+          ? { symbol: pegged.symbol, icon: (pegged as { icon?: string }).icon ?? getLogoPath(pegged.symbol) }
+          : { symbol: "?", icon: getLogoPath("") };
+        const renderAnchorContent = (_ctx: TabContentContext) => (
+          <>
             {simpleMode && activeTab === "deposit" ? (
               // Simple Mode: Step-by-Step Flow
               <div className="space-y-4">
@@ -9680,113 +9477,81 @@ export const AnchorDepositWithdrawModal = ({
                           </p>
                         )}
 
-                        <div className="mt-2 space-y-2">
-                          <button
-                            type="button"
-                            onClick={() =>
+                        <div className="mt-2">
+                          <NotificationsSection
+                            notifications={[
+                              ...(!anyTokenDeposit.needsSwap
+                                ? [
+                                    {
+                                      tone: "success" as const,
+                                      title: "Tip:",
+                                      icon: (
+                                        <RefreshCw className="w-4 h-4 flex-shrink-0 mt-0.5 text-green-600" />
+                                      ),
+                                      content:
+                                        "You can deposit any ERC20 token! Non-collateral tokens will be automatically swapped via Velora.",
+                                    },
+                                  ]
+                                : []),
+                              {
+                                title: "Info:",
+                                icon: (
+                                  <Info className="w-4 h-4 flex-shrink-0 mt-0.5 text-blue-600" />
+                                ),
+                                content:
+                                  "For large deposits, Harbor recommends using wstETH or fxSAVE instead of the built-in swap and zaps.",
+                              },
+                              ...(selectedDepositAsset &&
+                              !anyTokenDeposit.needsSwap &&
+                              selectedDepositAsset !== activeCollateralSymbol &&
+                              selectedDepositAsset !== activeWrappedCollateralSymbol &&
+                              !isDirectPeggedDeposit
+                                ? [
+                                    {
+                                      tone: "pearl" as const,
+                                      title: "Deposit:",
+                                      icon: (
+                                        <Banknote className="w-4 h-4 flex-shrink-0 mt-0.5 text-[#D57A3D]" />
+                                      ),
+                                      content: (
+                                        <>
+                                          Your tokens will be converted to{" "}
+                                          {activeWrappedCollateralSymbol} on
+                                          deposit. Withdrawals will be in{" "}
+                                          {activeWrappedCollateralSymbol} only.
+                                        </>
+                                      ),
+                                    },
+                                  ]
+                                : []),
+                            ]}
+                            expanded={showNotifications}
+                            onToggle={() =>
                               setShowNotifications((prev) => !prev)
                             }
-                            className="flex w-full items-center justify-between text-sm font-semibold text-[#1E4775]"
-                            aria-expanded={showNotifications}
-                          >
-                            <span>Notifications</span>
-                            <span className="flex items-center gap-2">
-                              {!showNotifications && (() => {
-                                // Determine highest risk color: orange (high) > blue (middle) > green (low)
-                                const hasPearlOrange = selectedDepositAsset &&
-                                  !anyTokenDeposit.needsSwap &&
-                                  selectedDepositAsset !== activeCollateralSymbol &&
-                                  selectedDepositAsset !== activeWrappedCollateralSymbol &&
-                                  !isDirectPeggedDeposit;
-                                const hasBlueInfo = true; // Always shown
-                                const hasGreenTip = !anyTokenDeposit.needsSwap;
-                                
-                                let highestRiskColor = null;
-                                if (hasPearlOrange) {
-                                  highestRiskColor = "orange"; // Pearl orange = high risk
-                                } else if (hasBlueInfo) {
-                                  highestRiskColor = "blue"; // Blue = middle risk
-                                } else if (hasGreenTip) {
-                                  highestRiskColor = "green"; // Green = low risk
-                                }
-                                
-                                const notificationCount = (hasGreenTip ? 1 : 0) + 1 + (hasPearlOrange ? 1 : 0);
-                                const badgeBgColor = highestRiskColor === "orange" 
-                                  ? "bg-[#FF8A7A]/20" 
-                                  : highestRiskColor === "blue"
-                                  ? "bg-blue-100"
-                                  : "bg-green-100";
-                                const badgeTextColor = highestRiskColor === "orange"
-                                  ? "text-[#FF8A7A]"
-                                  : highestRiskColor === "blue"
-                                  ? "text-blue-600"
-                                  : "text-green-600";
-                                
-                                return (
-                                  <span className={`flex items-center gap-1 ${badgeBgColor} px-2 py-0.5 text-xs ${badgeTextColor}`}>
-                                    <Bell className="h-3 w-3" />
-                                    {notificationCount}
-                                  </span>
-                                );
-                              })()}
-                              {showNotifications ? (
-                                <ChevronUp className="h-4 w-4 text-[#1E4775]/70" />
-                              ) : (
-                                <ChevronDown className="h-4 w-4 text-[#1E4775]/70" />
-                              )}
-                            </span>
-                          </button>
-                          {showNotifications && (
-                            <div className="space-y-2">
-                              {!anyTokenDeposit.needsSwap && (
-                                <InfoCallout
-                                  tone="success"
-                                  title="Tip:"
-                                  icon={
-                                    <RefreshCw className="w-4 h-4 flex-shrink-0 mt-0.5 text-green-600" />
-                                  }
-                                >
-                                  You can deposit any ERC20 token!
-                                  Non-collateral tokens will be automatically
-                                  swapped via Velora.
-                                </InfoCallout>
-                              )}
-
-                              <InfoCallout
-                                title="Info:"
-                                icon={
-                                  <Info className="w-4 h-4 flex-shrink-0 mt-0.5 text-blue-600" />
-                                }
-                              >
-                                For large deposits, Harbor recommends using
-                                wstETH or fxSAVE instead of the built-in swap
-                                and zaps.
-                              </InfoCallout>
-
-                              {selectedDepositAsset &&
-                                !anyTokenDeposit.needsSwap &&
-                                selectedDepositAsset !==
-                                  activeCollateralSymbol &&
-                                selectedDepositAsset !==
-                                  activeWrappedCollateralSymbol &&
-                                !isDirectPeggedDeposit && (
-                                  <InfoCallout
-                                    tone="pearl"
-                                    icon={
-                                      <Banknote className="w-4 h-4 flex-shrink-0 mt-0.5 text-[#D57A3D]" />
-                                    }
-                                  >
-                                    <span className="font-semibold">
-                                      Deposit:
-                                    </span>{" "}
-                                    Your tokens will be converted to{" "}
-                                    {activeWrappedCollateralSymbol} on deposit.
-                                    Withdrawals will be in{" "}
-                                    {activeWrappedCollateralSymbol} only.
-                                  </InfoCallout>
-                                )}
-                            </div>
-                          )}
+                            badgeCount={
+                              (!anyTokenDeposit.needsSwap ? 1 : 0) +
+                              1 +
+                              (selectedDepositAsset &&
+                              !anyTokenDeposit.needsSwap &&
+                              selectedDepositAsset !== activeCollateralSymbol &&
+                              selectedDepositAsset !==
+                                activeWrappedCollateralSymbol &&
+                              !isDirectPeggedDeposit
+                                ? 1
+                                : 0)
+                            }
+                            badgeColor={
+                              selectedDepositAsset &&
+                              !anyTokenDeposit.needsSwap &&
+                              selectedDepositAsset !== activeCollateralSymbol &&
+                              selectedDepositAsset !==
+                                activeWrappedCollateralSymbol &&
+                              !isDirectPeggedDeposit
+                                ? "orange"
+                                : "blue"
+                            }
+                          />
                         </div>
                         {/* Fee Display for Selected Deposit Token */}
                         {selectedDepositAsset &&
@@ -9883,15 +9648,18 @@ export const AnchorDepositWithdrawModal = ({
                           })()}
                       </div>
 
-                      <div>
-                        <div className="flex justify-between items-center mb-2">
-                          <label className="block text-sm font-semibold text-[#1E4775]">
-                            Enter Amount
-                          </label>
-                          <span className="text-sm text-[#1E4775]/70">
+                      <AmountInputBlock
+                        label="Enter Amount"
+                        value={amount}
+                        onChange={handleAmountChange}
+                        onMax={handleMaxClick}
+                        disabled={isProcessing}
+                        error={error || undefined}
+                        balanceContent={
+                          <>
                             Balance:{" "}
                             {selectedAssetBalance !== null
-                              ? (isUSDC 
+                              ? (isUSDC
                                   ? formatUnits(selectedAssetBalance, 6)
                                   : formatEther(selectedAssetBalance))
                               : (isUSDC
@@ -9899,41 +9667,24 @@ export const AnchorDepositWithdrawModal = ({
                                   : formatEther(collateralBalance))}
                             {" "}
                             {selectedDepositAsset || activeCollateralSymbol}
-                          </span>
-                        </div>
-                        <div className="relative">
-                          <input
-                            type="text"
-                            value={amount}
-                            onChange={handleAmountChange}
-                            placeholder="0.0"
-                            className={`w-full h-14 px-4 pr-24 bg-white text-[#1E4775] border-2 ${
-                              error ? "border-red-500" : "border-[#1E4775]/30"
-                            } focus:border-[#1E4775] focus:ring-2 focus:ring-[#1E4775]/20 focus:outline-none transition-all text-xl font-mono `}
-                            disabled={isProcessing}
-                          />
-                          {/* Warning - always reserve space to prevent layout shift */}
-                          <div className="absolute right-20 top-1/2 -translate-y-1/2 z-10 pointer-events-none">
-                            {tempMaxWarning ? (
-                              <div className="px-2.5 py-1 text-xs bg-[#FF8A7A]/90 border border-[#FF8A7A] text-white font-semibold whitespace-nowrap shadow-lg animate-pulse-once">
-                                ⚠️ {tempMaxWarning}
-                              </div>
-                            ) : (
-                              <div className="px-2.5 py-1 text-xs invisible whitespace-nowrap">
-                                {/* Invisible placeholder to reserve space */}
-                                ⚠️ Max: 0.0000
-                              </div>
-                            )}
-                          </div>
-                          <button
-                            onClick={handleMaxClick}
-                            className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1.5 text-sm bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white transition-colors disabled:bg-gray-300 disabled:text-gray-500 font-medium"
-                            disabled={isProcessing}
-                          >
-                            MAX
-                          </button>
-                        </div>
-                      </div>
+                          </>
+                        }
+                        inputClassName={`w-full h-14 px-4 pr-24 bg-white text-[#1E4775] border-2 text-xl font-mono focus:ring-2 focus:outline-none transition-all ${
+                          error ? "border-red-500 focus:border-red-500 focus:ring-red-200" : "border-[#1E4775]/30 focus:border-[#1E4775] focus:ring-[#1E4775]/20"
+                        }`}
+                        maxButtonClassName="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1.5 text-sm bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white transition-colors disabled:bg-gray-300 disabled:text-gray-500 font-medium rounded-none"
+                        inlineWarning={
+                          tempMaxWarning ? (
+                            <div className="px-2.5 py-1 text-xs bg-[#FF8A7A]/90 border border-[#FF8A7A] text-white font-semibold whitespace-nowrap shadow-lg animate-pulse-once">
+                              ⚠️ {tempMaxWarning}
+                            </div>
+                          ) : (
+                            <div className="px-2.5 py-1 text-xs invisible whitespace-nowrap">
+                              ⚠️ Max: 0.0000
+                            </div>
+                          )
+                        }
+                      />
 
                       {/* Mint Only Checkbox - Only show in Step 1, below amount input, and only if not depositing haToken directly */}
                       {currentStep === 1 && !isDirectPeggedDeposit && (
@@ -9987,42 +9738,11 @@ export const AnchorDepositWithdrawModal = ({
                       )}
 
                       {showPermitToggle && (
-                        <div className="flex items-center justify-between border border-[#1E4775]/20 bg-[#17395F]/5 px-3 py-2 text-xs">
-                          <div className="text-[#1E4775]/80">
-                            Use permit (gasless approval) for this deposit
-                          </div>
-                          <label className="flex items-center gap-2 text-[#1E4775]/80">
-                            <span
-                              className={
-                                permitEnabled
-                                  ? "text-[#1E4775]"
-                                  : "text-[#1E4775]/60"
-                              }
-                            >
-                              {permitEnabled ? "On" : "Off"}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => setPermitEnabled((prev) => !prev)}
-                              className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-                                permitEnabled
-                                  ? "bg-[#1E4775]"
-                                  : "bg-[#1E4775]/30"
-                              }`}
-                              aria-pressed={permitEnabled}
-                              aria-label="Toggle permit usage"
-                              disabled={isProcessing}
-                            >
-                              <span
-                                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                                  permitEnabled
-                                    ? "translate-x-4"
-                                    : "translate-x-1"
-                                }`}
-                              />
-                            </button>
-                          </label>
-                        </div>
+                        <PermitToggle
+                          enabled={permitEnabled}
+                          onChange={setPermitEnabled}
+                          disabled={isProcessing}
+                        />
                       )}
 
                       {/* Swap Preview - show when using any token deposit (always visible when swap asset is selected) */}
@@ -10250,12 +9970,7 @@ export const AnchorDepositWithdrawModal = ({
                         )}
 
                       {/* Error - beneath transaction overview */}
-                      {error && (
-                        <div className="p-3 bg-red-50 border border-red-500/30 text-red-600 text-sm text-center flex items-center justify-center gap-2">
-                          <AlertOctagon className="w-4 h-4 flex-shrink-0" aria-hidden />
-                          {error}
-                        </div>
-                      )}
+                      {error && <ErrorBanner message={error} />}
 
                       <button
                         onClick={() => {
@@ -10854,12 +10569,7 @@ export const AnchorDepositWithdrawModal = ({
                         )}
 
                         {/* Error - beneath transaction overview (match step 1; show when user cancels on Mint & Deposit) */}
-                        {error && (
-                          <div className="mt-3 p-3 bg-red-50 border border-red-500/30 text-red-600 text-sm text-center flex items-center justify-center gap-2">
-                            <AlertOctagon className="w-4 h-4 flex-shrink-0" aria-hidden />
-                            {error}
-                          </div>
-                        )}
+                        {error && <ErrorBanner message={error} className="mt-3" />}
 
                         <div className="flex gap-3">
                           {isProcessing ? (
@@ -11137,52 +10847,23 @@ export const AnchorDepositWithdrawModal = ({
                 {/* Withdraw Options - Only for Withdraw Tab */}
                 {activeTab === "withdraw" && (
                   <div className="space-y-3">
-                    <div className="flex items-center justify-center text-xs text-[#1E4775]/50 pb-3">
-                      <div className="text-[#1E4775] font-semibold">
-                        Withdraw Collateral & Amount
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setShowNotifications((prev) => !prev)
-                        }
-                        className="flex w-full items-center justify-between text-sm font-semibold text-[#1E4775]"
-                        aria-expanded={showNotifications}
-                      >
-                        <span>Notifications</span>
-                        <span className="flex items-center gap-2">
-                          {!showNotifications && (
-                            <span className="flex items-center gap-1 bg-blue-100 px-2 py-0.5 text-xs text-blue-600">
-                              <Bell className="h-3 w-3" />
-                              1
-                            </span>
-                          )}
-                          {showNotifications ? (
-                            <ChevronUp className="h-4 w-4 text-[#1E4775]/70" />
-                          ) : (
-                            <ChevronDown className="h-4 w-4 text-[#1E4775]/70" />
-                          )}
-                        </span>
-                      </button>
-                      {showNotifications && (
-                        <div className="space-y-2">
-                          <InfoCallout
-                            tone="info"
-                            title="Info:"
-                            icon={
-                              <Info className="w-4 h-4 flex-shrink-0 mt-0.5 text-blue-600" />
-                            }
-                          >
-                            Select positions to withdraw. If you include wallet
-                            tokens and/or do immediate pool withdrawals, we will
-                            automatically redeem the resulting ha tokens to
-                            collateral.
-                          </InfoCallout>
-                        </div>
-                      )}
-                    </div>
+                    <NotificationsSection
+                      notifications={[
+                        {
+                          tone: "info",
+                          title: "Info:",
+                          icon: (
+                            <Info className="w-4 h-4 flex-shrink-0 mt-0.5 text-blue-600" />
+                          ),
+                          content:
+                            "Select positions to withdraw. If you include wallet tokens and/or do immediate pool withdrawals, we will automatically redeem the resulting ha tokens to collateral.",
+                        },
+                      ]}
+                      expanded={showNotifications}
+                      onToggle={() => setShowNotifications((prev) => !prev)}
+                      badgeCount={1}
+                      badgeColor="blue"
+                    />
                   </div>
                 )}
 
@@ -12924,10 +12605,7 @@ export const AnchorDepositWithdrawModal = ({
 
                 {/* Error - beneath transaction overview (withdraw) */}
                 {activeTab === "withdraw" && error && (
-                  <div className="mt-3 p-3 bg-red-50 border border-red-500/30 text-red-600 text-sm text-center flex items-center justify-center gap-2">
-                    <AlertOctagon className="w-4 h-4 flex-shrink-0" aria-hidden />
-                    {error}
-                  </div>
+                  <ErrorBanner message={error} className="mt-3" />
                 )}
 
                 {/* Simple Mode Info - Show optimized selection */}
@@ -13284,10 +12962,7 @@ export const AnchorDepositWithdrawModal = ({
 
                 {/* Error - right column only for deposit; withdraw shows error beneath overview in main content */}
                 {activeTab !== "withdraw" && error && (
-                  <div className="p-3 bg-red-50 border border-red-500/30 text-red-600 text-sm text-center flex items-center justify-center gap-2">
-                    <AlertOctagon className="w-4 h-4 flex-shrink-0" aria-hidden />
-                    {error}
-                  </div>
+                  <ErrorBanner message={error} />
                 )}
 
                 {txHash && (
@@ -13318,66 +12993,94 @@ export const AnchorDepositWithdrawModal = ({
                 )}
               </>
             )}
-          </div>
-
-          {step !== "success" && !simpleMode && (
-            <div className="flex gap-3 p-4 border-t border-[#1E4775]/20">
-              {isProcessing ? (
-                <>
-                  <button
-                    onClick={handleCancel}
-                    className="flex-1 py-2 px-4 bg-white text-[#1E4775] border-2 border-[#1E4775]/30 font-medium transition-colors hover:bg-[#1E4775]/5"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    disabled
-                    className="flex-1 py-2 px-4 font-medium cursor-not-allowed bg-[#FF8A7A]/50 text-white"
-                  >
-                    {getButtonText()}
-                  </button>
-                </>
-              ) : step === "error" ? (
-                <>
-                  <button
-                    onClick={handleCancel}
-                    className="flex-1 py-2 px-4 bg-white text-[#1E4775] border-2 border-[#1E4775]/30 font-medium transition-colors hover:bg-[#1E4775]/5"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleAction}
-                    className="flex-1 py-2 px-4 font-medium transition-colors bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white"
-                  >
-                    {getButtonText()}
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button
-                    onClick={
-                      step === "input"
-                        ? handleCancel
-                        : handleBackToWithdrawInput
-                    }
-                    className="flex-1 py-2 px-4 bg-white text-[#1E4775] border-2 border-[#1E4775]/30 font-medium transition-colors hover:bg-[#1E4775]/5"
-                  >
-                    {step === "input" ? "Cancel" : "Back"}
-                  </button>
-                  <button
-                    onClick={handleAction}
-                    disabled={isButtonDisabled()}
-                    className="flex-1 py-2 px-4 font-medium transition-colors disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white"
-                  >
-                    {getButtonText()}
-                  </button>
-                </>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-      )}
+            {step !== "success" && !simpleMode && (
+              <div className="flex gap-3 p-4 border-t border-[#1E4775]/20">
+                {isProcessing ? (
+                  <>
+                    <button
+                      onClick={handleCancel}
+                      className="flex-1 py-2 px-4 bg-white text-[#1E4775] border-2 border-[#1E4775]/30 font-medium transition-colors hover:bg-[#1E4775]/5"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      disabled
+                      className="flex-1 py-2 px-4 font-medium cursor-not-allowed bg-[#FF8A7A]/50 text-white"
+                    >
+                      {getButtonText()}
+                    </button>
+                  </>
+                ) : step === "error" ? (
+                  <>
+                    <button
+                      onClick={handleCancel}
+                      className="flex-1 py-2 px-4 bg-white text-[#1E4775] border-2 border-[#1E4775]/30 font-medium transition-colors hover:bg-[#1E4775]/5"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleAction}
+                      className="flex-1 py-2 px-4 font-medium transition-colors bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white"
+                    >
+                      {getButtonText()}
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      onClick={
+                        step === "input"
+                          ? handleCancel
+                          : handleBackToWithdrawInput
+                      }
+                      className="flex-1 py-2 px-4 bg-white text-[#1E4775] border-2 border-[#1E4775]/30 font-medium transition-colors hover:bg-[#1E4775]/5"
+                    >
+                      {step === "input" ? "Cancel" : "Back"}
+                    </button>
+                    <button
+                      onClick={handleAction}
+                      disabled={isButtonDisabled()}
+                      className="flex-1 py-2 px-4 font-medium transition-colors disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white"
+                    >
+                      {getButtonText()}
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
+          </>
+        );
+        const config: BaseManageModalConfig = {
+          protocol: "Anchor",
+          header: { primaryToken },
+          tabs: [
+            {
+              id: "deposit",
+              label: "Deposit",
+              disabled: isProcessing,
+              sectionHeading: "Deposit",
+              renderContent: renderAnchorContent,
+            },
+            {
+              id: "withdraw",
+              label: "Withdraw",
+              disabled: isProcessing,
+              sectionHeading: "Withdraw Collateral & Amount",
+              renderContent: renderAnchorContent,
+            },
+          ],
+          initialTab: getInitialTab(),
+          sectionHeadingWithBorder: true,
+          onTabChange: (id) => handleTabChange(id as TabType),
+        };
+        return (
+          <BaseManageModal
+            isOpen={isOpen}
+            onClose={handleClose}
+            config={config}
+          />
+        );
+      })()}
     </>
   );
 };

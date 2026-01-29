@@ -35,16 +35,17 @@ import { useAnyTokenDeposit } from "@/hooks/useAnyTokenDeposit";
 import { TokenSelectorDropdown } from "@/components/TokenSelectorDropdown";
 import { usePermitOrApproval } from "@/hooks/usePermitOrApproval";
 import { InfoCallout } from "@/components/InfoCallout";
-import {
-  AlertOctagon,
-  Banknote,
-  Bell,
-  ChevronDown,
-  ChevronUp,
-  Info,
-  RefreshCw,
-} from "lucide-react";
+import { Banknote, Info, RefreshCw } from "lucide-react";
 import { AmountInputBlock } from "@/components/AmountInputBlock";
+import {
+  ActionButtons,
+  ErrorBanner,
+  NotificationsSection,
+  PermitToggle,
+  TransactionOverviewCard,
+  type NotificationItem,
+  type OverviewRow,
+} from "@/components/modal";
 
 interface GenesisDepositModalProps {
  isOpen: boolean;
@@ -67,6 +68,7 @@ priceOracle?: string;
  peggedTokenSymbol?: string; // haToken symbol (e.g., "haETH", "haBTC")
  onSuccess?: () => void;
  embedded?: boolean;
+ hideSectionHeading?: boolean;
 }
 
 // formatTokenAmount is now imported from utils/formatters
@@ -87,6 +89,7 @@ export const GenesisDepositModal = ({
  peggedTokenSymbol,
  onSuccess,
  embedded = false,
+ hideSectionHeading = false,
 }: GenesisDepositModalProps) => {
  const { address } = useAccount();
  const wagmiPublicClient = usePublicClient();
@@ -1935,11 +1938,13 @@ const successFmt = formatTokenAmount(
   // Deposit form content
   const formContent = (
     <div className="space-y-4 sm:space-y-6">
-      <div className="flex items-center justify-center text-xs text-[#1E4775]/50 pb-3 border-b border-[#d1d7e5]">
-        <div className="text-[#1E4775] font-semibold">
-          Deposit Collateral & Amount
+      {!hideSectionHeading && (
+        <div className="flex items-center justify-center text-xs text-[#1E4775]/50 pb-3 border-b border-[#d1d7e5]">
+          <div className="text-[#1E4775] font-semibold">
+            Deposit Collateral & Amount
+          </div>
         </div>
-      </div>
+      )}
  {/* Genesis Status Warning */}
  {genesisEnded && (
  <div className="p-3 bg-red-50 border border-red-500/30 text-red-600 text-sm">
@@ -2033,89 +2038,48 @@ Select Deposit Token
    </div>
  )}
  
- <div className="mt-2 space-y-2">
-   <button
-     type="button"
-     onClick={() => setShowNotifications((prev) => !prev)}
-     className="flex w-full items-center justify-between text-sm font-semibold text-[#1E4775]"
-     aria-expanded={showNotifications}
-   >
-     <span>Notifications</span>
-     <span className="flex items-center gap-2">
-       {!showNotifications && (() => {
-         // Determine highest risk color: orange (high) > blue (middle) > green (low)
-         let highestRiskColor = null;
-         if (isNonCollateralAsset) {
-           highestRiskColor = "orange"; // Pearl orange = high risk
-         } else {
-           highestRiskColor = "blue"; // Blue = middle risk
-         }
-         // Green (low risk) is only shown if no other notifications exist
-         
-         const notificationCount = (!needsSwap ? 1 : 0) + 1 + (isNonCollateralAsset ? 1 : 0);
-         const badgeBgColor = highestRiskColor === "orange" 
-           ? "bg-[#FF8A7A]/20" 
-           : highestRiskColor === "blue"
-           ? "bg-blue-100"
-           : "bg-green-100";
-         const badgeTextColor = highestRiskColor === "orange"
-           ? "text-[#FF8A7A]"
-           : highestRiskColor === "blue"
-           ? "text-blue-600"
-           : "text-green-600";
-         
-         return (
-           <span className={`flex items-center gap-1 ${badgeBgColor} px-2 py-0.5 text-xs ${badgeTextColor}`}>
-             <Bell className="h-3 w-3" />
-             {notificationCount}
-           </span>
-         );
-       })()}
-       {showNotifications ? (
-         <ChevronUp className="h-4 w-4 text-[#1E4775]/70" />
-       ) : (
-         <ChevronDown className="h-4 w-4 text-[#1E4775]/70" />
-       )}
-     </span>
-   </button>
-   {showNotifications && (
-     <div className="space-y-2">
-       {!needsSwap && (
-         <InfoCallout
-           tone="success"
-           title="Tip:"
-           icon={
-             <RefreshCw className="w-4 h-4 flex-shrink-0 mt-0.5 text-green-600" />
-           }
-         >
-           You can deposit any ERC20 token! Non-collateral tokens will be
-           automatically swapped via Velora.
-         </InfoCallout>
-       )}
-
-       <InfoCallout
-         title="Info:"
-         icon={<Info className="w-4 h-4 flex-shrink-0 mt-0.5 text-blue-600" />}
-       >
-         For large deposits, Harbor recommends using wstETH or fxSAVE instead of
-         the built-in swap and zaps.
-       </InfoCallout>
-
-       {isNonCollateralAsset && (
-         <InfoCallout
-           tone="pearl"
-           icon={
-             <Banknote className="w-4 h-4 flex-shrink-0 mt-0.5 text-[#D57A3D]" />
-           }
-         >
-          <span className="font-semibold">Deposit:</span> Your tokens will be
-          converted to {wrappedCollateralSymbol || collateralSymbol} on
-          deposit. Withdrawals will be in{" "}
-          {wrappedCollateralSymbol || collateralSymbol} only.
-         </InfoCallout>
-       )}
-     </div>
-   )}
+ <div className="mt-2">
+   <NotificationsSection
+     notifications={[
+       ...(!needsSwap
+         ? [
+             {
+               tone: "success" as const,
+               title: "Tip:",
+               icon: <RefreshCw className="w-4 h-4 flex-shrink-0 mt-0.5 text-green-600" />,
+               content:
+                 "You can deposit any ERC20 token! Non-collateral tokens will be automatically swapped via Velora.",
+             },
+           ]
+         : []),
+       {
+         title: "Info:",
+         icon: <Info className="w-4 h-4 flex-shrink-0 mt-0.5 text-blue-600" />,
+         content:
+           "For large deposits, Harbor recommends using wstETH or fxSAVE instead of the built-in swap and zaps.",
+       },
+       ...(isNonCollateralAsset
+         ? [
+             {
+               tone: "pearl" as const,
+               title: "Deposit:",
+               icon: <Banknote className="w-4 h-4 flex-shrink-0 mt-0.5 text-[#D57A3D]" />,
+               content: (
+                 <>
+                   Your tokens will be converted to {wrappedCollateralSymbol || collateralSymbol} on
+                   deposit. Withdrawals will be in {wrappedCollateralSymbol || collateralSymbol}{" "}
+                   only.
+                 </>
+               ),
+             },
+           ]
+         : []),
+     ]}
+     expanded={showNotifications}
+     onToggle={() => setShowNotifications((prev) => !prev)}
+     badgeCount={(!needsSwap ? 1 : 0) + 1 + (isNonCollateralAsset ? 1 : 0)}
+     badgeColor={isNonCollateralAsset ? "orange" : "blue"}
+   />
  </div>
  </div>
 
@@ -2156,240 +2120,135 @@ Select Deposit Token
 
  {/* Permit toggle (direct USDC/FXUSD/stETH only) */}
  {showPermitToggle && (
-   <div className="flex items-center justify-between border border-[#1E4775]/20 bg-[#17395F]/5 px-3 py-2 text-xs">
-     <div className="text-[#1E4775]/80">
-       Use permit (gasless approval) for this deposit
-     </div>
-     <label className="flex items-center gap-2 text-[#1E4775]/80">
-       <span className={permitEnabled ? "text-[#1E4775]" : "text-[#1E4775]/60"}>
-         {permitEnabled ? "On" : "Off"}
-       </span>
-       <button
-         type="button"
-         onClick={() => setPermitEnabled((prev) => !prev)}
-         className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-           permitEnabled ? "bg-[#1E4775]" : "bg-[#1E4775]/30"
-         }`}
-         aria-pressed={permitEnabled}
-         aria-label="Toggle permit usage"
-       >
-         <span
-           className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-             permitEnabled ? "translate-x-4" : "translate-x-1"
-           }`}
-         />
-       </button>
-     </label>
-  </div>
-)}
+   <PermitToggle
+     enabled={permitEnabled}
+     onChange={setPermitEnabled}
+     disabled={step === "approving" || step === "depositing"}
+   />
+ )}
 
 {/* Transaction Overview */}
-<div className="space-y-2">
-  <label className="block text-sm font-semibold text-[#1E4775] mb-1.5">
-    Transaction Overview
-  </label>
-  <div className="p-3 bg-[#17395F]/5 border border-[#1E4775]/10">
-    {/* Transaction Preview - Always visible */}
-    <div className="space-y-2 text-sm">
- 
- {/* Swap details - show when swapping */}
- {needsSwap && swapQuote && swapQuote.toAmount > 0n && (() => {
-   const targetToken = isFxSAVEMarket ? "USDC" : "ETH";
-   const targetDecimals = isFxSAVEMarket ? 6 : 18;
-   return (
-   <div className="p-2 bg-blue-50 border border-blue-200 space-y-1 text-xs">
-     <div className="flex items-center justify-between">
-       <span className="text-blue-700">Swap via Velora:</span>
-       <span className="font-mono text-blue-900">{formatUnits(swapQuote.toAmount, targetDecimals)} {targetToken}</span>
-     </div>
-     <div className="flex items-center justify-between">
-       <span className="text-blue-700">Slippage Tolerance:</span>
-       {showSlippageInput ? (
-         <div className="flex items-center gap-1">
-           <input
-             type="text"
-             value={slippageInputValue}
-             onChange={(e) => {
-               const input = e.target.value;
-               // Allow empty, numbers, and decimal point
-               if (input === "" || /^\d*\.?\d*$/.test(input)) {
-                 setSlippageInputValue(input);
-               }
-             }}
-             onBlur={() => {
-               const val = parseFloat(slippageInputValue);
-               if (!isNaN(val) && val >= 0.1 && val <= 50) {
-                 setSlippageTolerance(val);
-               } else {
-                 // Reset to current valid value if invalid
-                 setSlippageInputValue(slippageTolerance.toFixed(1));
-               }
-               setShowSlippageInput(false);
-             }}
-             onKeyDown={(e) => {
-               if (e.key === 'Enter') {
-                 const val = parseFloat(slippageInputValue);
-                 if (!isNaN(val) && val >= 0.1 && val <= 50) {
-                   setSlippageTolerance(val);
-                 } else {
-                   setSlippageInputValue(slippageTolerance.toFixed(1));
-                 }
-                 setShowSlippageInput(false);
-               } else if (e.key === 'Escape') {
-                 setSlippageInputValue(slippageTolerance.toFixed(1));
-                 setShowSlippageInput(false);
-               }
-             }}
-             autoFocus
-             className="w-16 px-1 py-0.5 text-right font-mono text-blue-900 border border-blue-300 focus:outline-none focus:border-blue-500"
-           />
-           <span className="text-blue-900">%</span>
-         </div>
-       ) : (
-         <button
-           onClick={() => {
-             setSlippageInputValue(slippageTolerance.toFixed(1));
-             setShowSlippageInput(true);
-           }}
-           className="font-mono text-blue-900 hover:text-blue-600 underline decoration-dotted cursor-pointer"
-         >
-           {slippageTolerance.toFixed(1)}%
-         </button>
-       )}
-     </div>
-     <div className="flex items-center justify-between">
-       <span className="text-blue-700">Velora Fee:</span>
-       <span className="font-mono text-blue-700">
-         {swapQuote.fee.toFixed(2)}%
-       </span>
-     </div>
-   </div>
-   );
- })()}
- 
-{(() => {
-  const displaySymbol = wrappedCollateralSymbol || collateralSymbol;
-  const currentFmt = formatTokenAmount(userCurrentDeposit, displaySymbol, collateralPriceUSD);
-  return (
-    <div className="flex justify-between items-baseline">
- <span className="text-[#1E4775]/70">Current Deposit:</span>
- <span className="text-[#1E4775]">
-        {currentFmt.display}
-        {currentFmt.usd && <span className="text-[#1E4775]/50 ml-1">({currentFmt.usd})</span>}
- </span>
- </div>
-  );
-})()}
- {amount && parseFloat(amount) > 0 ? (
- <>
-{(() => {
-  // Always use actualCollateralDeposit - this is the canonical value that represents what will actually be deposited
-  // For direct deposits (wstETH, fxSAVE), actualCollateralDeposit = amountBigInt
-  // For converted deposits (ETH→wstETH, USDC→fxSAVE), actualCollateralDeposit = converted amount
-  // For swapped deposits, actualCollateralDeposit = amount after swap and conversion
-  const depositAmt = actualCollateralDeposit;
-  // For deposit display, show the amount being deposited
-  // Display in wrapped collateral symbol since that's what gets stored
-  // Use wrapped token price (collateralPriceUSD) since depositAmt is in wrapped collateral tokens
-  const displaySymbol = wrappedCollateralSymbol || collateralSymbol;
-  
-  // Don't show deposit amount if we're still loading token decimals (to avoid showing incorrect values)
-  // For USDC and ETH, we know the decimals, so no loading check needed
-  const isCalculating = !hasValidDecimals && amount && parseFloat(amount) > 0;
-  
-  const depositFmt = formatTokenAmount(depositAmt, displaySymbol, collateralPriceUSD);
-  return (
-    <div className="flex justify-between items-baseline">
-      <span className="text-[#1E4775]/70">+ Deposit Amount:</span>
- <span className="text-[#1E4775]">
-        {isCalculating ? (
-          "Calculating..."
-        ) : depositAmt > 0n ? (
-          <>
-            +{depositFmt.display}
-            {depositFmt.usd && <span className="text-[#1E4775]/50 ml-1">(+{depositFmt.usd})</span>}
-          </>
-        ) : (
-          "Calculating..."
-        )}
- </span>
- </div>
-  );
-})()}
-{((isNativeETH || isStETH || isUSDC || isFXUSD || needsSwap) && actualCollateralDeposit > 0n) && (
-<div className="text-xs text-[#1E4775]/50 italic text-right">
-{needsSwap && swapQuote && swapQuote.toAmount > 0n ? (
-  <>
-    {parseFloat(amount).toFixed(6)} {selectedAsset} → {formatUnits(swapQuote.toAmount, 6)} USDC → {formatTokenAmount(actualCollateralDeposit, wrappedCollateralSymbol || collateralSymbol, undefined, 6, 18).display}
-  </>
-) : needsSwap && isLoadingSwapQuote ? (
-  <>
-    {parseFloat(amount).toFixed(6)} {selectedAsset} → Calculating swap... → {formatTokenAmount(actualCollateralDeposit, wrappedCollateralSymbol || collateralSymbol, undefined, 6, 18).display}
-  </>
-) : (
-  <>
-    ({isUSDC ? parseFloat(amount).toFixed(2) : parseFloat(amount).toFixed(6)} {selectedAsset} ≈ {formatTokenAmount(actualCollateralDeposit, wrappedCollateralSymbol || collateralSymbol, undefined, 6, 18).display})
-  </>
-)}
-</div>
-)}
- <div className="border-t border-[#1E4775]/30 pt-2">
-{(() => {
-  // For total deposit, we need to calculate the USD value correctly
-  // Both current deposit and new deposit are in wrapped collateral tokens (fxSAVE, wstETH)
-  // So we use wrapped token price (collateralPriceUSD) for both
-  const currentDepositUSD = userCurrentDeposit > 0n 
-    ? (Number(userCurrentDeposit) / 1e18) * collateralPriceUSD 
-    : 0;
-  // Always use actualCollateralDeposit for consistency
-  const depositAmt = actualCollateralDeposit;
-  // depositAmt is in wrapped collateral tokens, so use wrapped token price
-  const newDepositUSD = depositAmt > 0n 
-    ? (Number(depositAmt) / 1e18) * collateralPriceUSD 
-    : 0;
-  const totalUSD = currentDepositUSD + newDepositUSD;
-  
-  const displaySymbol = wrappedCollateralSymbol || collateralSymbol;
-  const totalFmt = formatTokenAmount(newTotalDepositActual, displaySymbol);
-  const totalUSDFormatted = totalUSD > 0 ? formatUSD(totalUSD) : null;
-  
-  return (
-    <>
-      {/* Total deposits */}
-      <div className="flex justify-between items-center">
-        <span className="text-sm font-medium text-[#1E4775]/70">Total deposits:</span>
-        <div className="text-right">
-          <div className="text-lg font-bold text-[#1E4775] font-mono">
-            {totalFmt.display}
-          </div>
-          {totalUSDFormatted && (
-            <div className="text-xs text-[#1E4775]/50 font-mono">
-              {totalUSDFormatted}
+{amount && parseFloat(amount) > 0 ? (
+  (() => {
+    const displaySymbol = wrappedCollateralSymbol || collateralSymbol;
+    const currentFmt = formatTokenAmount(userCurrentDeposit, displaySymbol, collateralPriceUSD);
+    const depositAmt = actualCollateralDeposit;
+    const isCalculating = !hasValidDecimals && amount && parseFloat(amount) > 0;
+    const depositFmt = formatTokenAmount(depositAmt, displaySymbol, collateralPriceUSD);
+    const currentDepositUSD = userCurrentDeposit > 0n ? (Number(userCurrentDeposit) / 1e18) * collateralPriceUSD : 0;
+    const newDepositUSD = depositAmt > 0n ? (Number(depositAmt) / 1e18) * collateralPriceUSD : 0;
+    const totalUSD = currentDepositUSD + newDepositUSD;
+    const totalFmt = formatTokenAmount(newTotalDepositActual, displaySymbol);
+    const totalUSDFormatted = totalUSD > 0 ? formatUSD(totalUSD) : undefined;
+    const swapPrefix =
+      needsSwap && swapQuote && swapQuote.toAmount > 0n ? (
+        (() => {
+          const targetToken = isFxSAVEMarket ? "USDC" : "ETH";
+          const targetDecimals = isFxSAVEMarket ? 6 : 18;
+          return (
+            <div className="p-2 bg-blue-50 border border-blue-200 space-y-1 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-blue-700">Swap via Velora:</span>
+                <span className="font-mono text-blue-900">
+                  {formatUnits(swapQuote.toAmount, targetDecimals)} {targetToken}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-blue-700">Slippage Tolerance:</span>
+                {showSlippageInput ? (
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="text"
+                      value={slippageInputValue}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        if (v === "" || /^\d*\.?\d*$/.test(v)) setSlippageInputValue(v);
+                      }}
+                      onBlur={() => {
+                        const val = parseFloat(slippageInputValue);
+                        if (!isNaN(val) && val >= 0.1 && val <= 50) setSlippageTolerance(val);
+                        else setSlippageInputValue(slippageTolerance.toFixed(1));
+                        setShowSlippageInput(false);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          const val = parseFloat(slippageInputValue);
+                          if (!isNaN(val) && val >= 0.1 && val <= 50) setSlippageTolerance(val);
+                          else setSlippageInputValue(slippageTolerance.toFixed(1));
+                          setShowSlippageInput(false);
+                        } else if (e.key === "Escape") {
+                          setSlippageInputValue(slippageTolerance.toFixed(1));
+                          setShowSlippageInput(false);
+                        }
+                      }}
+                      autoFocus
+                      className="w-16 px-1 py-0.5 text-right font-mono text-blue-900 border border-blue-300 focus:outline-none focus:border-blue-500"
+                    />
+                    <span className="text-blue-900">%</span>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSlippageInputValue(slippageTolerance.toFixed(1));
+                      setShowSlippageInput(true);
+                    }}
+                    className="font-mono text-blue-900 hover:text-blue-600 underline decoration-dotted cursor-pointer"
+                  >
+                    {slippageTolerance.toFixed(1)}%
+                  </button>
+                )}
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-blue-700">Velora Fee:</span>
+                <span className="font-mono text-blue-700">{swapQuote.fee.toFixed(2)}%</span>
+              </div>
             </div>
-          )}
-        </div>
-      </div>
-    </>
-  );
-})()}
-  </div>
- </>
- ) : (
- <div className="text-xs text-[#1E4775]/50 italic">
- Enter an amount to see deposit preview
- </div>
- )}
+          );
+        })()
+      ) : undefined;
+    const conversionLine =
+      (isNativeETH || isStETH || isUSDC || isFXUSD || needsSwap) && actualCollateralDeposit > 0n
+        ? needsSwap && swapQuote && swapQuote.toAmount > 0n
+          ? `${parseFloat(amount).toFixed(6)} ${selectedAsset} → ${formatUnits(swapQuote.toAmount, 6)} USDC → ${formatTokenAmount(actualCollateralDeposit, displaySymbol, undefined, 6, 18).display}`
+          : needsSwap && isLoadingSwapQuote
+            ? `${parseFloat(amount).toFixed(6)} ${selectedAsset} → Calculating swap... → ${formatTokenAmount(actualCollateralDeposit, displaySymbol, undefined, 6, 18).display}`
+            : `(${isUSDC ? parseFloat(amount).toFixed(2) : parseFloat(amount).toFixed(6)} ${selectedAsset} ≈ ${formatTokenAmount(actualCollateralDeposit, displaySymbol, undefined, 6, 18).display})`
+        : undefined;
+    const rows: OverviewRow[] = [
+      { label: "Current Deposit:", value: currentFmt.display, subValue: currentFmt.usd ? `(${currentFmt.usd})` : undefined },
+      {
+        label: "+ Deposit Amount:",
+        value: isCalculating ? "Calculating..." : depositAmt > 0n ? `+${depositFmt.display}` : "Calculating...",
+        subValue: !isCalculating && depositAmt > 0n && depositFmt.usd ? `(+${depositFmt.usd})` : undefined,
+      },
+      {
+        label: "Total deposits:",
+        value: totalFmt.display,
+        subValue: totalUSDFormatted,
+        rowClassName: "pt-2 border-t border-[#1E4775]/30",
+      },
+    ];
+    return (
+      <TransactionOverviewCard
+        prefix={swapPrefix}
+        rows={rows}
+        conversionLine={conversionLine}
+        conversionLineAlign="right"
+      />
+    );
+  })()
+) : (
+  <div className="space-y-2 mt-2">
+    <label className="block text-sm font-semibold text-[#1E4775] mb-1.5">Transaction Overview</label>
+    <div className="p-2.5 bg-[#17395F]/5 border border-[#1E4775]/10">
+      <div className="text-xs text-[#1E4775]/50 italic">Enter an amount to see deposit preview</div>
     </div>
   </div>
-</div>
+)}
 
  {/* Error */}
- {error && (
- <div className="p-3 bg-red-50 border border-red-500/30 text-red-600 text-sm flex items-center justify-center gap-2">
- <AlertOctagon className="w-4 h-4 flex-shrink-0" aria-hidden />
- {error}
- </div>
- )}
+ {error && <ErrorBanner message={error} />}
 
  {/* Step Indicator */}
  {needsApproval && !canAttemptPermit &&
@@ -2452,26 +2311,15 @@ Select Deposit Token
  )}
 
       {/* Submit Buttons */}
-      <div className="flex gap-2">
-        <button
-          onClick={handleClose}
-          disabled={step === "approving" || step === "depositing"}
-          className="flex-1 py-3 px-4 bg-white text-[#1E4775] border-2 border-[#1E4775]/30 font-semibold hover:bg-[#1E4775]/5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          Cancel
-        </button>
-        <button
-          onClick={handleMainButtonClick}
-          disabled={isButtonDisabled()}
-          className={`flex-1 py-3 px-4 font-semibold transition-colors ${
-            step === "success"
-              ? "bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white"
-              : "bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
-          }`}
-        >
-          {getButtonText()}
-        </button>
-      </div>
+      <ActionButtons
+        primaryLabel={getButtonText()}
+        primaryAction={handleMainButtonClick}
+        primaryDisabled={isButtonDisabled()}
+        secondaryLabel="Cancel"
+        secondaryAction={handleClose}
+        secondaryDisabled={step === "approving" || step === "depositing"}
+        variant="pearl"
+      />
     </div>
   );
 

@@ -18,8 +18,15 @@ import {
 import { formatTokenAmount, formatBalance, formatUSD } from "@/utils/formatters";
 import { useWrappedCollateralPrice } from "@/hooks/useWrappedCollateralPrice";
 import { AmountInputBlock } from "@/components/AmountInputBlock";
-import { InfoCallout } from "@/components/InfoCallout";
-import { AlertOctagon, ChevronUp, ChevronDown, Bell, RefreshCw, Info } from "lucide-react";
+import {
+  ActionButtons,
+  ErrorBanner,
+  NotificationsSection,
+  TransactionOverviewCard,
+  type OverviewRow,
+  type NotificationItem,
+} from "@/components/modal";
+import { GENESIS_ABI } from "@/abis/shared";
 
 interface GenesisWithdrawalModalProps {
  isOpen: boolean;
@@ -32,22 +39,10 @@ priceOracleAddress?: string;
  peggedTokenSymbol?: string; // haToken symbol (e.g., "haETH", "haBTC", "haEUR")
  onSuccess?: () => void;
  embedded?: boolean;
+ hideSectionHeading?: boolean;
 }
 
 // formatTokenAmount is now imported from utils/formatters
-
-const genesisABI = [
- {
- inputs: [
- { name:"amount", type:"uint256" },
- { name:"receiver", type:"address" },
- ],
- name:"withdraw",
- outputs: [{ type:"uint256", name:"collateralOut" }],
- stateMutability:"nonpayable",
- type:"function",
- },
-] as const;
 
 type ModalStep ="input" |"withdrawing" |"success" |"error";
 
@@ -62,6 +57,7 @@ priceOracleAddress,
  peggedTokenSymbol,
  onSuccess,
  embedded = false,
+ hideSectionHeading = false,
 }: GenesisWithdrawalModalProps) => {
  const { address } = useAccount();
  const [amount, setAmount] = useState("");
@@ -98,7 +94,7 @@ const collateralPriceUSD = wrappedPriceData.priceUSD;
 
  const { data: simulateData, error: simulateError } = useSimulateContract({
  address: genesisAddress as `0x${string}`,
- abi: genesisABI,
+ abi: GENESIS_ABI,
  functionName:"withdraw",
  args: [withdrawAmount, address as `0x${string}`],
  chainId: mainnet.id,
@@ -202,7 +198,7 @@ const collateralPriceUSD = wrappedPriceData.priceUSD;
 
  const hash = await writeContractAsync({
  address: genesisAddress as `0x${string}`,
- abi: genesisABI,
+ abi: GENESIS_ABI,
  functionName:"withdraw",
  args: [withdrawAmount, address as `0x${string}`],
  chainId: mainnet.id,
@@ -298,11 +294,13 @@ const successUSD = successAmountNum > 0 && collateralPriceUSD > 0
   // Withdraw form content
   const formContent = (
     <div className="space-y-4 sm:space-y-6">
-      <div className="flex items-center justify-center text-xs text-[#1E4775]/50 pb-3 border-b border-[#d1d7e5]">
-        <div className="text-[#1E4775] font-semibold">
-          Withdraw Collateral & Amount
+      {!hideSectionHeading && (
+        <div className="flex items-center justify-center text-xs text-[#1E4775]/50 pb-3 border-b border-[#d1d7e5]">
+          <div className="text-[#1E4775] font-semibold">
+            Withdraw Collateral & Amount
+          </div>
         </div>
-      </div>
+      )}
  {/* Balance */}
 {(() => {
   const depositFmt = formatTokenAmount(
@@ -322,40 +320,21 @@ const successUSD = successAmountNum > 0 && collateralPriceUSD > 0
 })()}
 
  {/* Notifications Section */}
- <div className="space-y-2">
-   <button
-     type="button"
-     onClick={() => setShowNotifications((prev) => !prev)}
-     className="flex items-center justify-between w-full text-sm font-semibold text-[#1E4775] hover:text-[#17395F] transition-colors"
-     aria-expanded={showNotifications}
-   >
-     <span>Notifications</span>
-     <span className="flex items-center gap-2">
-       {!showNotifications && (
-         <span className="flex items-center gap-1 bg-amber-100 px-2 py-0.5 text-xs text-amber-600">
-           <Bell className="h-3 w-3" />
-           1
-         </span>
-       )}
-       {showNotifications ? (
-         <ChevronUp className="h-4 w-4 text-[#1E4775]/70" />
-       ) : (
-         <ChevronDown className="h-4 w-4 text-[#1E4775]/70" />
-       )}
-     </span>
-   </button>
-   {showNotifications && (
-     <div className="space-y-2">
-       <InfoCallout
-         tone="warning"
-         icon={<AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5 text-amber-600" />}
-         title="Harbor Marks Warning: "
-       >
-         Withdrawing forfeits any Harbor Marks for withdrawn assets. Only assets deposited at the end of Maiden Voyage are eligible for Harbor Marks earned throughout the Maiden Voyage period.
-       </InfoCallout>
-     </div>
-   )}
- </div>
+ <NotificationsSection
+   notifications={[
+     {
+       tone: "warning",
+       title: "Harbor Marks Warning: ",
+       icon: <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5 text-amber-600" />,
+       content:
+         "Withdrawing forfeits any Harbor Marks for withdrawn assets. Only assets deposited at the end of Maiden Voyage are eligible for Harbor Marks earned throughout the Maiden Voyage period.",
+     },
+   ]}
+   expanded={showNotifications}
+   onToggle={() => setShowNotifications((prev) => !prev)}
+   badgeCount={1}
+   badgeColor="amber"
+ />
 
  {/* Amount Input */}
  <AmountInputBlock
@@ -376,88 +355,44 @@ const successUSD = successAmountNum > 0 && collateralPriceUSD > 0
  />
 
 {/* Transaction Overview */}
-{amount && parseFloat(amount ||"0") > 0 && (
-<div className="space-y-2">
-  <label className="block text-sm font-semibold text-[#1E4775] mb-1.5">
-    Transaction Overview
-  </label>
-  <div className="p-3 bg-[#17395F]/5 border border-[#1E4775]/10">
-    {/* Transaction Preview */}
-    <div className="space-y-2 text-sm">
-
-{(() => {
-  const currentFmt = formatTokenAmount(
-    userDeposit,
-    collateralSymbol,
-    collateralPriceUSD
-  );
-  return (
-    <div className="flex justify-between items-baseline">
-      <span className="text-[#1E4775]/70">Current Deposit:</span>
-      <span className="text-[#1E4775]">
-        {currentFmt.display}
-        {currentFmt.usd && <span className="text-[#1E4775]/50 ml-1">({currentFmt.usd})</span>}
-      </span>
-    </div>
-  );
-})()}
-{(() => {
+{amount && parseFloat(amount || "0") > 0 && (() => {
+  const currentFmt = formatTokenAmount(userDeposit, collateralSymbol, collateralPriceUSD);
   const withdrawAmt = isMaxWithdrawal ? userDeposit : amountBigInt;
-  const withdrawFmt = formatTokenAmount(
-    withdrawAmt,
-    collateralSymbol,
-    collateralPriceUSD
-  );
-  return (
-    <div className="flex justify-between items-baseline">
-      <span className="text-[#1E4775]/70">- Withdraw Amount:</span>
-      <span className="text-[#1E4775]">
-        -{withdrawFmt.display}
-        {withdrawFmt.usd && <span className="text-[#1E4775]/50 ml-1">(-{withdrawFmt.usd})</span>}
-      </span>
-    </div>
-  );
+  const withdrawFmt = formatTokenAmount(withdrawAmt, collateralSymbol, collateralPriceUSD);
+  const remainingFmt = formatTokenAmount(remainingDeposit, collateralSymbol, collateralPriceUSD);
+  const remainingUSD =
+    remainingDeposit > 0n && collateralPriceUSD > 0
+      ? (Number(remainingDeposit) / 1e18) * collateralPriceUSD
+      : 0;
+  const remainingUSDFormatted = remainingUSD > 0 ? formatUSD(remainingUSD) : undefined;
+  const rows: OverviewRow[] = [
+    {
+      label: "Current Deposit:",
+      value: currentFmt.display,
+      subValue: currentFmt.usd ? `(${currentFmt.usd})` : undefined,
+    },
+    {
+      label: "- Withdraw Amount:",
+      value: `-${withdrawFmt.display}`,
+      subValue: withdrawFmt.usd ? `(-${withdrawFmt.usd})` : undefined,
+    },
+    {
+      label: "Remaining Deposit:",
+      value:
+        remainingDeposit === 0n ? (
+          <span className="text-orange-600">{remainingFmt.display}</span>
+        ) : (
+          remainingFmt.display
+        ),
+      subValue: remainingUSDFormatted ?? undefined,
+      subValueClassName: remainingDeposit === 0n ? "text-orange-400" : undefined,
+    },
+  ];
+  return <TransactionOverviewCard rows={rows} />;
 })()}
-<div className="border-t border-[#1E4775]/30 pt-2">
-{(() => {
-  const remainingFmt = formatTokenAmount(
-    remainingDeposit,
-    collateralSymbol,
-    collateralPriceUSD
-  );
-  const remainingUSD = remainingDeposit > 0n && collateralPriceUSD > 0
-    ? (Number(remainingDeposit) / 1e18) * collateralPriceUSD
-    : 0;
-  const remainingUSDFormatted = remainingUSD > 0 ? formatUSD(remainingUSD) : null;
-  return (
-    <div className="flex justify-between items-center">
-      <span className="text-sm font-medium text-[#1E4775]/70">Remaining Deposit:</span>
-      <div className="text-right">
-        <div className={`text-lg font-bold font-mono ${remainingDeposit === 0n ? "text-orange-600" : "text-[#1E4775]"}`}>
-          {remainingFmt.display}
-        </div>
-        {remainingUSDFormatted && (
-          <div className={`text-xs font-mono ${remainingDeposit === 0n ? "text-orange-400" : "text-[#1E4775]/50"}`}>
-            {remainingUSDFormatted}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-})()}
-</div>
-    </div>
-  </div>
-</div>
- )}
 
  {/* Error - beneath transaction overview */}
- {error && (
- <div className="p-3 bg-red-50 border border-red-500/30 text-red-600 text-sm text-center flex items-center justify-center gap-2">
- <AlertOctagon className="w-4 h-4 flex-shrink-0" aria-hidden />
- {error}
- </div>
- )}
+ {error && <ErrorBanner message={error} />}
 
  {/* Transaction Hash */}
  {txHash && (
@@ -482,29 +417,20 @@ const successUSD = successAmountNum > 0 && collateralPriceUSD > 0
  )}
 
       {/* Submit Button */}
-      <div>
- <button
- onClick={handleWithdraw}
- disabled={
-            step === "withdrawing" ||
- !amount ||
- parseFloat(amount) <= 0 ||
- userDeposit === 0n ||
- !!simulateError
- }
-          className={`w-full py-3 px-4 font-semibold transition-colors ${
-            step === "success"
-              ? "bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white"
-              : "bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white disabled:bg-gray-300 disabled:text-gray-500"
- }`}
- >
-          {step === "withdrawing"
-            ? "Withdrawing..."
-            : step === "error"
-            ? "Try Again"
-            : "Withdraw"}
- </button>
-      </div>
+      <ActionButtons
+        primaryLabel={
+          step === "withdrawing" ? "Withdrawing..." : step === "error" ? "Try Again" : "Withdraw"
+        }
+        primaryAction={handleWithdraw}
+        primaryDisabled={
+          step === "withdrawing" ||
+          !amount ||
+          parseFloat(amount) <= 0 ||
+          userDeposit === 0n ||
+          !!simulateError
+        }
+        variant="pearl"
+      />
     </div>
   );
 

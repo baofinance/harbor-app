@@ -8,6 +8,7 @@ import Link from "next/link";
 import Image from "next/image";
 import WalletButton from "../../components/WalletButton";
 import Navigation from "../../components/Navigation";
+import { ERC20_ABI } from "@/abis/shared";
 
 const geo = Geo({
   subsets: ["latin"],
@@ -77,43 +78,6 @@ const votingEscrowABI = [
   },
 ] as const;
 
-const erc20ABI = [
-  {
-    inputs: [{ name: "account", type: "address" }],
-    name: "balanceOf",
-    outputs: [{ type: "uint256", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [
-      { name: "spender", type: "address" },
-      { name: "amount", type: "uint256" },
-    ],
-    name: "approve",
-    outputs: [{ type: "bool", name: "" }],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [
-      { name: "owner", type: "address" },
-      { name: "spender", type: "address" },
-    ],
-    name: "allowance",
-    outputs: [{ type: "uint256", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "symbol",
-    outputs: [{ type: "string", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
-
 interface StakingState {
   amount: string;
   lockDuration: number; // in weeks
@@ -177,7 +141,7 @@ export default function Staking() {
       // First approve tokens
       await write({
         address: "0xTokenAddress" as `0x${string}`,
-        abi: erc20ABI,
+        abi: ERC20_ABI,
         functionName: "approve",
         args: ["0xVotingEscrowAddress" as `0x${string}`, parsedAmount],
       });

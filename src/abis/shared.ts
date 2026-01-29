@@ -167,6 +167,16 @@ export const GENESIS_ABI = [
     type: "function",
   },
   {
+    inputs: [
+      { name: "receiver", type: "address" },
+      { name: "minCollateralOut", type: "uint256" },
+    ],
+    name: "withdraw",
+    outputs: [{ type: "uint256", name: "collateralOut" }],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
     inputs: [{ name: "receiver", type: "address" }],
     name: "claim",
     outputs: [],
@@ -710,6 +720,13 @@ export const MINTER_ABI_EXTENDED = [
  * Used for fxUSD and other wrapped collateral price feeds
  */
 export const WRAPPED_PRICE_ORACLE_ABI = [
+  {
+    inputs: [],
+    name: "decimals",
+    outputs: [{ type: "uint8", name: "" }],
+    stateMutability: "view",
+    type: "function",
+  },
   {
     inputs: [],
     name: "latestAnswer",

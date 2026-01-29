@@ -26,6 +26,7 @@ import SimpleTooltip from "@/components/SimpleTooltip";
 import { getLogoPath } from "@/components/shared";
 import { SailManageModal } from "@/components/SailManageModal";
 import { minterABI } from "@/abis/minter";
+import { ERC20_ABI } from "@/abis/shared";
 import { useSailPositionPnL } from "@/hooks/useSailPositionPnL";
 import { useSailPositionsPnLSummary } from "@/hooks/useSailPositionsPnLSummary";
 import { useMultipleTokenPrices } from "@/hooks/useTokenPrices";
@@ -131,41 +132,6 @@ function FeeBandBadge({
     </span>
   );
 }
-
-const erc20ABI = [
-  {
-    inputs: [{ name: "account", type: "address" }],
-    name: "balanceOf",
-    outputs: [{ type: "uint256", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
-
-// ERC20 metadata ABI for name(), symbol(), and totalSupply()
-const erc20MetadataABI = [
-  {
-    inputs: [],
-    name: "name",
-    outputs: [{ type: "string", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "symbol",
-    outputs: [{ type: "string", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "totalSupply",
-    outputs: [{ type: "uint256", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
 
 // IWrappedPriceOracle ABI - returns prices in 18 decimals
 // latestAnswer() returns (minUnderlyingPrice, maxUnderlyingPrice, minWrappedRate, maxWrappedRate)
@@ -1694,12 +1660,12 @@ export default function SailPage() {
       if (isValidAddress(leveragedTokenAddress)) {
         contracts.push({
           address: leveragedTokenAddress,
-          abi: erc20MetadataABI,
+          abi: ERC20_ABI,
           functionName: "name" as const,
         });
         contracts.push({
           address: leveragedTokenAddress,
-          abi: erc20MetadataABI,
+          abi: ERC20_ABI,
           functionName: "totalSupply" as const,
         });
       }
@@ -1807,7 +1773,7 @@ export default function SailPage() {
           marketIndex: index,
           contract: {
             address: leveragedTokenAddress,
-            abi: erc20ABI,
+            abi: ERC20_ABI,
             functionName: "balanceOf" as const,
             args: [address as `0x${string}`],
           },

@@ -10,6 +10,8 @@ interface AmountInputBlockProps {
   balanceContent?: React.ReactNode;
   inputClassName?: string;
   maxButtonClassName?: string;
+  /** Optional warning/info between input and MAX button (e.g. temp max warning). Renders absolute right-20. */
+  inlineWarning?: React.ReactNode;
 }
 
 export const AmountInputBlock = ({
@@ -22,6 +24,7 @@ export const AmountInputBlock = ({
   balanceContent,
   inputClassName,
   maxButtonClassName,
+  inlineWarning,
 }: AmountInputBlockProps) => {
   return (
     <div className="space-y-2">
@@ -45,6 +48,11 @@ export const AmountInputBlock = ({
           }
           disabled={disabled}
         />
+        {inlineWarning != null && (
+          <div className="absolute right-20 top-1/2 -translate-y-1/2 z-10 pointer-events-none">
+            {inlineWarning}
+          </div>
+        )}
         {onMax && (
           <button
             onClick={onMax}

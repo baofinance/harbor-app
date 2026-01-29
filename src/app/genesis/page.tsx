@@ -79,56 +79,7 @@ import {
   DEFAULT_FDV,
 } from "@/utils/tokenAllocation";
 
-// Minimal ABIs for summary reads
-// Note: totalDeposits() doesn't exist in IGenesis interface, so we removed it
-const genesisABI = [
-  {
-    inputs: [],
-    name: "genesisIsEnded",
-    outputs: [{ type: "bool", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [{ name: "depositor", type: "address" }],
-    name: "balanceOf",
-    outputs: [{ type: "uint256", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [{ name: "depositor", type: "address" }],
-    name: "claimable",
-    outputs: [
-      { type: "uint256", name: "peggedAmount" },
-      { type: "uint256", name: "leveragedAmount" },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "PEGGED_TOKEN",
-    outputs: [{ type: "address", name: "token" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "LEVERAGED_TOKEN",
-    outputs: [{ type: "address", name: "token" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "WRAPPED_COLLATERAL_TOKEN",
-    outputs: [{ type: "address", name: "token" }],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
-
+// Minimal ABIs for summary reads (Genesis uses GENESIS_ABI from config/contracts)
 const erc20SymbolABI = [
   {
     inputs: [],
@@ -223,17 +174,17 @@ function MarketExpandedView({
         ? [
             {
               address: genesisAddress as `0x${string}`,
-              abi: genesisABI,
+              abi: GENESIS_ABI,
               functionName: "PEGGED_TOKEN" as const,
             },
             {
               address: genesisAddress as `0x${string}`,
-              abi: genesisABI,
+              abi: GENESIS_ABI,
               functionName: "LEVERAGED_TOKEN" as const,
             },
             {
               address: genesisAddress as `0x${string}`,
-              abi: genesisABI,
+              abi: GENESIS_ABI,
               functionName: "WRAPPED_COLLATERAL_TOKEN" as const,
             },
           ]
