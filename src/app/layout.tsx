@@ -4,6 +4,7 @@ import ContextProvider from "@/contexts";
 import { headers } from "next/headers";
 import Navigation from "@/components/Navigation";
 import FadeContent from "@/components/FadeContent";
+import ReferralAutoBinder from "@/components/ReferralAutoBinder";
 
 const siteUrl ="https://app.harborfinance.io";
 const title ="Harbor Protocol";
@@ -79,6 +80,7 @@ export default async function RootLayout({
  >
  <div className="relative z-10 flex min-h-screen flex-col">
  <ContextProvider cookies={cookies}>
+ <ReferralAutoBinder />
  <Navigation />
  <FadeContent
  blur={false}

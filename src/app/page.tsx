@@ -1,7 +1,15 @@
 import { redirect } from "next/navigation";
 import { markets, isGenesisActive } from "@/config/markets";
 
-export default function HomePage() {
+export default function HomePage({
+  searchParams,
+}: {
+  searchParams?: { ref?: string };
+}) {
+  const refParam =
+    typeof searchParams?.ref === "string" ? searchParams.ref.trim() : "";
+  const refSuffix = refParam ? `?ref=${encodeURIComponent(refParam)}` : "";
+
   // Check if any genesis market is currently active
   const hasActiveGenesis = Object.values(markets).some((market) => {
     // Only check markets that have a genesis address configured
@@ -18,8 +26,8 @@ export default function HomePage() {
 
   // Redirect to genesis page if there's an active genesis, otherwise to anchor
   if (hasActiveGenesis) {
-    redirect("/genesis");
+    redirect(`/genesis${refSuffix}`);
   } else {
-    redirect("/anchor");
+    redirect(`/anchor${refSuffix}`);
   }
 }
