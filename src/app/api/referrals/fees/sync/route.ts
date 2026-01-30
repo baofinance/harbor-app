@@ -138,6 +138,7 @@ async function syncEvents(options: {
 }) {
   const store = getReferralSyncStore();
   let cursor = await store.getCursor(options.cursorKey);
+  let fetched = 0;
   let processed = 0;
   let skipped = 0;
   let failed = 0;
@@ -146,6 +147,7 @@ async function syncEvents(options: {
   while (true) {
     const events = await fetchEvents(options.query, cursor, options.graphUrlOverride);
     if (!events.length) break;
+    fetched += events.length;
 
     for (const event of events) {
       cursor = event.id;
@@ -180,7 +182,7 @@ async function syncEvents(options: {
   }
 
   if (cursor) await store.setCursor(options.cursorKey, cursor);
-  return { processed, skipped, failed, errors };
+  return { fetched, processed, skipped, failed, errors };
 }
 
 export async function POST(req: Request) {
@@ -193,6 +195,7 @@ export async function POST(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const graphUrlOverride = (searchParams.get("graphUrl") || "").trim() || undefined;
+    const graphUrlUsed = graphUrlOverride || getGraphUrl();
 
     const peggedMints = await syncEvents({
       cursorKey: buildCursorKey("fees:pegged:mints", graphUrlOverride),
@@ -223,6 +226,7 @@ export async function POST(req: Request) {
       graphUrlOverride,
     });
     return NextResponse.json({
+      graphUrlUsed,
       peggedMints,
       peggedRedeems,
       leveragedMints,
