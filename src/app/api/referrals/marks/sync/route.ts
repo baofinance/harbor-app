@@ -15,7 +15,9 @@ export async function POST(req: Request) {
   }
 
   try {
-    const result = await syncMarksShares();
+    const { searchParams } = new URL(req.url);
+    const graphUrlOverride = (searchParams.get("graphUrl") || "").trim() || undefined;
+    const result = await syncMarksShares(graphUrlOverride);
     return NextResponse.json(result);
   } catch (err: any) {
     return NextResponse.json(

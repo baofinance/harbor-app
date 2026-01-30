@@ -23,12 +23,15 @@ const MARKS_QUERY = `
   }
 `;
 
-async function fetchMarksEvents(after: string | null): Promise<MarksEvent[]> {
-  const url = getGraphUrl();
+async function fetchMarksEvents(
+  after: string | null,
+  graphUrlOverride?: string
+): Promise<MarksEvent[]> {
+  const url = graphUrlOverride || getGraphUrl();
   const headers = getGraphHeaders(url);
   const body = JSON.stringify({
     query: MARKS_QUERY,
-    variables: { first: 200, after },
+    variables: { first: 200, after: after || "" },
   });
 
   const response = await retryGraphQLQuery(async () => {
@@ -47,18 +50,30 @@ async function fetchMarksEvents(after: string | null): Promise<MarksEvent[]> {
   return response.data?.marksEvents ?? [];
 }
 
-export async function syncMarksShares(): Promise<{ processed: number }> {
+function buildCursorKey(base: string, graphUrlOverride?: string) {
+  if (!graphUrlOverride) return base;
+  const slug = graphUrlOverride.replace(/[^a-zA-Z0-9]/g, "_").slice(0, 64);
+  return `${base}:${slug}`;
+}
+
+export async function syncMarksShares(
+  graphUrlOverride?: string
+): Promise<{ fetched: number; processed: number; graphUrlUsed: string }> {
   const cursorStore = getReferralSyncStore();
   const earningsStore = getReferralEarningsStore();
   const referralStore = getReferralsStore();
   const settings = await referralStore.getSettings();
   const shareBps = Math.round(settings.referrerMarksSharePercent * 10000);
-  let cursor = await cursorStore.getCursor("marks:events");
+  const cursorKey = buildCursorKey("marks:events", graphUrlOverride);
+  let cursor = await cursorStore.getCursor(cursorKey);
+  let fetched = 0;
   let processed = 0;
+  const graphUrlUsed = graphUrlOverride || getGraphUrl();
 
   while (true) {
-    const events = await fetchMarksEvents(cursor);
+    const events = await fetchMarksEvents(cursor, graphUrlOverride);
     if (!events.length) break;
+    fetched += events.length;
 
     for (const event of events) {
       cursor = event.id;
@@ -93,6 +108,6 @@ export async function syncMarksShares(): Promise<{ processed: number }> {
     if (events.length < 200) break;
   }
 
-  if (cursor) await cursorStore.setCursor("marks:events", cursor);
-  return { processed };
+  if (cursor) await cursorStore.setCursor(cursorKey, cursor);
+  return { fetched, processed, graphUrlUsed };
 }
