@@ -87,6 +87,16 @@ const USER_MARKS_BREAKDOWN_QUERY = `
   }
 `;
 
+const META_TIMESTAMP_QUERY = `
+  query MetaTimestamp {
+    _meta {
+      block {
+        timestamp
+      }
+    }
+  }
+`;
+
 async function fetchMarksEvents(
   after: string | null,
   graphUrlOverride?: string,
@@ -198,6 +208,36 @@ async function fetchUserMarksBreakdown(
   return response.data ?? null;
 }
 
+async function fetchMetaTimestamp(
+  graphUrlOverride?: string
+): Promise<number | null> {
+  const url = graphUrlOverride || getGraphUrl();
+  const headers = getGraphHeaders(url);
+  const body = JSON.stringify({
+    query: META_TIMESTAMP_QUERY,
+  });
+
+  const response = await retryGraphQLQuery(async () => {
+    const res = await fetch(url, {
+      method: "POST",
+      headers,
+      body,
+      cache: "no-store",
+    });
+    if (!res.ok) {
+      throw new Error(`GraphQL error (${res.status})`);
+    }
+    return (await res.json()) as {
+      data?: { _meta?: { block?: { timestamp?: string } } };
+    };
+  });
+
+  const raw = response.data?._meta?.block?.timestamp;
+  if (!raw) return null;
+  const num = Number(raw);
+  return Number.isFinite(num) && num > 0 ? num : null;
+}
+
 function buildCursorKey(base: string, graphUrlOverride?: string) {
   if (!graphUrlOverride) return base;
   const slug = graphUrlOverride.replace(/[^a-zA-Z0-9]/g, "_").slice(0, 64);
@@ -294,7 +334,8 @@ export async function reconcileMarksShareForUser(options: {
       const ha = breakdown.haTokenBalances || [];
       const pools = breakdown.stabilityPoolDeposits || [];
       const sail = breakdown.sailTokenBalances || [];
-      const nowSec = Math.floor(Date.now() / 1000);
+      const metaTimestamp = await fetchMetaTimestamp(options.graphUrlOverride);
+      const nowSec = metaTimestamp ?? Math.floor(Date.now() / 1000);
       let sum = 0n;
       for (const item of genesis) {
         if (item.genesisEnded) {
