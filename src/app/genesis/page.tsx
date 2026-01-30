@@ -5211,11 +5211,17 @@ export default function GenesisIndexPage() {
                                           address: genesisAddress as `0x${string}`,
                                           abi: GENESIS_ABI,
                                           functionName: "claim",
+                                          args: [address as `0x${string}`],
                                         });
-                                        setClaimModal({
+                                        await publicClient?.waitForTransactionReceipt({ hash: tx });
+                                        await refetchReads();
+                                        await refetchTotalDeposits();
+                                        queryClient.invalidateQueries({ queryKey: ["allHarborMarks"] });
+                                        setClaimModal((prev) => ({ ...prev, status: "success" }));
+                                        setShareModal({
                                           open: true,
-                                          status: "success",
-                                          marketId: id,
+                                          marketName: displayMarketName,
+                                          peggedSymbol: peggedNoPrefix,
                                         });
                                       } catch (error) {
                                         setClaimModal({
@@ -5340,11 +5346,17 @@ export default function GenesisIndexPage() {
                                           address: genesisAddress as `0x${string}`,
                                           abi: GENESIS_ABI,
                                           functionName: "claim",
+                                          args: [address as `0x${string}`],
                                         });
-                                        setClaimModal({
+                                        await publicClient?.waitForTransactionReceipt({ hash: tx });
+                                        await refetchReads();
+                                        await refetchTotalDeposits();
+                                        queryClient.invalidateQueries({ queryKey: ["allHarborMarks"] });
+                                        setClaimModal((prev) => ({ ...prev, status: "success" }));
+                                        setShareModal({
                                           open: true,
-                                          status: "success",
-                                          marketId: id,
+                                          marketName: displayMarketName,
+                                          peggedSymbol: peggedNoPrefix,
                                         });
                                       } catch (error) {
                                         setClaimModal({
