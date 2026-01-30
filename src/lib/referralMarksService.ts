@@ -16,6 +16,13 @@ type UserTotalMarks = {
   totalMarks: string;
 };
 
+type MarksBreakdown = {
+  userHarborMarks?: Array<{ currentMarks: string }>;
+  haTokenBalances?: Array<{ totalMarksEarned: string }>;
+  stabilityPoolDeposits?: Array<{ totalMarksEarned: string }>;
+  sailTokenBalances?: Array<{ totalMarksEarned: string }>;
+};
+
 const MARKS_QUERY = `
   query MarksEvents($first: Int!, $after: ID) {
     marksEvents(first: $first, orderBy: id, orderDirection: asc, where: { id_gt: $after }) {
@@ -33,6 +40,23 @@ const USER_TOTAL_MARKS_QUERY = `
     userTotalMarks(id: $user) {
       id
       totalMarks
+    }
+  }
+`;
+
+const USER_MARKS_BREAKDOWN_QUERY = `
+  query UserMarksBreakdown($user: Bytes!) {
+    userHarborMarks(where: { user: $user }) {
+      currentMarks
+    }
+    haTokenBalances(where: { user: $user }) {
+      totalMarksEarned
+    }
+    stabilityPoolDeposits(where: { user: $user }) {
+      totalMarksEarned
+    }
+    sailTokenBalances(where: { user: $user }) {
+      totalMarksEarned
     }
   }
 `;
@@ -99,6 +123,33 @@ async function fetchUserTotalMarks(
   });
 
   return response.data?.userTotalMarks ?? null;
+}
+
+async function fetchUserMarksBreakdown(
+  user: string,
+  graphUrlOverride?: string
+): Promise<MarksBreakdown | null> {
+  const url = graphUrlOverride || getGraphUrl();
+  const headers = getGraphHeaders(url);
+  const body = JSON.stringify({
+    query: USER_MARKS_BREAKDOWN_QUERY,
+    variables: { user: user.toLowerCase() },
+  });
+
+  const response = await retryGraphQLQuery(async () => {
+    const res = await fetch(url, {
+      method: "POST",
+      headers,
+      body,
+      cache: "no-store",
+    });
+    if (!res.ok) {
+      throw new Error(`GraphQL error (${res.status})`);
+    }
+    return (await res.json()) as { data?: MarksBreakdown };
+  });
+
+  return response.data ?? null;
 }
 
 function buildCursorKey(base: string, graphUrlOverride?: string) {
@@ -186,7 +237,26 @@ export async function reconcileMarksShareForUser(options: {
 
   const graphUrlUsed = options.graphUrlOverride || getGraphUrl();
   const total = await fetchUserTotalMarks(options.referred, options.graphUrlOverride);
-  if (!total) {
+  let totalE18 = total ? parseBigDecimalToE18(total.totalMarks) : 0n;
+  if (totalE18 === 0n) {
+    const breakdown = await fetchUserMarksBreakdown(
+      options.referred,
+      options.graphUrlOverride
+    );
+    if (breakdown) {
+      const genesis = breakdown.userHarborMarks || [];
+      const ha = breakdown.haTokenBalances || [];
+      const pools = breakdown.stabilityPoolDeposits || [];
+      const sail = breakdown.sailTokenBalances || [];
+      let sum = 0n;
+      for (const item of genesis) sum += parseBigDecimalToE18(item.currentMarks);
+      for (const item of ha) sum += parseBigDecimalToE18(item.totalMarksEarned);
+      for (const item of pools) sum += parseBigDecimalToE18(item.totalMarksEarned);
+      for (const item of sail) sum += parseBigDecimalToE18(item.totalMarksEarned);
+      totalE18 = sum;
+    }
+  }
+  if (totalE18 === 0n) {
     return { updated: false, shareE18: "0", graphUrlUsed };
   }
 
@@ -195,7 +265,6 @@ export async function reconcileMarksShareForUser(options: {
     return { updated: false, shareE18: "0", graphUrlUsed };
   }
 
-  const totalE18 = parseBigDecimalToE18(total.totalMarks);
   const shareE18 = (totalE18 * BigInt(shareBps)) / 10000n;
   const metaKey = `marks:share:${options.referred.toLowerCase()}`;
   const previousRaw = await metaStore.getMeta(metaKey);
