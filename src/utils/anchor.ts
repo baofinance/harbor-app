@@ -1,36 +1,36 @@
 /**
- * Utility functions for Anchor page
+ * Utility functions for Anchor page and AnchorDepositWithdrawModal.
  */
 
 /**
- * Get accepted deposit assets for a market
+ * Priority for matching a deposit asset to a market (higher = better fit).
+ * Used when resolving deposit asset -> market in multi-market ha tokens.
  */
-export function getAcceptedDepositAssets(
-  market: any,
-  peggedTokenSymbol?: string
-): Array<{ symbol: string; name: string }> {
-  const assets: Array<{ symbol: string; name: string }> = [];
-  
-  // Use acceptedAssets from market config if available
-  if (market?.acceptedAssets && Array.isArray(market.acceptedAssets)) {
-    assets.push(...market.acceptedAssets);
-  } else if (market?.collateral?.symbol) {
-    // Fallback: return collateral token as the only accepted asset
-    assets.push({ 
-      symbol: market.collateral.symbol, 
-      name: market.collateral.name || market.collateral.symbol 
-    });
+export function getAssetMarketPriority(
+  assetSymbol: string,
+  m: { collateral?: { symbol?: string; underlyingSymbol?: string } }
+): number {
+  const sym = assetSymbol?.toLowerCase?.() ?? "";
+  const collateralSym = m?.collateral?.symbol?.toLowerCase?.() ?? "";
+  const underlyingSym = m?.collateral?.underlyingSymbol?.toLowerCase?.() ?? "";
+
+  if (collateralSym && sym === collateralSym) return 100;
+  if (underlyingSym && sym === underlyingSym) return 90;
+
+  if (
+    (sym === "eth" || sym === "steth" || sym === "wsteth") &&
+    collateralSym === "wsteth"
+  ) {
+    return 80;
   }
-  
-  // Add pegged token if provided (e.g., haPB)
-  if (peggedTokenSymbol && !assets.some(a => a.symbol === peggedTokenSymbol)) {
-    assets.push({
-      symbol: peggedTokenSymbol,
-      name: peggedTokenSymbol,
-    });
+  if (
+    (sym === "fxusd" || sym === "fxsave" || sym === "usdc") &&
+    collateralSym === "fxsave"
+  ) {
+    return 80;
   }
-  
-  return assets;
+
+  return 0;
 }
 
 /**
@@ -149,6 +149,96 @@ export function calculateVolatilityProtection(
   if (priceDropPercent >= 100) return ">100%";
 
   return `${priceDropPercent.toFixed(1)}%`;
+}
+
+/** Withdrawal window helpers (Anchor stability pool request/window UI). */
+
+export function formatDuration(seconds: bigint | number): string {
+  const totalSeconds = Number(seconds);
+  const hours = Math.round(totalSeconds / 3600);
+  if (hours === 0) {
+    const minutes = Math.floor(totalSeconds / 60);
+    return `${minutes} minute${minutes !== 1 ? "s" : ""}`;
+  }
+  return `${hours} hour${hours !== 1 ? "s" : ""}`;
+}
+
+export function formatTime(timestamp: bigint): string {
+  const date = new Date(Number(timestamp) * 1000);
+  return date.toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+}
+
+export function getFeeFreeDisplay(
+  request: readonly [bigint, bigint] | undefined,
+  feePercent: number | undefined
+): string {
+  if (!request || feePercent == null) {
+    return `${feePercent != null ? feePercent.toFixed(0) : "1"}%`;
+  }
+  const [start, end] = request;
+  if (start === 0n && end === 0n) return `${feePercent.toFixed(0)}%`;
+  const now = BigInt(Math.floor(Date.now() / 1000));
+  if (now >= start && now <= end) return "(free)";
+  return `${feePercent.toFixed(0)}%`;
+}
+
+export function getRequestStatusText(
+  request: readonly [bigint, bigint] | undefined
+): string {
+  if (!request) return "";
+  const [start, end] = request;
+  if (start === 0n && end === 0n) return "";
+  const now = BigInt(Math.floor(Date.now() / 1000));
+  if (now >= start && now <= end) return " (open)";
+  if (start > now) return " (pending)";
+  return "";
+}
+
+export type WithdrawWindowBanner =
+  | { type: "coming" | "open"; message: string }
+  | null;
+
+export function getWindowBannerInfo(
+  request: readonly [bigint, bigint] | undefined,
+  window: readonly [bigint, bigint] | undefined
+): WithdrawWindowBanner {
+  if (!request || !window) return null;
+  const [start, end] = request;
+  if (start === 0n && end === 0n) return null;
+  const now = BigInt(Math.floor(Date.now() / 1000));
+
+  if (now >= start && now <= end) {
+    const remainingSeconds = Number(end - now);
+    const remainingHours = remainingSeconds / 3600;
+    const remainingMinutes = Math.floor(remainingSeconds / 60);
+    const startTimeStr = formatTime(start);
+    const endTimeStr = formatTime(end);
+    const timeRemaining =
+      remainingHours < 1
+        ? `${remainingMinutes} minute${remainingMinutes !== 1 ? "s" : ""} remaining`
+        : (() => {
+            const h = Math.floor(remainingHours);
+            return `${h} hour${h !== 1 ? "s" : ""} remaining`;
+          })();
+    return {
+      type: "open",
+      message: `Window open from ${startTimeStr} to ${endTimeStr} (${timeRemaining})`,
+    };
+  }
+  if (start > now) {
+    const secondsUntilStart = Number(start - now);
+    const minutesUntilStart = Math.floor(secondsUntilStart / 60);
+    const startTimeStr = formatTime(start);
+    return {
+      type: "coming",
+      message: `Withdraw window opens at ${startTimeStr} in ${minutesUntilStart} minute${minutesUntilStart !== 1 ? "s" : ""}`,
+    };
+  }
+  return null;
 }
 
 

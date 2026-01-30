@@ -27,6 +27,17 @@ import {
 import { useDefiLlamaSwap, getDefiLlamaSwapTx } from "@/hooks/useDefiLlamaSwap";
 import { useUserTokens, useTokenDecimals } from "@/hooks/useUserTokens";
 import { formatBalance } from "@/utils/formatters";
+import { getAcceptedDepositAssets } from "@/utils/markets";
+import {
+  DEFAULT_MODAL_OPTIONS,
+  MODAL_ERROR_MESSAGES,
+  DEFAULT_AMOUNT,
+  DEFAULT_ERROR,
+  DEFAULT_TX_HASH,
+  DEFAULT_CURRENT_STEP_INDEX,
+  type ProgressModalState,
+} from "@/utils/modal";
+import { validateAmountInput } from "@/utils/validation";
 import { AmountInputBlock } from "@/components/AmountInputBlock";
 import { TokenSelectorDropdown } from "@/components/TokenSelectorDropdown";
 import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
@@ -62,21 +73,6 @@ type ModalStep =
  |"success"
  |"error";
 
-// Helper function to get accepted deposit assets from market config
-function getAcceptedDepositAssets(
- market: any
-): Array<{ symbol: string; name: string }> {
- // Use acceptedAssets from market config if available
- if (market?.acceptedAssets && Array.isArray(market.acceptedAssets)) {
-   return market.acceptedAssets;
- }
- // Fallback: return collateral token as the only accepted asset
- if (market?.collateral?.symbol) {
-   return [{ symbol: market.collateral.symbol, name: market.collateral.name || market.collateral.symbol }];
- }
- return [];
-}
-
 export const SailManageModal = ({
  isOpen,
  onClose,
@@ -92,25 +88,19 @@ export const SailManageModal = ({
   const { handlePermitOrApproval } = usePermitOrApproval();
 
  const [activeTab, setActiveTab] = useState<"mint" |"redeem">(initialTab);
- const [amount, setAmount] = useState("");
+ const [amount, setAmount] = useState(DEFAULT_AMOUNT);
  const [selectedDepositAsset, setSelectedDepositAsset] = useState<
  string | null
  >(null);
  const [showCustomTokenInput, setShowCustomTokenInput] = useState(false);
  const [customTokenAddress, setCustomTokenAddress] = useState<string>("");
  const [step, setStep] = useState<ModalStep>("input");
- const [error, setError] = useState<string | null>(null);
- const [txHash, setTxHash] = useState<string | null>(null);
- const [showNotifications, setShowNotifications] = useState(false);
- const [permitEnabled, setPermitEnabled] = useState(true);
+ const [error, setError] = useState<string | null>(DEFAULT_ERROR);
+ const [txHash, setTxHash] = useState<string | null>(DEFAULT_TX_HASH);
+ const [showNotifications, setShowNotifications] = useState(DEFAULT_MODAL_OPTIONS.showNotifications);
+ const [permitEnabled, setPermitEnabled] = useState(DEFAULT_MODAL_OPTIONS.permitEnabled);
 
- // Progress modal state
- const [progressModal, setProgressModal] = useState<{
- isOpen: boolean;
- title: string;
- steps: TransactionStep[];
- currentStepIndex: number;
- } | null>(null);
+ const [progressModal, setProgressModal] = useState<ProgressModalState | null>(null);
 
  const minterAddress = market.addresses?.minter as `0x${string}` | undefined;
  const leveragedTokenAddress = market.addresses?.leveragedToken as
@@ -632,7 +622,7 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
  // Validate amount
  const validateAmount = (): boolean => {
  if (!amount || parseFloat(amount) <= 0) {
- setError("Please enter a valid amount");
+ setError(MODAL_ERROR_MESSAGES.INVALID_AMOUNT);
  return false;
  }
 
@@ -669,7 +659,7 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
  }
  }
  if (parsedAmount && parsedAmount > balance) {
- setError("Insufficient balance");
+ setError(MODAL_ERROR_MESSAGES.INSUFFICIENT_BALANCE);
  return false;
  }
  } else {
@@ -686,7 +676,7 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
  }
  }
  if (parsedAmount && parsedAmount > balance) {
- setError("Insufficient balance");
+ setError(MODAL_ERROR_MESSAGES.INSUFFICIENT_BALANCE);
  return false;
  }
  }
@@ -1601,35 +1591,34 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
    value={amount}
    onChange={(e) => {
      const v = e.target.value;
-     if (v === "" || /^\d*\.?\d*$/.test(v)) {
-       if (v && currentBalance) {
-         try {
-           const decimals =
-             activeTab === "redeem"
+     if (!validateAmountInput(v)) return;
+     if (v && currentBalance) {
+       try {
+         const decimals =
+           activeTab === "redeem"
+             ? 18
+             : isNativeETH
                ? 18
-               : isNativeETH
-                 ? 18
-                 : selectedDepositAsset?.toLowerCase() === "usdc"
-                   ? 6
-                   : selectedTokenDecimals ?? 18;
-           const parsed =
-             activeTab === "mint" && isNativeETH ? parseEther(v) : parseUnits(v, decimals);
-           if (parsed > currentBalance) {
-             const fmt =
-               activeTab === "mint" && isNativeETH
-                 ? formatEther(currentBalance)
-                 : formatUnits(currentBalance, decimals);
-             setAmount(fmt);
-             setError(null);
-             return;
-           }
-         } catch {
-           /* allow partial input */
+               : selectedDepositAsset?.toLowerCase() === "usdc"
+                 ? 6
+                 : selectedTokenDecimals ?? 18;
+         const parsed =
+           activeTab === "mint" && isNativeETH ? parseEther(v) : parseUnits(v, decimals);
+         if (parsed > currentBalance) {
+           const fmt =
+             activeTab === "mint" && isNativeETH
+               ? formatEther(currentBalance)
+               : formatUnits(currentBalance, decimals);
+           setAmount(fmt);
+           setError(null);
+           return;
          }
+       } catch {
+         /* allow partial input */
        }
-       setAmount(v);
-       setError(null);
      }
+     setAmount(v);
+     setError(null);
    }}
    onMax={() => {
      if (currentBalance) {

@@ -3,13 +3,7 @@ import { useReadContracts } from "wagmi";
 import { formatUnits } from "viem";
 import { minterABI } from "@/abis/minter";
 import { useCoinGeckoPrices } from "./useCoinGeckoPrice";
-
-// Chainlink price feed addresses on Ethereum mainnet
-const CHAINLINK_FEEDS = {
-  ETH_USD: "0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419" as `0x${string}`,
-  BTC_USD: "0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c" as `0x${string}`,
-  EUR_USD: "0x8f6F9C8af44f5f15a18d0fa93B5814a623Fa6353" as `0x${string}`, // fxUSD/EUR Chainlink feed
-} as const;
+import { CHAINLINK_FEEDS } from "@/config/priceFeeds";
 
 const chainlinkABI = [
   {

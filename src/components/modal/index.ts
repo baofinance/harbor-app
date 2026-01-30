@@ -12,6 +12,7 @@ export {
   type OverviewRow,
 } from "./TransactionOverviewCard";
 export { ActionButtons } from "./ActionButtons";
+export { ModalStepActions } from "./ModalStepActions";
 export { ErrorBanner } from "./ErrorBanner";
 export {
   BaseManageModal,

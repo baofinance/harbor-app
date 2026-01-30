@@ -3,6 +3,7 @@ import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
 import { useContractRead } from "wagmi";
 import { CHAINLINK_ORACLE_ABI } from "@/abis/shared";
 import { calculatePriceOracleOffset } from "@/utils/anchor/calculateReadOffset";
+import { CHAINLINK_FEEDS } from "@/config/priceFeeds";
 
 // Harbor wrapped price oracle ABI (returns tuple)
 const WRAPPED_PRICE_ORACLE_ABI = [
@@ -19,9 +20,6 @@ const WRAPPED_PRICE_ORACLE_ABI = [
     type: "function",
   },
 ] as const;
-
-// Chainlink ETH/USD Oracle on Mainnet
-const CHAINLINK_ETH_USD_ORACLE = "0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419" as `0x${string}`;
 
 /**
  * Hook to calculate USD prices for pegged tokens and collateral
@@ -45,14 +43,12 @@ export function useAnchorPrices(
   const { price: btcPriceCoinGecko } = useCoinGeckoPrice("bitcoin", 120000);
   
   // Get EUR/USD rate from the fxUSD/EUR price feed oracle (same one used on map room)
-  // The map room uses 0x8f6F9C8af44f5f15a18d0fa93B5814a623Fa6353 for fxUSD/EUR
-  // This is a Chainlink aggregator that returns EUR/USD directly
-  const FXUSD_EUR_ORACLE = "0x8f6F9C8af44f5f15a18d0fa93B5814a623Fa6353" as `0x${string}`;
+  // CHAINLINK_FEEDS.EUR_USD is a Chainlink aggregator that returns EUR/USD directly.
   
   // Read EUR/USD directly from the Chainlink feed (same as map room)
   // Try Chainlink ABI first, then Harbor ABI if it fails
   const { data: eurUsdChainlinkData, error: chainlinkError } = useContractRead({
-    address: FXUSD_EUR_ORACLE,
+    address: CHAINLINK_FEEDS.EUR_USD,
     abi: CHAINLINK_ORACLE_ABI,
     functionName: "latestAnswer",
     query: {
@@ -64,7 +60,7 @@ export function useAnchorPrices(
   
   // Try Harbor oracle ABI as fallback (in case it's a Harbor wrapped oracle)
   const { data: eurUsdHarborData, error: harborError } = useContractRead({
-    address: FXUSD_EUR_ORACLE,
+    address: CHAINLINK_FEEDS.EUR_USD,
     abi: WRAPPED_PRICE_ORACLE_ABI,
     functionName: "latestAnswer",
     query: {
@@ -80,7 +76,7 @@ export function useAnchorPrices(
     if (eurUsdChainlinkData) {
       const price = Number(eurUsdChainlinkData as bigint) / 1e8;
       if (price > 0.5 && price < 2.0) {
-        console.log(`[useAnchorPrices] ✓ Using EUR/USD from Chainlink feed (${FXUSD_EUR_ORACLE}): ${price}`);
+        console.log(`[useAnchorPrices] ✓ Using EUR/USD from Chainlink feed (${CHAINLINK_FEEDS.EUR_USD}): ${price}`);
         return price;
       }
       console.warn(`[useAnchorPrices] Chainlink EUR/USD price out of range: ${price}`);
@@ -106,7 +102,7 @@ export function useAnchorPrices(
     }
     
     if (chainlinkError || harborError) {
-      console.warn(`[useAnchorPrices] Failed to read EUR/USD from ${FXUSD_EUR_ORACLE}:`, {
+      console.warn(`[useAnchorPrices] Failed to read EUR/USD from ${CHAINLINK_FEEDS.EUR_USD}:`, {
         chainlinkError: chainlinkError?.message,
         harborError: harborError?.message,
       });
@@ -509,7 +505,7 @@ export function useAnchorPrices(
 
   // Fetch Chainlink ETH/USD as fallback
   const { data: chainlinkEthPriceData } = useContractRead({
-    address: CHAINLINK_ETH_USD_ORACLE,
+    address: CHAINLINK_FEEDS.ETH_USD,
     abi: CHAINLINK_ORACLE_ABI,
     functionName: "latestAnswer",
     query: {
@@ -519,12 +515,9 @@ export function useAnchorPrices(
     },
   });
 
-  // Chainlink BTC/USD Oracle on Mainnet
-  const CHAINLINK_BTC_USD_ORACLE = "0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c" as `0x${string}`;
-
   // Fetch Chainlink BTC/USD as fallback
   const { data: chainlinkBtcPriceData } = useContractRead({
-    address: CHAINLINK_BTC_USD_ORACLE,
+    address: CHAINLINK_FEEDS.BTC_USD,
     abi: CHAINLINK_ORACLE_ABI,
     functionName: "latestAnswer",
     query: {

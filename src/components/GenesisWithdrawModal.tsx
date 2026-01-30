@@ -16,6 +16,17 @@ import {
  TransactionStep,
 } from "./TransactionProgressModal";
 import { formatTokenAmount, formatBalance, formatUSD } from "@/utils/formatters";
+import {
+  DEFAULT_MODAL_OPTIONS,
+  MODAL_ERROR_MESSAGES,
+  DEFAULT_AMOUNT,
+  DEFAULT_ERROR,
+  DEFAULT_TX_HASH,
+  DEFAULT_PROGRESS_MODAL_OPEN,
+  DEFAULT_PROGRESS_STEPS,
+  DEFAULT_CURRENT_STEP_INDEX,
+} from "@/utils/modal";
+import { validateAmountForWithdraw, validateAmountInput } from "@/utils/validation";
 import { useWrappedCollateralPrice } from "@/hooks/useWrappedCollateralPrice";
 import { AmountInputBlock } from "@/components/AmountInputBlock";
 import {
@@ -60,14 +71,14 @@ priceOracleAddress,
  hideSectionHeading = false,
 }: GenesisWithdrawalModalProps) => {
  const { address } = useAccount();
- const [amount, setAmount] = useState("");
+ const [amount, setAmount] = useState(DEFAULT_AMOUNT);
  const [step, setStep] = useState<ModalStep>("input");
- const [error, setError] = useState<string | null>(null);
- const [txHash, setTxHash] = useState<string | null>(null);
- const [progressModalOpen, setProgressModalOpen] = useState(false);
- const [progressSteps, setProgressSteps] = useState<TransactionStep[]>([]);
- const [currentStepIndex, setCurrentStepIndex] = useState(0);
- const [showNotifications, setShowNotifications] = useState(false);
+ const [error, setError] = useState<string | null>(DEFAULT_ERROR);
+ const [txHash, setTxHash] = useState<string | null>(DEFAULT_TX_HASH);
+ const [progressModalOpen, setProgressModalOpen] = useState(DEFAULT_PROGRESS_MODAL_OPEN);
+ const [progressSteps, setProgressSteps] = useState(DEFAULT_PROGRESS_STEPS);
+ const [currentStepIndex, setCurrentStepIndex] = useState(DEFAULT_CURRENT_STEP_INDEX);
+ const [showNotifications, setShowNotifications] = useState(DEFAULT_MODAL_OPTIONS.showNotifications);
  const publicClient = usePublicClient();
 
 const wrappedPriceData = useWrappedCollateralPrice({
@@ -126,44 +137,35 @@ const collateralPriceUSD = wrappedPriceData.priceUSD;
  };
 
  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
- const value = e.target.value;
- // Allow only numbers and decimal point
- if (value ==="" || /^\d*\.?\d*$/.test(value)) {
- // Cap at user deposit if value exceeds it
- if (value && userDeposit > 0n) {
- try {
- const parsed = parseEther(value);
- if (parsed > userDeposit) {
- setAmount(formatEther(userDeposit));
- setError(null);
- return;
- }
- } catch {
- // Allow partial input (e.g., trailing decimal)
- }
- }
- setAmount(value);
- setError(null);
- }
+   const value = e.target.value;
+   if (!validateAmountInput(value)) return;
+   if (value && userDeposit > 0n) {
+     try {
+       const parsed = parseEther(value);
+       if (parsed > userDeposit) {
+         setAmount(formatEther(userDeposit));
+         setError(null);
+         return;
+       }
+     } catch {
+       /* allow partial input */
+     }
+   }
+   setAmount(value);
+   setError(null);
  };
 
  const validateAmount = (): boolean => {
- if (!amount || parseFloat(amount) <= 0) {
- setError("Please enter a valid amount");
- return false;
- }
-
- if (userDeposit === 0n) {
- setError("No deposit available to withdraw");
- return false;
- }
-
- if (amountBigInt > userDeposit) {
- setError("Amount exceeds your deposit");
- return false;
- }
-
- return true;
+   const result = validateAmountForWithdraw(amount, userDeposit, {
+     invalidAmountMessage: MODAL_ERROR_MESSAGES.INVALID_AMOUNT,
+     exceedsMaxMessage: MODAL_ERROR_MESSAGES.AMOUNT_EXCEEDS_DEPOSIT,
+     noMaxMessage: MODAL_ERROR_MESSAGES.NO_DEPOSIT_TO_WITHDRAW,
+   });
+   if (!result.valid) {
+     setError(result.error ?? MODAL_ERROR_MESSAGES.INVALID_AMOUNT);
+     return false;
+   }
+   return true;
  };
 
  const handleWithdraw = async () => {

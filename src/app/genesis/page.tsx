@@ -50,6 +50,7 @@ import {
 } from "@/utils/formatters";
 import { EtherscanLink, getLogoPath, TokenLogo } from "@/components/shared";
 import { MINTER_ABI } from "@/abis/shared";
+import { CHAINLINK_FEEDS } from "@/config/priceFeeds";
 import Link from "next/link";
 import { useCoinGeckoPrices } from "@/hooks/useCoinGeckoPrice";
 import { useMultipleTokenPrices } from "@/hooks/useTokenPrices";
@@ -963,13 +964,9 @@ export default function GenesisIndexPage() {
   const safeIsLoadingTotalTVL = mounted ? isLoadingTotalTVL : true;
   const safeIsLoadingTotalMarks = mounted ? isLoadingTotalMarks : true;
 
-  // Chainlink BTC/USD Oracle on Mainnet (fallback when CoinGecko fails)
-  const CHAINLINK_BTC_USD_ORACLE =
-    "0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c" as `0x${string}`;
-
   // Fetch Chainlink BTC/USD as fallback for BTC-pegged markets
   const { data: chainlinkBtcPriceData } = useContractRead({
-    address: CHAINLINK_BTC_USD_ORACLE,
+    address: CHAINLINK_FEEDS.BTC_USD,
     abi: CHAINLINK_ORACLE_ABI,
     functionName: "latestAnswer",
     query: {

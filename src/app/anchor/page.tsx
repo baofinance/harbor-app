@@ -97,7 +97,6 @@ import {
   formatAPR,
   formatCompactUSD,
   calculateVolatilityProtection,
-  getAcceptedDepositAssets,
 } from "@/utils/anchor";
 import { useAnchorPrices } from "@/hooks/anchor/useAnchorPrices";
 import { useGroupedMarkets } from "@/hooks/anchor/useGroupedMarkets";

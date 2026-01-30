@@ -4,24 +4,12 @@ import React from "react";
 import { AlertOctagon } from "lucide-react";
 import { GenesisTransactionProgressSteps } from "./GenesisTransactionProgressSteps";
 import { formatEther } from "viem";
+import type {
+  TransactionStep,
+  TransactionStepStatus,
+} from "@/types/modal";
 
-export type TransactionStepStatus ="pending" |"in_progress" |"completed" |"error";
-
-export interface TransactionStep {
- id: string;
- label: string;
- status: TransactionStepStatus;
- txHash?: string;
- error?: string;
- details?: string;
- fee?: {
- amount: bigint;
- formatted: string;
- usd?: number;
- percentage?: number;
- tokenSymbol: string;
- };
-}
+export type { TransactionStep, TransactionStepStatus } from "@/types/modal";
 
 export interface FeeInfo {
  feeAmount: bigint;

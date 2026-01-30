@@ -5,6 +5,7 @@
 
 export * from "./EtherscanLink";
 export * from "./TokenLogo";
+export * from "./TxLink";
 
 
 

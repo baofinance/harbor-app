@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import { getAcceptedDepositAssets } from "@/utils/anchor";
 
 export type MarketData = {
   marketId: string;

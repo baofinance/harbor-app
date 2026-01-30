@@ -10,7 +10,7 @@ import {
   formatCompactUSD,
   calculateVolatilityProtection,
 } from "@/utils/anchor";
-import { formatToken } from "@/utils/formatters";
+import { formatToken, formatNumber } from "@/utils/formatters";
 
 interface AnchorMarketExpandedViewProps {
   marketId: string;
@@ -166,13 +166,8 @@ export function AnchorMarketExpandedView({
   const estimatedDailyEarnings = estimatedAnnualYield / 365;
   const estimatedWeeklyEarnings = estimatedAnnualYield / 52;
 
-  // Helper function to format numbers with 2 decimals when below 100
-  const formatNumberWithDecimals = (value: number, defaultDecimals: number = 2): string => {
-    if (value < 100) {
-      return value.toFixed(2);
-    }
-    return value.toFixed(defaultDecimals);
-  };
+  const formatNumberWithDecimals = (value: number, defaultDecimals: number = 2): string =>
+    formatNumber(value, value < 100 ? 2 : defaultDecimals);
 
   // Pegged token price in USD
   const peggedTokenPriceUSD =

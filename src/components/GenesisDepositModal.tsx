@@ -27,6 +27,15 @@ import {
  TransactionStep,
 } from "./TransactionProgressModal";
 import { formatTokenAmount, formatBalance, formatUSD } from "@/utils/formatters";
+import {
+  DEFAULT_MODAL_OPTIONS,
+  DEFAULT_AMOUNT,
+  DEFAULT_ERROR,
+  DEFAULT_TX_HASH,
+  DEFAULT_PROGRESS_MODAL_OPEN,
+  DEFAULT_PROGRESS_STEPS,
+  DEFAULT_CURRENT_STEP_INDEX,
+} from "@/utils/modal";
 import { useWrappedCollateralPrice } from "@/hooks/useWrappedCollateralPrice";
 import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
 import { useDefiLlamaSwap, getDefiLlamaSwapTx } from "@/hooks/useDefiLlamaSwap";
@@ -95,21 +104,21 @@ export const GenesisDepositModal = ({
  const wagmiPublicClient = usePublicClient();
   // Use wagmi public client
   const publicClient = wagmiPublicClient;
- const [amount, setAmount] = useState("");
+ const [amount, setAmount] = useState(DEFAULT_AMOUNT);
  const [selectedAsset, setSelectedAsset] = useState<string>(collateralSymbol);
  const [customTokenAddress, setCustomTokenAddress] = useState<string>("");
  const [showCustomTokenInput, setShowCustomTokenInput] = useState(false);
  const [slippageTolerance, setSlippageTolerance] = useState<number>(0.5); // Default 0.5% slippage
  const [slippageInputValue, setSlippageInputValue] = useState<string>("0.5"); // String for input to allow typing "0"
  const [showSlippageInput, setShowSlippageInput] = useState(false);
-  const [permitEnabled, setPermitEnabled] = useState(true);
-  const [showNotifications, setShowNotifications] = useState(false);
+  const [permitEnabled, setPermitEnabled] = useState(DEFAULT_MODAL_OPTIONS.permitEnabled);
+  const [showNotifications, setShowNotifications] = useState(DEFAULT_MODAL_OPTIONS.showNotifications);
  const [step, setStep] = useState<ModalStep>("input");
- const [error, setError] = useState<string | null>(null);
- const [txHash, setTxHash] = useState<string | null>(null);
- const [progressModalOpen, setProgressModalOpen] = useState(false);
- const [progressSteps, setProgressSteps] = useState<TransactionStep[]>([]);
- const [currentStepIndex, setCurrentStepIndex] = useState(0);
+ const [error, setError] = useState<string | null>(DEFAULT_ERROR);
+ const [txHash, setTxHash] = useState<string | null>(DEFAULT_TX_HASH);
+ const [progressModalOpen, setProgressModalOpen] = useState(DEFAULT_PROGRESS_MODAL_OPEN);
+ const [progressSteps, setProgressSteps] = useState(DEFAULT_PROGRESS_STEPS);
+ const [currentStepIndex, setCurrentStepIndex] = useState(DEFAULT_CURRENT_STEP_INDEX);
  const [successfulDepositAmount, setSuccessfulDepositAmount] =
  useState<string>("");
  const [successfulDepositToken, setSuccessfulDepositToken] =
