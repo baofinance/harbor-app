@@ -17,7 +17,7 @@ type UserTotalMarks = {
 };
 
 type MarksBreakdown = {
-  userHarborMarks?: Array<{
+  userHarborMarks_collection?: Array<{
     currentMarks: string;
     marksPerDay: string;
     lastUpdated: string;
@@ -331,7 +331,7 @@ export async function reconcileMarksShareForUser(options: {
       options.graphUrlOverride
     );
     if (breakdown) {
-      const genesis = breakdown.userHarborMarks || [];
+      const genesis = breakdown.userHarborMarks_collection || [];
       const ha = breakdown.haTokenBalances || [];
       const pools = breakdown.stabilityPoolDeposits || [];
       const sail = breakdown.sailTokenBalances || [];
