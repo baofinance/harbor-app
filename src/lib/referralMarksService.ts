@@ -1,7 +1,7 @@
 import { getGraphHeaders, getGraphUrl, retryGraphQLQuery } from "@/config/graph";
 import { getReferralsStore } from "@/lib/referralsStore";
 import { getReferralEarningsStore } from "@/lib/referralEarningsStore";
-import { getReferralSyncStore } from "@/lib/referralSyncStore";
+import { getReferralMetaStore, getReferralSyncStore } from "@/lib/referralSyncStore";
 
 type MarksEvent = {
   id: string;
@@ -9,6 +9,11 @@ type MarksEvent = {
   amount: string;
   eventType: string;
   timestamp: string;
+};
+
+type UserTotalMarks = {
+  id: string;
+  totalMarks: string;
 };
 
 const MARKS_QUERY = `
@@ -19,6 +24,15 @@ const MARKS_QUERY = `
       amount
       eventType
       timestamp
+    }
+  }
+`;
+
+const USER_TOTAL_MARKS_QUERY = `
+  query UserTotalMarks($user: ID!) {
+    userTotalMarks(id: $user) {
+      id
+      totalMarks
     }
   }
 `;
@@ -49,6 +63,42 @@ async function fetchMarksEvents(
   });
 
   return response.data?.marksEvents ?? [];
+}
+
+function parseBigDecimalToE18(value: string | null | undefined): bigint {
+  if (!value) return 0n;
+  const [whole, fraction = ""] = value.split(".");
+  const wholePart = whole ? BigInt(whole) : 0n;
+  const fracPadded = fraction.padEnd(18, "0").slice(0, 18);
+  const fracPart = fracPadded ? BigInt(fracPadded) : 0n;
+  return wholePart * 1000000000000000000n + fracPart;
+}
+
+async function fetchUserTotalMarks(
+  user: string,
+  graphUrlOverride?: string
+): Promise<UserTotalMarks | null> {
+  const url = graphUrlOverride || getGraphUrl();
+  const headers = getGraphHeaders(url);
+  const body = JSON.stringify({
+    query: USER_TOTAL_MARKS_QUERY,
+    variables: { user: user.toLowerCase() },
+  });
+
+  const response = await retryGraphQLQuery(async () => {
+    const res = await fetch(url, {
+      method: "POST",
+      headers,
+      body,
+      cache: "no-store",
+    });
+    if (!res.ok) {
+      throw new Error(`GraphQL error (${res.status})`);
+    }
+    return (await res.json()) as { data?: { userTotalMarks?: UserTotalMarks } };
+  });
+
+  return response.data?.userTotalMarks ?? null;
 }
 
 function buildCursorKey(base: string, graphUrlOverride?: string) {
@@ -122,4 +172,56 @@ export async function syncMarksShares(options?: {
 
   if (cursor) await cursorStore.setCursor(cursorKey, cursor);
   return { fetched, processed, graphUrlUsed };
+}
+
+export async function reconcileMarksShareForUser(options: {
+  referred: string;
+  graphUrlOverride?: string;
+}): Promise<{ updated: boolean; shareE18: string; graphUrlUsed: string }> {
+  const referralStore = getReferralsStore();
+  const earningsStore = getReferralEarningsStore();
+  const metaStore = getReferralMetaStore();
+  const settings = await referralStore.getSettings();
+  const shareBps = Math.round(settings.referrerMarksSharePercent * 10000);
+
+  const graphUrlUsed = options.graphUrlOverride || getGraphUrl();
+  const total = await fetchUserTotalMarks(options.referred, options.graphUrlOverride);
+  if (!total) {
+    return { updated: false, shareE18: "0", graphUrlUsed };
+  }
+
+  const binding = await referralStore.getBinding(options.referred as any);
+  if (!binding || binding.status !== "confirmed") {
+    return { updated: false, shareE18: "0", graphUrlUsed };
+  }
+
+  const totalE18 = parseBigDecimalToE18(total.totalMarks);
+  const shareE18 = (totalE18 * BigInt(shareBps)) / 10000n;
+  const metaKey = `marks:share:${options.referred.toLowerCase()}`;
+  const previousRaw = await metaStore.getMeta(metaKey);
+  const previous = previousRaw ? BigInt(previousRaw) : 0n;
+  if (shareE18 <= previous) {
+    return { updated: false, shareE18: shareE18.toString(), graphUrlUsed };
+  }
+
+  const delta = shareE18 - previous;
+  const existing =
+    (await earningsStore.getReferrerTotals(binding.referrer)) || {
+      referrer: binding.referrer,
+      feeUsdE18: 0n,
+      feeEthWei: 0n,
+      yieldUsdE18: 0n,
+      yieldEthWei: 0n,
+      marksPoints: 0n,
+      lastUpdatedAt: 0,
+    };
+
+  const next = {
+    ...existing,
+    marksPoints: existing.marksPoints + delta,
+    lastUpdatedAt: Date.now(),
+  };
+  await earningsStore.setReferrerTotals(next);
+  await metaStore.setMeta(metaKey, shareE18.toString());
+  return { updated: true, shareE18: shareE18.toString(), graphUrlUsed };
 }
