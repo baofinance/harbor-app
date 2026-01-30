@@ -25,13 +25,14 @@ const MARKS_QUERY = `
 
 async function fetchMarksEvents(
   after: string | null,
-  graphUrlOverride?: string
+  graphUrlOverride?: string,
+  first = 200
 ): Promise<MarksEvent[]> {
   const url = graphUrlOverride || getGraphUrl();
   const headers = getGraphHeaders(url);
   const body = JSON.stringify({
     query: MARKS_QUERY,
-    variables: { first: 200, after: after || "" },
+    variables: { first, after: after || "" },
   });
 
   const response = await retryGraphQLQuery(async () => {
@@ -56,24 +57,31 @@ function buildCursorKey(base: string, graphUrlOverride?: string) {
   return `${base}:${slug}`;
 }
 
-export async function syncMarksShares(
-  graphUrlOverride?: string
-): Promise<{ fetched: number; processed: number; graphUrlUsed: string }> {
+export async function syncMarksShares(options?: {
+  graphUrlOverride?: string;
+  first?: number;
+  maxBatches?: number;
+}): Promise<{ fetched: number; processed: number; graphUrlUsed: string }> {
   const cursorStore = getReferralSyncStore();
   const earningsStore = getReferralEarningsStore();
   const referralStore = getReferralsStore();
   const settings = await referralStore.getSettings();
   const shareBps = Math.round(settings.referrerMarksSharePercent * 10000);
+  const graphUrlOverride = options?.graphUrlOverride;
   const cursorKey = buildCursorKey("marks:events", graphUrlOverride);
   let cursor = await cursorStore.getCursor(cursorKey);
   let fetched = 0;
   let processed = 0;
   const graphUrlUsed = graphUrlOverride || getGraphUrl();
+  const first = options?.first ?? 200;
+  const maxBatches = options?.maxBatches ?? 10;
+  let batches = 0;
 
   while (true) {
-    const events = await fetchMarksEvents(cursor, graphUrlOverride);
+    const events = await fetchMarksEvents(cursor, graphUrlOverride, first);
     if (!events.length) break;
     fetched += events.length;
+    batches += 1;
 
     for (const event of events) {
       cursor = event.id;
@@ -105,7 +113,8 @@ export async function syncMarksShares(
       processed += 1;
     }
 
-    if (events.length < 200) break;
+    if (events.length < first) break;
+    if (batches >= maxBatches) break;
   }
 
   if (cursor) await cursorStore.setCursor(cursorKey, cursor);

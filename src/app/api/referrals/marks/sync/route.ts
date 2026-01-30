@@ -17,7 +17,13 @@ export async function POST(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const graphUrlOverride = (searchParams.get("graphUrl") || "").trim() || undefined;
-    const result = await syncMarksShares(graphUrlOverride);
+    const first = Number(searchParams.get("first") || "");
+    const maxBatches = Number(searchParams.get("maxBatches") || "");
+    const result = await syncMarksShares({
+      graphUrlOverride,
+      first: Number.isFinite(first) && first > 0 ? first : undefined,
+      maxBatches: Number.isFinite(maxBatches) && maxBatches > 0 ? maxBatches : undefined,
+    });
     return NextResponse.json(result);
   } catch (err: any) {
     return NextResponse.json(
