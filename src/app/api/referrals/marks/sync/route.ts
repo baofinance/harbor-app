@@ -19,10 +19,12 @@ export async function POST(req: Request) {
     const graphUrlOverride = (searchParams.get("graphUrl") || "").trim() || undefined;
     const first = Number(searchParams.get("first") || "");
     const maxBatches = Number(searchParams.get("maxBatches") || "");
+    const resetCursor = searchParams.get("reset") === "true";
     const result = await syncMarksShares({
       graphUrlOverride,
       first: Number.isFinite(first) && first > 0 ? first : undefined,
       maxBatches: Number.isFinite(maxBatches) && maxBatches > 0 ? maxBatches : undefined,
+      resetCursor,
     });
     return NextResponse.json(result);
   } catch (err: any) {

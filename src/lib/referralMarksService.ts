@@ -61,6 +61,7 @@ export async function syncMarksShares(options?: {
   graphUrlOverride?: string;
   first?: number;
   maxBatches?: number;
+  resetCursor?: boolean;
 }): Promise<{ fetched: number; processed: number; graphUrlUsed: string }> {
   const cursorStore = getReferralSyncStore();
   const earningsStore = getReferralEarningsStore();
@@ -69,7 +70,7 @@ export async function syncMarksShares(options?: {
   const shareBps = Math.round(settings.referrerMarksSharePercent * 10000);
   const graphUrlOverride = options?.graphUrlOverride;
   const cursorKey = buildCursorKey("marks:events", graphUrlOverride);
-  let cursor = await cursorStore.getCursor(cursorKey);
+  let cursor = options?.resetCursor ? null : await cursorStore.getCursor(cursorKey);
   let fetched = 0;
   let processed = 0;
   const graphUrlUsed = graphUrlOverride || getGraphUrl();
@@ -90,6 +91,8 @@ export async function syncMarksShares(options?: {
       if (!binding || binding.status !== "confirmed") {
         continue;
       }
+      const fresh = await earningsStore.checkAndMarkMarksSeen(event.id);
+      if (!fresh) continue;
       const existing =
         (await earningsStore.getReferrerTotals(binding.referrer)) || {
           referrer: binding.referrer,

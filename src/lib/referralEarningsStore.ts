@@ -24,6 +24,7 @@ export type ReferralEarningsStore = {
   getReferrerTotals(referrer: Address): Promise<ReferrerTotals | null>;
   setReferrerTotals(totals: ReferrerTotals): Promise<void>;
   checkAndMarkFeeSeen(id: string): Promise<boolean>;
+  checkAndMarkMarksSeen(id: string): Promise<boolean>;
   listReferrers(): Promise<Address[]>;
   listRebateUsers(): Promise<Address[]>;
 };
@@ -31,6 +32,7 @@ export type ReferralEarningsStore = {
 const REBATE_PREFIX = "harbor:ref:rebate:";
 const REFERRER_PREFIX = "harbor:ref:referrer:";
 const FEE_SEEN_PREFIX = "harbor:ref:fee:seen:";
+const MARKS_SEEN_PREFIX = "harbor:ref:marks:seen:";
 const REFERRER_SET = "harbor:ref:referrers";
 const REBATE_SET = "harbor:ref:rebate:users";
 
@@ -131,6 +133,11 @@ function createMemoryStore(): ReferralEarningsStore {
       feeSeen.add(id);
       return true;
     },
+    async checkAndMarkMarksSeen(id) {
+      if (feeSeen.has(`${MARKS_SEEN_PREFIX}${id}`)) return false;
+      feeSeen.add(`${MARKS_SEEN_PREFIX}${id}`);
+      return true;
+    },
     async listReferrers() {
       return Array.from(referrerSet.values()) as Address[];
     },
@@ -176,6 +183,16 @@ function createUpstashStore(): ReferralEarningsStore {
     },
     async checkAndMarkFeeSeen(id) {
       const key = `${FEE_SEEN_PREFIX}${id}`;
+      const result = await upstashCommand<string | null>([
+        "SET",
+        key,
+        "1",
+        "NX",
+      ]);
+      return result === "OK";
+    },
+    async checkAndMarkMarksSeen(id) {
+      const key = `${MARKS_SEEN_PREFIX}${id}`;
       const result = await upstashCommand<string | null>([
         "SET",
         key,
