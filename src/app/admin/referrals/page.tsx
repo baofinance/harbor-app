@@ -1,12 +1,28 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import InfoTooltip from "@/components/InfoTooltip";
+import { formatEther, formatUSD } from "@/utils/formatters";
+import { toHex } from "viem";
 
 type ApiResult = {
   message?: string;
   error?: string;
+};
+
+type PayoutEntry = {
+  referrer: string;
+  totalEthWei: string;
+  totalUsdE18: string;
+  eligible: boolean;
+};
+
+type RebateEntry = {
+  user: string;
+  totalEthWei: string;
+  totalUsdE18: string;
+  eligible: boolean;
 };
 
 export default function AdminReferralsPage() {
@@ -21,6 +37,8 @@ export default function AdminReferralsPage() {
     totalUsdE18: bigint;
   } | null>(null);
   const [lastRun, setLastRun] = useState<string | null>(null);
+  const [sendingRewards, setSendingRewards] = useState(false);
+  const [sendingRebates, setSendingRebates] = useState(false);
   const [settings, setSettings] = useState({
     rebatePercent: 25,
     rebateMaxFees: 3,
@@ -78,6 +96,138 @@ export default function AdminReferralsPage() {
       setOutput(err?.message || "Request failed");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const formatE18 = (value?: string | null) =>
+    value ? formatUSD(Number(BigInt(value)) / 1e18) : "$0";
+  const formatEthWei = (value?: string | null) =>
+    value ? `${formatEther(BigInt(value))} ETH` : "0 ETH";
+
+  const formattedOutput = useMemo(() => {
+    if (!output) return "No output yet.";
+    try {
+      const parsed = JSON.parse(output);
+      if (parsed?.payouts || parsed?.rebates) {
+        const payouts = (parsed.payouts || []).map((p: any) => ({
+          ...p,
+          totalUsd: formatE18(p.totalUsdE18),
+          totalEth: formatEthWei(p.totalEthWei),
+        }));
+        const rebates = (parsed.rebates || []).map((r: any) => ({
+          ...r,
+          totalUsd: formatE18(r.totalUsdE18),
+          totalEth: formatEthWei(r.totalEthWei),
+        }));
+        return JSON.stringify({ ...parsed, payouts, rebates }, null, 2);
+      }
+      return JSON.stringify(parsed, null, 2);
+    } catch {
+      return output;
+    }
+  }, [output]);
+
+  const sendEthBatch = async (txs: Array<{ to: string; value: bigint }>) => {
+    const ethereum = (window as any)?.ethereum;
+    if (!ethereum?.request) {
+      throw new Error("No injected wallet found (window.ethereum).");
+    }
+    if (txs.length === 0) {
+      throw new Error("No eligible payouts.");
+    }
+    const calls = txs.map((t) => ({
+      to: t.to,
+      value: toHex(t.value),
+      data: "0x",
+    }));
+    try {
+      const res = await ethereum.request({
+        method: "wallet_sendCalls",
+        params: [
+          {
+            version: "1.0",
+            chainId: "0x1",
+            calls,
+          },
+        ],
+      });
+      return typeof res === "string" ? res : "Sent batch via wallet_sendCalls.";
+    } catch (err: any) {
+      for (const t of txs) {
+        await ethereum.request({
+          method: "eth_sendTransaction",
+          params: [
+            {
+              to: t.to,
+              value: toHex(t.value),
+              data: "0x",
+            },
+          ],
+        });
+      }
+      return "Sent transactions via eth_sendTransaction (one by one).";
+    }
+  };
+
+  const sendReferrerRewards = async () => {
+    if (!adminKey) {
+      setOutput("Missing admin key.");
+      return;
+    }
+    setSendingRewards(true);
+    try {
+      const res = await fetch("/api/referrals/earnings/payouts", {
+        headers: { Authorization: `Bearer ${adminKey}` },
+      });
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        throw new Error(json?.error || "Failed to fetch payouts");
+      }
+      const json = await res.json();
+      const payouts: PayoutEntry[] = json?.payouts || [];
+      const txs = payouts
+        .filter((p) => p.eligible && p.totalEthWei && p.referrer)
+        .map((p) => ({
+          to: p.referrer,
+          value: BigInt(p.totalEthWei),
+        }));
+      const result = await sendEthBatch(txs);
+      setOutput(result);
+    } catch (err: any) {
+      setOutput(err?.message || "Failed to send referrer rewards");
+    } finally {
+      setSendingRewards(false);
+    }
+  };
+
+  const sendRebates = async () => {
+    if (!adminKey) {
+      setOutput("Missing admin key.");
+      return;
+    }
+    setSendingRebates(true);
+    try {
+      const res = await fetch("/api/referrals/earnings/rebates", {
+        headers: { Authorization: `Bearer ${adminKey}` },
+      });
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        throw new Error(json?.error || "Failed to fetch rebates");
+      }
+      const json = await res.json();
+      const rebates: RebateEntry[] = json?.rebates || [];
+      const txs = rebates
+        .filter((r) => r.eligible && r.totalEthWei && r.user)
+        .map((r) => ({
+          to: r.user,
+          value: BigInt(r.totalEthWei),
+        }));
+      const result = await sendEthBatch(txs);
+      setOutput(result);
+    } catch (err: any) {
+      setOutput(err?.message || "Failed to send rebates");
+    } finally {
+      setSendingRebates(false);
     }
   };
 
@@ -457,6 +607,31 @@ export default function AdminReferralsPage() {
           </div>
         </div>
 
+        <div className="rounded-lg border border-[#1E4775]/10 p-4 space-y-3">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-[#1E4775]">
+            Send Payouts
+          </h2>
+          <div className="flex flex-wrap gap-2">
+            <button
+              className="px-3 py-1.5 rounded-full bg-[#1E4775] text-white text-xs disabled:opacity-60"
+              disabled={sendingRewards || loading}
+              onClick={sendReferrerRewards}
+            >
+              Send Referrer Rewards
+            </button>
+            <button
+              className="px-3 py-1.5 rounded-full bg-[#1E4775] text-white text-xs disabled:opacity-60"
+              disabled={sendingRebates || loading}
+              onClick={sendRebates}
+            >
+              Send Rebates
+            </button>
+            <span className="text-xs text-gray-500">
+              Uses your connected wallet to batch-send ETH.
+            </span>
+          </div>
+        </div>
+
         <div className="flex flex-wrap gap-3">
           <button
             className="px-4 py-2 rounded-full bg-[#1E4775] text-white text-sm"
@@ -615,7 +790,7 @@ export default function AdminReferralsPage() {
           Output
         </h2>
         <pre className="mt-3 text-xs text-gray-600 whitespace-pre-wrap break-words">
-          {output || "No output yet."}
+          {formattedOutput}
         </pre>
       </div>
     </div>
