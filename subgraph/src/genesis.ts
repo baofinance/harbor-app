@@ -905,15 +905,15 @@ export function handleWithdraw(event: WithdrawEvent): void {
 
   // Log marks forfeited event
   if (marksForfeited.gt(BigDecimal.fromString("0"))) {
-    createMarksEvent({
-      id: `${userAddress.toHexString()}-${txHash.toHexString()}-${event.logIndex.toString()}-forfeit`,
-      user: userAddress,
-      amountE18: toE18BigInt(marksForfeited),
-      eventType: "forfeit",
+    createMarksEvent(
+      `${userAddress.toHexString()}-${txHash.toHexString()}-${event.logIndex.toString()}-forfeit`,
+      userAddress,
+      toE18BigInt(marksForfeited),
+      "forfeit",
       timestamp,
       blockNumber,
-      txHash,
-    });
+      txHash
+    );
   }
 }
 

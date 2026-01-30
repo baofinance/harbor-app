@@ -11,21 +11,21 @@ export function toE18BigInt(value: BigDecimal): BigInt {
   return BigInt.fromString(scaled.toString());
 }
 
-export function createMarksEvent(params: {
-  id: string;
-  user: Bytes;
-  amountE18: BigInt;
-  eventType: string;
-  timestamp: BigInt;
-  blockNumber: BigInt;
-  txHash?: Bytes;
-}): void {
-  const event = new MarksEvent(params.id);
-  event.user = params.user;
-  event.amount = params.amountE18;
-  event.eventType = params.eventType;
-  event.timestamp = params.timestamp;
-  event.blockNumber = params.blockNumber;
-  event.txHash = params.txHash ? params.txHash : ZERO_TX;
+export function createMarksEvent(
+  id: string,
+  user: Bytes,
+  amountE18: BigInt,
+  eventType: string,
+  timestamp: BigInt,
+  blockNumber: BigInt,
+  txHash: Bytes = ZERO_TX
+): void {
+  const event = new MarksEvent(id);
+  event.user = user;
+  event.amount = amountE18;
+  event.eventType = eventType;
+  event.timestamp = timestamp;
+  event.blockNumber = blockNumber;
+  event.txHash = txHash;
   event.save();
 }

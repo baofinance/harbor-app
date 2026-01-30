@@ -128,14 +128,14 @@ function updateHaBalances(token: Address, now: BigInt, priceUsd: BigDecimal, blo
     if (earned.gt(BigDecimal.fromString("0"))) {
       b.accumulatedMarks = b.accumulatedMarks.plus(earned);
       b.totalMarksEarned = b.totalMarksEarned.plus(earned);
-      createMarksEvent({
-        id: `${user.toHexString()}-${token.toHexString()}-${now.toString()}-anchor`,
+      createMarksEvent(
+        `${user.toHexString()}-${token.toHexString()}-${now.toString()}-anchor`,
         user,
-        amountE18: toE18BigInt(earned),
-        eventType: "anchor",
-        timestamp: now,
-        blockNumber,
-      });
+        toE18BigInt(earned),
+        "anchor",
+        now,
+        blockNumber
+      );
     }
     const amount = b.balance.toBigDecimal().div(ONE_E18);
     b.balanceUSD = amount.times(priceUsd);
@@ -163,14 +163,14 @@ function updateHsBalances(token: Address, now: BigInt, priceUsd: BigDecimal, blo
     if (earned.gt(BigDecimal.fromString("0"))) {
       b.accumulatedMarks = b.accumulatedMarks.plus(earned);
       b.totalMarksEarned = b.totalMarksEarned.plus(earned);
-      createMarksEvent({
-        id: `${user.toHexString()}-${token.toHexString()}-${now.toString()}-sail`,
+      createMarksEvent(
+        `${user.toHexString()}-${token.toHexString()}-${now.toString()}-sail`,
         user,
-        amountE18: toE18BigInt(earned),
-        eventType: "sail",
-        timestamp: now,
-        blockNumber,
-      });
+        toE18BigInt(earned),
+        "sail",
+        now,
+        blockNumber
+      );
     }
     const amount = b.balance.toBigDecimal().div(ONE_E18);
     b.balanceUSD = amount.times(priceUsd);
@@ -221,14 +221,14 @@ function updatePoolDeposits(pool: Address, now: BigInt, assetUsd: BigDecimal, bl
     if (earned.gt(BigDecimal.fromString("0"))) {
       d.accumulatedMarks = d.accumulatedMarks.plus(earned);
       d.totalMarksEarned = d.totalMarksEarned.plus(earned);
-      createMarksEvent({
-        id: `${user.toHexString()}-${pool.toHexString()}-${now.toString()}-pool`,
+      createMarksEvent(
+        `${user.toHexString()}-${pool.toHexString()}-${now.toString()}-pool`,
         user,
-        amountE18: toE18BigInt(earned),
-        eventType: "stabilityPool",
-        timestamp: now,
-        blockNumber,
-      });
+        toE18BigInt(earned),
+        "stabilityPool",
+        now,
+        blockNumber
+      );
     }
     const amount = d.balance.toBigDecimal().div(ONE_E18);
     d.balanceUSD = amount.times(assetUsd);
@@ -355,9 +355,15 @@ export function runHourlySailMarksUpdate(block: ethereum.Block): void {
   const hsStethUsd = hsPriceUsd(HS_STETH_BTC);
 
   // Update sail token holders (wallet balances)
-  if (hsEthUsd.gt(BigDecimal.fromString("0"))) updateHsBalances(HS_FXUSD_ETH, now, hsEthUsd);
-  if (hsBtcUsd.gt(BigDecimal.fromString("0"))) updateHsBalances(HS_FXUSD_BTC, now, hsBtcUsd);
-  if (hsStethUsd.gt(BigDecimal.fromString("0"))) updateHsBalances(HS_STETH_BTC, now, hsStethUsd);
+  if (hsEthUsd.gt(BigDecimal.fromString("0"))) {
+    updateHsBalances(HS_FXUSD_ETH, now, hsEthUsd, block.number);
+  }
+  if (hsBtcUsd.gt(BigDecimal.fromString("0"))) {
+    updateHsBalances(HS_FXUSD_BTC, now, hsBtcUsd, block.number);
+  }
+  if (hsStethUsd.gt(BigDecimal.fromString("0"))) {
+    updateHsBalances(HS_STETH_BTC, now, hsStethUsd, block.number);
+  }
 
   t.lastUpdated = now;
   t.save();

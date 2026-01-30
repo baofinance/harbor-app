@@ -385,6 +385,35 @@ type SailTokenRedeemEvent @entity(immutable: true) {
   txHash: Bytes!
 }
 
+# Pegged (Anchor) token mint/redeem events
+type AnchorTokenMintEvent @entity(immutable: true) {
+  id: ID! # "{txHash}-{logIndex}"
+  tokenAddress: Bytes!
+  minterAddress: Bytes!
+  user: Bytes! # Receiver
+
+  collateralIn: BigInt!
+  peggedOut: BigInt!
+
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  txHash: Bytes!
+}
+
+type AnchorTokenRedeemEvent @entity(immutable: true) {
+  id: ID! # "{txHash}-{logIndex}"
+  tokenAddress: Bytes!
+  minterAddress: Bytes!
+  user: Bytes! # Sender
+
+  peggedIn: BigInt!
+  collateralOut: BigInt!
+
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  txHash: Bytes!
+}
+
 # ============ Sail PnL: Genesis-derived cost basis ============
 #
 # This entity is used by the sail-tokens subgraph to attribute cost basis to

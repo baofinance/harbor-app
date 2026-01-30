@@ -60,6 +60,8 @@ dataSources:
         - CostBasisLot
         - SailTokenMintEvent
         - SailTokenRedeemEvent
+        - AnchorTokenMintEvent
+        - AnchorTokenRedeemEvent
         - SailTokenPricePoint
         - HourlyPriceSnapshot
         - PriceTracker
@@ -78,6 +80,10 @@ dataSources:
           handler: handleMintLeveragedToken
         - event: RedeemLeveragedToken(indexed address,uint256,uint256)
           handler: handleRedeemLeveragedToken
+        - event: MintPeggedToken(indexed address,indexed address,uint256,uint256)
+          handler: handleMintPeggedToken
+        - event: RedeemPeggedToken(indexed address,uint256,uint256)
+          handler: handleRedeemPeggedToken
       blockHandlers:
         - handler: handleBlock
           filter:
@@ -139,6 +145,8 @@ dataSources:
         - CostBasisLot
         - SailTokenMintEvent
         - SailTokenRedeemEvent
+        - AnchorTokenMintEvent
+        - AnchorTokenRedeemEvent
         - SailTokenPricePoint
         - HourlyPriceSnapshot
         - PriceTracker
@@ -157,6 +165,10 @@ dataSources:
           handler: handleMintLeveragedToken
         - event: RedeemLeveragedToken(indexed address,uint256,uint256)
           handler: handleRedeemLeveragedToken
+        - event: MintPeggedToken(indexed address,indexed address,uint256,uint256)
+          handler: handleMintPeggedToken
+        - event: RedeemPeggedToken(indexed address,uint256,uint256)
+          handler: handleRedeemPeggedToken
       blockHandlers:
         - handler: handleBlock
           filter:
@@ -218,6 +230,8 @@ dataSources:
         - CostBasisLot
         - SailTokenMintEvent
         - SailTokenRedeemEvent
+        - AnchorTokenMintEvent
+        - AnchorTokenRedeemEvent
         - SailTokenPricePoint
         - HourlyPriceSnapshot
         - PriceTracker

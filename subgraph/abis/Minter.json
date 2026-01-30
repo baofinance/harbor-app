@@ -86,10 +86,31 @@
     "anonymous": false,
     "inputs": [
       { "indexed": true, "internalType": "address", "name": "sender", "type": "address" },
+      { "indexed": true, "internalType": "address", "name": "receiver", "type": "address" },
+      { "indexed": false, "internalType": "uint256", "name": "collateralIn", "type": "uint256" },
+      { "indexed": false, "internalType": "uint256", "name": "peggedOut", "type": "uint256" }
+    ],
+    "name": "MintPeggedToken",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      { "indexed": true, "internalType": "address", "name": "sender", "type": "address" },
       { "indexed": false, "internalType": "uint256", "name": "leveragedTokenBurned", "type": "uint256" },
       { "indexed": false, "internalType": "uint256", "name": "collateralOut", "type": "uint256" }
     ],
     "name": "RedeemLeveragedToken",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      { "indexed": true, "internalType": "address", "name": "sender", "type": "address" },
+      { "indexed": false, "internalType": "uint256", "name": "peggedTokenBurned", "type": "uint256" },
+      { "indexed": false, "internalType": "uint256", "name": "collateralOut", "type": "uint256" }
+    ],
+    "name": "RedeemPeggedToken",
     "type": "event"
   }
 ]

@@ -12,6 +12,11 @@
     "enabled": true,
     "autoAlias": true
   },
-  "crons": []
+  "crons": [
+    {
+      "path": "/api/referrals/fees/sync",
+      "schedule": "*/10 * * * *"
+    }
+  ]
 }
 

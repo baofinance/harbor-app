@@ -9,6 +9,8 @@ import {
 import {
   MintLeveragedToken,
   RedeemLeveragedToken,
+  MintPeggedToken,
+  RedeemPeggedToken,
   Minter,
 } from "../generated/Minter_ETH_fxUSD/Minter";
 import { WrappedPriceOracle } from "../generated/Minter_ETH_fxUSD/WrappedPriceOracle";
@@ -19,6 +21,8 @@ import {
   CostBasisLot,
   SailTokenMintEvent,
   SailTokenRedeemEvent,
+  AnchorTokenMintEvent,
+  AnchorTokenRedeemEvent,
   SailTokenPricePoint,
   HourlyPriceSnapshot,
   PriceTracker,
@@ -751,6 +755,56 @@ export function handleRedeemLeveragedToken(event: RedeemLeveragedToken): void {
   updateAggregates(position);
   position.lastUpdated = event.block.timestamp;
   position.save();
+}
+
+export function handleMintPeggedToken(event: MintPeggedToken): void {
+  const minterAddress = event.address;
+  const minter = Minter.bind(minterAddress);
+
+  const tokenRes = minter.try_PEGGED_TOKEN();
+  if (tokenRes.reverted) return;
+  const token = tokenRes.value;
+
+  const receiver = event.params.receiver;
+  const collateralIn = event.params.collateralIn;
+  const peggedOut = event.params.peggedOut;
+
+  const mintId = event.transaction.hash.toHexString() + "-" + event.logIndex.toString();
+  const mint = new AnchorTokenMintEvent(mintId);
+  mint.tokenAddress = token;
+  mint.minterAddress = minterAddress;
+  mint.user = receiver;
+  mint.collateralIn = collateralIn;
+  mint.peggedOut = peggedOut;
+  mint.timestamp = event.block.timestamp;
+  mint.blockNumber = event.block.number;
+  mint.txHash = event.transaction.hash;
+  mint.save();
+}
+
+export function handleRedeemPeggedToken(event: RedeemPeggedToken): void {
+  const minterAddress = event.address;
+  const minter = Minter.bind(minterAddress);
+
+  const tokenRes = minter.try_PEGGED_TOKEN();
+  if (tokenRes.reverted) return;
+  const token = tokenRes.value;
+
+  const sender = event.params.sender;
+  const peggedBurned = event.params.peggedTokenBurned;
+  const collateralOut = event.params.collateralOut;
+
+  const redeemId = event.transaction.hash.toHexString() + "-" + event.logIndex.toString();
+  const redeem = new AnchorTokenRedeemEvent(redeemId);
+  redeem.tokenAddress = token;
+  redeem.minterAddress = minterAddress;
+  redeem.user = sender;
+  redeem.peggedIn = peggedBurned;
+  redeem.collateralOut = collateralOut;
+  redeem.timestamp = event.block.timestamp;
+  redeem.blockNumber = event.block.number;
+  redeem.txHash = event.transaction.hash;
+  redeem.save();
 }
 
 
