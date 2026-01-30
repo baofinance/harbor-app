@@ -7,7 +7,7 @@ import {
   buildReferralBindTypedData,
   buildReferralCodeCreateTypedData,
 } from "@/lib/referralsTypedData";
-import { formatEther, formatUSD } from "@/utils/formatters";
+import { formatEther, formatToken, formatUSD } from "@/utils/formatters";
 
 type ReferralSummary = {
   codes: Array<{
@@ -179,6 +179,9 @@ export default function ReferralsPage() {
             BigInt(summary.referrerTotals.yieldEthWei)
         )
       : "0";
+  const referrerMarks = summary?.referrerTotals?.marksPoints
+    ? formatToken(BigInt(summary.referrerTotals.marksPoints), 18, 2)
+    : "0";
 
   return (
     <div className="max-w-6xl mx-auto px-4 pb-16">
@@ -329,7 +332,7 @@ export default function ReferralsPage() {
                 {formatUSD(referrerTotalUsd)} ({referrerEth} ETH)
               </div>
               <p className="text-xs text-gray-500 mt-1">
-                Marks earned: {summary?.referrerTotals?.marksPoints ?? "0"}
+                Marks earned: {referrerMarks}
               </p>
             </div>
           </div>
