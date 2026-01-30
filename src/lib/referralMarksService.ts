@@ -388,9 +388,9 @@ export async function reconcileMarksShareForUser(options: {
 
   const shareE18 = (totalE18 * BigInt(shareBps)) / 10000n;
   const metaKey = `marks:share:${options.referred.toLowerCase()}`;
-  const previousRaw = options.resetShare ? null : await metaStore.getMeta(metaKey);
+  const previousRaw = await metaStore.getMeta(metaKey);
   const previous = previousRaw ? BigInt(previousRaw) : 0n;
-  if (shareE18 <= previous) {
+  if (!options.resetShare && shareE18 <= previous) {
     return { updated: false, shareE18: shareE18.toString(), graphUrlUsed };
   }
 
@@ -406,9 +406,10 @@ export async function reconcileMarksShareForUser(options: {
       lastUpdatedAt: 0,
     };
 
+  const nextMarks = existing.marksPoints + delta;
   const next = {
     ...existing,
-    marksPoints: existing.marksPoints + delta,
+    marksPoints: nextMarks < 0n ? 0n : nextMarks,
     lastUpdatedAt: Date.now(),
   };
   await earningsStore.setReferrerTotals(next);
