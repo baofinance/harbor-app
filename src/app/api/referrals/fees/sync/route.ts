@@ -82,6 +82,12 @@ function isCronRequest(req: Request) {
   return req.headers.get("x-vercel-cron") === "1";
 }
 
+function buildCursorKey(base: string, graphUrlOverride?: string) {
+  if (!graphUrlOverride) return base;
+  const slug = graphUrlOverride.replace(/[^a-zA-Z0-9]/g, "_").slice(0, 64);
+  return `${base}:${slug}`;
+}
+
 async function fetchEvents(
   query: string,
   after: string | null,
@@ -189,28 +195,28 @@ export async function POST(req: Request) {
     const graphUrlOverride = (searchParams.get("graphUrl") || "").trim() || undefined;
 
     const peggedMints = await syncEvents({
-      cursorKey: "fees:pegged:mints",
+      cursorKey: buildCursorKey("fees:pegged:mints", graphUrlOverride),
       query: PEGGED_MINT_QUERY,
       operation: "MINT_PEGGED",
       amountField: "collateralIn",
       graphUrlOverride,
     });
     const peggedRedeems = await syncEvents({
-      cursorKey: "fees:pegged:redeems",
+      cursorKey: buildCursorKey("fees:pegged:redeems", graphUrlOverride),
       query: PEGGED_REDEEM_QUERY,
       operation: "REDEEM_PEGGED",
       amountField: "peggedIn",
       graphUrlOverride,
     });
     const leveragedMints = await syncEvents({
-      cursorKey: "fees:leveraged:mints",
+      cursorKey: buildCursorKey("fees:leveraged:mints", graphUrlOverride),
       query: LEVERAGED_MINT_QUERY,
       operation: "MINT_LEVERAGED",
       amountField: "collateralIn",
       graphUrlOverride,
     });
     const leveragedRedeems = await syncEvents({
-      cursorKey: "fees:leveraged:redeems",
+      cursorKey: buildCursorKey("fees:leveraged:redeems", graphUrlOverride),
       query: LEVERAGED_REDEEM_QUERY,
       operation: "REDEEM_LEVERAGED",
       amountField: "leveragedBurned",
