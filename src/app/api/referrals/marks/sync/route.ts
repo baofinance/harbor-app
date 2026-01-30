@@ -20,11 +20,13 @@ export async function POST(req: Request) {
     const first = Number(searchParams.get("first") || "");
     const maxBatches = Number(searchParams.get("maxBatches") || "");
     const resetCursor = searchParams.get("reset") === "true";
+    const resetShare = searchParams.get("resetShare") === "true";
     const referred = (searchParams.get("referred") || "").trim();
     if (referred) {
       const result = await reconcileMarksShareForUser({
         referred,
         graphUrlOverride,
+        resetShare,
       });
       return NextResponse.json(result);
     }

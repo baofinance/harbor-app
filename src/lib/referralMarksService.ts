@@ -314,6 +314,7 @@ export async function syncMarksShares(options?: {
 export async function reconcileMarksShareForUser(options: {
   referred: string;
   graphUrlOverride?: string;
+  resetShare?: boolean;
 }): Promise<{ updated: boolean; shareE18: string; graphUrlUsed: string }> {
   const referralStore = getReferralsStore();
   const earningsStore = getReferralEarningsStore();
@@ -387,7 +388,7 @@ export async function reconcileMarksShareForUser(options: {
 
   const shareE18 = (totalE18 * BigInt(shareBps)) / 10000n;
   const metaKey = `marks:share:${options.referred.toLowerCase()}`;
-  const previousRaw = await metaStore.getMeta(metaKey);
+  const previousRaw = options.resetShare ? null : await metaStore.getMeta(metaKey);
   const previous = previousRaw ? BigInt(previousRaw) : 0n;
   if (shareE18 <= previous) {
     return { updated: false, shareE18: shareE18.toString(), graphUrlUsed };
