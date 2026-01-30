@@ -46,7 +46,7 @@ const USER_TOTAL_MARKS_QUERY = `
 
 const USER_MARKS_BREAKDOWN_QUERY = `
   query UserMarksBreakdown($user: Bytes!) {
-    userHarborMarks(where: { user: $user }) {
+    userHarborMarks_collection(where: { user: $user }) {
       currentMarks
     }
     haTokenBalances(where: { user: $user }) {
