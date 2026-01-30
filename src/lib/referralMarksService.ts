@@ -394,7 +394,6 @@ export async function reconcileMarksShareForUser(options: {
     return { updated: false, shareE18: shareE18.toString(), graphUrlUsed };
   }
 
-  const delta = shareE18 - previous;
   const existing =
     (await earningsStore.getReferrerTotals(binding.referrer)) || {
       referrer: binding.referrer,
@@ -406,7 +405,9 @@ export async function reconcileMarksShareForUser(options: {
       lastUpdatedAt: 0,
     };
 
-  const nextMarks = existing.marksPoints + delta;
+  const nextMarks = options.resetShare
+    ? shareE18
+    : existing.marksPoints + (shareE18 - previous);
   const next = {
     ...existing,
     marksPoints: nextMarks < 0n ? 0n : nextMarks,
