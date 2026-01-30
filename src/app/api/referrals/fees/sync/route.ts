@@ -84,9 +84,10 @@ function isCronRequest(req: Request) {
 
 async function fetchEvents(
   query: string,
-  after: string | null
+  after: string | null,
+  graphUrlOverride?: string
 ): Promise<FeeEvent[]> {
-  const url = getGraphUrl();
+  const url = graphUrlOverride || getGraphUrl();
   const headers = getGraphHeaders(url);
   const body = JSON.stringify({
     query,
@@ -127,6 +128,7 @@ async function syncEvents(options: {
   query: string;
   operation: "MINT_PEGGED" | "REDEEM_PEGGED" | "MINT_LEVERAGED" | "REDEEM_LEVERAGED";
   amountField: keyof FeeEvent;
+  graphUrlOverride?: string;
 }) {
   const store = getReferralSyncStore();
   let cursor = await store.getCursor(options.cursorKey);
@@ -136,7 +138,7 @@ async function syncEvents(options: {
   const errors: Array<{ id: string; message: string }> = [];
 
   while (true) {
-    const events = await fetchEvents(options.query, cursor);
+    const events = await fetchEvents(options.query, cursor, options.graphUrlOverride);
     if (!events.length) break;
 
     for (const event of events) {
@@ -183,29 +185,36 @@ export async function POST(req: Request) {
   }
 
   try {
+    const { searchParams } = new URL(req.url);
+    const graphUrlOverride = (searchParams.get("graphUrl") || "").trim() || undefined;
+
     const peggedMints = await syncEvents({
       cursorKey: "fees:pegged:mints",
       query: PEGGED_MINT_QUERY,
       operation: "MINT_PEGGED",
       amountField: "collateralIn",
+      graphUrlOverride,
     });
     const peggedRedeems = await syncEvents({
       cursorKey: "fees:pegged:redeems",
       query: PEGGED_REDEEM_QUERY,
       operation: "REDEEM_PEGGED",
       amountField: "peggedIn",
+      graphUrlOverride,
     });
     const leveragedMints = await syncEvents({
       cursorKey: "fees:leveraged:mints",
       query: LEVERAGED_MINT_QUERY,
       operation: "MINT_LEVERAGED",
       amountField: "collateralIn",
+      graphUrlOverride,
     });
     const leveragedRedeems = await syncEvents({
       cursorKey: "fees:leveraged:redeems",
       query: LEVERAGED_REDEEM_QUERY,
       operation: "REDEEM_LEVERAGED",
       amountField: "leveragedBurned",
+      graphUrlOverride,
     });
     return NextResponse.json({
       peggedMints,
