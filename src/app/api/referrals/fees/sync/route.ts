@@ -97,7 +97,7 @@ async function fetchEvents(
   const headers = getGraphHeaders(url);
   const body = JSON.stringify({
     query,
-    variables: { first: 200, after },
+    variables: { first: 200, after: after || "" },
   });
 
   const response = await retryGraphQLQuery(async () => {
