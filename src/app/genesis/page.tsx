@@ -5083,6 +5083,9 @@ export default function GenesisIndexPage() {
                       const displayMarketName = rowLeveragedSymbol && rowLeveragedSymbol.toLowerCase().startsWith("hs")
                         ? rowLeveragedSymbol.slice(2)
                         : rowLeveragedSymbol || (mkt as any).name || "Market";
+                      const peggedNoPrefix = rowPeggedSymbol && rowPeggedSymbol.toLowerCase().startsWith("ha")
+                        ? rowPeggedSymbol.slice(2)
+                        : rowPeggedSymbol || "pegged token";
 
                       // Get token prices for claimable display
                       const anchorTokenPriceUSD = 1; // Pegged tokens are always $1
