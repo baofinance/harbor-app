@@ -17,10 +17,27 @@ type UserTotalMarks = {
 };
 
 type MarksBreakdown = {
-  userHarborMarks?: Array<{ currentMarks: string }>;
-  haTokenBalances?: Array<{ totalMarksEarned: string }>;
-  stabilityPoolDeposits?: Array<{ totalMarksEarned: string }>;
-  sailTokenBalances?: Array<{ totalMarksEarned: string }>;
+  userHarborMarks?: Array<{
+    currentMarks: string;
+    marksPerDay: string;
+    lastUpdated: string;
+    genesisEnded: boolean;
+  }>;
+  haTokenBalances?: Array<{
+    accumulatedMarks: string;
+    marksPerDay: string;
+    lastUpdated: string;
+  }>;
+  stabilityPoolDeposits?: Array<{
+    accumulatedMarks: string;
+    marksPerDay: string;
+    lastUpdated: string;
+  }>;
+  sailTokenBalances?: Array<{
+    accumulatedMarks: string;
+    marksPerDay: string;
+    lastUpdated: string;
+  }>;
 };
 
 const MARKS_QUERY = `
@@ -48,15 +65,24 @@ const USER_MARKS_BREAKDOWN_QUERY = `
   query UserMarksBreakdown($user: Bytes!) {
     userHarborMarks_collection(where: { user: $user }) {
       currentMarks
+      marksPerDay
+      lastUpdated
+      genesisEnded
     }
     haTokenBalances(where: { user: $user }) {
-      totalMarksEarned
+      accumulatedMarks
+      marksPerDay
+      lastUpdated
     }
     stabilityPoolDeposits(where: { user: $user }) {
-      totalMarksEarned
+      accumulatedMarks
+      marksPerDay
+      lastUpdated
     }
     sailTokenBalances(where: { user: $user }) {
-      totalMarksEarned
+      accumulatedMarks
+      marksPerDay
+      lastUpdated
     }
   }
 `;
@@ -96,6 +122,26 @@ function parseBigDecimalToE18(value: string | null | undefined): bigint {
   const fracPadded = fraction.padEnd(18, "0").slice(0, 18);
   const fracPart = fracPadded ? BigInt(fracPadded) : 0n;
   return wholePart * 1000000000000000000n + fracPart;
+}
+
+function estimateMarksE18(options: {
+  accumulated: string;
+  marksPerDay: string;
+  lastUpdated: string;
+  nowSec: number;
+}): bigint {
+  const accumulatedE18 = parseBigDecimalToE18(options.accumulated);
+  const marksPerDayE18 = parseBigDecimalToE18(options.marksPerDay);
+  const lastUpdatedSec = Number(options.lastUpdated || "0");
+  if (!Number.isFinite(lastUpdatedSec) || lastUpdatedSec <= 0) {
+    return accumulatedE18;
+  }
+  const elapsedSec = Math.max(0, options.nowSec - lastUpdatedSec);
+  if (elapsedSec === 0 || marksPerDayE18 === 0n) {
+    return accumulatedE18;
+  }
+  const earnedE18 = (marksPerDayE18 * BigInt(elapsedSec)) / 86400n;
+  return accumulatedE18 + earnedE18;
 }
 
 async function fetchUserTotalMarks(
@@ -248,11 +294,44 @@ export async function reconcileMarksShareForUser(options: {
       const ha = breakdown.haTokenBalances || [];
       const pools = breakdown.stabilityPoolDeposits || [];
       const sail = breakdown.sailTokenBalances || [];
+      const nowSec = Math.floor(Date.now() / 1000);
       let sum = 0n;
-      for (const item of genesis) sum += parseBigDecimalToE18(item.currentMarks);
-      for (const item of ha) sum += parseBigDecimalToE18(item.totalMarksEarned);
-      for (const item of pools) sum += parseBigDecimalToE18(item.totalMarksEarned);
-      for (const item of sail) sum += parseBigDecimalToE18(item.totalMarksEarned);
+      for (const item of genesis) {
+        if (item.genesisEnded) {
+          sum += parseBigDecimalToE18(item.currentMarks);
+        } else {
+          sum += estimateMarksE18({
+            accumulated: item.currentMarks,
+            marksPerDay: item.marksPerDay,
+            lastUpdated: item.lastUpdated,
+            nowSec,
+          });
+        }
+      }
+      for (const item of ha) {
+        sum += estimateMarksE18({
+          accumulated: item.accumulatedMarks,
+          marksPerDay: item.marksPerDay,
+          lastUpdated: item.lastUpdated,
+          nowSec,
+        });
+      }
+      for (const item of pools) {
+        sum += estimateMarksE18({
+          accumulated: item.accumulatedMarks,
+          marksPerDay: item.marksPerDay,
+          lastUpdated: item.lastUpdated,
+          nowSec,
+        });
+      }
+      for (const item of sail) {
+        sum += estimateMarksE18({
+          accumulated: item.accumulatedMarks,
+          marksPerDay: item.marksPerDay,
+          lastUpdated: item.lastUpdated,
+          nowSec,
+        });
+      }
       totalE18 = sum;
     }
   }
