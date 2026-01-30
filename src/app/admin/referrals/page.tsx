@@ -32,6 +32,31 @@ export default function AdminReferralsPage() {
     minPayoutUsd: 100,
   });
 
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("harbor:adminKey");
+      if (stored) {
+        setAdminKey(stored);
+        return;
+      }
+    } catch {
+      // Ignore storage failures
+    }
+
+    if (!adminKey && process.env.NEXT_PUBLIC_REFERRAL_ADMIN_KEY) {
+      setAdminKey(process.env.NEXT_PUBLIC_REFERRAL_ADMIN_KEY);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!adminKey) return;
+    try {
+      localStorage.setItem("harbor:adminKey", adminKey);
+    } catch {
+      // Ignore storage failures
+    }
+  }, [adminKey]);
+
   const callAdmin = async (path: string, options?: RequestInit) => {
     setLoading(true);
     try {
