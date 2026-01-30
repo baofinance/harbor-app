@@ -9,6 +9,27 @@ function jsonError(message: string, status = 400) {
   return NextResponse.json({ error: message }, { status });
 }
 
+function serializeRebate(rebate: any | null) {
+  if (!rebate) return null;
+  return {
+    ...rebate,
+    totalUsdE18: rebate.totalUsdE18?.toString?.() ?? rebate.totalUsdE18,
+    totalEthWei: rebate.totalEthWei?.toString?.() ?? rebate.totalEthWei,
+  };
+}
+
+function serializeReferrerTotals(totals: any | null) {
+  if (!totals) return null;
+  return {
+    ...totals,
+    feeUsdE18: totals.feeUsdE18?.toString?.() ?? totals.feeUsdE18,
+    feeEthWei: totals.feeEthWei?.toString?.() ?? totals.feeEthWei,
+    yieldUsdE18: totals.yieldUsdE18?.toString?.() ?? totals.yieldUsdE18,
+    yieldEthWei: totals.yieldEthWei?.toString?.() ?? totals.yieldEthWei,
+    marksPoints: totals.marksPoints?.toString?.() ?? totals.marksPoints,
+  };
+}
+
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const address = (searchParams.get("address") || "").trim();
@@ -31,8 +52,8 @@ export async function GET(req: Request) {
     return NextResponse.json({
       codes,
       binding,
-      rebate,
-      referrerTotals: totals,
+      rebate: serializeRebate(rebate),
+      referrerTotals: serializeReferrerTotals(totals),
       settings,
       store: getReferralsStoreMode(),
     });
