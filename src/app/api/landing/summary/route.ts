@@ -456,11 +456,12 @@ export async function GET(request: Request) {
       : null;
     const now = Date.now();
     let phase: "live" | "coming-next" | "planned" = "planned";
+    const isComingSoon = (market as any).status === "coming-soon";
     const hasEnded = endDate !== null && now > endDate;
-    if (hasEnded) {
+    if (hasEnded && !isComingSoon) {
       continue;
     }
-    if ((market as any).status === "coming-soon") {
+    if (isComingSoon) {
       phase = "planned";
     } else if (startDate && now < startDate) {
       phase = "coming-next";
