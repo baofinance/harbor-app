@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { flushSync } from "react-dom";
 import { parseEther, formatEther, parseUnits, formatUnits } from "viem";
 import {
   useAccount,
@@ -5618,6 +5619,7 @@ export const AnchorDepositWithdrawModal = ({
         });
         // Show progress modal for transaction feedback
         setProgressModalOpen(true);
+        flushSync(() => {}); // Force React to paint before first action
 
         // Step 1: Approve pegged token for stability pool (if needed)
         if (needsDirectApproval) {
@@ -5971,8 +5973,8 @@ export const AnchorDepositWithdrawModal = ({
             title: shouldDepositToPool ? "Mint & Deposit" : "Mint pegged token",
           });
           setProgressModalOpen(true);
-          
-          setStep(needsZapApproval ? "approving" : "minting");
+          setStep(permitEligible || needsZapApproval ? "approving" : "minting");
+          flushSync(() => {}); // Force React to paint before first action
           setError(null);
           setTxHash(null);
           
@@ -6894,6 +6896,9 @@ export const AnchorDepositWithdrawModal = ({
         });
         // Show progress modal for transaction feedback
         setProgressModalOpen(true);
+        // Set step so progress modal shows (requires step !== "input") before permit/approve
+        setStep(permitEligible ? "approving" : needsZapApproval || needsDirectApproval ? "approving" : "minting");
+        flushSync(() => {}); // Force React to paint before first action
         // Use Anvil client for local development, regular publicClient for production
         const txClient = false ? publicClient : publicClient;
 
@@ -8564,6 +8569,8 @@ export const AnchorDepositWithdrawModal = ({
       });
       // Show progress modal for transaction feedback
       setProgressModalOpen(true);
+      setStep("withdrawing"); // Required: progress modal needs step !== "input"
+      flushSync(() => {}); // Force React to paint before first action
 
       // Validate wallet amount
       if (walletAmount > 0n) {
@@ -9090,6 +9097,8 @@ export const AnchorDepositWithdrawModal = ({
       });
       // Show progress modal for transaction feedback
       setProgressModalOpen(true);
+      setStep(needsApproval ? "approving" : "redeeming"); // Required: progress modal needs step !== "input"
+      flushSync(() => {}); // Force React to paint before first action
 
       if (process.env.NODE_ENV === "development") {
         console.log("[handleRedeem] Starting redeem flow:", {

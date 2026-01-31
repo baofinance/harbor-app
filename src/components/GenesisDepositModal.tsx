@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { flushSync } from "react-dom";
 import { parseEther, formatEther, parseUnits, formatUnits } from "viem";
 import { ArrowPathIcon } from "@heroicons/react/24/outline";
 import {
@@ -988,6 +989,7 @@ if (includePermitAttempt) {
   const permitIndex = steps.findIndex((s) => s.id === "permit");
   setCurrentStepIndex(permitIndex >= 0 ? permitIndex : 0);
   setProgressModalOpen(true);
+  flushSync(() => {}); // Force React to paint before first action
   setProgressSteps((prev) =>
     prev.map((s) =>
       s.id === "permit" ? { ...s, status: "in_progress" } : s
@@ -1044,6 +1046,7 @@ if (includePermitAttempt) {
   setProgressSteps(steps);
   setCurrentStepIndex(0);
   setProgressModalOpen(true);
+  flushSync(() => {}); // Force React to paint before first action
 }
 
  const tryPermitZap = async (params: {

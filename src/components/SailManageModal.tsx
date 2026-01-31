@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
+import { flushSync } from "react-dom";
 import { parseEther, formatEther, parseUnits, formatUnits } from "viem";
 import {
  useAccount,
@@ -851,6 +852,7 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
  steps,
  currentStepIndex: 0,
  });
+ flushSync(() => {}); // Force React to paint before first action
 
  try {
    // Step 1a: Approve source token for swap (if needed)
@@ -1370,6 +1372,7 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
  steps,
  currentStepIndex: 0,
  });
+ flushSync(() => {}); // Force React to paint before first action
 
  try {
  // Step 1: Approve (if needed)
