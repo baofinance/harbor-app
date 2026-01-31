@@ -9,15 +9,9 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { ConnectWallet } from "@/components/Wallet";
-import { useState, useEffect } from "react";
 
 export default function Example() {
   const pathname = usePathname();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   const isActive = (href: string) => {
     if (href === "/") return pathname === "/";
@@ -30,85 +24,6 @@ export default function Example() {
         ? "text-[#1E4775] bg-white"
         : "text-white hover:bg-white/20 hover:text-white"
     }`;
-
-  if (!mounted) {
-    // Render a static version during SSR to avoid hydration mismatch
-    return (
-      <nav className="relative bg-[#1E4775] after:pointer-events-none max-w-7xl mx-auto after:absolute after:inset-x-0 after:bottom-0 after:h-px after:bg-white/20 mb-4 sm:mb-6">
-        <div className="w-full px-3 sm:px-4 lg:px-8">
-          <div className="flex h-16 items-center justify-between">
-            <div className="flex items-center">
-              <a href="https://harborfinance.io" className="h-10 w-auto relative mr-4">
-                <Image
-                  src="/logo.svg"
-                  alt="Logo"
-                  width={100}
-                  height={40}
-                  className="object-contain h-full w-auto"
-                  priority
-                />
-              </a>
-              <div className="hidden sm:block">
-                <div className="flex space-x-2">
-                  <Link
-                    href="/genesis"
-                    className={linkClass("/genesis")}
-                    aria-current={isActive("/genesis") ? "page" : undefined}
-                  >
-                    Maiden Voyage
-                  </Link>
-                  <Link
-                    href="/anchor"
-                    className={linkClass("/anchor")}
-                    aria-current={isActive("/anchor") ? "page" : undefined}
-                  >
-                    Anchor
-                  </Link>
-                  <Link
-                    href="/sail"
-                    className={linkClass("/sail")}
-                    aria-current={isActive("/sail") ? "page" : undefined}
-                  >
-                    Sail
-                  </Link>
-                  <Link
-                    href="/flow"
-                    className={linkClass("/flow")}
-                    aria-current={isActive("/flow") ? "page" : undefined}
-                  >
-                    Map Room
-                  </Link>
-                  <Link
-                    href="/ledger-marks"
-                    className={linkClass("/ledger-marks")}
-                    aria-current={isActive("/ledger-marks") ? "page" : undefined}
-                  >
-                    Marks Leaderboard
-                  </Link>
-                  <Link
-                    href="/transparency"
-                    className={linkClass("/transparency")}
-                    aria-current={isActive("/transparency") ? "page" : undefined}
-                  >
-                    Transparency
-                  </Link>
-                </div>
-              </div>
-            </div>
-            <div className="hidden sm:ml-6 sm:block">
-              <ConnectWallet />
-            </div>
-            <div className="-mr-2 flex sm:hidden">
-              <button className="group relative inline-flex items-center justify-center p-2 text-gray-200 hover:bg-[#FF8A7A]/20 hover:text-white">
-                <span className="sr-only">Open main menu</span>
-                <Bars3Icon aria-hidden="true" className="block size-6" />
-              </button>
-            </div>
-          </div>
-        </div>
-      </nav>
-    );
-  }
 
   return (
     <Disclosure<"nav">

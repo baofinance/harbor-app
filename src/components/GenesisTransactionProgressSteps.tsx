@@ -50,70 +50,46 @@ export const GenesisTransactionProgressSteps = ({
     );
     return (
       <div className="flex items-center">
-        <div className="flex w-full flex-col items-center gap-2">
+        <div className="flex w-full flex-col items-start gap-2">
           <div className="flex w-full items-center">
-            <div className={`h-3 w-3 shrink-0 rounded-full border-2 ${styles.dot}`} />
-            <div className={`h-0.5 min-w-2 flex-1 ${styles.line}`} />
-            <div className={`h-0.5 min-w-2 flex-1 ${inactiveStyles.line}`} />
+            <div className={`h-3 w-3 rounded-full border-2 ${styles.dot}`} />
+            <div className={`h-0.5 flex-1 ${styles.line}`} />
             <div
-              className={`h-3 w-3 shrink-0 rounded-full border-2 ${inactiveStyles.dot}`}
+              className={`h-3 w-3 rounded-full border-2 ${inactiveStyles.dot}`}
             />
           </div>
-          <div
-            className={`text-[11px] min-w-0 break-words text-center ${styles.label}`}
-          >
-            {step.label}
-          </div>
+          <div className={`text-[11px] ${styles.label}`}>{step.label}</div>
         </div>
       </div>
     );
   }
 
-  // Match one-step layout: circle | line | line | circle (two line segments between circles)
-  const n = steps.length;
   return (
-    <div className="w-full">
-      <div className="flex w-full items-center">
-        {steps.map((step, index) => {
-          const isCurrent = index === currentStepIndex;
-          const styles = getStepStyles(step, isCurrent);
-          const showRight = index < n - 1;
-          const nextStyles = showRight
-            ? getStepStyles(steps[index + 1], index + 1 === currentStepIndex)
-            : null;
-          return (
-            <React.Fragment key={`${step.id}-stepper`}>
+    <div className="flex items-center gap-2">
+      {steps.map((step, index) => {
+        const isCurrent = index === currentStepIndex;
+        const styles = getStepStyles(step, isCurrent);
+        const showLeft = index > 0;
+        const showRight = index < steps.length - 1;
+
+        return (
+          <div
+            key={step.id}
+            className="flex flex-1 flex-col items-center gap-2"
+          >
+            <div className="flex w-full items-center">
+              {showLeft && <div className={`h-0.5 flex-1 ${styles.line}`} />}
               <div
-                className={`h-3 w-3 shrink-0 rounded-full border-2 ${styles.dot}`}
+                className={`h-3 w-3 rounded-full border-2 ${styles.dot}`}
               />
-              {showRight && nextStyles ? (
-                <>
-                  <div className={`h-0.5 min-w-2 flex-1 ${styles.line}`} />
-                  <div className={`h-0.5 min-w-2 flex-1 ${nextStyles.line}`} />
-                </>
-              ) : null}
-            </React.Fragment>
-          );
-        })}
-      </div>
-      <div className="mt-2 flex w-full">
-        {steps.map((step, index) => {
-          const isCurrent = index === currentStepIndex;
-          const styles = getStepStyles(step, isCurrent);
-          return (
-            <div
-              key={step.id}
-              className="flex min-w-0 flex-1 flex-col items-center justify-center"
-            >
-              <span
-                className={`text-center text-[11px] leading-tight break-words ${styles.label}`}
-              >
-                {step.label}
-              </span>
+              {showRight && (
+                <div className={`h-0.5 flex-1 ${styles.line}`} />
+              )}
             </div>
-          );
-        })}
-      </div>
+            <div className={`text-[11px] ${styles.label}`}>{step.label}</div>
+          </div>
+        );
+      })}
     </div>
   );
 };

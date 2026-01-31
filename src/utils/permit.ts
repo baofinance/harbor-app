@@ -73,11 +73,7 @@ export async function checkPermitSupport(
 }
 
 /**
- * Get current EIP-2612 permit nonce for a token owner from the chain.
- * Always call this when building a permit—never hardcode 0.
- * - First permit: contract returns 0.
- * - After each use the token increments it; next permit must use the new value (1, 2, …).
- * So the second permit uses nonce 1, third uses 2, etc.
+ * Get permit nonce for a token owner
  */
 export async function getPermitNonce(
   publicClient: PublicClient,

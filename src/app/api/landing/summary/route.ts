@@ -21,10 +21,26 @@ const COINGECKO_IDS = [
 const CHAINLINK_ETH_USD = "0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419" as const;
 const CHAINLINK_BTC_USD = "0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c" as const;
 const CHAINLINK_EUR_USD = "0x8f6F9C8af44f5f15a18d0fa93B5814a623Fa6353" as const;
+const DEFILLAMA_POOLS_URL = "https://yields.llama.fi/pools";
+const FXSAVE_POOL_ID = "ee0b7069-f8f3-4aa2-a415-728f13e6cc3d";
 
 type CacheEntry = { timestampMs: number; data: unknown };
 const CACHE_TTL_MS = 30_000;
 const MAX_CACHE_KEYS = 10;
+const ALLOWED_ORIGINS = new Set([
+  "https://harborfinance.io",
+  "http://localhost:3000",
+  "http://localhost:3001",
+  "http://localhost:3002",
+  "http://localhost:3003",
+  "http://localhost:3004",
+  "http://localhost:3005",
+]);
+
+function getAllowedOrigin(request: Request): string | undefined {
+  const origin = request.headers.get("origin") || "";
+  return ALLOWED_ORIGINS.has(origin) ? origin : undefined;
+}
 
 function getCache(): Map<string, CacheEntry> {
   const g = globalThis as unknown as { __harborLandingCache?: Map<string, CacheEntry> };
@@ -89,6 +105,77 @@ async function fetchCoinGeckoPrices(): Promise<Record<string, number>> {
   return out;
 }
 
+function extractPoolApy(pool: any): number | null {
+  const candidate = pool?.apy ?? pool?.apyBase ?? pool?.apyMean30d;
+  if (candidate === undefined || candidate === null) return null;
+  const value = parseFloat(String(candidate));
+  return Number.isFinite(value) && value >= 0 ? value : null;
+}
+
+async function fetchDefiLlamaApys(): Promise<{
+  fxsaveApyPercent: number | null;
+  wstethApyPercent: number | null;
+}> {
+  try {
+    const res = await fetch(DEFILLAMA_POOLS_URL, {
+      next: { revalidate: 3600 },
+      headers: { Accept: "application/json" },
+    });
+    if (!res.ok) {
+      return { fxsaveApyPercent: null, wstethApyPercent: null };
+    }
+    const data = await res.json();
+    let pools: any[] = [];
+    if (Array.isArray(data)) pools = data;
+    else if (Array.isArray(data?.data)) pools = data.data;
+    else if (Array.isArray(data?.pools)) pools = data.pools;
+
+    let fxsavePool =
+      pools.find(
+        (p) =>
+          p.pool === FXSAVE_POOL_ID ||
+          p.poolId === FXSAVE_POOL_ID ||
+          p.id === FXSAVE_POOL_ID
+      ) ?? null;
+
+    if (!fxsavePool) {
+      fxsavePool = pools.find((p) => {
+        const symbol = String(p.symbol || "").toLowerCase();
+        const name = String(p.name || "").toLowerCase();
+        const project = String(p.project || "").toLowerCase();
+        return (
+          symbol.includes("fxsave") ||
+          name.includes("fxsave") ||
+          (project.includes("fx") &&
+            (symbol.includes("save") || name.includes("save")))
+        );
+      });
+    }
+
+    let wstethPool =
+      pools.find((p) => {
+        const symbol = String(p.symbol || "").toLowerCase();
+        const project = String(p.project || "").toLowerCase();
+        return symbol === "wsteth" && project === "lido";
+      }) ??
+      pools.find((p) => {
+        const symbol = String(p.symbol || "").toLowerCase();
+        const project = String(p.project || "").toLowerCase();
+        return symbol === "steth" && project === "lido";
+      }) ??
+      pools.find((p) => String(p.symbol || "").toLowerCase() === "wsteth") ??
+      pools.find((p) => String(p.symbol || "").toLowerCase() === "steth") ??
+      null;
+
+    return {
+      fxsaveApyPercent: fxsavePool ? extractPoolApy(fxsavePool) : null,
+      wstethApyPercent: wstethPool ? extractPoolApy(wstethPool) : null,
+    };
+  } catch {
+    return { fxsaveApyPercent: null, wstethApyPercent: null };
+  }
+}
+
 async function fetchChainlinkPrice(
   publicClient: ReturnType<typeof getRpcClient>,
   address: `0x${string}`
@@ -124,15 +211,17 @@ function getPegTargetPriceUSD(
   return 1;
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   const cache = getCache();
   const cached = cache.get("landing-summary");
   const now = Date.now();
+  const allowOrigin = getAllowedOrigin(request);
   if (cached && now - cached.timestampMs < CACHE_TTL_MS) {
     return NextResponse.json(cached.data, {
       status: 200,
       headers: {
         "Cache-Control": "public, max-age=15, stale-while-revalidate=60",
+        ...(allowOrigin ? { "Access-Control-Allow-Origin": allowOrigin } : {}),
       },
     });
   }
@@ -154,11 +243,17 @@ export async function GET() {
       (m as any).addresses?.minter
   );
 
-  const [coinGecko, chainlinkEth, chainlinkBtc, chainlinkEur] = await Promise.all([
+  const maidenVoyageMarkets = marketEntries.filter(
+    ([, m]) => !!(m as any)?.marksCampaign
+  );
+
+  const [coinGecko, chainlinkEth, chainlinkBtc, chainlinkEur, defillamaApys] =
+    await Promise.all([
     fetchCoinGeckoPrices(),
     fetchChainlinkPrice(publicClient, CHAINLINK_ETH_USD),
     fetchChainlinkPrice(publicClient, CHAINLINK_BTC_USD),
     fetchChainlinkPrice(publicClient, CHAINLINK_EUR_USD),
+    fetchDefiLlamaApys(),
   ]);
 
   const ethPrice = chainlinkEth ?? coinGecko["ethereum"];
@@ -328,10 +423,81 @@ export async function GET() {
     })
   );
 
+  const maidenVoyagesMap = new Map<
+    string,
+    Array<{
+      marketId: string;
+      name: string;
+      symbol?: string;
+      collateralSymbol?: string;
+      projectedApr: number | null;
+      longSide: string;
+      shortSide: string;
+    }>
+  >();
+
+  for (const [marketId, market] of maidenVoyageMarkets) {
+    const title =
+      (market as any)?.marksCampaign?.label ||
+      "Maiden Voyage";
+    const collateralSymbol = market.collateral?.symbol?.toLowerCase();
+    let projectedApr: number | null = null;
+    if (collateralSymbol === "fxsave") {
+      projectedApr = defillamaApys.fxsaveApyPercent;
+    } else if (collateralSymbol === "wsteth" || collateralSymbol === "steth") {
+      projectedApr = defillamaApys.wstethApyPercent;
+    }
+
+    const startDate = market?.genesis?.startDate
+      ? new Date(market.genesis.startDate).getTime()
+      : null;
+    const endDate = market?.genesis?.endDate
+      ? new Date(market.genesis.endDate).getTime()
+      : null;
+    const now = Date.now();
+    let phase: "live" | "coming-next" | "planned" = "planned";
+    const isComingSoon = (market as any).status === "coming-soon";
+    const hasEnded = endDate !== null && now > endDate;
+    if (hasEnded && !isComingSoon) {
+      continue;
+    }
+    if (isComingSoon) {
+      phase = "planned";
+    } else if (startDate && now < startDate) {
+      phase = "coming-next";
+    } else if (endDate && now <= endDate) {
+      phase = "live";
+    } else if ((market as any).status === "genesis") {
+      phase = "live";
+    }
+
+    const entry = {
+      marketId,
+      name: market.name,
+      symbol: market.peggedToken?.symbol,
+      collateralSymbol: market.collateral?.symbol,
+      projectedApr,
+      longSide: parseLongSide(market),
+      shortSide: parseShortSide(market),
+      phase,
+    };
+    const list = maidenVoyagesMap.get(title) || [];
+    list.push(entry);
+    maidenVoyagesMap.set(title, list);
+  }
+
+  const maidenVoyages = Array.from(maidenVoyagesMap.entries()).map(
+    ([title, markets]) => ({
+      title,
+      markets,
+    })
+  );
+
   const payload = {
     generatedAt: new Date().toISOString(),
     anchorMarkets: anchorMarketSummaries,
     sailMarkets: sailMarketSummaries,
+    maidenVoyages,
   };
 
   cache.set("landing-summary", { timestampMs: now, data: payload });
@@ -341,6 +507,7 @@ export async function GET() {
     status: 200,
     headers: {
       "Cache-Control": "public, max-age=15, stale-while-revalidate=60",
+      ...(allowOrigin ? { "Access-Control-Allow-Origin": allowOrigin } : {}),
     },
   });
 }

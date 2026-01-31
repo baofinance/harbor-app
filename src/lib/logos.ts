@@ -18,22 +18,14 @@ const ICONS: Record<string, string> = {
     euro: "/icons/eur.svg",
     xau: "/icons/gold.svg", // Keep for backward compatibility
     gold: "/icons/gold.svg",
-    xag: "/icons/gold.svg", // Keep for backward compatibility
+    xag: "/icons/gold.svg", // Keep for backward compatibility - Silver using gold icon as placeholder
     silver: "/icons/gold.svg",
-    // Gold and Silver Genesis markets (pegged + leveraged tokens)
-    hagold: "/icons/haGOLD.png",
-    hasilver: "/icons/haSILVER.png",
-    "hssteth-gold": "/icons/hsSTETH-GOLD.png",
-    "hssteth-silver": "/icons/hsSTETH-SILVER.png",
-    "hsfxusd-gold": "/icons/hsFXUSD-GOLD.png",
-    "hsfxusd-silver": "/icons/hsFXUSD-SILVER.png",
     mcap: "/icons/mcap.svg",
     t6ch: "/icons/mcap.svg",
     t6: "/icons/mcap.svg",
     mag7: "/icons/stock.svg", // Financial index - using stock icon
     "mag7.i26": "/icons/stock.svg", // Financial index variant
     bom5: "/icons/stock.svg", // Financial index - using stock icon
-    all: "/icons/logo-blue.svg", // "All pools" filter – Harbor logo (blue for visibility on white)
     // Harbor tokens - ha (pegged) tokens
     haeth: "/icons/haETH.png",
     habtc: "/icons/haBTC.png",

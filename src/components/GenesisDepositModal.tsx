@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { flushSync } from "react-dom";
 import { parseEther, formatEther, parseUnits, formatUnits } from "viem";
 import { ArrowPathIcon } from "@heroicons/react/24/outline";
 import {
@@ -35,11 +34,8 @@ import { useUserTokens, getTokenAddress, getTokenInfo, useTokenDecimals } from "
 import { useAnyTokenDeposit } from "@/hooks/useAnyTokenDeposit";
 import { TokenSelectorDropdown } from "@/components/TokenSelectorDropdown";
 import { usePermitOrApproval } from "@/hooks/usePermitOrApproval";
-import { usePermitCapability } from "@/hooks/usePermitCapability";
-import SimpleTooltip from "@/components/SimpleTooltip";
 import { InfoCallout } from "@/components/InfoCallout";
 import {
-  AlertOctagon,
   Banknote,
   Bell,
   ChevronDown,
@@ -67,7 +63,6 @@ priceOracle?: string;
     leveragedTokenZap?: string; // Leveraged token zap contract address (future)
  };
  coinGeckoId?: string;
- peggedTokenSymbol?: string; // haToken symbol (e.g., "haETH", "haBTC")
  onSuccess?: () => void;
  embedded?: boolean;
 }
@@ -87,7 +82,6 @@ export const GenesisDepositModal = ({
  acceptedAssets,
  marketAddresses,
  coinGeckoId,
- peggedTokenSymbol,
  onSuccess,
  embedded = false,
 }: GenesisDepositModalProps) => {
@@ -103,15 +97,7 @@ export const GenesisDepositModal = ({
  const [slippageInputValue, setSlippageInputValue] = useState<string>("0.5"); // String for input to allow typing "0"
  const [showSlippageInput, setShowSlippageInput] = useState(false);
   const [permitEnabled, setPermitEnabled] = useState(true);
-  const { isPermitCapable, disableReason } = usePermitCapability({
-    enabled: isOpen && !!address,
-    depositAssetSymbol: selectedAsset,
-  });
-  useEffect(() => {
-    if (!isPermitCapable) setPermitEnabled(false);
-    else setPermitEnabled(true); // Default on when allowed
-  }, [isPermitCapable]);
-  const [showNotifications, setShowNotifications] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(true);
  const [step, setStep] = useState<ModalStep>("input");
  const [error, setError] = useState<string | null>(null);
  const [txHash, setTxHash] = useState<string | null>(null);
@@ -201,11 +187,6 @@ const wrappedPriceData = useWrappedCollateralPrice({
 const shouldFetchStEthPrice = collateralSymbol.toLowerCase() === "wsteth";
 const { price: stEthCoinGeckoPrice } = useCoinGeckoPrice(
   shouldFetchStEthPrice ? "lido-staked-ethereum-steth" : "",
-  60000
-);
-// Fetch wstETH price directly from CoinGecko as fallback
-const { price: wstETHCoinGeckoPrice } = useCoinGeckoPrice(
-  collateralSymbol.toLowerCase() === "wsteth" ? "wrapped-steth" : "",
   60000
 );
 // Fetch price for fxSAVE if user might deposit it (for success message)
@@ -433,17 +414,7 @@ const selectedAssetPriceUSD = isWrappedToken && wrappedRate && maxUnderlyingPric
 // Calculate wrapped token price: underlying price * wrapped rate
 // BUT: If CoinGecko ID is for the wrapped token itself (e.g., "wrapped-steth" for wstETH),
 // then CoinGecko already returns the wrapped token price, so don't multiply by wrapped rate
-// Use CoinGecko price as fallback if calculated price seems too low (likely an oracle issue)
-// For wstETH, if price is less than $100, use CoinGecko directly
-let collateralPriceUSD = wrappedPriceData.priceUSD;
-if (collateralSymbol.toLowerCase() === "wsteth") {
-  if (wstETHCoinGeckoPrice && wstETHCoinGeckoPrice > 0) {
-    // If calculated price is suspiciously low (< $100), use CoinGecko
-    if (collateralPriceUSD < 100) {
-      collateralPriceUSD = wstETHCoinGeckoPrice;
-    }
-  }
-}
+const collateralPriceUSD = wrappedPriceData.priceUSD;
 
 // Validate selected asset address
 const isValidSelectedAssetAddress = 
@@ -989,7 +960,6 @@ if (includePermitAttempt) {
   const permitIndex = steps.findIndex((s) => s.id === "permit");
   setCurrentStepIndex(permitIndex >= 0 ? permitIndex : 0);
   setProgressModalOpen(true);
-  flushSync(() => {}); // Force React to paint before first action
   setProgressSteps((prev) =>
     prev.map((s) =>
       s.id === "permit" ? { ...s, status: "in_progress" } : s
@@ -1046,7 +1016,6 @@ if (includePermitAttempt) {
   setProgressSteps(steps);
   setCurrentStepIndex(0);
   setProgressModalOpen(true);
-  flushSync(() => {}); // Force React to paint before first action
 }
 
  const tryPermitZap = async (params: {
@@ -1948,11 +1917,6 @@ const successFmt = formatTokenAmount(
   // Deposit form content
   const formContent = (
     <div className="space-y-4 sm:space-y-6">
-      <div className="flex items-center justify-center text-xs text-[#1E4775]/50 pb-3 border-b border-[#d1d7e5]">
-        <div className="text-[#1E4775] font-semibold">
-          Deposit Collateral & Amount
-        </div>
-      </div>
  {/* Genesis Status Warning */}
  {genesisEnded && (
  <div className="p-3 bg-red-50 border border-red-500/30 text-red-600 text-sm">
@@ -2055,35 +2019,12 @@ Select Deposit Token
    >
      <span>Notifications</span>
      <span className="flex items-center gap-2">
-       {!showNotifications && (() => {
-         // Determine highest risk color: orange (high) > blue (middle) > green (low)
-         let highestRiskColor = null;
-         if (isNonCollateralAsset) {
-           highestRiskColor = "orange"; // Pearl orange = high risk
-         } else {
-           highestRiskColor = "blue"; // Blue = middle risk
-         }
-         // Green (low risk) is only shown if no other notifications exist
-         
-         const notificationCount = (!needsSwap ? 1 : 0) + 1 + (isNonCollateralAsset ? 1 : 0);
-         const badgeBgColor = highestRiskColor === "orange" 
-           ? "bg-[#FF8A7A]/20" 
-           : highestRiskColor === "blue"
-           ? "bg-blue-100"
-           : "bg-green-100";
-         const badgeTextColor = highestRiskColor === "orange"
-           ? "text-[#FF8A7A]"
-           : highestRiskColor === "blue"
-           ? "text-blue-600"
-           : "text-green-600";
-         
-         return (
-           <span className={`flex items-center gap-1 ${badgeBgColor} px-2 py-0.5 text-xs ${badgeTextColor}`}>
-             <Bell className="h-3 w-3" />
-             {notificationCount}
-           </span>
-         );
-       })()}
+       {!showNotifications && (
+         <span className="flex items-center gap-1 rounded-full bg-[#1E4775]/10 px-2 py-0.5 text-xs text-[#1E4775]">
+           <Bell className="h-3 w-3" />
+           {(!needsSwap ? 1 : 0) + 1 + (isNonCollateralAsset ? 1 : 0)}
+         </span>
+       )}
        {showNotifications ? (
          <ChevronUp className="h-4 w-4 text-[#1E4775]/70" />
        ) : (
@@ -2121,10 +2062,10 @@ Select Deposit Token
              <Banknote className="w-4 h-4 flex-shrink-0 mt-0.5 text-[#D57A3D]" />
            }
          >
-          <span className="font-semibold">Deposit:</span> Your tokens will be
-          converted to {wrappedCollateralSymbol || collateralSymbol} on
-          deposit. Withdrawals will be in{" "}
-          {wrappedCollateralSymbol || collateralSymbol} only.
+           <span className="font-semibold">Deposit:</span> Your deposit will be
+           converted to {wrappedCollateralSymbol || collateralSymbol} on
+           deposit. Withdrawals will be in{" "}
+           {wrappedCollateralSymbol || collateralSymbol} only.
          </InfoCallout>
        )}
      </div>
@@ -2173,53 +2114,34 @@ Select Deposit Token
      <div className="text-[#1E4775]/80">
        Use permit (gasless approval) for this deposit
      </div>
-     {disableReason ? (
-       <SimpleTooltip label={disableReason}>
-         <span className="flex items-center gap-2 text-[#1E4775]/80 cursor-not-allowed opacity-70">
-           <span className="text-[#1E4775]/60">Off</span>
-           <button
-             type="button"
-             disabled
-             className="relative inline-flex h-5 w-9 items-center rounded-full bg-[#1E4775]/30 cursor-not-allowed"
-             aria-label="Permit disabled"
-           >
-             <span className="inline-block h-4 w-4 transform rounded-full bg-white translate-x-1" />
-           </button>
-         </span>
-       </SimpleTooltip>
-     ) : (
-       <label className="flex items-center gap-2 text-[#1E4775]/80 cursor-pointer">
-         <span className={permitEnabled ? "text-[#1E4775]" : "text-[#1E4775]/60"}>
-           {permitEnabled ? "On" : "Off"}
-         </span>
-         <button
-           type="button"
-           onClick={() => setPermitEnabled((prev) => !prev)}
-           className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-             permitEnabled ? "bg-[#1E4775]" : "bg-[#1E4775]/30"
+     <label className="flex items-center gap-2 text-[#1E4775]/80">
+       <span className={permitEnabled ? "text-[#1E4775]" : "text-[#1E4775]/60"}>
+         {permitEnabled ? "On" : "Off"}
+       </span>
+       <button
+         type="button"
+         onClick={() => setPermitEnabled((prev) => !prev)}
+         className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+           permitEnabled ? "bg-[#1E4775]" : "bg-[#1E4775]/30"
+         }`}
+         aria-pressed={permitEnabled}
+         aria-label="Toggle permit usage"
+       >
+         <span
+           className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+             permitEnabled ? "translate-x-4" : "translate-x-1"
            }`}
-           aria-pressed={permitEnabled}
-           aria-label="Toggle permit usage"
-         >
-           <span
-             className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-               permitEnabled ? "translate-x-4" : "translate-x-1"
-             }`}
-           />
-         </button>
-       </label>
-     )}
-  </div>
-)}
+         />
+       </button>
+     </label>
+   </div>
+ )}
 
-{/* Transaction Overview */}
-<div className="space-y-2">
-  <label className="block text-sm font-semibold text-[#1E4775] mb-1.5">
-    Transaction Overview
-  </label>
-  <div className="p-3 bg-[#17395F]/5 border border-[#1E4775]/10">
-    {/* Transaction Preview - Always visible */}
-    <div className="space-y-2 text-sm">
+ {/* Transaction Preview - Always visible */}
+ <div className="p-3 bg-[#17395F]/10 border border-[#1E4775]/20 space-y-2 text-sm">
+ <div className="font-medium text-[#1E4775]">
+ Transaction Preview:
+ </div>
  
  {/* Swap details - show when swapping */}
  {needsSwap && swapQuote && swapQuote.toAmount > 0n && (() => {
@@ -2346,7 +2268,7 @@ Select Deposit Token
   );
 })()}
 {((isNativeETH || isStETH || isUSDC || isFXUSD || needsSwap) && actualCollateralDeposit > 0n) && (
-<div className="text-xs text-[#1E4775]/50 italic text-right">
+<div className="text-xs text-[#1E4775]/50 italic">
 {needsSwap && swapQuote && swapQuote.toAmount > 0n ? (
   <>
     {parseFloat(amount).toFixed(6)} {selectedAsset} → {formatUnits(swapQuote.toAmount, 6)} USDC → {formatTokenAmount(actualCollateralDeposit, wrappedCollateralSymbol || collateralSymbol, undefined, 6, 18).display}
@@ -2383,39 +2305,27 @@ Select Deposit Token
   const totalUSDFormatted = totalUSD > 0 ? formatUSD(totalUSD) : null;
   
   return (
-    <>
-      {/* Total deposits */}
-      <div className="flex justify-between items-center">
-        <span className="text-sm font-medium text-[#1E4775]/70">Total deposits:</span>
-        <div className="text-right">
-          <div className="text-lg font-bold text-[#1E4775] font-mono">
-            {totalFmt.display}
-          </div>
-          {totalUSDFormatted && (
-            <div className="text-xs text-[#1E4775]/50 font-mono">
-              {totalUSDFormatted}
-            </div>
-          )}
-        </div>
-      </div>
-    </>
+    <div className="flex justify-between items-baseline font-medium">
+      <span className="text-[#1E4775]">New Total Deposit:</span>
+ <span className="text-[#1E4775]">
+        {totalFmt.display}
+        {totalUSDFormatted && <span className="text-[#1E4775]/50 font-normal ml-1">({totalUSDFormatted})</span>}
+ </span>
+ </div>
   );
 })()}
-  </div>
+ </div>
  </>
  ) : (
  <div className="text-xs text-[#1E4775]/50 italic">
  Enter an amount to see deposit preview
  </div>
  )}
-    </div>
-  </div>
-</div>
+ </div>
 
  {/* Error */}
  {error && (
- <div className="p-3 bg-red-50 border border-red-500/30 text-red-600 text-sm flex items-center justify-center gap-2">
- <AlertOctagon className="w-4 h-4 flex-shrink-0" aria-hidden />
+ <div className="p-3 bg-red-50 border border-red-500/30 text-red-600 text-sm">
  {error}
  </div>
  )}
@@ -2480,26 +2390,19 @@ Select Deposit Token
  </div>
  )}
 
-      {/* Submit Buttons */}
-      <div className="flex gap-2">
-        <button
-          onClick={handleClose}
-          disabled={step === "approving" || step === "depositing"}
-          className="flex-1 py-3 px-4 bg-white text-[#1E4775] border-2 border-[#1E4775]/30 font-semibold hover:bg-[#1E4775]/5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          Cancel
-        </button>
-        <button
-          onClick={handleMainButtonClick}
-          disabled={isButtonDisabled()}
-          className={`flex-1 py-3 px-4 font-semibold transition-colors ${
+      {/* Submit Button */}
+      <div>
+ <button
+ onClick={handleMainButtonClick}
+ disabled={isButtonDisabled()}
+          className={`w-full py-3 px-4 font-medium transition-colors rounded-full ${
             step === "success"
-              ? "bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white"
-              : "bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
-          }`}
-        >
-          {getButtonText()}
-        </button>
+              ? "bg-[#1E4775] hover:bg-[#17395F] text-white"
+              : "bg-[#1E4775] hover:bg-[#17395F] text-white disabled:bg-gray-300 disabled:text-gray-500"
+ }`}
+ >
+ {getButtonText()}
+ </button>
       </div>
     </div>
   );

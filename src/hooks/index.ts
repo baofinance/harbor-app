@@ -42,9 +42,5 @@ export * from "./useMultiMarketGenesisAdmin";
 export * from "./useAdminAccess";
 export * from "./useAdminActions";
 
-// Permit / approval hooks
-export * from "./usePermitOrApproval";
-export * from "./usePermitCapability";
-
 // Other hooks
 export * from "./useWithdrawalRequests";
