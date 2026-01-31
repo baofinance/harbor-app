@@ -5083,6 +5083,9 @@ export default function GenesisIndexPage() {
                       const displayMarketName = rowLeveragedSymbol && rowLeveragedSymbol.toLowerCase().startsWith("hs")
                         ? rowLeveragedSymbol.slice(2)
                         : rowLeveragedSymbol || (mkt as any).name || "Market";
+                      const peggedNoPrefix = rowPeggedSymbol && rowPeggedSymbol.toLowerCase().startsWith("ha")
+                        ? rowPeggedSymbol.slice(2)
+                        : rowPeggedSymbol || "pegged token";
 
                       // Get token prices for claimable display
                       const anchorTokenPriceUSD = 1; // Pegged tokens are always $1
@@ -5211,11 +5214,17 @@ export default function GenesisIndexPage() {
                                           address: genesisAddress as `0x${string}`,
                                           abi: GENESIS_ABI,
                                           functionName: "claim",
+                                          args: [address as `0x${string}`],
                                         });
-                                        setClaimModal({
+                                        await publicClient?.waitForTransactionReceipt({ hash: tx });
+                                        await refetchReads();
+                                        await refetchTotalDeposits();
+                                        queryClient.invalidateQueries({ queryKey: ["allHarborMarks"] });
+                                        setClaimModal((prev) => ({ ...prev, status: "success" }));
+                                        setShareModal({
                                           open: true,
-                                          status: "success",
-                                          marketId: id,
+                                          marketName: displayMarketName,
+                                          peggedSymbol: peggedNoPrefix,
                                         });
                                       } catch (error) {
                                         setClaimModal({
@@ -5340,11 +5349,17 @@ export default function GenesisIndexPage() {
                                           address: genesisAddress as `0x${string}`,
                                           abi: GENESIS_ABI,
                                           functionName: "claim",
+                                          args: [address as `0x${string}`],
                                         });
-                                        setClaimModal({
+                                        await publicClient?.waitForTransactionReceipt({ hash: tx });
+                                        await refetchReads();
+                                        await refetchTotalDeposits();
+                                        queryClient.invalidateQueries({ queryKey: ["allHarborMarks"] });
+                                        setClaimModal((prev) => ({ ...prev, status: "success" }));
+                                        setShareModal({
                                           open: true,
-                                          status: "success",
-                                          marketId: id,
+                                          marketName: displayMarketName,
+                                          peggedSymbol: peggedNoPrefix,
                                         });
                                       } catch (error) {
                                         setClaimModal({

@@ -20,9 +20,9 @@ import MintRedeemStatusModal from "./MintRedeemStatusModal";
 import type { Market as MarketCfg } from "../config/markets";
 import { minterABI } from "@/abis/minter";
 import { ERC20_ABI } from "@/abis/shared";
-import { MINTER_ETH_ZAP_V2_ABI, MINTER_USDC_ZAP_V2_ABI } from "@/config/contracts";
+import { MINTER_ETH_ZAP_V2_ABI, MINTER_USDC_ZAP_V3_ABI } from "@/config/contracts";
 import { parseUnits } from "viem";
-import { calculateDeadline, STETH_ZAP_PERMIT_ABI, USDC_ZAP_PERMIT_ABI } from "@/utils/permit";
+import { calculateDeadline, STETH_ZAP_PERMIT_ABI } from "@/utils/permit";
 import { usePermitOrApproval } from "@/hooks/usePermitOrApproval";
 
 // Constants (to be moved from page.tsx)
@@ -1449,29 +1449,27 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                 throw new Error("Asset address not found for approval");
               }
               
-              // Try to use permit first, fallback to approval if not supported or fails
+              // Same permit flow as Genesis/Anchor: require deadline for zap…WithPermit (must match signed message).
               const permitResult = await handlePermitOrApproval(assetAddressForApproval, zapAddress, amountForZap);
-              let usePermit = permitResult?.usePermit && !!permitResult.permitSig;
+              let usePermit = permitResult?.usePermit && !!permitResult.permitSig && !!permitResult?.deadline;
               
               // Calculate minFxSaveOut for permit functions (1% slippage buffer)
-              // This is needed for the permit versions of USDC/fxUSD zap functions
               const minFxSaveOut = (amountForZap * 99n) / 100n;
-              const deadline = permitResult?.deadline || calculateDeadline(3600);
               
-              if (usePermit && permitResult.permitSig) {
-                // Use permit functions - requires minFxSaveOut parameter
+              if (usePermit && permitResult.permitSig && permitResult.deadline) {
+                const permitDeadline = permitResult.deadline;
                 try {
                   if (isActuallyUSDC) {
                     const hash = await writeContractAsync({
                       address: zapAddress,
-                      abi: [...MINTER_USDC_ZAP_V2_ABI, ...USDC_ZAP_PERMIT_ABI] as const,
+                      abi: MINTER_USDC_ZAP_V3_ABI,
                       functionName: "zapUsdcToPeggedWithPermit",
                       args: [
                         amountForZap,
                         minFxSaveOut,
                         userAddress as `0x${string}`,
                         minPeggedOut,
-                        deadline,
+                        permitDeadline,
                         permitResult.permitSig.v,
                         permitResult.permitSig.r,
                         permitResult.permitSig.s,
@@ -1481,14 +1479,14 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                   } else if (isActuallyFxUSD) {
                     const hash = await writeContractAsync({
                       address: zapAddress,
-                      abi: [...MINTER_USDC_ZAP_V2_ABI, ...USDC_ZAP_PERMIT_ABI] as const,
+                      abi: MINTER_USDC_ZAP_V3_ABI,
                       functionName: "zapFxUsdToPeggedWithPermit",
                       args: [
                         amountForZap,
                         minFxSaveOut,
                         userAddress as `0x${string}`,
                         minPeggedOut,
-                        deadline,
+                        permitDeadline,
                         permitResult.permitSig.v,
                         permitResult.permitSig.r,
                         permitResult.permitSig.s,
@@ -1527,7 +1525,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                 if (isActuallyUSDC) {
                   const hash = await writeContractAsync({
                     address: zapAddress,
-                    abi: MINTER_USDC_ZAP_V2_ABI,
+                    abi: MINTER_USDC_ZAP_V3_ABI,
                     functionName: "zapUsdcToPegged",
                     args: [
                       amountForZap,
@@ -1540,7 +1538,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                 } else if (isActuallyFxUSD) {
                   const hash = await writeContractAsync({
                     address: zapAddress,
-                    abi: MINTER_USDC_ZAP_V2_ABI,
+                    abi: MINTER_USDC_ZAP_V3_ABI,
                     functionName: "zapFxUsdToPegged",
                     args: [
                       amountForZap,
@@ -1588,29 +1586,26 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                 throw new Error("Asset address not found for approval");
               }
               
-              // Try to use permit first, fallback to approval if not supported or fails
+              // Same permit flow as Genesis/Anchor: require deadline for zap…WithPermit (must match signed message).
               const permitResult = await handlePermitOrApproval(assetAddressForApproval, zapAddress, amountForZap);
-              let usePermit = permitResult?.usePermit && !!permitResult.permitSig;
+              let usePermit = permitResult?.usePermit && !!permitResult.permitSig && !!permitResult?.deadline;
               
-              // Calculate minFxSaveOut for permit functions (1% slippage buffer)
-              // This is needed for the permit versions of USDC/fxUSD zap functions
               const minFxSaveOut = (amountForZap * 99n) / 100n;
-              const deadline = permitResult?.deadline || calculateDeadline(3600);
               
-              if (usePermit && permitResult.permitSig) {
-                // Use permit functions - requires minFxSaveOut parameter
+              if (usePermit && permitResult.permitSig && permitResult.deadline) {
+                const permitDeadline = permitResult.deadline;
                 try {
                   if (isActuallyUSDC) {
                     const hash = await writeContractAsync({
                       address: zapAddress,
-                      abi: [...MINTER_USDC_ZAP_V2_ABI, ...USDC_ZAP_PERMIT_ABI] as const,
+                      abi: MINTER_USDC_ZAP_V3_ABI,
                       functionName: "zapUsdcToLeveragedWithPermit",
                       args: [
                         amountForZap,
                         minFxSaveOut,
                         userAddress as `0x${string}`,
                         minLeveragedOut,
-                        deadline,
+                        permitDeadline,
                         permitResult.permitSig.v,
                         permitResult.permitSig.r,
                         permitResult.permitSig.s,
@@ -1620,14 +1615,14 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                   } else if (isActuallyFxUSD) {
                     const hash = await writeContractAsync({
                       address: zapAddress,
-                      abi: [...MINTER_USDC_ZAP_V2_ABI, ...USDC_ZAP_PERMIT_ABI] as const,
+                      abi: MINTER_USDC_ZAP_V3_ABI,
                       functionName: "zapFxUsdToLeveragedWithPermit",
                       args: [
                         amountForZap,
                         minFxSaveOut,
                         userAddress as `0x${string}`,
                         minLeveragedOut,
-                        deadline,
+                        permitDeadline,
                         permitResult.permitSig.v,
                         permitResult.permitSig.r,
                         permitResult.permitSig.s,
@@ -1666,7 +1661,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                 if (isActuallyUSDC) {
                   const hash = await writeContractAsync({
                     address: zapAddress,
-                    abi: MINTER_USDC_ZAP_V2_ABI,
+                    abi: MINTER_USDC_ZAP_V3_ABI,
                     functionName: "zapUsdcToLeveraged",
                     args: [
                       amountForZap,
@@ -1679,7 +1674,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                 } else if (isActuallyFxUSD) {
                   const hash = await writeContractAsync({
                     address: zapAddress,
-                    abi: MINTER_USDC_ZAP_V2_ABI,
+                    abi: MINTER_USDC_ZAP_V3_ABI,
                     functionName: "zapFxUsdToLeveraged",
                     args: [
                       amountForZap,
