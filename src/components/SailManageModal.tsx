@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
-import { flushSync } from "react-dom";
 import { parseEther, formatEther, parseUnits, formatUnits } from "viem";
 import {
  useAccount,
@@ -14,15 +13,12 @@ import {
 import { BaseError, ContractFunctionRevertedError } from "viem";
 import { ERC20_ABI, MINTER_ABI } from "@/abis/shared";
 import { WSTETH_ABI } from "@/abis";
-import { MINTER_ETH_ZAP_V2_ABI, MINTER_USDC_ZAP_V3_ABI } from "@/config/contracts";
-import { STETH_ZAP_PERMIT_ABI, calculateDeadline } from "@/utils/permit";
+import { MINTER_ETH_ZAP_V2_ABI, MINTER_USDC_ZAP_V2_ABI } from "@/config/contracts";
+import { STETH_ZAP_PERMIT_ABI, USDC_ZAP_PERMIT_ABI, calculateDeadline } from "@/utils/permit";
 import { usePermitOrApproval } from "@/hooks/usePermitOrApproval";
-import { usePermitCapability } from "@/hooks/usePermitCapability";
 import { useCollateralPrice } from "@/hooks/useCollateralPrice";
 import SimpleTooltip from "@/components/SimpleTooltip";
 import { ArrowPathIcon } from "@heroicons/react/24/outline";
-import { InfoCallout } from "@/components/InfoCallout";
-import { AlertOctagon, Bell, ChevronDown, ChevronUp, Info, RefreshCw } from "lucide-react";
 import {
   TransactionProgressModal,
   TransactionStep,
@@ -31,8 +27,6 @@ import { useDefiLlamaSwap, getDefiLlamaSwapTx } from "@/hooks/useDefiLlamaSwap";
 import { useUserTokens, useTokenDecimals } from "@/hooks/useUserTokens";
 import { formatBalance } from "@/utils/formatters";
 import { TokenSelectorDropdown } from "@/components/TokenSelectorDropdown";
-import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
-import { getLogoPath } from "@/lib/logos";
 
 interface SailManageModalProps {
  isOpen: boolean;
@@ -85,21 +79,11 @@ export const SailManageModal = ({
  const [selectedDepositAsset, setSelectedDepositAsset] = useState<
  string | null
  >(null);
- const { isPermitCapable, disableReason } = usePermitCapability({
-   enabled: isOpen && !!address,
-   depositAssetSymbol: selectedDepositAsset ?? undefined,
- });
  const [showCustomTokenInput, setShowCustomTokenInput] = useState(false);
  const [customTokenAddress, setCustomTokenAddress] = useState<string>("");
  const [step, setStep] = useState<ModalStep>("input");
  const [error, setError] = useState<string | null>(null);
  const [txHash, setTxHash] = useState<string | null>(null);
- const [showNotifications, setShowNotifications] = useState(false);
- const [permitEnabled, setPermitEnabled] = useState(true);
- useEffect(() => {
-   if (!isPermitCapable) setPermitEnabled(false);
-   else setPermitEnabled(true); // Default on when allowed
- }, [isPermitCapable]);
 
  // Progress modal state
  const [progressModal, setProgressModal] = useState<{
@@ -243,11 +227,6 @@ const { maxRate: fxSAVERate } = useCollateralPrice(
   priceOracleAddress,
   { enabled: useUSDCZap && !!priceOracleAddress }
 );
-
-// Get USD prices for overview display
-const { price: ethPrice } = useCoinGeckoPrice("ethereum", 120000);
-const { price: wstETHPrice } = useCoinGeckoPrice("wrapped-steth", 120000);
-const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
 
  // Token decimals (for parsing amounts, swap quoting, etc.)
  const tokenAddressForDecimals =
@@ -478,23 +457,10 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
  });
 
  // Dry run for mint
- // mintLeveragedTokenDryRun expects collateral amount (fxSAVE for USDC zap, wstETH for ETH zap, etc.)
- // For fxUSD/USDC zap: convert input to expected fxSAVE via wrapped rate; minter dry run expects fxSAVE
- const effectiveZapInput = needsSwap && swapQuote ? swapQuote.toAmount : parsedAmount;
- const expectedFxSaveForDryRun = useMemo(() => {
-   if (!useUSDCZap || !fxSAVERate || fxSAVERate === 0n || !effectiveZapInput || effectiveZapInput === 0n)
-     return undefined;
-   const isUsdcInput = needsSwap || isUSDC; // needsSwap outputs USDC; otherwise isUSDC or isFxUSD
-   if (isUsdcInput)
-     return ((effectiveZapInput * 10n ** 12n) * 10n ** 18n) / fxSAVERate;
-   return (effectiveZapInput * 10n ** 18n) / fxSAVERate; // fxUSD 18 decimals
- }, [useUSDCZap, fxSAVERate, effectiveZapInput, needsSwap, isUSDC]);
-
+ // For ETH zaps, use wstETH amount; for others, use parsedAmount directly
  const amountForDryRun = useETHZap && isNativeETH && !needsSwap && wstETHAmountForDryRun
    ? (wstETHAmountForDryRun as bigint)
-   : useUSDCZap
-     ? (expectedFxSaveForDryRun ?? undefined) // never use parsedAmount for USDC zap - dry run expects fxSAVE
-     : parsedAmount;
+   : parsedAmount;
 
  const mintDryRunEnabled =
  activeTab ==="mint" &&
@@ -628,14 +594,12 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
  }
  }, [isOpen, initialTab]);
 
- // Handle tab change (clear error when switching, aligned with Genesis/Anchor)
+ // Handle tab change
  const handleTabChange = (tab:"mint" |"redeem") => {
- if (step ==="input" || step ==="error") {
+ if (step ==="input") {
  setActiveTab(tab);
  setAmount("");
  setError(null);
- setTxHash(null);
- setStep("input");
  }
  };
 
@@ -756,9 +720,6 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
      ? ((depositAssetAllowance as bigint) || 0n) < parsedAmount
      : false;
  const needsApproval = needsZapApproval || needsDirectApproval;
- // When permit is enabled for zap flows (stETH, USDC, fxUSD), we skip the approve step—permit is used inside the mint step
- const willUsePermitForZap =
-   permitEnabled && (useETHZap || useUSDCZap) && !includeSwap && !isNativeETH;
 
  // Swap approvals
  const needsSwapApproval =
@@ -810,7 +771,7 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
      details: "Approve USDC for minting via zap",
    });
  }
- if (needsApproval && !willUsePermitForZap) {
+ if (needsApproval) {
    const approveLabel = useZap && zapAssetName
      ? `Approve ${zapAssetName} for zap`
      : `Approve ${selectedDepositAsset || collateralSymbol}`;
@@ -821,14 +782,6 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
      details: `Approve ${
        useZap && zapAssetName ? zapAssetName : (selectedDepositAsset || collateralSymbol)
      } for minting`,
-   });
- }
- if (willUsePermitForZap && zapAssetName) {
-   steps.push({
-     id: "signPermit",
-     label: `Sign permit for ${zapAssetName}`,
-     status: "pending",
-     details: `Sign EIP-2612 permit (no gas) to authorize zap`,
    });
  }
  const mintLabel = useZap && zapAssetName
@@ -852,7 +805,6 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
  steps,
  currentStepIndex: 0,
  });
- flushSync(() => {}); // Force React to paint before first action
 
  try {
    // Step 1a: Approve source token for swap (if needed)
@@ -918,11 +870,10 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
    }
 
    // Step 2: Approve (if needed, no-swap path)
-   // Skip when willUsePermitForZap: permit is used inside the mint step instead
    // If using zap (ETH zap or USDC zap), approve to zapAddress
    // Only direct mints (wstETH, fxSAVE) approve to minterAddress
    // Note: useETHZap and useUSDCZap already check for zapAddress via useZap, so if they're true, zapAddress must exist
-   if (needsApproval && !willUsePermitForZap && depositAssetAddress) {
+   if (needsApproval && depositAssetAddress) {
      updateProgressStep("approve", { status:"in_progress" });
      const approveTarget = useETHZap || useUSDCZap
        ? zapAddress!
@@ -955,11 +906,10 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
    
    if (useUSDCZap) {
      // For USDC/fxUSD zap: use expectedMintOutput from dry run if available
-     // When mint fee 1%, use 4% slippage for fxUSD (Anchor fix: revert after permit/transferFrom), else 3%
-     const isActuallyFxUSD = isFxUSD && !includeSwap;
-     const usdcFxSlippageBps = isActuallyFxUSD ? 4.0 : 3.0;
+     // This accounts for actual conversion (USDC → fxUSD → fxSAVE) and minting fees
      if (expectedMintOutput && expectedMintOutput > 0n) {
-       minOutput = (expectedMintOutput * BigInt(Math.floor((100 - usdcFxSlippageBps) * 100))) / 10000n;
+       // Apply slippage tolerance
+       minOutput = (expectedMintOutput * BigInt(Math.floor((100 - slippageBps) * 100))) / 10000n;
      } else if (fxSAVERate && fxSAVERate > 0n) {
        // Fallback: estimate using fxSAVE rate (less accurate, but better than 0)
        let amountIn18Decimals: bigint;
@@ -973,7 +923,7 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
        // Convert to fxSAVE using wrapped rate, then estimate mint output (account for ~0.25% fee)
        const fxSaveAmount = (amountIn18Decimals * 10n ** 18n) / fxSAVERate;
        const estimatedLeveragedOut = (fxSaveAmount * 9975n) / 10000n; // Estimate 0.25% fee
-       minOutput = (estimatedLeveragedOut * BigInt(Math.floor((100 - usdcFxSlippageBps) * 100))) / 10000n;
+       minOutput = (estimatedLeveragedOut * BigInt(Math.floor((100 - slippageBps) * 100))) / 10000n;
      } else {
        throw new Error("Cannot calculate minOutput: expectedMintOutput and fxSAVERate both unavailable");
      }
@@ -1018,13 +968,8 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
           throw new Error("stETH address not found. Please ensure you're depositing to a wstETH market.");
         }
         
-        // Try to use permit first when enabled, fallback to approval if not supported or fails
-        if (permitEnabled) updateProgressStep("signPermit", { status: "in_progress" });
-        const permitResult = permitEnabled
-          ? await handlePermitOrApproval(stETHAddress, zapAddress, amountForMint)
-          : { usePermit: false };
-        if (permitEnabled && permitResult?.usePermit)
-          updateProgressStep("signPermit", { status: "completed" });
+        // Try to use permit first, fallback to approval if not supported or fails
+        const permitResult = await handlePermitOrApproval(stETHAddress, zapAddress, amountForMint);
         let usePermit = permitResult?.usePermit && !!permitResult.permitSig && !!permitResult.deadline;
         
         if (usePermit && permitResult.permitSig && permitResult.deadline) {
@@ -1052,27 +997,16 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
         }
         
         if (!usePermit) {
-          // Fallback: Use traditional approval + zap. Remove signPermit so we show only [approve, mint].
+          // Fallback: Use traditional approval + zap
           const stETHAllowance = await publicClient?.readContract({
             address: stETHAddress,
             abi: ERC20_ABI,
             functionName: "allowance",
             args: [address as `0x${string}`, zapAddress],
           });
+          
           const allowanceBigInt = (stETHAllowance as bigint) || 0n;
-          const needsStEthApproval = allowanceBigInt < amountForMint;
-          setProgressModal((prev) => {
-            if (!prev) return prev;
-            let newSteps = prev.steps.filter((s) => s.id !== "signPermit");
-            if (needsStEthApproval && !newSteps.some((s) => s.id === "approve")) {
-              const mintIdx = newSteps.findIndex((s) => s.id === "mint");
-              newSteps = [...newSteps];
-              newSteps.splice(mintIdx, 0, { id: "approve", label: "Approve stETH for zap", status: "pending", details: "Approve stETH for minting via zap" });
-            }
-            const newIndex = newSteps.findIndex((s) => s.status !== "completed");
-            return { ...prev, steps: newSteps, currentStepIndex: newIndex === -1 ? newSteps.length - 1 : newIndex };
-          });
-          if (needsStEthApproval) {
+          if (allowanceBigInt < amountForMint) {
             updateProgressStep("approve", { status: "in_progress" });
             const approveHash = await writeContractAsync({
               address: stETHAddress,
@@ -1110,47 +1044,33 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
          ? USDC_ADDRESS 
          : (market.addresses?.collateralToken as `0x${string}` | undefined);
        
-      if (!assetAddressForApproval) {
-        throw new Error("Asset address not found for approval");
-      }
+       if (!assetAddressForApproval) {
+         throw new Error("Asset address not found for approval");
+       }
+       
+      // Try to use permit first, fallback to approval if not supported or fails
+      const permitResult = await handlePermitOrApproval(assetAddressForApproval, zapAddress, amountForMint);
+      let usePermit = permitResult?.usePermit && !!permitResult.permitSig;
       
-      // Same permit flow as Genesis/Anchor when enabled: require deadline for zap…WithPermit (must match signed message).
-      if (permitEnabled) updateProgressStep("signPermit", { status: "in_progress" });
-      const permitResult = permitEnabled
-        ? await handlePermitOrApproval(assetAddressForApproval, zapAddress, amountForMint)
-        : { usePermit: false };
-      if (permitEnabled && permitResult?.usePermit)
-        updateProgressStep("signPermit", { status: "completed" });
-      let usePermit = permitResult?.usePermit && !!permitResult.permitSig && !!permitResult?.deadline;
+      // Calculate minFxSaveOut for permit functions (1% slippage buffer)
+      // This is needed for the permit versions of USDC/fxUSD zap functions
+      const minFxSaveOut = (amountForMint * 99n) / 100n;
+      const deadline = permitResult?.deadline || calculateDeadline(3600);
       
-      // Calculate minFxSaveOut: use wrappedRate like Anchor (expectedFxSave = amount/rate), not % of input.
-      // Using % of input caused SlippageExceeded for fxUSD (e.g. 5 fxUSD → ~4.65 fxSAVE, we required 4.8).
-      const minFxSaveSlipPct = isActuallyFxUSD ? 4 : 3; // 4% for fxUSD, 3% for USDC (mint fee 1%)
-      let minFxSaveOut: bigint;
-      if (fxSAVERate && fxSAVERate > 0n) {
-        const expectedFxSave = isActuallyUSDC
-          ? ((amountForMint * 10n ** 12n) * 10n ** 18n) / fxSAVERate
-          : (amountForMint * 10n ** 18n) / fxSAVERate;
-        minFxSaveOut = (expectedFxSave * BigInt(100 - minFxSaveSlipPct)) / 100n;
-      } else {
-        minFxSaveOut = (amountForMint * BigInt(100 - (isActuallyFxUSD ? 15 : minFxSaveSlipPct)) * 100n) / 10000n;
-      }
-      
-      if (usePermit && permitResult.permitSig && permitResult.deadline) {
-        // Use permit functions - requires minFxSaveOut parameter; use exact signed deadline.
-        const permitDeadline = permitResult.deadline;
+      if (usePermit && permitResult.permitSig) {
+        // Use permit functions - requires minFxSaveOut parameter
         try {
           if (isActuallyUSDC) {
             mintHash = await writeContractAsync({
               address: zapAddress,
-              abi: MINTER_USDC_ZAP_V3_ABI,
+              abi: [...MINTER_USDC_ZAP_V2_ABI, ...USDC_ZAP_PERMIT_ABI] as const,
               functionName: "zapUsdcToLeveragedWithPermit",
               args: [
                 amountForMint,
                 minFxSaveOut,
                 address as `0x${string}`,
                 minOutput,
-                permitDeadline,
+                deadline,
                 permitResult.permitSig.v,
                 permitResult.permitSig.r,
                 permitResult.permitSig.s,
@@ -1159,14 +1079,14 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
           } else if (isActuallyFxUSD) {
             mintHash = await writeContractAsync({
               address: zapAddress,
-              abi: MINTER_USDC_ZAP_V3_ABI,
+              abi: [...MINTER_USDC_ZAP_V2_ABI, ...USDC_ZAP_PERMIT_ABI] as const,
               functionName: "zapFxUsdToLeveragedWithPermit",
               args: [
                 amountForMint,
                 minFxSaveOut,
                 address as `0x${string}`,
                 minOutput,
-                permitDeadline,
+                deadline,
                 permitResult.permitSig.v,
                 permitResult.permitSig.r,
                 permitResult.permitSig.s,
@@ -1183,13 +1103,7 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
       }
       
       if (!usePermit) {
-        // Fallback: Use traditional approval + zap. Remove signPermit step so we show only [approve, mint].
-        setProgressModal((prev) => {
-          if (!prev) return prev;
-          const newSteps = prev.steps.filter((s) => s.id !== "signPermit");
-          const newIndex = newSteps.findIndex((s) => s.status !== "completed");
-          return { ...prev, steps: newSteps, currentStepIndex: newIndex === -1 ? newSteps.length - 1 : newIndex };
-        });
+        // Fallback: Use traditional approval + zap
         const approvalTarget = zapAddress;
         
         // Check and approve asset if needed
@@ -1235,7 +1149,7 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
         if (isActuallyUSDC) {
           mintHash = await writeContractAsync({
             address: zapAddress,
-            abi: MINTER_USDC_ZAP_V3_ABI,
+            abi: MINTER_USDC_ZAP_V2_ABI,
             functionName: "zapUsdcToLeveraged",
             args: [
               amountForMint,
@@ -1247,7 +1161,7 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
         } else if (isActuallyFxUSD) {
           mintHash = await writeContractAsync({
             address: zapAddress,
-            abi: MINTER_USDC_ZAP_V3_ABI,
+            abi: MINTER_USDC_ZAP_V2_ABI,
             functionName: "zapFxUsdToLeveraged",
             args: [
               amountForMint,
@@ -1298,7 +1212,7 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
  const lowerMessage = (errMessage + " " + errShortMessage).toLowerCase();
  
  if (lowerMessage.includes("user rejected") || lowerMessage.includes("user denied") || lowerMessage.includes("rejected the request")) {
-   errorMessage = "Transaction was rejected. Please try again.";
+   errorMessage = "Transaction cancelled";
  } else if (err instanceof BaseError) {
    const revertError = err.walk(
      (e) => e instanceof ContractFunctionRevertedError
@@ -1306,12 +1220,16 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
    if (revertError instanceof ContractFunctionRevertedError) {
      errorMessage = revertError.reason || revertError.data?.message || "Transaction failed";
    } else {
+     // Extract concise error message
      const msg = err.message || err.shortMessage || "Transaction failed";
+     // Remove verbose prefixes like "ContractFunctionExecutionError:"
      errorMessage = msg.replace(/^[^:]+:\s*/i, "").replace(/\s*\([^)]+\)$/, "") || "Transaction failed";
    }
  } else if (err instanceof Error) {
    errorMessage = err.message.replace(/^[^:]+:\s*/i, "").replace(/\s*\([^)]+\)$/, "") || "Transaction failed";
  }
+ 
+ // Log full error for debugging
  console.error("Full error details:", {
    error: err,
    message: errorMessage,
@@ -1321,9 +1239,16 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
    depositAssetAddress,
    isFxUSD,
  });
- setProgressModal(null);
- setError(errorMessage);
- setStep("error");
+ // Mark current step as error
+ setProgressModal((prev) => {
+ if (!prev) return prev;
+ const newSteps = prev.steps.map((s) =>
+ s.status ==="in_progress"
+ ? { ...s, status:"error" as const, error: errorMessage }
+ : s
+ );
+ return { ...prev, steps: newSteps };
+ });
  }
  };
 
@@ -1372,7 +1297,6 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
  steps,
  currentStepIndex: 0,
  });
- flushSync(() => {}); // Force React to paint before first action
 
  try {
  // Step 1: Approve (if needed)
@@ -1418,7 +1342,7 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
  const lowerMessage = (errMessage + " " + errShortMessage).toLowerCase();
  
  if (lowerMessage.includes("user rejected") || lowerMessage.includes("user denied") || lowerMessage.includes("rejected the request")) {
-   errorMessage = "Transaction was rejected. Please try again.";
+   errorMessage = "Transaction cancelled";
  } else if (err instanceof BaseError) {
    const revertError = err.walk(
      (e) => e instanceof ContractFunctionRevertedError
@@ -1426,15 +1350,23 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
    if (revertError instanceof ContractFunctionRevertedError) {
      errorMessage = revertError.reason || "Transaction failed";
    } else {
+     // Extract concise error message
      const msg = err.message || err.shortMessage || "Transaction failed";
      errorMessage = msg.replace(/^[^:]+:\s*/i, "").replace(/\s*\([^)]+\)$/, "") || "Transaction failed";
    }
  } else if (err instanceof Error) {
    errorMessage = err.message.replace(/^[^:]+:\s*/i, "").replace(/\s*\([^)]+\)$/, "") || "Transaction failed";
  }
- setProgressModal(null);
- setError(errorMessage);
- setStep("error");
+ // Mark current step as error
+ setProgressModal((prev) => {
+ if (!prev) return prev;
+ const newSteps = prev.steps.map((s) =>
+ s.status ==="in_progress"
+ ? { ...s, status:"error" as const, error: errorMessage }
+ : s
+ );
+ return { ...prev, steps: newSteps };
+ });
  }
  };
 
@@ -1506,34 +1438,15 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
  onClick={handleClose}
  />
 
- <div className="relative bg-white shadow-2xl w-full max-w-md mx-2 sm:mx-4 animate-in fade-in-0 scale-in-95 duration-200 overflow-hidden">
- {/* Protocol and Market Header */}
- {market?.leveragedToken?.symbol && (
-   <div className="bg-[#1E4775] text-white px-3 sm:px-4 py-2 sm:py-2.5 flex items-center justify-between">
-     <div className="text-sm sm:text-base font-semibold">
-       Sail
-     </div>
-     <div className="flex items-center gap-2">
-       <img
-         src={(market.leveragedToken as { icon?: string })?.icon ?? getLogoPath(leveragedTokenSymbol)}
-         alt={market.leveragedToken.symbol}
-         className="w-5 h-5 sm:w-6 sm:h-6 rounded-full flex-shrink-0"
-       />
-       <span className="text-sm sm:text-base font-semibold">
-         {market.leveragedToken.symbol}
-       </span>
-     </div>
-   </div>
- )}
- 
+ <div className="relative bg-white shadow-2xl w-full max-w-xl mx-4 animate-in fade-in-0 scale-in-95 duration-200 overflow-hidden">
  {/* Header with tabs and close button */}
- <div className="flex items-center justify-between p-0 pt-2 sm:pt-3 px-2 sm:px-3 border-b border-[#1E4775]/10">
+ <div className="flex items-center justify-between p-0 pt-3 px-3 border-b border-[#d1d7e5]">
  {/* Tab-style header - takes most of width but leaves room for X */}
- <div className="flex flex-1 mr-2 sm:mr-4 border border-[#1E4775]/20 border-b-0 overflow-hidden">
+ <div className="flex flex-1 mr-4 border border-[#d1d7e5] border-b-0 overflow-hidden">
  <button
  onClick={() => handleTabChange("mint")}
  disabled={isProcessing}
- className={`flex-1 py-2 sm:py-3 text-sm sm:text-base font-semibold transition-colors touch-target ${
+ className={`flex-1 py-3 text-base font-semibold transition-colors ${
  activeTab ==="mint"
  ?"bg-[#1E4775] text-white"
  :"bg-[#eef1f7] text-[#4b5a78]"
@@ -1544,7 +1457,7 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
  <button
  onClick={() => handleTabChange("redeem")}
  disabled={isProcessing}
- className={`flex-1 py-2 sm:py-3 text-sm sm:text-base font-semibold transition-colors touch-target ${
+ className={`flex-1 py-3 text-base font-semibold transition-colors ${
  activeTab ==="redeem"
  ?"bg-[#1E4775] text-white"
  :"bg-[#eef1f7] text-[#4b5a78]"
@@ -1555,12 +1468,11 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
  </div>
  <button
  onClick={handleClose}
- className="text-[#1E4775]/50 hover:text-[#1E4775] transition-colors flex-shrink-0 touch-target flex items-center justify-center w-6 h-6 sm:w-7 sm:h-7"
- aria-label="Close modal"
+ className="text-[#1E4775]/50 hover:text-[#1E4775] transition-colors disabled:opacity-30"
  disabled={isProcessing}
  >
  <svg
- className="w-5 h-5 sm:w-6 sm:h-6"
+ className="w-5 h-5"
  fill="none"
  viewBox="0 0 24 24"
  stroke="currentColor"
@@ -1568,7 +1480,7 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
  <path
  strokeLinecap="round"
  strokeLinejoin="round"
- strokeWidth={3}
+ strokeWidth={2}
  d="M6 18L18 6M6 6l12 12"
  />
  </svg>
@@ -1598,18 +1510,36 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
  </a>
  )}
  </div>
+ ) : step ==="error" ? (
+ <div className="text-center py-8">
+ <div className="text-6xl mb-4 text-red-500">✗</div>
+ <h3 className="text-xl font-bold text-red-600 mb-2">
+ Transaction Failed
+ </h3>
+ <p className="text-sm text-red-500 mb-4">{error}</p>
+ <div className="flex gap-3">
+ <button
+ onClick={handleCancel}
+ className="flex-1 py-2 px-4 bg-white text-[#1E4775] border-2 border-[#1E4775]/30 font-semibold hover:bg-[#1E4775]/5 transition-colors"
+ >
+ Cancel
+ </button>
+ <button
+ onClick={activeTab ==="mint" ? handleMint : handleRedeem}
+ className="flex-1 py-2 px-4 bg-[#1E4775] text-white font-semibold hover:bg-[#17395F] transition-colors"
+ >
+ Try Again
+ </button>
+ </div>
+ </div>
  ) : (
  <div className="space-y-4">
-   <div className="flex items-center justify-center text-xs text-[#1E4775]/50 pb-3 border-b border-[#d1d7e5]">
-     <div className="text-[#1E4775] font-semibold">
-       {activeTab === "mint" ? "Deposit Collateral & Amount" : "Withdraw Collateral & Amount"}
-     </div>
-   </div>
  {/* Input Section */}
- <div className="space-y-3">
+ <div>
  {activeTab ==="mint" && (
+ <div className="mb-3">
  <div className="space-y-2">
-   <label className="text-sm font-semibold text-[#1E4775]">Select Deposit Token</label>
+   <label className="text-sm text-[#1E4775]/70">Deposit Asset</label>
    {(() => {
      const tokenGroups = [
        ...(acceptedAssets.length > 0 ? [{
@@ -1677,6 +1607,17 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
      </div>
    )}
 
+   {/* Any-token support notice */}
+   <div className="p-2.5 bg-blue-50 border border-blue-200 text-xs text-blue-700">
+     <div className="flex items-start gap-2">
+       <ArrowPathIcon className="w-4 h-4 flex-shrink-0 mt-0.5" />
+       <div>
+         <span className="font-semibold">Tip:</span> You can deposit any ERC20
+         token! Non-collateral tokens will be automatically swapped via Velora.
+       </div>
+     </div>
+   </div>
+
    {/* Swap quote status */}
    {needsSwap && (
      <div className="text-xs text-[#1E4775]/70">
@@ -1690,69 +1631,12 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
      </div>
    )}
  </div>
- )}
-
- {/* Notifications - between deposit token and enter amount (match Anchor) */}
- <div className="space-y-2">
-   <button
-     type="button"
-     onClick={() => setShowNotifications((prev) => !prev)}
-     className="flex w-full items-center justify-between text-sm font-semibold text-[#1E4775]"
-     aria-expanded={showNotifications}
-   >
-     <span>Notifications</span>
-     <span className="flex items-center gap-2">
-       {!showNotifications && (() => {
-         const notificationCount = activeTab === "mint" ? 2 : 1;
-         return (
-           <span className="flex items-center gap-1 bg-blue-100 px-2 py-0.5 text-xs text-blue-600">
-             <Bell className="h-3 w-3" />
-             {notificationCount}
-           </span>
-         );
-       })()}
-       {showNotifications ? (
-         <ChevronUp className="h-4 w-4 text-[#1E4775]/70" />
-       ) : (
-         <ChevronDown className="h-4 w-4 text-[#1E4775]/70" />
-       )}
-     </span>
-   </button>
-   {showNotifications && (
-     <div className="space-y-2">
-       {activeTab === "mint" && (
-         <>
-           <InfoCallout
-             tone="success"
-             icon={<RefreshCw className="w-4 h-4 flex-shrink-0 mt-0.5 text-green-600" />}
-             title="Tip"
-           >
-             You can deposit any ERC20 token! Non-collateral tokens will be automatically swapped via Velora.
-           </InfoCallout>
-           <InfoCallout
-             title="Info"
-             icon={<Info className="w-4 h-4 flex-shrink-0 mt-0.5 text-blue-600" />}
-           >
-             For large deposits, Harbor recommends using wstETH or fxSAVE instead of the built-in swap and zaps.
-           </InfoCallout>
-         </>
-       )}
-       {activeTab === "redeem" && (
-         <InfoCallout
-           title="Info"
-           icon={<Info className="w-4 h-4 flex-shrink-0 mt-0.5 text-blue-600" />}
-         >
-           You will receive collateral (e.g. {collateralSymbol}) in your wallet.
-         </InfoCallout>
-       )}
-     </div>
-   )}
  </div>
-
- <div className="flex justify-between items-center mb-1.5 mt-1">
+ )}
+ <div className="flex justify-between items-center mb-1.5">
  <label className="text-sm font-semibold text-[#1E4775]">
- {activeTab ==="mint" ?"Enter Amount" :"Enter Amount"}
-</label>
+ {activeTab ==="mint" ?"Deposit Amount" :"Redeem Amount"}
+ </label>
  <span className="text-sm text-[#1E4775]/70">
  Balance:{" "}
  {activeTab === "mint"
@@ -1838,202 +1722,137 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
    }
  }}
  disabled={isProcessing || !currentBalance}
- className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1.5 text-sm bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white transition-colors disabled:bg-gray-300 disabled:text-gray-500 font-medium"
+ className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1.5 text-sm bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white transition-colors disabled:bg-gray-300 disabled:text-gray-500 rounded-full font-medium"
  >
  MAX
  </button>
  </div>
  </div>
 
- {/* Permit toggle - mint only (match Anchor: text-xs, same switch size) */}
- {activeTab === "mint" && (
-   <div className="flex items-center justify-between border border-[#1E4775]/20 bg-[#17395F]/5 px-3 py-2 text-xs">
-     <div className="text-[#1E4775]/80">
-       Use permit (gasless approval) for this deposit
-     </div>
-     {disableReason ? (
-       <SimpleTooltip label={disableReason}>
-         <span className="flex items-center gap-2 text-[#1E4775]/80 cursor-not-allowed opacity-70">
-           <span className={permitEnabled ? "text-[#1E4775]" : "text-[#1E4775]/60"}>Off</span>
-           <button
-             type="button"
-             disabled
-             className="relative inline-flex h-5 w-9 items-center rounded-full bg-[#1E4775]/30 cursor-not-allowed"
-             aria-label="Permit disabled"
-           >
-             <span className="inline-block h-4 w-4 transform rounded-full bg-white translate-x-1" />
-           </button>
-         </span>
-       </SimpleTooltip>
-     ) : (
-       <label className="flex items-center gap-2 text-[#1E4775]/80 cursor-pointer">
-         <span className={permitEnabled ? "text-[#1E4775]" : "text-[#1E4775]/60"}>
-           {permitEnabled ? "On" : "Off"}
-         </span>
-         <button
-           type="button"
-           onClick={() => setPermitEnabled((prev) => !prev)}
-           className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-             permitEnabled ? "bg-[#1E4775]" : "bg-[#1E4775]/30"
-           }`}
-           aria-pressed={permitEnabled}
-           aria-label="Toggle permit usage"
-           disabled={isProcessing}
-         >
-           <span
-             className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-               permitEnabled ? "translate-x-4" : "translate-x-1"
-             }`}
-           />
-         </button>
-       </label>
-     )}
-   </div>
+ {/* Error Display */}
+ {error && (
+ <div className="p-2 bg-red-50 border border-red-200 text-xs text-red-600">
+ {error}
+ </div>
  )}
 
- {/* Transaction Overview - Anchor-style spacing below */}
- <div className="space-y-2 mt-2">
-   <label className="block text-sm font-semibold text-[#1E4775] mb-1.5">
-     Transaction Overview
-   </label>
-   <div className="p-2.5 bg-[#17395F]/5 border border-[#1E4775]/10">
-     {activeTab === "mint" && (
-       <div className="space-y-2">
-         <div className="flex justify-between items-center">
-           <span className="text-sm font-medium text-[#1E4775]/70">
-             You will receive:
-           </span>
-           <div className="text-right">
-             <div className="text-lg font-bold text-[#1E4775] font-mono">
-               {expectedMintOutput && parsedAmount && parsedAmount > 0n
-                 ? `${Number(formatEther(expectedMintOutput)).toFixed(6)} ${leveragedTokenSymbol}`
-                 : "..."}
-             </div>
-             {(() => {
-               if (!expectedMintOutput || expectedMintOutput === 0n || !parsedAmount || parsedAmount === 0n) return null;
-               const leveragedAmount = Number(formatEther(expectedMintOutput));
-               const depositTokenSym = (selectedDepositAsset || collateralSymbol)?.toLowerCase() ?? "";
-               let depositPriceUSD = 0;
-               if (depositTokenSym === "wsteth" || depositTokenSym === "steth") {
-                 depositPriceUSD = wstETHPrice || 0;
-               } else if (depositTokenSym === "fxsave") {
-                 depositPriceUSD = fxSAVEPrice || 0;
-               } else if (depositTokenSym === "eth" || depositTokenSym === "weth") {
-                 depositPriceUSD = ethPrice || 0;
-               } else if (depositTokenSym === "usdc" || depositTokenSym === "fxusd") {
-                 depositPriceUSD = 1.0;
-               }
-               const depositAmountNum = amount && parseFloat(amount) > 0 ? parseFloat(amount) : 0;
-               const usdValue = depositPriceUSD > 0 && depositAmountNum > 0
-                 ? depositAmountNum * depositPriceUSD
-                 : (() => {
-                     const col = collateralSymbol.toLowerCase();
-                     let p = 0;
-                     if (col === "wsteth" || col === "steth") p = wstETHPrice || 0;
-                     else if (col === "fxsave") p = fxSAVEPrice || 0;
-                     else if (col === "eth") p = ethPrice || 0;
-                     else if (col === "usdc" || col === "fxusd") p = 1.0;
-                     return p > 0 ? leveragedAmount * p : 0;
-                   })();
-               return usdValue > 0 ? (
-                 <div className="text-xs text-[#1E4775]/50 font-mono">
-                   ${usdValue.toLocaleString(undefined, {
-                     minimumFractionDigits: 2,
-                     maximumFractionDigits: 2,
-                   })}
-                 </div>
-               ) : null;
-             })()}
-           </div>
-         </div>
-         {expectedMintOutput && expectedMintOutput > 0n && amount && parseFloat(amount) > 0 && (
-           <div className="text-xs text-[#1E4775]/50 italic text-right">
-             ({parseFloat(amount).toFixed(6)} {selectedDepositAsset || collateralSymbol} ≈ {Number(formatEther(expectedMintOutput)).toFixed(6)} {leveragedTokenSymbol})
-           </div>
-         )}
-         {mintFeePercentage !== undefined && parsedAmount && parsedAmount > 0n && (
-           <div className="pt-2 border-t border-[#1E4775]/20">
-             <div className="flex justify-end items-center gap-2 text-xs text-right">
-               <span
-                 className={`font-bold font-mono ${
-                   mintFeePercentage > 2 ? "text-red-600" : "text-[#1E4775]"
-                 }`}
-               >
-                 Mint Fee: {mintFeePercentage.toFixed(2)}%
-                 {mintFeePercentage > 2 && " ⚠️"}
-               </span>
-             </div>
-           </div>
-         )}
-       </div>
-     )}
-     {activeTab === "redeem" && (
-       <div className="space-y-2">
-         <div className="flex justify-between items-center">
-           <span className="text-sm font-medium text-[#1E4775]/70">
-             You will receive:
-           </span>
-           <div className="text-right">
-             <div className="text-lg font-bold text-[#1E4775] font-mono">
-               {expectedRedeemOutput && parsedAmount && parsedAmount > 0n
-                 ? `${Number(formatEther(expectedRedeemOutput)).toFixed(6)} ${collateralSymbol}`
-                 : "..."}
-             </div>
-             {(() => {
-               if (!expectedRedeemOutput || expectedRedeemOutput === 0n || !parsedAmount || parsedAmount === 0n) return null;
-               const collateralAmount = Number(formatEther(expectedRedeemOutput));
-               const collateralSymbolLower = collateralSymbol.toLowerCase();
-               let priceUSD = 0;
-               if (collateralSymbolLower === "wsteth" || collateralSymbolLower === "steth") {
-                 priceUSD = wstETHPrice || 0;
-               } else if (collateralSymbolLower === "fxsave") {
-                 priceUSD = fxSAVEPrice || 0;
-               } else if (collateralSymbolLower === "eth") {
-                 priceUSD = ethPrice || 0;
-               } else if (collateralSymbolLower === "usdc" || collateralSymbolLower === "fxusd") {
-                 priceUSD = 1.0;
-               }
-               const usdValue = priceUSD > 0 ? collateralAmount * priceUSD : 0;
-               return usdValue > 0 ? (
-                 <div className="text-xs text-[#1E4775]/50 font-mono">
-                   ${usdValue.toLocaleString(undefined, {
-                     minimumFractionDigits: 2,
-                     maximumFractionDigits: 2,
-                   })}
-                 </div>
-               ) : null;
-             })()}
-           </div>
-         </div>
-         {expectedRedeemOutput && expectedRedeemOutput > 0n && amount && parseFloat(amount) > 0 && (
-           <div className="text-xs text-[#1E4775]/50 italic text-right">
-             ({parseFloat(amount).toFixed(6)} {leveragedTokenSymbol} ≈ {Number(formatEther(expectedRedeemOutput)).toFixed(6)} {collateralSymbol})
-           </div>
-         )}
-         {redeemFeePercentage !== undefined && parsedAmount && parsedAmount > 0n && (
-           <div className="pt-2 border-t border-[#1E4775]/20">
-             <div className="flex justify-end items-center gap-2 text-xs text-right">
-               <span
-                 className={`font-bold font-mono ${
-                   redeemFeePercentage > 2 ? "text-red-600" : "text-[#1E4775]"
-                 }`}
-               >
-                 Redemption Fee: {redeemFeePercentage.toFixed(2)}%
-                 {redeemFeePercentage > 2 && " ⚠️"}
-               </span>
-             </div>
-           </div>
-         )}
-       </div>
-     )}
-   </div>
+ {/* Fee Display */}
+ {activeTab ==="mint" && (
+ <div className="text-xs text-[#1E4775]">
+ <span className="flex items-center gap-1.5">
+ Mint Fee:{" "}
+ <span
+ className={`font-semibold ${
+ mintFeePercentage > 2
+ ?"text-red-600"
+ :"text-[#1E4775]"
+ }`}
+ >
+ {parsedAmount &&
+ parsedAmount > 0n &&
+ mintFeePercentage !== undefined
+ ? `${mintFeePercentage.toFixed(2)}%`
+ :"-"}
+ {parsedAmount && parsedAmount > 0n && mintFee > 0n && (
+ <span className="ml-1 font-normal text-[#1E4775]/60">
+ ({formatDisplay(mintFee, 4)}{" "}
+ {selectedDepositAsset || collateralSymbol})
+ </span>
+ )}
+ </span>
+ </span>
  </div>
+ )}
 
- {/* Error - beneath transaction overview (match Genesis/Anchor) */}
- {error && (
- <div className="p-3 bg-red-50 border border-red-500/30 text-red-600 text-sm text-center flex items-center justify-center gap-2">
- <AlertOctagon className="w-4 h-4 flex-shrink-0" aria-hidden />
- {error}
+ {activeTab ==="redeem" && (
+ <div className="text-xs text-[#1E4775]">
+ <span className="flex items-center gap-1.5">
+ Redeem Fee:{" "}
+ <span
+ className={`font-semibold ${
+ redeemFeePercentage > 2
+ ?"text-red-600"
+ :"text-[#1E4775]"
+ }`}
+ >
+ {parsedAmount &&
+ parsedAmount > 0n &&
+ redeemFeePercentage !== undefined
+ ? `${redeemFeePercentage.toFixed(2)}%`
+ :"-"}
+ {parsedAmount && parsedAmount > 0n && redeemFee > 0n && (
+ <span className="ml-1 font-normal text-[#1E4775]/60">
+ ({formatDisplay(redeemFee, 4)} {collateralSymbol})
+ </span>
+ )}
+ </span>
+ </span>
+ </div>
+ )}
+
+ {/* Transaction Summary */}
+ {activeTab ==="mint" && (
+ <div className="p-2 bg-[#17395F]/5 border border-[#17395F]/20">
+ <h4 className="text-xs font-semibold text-[#1E4775] mb-1.5">
+ Transaction Summary
+ </h4>
+ <div className="space-y-1 text-xs text-[#1E4775]/80">
+ <div className="flex justify-between">
+ <span>You deposit:</span>
+ <span className="font-mono">
+ {parsedAmount && parsedAmount > 0n
+ ? `${formatDisplay(parsedAmount, 4)} ${
+ selectedDepositAsset || collateralSymbol
+ }`
+ :"0.00"}
+ </span>
+ </div>
+ <div className="flex justify-between">
+ <span>You receive:</span>
+ <span className="font-mono">
+ {expectedMintOutput && parsedAmount && parsedAmount > 0n
+ ? `${formatDisplay(
+ expectedMintOutput,
+ 4
+ )} ${leveragedTokenSymbol}`
+ :"0.00"}
+ </span>
+ </div>
+ </div>
+ </div>
+ )}
+
+ {activeTab ==="redeem" && (
+ <div className="p-2 bg-[#17395F]/5 border border-[#17395F]/20">
+ <h4 className="text-xs font-semibold text-[#1E4775] mb-1.5">
+ Transaction Summary
+ </h4>
+ <div className="space-y-1 text-xs text-[#1E4775]/80">
+ <div className="flex justify-between">
+ <span>You redeem:</span>
+ <span className="font-mono">
+ {parsedAmount && parsedAmount > 0n
+ ? `${formatDisplay(
+ parsedAmount,
+ 4
+ )} ${leveragedTokenSymbol}`
+ :"0.00"}
+ </span>
+ </div>
+ <div className="flex justify-between">
+ <span>You receive:</span>
+ <span className="font-mono">
+ {expectedRedeemOutput &&
+ parsedAmount &&
+ parsedAmount > 0n
+ ? `${formatDisplay(
+ expectedRedeemOutput,
+ 4
+ )} ${collateralSymbol}`
+ :"0.00"}
+ </span>
+ </div>
+ </div>
  </div>
  )}
 
@@ -2051,12 +1870,12 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
  </div>
  )}
 
- {/* Action Buttons - no line above; Anchor-style mt-4 spacing */}
+ {/* Action Buttons */}
  {!isProcessing && (
- <div className="flex gap-3 mt-4">
+ <div className="flex gap-3 pt-2 border-t border-[#1E4775]/20">
  {(step ==="error" || step ==="input") && (
  <button
- onClick={step ==="error" ? handleCancel : handleClose}
+ onClick={handleClose}
  className="flex-1 py-3 px-4 bg-white text-[#1E4775] border-2 border-[#1E4775]/30 font-semibold hover:bg-[#1E4775]/5 transition-colors"
  >
  Cancel
@@ -2065,21 +1884,19 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
  <button
  onClick={activeTab ==="mint" ? handleMint : handleRedeem}
  disabled={
- step ==="error"
-   ? false
-   : !isConnected ||
-     !amount ||
-     parseFloat(amount) <= 0 ||
-     (activeTab ==="mint" &&
-       parsedAmount &&
-       parsedAmount > currentBalance) ||
-     (activeTab ==="redeem" &&
-       parsedAmount &&
-       parsedAmount > currentBalance)
+ !isConnected ||
+ !amount ||
+ parseFloat(amount) <= 0 ||
+ (activeTab ==="mint" &&
+ parsedAmount &&
+ parsedAmount > currentBalance) ||
+ (activeTab ==="redeem" &&
+ parsedAmount &&
+ parsedAmount > currentBalance)
  }
- className="flex-1 py-3 px-4 bg-[#FF8A7A] text-white font-semibold hover:bg-[#FF6B5A] transition-colors disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
+ className="flex-1 py-3 px-4 bg-[#1E4775] text-white font-semibold hover:bg-[#17395F] transition-colors disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
  >
- {step ==="error" ? "Try Again" : activeTab ==="mint" ? "Mint" : "Redeem"}
+ {activeTab ==="mint" ?"Mint" :"Redeem"}
  </button>
  </div>
  )}
@@ -2103,7 +1920,6 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
  title={progressModal.title}
  steps={progressModal.steps}
  currentStepIndex={progressModal.currentStepIndex}
- progressVariant="horizontal"
  errorMessage={progressModal.steps.find(s => s.status === "error")?.error}
  />
  )}

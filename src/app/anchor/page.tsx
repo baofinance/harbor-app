@@ -8531,16 +8531,11 @@ export default function AnchorPage() {
             bestPoolType={manageModal.bestPoolType || "collateral"}
             allMarkets={manageModal.allMarkets}
             initialDepositAsset={manageModal.initialDepositAsset}
-            positionsMap={marketPositions}
             onSuccess={async () => {
               // Wait for blockchain state to update
               await new Promise((resolve) => setTimeout(resolve, 2000));
-              // Refetch all contract data (including positions for withdraw list)
-              await Promise.all([
-                refetchReads(),
-                refetchUserDeposits(),
-                refetchPositions(),
-              ]);
+              // Refetch all contract data
+              await Promise.all([refetchReads(), refetchUserDeposits()]);
             }}
           />
         )}

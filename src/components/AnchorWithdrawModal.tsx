@@ -2,7 +2,6 @@
 
 import React, { useState } from "react";
 import { parseEther, formatEther } from "viem";
-import { AlertOctagon } from "lucide-react";
 import {
  useAccount,
  useContractRead,
@@ -269,8 +268,7 @@ export const AnchorWithdrawModal = ({
  </div>
 
  {error && (
- <div className="p-3 bg-red-50 border border-red-500/30 text-red-600 text-sm flex items-center justify-center gap-2">
- <AlertOctagon className="w-4 h-4 flex-shrink-0" aria-hidden />
+ <div className="p-3 bg-red-50 border border-red-500/30 text-red-600 text-sm">
  {error}
  </div>
  )}
