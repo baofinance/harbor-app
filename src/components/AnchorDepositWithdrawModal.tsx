@@ -39,6 +39,7 @@ import { getDefiLlamaSwapTx } from "@/hooks/useDefiLlamaSwap";
 import { useCollateralPrice } from "@/hooks/useCollateralPrice";
 import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
 import { usePermitOrApproval } from "@/hooks/usePermitOrApproval";
+import { usePermitCapability } from "@/hooks/usePermitCapability";
 import {
   TransactionProgressModal,
   TransactionStep,
@@ -608,6 +609,15 @@ export const AnchorDepositWithdrawModal = ({
 
   // Simple mode: deposit asset selection
   const [selectedDepositAsset, setSelectedDepositAsset] = useState<string>("");
+
+  const { isPermitCapable, disableReason } = usePermitCapability({
+    enabled: isOpen && !!address,
+    depositAssetSymbol: selectedDepositAsset || null,
+  });
+  useEffect(() => {
+    if (!isPermitCapable) setPermitEnabled(false);
+    else setPermitEnabled(true); // Default on when allowed
+  }, [isPermitCapable]);
 
   // Simple mode: stability pool selection - now includes marketId and pool type
   const [selectedStabilityPool, setSelectedStabilityPool] = useState<{
@@ -9991,37 +10001,43 @@ export const AnchorDepositWithdrawModal = ({
                           <div className="text-[#1E4775]/80">
                             Use permit (gasless approval) for this deposit
                           </div>
-                          <label className="flex items-center gap-2 text-[#1E4775]/80">
-                            <span
-                              className={
-                                permitEnabled
-                                  ? "text-[#1E4775]"
-                                  : "text-[#1E4775]/60"
-                              }
-                            >
-                              {permitEnabled ? "On" : "Off"}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => setPermitEnabled((prev) => !prev)}
-                              className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-                                permitEnabled
-                                  ? "bg-[#1E4775]"
-                                  : "bg-[#1E4775]/30"
-                              }`}
-                              aria-pressed={permitEnabled}
-                              aria-label="Toggle permit usage"
-                              disabled={isProcessing}
-                            >
-                              <span
-                                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                                  permitEnabled
-                                    ? "translate-x-4"
-                                    : "translate-x-1"
+                          {disableReason ? (
+                            <SimpleTooltip label={disableReason}>
+                              <span className="flex items-center gap-2 text-[#1E4775]/80 cursor-not-allowed opacity-70">
+                                <span className="text-[#1E4775]/60">Off</span>
+                                <button
+                                  type="button"
+                                  disabled
+                                  className="relative inline-flex h-5 w-9 items-center rounded-full bg-[#1E4775]/30 cursor-not-allowed"
+                                  aria-label="Permit disabled"
+                                >
+                                  <span className="inline-block h-4 w-4 transform rounded-full bg-white translate-x-1" />
+                                </button>
+                              </span>
+                            </SimpleTooltip>
+                          ) : (
+                            <label className="flex items-center gap-2 text-[#1E4775]/80 cursor-pointer">
+                              <span className={permitEnabled ? "text-[#1E4775]" : "text-[#1E4775]/60"}>
+                                {permitEnabled ? "On" : "Off"}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => setPermitEnabled((prev) => !prev)}
+                                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                                  permitEnabled ? "bg-[#1E4775]" : "bg-[#1E4775]/30"
                                 }`}
-                              />
-                            </button>
-                          </label>
+                                aria-pressed={permitEnabled}
+                                aria-label="Toggle permit usage"
+                                disabled={isProcessing}
+                              >
+                                <span
+                                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                    permitEnabled ? "translate-x-4" : "translate-x-1"
+                                  }`}
+                                />
+                              </button>
+                            </label>
+                          )}
                         </div>
                       )}
 
@@ -11137,12 +11153,12 @@ export const AnchorDepositWithdrawModal = ({
                 {/* Withdraw Options - Only for Withdraw Tab */}
                 {activeTab === "withdraw" && (
                   <div className="space-y-3">
-                    <div className="flex items-center justify-center text-xs text-[#1E4775]/50 pb-3">
+                    <div className="flex items-center justify-center text-xs text-[#1E4775]/50 pb-3 border-b border-[#d1d7e5]">
                       <div className="text-[#1E4775] font-semibold">
                         Withdraw Collateral & Amount
                       </div>
                     </div>
-                    <div className="space-y-2">
+                    <div className="space-y-2 pt-3">
                       <button
                         type="button"
                         onClick={() =>
@@ -11267,7 +11283,7 @@ export const AnchorDepositWithdrawModal = ({
 
                 {/* Positions List for Withdraw Tab - show on input and on error so user can see/change selection after reject */}
                 {activeTab === "withdraw" && (step === "input" || step === "error") && (
-                  <div className="space-y-3 pt-2 border-t border-[#1E4775]/10">
+                  <div className="space-y-3 pt-2">
                     <label className="text-sm font-semibold text-[#1E4775]">
                       Select Stability Pool
                     </label>

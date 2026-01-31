@@ -16,6 +16,7 @@ import { WSTETH_ABI } from "@/abis";
 import { MINTER_ETH_ZAP_V2_ABI, MINTER_USDC_ZAP_V3_ABI } from "@/config/contracts";
 import { STETH_ZAP_PERMIT_ABI, calculateDeadline } from "@/utils/permit";
 import { usePermitOrApproval } from "@/hooks/usePermitOrApproval";
+import { usePermitCapability } from "@/hooks/usePermitCapability";
 import { useCollateralPrice } from "@/hooks/useCollateralPrice";
 import SimpleTooltip from "@/components/SimpleTooltip";
 import { ArrowPathIcon } from "@heroicons/react/24/outline";
@@ -83,6 +84,10 @@ export const SailManageModal = ({
  const [selectedDepositAsset, setSelectedDepositAsset] = useState<
  string | null
  >(null);
+ const { isPermitCapable, disableReason } = usePermitCapability({
+   enabled: isOpen && !!address,
+   depositAssetSymbol: selectedDepositAsset ?? undefined,
+ });
  const [showCustomTokenInput, setShowCustomTokenInput] = useState(false);
  const [customTokenAddress, setCustomTokenAddress] = useState<string>("");
  const [step, setStep] = useState<ModalStep>("input");
@@ -90,6 +95,10 @@ export const SailManageModal = ({
  const [txHash, setTxHash] = useState<string | null>(null);
  const [showNotifications, setShowNotifications] = useState(false);
  const [permitEnabled, setPermitEnabled] = useState(true);
+ useEffect(() => {
+   if (!isPermitCapable) setPermitEnabled(false);
+   else setPermitEnabled(true); // Default on when allowed
+ }, [isPermitCapable]);
 
  // Progress modal state
  const [progressModal, setProgressModal] = useState<{
@@ -468,10 +477,23 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
  });
 
  // Dry run for mint
- // For ETH zaps, use wstETH amount; for others, use parsedAmount directly
+ // mintLeveragedTokenDryRun expects collateral amount (fxSAVE for USDC zap, wstETH for ETH zap, etc.)
+ // For fxUSD/USDC zap: convert input to expected fxSAVE via wrapped rate; minter dry run expects fxSAVE
+ const effectiveZapInput = needsSwap && swapQuote ? swapQuote.toAmount : parsedAmount;
+ const expectedFxSaveForDryRun = useMemo(() => {
+   if (!useUSDCZap || !fxSAVERate || fxSAVERate === 0n || !effectiveZapInput || effectiveZapInput === 0n)
+     return undefined;
+   const isUsdcInput = needsSwap || isUSDC; // needsSwap outputs USDC; otherwise isUSDC or isFxUSD
+   if (isUsdcInput)
+     return ((effectiveZapInput * 10n ** 12n) * 10n ** 18n) / fxSAVERate;
+   return (effectiveZapInput * 10n ** 18n) / fxSAVERate; // fxUSD 18 decimals
+ }, [useUSDCZap, fxSAVERate, effectiveZapInput, needsSwap, isUSDC]);
+
  const amountForDryRun = useETHZap && isNativeETH && !needsSwap && wstETHAmountForDryRun
    ? (wstETHAmountForDryRun as bigint)
-   : parsedAmount;
+   : useUSDCZap
+     ? (expectedFxSaveForDryRun ?? undefined) // never use parsedAmount for USDC zap - dry run expects fxSAVE
+     : parsedAmount;
 
  const mintDryRunEnabled =
  activeTab ==="mint" &&
@@ -733,6 +755,9 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
      ? ((depositAssetAllowance as bigint) || 0n) < parsedAmount
      : false;
  const needsApproval = needsZapApproval || needsDirectApproval;
+ // When permit is enabled for zap flows (stETH, USDC, fxUSD), we skip the approve step—permit is used inside the mint step
+ const willUsePermitForZap =
+   permitEnabled && (useETHZap || useUSDCZap) && !includeSwap && !isNativeETH;
 
  // Swap approvals
  const needsSwapApproval =
@@ -784,7 +809,7 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
      details: "Approve USDC for minting via zap",
    });
  }
- if (needsApproval) {
+ if (needsApproval && !willUsePermitForZap) {
    const approveLabel = useZap && zapAssetName
      ? `Approve ${zapAssetName} for zap`
      : `Approve ${selectedDepositAsset || collateralSymbol}`;
@@ -795,6 +820,14 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
      details: `Approve ${
        useZap && zapAssetName ? zapAssetName : (selectedDepositAsset || collateralSymbol)
      } for minting`,
+   });
+ }
+ if (willUsePermitForZap && zapAssetName) {
+   steps.push({
+     id: "signPermit",
+     label: `Sign permit for ${zapAssetName}`,
+     status: "pending",
+     details: `Sign EIP-2612 permit (no gas) to authorize zap`,
    });
  }
  const mintLabel = useZap && zapAssetName
@@ -883,10 +916,11 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
    }
 
    // Step 2: Approve (if needed, no-swap path)
+   // Skip when willUsePermitForZap: permit is used inside the mint step instead
    // If using zap (ETH zap or USDC zap), approve to zapAddress
    // Only direct mints (wstETH, fxSAVE) approve to minterAddress
    // Note: useETHZap and useUSDCZap already check for zapAddress via useZap, so if they're true, zapAddress must exist
-   if (needsApproval && depositAssetAddress) {
+   if (needsApproval && !willUsePermitForZap && depositAssetAddress) {
      updateProgressStep("approve", { status:"in_progress" });
      const approveTarget = useETHZap || useUSDCZap
        ? zapAddress!
@@ -919,10 +953,11 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
    
    if (useUSDCZap) {
      // For USDC/fxUSD zap: use expectedMintOutput from dry run if available
-     // This accounts for actual conversion (USDC → fxUSD → fxSAVE) and minting fees
+     // When mint fee 1%, use 4% slippage for fxUSD (Anchor fix: revert after permit/transferFrom), else 3%
+     const isActuallyFxUSD = isFxUSD && !includeSwap;
+     const usdcFxSlippageBps = isActuallyFxUSD ? 4.0 : 3.0;
      if (expectedMintOutput && expectedMintOutput > 0n) {
-       // Apply slippage tolerance
-       minOutput = (expectedMintOutput * BigInt(Math.floor((100 - slippageBps) * 100))) / 10000n;
+       minOutput = (expectedMintOutput * BigInt(Math.floor((100 - usdcFxSlippageBps) * 100))) / 10000n;
      } else if (fxSAVERate && fxSAVERate > 0n) {
        // Fallback: estimate using fxSAVE rate (less accurate, but better than 0)
        let amountIn18Decimals: bigint;
@@ -936,7 +971,7 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
        // Convert to fxSAVE using wrapped rate, then estimate mint output (account for ~0.25% fee)
        const fxSaveAmount = (amountIn18Decimals * 10n ** 18n) / fxSAVERate;
        const estimatedLeveragedOut = (fxSaveAmount * 9975n) / 10000n; // Estimate 0.25% fee
-       minOutput = (estimatedLeveragedOut * BigInt(Math.floor((100 - slippageBps) * 100))) / 10000n;
+       minOutput = (estimatedLeveragedOut * BigInt(Math.floor((100 - usdcFxSlippageBps) * 100))) / 10000n;
      } else {
        throw new Error("Cannot calculate minOutput: expectedMintOutput and fxSAVERate both unavailable");
      }
@@ -982,9 +1017,12 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
         }
         
         // Try to use permit first when enabled, fallback to approval if not supported or fails
+        if (permitEnabled) updateProgressStep("signPermit", { status: "in_progress" });
         const permitResult = permitEnabled
           ? await handlePermitOrApproval(stETHAddress, zapAddress, amountForMint)
           : { usePermit: false };
+        if (permitEnabled && permitResult?.usePermit)
+          updateProgressStep("signPermit", { status: "completed" });
         let usePermit = permitResult?.usePermit && !!permitResult.permitSig && !!permitResult.deadline;
         
         if (usePermit && permitResult.permitSig && permitResult.deadline) {
@@ -1012,16 +1050,27 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
         }
         
         if (!usePermit) {
-          // Fallback: Use traditional approval + zap
+          // Fallback: Use traditional approval + zap. Remove signPermit so we show only [approve, mint].
           const stETHAllowance = await publicClient?.readContract({
             address: stETHAddress,
             abi: ERC20_ABI,
             functionName: "allowance",
             args: [address as `0x${string}`, zapAddress],
           });
-          
           const allowanceBigInt = (stETHAllowance as bigint) || 0n;
-          if (allowanceBigInt < amountForMint) {
+          const needsStEthApproval = allowanceBigInt < amountForMint;
+          setProgressModal((prev) => {
+            if (!prev) return prev;
+            let newSteps = prev.steps.filter((s) => s.id !== "signPermit");
+            if (needsStEthApproval && !newSteps.some((s) => s.id === "approve")) {
+              const mintIdx = newSteps.findIndex((s) => s.id === "mint");
+              newSteps = [...newSteps];
+              newSteps.splice(mintIdx, 0, { id: "approve", label: "Approve stETH for zap", status: "pending", details: "Approve stETH for minting via zap" });
+            }
+            const newIndex = newSteps.findIndex((s) => s.status !== "completed");
+            return { ...prev, steps: newSteps, currentStepIndex: newIndex === -1 ? newSteps.length - 1 : newIndex };
+          });
+          if (needsStEthApproval) {
             updateProgressStep("approve", { status: "in_progress" });
             const approveHash = await writeContractAsync({
               address: stETHAddress,
@@ -1064,13 +1113,26 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
       }
       
       // Same permit flow as Genesis/Anchor when enabled: require deadline for zap…WithPermit (must match signed message).
+      if (permitEnabled) updateProgressStep("signPermit", { status: "in_progress" });
       const permitResult = permitEnabled
         ? await handlePermitOrApproval(assetAddressForApproval, zapAddress, amountForMint)
         : { usePermit: false };
+      if (permitEnabled && permitResult?.usePermit)
+        updateProgressStep("signPermit", { status: "completed" });
       let usePermit = permitResult?.usePermit && !!permitResult.permitSig && !!permitResult?.deadline;
       
-      // Calculate minFxSaveOut for permit functions (1% slippage buffer)
-      const minFxSaveOut = (amountForMint * 99n) / 100n;
+      // Calculate minFxSaveOut: use wrappedRate like Anchor (expectedFxSave = amount/rate), not % of input.
+      // Using % of input caused SlippageExceeded for fxUSD (e.g. 5 fxUSD → ~4.65 fxSAVE, we required 4.8).
+      const minFxSaveSlipPct = isActuallyFxUSD ? 4 : 3; // 4% for fxUSD, 3% for USDC (mint fee 1%)
+      let minFxSaveOut: bigint;
+      if (fxSAVERate && fxSAVERate > 0n) {
+        const expectedFxSave = isActuallyUSDC
+          ? ((amountForMint * 10n ** 12n) * 10n ** 18n) / fxSAVERate
+          : (amountForMint * 10n ** 18n) / fxSAVERate;
+        minFxSaveOut = (expectedFxSave * BigInt(100 - minFxSaveSlipPct)) / 100n;
+      } else {
+        minFxSaveOut = (amountForMint * BigInt(100 - (isActuallyFxUSD ? 15 : minFxSaveSlipPct)) * 100n) / 10000n;
+      }
       
       if (usePermit && permitResult.permitSig && permitResult.deadline) {
         // Use permit functions - requires minFxSaveOut parameter; use exact signed deadline.
@@ -1119,7 +1181,13 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
       }
       
       if (!usePermit) {
-        // Fallback: Use traditional approval + zap
+        // Fallback: Use traditional approval + zap. Remove signPermit step so we show only [approve, mint].
+        setProgressModal((prev) => {
+          if (!prev) return prev;
+          const newSteps = prev.steps.filter((s) => s.id !== "signPermit");
+          const newIndex = newSteps.findIndex((s) => s.status !== "completed");
+          return { ...prev, steps: newSteps, currentStepIndex: newIndex === -1 ? newSteps.length - 1 : newIndex };
+        });
         const approvalTarget = zapAddress;
         
         // Check and approve asset if needed
@@ -1780,27 +1848,43 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
      <div className="text-[#1E4775]/80">
        Use permit (gasless approval) for this deposit
      </div>
-     <label className="flex items-center gap-2 text-[#1E4775]/80 cursor-pointer">
-       <span className={permitEnabled ? "text-[#1E4775]" : "text-[#1E4775]/60"}>
-         {permitEnabled ? "On" : "Off"}
-       </span>
-       <button
-         type="button"
-         onClick={() => setPermitEnabled((prev) => !prev)}
-         className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-           permitEnabled ? "bg-[#1E4775]" : "bg-[#1E4775]/30"
-         }`}
-         aria-pressed={permitEnabled}
-         aria-label="Toggle permit usage"
-         disabled={isProcessing}
-       >
-         <span
-           className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-             permitEnabled ? "translate-x-4" : "translate-x-1"
+     {disableReason ? (
+       <SimpleTooltip label={disableReason}>
+         <span className="flex items-center gap-2 text-[#1E4775]/80 cursor-not-allowed opacity-70">
+           <span className={permitEnabled ? "text-[#1E4775]" : "text-[#1E4775]/60"}>Off</span>
+           <button
+             type="button"
+             disabled
+             className="relative inline-flex h-5 w-9 items-center rounded-full bg-[#1E4775]/30 cursor-not-allowed"
+             aria-label="Permit disabled"
+           >
+             <span className="inline-block h-4 w-4 transform rounded-full bg-white translate-x-1" />
+           </button>
+         </span>
+       </SimpleTooltip>
+     ) : (
+       <label className="flex items-center gap-2 text-[#1E4775]/80 cursor-pointer">
+         <span className={permitEnabled ? "text-[#1E4775]" : "text-[#1E4775]/60"}>
+           {permitEnabled ? "On" : "Off"}
+         </span>
+         <button
+           type="button"
+           onClick={() => setPermitEnabled((prev) => !prev)}
+           className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+             permitEnabled ? "bg-[#1E4775]" : "bg-[#1E4775]/30"
            }`}
-         />
-       </button>
-     </label>
+           aria-pressed={permitEnabled}
+           aria-label="Toggle permit usage"
+           disabled={isProcessing}
+         >
+           <span
+             className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+               permitEnabled ? "translate-x-4" : "translate-x-1"
+             }`}
+           />
+         </button>
+       </label>
+     )}
    </div>
  )}
 

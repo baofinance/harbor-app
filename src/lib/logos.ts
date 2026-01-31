@@ -18,8 +18,15 @@ const ICONS: Record<string, string> = {
     euro: "/icons/eur.svg",
     xau: "/icons/gold.svg", // Keep for backward compatibility
     gold: "/icons/gold.svg",
-    xag: "/icons/gold.svg", // Keep for backward compatibility - Silver using gold icon as placeholder
+    xag: "/icons/gold.svg", // Keep for backward compatibility
     silver: "/icons/gold.svg",
+    // Gold and Silver Genesis markets (pegged + leveraged tokens)
+    hagold: "/icons/haGOLD.png",
+    hasilver: "/icons/haSILVER.png",
+    "hssteth-gold": "/icons/hsSTETH-GOLD.png",
+    "hssteth-silver": "/icons/hsSTETH-SILVER.png",
+    "hsfxusd-gold": "/icons/hsFXUSD-GOLD.png",
+    "hsfxusd-silver": "/icons/hsFXUSD-SILVER.png",
     mcap: "/icons/mcap.svg",
     t6ch: "/icons/mcap.svg",
     t6: "/icons/mcap.svg",
