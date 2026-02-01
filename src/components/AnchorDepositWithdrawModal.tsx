@@ -4,6 +4,16 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from "react"
 import { flushSync } from "react-dom";
 import { parseEther, formatEther, parseUnits, formatUnits } from "viem";
 import {
+  formatNumber,
+  formatTokenAmount18,
+  formatUsd18,
+} from "@/utils/formatters";
+import {
+  CHAINLINK_FEEDS,
+  REWARD_TOKEN_ADDRESSES,
+  scaleChainlinkToUsdWei,
+} from "@/config/chainlink";
+import {
   useAccount,
   useBalance,
   useContractRead,
@@ -16,11 +26,18 @@ import {
 } from "wagmi";
 import { mainnet } from "wagmi/chains";
 import { BaseError, ContractFunctionRevertedError } from "viem";
-import { ERC20_ABI, STABILITY_POOL_ABI } from "@/abis/shared";
+import {
+  ERC20_ABI,
+  ERC20_PERMIT_ABI,
+  STABILITY_POOL_ABI,
+  CHAINLINK_AGGREGATOR_ABI,
+  MINTER_PEGGED_ABI,
+} from "@/abis";
 import { stabilityPoolABI } from "@/abis/stabilityPool";
 import { aprABI } from "@/abis/apr";
 import { ZAP_ABI, USDC_ZAP_ABI, WSTETH_ABI } from "@/abis";
-import { MINTER_ETH_ZAP_V2_ABI, MINTER_USDC_ZAP_V3_ABI } from "@/config/contracts";
+import { MINTER_ETH_ZAP_V2_ABI } from "@/config/contracts";
+import { MINTER_USDC_ZAP_V3_ABI } from "@/abis";
 import Image from "next/image";
 import SimpleTooltip from "@/components/SimpleTooltip";
 import InfoTooltip from "@/components/InfoTooltip";
@@ -54,24 +71,6 @@ import {
   STABILITY_POOL_ZAP_PERMIT_ABI,
 } from "@/utils/permit";
 
-const ERC20_PERMIT_ABI = [
-  {
-    inputs: [
-      { name: "owner", type: "address" },
-      { name: "spender", type: "address" },
-      { name: "value", type: "uint256" },
-      { name: "deadline", type: "uint256" },
-      { name: "v", type: "uint8" },
-      { name: "r", type: "bytes32" },
-      { name: "s", type: "bytes32" },
-    ],
-    name: "permit",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-] as const;
-
 // -----------------------------------------------------------------------------
 // Debug logging helpers
 // -----------------------------------------------------------------------------
@@ -85,212 +84,8 @@ function debugTx(label: string, data?: unknown) {
   console.log(`[AnchorTx] ${label}`, data ?? "");
 }
 
-// Helper function to format numbers nicely
-const formatNumber = (
-  value: string | number,
-  maxDecimals: number = 2
-): string => {
-  const num = typeof value === "string" ? parseFloat(value) : value;
-  if (isNaN(num)) return "0";
-
-  // For very large numbers, use compact notation
-  if (num >= 1e6) {
-    return num.toLocaleString(undefined, {
-      maximumFractionDigits: maxDecimals,
-      notation: "compact",
-      compactDisplay: "short",
-    });
-  }
-
-  // For smaller numbers, use regular formatting with limited decimals
-  return num.toLocaleString(undefined, {
-    maximumFractionDigits: maxDecimals,
-    minimumFractionDigits: 0,
-  });
-};
-
-// Format 18-decimal token amounts for UI without rounding small balances to zero.
-// Used for ha token + stability pool balances in the withdraw modal.
-// Optional second arg caps displayed decimals (e.g. 6 for "max 6 decimals").
-const formatTokenAmount18 = (value: bigint, capDecimals?: number): string => {
-  if (value === 0n) return "0";
-
-  const raw = formatUnits(value, 18); // decimal string
-  const abs = Math.abs(parseFloat(raw));
-
-  // Show more precision for smaller balances so users can see tiny deposits.
-  let maxDecimals =
-    abs >= 1
-      ? 4
-      : abs >= 0.01
-        ? 6
-        : abs >= 0.0001
-          ? 8
-          : 10;
-  if (capDecimals !== undefined) maxDecimals = Math.min(maxDecimals, capDecimals);
-
-  if (!raw.includes(".")) return raw;
-  const [intPart, fracPart = ""] = raw.split(".");
-  const slicedFrac = fracPart.slice(0, maxDecimals);
-  const trimmed = slicedFrac.replace(/0+$/, "");
-  const candidate = trimmed.length > 0 ? `${intPart}.${trimmed}` : intPart;
-
-  // If truncation would display 0 for a non-zero value, show a "< min" hint.
-  if ((candidate === "0" || candidate === "-0") && value !== 0n) {
-    return `<0.${"0".repeat(Math.max(0, maxDecimals - 1))}1`;
-  }
-  return candidate;
-};
-
-// Format 18-decimal USD-wei amounts (1e18 = $1.00) for UI.
-const formatUsd18 = (usdWei: bigint): string => {
-  if (usdWei === 0n) return "$0";
-  const raw = formatUnits(usdWei, 18);
-  const abs = Math.abs(parseFloat(raw));
-  if (abs > 0 && abs < 0.01) return "<$0.01";
-  const maxDecimals = abs >= 1 ? 2 : abs >= 0.01 ? 4 : 6;
-  return `$${formatNumber(raw, maxDecimals)}`;
-};
-
-// -----------------------------------------------------------------------------
-// Chainlink feeds (mainnet) used as fallback when CoinGecko is unavailable
-// -----------------------------------------------------------------------------
-const CHAINLINK_FEEDS = {
-  ETH_USD: "0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419" as `0x${string}`,
-  BTC_USD: "0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c" as `0x${string}`,
-} as const;
-
-// Common reward token addresses used by Harbor stability pools (mainnet).
-// Used for APR fallback calculation when getAPRBreakdown is unavailable.
-const FXSAVE_TOKEN_ADDRESS =
-  "0x7743e50F534a7f9F1791DdE7dCD89F7783Eefc39" as `0x${string}`;
-const WSTETH_TOKEN_ADDRESS =
-  "0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0" as `0x${string}`;
-const STETH_TOKEN_ADDRESS =
-  "0xae7ab96520de3a18e5e111b5eaab095312d7fe84" as `0x${string}`;
-
-const CHAINLINK_AGGREGATOR_ABI = [
-  {
-    inputs: [],
-    name: "decimals",
-    outputs: [{ type: "uint8" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "latestRoundData",
-    outputs: [
-      { name: "roundId", type: "uint80" },
-      { name: "answer", type: "int256" },
-      { name: "startedAt", type: "uint256" },
-      { name: "updatedAt", type: "uint256" },
-      { name: "answeredInRound", type: "uint80" },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
-
-const scaleChainlinkToUsdWei = (answer: bigint, decimals: number): bigint => {
-  if (answer <= 0n) return 0n;
-  if (decimals === 18) return answer;
-  if (decimals < 18) return answer * 10n ** BigInt(18 - decimals);
-  return answer / 10n ** BigInt(decimals - 18);
-};
-
-// Extended ERC20 ABI with symbol function
-const ERC20_ABI_WITH_SYMBOL = [
-  ...ERC20_ABI,
-  {
-    inputs: [],
-    name: "symbol",
-    outputs: [{ name: "", type: "string" }],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
-
-// Local copy of the minter ABI (includes mint, redeem, price, and dry-run helpers)
-const minterABI = [
-  {
-    inputs: [
-      { name: "collateralIn", type: "uint256" },
-      { name: "receiver", type: "address" },
-      { name: "minPeggedOut", type: "uint256" },
-    ],
-    name: "mintPeggedToken",
-    outputs: [{ type: "uint256", name: "peggedAmount" }],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [{ name: "collateralAmount", type: "uint256" }],
-    name: "calculateMintPeggedTokenOutput",
-    outputs: [{ type: "uint256", name: "peggedAmount" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [
-      { name: "peggedIn", type: "uint256" },
-      { name: "receiver", type: "address" },
-      { name: "minCollateralOut", type: "uint256" },
-    ],
-    name: "redeemPeggedToken",
-    outputs: [{ type: "uint256", name: "collateralAmount" }],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [{ name: "peggedAmount", type: "uint256" }],
-    name: "calculateRedeemPeggedTokenOutput",
-    outputs: [{ type: "uint256", name: "collateralAmount" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "peggedTokenPrice",
-    outputs: [{ type: "uint256", name: "nav", internalType: "uint256" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [
-      {
-        name: "wrappedCollateralIn",
-        type: "uint256",
-      },
-    ],
-    name: "mintPeggedTokenDryRun",
-    outputs: [
-      { name: "incentiveRatio", type: "int256" },
-      { name: "fee", type: "uint256" },
-      { name: "discount", type: "uint256" },
-      { name: "peggedMinted", type: "uint256" },
-      { name: "price", type: "uint256" },
-      { name: "rate", type: "uint256" },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [{ name: "peggedIn", type: "uint256" }],
-    name: "redeemPeggedTokenDryRun",
-    outputs: [
-      { name: "incentiveRatio", type: "int256" },
-      { name: "fee", type: "uint256" },
-      { name: "discount", type: "uint256" },
-      { name: "peggedRedeemed", type: "uint256" },
-      { name: "wrappedCollateralReturned", type: "uint256" },
-      { name: "price", type: "uint256" },
-      { name: "rate", type: "uint256" },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
+// ERC20_ABI from shared already includes symbol
+const ERC20_ABI_WITH_SYMBOL = ERC20_ABI;
 
 interface AnchorDepositWithdrawModalProps {
   isOpen: boolean;
@@ -1445,7 +1240,7 @@ export const AnchorDepositWithdrawModal = ({
 
     const contracts: Array<{
       address: `0x${string}`;
-      abi: typeof minterABI;
+      abi: typeof MINTER_PEGGED_ABI;
       functionName: "mintPeggedTokenDryRun";
       args: [bigint];
       marketId: string;
@@ -1465,7 +1260,7 @@ export const AnchorDepositWithdrawModal = ({
         
         contracts.push({
           address: minterAddr as `0x${string}`,
-          abi: minterABI,
+          abi: MINTER_PEGGED_ABI,
           functionName: "mintPeggedTokenDryRun" as const,
           args: [wrappedAmount] as const,
           marketId,
@@ -2787,7 +2582,7 @@ export const AnchorDepositWithdrawModal = ({
   // Get pegged token price to calculate USD value
   const { data: peggedTokenPrice } = useContractRead({
     address: minterAddressForPrice as `0x${string}`,
-    abi: minterABI,
+    abi: MINTER_PEGGED_ABI,
     functionName: "peggedTokenPrice",
     query: {
       enabled:
@@ -2949,12 +2744,12 @@ export const AnchorDepositWithdrawModal = ({
   const rewardTokenUsdPriceMap = useMemo(() => {
     const map = new Map<string, number>();
     if (fxSAVEPrice && fxSAVEPrice > 0)
-      map.set(FXSAVE_TOKEN_ADDRESS.toLowerCase(), fxSAVEPrice);
+      map.set(REWARD_TOKEN_ADDRESSES.FXSAVE.toLowerCase(), fxSAVEPrice);
     if (wstETHPrice && wstETHPrice > 0)
-      map.set(WSTETH_TOKEN_ADDRESS.toLowerCase(), wstETHPrice);
+      map.set(REWARD_TOKEN_ADDRESSES.WSTETH.toLowerCase(), wstETHPrice);
     // Use stETH spot for stETH address (some pools may pay stETH directly)
     if (stETHPrice && stETHPrice > 0)
-      map.set(STETH_TOKEN_ADDRESS.toLowerCase(), stETHPrice);
+      map.set(REWARD_TOKEN_ADDRESSES.STETH.toLowerCase(), stETHPrice);
     return map;
   }, [fxSAVEPrice, wstETHPrice, stETHPrice]);
 
@@ -3457,7 +3252,7 @@ export const AnchorDepositWithdrawModal = ({
   // Calculate expected output based on active tab - use Anvil hook when on Anvil
   const { data: anvilExpectedMintOutput } = useContractRead({
     address: minterAddress as `0x${string}`,
-    abi: minterABI,
+    abi: MINTER_PEGGED_ABI,
     functionName: "mintPeggedTokenDryRun",
     args: accurateDepositAmountInWrappedCollateral ? [accurateDepositAmountInWrappedCollateral] : undefined,
     enabled:
@@ -3472,7 +3267,7 @@ export const AnchorDepositWithdrawModal = ({
 
   const { data: regularExpectedMintOutput } = useContractRead({
     address: minterAddress as `0x${string}`,
-    abi: minterABI,
+    abi: MINTER_PEGGED_ABI,
     functionName: "mintPeggedTokenDryRun",
     args: accurateDepositAmountInWrappedCollateral ? [accurateDepositAmountInWrappedCollateral] : undefined,
     query: {
@@ -3565,7 +3360,7 @@ export const AnchorDepositWithdrawModal = ({
   // Only run when swap quote is ready and amount is debounced
   const { data: swapDryRunOutput } = useContractRead({
     address: minterAddress as `0x${string}`,
-    abi: minterABI,
+    abi: MINTER_PEGGED_ABI,
     functionName: "mintPeggedTokenDryRun",
     args: swappedAmountForDryRun ? [swappedAmountForDryRun] : undefined,
     query: {
@@ -3686,7 +3481,7 @@ export const AnchorDepositWithdrawModal = ({
   const { data: anvilRedeemDryRunData, error: anvilRedeemDryRunError } =
     useContractRead({
       address: redeemDryRunAddress,
-      abi: minterABI,
+      abi: MINTER_PEGGED_ABI,
       functionName: "redeemPeggedTokenDryRun",
       args: redeemInputAmount && redeemInputAmount > 0n ? [redeemInputAmount] : undefined,
       enabled: shouldUseAnvilHook && redeemDryRunEnabled && !!redeemInputAmount && redeemInputAmount > 0n,
@@ -3695,7 +3490,7 @@ export const AnchorDepositWithdrawModal = ({
   const { data: regularRedeemDryRunData, error: regularRedeemDryRunError } =
     useContractRead({
       address: redeemDryRunAddress,
-      abi: minterABI,
+      abi: MINTER_PEGGED_ABI,
       functionName: "redeemPeggedTokenDryRun",
       args: redeemInputAmount && redeemInputAmount > 0n ? [redeemInputAmount] : undefined,
       query: {
@@ -3775,7 +3570,7 @@ export const AnchorDepositWithdrawModal = ({
       : isValidMinterAddress
       ? (minterAddress as `0x${string}`)
       : undefined,
-    abi: minterABI,
+    abi: MINTER_PEGGED_ABI,
     functionName: "calculateRedeemPeggedTokenOutput",
     args: redeemInputAmount ? [redeemInputAmount] : undefined,
     query: {
@@ -3891,7 +3686,7 @@ export const AnchorDepositWithdrawModal = ({
 
   const { data: anvilDryRunData, error: anvilDryRunError } = useContractRead({
     address: feeMinterAddress as `0x${string}`,
-    abi: minterABI,
+    abi: MINTER_PEGGED_ABI,
     functionName: "mintPeggedTokenDryRun",
     args: amountForFeeDryRun ? [amountForFeeDryRun] : undefined,
     enabled: shouldUseAnvilHook && dryRunEnabled && !!amountForFeeDryRun,
@@ -3901,7 +3696,7 @@ export const AnchorDepositWithdrawModal = ({
   const { data: regularDryRunData, error: regularDryRunError } =
     useContractRead({
       address: feeMinterAddress as `0x${string}`,
-      abi: minterABI,
+      abi: MINTER_PEGGED_ABI,
       functionName: "mintPeggedTokenDryRun",
       args: amountForFeeDryRun ? [amountForFeeDryRun] : undefined,
       query: {
@@ -3974,7 +3769,7 @@ export const AnchorDepositWithdrawModal = ({
   // Fetch collateral ratio for the stability pool's market (only when pool is selected)
   const { data: collateralRatioData } = useContractRead({
     address: stabilityPoolMinterAddress as `0x${string}`,
-    abi: minterABI,
+    abi: MINTER_PEGGED_ABI,
     functionName: "collateralRatio",
     query: {
       enabled:
@@ -3991,7 +3786,7 @@ export const AnchorDepositWithdrawModal = ({
   // Fetch config to get minimum collateral ratio for the stability pool's market
   const { data: minterConfigData } = useContractRead({
     address: stabilityPoolMinterAddress as `0x${string}`,
-    abi: minterABI,
+    abi: MINTER_PEGGED_ABI,
     functionName: "config",
     query: {
       enabled:
@@ -6029,7 +5824,7 @@ export const AnchorDepositWithdrawModal = ({
                     // Read dry run synchronously with actual wstETH amount
                     const dryRunResult = await publicClient.readContract({
                       address: marketForDryRun.addresses.minter as `0x${string}`,
-                      abi: minterABI,
+                      abi: MINTER_PEGGED_ABI,
                       functionName: "mintPeggedTokenDryRun",
                       args: [wstEthAmount as bigint],
             });
@@ -6052,7 +5847,7 @@ export const AnchorDepositWithdrawModal = ({
                       const wstEthAmount = (swappedAmount * 10n ** 18n) / wrappedRate;
                       const dryRunResult = await publicClient.readContract({
                         address: marketForDryRun.addresses.minter as `0x${string}`,
-                        abi: minterABI,
+                        abi: MINTER_PEGGED_ABI,
                         functionName: "mintPeggedTokenDryRun",
                         args: [wstEthAmount],
                       });
@@ -7740,7 +7535,7 @@ export const AnchorDepositWithdrawModal = ({
 
           mintHash = await writeContractAsync({
             address: minterAddress as `0x${string}`,
-            abi: minterABI,
+            abi: MINTER_PEGGED_ABI,
             functionName: "mintPeggedToken",
             args: [amountBigInt, address as `0x${string}`, minPeggedOut],
           });
@@ -8935,7 +8730,7 @@ export const AnchorDepositWithdrawModal = ({
         try {
           const freshDryRunResult = (await client.readContract({
             address: minterAddress as `0x${string}`,
-            abi: minterABI,
+            abi: MINTER_PEGGED_ABI,
             functionName: "redeemPeggedTokenDryRun",
               args: [redeemAmount],
             })) as [bigint, bigint, bigint, bigint, bigint, bigint, bigint] | undefined;
@@ -8950,7 +8745,7 @@ export const AnchorDepositWithdrawModal = ({
         try {
           redeemHash = await writeContractAsync({
             address: minterAddress as `0x${string}`,
-            abi: minterABI,
+            abi: MINTER_PEGGED_ABI,
             functionName: "redeemPeggedToken",
               args: [redeemAmount, address as `0x${string}`, minCollateralOut],
           });
@@ -8961,7 +8756,7 @@ export const AnchorDepositWithdrawModal = ({
           );
           redeemHash = await writeContractAsync({
             address: minterAddress as `0x${string}`,
-            abi: minterABI,
+            abi: MINTER_PEGGED_ABI,
             functionName: "redeemPeggedToken",
               args: [redeemAmount, address as `0x${string}`, 0n],
           });
@@ -9159,7 +8954,7 @@ export const AnchorDepositWithdrawModal = ({
       try {
         redeemHash = await writeContractAsync({
           address: targetMinterAddress as `0x${string}`,
-          abi: minterABI,
+          abi: MINTER_PEGGED_ABI,
           functionName: "redeemPeggedToken",
           args: [redeemAmount, address as `0x${string}`, minCollateralOut],
         });
@@ -9174,7 +8969,7 @@ export const AnchorDepositWithdrawModal = ({
           }
           redeemHash = await writeContractAsync({
             address: targetMinterAddress as `0x${string}`,
-            abi: minterABI,
+            abi: MINTER_PEGGED_ABI,
             functionName: "redeemPeggedToken",
             args: [redeemAmount, address as `0x${string}`, 0n],
           });

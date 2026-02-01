@@ -13,23 +13,8 @@ export const PRICE_FEED_REGISTRY: Map<string, `0x${string}`> = new Map([
   ["0x5fc8d32690cc91d4c39d9d3abcb16989f875707", "0xb007167714e2940013ec3bb551584130b7497e22"],
 ]);
 
-// Chainlink Aggregator ABI for querying prices
-export const CHAINLINK_AGGREGATOR_ABI = [
-  {
-    inputs: [],
-    name: "decimals",
-    outputs: [{ type: "uint8", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "latestAnswer",
-    outputs: [{ type: "int256", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
+// Re-export from centralized ABIs
+export { CHAINLINK_AGGREGATOR_ABI } from "@/abis/chainlink";
 
 /**
  * Get price feed address for a token

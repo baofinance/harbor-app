@@ -19,7 +19,7 @@ import { markets } from "../config/markets";
 import MintRedeemStatusModal from "./MintRedeemStatusModal";
 import type { Market as MarketCfg } from "../config/markets";
 import { minterABI } from "@/abis/minter";
-import { ERC20_ABI } from "@/abis/shared";
+import { ERC20_ABI, GENESIS_ABI } from "@/abis/shared";
 import { MINTER_ETH_ZAP_V2_ABI, MINTER_USDC_ZAP_V2_ABI } from "@/config/contracts";
 import { parseUnits } from "viem";
 import { calculateDeadline, STETH_ZAP_PERMIT_ABI, USDC_ZAP_PERMIT_ABI } from "@/utils/permit";
@@ -39,17 +39,6 @@ const tokens = {
     "hsSP500-DOWN",
   ],
 };
-
-// Minimal Genesis ABI to check if genesis has ended
-const genesisABI = [
-  {
-    inputs: [],
-    name: "genesisIsEnded",
-    outputs: [{ type: "bool", name: "ended" }],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
 
 // Helper Functions (to be moved from page.tsx)
 const formatPercent = (value: bigint | number) => {
@@ -205,7 +194,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
   // On-chain check: has genesis been ended?
   const { data: onChainEnded, refetch: refetchOnChainEnded } = useContractRead({
     address: marketInfoData?.addresses.genesis as `0x${string}` | undefined,
-    abi: genesisABI,
+    abi: GENESIS_ABI,
     functionName: "genesisIsEnded",
     query: {
       enabled: !!marketInfoData?.addresses.genesis,

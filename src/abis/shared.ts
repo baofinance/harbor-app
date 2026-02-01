@@ -735,3 +735,29 @@ export const WRAPPED_PRICE_ORACLE_ABI = [
  * Alias for backwards compatibility
  */
 export const CHAINLINK_ORACLE_ABI_EXTENDED = WRAPPED_PRICE_ORACLE_ABI;
+
+/**
+ * Harbor oracle with decimals - used by genesis, SystemHealth, GenesisROICalculator
+ * latestAnswer returns (minUnderlyingPrice, maxUnderlyingPrice, minWrappedRate, maxWrappedRate)
+ */
+export const HARBOR_ORACLE_WITH_DECIMALS_ABI = [
+  {
+    inputs: [],
+    name: "decimals",
+    outputs: [{ type: "uint8", name: "" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "latestAnswer",
+    outputs: [
+      { type: "uint256", name: "" },
+      { type: "uint256", name: "" },
+      { type: "uint256", name: "" },
+      { type: "uint256", name: "" },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+] as const;

@@ -28,16 +28,7 @@ const publicClient = createPublicClient({
   transport: http(),
 });
 
-// Minter ABI with the specific function
-const minterABI = [
-  {
-    inputs: [{ name: "collateralAmount", type: "uint256" }],
-    name: "calculateMintPeggedTokenOutput",
-    outputs: [{ type: "uint256", name: "peggedAmount" }],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
+import { minterABI } from "../abis/minter";
 
 async function checkMintOutput() {
   console.log("Checking calculateMintPeggedTokenOutput...\n");

@@ -5,29 +5,7 @@ import { usePools } from "./usePools";
 import { stabilityPoolABI } from "@/abis/stabilityPool";
 import { rewardsABI } from "@/abis/rewards";
 import { minterABI } from "@/abis/minter";
-
-const aggregatorV3InterfaceABI = [
-  {
-    inputs: [],
-    name: "latestRoundData",
-    outputs: [
-      { internalType: "uint80", name: "roundId" },
-      { internalType: "int256", name: "answer" },
-      { internalType: "uint256", name: "startedAt" },
-      { internalType: "uint256", name: "updatedAt" },
-      { internalType: "uint80", name: "answeredInRound" },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "decimals",
-    outputs: [{ internalType: "uint8", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
+import { CHAINLINK_AGGREGATOR_ABI } from "@/abis/chainlink";
 
 export const usePoolData = (pools: Pool[]) => {
   const { address } = useAccount();
@@ -65,12 +43,12 @@ export const usePoolData = (pools: Pool[]) => {
           ...baseContracts,
           {
             address: market.addresses.collateralPrice,
-            abi: aggregatorV3InterfaceABI,
+            abi: CHAINLINK_AGGREGATOR_ABI,
             functionName: "latestRoundData",
           },
           {
             address: market.addresses.collateralPrice,
-            abi: aggregatorV3InterfaceABI,
+            abi: CHAINLINK_AGGREGATOR_ABI,
             functionName: "decimals",
           }
         );

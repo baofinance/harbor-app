@@ -13,11 +13,12 @@ import { formatEther } from "viem";
 import { useQueryClient } from "@tanstack/react-query";
 import { markets } from "../../config/markets";
 import { GenesisManageModal } from "@/components/GenesisManageModal";
-import { GENESIS_ABI, contracts } from "../../config/contracts";
+import { contracts } from "../../config/contracts";
 import {
-  GENESIS_ABI as GENESIS_READ_ABI,
+  GENESIS_ABI,
   ERC20_ABI,
   CHAINLINK_ORACLE_ABI,
+  HARBOR_ORACLE_WITH_DECIMALS_ABI,
 } from "@/abis/shared";
 import {
   ArrowRightIcon,
@@ -79,108 +80,12 @@ import {
   DEFAULT_FDV,
 } from "@/utils/tokenAllocation";
 
-// Minimal ABIs for summary reads
-// Note: totalDeposits() doesn't exist in IGenesis interface, so we removed it
-const genesisABI = [
-  {
-    inputs: [],
-    name: "genesisIsEnded",
-    outputs: [{ type: "bool", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [{ name: "depositor", type: "address" }],
-    name: "balanceOf",
-    outputs: [{ type: "uint256", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [{ name: "depositor", type: "address" }],
-    name: "claimable",
-    outputs: [
-      { type: "uint256", name: "peggedAmount" },
-      { type: "uint256", name: "leveragedAmount" },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "PEGGED_TOKEN",
-    outputs: [{ type: "address", name: "token" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "LEVERAGED_TOKEN",
-    outputs: [{ type: "address", name: "token" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "WRAPPED_COLLATERAL_TOKEN",
-    outputs: [{ type: "address", name: "token" }],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
+// Use ERC20_ABI which includes symbol
+const erc20SymbolABI = ERC20_ABI;
 
-const erc20SymbolABI = [
-  {
-    inputs: [],
-    name: "symbol",
-    outputs: [{ type: "string", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
-
-// Standard Chainlink-style oracle ABI: latestAnswer returns a single price, decimals describes scaling
-// Harbor oracle returns tuple: (minUnderlyingPrice, maxUnderlyingPrice, minWrappedRate, maxWrappedRate)
-// Support both formats for backward compatibility
-const chainlinkOracleABI = [
-  {
-    inputs: [],
-    name: "decimals",
-    outputs: [{ type: "uint8", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "latestAnswer",
-    outputs: [
-      { type: "uint256", name: "" },
-      { type: "uint256", name: "" },
-      { type: "uint256", name: "" },
-      { type: "uint256", name: "" },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
-
-// Fallback ABI for single-value oracles (backward compatibility)
-const chainlinkOracleSingleValueABI = [
-  {
-    inputs: [],
-    name: "decimals",
-    outputs: [{ type: "uint8", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "latestAnswer",
-    outputs: [{ type: "int256", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
+// Oracle ABIs - Harbor tuple and Chainlink single-value
+const chainlinkOracleABI = HARBOR_ORACLE_WITH_DECIMALS_ABI;
+const chainlinkOracleSingleValueABI = CHAINLINK_ORACLE_ABI;
 
 function MarketExpandedView({
   marketId,
@@ -223,17 +128,17 @@ function MarketExpandedView({
         ? [
             {
               address: genesisAddress as `0x${string}`,
-              abi: genesisABI,
+              abi: GENESIS_ABI,
               functionName: "PEGGED_TOKEN" as const,
             },
             {
               address: genesisAddress as `0x${string}`,
-              abi: genesisABI,
+              abi: GENESIS_ABI,
               functionName: "LEVERAGED_TOKEN" as const,
             },
             {
               address: genesisAddress as `0x${string}`,
-              abi: genesisABI,
+              abi: GENESIS_ABI,
               functionName: "WRAPPED_COLLATERAL_TOKEN" as const,
             },
           ]
@@ -657,7 +562,7 @@ export default function GenesisIndexPage() {
       const base = [
         {
           address: g,
-          abi: GENESIS_READ_ABI,
+          abi: GENESIS_ABI,
           functionName: "genesisIsEnded" as const,
         },
       ];
@@ -666,13 +571,13 @@ export default function GenesisIndexPage() {
           ? [
               {
                 address: g,
-                abi: GENESIS_READ_ABI,
+                abi: GENESIS_ABI,
                 functionName: "balanceOf" as const,
                 args: [address as `0x${string}`],
               },
               {
                 address: g,
-                abi: GENESIS_READ_ABI,
+                abi: GENESIS_ABI,
                 functionName: "claimable" as const,
                 args: [address as `0x${string}`],
               },
@@ -751,7 +656,7 @@ export default function GenesisIndexPage() {
           return null;
         return {
           address: g,
-          abi: GENESIS_READ_ABI,
+          abi: GENESIS_ABI,
           functionName: "WRAPPED_COLLATERAL_TOKEN" as const,
         };
       })

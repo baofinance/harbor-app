@@ -5,30 +5,10 @@ import { markets } from "../config/markets";
 import { useState, useEffect, useMemo } from "react";
 import { formatEther } from "viem";
 import { minterABI } from "../abis/minter";
-import { STABILITY_POOL_MANAGER_ABI } from "../config/contracts";
-
-// Add minimal ABI for Chainlink oracle - using correct standard Chainlink format
-const chainlinkOracleABI = [
- {
- inputs: [],
- name:"decimals",
- outputs: [{ type:"uint8", name:"" }],
- stateMutability:"view",
- type:"function",
- },
- {
- inputs: [],
- name:"latestAnswer",
- outputs: [
- { type:"uint256", name:"minUnderlyingPrice" },
- { type:"uint256", name:"maxUnderlyingPrice" },
- { type:"uint256", name:"minWrappedRate" },
- { type:"uint256", name:"maxWrappedRate" },
- ],
- stateMutability:"view",
- type:"function",
- },
-] as const;
+import {
+  STABILITY_POOL_MANAGER_ABI,
+  HARBOR_ORACLE_WITH_DECIMALS_ABI,
+} from "@/abis/shared";
 
 interface SystemHealthProps {
  marketId: string;
@@ -147,7 +127,7 @@ function Value({
  },
  {
  address: addresses.priceOracle as `0x${string}`,
- abi: chainlinkOracleABI,
+ abi: HARBOR_ORACLE_WITH_DECIMALS_ABI,
  functionName:"latestAnswer",
  },
  ];

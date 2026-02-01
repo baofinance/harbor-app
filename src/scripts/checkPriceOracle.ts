@@ -19,23 +19,7 @@ const client = createPublicClient({
   transport: http("http://127.0.0.1:8545"),
 });
 
-// Correct price oracle ABI
-const priceOracleABI = [
-  {
-    inputs: [],
-    name: "decimals",
-    outputs: [{ type: "uint8", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "latestAnswer",
-    outputs: [{ type: "int256", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
+import { CHAINLINK_ORACLE_ABI } from "../abis/shared";
 
 async function checkPriceOracle() {
   const market = markets["steth-usd"];
@@ -58,7 +42,7 @@ async function checkPriceOracle() {
     // Get decimals
     const decimals = await client.readContract({
       address: oracleAddress as `0x${string}`,
-      abi: priceOracleABI,
+      abi: CHAINLINK_ORACLE_ABI,
       functionName: "decimals",
     });
 
@@ -67,7 +51,7 @@ async function checkPriceOracle() {
     // Get latest answer
     const price = await client.readContract({
       address: oracleAddress as `0x${string}`,
-      abi: priceOracleABI,
+      abi: CHAINLINK_ORACLE_ABI,
       functionName: "latestAnswer",
     });
 

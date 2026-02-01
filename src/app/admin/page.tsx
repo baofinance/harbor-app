@@ -13,172 +13,13 @@ import { ConnectWallet } from "@/components/Wallet";
 import Link from "next/link";
 import { formatTimeRemaining } from "@/utils/formatters";
 
-const MINTER_FEES_READS_ABI = [
-  {
-    inputs: [],
-    name: "harvestable",
-    outputs: [{ name: "wrappedAmount", type: "uint256" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "feeReceiver",
-    outputs: [{ type: "address" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "WRAPPED_COLLATERAL_TOKEN",
-    outputs: [{ type: "address" }],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
-
-const minterABI = [
- {
- inputs: [{ name:"config_", type:"tuple" }],
- name:"updateConfig",
- outputs: [],
- stateMutability:"nonpayable",
- type:"function",
- },
- {
- inputs: [{ name:"feeReceiver_", type:"address" }],
- name:"updateFeeReceiver",
- outputs: [],
- stateMutability:"nonpayable",
- type:"function",
- },
- {
- inputs: [{ name:"reservePool_", type:"address" }],
- name:"updateReservePool",
- outputs: [],
- stateMutability:"nonpayable",
- type:"function",
- },
- {
- inputs: [{ name:"priceOracle_", type:"address" }],
- name:"updatePriceOracle",
- outputs: [],
- stateMutability:"nonpayable",
- type:"function",
- },
- {
- inputs: [],
- name:"ZERO_FEE_ROLE",
- outputs: [{ type:"uint256" }],
- stateMutability:"view",
- type:"function",
- },
- {
- inputs: [
- { name:"collateralIn", type:"uint256" },
- { name:"receiver", type:"address" },
- ],
- name:"freeMintPeggedToken",
- outputs: [{ type:"uint256", name:"peggedOut" }],
- stateMutability:"nonpayable",
- type:"function",
- },
- {
- inputs: [
- { name:"peggedIn", type:"uint256" },
- { name:"receiver", type:"address" },
- ],
- name:"freeRedeemPeggedToken",
- outputs: [{ type:"uint256", name:"collateralOut" }],
- stateMutability:"nonpayable",
- type:"function",
- },
- {
- inputs: [
- { name:"peggedIn", type:"uint256" },
- { name:"receiver", type:"address" },
- ],
- name:"freeSwapPeggedForLeveraged",
- outputs: [{ type:"uint256", name:"leveragedOut" }],
- stateMutability:"nonpayable",
- type:"function",
- },
- {
- inputs: [
- { name:"collateralIn", type:"uint256" },
- { name:"receiver", type:"address" },
- ],
- name:"freeMintLeveragedToken",
- outputs: [{ type:"uint256", name:"leveragedOut" }],
- stateMutability:"nonpayable",
- type:"function",
- },
- {
- inputs: [
- { name:"leveragedIn", type:"uint256" },
- { name:"receiver", type:"address" },
- ],
- name:"freeRedeemLeveragedToken",
- outputs: [{ type:"uint256", name:"collateralOut" }],
- stateMutability:"nonpayable",
- type:"function",
- },
-] as const;
-
-const erc20ABI = [
- {
- inputs: [
- { name:"owner", type:"address" },
- { name:"spender", type:"address" },
- ],
- name:"allowance",
- outputs: [{ type:"uint256" }],
- stateMutability:"view",
- type:"function",
- },
- {
- inputs: [
- { name:"spender", type:"address" },
- { name:"amount", type:"uint256" },
- ],
- name:"approve",
- outputs: [{ type:"bool" }],
- stateMutability:"nonpayable",
- type:"function",
- },
-] as const;
-
-const mockPriceFeedABI = [
- {
- inputs: [],
- name:"updatePrice",
- outputs: [],
- stateMutability:"nonpayable",
- type:"function",
- },
-] as const;
-
-const STABILITY_POOL_REWARDS_ABI = [
-  {
-    type: "function",
-    name: "activeRewardTokens",
-    inputs: [],
-    outputs: [{ name: "", type: "address[]", internalType: "address[]" }],
-    stateMutability: "view",
-  },
-  {
-    type: "function",
-    name: "rewardData",
-    inputs: [{ name: "rewardToken", type: "address", internalType: "address" }],
-    outputs: [
-      { name: "lastUpdate", type: "uint256", internalType: "uint256" },
-      { name: "finishAt", type: "uint256", internalType: "uint256" },
-      { name: "rate", type: "uint256", internalType: "uint256" },
-      { name: "queued", type: "uint256", internalType: "uint256" },
-    ],
-    stateMutability: "view",
-  },
-] as const;
+import {
+  MINTER_FEES_READS_ABI,
+  ADMIN_MINTER_ABI,
+  MOCK_PRICE_FEED_ABI,
+  STABILITY_POOL_REWARDS_ABI,
+} from "@/abis/admin";
+import { ERC20_ABI } from "@/abis/shared";
 
 // Add a helper function to safely parse numbers
 const safeParseEther = (value: string): bigint => {
@@ -527,7 +368,7 @@ export default function Admin() {
  // Check if user has admin role
  const { data: zeroFeeRole } = useReadContract({
  address: minterAddress,
- abi: minterABI,
+ abi: ADMIN_MINTER_ABI,
  functionName:"ZERO_FEE_ROLE",
  });
 
@@ -535,7 +376,7 @@ export default function Admin() {
  const { data: allowance } = useReadContract({
  address: (markets as any)[Object.keys(markets)[0]].addresses
  .collateralToken as `0x${string}`,
- abi: erc20ABI,
+ abi: ERC20_ABI,
  functionName:"allowance",
  args: [address as `0x${string}`, minterAddress],
  });
@@ -544,7 +385,7 @@ export default function Admin() {
  if (feeReceiver) {
  updateFeeReceiverWrite({
  address: minterAddress,
- abi: minterABI,
+ abi: ADMIN_MINTER_ABI,
  functionName:"updateFeeReceiver",
  args: [feeReceiver as `0x${string}`],
  });
@@ -555,7 +396,7 @@ export default function Admin() {
  if (reservePool) {
  updateReservePoolWrite({
  address: minterAddress,
- abi: minterABI,
+ abi: ADMIN_MINTER_ABI,
  functionName:"updateReservePool",
  args: [reservePool as `0x${string}`],
  });
@@ -566,7 +407,7 @@ export default function Admin() {
  if (priceOracle) {
  updatePriceOracleWrite({
  address: minterAddress,
- abi: minterABI,
+ abi: ADMIN_MINTER_ABI,
  functionName:"updatePriceOracle",
  args: [priceOracle as `0x${string}`],
  });
@@ -601,7 +442,7 @@ export default function Admin() {
 
  writeFreeMintPeggedToken({
  address: minterAddress,
- abi: minterABI,
+ abi: ADMIN_MINTER_ABI,
  functionName:"freeMintPeggedToken",
  args: [parsedAmount, receiverAddress as `0x${string}`],
  });
@@ -614,7 +455,7 @@ export default function Admin() {
  if (freeRedeemAmount && receiverAddress) {
  freeRedeemPeggedToken({
  address: minterAddress,
- abi: minterABI,
+ abi: ADMIN_MINTER_ABI,
  functionName:"freeRedeemPeggedToken",
  args: [parseEther(freeRedeemAmount), receiverAddress as `0x${string}`],
  });
@@ -625,7 +466,7 @@ export default function Admin() {
  if (freeSwapAmount && receiverAddress) {
  freeSwapPeggedForLeveraged({
  address: minterAddress,
- abi: minterABI,
+ abi: ADMIN_MINTER_ABI,
  functionName:"freeSwapPeggedForLeveraged",
  args: [parseEther(freeSwapAmount), receiverAddress as `0x${string}`],
  });
@@ -660,7 +501,7 @@ export default function Admin() {
 
  writeFreeMintLeveragedToken({
  address: minterAddress,
- abi: minterABI,
+ abi: ADMIN_MINTER_ABI,
  functionName:"freeMintLeveragedToken",
  args: [parsedAmount, receiverAddress as `0x${string}`],
  });
@@ -673,7 +514,7 @@ export default function Admin() {
  if (freeRedeemLeveragedAmount && receiverAddress) {
  freeRedeemLeveragedToken({
  address: minterAddress,
- abi: minterABI,
+ abi: ADMIN_MINTER_ABI,
  functionName:"freeRedeemLeveragedToken",
  args: [
  parseEther(freeRedeemLeveragedAmount),
@@ -690,7 +531,7 @@ export default function Admin() {
  approve({
  address: (markets as any)[Object.keys(markets)[0]].addresses
  .collateralToken as `0x${string}`,
- abi: erc20ABI,
+ abi: ERC20_ABI,
  functionName:"approve",
  args: [minterAddress, safeParseEther(approvalAmount)],
  });
@@ -706,7 +547,7 @@ export default function Admin() {
  updatePriceFeed({
  address: (markets as any)[Object.keys(markets)[0]].addresses
  .priceOracle as `0x${string}`,
- abi: mockPriceFeedABI,
+ abi: MOCK_PRICE_FEED_ABI,
  functionName:"updatePrice",
  });
  };

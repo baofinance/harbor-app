@@ -12,104 +12,8 @@ const geo = Geo({
   display: "swap",
 });
 
-const votingEscrowABI = [
-  {
-    inputs: [],
-    name: "token",
-    outputs: [{ type: "address", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "totalSupply",
-    outputs: [{ type: "uint256", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [{ name: "addr", type: "address" }],
-    name: "balanceOf",
-    outputs: [{ type: "uint256", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [{ name: "addr", type: "address" }],
-    name: "locked__end",
-    outputs: [{ type: "uint256", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [
-      { name: "value", type: "uint256" },
-      { name: "unlock_time", type: "uint256" },
-    ],
-    name: "create_lock",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [{ name: "value", type: "uint256" }],
-    name: "increase_amount",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [{ name: "unlock_time", type: "uint256" }],
-    name: "increase_unlock_time",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "withdraw",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-] as const;
-
-const erc20ABI = [
-  {
-    inputs: [{ name: "account", type: "address" }],
-    name: "balanceOf",
-    outputs: [{ type: "uint256", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [
-      { name: "spender", type: "address" },
-      { name: "amount", type: "uint256" },
-    ],
-    name: "approve",
-    outputs: [{ type: "bool", name: "" }],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [
-      { name: "owner", type: "address" },
-      { name: "spender", type: "address" },
-    ],
-    name: "allowance",
-    outputs: [{ type: "uint256", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "symbol",
-    outputs: [{ type: "string", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
+import { VOTING_ESCROW_ABI } from "@/abis/votingEscrow";
+import { ERC20_ABI } from "@/abis/shared";
 
 interface StakingState {
   amount: string;
@@ -131,20 +35,20 @@ export default function Staking() {
     contracts: [
       {
         address: "0xVotingEscrowAddress" as `0x${string}`,
-        abi: votingEscrowABI,
+        abi: VOTING_ESCROW_ABI,
         functionName: "totalSupply",
       },
       ...(address
         ? [
             {
               address: "0xVotingEscrowAddress" as `0x${string}`,
-              abi: votingEscrowABI,
+              abi: VOTING_ESCROW_ABI,
               functionName: "balanceOf",
               args: [address],
             },
             {
               address: "0xVotingEscrowAddress" as `0x${string}`,
-              abi: votingEscrowABI,
+              abi: VOTING_ESCROW_ABI,
               functionName: "locked__end",
               args: [address],
             },
@@ -174,7 +78,7 @@ export default function Staking() {
       // First approve tokens
       await write({
         address: "0xTokenAddress" as `0x${string}`,
-        abi: erc20ABI,
+        abi: ERC20_ABI,
         functionName: "approve",
         args: ["0xVotingEscrowAddress" as `0x${string}`, parsedAmount],
       });
@@ -182,7 +86,7 @@ export default function Staking() {
       // Then create lock
       await write({
         address: "0xVotingEscrowAddress" as `0x${string}`,
-        abi: votingEscrowABI,
+        abi: VOTING_ESCROW_ABI,
         functionName: "create_lock",
         args: [parsedAmount, BigInt(unlockTime)],
       });
@@ -204,7 +108,7 @@ export default function Staking() {
 
       await write({
         address: "0xVotingEscrowAddress" as `0x${string}`,
-        abi: votingEscrowABI,
+        abi: VOTING_ESCROW_ABI,
         functionName: "increase_amount",
         args: [parsedAmount],
       });
@@ -228,7 +132,7 @@ export default function Staking() {
 
       await write({
         address: "0xVotingEscrowAddress" as `0x${string}`,
-        abi: votingEscrowABI,
+        abi: VOTING_ESCROW_ABI,
         functionName: "increase_unlock_time",
         args: [BigInt(unlockTime)],
       });
@@ -247,7 +151,7 @@ export default function Staking() {
 
       await write({
         address: "0xVotingEscrowAddress" as `0x${string}`,
-        abi: votingEscrowABI,
+        abi: VOTING_ESCROW_ABI,
         functionName: "withdraw",
         args: [],
       });

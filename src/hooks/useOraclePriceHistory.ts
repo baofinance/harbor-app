@@ -3,36 +3,7 @@ import { usePublicClient } from "wagmi";
 import { formatUnits } from "viem";
 import { markets } from "../config/markets";
 import type { PriceDataPoint } from "../config/contracts";
-
-// Chainlink aggregator ABI for historical price data
-const aggregatorV3ABI = [
-  {
-    inputs: [{ name: "roundId", type: "uint80" }],
-    name: "getRoundData",
-    outputs: [
-      { name: "roundId", type: "uint80" },
-      { name: "answer", type: "int256" },
-      { name: "startedAt", type: "uint256" },
-      { name: "updatedAt", type: "uint256" },
-      { name: "answeredInRound", type: "uint80" },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "latestRoundData",
-    outputs: [
-      { name: "roundId", type: "uint80" },
-      { name: "answer", type: "int256" },
-      { name: "startedAt", type: "uint256" },
-      { name: "updatedAt", type: "uint256" },
-      { name: "answeredInRound", type: "uint80" },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
+import { CHAINLINK_AGGREGATOR_ABI } from "@/abis/chainlink";
 
 const ROUNDS_TO_FETCH = 100; // Number of historical price points to fetch
 
@@ -59,7 +30,7 @@ export function useOraclePriceHistory(marketId: string) {
         try {
           latestRound = await publicClient.readContract({
             address: oracleAddress as `0x${string}`,
-            abi: aggregatorV3ABI,
+            abi: CHAINLINK_AGGREGATOR_ABI,
             functionName: "latestRoundData",
           });
         } catch (oracleError) {
@@ -81,7 +52,7 @@ export function useOraclePriceHistory(marketId: string) {
           try {
             const roundData = await publicClient.readContract({
               address: oracleAddress as `0x${string}`,
-              abi: aggregatorV3ABI,
+              abi: CHAINLINK_AGGREGATOR_ABI,
               functionName: "getRoundData",
               args: [BigInt(roundId)],
             });

@@ -3,6 +3,7 @@
 import { useMemo, useState, useEffect } from "react";
 import { useContractReads } from "wagmi";
 import { markets } from "../config/markets";
+import { HARBOR_ORACLE_WITH_DECIMALS_ABI } from "@/abis/shared";
 
 interface GenesisROICalculatorProps {
  marketId: string;
@@ -12,28 +13,6 @@ interface GenesisROICalculatorProps {
  userDeposit: bigint | undefined; // 18 decimals (stETH)
  collateralSymbol: string;
 }
-
-const chainlinkOracleABI = [
- {
- inputs: [],
- name:"decimals",
- outputs: [{ type:"uint8", name:"" }],
- stateMutability:"view",
- type:"function",
- },
- {
- inputs: [],
- name:"latestAnswer",
- outputs: [
- { type:"uint256", name:"minUnderlyingPrice" },
- { type:"uint256", name:"maxUnderlyingPrice" },
- { type:"uint256", name:"minWrappedRate" },
- { type:"uint256", name:"maxWrappedRate" },
- ],
- stateMutability:"view",
- type:"function",
- },
-] as const;
 
 export default function GenesisROICalculator({
  marketId,
@@ -60,12 +39,12 @@ export default function GenesisROICalculator({
  contracts: [
  {
  address: oracleAddress,
- abi: chainlinkOracleABI,
+ abi: HARBOR_ORACLE_WITH_DECIMALS_ABI,
  functionName:"decimals",
  },
  {
  address: oracleAddress,
- abi: chainlinkOracleABI,
+ abi: HARBOR_ORACLE_WITH_DECIMALS_ABI,
  functionName:"latestAnswer",
  },
  ],

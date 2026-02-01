@@ -1,49 +1,13 @@
 import { useContractReads } from "./useContractReads";
+import {
+  CHAINLINK_ORACLE_ABI,
+  HARBOR_ORACLE_WITH_DECIMALS_ABI,
+} from "@/abis/shared";
 
-/**
- * Standard Chainlink-style price oracle ABI
- */
-export const CHAINLINK_ORACLE_ABI = [
-  {
-    inputs: [],
-    name: "decimals",
-    outputs: [{ type: "uint8", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "latestAnswer",
-    outputs: [{ type: "int256", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
-
-/**
- * Harbor-style price oracle ABI that returns tuple
- */
-export const HARBOR_ORACLE_ABI = [
-  {
-    inputs: [],
-    name: "decimals",
-    outputs: [{ type: "uint8", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "latestAnswer",
-    outputs: [
-      { type: "uint256", name: "minUnderlyingPrice" },
-      { type: "uint256", name: "maxUnderlyingPrice" },
-      { type: "uint256", name: "minWrappedRate" },
-      { type: "uint256", name: "maxWrappedRate" },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
+/** Re-export for backwards compatibility */
+export { CHAINLINK_ORACLE_ABI };
+/** Harbor-style oracle (decimals + tuple latestAnswer) */
+export const HARBOR_ORACLE_ABI = HARBOR_ORACLE_WITH_DECIMALS_ABI;
 
 interface UsePriceOracleOptions {
   oracleAddress: `0x${string}` | string | undefined;

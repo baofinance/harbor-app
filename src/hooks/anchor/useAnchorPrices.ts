@@ -1,24 +1,11 @@
 import { useMemo } from "react";
 import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
 import { useContractRead } from "wagmi";
-import { CHAINLINK_ORACLE_ABI } from "@/abis/shared";
+import {
+  CHAINLINK_ORACLE_ABI,
+  WRAPPED_PRICE_ORACLE_ABI,
+} from "@/abis/shared";
 import { calculatePriceOracleOffset } from "@/utils/anchor/calculateReadOffset";
-
-// Harbor wrapped price oracle ABI (returns tuple)
-const WRAPPED_PRICE_ORACLE_ABI = [
-  {
-    inputs: [],
-    name: "latestAnswer",
-    outputs: [
-      { type: "uint256", name: "minUnderlyingPrice" },
-      { type: "uint256", name: "maxUnderlyingPrice" },
-      { type: "uint256", name: "minWrappedRate" },
-      { type: "uint256", name: "maxWrappedRate" },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
 
 // Chainlink ETH/USD Oracle on Mainnet
 const CHAINLINK_ETH_USD_ORACLE = "0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419" as `0x${string}`;

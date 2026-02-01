@@ -5,47 +5,11 @@ import { useContractReads } from "./useContractReads";
 import { markets } from "@/config/markets";
 import { useMemo } from "react";
 
-const ERC20_ABI = [
-  {
-    inputs: [{ name: "account", type: "address" }],
-    name: "balanceOf",
-    outputs: [{ name: "", type: "uint256" }],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
-
-const STABILITY_POOL_ABI = [
-  {
-    inputs: [{ name: "account", type: "address" }],
-    name: "balanceOf",
-    outputs: [{ name: "", type: "uint256" }],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
-
-const CHAINLINK_ABI = [
-  {
-    inputs: [],
-    name: "latestAnswer",
-    outputs: [
-      { name: "minUnderlyingPrice", type: "uint256" },
-      { name: "maxUnderlyingPrice", type: "uint256" },
-      { name: "minWrappedRate", type: "uint256" },
-      { name: "maxWrappedRate", type: "uint256" },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "decimals",
-    outputs: [{ name: "", type: "uint8" }],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
+import {
+  ERC20_ABI,
+  STABILITY_POOL_ABI,
+  WRAPPED_PRICE_ORACLE_ABI,
+} from "@/abis/shared";
 
 export interface AnchorMarksData {
   // ha token holdings
@@ -114,7 +78,7 @@ export function useAnchorMarks() {
         reads.push({
           address: config.stabilityPoolCollateral,
           abi: STABILITY_POOL_ABI,
-          functionName: "balanceOf",
+          functionName: "assetBalanceOf",
           args: [address],
         });
       }
@@ -124,7 +88,7 @@ export function useAnchorMarks() {
         reads.push({
           address: config.stabilityPoolLeveraged,
           abi: STABILITY_POOL_ABI,
-          functionName: "balanceOf",
+          functionName: "assetBalanceOf",
           args: [address],
         });
       }
@@ -133,12 +97,12 @@ export function useAnchorMarks() {
       if (config.priceOracle) {
         reads.push({
           address: config.priceOracle,
-          abi: CHAINLINK_ABI,
+          abi: WRAPPED_PRICE_ORACLE_ABI,
           functionName: "decimals",
         });
         reads.push({
           address: config.priceOracle,
-          abi: CHAINLINK_ABI,
+          abi: WRAPPED_PRICE_ORACLE_ABI,
           functionName: "latestAnswer",
         });
       }

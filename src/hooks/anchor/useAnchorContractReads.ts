@@ -10,39 +10,6 @@ import {
   WRAPPED_PRICE_ORACLE_ABI,
 } from "@/abis/shared";
 
-// Use shared ABIs
-const stabilityPoolManagerABI = STABILITY_POOL_MANAGER_ABI;
-const wrappedPriceOracleABI = WRAPPED_PRICE_ORACLE_ABI;
-const minterABI = MINTER_ABI;
-
-const stabilityPoolABI = [
-  {
-    inputs: [],
-    name: "totalAssets",
-    outputs: [{ type: "uint256", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "totalAssetSupply",
-    outputs: [{ type: "uint256", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [{ name: "token", type: "address" }],
-    name: "rewardData",
-    outputs: [
-      { name: "lastUpdate", type: "uint256" },
-      { name: "finishAt", type: "uint256" },
-      { name: "rate", type: "uint256" },
-      { name: "queued", type: "uint256" },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
 
 /**
  * Hook to build and execute all contract reads for anchor markets
@@ -81,37 +48,37 @@ export function useAnchorContractReads(
       const contracts = [
         {
           address: minter,
-          abi: minterABI,
+          abi: MINTER_ABI,
           functionName: "collateralRatio" as const,
         },
         {
           address: minter,
-          abi: minterABI,
+          abi: MINTER_ABI,
           functionName: "collateralTokenBalance" as const,
         },
         {
           address: minter,
-          abi: minterABI,
+          abi: MINTER_ABI,
           functionName: "peggedTokenBalance" as const,
         },
         {
           address: minter,
-          abi: minterABI,
+          abi: MINTER_ABI,
           functionName: "peggedTokenPrice" as const,
         },
         {
           address: minter,
-          abi: minterABI,
+          abi: MINTER_ABI,
           functionName: "leveragedTokenBalance" as const,
         },
         {
           address: minter,
-          abi: minterABI,
+          abi: MINTER_ABI,
           functionName: "leveragedTokenPrice" as const,
         },
         {
           address: minter,
-          abi: minterABI,
+          abi: MINTER_ABI,
           functionName: "config" as const,
         },
       ];
@@ -125,7 +92,7 @@ export function useAnchorContractReads(
       ) {
         contracts.push({
           address: stabilityPoolManager,
-          abi: stabilityPoolManagerABI as any,
+          abi: STABILITY_POOL_MANAGER_ABI as any,
           functionName: "rebalanceThreshold" as any,
         } as any);
       }
@@ -143,12 +110,12 @@ export function useAnchorContractReads(
         contracts.push(
           {
             address: collateralStabilityPool,
-            abi: stabilityPoolABI as any,
+            abi: STABILITY_POOL_ABI as any,
             functionName: "totalAssets" as any,
           } as any,
           {
             address: collateralStabilityPool,
-            abi: stabilityPoolABI as any,
+            abi: STABILITY_POOL_ABI as any,
             functionName: "totalAssetSupply" as any,
           } as any,
           {
@@ -197,12 +164,12 @@ export function useAnchorContractReads(
         contracts.push(
           {
             address: sailStabilityPool,
-            abi: stabilityPoolABI as any,
+            abi: STABILITY_POOL_ABI as any,
             functionName: "totalAssets" as any,
           } as any,
           {
             address: sailStabilityPool,
-            abi: stabilityPoolABI as any,
+            abi: STABILITY_POOL_ABI as any,
             functionName: "totalAssetSupply" as any,
           } as any,
           {
@@ -256,7 +223,7 @@ export function useAnchorContractReads(
       ) {
         contracts.push({
           address: collateralPriceOracle,
-          abi: wrappedPriceOracleABI as any,
+          abi: WRAPPED_PRICE_ORACLE_ABI as any,
           functionName: "latestAnswer" as any,
         } as any);
         
@@ -264,7 +231,7 @@ export function useAnchorContractReads(
         if (isFxUSDMarket) {
           contracts.push({
             address: collateralPriceOracle,
-            abi: wrappedPriceOracleABI as any,
+            abi: WRAPPED_PRICE_ORACLE_ABI as any,
             functionName: "getPrice" as any,
           } as any);
         }

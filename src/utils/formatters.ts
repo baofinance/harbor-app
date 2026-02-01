@@ -257,3 +257,76 @@ export function formatBalance(
 
   return `${formatted} ${symbol}`;
 }
+
+/**
+ * Format a number with locale and optional compact notation for large values
+ */
+export function formatNumber(
+  value: string | number,
+  maxDecimals: number = 2
+): string {
+  const num = typeof value === "string" ? parseFloat(value) : value;
+  if (isNaN(num)) return "0";
+
+  if (num >= 1e6) {
+    return num.toLocaleString(undefined, {
+      maximumFractionDigits: maxDecimals,
+      notation: "compact",
+      compactDisplay: "short",
+    });
+  }
+
+  return num.toLocaleString(undefined, {
+    maximumFractionDigits: maxDecimals,
+    minimumFractionDigits: 0,
+  });
+}
+
+/**
+ * Format 18-decimal token amounts for UI without rounding small balances to zero.
+ * Used for ha token + stability pool balances.
+ */
+export function formatTokenAmount18(value: bigint, capDecimals?: number): string {
+  if (value === 0n) return "0";
+
+  const raw = formatUnits(value, 18);
+  const abs = Math.abs(parseFloat(raw));
+
+  let maxDecimals =
+    abs >= 1 ? 4 : abs >= 0.01 ? 6 : abs >= 0.0001 ? 8 : 10;
+  if (capDecimals !== undefined) maxDecimals = Math.min(maxDecimals, capDecimals);
+
+  if (!raw.includes(".")) return raw;
+  const [intPart, fracPart = ""] = raw.split(".");
+  const slicedFrac = fracPart.slice(0, maxDecimals);
+  const trimmed = slicedFrac.replace(/0+$/, "");
+  const candidate = trimmed.length > 0 ? `${intPart}.${trimmed}` : intPart;
+
+  if ((candidate === "0" || candidate === "-0") && value !== 0n) {
+    return `<0.${"0".repeat(Math.max(0, maxDecimals - 1))}1`;
+  }
+  return candidate;
+}
+
+/**
+ * Format number with fixed decimals (2 when below 100, else defaultDecimals)
+ */
+export function formatNumberWithDecimals(
+  value: number,
+  defaultDecimals: number = 2
+): string {
+  if (value < 100) return value.toFixed(2);
+  return value.toFixed(defaultDecimals);
+}
+
+/**
+ * Format 18-decimal USD-wei amounts (1e18 = $1.00) for UI
+ */
+export function formatUsd18(usdWei: bigint): string {
+  if (usdWei === 0n) return "$0";
+  const raw = formatUnits(usdWei, 18);
+  const abs = Math.abs(parseFloat(raw));
+  if (abs > 0 && abs < 0.01) return "<$0.01";
+  const maxDecimals = abs >= 1 ? 2 : abs >= 0.01 ? 4 : 6;
+  return `$${formatNumber(raw, maxDecimals)}`;
+}
