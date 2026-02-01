@@ -40,6 +40,20 @@ export const CHAINLINK_AGGREGATOR_ABI = [
     stateMutability: "view",
     type: "function",
   },
+  {
+    inputs: [],
+    name: "heartbeat",
+    outputs: [{ type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "deviationThreshold",
+    outputs: [{ type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
 ] as const;
 
 // Minimal Chainlink aggregator ABI for description/decimals/latestRoundData/latestAnswer

@@ -242,15 +242,7 @@ export default function Admin() {
            feeReceiver,
            contract: {
              address: wrappedToken,
-             abi: [
-               {
-                 inputs: [{ type: "address" }],
-                 name: "balanceOf",
-                 outputs: [{ type: "uint256" }],
-                 stateMutability: "view",
-                 type: "function",
-               },
-             ] as const,
+             abi: ERC20_ABI,
              functionName: "balanceOf" as const,
              args: [feeReceiver],
            },

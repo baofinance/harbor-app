@@ -3,8 +3,7 @@
 import { useState, useEffect } from "react";
 import { XMarkIcon } from "@heroicons/react/24/outline";
 import { feeds } from "@/config/feeds";
-import { proxyAbi } from "@/abis/proxy";
-import { aggregatorAbi } from "@/abis/chainlink";
+import { proxyAbi, aggregatorAbi, CHAINLINK_AGGREGATOR_ABI } from "@/abis/chainlink";
 import { customFeedAggregatorAbi, customFeedNormalizationV2Abi } from "@/abis/harbor";
 import { singleFeedAbi, doubleFeedAbi, multifeedDivAbi, multifeedSumAbi, multifeedNormalizedAbi } from "@/abis/oracleFeeds";
 import {
@@ -1095,44 +1094,14 @@ export function FeedDetails({
                       rpcClient
                         .readContract({
                           address: aggAddr,
-                          abi: [
-                            {
-                              inputs: [],
-                              name: "heartbeat",
-                              outputs: [{ type: "uint256" }],
-                              stateMutability: "view",
-                              type: "function",
-                            },
-                            {
-                              inputs: [],
-                              name: "deviationThreshold",
-                              outputs: [{ type: "uint256" }],
-                              stateMutability: "view",
-                              type: "function",
-                            },
-                          ] as const,
+                          abi: CHAINLINK_AGGREGATOR_ABI,
                           functionName: "heartbeat",
                         })
                         .catch(() => null),
                       rpcClient
                         .readContract({
                           address: aggAddr,
-                          abi: [
-                            {
-                              inputs: [],
-                              name: "heartbeat",
-                              outputs: [{ type: "uint256" }],
-                              stateMutability: "view",
-                              type: "function",
-                            },
-                            {
-                              inputs: [],
-                              name: "deviationThreshold",
-                              outputs: [{ type: "uint256" }],
-                              stateMutability: "view",
-                              type: "function",
-                            },
-                          ] as const,
+                          abi: CHAINLINK_AGGREGATOR_ABI,
                           functionName: "deviationThreshold",
                         })
                         .catch(() => null),

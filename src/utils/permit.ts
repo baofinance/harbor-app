@@ -6,6 +6,7 @@
  */
 
 import { type Address, type PublicClient, type WalletClient } from "viem";
+import { ERC20_PERMIT_READS_ABI } from "@/abis/permit";
 
 /**
  * EIP-2612 Permit Type Definition
@@ -33,15 +34,7 @@ export async function checkPermitSupport(
     try {
       await publicClient.readContract({
         address: tokenAddress,
-        abi: [
-          {
-            inputs: [],
-            name: "DOMAIN_SEPARATOR",
-            outputs: [{ type: "bytes32", name: "" }],
-            stateMutability: "view",
-            type: "function",
-          },
-        ],
+        abi: ERC20_PERMIT_READS_ABI,
         functionName: "DOMAIN_SEPARATOR",
       });
     } catch {
@@ -53,15 +46,7 @@ export async function checkPermitSupport(
       owner || ("0x0000000000000000000000000000000000000000" as Address);
     await publicClient.readContract({
       address: tokenAddress,
-      abi: [
-        {
-          inputs: [{ type: "address", name: "owner" }],
-          name: "nonces",
-          outputs: [{ type: "uint256", name: "" }],
-          stateMutability: "view",
-          type: "function",
-        },
-      ],
+      abi: ERC20_PERMIT_READS_ABI,
       functionName: "nonces",
       args: [nonceOwner],
     });
@@ -83,15 +68,7 @@ export async function getPermitNonce(
   try {
     const nonce = await publicClient.readContract({
       address: tokenAddress,
-      abi: [
-        {
-          inputs: [{ type: "address", name: "owner" }],
-          name: "nonces",
-          outputs: [{ type: "uint256", name: "" }],
-          stateMutability: "view",
-          type: "function",
-        },
-      ],
+      abi: ERC20_PERMIT_READS_ABI,
       functionName: "nonces",
       args: [owner],
     });
@@ -111,15 +88,7 @@ export async function getDomainSeparator(
   try {
     const domainSeparator = await publicClient.readContract({
       address: tokenAddress,
-      abi: [
-        {
-          inputs: [],
-          name: "DOMAIN_SEPARATOR",
-          outputs: [{ type: "bytes32", name: "" }],
-          stateMutability: "view",
-          type: "function",
-        },
-      ],
+      abi: ERC20_PERMIT_READS_ABI,
       functionName: "DOMAIN_SEPARATOR",
     });
     return domainSeparator as string;
@@ -146,15 +115,7 @@ export async function buildPermitDomain(
     // Read token name
     const name = await publicClient.readContract({
       address: tokenAddress,
-      abi: [
-        {
-          inputs: [],
-          name: "name",
-          outputs: [{ type: "string", name: "" }],
-          stateMutability: "view",
-          type: "function",
-        },
-      ],
+      abi: ERC20_PERMIT_READS_ABI,
       functionName: "name",
     });
 
@@ -166,15 +127,7 @@ export async function buildPermitDomain(
     try {
       const versionResult = await publicClient.readContract({
         address: tokenAddress,
-        abi: [
-          {
-            inputs: [],
-            name: "version",
-            outputs: [{ type: "string", name: "" }],
-            stateMutability: "view",
-            type: "function",
-          },
-        ],
+        abi: ERC20_PERMIT_READS_ABI,
         functionName: "version",
       });
       version = versionResult as string;

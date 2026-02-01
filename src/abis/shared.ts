@@ -98,9 +98,26 @@ export const CHAINLINK_ORACLE_ABI = [
 ] as const;
 
 /**
- * Genesis contract ABI - core functions
+ * Genesis contract ABI - core functions + custom errors for revert decoding
  */
 export const GENESIS_ABI = [
+  // Custom errors (for viem revert decoding)
+  { type: "error", name: "GenesisAlreadyEnded", inputs: [] },
+  { type: "error", name: "OnlyOwner", inputs: [] },
+  { type: "error", name: "NoCollateralDeposited", inputs: [] },
+  { type: "error", name: "GenesisNotActive", inputs: [] },
+  { type: "error", name: "InsufficientBalance", inputs: [] },
+  { type: "error", name: "Unauthorized", inputs: [] },
+  { type: "error", name: "InvalidState", inputs: [] },
+  { type: "error", name: "InvalidOperation", inputs: [] },
+  { type: "error", name: "ContractPaused", inputs: [] },
+  { type: "error", name: "ZeroAmount", inputs: [] },
+  { type: "error", name: "InvalidAmount", inputs: [] },
+  { type: "error", name: "TransferFailed", inputs: [] },
+  { type: "error", name: "InsufficientCollateral", inputs: [] },
+  { type: "error", name: "NotOwner", inputs: [] },
+  { type: "error", name: "AlreadyInitialized", inputs: [] },
+  // Functions
   {
     inputs: [],
     name: "genesisIsEnded",
@@ -147,6 +164,79 @@ export const GENESIS_ABI = [
     type: "function",
   },
   {
+    inputs: [],
+    name: "owner",
+    outputs: [{ type: "address", name: "" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "endGenesis",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [{ name: "newOwner", type: "address" }],
+    name: "transferOwnership",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "totalPeggedAtGenesisEnd",
+    outputs: [{ type: "uint256", name: "" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "totalLeveragedAtGenesisEnd",
+    outputs: [{ type: "uint256", name: "" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "collateralToken",
+    outputs: [{ type: "address", name: "token" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "peggedToken",
+    outputs: [{ type: "address", name: "token" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "leveragedToken",
+    outputs: [{ type: "address", name: "token" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "totalDeposits",
+    outputs: [{ type: "uint256", name: "total" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "totalRewards",
+    outputs: [
+      { type: "uint256", name: "peggedAmount" },
+      { type: "uint256", name: "leveragedAmount" },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
     inputs: [
       { name: "collateralIn", type: "uint256" },
       { name: "receiver", type: "address" },
@@ -169,20 +259,6 @@ export const GENESIS_ABI = [
   {
     inputs: [{ name: "receiver", type: "address" }],
     name: "claim",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "owner",
-    outputs: [{ type: "address", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "endGenesis",
     outputs: [],
     stateMutability: "nonpayable",
     type: "function",

@@ -14,7 +14,7 @@ import {
 import { BaseError, ContractFunctionRevertedError } from "viem";
 import { ERC20_ABI, MINTER_ABI } from "@/abis/shared";
 import { WSTETH_ABI } from "@/abis";
-import { MINTER_ETH_ZAP_V2_ABI } from "@/config/contracts";
+import { MINTER_ETH_ZAP_V3_ABI } from "@/abis";
 import { MINTER_USDC_ZAP_V3_ABI } from "@/abis";
 import { STETH_ZAP_PERMIT_ABI, calculateDeadline } from "@/utils/permit";
 import { usePermitOrApproval } from "@/hooks/usePermitOrApproval";
@@ -1001,7 +1001,7 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
        if (includeSwap || isNativeETH) {
          mintHash = await writeContractAsync({
            address: zapAddress,
-           abi: MINTER_ETH_ZAP_V2_ABI,
+           abi: MINTER_ETH_ZAP_V3_ABI,
            functionName: "zapEthToLeveraged",
            args: [address as `0x${string}`, minOutput],
            value: amountForMint,
@@ -1033,7 +1033,7 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
           try {
             mintHash = await writeContractAsync({
               address: zapAddress,
-              abi: [...MINTER_ETH_ZAP_V2_ABI, ...STETH_ZAP_PERMIT_ABI] as const,
+              abi: [...MINTER_ETH_ZAP_V3_ABI, ...STETH_ZAP_PERMIT_ABI] as const,
               functionName: "zapStEthToLeveragedWithPermit",
               args: [
                 amountForMint,
@@ -1087,7 +1087,7 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
           
           mintHash = await writeContractAsync({
             address: zapAddress,
-            abi: MINTER_ETH_ZAP_V2_ABI,
+            abi: MINTER_ETH_ZAP_V3_ABI,
             functionName: "zapStEthToLeveraged",
             args: [amountForMint, address as `0x${string}`, minOutput],
           });

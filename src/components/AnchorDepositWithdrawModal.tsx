@@ -29,6 +29,7 @@ import { BaseError, ContractFunctionRevertedError } from "viem";
 import {
   ERC20_ABI,
   ERC20_PERMIT_ABI,
+  GENESIS_ABI,
   STABILITY_POOL_ABI,
   CHAINLINK_AGGREGATOR_ABI,
   MINTER_PEGGED_ABI,
@@ -36,7 +37,7 @@ import {
 import { stabilityPoolABI } from "@/abis/stabilityPool";
 import { aprABI } from "@/abis/apr";
 import { ZAP_ABI, USDC_ZAP_ABI, WSTETH_ABI } from "@/abis";
-import { MINTER_ETH_ZAP_V2_ABI } from "@/config/contracts";
+import { MINTER_ETH_ZAP_V3_ABI } from "@/abis";
 import { MINTER_USDC_ZAP_V3_ABI } from "@/abis";
 import Image from "next/image";
 import SimpleTooltip from "@/components/SimpleTooltip";
@@ -1434,15 +1435,7 @@ export const AnchorDepositWithdrawModal = ({
   // Read pegged token address from Genesis contract (source of truth)
   const { data: genesisPeggedTokenAddress } = useContractRead({
     address: marketForDepositAsset?.addresses?.genesis as `0x${string}`,
-    abi: [
-      {
-        inputs: [],
-        name: "peggedToken",
-        outputs: [{ type: "address", name: "token" }],
-        stateMutability: "view",
-        type: "function",
-      },
-    ],
+    abi: GENESIS_ABI,
     functionName: "peggedToken",
     query: {
       enabled:
@@ -6036,7 +6029,7 @@ export const AnchorDepositWithdrawModal = ({
               });
               zapHash = await writeContractAsync({
               address: zapAddress,
-                abi: MINTER_ETH_ZAP_V2_ABI,
+                abi: MINTER_ETH_ZAP_V3_ABI,
                 functionName: "zapEthToPegged",
                 args: [address as `0x${string}`, minPeggedOut],
               value: swappedAmount,
@@ -6192,7 +6185,7 @@ export const AnchorDepositWithdrawModal = ({
               });
               zapHash = await writeContractAsync({
                 address: zapAddress,
-                abi: MINTER_ETH_ZAP_V2_ABI,
+                abi: MINTER_ETH_ZAP_V3_ABI,
                 functionName: "zapStEthToPegged",
                 args: [swappedAmount, address as `0x${string}`, minPeggedOut],
               });
@@ -7180,7 +7173,7 @@ export const AnchorDepositWithdrawModal = ({
               });
               mintHash = await writeContractAsync({
                 address: zapAddress,
-                abi: MINTER_ETH_ZAP_V2_ABI,
+                abi: MINTER_ETH_ZAP_V3_ABI,
                 functionName: "zapEthToPegged",
                 args: [address as `0x${string}`, minPeggedOut],
                 value: amountBigInt,
@@ -7263,7 +7256,7 @@ export const AnchorDepositWithdrawModal = ({
               } else {
                 mintHash = await writeContractAsync({
                   address: zapAddress,
-                  abi: MINTER_ETH_ZAP_V2_ABI,
+                  abi: MINTER_ETH_ZAP_V3_ABI,
                   functionName: "zapStEthToPegged",
                   args: [amountBigInt, address as `0x${string}`, minPeggedOut],
                 });

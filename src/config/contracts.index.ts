@@ -26,8 +26,6 @@ export const {
   CONTRACTS,
   STABILITY_POOL_MANAGER_ABI,
   GENESIS_ABI,
-  MINTER_ETH_ZAP_V2_ABI,
-  MINTER_USDC_ZAP_V2_ABI,
   ERC20_ABI,
   minterABI,
 } = productionContracts;

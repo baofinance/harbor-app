@@ -20,7 +20,7 @@ import MintRedeemStatusModal from "./MintRedeemStatusModal";
 import type { Market as MarketCfg } from "../config/markets";
 import { minterABI } from "@/abis/minter";
 import { ERC20_ABI, GENESIS_ABI } from "@/abis/shared";
-import { MINTER_ETH_ZAP_V2_ABI, MINTER_USDC_ZAP_V2_ABI } from "@/config/contracts";
+import { MINTER_ETH_ZAP_V3_ABI, MINTER_USDC_ZAP_V3_ABI } from "@/abis";
 import { parseUnits } from "viem";
 import { calculateDeadline, STETH_ZAP_PERMIT_ABI, USDC_ZAP_PERMIT_ABI } from "@/utils/permit";
 import { usePermitOrApproval } from "@/hooks/usePermitOrApproval";
@@ -1214,7 +1214,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
               if (isNativeETH) {
                 const hash = await writeContractAsync({
                   address: zapAddress,
-                  abi: MINTER_ETH_ZAP_V2_ABI,
+                  abi: MINTER_ETH_ZAP_V3_ABI,
                   functionName: "zapEthToPegged",
                   args: [userAddress as `0x${string}`, minPeggedOut],
                   value: parsedAmount,
@@ -1242,7 +1242,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                   try {
                     const hash = await writeContractAsync({
                       address: zapAddress,
-                      abi: [...MINTER_ETH_ZAP_V2_ABI, ...STETH_ZAP_PERMIT_ABI] as const,
+                      abi: [...MINTER_ETH_ZAP_V3_ABI, ...STETH_ZAP_PERMIT_ABI] as const,
                       functionName: "zapStEthToPeggedWithPermit",
                       args: [
                         parsedAmount,
@@ -1285,7 +1285,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                   
                   const hash = await writeContractAsync({
                     address: zapAddress,
-                    abi: MINTER_ETH_ZAP_V2_ABI,
+                    abi: MINTER_ETH_ZAP_V3_ABI,
                     functionName: "zapStEthToPegged",
                     args: [parsedAmount, userAddress as `0x${string}`, minPeggedOut],
                   });
@@ -1317,7 +1317,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
               if (isNativeETH) {
                 const hash = await writeContractAsync({
                   address: zapAddress,
-                  abi: MINTER_ETH_ZAP_V2_ABI,
+                  abi: MINTER_ETH_ZAP_V3_ABI,
                   functionName: "zapEthToLeveraged",
                   args: [userAddress as `0x${string}`, minLeveragedOut],
                   value: parsedAmount,
@@ -1345,7 +1345,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                   try {
                     const hash = await writeContractAsync({
                       address: zapAddress,
-                      abi: [...MINTER_ETH_ZAP_V2_ABI, ...STETH_ZAP_PERMIT_ABI] as const,
+                      abi: [...MINTER_ETH_ZAP_V3_ABI, ...STETH_ZAP_PERMIT_ABI] as const,
                       functionName: "zapStEthToLeveragedWithPermit",
                       args: [
                         parsedAmount,
@@ -1388,7 +1388,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                   
                   const hash = await writeContractAsync({
                     address: zapAddress,
-                    abi: MINTER_ETH_ZAP_V2_ABI,
+                    abi: MINTER_ETH_ZAP_V3_ABI,
                     functionName: "zapStEthToLeveraged",
                     args: [parsedAmount, userAddress as `0x${string}`, minLeveragedOut],
                   });
@@ -1453,7 +1453,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                   if (isActuallyUSDC) {
                     const hash = await writeContractAsync({
                       address: zapAddress,
-                      abi: [...MINTER_USDC_ZAP_V2_ABI, ...USDC_ZAP_PERMIT_ABI] as const,
+                      abi: [...MINTER_USDC_ZAP_V3_ABI, ...USDC_ZAP_PERMIT_ABI] as const,
                       functionName: "zapUsdcToPeggedWithPermit",
                       args: [
                         amountForZap,
@@ -1470,7 +1470,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                   } else if (isActuallyFxUSD) {
                     const hash = await writeContractAsync({
                       address: zapAddress,
-                      abi: [...MINTER_USDC_ZAP_V2_ABI, ...USDC_ZAP_PERMIT_ABI] as const,
+                      abi: [...MINTER_USDC_ZAP_V3_ABI, ...USDC_ZAP_PERMIT_ABI] as const,
                       functionName: "zapFxUsdToPeggedWithPermit",
                       args: [
                         amountForZap,
@@ -1516,7 +1516,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                 if (isActuallyUSDC) {
                   const hash = await writeContractAsync({
                     address: zapAddress,
-                    abi: MINTER_USDC_ZAP_V2_ABI,
+                    abi: MINTER_USDC_ZAP_V3_ABI,
                     functionName: "zapUsdcToPegged",
                     args: [
                       amountForZap,
@@ -1529,7 +1529,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                 } else if (isActuallyFxUSD) {
                   const hash = await writeContractAsync({
                     address: zapAddress,
-                    abi: MINTER_USDC_ZAP_V2_ABI,
+                    abi: MINTER_USDC_ZAP_V3_ABI,
                     functionName: "zapFxUsdToPegged",
                     args: [
                       amountForZap,
@@ -1592,7 +1592,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                   if (isActuallyUSDC) {
                     const hash = await writeContractAsync({
                       address: zapAddress,
-                      abi: [...MINTER_USDC_ZAP_V2_ABI, ...USDC_ZAP_PERMIT_ABI] as const,
+                      abi: [...MINTER_USDC_ZAP_V3_ABI, ...USDC_ZAP_PERMIT_ABI] as const,
                       functionName: "zapUsdcToLeveragedWithPermit",
                       args: [
                         amountForZap,
@@ -1609,7 +1609,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                   } else if (isActuallyFxUSD) {
                     const hash = await writeContractAsync({
                       address: zapAddress,
-                      abi: [...MINTER_USDC_ZAP_V2_ABI, ...USDC_ZAP_PERMIT_ABI] as const,
+                      abi: [...MINTER_USDC_ZAP_V3_ABI, ...USDC_ZAP_PERMIT_ABI] as const,
                       functionName: "zapFxUsdToLeveragedWithPermit",
                       args: [
                         amountForZap,
@@ -1655,7 +1655,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                 if (isActuallyUSDC) {
                   const hash = await writeContractAsync({
                     address: zapAddress,
-                    abi: MINTER_USDC_ZAP_V2_ABI,
+                    abi: MINTER_USDC_ZAP_V3_ABI,
                     functionName: "zapUsdcToLeveraged",
                     args: [
                       amountForZap,
@@ -1668,7 +1668,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                 } else if (isActuallyFxUSD) {
                   const hash = await writeContractAsync({
                     address: zapAddress,
-                    abi: MINTER_USDC_ZAP_V2_ABI,
+                    abi: MINTER_USDC_ZAP_V3_ABI,
                     functionName: "zapFxUsdToLeveraged",
                     args: [
                       amountForZap,
