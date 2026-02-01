@@ -3,45 +3,7 @@
 import { useMemo } from "react";
 import { useContractReads } from "./useContractReads";
 
-/**
- * Minter ABI for volatility protection calculation
- */
-const MINTER_ABI = [
-  {
-    inputs: [],
-    name: "collateralRatio",
-    outputs: [{ type: "uint256", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "peggedTokenBalance",
-    outputs: [{ type: "uint256", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "collateralTokenBalance",
-    outputs: [{ type: "uint256", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
-
-/**
- * Stability Pool ABI for TVL
- */
-const STABILITY_POOL_ABI = [
-  {
-    inputs: [],
-    name: "totalAssetSupply",
-    outputs: [{ type: "uint256", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
+import { MINTER_ABI, STABILITY_POOL_ABI } from "@/abis/shared";
 
 export interface VolatilityProtectionData {
   /** The calculated volatility protection percentage string (e.g., "49.8%", ">100%", "0%") */

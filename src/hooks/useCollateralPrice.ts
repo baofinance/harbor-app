@@ -8,20 +8,7 @@ import { useContractReads } from "./useContractReads";
  * latestAnswer() returns (minUnderlyingPrice, maxUnderlyingPrice, minWrappedRate, maxWrappedRate)
  * All values are in 18 decimal format.
  */
-const WRAPPED_PRICE_ORACLE_ABI = [
-  {
-    inputs: [],
-    name: "latestAnswer",
-    outputs: [
-      { type: "uint256", name: "minUnderlyingPrice" },
-      { type: "uint256", name: "maxUnderlyingPrice" },
-      { type: "uint256", name: "minWrappedRate" },
-      { type: "uint256", name: "maxWrappedRate" },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
+import { WRAPPED_PRICE_ORACLE_ABI } from "@/abis/shared";
 
 export interface CollateralPriceData {
   /** Min underlying price (18 decimals) */

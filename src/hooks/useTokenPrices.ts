@@ -2,44 +2,9 @@ import { useMemo } from "react";
 import { useReadContracts } from "wagmi";
 import { formatUnits } from "viem";
 import { minterABI } from "@/abis/minter";
+import { CHAINLINK_FEEDS } from "@/config/chainlink";
+import { CHAINLINK_AGGREGATOR_ABI } from "@/abis/chainlink";
 import { useCoinGeckoPrices } from "./useCoinGeckoPrice";
-
-// Chainlink price feed addresses on Ethereum mainnet
-const CHAINLINK_FEEDS = {
-  ETH_USD: "0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419" as `0x${string}`,
-  BTC_USD: "0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c" as `0x${string}`,
-  EUR_USD: "0x8f6F9C8af44f5f15a18d0fa93B5814a623Fa6353" as `0x${string}`, // fxUSD/EUR Chainlink feed
-} as const;
-
-const chainlinkABI = [
-  {
-    inputs: [],
-    name: "decimals",
-    outputs: [{ type: "uint8" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "latestRoundData",
-    outputs: [
-      { name: "roundId", type: "uint80" },
-      { name: "answer", type: "int256" },
-      { name: "startedAt", type: "uint256" },
-      { name: "updatedAt", type: "uint256" },
-      { name: "answeredInRound", type: "uint80" },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "latestAnswer",
-    outputs: [{ name: "", type: "int256" }],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
 
 interface TokenPricesResult {
   peggedBackingRatio: number; // Health indicator (1.0 = healthy)
@@ -106,12 +71,12 @@ export function useMultipleTokenPrices(
       contracts.push(
         {
           address: CHAINLINK_FEEDS.ETH_USD,
-          abi: chainlinkABI,
+          abi: CHAINLINK_AGGREGATOR_ABI,
           functionName: "decimals" as const,
         },
         {
           address: CHAINLINK_FEEDS.ETH_USD,
-          abi: chainlinkABI,
+          abi: CHAINLINK_AGGREGATOR_ABI,
           functionName: "latestRoundData" as const,
         }
       );
@@ -120,12 +85,12 @@ export function useMultipleTokenPrices(
       contracts.push(
         {
           address: CHAINLINK_FEEDS.BTC_USD,
-          abi: chainlinkABI,
+          abi: CHAINLINK_AGGREGATOR_ABI,
           functionName: "decimals" as const,
         },
         {
           address: CHAINLINK_FEEDS.BTC_USD,
-          abi: chainlinkABI,
+          abi: CHAINLINK_AGGREGATOR_ABI,
           functionName: "latestRoundData" as const,
         }
       );
@@ -134,12 +99,12 @@ export function useMultipleTokenPrices(
       contracts.push(
         {
           address: CHAINLINK_FEEDS.EUR_USD,
-          abi: chainlinkABI,
+          abi: CHAINLINK_AGGREGATOR_ABI,
           functionName: "decimals" as const,
         },
         {
           address: CHAINLINK_FEEDS.EUR_USD,
-          abi: chainlinkABI,
+          abi: CHAINLINK_AGGREGATOR_ABI,
           functionName: "latestAnswer" as const,
         }
       );

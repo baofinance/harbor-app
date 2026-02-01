@@ -32,19 +32,7 @@ priceOracleAddress?: string;
 }
 
 // formatTokenAmount is now imported from utils/formatters
-
-const genesisABI = [
- {
- inputs: [
- { name:"amount", type:"uint256" },
- { name:"receiver", type:"address" },
- ],
- name:"withdraw",
- outputs: [{ type:"uint256", name:"collateralOut" }],
- stateMutability:"nonpayable",
- type:"function",
- },
-] as const;
+import { GENESIS_ABI } from "@/abis/shared";
 
 type ModalStep ="input" |"withdrawing" |"success" |"error";
 
@@ -93,7 +81,7 @@ const collateralPriceUSD = wrappedPriceData.priceUSD;
 
  const { data: simulateData, error: simulateError } = useSimulateContract({
  address: genesisAddress as `0x${string}`,
- abi: genesisABI,
+ abi: GENESIS_ABI,
  functionName:"withdraw",
  args: [withdrawAmount, address as `0x${string}`],
  chainId: mainnet.id,
@@ -197,7 +185,7 @@ const collateralPriceUSD = wrappedPriceData.priceUSD;
 
  const hash = await writeContractAsync({
  address: genesisAddress as `0x${string}`,
- abi: genesisABI,
+ abi: GENESIS_ABI,
  functionName:"withdraw",
  args: [withdrawAmount, address as `0x${string}`],
  chainId: mainnet.id,

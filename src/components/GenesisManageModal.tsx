@@ -16,22 +16,7 @@ interface GenesisManageModalProps {
   onSuccess?: () => void;
 }
 
-const genesisABI = [
-  {
-    inputs: [{ name: "depositor", type: "address" }],
-    name: "balanceOf",
-    outputs: [{ type: "uint256", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "genesisIsEnded",
-    outputs: [{ type: "bool", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
+import { GENESIS_ABI } from "@/abis/shared";
 
 export const GenesisManageModal = ({
   isOpen,
@@ -79,7 +64,7 @@ export const GenesisManageModal = ({
   // Fetch user's deposit balance (with error handling)
   const { data: userDeposit, error: depositError, isLoading: depositLoading } = useContractRead({
     address: isValidGenesisAddress ? genesisAddress : undefined,
-    abi: genesisABI,
+    abi: GENESIS_ABI,
     functionName: "balanceOf",
     args: address ? [address] : undefined,
     query: {
@@ -93,7 +78,7 @@ export const GenesisManageModal = ({
   // Check if genesis has ended (with error handling)
   const { data: isEnded, error: endedError, isLoading: endedLoading } = useContractRead({
     address: isValidGenesisAddress ? genesisAddress : undefined,
-    abi: genesisABI,
+    abi: GENESIS_ABI,
     functionName: "genesisIsEnded",
     query: {
       enabled: isValidGenesisAddress && isOpen && mounted,

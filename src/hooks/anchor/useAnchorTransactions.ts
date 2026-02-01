@@ -1,25 +1,13 @@
 import { useCallback, useRef } from "react";
 import { useAccount, useWriteContract, usePublicClient } from "wagmi";
 import { rewardsABI } from "@/abis/rewards";
-import { STABILITY_POOL_ABI } from "@/abis/shared";
+import {
+  STABILITY_POOL_ABI,
+  WRAPPED_PRICE_ORACLE_ABI,
+} from "@/abis/shared";
 import { minterABI as fullMinterABI } from "@/abis/minter";
 import { TransactionStep, FeeInfo } from "@/components/CompoundConfirmationModal";
 import { PoolOption } from "@/components/CompoundPoolSelectionModal";
-
-const wrappedPriceOracleABI = [
-  {
-    inputs: [],
-    name: "latestAnswer",
-    outputs: [
-      { name: "minUnderlyingPrice", type: "uint256" },
-      { name: "maxUnderlyingPrice", type: "uint256" },
-      { name: "minWrappedRate", type: "uint256" },
-      { name: "maxWrappedRate", type: "uint256" },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
 
 /**
  * Helper function to check if error is due to user rejection

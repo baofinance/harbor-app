@@ -10,8 +10,7 @@ import {
 } from "wagmi";
 import { formatEther, parseEther } from "viem";
 import { markets, type Market } from "../../../config/markets";
-import { GENESIS_ABI } from "../../../config/contracts";
-import { ERC20_ABI, CHAINLINK_ORACLE_ABI } from "@/abis/shared";
+import { GENESIS_ABI, ERC20_ABI, CHAINLINK_ORACLE_ABI } from "@/abis/shared";
 import { formatUSD, formatToken, formatDateTime } from "@/utils/formatters";
 import { EtherscanLink, TokenLogo, getLogoPath } from "@/components/shared";
 import InfoTooltip from "@/components/InfoTooltip";
@@ -23,15 +22,8 @@ type PageProps = {
  params: Promise<{ id: string }>;
 };
 
-const erc20SymbolABI = [
- {
- inputs: [],
- name:"symbol",
- outputs: [{ type:"string", name:"" }],
- stateMutability:"view",
- type:"function",
- },
-] as const;
+// ERC20_ABI includes symbol
+const erc20SymbolABI = ERC20_ABI;
 
 // Reusable UI pieces styled like PoolClient
 function EtherscanLink({

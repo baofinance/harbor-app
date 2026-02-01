@@ -2,69 +2,7 @@
 
 import { useContractReads } from "wagmi";
 import { markets } from "../config/markets";
-
-// ABI for just the read functions we need
-const minterABI = [
- {
- inputs: [],
- name:"collateralRatio",
- outputs: [{ type:"uint256", name:"" }],
- stateMutability:"view",
- type:"function",
- },
- {
- inputs: [],
- name:"leverageRatio",
- outputs: [{ type:"uint256", name:"" }],
- stateMutability:"view",
- type:"function",
- },
- {
- inputs: [],
- name:"leveragedTokenPrice",
- outputs: [{ type:"uint256", name:"" }],
- stateMutability:"view",
- type:"function",
- },
- {
- inputs: [],
- name:"peggedTokenPrice",
- outputs: [{ type:"uint256", name:"" }],
- stateMutability:"view",
- type:"function",
- },
- {
- inputs: [],
- name:"leveragedToken",
- outputs: [{ type:"address", name:"" }],
- stateMutability:"view",
- type:"function",
- },
- {
- inputs: [],
- name:"peggedToken",
- outputs: [{ type:"address", name:"" }],
- stateMutability:"view",
- type:"function",
- },
- {
- inputs: [],
- name:"mintPeggedTokenIncentiveRatio",
- outputs: [{ type:"int256", name:"incentiveRatio" }],
- stateMutability:"view",
- type:"function",
- },
-] as const;
-
-const erc20ABI = [
- {
- inputs: [],
- name:"symbol",
- outputs: [{ type:"string", name:"" }],
- stateMutability:"view",
- type:"function",
- },
-] as const;
+import { MINTER_ABI, ERC20_ABI } from "@/abis/shared";
 
 interface ContractInfoProps {
  marketId?: string;
@@ -79,7 +17,7 @@ export default function ContractInfo({
  contracts: [
  {
  address: addresses.minter as `0x${string}`,
- abi: minterABI,
+ abi: MINTER_ABI,
  functionName:"collateralRatio",
  },
  ],
@@ -90,7 +28,7 @@ export default function ContractInfo({
  contracts: [
  {
  address: addresses.minter as `0x${string}`,
- abi: minterABI,
+ abi: MINTER_ABI,
  functionName:"leverageRatio",
  },
  ],
@@ -101,7 +39,7 @@ export default function ContractInfo({
  contracts: [
  {
  address: addresses.minter as `0x${string}`,
- abi: minterABI,
+ abi: MINTER_ABI,
  functionName:"leveragedTokenPrice",
  },
  ],
@@ -112,7 +50,7 @@ export default function ContractInfo({
  contracts: [
  {
  address: addresses.minter as `0x${string}`,
- abi: minterABI,
+ abi: MINTER_ABI,
  functionName:"peggedTokenPrice",
  },
  ],
@@ -123,7 +61,7 @@ export default function ContractInfo({
  contracts: [
  {
  address: addresses.minter as `0x${string}`,
- abi: minterABI,
+ abi: MINTER_ABI,
  functionName:"leveragedToken",
  },
  ],
@@ -134,7 +72,7 @@ export default function ContractInfo({
  contracts: [
  {
  address: addresses.minter as `0x${string}`,
- abi: minterABI,
+ abi: MINTER_ABI,
  functionName:"peggedToken",
  },
  ],
@@ -145,7 +83,7 @@ export default function ContractInfo({
  contracts: [
  {
  address: addresses.minter as `0x${string}`,
- abi: minterABI,
+ abi: MINTER_ABI,
  functionName:"mintPeggedTokenIncentiveRatio",
  },
  ],
@@ -177,12 +115,12 @@ export default function ContractInfo({
  ? [
  {
  address: leveragedTokenAddress,
- abi: erc20ABI,
+ abi: ERC20_ABI,
  functionName:"symbol",
  },
  {
  address: peggedTokenAddress,
- abi: erc20ABI,
+ abi: ERC20_ABI,
  functionName:"symbol",
  },
  ]
