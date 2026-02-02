@@ -366,6 +366,8 @@ const productionMarkets: Markets = {
       rebalancePoolLeveraged: "0x0000000000000000000000000000000000000000", // placeholder
       collateralPrice: "0xE370289aF2145A5B2F0F7a4a900eBfD478A156dB", // stETH price oracle
       genesisZap: "0x173B98E27dF83DC6fC930c1465F65cd10aA21657" as `0x${string}`, // GenesisETHZap_v4 for EUR
+      peggedTokenZap: "0x31bd3B75672bAfbBa1b2F27789DCBF6ee7429D74" as `0x${string}`, // MinterETHZap_v3 for EUR/stETH
+      leveragedTokenZap: "0x31bd3B75672bAfbBa1b2F27789DCBF6ee7429D74" as `0x${string}`, // MinterETHZap_v3 for EUR/stETH (same contract)
     },
     genesis: {
       startDate: "2026-01-19T15:21:11Z", // From deployment timestamp

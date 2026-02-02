@@ -440,6 +440,8 @@ export const markets = {
       collateralToken: contractsMarkets["steth-eur"].addresses.collateralToken,
       wrappedCollateralToken: contractsMarkets["steth-eur"].addresses.wrappedCollateralToken,
       genesisZap: contractsMarkets["steth-eur"].addresses.genesisZap, // GenesisETHZap_v4 for EUR
+      peggedTokenZap: contractsMarkets["steth-eur"].addresses.peggedTokenZap, // MinterETHZap_v3 for EUR/stETH
+      leveragedTokenZap: contractsMarkets["steth-eur"].addresses.leveragedTokenZap,
     },
     peggedToken: {
       name: "Harbor Anchored EUR",
@@ -513,6 +515,8 @@ export const markets = {
       collateralToken: contractsMarkets["fxusd-eur"].addresses.collateralToken,
       wrappedCollateralToken: contractsMarkets["fxusd-eur"].addresses.wrappedCollateralToken,
       genesisZap: contractsMarkets["fxusd-eur"].addresses.genesisZap, // GenesisUSDCZap_v4 for EUR
+      peggedTokenZap: contractsMarkets["fxusd-eur"].addresses.peggedTokenZap, // MinterUSDCZap_v3 for EUR/fxUSD (direct stability pool zap)
+      leveragedTokenZap: contractsMarkets["fxusd-eur"].addresses.leveragedTokenZap,
     },
     peggedToken: {
       name: "Harbor Anchored EUR",
