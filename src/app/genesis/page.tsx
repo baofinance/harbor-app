@@ -5116,6 +5116,7 @@ export default function GenesisIndexPage() {
                                           address: genesisAddress as `0x${string}`,
                                           abi: GENESIS_ABI,
                                           functionName: "claim",
+                                          args: [address as `0x${string}`],
                                         });
                                         setClaimModal({
                                           open: true,
@@ -5245,6 +5246,7 @@ export default function GenesisIndexPage() {
                                           address: genesisAddress as `0x${string}`,
                                           abi: GENESIS_ABI,
                                           functionName: "claim",
+                                          args: [address as `0x${string}`],
                                         });
                                         setClaimModal({
                                           open: true,
