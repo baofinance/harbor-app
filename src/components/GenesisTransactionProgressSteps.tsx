@@ -49,16 +49,16 @@ export const GenesisTransactionProgressSteps = ({
       false
     );
     return (
-      <div className="flex items-center">
-        <div className="flex w-full flex-col items-start gap-2">
-          <div className="flex w-full items-center">
-            <div className={`h-3 w-3 rounded-full border-2 ${styles.dot}`} />
-            <div className={`h-0.5 flex-1 ${styles.line}`} />
-            <div
-              className={`h-3 w-3 rounded-full border-2 ${inactiveStyles.dot}`}
-            />
-          </div>
-          <div className={`text-[11px] ${styles.label}`}>{step.label}</div>
+      <div className="flex w-full flex-col items-center gap-2">
+        <div className="flex w-full items-center">
+          <div className={`h-3 w-3 shrink-0 rounded-full border-2 ${styles.dot}`} />
+          <div className={`h-0.5 flex-1 min-w-0 ${styles.line}`} />
+          <div
+            className={`h-3 w-3 shrink-0 rounded-full border-2 ${inactiveStyles.dot}`}
+          />
+        </div>
+        <div className={`text-[11px] text-center leading-tight w-full px-0.5 ${styles.label}`}>
+          {step.label}
         </div>
       </div>
     );
@@ -75,18 +75,20 @@ export const GenesisTransactionProgressSteps = ({
         return (
           <div
             key={step.id}
-            className="flex flex-1 flex-col items-center gap-2"
+            className="flex flex-1 flex-col items-center gap-2 min-w-0"
           >
             <div className="flex w-full items-center">
-              {showLeft && <div className={`h-0.5 flex-1 ${styles.line}`} />}
+              {showLeft && <div className={`h-0.5 flex-1 min-w-0 ${styles.line}`} />}
               <div
-                className={`h-3 w-3 rounded-full border-2 ${styles.dot}`}
+                className={`h-3 w-3 shrink-0 rounded-full border-2 ${styles.dot}`}
               />
               {showRight && (
-                <div className={`h-0.5 flex-1 ${styles.line}`} />
+                <div className={`h-0.5 flex-1 min-w-0 ${styles.line}`} />
               )}
             </div>
-            <div className={`text-[11px] ${styles.label}`}>{step.label}</div>
+            <div className={`text-[11px] text-center leading-tight w-full px-0.5 ${styles.label}`}>
+              {step.label}
+            </div>
           </div>
         );
       })}
