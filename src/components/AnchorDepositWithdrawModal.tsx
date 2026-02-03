@@ -8,6 +8,7 @@ import {
   formatTokenAmount18,
   formatUsd18,
 } from "@/utils/formatters";
+import { amountToUSD, getTokenPriceUSD } from "@/utils/tokenPriceToUSD";
 import {
   CHAINLINK_FEEDS,
   REWARD_TOKEN_ADDRESSES,
@@ -5716,25 +5717,26 @@ export const AnchorDepositWithdrawModal = ({
           
           const isActuallyETH = anyTokenDeposit.useETHZap && (anyTokenDeposit.isNativeETH || swappedTokenIsETH);
           const isActuallyStETH = anyTokenDeposit.useETHZap && !(anyTokenDeposit.isNativeETH || swappedTokenIsETH) && !anyTokenDeposit.needsSwap;
-          const isUsdcOrFxUsd =
+          const isUsdcOrFxUsdOrFxSave =
             selectedDepositAsset?.toLowerCase() === "usdc" ||
-            selectedDepositAsset?.toLowerCase() === "fxusd";
+            selectedDepositAsset?.toLowerCase() === "fxusd" ||
+            selectedDepositAsset?.toLowerCase() === "fxsave";
           const permitEligible =
             permitEnabled &&
             ((mintOnly &&
               ((anyTokenDeposit.useETHZap &&
                 !anyTokenDeposit.needsSwap &&
                 !anyTokenDeposit.isNativeETH) ||
-                (anyTokenDeposit.useUSDCZap && isUsdcOrFxUsd))) ||
+                (anyTokenDeposit.useUSDCZap && isUsdcOrFxUsdOrFxSave))) ||
               (!mintOnly &&
                 shouldDepositToPool &&
                 ((anyTokenDeposit.useETHZap && isActuallyStETH) ||
-                  (anyTokenDeposit.useUSDCZap && isUsdcOrFxUsd))));
+                  (anyTokenDeposit.useUSDCZap && isUsdcOrFxUsdOrFxSave))));
           const useZapToPoolWithPermit =
             permitEligible &&
             shouldDepositToPool &&
             anyTokenDeposit.useUSDCZap &&
-            isUsdcOrFxUsd &&
+            isUsdcOrFxUsdOrFxSave &&
             !!stabilityPoolAddress;
           const useZapEthToPool =
             isActuallyETH && shouldDepositToPool && !!stabilityPoolAddress;
@@ -6635,7 +6637,7 @@ export const AnchorDepositWithdrawModal = ({
           permitEligible &&
           shouldDepositToPool &&
           useZap &&
-          (isFxUSD || isUSDC) &&
+          (isFxUSD || isUSDC || isFxSAVE) &&
           !!stabilityPoolAddress;
         const useZapStEthToPool =
           useETHZap &&
@@ -9938,16 +9940,13 @@ export const AnchorDepositWithdrawModal = ({
                                   <div className="text-right">
                                     {(() => {
                                       const outputAmount = Number(formatEther(expectedMintOutput));
-                                      // For haETH, use ETH price directly; for other ha tokens, use pegged token price
-                                      let usdValue = 0;
-                                      if (peggedTokenSymbol.toLowerCase().includes("haeth")) {
-                                        usdValue = outputAmount * (ethPrice || 0);
-                                      } else {
-                                        const peggedPriceUSD = peggedTokenPrice && peggedTokenPrice > 0n
-                                          ? Number(peggedTokenPrice) / 1e18
-                                          : 0;
-                                        usdValue = outputAmount * peggedPriceUSD;
-                                      }
+                                      const peggedPriceUSD = peggedTokenPrice && peggedTokenPrice > 0n
+                                        ? Number(peggedTokenPrice) / 1e18
+                                        : 0;
+                                      const usdValue = amountToUSD(outputAmount, peggedTokenSymbol, {
+                                        ethPrice: ethPrice ?? 0,
+                                        peggedPriceUSD,
+                                      });
                                       return (
                                         <>
                                           <div className="text-lg font-bold text-[#1E4775] font-mono">
@@ -9999,19 +9998,12 @@ export const AnchorDepositWithdrawModal = ({
                                       {(() => {
                                         const inputAmount = parseFloat(amount);
                                         const feeAmount = inputAmount * (feePercentage / 100);
-                                        let depositTokenPriceUSD = 0;
-                                        const assetLower = (selectedDepositAsset || collateralSymbol).toLowerCase();
-                                        if (assetLower === "eth" || assetLower === "weth") {
-                                          depositTokenPriceUSD = ethPrice || 0;
-                                        } else if (assetLower === "wsteth" || assetLower === "steth") {
-                                          depositTokenPriceUSD = wstETHPrice || 0;
-                                        } else if (assetLower === "fxsave") {
-                                          depositTokenPriceUSD = fxSAVEPrice || 0;
-                                        } else if (assetLower === "usdc" || assetLower === "fxusd") {
-                                          depositTokenPriceUSD = 1.0;
-                                        }
-                                        const feeUSD = feeAmount * depositTokenPriceUSD;
                                         const depositTokenSymbol = selectedDepositAsset || collateralSymbol;
+                                        const feeUSD = amountToUSD(feeAmount, depositTokenSymbol, {
+                                          ethPrice: ethPrice ?? 0,
+                                          wstETHPrice: wstETHPrice ?? 0,
+                                          fxSAVEPrice: fxSAVEPrice ?? 1.08,
+                                        });
                                         return (
                                           <>
                                             {feePercentage.toFixed(2)}% - {feeAmount > 0 ? `${feeAmount.toFixed(6)} ${depositTokenSymbol}` : "..."} ({feeUSD > 0 ? `$${feeUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "..."})
@@ -11929,20 +11921,9 @@ export const AnchorDepositWithdrawModal = ({
                             const isImmediateWithdrawal = 
                               (entry.poolType === "collateral" && withdrawalMethods.collateralPool === "immediate") ||
                               (entry.poolType === "sail" && withdrawalMethods.sailPool === "immediate");
-                            const collateralSymbolLower = entry.collateralSymbol.toLowerCase();
-                            let priceUSD = 0;
-                            if (collateralSymbolLower === "eth" || collateralSymbolLower === "weth") {
-                              priceUSD = ethPrice || 0;
-                            } else if (collateralSymbolLower === "wsteth" || collateralSymbolLower === "steth") {
-                              priceUSD = wstETHPrice || 0;
-                            } else if (collateralSymbolLower === "fxsave") {
-                              priceUSD = fxSAVEPrice || 0;
-                            } else if (collateralSymbolLower === "usdc" || collateralSymbolLower === "fxusd") {
-                              priceUSD = 1.0;
-                            }
-                            const usdValue = priceUSD > 0 && entry.amount > 0n
-                              ? (Number(entry.amount) / 1e18) * priceUSD
-                              : 0;
+                            const prices = { ethPrice: ethPrice ?? 0, wstETHPrice: wstETHPrice ?? 0, fxSAVEPrice: fxSAVEPrice ?? 1.08 };
+                            const usdValue = amountToUSD(Number(entry.amount) / 1e18, entry.collateralSymbol, prices);
+                            const priceUSD = getTokenPriceUSD(entry.collateralSymbol, prices);
 
                             return (
                               <div
@@ -12543,23 +12524,16 @@ export const AnchorDepositWithdrawModal = ({
                                   const outputAmount = Number(formatEther(
                                     redeemDryRun.netCollateralReturned || 0n
                                   ));
-                                  // Calculate USD value
-                                  const collateralSymbolLower = (selectedRedeemAsset || collateralSymbol).toLowerCase();
-                                  let priceUSD = 0;
-                                  if (collateralSymbolLower === "eth" || collateralSymbolLower === "weth") {
-                                    priceUSD = ethPrice || 0;
-                                  } else if (collateralSymbolLower === "wsteth" || collateralSymbolLower === "steth") {
-                                    priceUSD = wstETHPrice || 0;
-                                  } else if (collateralSymbolLower === "fxsave") {
-                                    priceUSD = fxSAVEPrice || 0;
-                                  } else if (collateralSymbolLower === "usdc" || collateralSymbolLower === "fxusd") {
-                                    priceUSD = 1.0;
-                                  }
-                                  const usdValue = outputAmount * priceUSD;
+                                  const outputSymbol = selectedRedeemAsset || collateralSymbol;
+                                  const usdValue = amountToUSD(outputAmount, outputSymbol, {
+                                    ethPrice: ethPrice ?? 0,
+                                    wstETHPrice: wstETHPrice ?? 0,
+                                    fxSAVEPrice: fxSAVEPrice ?? 1.08,
+                                  });
                                   return (
                                     <>
                                       <div className="text-lg font-bold text-[#1E4775] font-mono">
-                                        {outputAmount.toFixed(6)} {selectedRedeemAsset || collateralSymbol}
+                                        {outputAmount.toFixed(6)} {outputSymbol}
                                       </div>
                                       {usdValue > 0 && (
                                         <div className="text-xs text-[#1E4775]/50 font-mono">
@@ -12578,13 +12552,13 @@ export const AnchorDepositWithdrawModal = ({
                                 <>
                                   {earlyWithdrawalFees.map((fee, idx) => {
                                     const feeAmount = Number(formatEther(fee.amount));
-                                    let priceUSD = peggedTokenPriceUsdWei > 0n
+                                    const peggedPriceUSD = peggedTokenPriceUsdWei > 0n
                                       ? Number(formatUnits(peggedTokenPriceUsdWei, 18))
                                       : 0;
-                                    if (priceUSD === 0 && peggedTokenSymbol.toLowerCase().includes("haeth")) {
-                                      priceUSD = ethPrice || 0;
-                                    }
-                                    const feeUSD = feeAmount * priceUSD;
+                                    const feeUSD = amountToUSD(feeAmount, peggedTokenSymbol, {
+                                      ethPrice: ethPrice ?? 0,
+                                      peggedPriceUSD,
+                                    });
                                     return (
                                       <div
                                         key={`${fee.poolType}-${idx}`}
@@ -12620,18 +12594,12 @@ export const AnchorDepositWithdrawModal = ({
                                   >
                                     {(() => {
                                       const feeAmount = Number(formatEther(redeemDryRun.fee));
-                                      const collateralSymbolLower = (selectedRedeemAsset || collateralSymbol).toLowerCase();
-                                      let priceUSD = 0;
-                                      if (collateralSymbolLower === "eth" || collateralSymbolLower === "weth") {
-                                        priceUSD = ethPrice || 0;
-                                      } else if (collateralSymbolLower === "wsteth" || collateralSymbolLower === "steth") {
-                                        priceUSD = wstETHPrice || 0;
-                                      } else if (collateralSymbolLower === "fxsave") {
-                                        priceUSD = fxSAVEPrice || 0;
-                                      } else if (collateralSymbolLower === "usdc" || collateralSymbolLower === "fxusd") {
-                                        priceUSD = 1.0;
-                                      }
-                                      const feeUSD = feeAmount * priceUSD;
+                                      const feeSymbol = selectedRedeemAsset || collateralSymbol;
+                                      const feeUSD = amountToUSD(feeAmount, feeSymbol, {
+                                        ethPrice: ethPrice ?? 0,
+                                        wstETHPrice: wstETHPrice ?? 0,
+                                        fxSAVEPrice: fxSAVEPrice ?? 1.08,
+                                      });
                                       return (
                                         <>
                                           {redeemDryRun.feePercentage.toFixed(2)}% (
@@ -12692,18 +12660,12 @@ export const AnchorDepositWithdrawModal = ({
                                 if (!isRequestWithdrawal) return null;
                                 
                                 const outputAmount = Number(formatEther(redeemDryRun.netCollateralReturned || 0n));
-                                const collateralSymbolLower = (selectedRedeemAsset || collateralSymbol).toLowerCase();
-                                let priceUSD = 0;
-                                if (collateralSymbolLower === "eth" || collateralSymbolLower === "weth") {
-                                  priceUSD = ethPrice || 0;
-                                } else if (collateralSymbolLower === "wsteth" || collateralSymbolLower === "steth") {
-                                  priceUSD = wstETHPrice || 0;
-                                } else if (collateralSymbolLower === "fxsave") {
-                                  priceUSD = fxSAVEPrice || 0;
-                                } else if (collateralSymbolLower === "usdc" || collateralSymbolLower === "fxusd") {
-                                  priceUSD = 1.0;
-                                }
-                                const requestFeeUSD = outputAmount * priceUSD * 0.01;
+                                const requestFeeSymbol = selectedRedeemAsset || collateralSymbol;
+                                const requestFeeUSD = amountToUSD(outputAmount * 0.01, requestFeeSymbol, {
+                                  ethPrice: ethPrice ?? 0,
+                                  wstETHPrice: wstETHPrice ?? 0,
+                                  fxSAVEPrice: fxSAVEPrice ?? 1.08,
+                                });
                                 
                                 return (
                                   <div className="flex justify-between items-center">
@@ -12761,57 +12723,41 @@ export const AnchorDepositWithdrawModal = ({
                     </div>
                   )}
 
-                {/* Simple Mode Withdraw Button */}
+                {/* Simple Mode Withdraw Button - no Cancel on input (use X); Proceed full width */}
                 {activeTab === "withdraw" &&
                   simpleMode &&
                   step !== "success" && (
                     <div className="flex gap-3 pt-4 border-t border-[#1E4775]/20">
                       {isProcessing ? (
-                        <>
-                          <button
-                            onClick={handleCancel}
-                            className="flex-1 py-2 px-4 bg-white text-[#1E4775] border-2 border-[#1E4775]/30 font-semibold hover:bg-[#1E4775]/5 transition-colors"
-                          >
-                            Cancel
-                          </button>
-                          <button
-                            disabled
-                            className="flex-1 py-2 px-4 bg-[#FF8A7A]/50 text-white font-semibold cursor-not-allowed"
-                          >
-                            Processing...
-                          </button>
-                        </>
+                        <button
+                          disabled
+                          className="w-full py-2 px-4 bg-[#FF8A7A]/50 text-white font-semibold cursor-not-allowed"
+                        >
+                          Processing...
+                        </button>
                       ) : step === "error" ? (
-                        <>
-                          <button
-                            onClick={handleCancel}
-                            className="flex-1 py-2 px-4 bg-white text-[#1E4775] border-2 border-[#1E4775]/30 font-semibold hover:bg-[#1E4775]/5 transition-colors"
-                          >
-                            Cancel
-                          </button>
-                          <button
-                            onClick={handleAction}
-                            className="flex-1 py-2 px-4 bg-[#FF8A7A] text-white font-semibold hover:bg-[#FF6B5A] transition-colors"
-                          >
-                            Try Again
-                          </button>
-                        </>
+                        <button
+                          onClick={handleAction}
+                          className="w-full py-2 px-4 bg-[#FF8A7A] text-white font-semibold hover:bg-[#FF6B5A] transition-colors"
+                        >
+                          Try Again
+                        </button>
                       ) : (
                         <>
-                          <button
-                            onClick={
-                              step === "input"
-                                ? handleCancel
-                                : handleBackToWithdrawInput
-                            }
-                            className="flex-1 py-2 px-4 bg-white text-[#1E4775] border-2 border-[#1E4775]/30 font-semibold hover:bg-[#1E4775]/5 transition-colors"
-                          >
-                            {step === "input" ? "Cancel" : "Back"}
-                          </button>
+                          {step !== "input" && (
+                            <button
+                              onClick={handleBackToWithdrawInput}
+                              className="shrink-0 py-2 px-4 bg-white text-[#1E4775] border-2 border-[#1E4775]/30 font-semibold hover:bg-[#1E4775]/5 transition-colors"
+                            >
+                              Back
+                            </button>
+                          )}
                           <button
                             onClick={handleAction}
                             disabled={isButtonDisabled()}
-                            className="flex-1 py-3 px-4 bg-[#FF8A7A] text-white font-semibold hover:bg-[#FF6B5A] transition-colors disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
+                            className={`py-3 px-4 bg-[#FF8A7A] text-white font-semibold hover:bg-[#FF6B5A] transition-colors disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed ${
+                              step === "input" ? "w-full" : "flex-1"
+                            }`}
                           >
                             {getButtonText()}
                           </button>

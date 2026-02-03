@@ -3,9 +3,10 @@
 import { useState, useEffect } from "react";
 import { XMarkIcon } from "@heroicons/react/24/outline";
 import { feeds } from "@/config/feeds";
-import { proxyAbi, aggregatorAbi, CHAINLINK_AGGREGATOR_ABI } from "@/abis/chainlink";
+import { aggregatorAbi, CHAINLINK_AGGREGATOR_ABI } from "@/abis/chainlink";
 import { customFeedAggregatorAbi, customFeedNormalizationV2Abi } from "@/abis/harbor";
 import { singleFeedAbi, doubleFeedAbi, multifeedDivAbi, multifeedSumAbi, multifeedNormalizedAbi } from "@/abis/oracleFeeds";
+import { proxyAbi } from "@/abis/proxy";
 import {
   parsePair,
   format18,
@@ -379,11 +380,12 @@ export function FeedDetails({
         );
 
         // Check contract type first to use correct ABI
-        let contractAbi = proxyAbi;
+        let contractAbi = undefined;
         let isV2Contract = false;
         let isSingleFeed = false;
         let isDoubleFeed = false;
         let isMultifeedDiv = false;
+
         let isMultifeedSum = false;
         let isMultifeedNormalized = false;
 
@@ -499,7 +501,20 @@ export function FeedDetails({
 
         // Fetch price, latestAnswer, and priceDivisor
         // For SingleFeed, DoubleFeed, MultifeedDiv, MultifeedSum, or MultifeedNormalized, use their specific ABIs; otherwise use proxyAbi
-        const abiToUse = isSingleFeed ? singleFeedAbi : (isDoubleFeed ? doubleFeedAbi : (isMultifeedDiv ? multifeedDivAbi : (isMultifeedSum ? multifeedSumAbi : (isMultifeedNormalized ? multifeedNormalizedAbi : proxyAbi))));
+        let abiToUse;
+        if (isSingleFeed) {
+          abiToUse = singleFeedAbi;
+        } else if (isDoubleFeed) {
+          abiToUse = doubleFeedAbi;
+        } else if (isMultifeedDiv) {
+          abiToUse = multifeedDivAbi;
+        } else if (isMultifeedSum) {
+          abiToUse = multifeedSumAbi;
+        } else if (isMultifeedNormalized) {
+          abiToUse = multifeedNormalizedAbi;
+        } else {
+          abiToUse = proxyAbi;
+        }
 
         const [priceResult, latestResult, divisorResult] = await Promise.all([
           // Try getPrice first (only for non-SingleFeed/DoubleFeed contracts), fallback to latestAnswer[0] if not available

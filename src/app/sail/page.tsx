@@ -1406,6 +1406,9 @@ function SailMarketExpandedView({
 
 export default function SailPage() {
   const { address, isConnected } = useAccount();
+  const { price: sailPageEthPrice } = useCoinGeckoPrice("ethereum", 120000);
+  const { price: sailPageWstETHPrice } = useCoinGeckoPrice("wrapped-steth", 120000);
+  const { price: sailPageFxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
   const [expandedMarkets, setExpandedMarkets] = useState<string[]>([]);
   const [manageModalOpen, setManageModalOpen] = useState(false);
   const [selectedMarketId, setSelectedMarketId] = useState<string | null>(null);
@@ -2507,6 +2510,12 @@ export default function SailPage() {
               setSelectedMarketId(null);
               setSelectedMarket(null);
             }}
+            leveragedTokenPriceUSD={
+              tokenPricesByMarket[selectedMarketId]?.leveragedPriceUSD
+            }
+            ethPrice={sailPageEthPrice}
+            wstETHPrice={sailPageWstETHPrice}
+            fxSAVEPrice={sailPageFxSAVEPrice}
           />
         )}
       </div>
