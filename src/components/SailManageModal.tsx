@@ -478,6 +478,18 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
    },
  });
 
+ // When swapping to ETH for ETH zap: convert swap output (ETH) to wstETH for dry run
+ const swapOutputAsStETH = needsSwap && swapQuote?.toAmount ? (swapQuote.toAmount as bigint) : undefined;
+ const { data: wstETHAmountFromSwapForDryRun } = useContractRead({
+   address: wstETHAddress,
+   abi: WSTETH_ABI,
+   functionName: "getWstETHByStETH",
+   args: swapOutputAsStETH && wstETHAddress ? [swapOutputAsStETH] : undefined,
+   query: {
+     enabled: !!wstETHAddress && !!swapOutputAsStETH && swapOutputAsStETH > 0n && activeTab === "mint" && useETHZap && needsSwap,
+   },
+ });
+
  // Dry run for mint
  // mintLeveragedTokenDryRun expects collateral amount (fxSAVE for USDC zap, wstETH for ETH zap, etc.)
  // For fxUSD/USDC zap: convert input to expected fxSAVE via wrapped rate; minter dry run expects fxSAVE
@@ -493,9 +505,11 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
 
  const amountForDryRun = useETHZap && isNativeETH && !needsSwap && wstETHAmountForDryRun
    ? (wstETHAmountForDryRun as bigint)
-   : useUSDCZap
-     ? (expectedFxSaveForDryRun ?? undefined) // never use parsedAmount for USDC zap - dry run expects fxSAVE
-     : parsedAmount;
+   : useETHZap && needsSwap && wstETHAmountFromSwapForDryRun
+     ? (wstETHAmountFromSwapForDryRun as bigint)
+     : useUSDCZap
+       ? (expectedFxSaveForDryRun ?? undefined)
+       : parsedAmount;
 
  const mintDryRunEnabled =
  activeTab ==="mint" &&
@@ -579,8 +593,13 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
  bigint,
  bigint
  ];
+ // For direct fxSAVE mint, the contract can return an inflated leveragedMinted (collateral * rate
+ // instead of collateral / price). Derive correct output: leveragedMinted = collateral / (price per token).
+ if (isFxSAVE && !useUSDCZap && !needsSwap && price > 0n && leveragedMinted > parsedAmount) {
+   return (parsedAmount * 10n ** 18n) / price;
+ }
  return leveragedMinted;
- }, [mintDryRunResult, parsedAmount]);
+ }, [mintDryRunResult, parsedAmount, isFxSAVE, useUSDCZap, needsSwap]);
 
  const redeemFee = useMemo(() => {
  if (!redeemDryRunResult || !parsedAmount || parsedAmount === 0n) return 0n;
@@ -1913,29 +1932,14 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
              {(() => {
                if (!expectedMintOutput || expectedMintOutput === 0n || !parsedAmount || parsedAmount === 0n) return null;
                const leveragedAmount = Number(formatEther(expectedMintOutput));
-               const depositTokenSym = (selectedDepositAsset || collateralSymbol)?.toLowerCase() ?? "";
-               let depositPriceUSD = 0;
-               if (depositTokenSym === "wsteth" || depositTokenSym === "steth") {
-                 depositPriceUSD = wstETHPrice || 0;
-               } else if (depositTokenSym === "fxsave") {
-                 depositPriceUSD = fxSAVEPrice || 0;
-               } else if (depositTokenSym === "eth" || depositTokenSym === "weth") {
-                 depositPriceUSD = ethPrice || 0;
-               } else if (depositTokenSym === "usdc" || depositTokenSym === "fxusd") {
-                 depositPriceUSD = 1.0;
-               }
-               const depositAmountNum = amount && parseFloat(amount) > 0 ? parseFloat(amount) : 0;
-               const usdValue = depositPriceUSD > 0 && depositAmountNum > 0
-                 ? depositAmountNum * depositPriceUSD
-                 : (() => {
-                     const col = collateralSymbol.toLowerCase();
-                     let p = 0;
-                     if (col === "wsteth" || col === "steth") p = wstETHPrice || 0;
-                     else if (col === "fxsave") p = fxSAVEPrice || 0;
-                     else if (col === "eth") p = ethPrice || 0;
-                     else if (col === "usdc" || col === "fxusd") p = 1.0;
-                     return p > 0 ? leveragedAmount * p : 0;
-                   })();
+               // USD value of what you RECEIVE (leveraged tokens), not what you deposit
+               const col = collateralSymbol.toLowerCase();
+               let outputPriceUSD = 0;
+               if (col === "wsteth" || col === "steth") outputPriceUSD = wstETHPrice || 0;
+               else if (col === "fxsave") outputPriceUSD = fxSAVEPrice || 0;
+               else if (col === "eth") outputPriceUSD = ethPrice || 0;
+               else if (col === "usdc" || col === "fxusd") outputPriceUSD = 1.0;
+               const usdValue = outputPriceUSD > 0 ? leveragedAmount * outputPriceUSD : 0;
                return usdValue > 0 ? (
                  <div className="text-xs text-[#1E4775]/50 font-mono">
                    ${usdValue.toLocaleString(undefined, {
