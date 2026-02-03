@@ -28,6 +28,7 @@ import {
  TransactionStep,
 } from "./TransactionProgressModal";
 import { formatTokenAmount, formatBalance, formatUSD } from "@/utils/formatters";
+import { amountToUSD } from "@/utils/tokenPriceToUSD";
 import { useWrappedCollateralPrice } from "@/hooks/useWrappedCollateralPrice";
 import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
 import { useDefiLlamaSwap, getDefiLlamaSwapTx } from "@/hooks/useDefiLlamaSwap";
@@ -2366,19 +2367,19 @@ Select Deposit Token
 {(() => {
   // For total deposit, we need to calculate the USD value correctly
   // Both current deposit and new deposit are in wrapped collateral tokens (fxSAVE, wstETH)
-  // So we use wrapped token price (collateralPriceUSD) for both
-  const currentDepositUSD = userCurrentDeposit > 0n 
-    ? (Number(userCurrentDeposit) / 1e18) * collateralPriceUSD 
-    : 0;
-  // Always use actualCollateralDeposit for consistency
-  const depositAmt = actualCollateralDeposit;
-  // depositAmt is in wrapped collateral tokens, so use wrapped token price
-  const newDepositUSD = depositAmt > 0n 
-    ? (Number(depositAmt) / 1e18) * collateralPriceUSD 
-    : 0;
-  const totalUSD = currentDepositUSD + newDepositUSD;
-  
   const displaySymbol = wrappedCollateralSymbol || collateralSymbol;
+  const currentDepositUSD = amountToUSD(Number(userCurrentDeposit) / 1e18, displaySymbol, {
+    collateralPriceUSD: collateralPriceUSD || 0,
+    fxSAVEPrice: collateralPriceUSD || 1.08,
+    wstETHPrice: collateralPriceUSD || 0,
+  });
+  const depositAmt = actualCollateralDeposit;
+  const newDepositUSD = amountToUSD(Number(depositAmt) / 1e18, displaySymbol, {
+    collateralPriceUSD: collateralPriceUSD || 0,
+    fxSAVEPrice: collateralPriceUSD || 1.08,
+    wstETHPrice: collateralPriceUSD || 0,
+  });
+  const totalUSD = currentDepositUSD + newDepositUSD;
   const totalFmt = formatTokenAmount(newTotalDepositActual, displaySymbol);
   const totalUSDFormatted = totalUSD > 0 ? formatUSD(totalUSD) : null;
   

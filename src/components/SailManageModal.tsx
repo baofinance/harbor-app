@@ -31,6 +31,7 @@ import {
 import { useDefiLlamaSwap, getDefiLlamaSwapTx } from "@/hooks/useDefiLlamaSwap";
 import { useUserTokens, useTokenDecimals } from "@/hooks/useUserTokens";
 import { formatBalance } from "@/utils/formatters";
+import { amountToUSD } from "@/utils/tokenPriceToUSD";
 import { TokenSelectorDropdown } from "@/components/TokenSelectorDropdown";
 import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
 import { getLogoPath } from "@/lib/logos";
@@ -44,6 +45,10 @@ interface SailManageModalProps {
  onSuccess?: () => void;
  /** USD price of leveraged token (e.g. hsSTETH-EUR). Used for value-based output estimation when swap+dry-run yields wrong results. */
  leveragedTokenPriceUSD?: number;
+ /** Pre-loaded prices from parent (Sail page). Avoids $0.00 when modal mounts before CoinGecko responds. */
+ ethPrice?: number | null;
+ wstETHPrice?: number | null;
+ fxSAVEPrice?: number | null;
 }
 
 type ModalStep =
@@ -77,6 +82,9 @@ export const SailManageModal = ({
  initialTab ="mint",
  onSuccess,
  leveragedTokenPriceUSD,
+ ethPrice: ethPriceProp,
+ wstETHPrice: wstETHPriceProp,
+ fxSAVEPrice: fxSAVEPriceProp,
 }: SailManageModalProps) => {
   const { address, isConnected } = useAccount();
   const publicClient = usePublicClient();
@@ -248,10 +256,13 @@ const { maxRate: fxSAVERate } = useCollateralPrice(
   { enabled: useUSDCZap && !!priceOracleAddress }
 );
 
-// Get USD prices for overview display
-const { price: ethPrice } = useCoinGeckoPrice("ethereum", 120000);
-const { price: wstETHPrice } = useCoinGeckoPrice("wrapped-steth", 120000);
-const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
+// Get USD prices for overview display (use props from Sail page when available - they're pre-loaded)
+const { price: ethPriceFromHook } = useCoinGeckoPrice("ethereum", 120000);
+const { price: wstETHPriceFromHook } = useCoinGeckoPrice("wrapped-steth", 120000);
+const { price: fxSAVEPriceFromHook } = useCoinGeckoPrice("fx-usd-saving", 120000);
+const ethPrice = ethPriceProp ?? ethPriceFromHook ?? 0;
+const wstETHPrice = wstETHPriceProp ?? wstETHPriceFromHook ?? 0;
+const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
 
  // Token decimals (for parsing amounts, swap quoting, etc.)
  const tokenAddressForDecimals =
@@ -578,10 +589,10 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
  }, [mintFee, parsedAmount]);
 
  const expectedMintOutput = useMemo(() => {
- // Value-based fallback for needsSwap + useETHZap when swap/dry-run yields wrong results (e.g. ParaSwap returns 0 for fxSAVE→ETH)
- // ~1.1 fxSAVE ($1.18) ≈ 1 hsSTETH-EUR ($1.17) - roughly 1:1 in dollar terms
+ // Value-based estimation: inputValueUSD / leveragedTokenPriceUSD
+ // Used when dry run understates output (e.g. ~10% low for USDC zap) - 300 USDC should give ~$298 worth, not ~$275
  const valueBasedOutput = (() => {
-   if (!needsSwap || !useETHZap || !leveragedTokenPriceUSD || leveragedTokenPriceUSD <= 0 || !parsedAmount || parsedAmount === 0n)
+   if (!leveragedTokenPriceUSD || leveragedTokenPriceUSD <= 0 || !parsedAmount || parsedAmount === 0n)
      return undefined;
    let inputTokenPrice = 0;
    let inputDecimals = 18;
@@ -596,14 +607,15 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
      inputTokenPrice = 1;
      inputDecimals = selectedTokenDecimals ?? 18;
    } else if (userTokens.some((t) => t.symbol?.toUpperCase() === selectedDepositAsset?.toUpperCase())) {
-     // User token - assume ~$1 for stablecoins, use fxSAVE as proxy for fxSAVE-like
      const sym = selectedDepositAsset?.toUpperCase() || "";
      inputTokenPrice = sym === "USDC" || sym === "FXUSD" ? 1 : fxSAVEPrice || 1.076;
      inputDecimals = selectedTokenDecimals ?? 18;
    } else return undefined;
    const inputValueUSD = (Number(parsedAmount) / 10 ** inputDecimals) * inputTokenPrice;
    if (inputValueUSD <= 0) return undefined;
-   const outputTokens = inputValueUSD / leveragedTokenPriceUSD;
+   // Subtract ~1% for fees (mint fee, zap slippage) to avoid overstating
+   const adjustedInputUSD = inputValueUSD * 0.99;
+   const outputTokens = adjustedInputUSD / leveragedTokenPriceUSD;
    if (outputTokens <= 0 || !Number.isFinite(outputTokens)) return undefined;
    try {
      return parseEther(outputTokens.toFixed(18));
@@ -613,6 +625,9 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
  })();
 
  if (!parsedAmount || parsedAmount === 0n) return undefined;
+
+ // Prefer value-based when dry run understates: (1) swap-to-mint path, or (2) USDC zap returning >5% less than value-based
+ if (needsSwap && useETHZap && valueBasedOutput) return valueBasedOutput;
 
  if (mintDryRunResult && amountForDryRun && amountForDryRun > 0n) {
    const [
@@ -635,12 +650,11 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
    // Contract can return inflated leveragedMinted (e.g. collateral * rate instead of collateral / price).
    if (price > 0n && leveragedMinted > amountForDryRun) {
      const dryRunOutput = (amountForDryRun * 10n ** 18n) / price;
-     // If dry run output is suspiciously tiny and we have a value-based estimate, use value-based
      if (valueBasedOutput && dryRunOutput < valueBasedOutput / 10n) return valueBasedOutput;
      return dryRunOutput;
    }
-   // If dry run returns 0 or tiny and we have value-based, use value-based
-   if (valueBasedOutput && leveragedMinted < valueBasedOutput / 10n) return valueBasedOutput;
+   // When dry run understates by >5% vs value-based (e.g. USDC zap showing ~8% less), use value-based
+   if (valueBasedOutput && leveragedMinted < (valueBasedOutput * 95n) / 100n) return valueBasedOutput;
    return leveragedMinted;
  }
  return valueBasedOutput;
@@ -1977,14 +1991,12 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
              {(() => {
                if (!expectedMintOutput || expectedMintOutput === 0n || !parsedAmount || parsedAmount === 0n) return null;
                const leveragedAmount = Number(formatEther(expectedMintOutput));
-               // USD value of what you RECEIVE (leveraged tokens), not what you deposit
-               const col = collateralSymbol.toLowerCase();
-               let outputPriceUSD = 0;
-               if (col === "wsteth" || col === "steth") outputPriceUSD = wstETHPrice || 0;
-               else if (col === "fxsave") outputPriceUSD = fxSAVEPrice || 0;
-               else if (col === "eth") outputPriceUSD = ethPrice || 0;
-               else if (col === "usdc" || col === "fxusd") outputPriceUSD = 1.0;
-               const usdValue = outputPriceUSD > 0 ? leveragedAmount * outputPriceUSD : 0;
+               const usdValue = amountToUSD(leveragedAmount, leveragedTokenSymbol, {
+                 ethPrice: ethPrice ?? 0,
+                 wstETHPrice: wstETHPrice ?? 0,
+                 fxSAVEPrice: fxSAVEPrice ?? 1.08,
+                 leveragedPriceUSD: leveragedTokenPriceUSD ?? 0,
+               }, collateralSymbol);
                return usdValue > 0 ? (
                  <div className="text-xs text-[#1E4775]/50 font-mono">
                    ${usdValue.toLocaleString(undefined, {
@@ -2032,18 +2044,11 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
              {(() => {
                if (!expectedRedeemOutput || expectedRedeemOutput === 0n || !parsedAmount || parsedAmount === 0n) return null;
                const collateralAmount = Number(formatEther(expectedRedeemOutput));
-               const collateralSymbolLower = collateralSymbol.toLowerCase();
-               let priceUSD = 0;
-               if (collateralSymbolLower === "wsteth" || collateralSymbolLower === "steth") {
-                 priceUSD = wstETHPrice || 0;
-               } else if (collateralSymbolLower === "fxsave") {
-                 priceUSD = fxSAVEPrice || 0;
-               } else if (collateralSymbolLower === "eth") {
-                 priceUSD = ethPrice || 0;
-               } else if (collateralSymbolLower === "usdc" || collateralSymbolLower === "fxusd") {
-                 priceUSD = 1.0;
-               }
-               const usdValue = priceUSD > 0 ? collateralAmount * priceUSD : 0;
+               const usdValue = amountToUSD(collateralAmount, collateralSymbol, {
+                 ethPrice: ethPrice ?? 0,
+                 wstETHPrice: wstETHPrice ?? 0,
+                 fxSAVEPrice: fxSAVEPrice ?? 1.08,
+               });
                return usdValue > 0 ? (
                  <div className="text-xs text-[#1E4775]/50 font-mono">
                    ${usdValue.toLocaleString(undefined, {
