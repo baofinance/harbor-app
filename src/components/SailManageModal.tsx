@@ -464,8 +464,9 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
 
  // For ETH zaps, convert ETH → wstETH for dry run
  // Contract flow: ETH → stETH (1:1) → wstETH (via wstETH.wrap())
- const wstETHAddress = useETHZap && isNativeETH && !needsSwap
-   ? (market.addresses?.wrappedCollateralToken as `0x${string}` | undefined)
+ // Need wstETH address for both: native ETH direct mint, and swap-to-ETH (needsSwap) to convert swap output for dry run
+ const wstETHAddress = useETHZap && (isNativeETH && !needsSwap || needsSwap)
+   ? (market.addresses?.collateralToken as `0x${string}` | undefined) // wstETH for wstETH markets
    : undefined;
  
  const { data: wstETHAmountForDryRun } = useContractRead({
@@ -574,7 +575,7 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
  }, [mintFee, parsedAmount]);
 
  const expectedMintOutput = useMemo(() => {
- if (!mintDryRunResult || !parsedAmount || parsedAmount === 0n)
+ if (!mintDryRunResult || !parsedAmount || parsedAmount === 0n || !amountForDryRun || amountForDryRun === 0n)
  return undefined;
  const [
  incentiveRatio,
@@ -593,13 +594,13 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
  bigint,
  bigint
  ];
- // For direct fxSAVE mint, the contract can return an inflated leveragedMinted (collateral * rate
- // instead of collateral / price). Derive correct output: leveragedMinted = collateral / (price per token).
- if (isFxSAVE && !useUSDCZap && !needsSwap && price > 0n && leveragedMinted > parsedAmount) {
-   return (parsedAmount * 10n ** 18n) / price;
+ // Contract can return inflated leveragedMinted (e.g. collateral * rate instead of collateral / price).
+ // When output is inflated vs collateral in, derive correct output: leveragedMinted = collateralIn / (price per token).
+ if (price > 0n && leveragedMinted > amountForDryRun) {
+   return (amountForDryRun * 10n ** 18n) / price;
  }
  return leveragedMinted;
- }, [mintDryRunResult, parsedAmount, isFxSAVE, useUSDCZap, needsSwap]);
+ }, [mintDryRunResult, parsedAmount, amountForDryRun]);
 
  const redeemFee = useMemo(() => {
  if (!redeemDryRunResult || !parsedAmount || parsedAmount === 0n) return 0n;
@@ -687,12 +688,11 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
  balance = nativeEthBalance?.value || 0n;
  } else {
  // Handle both direct bigint and { result: bigint } formats for ERC20 tokens
- if (depositAssetBalanceData) {
- if (
- typeof depositAssetBalanceData ==="object" &&
-"result" in depositAssetBalanceData
- ) {
- balance = (depositAssetBalanceData.result as bigint) || 0n;
+ if (depositAssetBalanceData !== undefined && depositAssetBalanceData !== null) {
+ if (typeof depositAssetBalanceData === "bigint") {
+ balance = depositAssetBalanceData;
+ } else if (typeof depositAssetBalanceData === "object" && "result" in depositAssetBalanceData) {
+ balance = ((depositAssetBalanceData as { result: bigint }).result) || 0n;
  } else {
  balance = depositAssetBalanceData as bigint;
  }
@@ -705,12 +705,11 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
  } else {
  // Handle both direct bigint and { result: bigint } formats
  let balance = 0n;
- if (leveragedTokenBalance) {
- if (
- typeof leveragedTokenBalance ==="object" &&
-"result" in leveragedTokenBalance
- ) {
- balance = (leveragedTokenBalance.result as bigint) || 0n;
+ if (leveragedTokenBalance !== undefined && leveragedTokenBalance !== null) {
+ if (typeof leveragedTokenBalance === "bigint") {
+ balance = leveragedTokenBalance;
+ } else if (typeof leveragedTokenBalance === "object" && "result" in leveragedTokenBalance) {
+ balance = ((leveragedTokenBalance as { result: bigint }).result) || 0n;
  } else {
  balance = leveragedTokenBalance as bigint;
  }
@@ -1006,7 +1005,7 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
        : 0n;
    }
 
-   let mintHash: `0x${string}`;
+   let mintHash!: `0x${string}`;
 
    // FXUSD must always use zap - if zapAddress is missing, throw error
    if (isFxUSD && isFxUSDMarket && !zapAddress) {
@@ -1045,9 +1044,9 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
           : { usePermit: false };
         if (permitEnabled && permitResult?.usePermit)
           updateProgressStep("signPermit", { status: "completed" });
-        let usePermit = permitResult?.usePermit && !!permitResult.permitSig && !!permitResult.deadline;
+        let usePermit = permitResult != null && permitResult.usePermit && !!permitResult.permitSig && !!permitResult.deadline;
         
-        if (usePermit && permitResult.permitSig && permitResult.deadline) {
+        if (usePermit && permitResult && permitResult.permitSig && permitResult.deadline) {
           // Use permit function - zapStEthToLeveragedWithPermit
           try {
             mintHash = await writeContractAsync({
@@ -1141,7 +1140,7 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
         : { usePermit: false };
       if (permitEnabled && permitResult?.usePermit)
         updateProgressStep("signPermit", { status: "completed" });
-      let usePermit = permitResult?.usePermit && !!permitResult.permitSig && !!permitResult?.deadline;
+      let usePermit = permitResult != null && permitResult.usePermit && !!permitResult.permitSig && !!permitResult.deadline;
       
       // Calculate minFxSaveOut: use wrappedRate like Anchor (expectedFxSave = amount/rate), not % of input.
       // Using % of input caused SlippageExceeded for fxUSD (e.g. 5 fxUSD → ~4.65 fxSAVE, we required 4.8).
@@ -1156,7 +1155,7 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
         minFxSaveOut = (amountForMint * BigInt(100 - (isActuallyFxUSD ? 15 : minFxSaveSlipPct)) * 100n) / 10000n;
       }
       
-      if (usePermit && permitResult.permitSig && permitResult.deadline) {
+      if (usePermit && permitResult && permitResult.permitSig && permitResult.deadline) {
         // Use permit functions - requires minFxSaveOut parameter; use exact signed deadline.
         const permitDeadline = permitResult.deadline;
         try {
@@ -1324,7 +1323,7 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
      (e) => e instanceof ContractFunctionRevertedError
    );
    if (revertError instanceof ContractFunctionRevertedError) {
-     errorMessage = revertError.reason || revertError.data?.message || "Transaction failed";
+     errorMessage = revertError.reason || revertError.data?.errorName || "Transaction failed";
    } else {
      const msg = err.message || err.shortMessage || "Transaction failed";
      errorMessage = msg.replace(/^[^:]+:\s*/i, "").replace(/\s*\([^)]+\)$/, "") || "Transaction failed";
@@ -1490,26 +1489,28 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
  return nativeEthBalance?.value || 0n;
  }
  // Handle both direct bigint and { result: bigint } formats for ERC20 tokens
- if (depositAssetBalanceData) {
- if (
- typeof depositAssetBalanceData ==="object" &&
-"result" in depositAssetBalanceData
- ) {
- return (depositAssetBalanceData.result as bigint) || 0n;
+ if (depositAssetBalanceData !== undefined && depositAssetBalanceData !== null) {
+ if (typeof depositAssetBalanceData === "bigint") {
+ return depositAssetBalanceData;
+ }
+ if (typeof depositAssetBalanceData === "object" && "result" in depositAssetBalanceData) {
+ return ((depositAssetBalanceData as { result: bigint }).result) || 0n;
  }
  return depositAssetBalanceData as bigint;
  }
  return 0n;
  } else {
  // Handle both direct bigint and { result: bigint } formats
- if (
- leveragedTokenBalance &&
- typeof leveragedTokenBalance ==="object" &&
-"result" in leveragedTokenBalance
- ) {
- return (leveragedTokenBalance.result as bigint) || 0n;
+ if (leveragedTokenBalance !== undefined && leveragedTokenBalance !== null) {
+ if (typeof leveragedTokenBalance === "bigint") {
+ return leveragedTokenBalance;
  }
- return (leveragedTokenBalance as bigint) || 0n;
+ if (typeof leveragedTokenBalance === "object" && "result" in leveragedTokenBalance) {
+ return ((leveragedTokenBalance as { result: bigint }).result) || 0n;
+ }
+ return leveragedTokenBalance as bigint;
+ }
+ return 0n;
  }
  }, [
  activeTab,
@@ -2069,19 +2070,19 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
  )}
  <button
  onClick={activeTab ==="mint" ? handleMint : handleRedeem}
- disabled={
- step ==="error"
-   ? false
-   : !isConnected ||
-     !amount ||
-     parseFloat(amount) <= 0 ||
-     (activeTab ==="mint" &&
-       parsedAmount &&
-       parsedAmount > currentBalance) ||
-     (activeTab ==="redeem" &&
-       parsedAmount &&
-       parsedAmount > currentBalance)
- }
+ disabled={Boolean(
+   step ==="error"
+     ? false
+     : !isConnected ||
+       !amount ||
+       parseFloat(amount) <= 0 ||
+       (activeTab ==="mint" &&
+         parsedAmount &&
+         parsedAmount > currentBalance) ||
+       (activeTab ==="redeem" &&
+         parsedAmount &&
+         parsedAmount > currentBalance)
+ )}
  className="flex-1 py-3 px-4 bg-[#FF8A7A] text-white font-semibold hover:bg-[#FF6B5A] transition-colors disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
  >
  {step ==="error" ? "Try Again" : activeTab ==="mint" ? "Mint" : "Redeem"}
