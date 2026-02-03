@@ -2507,6 +2507,9 @@ export default function SailPage() {
               setSelectedMarketId(null);
               setSelectedMarket(null);
             }}
+            leveragedTokenPriceUSD={
+              tokenPricesByMarket[selectedMarketId]?.leveragedPriceUSD
+            }
           />
         )}
       </div>

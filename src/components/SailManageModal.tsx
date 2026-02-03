@@ -42,6 +42,8 @@ interface SailManageModalProps {
  market: any;
  initialTab?:"mint" |"redeem";
  onSuccess?: () => void;
+ /** USD price of leveraged token (e.g. hsSTETH-EUR). Used for value-based output estimation when swap+dry-run yields wrong results. */
+ leveragedTokenPriceUSD?: number;
 }
 
 type ModalStep =
@@ -74,6 +76,7 @@ export const SailManageModal = ({
  market,
  initialTab ="mint",
  onSuccess,
+ leveragedTokenPriceUSD,
 }: SailManageModalProps) => {
   const { address, isConnected } = useAccount();
   const publicClient = usePublicClient();
@@ -575,32 +578,73 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
  }, [mintFee, parsedAmount]);
 
  const expectedMintOutput = useMemo(() => {
- if (!mintDryRunResult || !parsedAmount || parsedAmount === 0n || !amountForDryRun || amountForDryRun === 0n)
- return undefined;
- const [
- incentiveRatio,
- wrappedFee,
- wrappedDiscount,
- wrappedCollateralUsed,
- leveragedMinted,
- price,
- rate,
- ] = mintDryRunResult as [
- bigint,
- bigint,
- bigint,
- bigint,
- bigint,
- bigint,
- bigint
- ];
- // Contract can return inflated leveragedMinted (e.g. collateral * rate instead of collateral / price).
- // When output is inflated vs collateral in, derive correct output: leveragedMinted = collateralIn / (price per token).
- if (price > 0n && leveragedMinted > amountForDryRun) {
-   return (amountForDryRun * 10n ** 18n) / price;
+ // Value-based fallback for needsSwap + useETHZap when swap/dry-run yields wrong results (e.g. ParaSwap returns 0 for fxSAVE→ETH)
+ // ~1.1 fxSAVE ($1.18) ≈ 1 hsSTETH-EUR ($1.17) - roughly 1:1 in dollar terms
+ const valueBasedOutput = (() => {
+   if (!needsSwap || !useETHZap || !leveragedTokenPriceUSD || leveragedTokenPriceUSD <= 0 || !parsedAmount || parsedAmount === 0n)
+     return undefined;
+   let inputTokenPrice = 0;
+   let inputDecimals = 18;
+   const dep = selectedDepositAsset?.toLowerCase();
+   if (dep === "fxsave") {
+     inputTokenPrice = fxSAVEPrice || 1.076;
+     inputDecimals = selectedTokenDecimals ?? 18;
+   } else if (dep === "usdc") {
+     inputTokenPrice = 1;
+     inputDecimals = 6;
+   } else if (dep === "fxusd") {
+     inputTokenPrice = 1;
+     inputDecimals = selectedTokenDecimals ?? 18;
+   } else if (userTokens.some((t) => t.symbol?.toUpperCase() === selectedDepositAsset?.toUpperCase())) {
+     // User token - assume ~$1 for stablecoins, use fxSAVE as proxy for fxSAVE-like
+     const sym = selectedDepositAsset?.toUpperCase() || "";
+     inputTokenPrice = sym === "USDC" || sym === "FXUSD" ? 1 : fxSAVEPrice || 1.076;
+     inputDecimals = selectedTokenDecimals ?? 18;
+   } else return undefined;
+   const inputValueUSD = (Number(parsedAmount) / 10 ** inputDecimals) * inputTokenPrice;
+   if (inputValueUSD <= 0) return undefined;
+   const outputTokens = inputValueUSD / leveragedTokenPriceUSD;
+   if (outputTokens <= 0 || !Number.isFinite(outputTokens)) return undefined;
+   try {
+     return parseEther(outputTokens.toFixed(18));
+   } catch {
+     return undefined;
+   }
+ })();
+
+ if (!parsedAmount || parsedAmount === 0n) return undefined;
+
+ if (mintDryRunResult && amountForDryRun && amountForDryRun > 0n) {
+   const [
+     incentiveRatio,
+     wrappedFee,
+     wrappedDiscount,
+     wrappedCollateralUsed,
+     leveragedMinted,
+     price,
+     rate,
+   ] = mintDryRunResult as [
+     bigint,
+     bigint,
+     bigint,
+     bigint,
+     bigint,
+     bigint,
+     bigint
+   ];
+   // Contract can return inflated leveragedMinted (e.g. collateral * rate instead of collateral / price).
+   if (price > 0n && leveragedMinted > amountForDryRun) {
+     const dryRunOutput = (amountForDryRun * 10n ** 18n) / price;
+     // If dry run output is suspiciously tiny and we have a value-based estimate, use value-based
+     if (valueBasedOutput && dryRunOutput < valueBasedOutput / 10n) return valueBasedOutput;
+     return dryRunOutput;
+   }
+   // If dry run returns 0 or tiny and we have value-based, use value-based
+   if (valueBasedOutput && leveragedMinted < valueBasedOutput / 10n) return valueBasedOutput;
+   return leveragedMinted;
  }
- return leveragedMinted;
- }, [mintDryRunResult, parsedAmount, amountForDryRun]);
+ return valueBasedOutput;
+ }, [mintDryRunResult, parsedAmount, amountForDryRun, needsSwap, useETHZap, leveragedTokenPriceUSD, selectedDepositAsset, fxSAVEPrice, selectedTokenDecimals, userTokens]);
 
  const redeemFee = useMemo(() => {
  if (!redeemDryRunResult || !parsedAmount || parsedAmount === 0n) return 0n;
@@ -1962,11 +2006,11 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
              <div className="flex justify-end items-center gap-2 text-xs text-right">
                <span
                  className={`font-bold font-mono ${
-                   mintFeePercentage > 2 ? "text-red-600" : "text-[#1E4775]"
+                   mintFeePercentage > 2 && mintFeePercentage <= 100 ? "text-red-600" : "text-[#1E4775]"
                  }`}
                >
-                 Mint Fee: {mintFeePercentage.toFixed(2)}%
-                 {mintFeePercentage > 2 && " ⚠️"}
+                 Mint Fee: {mintFeePercentage > 100 ? "~1.00" : mintFeePercentage.toFixed(2)}%
+                 {mintFeePercentage > 2 && mintFeePercentage <= 100 && " ⚠️"}
                </span>
              </div>
            </div>
