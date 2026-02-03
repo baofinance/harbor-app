@@ -5716,25 +5716,26 @@ export const AnchorDepositWithdrawModal = ({
           
           const isActuallyETH = anyTokenDeposit.useETHZap && (anyTokenDeposit.isNativeETH || swappedTokenIsETH);
           const isActuallyStETH = anyTokenDeposit.useETHZap && !(anyTokenDeposit.isNativeETH || swappedTokenIsETH) && !anyTokenDeposit.needsSwap;
-          const isUsdcOrFxUsd =
+          const isUsdcOrFxUsdOrFxSave =
             selectedDepositAsset?.toLowerCase() === "usdc" ||
-            selectedDepositAsset?.toLowerCase() === "fxusd";
+            selectedDepositAsset?.toLowerCase() === "fxusd" ||
+            selectedDepositAsset?.toLowerCase() === "fxsave";
           const permitEligible =
             permitEnabled &&
             ((mintOnly &&
               ((anyTokenDeposit.useETHZap &&
                 !anyTokenDeposit.needsSwap &&
                 !anyTokenDeposit.isNativeETH) ||
-                (anyTokenDeposit.useUSDCZap && isUsdcOrFxUsd))) ||
+                (anyTokenDeposit.useUSDCZap && isUsdcOrFxUsdOrFxSave))) ||
               (!mintOnly &&
                 shouldDepositToPool &&
                 ((anyTokenDeposit.useETHZap && isActuallyStETH) ||
-                  (anyTokenDeposit.useUSDCZap && isUsdcOrFxUsd))));
+                  (anyTokenDeposit.useUSDCZap && isUsdcOrFxUsdOrFxSave))));
           const useZapToPoolWithPermit =
             permitEligible &&
             shouldDepositToPool &&
             anyTokenDeposit.useUSDCZap &&
-            isUsdcOrFxUsd &&
+            isUsdcOrFxUsdOrFxSave &&
             !!stabilityPoolAddress;
           const useZapEthToPool =
             isActuallyETH && shouldDepositToPool && !!stabilityPoolAddress;
@@ -6635,7 +6636,7 @@ export const AnchorDepositWithdrawModal = ({
           permitEligible &&
           shouldDepositToPool &&
           useZap &&
-          (isFxUSD || isUSDC) &&
+          (isFxUSD || isUSDC || isFxSAVE) &&
           !!stabilityPoolAddress;
         const useZapStEthToPool =
           useETHZap &&
@@ -12761,57 +12762,41 @@ export const AnchorDepositWithdrawModal = ({
                     </div>
                   )}
 
-                {/* Simple Mode Withdraw Button */}
+                {/* Simple Mode Withdraw Button - no Cancel on input (use X); Proceed full width */}
                 {activeTab === "withdraw" &&
                   simpleMode &&
                   step !== "success" && (
                     <div className="flex gap-3 pt-4 border-t border-[#1E4775]/20">
                       {isProcessing ? (
-                        <>
-                          <button
-                            onClick={handleCancel}
-                            className="flex-1 py-2 px-4 bg-white text-[#1E4775] border-2 border-[#1E4775]/30 font-semibold hover:bg-[#1E4775]/5 transition-colors"
-                          >
-                            Cancel
-                          </button>
-                          <button
-                            disabled
-                            className="flex-1 py-2 px-4 bg-[#FF8A7A]/50 text-white font-semibold cursor-not-allowed"
-                          >
-                            Processing...
-                          </button>
-                        </>
+                        <button
+                          disabled
+                          className="w-full py-2 px-4 bg-[#FF8A7A]/50 text-white font-semibold cursor-not-allowed"
+                        >
+                          Processing...
+                        </button>
                       ) : step === "error" ? (
-                        <>
-                          <button
-                            onClick={handleCancel}
-                            className="flex-1 py-2 px-4 bg-white text-[#1E4775] border-2 border-[#1E4775]/30 font-semibold hover:bg-[#1E4775]/5 transition-colors"
-                          >
-                            Cancel
-                          </button>
-                          <button
-                            onClick={handleAction}
-                            className="flex-1 py-2 px-4 bg-[#FF8A7A] text-white font-semibold hover:bg-[#FF6B5A] transition-colors"
-                          >
-                            Try Again
-                          </button>
-                        </>
+                        <button
+                          onClick={handleAction}
+                          className="w-full py-2 px-4 bg-[#FF8A7A] text-white font-semibold hover:bg-[#FF6B5A] transition-colors"
+                        >
+                          Try Again
+                        </button>
                       ) : (
                         <>
-                          <button
-                            onClick={
-                              step === "input"
-                                ? handleCancel
-                                : handleBackToWithdrawInput
-                            }
-                            className="flex-1 py-2 px-4 bg-white text-[#1E4775] border-2 border-[#1E4775]/30 font-semibold hover:bg-[#1E4775]/5 transition-colors"
-                          >
-                            {step === "input" ? "Cancel" : "Back"}
-                          </button>
+                          {step !== "input" && (
+                            <button
+                              onClick={handleBackToWithdrawInput}
+                              className="shrink-0 py-2 px-4 bg-white text-[#1E4775] border-2 border-[#1E4775]/30 font-semibold hover:bg-[#1E4775]/5 transition-colors"
+                            >
+                              Back
+                            </button>
+                          )}
                           <button
                             onClick={handleAction}
                             disabled={isButtonDisabled()}
-                            className="flex-1 py-3 px-4 bg-[#FF8A7A] text-white font-semibold hover:bg-[#FF6B5A] transition-colors disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
+                            className={`py-3 px-4 bg-[#FF8A7A] text-white font-semibold hover:bg-[#FF6B5A] transition-colors disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed ${
+                              step === "input" ? "w-full" : "flex-1"
+                            }`}
                           >
                             {getButtonText()}
                           </button>

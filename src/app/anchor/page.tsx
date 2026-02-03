@@ -89,9 +89,8 @@ import { useMarketPositions } from "@/hooks/useMarketPositions";
 import { useMultipleTokenPrices } from "@/hooks/useTokenPrices";
 import { useFxSAVEAPR } from "@/hooks/useFxSAVEAPR";
 import { useWstETHAPR } from "@/hooks/useWstETHAPR";
-import { useCoinGeckoPrices, useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
+import { useCoinGeckoPrices } from "@/hooks/useCoinGeckoPrice";
 import { useContractReads as useWagmiContractReads } from "wagmi";
-import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
 import {
   formatRatio,
   formatAPR,
@@ -8531,11 +8530,16 @@ export default function AnchorPage() {
             bestPoolType={manageModal.bestPoolType || "collateral"}
             allMarkets={manageModal.allMarkets}
             initialDepositAsset={manageModal.initialDepositAsset}
+            positionsMap={marketPositions}
             onSuccess={async () => {
               // Wait for blockchain state to update
               await new Promise((resolve) => setTimeout(resolve, 2000));
               // Refetch all contract data
-              await Promise.all([refetchReads(), refetchUserDeposits()]);
+              await Promise.all([
+                refetchReads(),
+                refetchUserDeposits(),
+                refetchPositions(),
+              ]);
             }}
           />
         )}
