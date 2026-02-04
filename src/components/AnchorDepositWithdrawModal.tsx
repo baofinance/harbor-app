@@ -1007,6 +1007,7 @@ export const AnchorDepositWithdrawModal = ({
   // Get BTC and ETH prices for fee conversion in BTC markets
   const { price: btcPrice } = useCoinGeckoPrice("bitcoin", 120000);
   const { price: ethPrice } = useCoinGeckoPrice("ethereum", 120000);
+  const { price: eurPrice } = useCoinGeckoPrice("stasis-euro", 120000);
   // Reward token USD prices (used for APR fallback in stability pool selector)
   const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
   const { price: wstETHPrice } = useCoinGeckoPrice("wrapped-steth", 120000);
@@ -2471,6 +2472,8 @@ export const AnchorDepositWithdrawModal = ({
     pegTargetForPrice === "btc" || pegTargetForPrice === "bitcoin";
   const needsEthUsdFeed =
     pegTargetForPrice === "eth" || pegTargetForPrice === "ethereum";
+  const needsEurUsdFeed =
+    pegTargetForPrice === "eur" || pegTargetForPrice === "euro";
 
   const chainlinkPegTargetContracts = useMemo(() => {
     const contracts: any[] = [];
@@ -2502,8 +2505,22 @@ export const AnchorDepositWithdrawModal = ({
         }
       );
     }
+    if (needsEurUsdFeed) {
+      contracts.push(
+        {
+          address: CHAINLINK_FEEDS.EUR_USD,
+          abi: CHAINLINK_AGGREGATOR_ABI,
+          functionName: "decimals",
+        },
+        {
+          address: CHAINLINK_FEEDS.EUR_USD,
+          abi: CHAINLINK_AGGREGATOR_ABI,
+          functionName: "latestRoundData",
+        }
+      );
+    }
     return contracts;
-  }, [needsBtcUsdFeed, needsEthUsdFeed]);
+  }, [needsBtcUsdFeed, needsEthUsdFeed, needsEurUsdFeed]);
 
   const { data: chainlinkPegTargetData } = useContractReads({
     contracts: chainlinkPegTargetContracts,
@@ -2511,16 +2528,17 @@ export const AnchorDepositWithdrawModal = ({
       enabled:
         chainlinkPegTargetContracts.length > 0 &&
         isOpen &&
-        activeTab === "deposit",
+        (activeTab === "deposit" || activeTab === "withdraw"),
       retry: 1,
       allowFailure: true,
     },
   });
 
-  const { btcUsdWei, ethUsdWei } = useMemo(() => {
+  const { btcUsdWei, ethUsdWei, eurUsdWei } = useMemo(() => {
     let idx = 0;
     let btc = 0n;
     let eth = 0n;
+    let eur = 0n;
 
     const readPrice = () => {
       const decRaw = chainlinkPegTargetData?.[idx]?.result as
@@ -2544,9 +2562,10 @@ export const AnchorDepositWithdrawModal = ({
 
     if (needsBtcUsdFeed) btc = readPrice();
     if (needsEthUsdFeed) eth = readPrice();
+    if (needsEurUsdFeed) eur = readPrice();
 
-    return { btcUsdWei: btc, ethUsdWei: eth };
-  }, [chainlinkPegTargetData, needsBtcUsdFeed, needsEthUsdFeed]);
+    return { btcUsdWei: btc, ethUsdWei: eth, eurUsdWei: eur };
+  }, [chainlinkPegTargetData, needsBtcUsdFeed, needsEthUsdFeed, needsEurUsdFeed]);
 
   const pegTargetUsdWei = useMemo(() => {
     if (pegTargetForPrice === "btc" || pegTargetForPrice === "bitcoin") {
@@ -2563,9 +2582,16 @@ export const AnchorDepositWithdrawModal = ({
           ? ethUsdWei
           : 0n;
     }
+    if (pegTargetForPrice === "eur" || pegTargetForPrice === "euro") {
+      return eurUsdWei > 0n
+        ? eurUsdWei
+        : eurPrice
+          ? parseUnits(eurPrice.toFixed(6), 18)
+          : 0n;
+    }
     // USD-pegged
     return 10n ** 18n;
-  }, [pegTargetForPrice, btcPrice, ethPrice, btcUsdWei, ethUsdWei]);
+  }, [pegTargetForPrice, btcPrice, ethPrice, eurPrice, btcUsdWei, ethUsdWei, eurUsdWei]);
 
   const isValidMinterAddressForPrice =
     minterAddressForPrice &&
@@ -9940,13 +9966,12 @@ export const AnchorDepositWithdrawModal = ({
                                   <div className="text-right">
                                     {(() => {
                                       const outputAmount = Number(formatEther(expectedMintOutput));
-                                      const peggedPriceUSD = peggedTokenPrice && peggedTokenPrice > 0n
-                                        ? Number(peggedTokenPrice) / 1e18
-                                        : 0;
-                                      const usdValue = amountToUSD(outputAmount, peggedTokenSymbol, {
-                                        ethPrice: ethPrice ?? 0,
-                                        peggedPriceUSD,
-                                      });
+                                      const usdValue =
+                                        expectedDepositUSD > 0
+                                          ? expectedDepositUSD
+                                          : peggedTokenPriceUsdWei > 0n
+                                            ? outputAmount * Number(formatUnits(peggedTokenPriceUsdWei, 18))
+                                            : 0;
                                       return (
                                         <>
                                           <div className="text-lg font-bold text-[#1E4775] font-mono">
@@ -10423,8 +10448,8 @@ export const AnchorDepositWithdrawModal = ({
                             } else if (assetLower === "usdc" || assetLower === "fxusd") {
                               depositTokenPriceUSD = 1.0;
                             } else if (assetLower.includes("ha")) {
-                              depositTokenPriceUSD = peggedTokenPrice && peggedTokenPrice > 0n
-                                ? Number(peggedTokenPrice) / 1e18
+                              depositTokenPriceUSD = peggedTokenPriceUsdWei > 0n
+                                ? Number(formatUnits(peggedTokenPriceUsdWei, 18))
                                 : 0;
                             }
                           } else {
@@ -10446,10 +10471,12 @@ export const AnchorDepositWithdrawModal = ({
                             const peggedTokenAmount = expectedMintOutput && expectedMintOutput > 0n
                               ? Number(formatEther(expectedMintOutput))
                               : 0;
-                            const peggedPriceUSD = peggedTokenPrice && peggedTokenPrice > 0n
-                              ? Number(peggedTokenPrice) / 1e18
-                              : 0;
-                            const peggedUSDValue = peggedTokenAmount * peggedPriceUSD;
+                            const peggedUSDValue =
+                              expectedDepositUSD > 0
+                                ? expectedDepositUSD
+                                : peggedTokenPriceUsdWei > 0n
+                                  ? peggedTokenAmount * Number(formatUnits(peggedTokenPriceUsdWei, 18))
+                                  : 0;
                             
                             // Calculate fee in deposit token
                             const depositAmount = amount && parseFloat(amount) > 0 ? parseFloat(amount) : 0;
@@ -10754,14 +10781,12 @@ export const AnchorDepositWithdrawModal = ({
                               {(() => {
                                 if (!expectedMintOutput || expectedMintOutput === 0n) return null;
                                 const peggedTokenAmount = Number(formatEther(expectedMintOutput));
-                                const peggedPriceUSD = peggedTokenPrice && peggedTokenPrice > 0n
-                                  ? Number(peggedTokenPrice) / 1e18
-                                  : (expectedDepositUSD > 0 && amount && parseFloat(amount) > 0)
-                                  ? expectedDepositUSD / parseFloat(amount)
-                                  : 0;
-                                const usdValue = peggedPriceUSD > 0
-                                  ? peggedTokenAmount * peggedPriceUSD
-                                  : 0;
+                                const usdValue =
+                                  expectedDepositUSD > 0
+                                    ? expectedDepositUSD
+                                    : peggedTokenPriceUsdWei > 0n
+                                      ? peggedTokenAmount * Number(formatUnits(peggedTokenPriceUsdWei, 18))
+                                      : 0;
                                 return usdValue > 0 ? (
                                   <div className="text-xs text-[#1E4775]/50 font-mono">
                                     ${usdValue.toLocaleString(undefined, {
@@ -11943,8 +11968,8 @@ export const AnchorDepositWithdrawModal = ({
                                   const currentDepositPegged = entry.poolType === "collateral" 
                                     ? collateralPoolBalance 
                                     : sailPoolBalance;
-                                  const peggedPriceUSD = peggedTokenPrice && peggedTokenPrice > 0n
-                                    ? Number(peggedTokenPrice) / 1e18
+                                  const peggedPriceUSD = peggedTokenPriceUsdWei > 0n
+                                    ? Number(formatUnits(peggedTokenPriceUsdWei, 18))
                                     : 0;
                                   const currentDepositUSD = currentDepositPegged > 0n && peggedPriceUSD > 0
                                     ? (Number(currentDepositPegged) / 1e18) * peggedPriceUSD
@@ -11966,8 +11991,8 @@ export const AnchorDepositWithdrawModal = ({
                                 {/* - Withdraw Amount */}
                                 {(() => {
                                   const withdrawAmountPegged = redeemInputAmount || 0n;
-                                  const peggedPriceUSD = peggedTokenPrice && peggedTokenPrice > 0n
-                                    ? Number(peggedTokenPrice) / 1e18
+                                  const peggedPriceUSD = peggedTokenPriceUsdWei > 0n
+                                    ? Number(formatUnits(peggedTokenPriceUsdWei, 18))
                                     : 0;
                                   const withdrawAmountUSD = withdrawAmountPegged > 0n && peggedPriceUSD > 0
                                     ? (Number(withdrawAmountPegged) / 1e18) * peggedPriceUSD
@@ -12035,8 +12060,8 @@ export const AnchorDepositWithdrawModal = ({
                                     const remainingDeposit = currentDepositPegged > withdrawAmountPegged
                                       ? currentDepositPegged - withdrawAmountPegged
                                       : 0n;
-                                    const peggedPriceUSD = peggedTokenPrice && peggedTokenPrice > 0n
-                                      ? Number(peggedTokenPrice) / 1e18
+                                    const peggedPriceUSD = peggedTokenPriceUsdWei > 0n
+                                      ? Number(formatUnits(peggedTokenPriceUsdWei, 18))
                                       : 0;
                                     const remainingDepositUSD = remainingDeposit > 0n && peggedPriceUSD > 0
                                       ? (Number(remainingDeposit) / 1e18) * peggedPriceUSD
@@ -12083,8 +12108,8 @@ export const AnchorDepositWithdrawModal = ({
                                   
                                   // Calculate 1% withdraw fee when redemption is not active and window is not active
                                   const withdrawAmountPegged = redeemInputAmount || 0n;
-                                  const peggedPriceUSD = peggedTokenPrice && peggedTokenPrice > 0n
-                                    ? Number(peggedTokenPrice) / 1e18
+                                  const peggedPriceUSD = peggedTokenPriceUsdWei > 0n
+                                    ? Number(formatUnits(peggedTokenPriceUsdWei, 18))
                                     : 0;
                                   const withdrawFeeAmount = withdrawOnly && !isImmediateWithdrawal && withdrawAmountPegged > 0n
                                     ? (Number(withdrawAmountPegged) / 1e18) * 0.01
@@ -12254,8 +12279,8 @@ export const AnchorDepositWithdrawModal = ({
                                     if (outputSymbol.toLowerCase().includes("haeth")) {
                                       usdValue = outputAmount * (ethPrice || 0);
                                     } else {
-                                      const peggedPriceUSD = peggedTokenPrice && peggedTokenPrice > 0n
-                                        ? Number(peggedTokenPrice) / 1e18
+                                      const peggedPriceUSD = peggedTokenPriceUsdWei > 0n
+                                        ? Number(formatUnits(peggedTokenPriceUsdWei, 18))
                                         : 0;
                                       usdValue = outputAmount * peggedPriceUSD;
                                     }
@@ -12351,9 +12376,9 @@ export const AnchorDepositWithdrawModal = ({
                                 // Calculate USD value
                                 let usdValue = 0;
                                 if (activeTab === "deposit") {
-                                  // For deposit, use pegged token price
-                                  const peggedPriceUSD = peggedTokenPrice && peggedTokenPrice > 0n
-                                    ? Number(peggedTokenPrice) / 1e18
+                                  // For deposit, use pegged token price in USD
+                                  const peggedPriceUSD = peggedTokenPriceUsdWei > 0n
+                                    ? Number(formatUnits(peggedTokenPriceUsdWei, 18))
                                     : 0;
                                   usdValue = outputAmount * peggedPriceUSD;
                                 } else {
@@ -12424,9 +12449,9 @@ export const AnchorDepositWithdrawModal = ({
                                   } else if (assetLower === "usdc" || assetLower === "fxusd") {
                                     depositTokenPriceUSD = 1.0;
                                   } else if (assetLower.includes("ha")) {
-                                    // For ha tokens, use pegged token price
-                                    depositTokenPriceUSD = peggedTokenPrice && peggedTokenPrice > 0n
-                                      ? Number(peggedTokenPrice) / 1e18
+                                    // For ha tokens, use pegged token price in USD
+                                    depositTokenPriceUSD = peggedTokenPriceUsdWei > 0n
+                                      ? Number(formatUnits(peggedTokenPriceUsdWei, 18))
                                       : 0;
                                   }
                                 }
@@ -12629,8 +12654,8 @@ export const AnchorDepositWithdrawModal = ({
                                 
                                 // Calculate fee based on pegged token amount being withdrawn
                                 const withdrawAmountPegged = redeemInputAmount || 0n;
-                                const peggedPriceUSD = peggedTokenPrice && peggedTokenPrice > 0n
-                                  ? Number(peggedTokenPrice) / 1e18
+                                const peggedPriceUSD = peggedTokenPriceUsdWei > 0n
+                                  ? Number(formatUnits(peggedTokenPriceUsdWei, 18))
                                   : 0;
                                 const withdrawFeeAmount = withdrawAmountPegged > 0n
                                   ? (Number(withdrawAmountPegged) / 1e18) * 0.01
