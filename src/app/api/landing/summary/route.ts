@@ -20,7 +20,7 @@ const COINGECKO_IDS = [
 
 const CHAINLINK_ETH_USD = "0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419" as const;
 const CHAINLINK_BTC_USD = "0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c" as const;
-const CHAINLINK_EUR_USD = "0x8f6F9C8af44f5f15a18d0fa93B5814a623Fa6353" as const;
+const CHAINLINK_EUR_USD = "0xb49f677943BC038e9857d61E7d053CaA2C1734C1" as const; // USD per EUR, 8 decimals
 const DEFILLAMA_POOLS_URL = "https://yields.llama.fi/pools";
 const FXSAVE_POOL_ID = "ee0b7069-f8f3-4aa2-a415-728f13e6cc3d";
 

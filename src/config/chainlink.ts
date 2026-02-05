@@ -7,7 +7,8 @@
 export const CHAINLINK_FEEDS = {
   ETH_USD: "0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419" as `0x${string}`,
   BTC_USD: "0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c" as `0x${string}`,
-  EUR_USD: "0x8f6F9C8af44f5f15a18d0fa93B5814a623Fa6353" as `0x${string}`,
+  /** Standard Chainlink EUR/USD: returns USD per EUR (e.g. 118123500 = 1.181235) */
+  EUR_USD: "0xb49f677943BC038e9857d61E7d053CaA2C1734C1" as `0x${string}`,
 } as const;
 
 /** Harbor reward token addresses (mainnet) - used for APR fallback */
