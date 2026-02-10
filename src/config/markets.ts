@@ -263,7 +263,7 @@ export const markets = {
   ...(useTest2 ? {} : {
   "fxusd-gold": {
     name: "fxUSD-GOLD",
-    status: "coming-soon" as const,
+    status: "genesis" as const,
     pegTarget: "GOLD",
     chain: {
       name: "Ethereum",
@@ -302,12 +302,12 @@ export const markets = {
     peggedToken: {
       name: "Harbor Anchored GOLD",
       symbol: "haGOLD",
-      description: "Pegged token (coming soon)",
+      description: "Pegged token",
     },
     leveragedToken: {
       name: "Harbor Sail fxUSD-GOLD",
       symbol: "hsFXUSD-GOLD",
-      description: "Leveraged token (coming soon)",
+      description: "Leveraged token",
     },
     rewardPoints: {
       pointsPerDollar: 100,
@@ -335,7 +335,7 @@ export const markets = {
   },
   "steth-gold": {
     name: "stETH-GOLD",
-    status: "coming-soon" as const,
+    status: "genesis" as const,
     pegTarget: "GOLD",
     chain: {
       name: "Ethereum",
@@ -374,12 +374,12 @@ export const markets = {
     peggedToken: {
       name: "Harbor Anchored GOLD",
       symbol: "haGOLD",
-      description: "Pegged token (coming soon)",
+      description: "Pegged token",
     },
     leveragedToken: {
       name: "Harbor Sail stETH-GOLD",
       symbol: "hsSTETH-GOLD",
-      description: "Leveraged token (coming soon)",
+      description: "Leveraged token",
     },
     rewardPoints: {
       pointsPerDollar: 100,
@@ -693,7 +693,7 @@ export const markets = {
   },
   "steth-silver": {
     name: "stETH-SILVER",
-    status: "coming-soon" as const,
+    status: "genesis" as const,
     pegTarget: "SILVER",
     chain: {
       name: "Ethereum",
@@ -732,12 +732,12 @@ export const markets = {
     peggedToken: {
       name: "Harbor Anchored SILVER",
       symbol: "haSILVER",
-      description: "Pegged token (coming soon)",
+      description: "Pegged token",
     },
     leveragedToken: {
       name: "Harbor Sail stETH-SILVER",
       symbol: "hsSTETH-SILVER",
-      description: "Leveraged token (coming soon)",
+      description: "Leveraged token",
     },
     rewardPoints: {
       pointsPerDollar: 100,
@@ -765,7 +765,7 @@ export const markets = {
   },
   "fxusd-silver": {
     name: "fxUSD-SILVER",
-    status: "coming-soon" as const,
+    status: "genesis" as const,
     pegTarget: "SILVER",
     chain: {
       name: "Ethereum",
@@ -804,12 +804,12 @@ export const markets = {
     peggedToken: {
       name: "Harbor Anchored SILVER",
       symbol: "haSILVER",
-      description: "Pegged token (coming soon)",
+      description: "Pegged token",
     },
     leveragedToken: {
       name: "Harbor Sail fxUSD-SILVER",
       symbol: "hsFXUSD-SILVER",
-      description: "Leveraged token (coming soon)",
+      description: "Leveraged token",
     },
     rewardPoints: {
       pointsPerDollar: 100,

@@ -328,10 +328,94 @@ export async function GET() {
     })
   );
 
+  const maidenVoyageMarkets = marketEntries.filter(
+    ([, m]) => (m as any).marksCampaign
+  );
+  const maidenVoyagesMap = new Map<
+    string,
+    Array<{
+      marketId: string;
+      name: string;
+      symbol?: string;
+      collateralSymbol?: string;
+      peggedSymbol?: string;
+      leveragedSymbol?: string;
+      pegTarget?: string;
+      campaignId?: string;
+      projectedApr: number | null;
+      longSide: string;
+      shortSide: string;
+      phase: "live" | "coming-next" | "planned";
+      status?: string;
+    }>
+  >();
+
+  for (const [marketId, market] of maidenVoyageMarkets) {
+    const campaignLabel =
+      (market as any)?.marksCampaign?.label ||
+      "Maiden Voyage";
+    const campaignId = (market as any)?.marksCampaign?.id;
+    const collateralSymbol = market.collateral?.symbol;
+    const peggedSymbol = market.peggedToken?.symbol;
+    const leveragedSymbol = market.leveragedToken?.symbol;
+    const pegTarget = (market as any)?.pegTarget;
+    const status = (market as any)?.status;
+
+    const startDate = market?.genesis?.startDate
+      ? new Date(market.genesis.startDate).getTime()
+      : null;
+    const endDate = market?.genesis?.endDate
+      ? new Date(market.genesis.endDate).getTime()
+      : null;
+    const now = Date.now();
+    let phase: "live" | "coming-next" | "planned" = "planned";
+    const isComingSoon = status === "coming-soon";
+    const hasEnded = endDate !== null && now > endDate;
+    if (hasEnded && !isComingSoon) {
+      continue;
+    }
+    if (isComingSoon) {
+      phase = "planned";
+    } else if (startDate && now < startDate) {
+      phase = "coming-next";
+    } else if (endDate && now <= endDate) {
+      phase = "live";
+    } else if (status === "genesis") {
+      phase = "live";
+    }
+
+    const entry = {
+      marketId,
+      name: market.name,
+      symbol: market.peggedToken?.symbol,
+      collateralSymbol,
+      peggedSymbol,
+      leveragedSymbol,
+      pegTarget,
+      campaignId,
+      projectedApr: null,
+      longSide: parseLongSide(market),
+      shortSide: parseShortSide(market),
+      phase,
+      status,
+    };
+    const list = maidenVoyagesMap.get(campaignLabel) || [];
+    list.push(entry);
+    maidenVoyagesMap.set(campaignLabel, list);
+  }
+
+  const maidenVoyages = Array.from(maidenVoyagesMap.entries()).map(
+    ([title, markets]) => ({
+      title,
+      markets,
+    })
+  );
+
   const payload = {
     generatedAt: new Date().toISOString(),
     anchorMarkets: anchorMarketSummaries,
     sailMarkets: sailMarketSummaries,
+    maidenVoyages,
   };
 
   cache.set("landing-summary", { timestampMs: now, data: payload });
