@@ -423,9 +423,6 @@ export async function GET(request: Request) {
     })
   );
 
-  const maidenVoyageMarkets = marketEntries.filter(
-    ([, m]) => (m as any).marksCampaign
-  );
   const maidenVoyagesMap = new Map<
     string,
     Array<{
