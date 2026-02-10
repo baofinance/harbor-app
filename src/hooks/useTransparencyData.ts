@@ -3,25 +3,10 @@ import { useAccount } from "wagmi";
 import { markets as marketsConfig } from "@/config/markets";
 import { minterABI } from "@/abis/minter";
 import { stabilityPoolABI } from "@/abis/stabilityPool";
-import { STABILITY_POOL_MANAGER_ABI } from "@/config/contracts";
-
-/**
- * Oracle ABI for Harbor-style price oracle
- */
-const oracleABI = [
-  {
-    inputs: [],
-    name: "latestAnswer",
-    outputs: [
-      { type: "uint256", name: "minUnderlyingPrice" },
-      { type: "uint256", name: "maxUnderlyingPrice" },
-      { type: "uint256", name: "minWrappedRate" },
-      { type: "uint256", name: "maxWrappedRate" },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
+import {
+  STABILITY_POOL_MANAGER_ABI,
+  WRAPPED_PRICE_ORACLE_ABI,
+} from "@/abis/shared";
 
 export interface MarketTransparencyData {
   marketId: string;
@@ -129,7 +114,7 @@ export function useTransparencyData(): TransparencyData {
       { address: minterAddress, abi: minterABI, functionName: "mintLeveragedTokenIncentiveRatio" },
       { address: minterAddress, abi: minterABI, functionName: "redeemLeveragedTokenIncentiveRatio" },
       // Oracle reads (14)
-      { address: oracleAddress, abi: oracleABI, functionName: "latestAnswer" },
+      { address: oracleAddress, abi: WRAPPED_PRICE_ORACLE_ABI, functionName: "latestAnswer" },
       // Stability pool manager (15)
       { address: stabilityPoolManager, abi: STABILITY_POOL_MANAGER_ABI, functionName: "rebalanceThreshold" },
     ];

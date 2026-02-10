@@ -4,18 +4,8 @@ import { useMemo } from "react";
 import { useContractReads } from "wagmi";
 import { formatEther } from "viem";
 import { markets } from "@/config/markets";
-import { GENESIS_ABI } from "@/config/contracts";
+import { GENESIS_ABI, ERC20_ABI } from "@/abis/shared";
 import { useMultipleCollateralPrices } from "@/hooks/useCollateralPrice";
-
-const erc20BalanceABI = [
-  {
-    inputs: [{ name: "account", type: "address" }],
-    name: "balanceOf",
-    outputs: [{ type: "uint256" }],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
 
 /**
  * Hook to calculate total TVL across all genesis deposits (not stability pools)
@@ -85,7 +75,7 @@ export function useTotalGenesisTVL() {
       return [
         {
           address: wrappedCollateralAddress,
-          abi: erc20BalanceABI,
+          abi: ERC20_ABI,
           functionName: "balanceOf" as const,
           args: [g],
         },

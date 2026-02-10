@@ -2,44 +2,9 @@ import { useMemo } from "react";
 import { useReadContracts } from "wagmi";
 import { formatUnits } from "viem";
 import { minterABI } from "@/abis/minter";
+import { CHAINLINK_FEEDS } from "@/config/chainlink";
+import { CHAINLINK_AGGREGATOR_ABI } from "@/abis/chainlink";
 import { useCoinGeckoPrices } from "./useCoinGeckoPrice";
-
-// Chainlink price feed addresses on Ethereum mainnet
-const CHAINLINK_FEEDS = {
-  ETH_USD: "0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419" as `0x${string}`,
-  BTC_USD: "0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c" as `0x${string}`,
-  EUR_USD: "0x8f6F9C8af44f5f15a18d0fa93B5814a623Fa6353" as `0x${string}`, // fxUSD/EUR Chainlink feed
-} as const;
-
-const chainlinkABI = [
-  {
-    inputs: [],
-    name: "decimals",
-    outputs: [{ type: "uint8" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "latestRoundData",
-    outputs: [
-      { name: "roundId", type: "uint80" },
-      { name: "answer", type: "int256" },
-      { name: "startedAt", type: "uint256" },
-      { name: "updatedAt", type: "uint256" },
-      { name: "answeredInRound", type: "uint80" },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "latestAnswer",
-    outputs: [{ name: "", type: "int256" }],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
 
 interface TokenPricesResult {
   peggedBackingRatio: number; // Health indicator (1.0 = healthy)
@@ -106,12 +71,12 @@ export function useMultipleTokenPrices(
       contracts.push(
         {
           address: CHAINLINK_FEEDS.ETH_USD,
-          abi: chainlinkABI,
+          abi: CHAINLINK_AGGREGATOR_ABI,
           functionName: "decimals" as const,
         },
         {
           address: CHAINLINK_FEEDS.ETH_USD,
-          abi: chainlinkABI,
+          abi: CHAINLINK_AGGREGATOR_ABI,
           functionName: "latestRoundData" as const,
         }
       );
@@ -120,12 +85,12 @@ export function useMultipleTokenPrices(
       contracts.push(
         {
           address: CHAINLINK_FEEDS.BTC_USD,
-          abi: chainlinkABI,
+          abi: CHAINLINK_AGGREGATOR_ABI,
           functionName: "decimals" as const,
         },
         {
           address: CHAINLINK_FEEDS.BTC_USD,
-          abi: chainlinkABI,
+          abi: CHAINLINK_AGGREGATOR_ABI,
           functionName: "latestRoundData" as const,
         }
       );
@@ -134,12 +99,12 @@ export function useMultipleTokenPrices(
       contracts.push(
         {
           address: CHAINLINK_FEEDS.EUR_USD,
-          abi: chainlinkABI,
+          abi: CHAINLINK_AGGREGATOR_ABI,
           functionName: "decimals" as const,
         },
         {
           address: CHAINLINK_FEEDS.EUR_USD,
-          abi: chainlinkABI,
+          abi: CHAINLINK_AGGREGATOR_ABI,
           functionName: "latestAnswer" as const,
         }
       );
@@ -221,62 +186,35 @@ export function useMultipleTokenPrices(
     }
 
     // Parse EUR if requested (uses latestAnswer, not latestRoundData)
-    // NOTE: The Chainlink feed 0x8f6F9C8af44f5f15a18d0fa93B5814a623Fa6353 returns EUR per USD
-    // (e.g., 0.93 EUR per 1 USD). We need to invert it to get USD per EUR for our calculation.
-    // Example: If feed returns 0.93 (EUR per USD), we invert to get 1/0.93 = 1.075 (USD per EUR)
+    // Standard Chainlink EUR/USD (0xb49f...): returns USD per EUR directly, 8 decimals (e.g. 118123500 = 1.18)
     if (needsChainlink.eur && chainlinkData.length >= offset + 2) {
       const decimalsResult = chainlinkData[offset];
       const answerResult = chainlinkData[offset + 1];
       
-      // If answer succeeded, try to parse it (even if decimals failed)
       if (answerResult?.status === "success") {
         const answer = answerResult.result as bigint;
         if (answer !== undefined && answer !== null) {
-          // Get decimals if available, otherwise default to 8 (standard Chainlink)
-          let decimals = 8; // Default to 8 decimals for Chainlink feeds
+          let decimals = 8;
           if (decimalsResult?.status === "success") {
             decimals = decimalsResult.result as number;
           }
           
-          // Try 8 decimals first (standard Chainlink format)
-          let eurPerUsd = Number(answer) / 10 ** 8;
-          
-          // The feed returns EUR per USD (e.g., 0.93 EUR per 1 USD)
-          // We need USD per EUR, so we invert: 1 / eurPerUsd
-          // This should give us a value > 1.0 (typically ~1.08, but can be < 1.0 if EUR drops)
-          if (eurPerUsd > 0 && eurPerUsd < 10.0) {
-            const usdPerEur = 1 / eurPerUsd;
-            prices.eur = usdPerEur;
+          const rawValue = Number(answer) / 10 ** decimals;
+          // Standard feed (0xb49f...) returns USD per EUR (1.05-1.2)
+          if (rawValue > 0.9 && rawValue < 2.0) {
+            prices.eur = rawValue;
             if (process.env.NODE_ENV === "development") {
-              console.log(`[useTokenPrices] EUR Chainlink price (8dec, inverted):`, {
-                rawAnswer: answer.toString(),
-                eurPerUsd,
-                usdPerEur,
-                interpretation: 'EUR/USD (inverted from EUR per USD)',
-              });
+              console.log(`[useTokenPrices] EUR Chainlink price (USD per EUR):`, rawValue);
             }
           } else {
-            // Try 18 decimals in case it's a different format
-            eurPerUsd = Number(answer) / 10 ** 18;
-            if (eurPerUsd > 0 && eurPerUsd < 10.0) {
-              const usdPerEur = 1 / eurPerUsd;
-              prices.eur = usdPerEur;
-              if (process.env.NODE_ENV === "development") {
-                console.log(`[useTokenPrices] EUR Chainlink price (18dec, inverted):`, {
-                  rawAnswer: answer.toString(),
-                  eurPerUsd,
-                  usdPerEur,
-                  interpretation: 'EUR/USD (inverted from EUR per USD)',
-                });
-              }
-            } else {
-              if (process.env.NODE_ENV === "development") {
-                console.warn(`[useTokenPrices] EUR Chainlink price out of range:`, {
-                  eurPerUsd8dec: Number(answer) / 10 ** 8,
-                  eurPerUsd18dec: Number(answer) / 10 ** 18,
-                  rawAnswer: answer.toString(),
-                });
-              }
+            const raw18 = Number(answer) / 10 ** 18;
+            if (raw18 > 0.9 && raw18 < 2.0) {
+              prices.eur = raw18;
+            } else if (process.env.NODE_ENV === "development") {
+              console.warn(`[useTokenPrices] EUR Chainlink price out of range:`, {
+                raw8dec: rawValue,
+                raw18dec: raw18,
+              });
             }
           }
         } else {

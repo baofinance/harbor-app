@@ -59,7 +59,6 @@ export const markets = {
       name: "Harbor Anchored ETH",
       symbol: "haETH",
       description: "Pegged token (fetched from contract)",
-      icon: "/icons/haETH.png",
     },
     leveragedToken: {
       name: "Harbor Sail fxUSD-ETH",
@@ -142,7 +141,6 @@ export const markets = {
       name: "Harbor Anchored BTC",
       symbol: "haBTC",
       description: "Pegged token (fetched from contract)",
-      icon: "/icons/haBTC.png",
     },
     leveragedToken: {
       name: "Harbor Sail fxUSD-BTC",
@@ -224,7 +222,6 @@ export const markets = {
       name: "Harbor Anchored BTC",
       symbol: "haBTC",
       description: "Pegged token (fetched from contract)",
-      icon: "/icons/haBTC.png",
     },
     leveragedToken: {
       name: "Harbor Sail stETH-BTC",
@@ -443,12 +440,13 @@ export const markets = {
       collateralToken: contractsMarkets["steth-eur"].addresses.collateralToken,
       wrappedCollateralToken: contractsMarkets["steth-eur"].addresses.wrappedCollateralToken,
       genesisZap: contractsMarkets["steth-eur"].addresses.genesisZap, // GenesisETHZap_v4 for EUR
+      peggedTokenZap: contractsMarkets["steth-eur"].addresses.peggedTokenZap, // MinterETHZap_v3 for EUR/stETH
+      leveragedTokenZap: contractsMarkets["steth-eur"].addresses.leveragedTokenZap,
     },
     peggedToken: {
       name: "Harbor Anchored EUR",
       symbol: "haEUR",
       description: "Pegged token (fetched from contract)",
-      icon: "/icons/haEUR.png",
     },
     leveragedToken: {
       name: "Harbor Sail stETH-EUR",
@@ -517,12 +515,13 @@ export const markets = {
       collateralToken: contractsMarkets["fxusd-eur"].addresses.collateralToken,
       wrappedCollateralToken: contractsMarkets["fxusd-eur"].addresses.wrappedCollateralToken,
       genesisZap: contractsMarkets["fxusd-eur"].addresses.genesisZap, // GenesisUSDCZap_v4 for EUR
+      peggedTokenZap: contractsMarkets["fxusd-eur"].addresses.peggedTokenZap, // MinterUSDCZap_v3 for EUR/fxUSD (direct stability pool zap)
+      leveragedTokenZap: contractsMarkets["fxusd-eur"].addresses.leveragedTokenZap,
     },
     peggedToken: {
       name: "Harbor Anchored EUR",
       symbol: "haEUR",
       description: "Pegged token (fetched from contract)",
-      icon: "/icons/haEUR.png",
     },
     leveragedToken: {
       name: "Harbor Sail fxUSD-EUR",

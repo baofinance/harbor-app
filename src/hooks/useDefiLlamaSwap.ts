@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Address, formatUnits, parseUnits } from "viem";
+import { ERC20_ABI } from "@/abis/shared";
 
 // Use ParaSwap API - has good client-side support without requiring authentication
 const PARASWAP_API_URL = "https://apiv5.paraswap.io";
@@ -27,15 +28,7 @@ export async function fetchTokenDecimals(
   try {
     const decimals = await publicClient.readContract({
       address: tokenAddress,
-      abi: [
-        {
-          inputs: [],
-          name: "decimals",
-          outputs: [{ internalType: "uint8", name: "", type: "uint8" }],
-          stateMutability: "view",
-          type: "function",
-        },
-      ],
+      abi: ERC20_ABI,
       functionName: "decimals",
     });
     

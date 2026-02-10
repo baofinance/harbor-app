@@ -28,23 +28,7 @@ const publicClient = createPublicClient({
   transport: http(),
 });
 
-// Minter ABI with price functions
-const minterABI = [
-  {
-    inputs: [],
-    name: "peggedTokenPrice",
-    outputs: [{ type: "uint256", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "leveragedTokenPrice",
-    outputs: [{ type: "uint256", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
+import { minterABI } from "../abis/minter";
 
 async function checkTokenPrices() {
   console.log("Checking Token Prices...\n");

@@ -1,7 +1,6 @@
 "use client";
 
 import React from "react";
-import { AlertOctagon } from "lucide-react";
 import { GenesisTransactionProgressSteps } from "./GenesisTransactionProgressSteps";
 import { formatEther } from "viem";
 
@@ -387,12 +386,9 @@ export const TransactionProgressModal = ({
 
  {steps.some((s) => s.status ==="error") && (
  <div className="mt-6 p-4 bg-red-50 border border-red-200">
- <div className="flex items-center justify-center gap-2">
- <AlertOctagon className="w-4 h-4 flex-shrink-0 text-red-600" aria-hidden />
  <p className="text-sm font-medium text-red-800 text-center">
  {errorMessage ||"An error occurred. Please try again."}
  </p>
- </div>
         {onRetry && (
           <div className="mt-4 flex justify-center">
             <button

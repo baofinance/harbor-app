@@ -13,7 +13,14 @@ export * from "./zap";
 export * from "./usdcZap";
 export * from "./genesisZapPermit";
 export * from "./minterUsdcZapV3";
+export * from "./minterEthZapV3";
+export * from "./minterPegged";
 export * from "./oracleFeeds";
+export * from "./permit";
+export * from "./permitZaps";
+export * from "./chainlink";
+export * from "./votingEscrow";
+export * from "./admin";
 
 
 

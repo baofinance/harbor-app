@@ -1,24 +1,11 @@
 import { useMemo } from "react";
 import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
 import { useContractRead } from "wagmi";
-import { CHAINLINK_ORACLE_ABI } from "@/abis/shared";
+import {
+  CHAINLINK_ORACLE_ABI,
+  WRAPPED_PRICE_ORACLE_ABI,
+} from "@/abis/shared";
 import { calculatePriceOracleOffset } from "@/utils/anchor/calculateReadOffset";
-
-// Harbor wrapped price oracle ABI (returns tuple)
-const WRAPPED_PRICE_ORACLE_ABI = [
-  {
-    inputs: [],
-    name: "latestAnswer",
-    outputs: [
-      { type: "uint256", name: "minUnderlyingPrice" },
-      { type: "uint256", name: "maxUnderlyingPrice" },
-      { type: "uint256", name: "minWrappedRate" },
-      { type: "uint256", name: "maxWrappedRate" },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
 
 // Chainlink ETH/USD Oracle on Mainnet
 const CHAINLINK_ETH_USD_ORACLE = "0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419" as `0x${string}`;
@@ -44,15 +31,13 @@ export function useAnchorPrices(
   const { price: ethPriceCoinGecko } = useCoinGeckoPrice("ethereum");
   const { price: btcPriceCoinGecko } = useCoinGeckoPrice("bitcoin", 120000);
   
-  // Get EUR/USD rate from the fxUSD/EUR price feed oracle (same one used on map room)
-  // The map room uses 0x8f6F9C8af44f5f15a18d0fa93B5814a623Fa6353 for fxUSD/EUR
-  // This is a Chainlink aggregator that returns EUR/USD directly
-  const FXUSD_EUR_ORACLE = "0x8f6F9C8af44f5f15a18d0fa93B5814a623Fa6353" as `0x${string}`;
+  // Standard Chainlink EUR/USD (0xb49f...): returns USD per EUR, 8 decimals (e.g. 118123500 = 1.18)
+  const CHAINLINK_EUR_USD = "0xb49f677943BC038e9857d61E7d053CaA2C1734C1" as `0x${string}`;
   
   // Read EUR/USD directly from the Chainlink feed (same as map room)
   // Try Chainlink ABI first, then Harbor ABI if it fails
   const { data: eurUsdChainlinkData, error: chainlinkError } = useContractRead({
-    address: FXUSD_EUR_ORACLE,
+    address: CHAINLINK_EUR_USD,
     abi: CHAINLINK_ORACLE_ABI,
     functionName: "latestAnswer",
     query: {
@@ -64,7 +49,7 @@ export function useAnchorPrices(
   
   // Try Harbor oracle ABI as fallback (in case it's a Harbor wrapped oracle)
   const { data: eurUsdHarborData, error: harborError } = useContractRead({
-    address: FXUSD_EUR_ORACLE,
+    address: CHAINLINK_EUR_USD,
     abi: WRAPPED_PRICE_ORACLE_ABI,
     functionName: "latestAnswer",
     query: {
@@ -74,16 +59,15 @@ export function useAnchorPrices(
     },
   });
   
-  // Calculate EUR/USD from Chainlink (8 decimals) or Harbor oracle
+  // Standard Chainlink EUR/USD (0xb49f...): returns USD per EUR directly, 8 decimals
   const eurPriceFromChainlink = useMemo(() => {
-    // Try Chainlink format first
     if (eurUsdChainlinkData) {
-      const price = Number(eurUsdChainlinkData as bigint) / 1e8;
-      if (price > 0.5 && price < 2.0) {
-        console.log(`[useAnchorPrices] ✓ Using EUR/USD from Chainlink feed (${FXUSD_EUR_ORACLE}): ${price}`);
-        return price;
+      const usdPerEur = Number(eurUsdChainlinkData as bigint) / 1e8;
+      if (usdPerEur > 0.9 && usdPerEur < 2.0) {
+        console.log(`[useAnchorPrices] ✓ Using EUR/USD from Chainlink (0xb49f...): ${usdPerEur}`);
+        return usdPerEur;
       }
-      console.warn(`[useAnchorPrices] Chainlink EUR/USD price out of range: ${price}`);
+      console.warn(`[useAnchorPrices] Chainlink EUR/USD price out of range: ${usdPerEur}`);
     }
     
     // Try Harbor oracle format (tuple)
@@ -106,7 +90,7 @@ export function useAnchorPrices(
     }
     
     if (chainlinkError || harborError) {
-      console.warn(`[useAnchorPrices] Failed to read EUR/USD from ${FXUSD_EUR_ORACLE}:`, {
+      console.warn(`[useAnchorPrices] Failed to read EUR/USD from Chainlink:`, {
         chainlinkError: chainlinkError?.message,
         harborError: harborError?.message,
       });
@@ -727,11 +711,15 @@ export function useAnchorPrices(
             `[peggedPriceUSDMap] Market ${id} (${peggedTokenSymbol}): Using EUR/USD exchange rate: $${eurPrice} = ${eurPriceInWei.toString()}`
           );
         }
-      } else if (isEURPegged) {
-        // EUR-pegged but price not loaded - log for debugging
+      } else if (isEURPegged && !eurPrice) {
+        // EUR-pegged but Chainlink/oracle failed: use CoinGecko or 1.08 default.
+        // Never fall through to collateral (fxSAVE ~1.076) - haEUR is pegged to EUR.
+        const eurFallback =
+          eurPriceCoinGecko && eurPriceCoinGecko > 0 ? eurPriceCoinGecko : 1.08;
+        map[id] = BigInt(Math.floor(eurFallback * 1e18));
         if (isDebug) {
-          console.warn(
-            `[peggedPriceUSDMap] Market ${id} (${peggedTokenSymbol}): EUR price not available (eurPrice=${eurPrice}), will use fallback`
+          console.log(
+            `[peggedPriceUSDMap] Market ${id} (${peggedTokenSymbol}): EUR price fallback: $${eurFallback}`
           );
         }
       } else if (isBTCPegged && !btcPrice) {
@@ -741,16 +729,7 @@ export function useAnchorPrices(
             `[peggedPriceUSDMap] Market ${id} (${peggedTokenSymbol}): BTC price not available yet (btcPrice=${btcPrice}), skipping price calculation`
           );
         }
-        // Don't set a price - let it fall through to the fallback
-      } else if (isEURPegged && !eurPrice) {
-        // EUR-pegged token but EUR price not loaded yet - don't use collateral price calculation
-        if (isDebug) {
-          console.warn(
-            `[peggedPriceUSDMap] Market ${id} (${peggedTokenSymbol}): EUR/USD exchange rate not available yet (eurPrice=${eurPrice}), skipping price calculation`
-          );
-        }
-        // Don't set a price - let it fall through to the fallback
-      } else if (peggedTokenPrice && collateralPriceUSD > 0) {
+      } else if (peggedTokenPrice && collateralPriceUSD > 0 && !isEURPegged) {
         // For other tokens, calculate USD price: peggedTokenPrice (in collateral units) * collateralPriceUSD
         const peggedPriceInCollateral = Number(peggedTokenPrice) / 1e18;
         const peggedPriceInUSD = peggedPriceInCollateral * collateralPriceUSD;
@@ -784,6 +763,7 @@ export function useAnchorPrices(
     ethPrice,
     btcPrice,
     eurPrice,
+    eurPriceCoinGecko,
     isDebug,
   ]);
 

@@ -26,6 +26,11 @@ import SimpleTooltip from "@/components/SimpleTooltip";
 import { getLogoPath } from "@/components/shared";
 import { SailManageModal } from "@/components/SailManageModal";
 import { minterABI } from "@/abis/minter";
+import {
+  ERC20_ABI,
+  WRAPPED_PRICE_ORACLE_ABI,
+  STABILITY_POOL_MANAGER_ABI,
+} from "@/abis/shared";
 import { useSailPositionPnL } from "@/hooks/useSailPositionPnL";
 import { useSailPositionsPnLSummary } from "@/hooks/useSailPositionsPnLSummary";
 import { useMultipleTokenPrices } from "@/hooks/useTokenPrices";
@@ -132,65 +137,10 @@ function FeeBandBadge({
   );
 }
 
-const erc20ABI = [
-  {
-    inputs: [{ name: "account", type: "address" }],
-    name: "balanceOf",
-    outputs: [{ type: "uint256", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
-
-// ERC20 metadata ABI for name(), symbol(), and totalSupply()
-const erc20MetadataABI = [
-  {
-    inputs: [],
-    name: "name",
-    outputs: [{ type: "string", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "symbol",
-    outputs: [{ type: "string", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "totalSupply",
-    outputs: [{ type: "uint256", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
-
-// IWrappedPriceOracle ABI - returns prices in 18 decimals
-// latestAnswer() returns (minUnderlyingPrice, maxUnderlyingPrice, minWrappedRate, maxWrappedRate)
-// getPrice() returns fxSAVE price in ETH (for fxUSD markets)
-const wrappedPriceOracleABI = [
-  {
-    inputs: [],
-    name: "latestAnswer",
-    outputs: [
-      { type: "uint256", name: "minUnderlyingPrice" },
-      { type: "uint256", name: "maxUnderlyingPrice" },
-      { type: "uint256", name: "minWrappedRate" },
-      { type: "uint256", name: "maxWrappedRate" },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "getPrice",
-    outputs: [{ type: "uint256", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
+// ERC20_ABI has balanceOf, name, symbol, totalSupply
+const erc20ABI = ERC20_ABI;
+const erc20MetadataABI = ERC20_ABI;
+const wrappedPriceOracleABI = WRAPPED_PRICE_ORACLE_ABI;
 
 // Format USD value
 function formatUSD(value: number | undefined): string {
@@ -1072,20 +1022,9 @@ function SailMarketExpandedView({
   const stabilityPoolManagerAddress = (market as any).addresses
     ?.stabilityPoolManager as `0x${string}` | undefined;
 
-  // Import STABILITY_POOL_MANAGER_ABI dynamically to avoid adding to top-level imports
-  const stabilityPoolManagerABI = [
-    {
-      inputs: [],
-      name: "rebalanceThreshold",
-      outputs: [{ type: "uint256", name: "" }],
-      stateMutability: "view",
-      type: "function",
-    },
-  ] as const;
-
   const { data: rebalanceThresholdData } = useContractRead({
     address: stabilityPoolManagerAddress,
-    abi: stabilityPoolManagerABI,
+    abi: STABILITY_POOL_MANAGER_ABI,
     functionName: "rebalanceThreshold",
     query: {
       enabled: !!stabilityPoolManagerAddress,
@@ -1467,6 +1406,9 @@ function SailMarketExpandedView({
 
 export default function SailPage() {
   const { address, isConnected } = useAccount();
+  const { price: sailPageEthPrice } = useCoinGeckoPrice("ethereum", 120000);
+  const { price: sailPageWstETHPrice } = useCoinGeckoPrice("wrapped-steth", 120000);
+  const { price: sailPageFxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
   const [expandedMarkets, setExpandedMarkets] = useState<string[]>([]);
   const [manageModalOpen, setManageModalOpen] = useState(false);
   const [selectedMarketId, setSelectedMarketId] = useState<string | null>(null);
@@ -2568,6 +2510,12 @@ export default function SailPage() {
               setSelectedMarketId(null);
               setSelectedMarket(null);
             }}
+            leveragedTokenPriceUSD={
+              tokenPricesByMarket[selectedMarketId]?.leveragedPriceUSD
+            }
+            ethPrice={sailPageEthPrice}
+            wstETHPrice={sailPageWstETHPrice}
+            fxSAVEPrice={sailPageFxSAVEPrice}
           />
         )}
       </div>

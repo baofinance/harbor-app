@@ -14,7 +14,8 @@ import {
 import { BaseError, ContractFunctionRevertedError } from "viem";
 import { ERC20_ABI, MINTER_ABI } from "@/abis/shared";
 import { WSTETH_ABI } from "@/abis";
-import { MINTER_ETH_ZAP_V2_ABI, MINTER_USDC_ZAP_V3_ABI } from "@/config/contracts";
+import { MINTER_ETH_ZAP_V3_ABI } from "@/abis";
+import { MINTER_USDC_ZAP_V3_ABI } from "@/abis";
 import { STETH_ZAP_PERMIT_ABI, calculateDeadline } from "@/utils/permit";
 import { usePermitOrApproval } from "@/hooks/usePermitOrApproval";
 import { usePermitCapability } from "@/hooks/usePermitCapability";
@@ -30,6 +31,7 @@ import {
 import { useDefiLlamaSwap, getDefiLlamaSwapTx } from "@/hooks/useDefiLlamaSwap";
 import { useUserTokens, useTokenDecimals } from "@/hooks/useUserTokens";
 import { formatBalance } from "@/utils/formatters";
+import { amountToUSD } from "@/utils/tokenPriceToUSD";
 import { TokenSelectorDropdown } from "@/components/TokenSelectorDropdown";
 import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
 import { getLogoPath } from "@/lib/logos";
@@ -41,6 +43,12 @@ interface SailManageModalProps {
  market: any;
  initialTab?:"mint" |"redeem";
  onSuccess?: () => void;
+ /** USD price of leveraged token (e.g. hsSTETH-EUR). Used for value-based output estimation when swap+dry-run yields wrong results. */
+ leveragedTokenPriceUSD?: number;
+ /** Pre-loaded prices from parent (Sail page). Avoids $0.00 when modal mounts before CoinGecko responds. */
+ ethPrice?: number | null;
+ wstETHPrice?: number | null;
+ fxSAVEPrice?: number | null;
 }
 
 type ModalStep =
@@ -73,6 +81,10 @@ export const SailManageModal = ({
  market,
  initialTab ="mint",
  onSuccess,
+ leveragedTokenPriceUSD,
+ ethPrice: ethPriceProp,
+ wstETHPrice: wstETHPriceProp,
+ fxSAVEPrice: fxSAVEPriceProp,
 }: SailManageModalProps) => {
   const { address, isConnected } = useAccount();
   const publicClient = usePublicClient();
@@ -244,10 +256,13 @@ const { maxRate: fxSAVERate } = useCollateralPrice(
   { enabled: useUSDCZap && !!priceOracleAddress }
 );
 
-// Get USD prices for overview display
-const { price: ethPrice } = useCoinGeckoPrice("ethereum", 120000);
-const { price: wstETHPrice } = useCoinGeckoPrice("wrapped-steth", 120000);
-const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
+// Get USD prices for overview display (use props from Sail page when available - they're pre-loaded)
+const { price: ethPriceFromHook } = useCoinGeckoPrice("ethereum", 120000);
+const { price: wstETHPriceFromHook } = useCoinGeckoPrice("wrapped-steth", 120000);
+const { price: fxSAVEPriceFromHook } = useCoinGeckoPrice("fx-usd-saving", 120000);
+const ethPrice = ethPriceProp ?? ethPriceFromHook ?? 0;
+const wstETHPrice = wstETHPriceProp ?? wstETHPriceFromHook ?? 0;
+const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
 
  // Token decimals (for parsing amounts, swap quoting, etc.)
  const tokenAddressForDecimals =
@@ -463,8 +478,9 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
 
  // For ETH zaps, convert ETH → wstETH for dry run
  // Contract flow: ETH → stETH (1:1) → wstETH (via wstETH.wrap())
- const wstETHAddress = useETHZap && isNativeETH && !needsSwap
-   ? (market.addresses?.wrappedCollateralToken as `0x${string}` | undefined)
+ // Need wstETH address for both: native ETH direct mint, and swap-to-ETH (needsSwap) to convert swap output for dry run
+ const wstETHAddress = useETHZap && (isNativeETH && !needsSwap || needsSwap)
+   ? (market.addresses?.collateralToken as `0x${string}` | undefined) // wstETH for wstETH markets
    : undefined;
  
  const { data: wstETHAmountForDryRun } = useContractRead({
@@ -474,6 +490,18 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
    args: parsedAmount && wstETHAddress ? [parsedAmount] : undefined, // ETH → stETH is 1:1, so use parsedAmount as stETH
    query: {
      enabled: !!wstETHAddress && !!parsedAmount && parsedAmount > 0n && activeTab === "mint" && useETHZap && isNativeETH && !needsSwap,
+   },
+ });
+
+ // When swapping to ETH for ETH zap: convert swap output (ETH) to wstETH for dry run
+ const swapOutputAsStETH = needsSwap && swapQuote?.toAmount ? (swapQuote.toAmount as bigint) : undefined;
+ const { data: wstETHAmountFromSwapForDryRun } = useContractRead({
+   address: wstETHAddress,
+   abi: WSTETH_ABI,
+   functionName: "getWstETHByStETH",
+   args: swapOutputAsStETH && wstETHAddress ? [swapOutputAsStETH] : undefined,
+   query: {
+     enabled: !!wstETHAddress && !!swapOutputAsStETH && swapOutputAsStETH > 0n && activeTab === "mint" && useETHZap && needsSwap,
    },
  });
 
@@ -492,9 +520,11 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
 
  const amountForDryRun = useETHZap && isNativeETH && !needsSwap && wstETHAmountForDryRun
    ? (wstETHAmountForDryRun as bigint)
-   : useUSDCZap
-     ? (expectedFxSaveForDryRun ?? undefined) // never use parsedAmount for USDC zap - dry run expects fxSAVE
-     : parsedAmount;
+   : useETHZap && needsSwap && wstETHAmountFromSwapForDryRun
+     ? (wstETHAmountFromSwapForDryRun as bigint)
+     : useUSDCZap
+       ? (expectedFxSaveForDryRun ?? undefined)
+       : parsedAmount;
 
  const mintDryRunEnabled =
  activeTab ==="mint" &&
@@ -559,27 +589,76 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
  }, [mintFee, parsedAmount]);
 
  const expectedMintOutput = useMemo(() => {
- if (!mintDryRunResult || !parsedAmount || parsedAmount === 0n)
- return undefined;
- const [
- incentiveRatio,
- wrappedFee,
- wrappedDiscount,
- wrappedCollateralUsed,
- leveragedMinted,
- price,
- rate,
- ] = mintDryRunResult as [
- bigint,
- bigint,
- bigint,
- bigint,
- bigint,
- bigint,
- bigint
- ];
- return leveragedMinted;
- }, [mintDryRunResult, parsedAmount]);
+ // Value-based estimation: inputValueUSD / leveragedTokenPriceUSD
+ // Used when dry run understates output (e.g. ~10% low for USDC zap) - 300 USDC should give ~$298 worth, not ~$275
+ const valueBasedOutput = (() => {
+   if (!leveragedTokenPriceUSD || leveragedTokenPriceUSD <= 0 || !parsedAmount || parsedAmount === 0n)
+     return undefined;
+   let inputTokenPrice = 0;
+   let inputDecimals = 18;
+   const dep = selectedDepositAsset?.toLowerCase();
+   if (dep === "fxsave") {
+     inputTokenPrice = fxSAVEPrice || 1.076;
+     inputDecimals = selectedTokenDecimals ?? 18;
+   } else if (dep === "usdc") {
+     inputTokenPrice = 1;
+     inputDecimals = 6;
+   } else if (dep === "fxusd") {
+     inputTokenPrice = 1;
+     inputDecimals = selectedTokenDecimals ?? 18;
+   } else if (userTokens.some((t) => t.symbol?.toUpperCase() === selectedDepositAsset?.toUpperCase())) {
+     const sym = selectedDepositAsset?.toUpperCase() || "";
+     inputTokenPrice = sym === "USDC" || sym === "FXUSD" ? 1 : fxSAVEPrice || 1.076;
+     inputDecimals = selectedTokenDecimals ?? 18;
+   } else return undefined;
+   const inputValueUSD = (Number(parsedAmount) / 10 ** inputDecimals) * inputTokenPrice;
+   if (inputValueUSD <= 0) return undefined;
+   // Subtract ~1% for fees (mint fee, zap slippage) to avoid overstating
+   const adjustedInputUSD = inputValueUSD * 0.99;
+   const outputTokens = adjustedInputUSD / leveragedTokenPriceUSD;
+   if (outputTokens <= 0 || !Number.isFinite(outputTokens)) return undefined;
+   try {
+     return parseEther(outputTokens.toFixed(18));
+   } catch {
+     return undefined;
+   }
+ })();
+
+ if (!parsedAmount || parsedAmount === 0n) return undefined;
+
+ // Prefer value-based when dry run understates: (1) swap-to-mint path, or (2) USDC zap returning >5% less than value-based
+ if (needsSwap && useETHZap && valueBasedOutput) return valueBasedOutput;
+
+ if (mintDryRunResult && amountForDryRun && amountForDryRun > 0n) {
+   const [
+     incentiveRatio,
+     wrappedFee,
+     wrappedDiscount,
+     wrappedCollateralUsed,
+     leveragedMinted,
+     price,
+     rate,
+   ] = mintDryRunResult as [
+     bigint,
+     bigint,
+     bigint,
+     bigint,
+     bigint,
+     bigint,
+     bigint
+   ];
+   // Contract can return inflated leveragedMinted (e.g. collateral * rate instead of collateral / price).
+   if (price > 0n && leveragedMinted > amountForDryRun) {
+     const dryRunOutput = (amountForDryRun * 10n ** 18n) / price;
+     if (valueBasedOutput && dryRunOutput < valueBasedOutput / 10n) return valueBasedOutput;
+     return dryRunOutput;
+   }
+   // When dry run understates by >5% vs value-based (e.g. USDC zap showing ~8% less), use value-based
+   if (valueBasedOutput && leveragedMinted < (valueBasedOutput * 95n) / 100n) return valueBasedOutput;
+   return leveragedMinted;
+ }
+ return valueBasedOutput;
+ }, [mintDryRunResult, parsedAmount, amountForDryRun, needsSwap, useETHZap, leveragedTokenPriceUSD, selectedDepositAsset, fxSAVEPrice, selectedTokenDecimals, userTokens]);
 
  const redeemFee = useMemo(() => {
  if (!redeemDryRunResult || !parsedAmount || parsedAmount === 0n) return 0n;
@@ -667,12 +746,11 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
  balance = nativeEthBalance?.value || 0n;
  } else {
  // Handle both direct bigint and { result: bigint } formats for ERC20 tokens
- if (depositAssetBalanceData) {
- if (
- typeof depositAssetBalanceData ==="object" &&
-"result" in depositAssetBalanceData
- ) {
- balance = (depositAssetBalanceData.result as bigint) || 0n;
+ if (depositAssetBalanceData !== undefined && depositAssetBalanceData !== null) {
+ if (typeof depositAssetBalanceData === "bigint") {
+ balance = depositAssetBalanceData;
+ } else if (typeof depositAssetBalanceData === "object" && "result" in depositAssetBalanceData) {
+ balance = ((depositAssetBalanceData as { result: bigint }).result) || 0n;
  } else {
  balance = depositAssetBalanceData as bigint;
  }
@@ -685,12 +763,11 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
  } else {
  // Handle both direct bigint and { result: bigint } formats
  let balance = 0n;
- if (leveragedTokenBalance) {
- if (
- typeof leveragedTokenBalance ==="object" &&
-"result" in leveragedTokenBalance
- ) {
- balance = (leveragedTokenBalance.result as bigint) || 0n;
+ if (leveragedTokenBalance !== undefined && leveragedTokenBalance !== null) {
+ if (typeof leveragedTokenBalance === "bigint") {
+ balance = leveragedTokenBalance;
+ } else if (typeof leveragedTokenBalance === "object" && "result" in leveragedTokenBalance) {
+ balance = ((leveragedTokenBalance as { result: bigint }).result) || 0n;
  } else {
  balance = leveragedTokenBalance as bigint;
  }
@@ -986,7 +1063,7 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
        : 0n;
    }
 
-   let mintHash: `0x${string}`;
+   let mintHash!: `0x${string}`;
 
    // FXUSD must always use zap - if zapAddress is missing, throw error
    if (isFxUSD && isFxUSDMarket && !zapAddress) {
@@ -1000,7 +1077,7 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
        if (includeSwap || isNativeETH) {
          mintHash = await writeContractAsync({
            address: zapAddress,
-           abi: MINTER_ETH_ZAP_V2_ABI,
+           abi: MINTER_ETH_ZAP_V3_ABI,
            functionName: "zapEthToLeveraged",
            args: [address as `0x${string}`, minOutput],
            value: amountForMint,
@@ -1025,14 +1102,14 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
           : { usePermit: false };
         if (permitEnabled && permitResult?.usePermit)
           updateProgressStep("signPermit", { status: "completed" });
-        let usePermit = permitResult?.usePermit && !!permitResult.permitSig && !!permitResult.deadline;
+        let usePermit = permitResult != null && permitResult.usePermit && !!permitResult.permitSig && !!permitResult.deadline;
         
-        if (usePermit && permitResult.permitSig && permitResult.deadline) {
+        if (usePermit && permitResult && permitResult.permitSig && permitResult.deadline) {
           // Use permit function - zapStEthToLeveragedWithPermit
           try {
             mintHash = await writeContractAsync({
               address: zapAddress,
-              abi: [...MINTER_ETH_ZAP_V2_ABI, ...STETH_ZAP_PERMIT_ABI] as const,
+              abi: [...MINTER_ETH_ZAP_V3_ABI, ...STETH_ZAP_PERMIT_ABI] as const,
               functionName: "zapStEthToLeveragedWithPermit",
               args: [
                 amountForMint,
@@ -1086,7 +1163,7 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
           
           mintHash = await writeContractAsync({
             address: zapAddress,
-            abi: MINTER_ETH_ZAP_V2_ABI,
+            abi: MINTER_ETH_ZAP_V3_ABI,
             functionName: "zapStEthToLeveraged",
             args: [amountForMint, address as `0x${string}`, minOutput],
           });
@@ -1121,7 +1198,7 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
         : { usePermit: false };
       if (permitEnabled && permitResult?.usePermit)
         updateProgressStep("signPermit", { status: "completed" });
-      let usePermit = permitResult?.usePermit && !!permitResult.permitSig && !!permitResult?.deadline;
+      let usePermit = permitResult != null && permitResult.usePermit && !!permitResult.permitSig && !!permitResult.deadline;
       
       // Calculate minFxSaveOut: use wrappedRate like Anchor (expectedFxSave = amount/rate), not % of input.
       // Using % of input caused SlippageExceeded for fxUSD (e.g. 5 fxUSD → ~4.65 fxSAVE, we required 4.8).
@@ -1136,7 +1213,7 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
         minFxSaveOut = (amountForMint * BigInt(100 - (isActuallyFxUSD ? 15 : minFxSaveSlipPct)) * 100n) / 10000n;
       }
       
-      if (usePermit && permitResult.permitSig && permitResult.deadline) {
+      if (usePermit && permitResult && permitResult.permitSig && permitResult.deadline) {
         // Use permit functions - requires minFxSaveOut parameter; use exact signed deadline.
         const permitDeadline = permitResult.deadline;
         try {
@@ -1304,7 +1381,7 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
      (e) => e instanceof ContractFunctionRevertedError
    );
    if (revertError instanceof ContractFunctionRevertedError) {
-     errorMessage = revertError.reason || revertError.data?.message || "Transaction failed";
+     errorMessage = revertError.reason || revertError.data?.errorName || "Transaction failed";
    } else {
      const msg = err.message || err.shortMessage || "Transaction failed";
      errorMessage = msg.replace(/^[^:]+:\s*/i, "").replace(/\s*\([^)]+\)$/, "") || "Transaction failed";
@@ -1470,26 +1547,28 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
  return nativeEthBalance?.value || 0n;
  }
  // Handle both direct bigint and { result: bigint } formats for ERC20 tokens
- if (depositAssetBalanceData) {
- if (
- typeof depositAssetBalanceData ==="object" &&
-"result" in depositAssetBalanceData
- ) {
- return (depositAssetBalanceData.result as bigint) || 0n;
+ if (depositAssetBalanceData !== undefined && depositAssetBalanceData !== null) {
+ if (typeof depositAssetBalanceData === "bigint") {
+ return depositAssetBalanceData;
+ }
+ if (typeof depositAssetBalanceData === "object" && "result" in depositAssetBalanceData) {
+ return ((depositAssetBalanceData as { result: bigint }).result) || 0n;
  }
  return depositAssetBalanceData as bigint;
  }
  return 0n;
  } else {
  // Handle both direct bigint and { result: bigint } formats
- if (
- leveragedTokenBalance &&
- typeof leveragedTokenBalance ==="object" &&
-"result" in leveragedTokenBalance
- ) {
- return (leveragedTokenBalance.result as bigint) || 0n;
+ if (leveragedTokenBalance !== undefined && leveragedTokenBalance !== null) {
+ if (typeof leveragedTokenBalance === "bigint") {
+ return leveragedTokenBalance;
  }
- return (leveragedTokenBalance as bigint) || 0n;
+ if (typeof leveragedTokenBalance === "object" && "result" in leveragedTokenBalance) {
+ return ((leveragedTokenBalance as { result: bigint }).result) || 0n;
+ }
+ return leveragedTokenBalance as bigint;
+ }
+ return 0n;
  }
  }, [
  activeTab,
@@ -1912,29 +1991,12 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
              {(() => {
                if (!expectedMintOutput || expectedMintOutput === 0n || !parsedAmount || parsedAmount === 0n) return null;
                const leveragedAmount = Number(formatEther(expectedMintOutput));
-               const depositTokenSym = (selectedDepositAsset || collateralSymbol)?.toLowerCase() ?? "";
-               let depositPriceUSD = 0;
-               if (depositTokenSym === "wsteth" || depositTokenSym === "steth") {
-                 depositPriceUSD = wstETHPrice || 0;
-               } else if (depositTokenSym === "fxsave") {
-                 depositPriceUSD = fxSAVEPrice || 0;
-               } else if (depositTokenSym === "eth" || depositTokenSym === "weth") {
-                 depositPriceUSD = ethPrice || 0;
-               } else if (depositTokenSym === "usdc" || depositTokenSym === "fxusd") {
-                 depositPriceUSD = 1.0;
-               }
-               const depositAmountNum = amount && parseFloat(amount) > 0 ? parseFloat(amount) : 0;
-               const usdValue = depositPriceUSD > 0 && depositAmountNum > 0
-                 ? depositAmountNum * depositPriceUSD
-                 : (() => {
-                     const col = collateralSymbol.toLowerCase();
-                     let p = 0;
-                     if (col === "wsteth" || col === "steth") p = wstETHPrice || 0;
-                     else if (col === "fxsave") p = fxSAVEPrice || 0;
-                     else if (col === "eth") p = ethPrice || 0;
-                     else if (col === "usdc" || col === "fxusd") p = 1.0;
-                     return p > 0 ? leveragedAmount * p : 0;
-                   })();
+               const usdValue = amountToUSD(leveragedAmount, leveragedTokenSymbol, {
+                 ethPrice: ethPrice ?? 0,
+                 wstETHPrice: wstETHPrice ?? 0,
+                 fxSAVEPrice: fxSAVEPrice ?? 1.08,
+                 leveragedPriceUSD: leveragedTokenPriceUSD ?? 0,
+               }, collateralSymbol);
                return usdValue > 0 ? (
                  <div className="text-xs text-[#1E4775]/50 font-mono">
                    ${usdValue.toLocaleString(undefined, {
@@ -1956,11 +2018,11 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
              <div className="flex justify-end items-center gap-2 text-xs text-right">
                <span
                  className={`font-bold font-mono ${
-                   mintFeePercentage > 2 ? "text-red-600" : "text-[#1E4775]"
+                   mintFeePercentage > 2 && mintFeePercentage <= 100 ? "text-red-600" : "text-[#1E4775]"
                  }`}
                >
-                 Mint Fee: {mintFeePercentage.toFixed(2)}%
-                 {mintFeePercentage > 2 && " ⚠️"}
+                 Mint Fee: {mintFeePercentage > 100 ? "~1.00" : mintFeePercentage.toFixed(2)}%
+                 {mintFeePercentage > 2 && mintFeePercentage <= 100 && " ⚠️"}
                </span>
              </div>
            </div>
@@ -1982,18 +2044,11 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
              {(() => {
                if (!expectedRedeemOutput || expectedRedeemOutput === 0n || !parsedAmount || parsedAmount === 0n) return null;
                const collateralAmount = Number(formatEther(expectedRedeemOutput));
-               const collateralSymbolLower = collateralSymbol.toLowerCase();
-               let priceUSD = 0;
-               if (collateralSymbolLower === "wsteth" || collateralSymbolLower === "steth") {
-                 priceUSD = wstETHPrice || 0;
-               } else if (collateralSymbolLower === "fxsave") {
-                 priceUSD = fxSAVEPrice || 0;
-               } else if (collateralSymbolLower === "eth") {
-                 priceUSD = ethPrice || 0;
-               } else if (collateralSymbolLower === "usdc" || collateralSymbolLower === "fxusd") {
-                 priceUSD = 1.0;
-               }
-               const usdValue = priceUSD > 0 ? collateralAmount * priceUSD : 0;
+               const usdValue = amountToUSD(collateralAmount, collateralSymbol, {
+                 ethPrice: ethPrice ?? 0,
+                 wstETHPrice: wstETHPrice ?? 0,
+                 fxSAVEPrice: fxSAVEPrice ?? 1.08,
+               });
                return usdValue > 0 ? (
                  <div className="text-xs text-[#1E4775]/50 font-mono">
                    ${usdValue.toLocaleString(undefined, {
@@ -2064,19 +2119,19 @@ const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
  )}
  <button
  onClick={activeTab ==="mint" ? handleMint : handleRedeem}
- disabled={
- step ==="error"
-   ? false
-   : !isConnected ||
-     !amount ||
-     parseFloat(amount) <= 0 ||
-     (activeTab ==="mint" &&
-       parsedAmount &&
-       parsedAmount > currentBalance) ||
-     (activeTab ==="redeem" &&
-       parsedAmount &&
-       parsedAmount > currentBalance)
- }
+ disabled={Boolean(
+   step ==="error"
+     ? false
+     : !isConnected ||
+       !amount ||
+       parseFloat(amount) <= 0 ||
+       (activeTab ==="mint" &&
+         parsedAmount &&
+         parsedAmount > currentBalance) ||
+       (activeTab ==="redeem" &&
+         parsedAmount &&
+         parsedAmount > currentBalance)
+ )}
  className="flex-1 py-3 px-4 bg-[#FF8A7A] text-white font-semibold hover:bg-[#FF6B5A] transition-colors disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
  >
  {step ==="error" ? "Try Again" : activeTab ==="mint" ? "Mint" : "Redeem"}

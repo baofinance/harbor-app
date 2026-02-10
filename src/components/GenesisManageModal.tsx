@@ -1,13 +1,11 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Plus } from "lucide-react";
 import { GenesisDepositModal } from "./GenesisDepositModal";
 import { GenesisWithdrawModal } from "./GenesisWithdrawModal";
 import { useContractRead } from "wagmi";
 import { useAccount } from "wagmi";
 import { getAcceptedDepositAssets } from "@/utils/markets";
-import { getLogoPath } from "@/lib/logos";
 
 interface GenesisManageModalProps {
   isOpen: boolean;
@@ -18,22 +16,7 @@ interface GenesisManageModalProps {
   onSuccess?: () => void;
 }
 
-const genesisABI = [
-  {
-    inputs: [{ name: "depositor", type: "address" }],
-    name: "balanceOf",
-    outputs: [{ type: "uint256", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "genesisIsEnded",
-    outputs: [{ type: "bool", name: "" }],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
+import { GENESIS_ABI } from "@/abis/shared";
 
 export const GenesisManageModal = ({
   isOpen,
@@ -81,7 +64,7 @@ export const GenesisManageModal = ({
   // Fetch user's deposit balance (with error handling)
   const { data: userDeposit, error: depositError, isLoading: depositLoading } = useContractRead({
     address: isValidGenesisAddress ? genesisAddress : undefined,
-    abi: genesisABI,
+    abi: GENESIS_ABI,
     functionName: "balanceOf",
     args: address ? [address] : undefined,
     query: {
@@ -95,7 +78,7 @@ export const GenesisManageModal = ({
   // Check if genesis has ended (with error handling)
   const { data: isEnded, error: endedError, isLoading: endedLoading } = useContractRead({
     address: isValidGenesisAddress ? genesisAddress : undefined,
-    abi: genesisABI,
+    abi: GENESIS_ABI,
     functionName: "genesisIsEnded",
     query: {
       enabled: isValidGenesisAddress && isOpen && mounted,
@@ -136,38 +119,6 @@ export const GenesisManageModal = ({
         className="relative bg-white shadow-2xl w-full max-w-md mx-2 sm:mx-4 animate-in fade-in-0 scale-in-95 duration-200 rounded-none max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col"
         style={{ borderRadius: 0 }}
       >
-        {/* Protocol and Market Header */}
-        {market?.peggedToken?.symbol && (
-          <div className="bg-[#1E4775] text-white px-3 sm:px-4 py-2 sm:py-2.5 flex items-center justify-between">
-            <div className="text-sm sm:text-base font-semibold">
-              Genesis
-            </div>
-            <div className="flex items-center gap-2">
-              <img
-                src={market?.peggedToken?.icon ?? getLogoPath(market?.peggedToken?.symbol ?? "")}
-                alt={market?.peggedToken?.symbol ?? ""}
-                className="w-5 h-5 sm:w-6 sm:h-6 rounded-full flex-shrink-0"
-              />
-              <span className="text-sm sm:text-base font-bold">
-                {market.peggedToken.symbol}
-              </span>
-              {market?.leveragedToken?.symbol && (
-                <>
-                  <Plus className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0 text-white" strokeWidth={3} aria-hidden />
-                  <img
-                    src={(market.leveragedToken as { icon?: string })?.icon ?? getLogoPath(market.leveragedToken.symbol)}
-                    alt={market.leveragedToken.symbol}
-                    className="w-5 h-5 sm:w-6 sm:h-6 rounded-full flex-shrink-0"
-                  />
-                  <span className="text-sm sm:text-base font-bold">
-                    {market.leveragedToken.symbol}
-                  </span>
-                </>
-              )}
-            </div>
-          </div>
-        )}
-        
         {/* Header with tabs */}
         <div className="flex items-center justify-between p-0 pt-2 sm:pt-3 px-2 sm:px-3 border-b border-[#1E4775]/10">
           <div className="flex flex-1 mr-2 sm:mr-4 border border-[#1E4775]/20 border-b-0 overflow-hidden">
@@ -196,7 +147,7 @@ export const GenesisManageModal = ({
           </div>
           <button
             onClick={handleClose}
-            className="text-[#1E4775]/50 hover:text-[#1E4775] transition-colors flex-shrink-0 touch-target flex items-center justify-center w-6 h-6 sm:w-7 sm:h-7"
+            className="text-[#1E4775]/50 hover:text-[#1E4775] transition-colors flex-shrink-0 touch-target"
             aria-label="Close modal"
           >
             <svg
@@ -208,7 +159,7 @@ export const GenesisManageModal = ({
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                strokeWidth={3}
+                strokeWidth={2}
                 d="M6 18L18 6M6 6l12 12"
               />
             </svg>
@@ -264,7 +215,6 @@ export const GenesisManageModal = ({
                 leveragedTokenZap: market?.addresses?.leveragedTokenZap,
               }}
               coinGeckoId={market?.coinGeckoId}
-              peggedTokenSymbol={market?.peggedToken?.symbol}
               onSuccess={onSuccess}
               embedded={true}
             />
@@ -280,7 +230,6 @@ export const GenesisManageModal = ({
               userDeposit={userDeposit || 0n}
               priceOracleAddress={priceOracleAddress}
               coinGeckoId={market?.coinGeckoId}
-              peggedTokenSymbol={market?.peggedToken?.symbol}
               onSuccess={onSuccess}
               embedded={true}
             />

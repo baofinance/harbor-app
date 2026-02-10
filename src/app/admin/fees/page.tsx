@@ -4,26 +4,10 @@ import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useAccount, useContractReads, useReadContract, useWriteContract } from "wagmi";
 import { minterABI } from "@/abis/minter";
+import { ERC20_ABI } from "@/abis/shared";
 import { markets } from "@/config/markets";
 import { ConnectWallet } from "@/components/Wallet";
 import { formatUnits } from "viem";
-
-const ERC20_META_ABI = [
-  {
-    type: "function",
-    name: "decimals",
-    stateMutability: "view",
-    inputs: [],
-    outputs: [{ type: "uint8" }],
-  },
-  {
-    type: "function",
-    name: "balanceOf",
-    stateMutability: "view",
-    inputs: [{ type: "address" }],
-    outputs: [{ type: "uint256" }],
-  },
-] as const;
 
 const WAD = 10n ** 18n;
 
@@ -371,7 +355,7 @@ export default function AdminFeesPage() {
     for (const t of tokens) {
       reads.push({
         address: t,
-        abi: ERC20_META_ABI,
+        abi: ERC20_ABI,
         functionName: "decimals",
       });
     }
@@ -380,7 +364,7 @@ export default function AdminFeesPage() {
       if (!r.wrappedToken || !r.feeReceiver) continue;
       reads.push({
         address: r.wrappedToken,
-        abi: ERC20_META_ABI,
+        abi: ERC20_ABI,
         functionName: "balanceOf",
         args: [r.feeReceiver],
       });
