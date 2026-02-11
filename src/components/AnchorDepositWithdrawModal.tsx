@@ -365,9 +365,12 @@ export const AnchorDepositWithdrawModal = ({
     collateralPool: "immediate" | "request";
     sailPool: "immediate" | "request";
   }>({
-    collateralPool: "immediate",
-    sailPool: "immediate",
+    collateralPool: "request",
+    sailPool: "request",
   });
+
+  // Toggle to enable 1% early withdraw option (hidden by default; user must opt-in)
+  const [earlyWithdraw1PctEnabled, setEarlyWithdraw1PctEnabled] = useState(false);
 
   // Transaction status tracking
   const [transactionSteps, setTransactionSteps] = useState<TransactionStatus[]>(
@@ -2239,8 +2242,8 @@ export const AnchorDepositWithdrawModal = ({
     
     // Check if window is currently open (now is between start and end)
     if (now >= start && now <= end) {
-      // Window is OPEN - show "(free)" only, time remaining is shown in banner
-      return "(free)";
+      // Window is OPEN - return "free" (template adds parens: " (free)")
+      return "free";
     }
 
     // Window is NOT open (either before it opens: now < start, or after it closes: now > end)
@@ -2372,6 +2375,50 @@ export const AnchorDepositWithdrawModal = ({
     }
     return percent;
   }, [sailPoolEarlyFee, sailPoolAddress]);
+
+  // Sync withdrawal method to "request" or "immediate" based on window status when pool is selected
+  const isWindowOpen = useCallback((
+    request: readonly [bigint, bigint] | undefined
+  ): boolean => {
+    if (!request || request[0] === 0n && request[1] === 0n) return false;
+    const [start, end] = request;
+    const now = BigInt(Math.floor(Date.now() / 1000));
+    return now >= start && now <= end;
+  }, []);
+
+  useEffect(() => {
+    if (activeTab !== "withdraw" || !isOpen) return;
+    setWithdrawalMethods((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      if (selectedPositions.collateralPool) {
+        const windowOpen = isWindowOpen(collateralPoolRequest);
+        const desired = windowOpen ? "immediate" : (prev.collateralPool === "immediate" && earlyWithdraw1PctEnabled ? "immediate" : "request");
+        if (next.collateralPool !== desired) {
+          next.collateralPool = desired;
+          changed = true;
+        }
+      }
+      if (selectedPositions.sailPool) {
+        const windowOpen = isWindowOpen(sailPoolRequest);
+        const desired = windowOpen ? "immediate" : (prev.sailPool === "immediate" && earlyWithdraw1PctEnabled ? "immediate" : "request");
+        if (next.sailPool !== desired) {
+          next.sailPool = desired;
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [
+    activeTab,
+    isOpen,
+    selectedPositions.collateralPool,
+    selectedPositions.sailPool,
+    collateralPoolRequest,
+    sailPoolRequest,
+    earlyWithdraw1PctEnabled,
+    isWindowOpen,
+  ]);
 
   // Calculate early withdrawal fee amounts based on withdrawal amounts
   const earlyWithdrawalFees = useMemo(() => {
@@ -4770,6 +4817,7 @@ export const AnchorDepositWithdrawModal = ({
   useEffect(() => {
     if (!isOpen) {
       hasInitializedOnOpen.current = false;
+      setEarlyWithdraw1PctEnabled(false);
       return;
     }
     if (hasInitializedOnOpen.current) return;
@@ -11315,13 +11363,13 @@ export const AnchorDepositWithdrawModal = ({
                                           }));
                                           setWithdrawalMethods((prev) => ({
                                             ...prev,
-                                            collateralPool: "immediate",
-                                            sailPool: "immediate",
+                                            collateralPool: "request",
+                                            sailPool: "request",
                                           }));
                                           return;
                                         }
 
-                                        // Same market: toggle this pool only
+                                        // Same market: toggle this pool only - set method when checking based on window
                                         if (p.poolType === "collateral") {
                                           setSelectedPositions((prev) => ({
                                             ...prev,
@@ -11462,8 +11510,19 @@ export const AnchorDepositWithdrawModal = ({
                                   </label>
                                   {isSelected && hasBalance && (
                                     <div className="px-2 pb-2 pt-0 mt-0">
-                              {/* Withdrawal Method Toggle */}
+                              {/* Withdrawal Method: Request (default) or Early Withdraw (1% fee, gated by toggle unless window open) */}
+                              {(() => {
+                                const poolWindowOpen = !!(request && request[0] > 0n && request[1] > 0n) && (() => {
+                                  const [start, end] = request;
+                                  const now = BigInt(Math.floor(Date.now() / 1000));
+                                  return now >= start && now <= end;
+                                })();
+                                const showEarlyWithdrawOption = poolWindowOpen || earlyWithdraw1PctEnabled;
+                                const show1PctToggle = !poolWindowOpen;
+                                return (
+                                  <>
                               <div className="flex items-center bg-[#17395F]/10 p-1 mb-2">
+                                {showEarlyWithdrawOption && (
                                 <button
                                   type="button"
                                   onClick={() =>
@@ -11488,6 +11547,7 @@ export const AnchorDepositWithdrawModal = ({
                                             return ` (${display})`;
                                           })()}
                                 </button>
+                                )}
                                 <button
                                   type="button"
                                   onClick={() =>
@@ -11507,6 +11567,44 @@ export const AnchorDepositWithdrawModal = ({
                                           {getRequestStatusText(request)}
                                 </button>
                               </div>
+                              {show1PctToggle && (
+                                <div className="flex items-center justify-between border border-[#1E4775]/20 bg-[#17395F]/5 px-2 py-1.5 text-[10px] mb-2">
+                                  <span className="text-[#1E4775]/80">
+                                    Withdraw now - Charge a 1% fee to receive funds immediately
+                                  </span>
+                                  <label className="flex items-center gap-1.5 text-[#1E4775]/80 shrink-0">
+                                    <span className={earlyWithdraw1PctEnabled ? "text-[#1E4775]" : "text-[#1E4775]/60"}>
+                                      {earlyWithdraw1PctEnabled ? "On" : "Off"}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const next = !earlyWithdraw1PctEnabled;
+                                        setEarlyWithdraw1PctEnabled(next);
+                                        setWithdrawalMethods((m) => ({
+                                          ...m,
+                                          [modeKey]: next ? "immediate" : "request",
+                                        }));
+                                      }}
+                                      disabled={isProcessing}
+                                      className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors ${
+                                        earlyWithdraw1PctEnabled ? "bg-[#1E4775]" : "bg-[#1E4775]/30"
+                                      }`}
+                                      aria-pressed={earlyWithdraw1PctEnabled}
+                                      aria-label="Enable 1% early withdraw"
+                                    >
+                                      <span
+                                        className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
+                                          earlyWithdraw1PctEnabled ? "translate-x-3.5" : "translate-x-0.5"
+                                        }`}
+                                      />
+                                    </button>
+                                  </label>
+                                </div>
+                              )}
+                                  </>
+                                );
+                              })()}
 
                                       {/* Window status banner */}
                                       {(() => {

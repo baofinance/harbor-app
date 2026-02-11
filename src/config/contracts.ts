@@ -532,6 +532,9 @@ const productionMarkets: Markets = {
       rebalancePoolCollateral: "0x0000000000000000000000000000000000000000", // placeholder
       rebalancePoolLeveraged: "0x0000000000000000000000000000000000000000", // placeholder
       collateralPrice: "0x0000000000000000000000000000000000000000", // placeholder
+      genesisZap: "0xd19d801a0427Dd91bcbAfB0FcA783a3231a749c8", // GenesisUSDCZap_v4 for SILVER (deployed 2026-02-11)
+      peggedTokenZap: "0xf0ff6D8d707D81d87caf2faa2447253f283f8873" as `0x${string}`, // MinterUSDCZap_v3 for SILVER/fxUSD (same as GOLD)
+      leveragedTokenZap: "0xf0ff6D8d707D81d87caf2faa2447253f283f8873" as `0x${string}`, // MinterUSDCZap_v3 for SILVER/fxUSD (same as GOLD)
     },
     genesis: {
       startDate: "2026-02-01T00:00:00Z", // Placeholder - Coming Soon
@@ -572,6 +575,9 @@ const productionMarkets: Markets = {
       rebalancePoolCollateral: "0x0000000000000000000000000000000000000000", // placeholder
       rebalancePoolLeveraged: "0x0000000000000000000000000000000000000000", // placeholder
       collateralPrice: "0x0000000000000000000000000000000000000000", // placeholder
+      genesisZap: "0xC128Cbf15920455569e1926C982567d2bE21AC50", // GenesisETHZap_v4 for SILVER (deployed 2026-02-11)
+      peggedTokenZap: "0x3ce5e801A89eA0AC36fC29C12562695d4E6F0fec" as `0x${string}`, // MinterETHZap_v3 for SILVER/stETH (same as GOLD)
+      leveragedTokenZap: "0x3ce5e801A89eA0AC36fC29C12562695d4E6F0fec" as `0x${string}`, // MinterETHZap_v3 for SILVER/stETH (same as GOLD)
     },
     genesis: {
       startDate: "2026-02-01T00:00:00Z", // Placeholder - Coming Soon
