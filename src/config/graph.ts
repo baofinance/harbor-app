@@ -67,12 +67,21 @@ const HARBOR_MARKS_VERSION = "v0.1.2-metals-oracle";
 const STUDIO_MARKS_BASE = "https://api.studio.thegraph.com/query/1718836/harbor-marks";
 const STUDIO_MARKS_DEFAULT = `${STUDIO_MARKS_BASE}/${HARBOR_MARKS_VERSION}`;
 
+// Gateway still serves an old deployment without metals oracles. Use Studio v0.1.2 for marks when gateway is configured.
+const GATEWAY_MARKS_ID = "6XgXZkgr2SL1UWeriY6MsJV9aB2BUfemtMbsfuRq6uP1";
+const GATEWAY_MARKS_URL = `https://gateway.thegraph.com/api/subgraphs/id/${GATEWAY_MARKS_ID}`;
+
 // Get the Graph URL for marks (always production/mainnet)
 export const getGraphUrl = (): string => {
   if (typeof window !== "undefined" && window.location.hostname === "localhost") {
     return STUDIO_MARKS_DEFAULT;
   }
-  return GRAPH_CONFIG.marks.url;
+  const configured = GRAPH_CONFIG.marks.url;
+  // If staging/production has NEXT_PUBLIC_GRAPH_URL set to the gateway, that deployment lacks metals oracles; use Studio v0.1.2 so marks show.
+  if (configured && configured.includes("gateway.thegraph.com") && configured.includes(GATEWAY_MARKS_ID)) {
+    return DEFAULT_MARKS_URL;
+  }
+  return configured;
 };
 
 // Get headers for GraphQL requests (includes API key if needed)
