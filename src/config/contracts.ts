@@ -285,7 +285,7 @@ const productionMarkets: Markets = {
     },
     genesis: {
       startDate: "2026-01-21T00:00:00Z",
-      endDate: "2026-01-31T00:00:00Z",
+      endDate: "2026-02-23T17:00:00Z", // Sunday, February 23rd at 5pm UK (GMT)
       rewards: {
         pegged: {
           symbol: "haGOLD",
@@ -328,7 +328,7 @@ const productionMarkets: Markets = {
     },
     genesis: {
       startDate: "2026-01-21T00:00:00Z",
-      endDate: "2026-01-31T00:00:00Z",
+      endDate: "2026-02-23T17:00:00Z", // Sunday, February 23rd at 5pm UK (GMT)
       rewards: {
         pegged: {
           symbol: "haGOLD",
@@ -455,7 +455,7 @@ const productionMarkets: Markets = {
     },
     genesis: {
       startDate: "2026-02-01T00:00:00Z", // Placeholder - Coming Soon
-      endDate: "2026-02-08T20:00:00Z", // Placeholder - Coming Soon
+      endDate: "2026-02-23T17:00:00Z", // Sunday, February 23rd at 5pm UK (GMT)
       rewards: {
         pegged: {
           symbol: "haMCAP",
@@ -495,7 +495,7 @@ const productionMarkets: Markets = {
     },
     genesis: {
       startDate: "2026-02-01T00:00:00Z", // Placeholder - Coming Soon
-      endDate: "2026-02-08T20:00:00Z", // Placeholder - Coming Soon
+      endDate: "2026-02-23T17:00:00Z", // Sunday, February 23rd at 5pm UK (GMT)
       rewards: {
         pegged: {
           symbol: "haMCAP",

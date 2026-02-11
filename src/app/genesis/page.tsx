@@ -4461,9 +4461,17 @@ export default function GenesisIndexPage() {
                           const isFxSAVE = collateralSymbolNormalized === "fxsave";
                           const isEurMarket =
                             id === "steth-eur" || id === "fxusd-eur";
+                          const isLaunchMarket =
+                            id === "eth-fxusd" || id === "btc-fxusd" || id === "btc-steth";
+                          // Metals and all future campaigns use 25k fxSAVE / 15 wstETH
+                          const isMetalsOrFuture = !isLaunchMarket && !isEurMarket;
                           const thresholdAmount = isEurMarket
                             ? isFxSAVE
                               ? 50000
+                              : 15
+                            : isMetalsOrFuture
+                            ? isFxSAVE
+                              ? 25000
                               : 15
                             : isFxSAVE
                             ? 250000
@@ -4694,28 +4702,22 @@ export default function GenesisIndexPage() {
                           {marketName}
                         </div>
                         <div className="flex items-center gap-1">
-                          <Image
-                            src={getLogoPath(collateralSymbol)}
-                            alt={collateralSymbol}
-                            width={20}
-                            height={20}
-                            className="flex-shrink-0 rounded-full"
+                          <TokenLogo
+                            symbol={collateralSymbol}
+                            size={20}
+                            className="flex-shrink-0"
                           />
                           <span className="text-[#1E4775]/60 text-xs">=</span>
-                          <Image
-                            src={getLogoPath(peggedSymbol)}
-                            alt={peggedSymbol}
-                            width={20}
-                            height={20}
-                            className="flex-shrink-0 rounded-full"
+                          <TokenLogo
+                            symbol={peggedSymbol}
+                            size={20}
+                            className="flex-shrink-0"
                           />
                           <span className="text-[#1E4775]/60 text-xs">+</span>
-                          <Image
-                            src={getLogoPath(leveragedSymbol)}
-                            alt={leveragedSymbol}
-                            width={20}
-                            height={20}
-                            className="flex-shrink-0 rounded-full"
+                          <TokenLogo
+                            symbol={leveragedSymbol}
+                            size={20}
+                            className="flex-shrink-0"
                           />
                         </div>
                       </div>
@@ -4740,12 +4742,10 @@ export default function GenesisIndexPage() {
 
                       {/* Anchor Token Column */}
                       <div className="flex items-center justify-center gap-1.5 min-w-0">
-                        <Image
-                          src={getLogoPath(peggedSymbol)}
-                          alt={peggedSymbol}
-                          width={20}
-                          height={20}
-                          className="flex-shrink-0 rounded-full"
+                        <TokenLogo
+                          symbol={peggedSymbol}
+                          size={20}
+                          className="flex-shrink-0"
                         />
                         <span className="text-[#1E4775] font-semibold text-xs">
                           {peggedSymbol}
@@ -4755,12 +4755,10 @@ export default function GenesisIndexPage() {
                       {/* Sail Token Column */}
                       <div className="flex flex-col items-center gap-0.5 min-w-0">
                         <div className="flex items-center justify-center gap-1.5">
-                          <Image
-                            src={getLogoPath(leveragedSymbol)}
-                            alt={leveragedSymbol}
-                            width={20}
-                            height={20}
-                            className="flex-shrink-0 rounded-full"
+                          <TokenLogo
+                            symbol={leveragedSymbol}
+                            size={20}
+                            className="flex-shrink-0"
                           />
                           <span className="text-[#1E4775] font-semibold text-xs">
                             {leveragedSymbol}
@@ -4789,28 +4787,22 @@ export default function GenesisIndexPage() {
                             {marketName}
                           </div>
                           <div className="flex items-center gap-1">
-                            <Image
-                              src={getLogoPath(collateralSymbol)}
-                              alt={collateralSymbol}
-                              width={20}
-                              height={20}
-                              className="flex-shrink-0 rounded-full"
+                            <TokenLogo
+                              symbol={collateralSymbol}
+                              size={20}
+                              className="flex-shrink-0"
                             />
                             <span className="text-[#1E4775]/60 text-xs">=</span>
-                            <Image
-                              src={getLogoPath(peggedSymbol)}
-                              alt={peggedSymbol}
-                              width={20}
-                              height={20}
-                              className="flex-shrink-0 rounded-full"
+                            <TokenLogo
+                              symbol={peggedSymbol}
+                              size={20}
+                              className="flex-shrink-0"
                             />
                             <span className="text-[#1E4775]/60 text-xs">+</span>
-                            <Image
-                              src={getLogoPath(leveragedSymbol)}
-                              alt={leveragedSymbol}
-                              width={20}
-                              height={20}
-                              className="flex-shrink-0 rounded-full"
+                            <TokenLogo
+                              symbol={leveragedSymbol}
+                              size={20}
+                              className="flex-shrink-0"
                             />
                           </div>
                         </div>
@@ -4826,12 +4818,10 @@ export default function GenesisIndexPage() {
                             Anchor Token
                           </div>
                           <div className="flex items-center gap-1.5">
-                            <Image
-                              src={getLogoPath(peggedSymbol)}
-                              alt={peggedSymbol}
-                              width={16}
-                              height={16}
-                              className="flex-shrink-0 rounded-full"
+                            <TokenLogo
+                              symbol={peggedSymbol}
+                              size={16}
+                              className="flex-shrink-0"
                             />
                             <span className="text-[#1E4775] font-semibold text-xs">
                               {peggedSymbol}
@@ -4844,12 +4834,10 @@ export default function GenesisIndexPage() {
                           </div>
                           <div className="flex flex-col gap-0.5">
                             <div className="flex items-center gap-1.5">
-                              <Image
-                                src={getLogoPath(leveragedSymbol)}
-                                alt={leveragedSymbol}
-                                width={16}
-                                height={16}
-                                className="flex-shrink-0 rounded-full"
+                              <TokenLogo
+                                symbol={leveragedSymbol}
+                                size={16}
+                                className="flex-shrink-0"
                               />
                               <span className="text-[#1E4775] font-semibold text-xs">
                                 {leveragedSymbol}
