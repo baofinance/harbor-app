@@ -240,51 +240,30 @@ function getPriceOracleAddress(genesisAddress: string): string {
   if (genesisAddress == "0xa9eb43ed6ba3b953a82741f3e226c1d6b029699b") {
     return "0x71437c90f1e0785dd691fd02f7be0b90cd14c097"; // fxUSD/EUR (EUR::fxUSD::priceOracle)
   }
+  // Metals maiden voyage (GOLD/SILVER, fxUSD and stETH collaterals)
+  if (genesisAddress == "0x2cbf457112ef5a16cfca10fb173d56a5cc9daa66") {
+    return "0x1f7f62889e599e51b9e21b27d589fa521516d147"; // fxUSD/GOLD
+  }
+  if (genesisAddress == "0x8ad6b177137a6c33070c27d98355717849ce526c") {
+    return "0x4ebde6143c5e366264ba7416fdea18bc27c04a31"; // stETH/GOLD
+  }
+  if (genesisAddress == "0x66d18b9dd5d1cd51957dfea0e0373b54e06118c8") {
+    return "0x14816ff286f2ea46ab48c3275401fd4b1ef817b5"; // fxUSD/SILVER
+  }
+  if (genesisAddress == "0x8f655ca32a1fa8032955989c19e91886f26439dc") {
+    return "0x7223e17bd4527acbe44644300ea0f09a4aebc995"; // stETH/SILVER
+  }
   return "";
-}
-
-// Fallback prices if oracle fails (in USD)
-function getFallbackPrice(genesisAddress: string): BigDecimal {
-  // Production v1 contracts
-  if (genesisAddress == "0xc9df4f62474cf6cde6c064db29416a9f4f27ebdc") {
-    return BigDecimal.fromString("1.07"); // fxSAVE ~$1.07 (production v1)
-  }
-  if (genesisAddress == "0x42cc9a19b358a2a918f891d8a6199d8b05f0bc1c") {
-    return BigDecimal.fromString("1.07"); // fxSAVE ~$1.07 (production v1)
-  }
-  if (genesisAddress == "0xc64fc46eed431e92c1b5e24dc296b5985ce6cc00") {
-    return BigDecimal.fromString("4400"); // wstETH ~$4400 (production v1)
-  }
-  // Legacy test contracts
-  if (genesisAddress == "0x5f4398e1d3e33f93e3d7ee710d797e2a154cb073") {
-    return BigDecimal.fromString("1.07"); // fxSAVE ~$1.07
-  }
-  if (genesisAddress == "0x288c61c3b3684ff21adf38d878c81457b19bd2fe") {
-    return BigDecimal.fromString("1.07"); // fxSAVE ~$1.07
-  }
-  if (genesisAddress == "0x9ae0b57ceada0056dbe21edcd638476fcba3ccc0") {
-    return BigDecimal.fromString("4400"); // wstETH ~$4400 (stETH ~$3600 * rate ~1.22)
-  }
-  if (genesisAddress == "0x1454707877cdb966e29cea8a190c2169eeca4b8c") {
-    return BigDecimal.fromString("1.07"); // fxSAVE ~$1.07
-  }
-  // EUR markets (production v1)
-  if (genesisAddress == "0xf4f97218a00213a57a32e4606aaecc99e1805a89") {
-    return BigDecimal.fromString("3600"); // wstETH ~$3600 (stETH/EUR)
-  }
-  if (genesisAddress == "0xa9eb43ed6ba3b953a82741f3e226c1d6b029699b") {
-    return BigDecimal.fromString("1.07"); // fxSAVE ~$1.07 (fxUSD/EUR)
-  }
-  return BigDecimal.fromString("1.0"); // Default fallback
 }
 
 /**
  * Fetch real-time price from the WrappedPriceOracle contract
  * Returns the wrapped token price in USD (underlying price * wrapped rate)
+ * Returns 0 if oracle is missing or fails so the app can display an error.
  * 
  * @param genesisAddress - The genesis contract address
  * @param block - The current block
- * @returns Wrapped token price in USD, or fallback price if oracle fails
+ * @returns Wrapped token price in USD, or 0 if oracle is missing/fails (app shows error)
  */
 export function getWrappedTokenPriceUSD(genesisAddress: Bytes, block: ethereum.Block): BigDecimal {
   const genesisAddressStr = genesisAddress.toHexString();
@@ -498,41 +477,28 @@ export function getWrappedTokenPriceUSD(genesisAddress: Bytes, block: ethereum.B
     return wstethUsdPrice;
   }
   
-  // For other markets, use oracle normally
+  // For other markets, use oracle normally (includes metals). No fallback - if oracle fails, return 0 so app can show error.
   const oracleAddressStr = getPriceOracleAddress(genesisAddressStr);
   
-  // If no oracle configured, return 0 to indicate pricing failure
   if (oracleAddressStr == "") {
     return BigDecimal.fromString("0");
   }
   
-  // Bind to the price oracle contract
   const oracleAddress = Address.fromString(oracleAddressStr);
   const oracle = WrappedPriceOracle.bind(oracleAddress);
-  
-  // Call latestAnswer() which returns (minUnderlyingPrice, maxUnderlyingPrice, minWrappedRate, maxWrappedRate)
   const result = oracle.try_latestAnswer();
   
   if (result.reverted) {
-    // Oracle call failed - return 0 to indicate pricing failure
     return BigDecimal.fromString("0");
   }
   
-  // Extract values (all in 18 decimals)
-  const maxUnderlyingPrice = result.value.value1; // maxUnderlyingPrice (e.g., wstETH = $4000)
-  const maxWrappedRate = result.value.value3; // maxWrappedRate (e.g., wstETH rate = 1.0)
-  
-  // Convert from BigInt (18 decimals) to BigDecimal
+  const maxUnderlyingPrice = result.value.value1;
+  const maxWrappedRate = result.value.value3;
   const underlyingPriceUSD = maxUnderlyingPrice.toBigDecimal().div(E18);
   const wrappedRate = maxWrappedRate.toBigDecimal().div(E18);
-  
-  // Calculate wrapped token price: underlying price * wrapped rate
-  // Example: wstETH = $4000 * 1.0 = $4000
   const wrappedTokenPriceUSD = underlyingPriceUSD.times(wrappedRate);
   
-  // Ensure we have a valid price
   if (wrappedTokenPriceUSD.le(BigDecimal.fromString("0"))) {
-    // Calculated price is invalid - return 0 to indicate pricing failure
     return BigDecimal.fromString("0");
   }
   

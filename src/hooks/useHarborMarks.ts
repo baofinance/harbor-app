@@ -388,6 +388,18 @@ export function useAllHarborMarks(genesisAddresses: string[]) {
 
       const results = await Promise.all(queries);
 
+      // Debug: log whether userHarborMarks is present (set NEXT_PUBLIC_DEBUG_HARBOR_MARKS=true on staging to trace "marks not accumulating")
+      const debugMarks = typeof window !== "undefined" && process.env.NEXT_PUBLIC_DEBUG_HARBOR_MARKS === "true";
+      if (debugMarks) {
+        results.forEach((r, i) => {
+          const genesisAddress = genesisAddresses[i];
+          const id = `${genesisAddress.toLowerCase()}-${address!.toLowerCase()}`;
+          const hasMarks = !!r.data?.userHarborMarks;
+          const currentMarks = r.data?.userHarborMarks?.currentMarks ?? "null";
+          console.log(`[useAllHarborMarks] ${genesisAddress.slice(0, 10)}... => ${hasMarks ? `currentMarks=${currentMarks}` : "userHarborMarks=null"} (query id: ${id})`);
+        });
+      }
+
       // Map results with error details and merge with previous valid data
       const mappedResults = results.map((result, index) => {
         const genesisAddress = genesisAddresses[index];

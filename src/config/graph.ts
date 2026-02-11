@@ -4,7 +4,8 @@ const GRAPH_API_KEY = process.env.NEXT_PUBLIC_GRAPH_API_KEY || "247d3c7824af808d
 const useTest2 = process.env.NEXT_PUBLIC_USE_TEST2_CONTRACTS === "true";
 
 export const GRAPH_CONFIG = {
-  // Harbor Marks subgraph (for marks tracking)
+  // Harbor Marks subgraph (for marks tracking). For metals maiden voyage marks to show,
+  // set NEXT_PUBLIC_GRAPH_URL to Studio URL e.g. https://api.studio.thegraph.com/query/1718836/harbor-marks/v0.1.1-metals-bonus
   marks: {
     url:
       (useTest2
@@ -61,10 +62,14 @@ export const CONTRACTS_WBTC = {
   stabilityPoolLeveraged: "0xfc2145de73ec53e34c4e6809b56a61321315e806",
 };
 
+// Harbor Marks subgraph version with metals maiden voyage support (use this or newer for marks to show)
+const HARBOR_MARKS_VERSION = "v0.1.1-metals-bonus";
+const STUDIO_MARKS_BASE = "https://api.studio.thegraph.com/query/1718836/harbor-marks";
+
 // Get the Graph URL for marks (always production/mainnet)
 export const getGraphUrl = (): string => {
   if (typeof window !== "undefined" && window.location.hostname === "localhost") {
-    return "https://api.studio.thegraph.com/query/1718836/harbor-marks/campaigns-v0.03";
+    return `${STUDIO_MARKS_BASE}/${HARBOR_MARKS_VERSION}`;
   }
   return GRAPH_CONFIG.marks.url;
 };

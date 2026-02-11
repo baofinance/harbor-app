@@ -548,6 +548,22 @@ export default function GenesisIndexPage() {
     new Set([...marketsWithOtherErrors, ...bonusMarketsWithOtherErrors])
   );
 
+  // Oracle pricing failed: user has deposit but subgraph reports 0 USD (oracle unavailable)
+  const marketsWithOraclePricingError = useMemo(() => {
+    const list: string[] = [];
+    (marksResults || []).forEach((r: { genesisAddress?: string; data?: { userHarborMarks?: { currentDeposit?: string; currentDepositUSD?: string } }; errors?: unknown[] }) => {
+      const marks = r.data?.userHarborMarks;
+      if (!marks || r.errors?.length) return;
+      const currentDeposit = parseFloat(marks.currentDeposit || "0");
+      const currentDepositUSD = parseFloat(marks.currentDepositUSD || "0");
+      if (currentDeposit > 0 && currentDepositUSD === 0 && r.genesisAddress) {
+        list.push(r.genesisAddress);
+      }
+    });
+    return list;
+  }, [marksResults]);
+  const hasOraclePricingError = marketsWithOraclePricingError.length > 0;
+
   const queryClient = useQueryClient();
 
   // Index layout per market: [isEnded, balanceOf?, claimable?]
@@ -1879,6 +1895,14 @@ export default function GenesisIndexPage() {
             title="Harbor Marks Data Unavailable"
             message="Unable to load Harbor Marks data for some markets. Your positions and core functionality remain unaffected. Please try refreshing the page."
             markets={combinedMarketsWithOtherErrors.map(getMarketName)}
+          />
+        )}
+        {hasOraclePricingError && (
+          <GenesisErrorBanner
+            tone="danger"
+            title="Price oracle unavailable"
+            message="The price oracle for some markets is not available. Harbor Marks cannot be calculated until the oracle is working. Your deposit is safe."
+            markets={marketsWithOraclePricingError.map(getMarketName)}
           />
         )}
 
