@@ -278,7 +278,7 @@ const productionMarkets: Markets = {
       reservePool: "0xc033e81ED555D6db63A3E0Af9795454C7BdF094a",
       rebalancePoolCollateral: "0x0000000000000000000000000000000000000000", // placeholder
       rebalancePoolLeveraged: "0x0000000000000000000000000000000000000000", // placeholder
-      collateralPrice: "0x0000000000000000000000000000000000000000", // placeholder
+      collateralPrice: "0x4be4501336130E61e5872cB953e886a3a84D34Cc", // fxUSD-GOLD price oracle (for wrappedRate)
       genesisZap: "0x1048a287DDefF38E9A5c1e564A83f6978a2DC1eF", // GenesisUSDCZap_v4 for GOLD
       peggedTokenZap: "0xf0ff6D8d707D81d87caf2faa2447253f283f8873" as `0x${string}`, // MinterUSDCZap_v3 for GOLD/fxUSD
       leveragedTokenZap: "0xf0ff6D8d707D81d87caf2faa2447253f283f8873" as `0x${string}`, // MinterUSDCZap_v3 for GOLD/fxUSD (same contract)
@@ -321,7 +321,7 @@ const productionMarkets: Markets = {
       reservePool: "0x8224E5264FdD99547a21fFf34bDB60e78faB1609",
       rebalancePoolCollateral: "0x0000000000000000000000000000000000000000", // placeholder
       rebalancePoolLeveraged: "0x0000000000000000000000000000000000000000", // placeholder
-      collateralPrice: "0x0000000000000000000000000000000000000000", // placeholder
+      collateralPrice: "0x4ebde6143C5E366264ba7416FdEa18BC27C04A31", // stETH-GOLD price oracle (for wrappedRate)
       genesisZap: "0xCDf5BdcD7A035C2F20782e607D4f9F8f26280f93", // GenesisETHZap_v4 for GOLD
       peggedTokenZap: "0x3ce5e801A89eA0AC36fC29C12562695d4E6F0fec" as `0x${string}`, // MinterETHZap_v3 for GOLD/stETH
       leveragedTokenZap: "0x3ce5e801A89eA0AC36fC29C12562695d4E6F0fec" as `0x${string}`, // MinterETHZap_v3 for GOLD/stETH (same contract)
@@ -531,7 +531,7 @@ const productionMarkets: Markets = {
       reservePool: "0xDBF9F31795DAEa636e3e1305f897BFa8D2aA017d",
       rebalancePoolCollateral: "0x0000000000000000000000000000000000000000", // placeholder
       rebalancePoolLeveraged: "0x0000000000000000000000000000000000000000", // placeholder
-      collateralPrice: "0x0000000000000000000000000000000000000000", // placeholder
+      collateralPrice: "0x14816ff286f2eA46AB48c3275401Fd4b1ef817B5", // fxUSD-SILVER price oracle (for wrappedRate)
       genesisZap: "0xd19d801a0427Dd91bcbAfB0FcA783a3231a749c8", // GenesisUSDCZap_v4 for SILVER (deployed 2026-02-11)
       peggedTokenZap: "0xf0ff6D8d707D81d87caf2faa2447253f283f8873" as `0x${string}`, // MinterUSDCZap_v3 for SILVER/fxUSD (same as GOLD)
       leveragedTokenZap: "0xf0ff6D8d707D81d87caf2faa2447253f283f8873" as `0x${string}`, // MinterUSDCZap_v3 for SILVER/fxUSD (same as GOLD)
@@ -574,7 +574,7 @@ const productionMarkets: Markets = {
       reservePool: "0x77AC9343621402B938d5A39727Da76891aFFA419",
       rebalancePoolCollateral: "0x0000000000000000000000000000000000000000", // placeholder
       rebalancePoolLeveraged: "0x0000000000000000000000000000000000000000", // placeholder
-      collateralPrice: "0x0000000000000000000000000000000000000000", // placeholder
+      collateralPrice: "0x7223E17bD4527AcbE44644300eA0F09A4AeBC995", // stETH-SILVER price oracle (for wrappedRate)
       genesisZap: "0xC128Cbf15920455569e1926C982567d2bE21AC50", // GenesisETHZap_v4 for SILVER (deployed 2026-02-11)
       peggedTokenZap: "0x3ce5e801A89eA0AC36fC29C12562695d4E6F0fec" as `0x${string}`, // MinterETHZap_v3 for SILVER/stETH (same as GOLD)
       leveragedTokenZap: "0x3ce5e801A89eA0AC36fC29C12562695d4E6F0fec" as `0x${string}`, // MinterETHZap_v3 for SILVER/stETH (same as GOLD)
