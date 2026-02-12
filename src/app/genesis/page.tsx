@@ -5022,6 +5022,11 @@ export default function GenesisIndexPage() {
                                           status: "success",
                                           marketId: id,
                                         });
+                                        setShareModal({
+                                          open: false,
+                                          marketName: displayMarketName,
+                                          peggedSymbol: rowPeggedSymbol,
+                                        });
                                       } catch (error) {
                                         setClaimModal({
                                           open: true,
@@ -5151,6 +5156,11 @@ export default function GenesisIndexPage() {
                                           open: true,
                                           status: "success",
                                           marketId: id,
+                                        });
+                                        setShareModal({
+                                          open: false,
+                                          marketName: displayMarketName,
+                                          peggedSymbol: rowPeggedSymbol,
                                         });
                                       } catch (error) {
                                         setClaimModal({
