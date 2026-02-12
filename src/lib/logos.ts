@@ -21,7 +21,7 @@ const ICONS: Record<string, string> = {
     xag: "/icons/gold.svg", // Keep for backward compatibility
     silver: "/icons/gold.svg",
     // Gold and Silver Genesis markets (pegged + leveraged tokens)
-    hagold: "/icons/haGOLD.png",
+    hagold: "/icons/haGOLD.svg",
     hasilver: "/icons/haSILVER.png",
     "hssteth-gold": "/icons/hsSTETH-GOLD.png",
     "hssteth-silver": "/icons/hsSTETH-SILVER.png",
