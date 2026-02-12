@@ -3,11 +3,11 @@
 const GRAPH_API_KEY = process.env.NEXT_PUBLIC_GRAPH_API_KEY || "247d3c7824af808d9ba8a671c7bddfdf";
 const useTest2 = process.env.NEXT_PUBLIC_USE_TEST2_CONTRACTS === "true";
 
-// Default marks subgraph (Studio v0.1.2 = metals oracles). Override with NEXT_PUBLIC_GRAPH_URL if needed.
-const DEFAULT_MARKS_URL = "https://api.studio.thegraph.com/query/1718836/harbor-marks/v0.1.2-metals-oracle";
+// Default marks subgraph (v0.1.4 = metals consistent pricing). Override with NEXT_PUBLIC_GRAPH_URL if needed.
+const DEFAULT_MARKS_URL = "https://api.studio.thegraph.com/query/1718836/harbor-marks/v0.1.4-metals-consistent-pricing";
 
 export const GRAPH_CONFIG = {
-  // Harbor Marks subgraph. Use env to override (e.g. gateway). Default: Studio v0.1.2 (metals oracles).
+  // Harbor Marks subgraph. Use env to override (e.g. gateway). Default: Studio v0.1.4 (metals consistent pricing).
   marks: {
     url:
       (useTest2
@@ -62,8 +62,8 @@ export const CONTRACTS_WBTC = {
   stabilityPoolLeveraged: "0xfc2145de73ec53e34c4e6809b56a61321315e806",
 };
 
-// Harbor Marks subgraph version (metals oracles, no fallback). Bump when redeploying subgraph.
-const HARBOR_MARKS_VERSION = "v0.1.2-metals-oracle";
+// Harbor Marks subgraph version (metals consistent pricing). Bump when redeploying subgraph.
+const HARBOR_MARKS_VERSION = "v0.1.4-metals-consistent-pricing";
 const STUDIO_MARKS_BASE = "https://api.studio.thegraph.com/query/1718836/harbor-marks";
 const STUDIO_MARKS_DEFAULT = `${STUDIO_MARKS_BASE}/${HARBOR_MARKS_VERSION}`;
 

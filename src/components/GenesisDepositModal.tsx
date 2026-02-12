@@ -1896,9 +1896,15 @@ if (depositToken === selectedAsset) {
     depositTokenPriceUSD = fxSAVECoinGeckoPrice || 1.08;
   } else if (depositTokenLower === "wsteth") {
     // Use CoinGecko wstETH price or stETH price * wrapped rate
-    depositTokenPriceUSD = coinGeckoPrice || (stEthCoinGeckoPrice && wrappedRate 
-      ? stEthCoinGeckoPrice * (Number(wrappedRate) / 1e18) 
+    depositTokenPriceUSD = coinGeckoPrice || (stEthCoinGeckoPrice && wrappedRate
+      ? stEthCoinGeckoPrice * (Number(wrappedRate) / 1e18)
       : collateralPriceUSD);
+  } else if (depositTokenLower === "eth" || depositTokenLower === "steth") {
+    // Zap deposits: user deposited ETH or stETH; use ETH/stETH price, not wstETH.
+    // In wstETH markets underlyingPriceUSD can be wstETH price, which would overstate USD.
+    depositTokenPriceUSD = stEthCoinGeckoPrice || (wrappedRate && collateralPriceUSD > 0
+      ? collateralPriceUSD / (Number(wrappedRate) / 1e18)
+      : collateralPriceUSD) || 0;
   } else if (depositTokenLower === "fxusd") {
     depositTokenPriceUSD = 1.0;
   } else if (depositTokenLower === "usdc") {

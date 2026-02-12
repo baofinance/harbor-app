@@ -29,6 +29,7 @@ const EARLY_BONUS_THRESHOLD_FXSAVE_METALS = BigDecimal.fromString("25000"); // 2
 const EARLY_BONUS_THRESHOLD_WSTETH_METALS = BigDecimal.fromString("15"); // 15 wstETH
 const SECONDS_PER_DAY = BigDecimal.fromString("86400");
 const E18 = BigDecimal.fromString("1000000000000000000"); // 10^18
+const CHAINLINK_DECIMALS = BigDecimal.fromString("100000000"); // 10^8 - Chainlink USD feeds
 
 // 8 days (boost duration, per product rules)
 const BOOST_DURATION_SECONDS = BigInt.fromI32(8 * 24 * 60 * 60);
@@ -477,31 +478,66 @@ export function getWrappedTokenPriceUSD(genesisAddress: Bytes, block: ethereum.B
     return wstethUsdPrice;
   }
   
-  // For other markets, use oracle normally (includes metals). No fallback - if oracle fails, return 0 so app can show error.
+  // Metals (GOLD/SILVER): same pattern as fxUSD/BTC/stETH - oracle returns collateral/peg rate (18 decimals), we multiply by Chainlink peg/USD.
+  const isMetalsGenesis =
+    genesisAddressStr == "0x2cbf457112ef5a16cfca10fb173d56a5cc9daa66" ||
+    genesisAddressStr == "0x8ad6b177137a6c33070c27d98355717849ce526c" ||
+    genesisAddressStr == "0x66d18b9dd5d1cd51957dfea0e0373b54e06118c8" ||
+    genesisAddressStr == "0x8f655ca32a1fa8032955989c19e91886f26439dc";
+  const isGoldMarket =
+    genesisAddressStr == "0x2cbf457112ef5a16cfca10fb173d56a5cc9daa66" ||
+    genesisAddressStr == "0x8ad6b177137a6c33070c27d98355717849ce526c";
+
+  if (isMetalsGenesis) {
+    const oracleAddressStr = getPriceOracleAddress(genesisAddressStr);
+    if (oracleAddressStr == "") {
+      return BigDecimal.fromString("0");
+    }
+    const oracleAddress = Address.fromString(oracleAddressStr);
+    const oracle = WrappedPriceOracle.bind(oracleAddress);
+    const result = oracle.try_latestAnswer();
+    if (result.reverted) {
+      return BigDecimal.fromString("0");
+    }
+    // value1 = collateral/peg rate (e.g. fxSAVE per gold or silver unit), 18 decimals - same as other campaigns
+    const fxsaveRateDecimal = result.value.value1.toBigDecimal().div(E18);
+    const wrappedRate = result.value.value3.toBigDecimal().div(E18);
+    // Peg/USD from Chainlink: XAU/USD or XAG/USD (8 decimals)
+    const pegUsdFeedAddress = isGoldMarket
+      ? Address.fromString("0x214eD9Da11D2fbe465a6fc601a91E62EbEc1a0D6")   // XAU/USD
+      : Address.fromString("0x379589227b15F1a12195D3f2d90bBc9F31f95235");  // XAG/USD
+    const pegUsdOracle = ChainlinkAggregator.bind(pegUsdFeedAddress);
+    const pegUsdResult = pegUsdOracle.try_latestAnswer();
+    if (pegUsdResult.reverted) {
+      return BigDecimal.fromString("0");
+    }
+    const peggedTokenUsdPrice = pegUsdResult.value.toBigDecimal().div(CHAINLINK_DECIMALS);
+    const wrappedTokenPriceUSD = fxsaveRateDecimal.times(peggedTokenUsdPrice).times(wrappedRate);
+    if (wrappedTokenPriceUSD.le(BigDecimal.fromString("0"))) {
+      return BigDecimal.fromString("0");
+    }
+    return wrappedTokenPriceUSD;
+  }
+
+  // For other (non-metals) markets, use oracle with 18 decimals for both value1 and value3 - consistent with all campaigns.
   const oracleAddressStr = getPriceOracleAddress(genesisAddressStr);
-  
   if (oracleAddressStr == "") {
     return BigDecimal.fromString("0");
   }
-  
   const oracleAddress = Address.fromString(oracleAddressStr);
   const oracle = WrappedPriceOracle.bind(oracleAddress);
   const result = oracle.try_latestAnswer();
-  
   if (result.reverted) {
     return BigDecimal.fromString("0");
   }
-  
   const maxUnderlyingPrice = result.value.value1;
   const maxWrappedRate = result.value.value3;
   const underlyingPriceUSD = maxUnderlyingPrice.toBigDecimal().div(E18);
   const wrappedRate = maxWrappedRate.toBigDecimal().div(E18);
   const wrappedTokenPriceUSD = underlyingPriceUSD.times(wrappedRate);
-  
   if (wrappedTokenPriceUSD.le(BigDecimal.fromString("0"))) {
     return BigDecimal.fromString("0");
   }
-  
   return wrappedTokenPriceUSD;
 }
 

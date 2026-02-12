@@ -21,7 +21,7 @@ if [ -f "../.env.local" ]; then
   set +a
 fi
 
-VERSION_LABEL="${GRAPH_VERSION_LABEL:-v0.1.2-metals-oracle}"
+VERSION_LABEL="${GRAPH_VERSION_LABEL:-v0.1.4-metals-consistent-pricing}"
 
 echo "Deploying harbor-marks with version $VERSION_LABEL (no prompts)..."
 
