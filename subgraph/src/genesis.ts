@@ -24,8 +24,12 @@ const EARLY_BONUS_THRESHOLD_FXSAVE = BigDecimal.fromString("250000"); // 250k fx
 const EARLY_BONUS_THRESHOLD_WSTETH = BigDecimal.fromString("70"); // 70 wstETH tokens (not USD)
 const EARLY_BONUS_THRESHOLD_FXSAVE_EUR = BigDecimal.fromString("50000"); // 50k fxUSD tokens (EUR markets)
 const EARLY_BONUS_THRESHOLD_WSTETH_EUR = BigDecimal.fromString("15"); // ~50k USD in wstETH (EUR markets)
+// Metals and all future campaigns (lower threshold)
+const EARLY_BONUS_THRESHOLD_FXSAVE_METALS = BigDecimal.fromString("25000"); // 25k fxSAVE
+const EARLY_BONUS_THRESHOLD_WSTETH_METALS = BigDecimal.fromString("15"); // 15 wstETH
 const SECONDS_PER_DAY = BigDecimal.fromString("86400");
 const E18 = BigDecimal.fromString("1000000000000000000"); // 10^18
+const CHAINLINK_DECIMALS = BigDecimal.fromString("100000000"); // 10^8 - Chainlink USD feeds
 
 // 8 days (boost duration, per product rules)
 const BOOST_DURATION_SECONDS = BigInt.fromI32(8 * 24 * 60 * 60);
@@ -53,6 +57,20 @@ function getCampaignId(contractAddress: Bytes): string {
     return "euro-maiden-voyage";
   }
 
+  // Metals Maiden Voyage (GOLD + SILVER)
+  if (address == "0x2cbf457112ef5a16cfca10fb173d56a5cc9daa66") {
+    return "metals-maiden-voyage"; // fxUSD-GOLD genesis
+  }
+  if (address == "0x8ad6b177137a6c33070c27d98355717849ce526c") {
+    return "metals-maiden-voyage"; // stETH-GOLD genesis
+  }
+  if (address == "0x66d18b9dd5d1cd51957dfea0e0373b54e06118c8") {
+    return "metals-maiden-voyage"; // fxUSD-SILVER genesis
+  }
+  if (address == "0x8f655ca32a1fa8032955989c19e91886f26439dc") {
+    return "metals-maiden-voyage"; // stETH-SILVER genesis
+  }
+
   return "unknown-maiden-voyage";
 }
 
@@ -62,6 +80,9 @@ function getCampaignLabel(campaignId: string): string {
   }
   if (campaignId == "euro-maiden-voyage") {
     return "Euro Maiden Voyage";
+  }
+  if (campaignId == "metals-maiden-voyage") {
+    return "Metals Maiden Voyage";
   }
   return "Unknown Maiden Voyage";
 }
@@ -220,51 +241,30 @@ function getPriceOracleAddress(genesisAddress: string): string {
   if (genesisAddress == "0xa9eb43ed6ba3b953a82741f3e226c1d6b029699b") {
     return "0x71437c90f1e0785dd691fd02f7be0b90cd14c097"; // fxUSD/EUR (EUR::fxUSD::priceOracle)
   }
+  // Metals maiden voyage (GOLD/SILVER, fxUSD and stETH collaterals)
+  if (genesisAddress == "0x2cbf457112ef5a16cfca10fb173d56a5cc9daa66") {
+    return "0x1f7f62889e599e51b9e21b27d589fa521516d147"; // fxUSD/GOLD
+  }
+  if (genesisAddress == "0x8ad6b177137a6c33070c27d98355717849ce526c") {
+    return "0x4ebde6143c5e366264ba7416fdea18bc27c04a31"; // stETH/GOLD
+  }
+  if (genesisAddress == "0x66d18b9dd5d1cd51957dfea0e0373b54e06118c8") {
+    return "0x14816ff286f2ea46ab48c3275401fd4b1ef817b5"; // fxUSD/SILVER
+  }
+  if (genesisAddress == "0x8f655ca32a1fa8032955989c19e91886f26439dc") {
+    return "0x7223e17bd4527acbe44644300ea0f09a4aebc995"; // stETH/SILVER
+  }
   return "";
-}
-
-// Fallback prices if oracle fails (in USD)
-function getFallbackPrice(genesisAddress: string): BigDecimal {
-  // Production v1 contracts
-  if (genesisAddress == "0xc9df4f62474cf6cde6c064db29416a9f4f27ebdc") {
-    return BigDecimal.fromString("1.07"); // fxSAVE ~$1.07 (production v1)
-  }
-  if (genesisAddress == "0x42cc9a19b358a2a918f891d8a6199d8b05f0bc1c") {
-    return BigDecimal.fromString("1.07"); // fxSAVE ~$1.07 (production v1)
-  }
-  if (genesisAddress == "0xc64fc46eed431e92c1b5e24dc296b5985ce6cc00") {
-    return BigDecimal.fromString("4400"); // wstETH ~$4400 (production v1)
-  }
-  // Legacy test contracts
-  if (genesisAddress == "0x5f4398e1d3e33f93e3d7ee710d797e2a154cb073") {
-    return BigDecimal.fromString("1.07"); // fxSAVE ~$1.07
-  }
-  if (genesisAddress == "0x288c61c3b3684ff21adf38d878c81457b19bd2fe") {
-    return BigDecimal.fromString("1.07"); // fxSAVE ~$1.07
-  }
-  if (genesisAddress == "0x9ae0b57ceada0056dbe21edcd638476fcba3ccc0") {
-    return BigDecimal.fromString("4400"); // wstETH ~$4400 (stETH ~$3600 * rate ~1.22)
-  }
-  if (genesisAddress == "0x1454707877cdb966e29cea8a190c2169eeca4b8c") {
-    return BigDecimal.fromString("1.07"); // fxSAVE ~$1.07
-  }
-  // EUR markets (production v1)
-  if (genesisAddress == "0xf4f97218a00213a57a32e4606aaecc99e1805a89") {
-    return BigDecimal.fromString("3600"); // wstETH ~$3600 (stETH/EUR)
-  }
-  if (genesisAddress == "0xa9eb43ed6ba3b953a82741f3e226c1d6b029699b") {
-    return BigDecimal.fromString("1.07"); // fxSAVE ~$1.07 (fxUSD/EUR)
-  }
-  return BigDecimal.fromString("1.0"); // Default fallback
 }
 
 /**
  * Fetch real-time price from the WrappedPriceOracle contract
  * Returns the wrapped token price in USD (underlying price * wrapped rate)
+ * Returns 0 if oracle is missing or fails so the app can display an error.
  * 
  * @param genesisAddress - The genesis contract address
  * @param block - The current block
- * @returns Wrapped token price in USD, or fallback price if oracle fails
+ * @returns Wrapped token price in USD, or 0 if oracle is missing/fails (app shows error)
  */
 export function getWrappedTokenPriceUSD(genesisAddress: Bytes, block: ethereum.Block): BigDecimal {
   const genesisAddressStr = genesisAddress.toHexString();
@@ -478,44 +478,66 @@ export function getWrappedTokenPriceUSD(genesisAddress: Bytes, block: ethereum.B
     return wstethUsdPrice;
   }
   
-  // For other markets, use oracle normally
+  // Metals (GOLD/SILVER): same pattern as fxUSD/BTC/stETH - oracle returns collateral/peg rate (18 decimals), we multiply by Chainlink peg/USD.
+  const isMetalsGenesis =
+    genesisAddressStr == "0x2cbf457112ef5a16cfca10fb173d56a5cc9daa66" ||
+    genesisAddressStr == "0x8ad6b177137a6c33070c27d98355717849ce526c" ||
+    genesisAddressStr == "0x66d18b9dd5d1cd51957dfea0e0373b54e06118c8" ||
+    genesisAddressStr == "0x8f655ca32a1fa8032955989c19e91886f26439dc";
+  const isGoldMarket =
+    genesisAddressStr == "0x2cbf457112ef5a16cfca10fb173d56a5cc9daa66" ||
+    genesisAddressStr == "0x8ad6b177137a6c33070c27d98355717849ce526c";
+
+  if (isMetalsGenesis) {
+    const oracleAddressStr = getPriceOracleAddress(genesisAddressStr);
+    if (oracleAddressStr == "") {
+      return BigDecimal.fromString("0");
+    }
+    const oracleAddress = Address.fromString(oracleAddressStr);
+    const oracle = WrappedPriceOracle.bind(oracleAddress);
+    const result = oracle.try_latestAnswer();
+    if (result.reverted) {
+      return BigDecimal.fromString("0");
+    }
+    // value1 = collateral/peg rate (e.g. fxSAVE per gold or silver unit), 18 decimals - same as other campaigns
+    const fxsaveRateDecimal = result.value.value1.toBigDecimal().div(E18);
+    const wrappedRate = result.value.value3.toBigDecimal().div(E18);
+    // Peg/USD from Chainlink: XAU/USD or XAG/USD (8 decimals)
+    const pegUsdFeedAddress = isGoldMarket
+      ? Address.fromString("0x214eD9Da11D2fbe465a6fc601a91E62EbEc1a0D6")   // XAU/USD
+      : Address.fromString("0x379589227b15F1a12195D3f2d90bBc9F31f95235");  // XAG/USD
+    const pegUsdOracle = ChainlinkAggregator.bind(pegUsdFeedAddress);
+    const pegUsdResult = pegUsdOracle.try_latestAnswer();
+    if (pegUsdResult.reverted) {
+      return BigDecimal.fromString("0");
+    }
+    const peggedTokenUsdPrice = pegUsdResult.value.toBigDecimal().div(CHAINLINK_DECIMALS);
+    const wrappedTokenPriceUSD = fxsaveRateDecimal.times(peggedTokenUsdPrice).times(wrappedRate);
+    if (wrappedTokenPriceUSD.le(BigDecimal.fromString("0"))) {
+      return BigDecimal.fromString("0");
+    }
+    return wrappedTokenPriceUSD;
+  }
+
+  // For other (non-metals) markets, use oracle with 18 decimals for both value1 and value3 - consistent with all campaigns.
   const oracleAddressStr = getPriceOracleAddress(genesisAddressStr);
-  
-  // If no oracle configured, return 0 to indicate pricing failure
   if (oracleAddressStr == "") {
     return BigDecimal.fromString("0");
   }
-  
-  // Bind to the price oracle contract
   const oracleAddress = Address.fromString(oracleAddressStr);
   const oracle = WrappedPriceOracle.bind(oracleAddress);
-  
-  // Call latestAnswer() which returns (minUnderlyingPrice, maxUnderlyingPrice, minWrappedRate, maxWrappedRate)
   const result = oracle.try_latestAnswer();
-  
   if (result.reverted) {
-    // Oracle call failed - return 0 to indicate pricing failure
     return BigDecimal.fromString("0");
   }
-  
-  // Extract values (all in 18 decimals)
-  const maxUnderlyingPrice = result.value.value1; // maxUnderlyingPrice (e.g., wstETH = $4000)
-  const maxWrappedRate = result.value.value3; // maxWrappedRate (e.g., wstETH rate = 1.0)
-  
-  // Convert from BigInt (18 decimals) to BigDecimal
+  const maxUnderlyingPrice = result.value.value1;
+  const maxWrappedRate = result.value.value3;
   const underlyingPriceUSD = maxUnderlyingPrice.toBigDecimal().div(E18);
   const wrappedRate = maxWrappedRate.toBigDecimal().div(E18);
-  
-  // Calculate wrapped token price: underlying price * wrapped rate
-  // Example: wstETH = $4000 * 1.0 = $4000
   const wrappedTokenPriceUSD = underlyingPriceUSD.times(wrappedRate);
-  
-  // Ensure we have a valid price
   if (wrappedTokenPriceUSD.le(BigDecimal.fromString("0"))) {
-    // Calculated price is invalid - return 0 to indicate pricing failure
     return BigDecimal.fromString("0");
   }
-  
   return wrappedTokenPriceUSD;
 }
 
@@ -562,6 +584,8 @@ function getCollateralSymbol(genesisAddress: string): string {
   if (addr == "0xc9df4f62474cf6cde6c064db29416a9f4f27ebdc" || // ETH/fxUSD (production v1)
       addr == "0x42cc9a19b358a2a918f891d8a6199d8b05f0bc1c" || // BTC/fxUSD (production v1)
       addr == "0xa9eb43ed6ba3b953a82741f3e226c1d6b029699b" || // fxUSD/EUR (new)
+      addr == "0x2cbf457112ef5a16cfca10fb173d56a5cc9daa66" || // GOLD::fxUSD::genesis (Metals)
+      addr == "0x66d18b9dd5d1cd51957dfea0e0373b54e06118c8" || // SILVER::fxUSD::genesis (Metals)
       // Legacy test contracts (for backward compatibility)
       addr == "0x5f4398e1d3e33f93e3d7ee710d797e2a154cb073" ||
       addr == "0x288c61c3b3684ff21adf38d878c81457b19bd2fe" ||
@@ -571,6 +595,8 @@ function getCollateralSymbol(genesisAddress: string): string {
   // Production v1: BTC/stETH market uses wstETH
   if (addr == "0xc64fc46eed431e92c1b5e24dc296b5985ce6cc00" || // BTC/stETH (production v1)
       addr == "0xf4f97218a00213a57a32e4606aaecc99e1805a89" || // stETH/EUR
+      addr == "0x8ad6b177137a6c33070c27d98355717849ce526c" || // GOLD::stETH::genesis (Metals)
+      addr == "0x8f655ca32a1fa8032955989c19e91886f26439dc" || // SILVER::stETH::genesis (Metals)
       // Legacy test contract (for backward compatibility)
       addr == "0x9ae0b57ceada0056dbe21edcd638476fcba3ccc0") {
     return "wstETH";
@@ -591,6 +617,13 @@ function getEarlyBonusThresholdAmount(
   if (addr == "0xa9eb43ed6ba3b953a82741f3e226c1d6b029699b") {
     // fxUSD-EUR genesis
     return EARLY_BONUS_THRESHOLD_FXSAVE_EUR;
+  }
+  // Metals maiden voyage (and default for all future campaigns)
+  if (addr == "0x2cbf457112ef5a16cfca10fb173d56a5cc9daa66" || addr == "0x66d18b9dd5d1cd51957dfea0e0373b54e06118c8") {
+    return EARLY_BONUS_THRESHOLD_FXSAVE_METALS; // fxUSD-GOLD, fxUSD-SILVER
+  }
+  if (addr == "0x8ad6b177137a6c33070c27d98355717849ce526c" || addr == "0x8f655ca32a1fa8032955989c19e91886f26439dc") {
+    return EARLY_BONUS_THRESHOLD_WSTETH_METALS; // stETH-GOLD, stETH-SILVER
   }
   const isFxSAVE = collateralSymbol == "fxSAVE";
   return isFxSAVE ? EARLY_BONUS_THRESHOLD_FXSAVE : EARLY_BONUS_THRESHOLD_WSTETH;

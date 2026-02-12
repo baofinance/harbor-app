@@ -222,6 +222,16 @@ const underlyingPriceUSD = wrappedPriceData.underlyingPriceUSD;
 
 const wrappedRate = wrappedPriceData.wrappedRate;
 const coinGeckoPrice = wrappedPriceData.coinGeckoPrice;
+
+// Debug wrappedRate for fxSAVE markets
+if (process.env.NODE_ENV === "development" && isOpen && collateralSymbol.toLowerCase() === "fxsave") {
+  console.log("[GenesisDepositModal] wrappedRate check:", {
+    wrappedRate: wrappedRate?.toString(),
+    collateralSymbol,
+    priceOracle: marketAddresses?.priceOracle,
+    wrappedPriceData,
+  });
+}
 const maxUnderlyingPrice = wrappedPriceData.coinGeckoPrice
   ? BigInt(Math.floor((wrappedPriceData.coinGeckoPrice ?? 0) * 1e18))
   : (underlyingSymbol?.toLowerCase() === "fxusd" || collateralSymbol.toLowerCase() === "fxusd")
@@ -322,9 +332,9 @@ const swapTargetToken = isFxSAVEMarket ? USDC_ADDRESS : ETH_ADDRESS;
 const PARASWAP_TOKEN_TRANSFER_PROXY = "0x216b4b4ba9f3e719726886d34a177484278bfcae" as `0x${string}`;
 
 // Now that needsSwap is defined, determine if we should use USDC zap or ETH zap
-// USDC zap: direct USDC/FXUSD deposits OR swaps in fxSAVE markets
+// USDC zap: direct USDC/FXUSD/FXSAVE deposits OR swaps in fxSAVE markets
 // ETH zap: direct ETH/stETH deposits OR swaps in wstETH markets  
-const useUSDCZap = !isETHStETHMarket && (isUSDC || isFXUSD || needsSwap);
+const useUSDCZap = !isETHStETHMarket && (isUSDC || isFXUSD || isFXSAVE || needsSwap);
 const needsETHZapAfterSwap = isETHStETHMarket && needsSwap;
 
 // Determine if custom token is selected (needed for hooks below)
@@ -338,10 +348,10 @@ const tokenAddressForDecimals = isNativeETH
 const { decimals: tokenDecimals, isLoading: isLoadingTokenDecimals } = useTokenDecimals(tokenAddressForDecimals);
 
 // Determine selected token decimals (handle special cases)
-// For USDC and ETH, we know the decimals, so no loading needed
+// For USDC, fxUSD, fxSAVE, and ETH, we know the decimals, so no loading needed
 // For other tokens, wait for decimals to load to avoid incorrect calculations
-const selectedTokenDecimals = isUSDC ? 6 : (isNativeETH ? 18 : tokenDecimals);
-const hasValidDecimals = isUSDC || isNativeETH || !isLoadingTokenDecimals;
+const selectedTokenDecimals = isUSDC ? 6 : (isNativeETH || isFXUSD || isFXSAVE ? 18 : tokenDecimals);
+const hasValidDecimals = isUSDC || isNativeETH || isFXUSD || isFXSAVE || !isLoadingTokenDecimals;
 
 // Fetch token metadata (symbol, name) for custom tokens
 const { data: customTokenSymbol } = useContractRead({
@@ -634,7 +644,24 @@ const canAttemptPermit =
   !needsSwap &&
   !isNativeETH &&
   !!genesisZapAddress &&
-  ((isStETH && useETHZap) || ((isUSDC || isFXUSD) && useUSDCZap));
+  ((isStETH && useETHZap) || ((isUSDC || isFXUSD || isFXSAVE) && useUSDCZap));
+
+// Debug permit toggle visibility
+if (process.env.NODE_ENV === "development" && isOpen) {
+  console.log("[GenesisDepositModal] Permit toggle check:", {
+    selectedAsset,
+    needsSwap,
+    isNativeETH,
+    genesisZapAddress,
+    isUSDC,
+    isFXUSD,
+    isFXSAVE,
+    useUSDCZap,
+    canAttemptPermit,
+    isPermitCapable,
+  });
+}
+
 const shouldUsePermit = permitEnabled && canAttemptPermit;
 const showPermitToggle = canAttemptPermit;
 const userCurrentDeposit: bigint = typeof currentDeposit === 'bigint' ? currentDeposit : 0n;
@@ -1869,9 +1896,15 @@ if (depositToken === selectedAsset) {
     depositTokenPriceUSD = fxSAVECoinGeckoPrice || 1.08;
   } else if (depositTokenLower === "wsteth") {
     // Use CoinGecko wstETH price or stETH price * wrapped rate
-    depositTokenPriceUSD = coinGeckoPrice || (stEthCoinGeckoPrice && wrappedRate 
-      ? stEthCoinGeckoPrice * (Number(wrappedRate) / 1e18) 
+    depositTokenPriceUSD = coinGeckoPrice || (stEthCoinGeckoPrice && wrappedRate
+      ? stEthCoinGeckoPrice * (Number(wrappedRate) / 1e18)
       : collateralPriceUSD);
+  } else if (depositTokenLower === "eth" || depositTokenLower === "steth") {
+    // Zap deposits: user deposited ETH or stETH; use ETH/stETH price, not wstETH.
+    // In wstETH markets underlyingPriceUSD can be wstETH price, which would overstate USD.
+    depositTokenPriceUSD = stEthCoinGeckoPrice || (wrappedRate && collateralPriceUSD > 0
+      ? collateralPriceUSD / (Number(wrappedRate) / 1e18)
+      : collateralPriceUSD) || 0;
   } else if (depositTokenLower === "fxusd") {
     depositTokenPriceUSD = 1.0;
   } else if (depositTokenLower === "usdc") {

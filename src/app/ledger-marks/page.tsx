@@ -316,9 +316,9 @@ export default function LedgerMarksLeaderboard() {
  const [leaderboardTab, setLeaderboardTab] = useState<
   "campaigns" | "anchor-sail"
  >("campaigns");
- const [campaignTab, setCampaignTab] = useState<
-  "launch-maiden-voyage" | "euro-maiden-voyage"
- >("launch-maiden-voyage");
+const [campaignTab, setCampaignTab] = useState<
+  "launch-maiden-voyage" | "euro-maiden-voyage" | "metals-maiden-voyage"
+>("launch-maiden-voyage");
  const [campaignSortBy, setCampaignSortBy] = useState<
   "total" | "perDay" | "bonus"
  >("total");
@@ -332,13 +332,14 @@ export default function LedgerMarksLeaderboard() {
   "asc" | "desc"
  >("desc");
 
- const campaignTabs = [
+const campaignTabs = [
   {
    id: "launch-maiden-voyage",
    label: "Launch",
    subtitle: "1% of $TIDE",
   },
   { id: "euro-maiden-voyage", label: "Euro" },
+  { id: "metals-maiden-voyage", label: "Metals" },
  ] as const;
  const activeCampaign =
   campaignTabs.find((tab) => tab.id === campaignTab) ?? campaignTabs[0];

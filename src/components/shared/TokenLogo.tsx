@@ -26,13 +26,18 @@ export function TokenLogo({
   const logoPath = getLogoPath(symbol);
 
   return (
-    <Image
-      src={logoPath}
-      alt={alt || symbol}
-      width={size}
-      height={size}
-      className={`flex-shrink-0 ${className}`}
-    />
+    <span
+      className={`inline-flex flex-shrink-0 overflow-hidden rounded-full ${className}`}
+      style={{ width: size, height: size }}
+    >
+      <Image
+        src={logoPath}
+        alt={alt || symbol}
+        width={size}
+        height={size}
+        className="h-full w-full object-cover"
+      />
+    </span>
   );
 }
 

@@ -260,7 +260,7 @@ export const markets = {
   ...(useTest2 ? {} : {
   "fxusd-gold": {
     name: "fxUSD-GOLD",
-    status: "coming-soon" as const,
+    status: "genesis" as const,
     pegTarget: "GOLD",
     chain: {
       name: "Ethereum",
@@ -295,16 +295,19 @@ export const markets = {
       feeReceiver: contractsMarkets["fxusd-gold"].addresses.feeReceiver,
       collateralToken: contractsMarkets["fxusd-gold"].addresses.collateralToken,
       wrappedCollateralToken: contractsMarkets["fxusd-gold"].addresses.wrappedCollateralToken,
+      genesisZap: contractsMarkets["fxusd-gold"].addresses.genesisZap, // GenesisUSDCZap_v4 for GOLD
+      peggedTokenZap: contractsMarkets["fxusd-gold"].addresses.peggedTokenZap, // MinterUSDCZap_v3 for GOLD/fxUSD
+      leveragedTokenZap: contractsMarkets["fxusd-gold"].addresses.leveragedTokenZap, // MinterUSDCZap_v3 for GOLD/fxUSD
     },
     peggedToken: {
       name: "Harbor Anchored GOLD",
       symbol: "haGOLD",
-      description: "Pegged token (coming soon)",
+      description: "Pegged token",
     },
     leveragedToken: {
       name: "Harbor Sail fxUSD-GOLD",
       symbol: "hsFXUSD-GOLD",
-      description: "Leveraged token (coming soon)",
+      description: "Leveraged token",
     },
     rewardPoints: {
       pointsPerDollar: 100,
@@ -332,7 +335,7 @@ export const markets = {
   },
   "steth-gold": {
     name: "stETH-GOLD",
-    status: "coming-soon" as const,
+    status: "genesis" as const,
     pegTarget: "GOLD",
     chain: {
       name: "Ethereum",
@@ -367,16 +370,19 @@ export const markets = {
       feeReceiver: contractsMarkets["steth-gold"].addresses.feeReceiver,
       collateralToken: contractsMarkets["steth-gold"].addresses.collateralToken,
       wrappedCollateralToken: contractsMarkets["steth-gold"].addresses.wrappedCollateralToken,
+      genesisZap: contractsMarkets["steth-gold"].addresses.genesisZap, // GenesisETHZap_v4 for GOLD
+      peggedTokenZap: contractsMarkets["steth-gold"].addresses.peggedTokenZap, // MinterETHZap_v3 for GOLD/stETH
+      leveragedTokenZap: contractsMarkets["steth-gold"].addresses.leveragedTokenZap, // MinterETHZap_v3 for GOLD/stETH
     },
     peggedToken: {
       name: "Harbor Anchored GOLD",
       symbol: "haGOLD",
-      description: "Pegged token (coming soon)",
+      description: "Pegged token",
     },
     leveragedToken: {
       name: "Harbor Sail stETH-GOLD",
       symbol: "hsSTETH-GOLD",
-      description: "Leveraged token (coming soon)",
+      description: "Leveraged token",
     },
     rewardPoints: {
       pointsPerDollar: 100,
@@ -692,7 +698,7 @@ export const markets = {
   },
   "steth-silver": {
     name: "stETH-SILVER",
-    status: "coming-soon" as const,
+    status: "genesis" as const,
     pegTarget: "SILVER",
     chain: {
       name: "Ethereum",
@@ -727,16 +733,19 @@ export const markets = {
       feeReceiver: contractsMarkets["steth-silver"].addresses.feeReceiver,
       collateralToken: contractsMarkets["steth-silver"].addresses.collateralToken,
       wrappedCollateralToken: contractsMarkets["steth-silver"].addresses.wrappedCollateralToken,
+      genesisZap: contractsMarkets["steth-silver"].addresses.genesisZap, // GenesisETHZap_v4 for SILVER
+      peggedTokenZap: contractsMarkets["steth-silver"].addresses.peggedTokenZap, // MinterETHZap_v3 for SILVER/stETH
+      leveragedTokenZap: contractsMarkets["steth-silver"].addresses.leveragedTokenZap, // MinterETHZap_v3 for SILVER/stETH
     },
     peggedToken: {
       name: "Harbor Anchored SILVER",
       symbol: "haSILVER",
-      description: "Pegged token (coming soon)",
+      description: "Pegged token",
     },
     leveragedToken: {
       name: "Harbor Sail stETH-SILVER",
       symbol: "hsSTETH-SILVER",
-      description: "Leveraged token (coming soon)",
+      description: "Leveraged token",
     },
     rewardPoints: {
       pointsPerDollar: 100,
@@ -764,7 +773,7 @@ export const markets = {
   },
   "fxusd-silver": {
     name: "fxUSD-SILVER",
-    status: "coming-soon" as const,
+    status: "genesis" as const,
     pegTarget: "SILVER",
     chain: {
       name: "Ethereum",
@@ -799,16 +808,19 @@ export const markets = {
       feeReceiver: contractsMarkets["fxusd-silver"].addresses.feeReceiver,
       collateralToken: contractsMarkets["fxusd-silver"].addresses.collateralToken,
       wrappedCollateralToken: contractsMarkets["fxusd-silver"].addresses.wrappedCollateralToken,
+      genesisZap: contractsMarkets["fxusd-silver"].addresses.genesisZap, // GenesisUSDCZap_v4 for SILVER
+      peggedTokenZap: contractsMarkets["fxusd-silver"].addresses.peggedTokenZap, // MinterUSDCZap_v3 for SILVER/fxUSD
+      leveragedTokenZap: contractsMarkets["fxusd-silver"].addresses.leveragedTokenZap, // MinterUSDCZap_v3 for SILVER/fxUSD
     },
     peggedToken: {
       name: "Harbor Anchored SILVER",
       symbol: "haSILVER",
-      description: "Pegged token (coming soon)",
+      description: "Pegged token",
     },
     leveragedToken: {
       name: "Harbor Sail fxUSD-SILVER",
       symbol: "hsFXUSD-SILVER",
-      description: "Leveraged token (coming soon)",
+      description: "Leveraged token",
     },
     rewardPoints: {
       pointsPerDollar: 100,

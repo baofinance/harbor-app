@@ -3,15 +3,18 @@
 const GRAPH_API_KEY = process.env.NEXT_PUBLIC_GRAPH_API_KEY || "247d3c7824af808d9ba8a671c7bddfdf";
 const useTest2 = process.env.NEXT_PUBLIC_USE_TEST2_CONTRACTS === "true";
 
+// Default marks subgraph (v0.1.4 = metals consistent pricing). Override with NEXT_PUBLIC_GRAPH_URL if needed.
+const DEFAULT_MARKS_URL = "https://api.studio.thegraph.com/query/1718836/harbor-marks/v0.1.4-metals-consistent-pricing";
+
 export const GRAPH_CONFIG = {
-  // Harbor Marks subgraph (for marks tracking)
+  // Harbor Marks subgraph. Use env to override (e.g. gateway). Default: Studio v0.1.4 (metals consistent pricing).
   marks: {
     url:
       (useTest2
         ? process.env.NEXT_PUBLIC_GRAPH_URL_TEST2 ||
           process.env.NEXT_PUBLIC_GRAPH_URL
         : process.env.NEXT_PUBLIC_GRAPH_URL) ||
-      `https://gateway.thegraph.com/api/subgraphs/id/6XgXZkgr2SL1UWeriY6MsJV9aB2BUfemtMbsfuRq6uP1`,
+      DEFAULT_MARKS_URL,
     chainId: 1,
     network: "mainnet",
   },
@@ -29,9 +32,7 @@ export const GRAPH_CONFIG = {
   },
   // Alias for backward compatibility
   production: {
-    url:
-      process.env.NEXT_PUBLIC_GRAPH_URL ||
-      `https://gateway.thegraph.com/api/subgraphs/id/6XgXZkgr2SL1UWeriY6MsJV9aB2BUfemtMbsfuRq6uP1`,
+    url: process.env.NEXT_PUBLIC_GRAPH_URL || DEFAULT_MARKS_URL,
     chainId: 1,
     network: "mainnet",
   },
@@ -61,10 +62,15 @@ export const CONTRACTS_WBTC = {
   stabilityPoolLeveraged: "0xfc2145de73ec53e34c4e6809b56a61321315e806",
 };
 
+// Harbor Marks subgraph version (metals consistent pricing). Bump when redeploying subgraph.
+const HARBOR_MARKS_VERSION = "v0.1.4-metals-consistent-pricing";
+const STUDIO_MARKS_BASE = "https://api.studio.thegraph.com/query/1718836/harbor-marks";
+const STUDIO_MARKS_DEFAULT = `${STUDIO_MARKS_BASE}/${HARBOR_MARKS_VERSION}`;
+
 // Get the Graph URL for marks (always production/mainnet)
 export const getGraphUrl = (): string => {
   if (typeof window !== "undefined" && window.location.hostname === "localhost") {
-    return "https://api.studio.thegraph.com/query/1718836/harbor-marks/campaigns-v0.03";
+    return STUDIO_MARKS_DEFAULT;
   }
   return GRAPH_CONFIG.marks.url;
 };

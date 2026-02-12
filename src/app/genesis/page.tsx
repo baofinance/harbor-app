@@ -548,6 +548,22 @@ export default function GenesisIndexPage() {
     new Set([...marketsWithOtherErrors, ...bonusMarketsWithOtherErrors])
   );
 
+  // Oracle pricing failed: user has deposit but subgraph reports 0 USD (oracle unavailable)
+  const marketsWithOraclePricingError = useMemo(() => {
+    const list: string[] = [];
+    (marksResults || []).forEach((r: { genesisAddress?: string; data?: { userHarborMarks?: { currentDeposit?: string; currentDepositUSD?: string } }; errors?: unknown[] }) => {
+      const marks = r.data?.userHarborMarks;
+      if (!marks || r.errors?.length) return;
+      const currentDeposit = parseFloat(marks.currentDeposit || "0");
+      const currentDepositUSD = parseFloat(marks.currentDepositUSD || "0");
+      if (currentDeposit > 0 && currentDepositUSD === 0 && r.genesisAddress) {
+        list.push(r.genesisAddress);
+      }
+    });
+    return list;
+  }, [marksResults]);
+  const hasOraclePricingError = marketsWithOraclePricingError.length > 0;
+
   const queryClient = useQueryClient();
 
   // Index layout per market: [isEnded, balanceOf?, claimable?]
@@ -1881,6 +1897,14 @@ export default function GenesisIndexPage() {
             markets={combinedMarketsWithOtherErrors.map(getMarketName)}
           />
         )}
+        {hasOraclePricingError && (
+          <GenesisErrorBanner
+            tone="danger"
+            title="Price oracle unavailable"
+            message="The price oracle for some markets is not available. Harbor Marks cannot be calculated until the oracle is working. Your deposit is safe."
+            markets={marketsWithOraclePricingError.map(getMarketName)}
+          />
+        )}
 
         {/* Divider */}
         <div className="border-t border-white/10 mt-2 mb-1"></div>
@@ -1992,7 +2016,7 @@ export default function GenesisIndexPage() {
                       >
                         <div className="grid lg:grid-cols-[1.5fr_80px_0.9fr_0.9fr_0.9fr_0.7fr_0.9fr] md:grid-cols-[120px_80px_100px_1fr_1fr_90px_80px] gap-4 items-center uppercase tracking-wider text-[10px] lg:text-[11px] text-[#1E4775] font-semibold">
                           <div className="min-w-0 text-center">Market</div>
-                          <div className="text-center min-w-0">APR</div>
+                          <div className="text-center min-w-0">Marks</div>
                           <div className="text-center min-w-0 flex items-center justify-center gap-1.5">
                             <span>Deposit Assets</span>
                             <SimpleTooltip
@@ -2670,100 +2694,49 @@ export default function GenesisIndexPage() {
                               console.log("[APR Debug]", debugInfo);
                             }
 
+                            // Display marks accumulated for this market (include accumulation since last update)
+                            const lastUpdated = marks
+                              ? parseInt(marks.lastUpdated || "0", 10)
+                              : 0;
+                            const daysElapsed =
+                              lastUpdated > 0
+                                ? (Date.now() / 1000 - lastUpdated) /
+                                  (24 * 60 * 60)
+                                : 0;
+                            const displayMarks = genesisEnded
+                              ? userMarksForMarket
+                              : userMarksForMarket +
+                                daysElapsed * currentDepositUSD * 10;
+
                             return (
                               <div className="flex-shrink-0 text-right mr-8">
                                 <div className="text-[#1E4775]/70 text-[10px]">
-                                  APR
+                                  Marks
                                 </div>
-                                {isValidAPR ? (
-                                  isAprRevealed && canShowCombinedAPR ? (
-                                    <TideAPRTooltip
-                                      underlyingAPR={underlyingAPR}
-                                      userMarks={marksForAPR}
-                                      totalMarks={marksForAPRTotal}
-                                      userDepositUSD={depositForAPR}
-                                      totalGenesisTVL={tvlForAPR}
-                                      genesisDays={genesisDays}
-                                      fdv={fdv}
-                                      onFdvChange={setFdv}
-                                      aprBreakdown={aprBreakdown}
-                                    >
-                                      <span className="text-[#1E4775] font-semibold text-xs cursor-help">
-                                        {isLoadingAPR || safeIsLoadingTotalTVL
-                                          ? "..."
-                                          : (() => {
-                                              const tideAPR = calculateTideAPR(
-                                                marksForAPR,
-                                                marksForAPRTotal,
-                                                depositForAPR,
-                                                tvlForAPR,
-                                                daysLeftInGenesis,
-                                                fdv
-                                              );
-                                              const underlyingAPRPercent =
-                                                (underlyingAPR || 0) * 100;
-                                              const combined =
-                                                underlyingAPRPercent + tideAPR;
-
-                                              // Debug calculation
-                                              if (
-                                                process.env.NODE_ENV ===
-                                                "development"
-                                              ) {
-                                                console.log(
-                                                  "[APR Calculation]",
-                                                  {
-                                                    marketId: id,
-                                                    underlyingAPRPercent,
-                                                    tideAPR,
-                                                    combined,
-                                                    isValid:
-                                                      !isNaN(combined) &&
-                                                      isFinite(combined),
-                                                  }
-                                                );
-                                              }
-
-                                              return isNaN(combined) ||
-                                                !isFinite(combined)
-                                                ? "..."
-                                                : `${combined.toFixed(2)}%`;
-                                            })()}
-                                      </span>
-                                    </TideAPRTooltip>
+                                <span className="text-[#1E4775] font-semibold text-xs flex items-center justify-end gap-1">
+                                  {isLoadingMarks ? (
+                                    "..."
                                   ) : (
-                                    <div className="flex items-center justify-end gap-1">
-                                      <SimpleTooltip
-                                        label={`${collateralSymbol} underlying APR${
-                                          safeIsLoadingTotalTVL ||
-                                          safeIsLoadingTotalMarks
-                                            ? " (Loading $TIDE data...)"
-                                            : ""
-                                        }`}
-                                      >
-                                        <span className="text-[#1E4775] font-semibold text-xs cursor-help flex items-center gap-1">
-                                          {isLoadingAPR
-                                            ? "..."
-                                            : `${(underlyingAPR * 100).toFixed(
-                                                2
-                                              )}%`}
-                                          <span className="text-[#1E4775]/70">+</span>
-                                          <Image
-                                            src="/icons/marks.png"
-                                            alt="Marks"
-                                            width={20}
-                                            height={20}
-                                            className="inline-block"
-                                          />
-                                        </span>
-                                      </SimpleTooltip>
-                                    </div>
-                                  )
-                                ) : (
-                                  <span className="text-xs text-gray-400">
-                                    -
-                                  </span>
-                                )}
+                                    <>
+                                      {displayMarks >= 0
+                                        ? displayMarks.toLocaleString(
+                                            undefined,
+                                            {
+                                              maximumFractionDigits: 1,
+                                              minimumFractionDigits: 0,
+                                            }
+                                          )
+                                        : "-"}
+                                      <Image
+                                        src="/icons/marks.png"
+                                        alt="Marks"
+                                        width={16}
+                                        height={16}
+                                        className="inline-block"
+                                      />
+                                    </>
+                                  )}
+                                </span>
                               </div>
                             );
                           })()}
@@ -3224,77 +3197,46 @@ export default function GenesisIndexPage() {
                                     })()
                                   : undefined;
 
+                              // Display marks accumulated for this market
+                              const lastUpdatedMd = marks
+                                ? parseInt(marks.lastUpdated || "0", 10)
+                                : 0;
+                              const daysElapsedMd =
+                                lastUpdatedMd > 0
+                                  ? (Date.now() / 1000 - lastUpdatedMd) /
+                                    (24 * 60 * 60)
+                                  : 0;
+                              const displayMarksMd = genesisEnded
+                                ? userMarksForMarket
+                                : userMarksForMarket +
+                                  daysElapsedMd * currentDepositUSD * 10;
+
                               return (
                                 <div className="text-center">
-                                  {isValidAPR ? (
-                                    isAprRevealed && canShowCombinedAPR ? (
-                                      <TideAPRTooltip
-                                        underlyingAPR={underlyingAPR}
-                                        userMarks={marksForAPR}
-                                        totalMarks={marksForAPRTotal}
-                                        userDepositUSD={depositForAPR}
-                                        totalGenesisTVL={tvlForAPR}
-                                        genesisDays={genesisDays}
-                                        fdv={fdv}
-                                        onFdvChange={setFdv}
-                                        aprBreakdown={aprBreakdownMd}
-                                      >
-                                        <span className="text-[#1E4775] font-semibold text-xs cursor-help">
-                                          {isLoadingAPR || safeIsLoadingTotalTVL
-                                            ? "..."
-                                            : (() => {
-                                                const tideAPR =
-                                                  calculateTideAPR(
-                                                    marksForAPR,
-                                                    marksForAPRTotal,
-                                                    depositForAPR,
-                                                    tvlForAPR,
-                                                    daysLeftInGenesisMd,
-                                                    fdv
-                                                  );
-                                                const underlyingAPRPercent =
-                                                  (underlyingAPR || 0) * 100;
-                                                const combined =
-                                                  underlyingAPRPercent +
-                                                  tideAPR;
-                                                return isNaN(combined) ||
-                                                  !isFinite(combined)
-                                                  ? "..."
-                                                  : `${combined.toFixed(2)}%`;
-                                              })()}
-                                        </span>
-                                      </TideAPRTooltip>
+                                  <span className="text-[#1E4775] font-semibold text-xs flex items-center justify-center gap-1">
+                                    {isLoadingMarks ? (
+                                      "..."
                                     ) : (
-                                      <SimpleTooltip
-                                        label={`${collateralSymbol} underlying APR${
-                                          safeIsLoadingTotalTVL ||
-                                          safeIsLoadingTotalMarks
-                                            ? " (Loading $TIDE data...)"
-                                            : ""
-                                        }`}
-                                      >
-                                        <span className="text-[#1E4775] font-semibold text-xs cursor-help flex items-center gap-1">
-                                          {isLoadingAPR
-                                            ? "..."
-                                            : `${(underlyingAPR * 100).toFixed(
-                                                2
-                                              )}%`}
-                                          <span className="text-[#1E4775]/70">+</span>
-                                          <Image
-                                            src="/icons/marks.png"
-                                            alt="Marks"
-                                            width={20}
-                                            height={20}
-                                            className="inline-block"
-                                          />
-                                        </span>
-                                      </SimpleTooltip>
-                                    )
-                                  ) : (
-                                    <span className="text-xs text-gray-400">
-                                      -
-                                    </span>
-                                  )}
+                                      <>
+                                        {displayMarksMd >= 0
+                                          ? displayMarksMd.toLocaleString(
+                                              undefined,
+                                              {
+                                                maximumFractionDigits: 1,
+                                                minimumFractionDigits: 0,
+                                              }
+                                            )
+                                          : "-"}
+                                        <Image
+                                          src="/icons/marks.png"
+                                          alt="Marks"
+                                          width={16}
+                                          height={16}
+                                          className="inline-block"
+                                        />
+                                      </>
+                                    )}
+                                  </span>
                                 </div>
                               );
                             })()
@@ -3827,77 +3769,46 @@ export default function GenesisIndexPage() {
                                     })()
                                   : undefined;
 
+                              // Display marks accumulated for this market
+                              const lastUpdatedLg = marks
+                                ? parseInt(marks.lastUpdated || "0", 10)
+                                : 0;
+                              const daysElapsedLg =
+                                lastUpdatedLg > 0
+                                  ? (Date.now() / 1000 - lastUpdatedLg) /
+                                    (24 * 60 * 60)
+                                  : 0;
+                              const displayMarksLg = genesisEnded
+                                ? userMarksForMarket
+                                : userMarksForMarket +
+                                  daysElapsedLg * currentDepositUSD * 10;
+
                               return (
                                 <div className="text-center min-w-0">
-                                  {isValidAPR ? (
-                                    isAprRevealed && canShowCombinedAPR ? (
-                                      <TideAPRTooltip
-                                        underlyingAPR={underlyingAPR}
-                                        userMarks={marksForAPR}
-                                        totalMarks={marksForAPRTotal}
-                                        userDepositUSD={depositForAPR}
-                                        totalGenesisTVL={tvlForAPR}
-                                        genesisDays={genesisDays}
-                                        fdv={fdv}
-                                        onFdvChange={setFdv}
-                                        aprBreakdown={aprBreakdownLg}
-                                      >
-                                        <span className="text-[#1E4775] font-semibold text-xs cursor-help">
-                                          {isLoadingAPR || safeIsLoadingTotalTVL
-                                            ? "..."
-                                            : (() => {
-                                                const tideAPR =
-                                                  calculateTideAPR(
-                                                    marksForAPR,
-                                                    marksForAPRTotal,
-                                                    depositForAPR,
-                                                    tvlForAPR,
-                                                    daysLeftInGenesisLg,
-                                                    fdv
-                                                  );
-                                                const underlyingAPRPercent =
-                                                  (underlyingAPR || 0) * 100;
-                                                const combined =
-                                                  underlyingAPRPercent +
-                                                  tideAPR;
-                                                return isNaN(combined) ||
-                                                  !isFinite(combined)
-                                                  ? "..."
-                                                  : `${combined.toFixed(2)}%`;
-                                              })()}
-                                        </span>
-                                      </TideAPRTooltip>
+                                  <span className="text-[#1E4775] font-semibold text-xs flex items-center justify-center gap-1">
+                                    {isLoadingMarks ? (
+                                      "..."
                                     ) : (
-                                      <SimpleTooltip
-                                        label={`${collateralSymbol} underlying APR${
-                                          safeIsLoadingTotalTVL ||
-                                          safeIsLoadingTotalMarks
-                                            ? " (Loading $TIDE data...)"
-                                            : ""
-                                        }`}
-                                      >
-                                        <span className="text-[#1E4775] font-semibold text-xs cursor-help flex items-center gap-1">
-                                          {isLoadingAPR
-                                            ? "..."
-                                            : `${(underlyingAPR * 100).toFixed(
-                                                2
-                                              )}%`}
-                                          <span className="text-[#1E4775]/70">+</span>
-                                          <Image
-                                            src="/icons/marks.png"
-                                            alt="Marks"
-                                            width={20}
-                                            height={20}
-                                            className="inline-block"
-                                          />
-                                        </span>
-                                      </SimpleTooltip>
-                                    )
-                                  ) : (
-                                    <span className="text-xs text-gray-400">
-                                      -
-                                    </span>
-                                  )}
+                                      <>
+                                        {displayMarksLg >= 0
+                                          ? displayMarksLg.toLocaleString(
+                                              undefined,
+                                              {
+                                                maximumFractionDigits: 1,
+                                                minimumFractionDigits: 0,
+                                              }
+                                            )
+                                          : "-"}
+                                        <Image
+                                          src="/icons/marks.png"
+                                          alt="Marks"
+                                          width={16}
+                                          height={16}
+                                          className="inline-block"
+                                        />
+                                      </>
+                                    )}
+                                  </span>
                                 </div>
                               );
                             })()
@@ -4461,9 +4372,17 @@ export default function GenesisIndexPage() {
                           const isFxSAVE = collateralSymbolNormalized === "fxsave";
                           const isEurMarket =
                             id === "steth-eur" || id === "fxusd-eur";
+                          const isLaunchMarket =
+                            id === "eth-fxusd" || id === "btc-fxusd" || id === "btc-steth";
+                          // Metals and all future campaigns use 25k fxSAVE / 15 wstETH
+                          const isMetalsOrFuture = !isLaunchMarket && !isEurMarket;
                           const thresholdAmount = isEurMarket
                             ? isFxSAVE
                               ? 50000
+                              : 15
+                            : isMetalsOrFuture
+                            ? isFxSAVE
+                              ? 25000
                               : 15
                             : isFxSAVE
                             ? 250000
@@ -4694,28 +4613,22 @@ export default function GenesisIndexPage() {
                           {marketName}
                         </div>
                         <div className="flex items-center gap-1">
-                          <Image
-                            src={getLogoPath(collateralSymbol)}
-                            alt={collateralSymbol}
-                            width={20}
-                            height={20}
-                            className="flex-shrink-0 rounded-full"
+                          <TokenLogo
+                            symbol={collateralSymbol}
+                            size={20}
+                            className="flex-shrink-0"
                           />
                           <span className="text-[#1E4775]/60 text-xs">=</span>
-                          <Image
-                            src={getLogoPath(peggedSymbol)}
-                            alt={peggedSymbol}
-                            width={20}
-                            height={20}
-                            className="flex-shrink-0 rounded-full"
+                          <TokenLogo
+                            symbol={peggedSymbol}
+                            size={20}
+                            className="flex-shrink-0"
                           />
                           <span className="text-[#1E4775]/60 text-xs">+</span>
-                          <Image
-                            src={getLogoPath(leveragedSymbol)}
-                            alt={leveragedSymbol}
-                            width={20}
-                            height={20}
-                            className="flex-shrink-0 rounded-full"
+                          <TokenLogo
+                            symbol={leveragedSymbol}
+                            size={20}
+                            className="flex-shrink-0"
                           />
                         </div>
                       </div>
@@ -4740,12 +4653,10 @@ export default function GenesisIndexPage() {
 
                       {/* Anchor Token Column */}
                       <div className="flex items-center justify-center gap-1.5 min-w-0">
-                        <Image
-                          src={getLogoPath(peggedSymbol)}
-                          alt={peggedSymbol}
-                          width={20}
-                          height={20}
-                          className="flex-shrink-0 rounded-full"
+                        <TokenLogo
+                          symbol={peggedSymbol}
+                          size={20}
+                          className="flex-shrink-0"
                         />
                         <span className="text-[#1E4775] font-semibold text-xs">
                           {peggedSymbol}
@@ -4755,12 +4666,10 @@ export default function GenesisIndexPage() {
                       {/* Sail Token Column */}
                       <div className="flex flex-col items-center gap-0.5 min-w-0">
                         <div className="flex items-center justify-center gap-1.5">
-                          <Image
-                            src={getLogoPath(leveragedSymbol)}
-                            alt={leveragedSymbol}
-                            width={20}
-                            height={20}
-                            className="flex-shrink-0 rounded-full"
+                          <TokenLogo
+                            symbol={leveragedSymbol}
+                            size={20}
+                            className="flex-shrink-0"
                           />
                           <span className="text-[#1E4775] font-semibold text-xs">
                             {leveragedSymbol}
@@ -4789,28 +4698,22 @@ export default function GenesisIndexPage() {
                             {marketName}
                           </div>
                           <div className="flex items-center gap-1">
-                            <Image
-                              src={getLogoPath(collateralSymbol)}
-                              alt={collateralSymbol}
-                              width={20}
-                              height={20}
-                              className="flex-shrink-0 rounded-full"
+                            <TokenLogo
+                              symbol={collateralSymbol}
+                              size={20}
+                              className="flex-shrink-0"
                             />
                             <span className="text-[#1E4775]/60 text-xs">=</span>
-                            <Image
-                              src={getLogoPath(peggedSymbol)}
-                              alt={peggedSymbol}
-                              width={20}
-                              height={20}
-                              className="flex-shrink-0 rounded-full"
+                            <TokenLogo
+                              symbol={peggedSymbol}
+                              size={20}
+                              className="flex-shrink-0"
                             />
                             <span className="text-[#1E4775]/60 text-xs">+</span>
-                            <Image
-                              src={getLogoPath(leveragedSymbol)}
-                              alt={leveragedSymbol}
-                              width={20}
-                              height={20}
-                              className="flex-shrink-0 rounded-full"
+                            <TokenLogo
+                              symbol={leveragedSymbol}
+                              size={20}
+                              className="flex-shrink-0"
                             />
                           </div>
                         </div>
@@ -4826,12 +4729,10 @@ export default function GenesisIndexPage() {
                             Anchor Token
                           </div>
                           <div className="flex items-center gap-1.5">
-                            <Image
-                              src={getLogoPath(peggedSymbol)}
-                              alt={peggedSymbol}
-                              width={16}
-                              height={16}
-                              className="flex-shrink-0 rounded-full"
+                            <TokenLogo
+                              symbol={peggedSymbol}
+                              size={16}
+                              className="flex-shrink-0"
                             />
                             <span className="text-[#1E4775] font-semibold text-xs">
                               {peggedSymbol}
@@ -4844,12 +4745,10 @@ export default function GenesisIndexPage() {
                           </div>
                           <div className="flex flex-col gap-0.5">
                             <div className="flex items-center gap-1.5">
-                              <Image
-                                src={getLogoPath(leveragedSymbol)}
-                                alt={leveragedSymbol}
-                                width={16}
-                                height={16}
-                                className="flex-shrink-0 rounded-full"
+                              <TokenLogo
+                                symbol={leveragedSymbol}
+                                size={16}
+                                className="flex-shrink-0"
                               />
                               <span className="text-[#1E4775] font-semibold text-xs">
                                 {leveragedSymbol}

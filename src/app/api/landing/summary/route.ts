@@ -430,21 +430,36 @@ export async function GET(request: Request) {
       name: string;
       symbol?: string;
       collateralSymbol?: string;
+      peggedSymbol?: string;
+      leveragedSymbol?: string;
+      pegTarget?: string;
+      campaignId?: string;
       projectedApr: number | null;
       longSide: string;
       shortSide: string;
+      phase: "live" | "coming-next" | "planned";
+      status?: string;
     }>
   >();
 
   for (const [marketId, market] of maidenVoyageMarkets) {
-    const title =
+    const campaignLabel =
       (market as any)?.marksCampaign?.label ||
       "Maiden Voyage";
-    const collateralSymbol = market.collateral?.symbol?.toLowerCase();
+    const campaignId = (market as any)?.marksCampaign?.id;
+    const collateralSymbol = market.collateral?.symbol;
+    const peggedSymbol = market.peggedToken?.symbol;
+    const leveragedSymbol = market.leveragedToken?.symbol;
+    const pegTarget = (market as any)?.pegTarget;
+    const status = (market as any)?.status;
+    const collateralSymbolLower = collateralSymbol?.toLowerCase();
     let projectedApr: number | null = null;
-    if (collateralSymbol === "fxsave") {
+    if (collateralSymbolLower === "fxsave") {
       projectedApr = defillamaApys.fxsaveApyPercent;
-    } else if (collateralSymbol === "wsteth" || collateralSymbol === "steth") {
+    } else if (
+      collateralSymbolLower === "wsteth" ||
+      collateralSymbolLower === "steth"
+    ) {
       projectedApr = defillamaApys.wstethApyPercent;
     }
 
@@ -456,7 +471,7 @@ export async function GET(request: Request) {
       : null;
     const now = Date.now();
     let phase: "live" | "coming-next" | "planned" = "planned";
-    const isComingSoon = (market as any).status === "coming-soon";
+    const isComingSoon = status === "coming-soon";
     const hasEnded = endDate !== null && now > endDate;
     if (hasEnded && !isComingSoon) {
       continue;
@@ -467,7 +482,7 @@ export async function GET(request: Request) {
       phase = "coming-next";
     } else if (endDate && now <= endDate) {
       phase = "live";
-    } else if ((market as any).status === "genesis") {
+    } else if (status === "genesis") {
       phase = "live";
     }
 
@@ -475,15 +490,20 @@ export async function GET(request: Request) {
       marketId,
       name: market.name,
       symbol: market.peggedToken?.symbol,
-      collateralSymbol: market.collateral?.symbol,
+      collateralSymbol,
+      peggedSymbol,
+      leveragedSymbol,
+      pegTarget,
+      campaignId,
       projectedApr,
       longSide: parseLongSide(market),
       shortSide: parseShortSide(market),
       phase,
+      status,
     };
-    const list = maidenVoyagesMap.get(title) || [];
+    const list = maidenVoyagesMap.get(campaignLabel) || [];
     list.push(entry);
-    maidenVoyagesMap.set(title, list);
+    maidenVoyagesMap.set(campaignLabel, list);
   }
 
   const maidenVoyages = Array.from(maidenVoyagesMap.entries()).map(

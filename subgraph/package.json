@@ -13,6 +13,7 @@
     "use:marks:production": "cp subgraph.production.yaml subgraph.yaml",
     "use:marks:test": "cp subgraph.test.yaml subgraph.yaml",
     "deploy:marks:production": "cp subgraph.production.yaml subgraph.yaml && graph codegen && graph build && graph deploy --node https://api.studio.thegraph.com/deploy/ --deploy-key $GRAPH_DEPLOY_KEY harbor-marks",
+    "deploy:marks:production:no-prompt": "bash deploy-production-no-prompt.sh",
     "deploy:marks:production:version": "cp subgraph.production.yaml subgraph.yaml && graph codegen && graph build && graph deploy --node https://api.studio.thegraph.com/deploy/ --deploy-key $GRAPH_DEPLOY_KEY harbor-marks --version-label",
     "deploy:marks:test": "cp subgraph.test.yaml subgraph.yaml && graph codegen && graph build && graph deploy --node https://api.studio.thegraph.com/deploy/ --deploy-key $GRAPH_DEPLOY_KEY harbor-marks-test",
     "deploy:marks:test:version": "cp subgraph.test.yaml subgraph.yaml && graph codegen && graph build && graph deploy --node https://api.studio.thegraph.com/deploy/ --deploy-key $GRAPH_DEPLOY_KEY harbor-marks-test --version-label",
