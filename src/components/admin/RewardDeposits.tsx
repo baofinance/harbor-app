@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { encodeFunctionData, formatUnits, isAddress, parseUnits, toHex } from "viem";
-import { useAccount, useReadContract } from "wagmi";
+import { useAccount, useContractReads, useReadContract } from "wagmi";
 import SafeAppsSDK from "@safe-global/safe-apps-sdk";
 import { markets } from "@/config/markets";
 import { TREASURY_SAFE_ADDRESS } from "@/config/treasury";
@@ -101,19 +101,23 @@ function buildPoolEntries(): PoolEntry[] {
     });
 }
 
+export type TokenPriceMap = Record<string, string>;
+
 function RewardDepositRow({
   pool,
   onChange,
+  depositTokenPrices,
+  rewardTokenPrices,
 }: {
   pool: PoolEntry;
   onChange: (key: string, row: RowComputed) => void;
+  depositTokenPrices: TokenPriceMap;
+  rewardTokenPrices: TokenPriceMap;
 }) {
   const [enabled, setEnabled] = useState(false);
   const [rewardTokenInput, setRewardTokenInput] = useState("");
   const [amountRaw, setAmountRaw] = useState("");
   const [targetAprInput, setTargetAprInput] = useState("");
-  const [depositTokenPriceInput, setDepositTokenPriceInput] = useState("");
-  const [rewardTokenPriceInput, setRewardTokenPriceInput] = useState("");
 
   const poolOwnerQuery = useReadContract({
     address: pool.poolAddress,
@@ -280,8 +284,14 @@ function RewardDepositRow({
 
   const targetAprResult = useMemo(() => {
     const targetApr = targetAprInput.trim() ? parseFloat(targetAprInput) : null;
-    const depositPrice = depositTokenPriceInput.trim() ? parseFloat(depositTokenPriceInput) : null;
-    const rewardPrice = rewardTokenPriceInput.trim() ? parseFloat(rewardTokenPriceInput) : null;
+    const depositPriceStr = assetTokenAddress
+      ? depositTokenPrices[assetTokenAddress.toLowerCase()]
+      : "";
+    const rewardPriceStr = rewardToken
+      ? rewardTokenPrices[rewardToken.toLowerCase()]
+      : "";
+    const depositPrice = depositPriceStr.trim() ? parseFloat(depositPriceStr) : null;
+    const rewardPrice = rewardPriceStr.trim() ? parseFloat(rewardPriceStr) : null;
 
     if (targetApr == null || targetApr <= 0) return null;
 
@@ -293,8 +303,8 @@ function RewardDepositRow({
     if (!periodSec || periodSec === 0n) return { error: "Unknown reward period length." };
     if (assetDecimals == null) return { error: "Loading asset decimals…" };
     if (decimals == null) return { error: "Select a reward token to compute amount." };
-    if (depositPrice == null || depositPrice <= 0) return { error: "Enter deposit token price (USD) to calculate." };
-    if (rewardPrice == null || rewardPrice <= 0) return { error: "Enter reward token price (USD) to calculate." };
+    if (depositPrice == null || depositPrice <= 0) return { error: "Set deposit token price above." };
+    if (rewardPrice == null || rewardPrice <= 0) return { error: "Set reward token price above." };
 
     const tvlHuman = Number(totalSupply) / 10 ** assetDecimals;
     const depositValueUSD = tvlHuman * depositPrice;
@@ -314,8 +324,10 @@ function RewardDepositRow({
     };
   }, [
     targetAprInput,
-    depositTokenPriceInput,
-    rewardTokenPriceInput,
+    depositTokenPrices,
+    rewardTokenPrices,
+    assetTokenAddress,
+    rewardToken,
     totalAssetSupplyQuery.data,
     rewardPeriodLengthQuery.data,
     assetDecimals,
@@ -408,13 +420,13 @@ function RewardDepositRow({
             </div>
           </div>
 
-          {/* Target APR → required deposit for this period */}
+          {/* Target APR → required deposit (uses prices set above) */}
           <div className="mt-4 p-3 bg-black/20 border border-white/10 rounded">
             <div className="text-white/80 text-xs font-medium mb-2">
               Target APR → required deposit (this period)
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
-              <div className="md:col-span-2">
+            <div className="flex flex-wrap items-end gap-3">
+              <div className="w-32">
                 <div className="text-white/70 text-xs mb-1">Target APR (%)</div>
                 <input
                   type="number"
@@ -426,31 +438,7 @@ function RewardDepositRow({
                   className="w-full bg-zinc-900/50 px-3 py-2 text-white placeholder-white/30 focus:outline-none focus:ring-1 focus:ring-white/20 text-xs"
                 />
               </div>
-              <div className="md:col-span-3">
-                <div className="text-white/70 text-xs mb-1">Deposit token price (USD)</div>
-                <input
-                  type="number"
-                  min={0}
-                  step={0.01}
-                  value={depositTokenPriceInput}
-                  onChange={(e) => setDepositTokenPriceInput(e.target.value)}
-                  placeholder="e.g. 1 or 3500"
-                  className="w-full bg-zinc-900/50 px-3 py-2 text-white placeholder-white/30 focus:outline-none focus:ring-1 focus:ring-white/20 text-xs"
-                />
-              </div>
-              <div className="md:col-span-3">
-                <div className="text-white/70 text-xs mb-1">Reward token price (USD)</div>
-                <input
-                  type="number"
-                  min={0}
-                  step={0.01}
-                  value={rewardTokenPriceInput}
-                  onChange={(e) => setRewardTokenPriceInput(e.target.value)}
-                  placeholder="e.g. 1 or 3500"
-                  className="w-full bg-zinc-900/50 px-3 py-2 text-white placeholder-white/30 focus:outline-none focus:ring-1 focus:ring-white/20 text-xs"
-                />
-              </div>
-              <div className="md:col-span-4 flex items-end gap-2 flex-wrap">
+              <div className="flex items-end gap-2 flex-wrap">
                 {targetAprResult?.error ? (
                   <span className="text-amber-300 text-xs">{targetAprResult.error}</span>
                 ) : targetAprResult?.requiredAmountFormatted != null ? (
@@ -561,6 +549,78 @@ export default function RewardDeposits() {
     safeAddress: `0x${string}`;
     chainId: number;
   } | null>(null);
+
+  // Global token prices (set once at top): key = token address lowercase
+  const [depositTokenPrices, setDepositTokenPrices] = useState<TokenPriceMap>({});
+  const [rewardTokenPrices, setRewardTokenPrices] = useState<TokenPriceMap>({});
+
+  // Discover unique deposit tokens (ASSET_TOKEN per pool) and reward tokens (activeRewardTokens)
+  const poolTokenReads = useContractReads({
+    contracts: pools.flatMap((p) => [
+      {
+        address: p.poolAddress,
+        abi: stabilityPoolABI,
+        functionName: "ASSET_TOKEN" as const,
+      },
+      {
+        address: p.poolAddress,
+        abi: stabilityPoolABI,
+        functionName: "activeRewardTokens" as const,
+      },
+    ]),
+    query: { enabled: pools.length > 0 },
+  });
+
+  const { uniqueDepositTokens, uniqueRewardTokens } = useMemo(() => {
+    const data = poolTokenReads.data;
+    if (!data || data.length !== pools.length * 2) {
+      return { uniqueDepositTokens: [] as string[], uniqueRewardTokens: [] as string[] };
+    }
+    const depositSet = new Set<string>();
+    const rewardSet = new Set<string>();
+    for (let i = 0; i < pools.length; i++) {
+      const assetRes = data[i * 2]?.result;
+      const rewardList = data[i * 2 + 1]?.result as `0x${string}`[] | undefined;
+      const assetAddr =
+        typeof assetRes === "string"
+          ? assetRes
+          : (assetRes as { token?: string })?.token;
+      if (assetAddr) {
+        depositSet.add(assetAddr.toLowerCase());
+      }
+      if (rewardList && Array.isArray(rewardList)) {
+        rewardList.forEach((a: string) => rewardSet.add(a.toLowerCase()));
+      }
+    }
+    return {
+      uniqueDepositTokens: Array.from(depositSet),
+      uniqueRewardTokens: Array.from(rewardSet),
+    };
+  }, [poolTokenReads.data, pools.length]);
+
+  const allUniqueTokens = useMemo(
+    () => [...new Set([...uniqueDepositTokens, ...uniqueRewardTokens])],
+    [uniqueDepositTokens, uniqueRewardTokens]
+  );
+
+  const tokenSymbolReads = useContractReads({
+    contracts: allUniqueTokens.map((addr) => ({
+      address: addr as `0x${string}`,
+      abi: ERC20_ABI,
+      functionName: "symbol" as const,
+    })),
+    query: { enabled: allUniqueTokens.length > 0 },
+  });
+
+  const tokenSymbolByAddress = useMemo(() => {
+    const data = tokenSymbolReads.data;
+    const map: Record<string, string> = {};
+    allUniqueTokens.forEach((addr, i) => {
+      const sym = data?.[i]?.result;
+      map[addr] = typeof sym === "string" ? sym : truncate(addr);
+    });
+    return map;
+  }, [tokenSymbolReads.data, allUniqueTokens]);
 
   useEffect(() => {
     let mounted = true;
@@ -823,9 +883,82 @@ export default function RewardDeposits() {
         </div>
       </div>
 
+      {/* Set each token price once (used by target APR calculator in each row) */}
+      <div className="mt-4 p-4 bg-black/20 border border-white/10 rounded space-y-4">
+        <div className="text-white font-geo text-base">Token prices (USD)</div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <div className="text-white/70 text-xs font-medium mb-2">Deposit tokens (pool assets)</div>
+            <div className="space-y-2">
+              {uniqueDepositTokens.length === 0 ? (
+                <div className="text-white/50 text-xs">Loading…</div>
+              ) : (
+                uniqueDepositTokens.map((addr) => (
+                  <div key={addr} className="flex items-center gap-2">
+                    <label className="text-white/90 text-xs w-24 shrink-0">
+                      {tokenSymbolByAddress[addr] ?? truncate(addr)}
+                    </label>
+                    <input
+                      type="number"
+                      min={0}
+                      step={0.01}
+                      value={depositTokenPrices[addr] ?? ""}
+                      onChange={(e) =>
+                        setDepositTokenPrices((prev) => ({
+                          ...prev,
+                          [addr]: e.target.value,
+                        }))
+                      }
+                      placeholder="Price"
+                      className="flex-1 max-w-[120px] bg-zinc-900/50 px-3 py-1.5 text-white placeholder-white/30 focus:outline-none focus:ring-1 focus:ring-white/20 text-xs"
+                    />
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+          <div>
+            <div className="text-white/70 text-xs font-medium mb-2">Reward tokens</div>
+            <div className="space-y-2">
+              {uniqueRewardTokens.length === 0 ? (
+                <div className="text-white/50 text-xs">Loading…</div>
+              ) : (
+                uniqueRewardTokens.map((addr) => (
+                  <div key={addr} className="flex items-center gap-2">
+                    <label className="text-white/90 text-xs w-24 shrink-0">
+                      {tokenSymbolByAddress[addr] ?? truncate(addr)}
+                    </label>
+                    <input
+                      type="number"
+                      min={0}
+                      step={0.01}
+                      value={rewardTokenPrices[addr] ?? ""}
+                      onChange={(e) =>
+                        setRewardTokenPrices((prev) => ({
+                          ...prev,
+                          [addr]: e.target.value,
+                        }))
+                      }
+                      placeholder="Price"
+                      className="flex-1 max-w-[120px] bg-zinc-900/50 px-3 py-1.5 text-white placeholder-white/30 focus:outline-none focus:ring-1 focus:ring-white/20 text-xs"
+                    />
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="mt-4 space-y-3">
         {pools.map((p) => (
-          <RewardDepositRow key={p.key} pool={p} onChange={onRowChange} />
+          <RewardDepositRow
+            key={p.key}
+            pool={p}
+            onChange={onRowChange}
+            depositTokenPrices={depositTokenPrices}
+            rewardTokenPrices={rewardTokenPrices}
+          />
         ))}
       </div>
 
