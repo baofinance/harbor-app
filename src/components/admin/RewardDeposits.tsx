@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { encodeFunctionData, isAddress, parseUnits, toHex } from "viem";
+import { encodeFunctionData, formatUnits, isAddress, parseUnits, toHex } from "viem";
 import { useAccount, useReadContract } from "wagmi";
 import SafeAppsSDK from "@safe-global/safe-apps-sdk";
 import { markets } from "@/config/markets";
@@ -35,6 +35,8 @@ type RowComputed = {
   needsRegister: boolean | null;
   needsApprove: boolean | null;
 };
+
+const SECONDS_PER_YEAR = 365 * 24 * 60 * 60;
 
 function poolKindLabel(kind: PoolKind) {
   return kind === "collateral" ? "Anchor Pool" : "Sail Pool";
@@ -109,6 +111,9 @@ function RewardDepositRow({
   const [enabled, setEnabled] = useState(false);
   const [rewardTokenInput, setRewardTokenInput] = useState("");
   const [amountRaw, setAmountRaw] = useState("");
+  const [targetAprInput, setTargetAprInput] = useState("");
+  const [depositTokenPriceInput, setDepositTokenPriceInput] = useState("");
+  const [rewardTokenPriceInput, setRewardTokenPriceInput] = useState("");
 
   const poolOwnerQuery = useReadContract({
     address: pool.poolAddress,
@@ -196,6 +201,40 @@ function RewardDepositRow({
     query: { enabled: !!rewardToken && !!pool.poolAddress },
   });
 
+  // Target APR calculator: pool TVL and period
+  const totalAssetSupplyQuery = useReadContract({
+    address: pool.poolAddress,
+    abi: stabilityPoolABI,
+    functionName: "totalAssetSupply",
+    query: { enabled: !!pool.poolAddress && enabled },
+  });
+  const rewardPeriodLengthQuery = useReadContract({
+    address: pool.poolAddress,
+    abi: stabilityPoolABI,
+    functionName: "REWARD_PERIOD_LENGTH",
+    query: { enabled: !!pool.poolAddress && enabled },
+  });
+  const assetTokenQuery = useReadContract({
+    address: pool.poolAddress,
+    abi: stabilityPoolABI,
+    functionName: "ASSET_TOKEN",
+    query: { enabled: !!pool.poolAddress && enabled },
+  });
+
+  const assetTokenAddress = (assetTokenQuery.data as `0x${string}` | undefined) ?? null;
+
+  const assetDecimalsQuery = useReadContract({
+    address: assetTokenAddress ?? undefined,
+    abi: ERC20_ABI,
+    functionName: "decimals",
+    query: { enabled: !!assetTokenAddress },
+  });
+
+  const assetDecimals = useMemo(() => {
+    const d = assetDecimalsQuery.data as number | undefined;
+    return typeof d === "number" ? d : null;
+  }, [assetDecimalsQuery.data]);
+
   const decimals = useMemo(() => {
     const d = decimalsQuery.data as number | undefined;
     return typeof d === "number" ? d : null;
@@ -238,6 +277,50 @@ function RewardDepositRow({
     if (amountParsed == null) return null;
     return safeAllowance < amountParsed;
   }, [rewardToken, safeAllowance, amountParsed]);
+
+  const targetAprResult = useMemo(() => {
+    const targetApr = targetAprInput.trim() ? parseFloat(targetAprInput) : null;
+    const depositPrice = depositTokenPriceInput.trim() ? parseFloat(depositTokenPriceInput) : null;
+    const rewardPrice = rewardTokenPriceInput.trim() ? parseFloat(rewardTokenPriceInput) : null;
+
+    if (targetApr == null || targetApr <= 0) return null;
+
+    const totalSupply = totalAssetSupplyQuery.data as bigint | undefined;
+    const periodSec = rewardPeriodLengthQuery.data as bigint | undefined;
+
+    if (totalSupply == null || totalSupply === undefined) return { error: "Loading pool data…" };
+    if (totalSupply === 0n) return { error: "Pool has no TVL; cannot compute required amount." };
+    if (!periodSec || periodSec === 0n) return { error: "Unknown reward period length." };
+    if (assetDecimals == null) return { error: "Loading asset decimals…" };
+    if (decimals == null) return { error: "Select a reward token to compute amount." };
+    if (depositPrice == null || depositPrice <= 0) return { error: "Enter deposit token price (USD) to calculate." };
+    if (rewardPrice == null || rewardPrice <= 0) return { error: "Enter reward token price (USD) to calculate." };
+
+    const tvlHuman = Number(totalSupply) / 10 ** assetDecimals;
+    const depositValueUSD = tvlHuman * depositPrice;
+    const periodSeconds = Number(periodSec);
+    const rewardValueUSD =
+      (targetApr / 100) * depositValueUSD * (periodSeconds / SECONDS_PER_YEAR);
+    const rewardAmountHuman = rewardValueUSD / rewardPrice;
+    const rewardAmountRaw = BigInt(
+      Math.round(rewardAmountHuman * 10 ** decimals)
+    );
+    const requiredAmountFormatted = formatUnits(rewardAmountRaw, decimals);
+
+    return {
+      rewardAmountRaw,
+      requiredAmountFormatted,
+      rewardAmountHuman,
+    };
+  }, [
+    targetAprInput,
+    depositTokenPriceInput,
+    rewardTokenPriceInput,
+    totalAssetSupplyQuery.data,
+    rewardPeriodLengthQuery.data,
+    assetDecimals,
+    decimals,
+  ]);
 
   const rowComputed: RowComputed = useMemo(
     () => ({
@@ -322,6 +405,71 @@ function RewardDepositRow({
                 placeholder={tokenSymbol ? `Amount (${tokenSymbol})` : "Amount"}
                 className="w-full bg-zinc-900/50 px-3 py-2 text-white placeholder-white/30 focus:outline-none focus:ring-1 focus:ring-white/20 text-xs"
               />
+            </div>
+          </div>
+
+          {/* Target APR → required deposit for this period */}
+          <div className="mt-4 p-3 bg-black/20 border border-white/10 rounded">
+            <div className="text-white/80 text-xs font-medium mb-2">
+              Target APR → required deposit (this period)
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
+              <div className="md:col-span-2">
+                <div className="text-white/70 text-xs mb-1">Target APR (%)</div>
+                <input
+                  type="number"
+                  min={0}
+                  step={0.1}
+                  value={targetAprInput}
+                  onChange={(e) => setTargetAprInput(e.target.value)}
+                  placeholder="e.g. 5"
+                  className="w-full bg-zinc-900/50 px-3 py-2 text-white placeholder-white/30 focus:outline-none focus:ring-1 focus:ring-white/20 text-xs"
+                />
+              </div>
+              <div className="md:col-span-3">
+                <div className="text-white/70 text-xs mb-1">Deposit token price (USD)</div>
+                <input
+                  type="number"
+                  min={0}
+                  step={0.01}
+                  value={depositTokenPriceInput}
+                  onChange={(e) => setDepositTokenPriceInput(e.target.value)}
+                  placeholder="e.g. 1 or 3500"
+                  className="w-full bg-zinc-900/50 px-3 py-2 text-white placeholder-white/30 focus:outline-none focus:ring-1 focus:ring-white/20 text-xs"
+                />
+              </div>
+              <div className="md:col-span-3">
+                <div className="text-white/70 text-xs mb-1">Reward token price (USD)</div>
+                <input
+                  type="number"
+                  min={0}
+                  step={0.01}
+                  value={rewardTokenPriceInput}
+                  onChange={(e) => setRewardTokenPriceInput(e.target.value)}
+                  placeholder="e.g. 1 or 3500"
+                  className="w-full bg-zinc-900/50 px-3 py-2 text-white placeholder-white/30 focus:outline-none focus:ring-1 focus:ring-white/20 text-xs"
+                />
+              </div>
+              <div className="md:col-span-4 flex items-end gap-2 flex-wrap">
+                {targetAprResult?.error ? (
+                  <span className="text-amber-300 text-xs">{targetAprResult.error}</span>
+                ) : targetAprResult?.requiredAmountFormatted != null ? (
+                  <>
+                    <span className="text-white/90 text-xs">
+                      Required: {targetAprResult.requiredAmountFormatted} {tokenSymbol ?? ""}
+                    </span>
+                    <button
+                      type="button"
+                      className="py-1.5 px-3 bg-white/15 text-white text-xs font-medium hover:bg-white/20 transition-colors"
+                      onClick={() =>
+                        setAmountRaw(targetAprResult.requiredAmountFormatted ?? "")
+                      }
+                    >
+                      Use this amount
+                    </button>
+                  </>
+                ) : null}
+              </div>
             </div>
           </div>
 
