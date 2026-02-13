@@ -285,10 +285,10 @@ function RewardDepositRow({
   const targetAprResult = useMemo(() => {
     const targetApr = targetAprInput.trim() ? parseFloat(targetAprInput) : null;
     const depositPriceStr = assetTokenAddress
-      ? depositTokenPrices[assetTokenAddress.toLowerCase()]
+      ? (depositTokenPrices[assetTokenAddress.toLowerCase()] ?? "")
       : "";
     const rewardPriceStr = rewardToken
-      ? rewardTokenPrices[rewardToken.toLowerCase()]
+      ? (rewardTokenPrices[rewardToken.toLowerCase()] ?? "")
       : "";
     const depositPrice = depositPriceStr.trim() ? parseFloat(depositPriceStr) : null;
     const rewardPrice = rewardPriceStr.trim() ? parseFloat(rewardPriceStr) : null;
