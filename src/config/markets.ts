@@ -286,7 +286,7 @@ export const markets = {
       peggedToken: contractsMarkets["fxusd-gold"].addresses.peggedToken,
       leveragedToken: contractsMarkets["fxusd-gold"].addresses.leveragedToken,
       reservePool: contractsMarkets["fxusd-gold"].addresses.reservePool,
-      stabilityPoolManager: "0x5c96077BB55376b66670B937F7bBdDBBc63A8564" as `0x${string}`,
+      stabilityPoolManager: "0x5b69069CC4012a96342B0FeCC28aD15bDE6447B5" as `0x${string}`, // GOLD::fxUSD proxy (harbor_v1.state)
       stabilityPoolCollateral: contractsMarkets["fxusd-gold"].addresses.stabilityPoolCollateral,
       stabilityPoolLeveraged: contractsMarkets["fxusd-gold"].addresses.stabilityPoolLeveraged,
       genesis: contractsMarkets["fxusd-gold"].addresses.genesis,
