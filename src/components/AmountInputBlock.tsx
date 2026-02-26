@@ -6,10 +6,14 @@ interface AmountInputBlockProps {
   onMax?: () => void;
   disabled?: boolean;
   error?: string | null;
+  /** When true, show error border (e.g. exceeds balance) without error message */
+  exceedsBalance?: boolean;
   label?: string;
   balanceContent?: React.ReactNode;
   inputClassName?: string;
   maxButtonClassName?: string;
+  /** Optional overlay inside the amount input (e.g. tempMaxWarning). Renders between input and MAX button. */
+  overlay?: React.ReactNode;
 }
 
 export const AmountInputBlock = ({
@@ -18,10 +22,12 @@ export const AmountInputBlock = ({
   onMax,
   disabled = false,
   error,
+  exceedsBalance = false,
   label = "Amount",
   balanceContent,
   inputClassName,
   maxButtonClassName,
+  overlay,
 }: AmountInputBlockProps) => {
   return (
     <div className="space-y-2">
@@ -40,11 +46,12 @@ export const AmountInputBlock = ({
           className={
             inputClassName ||
             `w-full px-3 pr-20 py-2 bg-white text-[#1E4775] border ${
-              error ? "border-red-500" : "border-[#1E4775]/30"
+              error || exceedsBalance ? "border-red-500" : "border-[#1E4775]/30"
             } focus:border-[#1E4775] focus:ring-2 focus:ring-[#1E4775]/20 focus:outline-none transition-all text-lg font-mono`
           }
           disabled={disabled}
         />
+        {overlay}
         {onMax && (
           <button
             onClick={onMax}

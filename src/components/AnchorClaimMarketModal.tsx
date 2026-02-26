@@ -92,7 +92,7 @@ export const AnchorClaimMarketModal = ({
  <div className="flex items-center gap-2">
  <span className="text-lg font-semibold text-[#1E4775]">Compound</span>
  <InfoTooltip
- label="Convert rewards to more pegged tokens and deposit into stability pools."
+ label="Convert rewards to more anchor tokens and deposit into stability pools."
  side="top"
  className="text-[#1E4775]/60"
  />

@@ -90,12 +90,12 @@ export const CompoundConfirmationModal = ({
  feeUSD: step.fee.usd,
  feePercentage: step.fee.percentage,
  tokenSymbol: step.fee.tokenSymbol,
- label: step.id ==="redeem" ?"Redeem Leveraged Tokens" : step.id ==="mint" ?"Mint Pegged Tokens" :"",
+ label: step.id ==="redeem" ?"Redeem Sail Tokens" : step.id ==="mint" ?"Mint Anchor Tokens" :"",
  };
  }
  return fees.find((f) => {
- if (step.id ==="redeem") return f.label ==="Redeem Leveraged Tokens";
- if (step.id ==="mint") return f.label ==="Mint Pegged Tokens";
+ if (step.id ==="redeem") return f.label ==="Redeem Sail Tokens";
+ if (step.id ==="mint") return f.label ==="Mint Anchor Tokens";
  return false;
  });
  };
