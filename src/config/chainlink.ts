@@ -9,6 +9,10 @@ export const CHAINLINK_FEEDS = {
   BTC_USD: "0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c" as `0x${string}`,
   /** Standard Chainlink EUR/USD: returns USD per EUR (e.g. 118123500 = 1.181235) */
   EUR_USD: "0xb49f677943BC038e9857d61E7d053CaA2C1734C1" as `0x${string}`,
+  /** XAU/USD (Gold): returns USD per troy oz, 8 decimals */
+  XAU_USD: "0x214eD9Da11D2fbe465a6fc601a91E62EbEc1a0D6" as `0x${string}`,
+  /** XAG/USD (Silver): returns USD per troy oz, 8 decimals */
+  XAG_USD: "0x379589227b15F1a12195D3f2d90bBc9F31f95235" as `0x${string}`,
 } as const;
 
 /** Harbor reward token addresses (mainnet) - used for APR fallback */

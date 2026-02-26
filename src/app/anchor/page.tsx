@@ -5575,9 +5575,7 @@ export default function AnchorPage() {
                   const pegTarget = (marketData.market as any)?.pegTarget?.toLowerCase();
                   let priceUSD = 1; // Default $1 for USD-pegged
                   
-                  // For EUR-pegged tokens, use eurPrice directly to ensure consistency across markets
-                  console.log(`[anchor page] Token ${tokenAddressLower} (${marketData.market?.peggedToken?.symbol}): pegTarget="${pegTarget}", eurPrice=${eurPrice}, btcPrice=${btcPrice}, ethPrice=${ethPrice}`);
-                  
+                  // Gold/Silver use Chainlink XAU/XAG spot via mergedPeggedPriceMap (1 haGOLD≈1oz gold, 1 haSILVER≈1oz silver)
                   if (pegTarget === "eur" || pegTarget === "euro") {
                     if (eurPrice) {
                       priceUSD = eurPrice;

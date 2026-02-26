@@ -5,6 +5,7 @@ import {
   CHAINLINK_ORACLE_ABI,
   WRAPPED_PRICE_ORACLE_ABI,
 } from "@/abis/shared";
+import { CHAINLINK_FEEDS } from "@/config/chainlink";
 import { calculatePriceOracleOffset } from "@/utils/anchor/calculateReadOffset";
 
 // Chainlink ETH/USD Oracle on Mainnet
@@ -518,6 +519,42 @@ export function useAnchorPrices(
     },
   });
 
+  // Fetch Chainlink XAU/USD (Gold) and XAG/USD (Silver) for haGOLD/haSILVER
+  const { data: chainlinkGoldPriceData } = useContractRead({
+    address: CHAINLINK_FEEDS.XAU_USD,
+    abi: CHAINLINK_ORACLE_ABI,
+    functionName: "latestAnswer",
+    query: {
+      enabled: true,
+      staleTime: 60_000,
+      gcTime: 300_000,
+    },
+  });
+  const { data: chainlinkSilverPriceData } = useContractRead({
+    address: CHAINLINK_FEEDS.XAG_USD,
+    abi: CHAINLINK_ORACLE_ABI,
+    functionName: "latestAnswer",
+    query: {
+      enabled: true,
+      staleTime: 60_000,
+      gcTime: 300_000,
+    },
+  });
+
+  // Gold price (USD per troy oz, 8 decimals)
+  const goldPrice = useMemo(() => {
+    if (!chainlinkGoldPriceData) return null;
+    const price = Number(chainlinkGoldPriceData as bigint) / 1e8;
+    return price > 0 ? price : null;
+  }, [chainlinkGoldPriceData]);
+
+  // Silver price (USD per troy oz, 8 decimals)
+  const silverPrice = useMemo(() => {
+    if (!chainlinkSilverPriceData) return null;
+    const price = Number(chainlinkSilverPriceData as bigint) / 1e8;
+    return price > 0 ? price : null;
+  }, [chainlinkSilverPriceData]);
+
   // Calculate Chainlink ETH price in USD (8 decimals)
   const chainlinkEthPrice = useMemo(() => {
     if (!chainlinkEthPriceData) return null;
@@ -677,10 +714,11 @@ export function useAnchorPrices(
       const isETHPegged = pegTarget === "eth" || pegTarget === "ethereum" || peggedTokenSymbol.includes("eth") || peggedTokenSymbol === "haeth";
       const isBTCPegged = pegTarget === "btc" || pegTarget === "bitcoin" || peggedTokenSymbol.includes("btc") || peggedTokenSymbol === "habtc";
       const isEURPegged = pegTarget === "eur" || pegTarget === "euro" || peggedTokenSymbol.includes("eur") || peggedTokenSymbol === "haeur";
-      
+      const isGOLDPegged = pegTarget === "gold" || peggedTokenSymbol.includes("gold") || peggedTokenSymbol === "hagold";
+      const isSILVERPegged = pegTarget === "silver" || peggedTokenSymbol.includes("silver") || peggedTokenSymbol === "hasilver";
       if (isDebug) {
         console.log(
-          `[peggedPriceUSDMap] Market ${id}: symbol="${peggedTokenSymbol}", pegTarget="${pegTarget}", isETHPegged=${isETHPegged}, isBTCPegged=${isBTCPegged}, isEURPegged=${isEURPegged}, ethPrice=${ethPrice}, btcPrice=${btcPrice}, eurPrice=${eurPrice}`
+          `[peggedPriceUSDMap] Market ${id}: symbol="${peggedTokenSymbol}", pegTarget="${pegTarget}", isGOLDPegged=${isGOLDPegged}, isSILVERPegged=${isSILVERPegged}`
         );
       }
       
@@ -722,6 +760,12 @@ export function useAnchorPrices(
             `[peggedPriceUSDMap] Market ${id} (${peggedTokenSymbol}): EUR price fallback: $${eurFallback}`
           );
         }
+      } else if (isGOLDPegged && goldPrice) {
+        // haGOLD: 1 token ≈ 1 oz gold, use Chainlink XAU/USD
+        map[id] = BigInt(Math.floor(goldPrice * 1e18));
+      } else if (isSILVERPegged && silverPrice) {
+        // haSILVER: 1 token ≈ 1 oz silver, use Chainlink XAG/USD
+        map[id] = BigInt(Math.floor(silverPrice * 1e18));
       } else if (isBTCPegged && !btcPrice) {
         // BTC-pegged token but BTC price not loaded yet - don't use collateral price calculation
         if (isDebug) {
@@ -729,7 +773,7 @@ export function useAnchorPrices(
             `[peggedPriceUSDMap] Market ${id} (${peggedTokenSymbol}): BTC price not available yet (btcPrice=${btcPrice}), skipping price calculation`
           );
         }
-      } else if (peggedTokenPrice && collateralPriceUSD > 0 && !isEURPegged) {
+      } else if (peggedTokenPrice && collateralPriceUSD > 0 && !isEURPegged && !isGOLDPegged && !isSILVERPegged) {
         // For other tokens, calculate USD price: peggedTokenPrice (in collateral units) * collateralPriceUSD
         const peggedPriceInCollateral = Number(peggedTokenPrice) / 1e18;
         const peggedPriceInUSD = peggedPriceInCollateral * collateralPriceUSD;
@@ -763,6 +807,8 @@ export function useAnchorPrices(
     ethPrice,
     btcPrice,
     eurPrice,
+    goldPrice,
+    silverPrice,
     eurPriceCoinGecko,
     isDebug,
   ]);
@@ -801,6 +847,8 @@ export function useAnchorPrices(
     ethPrice,
     btcPrice,
     eurPrice,
+    goldPrice,
+    silverPrice,
     fxUSDPrice,
     fxSAVEPrice,
     usdcPrice,

@@ -2525,6 +2525,10 @@ export const AnchorDepositWithdrawModal = ({
     pegTargetForPrice === "eth" || pegTargetForPrice === "ethereum";
   const needsEurUsdFeed =
     pegTargetForPrice === "eur" || pegTargetForPrice === "euro";
+  const needsGoldUsdFeed =
+    pegTargetForPrice === "gold";
+  const needsSilverUsdFeed =
+    pegTargetForPrice === "silver";
 
   const chainlinkPegTargetContracts = useMemo(() => {
     const contracts: any[] = [];
@@ -2570,8 +2574,36 @@ export const AnchorDepositWithdrawModal = ({
         }
       );
     }
+    if (needsGoldUsdFeed) {
+      contracts.push(
+        {
+          address: CHAINLINK_FEEDS.XAU_USD,
+          abi: CHAINLINK_AGGREGATOR_ABI,
+          functionName: "decimals",
+        },
+        {
+          address: CHAINLINK_FEEDS.XAU_USD,
+          abi: CHAINLINK_AGGREGATOR_ABI,
+          functionName: "latestRoundData",
+        }
+      );
+    }
+    if (needsSilverUsdFeed) {
+      contracts.push(
+        {
+          address: CHAINLINK_FEEDS.XAG_USD,
+          abi: CHAINLINK_AGGREGATOR_ABI,
+          functionName: "decimals",
+        },
+        {
+          address: CHAINLINK_FEEDS.XAG_USD,
+          abi: CHAINLINK_AGGREGATOR_ABI,
+          functionName: "latestRoundData",
+        }
+      );
+    }
     return contracts;
-  }, [needsBtcUsdFeed, needsEthUsdFeed, needsEurUsdFeed]);
+  }, [needsBtcUsdFeed, needsEthUsdFeed, needsEurUsdFeed, needsGoldUsdFeed, needsSilverUsdFeed]);
 
   const { data: chainlinkPegTargetData } = useContractReads({
     contracts: chainlinkPegTargetContracts,
@@ -2585,11 +2617,13 @@ export const AnchorDepositWithdrawModal = ({
     },
   });
 
-  const { btcUsdWei, ethUsdWei, eurUsdWei } = useMemo(() => {
+  const { btcUsdWei, ethUsdWei, eurUsdWei, goldUsdWei, silverUsdWei } = useMemo(() => {
     let idx = 0;
     let btc = 0n;
     let eth = 0n;
     let eur = 0n;
+    let gold = 0n;
+    let silver = 0n;
 
     const readPrice = () => {
       const decRaw = chainlinkPegTargetData?.[idx]?.result as
@@ -2614,9 +2648,11 @@ export const AnchorDepositWithdrawModal = ({
     if (needsBtcUsdFeed) btc = readPrice();
     if (needsEthUsdFeed) eth = readPrice();
     if (needsEurUsdFeed) eur = readPrice();
+    if (needsGoldUsdFeed) gold = readPrice();
+    if (needsSilverUsdFeed) silver = readPrice();
 
-    return { btcUsdWei: btc, ethUsdWei: eth, eurUsdWei: eur };
-  }, [chainlinkPegTargetData, needsBtcUsdFeed, needsEthUsdFeed, needsEurUsdFeed]);
+    return { btcUsdWei: btc, ethUsdWei: eth, eurUsdWei: eur, goldUsdWei: gold, silverUsdWei: silver };
+  }, [chainlinkPegTargetData, needsBtcUsdFeed, needsEthUsdFeed, needsEurUsdFeed, needsGoldUsdFeed, needsSilverUsdFeed]);
 
   const pegTargetUsdWei = useMemo(() => {
     if (pegTargetForPrice === "btc" || pegTargetForPrice === "bitcoin") {
@@ -2640,9 +2676,15 @@ export const AnchorDepositWithdrawModal = ({
           ? parseUnits(eurPrice.toFixed(6), 18)
           : 0n;
     }
+    if (pegTargetForPrice === "gold") {
+      return goldUsdWei > 0n ? goldUsdWei : 0n;
+    }
+    if (pegTargetForPrice === "silver") {
+      return silverUsdWei > 0n ? silverUsdWei : 0n;
+    }
     // USD-pegged
     return 10n ** 18n;
-  }, [pegTargetForPrice, btcPrice, ethPrice, eurPrice, btcUsdWei, ethUsdWei, eurUsdWei]);
+  }, [pegTargetForPrice, btcPrice, ethPrice, eurPrice, btcUsdWei, ethUsdWei, eurUsdWei, goldUsdWei, silverUsdWei]);
 
   const isValidMinterAddressForPrice =
     minterAddressForPrice &&
