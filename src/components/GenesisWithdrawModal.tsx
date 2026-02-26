@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Bell } from "lucide-react";
 import { parseEther, formatEther } from "viem";
 import {
  useAccount,
@@ -15,9 +15,13 @@ import {
  TransactionProgressModal,
  TransactionStep,
 } from "./TransactionProgressModal";
+import { useTransactionProgress } from "@/hooks/useTransactionProgress";
 import { formatTokenAmount, formatBalance } from "@/utils/formatters";
 import { useWrappedCollateralPrice } from "@/hooks/useWrappedCollateralPrice";
 import { AmountInputBlock } from "@/components/AmountInputBlock";
+import { ModalNotificationsPanel } from "@/components/ModalNotificationsPanel";
+import { DepositModalShell } from "@/components/DepositModalShell";
+import { InfoCallout } from "@/components/InfoCallout";
 
 interface GenesisWithdrawalModalProps {
  isOpen: boolean;
@@ -52,9 +56,8 @@ priceOracleAddress,
  const [step, setStep] = useState<ModalStep>("input");
  const [error, setError] = useState<string | null>(null);
  const [txHash, setTxHash] = useState<string | null>(null);
- const [progressModalOpen, setProgressModalOpen] = useState(false);
- const [progressSteps, setProgressSteps] = useState<TransactionStep[]>([]);
- const [currentStepIndex, setCurrentStepIndex] = useState(0);
+ const [showNotifications, setShowNotifications] = useState(false);
+ const progress = useTransactionProgress();
  const publicClient = usePublicClient();
 
 const wrappedPriceData = useWrappedCollateralPrice({
@@ -100,9 +103,7 @@ const collateralPriceUSD = wrappedPriceData.priceUSD;
  setStep("input");
  setError(null);
  setTxHash(null);
- setProgressModalOpen(false);
- setProgressSteps([]);
- setCurrentStepIndex(0);
+ progress.reset();
  onClose();
  };
 
@@ -163,7 +164,6 @@ const collateralPriceUSD = wrappedPriceData.priceUSD;
  }
 
  try {
- // Initialize progress modal
  const steps: TransactionStep[] = [
  {
  id:"withdraw",
@@ -171,17 +171,10 @@ const collateralPriceUSD = wrappedPriceData.priceUSD;
  status:"pending",
  },
  ];
- setProgressSteps(steps);
- setCurrentStepIndex(0);
- setProgressModalOpen(true);
-
+ progress.open(steps, "Processing Withdrawal");
  setStep("withdrawing");
  setError(null);
- setProgressSteps((prev) =>
- prev.map((s) =>
- s.id ==="withdraw" ? { ...s, status:"in_progress" } : s
- )
- );
+ progress.updateStep("withdraw", { status: "in_progress" });
 
  const hash = await writeContractAsync({
  address: genesisAddress as `0x${string}`,
@@ -192,17 +185,11 @@ const collateralPriceUSD = wrappedPriceData.priceUSD;
  });
 
  setTxHash(hash);
- setProgressSteps((prev) =>
- prev.map((s) => (s.id ==="withdraw" ? { ...s, txHash: hash } : s))
- );
+ progress.updateStep("withdraw", { txHash: hash });
  await publicClient?.waitForTransactionReceipt({ hash });
 
  setStep("success");
- setProgressSteps((prev) =>
- prev.map((s) =>
- s.id ==="withdraw" ? { ...s, status:"completed" } : s
- )
- );
+ progress.updateStep("withdraw", { status: "completed" });
  if (onSuccess) {
  await onSuccess();
  }
@@ -225,13 +212,7 @@ const collateralPriceUSD = wrappedPriceData.priceUSD;
 
  setError(errorMessage);
  setStep("error");
- setProgressSteps((prev) =>
- prev.map((s, idx) =>
- idx === currentStepIndex
- ? { ...s, status:"error", error: errorMessage }
- : s
- )
- );
+ progress.updateStep("withdraw", { status: "error", error: errorMessage });
  }
  };
 
@@ -266,7 +247,7 @@ const successUSD = successAmountNum > 0 && collateralPriceUSD > 0
  );
  };
 
- if (!isOpen && !progressModalOpen) return null;
+ if (!isOpen && !progress.isOpen) return null;
 
   // Withdraw form content
   const formContent = (
@@ -306,23 +287,28 @@ const successUSD = successAmountNum > 0 && collateralPriceUSD > 0
    } focus:border-[#1E4775] focus:ring-2 focus:ring-[#1E4775]/20 focus:outline-none transition-all text-lg font-mono`}
  />
 
- {/* Harbor Marks Warning - Always visible */}
- <div className="p-3 bg-orange-50 border border-orange-200 text-sm">
- <div className="flex items-start gap-2">
- <AlertTriangle className="h-4 w-4 text-orange-600 mt-0.5 flex-shrink-0" />
- <div className="flex-1 space-y-1">
- <div className="font-medium text-orange-800">
- Harbor Marks Warning
- </div>
- <div className="text-orange-700 text-xs leading-relaxed">
- Withdrawing forfeits any Harbor Marks for withdrawn
- assets. Only assets deposited at the end of Maiden Voyage
- are eligible for Harbor Marks earned throughout the Maiden
- Voyage period.
- </div>
- </div>
- </div>
- </div>
+ {/* Notifications - Harbor Marks Warning */}
+ <ModalNotificationsPanel
+   expanded={showNotifications}
+   onToggle={() => setShowNotifications((prev) => !prev)}
+   badge={
+     <span className="flex items-center gap-1 bg-[#FF8A7A]/20 px-2 py-0.5 text-xs text-[#FF8A7A]">
+       <Bell className="h-3 w-3" />
+       1
+     </span>
+   }
+ >
+   <InfoCallout
+     tone="pearl"
+     icon={<AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5 text-[#D57A3D]" />}
+     title="Harbor Marks Warning:"
+   >
+     Withdrawing forfeits any <span className="font-semibold">Harbor Marks</span> for withdrawn
+     assets. Only assets deposited at the end of Maiden Voyage
+     are eligible for Harbor Marks earned throughout the Maiden
+     Voyage period.
+   </InfoCallout>
+ </ModalNotificationsPanel>
 
  {/* Transaction Preview */}
  {amount && parseFloat(amount ||"0") > 0 && (
@@ -446,20 +432,20 @@ const successUSD = successAmountNum > 0 && collateralPriceUSD > 0
   if (embedded) {
     return (
       <>
-        {progressModalOpen && (
+        {progress.isOpen && (
           <TransactionProgressModal
-            isOpen={progressModalOpen}
+            isOpen={progress.isOpen}
             onClose={handleClose}
-            title="Processing Withdrawal"
-            steps={progressSteps}
-            currentStepIndex={currentStepIndex}
+            title={progress.title}
+            steps={progress.steps}
+            currentStepIndex={progress.currentStepIndex}
             progressVariant="horizontal"
             canCancel={false}
             errorMessage={error || undefined}
             renderSuccessContent={renderSuccessContent}
           />
         )}
-        {!progressModalOpen && formContent}
+        {!progress.isOpen && formContent}
       </>
     );
   }
@@ -467,13 +453,13 @@ const successUSD = successAmountNum > 0 && collateralPriceUSD > 0
   // Full standalone modal
   return (
     <>
-      {progressModalOpen && (
+      {progress.isOpen && (
         <TransactionProgressModal
-          isOpen={progressModalOpen}
+          isOpen={progress.isOpen}
           onClose={handleClose}
-          title="Processing Withdrawal"
-          steps={progressSteps}
-          currentStepIndex={currentStepIndex}
+          title={progress.title}
+          steps={progress.steps}
+          currentStepIndex={progress.currentStepIndex}
           progressVariant="horizontal"
           canCancel={true}
           errorMessage={error || undefined}
@@ -481,47 +467,22 @@ const successUSD = successAmountNum > 0 && collateralPriceUSD > 0
         />
       )}
 
-      {!progressModalOpen && isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-            onClick={handleClose}
-          />
-
-          <div
-            className="relative bg-white shadow-2xl w-full max-w-md mx-2 sm:mx-4 animate-in fade-in-0 scale-in-95 duration-200 rounded-none max-h-[95vh] sm:max-h-[90vh] overflow-y-auto"
-            style={{ borderRadius: 0 }}
-          >
-            <div className="flex items-center justify-between p-3 sm:p-4 lg:p-6 border-b border-[#1E4775]/20">
-              <h2 className="text-lg sm:text-2xl font-bold text-[#1E4775]">
-                Withdraw from Maiden Voyage
-              </h2>
-              <button
-                onClick={handleClose}
-                className="text-[#1E4775]/50 hover:text-[#1E4775] transition-colors"
-              >
-                <svg
-                  className="w-5 h-5 sm:w-6 sm:h-6"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
-            </div>
-
-            <div className="p-3 sm:p-4 lg:p-6">
-              {formContent}
- </div>
- </div>
- </div>
- )}
+      {!progress.isOpen && isOpen && (
+        <DepositModalShell
+          isOpen={isOpen}
+          onClose={handleClose}
+          header={
+            <h2 className="text-lg sm:text-2xl font-bold text-[#1E4775]">
+              Withdraw from Maiden Voyage
+            </h2>
+          }
+          panelClassName="rounded-none max-h-[95vh] sm:max-h-[90vh] overflow-y-auto"
+          headerClassName="p-3 sm:p-4 lg:p-6"
+          contentClassName="p-3 sm:p-4 lg:p-6"
+        >
+          {formContent}
+        </DepositModalShell>
+      )}
  </>
  );
 };

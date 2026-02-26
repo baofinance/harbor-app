@@ -61,7 +61,7 @@ export const GenesisHeaderSummary = () => {
             </h2>
           </div>
           <p className="text-xs text-white/75 mt-1">
-            Claim ha + hs tokens. Value = deposit value.
+            Claim anchor + sail tokens. Value = deposit value.
           </p>
           <p className="text-xs text-white/75 mt-1 font-semibold">
             Earn real yield and more marks!

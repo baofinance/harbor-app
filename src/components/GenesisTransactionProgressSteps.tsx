@@ -67,31 +67,69 @@ export const GenesisTransactionProgressSteps = ({
   }
 
   return (
-    <div className="flex w-full">
-      {steps.map((step, index) => {
-        const isCurrent = index === currentStepIndex;
-        const styles = getStepStyles(step, isCurrent);
-        const showLeft = index > 0;
-        const showRight = index < steps.length - 1;
+    <>
+      {/* Mobile: vertical layout (top to bottom) */}
+      <div className="flex flex-col gap-0 md:hidden">
+        {steps.map((step, index) => {
+          const isCurrent = index === currentStepIndex;
+          const styles = getStepStyles(step, isCurrent);
+          const showLineBelow = index < steps.length - 1;
 
-        return (
-          <div
-            key={step.id}
-            className="flex flex-1 flex-col items-center gap-2 min-w-0 basis-0"
-          >
-            <div className="flex w-full items-center">
-              <div className={`flex-1 min-w-0 h-0.5 min-h-[2px] ${showLeft ? styles.line : "bg-transparent"}`} />
+          return (
+            <div key={step.id} className="flex items-start gap-3">
+              <div className="flex flex-col items-center shrink-0">
+                <div
+                  className={`h-3 w-3 shrink-0 rounded-full border-2 ${styles.dot}`}
+                />
+                {showLineBelow && (
+                  <div
+                    className={`w-0.5 flex-1 min-h-[20px] mt-1 ${styles.line}`}
+                  />
+                )}
+              </div>
               <div
-                className={`h-3 w-3 shrink-0 rounded-full border-2 mx-0.5 ${styles.dot}`}
-              />
-              <div className={`flex-1 min-w-0 h-0.5 min-h-[2px] ${showRight ? styles.line : "bg-transparent"}`} />
+                className={`text-[11px] leading-tight pt-0.5 pb-3 ${styles.label}`}
+              >
+                {step.label}
+              </div>
             </div>
-            <div className={`text-[11px] text-center leading-tight w-full min-w-0 px-0.5 ${styles.label}`}>
-              {step.label}
+          );
+        })}
+      </div>
+
+      {/* Desktop: horizontal layout (left to right) */}
+      <div className="hidden md:flex w-full">
+        {steps.map((step, index) => {
+          const isCurrent = index === currentStepIndex;
+          const styles = getStepStyles(step, isCurrent);
+          const showLeft = index > 0;
+          const showRight = index < steps.length - 1;
+
+          return (
+            <div
+              key={step.id}
+              className="flex flex-1 flex-col items-center gap-2 min-w-0 basis-0"
+            >
+              <div className="flex w-full items-center">
+                <div
+                  className={`flex-1 min-w-0 h-0.5 min-h-[2px] ${showLeft ? styles.line : "bg-transparent"}`}
+                />
+                <div
+                  className={`h-3 w-3 shrink-0 rounded-full border-2 mx-0.5 ${styles.dot}`}
+                />
+                <div
+                  className={`flex-1 min-w-0 h-0.5 min-h-[2px] ${showRight ? styles.line : "bg-transparent"}`}
+                />
+              </div>
+              <div
+                className={`text-[11px] text-center leading-tight w-full min-w-0 px-0.5 ${styles.label}`}
+              >
+                {step.label}
+              </div>
             </div>
-          </div>
-        );
-      })}
-    </div>
+          );
+        })}
+      </div>
+    </>
   );
 };

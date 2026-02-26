@@ -23,7 +23,7 @@ const steps: Step[] = [
   {
     title: "Choose your stability pool",
     description:
-      "Pick between Collateral and Sail stability pools. Collateral pools exchange pegged tokens for collateral during a rebalance. Sail pools exchange pegged tokens for leveraged tokens during a rebalance.",
+      "Pick between Collateral and Sail stability pools. Collateral pools exchange anchor tokens for collateral during a rebalance. Sail pools exchange anchor tokens for sail tokens during a rebalance.",
   },
 ];
 

@@ -859,7 +859,7 @@ export function AnchorMarketExpandedView({
           </div>
           <div className="space-y-1">
             <SharedEtherscanLink
-              label="ha Token"
+              label="Anchor Token"
               address={(market as any).addresses?.peggedToken}
             />
             <SharedEtherscanLink

@@ -1305,9 +1305,9 @@ export default function AnchorPage() {
           },
           {
             id: "mint",
-            label: "Mint pegged tokens",
+            label: "Mint anchor tokens",
             status: "pending",
-            details: "Mint ha tokens from collateral",
+            details: "Mint anchor tokens from collateral",
           }
         );
         mintStepIndex = steps.length - 1; // The mint step is the last one we just added
@@ -1328,7 +1328,7 @@ export default function AnchorPage() {
             id: `approve-pegged-${allocation.poolId}`,
             label: `Approve pegged tokens for ${poolName} Pool`,
             status: "pending",
-            details: `Approve ha tokens for ${poolName.toLowerCase()} pool deposit`,
+            details: `Approve anchor tokens for ${poolName.toLowerCase()} pool deposit`,
           });
 
           steps.push({
@@ -4800,9 +4800,8 @@ export default function AnchorPage() {
                               Anchor Ledger Marks
                             </h3>
                             <p className="text-white/90 leading-relaxed">
-                              Anchor Ledger Marks are earned by holding ha
-                              tokens (pegged tokens) and depositing into
-                              stability pools.
+                              Anchor Ledger Marks are earned by holding anchor
+                              tokens and depositing into stability pools.
                             </p>
                           </div>
 
@@ -5576,9 +5575,7 @@ export default function AnchorPage() {
                   const pegTarget = (marketData.market as any)?.pegTarget?.toLowerCase();
                   let priceUSD = 1; // Default $1 for USD-pegged
                   
-                  // For EUR-pegged tokens, use eurPrice directly to ensure consistency across markets
-                  console.log(`[anchor page] Token ${tokenAddressLower} (${marketData.market?.peggedToken?.symbol}): pegTarget="${pegTarget}", eurPrice=${eurPrice}, btcPrice=${btcPrice}, ethPrice=${ethPrice}`);
-                  
+                  // Gold/Silver use Chainlink XAU/XAG spot via mergedPeggedPriceMap (1 haGOLD≈1oz gold, 1 haSILVER≈1oz silver)
                   if (pegTarget === "eur" || pegTarget === "euro") {
                     if (eurPrice) {
                       priceUSD = eurPrice;
@@ -5967,7 +5964,7 @@ export default function AnchorPage() {
                   <div className="text-left max-w-xs">
                     <div className="font-semibold mb-1">Ledger Marks</div>
                     <div className="text-xs text-white/90">
-                      Earned by holding ha tokens and depositing into stability
+                      Earned by holding anchor tokens and depositing into stability
                       pools. Used to qualify for future rewards.
                     </div>
                   </div>
@@ -9315,7 +9312,7 @@ export default function AnchorPage() {
                   />
                 </div>
                 <div>
-                  <div className="text-xs text-[#1E4775]/70 mb-1">ha Token</div>
+                  <div className="text-xs text-[#1E4775]/70 mb-1">Anchor Token</div>
                   <SharedEtherscanLink
                     label=""
                     address={
