@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAccount, usePublicClient } from "wagmi";
 import { formatEther } from "viem";
 import { getGraphUrl, getGraphHeaders } from "@/config/graph";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 
 // GraphQL query for Anchor Ledger Marks (Ha Tokens + Stability Pools + Sail Tokens)
 // Also includes userTotalMarks which aggregates all marks sources
@@ -166,43 +166,48 @@ export function useAnchorLedgerMarks({
   const publicClient = usePublicClient();
   const [estimatedMarks, setEstimatedMarks] = useState(0);
   const [currentTime, setCurrentTime] = useState(Math.floor(Date.now() / 1000));
+  const lastSyncRef = useRef<{ chainTime: number; systemTime: number } | null>(null);
 
-  // Update current time every second using blockchain timestamp
-  // This ensures we use the chain's time, not system time (important for Anvil)
+  // Sync chain time every 12s (Ethereum block time); tick locally every 1s (no RPC)
   useEffect(() => {
-    const updateTime = async () => {
+    const syncChainTime = async () => {
+      const now = Math.floor(Date.now() / 1000);
       if (publicClient) {
         try {
           const block = await publicClient.getBlock({ blockTag: "latest" });
           if (block.timestamp) {
             const chainTime = Number(block.timestamp);
-            const systemTime = Math.floor(Date.now() / 1000);
+            lastSyncRef.current = { chainTime, systemTime: now };
             setCurrentTime(chainTime);
-            if (process.env.NODE_ENV === "development") {
-            }
+            return;
           }
-        } catch (error) {
-          // Fallback to system time if block read fails
-          const systemTime = Math.floor(Date.now() / 1000);
-          setCurrentTime(systemTime);
-          if (process.env.NODE_ENV === "development") {
-          }
-        }
-      } else {
-        // Fallback to system time if no public client
-        const systemTime = Math.floor(Date.now() / 1000);
-        setCurrentTime(systemTime);
-        if (process.env.NODE_ENV === "development") {
+        } catch {
+          // fall through to system time
         }
       }
+      lastSyncRef.current = { chainTime: now, systemTime: now };
+      setCurrentTime(now);
     };
 
-    // Initial update
-    updateTime();
+    syncChainTime();
+    const syncInterval = setInterval(syncChainTime, 12_000);
 
-    // Update every second
-    const interval = setInterval(updateTime, 1000);
-    return () => clearInterval(interval);
+    // Tick every second: chainTime + (systemDelta) - no RPC
+    const tick = () => {
+      const sync = lastSyncRef.current;
+      if (sync) {
+        const elapsed = Math.floor(Date.now() / 1000) - sync.systemTime;
+        setCurrentTime(sync.chainTime + elapsed);
+      } else {
+        setCurrentTime(Math.floor(Date.now() / 1000));
+      }
+    };
+    const tickInterval = setInterval(tick, 1000);
+
+    return () => {
+      clearInterval(syncInterval);
+      clearInterval(tickInterval);
+    };
   }, [publicClient]);
 
   // Fetch from subgraph (poll every 60s for new events)

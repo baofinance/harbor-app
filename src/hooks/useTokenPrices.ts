@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { useReadContracts } from "wagmi";
+import { DEBUG_ANCHOR } from "@/config/debug";
 import { formatUnits } from "viem";
 import { minterABI } from "@/abis/minter";
 import { CHAINLINK_FEEDS } from "@/config/chainlink";
@@ -203,14 +204,14 @@ export function useMultipleTokenPrices(
           // Standard feed (0xb49f...) returns USD per EUR (1.05-1.2)
           if (rawValue > 0.9 && rawValue < 2.0) {
             prices.eur = rawValue;
-            if (process.env.NODE_ENV === "development") {
+            if (DEBUG_ANCHOR) {
               console.log(`[useTokenPrices] EUR Chainlink price (USD per EUR):`, rawValue);
             }
           } else {
             const raw18 = Number(answer) / 10 ** 18;
             if (raw18 > 0.9 && raw18 < 2.0) {
               prices.eur = raw18;
-            } else if (process.env.NODE_ENV === "development") {
+            } else if (DEBUG_ANCHOR) {
               console.warn(`[useTokenPrices] EUR Chainlink price out of range:`, {
                 raw8dec: rawValue,
                 raw18dec: raw18,
@@ -218,7 +219,7 @@ export function useMultipleTokenPrices(
             }
           }
         } else {
-          if (process.env.NODE_ENV === "development") {
+          if (DEBUG_ANCHOR) {
             console.warn(`[useTokenPrices] EUR Chainlink answer missing:`, {
               answer,
               hasAnswer: answer !== undefined && answer !== null,
@@ -226,7 +227,7 @@ export function useMultipleTokenPrices(
           }
         }
       } else {
-        if (process.env.NODE_ENV === "development") {
+        if (DEBUG_ANCHOR) {
           console.warn(`[useTokenPrices] EUR Chainlink read failed:`, {
             decimalsStatus: decimalsResult?.status,
             answerStatus: answerResult?.status,
@@ -274,8 +275,7 @@ export function useMultipleTokenPrices(
           coinGeckoPrices.prices?.["stasis-euro"] || 
           0;
         
-        // Debug logging for EUR markets
-        if (process.env.NODE_ENV === "development") {
+        if (DEBUG_ANCHOR) {
           console.log(`[useTokenPrices] EUR market ${market.marketId}:`, {
             target,
             chainlinkEur: chainlinkPrices.eur,

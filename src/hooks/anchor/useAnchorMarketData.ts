@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { getAcceptedDepositAssets } from "@/utils/anchor";
+import { DEBUG_ANCHOR } from "@/config/debug";
 
 export type MarketData = {
   marketId: string;
@@ -430,7 +431,7 @@ export function useAnchorMarketData(
               ) {
                 // Use the total reward APR from all tokens directly
                 // This includes ha tokens, wstETH, and any other reward tokens
-                if (process.env.NODE_ENV === "development") {
+                if (DEBUG_ANCHOR) {
                   console.log("[useAnchorMarketData] Using poolReward.totalRewardAPR for collateral pool", {
                     marketId,
                     poolAddress: collateralPoolAddress,
@@ -442,7 +443,7 @@ export function useAnchorMarketData(
                   collateral: poolReward.totalRewardAPR,
                   steam: 0,
                 };
-              } else if (process.env.NODE_ENV === "development" && collateralPoolAddress) {
+              } else if (DEBUG_ANCHOR && collateralPoolAddress) {
                 console.log("[useAnchorMarketData] No poolReward.totalRewardAPR for collateral pool, using contract APR", {
                   marketId,
                   poolAddress: collateralPoolAddress,
@@ -585,7 +586,7 @@ export function useAnchorMarketData(
               ) {
                 // Use the total reward APR from all tokens directly
                 // This includes ha tokens, wstETH, and any other reward tokens
-                if (process.env.NODE_ENV === "development") {
+                if (DEBUG_ANCHOR) {
                   console.log("[useAnchorMarketData] Using poolReward.totalRewardAPR for sail pool", {
                     marketId,
                     poolAddress: sailPoolAddress,
@@ -597,7 +598,7 @@ export function useAnchorMarketData(
                   collateral: poolReward.totalRewardAPR,
                   steam: 0,
                 };
-              } else if (process.env.NODE_ENV === "development" && sailPoolAddress) {
+              } else if (DEBUG_ANCHOR && sailPoolAddress) {
                 console.log("[useAnchorMarketData] No poolReward.totalRewardAPR for sail pool, using contract APR", {
                   marketId,
                   poolAddress: sailPoolAddress,
@@ -773,7 +774,7 @@ export function useAnchorMarketData(
               }
             }
 
-            if (process.env.NODE_ENV === "development") {
+            if (DEBUG_ANCHOR) {
               console.log("[Dynamic APR Pre-calculation]", {
                 marketId,
                 isFxUSDMarket,
@@ -809,7 +810,7 @@ export function useAnchorMarketData(
               const ratio = minterCollateralUSD / totalPoolTVLUSD;
               const dynamicAPR = baseYieldPercent * ratio;
               
-              if (process.env.NODE_ENV === "development") {
+              if (DEBUG_ANCHOR) {
                 console.log("[Dynamic APR Calculation]", {
                   marketId,
                   baseYieldPercent,
@@ -944,7 +945,7 @@ export function useAnchorMarketData(
         const groupMinProjectedAPR = Math.min(...allProjectedAPRs);
         const groupMaxProjectedAPR = Math.max(...allProjectedAPRs);
 
-        if (process.env.NODE_ENV === "development") {
+        if (DEBUG_ANCHOR) {
           console.log("[Group APR Calculation]", {
             symbol,
             marketIds: activeMarketsData.map((m) => m.marketId),

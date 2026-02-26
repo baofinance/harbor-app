@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { useAllStabilityPoolRewards } from "@/hooks/useAllStabilityPoolRewards";
+import { DEBUG_ANCHOR } from "@/config/debug";
 import { calculateReadOffset, calculatePriceOracleOffset } from "@/utils/anchor/calculateReadOffset";
 import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
 
@@ -167,12 +168,14 @@ export function useAnchorRewards(
               if (wrappedRate && wrappedRate > 0n) {
                 const wrappedRateNum = Number(wrappedRate) / 1e18;
                 p = wrappedRateNum * ethPrice;
-                console.log("[useAnchorRewards] Calculated wstETH USD price from wrappedRate * ETH:", {
-                  marketId: id,
-                  wrappedRate: wrappedRateNum,
-                  ethPrice,
-                  calculatedPrice: p,
-                });
+                if (DEBUG_ANCHOR) {
+                  console.log("[useAnchorRewards] Calculated wstETH USD price from wrappedRate * ETH:", {
+                    marketId: id,
+                    wrappedRate: wrappedRateNum,
+                    ethPrice,
+                    calculatedPrice: p,
+                  });
+                }
               }
             }
           }
@@ -180,7 +183,7 @@ export function useAnchorRewards(
         else if (wrappedSymbol === "steth") p = stETHPriceUSD ?? undefined;
         if (p && Number.isFinite(p) && p > 0) {
           map.set(wrappedCollateralTokenAddress.toLowerCase(), p);
-          if (process.env.NODE_ENV === "development" && wrappedSymbol === "wsteth") {
+          if (DEBUG_ANCHOR && wrappedSymbol === "wsteth") {
             console.log("[useAnchorRewards] Added wstETH to globalTokenPriceMap:", {
               address: wrappedCollateralTokenAddress,
               price: p,
@@ -242,7 +245,7 @@ export function useAnchorRewards(
       }
     });
 
-    if (process.env.NODE_ENV === "development") {
+    if (DEBUG_ANCHOR) {
       console.log("[useAnchorRewards] globalTokenPriceMap built:", {
         size: map.size,
         entries: Array.from(map.entries()).map(([addr, price]) => ({
@@ -265,8 +268,7 @@ export function useAnchorRewards(
   ]);
 
   // Fetch all stability pool rewards
-  // Debug: log prices being passed
-  if (process.env.NODE_ENV === "development") {
+  if (DEBUG_ANCHOR) {
     console.log("[useAnchorRewards] Passing prices to useAllStabilityPoolRewards", {
       ethPrice,
       btcPrice,

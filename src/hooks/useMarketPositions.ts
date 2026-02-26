@@ -38,9 +38,13 @@ export interface MarketConfig {
 export function useMarketPositions(
   marketConfigs: MarketConfig[],
   userAddress?: `0x${string}`,
-  externalPriceMap?: Record<string, bigint | undefined>
+  externalPriceMap?: Record<string, bigint | undefined>,
+  options?: { enabled?: boolean }
 ) {
-  const isDebug = process.env.NODE_ENV === "development";
+  const enabledOverride = options?.enabled ?? true;
+  const isDebug =
+    process.env.NODE_ENV === "development" &&
+    process.env.NEXT_PUBLIC_DEBUG_ANCHOR === "true";
   // Debug: log the address being used
   if (isDebug) {
   console.log("[useMarketPositions] userAddress:", userAddress);
@@ -110,13 +114,13 @@ export function useMarketPositions(
     return { contracts: items, indexMap: idxMap };
   }, [marketConfigs, userAddress]);
 
-  const hookEnabled = !!userAddress && contracts.length > 0;
+  const hookEnabled = enabledOverride && !!userAddress && contracts.length > 0;
 
   const { data, isLoading, error, refetch } = useContractReads({
     contracts,
     query: {
       enabled: hookEnabled,
-      refetchInterval: 15000, // 15 second refresh
+      refetchInterval: 30_000, // 30s - positions don't change second-to-second
       staleTime: 30_000, // 30 seconds - consider data fresh for 30s to prevent unnecessary refetches
       gcTime: 300_000, // 5 minutes - keep in cache for 5 minutes
       structuralSharing: true, // Only update if values actually changed

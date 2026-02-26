@@ -6,6 +6,7 @@ import {
   WRAPPED_PRICE_ORACLE_ABI,
 } from "@/abis/shared";
 import { CHAINLINK_FEEDS } from "@/config/chainlink";
+import { DEBUG_ANCHOR } from "@/config/debug";
 import { calculatePriceOracleOffset } from "@/utils/anchor/calculateReadOffset";
 
 // Chainlink ETH/USD Oracle on Mainnet
@@ -24,7 +25,7 @@ export function useAnchorPrices(
   reads: any,
   peggedPriceMap: Record<string, bigint | undefined>
 ) {
-  const isDebug = process.env.NODE_ENV === "development";
+  const isDebug = DEBUG_ANCHOR;
   // Fetch CoinGecko prices
   const { price: fxUSDPrice } = useCoinGeckoPrice("f-x-protocol-fxusd");
   const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving");
@@ -480,8 +481,8 @@ export function useAnchorPrices(
   const { price: eurPriceCoinGecko } = useCoinGeckoPrice("stasis-euro");
   const eurPrice = eurPriceFromChainlink ?? eurPriceFromOracle ?? eurPriceCoinGecko;
   
-  // Always log EUR price calculation (not just in debug mode) to help diagnose issues
-  console.log(`[useAnchorPrices] EUR price calculation:`, {
+  if (isDebug) {
+    console.log(`[useAnchorPrices] EUR price calculation:`, {
     chainlink: eurPriceFromChainlink,
     harborOracle: eurPriceFromOracle,
     coinGecko: eurPriceCoinGecko,
@@ -491,6 +492,7 @@ export function useAnchorPrices(
     readsAvailable: reads ? `array(${reads.length})` : 'null/undefined',
     anchorMarketsCount: anchorMarkets?.length || 0
   });
+  }
 
   // Fetch Chainlink ETH/USD as fallback
   const { data: chainlinkEthPriceData } = useContractRead({
