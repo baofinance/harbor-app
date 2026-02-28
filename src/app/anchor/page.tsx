@@ -448,6 +448,8 @@ export default function AnchorPage() {
     ethPrice,
     btcPrice,
     eurPrice,
+    goldPrice,
+    silverPrice,
     fxUSDPrice,
     fxSAVEPrice,
     usdcPrice,
@@ -7781,7 +7783,7 @@ export default function AnchorPage() {
                                 : 1;
                           
                           // Convert oracle price from peg token units to USD
-                          // The oracle returns price in the peg token (ETH for ETH/fxUSD, BTC for BTC/fxUSD, etc.)
+                          // The oracle returns price in the peg token (ETH for ETH/fxUSD, BTC for BTC/fxUSD, EUR for EUR/fxUSD, etc.)
                               const pegTarget = (
                                 marketData.market as any
                               )?.pegTarget?.toLowerCase();
@@ -7789,6 +7791,10 @@ export default function AnchorPage() {
                                 pegTarget === "btc" || pegTarget === "bitcoin";
                               const isETHMarket =
                                 pegTarget === "eth" || pegTarget === "ethereum";
+                              const isEURMarket =
+                                pegTarget === "eur" || pegTarget === "euro";
+                              const isGOLDMarket = pegTarget === "gold";
+                              const isSILVERMarket = pegTarget === "silver";
                           
                           if (underlyingPriceUSD > 0) {
                             // Oracle price is in peg token units, convert to USD
@@ -7810,8 +7816,32 @@ export default function AnchorPage() {
                                 // Can't convert, use 0
                                 underlyingPriceUSD = 0;
                               }
+                            } else if (isEURMarket) {
+                              const eurPriceUSD = eurPrice || 0;
+                              if (eurPriceUSD > 0) {
+                                underlyingPriceUSD =
+                                  underlyingPriceUSD * eurPriceUSD;
+                              } else {
+                                underlyingPriceUSD = 0;
+                              }
+                            } else if (isGOLDMarket) {
+                              const goldPriceUSD = goldPrice || 0;
+                              if (goldPriceUSD > 0) {
+                                underlyingPriceUSD =
+                                  underlyingPriceUSD * goldPriceUSD;
+                              } else {
+                                underlyingPriceUSD = 0;
+                              }
+                            } else if (isSILVERMarket) {
+                              const silverPriceUSD = silverPrice || 0;
+                              if (silverPriceUSD > 0) {
+                                underlyingPriceUSD =
+                                  underlyingPriceUSD * silverPriceUSD;
+                              } else {
+                                underlyingPriceUSD = 0;
+                              }
                             }
-                            // For other markets, assume oracle already returns USD price
+                            // For other markets (e.g. USD), assume oracle already returns USD price
                           }
                           
                           // Fallback: For fxUSD markets, if we couldn't calculate from oracle, use $1.00

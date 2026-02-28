@@ -8,11 +8,7 @@ import {
   formatUsd18,
 } from "@/utils/formatters";
 import { amountToUSD, getTokenPriceUSD } from "@/utils/tokenPriceToUSD";
-import {
-  CHAINLINK_FEEDS,
-  REWARD_TOKEN_ADDRESSES,
-  scaleChainlinkToUsdWei,
-} from "@/config/chainlink";
+import { REWARD_TOKEN_ADDRESSES } from "@/config/chainlink";
 import {
   useAccount,
   useBalance,
@@ -31,7 +27,6 @@ import {
   ERC20_PERMIT_ABI,
   GENESIS_ABI,
   STABILITY_POOL_ABI,
-  CHAINLINK_AGGREGATOR_ABI,
   MINTER_PEGGED_ABI,
 } from "@/abis";
 import { stabilityPoolABI } from "@/abis/stabilityPool";
@@ -54,6 +49,7 @@ import { useAnyTokenDeposit } from "@/hooks/useAnyTokenDeposit";
 import { getDefiLlamaSwapTx } from "@/hooks/useDefiLlamaSwap";
 import { useCollateralPrice } from "@/hooks/useCollateralPrice";
 import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
+import { usePegTargetPrices } from "@/hooks/usePegTargetPrices";
 import { usePermitFlow } from "@/hooks/usePermitFlow";
 import { useTransactionProgress } from "@/hooks/useTransactionProgress";
 import {
@@ -1011,10 +1007,10 @@ export const AnchorDepositWithdrawModal = ({
     enabled: isOpen && activeTab === "deposit",
   });
 
-  // Get BTC and ETH prices for fee conversion in BTC markets
-  const { price: btcPrice } = useCoinGeckoPrice("bitcoin", 120000);
-  const { price: ethPrice } = useCoinGeckoPrice("ethereum", 120000);
-  const { price: eurPrice } = useCoinGeckoPrice("stasis-euro", 120000);
+  const pegTargetPrices = usePegTargetPrices();
+  const btcPrice = pegTargetPrices.btcPrice ?? undefined;
+  const ethPrice = pegTargetPrices.ethPrice ?? undefined;
+  const eurPrice = pegTargetPrices.eurPrice ?? undefined;
   // Reward token USD prices (used for APR fallback in stability pool selector)
   const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
   const { price: wstETHPrice } = useCoinGeckoPrice("wrapped-steth", 120000);
@@ -2519,172 +2515,31 @@ export const AnchorDepositWithdrawModal = ({
     return (m as any)?.pegTarget?.toLowerCase?.() || "usd";
   }, [isDirectPeggedDeposit, marketForDepositAsset, selectedMarket]);
 
-  const needsBtcUsdFeed =
-    pegTargetForPrice === "btc" || pegTargetForPrice === "bitcoin";
-  const needsEthUsdFeed =
-    pegTargetForPrice === "eth" || pegTargetForPrice === "ethereum";
-  const needsEurUsdFeed =
-    pegTargetForPrice === "eur" || pegTargetForPrice === "euro";
-  const needsGoldUsdFeed =
-    pegTargetForPrice === "gold";
-  const needsSilverUsdFeed =
-    pegTargetForPrice === "silver";
-
-  const chainlinkPegTargetContracts = useMemo(() => {
-    const contracts: any[] = [];
-    if (needsBtcUsdFeed) {
-      contracts.push(
-        {
-          address: CHAINLINK_FEEDS.BTC_USD,
-          abi: CHAINLINK_AGGREGATOR_ABI,
-          functionName: "decimals",
-        },
-        {
-          address: CHAINLINK_FEEDS.BTC_USD,
-          abi: CHAINLINK_AGGREGATOR_ABI,
-          functionName: "latestRoundData",
-        }
-      );
-    }
-    if (needsEthUsdFeed) {
-      contracts.push(
-        {
-          address: CHAINLINK_FEEDS.ETH_USD,
-          abi: CHAINLINK_AGGREGATOR_ABI,
-          functionName: "decimals",
-        },
-        {
-          address: CHAINLINK_FEEDS.ETH_USD,
-          abi: CHAINLINK_AGGREGATOR_ABI,
-          functionName: "latestRoundData",
-        }
-      );
-    }
-    if (needsEurUsdFeed) {
-      contracts.push(
-        {
-          address: CHAINLINK_FEEDS.EUR_USD,
-          abi: CHAINLINK_AGGREGATOR_ABI,
-          functionName: "decimals",
-        },
-        {
-          address: CHAINLINK_FEEDS.EUR_USD,
-          abi: CHAINLINK_AGGREGATOR_ABI,
-          functionName: "latestRoundData",
-        }
-      );
-    }
-    if (needsGoldUsdFeed) {
-      contracts.push(
-        {
-          address: CHAINLINK_FEEDS.XAU_USD,
-          abi: CHAINLINK_AGGREGATOR_ABI,
-          functionName: "decimals",
-        },
-        {
-          address: CHAINLINK_FEEDS.XAU_USD,
-          abi: CHAINLINK_AGGREGATOR_ABI,
-          functionName: "latestRoundData",
-        }
-      );
-    }
-    if (needsSilverUsdFeed) {
-      contracts.push(
-        {
-          address: CHAINLINK_FEEDS.XAG_USD,
-          abi: CHAINLINK_AGGREGATOR_ABI,
-          functionName: "decimals",
-        },
-        {
-          address: CHAINLINK_FEEDS.XAG_USD,
-          abi: CHAINLINK_AGGREGATOR_ABI,
-          functionName: "latestRoundData",
-        }
-      );
-    }
-    return contracts;
-  }, [needsBtcUsdFeed, needsEthUsdFeed, needsEurUsdFeed, needsGoldUsdFeed, needsSilverUsdFeed]);
-
-  const { data: chainlinkPegTargetData } = useContractReads({
-    contracts: chainlinkPegTargetContracts,
-    query: {
-      enabled:
-        chainlinkPegTargetContracts.length > 0 &&
-        isOpen &&
-        (activeTab === "deposit" || activeTab === "withdraw"),
-      retry: 1,
-      allowFailure: true,
-    },
-  });
-
-  const { btcUsdWei, ethUsdWei, eurUsdWei, goldUsdWei, silverUsdWei } = useMemo(() => {
-    let idx = 0;
-    let btc = 0n;
-    let eth = 0n;
-    let eur = 0n;
-    let gold = 0n;
-    let silver = 0n;
-
-    const readPrice = () => {
-      const decRaw = chainlinkPegTargetData?.[idx]?.result as
-        | bigint
-        | number
-        | undefined;
-      const decimals =
-        typeof decRaw === "bigint"
-          ? Number(decRaw)
-          : typeof decRaw === "number"
-            ? decRaw
-            : undefined;
-      const round = chainlinkPegTargetData?.[idx + 1]?.result as
-        | readonly [bigint, bigint, bigint, bigint, bigint]
-        | undefined;
-      const answer = round?.[1];
-      idx += 2;
-      if (decimals === undefined || answer === undefined) return 0n;
-      return scaleChainlinkToUsdWei(answer, decimals);
-    };
-
-    if (needsBtcUsdFeed) btc = readPrice();
-    if (needsEthUsdFeed) eth = readPrice();
-    if (needsEurUsdFeed) eur = readPrice();
-    if (needsGoldUsdFeed) gold = readPrice();
-    if (needsSilverUsdFeed) silver = readPrice();
-
-    return { btcUsdWei: btc, ethUsdWei: eth, eurUsdWei: eur, goldUsdWei: gold, silverUsdWei: silver };
-  }, [chainlinkPegTargetData, needsBtcUsdFeed, needsEthUsdFeed, needsEurUsdFeed, needsGoldUsdFeed, needsSilverUsdFeed]);
-
   const pegTargetUsdWei = useMemo(() => {
     if (pegTargetForPrice === "btc" || pegTargetForPrice === "bitcoin") {
-      return btcPrice
-        ? parseUnits(btcPrice.toFixed(8), 18)
-        : btcUsdWei > 0n
-          ? btcUsdWei
-          : 0n;
+      return pegTargetPrices.btcPriceWei;
     }
     if (pegTargetForPrice === "eth" || pegTargetForPrice === "ethereum") {
-      return ethPrice
-        ? parseUnits(ethPrice.toFixed(8), 18)
-        : ethUsdWei > 0n
-          ? ethUsdWei
-          : 0n;
+      return pegTargetPrices.ethPriceWei;
     }
     if (pegTargetForPrice === "eur" || pegTargetForPrice === "euro") {
-      return eurUsdWei > 0n
-        ? eurUsdWei
-        : eurPrice
-          ? parseUnits(eurPrice.toFixed(6), 18)
-          : 0n;
+      return pegTargetPrices.eurPriceWei;
     }
     if (pegTargetForPrice === "gold") {
-      return goldUsdWei > 0n ? goldUsdWei : 0n;
+      return pegTargetPrices.goldPriceWei;
     }
     if (pegTargetForPrice === "silver") {
-      return silverUsdWei > 0n ? silverUsdWei : 0n;
+      return pegTargetPrices.silverPriceWei;
     }
-    // USD-pegged
-    return 10n ** 18n;
-  }, [pegTargetForPrice, btcPrice, ethPrice, eurPrice, btcUsdWei, ethUsdWei, eurUsdWei, goldUsdWei, silverUsdWei]);
+    return 10n ** 18n; // USD-pegged
+  }, [
+    pegTargetForPrice,
+    pegTargetPrices.btcPriceWei,
+    pegTargetPrices.ethPriceWei,
+    pegTargetPrices.eurPriceWei,
+    pegTargetPrices.goldPriceWei,
+    pegTargetPrices.silverPriceWei,
+  ]);
 
   const isValidMinterAddressForPrice =
     minterAddressForPrice &&

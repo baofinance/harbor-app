@@ -359,10 +359,14 @@ const campaignTabs = [
  return;
  }
  } catch {
- // fall through
+   // fall through
  }
  lastChainSyncRef.current = { chainTime: now, systemTime: now };
  setCurrentChainTime(now);
+ } else {
+ lastChainSyncRef.current = { chainTime: now, systemTime: now };
+ setCurrentChainTime(now);
+ }
  };
 
  syncChainTime();
