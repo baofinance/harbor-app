@@ -109,8 +109,10 @@ import { RewardTokensDisplay } from "@/components/anchor/RewardTokensDisplay";
 import { AnchorMarketExpandedView } from "@/components/anchor/AnchorMarketExpandedView";
 import { useAnchorTokenMetadata } from "@/hooks/anchor/useAnchorTokenMetadata";
 import { useAnchorUserDeposits } from "@/hooks/anchor/useAnchorUserDeposits";
+import { useStaggeredReady } from "@/hooks/useStaggeredReady";
 import { calculateReadOffset } from "@/utils/anchor/calculateReadOffset";
 import { useMultipleCollateralPrices } from "@/hooks/useCollateralPrice";
+import { DEBUG_ANCHOR } from "@/config/debug";
 
 // Flag to temporarily disable anchor marks (set to false to pause marks)
 const ANCHOR_MARKS_ENABLED = true;
@@ -311,14 +313,17 @@ export default function AnchorPage() {
     [anchorMarkets]
   );
 
+  const queryClient = useQueryClient();
+  const useAnvil = false;
+
+  // Stagger initial fetches to avoid 5-10 multicalls firing simultaneously
+  const stagger = useStaggeredReady(6, 50);
+
   // Fetch volatility protection data for all markets
   const { data: volProtectionData } = useMultipleVolatilityProtection(
     volProtectionMarketsConfig,
-    { refetchInterval: 30000 }
+    { refetchInterval: 60_000, enabled: stagger[3] }
   );
-
-  const queryClient = useQueryClient();
-  const useAnvil = false;
 
   // Get projected APR for the primary market (pb-steth)
   const projectedAPR = useProjectedAPR("pb-steth");
@@ -372,7 +377,7 @@ export default function AnchorPage() {
   const allMarketContracts = undefined;
 
   // Use extracted hook for token metadata
-  useAnchorTokenMetadata(anchorMarkets);
+  useAnchorTokenMetadata(anchorMarkets, { enabled: stagger[5] });
 
   // Use extracted hook for contract reads
   const {
@@ -381,7 +386,7 @@ export default function AnchorPage() {
     isLoading: isLoadingReads,
     isError: isReadsError,
     error: readsError,
-  } = useAnchorContractReads(anchorMarkets, useAnvil);
+  } = useAnchorContractReads(anchorMarkets, useAnvil, { enabled: stagger[0] });
 
   // Build a fallback price map from the existing reads (per-market peggedTokenPrice)
   const peggedPricesFromReads = useMemo(() => {
@@ -443,6 +448,8 @@ export default function AnchorPage() {
     ethPrice,
     btcPrice,
     eurPrice,
+    goldPrice,
+    silverPrice,
     fxUSDPrice,
     fxSAVEPrice,
     usdcPrice,
@@ -504,7 +511,8 @@ export default function AnchorPage() {
   // Use extracted hook for user deposits
   const { userDepositMap, refetchUserDeposits } = useAnchorUserDeposits(
     anchorMarkets,
-    useAnvil
+    useAnvil,
+    { enabled: stagger[1] }
   );
 
   // Use extracted hook for rewards calculations
@@ -573,7 +581,9 @@ export default function AnchorPage() {
     totalPositionUSD: allMarketsTotalPositionUSD,
     hasPositions: userHasPositions,
     refetch: refetchPositions,
-  } = useMarketPositions(marketPositionConfigs, address, mergedPeggedPriceMap);
+  } = useMarketPositions(marketPositionConfigs, address, mergedPeggedPriceMap, {
+    enabled: stagger[2],
+  });
 
   // Group markets by peggedToken.symbol (for grouping ha tokens)
   const groupedMarkets = useGroupedMarkets(
@@ -707,7 +717,7 @@ export default function AnchorPage() {
 
   const { prices: collateralPricesMap } = useMultipleCollateralPrices(
     collateralPriceOracleAddresses,
-    { refetchInterval: 30000 }
+    { refetchInterval: 60_000, enabled: stagger[4] }
   );
 
   // Use extracted hook for transaction handlers
@@ -1305,9 +1315,9 @@ export default function AnchorPage() {
           },
           {
             id: "mint",
-            label: "Mint pegged tokens",
+            label: "Mint anchor tokens",
             status: "pending",
-            details: "Mint ha tokens from collateral",
+            details: "Mint anchor tokens from collateral",
           }
         );
         mintStepIndex = steps.length - 1; // The mint step is the last one we just added
@@ -1328,7 +1338,7 @@ export default function AnchorPage() {
             id: `approve-pegged-${allocation.poolId}`,
             label: `Approve pegged tokens for ${poolName} Pool`,
             status: "pending",
-            details: `Approve ha tokens for ${poolName.toLowerCase()} pool deposit`,
+            details: `Approve anchor tokens for ${poolName.toLowerCase()} pool deposit`,
           });
 
           steps.push({
@@ -4800,9 +4810,8 @@ export default function AnchorPage() {
                               Anchor Ledger Marks
                             </h3>
                             <p className="text-white/90 leading-relaxed">
-                              Anchor Ledger Marks are earned by holding ha
-                              tokens (pegged tokens) and depositing into
-                              stability pools.
+                              Anchor Ledger Marks are earned by holding anchor
+                              tokens and depositing into stability pools.
                             </p>
                           </div>
 
@@ -5576,15 +5585,13 @@ export default function AnchorPage() {
                   const pegTarget = (marketData.market as any)?.pegTarget?.toLowerCase();
                   let priceUSD = 1; // Default $1 for USD-pegged
                   
-                  // For EUR-pegged tokens, use eurPrice directly to ensure consistency across markets
-                  console.log(`[anchor page] Token ${tokenAddressLower} (${marketData.market?.peggedToken?.symbol}): pegTarget="${pegTarget}", eurPrice=${eurPrice}, btcPrice=${btcPrice}, ethPrice=${ethPrice}`);
-                  
+                  // Gold/Silver use Chainlink XAU/XAG spot via mergedPeggedPriceMap (1 haGOLD≈1oz gold, 1 haSILVER≈1oz silver)
                   if (pegTarget === "eur" || pegTarget === "euro") {
                     if (eurPrice) {
                       priceUSD = eurPrice;
-                      console.log(`[anchor page] haEUR: Using eurPrice=${eurPrice}, balanceNum=${balanceNum}, balanceUSD=${balanceNum * priceUSD}`);
+                      if (DEBUG_ANCHOR) console.log(`[anchor page] haEUR: Using eurPrice=${eurPrice}, balanceNum=${balanceNum}, balanceUSD=${balanceNum * priceUSD}`);
                     } else {
-                      console.warn(`[anchor page] haEUR: eurPrice is null/undefined! Checking fallback...`);
+                      if (DEBUG_ANCHOR) console.warn(`[anchor page] haEUR: eurPrice is null/undefined! Checking fallback...`);
                       // Fallback: try to get price from map, but log warning
                       const priceMarket = allMarketsData.find((md) => {
                         const mdTokenAddress = (md.market as any)?.addresses?.peggedToken?.toLowerCase();
@@ -5592,22 +5599,22 @@ export default function AnchorPage() {
                       });
                       if (priceMarket) {
                         const price = mergedPeggedPriceMap?.[priceMarket.marketId] ?? peggedPriceUSDMap?.[priceMarket.marketId];
-                        console.warn(`[anchor page] haEUR: priceMarket=${priceMarket.marketId}, price from map=${price?.toString() || 'undefined'}`);
+                        if (DEBUG_ANCHOR) console.warn(`[anchor page] haEUR: priceMarket=${priceMarket.marketId}, price from map=${price?.toString() || 'undefined'}`);
                         if (price !== undefined && price > 0n) {
                           priceUSD = Number(price) / 1e18;
-                          console.warn(`[anchor page] haEUR: eurPrice not available, using map price=${priceUSD} for marketId=${priceMarket.marketId}`);
+                          if (DEBUG_ANCHOR) console.warn(`[anchor page] haEUR: eurPrice not available, using map price=${priceUSD} for marketId=${priceMarket.marketId}`);
                         } else {
-                          console.warn(`[anchor page] haEUR: No price available (eurPrice=${eurPrice}, map price=${price?.toString() || 'undefined'}), using default $1`);
+                          if (DEBUG_ANCHOR) console.warn(`[anchor page] haEUR: No price available (eurPrice=${eurPrice}, map price=${price?.toString() || 'undefined'}), using default $1`);
                         }
                       } else {
-                        console.warn(`[anchor page] haEUR: No priceMarket found for token ${tokenAddressLower}`);
+                        if (DEBUG_ANCHOR) console.warn(`[anchor page] haEUR: No priceMarket found for token ${tokenAddressLower}`);
                       }
                     }
                   } else if (pegTarget === "btc" || pegTarget === "bitcoin") {
                     // For BTC-pegged tokens, use btcPrice directly to ensure consistency across markets (same as EUR)
                     if (btcPrice) {
                       priceUSD = btcPrice;
-                      console.log(`[anchor page] haBTC: Using btcPrice=${btcPrice}, balanceNum=${balanceNum}, balanceUSD=${balanceNum * priceUSD}`);
+                      if (DEBUG_ANCHOR) console.log(`[anchor page] haBTC: Using btcPrice=${btcPrice}, balanceNum=${balanceNum}, balanceUSD=${balanceNum * priceUSD}`);
                     } else {
                       // Fallback: try to get price from map
                       const priceMarket = allMarketsData.find((md) => {
@@ -5618,7 +5625,7 @@ export default function AnchorPage() {
                         const price = mergedPeggedPriceMap?.[priceMarket.marketId] ?? peggedPriceUSDMap?.[priceMarket.marketId];
                         if (price !== undefined && price > 0n) {
                           priceUSD = Number(price) / 1e18;
-                          console.warn(`[anchor page] haBTC: btcPrice not available, using map price=${priceUSD} for marketId=${priceMarket.marketId}`);
+                          if (DEBUG_ANCHOR) console.warn(`[anchor page] haBTC: btcPrice not available, using map price=${priceUSD} for marketId=${priceMarket.marketId}`);
                         }
                       }
                     }
@@ -5626,7 +5633,7 @@ export default function AnchorPage() {
                     // For ETH-pegged tokens, use ethPrice directly to ensure consistency across markets
                     if (ethPrice) {
                       priceUSD = ethPrice;
-                      console.log(`[anchor page] haETH: Using ethPrice=${ethPrice}, balanceNum=${balanceNum}, balanceUSD=${balanceNum * priceUSD}`);
+                      if (DEBUG_ANCHOR) console.log(`[anchor page] haETH: Using ethPrice=${ethPrice}, balanceNum=${balanceNum}, balanceUSD=${balanceNum * priceUSD}`);
                     } else {
                       // Fallback: try to get price from map
                       const priceMarket = allMarketsData.find((md) => {
@@ -5637,7 +5644,7 @@ export default function AnchorPage() {
                         const price = mergedPeggedPriceMap?.[priceMarket.marketId] ?? peggedPriceUSDMap?.[priceMarket.marketId];
                         if (price !== undefined && price > 0n) {
                           priceUSD = Number(price) / 1e18;
-                          console.warn(`[anchor page] haETH: ethPrice not available, using map price=${priceUSD} for marketId=${priceMarket.marketId}`);
+                          if (DEBUG_ANCHOR) console.warn(`[anchor page] haETH: ethPrice not available, using map price=${priceUSD} for marketId=${priceMarket.marketId}`);
                         }
                       }
                     }
@@ -5668,7 +5675,7 @@ export default function AnchorPage() {
                 const position = walletPositionsByToken.get(tokenAddressLower)!;
                 // Just add this market to the list - don't recalculate anything
                 // The USD value was already calculated correctly when the entry was first created
-                console.log(`[anchor page] Token ${tokenAddressLower} (${position.symbol}): Adding market ${marketData.marketId}, existing balanceUSD=${position.balanceUSD}, NOT recalculating`);
+                if (DEBUG_ANCHOR) console.log(`[anchor page] Token ${tokenAddressLower} (${position.symbol}): Adding market ${marketData.marketId}, existing balanceUSD=${position.balanceUSD}, NOT recalculating`);
                 position.markets.push({
                   marketId: marketData.marketId,
                   market: marketData.market,
@@ -5685,7 +5692,7 @@ export default function AnchorPage() {
                   if (existingPricePerToken > 0) {
                     // Use the same price per token that was used initially
                     position.balanceUSD = (Number(walletBalance) / 1e18) * existingPricePerToken;
-                    console.log(`[anchor page] Token ${tokenAddressLower}: Balance increased, updated USD using existing price ${existingPricePerToken}`);
+                    if (DEBUG_ANCHOR) console.log(`[anchor page] Token ${tokenAddressLower}: Balance increased, updated USD using existing price ${existingPricePerToken}`);
                   }
                   // If existingPricePerToken is 0 or invalid, leave balanceUSD as is (shouldn't happen)
                 }
@@ -5967,7 +5974,7 @@ export default function AnchorPage() {
                   <div className="text-left max-w-xs">
                     <div className="font-semibold mb-1">Ledger Marks</div>
                     <div className="text-xs text-white/90">
-                      Earned by holding ha tokens and depositing into stability
+                      Earned by holding anchor tokens and depositing into stability
                       pools. Used to qualify for future rewards.
                     </div>
                   </div>
@@ -7776,7 +7783,7 @@ export default function AnchorPage() {
                                 : 1;
                           
                           // Convert oracle price from peg token units to USD
-                          // The oracle returns price in the peg token (ETH for ETH/fxUSD, BTC for BTC/fxUSD, etc.)
+                          // The oracle returns price in the peg token (ETH for ETH/fxUSD, BTC for BTC/fxUSD, EUR for EUR/fxUSD, etc.)
                               const pegTarget = (
                                 marketData.market as any
                               )?.pegTarget?.toLowerCase();
@@ -7784,6 +7791,10 @@ export default function AnchorPage() {
                                 pegTarget === "btc" || pegTarget === "bitcoin";
                               const isETHMarket =
                                 pegTarget === "eth" || pegTarget === "ethereum";
+                              const isEURMarket =
+                                pegTarget === "eur" || pegTarget === "euro";
+                              const isGOLDMarket = pegTarget === "gold";
+                              const isSILVERMarket = pegTarget === "silver";
                           
                           if (underlyingPriceUSD > 0) {
                             // Oracle price is in peg token units, convert to USD
@@ -7805,8 +7816,32 @@ export default function AnchorPage() {
                                 // Can't convert, use 0
                                 underlyingPriceUSD = 0;
                               }
+                            } else if (isEURMarket) {
+                              const eurPriceUSD = eurPrice || 0;
+                              if (eurPriceUSD > 0) {
+                                underlyingPriceUSD =
+                                  underlyingPriceUSD * eurPriceUSD;
+                              } else {
+                                underlyingPriceUSD = 0;
+                              }
+                            } else if (isGOLDMarket) {
+                              const goldPriceUSD = goldPrice || 0;
+                              if (goldPriceUSD > 0) {
+                                underlyingPriceUSD =
+                                  underlyingPriceUSD * goldPriceUSD;
+                              } else {
+                                underlyingPriceUSD = 0;
+                              }
+                            } else if (isSILVERMarket) {
+                              const silverPriceUSD = silverPrice || 0;
+                              if (silverPriceUSD > 0) {
+                                underlyingPriceUSD =
+                                  underlyingPriceUSD * silverPriceUSD;
+                              } else {
+                                underlyingPriceUSD = 0;
+                              }
                             }
-                            // For other markets, assume oracle already returns USD price
+                            // For other markets (e.g. USD), assume oracle already returns USD price
                           }
                           
                           // Fallback: For fxUSD markets, if we couldn't calculate from oracle, use $1.00
@@ -8051,10 +8086,7 @@ export default function AnchorPage() {
                                 const sailPoolTVLUSD =
                                   sailPoolTVLTokens * peggedPriceUSD;
 
-                                // Dev-only debug to validate TVL reads, especially right after new pool deployments.
-                                      if (
-                                        process.env.NODE_ENV === "development"
-                                      ) {
+                                if (DEBUG_ANCHOR) {
                                   // eslint-disable-next-line no-console
                                   console.log("[Anchor][TVL]", {
                                     marketId: marketData.marketId,
@@ -9315,7 +9347,7 @@ export default function AnchorPage() {
                   />
                 </div>
                 <div>
-                  <div className="text-xs text-[#1E4775]/70 mb-1">ha Token</div>
+                  <div className="text-xs text-[#1E4775]/70 mb-1">Anchor Token</div>
                   <SharedEtherscanLink
                     label=""
                     address={

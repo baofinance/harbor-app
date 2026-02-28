@@ -5,6 +5,7 @@ import { formatEther } from "viem";
 import { stabilityPoolABI } from "@/abis/stabilityPool";
 import { ERC20_ABI } from "@/config/contracts";
 import { getPriceFeedAddress, queryChainlinkPrice } from "@/utils/priceFeeds";
+import { DEBUG_ANCHOR } from "@/config/debug";
 
 export interface PoolRewards {
   poolAddress: `0x${string}`;
@@ -75,27 +76,20 @@ export function useAllStabilityPoolRewards({
     }));
   }, [pools]);
 
-  // Create a stable key for token price availability (changes only when major prices load)
-  // This ensures APRs recalculate when critical prices (like wstETH USD) load for the first time
+  // Coarse key: only "ready" vs "waiting" to avoid refetching on every price tick.
+  // Refetch once when we transition from no-USD-prices to having some (e.g. wstETH loads).
   const priceAvailabilityKey = useMemo(() => {
-    const keys: string[] = [];
-    const allEntries: any[] = [];
+    let hasUsdPrice = false;
     if (tokenPriceMap) {
-      // Check if major collateral tokens have USD prices (> $1000 indicates USD, not ratio)
-      tokenPriceMap.forEach((price, addr) => {
-        allEntries.push({ addr, price, type: typeof price, over1000: price > 1000 });
-        if (price > 1000) {
-          keys.push(`${addr.slice(0, 10)}:loaded`);
-        }
+      tokenPriceMap.forEach((price) => {
+        if (price > 1000) hasUsdPrice = true;
       });
     }
-    const result = keys.sort().join("|") || "no-prices";
-    if (process.env.NODE_ENV === "development") {
+    const result = hasUsdPrice ? "ready" : "waiting";
+    if (DEBUG_ANCHOR) {
       console.log("[useAllStabilityPoolRewards] priceAvailabilityKey:", {
         result,
         tokenPriceMapSize: tokenPriceMap?.size,
-        pricesOver1000: keys.length,
-        allEntries,
       });
     }
     return result;
@@ -120,8 +114,7 @@ export function useAllStabilityPoolRewards({
         return [];
       }
 
-      // Debug: log prices received
-      if (process.env.NODE_ENV === "development") {
+      if (DEBUG_ANCHOR) {
         console.log("[useAllStabilityPoolRewards] Starting calculation", {
           poolsCount: pools.length,
           ethPrice,
@@ -284,8 +277,7 @@ export function useAllStabilityPoolRewards({
                 // If still no price, leave it as 0 (don't assume pegged price)
                 // This ensures we don't show incorrect USD values for unknown tokens
 
-                // Debug: log price lookup
-                if (process.env.NODE_ENV === "development") {
+                if (DEBUG_ANCHOR) {
                   console.log("[Reward Token Price Lookup]", {
                     marketId: pool.marketId,
                     poolType: pool.poolType,
@@ -309,24 +301,21 @@ export function useAllStabilityPoolRewards({
                 // Only calculate APR if we have a valid price for the reward token
                 let apr = 0;
                 
-                // Debug: log even if conditions aren't met
-                if (process.env.NODE_ENV === "development") {
-                  if (!rewardData || rewardData.rate === 0n || poolTVL === 0n || price === 0) {
-                    console.log("[APR Calculation SKIPPED]", {
-                      marketId: pool.marketId,
-                      poolType: pool.poolType,
-                      poolAddress: pool.address,
-                      rewardToken: symbol,
-                      hasRewardData: !!rewardData,
-                      rewardRate: rewardData?.rate?.toString() || "0",
-                      poolTVL: poolTVL?.toString() || "0",
-                      rewardTokenPrice: price,
-                      ethPrice,
-                      btcPrice,
-                    });
-                  }
+                if (DEBUG_ANCHOR && (!rewardData || rewardData.rate === 0n || poolTVL === 0n || price === 0)) {
+                  console.log("[APR Calculation SKIPPED]", {
+                    marketId: pool.marketId,
+                    poolType: pool.poolType,
+                    poolAddress: pool.address,
+                    rewardToken: symbol,
+                    hasRewardData: !!rewardData,
+                    rewardRate: rewardData?.rate?.toString() || "0",
+                    poolTVL: poolTVL?.toString() || "0",
+                    rewardTokenPrice: price,
+                    ethPrice,
+                    btcPrice,
+                  });
                 }
-                
+
                 if (rewardData && rewardData.rate > 0n && poolTVL > 0n && price > 0) {
                   const SECONDS_PER_YEAR = 365 * 24 * 60 * 60;
                   
@@ -369,7 +358,7 @@ export function useAllStabilityPoolRewards({
                     if (mappedPrice !== undefined && mappedPrice > 0 && mappedPrice > 100) {
                       // Price > 100 is likely already in USD (ETH/BTC are $3k-$90k)
                       depositTokenPriceUSD = mappedPrice;
-                      if (process.env.NODE_ENV === "development") {
+                      if (DEBUG_ANCHOR) {
                         console.log("[APR USD Price from tokenPriceMap]", {
                           marketId: pool.marketId,
                           peggedTokenAddress: pool.peggedTokenAddress,
@@ -382,7 +371,8 @@ export function useAllStabilityPoolRewards({
                   // Final fallback: use $1 if no price available
                   if (depositTokenPriceUSD === 0) {
                     depositTokenPriceUSD = 1;
-                    console.warn("[Transparency APR] ❌ FALLBACK to $1 - PRICE CALCULATION FAILED", {
+                    if (DEBUG_ANCHOR) {
+                      console.warn("[Transparency APR] ❌ FALLBACK to $1 - PRICE CALCULATION FAILED", {
                       marketId: pool.marketId,
                       poolType: pool.poolType,
                       poolAddress: pool.address,
@@ -394,6 +384,7 @@ export function useAllStabilityPoolRewards({
                       rewardToken: symbol,
                       issue: "This will cause incorrect APR calculation!",
                     });
+                    }
                   }
                   
                   // Annual rewards value in USD (reward token price * annual rewards in tokens)
@@ -480,7 +471,8 @@ export function useAllStabilityPoolRewards({
       return results;
     },
     enabled: enabled && !!publicClient && pools.length > 0,
-    refetchInterval: 30000, // Refetch every 30 seconds
+    refetchInterval: 60000, // 60s - pool APRs don't change minute-to-minute
+    staleTime: 30000, // Consider fresh for 30s to avoid refetch on remount/focus
     retry: 1,
   });
 }

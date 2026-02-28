@@ -347,8 +347,8 @@ function MarketExpandedView({
               label="Collateral Token"
               address={addresses.collateralToken}
             />
-            <EtherscanLink label="ha Token" address={peggedTokenAddress} />
-            <EtherscanLink label="hs Token" address={leveragedTokenAddress} />
+            <EtherscanLink label="Anchor Token" address={peggedTokenAddress} />
+            <EtherscanLink label="Sail Token" address={leveragedTokenAddress} />
           </div>
         </div>
 
@@ -371,7 +371,7 @@ function MarketExpandedView({
               </div>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-[#1E4775]/70">ha Token:</span>
+              <span className="text-[#1E4775]/70">Anchor Token:</span>
               <div className="flex items-center gap-1.5">
                 <span className="text-[#1E4775] font-mono">
                   {peggedTokenSymbol}
@@ -386,7 +386,7 @@ function MarketExpandedView({
               </div>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-[#1E4775]/70">hs Token:</span>
+              <span className="text-[#1E4775]/70">Sail Token:</span>
               <div className="flex items-center gap-1.5">
                 <span className="text-[#1E4775] font-mono">
                   {leveragedTokenSymbol}
@@ -4224,7 +4224,7 @@ export default function GenesisIndexPage() {
                                     <div className="text-xs space-y-1">
                                       <p>
                                         The Harbor team will transfer collateral
-                                        and make ha + hs tokens claimable
+                                        and make anchor + sail tokens claimable
                                         imminently.
                                       </p>
                                       <p className="mt-2">

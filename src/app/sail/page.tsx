@@ -2171,8 +2171,8 @@ export default function SailPage() {
                             Anchor Ledger Marks
                           </h3>
                           <p className="text-white/90 leading-relaxed">
-                            Anchor Ledger Marks are earned by holding ha tokens
-                            (pegged tokens) and depositing into stability pools.
+                            Anchor Ledger Marks are earned by holding anchor tokens
+                            and depositing into stability pools.
                           </p>
                         </div>
 

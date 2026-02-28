@@ -28,7 +28,7 @@ export interface FeeInfo {
  feeUSD?: number;
  feePercentage?: number;
  tokenSymbol: string;
- label: string; // e.g.,"Redeem Sail Tokens","Mint Pegged Tokens"
+ label: string; // e.g., "Redeem Sail Tokens", "Mint Anchor Tokens"
 }
 
 interface TransactionProgressModalProps {
@@ -54,7 +54,7 @@ export const TransactionProgressModal = ({
  title,
  steps,
  currentStepIndex,
- progressVariant = "vertical",
+ progressVariant = "horizontal",
  showFeeInfo,
  onConfirmFee,
  onCancel,
@@ -84,6 +84,7 @@ export const TransactionProgressModal = ({
  <button
  onClick={onCancel || onClose}
  className="text-[#1E4775]/50 hover:text-[#1E4775] transition-colors"
+ aria-label="Close"
  >
  <svg
  className="w-6 h-6"
@@ -112,9 +113,9 @@ export const TransactionProgressModal = ({
  // Find fee for this step
  const stepFee = fees.find((f) => {
  if (step.id ==="redeem") {
- return f.label ==="Redeem Leveraged Tokens";
+ return f.label ==="Redeem Sail Tokens";
  } else if (step.id ==="mint") {
- return f.label ==="Mint Pegged Tokens";
+ return f.label ==="Mint Anchor Tokens";
  }
  return false;
  });
@@ -137,14 +138,14 @@ export const TransactionProgressModal = ({
  <div className="font-semibold text-yellow-800 mb-1">Fee:</div>
  <div className="space-y-1 text-yellow-700">
  <div className="flex justify-between">
- <span>Amount:</span>
+ <span>Fee Amount:</span>
  <span className="font-mono font-semibold">
  {stepFee.feeFormatted} {stepFee.tokenSymbol}
  </span>
  </div>
  {stepFee.feePercentage !== undefined && (
  <div className="flex justify-between">
- <span>Percentage:</span>
+ <span>Fee %:</span>
  <span className="font-semibold">
  {stepFee.feePercentage.toFixed(2)}%
  </span>
@@ -152,7 +153,7 @@ export const TransactionProgressModal = ({
  )}
  {stepFee.feeUSD !== undefined && (
  <div className="flex justify-between">
- <span>Value:</span>
+ <span>Fee (USD):</span>
  <span className="font-semibold">
  ${stepFee.feeUSD.toFixed(2)}
  </span>
@@ -176,13 +177,13 @@ export const TransactionProgressModal = ({
  <div className="space-y-1 text-sm text-yellow-700">
  {fees.length > 1 && totalFeeUSD > 0 && (
  <div className="flex justify-between font-semibold">
- <span>Total Fee Value:</span>
+ <span>Total Fees:</span>
  <span>${totalFeeUSD.toFixed(2)}</span>
  </div>
  )}
  {fees.length === 1 && fees[0].feeUSD !== undefined && (
  <div className="flex justify-between font-semibold">
- <span>Fee Value:</span>
+ <span>Fee (USD):</span>
  <span>${fees[0].feeUSD.toFixed(2)}</span>
  </div>
  )}
@@ -223,10 +224,18 @@ export const TransactionProgressModal = ({
  />
  <div className="relative bg-white shadow-2xl w-full max-w-md mx-4 animate-in fade-in-0 scale-in-95 duration-200 max-h-[90vh] overflow-y-auto">
  <div className="flex items-center justify-between p-6 border-b border-[#1E4775]/20">
- <h2 className="text-2xl font-bold text-[#1E4775]">{title}</h2>
+ <div>
+   <h2 className="text-2xl font-bold text-[#1E4775]">{title}</h2>
+   {steps.length > 1 && (
+     <p className="text-xs text-[#1E4775]/60 mt-0.5">
+       Step {currentStepIndex + 1} of {steps.length}
+     </p>
+   )}
+ </div>
  <button
  onClick={onClose}
  className="text-[#1E4775]/50 hover:text-[#1E4775] transition-colors"
+ aria-label="Close"
  >
  <svg
  className="w-6 h-6"
@@ -330,14 +339,14 @@ export const TransactionProgressModal = ({
  <div className="font-semibold text-yellow-800 mb-1">Fee:</div>
  <div className="space-y-1 text-yellow-700">
  <div className="flex justify-between">
- <span>Amount:</span>
+ <span>Fee Amount:</span>
  <span className="font-mono font-semibold">
  {step.fee.formatted} {step.fee.tokenSymbol}
  </span>
  </div>
  {step.fee.percentage !== undefined && (
  <div className="flex justify-between">
- <span>Percentage:</span>
+ <span>Fee %:</span>
  <span className="font-semibold">
  {step.fee.percentage.toFixed(2)}%
  </span>
@@ -345,7 +354,7 @@ export const TransactionProgressModal = ({
  )}
  {step.fee.usd !== undefined && (
  <div className="flex justify-between">
- <span>Value:</span>
+ <span>Fee (USD):</span>
  <span className="font-semibold">
  ${step.fee.usd.toFixed(2)}
  </span>
@@ -361,7 +370,7 @@ export const TransactionProgressModal = ({
  rel="noopener noreferrer"
  className="text-xs text-[#1E4775]/70 hover:text-[#1E4775] mt-1 inline-block underline"
  >
- View on Etherscan
+ View transaction on Etherscan
  </a>
  )}
  {step.error && (
@@ -387,7 +396,7 @@ export const TransactionProgressModal = ({
  {steps.some((s) => s.status ==="error") && (
  <div className="mt-6 p-4 bg-red-50 border border-red-200">
  <p className="text-sm font-medium text-red-800 text-center">
- {errorMessage ||"An error occurred. Please try again."}
+ {errorMessage || "Transaction failed. Please try again or contact support if the issue persists."}
  </p>
         {onRetry && (
           <div className="mt-4 flex justify-center">

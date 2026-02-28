@@ -17,24 +17,28 @@ import { WSTETH_ABI } from "@/abis";
 import { MINTER_ETH_ZAP_V3_ABI } from "@/abis";
 import { MINTER_USDC_ZAP_V3_ABI } from "@/abis";
 import { STETH_ZAP_PERMIT_ABI, calculateDeadline } from "@/utils/permit";
-import { usePermitOrApproval } from "@/hooks/usePermitOrApproval";
-import { usePermitCapability } from "@/hooks/usePermitCapability";
+import { usePermitFlow } from "@/hooks/usePermitFlow";
 import { useCollateralPrice } from "@/hooks/useCollateralPrice";
 import SimpleTooltip from "@/components/SimpleTooltip";
 import { ArrowPathIcon } from "@heroicons/react/24/outline";
 import { InfoCallout } from "@/components/InfoCallout";
-import { AlertOctagon, Bell, ChevronDown, ChevronUp, Info, RefreshCw } from "lucide-react";
+import { ModalNotificationsPanel } from "@/components/ModalNotificationsPanel";
+import { AlertOctagon, Bell, Info, RefreshCw } from "lucide-react";
 import {
   TransactionProgressModal,
   TransactionStep,
 } from "@/components/TransactionProgressModal";
+import { useTransactionProgress } from "@/hooks/useTransactionProgress";
 import { useDefiLlamaSwap, getDefiLlamaSwapTx } from "@/hooks/useDefiLlamaSwap";
 import { useUserTokens, useTokenDecimals } from "@/hooks/useUserTokens";
-import { formatBalance } from "@/utils/formatters";
 import { amountToUSD } from "@/utils/tokenPriceToUSD";
 import { TokenSelectorDropdown } from "@/components/TokenSelectorDropdown";
+import { TokenAmountSection } from "@/components/TokenAmountSection";
+import { DepositModalShell } from "@/components/DepositModalShell";
+import { ProtocolBanner } from "@/components/ProtocolBanner";
+import { DepositModalTabHeader } from "@/components/DepositModalTabHeader";
+import { TransactionSuccessMessage } from "@/components/TransactionSuccessMessage";
 import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
-import { getLogoPath } from "@/lib/logos";
 
 interface SailManageModalProps {
  isOpen: boolean;
@@ -90,36 +94,30 @@ export const SailManageModal = ({
   const publicClient = usePublicClient();
   const { writeContractAsync } = useWriteContract();
   const { sendTransactionAsync } = useSendTransaction();
-  const { handlePermitOrApproval } = usePermitOrApproval();
 
  const [activeTab, setActiveTab] = useState<"mint" |"redeem">(initialTab);
  const [amount, setAmount] = useState("");
  const [selectedDepositAsset, setSelectedDepositAsset] = useState<
  string | null
  >(null);
- const { isPermitCapable, disableReason } = usePermitCapability({
-   enabled: isOpen && !!address,
-   depositAssetSymbol: selectedDepositAsset ?? undefined,
- });
+  const {
+    isPermitCapable,
+    disableReason,
+    handlePermitOrApproval,
+    permitEnabled,
+    setPermitEnabled,
+  } = usePermitFlow({
+    enabled: isOpen && !!address,
+    depositAssetSymbol: selectedDepositAsset ?? undefined,
+  });
  const [showCustomTokenInput, setShowCustomTokenInput] = useState(false);
  const [customTokenAddress, setCustomTokenAddress] = useState<string>("");
  const [step, setStep] = useState<ModalStep>("input");
  const [error, setError] = useState<string | null>(null);
  const [txHash, setTxHash] = useState<string | null>(null);
  const [showNotifications, setShowNotifications] = useState(false);
- const [permitEnabled, setPermitEnabled] = useState(true);
- useEffect(() => {
-   if (!isPermitCapable) setPermitEnabled(false);
-   else setPermitEnabled(true); // Default on when allowed
- }, [isPermitCapable]);
 
- // Progress modal state
- const [progressModal, setProgressModal] = useState<{
- isOpen: boolean;
- title: string;
- steps: TransactionStep[];
- currentStepIndex: number;
- } | null>(null);
+ const progress = useTransactionProgress();
 
  const minterAddress = market.addresses?.minter as `0x${string}` | undefined;
  const leveragedTokenAddress = market.addresses?.leveragedToken as
@@ -781,27 +779,10 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
  return true;
  };
 
- // Helper to update a step in the progress modal
- const updateProgressStep = (
- stepId: string,
- updates: Partial<TransactionStep>
- ) => {
- setProgressModal((prev) => {
- if (!prev) return prev;
- const newSteps = prev.steps.map((s) =>
- s.id === stepId ? { ...s, ...updates } : s
- );
- // Find new current step index (first non-completed step)
- const newCurrentIndex = newSteps.findIndex(
- (s) => s.status !=="completed"
- );
- return {
- ...prev,
- steps: newSteps,
- currentStepIndex:
- newCurrentIndex === -1 ? newSteps.length - 1 : newCurrentIndex,
- };
- });
+ const updateProgressStep = (stepId: string, updates: Partial<TransactionStep>) => {
+   progress.updateStep(stepId, updates, {
+     advanceOnComplete: updates.status === "completed",
+   });
  };
 
  // Handle mint
@@ -867,7 +848,7 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
      id: "approveSwap",
      label: `Approve ${selectedDepositAsset} for swap`,
      status: "pending",
-     details: `Approve ${selectedDepositAsset} for swapping via Velora`,
+     details: "Approve token for swap via Velora DEX",
    });
  }
  if (includeSwap) {
@@ -876,36 +857,34 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
      id: "swap",
      label: `Swap ${selectedDepositAsset} → ${swapTargetLabel}`,
      status: "pending",
-     details: "Execute swap via Velora",
+     details: "Swap tokens via Velora DEX",
    });
  }
  if (needsPostSwapUsdcApproval) {
    steps.push({
      id: "approvePostSwap",
-     label: "Approve USDC for zap",
+     label: "Approve USDC for deposit",
      status: "pending",
-     details: "Approve USDC for minting via zap",
+     details: "Approve USDC for deposit via zap",
    });
  }
  if (needsApproval && !willUsePermitForZap) {
    const approveLabel = useZap && zapAssetName
-     ? `Approve ${zapAssetName} for zap`
-     : `Approve ${selectedDepositAsset || collateralSymbol}`;
+     ? `Approve ${zapAssetName} for deposit`
+     : `Approve ${selectedDepositAsset || collateralSymbol} for deposit`;
    steps.push({
      id:"approve",
      label: approveLabel,
      status:"pending",
-     details: `Approve ${
-       useZap && zapAssetName ? zapAssetName : (selectedDepositAsset || collateralSymbol)
-     } for minting`,
+     details: "Approve token for deposit",
    });
  }
  if (willUsePermitForZap && zapAssetName) {
    steps.push({
      id: "signPermit",
-     label: `Sign permit for ${zapAssetName}`,
+     label: `Sign permit for ${zapAssetName} (no gas)`,
      status: "pending",
-     details: `Sign EIP-2612 permit (no gas) to authorize zap`,
+     details: "Sign EIP-2612 permit to authorize deposit (no gas fee)",
    });
  }
  const mintLabel = useZap && zapAssetName
@@ -922,13 +901,7 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
    } ${leveragedTokenSymbol}`,
  });
 
- // Open progress modal
- setProgressModal({
- isOpen: true,
- title: `Mint ${leveragedTokenSymbol}`,
- steps,
- currentStepIndex: 0,
- });
+ progress.open(steps, `Mint ${leveragedTokenSymbol}`);
  flushSync(() => {}); // Force React to paint before first action
 
  try {
@@ -1138,16 +1111,15 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
           });
           const allowanceBigInt = (stETHAllowance as bigint) || 0n;
           const needsStEthApproval = allowanceBigInt < amountForMint;
-          setProgressModal((prev) => {
-            if (!prev) return prev;
-            let newSteps = prev.steps.filter((s) => s.id !== "signPermit");
+          progress.setSteps((prev) => {
+            let newSteps = prev.filter((s) => s.id !== "signPermit");
             if (needsStEthApproval && !newSteps.some((s) => s.id === "approve")) {
               const mintIdx = newSteps.findIndex((s) => s.id === "mint");
               newSteps = [...newSteps];
-              newSteps.splice(mintIdx, 0, { id: "approve", label: "Approve stETH for zap", status: "pending", details: "Approve stETH for minting via zap" });
+              newSteps.splice(mintIdx, 0, { id: "approve", label: "Approve stETH for deposit", status: "pending", details: "Approve stETH for deposit via zap" });
             }
             const newIndex = newSteps.findIndex((s) => s.status !== "completed");
-            return { ...prev, steps: newSteps, currentStepIndex: newIndex === -1 ? newSteps.length - 1 : newIndex };
+            return { steps: newSteps, currentStepIndex: newIndex === -1 ? newSteps.length - 1 : newIndex };
           });
           if (needsStEthApproval) {
             updateProgressStep("approve", { status: "in_progress" });
@@ -1261,11 +1233,10 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
       
       if (!usePermit) {
         // Fallback: Use traditional approval + zap. Remove signPermit step so we show only [approve, mint].
-        setProgressModal((prev) => {
-          if (!prev) return prev;
-          const newSteps = prev.steps.filter((s) => s.id !== "signPermit");
+        progress.setSteps((prev) => {
+          const newSteps = prev.filter((s) => s.id !== "signPermit");
           const newIndex = newSteps.findIndex((s) => s.status !== "completed");
-          return { ...prev, steps: newSteps, currentStepIndex: newIndex === -1 ? newSteps.length - 1 : newIndex };
+          return { steps: newSteps, currentStepIndex: newIndex === -1 ? newSteps.length - 1 : newIndex };
         });
         const approvalTarget = zapAddress;
         
@@ -1280,20 +1251,19 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
         const allowanceBigInt = (currentAllowance as bigint) || 0n;
         if (allowanceBigInt < amountForMint) {
           // Add approval step to progress modal if it doesn't exist
-          setProgressModal((prev) => {
-            if (!prev) return prev;
-            const hasApproveStep = prev.steps.some(s => s.id === "approve");
+          progress.setSteps((prev) => {
+            const hasApproveStep = prev.some(s => s.id === "approve");
             if (!hasApproveStep) {
-              // Insert approval step before mint step
-              const mintIndex = prev.steps.findIndex(s => s.id === "mint");
-              const newSteps = [...prev.steps];
+              const mintIndex = prev.findIndex(s => s.id === "mint");
+              const newSteps = [...prev];
               newSteps.splice(mintIndex, 0, {
                 id: "approve",
-                label: `Approve ${isActuallyFxUSD ? "fxUSD" : "USDC"} for zap`,
+                label: `Approve ${isActuallyFxUSD ? "fxUSD" : "USDC"} for deposit`,
                 status: "pending",
-                details: `Approve ${isActuallyFxUSD ? "fxUSD" : "USDC"} for minting via zap`,
+                details: `Approve ${isActuallyFxUSD ? "fxUSD" : "USDC"} for deposit via zap`,
               });
-              return { ...prev, steps: newSteps };
+              const newIndex = newSteps.findIndex((s) => s.status !== "completed");
+              return { steps: newSteps, currentStepIndex: newIndex === -1 ? newSteps.length - 1 : newIndex };
             }
             return prev;
           });
@@ -1398,7 +1368,7 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
    depositAssetAddress,
    isFxUSD,
  });
- setProgressModal(null);
+ progress.close();
  setError(errorMessage);
  setStep("error");
  }
@@ -1426,29 +1396,20 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
  if (needsApproval) {
  steps.push({
  id:"approve",
- label: `Approve ${leveragedTokenSymbol}`,
+ label: `Approve ${leveragedTokenSymbol} for redemption`,
  status:"pending",
- details: `Approve ${leveragedTokenSymbol} for redeeming`,
+ details: "Approve token for redemption",
  });
  }
  steps.push({
  id:"redeem",
- label: `Redeem ${leveragedTokenSymbol}`,
+ label: `Redeem ${leveragedTokenSymbol} for collateral`,
  status:"pending",
- details: `Receive ${
- expectedRedeemOutput
- ? Number(formatEther(expectedRedeemOutput)).toFixed(4)
- :"..."
- } ${collateralSymbol}`,
+ details: `Receive ${expectedRedeemOutput ? Number(formatEther(expectedRedeemOutput)).toFixed(4) : "..."} ${collateralSymbol}`,
  });
 
  // Open progress modal
- setProgressModal({
- isOpen: true,
- title: `Redeem ${leveragedTokenSymbol}`,
- steps,
- currentStepIndex: 0,
- });
+ progress.open(steps, `Redeem ${leveragedTokenSymbol}`);
  flushSync(() => {}); // Force React to paint before first action
 
  try {
@@ -1509,7 +1470,7 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
  } else if (err instanceof Error) {
    errorMessage = err.message.replace(/^[^:]+:\s*/i, "").replace(/\s*\([^)]+\)$/, "") || "Transaction failed";
  }
- setProgressModal(null);
+ progress.close();
  setError(errorMessage);
  setStep("error");
  }
@@ -1579,104 +1540,60 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
  ]);
 
  return (
- <div className="fixed inset-0 z-50 flex items-center justify-center">
- <div
- className="absolute inset-0 bg-black/40 backdrop-blur-sm"
- onClick={handleClose}
- />
-
- <div className="relative bg-white shadow-2xl w-full max-w-md mx-2 sm:mx-4 animate-in fade-in-0 scale-in-95 duration-200 overflow-hidden">
- {/* Protocol and Market Header */}
- {market?.leveragedToken?.symbol && (
-   <div className="bg-[#1E4775] text-white px-3 sm:px-4 py-2 sm:py-2.5 flex items-center justify-between">
-     <div className="text-sm sm:text-base font-semibold">
-       Sail
-     </div>
-     <div className="flex items-center gap-2">
-       <img
-         src={(market.leveragedToken as { icon?: string })?.icon ?? getLogoPath(leveragedTokenSymbol)}
-         alt={market.leveragedToken.symbol}
-         className="w-5 h-5 sm:w-6 sm:h-6 rounded-full flex-shrink-0"
+ <>
+ {progress.isOpen && (
+   <TransactionProgressModal
+     isOpen={progress.isOpen}
+     onClose={() => {
+       progress.close();
+       if (progress.steps.every((s) => s.status === "completed")) {
+         setAmount("");
+         setStep("input");
+       }
+     }}
+     title={progress.title}
+     steps={progress.steps}
+     currentStepIndex={progress.currentStepIndex}
+     progressVariant="horizontal"
+     errorMessage={progress.steps.find((s) => s.status === "error")?.error}
+   />
+ )}
+ {!progress.isOpen && isOpen && (
+ <DepositModalShell
+   isOpen={isOpen}
+   onClose={handleClose}
+   banner={
+     market?.leveragedToken?.symbol ? (
+       <ProtocolBanner
+         protocolName="Sail"
+         tokenSymbol={leveragedTokenSymbol}
+         tokenIcon={(market.leveragedToken as { icon?: string })?.icon}
        />
-       <span className="text-sm sm:text-base font-semibold">
-         {market.leveragedToken.symbol}
-       </span>
-     </div>
-   </div>
- )}
- 
- {/* Header with tabs and close button */}
- <div className="flex items-center justify-between p-0 pt-2 sm:pt-3 px-2 sm:px-3 border-b border-[#1E4775]/10">
- {/* Tab-style header - takes most of width but leaves room for X */}
- <div className="flex flex-1 mr-2 sm:mr-4 border border-[#1E4775]/20 border-b-0 overflow-hidden">
- <button
- onClick={() => handleTabChange("mint")}
- disabled={isProcessing}
- className={`flex-1 py-2 sm:py-3 text-sm sm:text-base font-semibold transition-colors touch-target ${
- activeTab ==="mint"
- ?"bg-[#1E4775] text-white"
- :"bg-[#eef1f7] text-[#4b5a78]"
- } disabled:opacity-50 disabled:cursor-not-allowed`}
+     ) : undefined
+   }
+   header={
+     <DepositModalTabHeader
+       tabs={[
+         { value: "mint", label: "Mint" },
+         { value: "redeem", label: "Redeem" },
+       ]}
+       activeTab={activeTab}
+       onTabChange={(v) => handleTabChange(v as "mint" | "redeem")}
+       disabled={isProcessing}
+     />
+   }
+   closeDisabled={isProcessing}
+   contentClassName="p-4"
  >
- Mint
- </button>
- <button
- onClick={() => handleTabChange("redeem")}
- disabled={isProcessing}
- className={`flex-1 py-2 sm:py-3 text-sm sm:text-base font-semibold transition-colors touch-target ${
- activeTab ==="redeem"
- ?"bg-[#1E4775] text-white"
- :"bg-[#eef1f7] text-[#4b5a78]"
- } disabled:opacity-50 disabled:cursor-not-allowed`}
- >
- Redeem
- </button>
- </div>
- <button
- onClick={handleClose}
- className="text-[#1E4775]/50 hover:text-[#1E4775] transition-colors flex-shrink-0 touch-target flex items-center justify-center w-6 h-6 sm:w-7 sm:h-7"
- aria-label="Close modal"
- disabled={isProcessing}
- >
- <svg
- className="w-5 h-5 sm:w-6 sm:h-6"
- fill="none"
- viewBox="0 0 24 24"
- stroke="currentColor"
- >
- <path
- strokeLinecap="round"
- strokeLinejoin="round"
- strokeWidth={3}
- d="M6 18L18 6M6 6l12 12"
- />
- </svg>
- </button>
- </div>
-
- <div className="p-4">
  {step ==="success" ? (
- <div className="text-center py-8">
- <div className="text-6xl mb-4">✓</div>
- <h3 className="text-xl font-bold text-[#1E4775] mb-2">
- Transaction Successful!
- </h3>
- <p className="text-sm text-[#1E4775]/70 mb-4">
- {activeTab ==="mint"
- ?"Your sail tokens have been minted successfully."
- :"Your sail tokens have been redeemed successfully."}
- </p>
- {txHash && (
- <a
- href={`https://etherscan.io/tx/${txHash}`}
- target="_blank"
- rel="noopener noreferrer"
- className="text-sm text-[#1E4775] hover:underline"
- >
- View on Etherscan
- </a>
- )}
- </div>
+ <TransactionSuccessMessage
+   message={
+     activeTab === "mint"
+       ? "Your sail tokens have been minted successfully."
+       : "Your sail tokens have been redeemed successfully."
+   }
+   txHash={txHash}
+ />
  ) : (
  <div className="space-y-4">
    <div className="flex items-center justify-center text-xs text-[#1E4775]/50 pb-3 border-b border-[#d1d7e5]">
@@ -1685,247 +1602,143 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
      </div>
    </div>
  {/* Input Section */}
- <div className="space-y-3">
- {activeTab ==="mint" && (
- <div className="space-y-2">
-   <label className="text-sm font-semibold text-[#1E4775]">Select Deposit Token</label>
-   {(() => {
-     const tokenGroups = [
-       ...(acceptedAssets.length > 0 ? [{
-         label: "Supported Assets",
-         tokens: acceptedAssets.map((asset) => ({
-           symbol: asset.symbol,
-           name: asset.name,
-         })),
-       }] : []),
-       ...(allAvailableAssets.filteredUserTokens.length > 0 ? [{
-         label: "Other Tokens (via Swap)",
-         tokens: allAvailableAssets.filteredUserTokens.map((token) => ({
-           symbol: token.symbol,
-           name: token.name,
-           isUserToken: true,
-         })),
-       }] : []),
-     ];
-     
-     return (
-       <TokenSelectorDropdown
-         value={selectedDepositAsset || ""}
-         onChange={(newAsset) => {
-           if (newAsset === "custom") {
+ <TokenAmountSection
+   tokenSelector={
+     activeTab === "mint"
+       ? {
+           value: selectedDepositAsset || "",
+           onChange: (newAsset) => {
+             if (newAsset === "custom") {
+               setShowCustomTokenInput(true);
+               setSelectedDepositAsset("custom");
+             } else {
+               setShowCustomTokenInput(false);
+               setSelectedDepositAsset(newAsset);
+               setCustomTokenAddress("");
+               setAmount("");
+               setError(null);
+             }
+           },
+           options: [
+             ...(acceptedAssets.length > 0
+               ? [{
+                   label: "Supported Assets",
+                   tokens: acceptedAssets.map((a) => ({
+                     symbol: a.symbol,
+                     name: a.name,
+                   })),
+                 }]
+               : []),
+             ...(allAvailableAssets.filteredUserTokens.length > 0
+               ? [{
+                   label: "Other Tokens (via Swap)",
+                   tokens: allAvailableAssets.filteredUserTokens.map((t) => ({
+                     symbol: t.symbol,
+                     name: t.name,
+                     isUserToken: true,
+                   })),
+                 }]
+               : []),
+           ],
+           label: "Select Deposit Token",
+           placeholder: "Select Deposit Token",
+           disabled: isProcessing,
+           showCustomOption: true,
+           onCustomOptionClick: () => {
              setShowCustomTokenInput(true);
              setSelectedDepositAsset("custom");
-           } else {
-             setShowCustomTokenInput(false);
-             setSelectedDepositAsset(newAsset);
-             setCustomTokenAddress("");
-             setAmount(""); // Reset amount when changing asset
-             setError(null); // Clear any errors
-           }
-         }}
-         options={tokenGroups}
-         disabled={isProcessing}
-         placeholder="Select Deposit Token"
-         showCustomOption={true}
-         onCustomOptionClick={() => {
-           setShowCustomTokenInput(true);
-           setSelectedDepositAsset("custom");
-         }}
-         customOptionLabel="+ Add Custom Token Address"
-       />
-     );
-   })()}
-
-   {showCustomTokenInput && (
-     <div className="space-y-2">
-       <input
-         type="text"
-         value={customTokenAddress}
-         onChange={(e) => setCustomTokenAddress(e.target.value.trim())}
-         placeholder="0x..."
-         className="w-full h-10 px-3 bg-white text-[#1E4775] border border-[#1E4775]/30 focus:border-[#1E4775] focus:ring-2 focus:ring-[#1E4775]/20 focus:outline-none transition-all text-sm font-mono"
-         disabled={isProcessing}
-       />
-       {customTokenAddress &&
-         (!customTokenAddress.startsWith("0x") ||
-           customTokenAddress.length !== 42) && (
-           <div className="text-xs text-red-600">
-             Invalid address format. Must start with 0x and be 42 characters.
-           </div>
-         )}
-     </div>
-   )}
-
-   {/* Swap quote status */}
-   {needsSwap && (
-     <div className="text-xs text-[#1E4775]/70">
-       {isLoadingSwapQuote
-         ? "Fetching swap quote..."
-         : swapQuoteError
-         ? "Swap quote unavailable (try a smaller amount or a different token)."
-         : swapQuote
-         ? `Will swap to ${isWstETHMarket ? "ETH" : "USDC"} before minting.`
-         : null}
-     </div>
-   )}
- </div>
- )}
-
- {/* Notifications - between deposit token and enter amount (match Anchor) */}
- <div className="space-y-2">
-   <button
-     type="button"
-     onClick={() => setShowNotifications((prev) => !prev)}
-     className="flex w-full items-center justify-between text-sm font-semibold text-[#1E4775]"
-     aria-expanded={showNotifications}
-   >
-     <span>Notifications</span>
-     <span className="flex items-center gap-2">
-       {!showNotifications && (() => {
-         const notificationCount = activeTab === "mint" ? 2 : 1;
-         return (
+           },
+           customOptionLabel: "+ Add Custom Token Address",
+         }
+       : undefined
+   }
+   customToken={
+     activeTab === "mint" && showCustomTokenInput
+       ? {
+           value: customTokenAddress,
+           onChange: setCustomTokenAddress,
+           show: true,
+           disabled: isProcessing,
+         }
+       : undefined
+   }
+   betweenTokenAndAmount={
+     <>
+       {activeTab === "mint" && needsSwap && (
+         <div className="text-xs text-[#1E4775]/70">
+           {isLoadingSwapQuote
+             ? "Fetching swap quote..."
+             : swapQuoteError
+               ? "Swap quote unavailable (try a smaller amount or a different token)."
+               : swapQuote
+                 ? `Will swap to ${isWstETHMarket ? "ETH" : "USDC"} before minting.`
+                 : null}
+         </div>
+       )}
+       <ModalNotificationsPanel
+         expanded={showNotifications}
+         onToggle={() => setShowNotifications((prev) => !prev)}
+         badge={
            <span className="flex items-center gap-1 bg-blue-100 px-2 py-0.5 text-xs text-blue-600">
              <Bell className="h-3 w-3" />
-             {notificationCount}
+             {activeTab === "mint" ? 2 : 1}
            </span>
-         );
-       })()}
-       {showNotifications ? (
-         <ChevronUp className="h-4 w-4 text-[#1E4775]/70" />
-       ) : (
-         <ChevronDown className="h-4 w-4 text-[#1E4775]/70" />
-       )}
-     </span>
-   </button>
-   {showNotifications && (
-     <div className="space-y-2">
-       {activeTab === "mint" && (
-         <>
-           <InfoCallout
-             tone="success"
-             icon={<RefreshCw className="w-4 h-4 flex-shrink-0 mt-0.5 text-green-600" />}
-             title="Tip"
-           >
-             You can deposit any ERC20 token! Non-collateral tokens will be automatically swapped via Velora.
-           </InfoCallout>
+         }
+       >
+         {activeTab === "mint" && (
+           <>
+             <InfoCallout
+               tone="success"
+               icon={<RefreshCw className="w-4 h-4 flex-shrink-0 mt-0.5 text-green-600" />}
+               title="Tip"
+             >
+               You can deposit any ERC20 token! Non-collateral tokens will be automatically swapped via Velora.
+             </InfoCallout>
+             <InfoCallout
+               title="Info"
+               icon={<Info className="w-4 h-4 flex-shrink-0 mt-0.5 text-blue-600" />}
+             >
+               For large deposits, Harbor recommends using wstETH or fxSAVE instead of the built-in swap and zaps.
+             </InfoCallout>
+           </>
+         )}
+         {activeTab === "redeem" && (
            <InfoCallout
              title="Info"
              icon={<Info className="w-4 h-4 flex-shrink-0 mt-0.5 text-blue-600" />}
            >
-             For large deposits, Harbor recommends using wstETH or fxSAVE instead of the built-in swap and zaps.
+             You will receive collateral (e.g. {collateralSymbol}) in your wallet.
            </InfoCallout>
-         </>
-       )}
-       {activeTab === "redeem" && (
-         <InfoCallout
-           title="Info"
-           icon={<Info className="w-4 h-4 flex-shrink-0 mt-0.5 text-blue-600" />}
-         >
-           You will receive collateral (e.g. {collateralSymbol}) in your wallet.
-         </InfoCallout>
-       )}
-     </div>
-   )}
- </div>
-
- <div className="flex justify-between items-center mb-1.5 mt-1">
- <label className="text-sm font-semibold text-[#1E4775]">
- {activeTab ==="mint" ?"Enter Amount" :"Enter Amount"}
-</label>
- <span className="text-sm text-[#1E4775]/70">
- Balance:{" "}
- {activeTab === "mint"
-   ? formatBalance(
-       currentBalance,
-       selectedDepositAsset || collateralSymbol,
-       4,
-       selectedDepositAsset?.toLowerCase() === "usdc"
-         ? 6
-         : isNativeETH
-         ? 18
-         : selectedTokenDecimals ?? 18
-     )
-   : formatBalance(currentBalance, leveragedTokenSymbol, 4, 18)}
- </span>
- </div>
- <div className="relative">
- <input
- type="text"
- value={amount}
- onChange={(e) => {
- const value = e.target.value;
- if (value ==="" || /^\d*\.?\d*$/.test(value)) {
- // Cap at balance if value exceeds it
- if (value && currentBalance) {
- try {
-         const decimals =
-           activeTab === "redeem"
-             ? 18
-             : isNativeETH
-             ? 18
-             : selectedDepositAsset?.toLowerCase() === "usdc"
-             ? 6
-             : selectedTokenDecimals ?? 18;
-         const parsed =
-           activeTab === "mint" && isNativeETH
-             ? parseEther(value)
-             : parseUnits(value, decimals);
-         if (parsed > currentBalance) {
-           const formatted =
-             activeTab === "mint" && isNativeETH
-               ? formatEther(currentBalance)
-               : formatUnits(currentBalance, decimals);
-           setAmount(formatted);
- setError(null);
- return;
- }
- } catch {
- // Allow partial input (e.g., trailing decimal)
- }
- }
- setAmount(value);
- setError(null);
- }
- }}
- placeholder="0.0"
- disabled={isProcessing}
- className={`w-full h-14 px-4 pr-24 bg-white text-[#1E4775] border-2 ${
- parsedAmount &&
- currentBalance &&
- parsedAmount > currentBalance
- ?"border-red-500 focus:ring-red-200"
- :"border-[#1E4775]/30 focus:ring-[#1E4775]/20"
- } focus:border-[#1E4775] focus:ring-2 focus:outline-none transition-all text-xl font-mono disabled:opacity-50`}
- />
- <button
- onClick={() => {
-   if (currentBalance) {
-     const decimals =
+         )}
+       </ModalNotificationsPanel>
+     </>
+   }
+   amount={{
+     value: amount,
+     setValue: setAmount,
+     balance: currentBalance,
+     decimals:
        activeTab === "redeem"
          ? 18
          : isNativeETH
-         ? 18
-         : selectedDepositAsset?.toLowerCase() === "usdc"
-         ? 6
-         : selectedTokenDecimals ?? 18;
-     const formatted =
-       activeTab === "mint" && isNativeETH
-         ? formatEther(currentBalance)
-         : formatUnits(currentBalance, decimals);
-     setAmount(formatted);
-     setError(null);
-   }
- }}
- disabled={isProcessing || !currentBalance}
- className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1.5 text-sm bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white transition-colors disabled:bg-gray-300 disabled:text-gray-500 font-medium"
- >
- MAX
- </button>
- </div>
- </div>
-
- {/* Permit toggle - mint only (match Anchor: text-xs, same switch size) */}
- {activeTab === "mint" && (
+           ? 18
+           : selectedDepositAsset?.toLowerCase() === "usdc"
+             ? 6
+             : selectedTokenDecimals ?? 18,
+     label: "Enter Amount",
+     disabled: isProcessing,
+     error,
+     isNativeETH: activeTab === "mint" && isNativeETH,
+     capAtBalance: true,
+     onErrorClear: () => setError(null),
+     balanceSymbol:
+       activeTab === "mint"
+         ? selectedDepositAsset || collateralSymbol
+         : leveragedTokenSymbol,
+     balanceMaxDecimals: 4,
+   }}
+   afterAmount={
+     activeTab === "mint" ? (
    <div className="flex items-center justify-between border border-[#1E4775]/20 bg-[#17395F]/5 px-3 py-2 text-xs">
      <div className="text-[#1E4775]/80">
        Use permit (gasless approval) for this deposit
@@ -1968,7 +1781,9 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
        </label>
      )}
    </div>
- )}
+ ) : null
+   }
+ />
 
  {/* Transaction Overview - Anchor-style spacing below */}
  <div className="space-y-2 mt-2">
@@ -2093,7 +1908,7 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
  )}
 
  {/* Processing Indicator - only show if progress modal is not open */}
- {isProcessing && !progressModal && (
+ {isProcessing && !progress.isOpen && (
  <div className="text-center py-4">
  <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[#1E4775]"></div>
  <p className="mt-2 text-sm text-[#1E4775]">
@@ -2140,28 +1955,8 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
  )}
  </div>
  )}
- </div>
- </div>
-
- {/* Transaction Progress Modal */}
- {progressModal && (
- <TransactionProgressModal
- isOpen={progressModal.isOpen}
- onClose={() => {
- setProgressModal(null);
- // Reset form if all steps completed
- if (progressModal.steps.every((s) => s.status ==="completed")) {
- setAmount("");
- setStep("input");
- }
- }}
- title={progressModal.title}
- steps={progressModal.steps}
- currentStepIndex={progressModal.currentStepIndex}
- progressVariant="horizontal"
- errorMessage={progressModal.steps.find(s => s.status === "error")?.error}
- />
+ </DepositModalShell>
  )}
- </div>
+ </>
  );
 };

@@ -28,27 +28,27 @@ import {
  TransactionStep,
 } from "./TransactionProgressModal";
 import { formatTokenAmount, formatBalance, formatUSD } from "@/utils/formatters";
+import { formatRpcErrorMessage } from "@/utils/formatRpcErrorMessage";
 import { amountToUSD } from "@/utils/tokenPriceToUSD";
 import { useWrappedCollateralPrice } from "@/hooks/useWrappedCollateralPrice";
 import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
 import { useDefiLlamaSwap, getDefiLlamaSwapTx } from "@/hooks/useDefiLlamaSwap";
 import { useUserTokens, getTokenAddress, getTokenInfo, useTokenDecimals } from "@/hooks/useUserTokens";
 import { useAnyTokenDeposit } from "@/hooks/useAnyTokenDeposit";
-import { TokenSelectorDropdown } from "@/components/TokenSelectorDropdown";
-import { usePermitOrApproval } from "@/hooks/usePermitOrApproval";
-import { usePermitCapability } from "@/hooks/usePermitCapability";
+import { TokenAmountSection } from "@/components/TokenAmountSection";
+import { usePermitFlow } from "@/hooks/usePermitFlow";
+import { useTransactionProgress } from "@/hooks/useTransactionProgress";
 import SimpleTooltip from "@/components/SimpleTooltip";
 import { InfoCallout } from "@/components/InfoCallout";
+import { ModalNotificationsPanel } from "@/components/ModalNotificationsPanel";
+import { DepositModalShell } from "@/components/DepositModalShell";
 import {
   AlertOctagon,
   Banknote,
   Bell,
-  ChevronDown,
-  ChevronUp,
   Info,
   RefreshCw,
 } from "lucide-react";
-import { AmountInputBlock } from "@/components/AmountInputBlock";
 
 interface GenesisDepositModalProps {
  isOpen: boolean;
@@ -103,22 +103,21 @@ export const GenesisDepositModal = ({
  const [slippageTolerance, setSlippageTolerance] = useState<number>(0.5); // Default 0.5% slippage
  const [slippageInputValue, setSlippageInputValue] = useState<string>("0.5"); // String for input to allow typing "0"
  const [showSlippageInput, setShowSlippageInput] = useState(false);
-  const [permitEnabled, setPermitEnabled] = useState(true);
-  const { isPermitCapable, disableReason } = usePermitCapability({
+  const {
+    isPermitCapable,
+    disableReason,
+    handlePermitOrApproval,
+    permitEnabled,
+    setPermitEnabled,
+  } = usePermitFlow({
     enabled: isOpen && !!address,
     depositAssetSymbol: selectedAsset,
   });
-  useEffect(() => {
-    if (!isPermitCapable) setPermitEnabled(false);
-    else setPermitEnabled(true); // Default on when allowed
-  }, [isPermitCapable]);
   const [showNotifications, setShowNotifications] = useState(false);
  const [step, setStep] = useState<ModalStep>("input");
  const [error, setError] = useState<string | null>(null);
  const [txHash, setTxHash] = useState<string | null>(null);
- const [progressModalOpen, setProgressModalOpen] = useState(false);
- const [progressSteps, setProgressSteps] = useState<TransactionStep[]>([]);
- const [currentStepIndex, setCurrentStepIndex] = useState(0);
+ const progress = useTransactionProgress();
  const [successfulDepositAmount, setSuccessfulDepositAmount] =
  useState<string>("");
  const [successfulDepositToken, setSuccessfulDepositToken] =
@@ -158,9 +157,7 @@ useEffect(() => {
   setTxHash(null);
   setSuccessfulDepositAmount("");
   setSuccessfulDepositToken("");
-  setProgressModalOpen(false);
-  setProgressSteps([]);
-  setCurrentStepIndex(0);
+  progress.reset();
   
   // Clear any stored progress
   if (progressStorageKey && typeof window !== "undefined") {
@@ -177,8 +174,8 @@ useEffect(() => {
   }
   const payload = {
     step,
-    progressSteps,
-    currentStepIndex,
+    progressSteps: progress.steps,
+    currentStepIndex: progress.currentStepIndex,
     txHash,
     successfulDepositAmount,
   };
@@ -186,8 +183,8 @@ useEffect(() => {
 }, [
   progressStorageKey,
   step,
-  progressSteps,
-  currentStepIndex,
+  progress.steps,
+  progress.currentStepIndex,
   txHash,
   successfulDepositAmount,
 ]);
@@ -627,7 +624,6 @@ const allowanceTarget = (useETHZap || useUSDCZap) && genesisZapAddress ? genesis
  // Contract write hooks
  const { writeContractAsync, isPending: isWritePending } = useWriteContract();
  const { sendTransactionAsync } = useSendTransaction();
- const { handlePermitOrApproval } = usePermitOrApproval();
 
   // Use the balance from the asset balance map or custom token balance
   const balance = selectedAssetBalance;
@@ -786,7 +782,7 @@ const newTotalDepositActual: bigint = userCurrentDeposit + actualCollateralDepos
  const handleClose = () => {
  const isProcessing = step === "approving" || step === "depositing";
  if (isProcessing) {
-   setProgressModalOpen(false);
+   progress.close();
    onClose();
    return;
  }
@@ -802,9 +798,7 @@ const newTotalDepositActual: bigint = userCurrentDeposit + actualCollateralDepos
  setError(null);
  setTxHash(null);
  setSuccessfulDepositAmount("");
- setProgressModalOpen(false);
- setProgressSteps([]);
- setCurrentStepIndex(0);
+ progress.reset();
  onClose();
  };
 
@@ -817,35 +811,6 @@ https://www.harborfinance.io/`;
  const encodedMessage = encodeURIComponent(shareMessage);
  const xUrl = `https://x.com/intent/tweet?text=${encodedMessage}`;
  window.open(xUrl,"_blank","noopener,noreferrer");
- };
-
- const handleMaxClick = () => {
- if (balance) {
-   // Use token decimals dynamically
-   setAmount(formatUnits(balance, selectedTokenDecimals));
- }
- };
-
- const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
- const value = e.target.value;
- if (value ==="" || /^\d*\.?\d*$/.test(value)) {
- // Cap at balance if value exceeds it
- if (value && balance) {
- try {
-       // Use token decimals dynamically
-       const parsed = parseUnits(value, selectedTokenDecimals);
- if (parsed > balance) {
-         setAmount(formatUnits(balance, selectedTokenDecimals));
- setError(null);
- return;
- }
- } catch {
- // Allow partial input (e.g., trailing decimal)
- }
- }
- setAmount(value);
- setError(null);
- }
  };
 
  const validateAmount = (): boolean => {
@@ -894,14 +859,14 @@ const buildProgressSteps = (params: {
   if (params.includeApproval) {
     steps.push({
       id: "approve",
-      label: `Approve ${selectedAsset}`,
+      label: `Approve ${selectedAsset} for deposit`,
       status: "pending",
     });
   }
   if (params.includePermit) {
     steps.push({
       id: "permit",
-      label: `Permit ${selectedAsset}`,
+      label: `Sign permit for ${selectedAsset} (no gas)`,
       status: "pending",
     });
   }
@@ -926,7 +891,7 @@ const ensureFallbackApprovalSteps = (shouldIncludeApproval: boolean) => {
     const fallbackSteps: TransactionStep[] = [
       {
         id: "approve",
-        label: `Approve ${selectedAsset}`,
+        label: `Approve ${selectedAsset} for deposit`,
         status: "pending",
       },
       {
@@ -935,8 +900,7 @@ const ensureFallbackApprovalSteps = (shouldIncludeApproval: boolean) => {
         status: "pending",
       },
     ];
-    setProgressSteps(fallbackSteps);
-    setCurrentStepIndex(0);
+    progress.setSteps(fallbackSteps);
   }
 };
 
@@ -949,7 +913,7 @@ const runApprovalStep = async (params: {
   const stepId = params.stepId ?? "approve";
 
   setStep("approving");
-  setProgressSteps((prev) =>
+  progress.setSteps((prev) =>
     prev.map((s) =>
       s.id === stepId ? { ...s, status: "in_progress" } : s
     )
@@ -969,7 +933,7 @@ const runApprovalStep = async (params: {
   await new Promise((resolve) => setTimeout(resolve, 1000));
   await refetchAllowance();
 
-  setProgressSteps((prev) =>
+  progress.setSteps((prev) =>
     prev.map((s) =>
       s.id === stepId
         ? { ...s, status: "completed", txHash: approveHash }
@@ -1013,12 +977,10 @@ if (includePermitAttempt) {
     includePermit: true,
   });
   permitSteps = steps;
-  setProgressSteps(steps);
   const permitIndex = steps.findIndex((s) => s.id === "permit");
-  setCurrentStepIndex(permitIndex >= 0 ? permitIndex : 0);
-  setProgressModalOpen(true);
+  progress.open(steps, "", permitIndex >= 0 ? permitIndex : 0);
   flushSync(() => {}); // Force React to paint before first action
-  setProgressSteps((prev) =>
+  progress.setSteps((prev) =>
     prev.map((s) =>
       s.id === "permit" ? { ...s, status: "in_progress" } : s
     )
@@ -1045,14 +1007,14 @@ const includePermit = !needsSwap && usePermit;
 
 if (includePermitAttempt) {
   if (usePermit) {
-    setProgressSteps((prev) =>
+    progress.setSteps((prev) =>
       prev.map((s) =>
         s.id === "permit" ? { ...s, status: "completed" } : s
       )
     );
     const depositIndex = (permitSteps || []).findIndex((s) => s.id === "deposit");
     if (depositIndex >= 0) {
-      setCurrentStepIndex(depositIndex);
+      progress.setCurrentStepIndex(depositIndex);
     }
   } else {
     const fallbackSteps = buildProgressSteps({
@@ -1061,8 +1023,7 @@ if (includePermitAttempt) {
       needsSwapApproval,
       includePermit: false,
     });
-    setProgressSteps(fallbackSteps);
-    setCurrentStepIndex(0);
+    progress.setSteps(fallbackSteps);
   }
 } else {
   const steps = buildProgressSteps({
@@ -1071,9 +1032,7 @@ if (includePermitAttempt) {
     needsSwapApproval,
     includePermit,
   });
-  setProgressSteps(steps);
-  setCurrentStepIndex(0);
-  setProgressModalOpen(true);
+  progress.open(steps);
   flushSync(() => {}); // Force React to paint before first action
 }
 
@@ -1141,12 +1100,12 @@ if (includePermitAttempt) {
      // (ParaSwap API checks allowance when building transaction and will fail if insufficient)
      if (!isNativeETH) {
        setStep("approving");
-       setProgressSteps((prev) =>
+       progress.setSteps((prev) =>
          prev.map((s) =>
            s.id === "approveSwap" ? { ...s, status: "in_progress" } : s
          )
        );
-      setCurrentStepIndex(progressSteps.findIndex((s) => s.id === "approveSwap"));
+      progress.goToStep("approveSwap");
       setError(null);
       setTxHash(null);
       
@@ -1175,13 +1134,13 @@ if (includePermitAttempt) {
          await publicClient?.getTransactionCount({ address });
          await new Promise((resolve) => setTimeout(resolve, 2000));
          
-         setProgressSteps((prev) =>
+         progress.setSteps((prev) =>
            prev.map((s) =>
              s.id === "approveSwap" ? { ...s, status: "completed", txHash: approveHash } : s
            )
          );
        } else {
-         setProgressSteps((prev) =>
+         progress.setSteps((prev) =>
            prev.map((s) =>
              s.id === "approveSwap" ? { ...s, status: "completed" } : s
            )
@@ -1222,12 +1181,12 @@ if (includePermitAttempt) {
      
      // Step 4: Execute the swap
      setStep("depositing"); // Use depositing step for swap
-     setProgressSteps((prev) =>
+     progress.setSteps((prev) =>
        prev.map((s) =>
          s.id === "swap" ? { ...s, status: "in_progress" } : s
        )
      );
-     setCurrentStepIndex(progressSteps.findIndex((s) => s.id === "swap"));
+     progress.goToStep("swap");
      setError(null);
      setTxHash(null);
      
@@ -1281,7 +1240,7 @@ if (includePermitAttempt) {
       (window as any).__swapEthAmount = received;
     }
     
-    setProgressSteps((prev) =>
+    progress.setSteps((prev) =>
       prev.map((s) =>
         s.id === "swap" ? { ...s, status: "completed", txHash: swapHash } : s
       )
@@ -1290,9 +1249,9 @@ if (includePermitAttempt) {
     // For fxSAVE markets (USDC swap), we need to approve USDC for the zapper
     // For wstETH markets (ETH swap), no approval needed - ETH is native
     if (isFxSAVEMarket) {
-      setCurrentStepIndex(progressSteps.findIndex((s) => s.id === "approveUSDC"));
+      progress.goToStep("approveUSDC");
       setStep("approving");
-      setProgressSteps((prev) =>
+      progress.setSteps((prev) =>
         prev.map((s) =>
           s.id === "approveUSDC" ? { ...s, status: "in_progress" } : s
         )
@@ -1326,7 +1285,7 @@ if (includePermitAttempt) {
         throw new Error(`Approval failed: allowance ${formatUnits(allowanceAfterApproval as bigint, 6)} < required ${formatUnits(received, 6)}`);
       }
       
-      setProgressSteps((prev) =>
+      progress.setSteps((prev) =>
         prev.map((s) =>
           s.id === "approveUSDC"
             ? { ...s, status: "completed", txHash: approveHash }
@@ -1337,17 +1296,12 @@ if (includePermitAttempt) {
       // For ETH swaps, no approval needed - go straight to deposit
     }
     
-    setCurrentStepIndex(progressSteps.findIndex((s) => s.id === "deposit"));
+    progress.goToStep("deposit");
     return true;
   } catch (err: any) {
     setError(err.message || "Swap failed. Please try again.");
     setStep("error");
-    setProgressModalOpen(false);
-    setProgressSteps((prev) =>
-      prev.map((s) =>
-        s.id === "swap" ? { ...s, status: "error", error: err.message } : s
-      )
-    );
+    progress.reset();
     return false;
   }
  };
@@ -1366,16 +1320,16 @@ if (!isNativeETH && needsApproval && !needsSwap && !usePermit) {
    amount: amountBigInt,
  });
  approvalCompleted = true;
- setCurrentStepIndex(progressSteps.findIndex((s) => s.id ==="deposit"));
+ progress.goToStep("deposit");
  }
 
  setStep("depositing");
- setProgressSteps((prev) =>
+ progress.setSteps((prev) =>
  prev.map((s) =>
  s.id ==="deposit" ? { ...s, status:"in_progress" } : s
  )
  );
-setCurrentStepIndex(progressSteps.findIndex((s) => s.id ==="deposit"));
+progress.goToStep("deposit");
 setError(null);
 setTxHash(null);
 
@@ -1452,7 +1406,7 @@ setTxHash(null);
             amount: amountBigInt,
           });
           approvalCompleted = true;
-          setCurrentStepIndex(1);
+          progress.goToStep("deposit");
         }
 
         depositHash = await writeContractAsync({
@@ -1503,7 +1457,7 @@ setTxHash(null);
             amount: amountBigInt,
           });
           approvalCompleted = true;
-          setCurrentStepIndex(1);
+          progress.goToStep("deposit");
         }
 
         // IMPORTANT: Pass USDC in native 6 decimals (usdcAmount), not scaled
@@ -1550,7 +1504,7 @@ setTxHash(null);
             amount: amountBigInt,
           });
           approvalCompleted = true;
-          setCurrentStepIndex(1);
+          progress.goToStep("deposit");
         }
 
         depositHash = await writeContractAsync({
@@ -1607,15 +1561,15 @@ if (isNativeETH || isStETH || isUSDC || isFXUSD) {
 // This ensures the success message shows what the user actually deposited (e.g., "1 fxSAVE")
 // rather than the converted collateral amount (e.g., "0.93 wstETH")
 setSuccessfulDepositAmount(amount); // Use original amount, not converted amount
-setSuccessfulDepositToken(selectedAsset); // Use the token user selected
- setProgressSteps((prev) =>
+ setSuccessfulDepositToken(selectedAsset); // Use the token user selected
+ progress.setSteps((prev) =>
  prev.map((s) =>
  s.id ==="deposit"
  ? { ...s, status:"completed", txHash: depositHash }
  : s
  )
  );
- setCurrentStepIndex(progressSteps.findIndex((s) => s.id ==="deposit"));
+ progress.goToStep("deposit");
  if (onSuccess) {
  await onSuccess();
  }
@@ -1658,9 +1612,7 @@ setSuccessfulDepositToken(selectedAsset); // Use the token user selected
    errorMessage ="Transaction was rejected. Please try again.";
    setError(errorMessage);
    setStep("error");
-   setProgressModalOpen(false);
-   setProgressSteps([]);
-   setCurrentStepIndex(0);
+   progress.reset();
    // Clear stored progress on rejection
    if (progressStorageKey && typeof window !== "undefined") {
      window.localStorage.removeItem(progressStorageKey);
@@ -1669,57 +1621,12 @@ setSuccessfulDepositToken(selectedAsset); // Use the token user selected
  }
 
  // Check for RPC errors by examining error properties
- const errObj = err as any;
- if (
- errObj &&
- (errObj.code !== undefined ||
- errObj.name?.includes("Rpc") ||
- errObj.name?.includes("RPC"))
- ) {
- const rpcCode = errObj.code;
-
- // Map common RPC error codes to user-friendly messages
- if (rpcCode !== undefined) {
- switch (rpcCode) {
- case -32000:
- errorMessage =
-"Transaction execution failed. Please check your balance and try again.";
- break;
- case -32002:
- errorMessage =
-"Transaction already pending. Please wait for the previous transaction to complete.";
- break;
- case -32003:
- errorMessage ="Transaction was rejected by the network.";
- break;
- case -32602:
- errorMessage ="Invalid transaction parameters.";
- break;
- case -32603:
- errorMessage ="Internal RPC error. Please try again later.";
- break;
- default:
- // Try to extract meaningful error message
- if (errObj.shortMessage) {
- errorMessage = errObj.shortMessage;
- } else if (errObj.message) {
- errorMessage = errObj.message;
- } else {
- errorMessage = `RPC error (code: ${rpcCode}). Please try again.`;
- }
- }
- } else if (errObj.shortMessage) {
- errorMessage = errObj.shortMessage;
- } else if (errObj.message) {
- errorMessage = errObj.message;
- } else {
- errorMessage ="RPC error occurred. Please try again.";
- }
+ const rpcMessage = formatRpcErrorMessage(err);
+ if (rpcMessage) {
+ errorMessage = rpcMessage;
  setError(errorMessage);
  setStep("error");
- setProgressModalOpen(false);
- setProgressSteps([]);
- setCurrentStepIndex(0);
+ progress.reset();
  // Clear stored progress on error
  if (progressStorageKey && typeof window !== "undefined") {
    window.localStorage.removeItem(progressStorageKey);
@@ -1808,14 +1715,7 @@ setSuccessfulDepositToken(selectedAsset); // Use the token user selected
 
  setError(errorMessage);
  setStep("error");
- setProgressModalOpen(false);
- setProgressSteps((prev) =>
- prev.map((s, idx) =>
- idx === currentStepIndex
- ? { ...s, status:"error", error: errorMessage }
- : s
- )
- );
+ progress.reset();
  // Clear stored progress on error
  if (progressStorageKey && typeof window !== "undefined") {
    window.localStorage.removeItem(progressStorageKey);
@@ -1977,7 +1877,7 @@ const successFmt = formatTokenAmount(
  );
  };
 
- if (!isOpen && !progressModalOpen) return null;
+ if (!isOpen && !progress.isOpen) return null;
 
   // Deposit form content
   const formContent = (
@@ -1994,123 +1894,50 @@ const successFmt = formatTokenAmount(
  </div>
  )}
 
- {/* Deposit Asset Selection */}
- <div className="space-y-2">
-<label className="text-sm font-semibold text-[#1E4775]">
-Select Deposit Token
-</label>
- {(() => {
-   const filteredUserTokens = userTokens.filter(token => 
-     !acceptedAssets.some(a => a.symbol.toUpperCase() === token.symbol.toUpperCase())
-   );
-   
-   const tokenGroups = [
-     ...(acceptedAssets.length > 0 ? [{
-       label: "Supported Assets",
-       tokens: acceptedAssets.map((asset) => ({
-         symbol: asset.symbol,
-         name: asset.name,
-       })),
-     }] : []),
-     ...(filteredUserTokens.length > 0 ? [{
-       label: "Other Tokens (via Swap)",
-       tokens: filteredUserTokens.map((token) => ({
-         symbol: token.symbol,
-         name: token.name,
-         isUserToken: true,
-       })),
-     }] : []),
-   ];
-   
-   return (
-     <TokenSelectorDropdown
-       value={selectedAsset === "custom" ? "" : selectedAsset}
-       onChange={(newValue) => {
-         setShowCustomTokenInput(false);
-         setSelectedAsset(newValue);
-         setCustomTokenAddress("");
-       }}
-       options={tokenGroups}
-       disabled={
-         step === "approving" ||
-         step === "depositing" ||
-         genesisEnded
-       }
-       placeholder="Select Deposit Asset"
-       showCustomOption={true}
-       onCustomOptionClick={() => {
-         setShowCustomTokenInput(true);
-         setSelectedAsset("custom");
-       }}
-     />
-   );
- })()}
- 
- {/* Custom token address input */}
- {showCustomTokenInput && (
-   <div className="space-y-2">
-     <input
-       type="text"
-       value={customTokenAddress}
-       onChange={(e) => {
-         const addr = e.target.value.trim();
-         setCustomTokenAddress(addr);
-         if (addr && addr.startsWith("0x") && addr.length === 42) {
-           // Valid address, update selectedAssetAddress will be handled by getAssetAddress
-         }
-       }}
-       placeholder="0x..."
-       className="w-full h-10 px-3 bg-white text-[#1E4775] border border-[#1E4775]/30 focus:border-[#1E4775] focus:ring-2 focus:ring-[#1E4775]/20 focus:outline-none transition-all text-sm font-mono"
-       disabled={
-         step ==="approving" ||
-         step ==="depositing" ||
-         genesisEnded
-       }
-     />
-     {customTokenAddress && (!customTokenAddress.startsWith("0x") || customTokenAddress.length !== 42) && (
-       <div className="text-xs text-red-600">
-         Invalid address format. Must start with 0x and be 42 characters.
-       </div>
-     )}
-     {isCustomToken && customTokenSymbol && (
-       <div className="text-xs text-green-600">
-         ✓ Token found: {customTokenName || customTokenSymbol} ({customTokenSymbol})
-       </div>
-     )}
-   </div>
- )}
- 
- <div className="mt-2 space-y-2">
-   <button
-     type="button"
-     onClick={() => setShowNotifications((prev) => !prev)}
-     className="flex w-full items-center justify-between text-sm font-semibold text-[#1E4775]"
-     aria-expanded={showNotifications}
-   >
-     <span>Notifications</span>
-     <span className="flex items-center gap-2">
-       {!showNotifications && (() => {
-         // Determine highest risk color: orange (high) > blue (middle) > green (low)
-         let highestRiskColor = null;
-         if (isNonCollateralAsset) {
-           highestRiskColor = "orange"; // Pearl orange = high risk
-         } else {
-           highestRiskColor = "blue"; // Blue = middle risk
-         }
-         // Green (low risk) is only shown if no other notifications exist
-         
+ <TokenAmountSection
+   tokenSelector={{
+     value: selectedAsset === "custom" ? "" : selectedAsset,
+     onChange: (newValue) => {
+       setShowCustomTokenInput(false);
+       setSelectedAsset(newValue);
+       setCustomTokenAddress("");
+     },
+     options: [
+       ...(acceptedAssets.length > 0 ? [{
+         label: "Supported Assets",
+         tokens: acceptedAssets.map((a) => ({ symbol: a.symbol, name: a.name })),
+       }] : []),
+       ...(userTokens.filter(t => !acceptedAssets.some(a => a.symbol.toUpperCase() === t.symbol.toUpperCase())).length > 0 ? [{
+         label: "Other Tokens (via Swap)",
+         tokens: userTokens.filter(t => !acceptedAssets.some(a => a.symbol.toUpperCase() === t.symbol.toUpperCase())).map((t) => ({ symbol: t.symbol, name: t.name, isUserToken: true })),
+       }] : []),
+     ],
+     label: "Select Deposit Token",
+     placeholder: "Select Deposit Asset",
+     disabled: step === "approving" || step === "depositing" || genesisEnded,
+     showCustomOption: true,
+     onCustomOptionClick: () => {
+       setShowCustomTokenInput(true);
+       setSelectedAsset("custom");
+     },
+   }}
+   customToken={showCustomTokenInput ? {
+     value: customTokenAddress,
+     onChange: setCustomTokenAddress,
+     show: true,
+     disabled: step === "approving" || step === "depositing" || genesisEnded,
+     validTokenInfo: isCustomToken && customTokenSymbol ? `${customTokenName || customTokenSymbol} (${customTokenSymbol})` : null,
+   } : undefined}
+   betweenTokenAndAmount={
+     <ModalNotificationsPanel
+       expanded={showNotifications}
+       onToggle={() => setShowNotifications((prev) => !prev)}
+       className="mt-2 space-y-2"
+       badge={(() => {
+         const highestRiskColor = isNonCollateralAsset ? "orange" : "blue";
          const notificationCount = (!needsSwap ? 1 : 0) + 1 + (isNonCollateralAsset ? 1 : 0);
-         const badgeBgColor = highestRiskColor === "orange" 
-           ? "bg-[#FF8A7A]/20" 
-           : highestRiskColor === "blue"
-           ? "bg-blue-100"
-           : "bg-green-100";
-         const badgeTextColor = highestRiskColor === "orange"
-           ? "text-[#FF8A7A]"
-           : highestRiskColor === "blue"
-           ? "text-blue-600"
-           : "text-green-600";
-         
+         const badgeBgColor = highestRiskColor === "orange" ? "bg-[#FF8A7A]/20" : "bg-blue-100";
+         const badgeTextColor = highestRiskColor === "orange" ? "text-[#FF8A7A]" : "text-blue-600";
          return (
            <span className={`flex items-center gap-1 ${badgeBgColor} px-2 py-0.5 text-xs ${badgeTextColor}`}>
              <Bell className="h-3 w-3" />
@@ -2118,91 +1945,56 @@ Select Deposit Token
            </span>
          );
        })()}
-       {showNotifications ? (
-         <ChevronUp className="h-4 w-4 text-[#1E4775]/70" />
-       ) : (
-         <ChevronDown className="h-4 w-4 text-[#1E4775]/70" />
-       )}
-     </span>
-   </button>
-   {showNotifications && (
-     <div className="space-y-2">
+     >
        {!needsSwap && (
-         <InfoCallout
-           tone="success"
-           title="Tip:"
-           icon={
-             <RefreshCw className="w-4 h-4 flex-shrink-0 mt-0.5 text-green-600" />
-           }
-         >
-           You can deposit any ERC20 token! Non-collateral tokens will be
-           automatically swapped via Velora.
+         <InfoCallout tone="success" title="Tip:" icon={<RefreshCw className="w-4 h-4 flex-shrink-0 mt-0.5 text-green-600" />}>
+           You can deposit any ERC20 token! Non-collateral tokens will be automatically swapped via Velora.
          </InfoCallout>
        )}
-
-       <InfoCallout
-         title="Info:"
-         icon={<Info className="w-4 h-4 flex-shrink-0 mt-0.5 text-blue-600" />}
-       >
-         For large deposits, Harbor recommends using wstETH or fxSAVE instead of
-         the built-in swap and zaps.
+       <InfoCallout title="Info:" icon={<Info className="w-4 h-4 flex-shrink-0 mt-0.5 text-blue-600" />}>
+         For large deposits, Harbor recommends using wstETH or fxSAVE instead of the built-in swap and zaps.
        </InfoCallout>
-
        {isNonCollateralAsset && (
-         <InfoCallout
-           tone="pearl"
-           icon={
-             <Banknote className="w-4 h-4 flex-shrink-0 mt-0.5 text-[#D57A3D]" />
-           }
-         >
-          <span className="font-semibold">Deposit:</span> Your tokens will be
-          converted to {wrappedCollateralSymbol || collateralSymbol} on
-          deposit. Withdrawals will be in{" "}
-          {wrappedCollateralSymbol || collateralSymbol} only.
+         <InfoCallout tone="pearl" icon={<Banknote className="w-4 h-4 flex-shrink-0 mt-0.5 text-[#D57A3D]" />}>
+           <span className="font-semibold">Deposit:</span> Your tokens will be converted to {wrappedCollateralSymbol || collateralSymbol} on deposit. Withdrawals will be in {wrappedCollateralSymbol || collateralSymbol} only.
          </InfoCallout>
        )}
-     </div>
-   )}
- </div>
- </div>
-
- {/* Amount Input */}
-<AmountInputBlock
-  label="Enter Amount"
-   value={amount}
-   onChange={handleAmountChange}
-   onMax={handleMaxClick}
-   disabled={step === "approving" || step === "depositing" || genesisEnded}
-   error={error}
-   balanceContent={
-     <>
-       Balance:{" "}
-       {isNativeETH ? (
-         isEthBalanceError ? (
-           <span className="text-red-500">Error loading balance</span>
-         ) : isEthBalanceLoading ? (
+     </ModalNotificationsPanel>
+   }
+   amount={{
+     value: amount,
+     setValue: setAmount,
+     balance: selectedAssetBalance,
+     decimals: selectedTokenDecimals,
+     label: "Enter Amount",
+     disabled: step === "approving" || step === "depositing" || genesisEnded,
+     error,
+     isNativeETH,
+     capAtBalance: true,
+     onErrorClear: () => setError(null),
+     balanceContent: (
+       <>
+         Balance:{" "}
+         {isNativeETH ? (
+           isEthBalanceError ? (
+             <span className="text-red-500">Error loading balance</span>
+           ) : isEthBalanceLoading ? (
+             <span className="text-[#1E4775]/50">Loading...</span>
+           ) : (
+             formatBalance(balance, selectedAsset, 4, selectedTokenDecimals)
+           )
+         ) : balancesError ? (
+           <span className="text-red-500" title={balancesError.message}>Error loading balance</span>
+         ) : !mounted ? (
            <span className="text-[#1E4775]/50">Loading...</span>
          ) : (
            formatBalance(balance, selectedAsset, 4, selectedTokenDecimals)
-         )
-       ) : balancesError ? (
-         <span className="text-red-500" title={balancesError.message}>
-           Error loading balance
-         </span>
-       ) : !mounted ? (
-         <span className="text-[#1E4775]/50">Loading...</span>
-       ) : (
-         formatBalance(balance, selectedAsset, 4, selectedTokenDecimals)
-       )}
-     </>
-   }
-   inputClassName={`w-full px-3 pr-20 py-2 bg-white text-[#1E4775] border ${
-     error ? "border-red-500" : "border-[#1E4775]/30"
-   } focus:border-[#1E4775] focus:ring-2 focus:ring-[#1E4775]/20 focus:outline-none transition-all text-lg font-mono`}
- />
-
- {/* Permit toggle (direct USDC/FXUSD/stETH only) */}
- {showPermitToggle && (
+         )}
+       </>
+     ),
+   }}
+   afterAmount={
+     showPermitToggle ? (
    <div className="flex items-center justify-between border border-[#1E4775]/20 bg-[#17395F]/5 px-3 py-2 text-xs">
      <div className="text-[#1E4775]/80">
        Use permit (gasless approval) for this deposit
@@ -2244,7 +2036,9 @@ Select Deposit Token
        </label>
      )}
   </div>
-)}
+     ) : null
+   }
+ />
 
 {/* Transaction Overview */}
 <div className="space-y-2">
@@ -2542,20 +2336,20 @@ Select Deposit Token
   if (embedded) {
     return (
       <>
-        {progressModalOpen && (
+        {progress.isOpen && (
           <TransactionProgressModal
-            isOpen={progressModalOpen}
+            isOpen={progress.isOpen}
             onClose={handleClose}
             title="Processing Deposit"
-            steps={progressSteps}
-            currentStepIndex={currentStepIndex}
+            steps={progress.steps}
+            currentStepIndex={progress.currentStepIndex}
             progressVariant="horizontal"
             canCancel={false}
             errorMessage={error || undefined}
             renderSuccessContent={renderSuccessContent}
           />
         )}
-        {!progressModalOpen && formContent}
+        {!progress.isOpen && formContent}
       </>
     );
   }
@@ -2563,13 +2357,13 @@ Select Deposit Token
   // Full standalone modal
   return (
     <>
-      {progressModalOpen && (
+      {progress.isOpen && (
         <TransactionProgressModal
-          isOpen={progressModalOpen}
+          isOpen={progress.isOpen}
           onClose={handleClose}
           title="Processing Deposit"
-          steps={progressSteps}
-          currentStepIndex={currentStepIndex}
+          steps={progress.steps}
+          currentStepIndex={progress.currentStepIndex}
           progressVariant="horizontal"
           canCancel={false}
           errorMessage={error || undefined}
@@ -2577,59 +2371,34 @@ Select Deposit Token
         />
       )}
 
-      {!progressModalOpen && isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-            onClick={handleClose}
-          />
-
-          <div
-            className="relative bg-white shadow-2xl w-full max-w-md mx-2 sm:mx-4 animate-in fade-in-0 scale-in-95 duration-200 rounded-none max-h-[95vh] sm:max-h-[90vh] overflow-y-auto"
-            style={{ borderRadius: 0 }}
-          >
-            <div className="flex items-center justify-between p-3 sm:p-4 lg:p-6 border-b border-[#1E4775]/20">
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <h2 className="text-lg sm:text-2xl font-bold text-[#1E4775]">
-                    Deposit in Maiden Voyage
-                  </h2>
-                  <div className="flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] font-semibold uppercase tracking-wide">
-                    <ArrowPathIcon className="w-3 h-3" />
-                    <span>Any Token</span>
-                  </div>
+      {!progress.isOpen && isOpen && (
+        <DepositModalShell
+          isOpen={isOpen}
+          onClose={handleClose}
+          header={
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-1">
+                <h2 className="text-lg sm:text-2xl font-bold text-[#1E4775]">
+                  Deposit in Maiden Voyage
+                </h2>
+                <div className="flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] font-semibold uppercase tracking-wide">
+                  <ArrowPathIcon className="w-3 h-3" />
+                  <span>Any Token</span>
                 </div>
-                <p className="text-xs text-[#1E4775]/70">
-                  Deposit any ERC20 token via Velora integration
-                </p>
               </div>
-              <button
-                onClick={handleClose}
-                className="text-[#1E4775]/50 hover:text-[#1E4775] transition-colors"
-                disabled={step === "approving" || step === "depositing" || isWritePending}
-              >
-                <svg
-                  className="w-5 h-5 sm:w-6 sm:h-6"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
+              <p className="text-xs text-[#1E4775]/70">
+                Deposit any ERC20 token via Velora integration
+              </p>
             </div>
-
-            <div className="p-3 sm:p-4 lg:p-6">
-              {formContent}
- </div>
- </div>
- </div>
- )}
+          }
+          closeDisabled={step === "approving" || step === "depositing" || isWritePending}
+          panelClassName="rounded-none max-h-[95vh] sm:max-h-[90vh] overflow-y-auto"
+          headerClassName="p-3 sm:p-4 lg:p-6"
+          contentClassName="p-3 sm:p-4 lg:p-6"
+        >
+          {formContent}
+        </DepositModalShell>
+      )}
  </>
  );
 };
