@@ -533,8 +533,8 @@ const productionMarkets: Markets = {
       rebalancePoolLeveraged: "0x0000000000000000000000000000000000000000", // placeholder
       collateralPrice: "0x14816ff286f2eA46AB48c3275401Fd4b1ef817B5", // fxUSD-SILVER price oracle (for wrappedRate)
       genesisZap: "0xd19d801a0427Dd91bcbAfB0FcA783a3231a749c8", // GenesisUSDCZap_v4 for SILVER (deployed 2026-02-11)
-      peggedTokenZap: "0xf0ff6D8d707D81d87caf2faa2447253f283f8873" as `0x${string}`, // MinterUSDCZap_v3 for SILVER/fxUSD (same as GOLD)
-      leveragedTokenZap: "0xf0ff6D8d707D81d87caf2faa2447253f283f8873" as `0x${string}`, // MinterUSDCZap_v3 for SILVER/fxUSD (same as GOLD)
+      peggedTokenZap: "0xfbB196c2C053F8a9E9d3e611a40D12aE450A4baB" as `0x${string}`, // MinterUSDCZap_v3 for SILVER/fxUSD
+      leveragedTokenZap: "0xfbB196c2C053F8a9E9d3e611a40D12aE450A4baB" as `0x${string}`, // MinterUSDCZap_v3 for SILVER/fxUSD (same contract)
     },
     genesis: {
       startDate: "2026-02-01T00:00:00Z", // Placeholder - Coming Soon
@@ -576,8 +576,8 @@ const productionMarkets: Markets = {
       rebalancePoolLeveraged: "0x0000000000000000000000000000000000000000", // placeholder
       collateralPrice: "0x7223E17bD4527AcbE44644300eA0F09A4AeBC995", // stETH-SILVER price oracle (for wrappedRate)
       genesisZap: "0xC128Cbf15920455569e1926C982567d2bE21AC50", // GenesisETHZap_v4 for SILVER (deployed 2026-02-11)
-      peggedTokenZap: "0x3ce5e801A89eA0AC36fC29C12562695d4E6F0fec" as `0x${string}`, // MinterETHZap_v3 for SILVER/stETH (same as GOLD)
-      leveragedTokenZap: "0x3ce5e801A89eA0AC36fC29C12562695d4E6F0fec" as `0x${string}`, // MinterETHZap_v3 for SILVER/stETH (same as GOLD)
+      peggedTokenZap: "0x68fafa07471e02d33706681d9e3e2160c1901b4c" as `0x${string}`, // MinterETHZap_v3 for SILVER/stETH
+      leveragedTokenZap: "0x68fafa07471e02d33706681d9e3e2160c1901b4c" as `0x${string}`, // MinterETHZap_v3 for SILVER/stETH (same contract)
     },
     genesis: {
       startDate: "2026-02-01T00:00:00Z", // Placeholder - Coming Soon

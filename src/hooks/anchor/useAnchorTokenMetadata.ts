@@ -30,7 +30,11 @@ type TokenMeta = {
  * @param anchorMarkets - Array of [marketId, market] tuples
  * @returns Token metadata map and loading state
  */
-export function useAnchorTokenMetadata(anchorMarkets: Array<[string, any]>) {
+export function useAnchorTokenMetadata(
+  anchorMarkets: Array<[string, any]>,
+  options?: { enabled?: boolean }
+) {
+  const enabledOverride = options?.enabled ?? true;
   // Step 1: Fetch token addresses from minter contracts
   const tokenAddressContracts = useMemo(() => {
     const contracts: any[] = [];
@@ -67,7 +71,7 @@ export function useAnchorTokenMetadata(anchorMarkets: Array<[string, any]>) {
   const { data: tokenAddressReads } = useContractReads({
     contracts: tokenAddressContracts.contracts,
     query: {
-      enabled: tokenAddressContracts.contracts.length > 0,
+      enabled: enabledOverride && tokenAddressContracts.contracts.length > 0,
       staleTime: 300_000, // 5 minutes
     },
   });

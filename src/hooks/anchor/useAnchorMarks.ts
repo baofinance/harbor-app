@@ -1,5 +1,6 @@
 import { useMemo, useState, useEffect } from "react";
 import { useAnchorLedgerMarks } from "@/hooks/useAnchorLedgerMarks";
+import { DEBUG_ANCHOR } from "@/config/debug";
 import { useGenesisMarks } from "@/hooks/useGenesisMarks";
 import { useAccount } from "wagmi";
 
@@ -107,7 +108,8 @@ export function useAnchorMarks(
       lastUpdatedNum: parseInt(userTotalMarks.lastUpdated || "0"),
     } : null;
     
-    console.log("[useAnchorMarks] Total marks calculation:", {
+    if (DEBUG_ANCHOR) {
+      console.log("[useAnchorMarks] Total marks calculation:", {
       haBalancesLength: haBalances?.length || 0,
       poolDepositsLength: poolDeposits?.length || 0,
       marksFromHa,
@@ -131,6 +133,7 @@ export function useAnchorMarks(
       })),
       totalMarks,
     });
+    }
 
     setTotalAnchorMarksState(totalMarks);
   }, [haBalances, poolDeposits, userTotalMarks]);
@@ -150,12 +153,11 @@ export function useAnchorMarks(
         
         // Check if user has a position but subgraph balanceUSD is suspiciously low
         // This indicates the subgraph doesn't have proper prices for this token
-        if (balanceNum > 0 && balanceUSD < 0.01) {
+        if (balanceNum > 0 && balanceUSD < 0.01 && DEBUG_ANCHOR) {
           console.warn(`[useAnchorMarks] Subgraph data issue: User has ${balanceNum} tokens but balanceUSD is only $${balanceUSD}. Subgraph may not have proper prices for token ${balance.tokenAddress}`);
         }
         
-        // Debug: Log subgraph balanceUSD for comparison with frontend
-        if (balanceUSD > 0) {
+        if (balanceUSD > 0 && DEBUG_ANCHOR) {
           console.log(`[useAnchorMarks] Subgraph balanceUSD for token ${balance.tokenAddress}: $${balanceUSD.toFixed(4)} (balance: ${balanceNum})`);
           perDayFromHaBalances += balanceUSD;
         }
@@ -169,8 +171,7 @@ export function useAnchorMarks(
         const balanceUSD = parseFloat(deposit.balanceUSD || "0");
         const balanceNum = parseFloat(deposit.balance || "0");
         
-        // Check if user has a deposit but subgraph balanceUSD is suspiciously low
-        if (balanceNum > 0 && balanceUSD < 0.01) {
+        if (balanceNum > 0 && balanceUSD < 0.01 && DEBUG_ANCHOR) {
           console.warn(`[useAnchorMarks] Subgraph data issue: User has ${balanceNum} deposit but balanceUSD is only $${balanceUSD}. Subgraph may not have proper prices for pool ${deposit.poolAddress}`);
         }
         
@@ -182,8 +183,8 @@ export function useAnchorMarks(
       totalPerDay += perDayFromPoolDeposits;
     }
 
-    // Debug logging for marks per day calculation
-    console.log("[useAnchorMarks] Marks per day calculation:", {
+    if (DEBUG_ANCHOR) {
+      console.log("[useAnchorMarks] Marks per day calculation:", {
       totalMarks,
       totalPerDay,
       haBalancesLength: haBalances?.length || 0,
@@ -206,6 +207,7 @@ export function useAnchorMarks(
         marksPerDay: d.marksPerDay,
       })),
     });
+    }
 
     return {
       totalAnchorMarks: totalMarks,

@@ -111,7 +111,7 @@ export function useWithdrawalRequests(poolAddresses: `0x${string}`[]) {
         Array.isArray(query.state.data) &&
         query.state.data.length > 0
       ) {
-        return 5000; // Refetch every 5 seconds (reduced from 1s)
+        return 15_000; // 15s - withdrawal windows don't change minute-to-minute
       }
       return false; // Don't refetch if no requests
     },

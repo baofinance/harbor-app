@@ -12,8 +12,10 @@ import { POLLING_INTERVALS } from "@/config/polling";
  */
 export function useAnchorUserDeposits(
   anchorMarkets: Array<[string, any]>,
-  useAnvil: boolean = false
+  useAnvil: boolean = false,
+  options?: { enabled?: boolean }
 ) {
+  const enabledOverride = options?.enabled ?? true;
   const { address } = useAccount();
 
   // Create contracts for user deposit reads
@@ -51,7 +53,7 @@ export function useAnchorUserDeposits(
   const wagmiUserDepositReads = useContractReads({
     contracts: userDepositContractArray,
     query: {
-      enabled: anchorMarkets.length > 0 && !!address && !useAnvil,
+      enabled: enabledOverride && anchorMarkets.length > 0 && !!address && !useAnvil,
       retry: 1,
       retryOnMount: false,
       staleTime: 30_000, // 30 seconds - consider data fresh for 30s to prevent unnecessary refetches
@@ -63,7 +65,7 @@ export function useAnchorUserDeposits(
   const anvilUserDepositReads = useContractReads({
     contracts: userDepositContractArray,
     query: {
-      enabled: anchorMarkets.length > 0 && !!address && useAnvil,
+      enabled: enabledOverride && anchorMarkets.length > 0 && !!address && useAnvil,
       refetchInterval: POLLING_INTERVALS.FAST,
       staleTime: 10_000, // 10 seconds for anvil (shorter since we're polling)
       gcTime: 300_000, // 5 minutes - keep in cache

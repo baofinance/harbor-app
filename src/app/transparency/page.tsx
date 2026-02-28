@@ -39,6 +39,7 @@ import { useMultipleVolatilityProtection } from "@/hooks/useVolatilityProtection
 import { useReadContract, useAccount } from "wagmi";
 import { minterABI } from "@/abis/minter";
 import Image from "next/image";
+import { getLogoPath } from "@/lib/logos";
 import { useAllStabilityPoolRewards } from "@/hooks/useAllStabilityPoolRewards";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
 
@@ -482,6 +483,8 @@ function MarketCard({
  const tokenPrices = tokenPricesByMarket[market.marketId];
 
   const marketCfg = (marketsConfig as any)?.[market.marketId];
+  const peggedTokenSymbol = marketCfg?.peggedToken?.symbol || "haETH";
+  const leveragedTokenSymbol = marketCfg?.leveragedToken?.symbol || "hsFXUSD-ETH";
   const collateralHeldSymbol: string =
     marketCfg?.collateral?.symbol || marketCfg?.collateral?.underlyingSymbol || "";
 
@@ -805,23 +808,13 @@ function MarketCard({
  Anchor Supply
  </div>
  <div className="flex items-center justify-center gap-1">
- {market.marketName?.toLowerCase().includes("btc") ? (
  <Image
- src="/icons/haBTC.png"
- alt="haBTC"
+ src={getLogoPath(peggedTokenSymbol)}
+ alt={peggedTokenSymbol}
  width={16}
  height={16}
  className="flex-shrink-0"
  />
- ) : (
- <Image
- src="/icons/haETH.png"
- alt="haETH"
- width={16}
- height={16}
- className="flex-shrink-0"
- />
- )}
  <div className="text-[#1E4775] font-mono font-semibold text-[10px]">
  {formatTokenBalanceMax2Decimals(market.peggedTokenBalance)}
  </div>
@@ -832,60 +825,13 @@ function MarketCard({
  Sail Supply
  </div>
  <div className="flex items-center justify-center gap-1">
- {(() => {
-   // Determine sail token icon based on market type
-   const marketIdLower = market.marketId.toLowerCase();
-   const isBtcMarket = marketIdLower.includes("btc");
-   const collateralLower = collateralHeldSymbol.toLowerCase();
-   
-   if (isBtcMarket) {
-     // BTC markets
-     if (collateralLower.includes("fxusd") || collateralLower.includes("fxsave")) {
-       return (
-         <Image
-           src="/icons/hsUSDBTC.png"
-           alt="hsUSDBTC"
-           width={16}
-           height={16}
-           className="flex-shrink-0"
-         />
-       );
-     } else if (collateralLower.includes("steth") || collateralLower.includes("wsteth")) {
-       return (
-         <Image
-           src="/icons/hsETHBTC.png"
-           alt="hsETHBTC"
-           width={16}
-           height={16}
-           className="flex-shrink-0"
-         />
-       );
-     }
-   } else {
-     // ETH markets
-     if (collateralLower.includes("fxusd") || collateralLower.includes("fxsave")) {
-       return (
-         <Image
-           src="/icons/hsUSDETH.png"
-           alt="hsUSDETH"
-           width={16}
-           height={16}
-           className="flex-shrink-0"
-         />
-       );
-     }
-   }
-   // Fallback to default
-   return (
-     <Image
-       src="/icons/hsUSDETH.png"
-       alt="hsToken"
-       width={16}
-       height={16}
-       className="flex-shrink-0"
-     />
-   );
- })()}
+ <Image
+   src={getLogoPath(leveragedTokenSymbol)}
+   alt={leveragedTokenSymbol}
+   width={16}
+   height={16}
+   className="flex-shrink-0"
+ />
  <div className="text-[#1E4775] font-mono font-semibold text-[10px]">
  {formatTokenBalanceMax2Decimals(market.leveragedTokenBalance)}
  </div>
@@ -996,7 +942,7 @@ function MarketCard({
  <div className="bg-[#1E4775]/5 p-1.5 text-center">
  <div className="text-[#1E4775]/60 text-[9px]">Anchor Token TVL</div>
  <div className="text-[#1E4775] font-mono font-semibold text-[10px]">
- {formatCompactUSD((Number(pool.tvl) / 1e18) * poolTokenPriceUSD)} ({formatTokenBalanceMax2Decimals(pool.tvl)} {market.marketName?.toLowerCase().includes("btc") ? "haBTC" : "haETH"})
+ {formatCompactUSD((Number(pool.tvl) / 1e18) * poolTokenPriceUSD)} ({formatTokenBalanceMax2Decimals(pool.tvl)} {peggedTokenSymbol})
  </div>
  </div>
  <div className="bg-[#1E4775]/5 p-1.5 text-center">
@@ -1081,7 +1027,7 @@ function MarketCard({
       const anchorSupplyNum = Number(anchorSupply) / 1e18;
       const poolTokenPriceUSD = tokenPrices?.peggedPriceUSD ?? 0;
       const totalTVL = anchorSupplyNum * poolTokenPriceUSD;
-      const tokenSymbol = market.marketName?.toLowerCase().includes("btc") ? "haBTC" : "haETH";
+      const tokenSymbol = peggedTokenSymbol;
 
       const categories = [
         { name: "Not Deposited", value: anchorNotDeposited, color: "#1E4775" },
@@ -1089,14 +1035,9 @@ function MarketCard({
         { name: "Sail SP", value: sailPoolTVL, color: "#FF8A7A" },
       ];
 
-      // Calculate percentages for bar (based on Anchor Supply only, no Sail Supply)
       const notDepositedNum = Number(anchorNotDeposited) / 1e18;
       const collateralPoolNum = Number(collateralPoolTVL) / 1e18;
       const sailPoolNum = Number(sailPoolTVL) / 1e18;
-
-      const notDepositedPercent = anchorSupplyNum > 0 ? (notDepositedNum / anchorSupplyNum) * 100 : 0;
-      const collateralPoolPercent = anchorSupplyNum > 0 ? (collateralPoolNum / anchorSupplyNum) * 100 : 0;
-      const sailPoolPercent = anchorSupplyNum > 0 ? (sailPoolNum / anchorSupplyNum) * 100 : 0;
 
       // Yield Generating Collateral: Full TVL (minter's total collateral) converted to wrapped collateral token
       // Use the minter's total collateral TVL (totalTVLUSD) and wrapped collateral amount
@@ -1133,7 +1074,8 @@ function MarketCard({
           {categories.map((category) => {
             const valueNum = Number(category.value) / 1e18;
             const usdValue = valueNum * poolTokenPriceUSD;
-            const percent = anchorSupplyNum > 0 ? ((valueNum / anchorSupplyNum) * 100).toFixed(1) : "0.0";
+            const totalForCat = notDepositedNum + collateralPoolNum + sailPoolNum;
+            const percent = totalForCat > 0 ? ((valueNum / totalForCat) * 100).toFixed(1) : "0.0";
 
             return (
               <div key={category.name} className="bg-[#1E4775]/5 p-1.5 text-center">
@@ -1170,11 +1112,13 @@ function MarketCard({
     const collateralPoolNum = Number(collateralPoolTVL) / 1e18;
     const sailPoolNum = Number(sailPoolTVL) / 1e18;
 
-    const notDepositedPercent = anchorSupplyNum > 0 ? (notDepositedNum / anchorSupplyNum) * 100 : 0;
-    const collateralPoolPercent = anchorSupplyNum > 0 ? (collateralPoolNum / anchorSupplyNum) * 100 : 0;
-    const sailPoolPercent = anchorSupplyNum > 0 ? (sailPoolNum / anchorSupplyNum) * 100 : 0;
+      // Normalize percentages so bar sums to 100% (pool TVLs can exceed anchor supply in edge cases)
+      const totalForBar = notDepositedNum + collateralPoolNum + sailPoolNum;
+      const notDepositedPercent = totalForBar > 0 ? (notDepositedNum / totalForBar) * 100 : 0;
+      const collateralPoolPercent = totalForBar > 0 ? (collateralPoolNum / totalForBar) * 100 : 0;
+      const sailPoolPercent = totalForBar > 0 ? (sailPoolNum / totalForBar) * 100 : 0;
 
-    return (
+      return (
       <div className="flex items-center gap-2">
        <div className="w-12"></div>
        <div className="flex-1 space-y-1">

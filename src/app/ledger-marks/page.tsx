@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAccount, usePublicClient } from "wagmi";
 import Image from "next/image";
@@ -313,6 +313,7 @@ export default function LedgerMarksLeaderboard() {
  const [currentChainTime, setCurrentChainTime] = useState<number | undefined>(
  undefined
  );
+ const lastChainSyncRef = useRef<{ chainTime: number; systemTime: number } | null>(null);
  const [leaderboardTab, setLeaderboardTab] = useState<
   "campaigns" | "anchor-sail"
  >("campaigns");
@@ -344,28 +345,46 @@ const campaignTabs = [
  const activeCampaign =
   campaignTabs.find((tab) => tab.id === campaignTab) ?? campaignTabs[0];
 
- // Get current blockchain timestamp (updates every second)
+ // Sync chain time every 12s; tick locally every 1s (no RPC)
  useEffect(() => {
- const updateTime = async () => {
+ const syncChainTime = async () => {
+ const now = Math.floor(Date.now() / 1000);
  if (publicClient) {
  try {
- const block = await publicClient.getBlock({ blockTag:"latest" });
+ const block = await publicClient.getBlock({ blockTag: "latest" });
  if (block.timestamp) {
- setCurrentChainTime(Number(block.timestamp));
+ const chainTime = Number(block.timestamp);
+ lastChainSyncRef.current = { chainTime, systemTime: now };
+ setCurrentChainTime(chainTime);
+ return;
  }
- } catch (error) {
- // Fallback to undefined, which will use system time
- setCurrentChainTime(undefined);
+ } catch {
+   // fall through
  }
+ lastChainSyncRef.current = { chainTime: now, systemTime: now };
+ setCurrentChainTime(now);
+ } else {
+ lastChainSyncRef.current = { chainTime: now, systemTime: now };
+ setCurrentChainTime(now);
  }
  };
 
- // Initial update
- updateTime();
+ syncChainTime();
+ const syncInterval = setInterval(syncChainTime, 12_000);
 
- // Update every second
- const interval = setInterval(updateTime, 1000);
- return () => clearInterval(interval);
+ const tick = () => {
+ const sync = lastChainSyncRef.current;
+ if (sync) {
+ const elapsed = Math.floor(Date.now() / 1000) - sync.systemTime;
+ setCurrentChainTime(sync.chainTime + elapsed);
+ }
+ };
+ const tickInterval = setInterval(tick, 1000);
+
+ return () => {
+ clearInterval(syncInterval);
+ clearInterval(tickInterval);
+ };
  }, [publicClient]);
 
 // Get anchor ledger marks (includes sail token balances)

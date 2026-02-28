@@ -12,7 +12,6 @@ import {
   ERC20_ABI,
   CHAINLINK_ORACLE_ABI,
 } from "@/abis/shared";
-import { POLLING_INTERVALS } from "@/config/polling";
 
 // Constants
 const STAKING_APR = 0.035; // 3.5% APR for stETH staking rewards
@@ -121,7 +120,7 @@ export function useProjectedAPR(
         !!stabilityPoolManagerAddress &&
         !!collateralPoolAddress &&
         !!leveragedPoolAddress,
-      refetchInterval: POLLING_INTERVALS.SLOW, // Refresh every 30 seconds
+      refetchInterval: 60_000, // 60s - APRs don't change minute-to-minute
     }
   );
 
@@ -142,7 +141,7 @@ export function useProjectedAPR(
         },
       ],
       enabled: !!wstETHAddress && !!minterAddress,
-      refetchInterval: POLLING_INTERVALS.SLOW,
+      refetchInterval: 60_000, // 60s - APRs don't change minute-to-minute
     });
 
   // Get reward data from collateral pool (for finishAt and queued)
@@ -175,7 +174,7 @@ export function useProjectedAPR(
         !!wrappedCollateralToken &&
         !!collateralPoolAddress &&
         !!leveragedPoolAddress,
-      refetchInterval: POLLING_INTERVALS.SLOW,
+      refetchInterval: 60_000, // 60s - APRs don't change minute-to-minute
     });
 
   const result = useMemo(() => {
@@ -578,7 +577,7 @@ export function useUserProjectedAPR(
       ],
       enabled:
         !!userAddress && !!collateralPoolAddress && !!leveragedPoolAddress,
-      refetchInterval: POLLING_INTERVALS.SLOW,
+      refetchInterval: 60_000, // 60s - APRs don't change minute-to-minute
     });
 
   return useMemo(() => {

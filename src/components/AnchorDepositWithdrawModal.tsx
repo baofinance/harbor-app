@@ -4,16 +4,11 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from "react"
 import { flushSync } from "react-dom";
 import { parseEther, formatEther, parseUnits, formatUnits } from "viem";
 import {
-  formatNumber,
   formatTokenAmount18,
   formatUsd18,
 } from "@/utils/formatters";
 import { amountToUSD, getTokenPriceUSD } from "@/utils/tokenPriceToUSD";
-import {
-  CHAINLINK_FEEDS,
-  REWARD_TOKEN_ADDRESSES,
-  scaleChainlinkToUsdWei,
-} from "@/config/chainlink";
+import { REWARD_TOKEN_ADDRESSES } from "@/config/chainlink";
 import {
   useAccount,
   useBalance,
@@ -32,7 +27,6 @@ import {
   ERC20_PERMIT_ABI,
   GENESIS_ABI,
   STABILITY_POOL_ABI,
-  CHAINLINK_AGGREGATOR_ABI,
   MINTER_PEGGED_ABI,
 } from "@/abis";
 import { stabilityPoolABI } from "@/abis/stabilityPool";
@@ -42,9 +36,7 @@ import { MINTER_ETH_ZAP_V3_ABI } from "@/abis";
 import { MINTER_USDC_ZAP_V3_ABI } from "@/abis";
 import Image from "next/image";
 import SimpleTooltip from "@/components/SimpleTooltip";
-import InfoTooltip from "@/components/InfoTooltip";
 import { ModalNotificationsPanel } from "@/components/ModalNotificationsPanel";
-import { ArrowPathIcon } from "@heroicons/react/24/outline";
 import {
   Banknote,
   Bell,
@@ -57,6 +49,7 @@ import { useAnyTokenDeposit } from "@/hooks/useAnyTokenDeposit";
 import { getDefiLlamaSwapTx } from "@/hooks/useDefiLlamaSwap";
 import { useCollateralPrice } from "@/hooks/useCollateralPrice";
 import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
+import { usePegTargetPrices } from "@/hooks/usePegTargetPrices";
 import { usePermitFlow } from "@/hooks/usePermitFlow";
 import { useTransactionProgress } from "@/hooks/useTransactionProgress";
 import {
@@ -69,6 +62,9 @@ import { DepositModalShell } from "@/components/DepositModalShell";
 import { ProtocolBanner } from "@/components/ProtocolBanner";
 import { DepositModalTabHeader } from "@/components/DepositModalTabHeader";
 import { InfoCallout } from "@/components/InfoCallout";
+import { ErrorBanner } from "@/components/anchor/ErrorBanner";
+import { FeeDisplayRow } from "@/components/anchor/FeeDisplayRow";
+import { getRevertReason } from "@/utils/parseViemRevert";
 import {
   calculateDeadline,
   STETH_ZAP_PERMIT_ABI,
@@ -88,9 +84,6 @@ function debugTx(label: string, data?: unknown) {
   // eslint-disable-next-line no-console
   console.log(`[AnchorTx] ${label}`, data ?? "");
 }
-
-// ERC20_ABI from shared already includes symbol
-const ERC20_ABI_WITH_SYMBOL = ERC20_ABI;
 
 interface AnchorDepositWithdrawModalProps {
   isOpen: boolean;
@@ -203,6 +196,11 @@ export const AnchorDepositWithdrawModal = ({
   const isCorrectNetwork = effectiveChainId === mainnet.id;
   const shouldShowNetworkSwitch = !isCorrectNetwork && isConnected;
 
+  const handleTxError = useCallback((msg: string) => {
+    setError(msg);
+    setStep("error");
+  }, []);
+
   // Function to handle network switching (manual trigger from UI)
   const handleSwitchNetwork = async () => {
     try {
@@ -215,10 +213,9 @@ export const AnchorDepositWithdrawModal = ({
       }
     } catch (err) {
       console.error("[Network Switch] Error:", err);
-      setError(
+      handleTxError(
         "Failed to switch network. Please switch to Ethereum Mainnet manually in your wallet."
       );
-      setStep("error");
     }
   };
 
@@ -249,8 +246,7 @@ export const AnchorDepositWithdrawModal = ({
       if (process.env.NODE_ENV === "development") {
         console.warn("[Network] Auto switch rejected/failed:", err);
       }
-      setError("Please switch to Ethereum Mainnet to continue.");
-      setStep("error");
+      handleTxError("Please switch to Ethereum Mainnet to continue.");
       return false;
     }
   };
@@ -1011,10 +1007,10 @@ export const AnchorDepositWithdrawModal = ({
     enabled: isOpen && activeTab === "deposit",
   });
 
-  // Get BTC and ETH prices for fee conversion in BTC markets
-  const { price: btcPrice } = useCoinGeckoPrice("bitcoin", 120000);
-  const { price: ethPrice } = useCoinGeckoPrice("ethereum", 120000);
-  const { price: eurPrice } = useCoinGeckoPrice("stasis-euro", 120000);
+  const pegTargetPrices = usePegTargetPrices();
+  const btcPrice = pegTargetPrices.btcPrice ?? undefined;
+  const ethPrice = pegTargetPrices.ethPrice ?? undefined;
+  const eurPrice = pegTargetPrices.eurPrice ?? undefined;
   // Reward token USD prices (used for APR fallback in stability pool selector)
   const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving", 120000);
   const { price: wstETHPrice } = useCoinGeckoPrice("wrapped-steth", 120000);
@@ -2519,172 +2515,31 @@ export const AnchorDepositWithdrawModal = ({
     return (m as any)?.pegTarget?.toLowerCase?.() || "usd";
   }, [isDirectPeggedDeposit, marketForDepositAsset, selectedMarket]);
 
-  const needsBtcUsdFeed =
-    pegTargetForPrice === "btc" || pegTargetForPrice === "bitcoin";
-  const needsEthUsdFeed =
-    pegTargetForPrice === "eth" || pegTargetForPrice === "ethereum";
-  const needsEurUsdFeed =
-    pegTargetForPrice === "eur" || pegTargetForPrice === "euro";
-  const needsGoldUsdFeed =
-    pegTargetForPrice === "gold";
-  const needsSilverUsdFeed =
-    pegTargetForPrice === "silver";
-
-  const chainlinkPegTargetContracts = useMemo(() => {
-    const contracts: any[] = [];
-    if (needsBtcUsdFeed) {
-      contracts.push(
-        {
-          address: CHAINLINK_FEEDS.BTC_USD,
-          abi: CHAINLINK_AGGREGATOR_ABI,
-          functionName: "decimals",
-        },
-        {
-          address: CHAINLINK_FEEDS.BTC_USD,
-          abi: CHAINLINK_AGGREGATOR_ABI,
-          functionName: "latestRoundData",
-        }
-      );
-    }
-    if (needsEthUsdFeed) {
-      contracts.push(
-        {
-          address: CHAINLINK_FEEDS.ETH_USD,
-          abi: CHAINLINK_AGGREGATOR_ABI,
-          functionName: "decimals",
-        },
-        {
-          address: CHAINLINK_FEEDS.ETH_USD,
-          abi: CHAINLINK_AGGREGATOR_ABI,
-          functionName: "latestRoundData",
-        }
-      );
-    }
-    if (needsEurUsdFeed) {
-      contracts.push(
-        {
-          address: CHAINLINK_FEEDS.EUR_USD,
-          abi: CHAINLINK_AGGREGATOR_ABI,
-          functionName: "decimals",
-        },
-        {
-          address: CHAINLINK_FEEDS.EUR_USD,
-          abi: CHAINLINK_AGGREGATOR_ABI,
-          functionName: "latestRoundData",
-        }
-      );
-    }
-    if (needsGoldUsdFeed) {
-      contracts.push(
-        {
-          address: CHAINLINK_FEEDS.XAU_USD,
-          abi: CHAINLINK_AGGREGATOR_ABI,
-          functionName: "decimals",
-        },
-        {
-          address: CHAINLINK_FEEDS.XAU_USD,
-          abi: CHAINLINK_AGGREGATOR_ABI,
-          functionName: "latestRoundData",
-        }
-      );
-    }
-    if (needsSilverUsdFeed) {
-      contracts.push(
-        {
-          address: CHAINLINK_FEEDS.XAG_USD,
-          abi: CHAINLINK_AGGREGATOR_ABI,
-          functionName: "decimals",
-        },
-        {
-          address: CHAINLINK_FEEDS.XAG_USD,
-          abi: CHAINLINK_AGGREGATOR_ABI,
-          functionName: "latestRoundData",
-        }
-      );
-    }
-    return contracts;
-  }, [needsBtcUsdFeed, needsEthUsdFeed, needsEurUsdFeed, needsGoldUsdFeed, needsSilverUsdFeed]);
-
-  const { data: chainlinkPegTargetData } = useContractReads({
-    contracts: chainlinkPegTargetContracts,
-    query: {
-      enabled:
-        chainlinkPegTargetContracts.length > 0 &&
-        isOpen &&
-        (activeTab === "deposit" || activeTab === "withdraw"),
-      retry: 1,
-      allowFailure: true,
-    },
-  });
-
-  const { btcUsdWei, ethUsdWei, eurUsdWei, goldUsdWei, silverUsdWei } = useMemo(() => {
-    let idx = 0;
-    let btc = 0n;
-    let eth = 0n;
-    let eur = 0n;
-    let gold = 0n;
-    let silver = 0n;
-
-    const readPrice = () => {
-      const decRaw = chainlinkPegTargetData?.[idx]?.result as
-        | bigint
-        | number
-        | undefined;
-      const decimals =
-        typeof decRaw === "bigint"
-          ? Number(decRaw)
-          : typeof decRaw === "number"
-            ? decRaw
-            : undefined;
-      const round = chainlinkPegTargetData?.[idx + 1]?.result as
-        | readonly [bigint, bigint, bigint, bigint, bigint]
-        | undefined;
-      const answer = round?.[1];
-      idx += 2;
-      if (decimals === undefined || answer === undefined) return 0n;
-      return scaleChainlinkToUsdWei(answer, decimals);
-    };
-
-    if (needsBtcUsdFeed) btc = readPrice();
-    if (needsEthUsdFeed) eth = readPrice();
-    if (needsEurUsdFeed) eur = readPrice();
-    if (needsGoldUsdFeed) gold = readPrice();
-    if (needsSilverUsdFeed) silver = readPrice();
-
-    return { btcUsdWei: btc, ethUsdWei: eth, eurUsdWei: eur, goldUsdWei: gold, silverUsdWei: silver };
-  }, [chainlinkPegTargetData, needsBtcUsdFeed, needsEthUsdFeed, needsEurUsdFeed, needsGoldUsdFeed, needsSilverUsdFeed]);
-
   const pegTargetUsdWei = useMemo(() => {
     if (pegTargetForPrice === "btc" || pegTargetForPrice === "bitcoin") {
-      return btcPrice
-        ? parseUnits(btcPrice.toFixed(8), 18)
-        : btcUsdWei > 0n
-          ? btcUsdWei
-          : 0n;
+      return pegTargetPrices.btcPriceWei;
     }
     if (pegTargetForPrice === "eth" || pegTargetForPrice === "ethereum") {
-      return ethPrice
-        ? parseUnits(ethPrice.toFixed(8), 18)
-        : ethUsdWei > 0n
-          ? ethUsdWei
-          : 0n;
+      return pegTargetPrices.ethPriceWei;
     }
     if (pegTargetForPrice === "eur" || pegTargetForPrice === "euro") {
-      return eurUsdWei > 0n
-        ? eurUsdWei
-        : eurPrice
-          ? parseUnits(eurPrice.toFixed(6), 18)
-          : 0n;
+      return pegTargetPrices.eurPriceWei;
     }
     if (pegTargetForPrice === "gold") {
-      return goldUsdWei > 0n ? goldUsdWei : 0n;
+      return pegTargetPrices.goldPriceWei;
     }
     if (pegTargetForPrice === "silver") {
-      return silverUsdWei > 0n ? silverUsdWei : 0n;
+      return pegTargetPrices.silverPriceWei;
     }
-    // USD-pegged
-    return 10n ** 18n;
-  }, [pegTargetForPrice, btcPrice, ethPrice, eurPrice, btcUsdWei, ethUsdWei, eurUsdWei, goldUsdWei, silverUsdWei]);
+    return 10n ** 18n; // USD-pegged
+  }, [
+    pegTargetForPrice,
+    pegTargetPrices.btcPriceWei,
+    pegTargetPrices.ethPriceWei,
+    pegTargetPrices.eurPriceWei,
+    pegTargetPrices.goldPriceWei,
+    pegTargetPrices.silverPriceWei,
+  ]);
 
   const isValidMinterAddressForPrice =
     minterAddressForPrice &&
@@ -3021,7 +2876,7 @@ export const AnchorDepositWithdrawModal = ({
   const { data: rewardTokenSymbols } = useContractReads({
     contracts: rewardTokenAddresses.map((addr) => ({
       address: addr,
-      abi: ERC20_ABI_WITH_SYMBOL,
+      abi: ERC20_ABI,
       functionName: "symbol",
     })),
     query: {
@@ -5321,24 +5176,21 @@ export const AnchorDepositWithdrawModal = ({
 
     // Check if wallet is connected
     if (!isConnected) {
-      const errorMsg = "Please connect your wallet to continue.";
-      setError(errorMsg);
-      setStep("error");
       if (process.env.NODE_ENV === "development") {
         console.error("[handleMint] Wallet is not connected");
       }
+      handleTxError("Please connect your wallet to continue.");
       return;
     }
 
     // Check if writeContractAsync is available
     if (!writeContractAsync) {
-      const errorMsg =
-        "Wallet connection error. Please ensure your wallet is connected and try again.";
-      setError(errorMsg);
-      setStep("error");
       if (process.env.NODE_ENV === "development") {
         console.error("[handleMint] writeContractAsync is not available");
       }
+      handleTxError(
+        "Wallet connection error. Please ensure your wallet is connected and try again."
+      );
       return;
     }
 
@@ -5627,24 +5479,13 @@ export const AnchorDepositWithdrawModal = ({
               data: simErr?.data,
               causeData: simErr?.cause?.data,
             });
-            // Try to decode known custom errors (we add them to the ABI as we discover them)
             try {
-              if (simErr instanceof BaseError) {
-                const revertError = simErr.walk(
-                  (e) => e instanceof ContractFunctionRevertedError
+              const revert = getRevertReason(simErr);
+              if (revert?.errorName === "DepositAmountLessThanMinimum" && revert?.args?.length === 2) {
+                const minimum = revert.args[1] as bigint;
+                throw new Error(
+                  `Deposit amount too small. Minimum deposit is ${formatEther(minimum)} ${peggedTokenSymbol}.`
                 );
-                if (revertError instanceof ContractFunctionRevertedError) {
-                  const errorName = revertError.data?.errorName || "";
-                  const args = (revertError.data as any)?.args as
-                    | readonly unknown[]
-                    | undefined;
-                  if (errorName === "DepositAmountLessThanMinimum" && args?.length === 2) {
-                    const minimum = args[1] as bigint;
-                    throw new Error(
-                      `Deposit amount too small. Minimum deposit is ${formatEther(minimum)} ${peggedTokenSymbol}.`
-                    );
-                  }
-                }
               }
             } catch (decodedErr) {
               throw decodedErr;
@@ -8049,7 +7890,7 @@ export const AnchorDepositWithdrawModal = ({
                 try {
                   poolAssetSymbol = (await readClient?.readContract({
                     address: poolAssetToken,
-                    abi: ERC20_ABI_WITH_SYMBOL,
+                    abi: ERC20_ABI,
                     functionName: "symbol",
                   })) as string;
                 } catch {}
@@ -8094,27 +7935,13 @@ export const AnchorDepositWithdrawModal = ({
               });
             }
 
-            // Try to decode known custom errors (we add them to the ABI as we discover them)
             try {
-              if (simErr instanceof BaseError) {
-                const revertError = simErr.walk(
-                  (e) => e instanceof ContractFunctionRevertedError
+              const revert = getRevertReason(simErr);
+              if (revert?.errorName === "DepositAmountLessThanMinimum" && revert?.args?.length === 2) {
+                const minimum = revert.args[1] as bigint;
+                throw new Error(
+                  `Deposit amount too small. Minimum deposit is ${formatEther(minimum)} ${peggedTokenSymbol}.`
                 );
-                if (revertError instanceof ContractFunctionRevertedError) {
-                  const errorName = revertError.data?.errorName || "";
-                  const args = (revertError.data as any)?.args as
-                    | readonly unknown[]
-                    | undefined;
-                  if (
-                    errorName === "DepositAmountLessThanMinimum" &&
-                    args?.length === 2
-                  ) {
-                    const minimum = args[1] as bigint;
-                    throw new Error(
-                      `Deposit amount too small. Minimum deposit is ${formatEther(minimum)} ${peggedTokenSymbol}.`
-                    );
-                  }
-                }
               }
             } catch (decodedErr) {
               throw decodedErr;
@@ -8240,8 +8067,7 @@ export const AnchorDepositWithdrawModal = ({
       progress.close();
       setProgressConfig(defaultProgressConfig);
       setTxHashes({});
-      setError(errorMessage);
-      setStep("error");
+      handleTxError(errorMessage);
     }
   };
 
@@ -8250,17 +8076,14 @@ export const AnchorDepositWithdrawModal = ({
 
     // Check if wallet is connected
     if (!isConnected) {
-      setError("Please connect your wallet to continue.");
-      setStep("error");
+      handleTxError("Please connect your wallet to continue.");
       return;
     }
 
-    // Check if writeContractAsync is available
     if (!writeContractAsync) {
-      setError(
+      handleTxError(
         "Wallet connection error. Please ensure your wallet is connected and try again."
       );
-      setStep("error");
       return;
     }
 
@@ -8354,8 +8177,7 @@ export const AnchorDepositWithdrawModal = ({
           "Wallet connection error. Please ensure your wallet is connected and try again.";
       }
 
-      setError(errorMessage);
-      setStep("error");
+      handleTxError(errorMessage);
     }
   };
 
@@ -8395,12 +8217,11 @@ export const AnchorDepositWithdrawModal = ({
 
     // Check if writeContractAsync is available
     if (!writeContractAsync) {
-      const errorMsg =
-        "Wallet connection error. Please ensure your wallet is connected and try again.";
-      setError(errorMsg);
-      setStep("error");
       console.error(
         "[handleWithdrawExecution] writeContractAsync is not available"
+      );
+      handleTxError(
+        "Wallet connection error. Please ensure your wallet is connected and try again."
       );
       return;
     }
@@ -8990,14 +8811,11 @@ export const AnchorDepositWithdrawModal = ({
     // Redeem mode uses the withdraw-position input (wallet) rather than the shared `amount` field.
     const redeemAmount = redeemInputAmount;
     if (!redeemAmount || redeemAmount <= 0n) {
-      setError("Please enter a valid amount to redeem");
-      setStep("error");
+      handleTxError("Please enter a valid amount to redeem");
       return;
     }
-    // Redeeming requires the ha tokens to already be in-wallet.
     if (redeemAmount > peggedBalance) {
-      setError("Insufficient anchor token balance in wallet");
-      setStep("error");
+      handleTxError("Insufficient anchor token balance in wallet");
       return;
     }
 
@@ -9166,8 +8984,7 @@ export const AnchorDepositWithdrawModal = ({
       progress.close();
       setProgressConfig(defaultProgressConfig);
       setTxHashes({});
-      setError(errorMessage);
-      setStep("error");
+      handleTxError(errorMessage);
     }
   };
 
@@ -10000,35 +9817,21 @@ export const AnchorDepositWithdrawModal = ({
                               {feePercentage !== undefined && amount && parseFloat(amount) > 0 && (
                                 <>
                                   {expectedMintOutput && <div className="border-t border-[#1E4775]/20"></div>}
-                                  <div className="flex justify-between items-center text-xs">
-                                    <span className="text-[#1E4775]/70">
-                                      Mint fee:
-                                    </span>
-                                    <span
-                                      className={`font-bold font-mono ${
-                                        feePercentage > 2
-                                          ? "text-red-600"
-                                          : "text-[#1E4775]"
-                                      }`}
-                                    >
-                                      {(() => {
-                                        const inputAmount = parseFloat(amount);
-                                        const feeAmount = inputAmount * (feePercentage / 100);
-                                        const depositTokenSymbol = selectedDepositAsset || collateralSymbol;
-                                        const feeUSD = amountToUSD(feeAmount, depositTokenSymbol, {
-                                          ethPrice: ethPrice ?? 0,
-                                          wstETHPrice: wstETHPrice ?? 0,
-                                          fxSAVEPrice: fxSAVEPrice ?? 1.08,
-                                        });
-                                        return (
-                                          <>
-                                            {feePercentage.toFixed(2)}% - {feeAmount > 0 ? `${feeAmount.toFixed(6)} ${depositTokenSymbol}` : "..."} ({feeUSD > 0 ? `$${feeUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "..."})
-                                            {feePercentage > 2 && " ⚠️"}
-                                          </>
-                                        );
-                                      })()}
-                                    </span>
-                                  </div>
+                                  <FeeDisplayRow
+                                    label="Mint fee:"
+                                    feePercentage={feePercentage}
+                                    feeAmount={parseFloat(amount) * (feePercentage / 100)}
+                                    feeSymbol={selectedDepositAsset || collateralSymbol}
+                                    feeUSD={amountToUSD(
+                                      parseFloat(amount) * (feePercentage / 100),
+                                      selectedDepositAsset || collateralSymbol,
+                                      {
+                                        ethPrice: ethPrice ?? 0,
+                                        wstETHPrice: wstETHPrice ?? 0,
+                                        fxSAVEPrice: fxSAVEPrice ?? 1.08,
+                                      }
+                                    )}
+                                  />
                                 </>
                               )}
                             </div>
@@ -10071,12 +9874,7 @@ export const AnchorDepositWithdrawModal = ({
                         )}
 
                       {/* Error - beneath transaction overview */}
-                      {error && (
-                        <div className="p-3 bg-red-50 border border-red-500/30 text-red-600 text-sm text-center flex items-center justify-center gap-2">
-                          <AlertOctagon className="w-4 h-4 flex-shrink-0" aria-hidden />
-                          {error}
-                        </div>
-                      )}
+                      {error && <ErrorBanner message={error} />}
 
                       <button
                         onClick={() => {
@@ -10500,21 +10298,13 @@ export const AnchorDepositWithdrawModal = ({
                                 
                                 {/* Mint Fee */}
                                 {feePercentage !== undefined && (
-                                  <div className="flex justify-between items-center text-xs">
-                                    <span className="text-[#1E4775]/70">
-                                      Mint fee:
-                                    </span>
-                                    <span
-                                      className={`font-bold font-mono ${
-                                        feePercentage > 2
-                                          ? "text-red-600"
-                                          : "text-[#1E4775]"
-                                      }`}
-                                    >
-                                      {feePercentage.toFixed(2)}% - {feeAmountInDepositToken > 0 ? `${feeAmountInDepositToken.toFixed(6)} ${depositTokenSymbol}` : "..."} ({feeUSD > 0 ? `$${feeUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "..."})
-                                      {feePercentage > 2 && " ⚠️"}
-                                    </span>
-                                  </div>
+                                  <FeeDisplayRow
+                                    label="Mint fee:"
+                                    feePercentage={feePercentage}
+                                    feeAmount={feeAmountInDepositToken}
+                                    feeSymbol={depositTokenSymbol}
+                                    feeUSD={feeUSD}
+                                  />
                                 )}
                               </div>
                             );
@@ -10677,12 +10467,7 @@ export const AnchorDepositWithdrawModal = ({
                         )}
 
                         {/* Error - beneath transaction overview (match step 1; show when user cancels on Mint & Deposit) */}
-                        {error && (
-                          <div className="mt-3 p-3 bg-red-50 border border-red-500/30 text-red-600 text-sm text-center flex items-center justify-center gap-2">
-                            <AlertOctagon className="w-4 h-4 flex-shrink-0" aria-hidden />
-                            {error}
-                          </div>
-                        )}
+                        {error && <ErrorBanner message={error} className="mt-3" />}
 
                         <div className="flex gap-3">
                           {isProcessing ? (
@@ -12749,10 +12534,7 @@ export const AnchorDepositWithdrawModal = ({
 
                 {/* Error - beneath transaction overview (withdraw) */}
                 {activeTab === "withdraw" && error && (
-                  <div className="mt-3 p-3 bg-red-50 border border-red-500/30 text-red-600 text-sm text-center flex items-center justify-center gap-2">
-                    <AlertOctagon className="w-4 h-4 flex-shrink-0" aria-hidden />
-                    {error}
-                  </div>
+                  <ErrorBanner message={error} className="mt-3" />
                 )}
 
                 {/* Simple Mode Info - Show optimized selection */}
@@ -13093,10 +12875,7 @@ export const AnchorDepositWithdrawModal = ({
 
                 {/* Error - right column only for deposit; withdraw shows error beneath overview in main content */}
                 {activeTab !== "withdraw" && error && (
-                  <div className="p-3 bg-red-50 border border-red-500/30 text-red-600 text-sm text-center flex items-center justify-center gap-2">
-                    <AlertOctagon className="w-4 h-4 flex-shrink-0" aria-hidden />
-                    {error}
-                  </div>
+                  <ErrorBanner message={error} />
                 )}
 
                 {txHash && (

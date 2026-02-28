@@ -49,7 +49,7 @@ export function usePeggedTokenPrices(
   const { data, isLoading, error, refetch } = useContractReads({
     contracts,
     enabled: enabled && contracts.length > 0,
-    refetchInterval: 15000,
+    refetchInterval: 30_000,
   });
 
   const priceMap = useMemo(() => {

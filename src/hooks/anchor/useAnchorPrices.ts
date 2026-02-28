@@ -1,19 +1,13 @@
 import { useMemo } from "react";
 import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
-import { useContractRead } from "wagmi";
-import {
-  CHAINLINK_ORACLE_ABI,
-  WRAPPED_PRICE_ORACLE_ABI,
-} from "@/abis/shared";
-import { CHAINLINK_FEEDS } from "@/config/chainlink";
+import { usePegTargetPrices } from "@/hooks/usePegTargetPrices";
+import { DEBUG_ANCHOR } from "@/config/debug";
 import { calculatePriceOracleOffset } from "@/utils/anchor/calculateReadOffset";
 
-// Chainlink ETH/USD Oracle on Mainnet
-const CHAINLINK_ETH_USD_ORACLE = "0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419" as `0x${string}`;
-
 /**
- * Hook to calculate USD prices for pegged tokens and collateral
- * 
+ * Hook to calculate USD prices for pegged tokens and collateral.
+ * Uses central usePegTargetPrices for ETH, BTC, EUR, gold, silver.
+ *
  * @param anchorMarkets - Array of [marketId, market] tuples
  * @param reads - Contract read results
  * @param peggedPriceMap - Map of marketId -> peggedTokenPrice (from usePeggedTokenPrices)
@@ -24,81 +18,12 @@ export function useAnchorPrices(
   reads: any,
   peggedPriceMap: Record<string, bigint | undefined>
 ) {
-  const isDebug = process.env.NODE_ENV === "development";
-  // Fetch CoinGecko prices
+  const isDebug = DEBUG_ANCHOR;
+  const pegTargetPrices = usePegTargetPrices();
+
   const { price: fxUSDPrice } = useCoinGeckoPrice("f-x-protocol-fxusd");
   const { price: fxSAVEPrice } = useCoinGeckoPrice("fx-usd-saving");
   const { price: usdcPrice } = useCoinGeckoPrice("usd-coin");
-  const { price: ethPriceCoinGecko } = useCoinGeckoPrice("ethereum");
-  const { price: btcPriceCoinGecko } = useCoinGeckoPrice("bitcoin", 120000);
-  
-  // Standard Chainlink EUR/USD (0xb49f...): returns USD per EUR, 8 decimals (e.g. 118123500 = 1.18)
-  const CHAINLINK_EUR_USD = "0xb49f677943BC038e9857d61E7d053CaA2C1734C1" as `0x${string}`;
-  
-  // Read EUR/USD directly from the Chainlink feed (same as map room)
-  // Try Chainlink ABI first, then Harbor ABI if it fails
-  const { data: eurUsdChainlinkData, error: chainlinkError } = useContractRead({
-    address: CHAINLINK_EUR_USD,
-    abi: CHAINLINK_ORACLE_ABI,
-    functionName: "latestAnswer",
-    query: {
-      enabled: true,
-      staleTime: 60_000, // 1 minute - Chainlink updates less frequently
-      gcTime: 300_000, // 5 minutes
-    },
-  });
-  
-  // Try Harbor oracle ABI as fallback (in case it's a Harbor wrapped oracle)
-  const { data: eurUsdHarborData, error: harborError } = useContractRead({
-    address: CHAINLINK_EUR_USD,
-    abi: WRAPPED_PRICE_ORACLE_ABI,
-    functionName: "latestAnswer",
-    query: {
-      enabled: !eurUsdChainlinkData && !chainlinkError, // Only try if Chainlink failed
-      staleTime: 60_000,
-      gcTime: 300_000,
-    },
-  });
-  
-  // Standard Chainlink EUR/USD (0xb49f...): returns USD per EUR directly, 8 decimals
-  const eurPriceFromChainlink = useMemo(() => {
-    if (eurUsdChainlinkData) {
-      const usdPerEur = Number(eurUsdChainlinkData as bigint) / 1e8;
-      if (usdPerEur > 0.9 && usdPerEur < 2.0) {
-        console.log(`[useAnchorPrices] ✓ Using EUR/USD from Chainlink (0xb49f...): ${usdPerEur}`);
-        return usdPerEur;
-      }
-      console.warn(`[useAnchorPrices] Chainlink EUR/USD price out of range: ${usdPerEur}`);
-    }
-    
-    // Try Harbor oracle format (tuple)
-    if (eurUsdHarborData && Array.isArray(eurUsdHarborData)) {
-      const maxUnderlyingPrice = eurUsdHarborData[1] as bigint;
-      if (maxUnderlyingPrice && maxUnderlyingPrice > 0n) {
-        // Try 8 decimals (Chainlink format)
-        let price = Number(maxUnderlyingPrice) / 1e8;
-        if (price > 0.5 && price < 2.0) {
-          console.log(`[useAnchorPrices] ✓ Using EUR/USD from Harbor oracle (8dec): ${price}`);
-          return price;
-        }
-        // Try 18 decimals
-        price = Number(maxUnderlyingPrice) / 1e18;
-        if (price > 0.5 && price < 2.0) {
-          console.log(`[useAnchorPrices] ✓ Using EUR/USD from Harbor oracle (18dec): ${price}`);
-          return price;
-        }
-      }
-    }
-    
-    if (chainlinkError || harborError) {
-      console.warn(`[useAnchorPrices] Failed to read EUR/USD from Chainlink:`, {
-        chainlinkError: chainlinkError?.message,
-        harborError: harborError?.message,
-      });
-    }
-    
-    return null;
-  }, [eurUsdChainlinkData, eurUsdHarborData, chainlinkError, harborError]);
   
   // Fallback: Get EUR/USD rate from fxUSD/EUR market oracle (read from batched reads array)
   // Find the fxUSD/EUR market and extract its oracle data from the batched reads
@@ -476,139 +401,21 @@ export function useAnchorPrices(
     return null;
   }, [reads, anchorMarkets, isDebug]);
   
-  // Use Chainlink feed first (same as map room), then Harbor oracle, then CoinGecko
-  const { price: eurPriceCoinGecko } = useCoinGeckoPrice("stasis-euro");
-  const eurPrice = eurPriceFromChainlink ?? eurPriceFromOracle ?? eurPriceCoinGecko;
-  
-  // Always log EUR price calculation (not just in debug mode) to help diagnose issues
-  console.log(`[useAnchorPrices] EUR price calculation:`, {
-    chainlink: eurPriceFromChainlink,
-    harborOracle: eurPriceFromOracle,
-    coinGecko: eurPriceCoinGecko,
-    final: eurPrice,
-    source: eurPriceFromChainlink ? 'Chainlink feed (map room)' : eurPriceFromOracle ? 'Harbor oracle' : eurPriceCoinGecko ? 'CoinGecko' : 'none',
-    note: eurPrice ? `1 EUR = $${eurPrice} USD` : 'EUR price unavailable',
-    readsAvailable: reads ? `array(${reads.length})` : 'null/undefined',
-    anchorMarketsCount: anchorMarkets?.length || 0
-  });
+  // EUR: central prices first, fallback to Harbor oracle from batched reads
+  const eurPrice = pegTargetPrices.eurPrice ?? eurPriceFromOracle ?? null;
 
-  // Fetch Chainlink ETH/USD as fallback
-  const { data: chainlinkEthPriceData } = useContractRead({
-    address: CHAINLINK_ETH_USD_ORACLE,
-    abi: CHAINLINK_ORACLE_ABI,
-    functionName: "latestAnswer",
-    query: {
-      enabled: true,
-      staleTime: 60_000, // 1 minute - Chainlink updates less frequently
-      gcTime: 300_000, // 5 minutes
-    },
-  });
+  if (isDebug) {
+    console.log(`[useAnchorPrices] EUR price:`, {
+      central: pegTargetPrices.eurPrice,
+      harborOracle: eurPriceFromOracle,
+      final: eurPrice,
+    });
+  }
 
-  // Chainlink BTC/USD Oracle on Mainnet
-  const CHAINLINK_BTC_USD_ORACLE = "0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c" as `0x${string}`;
-
-  // Fetch Chainlink BTC/USD as fallback
-  const { data: chainlinkBtcPriceData } = useContractRead({
-    address: CHAINLINK_BTC_USD_ORACLE,
-    abi: CHAINLINK_ORACLE_ABI,
-    functionName: "latestAnswer",
-    query: {
-      enabled: true,
-      staleTime: 60_000, // 1 minute - Chainlink updates less frequently
-      gcTime: 300_000, // 5 minutes
-    },
-  });
-
-  // Fetch Chainlink XAU/USD (Gold) and XAG/USD (Silver) for haGOLD/haSILVER
-  const { data: chainlinkGoldPriceData } = useContractRead({
-    address: CHAINLINK_FEEDS.XAU_USD,
-    abi: CHAINLINK_ORACLE_ABI,
-    functionName: "latestAnswer",
-    query: {
-      enabled: true,
-      staleTime: 60_000,
-      gcTime: 300_000,
-    },
-  });
-  const { data: chainlinkSilverPriceData } = useContractRead({
-    address: CHAINLINK_FEEDS.XAG_USD,
-    abi: CHAINLINK_ORACLE_ABI,
-    functionName: "latestAnswer",
-    query: {
-      enabled: true,
-      staleTime: 60_000,
-      gcTime: 300_000,
-    },
-  });
-
-  // Gold price (USD per troy oz, 8 decimals)
-  const goldPrice = useMemo(() => {
-    if (!chainlinkGoldPriceData) return null;
-    const price = Number(chainlinkGoldPriceData as bigint) / 1e8;
-    return price > 0 ? price : null;
-  }, [chainlinkGoldPriceData]);
-
-  // Silver price (USD per troy oz, 8 decimals)
-  const silverPrice = useMemo(() => {
-    if (!chainlinkSilverPriceData) return null;
-    const price = Number(chainlinkSilverPriceData as bigint) / 1e8;
-    return price > 0 ? price : null;
-  }, [chainlinkSilverPriceData]);
-
-  // Calculate Chainlink ETH price in USD (8 decimals)
-  const chainlinkEthPrice = useMemo(() => {
-    if (!chainlinkEthPriceData) return null;
-    // Chainlink ETH/USD uses 8 decimals
-    const price = Number(chainlinkEthPriceData as bigint) / 1e8;
-    return price > 0 ? price : null;
-  }, [chainlinkEthPriceData]);
-
-  // Calculate Chainlink BTC price in USD (8 decimals)
-  const chainlinkBtcPrice = useMemo(() => {
-    if (!chainlinkBtcPriceData) return null;
-    // Chainlink BTC/USD uses 8 decimals
-    const price = Number(chainlinkBtcPriceData as bigint) / 1e8;
-    return price > 0 ? price : null;
-  }, [chainlinkBtcPriceData]);
-
-  // Use Chainlink as fallback if CoinGecko fails or returns 0
-  // This ensures position USD values are calculated even when CoinGecko is down
-  const ethPrice = useMemo(() => {
-    if (ethPriceCoinGecko && ethPriceCoinGecko > 0) {
-      return ethPriceCoinGecko;
-    }
-    if (chainlinkEthPrice && chainlinkEthPrice > 0) {
-      if (isDebug) {
-        console.log(
-          `[useAnchorPrices] CoinGecko ETH price unavailable (${ethPriceCoinGecko}), using Chainlink fallback: $${chainlinkEthPrice}`
-        );
-      }
-      return chainlinkEthPrice;
-    }
-    if (isDebug) {
-    console.warn(`[useAnchorPrices] Both CoinGecko and Chainlink ETH prices unavailable`);
-    }
-    return null;
-  }, [ethPriceCoinGecko, chainlinkEthPrice, isDebug]);
-
-  // Use Chainlink as fallback if CoinGecko fails or returns 0
-  const btcPrice = useMemo(() => {
-    if (btcPriceCoinGecko && btcPriceCoinGecko > 0) {
-      return btcPriceCoinGecko;
-    }
-    if (chainlinkBtcPrice && chainlinkBtcPrice > 0) {
-      if (isDebug) {
-        console.log(
-          `[useAnchorPrices] CoinGecko BTC price unavailable (${btcPriceCoinGecko}), using Chainlink fallback: $${chainlinkBtcPrice}`
-        );
-      }
-      return chainlinkBtcPrice;
-    }
-    if (isDebug) {
-    console.warn(`[useAnchorPrices] Both CoinGecko and Chainlink BTC prices unavailable`);
-    }
-    return null;
-  }, [btcPriceCoinGecko, chainlinkBtcPrice, isDebug]);
+  const ethPrice = pegTargetPrices.ethPrice ?? null;
+  const btcPrice = pegTargetPrices.btcPrice ?? null;
+  const goldPrice = pegTargetPrices.goldPrice ?? null;
+  const silverPrice = pegTargetPrices.silverPrice ?? null;
 
   // Build USD price map for useMarketPositions (peggedTokenPrice * collateralPriceUSD)
   const peggedPriceUSDMap = useMemo(() => {
@@ -809,7 +616,6 @@ export function useAnchorPrices(
     eurPrice,
     goldPrice,
     silverPrice,
-    eurPriceCoinGecko,
     isDebug,
   ]);
 

@@ -119,7 +119,7 @@ export function useAnchorMarks() {
   } = useContractReads({
     contracts,
     enabled: contracts.length > 0 && isConnected && !!address,
-    refetchInterval: 30000,
+    refetchInterval: 60_000, // 60s - marks data doesn't change minute-to-minute
   });
 
   // Process the data
