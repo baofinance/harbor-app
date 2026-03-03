@@ -1,17 +1,16 @@
 import { http, createConfig } from "@wagmi/core";
 import { base, mainnet, arbitrum } from "wagmi/chains";
 import { injected, metaMask, safe } from "wagmi/connectors";
+import { MAINNET_RPC_URL } from "./rpc";
 
 const projectId = "513620ae374ee96b895eb92231eecb7f";
 
-// Set up wagmi config for mainnet deployment
+// Set up wagmi config for mainnet deployment (mainnet uses proxy when USE_RPC_PROXY=true)
 export const wagmi = createConfig({
   chains: [mainnet, base, arbitrum],
   connectors: [injected(), metaMask(), safe()],
   transports: {
-    [mainnet.id]: http(
-      process.env.NEXT_PUBLIC_MAINNET_RPC_URL || "https://eth-mainnet.g.alchemy.com/v2/uGl5kuD60tnGFHRmkevK1iYQuIQKmh1n"
-    ),
+    [mainnet.id]: http(MAINNET_RPC_URL),
     [base.id]: http(
       process.env.NEXT_PUBLIC_BASE_RPC_URL || "https://mainnet.base.org"
     ),

@@ -42,7 +42,7 @@ export const CONTRACTS = {
   RESERVE_POOL: "0x7A5c4ca972CE2168d5215d252946dDbd1cAd2015",
   CHAIN_ID: 1, // Mainnet
   RPC_URL:
-    "https://eth-mainnet.g.alchemy.com/v2/uGl5kuD60tnGFHRmkevK1iYQuIQKmh1n", // Mainnet RPC
+    process.env.NEXT_PUBLIC_MAINNET_RPC_URL || "https://eth.llamarpc.com", // Mainnet RPC (set in env for production)
 } as const;
 
 export type MarketConfig = {

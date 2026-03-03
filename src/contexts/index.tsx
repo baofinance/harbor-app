@@ -40,10 +40,19 @@ function ContextProvider({
  children: React.ReactNode;
  cookies: string | null;
 }>) {
- const initialState = cookieToInitialState(
- wagmiConfig as unknown as Config,
- cookies
- );
+ // Defensive: malformed or poisoned cookies can cause cookieToInitialState to throw
+ let initialState: unknown;
+ try {
+   initialState = cookieToInitialState(
+     wagmiConfig as unknown as Config,
+     cookies
+   );
+ } catch (e) {
+   if (typeof window !== "undefined") {
+     console.warn("[ContextProvider] cookieToInitialState failed, using fresh state:", e);
+   }
+   initialState = undefined;
+ }
 
  const cookieCurrency = parseCookieValue(cookies,"currency");
  const initialCurrency = isCurrencyCode(cookieCurrency)

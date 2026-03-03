@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAccount, usePublicClient } from "wagmi";
 import { formatEther } from "viem";
 import { getGraphUrl, getGraphHeaders } from "@/config/graph";
+import { redactUrl } from "@/utils/redactUrl";
 import { useState, useEffect, useMemo } from "react";
 
 // GraphQL query for Anchor Ledger Marks (Ha Tokens + Stability Pools + Sail Tokens)
@@ -215,9 +216,8 @@ export function useAnchorLedgerMarks({
         throw new Error("Address required");
       }
 
-      // Debug: Log which subgraph URL we're using
-      console.log("[useAnchorLedgerMarks] Using subgraph URL:", graphUrl);
-      console.log("[useAnchorLedgerMarks] Querying for user address:", address.toLowerCase());
+      // Log with redacted URL so endpoint/keys are not leaked
+      console.log("[useAnchorLedgerMarks] Using subgraph URL:", redactUrl(graphUrl));
 
       const queryVariables = {
         userAddress: address.toLowerCase(),
