@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { getGraphUrl, getGraphHeaders, retryGraphQLQuery } from "@/config/graph";
 import { POLLING_INTERVALS } from "@/config/polling";
+import { redactUrl } from "@/utils/redactUrl";
 import { calculateMarksForAPR } from "@/utils/tideAPR";
 import { markets } from "@/config/markets";
 
@@ -91,10 +92,7 @@ export function useTotalMaidenVoyageMarks() {
     queryFn: async () => {
       try {
         const graphUrl = getGraphUrl();
-        
-        // Debug: Log the query being sent
-        console.log('[useTotalMaidenVoyageMarks] Fetching from:', graphUrl);
-        console.log('[useTotalMaidenVoyageMarks] Genesis addresses:', genesisAddresses);
+        console.log("[useTotalMaidenVoyageMarks] Fetching from:", redactUrl(graphUrl));
 
         // If no genesis addresses, return empty
         if (genesisAddresses.length === 0) {

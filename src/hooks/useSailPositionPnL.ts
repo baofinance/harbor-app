@@ -4,6 +4,28 @@ import { useQuery } from "@tanstack/react-query";
 import { useAccount } from "wagmi";
 import { getSailPriceGraphUrlOptional, getGraphHeaders } from "@/config/graph";
 
+// Safe parsing to avoid client crash on poisoned or malformed subgraph/RPC data
+function safeParseFloat(v: unknown): number {
+  if (v === null || v === undefined) return 0;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
+}
+function safeParseInt(v: unknown): number {
+  if (v === null || v === undefined) return 0;
+  const n = parseInt(String(v), 10);
+  return Number.isFinite(n) ? n : 0;
+}
+function safeBigInt(v: unknown): bigint {
+  if (v === null || v === undefined) return 0n;
+  try {
+    const s = String(v).trim();
+    if (!/^-?[0-9]+$/.test(s)) return 0n;
+    return BigInt(s);
+  } catch {
+    return 0n;
+  }
+}
+
 // GraphQL query for user position and PnL
 const USER_POSITION_QUERY = `
   query GetUserPosition($positionId: ID!, $userAddress: Bytes!, $tokenAddress: Bytes!) {
@@ -235,14 +257,13 @@ export function useSailPositionPnL({
           console.log("[useSailPositionPnL][debug]", dbgInfo);
         }
 
-        // If the subgraph hasn't indexed this position yet, surface a clear error.
-        if (!subgraphData?.userSailPosition) {
-          throw new Error(
-            `PnL data not available yet (subgraph has no UserSailPosition for ${positionId}).`
-          );
-        }
-
-        return subgraphData;
+        // When subgraph has no UserSailPosition (e.g. Euro markets or indexer lag), still return
+        // data so we can use mint/redeem events for fallback PnL instead of throwing.
+        return subgraphData ?? {
+          userSailPosition: null,
+          sailTokenMintEvents: [],
+          sailTokenRedeemEvents: [],
+        };
       } catch (e) {
         if (dbg) {
           dbgInfo.subgraph = { ok: false, error: String(e) };
@@ -257,47 +278,83 @@ export function useSailPositionPnL({
     staleTime: 10000,
   });
 
-  // Subgraph-only: if we have no data, we show an error.
-  const position: UserSailPosition | null = address && tokenAddress
-    ? (data?.userSailPosition
-    ? {
-        balance: BigInt(data.userSailPosition.balance),
-        balanceUSD: parseFloat(data.userSailPosition.balanceUSD),
-        totalCostBasisUSD: parseFloat(data.userSailPosition.totalCostBasisUSD),
-        averageCostPerToken: parseFloat(data.userSailPosition.averageCostPerToken),
-        realizedPnLUSD: parseFloat(data.userSailPosition.realizedPnLUSD),
-        totalTokensBought: BigInt(data.userSailPosition.totalTokensBought),
-        totalTokensSold: BigInt(data.userSailPosition.totalTokensSold),
-        totalSpentUSD: parseFloat(data.userSailPosition.totalSpentUSD),
-        totalReceivedUSD: parseFloat(data.userSailPosition.totalReceivedUSD),
-        firstAcquiredAt: parseInt(data.userSailPosition.firstAcquiredAt),
-        lastUpdated: parseInt(data.userSailPosition.lastUpdated),
-      }
-      : null)
-    : null;
-
-  // Parse events
+  // Parse events first (needed for fallback position when UserSailPosition is null)
+  // Use safe parsers to avoid client crash on poisoned or malformed subgraph data
   const mintEvents: MintEvent[] = (data?.sailTokenMintEvents || []).map((e: any) => ({
-    collateralIn: e.collateralIn,
-    leveragedOut: e.leveragedOut,
-    collateralValueUSD: parseFloat(e.collateralValueUSD),
-    tokenValueUSD: parseFloat(e.tokenValueUSD),
-    pricePerToken: parseFloat(e.pricePerToken),
-    timestamp: parseInt(e.timestamp),
-    txHash: e.txHash,
+    collateralIn: e?.collateralIn ?? "",
+    leveragedOut: e?.leveragedOut ?? "",
+    collateralValueUSD: safeParseFloat(e?.collateralValueUSD),
+    tokenValueUSD: safeParseFloat(e?.tokenValueUSD),
+    pricePerToken: safeParseFloat(e?.pricePerToken),
+    timestamp: safeParseInt(e?.timestamp),
+    txHash: e?.txHash ?? "",
   }));
 
   const redeemEvents: RedeemEvent[] = (data?.sailTokenRedeemEvents || []).map((e: any) => ({
-    leveragedBurned: e.leveragedBurned,
-    collateralOut: e.collateralOut,
-    collateralValueUSD: parseFloat(e.collateralValueUSD),
-    tokenValueUSD: parseFloat(e.tokenValueUSD),
-    pricePerToken: parseFloat(e.pricePerToken),
-    costBasisUSD: parseFloat(e.costBasisUSD),
-    realizedPnLUSD: parseFloat(e.realizedPnLUSD),
-    timestamp: parseInt(e.timestamp),
-    txHash: e.txHash,
+    leveragedBurned: e?.leveragedBurned ?? "",
+    collateralOut: e?.collateralOut ?? "",
+    collateralValueUSD: safeParseFloat(e?.collateralValueUSD),
+    tokenValueUSD: safeParseFloat(e?.tokenValueUSD),
+    pricePerToken: safeParseFloat(e?.pricePerToken),
+    costBasisUSD: safeParseFloat(e?.costBasisUSD),
+    realizedPnLUSD: safeParseFloat(e?.realizedPnLUSD),
+    timestamp: safeParseInt(e?.timestamp),
+    txHash: e?.txHash ?? "",
   }));
+
+  // Position from subgraph, or fallback from mint/redeem events when UserSailPosition is missing (e.g. Euro markets)
+  const position: UserSailPosition | null = (() => {
+    if (!address || !tokenAddress) return null;
+    if (data?.userSailPosition) {
+      const u = data.userSailPosition;
+      return {
+        balance: safeBigInt(u?.balance),
+        balanceUSD: safeParseFloat(u?.balanceUSD),
+        totalCostBasisUSD: safeParseFloat(u?.totalCostBasisUSD),
+        averageCostPerToken: safeParseFloat(u?.averageCostPerToken),
+        realizedPnLUSD: safeParseFloat(u?.realizedPnLUSD),
+        totalTokensBought: safeBigInt(u?.totalTokensBought),
+        totalTokensSold: safeBigInt(u?.totalTokensSold),
+        totalSpentUSD: safeParseFloat(u?.totalSpentUSD),
+        totalReceivedUSD: safeParseFloat(u?.totalReceivedUSD),
+        firstAcquiredAt: safeParseInt(u?.firstAcquiredAt),
+        lastUpdated: safeParseInt(u?.lastUpdated),
+      };
+    }
+    // Fallback: derive from events when subgraph has no UserSailPosition (e.g. indexer lag or Euro deployment)
+    const totalSpentUSD = mintEvents.reduce((s, e) => s + e.collateralValueUSD, 0);
+    const totalReceivedUSD = redeemEvents.reduce((s, e) => s + e.collateralValueUSD, 0);
+    const realizedPnLUSD = redeemEvents.reduce((s, e) => s + e.realizedPnLUSD, 0);
+    const costBasisRedeemed = redeemEvents.reduce((s, e) => s + e.costBasisUSD, 0);
+    const totalTokensBought = mintEvents.reduce((acc, e) => acc + safeBigInt(e.leveragedOut), 0n);
+    const totalTokensSold = redeemEvents.reduce((acc, e) => acc + safeBigInt(e.leveragedBurned), 0n);
+    const balance = totalTokensBought - totalTokensSold;
+    const totalCostBasisUSD = Math.max(0, totalSpentUSD - costBasisRedeemed);
+    const balanceDec = balance > 0n ? Number(balance) / 1e18 : 0;
+    const averageCostPerToken = balanceDec > 0 ? totalCostBasisUSD / balanceDec : 0;
+    const firstAcquiredAt = mintEvents.length
+      ? Math.min(...mintEvents.map((e) => e.timestamp))
+      : 0;
+    const lastUpdated = [...mintEvents, ...redeemEvents].length
+      ? Math.max(...[...mintEvents, ...redeemEvents].map((e) => e.timestamp))
+      : 0;
+    if (balance > 0n || realizedPnLUSD !== 0 || totalTokensBought > 0n) {
+      return {
+        balance,
+        balanceUSD: 0,
+        totalCostBasisUSD,
+        averageCostPerToken,
+        realizedPnLUSD,
+        totalTokensBought,
+        totalTokensSold,
+        totalSpentUSD,
+        totalReceivedUSD,
+        firstAcquiredAt,
+        lastUpdated,
+      };
+    }
+    return null;
+  })();
 
   // Calculate current value and PnL
   let currentValueUSD = 0;

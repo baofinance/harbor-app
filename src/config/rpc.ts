@@ -13,15 +13,24 @@ const MULTICALL3 = {
   blockCreated: 0,
 };
 
-// Mainnet RPC URL - defaults to Alchemy if not set in environment
-export const MAINNET_RPC_URL =
-  process.env.NEXT_PUBLIC_MAINNET_RPC_URL ||
-  "https://eth-mainnet.g.alchemy.com/v2/uGl5kuD60tnGFHRmkevK1iYQuIQKmh1n";
+// Mainnet RPC URL - must be set in env for production (e.g. Alchemy). No hardcoded key.
+const PUBLIC_MAINNET_RPC = "https://eth.llamarpc.com";
 
-// Arbitrum RPC URL - defaults to Alchemy if not set in environment
+/** When USE_RPC_PROXY is true, client uses our /api/rpc so the Alchemy key stays server-side (MAINNET_RPC_URL). */
+function getClientMainnetRpcUrl(): string {
+  if (process.env.NEXT_PUBLIC_USE_RPC_PROXY === "true" && process.env.NEXT_PUBLIC_APP_URL) {
+    const base = process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "");
+    return `${base}/api/rpc`;
+  }
+  return process.env.NEXT_PUBLIC_MAINNET_RPC_URL || PUBLIC_MAINNET_RPC;
+}
+
+export const MAINNET_RPC_URL = getClientMainnetRpcUrl();
+
+// Arbitrum RPC URL - must be set in env for production. Public fallback.
+const PUBLIC_ARBITRUM_RPC = "https://arb1.arbitrum.io/rpc";
 export const ARBITRUM_RPC_URL =
-  process.env.NEXT_PUBLIC_ARBITRUM_RPC_URL ||
-  "https://arb-mainnet.g.alchemy.com/v2/uGl5kuD60tnGFHRmkevK1iYQuIQKmh1n";
+  process.env.NEXT_PUBLIC_ARBITRUM_RPC_URL || PUBLIC_ARBITRUM_RPC;
 
 // Base RPC URL - defaults to Base public RPC if not set in environment
 export const BASE_RPC_URL =
