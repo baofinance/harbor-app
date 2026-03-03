@@ -1,6 +1,7 @@
 import { useAccount, usePublicClient } from "wagmi";
 import { useQuery } from "@tanstack/react-query";
 import { STABILITY_POOL_ABI } from "@/abis/shared";
+import { redactForLog } from "@/utils/redactUrl";
 
 export type WithdrawalStatus = "waiting" | "window" | "expired";
 
@@ -93,10 +94,10 @@ export function useWithdrawalRequests(poolAddresses: `0x${string}`[]) {
             continue;
           }
 
-          // Log unexpected errors at debug level
+          // Log unexpected errors at debug level (redact any URL in error message)
           console.debug(
             `Skipping withdrawal request check for ${poolAddress}:`,
-            errorMessage
+            redactForLog(errorMessage)
           );
         }
       }

@@ -75,6 +75,8 @@ export const getGraphUrl = (): string => {
   return GRAPH_CONFIG.marks.url;
 };
 
+import { redactUrl, redactForLog } from "@/utils/redactUrl";
+
 // Get headers for GraphQL requests (includes API key if needed)
 // Pass a URL to ensure auth headers match the endpoint you're calling.
 export const getGraphHeaders = (url?: string): Record<string, string> => {
@@ -86,15 +88,15 @@ export const getGraphHeaders = (url?: string): Record<string, string> => {
   const graphUrl = url || getGraphUrl();
   const graphApiKey = process.env.NEXT_PUBLIC_GRAPH_API_KEY || GRAPH_API_KEY;
   
+  if (typeof window !== "undefined") {
+    console.log("[getGraphHeaders] GraphQL URL:", redactUrl(graphUrl), "API key present:", !!graphApiKey && graphApiKey.length > 0);
+  }
+  
   // Check if URL is a Graph Network gateway (requires auth)
   // gateway.thegraph.com uses Bearer token in Authorization header
   // gateway-arbitrum.network.thegraph.com uses API key in URL path
   if (graphUrl.includes("gateway.thegraph.com")) {
     headers["Authorization"] = `Bearer ${graphApiKey}`;
-    // Log in production to help debug (only log first few chars of key for security)
-    if (typeof window !== "undefined" && process.env.NEXT_PUBLIC_APP_ENV === "production") {
-      console.log(`[getGraphHeaders] Using GraphQL URL: ${graphUrl}, API key present: ${!!graphApiKey && graphApiKey.length > 0}`);
-    }
   } else if (graphUrl.includes("gateway-arbitrum.network.thegraph.com")) {
     // API key is already in the URL path for this gateway
     // But we can also add it as Authorization header for extra security
@@ -173,7 +175,7 @@ export async function retryGraphQLQuery<T>(
       if (attempt < maxRetries) {
         const waitTime = Math.min(delay, maxDelay);
         console.log(`[retryGraphQLQuery] Attempt ${attempt + 1} failed, retrying in ${waitTime}ms...`, {
-          error: error?.message || String(error),
+          error: redactForLog(error?.message || String(error)),
           attempt: attempt + 1,
           maxRetries
         });

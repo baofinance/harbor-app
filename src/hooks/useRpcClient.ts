@@ -6,6 +6,7 @@ import {
   getArbitrumRpcClient,
   getBaseRpcClient,
 } from "@/config/rpc";
+import { redactForLog } from "@/utils/redactUrl";
 
 // Module-level clients (singleton pattern)
 let mainnetClient: ReturnType<typeof createPublicClient> | null = null;
@@ -23,7 +24,7 @@ export function useRpcClient(network: Network) {
         try {
           mainnetClient = getMainnetRpcClient();
         } catch (error) {
-          console.error("[useRpcClient] Failed to initialize mainnet client:", error);
+          console.error("[useRpcClient] Failed to initialize mainnet client:", redactForLog(error instanceof Error ? error.message : String(error)));
         }
       }
       return mainnetClient;
@@ -35,7 +36,7 @@ export function useRpcClient(network: Network) {
         try {
           arbitrumClient = getArbitrumRpcClient();
         } catch (error) {
-          console.error("[useRpcClient] Failed to initialize Arbitrum client:", error);
+          console.error("[useRpcClient] Failed to initialize Arbitrum client:", redactForLog(error instanceof Error ? error.message : String(error)));
         }
       }
       return arbitrumClient;
@@ -47,7 +48,7 @@ export function useRpcClient(network: Network) {
         try {
           baseClient = getBaseRpcClient();
         } catch (error) {
-          console.error("[useRpcClient] Failed to initialize Base client:", error);
+          console.error("[useRpcClient] Failed to initialize Base client:", redactForLog(error instanceof Error ? error.message : String(error)));
         }
       }
       return baseClient;
@@ -58,7 +59,7 @@ export function useRpcClient(network: Network) {
       try {
         mainnetClient = getMainnetRpcClient();
       } catch (error) {
-        console.error("[useRpcClient] Failed to initialize mainnet client:", error);
+        console.error("[useRpcClient] Failed to initialize mainnet client:", redactForLog(error instanceof Error ? error.message : String(error)));
       }
     }
     return mainnetClient;

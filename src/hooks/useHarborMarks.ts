@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAccount } from "wagmi";
 import { formatEther } from "viem";
 import { getGraphUrl, getGraphHeaders, retryGraphQLQuery } from "@/config/graph";
+import { redactUrl, redactForLog } from "@/utils/redactUrl";
 
 // GraphQL query for Harbor Marks (v0.0.5 schema)
 // Note: UserHarborMarks id format is {genesisAddress}-{userAddress}
@@ -249,7 +250,7 @@ export function useHarborMarks({
         return data;
       } catch (error: any) {
         console.warn(`[useHarborMarks] Query failed for ${genesisAddress} after retries:`, {
-          message: error?.message,
+          message: redactForLog(error?.message),
           status: error?.status,
         });
         // Check for indexer errors
@@ -315,8 +316,8 @@ export function useAllHarborMarks(genesisAddresses: string[]) {
         return [];
       }
 
-      // Log configuration for debugging production issues
-      console.log(`[useAllHarborMarks] Using GraphQL URL: ${graphUrl}`);
+      // Log configuration for debugging (URL redacted to avoid leaking endpoint/API key)
+      console.log(`[useAllHarborMarks] Using GraphQL URL:`, redactUrl(graphUrl));
       console.log(`[useAllHarborMarks] Querying ${genesisAddresses.length} markets for address: ${address}`);
       
       // Query all markets in parallel with retry logic
@@ -370,11 +371,11 @@ export function useAllHarborMarks(genesisAddresses: string[]) {
           const isAuthError = error?.isAuthError || error?.status === 401 || error?.status === 403;
           console.warn(`[useAllHarborMarks] Query failed for ${genesisAddress} after retries:`, {
             status: error?.status,
-            message: error?.message,
-              url: graphUrl,
-              isAuthError: isAuthError,
-              suggestion: isAuthError ? "Check if NEXT_PUBLIC_GRAPH_API_KEY is set correctly in production environment" : undefined
-            });
+            message: redactForLog(error?.message),
+            url: redactUrl(graphUrl),
+            isAuthError: isAuthError,
+            suggestion: isAuthError ? "Check if NEXT_PUBLIC_GRAPH_API_KEY is set correctly in production environment" : undefined
+          });
           
           // Check for indexer errors
           const errorMessage = error?.message || String(error);
