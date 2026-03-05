@@ -7970,9 +7970,8 @@ export default function AnchorPage() {
                           // For wstETH/others: use wrapped amount × wrapped token price.
                           let collateralValueUSD = 0;
                           if (isFxUSDMarket && collateralTokensUnderlyingEq > 0) {
-                            // Value underlying fxUSD at ~$1 (or CoinGecko fxSAVE as proxy)
-                            const fxUSDPriceUSD = fxSAVEPrice ?? 1.0;
-                            collateralValueUSD = collateralTokensUnderlyingEq * fxUSDPriceUSD;
+                            // Value underlying fxUSD at ~$1 (fxUSD is USD-pegged; fxSAVE ≈ 1.07 is for wrapped, not underlying)
+                            collateralValueUSD = collateralTokensUnderlyingEq * 1.0;
                           } else if (
                             collateralTokensWrapped > 0 &&
                             collateralPriceUSD > 0
