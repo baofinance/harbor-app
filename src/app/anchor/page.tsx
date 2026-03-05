@@ -7778,8 +7778,11 @@ export default function AnchorPage() {
                               const wrappedRate =
                                 collateralPriceData?.maxRate ||
                                 marketData.wrappedRate;
+                              // For fxUSD, fallback rate ~1.07 (fxSAVE per fxUSD) so wrapped amount is correct when oracle rate is missing
                               const wrappedRateNum = wrappedRate
                                 ? Number(wrappedRate) / 1e18
+                                : isFxUSDMarket
+                                ? 1.07
                                 : 1;
                           
                           // Convert oracle price from peg token units to USD
@@ -7963,12 +7966,17 @@ export default function AnchorPage() {
                           // Removed debug logging
 
                           // Calculate collateral value USD.
-                          // We compute USD from the wrapped token price (fxSAVE/wstETH) and convert the underlying-equivalent amount back to wrapped.
+                          // For fxUSD markets: minter returns collateral in underlying (fxUSD). 1 fxUSD ≈ $1, so value = underlyingEq * price (avoid oracle/rate bugs).
+                          // For wstETH/others: use wrapped amount × wrapped token price.
                           let collateralValueUSD = 0;
-                              if (
-                                collateralTokensWrapped > 0 &&
-                                collateralPriceUSD > 0
-                              ) {
+                          if (isFxUSDMarket && collateralTokensUnderlyingEq > 0) {
+                            // Value underlying fxUSD at ~$1 (or CoinGecko fxSAVE as proxy)
+                            const fxUSDPriceUSD = fxSAVEPrice ?? 1.0;
+                            collateralValueUSD = collateralTokensUnderlyingEq * fxUSDPriceUSD;
+                          } else if (
+                            collateralTokensWrapped > 0 &&
+                            collateralPriceUSD > 0
+                          ) {
                             collateralValueUSD =
                               collateralTokensWrapped * collateralPriceUSD;
                           }
