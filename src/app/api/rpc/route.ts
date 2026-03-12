@@ -9,11 +9,33 @@ export const runtime = "nodejs";
  */
 const MAINNET_RPC_URL = process.env.MAINNET_RPC_URL;
 
+function corsHeaders(request: Request): Record<string, string> {
+  const origin = request.headers.get("origin");
+  return {
+    "Access-Control-Allow-Origin": origin || "*",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Max-Age": "86400",
+  };
+}
+
+export async function OPTIONS(request: Request) {
+  return new NextResponse(null, {
+    status: 204,
+    headers: {
+      ...corsHeaders(request),
+      "Content-Length": "0",
+    },
+  });
+}
+
 export async function POST(request: Request) {
+  const headers = corsHeaders(request);
+
   if (!MAINNET_RPC_URL) {
     return NextResponse.json(
       { error: "RPC proxy not configured (MAINNET_RPC_URL missing)" },
-      { status: 503 }
+      { status: 503, headers }
     );
   }
 
@@ -23,7 +45,7 @@ export async function POST(request: Request) {
   } catch {
     return NextResponse.json(
       { error: "Invalid JSON body", jsonrpc: "2.0", id: null },
-      { status: 400 }
+      { status: 400, headers }
     );
   }
 
@@ -34,7 +56,7 @@ export async function POST(request: Request) {
   if (!payload.length) {
     return NextResponse.json(
       { error: "Empty request", jsonrpc: "2.0", id: null },
-      { status: 400 }
+      { status: 400, headers }
     );
   }
 
@@ -52,7 +74,7 @@ export async function POST(request: Request) {
     if (!res.ok) {
       return NextResponse.json(
         { error: `Upstream RPC error: ${res.status}`, details: text },
-        { status: 502 }
+        { status: 502, headers }
       );
     }
 
@@ -62,14 +84,12 @@ export async function POST(request: Request) {
     } catch {
       return NextResponse.json(
         { error: "Upstream returned invalid JSON", jsonrpc: "2.0", id: null },
-        { status: 502 }
+        { status: 502, headers }
       );
     }
 
     return NextResponse.json(data, {
-      headers: {
-        "Cache-Control": "no-store",
-      },
+      headers: { ...headers, "Cache-Control": "no-store" },
     });
   } catch (e) {
     // Log message only; do not log error object (may contain upstream URL in some runtimes)
@@ -80,7 +100,7 @@ export async function POST(request: Request) {
         error: { code: -32603, message: "Internal proxy error" },
         id: Array.isArray(body) ? body[0]?.id : (body as { id?: unknown })?.id ?? null,
       },
-      { status: 500 }
+      { status: 500, headers }
     );
   }
 }
