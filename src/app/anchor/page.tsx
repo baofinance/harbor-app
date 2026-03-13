@@ -113,6 +113,7 @@ import { useStaggeredReady } from "@/hooks/useStaggeredReady";
 import { calculateReadOffset } from "@/utils/anchor/calculateReadOffset";
 import { useMultipleCollateralPrices } from "@/hooks/useCollateralPrice";
 import { DEBUG_ANCHOR } from "@/config/debug";
+import ChainFilter from "@/components/ChainFilter";
 
 // Flag to temporarily disable anchor marks (set to false to pause marks)
 const ANCHOR_MARKS_ENABLED = true;
@@ -142,6 +143,7 @@ export default function AnchorPage() {
 
   // CoinGecko prices are now provided by useAnchorPrices hook (see below)
   const [expandedMarkets, setExpandedMarkets] = useState<string[]>([]);
+  const [chainFilter, setChainFilter] = useState<string | null>(null);
   const [manageModal, setManageModal] = useState<{
     marketId: string;
     market: any;
@@ -294,6 +296,15 @@ export default function AnchorPage() {
   const anchorMarkets = useMemo(
     () => Object.entries(markets).filter(([_, m]) => m.peggedToken),
     []
+  );
+
+  // Filter by chain for display (data still loaded for all markets)
+  const displayedAnchorMarkets = useMemo(
+    () =>
+      chainFilter
+        ? anchorMarkets.filter(([_, m]) => (m as any).chain?.name === chainFilter)
+        : anchorMarkets,
+    [anchorMarkets, chainFilter]
   );
 
   // Build markets config for volatility protection hook
@@ -6000,6 +6011,15 @@ export default function AnchorPage() {
               </SimpleTooltip>
             </div>
 
+            {/* Chain filter */}
+            <div className="mb-4">
+              <ChainFilter
+                marketEntries={anchorMarkets}
+                value={chainFilter}
+                onChange={setChainFilter}
+              />
+            </div>
+
             {/* Market Cards/Rows */}
             {(() => {
               // Show loading state while fetching market data
@@ -6041,8 +6061,7 @@ export default function AnchorPage() {
                 );
               }
 
-              // Show grouped markets by ha token
-              // Group markets by pegged token symbol
+              // Show grouped markets by ha token (use displayed markets for chain filter)
               const groups: Record<
                 string,
                 Array<{
@@ -6052,7 +6071,9 @@ export default function AnchorPage() {
                 }>
               > = {};
 
-              anchorMarkets.forEach(([id, m], mi) => {
+              displayedAnchorMarkets.forEach(([id, m]) => {
+                const marketIndex = anchorMarkets.findIndex(([mid]) => mid === id);
+                if (marketIndex < 0) return;
                 const symbol = m.peggedToken?.symbol || "UNKNOWN";
                 if (!groups[symbol]) {
                   groups[symbol] = [];
@@ -6060,7 +6081,7 @@ export default function AnchorPage() {
                 groups[symbol].push({
                   marketId: id,
                   market: m,
-                  marketIndex: mi,
+                  marketIndex,
                 });
               });
 

@@ -5,6 +5,7 @@ import {
   getMainnetRpcClient,
   getArbitrumRpcClient,
   getBaseRpcClient,
+  getMegaEthRpcClient,
 } from "@/config/rpc";
 import { redactForLog } from "@/utils/redactUrl";
 
@@ -12,6 +13,7 @@ import { redactForLog } from "@/utils/redactUrl";
 let mainnetClient: ReturnType<typeof createPublicClient> | null = null;
 let arbitrumClient: ReturnType<typeof createPublicClient> | null = null;
 let baseClient: ReturnType<typeof createPublicClient> | null = null;
+let megaethClient: ReturnType<typeof createPublicClient> | null = null;
 
 /**
  * Hook to get the appropriate RPC client based on network
@@ -52,6 +54,18 @@ export function useRpcClient(network: Network) {
         }
       }
       return baseClient;
+    }
+
+    // Always use dedicated MegaETH client for MegaETH markets
+    if (network === "megaeth") {
+      if (!megaethClient) {
+        try {
+          megaethClient = getMegaEthRpcClient();
+        } catch (error) {
+          console.error("[useRpcClient] Failed to initialize MegaETH client:", redactForLog(error instanceof Error ? error.message : String(error)));
+        }
+      }
+      return megaethClient;
     }
 
     // Default to mainnet client as fallback

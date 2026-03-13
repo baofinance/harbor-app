@@ -40,6 +40,7 @@ import { useMarketBoostWindows } from "@/hooks/useMarketBoostWindows";
 import { MarksBoostBadge } from "@/components/MarksBoostBadge";
 import { useQuery } from "@tanstack/react-query";
 import { getSailPriceGraphUrlOptional, getGraphHeaders } from "@/config/graph";
+import ChainFilter from "@/components/ChainFilter";
 
 // PnL is now fetched from subgraph (useSailPositionPnL hook)
 
@@ -1418,6 +1419,7 @@ export default function SailPage() {
   );
   const [longFilter, setLongFilter] = useState<string>("all");
   const [shortFilter, setShortFilter] = useState<string>("all");
+  const [chainFilter, setChainFilter] = useState<string | null>(null);
 
   // Aggregate PnL across all user Sail positions (subgraph)
   const sailPnLSummary = useSailPositionsPnLSummary(isConnected);
@@ -1489,6 +1491,15 @@ export default function SailPage() {
     []
   );
 
+  // Filter by chain for display (data still loaded for all markets)
+  const displayedSailMarkets = useMemo(
+    () =>
+      chainFilter
+        ? sailMarkets.filter(([_, m]) => (m as any).chain?.name === chainFilter)
+        : sailMarkets,
+    [sailMarkets, chainFilter]
+  );
+
   // Sail marks boost window (2x) for markets in their first 8 days
   const sailBoostIds = useMemo(() => {
     const ids: string[] = [];
@@ -1537,22 +1548,22 @@ export default function SailPage() {
     return groups;
   }, [sailMarkets]);
 
-  // Get unique long and short sides for filter dropdowns
+  // Get unique long and short sides for filter dropdowns (from displayed markets when chain filter is on)
   const uniqueLongSides = useMemo(() => {
     const sides = new Set<string>();
-    sailMarkets.forEach(([_, m]) => {
+    displayedSailMarkets.forEach(([_, m]) => {
       sides.add(getLongSide(m));
     });
     return Array.from(sides).sort();
-  }, [sailMarkets]);
+  }, [displayedSailMarkets]);
 
   const uniqueShortSides = useMemo(() => {
     const sides = new Set<string>();
-    sailMarkets.forEach(([_, m]) => {
+    displayedSailMarkets.forEach(([_, m]) => {
       sides.add(getShortSide(m));
     });
     return Array.from(sides).sort();
-  }, [sailMarkets]);
+  }, [displayedSailMarkets]);
 
   // Fetch contract data for all markets (ALWAYS 7 reads per market to ensure consistent offsets)
   // Reads: 0=leverageRatio, 1=leveragedTokenPrice, 2=collateralRatio, 3=collateralTokenBalance, 4=latestAnswer, 5=name, 6=totalSupply
@@ -2253,8 +2264,8 @@ export default function SailPage() {
           {/* Markets List */}
           <section className="space-y-4">
             {(() => {
-              // Check if any markets have finished genesis (have collateral)
-              const hasAnyFinishedMarkets = sailMarkets.some(([id]) => {
+              // Check if any displayed markets have finished genesis (have collateral)
+              const hasAnyFinishedMarkets = displayedSailMarkets.some(([id]) => {
                   const globalIndex = sailMarkets.findIndex(
                     ([marketId]) => marketId === id
                   );
@@ -2304,8 +2315,8 @@ export default function SailPage() {
                 );
               }
 
-              // Otherwise, show markets as usual
-              const activeMarkets = sailMarkets.filter(([id, m]) => {
+              // Otherwise, show markets as usual (chain filter applied via displayedSailMarkets)
+              const activeMarkets = displayedSailMarkets.filter(([id, m]) => {
                   const globalIndex = sailMarkets.findIndex(
                     ([marketId]) => marketId === id
                   );
@@ -2331,9 +2342,15 @@ export default function SailPage() {
 
               return (
                 <div>
-                  <div className="pt-4 mb-3 flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
-                    {/* Filter Dropdowns */}
-                    <div className="flex items-center gap-2 w-full md:w-auto">
+                  <div className="pt-4 mb-3 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 flex-wrap">
+                    {/* Chain + Long/Short Filters */}
+                    <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+                      <ChainFilter
+                        marketEntries={sailMarkets}
+                        value={chainFilter}
+                        onChange={setChainFilter}
+                        className="w-full md:w-auto"
+                      />
                       {/* Long Filter */}
                       <div className="relative">
                         <select
@@ -2373,6 +2390,7 @@ export default function SailPage() {
                         onClick={() => {
                           setLongFilter("all");
                           setShortFilter("all");
+                          setChainFilter(null);
                         }}
                         className="text-white/70 hover:text-white text-sm underline transition-colors cursor-pointer self-end"
                       >

@@ -66,6 +66,17 @@ export const feeds = {
         ],
     },
 
+    megaeth: {
+        fxUSD: [
+            { label: "USDMY/BTC", address: "0xD150d2523120559C4a26C288B749D224427A5D28" as const, status: "active" as const },
+            { label: "USDMY/ETH", address: "0x45e4a5E934Cc199E1643A1dC05f5b25352e73a8B" as const, status: "active" as const },
+        ],
+        USDE: [],
+        stETH: [
+            { label: "wstETH/USD", address: "0x8EDE2Ba210e96f23294063938Bc080aFC8F0BAf1" as const, status: "active" as const },
+        ],
+    },
+
 } as const;
 
 export type Feeds = typeof feeds;

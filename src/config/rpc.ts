@@ -37,6 +37,10 @@ export const BASE_RPC_URL =
   process.env.NEXT_PUBLIC_BASE_RPC_URL ||
   "https://mainnet.base.org";
 
+// MegaETH RPC URL (chainId 4326) - set in env for MegaETH markets
+export const MEGAETH_RPC_URL =
+  process.env.NEXT_PUBLIC_MEGAETH_RPC_URL || "";
+
 // Define mainnet chain
 const mainnetChain = defineChain({
   id: 1,
@@ -118,6 +122,29 @@ const baseChain = defineChain({
   },
 });
 
+// MegaETH chain (chainId 4326)
+const megaethChain = defineChain({
+  id: 4326,
+  name: "MegaETH",
+  network: "megaeth",
+  nativeCurrency: {
+    decimals: 18,
+    name: "Ether",
+    symbol: "ETH",
+  },
+  contracts: {
+    multicall3: MULTICALL3,
+  },
+  rpcUrls: {
+    default: {
+      http: [MEGAETH_RPC_URL || "https://rpc.megaeth.org"],
+    },
+    public: {
+      http: [MEGAETH_RPC_URL || "https://rpc.megaeth.org"],
+    },
+  },
+});
+
 /**
  * Get the mainnet RPC client
  */
@@ -154,6 +181,20 @@ export function getBaseRpcClient() {
     transport: http(BASE_RPC_URL),
   });
 }
+
+/**
+ * Get MegaETH RPC client (chainId 4326)
+ */
+export function getMegaEthRpcClient() {
+  const url = MEGAETH_RPC_URL || "https://rpc.megaeth.org";
+  return createPublicClient({
+    chain: megaethChain,
+    transport: http(url),
+  });
+}
+
+// Export chains for wagmi
+export { mainnetChain, arbitrumChain, baseChain, megaethChain };
 
 // Export the mainnet public client for direct use
 export const publicClient = getRpcClient();
