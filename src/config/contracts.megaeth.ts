@@ -55,6 +55,10 @@ const ORACLE_WSTETH_USD = "0x8EDE2Ba210e96f23294063938Bc080aFC8F0BAf1" as `0x${s
 
 const ZERO = "0x0000000000000000000000000000000000000000" as `0x${string}`;
 
+// Collateral token addresses on MegaETH (chainId 4326)
+const WSTETH_MEGAETH = "0x601aC63637933D88285A025C685AC4e9a92a98dA" as `0x${string}`;
+const BTC_B_MEGAETH = "0xB0F70C0bD6FD87dbEb7C10dC692a2a6106817072" as `0x${string}`; // btc.b = BTC bridged
+
 export const markets: Markets = {
   "btc-usdm-megaeth": {
     id: "btc-usdm-megaeth",
@@ -75,8 +79,8 @@ export const markets: Markets = {
       collateralPrice: ORACLE_BTC_USD,
       feeReceiver: ZERO,
       owner: ZERO,
-      collateralToken: ZERO,
-      wrappedCollateralToken: ZERO,
+      collateralToken: BTC_B_MEGAETH,
+      wrappedCollateralToken: BTC_B_MEGAETH,
       underlyingCollateralToken: ZERO,
       rebalancePoolCollateral: ZERO,
       rebalancePoolLeveraged: ZERO,
@@ -111,8 +115,8 @@ export const markets: Markets = {
       collateralPrice: ORACLE_WSTETH_USD,
       feeReceiver: ZERO,
       owner: ZERO,
-      collateralToken: ZERO,
-      wrappedCollateralToken: ZERO,
+      collateralToken: WSTETH_MEGAETH,
+      wrappedCollateralToken: WSTETH_MEGAETH,
       underlyingCollateralToken: ZERO,
       rebalancePoolCollateral: ZERO,
       rebalancePoolLeveraged: ZERO,

@@ -35,6 +35,7 @@ const ICONS: Record<string, string> = {
     bom5: "/icons/stock.svg", // Financial index - using stock icon
     all: "/icons/logo-blue.svg", // "All pools" filter – Harbor logo (blue for visibility on white)
     // Harbor tokens - ha (pegged) tokens
+    hausd: "/icons/haUSD_1.png",
     haeth: "/icons/haETH.png",
     habtc: "/icons/haBTC.png",
     haeur: "/icons/haEUR.png",
@@ -44,6 +45,11 @@ const ICONS: Record<string, string> = {
     hsfxusdeth: "/icons/hsUSDETH.png",
     "hsfxusd-btc": "/icons/hsUSDBTC.png",
     hsfxusdbtc: "/icons/hsUSDBTC.png",
+    // haUSD markets (e.g. MegaETH) - pegged haUSD + sail tokens
+    "hsusd-btc": "/icons/hsUSD_BTC.png",
+    "hsusd-eth": "/icons/hsUSD_ETH.png",
+    "hsusd-wsteth": "/icons/hsUSD_ETH.png",
+    "hsusd-xau": "/icons/hsUSD_XAU.png",
     "hssteth-btc": "/icons/hsETHBTC.png",
     hsstethbtc: "/icons/hsETHBTC.png",
     "hssteth-eur": "/icons/hsSTETHEUR.png",

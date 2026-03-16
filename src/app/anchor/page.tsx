@@ -113,7 +113,9 @@ import { useStaggeredReady } from "@/hooks/useStaggeredReady";
 import { calculateReadOffset } from "@/utils/anchor/calculateReadOffset";
 import { useMultipleCollateralPrices } from "@/hooks/useCollateralPrice";
 import { DEBUG_ANCHOR } from "@/config/debug";
-import ChainFilter from "@/components/ChainFilter";
+import { FilterMultiselectDropdown, FILTER_NONE_SENTINEL } from "@/components/FilterMultiselectDropdown";
+import NetworkIconCell from "@/components/NetworkIconCell";
+import { getWeb3iconsNetworkId } from "@/config/web3iconsNetworks";
 
 // Flag to temporarily disable anchor marks (set to false to pause marks)
 const ANCHOR_MARKS_ENABLED = true;
@@ -143,7 +145,7 @@ export default function AnchorPage() {
 
   // CoinGecko prices are now provided by useAnchorPrices hook (see below)
   const [expandedMarkets, setExpandedMarkets] = useState<string[]>([]);
-  const [chainFilter, setChainFilter] = useState<string | null>(null);
+  const [chainFilterSelected, setChainFilterSelected] = useState<string[]>([]);
   const [manageModal, setManageModal] = useState<{
     marketId: string;
     market: any;
@@ -301,11 +303,35 @@ export default function AnchorPage() {
   // Filter by chain for display (data still loaded for all markets)
   const displayedAnchorMarkets = useMemo(
     () =>
-      chainFilter
-        ? anchorMarkets.filter(([_, m]) => (m as any).chain?.name === chainFilter)
-        : anchorMarkets,
-    [anchorMarkets, chainFilter]
+      chainFilterSelected.includes(FILTER_NONE_SENTINEL)
+        ? []
+        : chainFilterSelected.length === 0
+          ? anchorMarkets
+          : anchorMarkets.filter(([, m]) => {
+              const chainName = (m as any).chain?.name || "Ethereum";
+              return chainFilterSelected.includes(chainName);
+            }),
+    [anchorMarkets, chainFilterSelected]
   );
+
+  const anchorChainOptions = useMemo(() => {
+    const seen = new Set<string>();
+    const options: { id: string; label: string; iconUrl?: string; networkId?: string }[] = [];
+    anchorMarkets.forEach(([, m]) => {
+      const name = (m as any).chain?.name || "Ethereum";
+      if (seen.has(name)) return;
+      seen.add(name);
+      const logo = (m as any).chain?.logo || "icons/eth.png";
+      const networkId = getWeb3iconsNetworkId(name);
+      options.push({
+        id: name,
+        label: name,
+        iconUrl: networkId ? undefined : (logo.startsWith("/") ? logo : `/${logo}`),
+        networkId,
+      });
+    });
+    return options.sort((a, b) => a.label.localeCompare(b.label));
+  }, [anchorMarkets]);
 
   // Build markets config for volatility protection hook
   const volProtectionMarketsConfig = useMemo(
@@ -5974,12 +6000,36 @@ export default function AnchorPage() {
 
           {/* Markets List */}
           <section className="space-y-2 overflow-visible">
-            {/* Stability Pools Header */}
-            <div className="pt-4 mb-3 flex items-center justify-between gap-3">
-              <h2 className="text-xs font-medium text-white/70 uppercase tracking-wider">
-                Stability Pools
-              </h2>
-
+            {/* Stability Pools + dropdowns left, marks right */}
+            <div className="pt-4 mb-3 flex flex-col md:flex-row md:items-center md:justify-between gap-3 flex-wrap">
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-xs font-medium text-white/70 uppercase tracking-wider">
+                  Stability Pools
+                </h2>
+                {(anchorChainOptions.length > 1 || chainFilterSelected.length > 0) && (
+                  <>
+                    <FilterMultiselectDropdown
+                      label="Network"
+                      options={anchorChainOptions}
+                      value={chainFilterSelected}
+                      onChange={setChainFilterSelected}
+                      allLabel="All networks"
+                      groupLabel="NETWORKS"
+                      minWidthClass="min-w-[230px]"
+                    />
+                    <SimpleTooltip label="clear filters">
+                      <button
+                        type="button"
+                        onClick={() => setChainFilterSelected([])}
+                        className="p-1.5 text-[#E67A6B] hover:text-[#D66A5B] hover:bg-white/10 rounded transition-colors"
+                        aria-label="clear filters"
+                      >
+                        <XMarkIcon className="w-5 h-5 stroke-[2.5]" />
+                      </button>
+                    </SimpleTooltip>
+                  </>
+                )}
+              </div>
               <SimpleTooltip
                 label={
                   <div className="text-left max-w-xs">
@@ -5991,7 +6041,7 @@ export default function AnchorPage() {
                   </div>
                 }
               >
-                <div className="cursor-help bg-[#E67A6B] hover:bg-[#D66A5B] border border-white backdrop-blur-sm px-2 py-1 rounded-full transition-colors">
+                <div className="cursor-help bg-[#E67A6B] hover:bg-[#D66A5B] border border-white backdrop-blur-sm px-2 py-1 rounded-full transition-colors md:ml-auto">
                   <div className="flex items-center gap-1.5 text-white text-sm whitespace-nowrap">
                     <Image
                       src="/icons/marks.png"
@@ -6009,15 +6059,6 @@ export default function AnchorPage() {
                   </div>
                 </div>
               </SimpleTooltip>
-            </div>
-
-            {/* Chain filter */}
-            <div className="mb-4">
-              <ChainFilter
-                marketEntries={anchorMarkets}
-                value={chainFilter}
-                onChange={setChainFilter}
-              />
             </div>
 
             {/* Market Cards/Rows */}
@@ -6090,7 +6131,8 @@ export default function AnchorPage() {
                 <>
                   {/* Header Row (desktop) */}
                   <div className="hidden lg:block bg-white py-1.5 px-2 overflow-x-auto">
-                    <div className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr_1fr_1fr] gap-4 items-center uppercase tracking-wider text-[10px] lg:text-[11px] text-[#1E4775] font-semibold">
+                    <div className="grid grid-cols-[32px_1fr_1fr_1fr_1fr_1fr_1fr_1fr] gap-4 items-center uppercase tracking-wider text-[10px] lg:text-[11px] text-[#1E4775] font-semibold">
+                      <div className="min-w-0" aria-label="Network" />
                       <div className="min-w-0 text-center">Token</div>
                       <div className="text-center min-w-0">Deposit Assets</div>
                       <div className="text-center min-w-0">APR</div>
@@ -6103,7 +6145,8 @@ export default function AnchorPage() {
 
                   {/* Header Row (md / narrow) */}
                   <div className="hidden md:block lg:hidden bg-white py-1.5 px-2 overflow-x-auto">
-                    <div className="grid grid-cols-[1fr_1fr_1fr_1fr] gap-4 items-center uppercase tracking-wider text-[10px] text-[#1E4775] font-semibold">
+                    <div className="grid grid-cols-[32px_1fr_1fr_1fr_1fr] gap-4 items-center uppercase tracking-wider text-[10px] text-[#1E4775] font-semibold">
+                      <div className="min-w-0" aria-label="Network" />
                       <div className="min-w-0 text-center">Token</div>
                       <div className="text-center min-w-0">APR</div>
                       <div className="text-center min-w-0">Position</div>
@@ -6497,7 +6540,14 @@ export default function AnchorPage() {
                       </div>
 
                       {/* Medium / narrow layout (md to < lg) */}
-                      <div className="hidden md:grid lg:hidden grid-cols-[1fr_1fr_1fr_1fr] gap-4 items-center text-sm">
+                      <div className="hidden md:grid lg:hidden grid-cols-[32px_1fr_1fr_1fr_1fr] gap-4 items-center text-sm">
+                        <div className="flex items-center justify-center">
+                          <NetworkIconCell
+                            chainName={(marketList[0].market as any).chain?.name || "Ethereum"}
+                            chainLogo={(marketList[0].market as any).chain?.logo || "icons/eth.png"}
+                            size={18}
+                          />
+                        </div>
                         <div className="whitespace-nowrap min-w-0 overflow-hidden">
                           <div className="flex items-center justify-center gap-1.5">
                                 <SimpleTooltip
@@ -6688,7 +6738,14 @@ export default function AnchorPage() {
                       </div>
 
                       {/* Desktop layout (>= lg) */}
-                      <div className="hidden lg:grid grid-cols-[1fr_1fr_1fr_1fr_1fr_1fr_1fr] gap-4 items-center text-sm">
+                      <div className="hidden lg:grid grid-cols-[32px_1fr_1fr_1fr_1fr_1fr_1fr_1fr] gap-4 items-center text-sm">
+                        <div className="flex items-center justify-center">
+                          <NetworkIconCell
+                            chainName={(marketList[0].market as any).chain?.name || "Ethereum"}
+                            chainLogo={(marketList[0].market as any).chain?.logo || "icons/eth.png"}
+                            size={20}
+                          />
+                        </div>
                         <div className="whitespace-nowrap min-w-0 overflow-hidden">
                           <div className="flex items-center justify-center gap-1.5">
                                 <SimpleTooltip
@@ -9348,6 +9405,7 @@ export default function AnchorPage() {
                   <SharedEtherscanLink
                     label=""
                     address={contractAddressesModal.minterAddress}
+                    chainId={(contractAddressesModal.market as any).chainId ?? 1}
                   />
                 </div>
                 <div>
@@ -9360,6 +9418,7 @@ export default function AnchorPage() {
                       (contractAddressesModal.market as any).addresses
                         ?.stabilityPoolCollateral
                     }
+                    chainId={(contractAddressesModal.market as any).chainId ?? 1}
                   />
                 </div>
                 <div>
@@ -9372,6 +9431,7 @@ export default function AnchorPage() {
                       (contractAddressesModal.market as any).addresses
                         ?.stabilityPoolLeveraged
                     }
+                    chainId={(contractAddressesModal.market as any).chainId ?? 1}
                   />
                 </div>
                 <div>
@@ -9382,6 +9442,7 @@ export default function AnchorPage() {
                       (contractAddressesModal.market as any).addresses
                         ?.peggedToken
                     }
+                    chainId={(contractAddressesModal.market as any).chainId ?? 1}
                   />
                 </div>
                 <div>
@@ -9394,6 +9455,7 @@ export default function AnchorPage() {
                       (contractAddressesModal.market as any).addresses
                         ?.collateralToken
                     }
+                    chainId={(contractAddressesModal.market as any).chainId ?? 1}
                   />
                 </div>
                 <div>
@@ -9406,6 +9468,7 @@ export default function AnchorPage() {
                       (contractAddressesModal.market as any).addresses
                         ?.collateralPrice
                     }
+                    chainId={(contractAddressesModal.market as any).chainId ?? 1}
                   />
                 </div>
               </div>

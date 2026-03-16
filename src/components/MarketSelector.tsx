@@ -2,6 +2,8 @@
 
 import { useState, useRef, useEffect } from "react";
 import { markets } from "../config/markets";
+import { getWeb3iconsNetworkId } from "@/config/web3iconsNetworks";
+import NetworkIconClient from "@/components/NetworkIconClient";
 
 interface MarketSelectorProps {
  selectedMarketId: string;
@@ -63,16 +65,25 @@ export default function MarketSelector({
  );
  };
 
- const getChainBadge = (chain: { name: string; logo: string }) => (
- <span className="inline-flex items-center gap-1.5 text-xs text-zinc-400 bg-zinc-800/80 border border-zinc-700 rounded-md px-2 py-1 font-medium">
- <img
- src={chain.logo.startsWith("/") ? chain.logo : `/${chain.logo}`}
- alt=""
- className="w-3.5 h-3.5 rounded-full object-contain"
- />
- {chain.name}
- </span>
- );
+ const getChainBadge = (chain: { name: string; logo: string }) => {
+   const networkId = getWeb3iconsNetworkId(chain.name);
+   return (
+     <span className="inline-flex items-center gap-1.5 text-xs text-zinc-400 bg-zinc-800/80 border border-zinc-700 rounded-md px-2 py-1 font-medium">
+       {networkId ? (
+         <span className="w-3.5 h-3.5 flex items-center justify-center">
+           <NetworkIconClient name={networkId} size={14} variant="branded" />
+         </span>
+       ) : (
+         <img
+           src={chain.logo.startsWith("/") ? chain.logo : `/${chain.logo}`}
+           alt=""
+           className="w-3.5 h-3.5 rounded-full object-contain"
+         />
+       )}
+       {chain.name}
+     </span>
+   );
+ };
 
  return (
  <div className="relative" ref={dropdownRef}>

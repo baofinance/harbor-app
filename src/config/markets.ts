@@ -851,18 +851,18 @@ export const markets = {
   ...(getContractMarket("btc-usdm-megaeth")
     ? {
         "btc-usdm-megaeth": {
-          name: "BTC/USDM",
+          name: "BTC-USD",
           status: "genesis" as const,
-          pegTarget: "BTC",
+          pegTarget: "USD",
           chainId: 4326,
           chain: { name: "MegaETH", logo: "icons/eth.png" },
           collateral: {
-            symbol: "USDM",
-            name: "USD Mega",
-            underlyingSymbol: "USDM",
+            symbol: "BTC",
+            name: "Bitcoin",
+            underlyingSymbol: "BTC",
           },
-          underlyingCoinGeckoId: "usd",
-          acceptedAssets: [{ symbol: "USDM", name: "USD Mega" }],
+          underlyingCoinGeckoId: "bitcoin",
+          acceptedAssets: [{ symbol: "BTC", name: "Bitcoin" }],
           rewardTokens: { default: ["USDM"], additional: [] },
           addresses: {
             minter: contractsMarkets["btc-usdm-megaeth"].addresses.minter,
@@ -895,9 +895,9 @@ export const markets = {
           },
         },
         "wsteth-usd-megaeth": {
-          name: "wstETH/USD",
+          name: "wstETH-USD",
           status: "genesis" as const,
-          pegTarget: "ETH",
+          pegTarget: "USD",
           chainId: 4326,
           chain: { name: "MegaETH", logo: "icons/eth.png" },
           collateral: {

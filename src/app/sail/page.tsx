@@ -18,6 +18,7 @@ import {
   ArrowPathIcon,
   StarIcon,
   QuestionMarkCircleIcon,
+  XMarkIcon,
 } from "@heroicons/react/24/outline";
 import Image from "next/image";
 import PriceChart from "@/components/PriceChart";
@@ -40,7 +41,9 @@ import { useMarketBoostWindows } from "@/hooks/useMarketBoostWindows";
 import { MarksBoostBadge } from "@/components/MarksBoostBadge";
 import { useQuery } from "@tanstack/react-query";
 import { getSailPriceGraphUrlOptional, getGraphHeaders } from "@/config/graph";
-import ChainFilter from "@/components/ChainFilter";
+import { FilterMultiselectDropdown, FILTER_NONE_SENTINEL } from "@/components/FilterMultiselectDropdown";
+import NetworkIconCell from "@/components/NetworkIconCell";
+import { getWeb3iconsNetworkId } from "@/config/web3iconsNetworks";
 
 // PnL is now fetched from subgraph (useSailPositionPnL hook)
 
@@ -735,7 +738,14 @@ function SailMarketRow({
         </div>
 
         {/* Desktop / tablet layout */}
-        <div className="hidden lg:grid grid-cols-[2fr_1fr_0.9fr_1fr_1fr_0.9fr_0.8fr] gap-2 md:gap-4 items-stretch text-sm md:justify-items-center overflow-visible">
+        <div className="hidden lg:grid grid-cols-[32px_2fr_1fr_0.9fr_1fr_1fr_0.9fr_0.8fr] gap-2 md:gap-4 items-stretch text-sm md:justify-items-center overflow-visible">
+          <div className="flex items-center justify-center">
+            <NetworkIconCell
+              chainName={(market as any).chain?.name || "Ethereum"}
+              chainLogo={(market as any).chain?.logo || "icons/eth.png"}
+              size={20}
+            />
+          </div>
           <div className="min-w-0 flex items-center w-full sm:justify-self-stretch overflow-visible">
             <div className="flex items-stretch w-full h-full overflow-visible">
               <div
@@ -1417,9 +1427,9 @@ export default function SailPage() {
   const [manageModalTab, setManageModalTab] = useState<"mint" | "redeem">(
     "mint"
   );
-  const [longFilter, setLongFilter] = useState<string>("all");
-  const [shortFilter, setShortFilter] = useState<string>("all");
-  const [chainFilter, setChainFilter] = useState<string | null>(null);
+  const [longFilterSelected, setLongFilterSelected] = useState<string[]>([]);
+  const [shortFilterSelected, setShortFilterSelected] = useState<string[]>([]);
+  const [chainFilterSelected, setChainFilterSelected] = useState<string[]>([]);
 
   // Aggregate PnL across all user Sail positions (subgraph)
   const sailPnLSummary = useSailPositionsPnLSummary(isConnected);
@@ -1494,11 +1504,35 @@ export default function SailPage() {
   // Filter by chain for display (data still loaded for all markets)
   const displayedSailMarkets = useMemo(
     () =>
-      chainFilter
-        ? sailMarkets.filter(([_, m]) => (m as any).chain?.name === chainFilter)
-        : sailMarkets,
-    [sailMarkets, chainFilter]
+      chainFilterSelected.includes(FILTER_NONE_SENTINEL)
+        ? []
+        : chainFilterSelected.length === 0
+          ? sailMarkets
+          : sailMarkets.filter(([, m]) => {
+              const chainName = (m as any).chain?.name || "Ethereum";
+              return chainFilterSelected.includes(chainName);
+            }),
+    [sailMarkets, chainFilterSelected]
   );
+
+  const sailChainOptions = useMemo(() => {
+    const seen = new Set<string>();
+    const options: { id: string; label: string; iconUrl?: string; networkId?: string }[] = [];
+    sailMarkets.forEach(([, m]) => {
+      const name = (m as any).chain?.name || "Ethereum";
+      if (seen.has(name)) return;
+      seen.add(name);
+      const logo = (m as any).chain?.logo || "icons/eth.png";
+      const networkId = getWeb3iconsNetworkId(name);
+      options.push({
+        id: name,
+        label: name,
+        iconUrl: networkId ? undefined : (logo.startsWith("/") ? logo : `/${logo}`),
+        networkId,
+      });
+    });
+    return options.sort((a, b) => a.label.localeCompare(b.label));
+  }, [sailMarkets]);
 
   // Sail marks boost window (2x) for markets in their first 8 days
   const sailBoostIds = useMemo(() => {
@@ -1549,12 +1583,15 @@ export default function SailPage() {
   }, [sailMarkets]);
 
   // Get unique long and short sides for filter dropdowns (from displayed markets when chain filter is on)
+  // Exclude Long USD; exclude Short mcap and Short wstETH from filter options
   const uniqueLongSides = useMemo(() => {
     const sides = new Set<string>();
     displayedSailMarkets.forEach(([_, m]) => {
       sides.add(getLongSide(m));
     });
-    return Array.from(sides).sort();
+    return Array.from(sides)
+      .filter((s) => s.toLowerCase() !== "usd")
+      .sort();
   }, [displayedSailMarkets]);
 
   const uniqueShortSides = useMemo(() => {
@@ -1562,7 +1599,10 @@ export default function SailPage() {
     displayedSailMarkets.forEach(([_, m]) => {
       sides.add(getShortSide(m));
     });
-    return Array.from(sides).sort();
+    const exclude = new Set(["mcap", "wsteth"]);
+    return Array.from(sides)
+      .filter((s) => !exclude.has(s.toLowerCase()))
+      .sort();
   }, [displayedSailMarkets]);
 
   // Fetch contract data for all markets (ALWAYS 7 reads per market to ensure consistent offsets)
@@ -2325,16 +2365,13 @@ export default function SailPage() {
                     | bigint
                     | undefined;
                   
-                  // Filter by long side
-                  if (longFilter !== "all") {
+                  if (longFilterSelected.length > 0) {
                     const longSide = getLongSide(m);
-                    if (longSide !== longFilter) return false;
+                    if (!longFilterSelected.includes(longSide)) return false;
                   }
-                  
-                  // Filter by short side
-                  if (shortFilter !== "all") {
+                  if (shortFilterSelected.length > 0) {
                     const shortSide = getShortSide(m);
-                    if (shortSide !== shortFilter) return false;
+                    if (!shortFilterSelected.includes(shortSide)) return false;
                   }
                   
                 return collateralValue !== undefined && collateralValue > 0n;
@@ -2342,63 +2379,66 @@ export default function SailPage() {
 
               return (
                 <div>
-                  <div className="pt-4 mb-3 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 flex-wrap">
-                    {/* Chain + Long/Short Filters */}
-                    <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-                      <ChainFilter
-                        marketEntries={sailMarkets}
-                        value={chainFilter}
-                        onChange={setChainFilter}
-                        className="w-full md:w-auto"
+                  {/* Leverage + dropdowns left, marks right */}
+                  <div className="pt-4 mb-3 flex flex-col md:flex-row md:items-center md:justify-between gap-3 flex-wrap">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h2 className="text-xs font-medium text-white/70 uppercase tracking-wider">
+                        Leverage
+                      </h2>
+                      {sailChainOptions.length > 1 && (
+                        <FilterMultiselectDropdown
+                          label="Network"
+                          options={sailChainOptions}
+                          value={chainFilterSelected}
+                          onChange={setChainFilterSelected}
+                          allLabel="All networks"
+                          groupLabel="NETWORKS"
+                          minWidthClass="min-w-[235px]"
+                        />
+                      )}
+                      <FilterMultiselectDropdown
+                        label="Long"
+                        options={uniqueLongSides.map((side) => ({
+                          id: side,
+                          label: `Long ${side}`,
+                          iconUrl: getLogoPath(side),
+                          prefix: "long" as const,
+                        }))}
+                        value={longFilterSelected}
+                        onChange={setLongFilterSelected}
+                        allLabel="All Long"
+                        groupLabel="LONG"
+                        minWidthClass="min-w-[235px]"
                       />
-                      {/* Long Filter */}
-                      <div className="relative">
-                        <select
-                          value={longFilter}
-                          onChange={(e) => setLongFilter(e.target.value)}
-                          className="bg-black/35 hover:bg-black/40 border border-white/40 backdrop-blur-sm pl-3 pr-8 py-1.5 text-white/90 text-sm focus:outline-none focus:ring-2 focus:ring-white/50 transition-colors cursor-pointer appearance-none"
+                      <FilterMultiselectDropdown
+                        label="Short"
+                        options={uniqueShortSides.map((side) => ({
+                          id: side,
+                          label: `Short ${side}`,
+                          iconUrl: getLogoPath(side),
+                          prefix: "short" as const,
+                        }))}
+                        value={shortFilterSelected}
+                        onChange={setShortFilterSelected}
+                        allLabel="All Short"
+                        groupLabel="SHORT"
+                        minWidthClass="min-w-[235px]"
+                      />
+                      <SimpleTooltip label="clear filters">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setLongFilterSelected([]);
+                            setShortFilterSelected([]);
+                            setChainFilterSelected([]);
+                          }}
+                          className="p-1.5 text-[#E67A6B] hover:text-[#D66A5B] hover:bg-white/10 rounded transition-colors"
+                          aria-label="clear filters"
                         >
-                          <option value="all">All Long</option>
-                          {uniqueLongSides.map((side) => (
-                            <option key={side} value={side} className="bg-[#1E4775]">
-                              Long {side}
-                            </option>
-                          ))}
-                        </select>
-                        <ChevronDownIcon className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/90 pointer-events-none z-10" />
-                      </div>
-
-                      {/* Short Filter */}
-                      <div className="relative">
-                        <select
-                          value={shortFilter}
-                          onChange={(e) => setShortFilter(e.target.value)}
-                          className="bg-black/35 hover:bg-black/40 border border-white/40 backdrop-blur-sm pl-3 pr-8 py-1.5 text-white/90 text-sm focus:outline-none focus:ring-2 focus:ring-white/50 transition-colors cursor-pointer appearance-none"
-                        >
-                          <option value="all">All Short</option>
-                          {uniqueShortSides.map((side) => (
-                            <option key={side} value={side} className="bg-[#1E4775]">
-                              Short {side}
-                            </option>
-                          ))}
-                        </select>
-                        <ChevronDownIcon className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/90 pointer-events-none z-10" />
-                      </div>
-
-                      {/* Clear Filters */}
-                      <button
-                        onClick={() => {
-                          setLongFilter("all");
-                          setShortFilter("all");
-                          setChainFilter(null);
-                        }}
-                        className="text-white/70 hover:text-white text-sm underline transition-colors cursor-pointer self-end"
-                      >
-                        Clear filters
-                      </button>
+                          <XMarkIcon className="w-5 h-5 stroke-[2.5]" />
+                        </button>
+                      </SimpleTooltip>
                     </div>
-
-                    {/* Marks Pill */}
                     <SimpleTooltip
                       centerOnMobile
                       label={
@@ -2411,7 +2451,7 @@ export default function SailPage() {
                         </div>
                       }
                     >
-                      <div className="cursor-help bg-[#E67A6B] hover:bg-[#D66A5B] border border-white backdrop-blur-sm px-2 py-1 rounded-full transition-colors w-full md:w-auto">
+                      <div className="cursor-help bg-[#E67A6B] hover:bg-[#D66A5B] border border-white backdrop-blur-sm px-2 py-1 rounded-full transition-colors w-full md:w-auto md:ml-auto">
                         <div className="flex items-center justify-center md:justify-start gap-1.5 text-white text-sm whitespace-nowrap">
                           <Image
                             src="/icons/marks.png"
@@ -2439,7 +2479,8 @@ export default function SailPage() {
 
                   {/* Header Row */}
                   <div className="hidden md:block bg-white py-1.5 px-2 overflow-x-auto mb-2">
-                  <div className="grid grid-cols-[2fr_1fr_0.9fr_1fr_1fr_0.9fr_0.8fr] gap-4 items-center uppercase tracking-wider text-[10px] lg:text-[11px] text-[#1E4775] font-semibold">
+                  <div className="grid grid-cols-[32px_2fr_1fr_0.9fr_1fr_1fr_0.9fr_0.8fr] gap-4 items-center uppercase tracking-wider text-[10px] lg:text-[11px] text-[#1E4775] font-semibold">
+                      <div className="min-w-0" aria-label="Network" />
                       <div className="min-w-0 text-center">Long / Short</div>
                       <div className="text-center min-w-0">Token</div>
                       <div className="text-center min-w-0">Leverage</div>

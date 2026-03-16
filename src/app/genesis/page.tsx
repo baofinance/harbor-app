@@ -34,6 +34,7 @@ import {
   ArrowPathIcon,
   StarIcon,
   QuestionMarkCircleIcon,
+  XMarkIcon,
 } from "@heroicons/react/24/outline";
 import InfoTooltip from "@/components/InfoTooltip";
 import SimpleTooltip from "@/components/SimpleTooltip";
@@ -63,6 +64,9 @@ import { getAcceptedDepositAssets } from "@/utils/markets";
 import TideAPRTooltip from "@/components/TideAPRTooltip";
 import { GenesisErrorBanner } from "@/components/GenesisErrorBanner";
 import { GenesisMarketExpandedView } from "@/components/GenesisMarketExpandedView";
+import { FilterMultiselectDropdown, FILTER_NONE_SENTINEL } from "@/components/FilterMultiselectDropdown";
+import NetworkIconCell from "@/components/NetworkIconCell";
+import { getWeb3iconsNetworkId } from "@/config/web3iconsNetworks";
 import { useSortedGenesisMarkets } from "@/hooks/useSortedGenesisMarkets";
 import { GenesisHeaderSummary } from "@/components/GenesisHeaderSummary";
 import { GenesisLedgerMarksSummary } from "@/components/GenesisLedgerMarksSummary";
@@ -341,14 +345,31 @@ function MarketExpandedView({
             Contract Info
           </h3>
           <div>
-            <EtherscanLink label="Genesis" address={addresses.genesis} />
-            <EtherscanLink label="Minter" address={addresses.minter} />
+            <EtherscanLink
+              label="Genesis"
+              address={addresses.genesis}
+              chainId={(market as any).chainId ?? 1}
+            />
+            <EtherscanLink
+              label="Minter"
+              address={addresses.minter}
+              chainId={(market as any).chainId ?? 1}
+            />
             <EtherscanLink
               label="Collateral Token"
               address={addresses.collateralToken}
+              chainId={(market as any).chainId ?? 1}
             />
-            <EtherscanLink label="Anchor Token" address={peggedTokenAddress} />
-            <EtherscanLink label="Sail Token" address={leveragedTokenAddress} />
+            <EtherscanLink
+              label="Anchor Token"
+              address={peggedTokenAddress}
+              chainId={(market as any).chainId ?? 1}
+            />
+            <EtherscanLink
+              label="Sail Token"
+              address={leveragedTokenAddress}
+              chainId={(market as any).chainId ?? 1}
+            />
           </div>
         </div>
 
@@ -435,6 +456,7 @@ export default function GenesisIndexPage() {
     peggedSymbol?: string;
   }>({ open: false });
   const [fdv, setFdv] = useState<number>(DEFAULT_FDV);
+  const [chainFilterSelected, setChainFilterSelected] = useState<string[]>([]);
 
   const { writeContractAsync } = useWriteContract();
   const publicClient = usePublicClient();
@@ -464,6 +486,25 @@ export default function GenesisIndexPage() {
       }),
     []
   );
+
+  const genesisChainOptions = useMemo(() => {
+    const seen = new Set<string>();
+    const options: { id: string; label: string; iconUrl?: string; networkId?: string }[] = [];
+    genesisMarkets.forEach(([, m]) => {
+      const name = (m as any).chain?.name || "Ethereum";
+      if (seen.has(name)) return;
+      seen.add(name);
+      const logo = (m as any).chain?.logo || "icons/eth.png";
+      const networkId = getWeb3iconsNetworkId(name);
+      options.push({
+        id: name,
+        label: name,
+        iconUrl: networkId ? undefined : (logo.startsWith("/") ? logo : `/${logo}`),
+        networkId,
+      });
+    });
+    return options.sort((a, b) => a.label.localeCompare(b.label));
+  }, [genesisMarkets]);
 
   const comingSoonMarkets = useMemo(
     () =>
@@ -1017,6 +1058,29 @@ export default function GenesisIndexPage() {
       isConnected,
       marksResults,
     });
+
+  const displayedActiveMarkets = useMemo(() => {
+    if (chainFilterSelected.includes(FILTER_NONE_SENTINEL)) return [];
+    if (chainFilterSelected.length === 0) return activeMarkets;
+    return activeMarkets.filter(([, m]) => {
+      const chainName = (m as any).chain?.name || "Ethereum";
+      return chainFilterSelected.includes(chainName);
+    });
+  }, [activeMarkets, chainFilterSelected]);
+
+  const displayedCompletedByCampaign = useMemo(() => {
+    if (chainFilterSelected.includes(FILTER_NONE_SENTINEL)) return new Map<string, Array<[string, any, any]>>();
+    if (chainFilterSelected.length === 0) return completedByCampaign;
+    const next = new Map<string, Array<[string, any, any]>>();
+    completedByCampaign.forEach((markets, campaign) => {
+      const filtered = markets.filter(([, m]) => {
+        const chainName = (m as any).chain?.name || "Ethereum";
+        return chainFilterSelected.includes(chainName);
+      });
+      if (filtered.length > 0) next.set(campaign, filtered);
+    });
+    return next;
+  }, [completedByCampaign, chainFilterSelected]);
 
   return (
     <div className="min-h-screen text-white max-w-[1300px] mx-auto font-sans relative">
@@ -1912,12 +1976,81 @@ export default function GenesisIndexPage() {
         {/* Only show market rows section if there are active/pending markets or ended markets with claimable tokens */}
         {hasActiveOrPendingMarkets && (
           <section className="space-y-2 overflow-visible">
+            {/* Active campaign + dropdowns left, marks pills right */}
+            <div className="pt-4 pb-3 flex flex-col md:flex-row md:items-center md:justify-between gap-3 flex-wrap">
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-xs font-medium text-white/70 uppercase tracking-wider flex items-center gap-2">
+                  Active Campaign:
+                  {activeCampaignName && (
+                    <span className="inline-flex items-center px-2.5 py-1 bg-[#E67A6B] hover:bg-[#D66A5B] border border-white text-white text-xs font-semibold uppercase tracking-wider rounded-full transition-colors">
+                      {activeCampaignName}
+                    </span>
+                  )}
+                </h2>
+                {genesisChainOptions.length > 1 && (
+                  <>
+                    <FilterMultiselectDropdown
+                      label="Network"
+                      options={genesisChainOptions}
+                      value={chainFilterSelected}
+                      onChange={setChainFilterSelected}
+                      allLabel="All networks"
+                      groupLabel="NETWORKS"
+                      minWidthClass="min-w-[230px]"
+                    />
+                    <SimpleTooltip label="clear filters">
+                      <button
+                        type="button"
+                        onClick={() => setChainFilterSelected([])}
+                        className="p-1.5 text-[#E67A6B] hover:text-[#D66A5B] hover:bg-white/10 rounded transition-colors"
+                        aria-label="clear filters"
+                      >
+                        <XMarkIcon className="w-5 h-5 stroke-[2.5]" />
+                      </button>
+                    </SimpleTooltip>
+                  </>
+                )}
+              </div>
+              <div className="flex flex-wrap items-center gap-2 md:ml-auto">
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#E67A6B] hover:bg-[#D66A5B] border border-white text-white text-xs font-semibold uppercase tracking-wider rounded-full transition-colors">
+                  <span>Earn 10</span>
+                  <Image
+                    src="/icons/marks.png"
+                    alt="Marks"
+                    width={16}
+                    height={16}
+                    className="flex-shrink-0"
+                  />
+                  <span>/$/day + 100</span>
+                  <Image
+                    src="/icons/marks.png"
+                    alt="Marks"
+                    width={16}
+                    height={16}
+                    className="flex-shrink-0"
+                  />
+                  <span>bonus on completion</span>
+                </div>
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#E67A6B] hover:bg-[#D66A5B] border border-white text-white text-xs font-semibold uppercase tracking-wider rounded-full transition-colors">
+                  <span>Early Deposit Bonus!</span>
+                  <span>100</span>
+                  <Image
+                    src="/icons/marks.png"
+                    alt="Marks"
+                    width={20}
+                    height={20}
+                    className="flex-shrink-0"
+                  />
+                  <span>/ $</span>
+                </div>
+              </div>
+            </div>
             {/* Market Rows - sorted with running markets first, then completed markets */}
             {/* Within each section, markets with deposits are sorted to the top */}
             {(() => {
               let activeHeaderRendered = false;
 
-              const marketRows = activeMarkets.map(([id, mkt], idx) => {
+              const marketRows = displayedActiveMarkets.map(([id, mkt], idx) => {
                 const mi = genesisMarkets.findIndex((m) => m[0] === id);
                 // Updated offset: [isEnded, balanceOf?, claimable?] - no totalDeposits anymore
                 const baseOffset = mi * (isConnected ? 3 : 1);
@@ -1958,63 +2091,15 @@ export default function GenesisIndexPage() {
                   ? (reads?.[baseOffset + 1]?.result as bigint | undefined)
                   : undefined;
 
-                // Add section header for active markets at the start
+                // Add table header row for active markets at the start (title + filters + marks are above)
                 const activeHeader =
-                  showHeaders && !activeHeaderRendered && activeMarkets.length > 0 ? (
-                    <>
-                      <div
-                        key={`section-active`}
-                        className="pt-4 mb-1 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2"
-                      >
-                        {/* Pills - shown first on narrow screens, on right on larger screens */}
-                        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 order-1 sm:order-2">
-                          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#E67A6B] hover:bg-[#D66A5B] border border-white text-white text-xs font-semibold uppercase tracking-wider rounded-full transition-colors">
-                            <span>Earn 10</span>
-                            <Image
-                              src="/icons/marks.png"
-                              alt="Marks"
-                              width={16}
-                              height={16}
-                              className="flex-shrink-0"
-                            />
-                            <span>/$/day + 100</span>
-                            <Image
-                              src="/icons/marks.png"
-                              alt="Marks"
-                              width={16}
-                              height={16}
-                              className="flex-shrink-0"
-                            />
-                            <span>bonus on completion</span>
-                          </div>
-                          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#E67A6B] hover:bg-[#D66A5B] border border-white text-white text-xs font-semibold uppercase tracking-wider rounded-full transition-colors">
-                            <span>Early Deposit Bonus!</span>
-                            <span>100</span>
-                            <Image
-                              src="/icons/marks.png"
-                              alt="Marks"
-                              width={20}
-                              height={20}
-                              className="flex-shrink-0"
-                            />
-                            <span>/ $</span>
-                          </div>
-                        </div>
-                        {/* Header - shown second on narrow screens, on left on larger screens */}
-                        <h2 className="text-xs font-medium text-white/70 uppercase tracking-wider flex items-center gap-2 order-2 sm:order-1">
-                          Active Campaign:
-                          {activeCampaignName && (
-                            <span className="inline-flex items-center px-2.5 py-1 bg-[#E67A6B] hover:bg-[#D66A5B] border border-white text-white text-xs font-semibold uppercase tracking-wider rounded-full transition-colors">
-                              {activeCampaignName}
-                            </span>
-                          )}
-                        </h2>
-                      </div>
-                      <div
-                        key={`header-active`}
-                        className="hidden md:block bg-white py-1.5 px-2 overflow-x-auto mb-0"
-                      >
-                        <div className="grid lg:grid-cols-[1.5fr_80px_0.9fr_0.9fr_0.9fr_0.7fr_0.9fr] md:grid-cols-[120px_80px_100px_1fr_1fr_90px_80px] gap-4 items-center uppercase tracking-wider text-[10px] lg:text-[11px] text-[#1E4775] font-semibold">
+                  showHeaders && !activeHeaderRendered && displayedActiveMarkets.length > 0 ? (
+                    <div
+                      key={`header-active`}
+                      className="hidden md:block bg-white py-1.5 px-2 overflow-x-auto mb-0"
+                    >
+                        <div className="grid lg:grid-cols-[32px_1.5fr_80px_0.9fr_0.9fr_0.9fr_0.7fr_0.9fr] md:grid-cols-[32px_120px_80px_100px_1fr_1fr_90px_80px] gap-4 items-center uppercase tracking-wider text-[10px] lg:text-[11px] text-[#1E4775] font-semibold">
+                          <div className="min-w-0" aria-label="Network" />
                           <div className="min-w-0 text-center">Market</div>
                           <div className="text-center min-w-0">Marks</div>
                           <div className="text-center min-w-0 flex items-center justify-center gap-1.5">
@@ -2105,7 +2190,6 @@ export default function GenesisIndexPage() {
                           <div className="text-center min-w-0">Action</div>
                         </div>
                       </div>
-                    </>
                   ) : null;
 
                 // Mark that we've rendered the active header
@@ -2989,10 +3073,17 @@ export default function GenesisIndexPage() {
                       <div
                         className={`hidden md:grid lg:hidden items-center gap-4 text-xs ${
                           isEnded
-                            ? "grid-cols-[120px_60px_60px_1fr_80px]"
-                            : "grid-cols-[120px_80px_100px_1fr_1fr_90px_80px]"
+                            ? "grid-cols-[32px_120px_60px_60px_1fr_80px]"
+                            : "grid-cols-[32px_120px_80px_100px_1fr_1fr_90px_80px]"
                         }`}
                       >
+                        <div className="flex items-center justify-center">
+                          <NetworkIconCell
+                            chainName={(mkt as any).chain?.name || "Ethereum"}
+                            chainLogo={(mkt as any).chain?.logo || "icons/eth.png"}
+                            size={18}
+                          />
+                        </div>
                         {/* Market Title */}
                         <div className="flex items-center justify-center gap-1.5">
                           <span className="text-[#1E4775] font-medium text-sm">
@@ -3535,10 +3626,17 @@ export default function GenesisIndexPage() {
                       <div
                         className={`hidden lg:grid gap-4 items-center text-sm ${
                           isEnded
-                            ? "grid-cols-[1.5fr_1fr_1fr_1.5fr_1fr]"
-                            : "grid-cols-[1.5fr_80px_0.9fr_0.9fr_0.9fr_0.7fr_0.9fr]"
+                            ? "grid-cols-[32px_1.5fr_1fr_1fr_1.5fr_1fr]"
+                            : "grid-cols-[32px_1.5fr_80px_0.9fr_0.9fr_0.9fr_0.7fr_0.9fr]"
                         }`}
                       >
+                        <div className="flex items-center justify-center">
+                          <NetworkIconCell
+                            chainName={(mkt as any).chain?.name || "Ethereum"}
+                            chainLogo={(mkt as any).chain?.logo || "icons/eth.png"}
+                            size={20}
+                          />
+                        </div>
                         <div className="min-w-0 overflow-hidden">
                           <div className="flex items-center justify-center gap-1.5">
                             <span className="text-[#1E4775] font-medium text-sm lg:text-base">
@@ -4539,7 +4637,8 @@ export default function GenesisIndexPage() {
             </div>
             {/* Header row - hidden on mobile, shown on desktop */}
             <div className="hidden md:block bg-white py-1.5 px-2 overflow-x-auto mb-0">
-              <div className="grid lg:grid-cols-[1.5fr_80px_0.9fr_1fr_0.9fr] md:grid-cols-[120px_80px_100px_1fr_90px] gap-4 items-center uppercase tracking-wider text-[10px] lg:text-[11px] text-[#1E4775] font-semibold">
+              <div className="grid lg:grid-cols-[32px_1.5fr_80px_0.9fr_1fr_0.9fr] md:grid-cols-[32px_120px_80px_100px_1fr_90px] gap-4 items-center uppercase tracking-wider text-[10px] lg:text-[11px] text-[#1E4775] font-semibold">
+                <div className="min-w-0" aria-label="Network" />
                 <div className="min-w-0 text-center">Market</div>
                 <div className="text-center min-w-0 whitespace-nowrap">Proj. SP APR</div>
                 <div className="text-center min-w-0">Anchor Token</div>
@@ -4606,7 +4705,14 @@ export default function GenesisIndexPage() {
                     className="bg-white py-2.5 px-2 rounded-none border border-white/10"
                   >
                     {/* Desktop layout - grid matching active events */}
-                    <div className="hidden md:grid lg:grid-cols-[1.5fr_80px_0.9fr_1fr_0.9fr] md:grid-cols-[120px_80px_100px_1fr_110px] gap-4 items-center">
+                    <div className="hidden md:grid lg:grid-cols-[32px_1.5fr_80px_0.9fr_1fr_0.9fr] md:grid-cols-[32px_120px_80px_100px_1fr_110px] gap-4 items-center">
+                      <div className="flex items-center justify-center">
+                        <NetworkIconCell
+                          chainName={(mkt as any).chain?.name || "Ethereum"}
+                          chainLogo={(mkt as any).chain?.logo || "icons/eth.png"}
+                          size={20}
+                        />
+                      </div>
                       {/* Market Column */}
                       <div className="flex items-center gap-2 min-w-0 pl-4">
                         <div className="text-[#1E4775] font-medium text-sm">
@@ -4784,9 +4890,9 @@ export default function GenesisIndexPage() {
         )}
 
         {/* Completed Genesis Events - Grouped by Campaign */}
-        {completedByCampaign.size > 0 && (
+        {displayedCompletedByCampaign.size > 0 && (
           <section className="space-y-4 overflow-visible mt-8">
-            {Array.from(completedByCampaign.entries()).map(([campaignLabel, markets]) => {
+            {Array.from(displayedCompletedByCampaign.entries()).map(([campaignLabel, markets]) => {
               // Extract campaign name from label (e.g., "Launch Maiden Voyage" -> "Launch")
               const campaignName = campaignLabel.replace(/\s+Maiden Voyage.*/i, "").trim() || campaignLabel;
               
@@ -4799,7 +4905,8 @@ export default function GenesisIndexPage() {
                   </div>
                   {/* Header row - hidden on mobile, shown on desktop */}
                   <div className="hidden md:block bg-white py-1.5 px-2 overflow-x-auto mb-0">
-                    <div className="grid lg:grid-cols-[1.5fr_1fr_1fr_1.5fr_1fr] md:grid-cols-[120px_60px_60px_1fr_80px] gap-4 items-center uppercase tracking-wider text-[10px] lg:text-[11px] text-[#1E4775] font-semibold">
+                    <div className="grid lg:grid-cols-[32px_1.5fr_1fr_1fr_1.5fr_1fr] md:grid-cols-[32px_120px_60px_60px_1fr_80px] gap-4 items-center uppercase tracking-wider text-[10px] lg:text-[11px] text-[#1E4775] font-semibold">
+                      <div className="min-w-0" aria-label="Network" />
                       <div className="min-w-0 text-center">Market</div>
                       <div className="text-center min-w-0">
                         Anchor
@@ -4898,7 +5005,14 @@ export default function GenesisIndexPage() {
                           className="bg-white py-2.5 px-2 rounded-none border border-white/10"
                         >
                           {/* Desktop layout */}
-                          <div className="hidden md:grid lg:grid-cols-[1.5fr_1fr_1fr_1.5fr_1fr] md:grid-cols-[120px_60px_60px_1fr_80px] gap-4 items-center">
+                          <div className="hidden md:grid lg:grid-cols-[32px_1.5fr_1fr_1fr_1.5fr_1fr] md:grid-cols-[32px_120px_60px_60px_1fr_80px] gap-4 items-center">
+                            <div className="flex items-center justify-center">
+                              <NetworkIconCell
+                                chainName={(mkt as any).chain?.name || "Ethereum"}
+                                chainLogo={(mkt as any).chain?.logo || "icons/eth.png"}
+                                size={20}
+                              />
+                            </div>
                             {/* Market Column */}
                             <div className="flex items-center gap-2 min-w-0 pl-4">
                               <div className="text-[#1E4775] font-medium text-sm">

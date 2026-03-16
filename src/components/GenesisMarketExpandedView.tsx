@@ -120,14 +120,31 @@ export const GenesisMarketExpandedView = ({
             Contract Info
           </h3>
           <div>
-            <EtherscanLink label="Genesis" address={addresses.genesis} />
-            <EtherscanLink label="Minter" address={addresses.minter} />
+            <EtherscanLink
+              label="Genesis"
+              address={addresses.genesis}
+              chainId={(market as any).chainId ?? 1}
+            />
+            <EtherscanLink
+              label="Minter"
+              address={addresses.minter}
+              chainId={(market as any).chainId ?? 1}
+            />
             <EtherscanLink
               label="Collateral Token"
               address={addresses.collateralToken}
+              chainId={(market as any).chainId ?? 1}
             />
-            <EtherscanLink label="Anchor Token" address={peggedTokenAddress} />
-            <EtherscanLink label="Sail Token" address={leveragedTokenAddress} />
+            <EtherscanLink
+              label="Anchor Token"
+              address={peggedTokenAddress}
+              chainId={(market as any).chainId ?? 1}
+            />
+            <EtherscanLink
+              label="Sail Token"
+              address={leveragedTokenAddress}
+              chainId={(market as any).chainId ?? 1}
+            />
           </div>
         </div>
 

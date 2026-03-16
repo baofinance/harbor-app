@@ -12,45 +12,9 @@ import { rewardsABI } from "@/abis/rewards";
 import InfoTooltip from "@/components/InfoTooltip";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import HistoricalDataChart from "@/components/HistoricalDataChart";
+import { EtherscanLink } from "@/components/shared";
 import type { Pool } from "@/config/pools";
 import type { MarketConfig } from "@/config/contracts";
-
-interface EtherscanLinkProps {
-  label: string;
-  address?: string;
-}
-
-function EtherscanLink({ label, address }: EtherscanLinkProps) {
-  if (!address) return null;
-  const etherscanBaseUrl = "https://etherscan.io/address/";
-  return (
-    <div className="flex justify-between items-center text-sm py-2 border-b border-white/10 last:border-b-0">
-      <span className="text-white/70">{label}</span>
-      <a
-        href={`${etherscanBaseUrl}${address}`}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="font-mono text-white hover:underline flex items-center gap-4"
-      >
-        {`${address.slice(0, 6)}...${address.slice(-4)}`}
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          className="h-3 w-3"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-          />
-        </svg>
-      </a>
-    </div>
-  );
-}
 
 function ContractInfoSection({
   pool,
@@ -74,25 +38,42 @@ function ContractInfoSection({
     pool.poolType === "collateral"
       ? market.addresses.collateralToken
       : market.addresses.peggedToken;
+  const chainId = (market as any).chainId ?? 1;
 
   return (
     <div className="p-3 h-full">
       <h2 className="font-semibold font-mono text-white mb-2">Contract Info</h2>
       <div className="divide-y divide-white/10">
-        <EtherscanLink label={pool.name} address={pool.address} />
+        <EtherscanLink
+          label={pool.name}
+          address={pool.address}
+          chainId={chainId}
+          className="!border-white/10 !py-2 [&_span]:!text-white/70 [&_a]:!text-white"
+        />
         <EtherscanLink
           label={`Deposit Token (${pool.tokenSymbol})`}
           address={assetAddress}
+          chainId={chainId}
+          className="!border-white/10 !py-2 [&_span]:!text-white/70 [&_a]:!text-white"
         />
         <EtherscanLink
           label="Collateral Token"
           address={market.addresses.collateralToken}
+          chainId={chainId}
+          className="!border-white/10 !py-2 [&_span]:!text-white/70 [&_a]:!text-white"
         />
         <EtherscanLink
           label="Pegged Token"
           address={market.addresses.peggedToken}
+          chainId={chainId}
+          className="!border-white/10 !py-2 [&_span]:!text-white/70 [&_a]:!text-white"
         />
-        <EtherscanLink label="Minter" address={market.addresses.minter} />
+        <EtherscanLink
+          label="Minter"
+          address={market.addresses.minter}
+          chainId={chainId}
+          className="!border-white/10 !py-2 [&_span]:!text-white/70 [&_a]:!text-white"
+        />
       </div>
     </div>
   );

@@ -847,28 +847,37 @@ export function AnchorMarketExpandedView({
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
           <div className="space-y-1">
-            <SharedEtherscanLink label="Minter" address={minterAddress} />
+            <SharedEtherscanLink
+              label="Minter"
+              address={minterAddress}
+              chainId={(market as any).chainId ?? 1}
+            />
             <SharedEtherscanLink
               label="Collateral Pool"
               address={(market as any).addresses?.stabilityPoolCollateral}
+              chainId={(market as any).chainId ?? 1}
             />
             <SharedEtherscanLink
               label="Sail Pool"
               address={(market as any).addresses?.stabilityPoolLeveraged}
+              chainId={(market as any).chainId ?? 1}
             />
           </div>
           <div className="space-y-1">
             <SharedEtherscanLink
               label="Anchor Token"
               address={(market as any).addresses?.peggedToken}
+              chainId={(market as any).chainId ?? 1}
             />
             <SharedEtherscanLink
               label="Collateral Token"
               address={(market as any).addresses?.collateralToken}
+              chainId={(market as any).chainId ?? 1}
             />
             <SharedEtherscanLink
               label="Price Oracle"
               address={(market as any).addresses?.collateralPrice}
+              chainId={(market as any).chainId ?? 1}
             />
           </div>
         </div>
