@@ -142,6 +142,7 @@ When testing, verify:
 
 ### Future Enhancements:
 - Genesis zaps - Stability pool zaps for genesis deposits
+- **Stability pool zapper (collateral → stability pool)**: A dedicated flow that deposits collateral (e.g. wstETH, fxSAVE) directly into the stability pool in one step, reducing approvals (e.g. one permit or one approval + one tx instead of approve collateral → mint → approve pegged → deposit). Would simplify UX and gas for users who only want to add to the stability pool.
 
 ## 📝 Code Refactoring Summary
 

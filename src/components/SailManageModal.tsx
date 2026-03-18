@@ -10,6 +10,8 @@ import {
  useWriteContract,
  usePublicClient,
  useSendTransaction,
+ useSwitchChain,
+ useChainId,
 } from "wagmi";
 import { BaseError, ContractFunctionRevertedError } from "viem";
 import { ERC20_ABI, MINTER_ABI } from "@/abis/shared";
@@ -39,6 +41,7 @@ import { ProtocolBanner } from "@/components/ProtocolBanner";
 import { DepositModalTabHeader } from "@/components/DepositModalTabHeader";
 import { TransactionSuccessMessage } from "@/components/TransactionSuccessMessage";
 import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
+import { getDepositMode } from "@/utils/depositMode";
 
 interface SailManageModalProps {
  isOpen: boolean;
@@ -92,8 +95,25 @@ export const SailManageModal = ({
 }: SailManageModalProps) => {
   const { address, isConnected } = useAccount();
   const publicClient = usePublicClient();
+  const depositMode = getDepositMode(market);
+  const { collateralOnly: isCollateralOnlyChain, nativeTokenLabel, isMegaEth } = depositMode;
+  const marketChainId = (market as any)?.chainId ?? 1;
   const { writeContractAsync } = useWriteContract();
   const { sendTransactionAsync } = useSendTransaction();
+  const { switchChain } = useSwitchChain();
+  const connectedChainId = useChainId();
+
+  const ensureCorrectNetwork = async (): Promise<boolean> => {
+    if (connectedChainId === marketChainId) return true;
+    try {
+      await switchChain({ chainId: marketChainId });
+      return true;
+    } catch (err) {
+      if (process.env.NODE_ENV === "development") console.warn("[SailManage] Switch network rejected:", err);
+      setError(`Please switch to ${marketChainId === 4326 ? "MegaETH" : "Ethereum Mainnet"} to continue.`);
+      return false;
+    }
+  };
 
  const [activeTab, setActiveTab] = useState<"mint" |"redeem">(initialTab);
  const [amount, setAmount] = useState("");
@@ -238,6 +258,7 @@ const hasValidTokenAddress =
     depositAssetAddress.length === 42);
 
 const needsSwap =
+  !isCollateralOnlyChain &&
   activeTab === "mint" &&
   !!selectedDepositAsset &&
   selectedDepositAsset !== "" &&
@@ -293,18 +314,20 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
      toTokenDecimals
    );
 
- // Merge accepted assets with user tokens for dropdown (avoid duplicates)
+ // Merge accepted assets with user tokens for dropdown (avoid duplicates). Non-mainnet: collateral only.
  const allAvailableAssets = useMemo(() => {
+   if (isCollateralOnlyChain) return { filteredUserTokens: [] };
    const acceptedUpper = new Set(acceptedAssets.map((a) => a.symbol.toUpperCase()));
    const filteredUserTokens = userTokens.filter(
      (t) => !acceptedUpper.has(t.symbol.toUpperCase()) && t.balance > 0n
    );
    return { filteredUserTokens };
- }, [acceptedAssets, userTokens]);
+ }, [acceptedAssets, userTokens, isCollateralOnlyChain]);
 
- // Get native ETH balance (when ETH is selected) - use useBalance
+ // Get native ETH balance (when ETH is selected) - use useBalance (market's chain for multi-chain)
  const { data: nativeEthBalance } = useBalance({
  address: address,
+ chainId: marketChainId,
  query: {
  enabled:
  isOpen &&
@@ -321,6 +344,7 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
    abi: ERC20_ABI,
    functionName:"balanceOf",
    args: address ? [address] : undefined,
+   chainId: marketChainId,
    query: {
      enabled:
        isOpen &&
@@ -339,6 +363,7 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
    abi: ERC20_ABI,
    functionName:"allowance",
    args: address && zapAddress && depositAssetAddress ? [address, zapAddress] : undefined,
+   chainId: marketChainId,
    query: {
      enabled:
        isOpen &&
@@ -359,6 +384,7 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
  abi: ERC20_ABI,
  functionName:"balanceOf",
  args: address ? [address] : undefined,
+ chainId: marketChainId,
  query: {
  enabled:
  isOpen &&
@@ -383,6 +409,7 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
      address && allowanceTarget && depositAssetAddress
        ? [address, allowanceTarget]
        : undefined,
+   chainId: marketChainId,
    query: {
      enabled:
        isOpen &&
@@ -402,6 +429,7 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
    abi: ERC20_ABI,
    functionName: "allowance",
    args: address ? [address, PARASWAP_TOKEN_TRANSFER_PROXY] : undefined,
+   chainId: marketChainId,
    query: {
      enabled:
        isOpen &&
@@ -420,6 +448,7 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
    abi: ERC20_ABI,
    functionName: "allowance",
    args: address && zapAddress ? [address, zapAddress] : undefined,
+   chainId: marketChainId,
    query: {
      enabled:
        isOpen &&
@@ -441,6 +470,7 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
  address && minterAddress && leveragedTokenAddress
  ? [address, minterAddress]
  : undefined,
+ chainId: marketChainId,
  query: {
  enabled:
  isOpen &&
@@ -486,6 +516,7 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
    abi: WSTETH_ABI,
    functionName: "getWstETHByStETH",
    args: parsedAmount && wstETHAddress ? [parsedAmount] : undefined, // ETH → stETH is 1:1, so use parsedAmount as stETH
+   chainId: marketChainId,
    query: {
      enabled: !!wstETHAddress && !!parsedAmount && parsedAmount > 0n && activeTab === "mint" && useETHZap && isNativeETH && !needsSwap,
    },
@@ -498,6 +529,7 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
    abi: WSTETH_ABI,
    functionName: "getWstETHByStETH",
    args: swapOutputAsStETH && wstETHAddress ? [swapOutputAsStETH] : undefined,
+   chainId: marketChainId,
    query: {
      enabled: !!wstETHAddress && !!swapOutputAsStETH && swapOutputAsStETH > 0n && activeTab === "mint" && useETHZap && needsSwap,
    },
@@ -535,6 +567,7 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
  abi: MINTER_ABI,
  functionName:"mintLeveragedTokenDryRun",
  args: amountForDryRun ? [amountForDryRun] : undefined,
+ chainId: marketChainId,
  query: {
  enabled: mintDryRunEnabled,
  },
@@ -553,6 +586,7 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
  abi: MINTER_ABI,
  functionName:"redeemLeveragedTokenDryRun",
  args: parsedAmount ? [parsedAmount] : undefined,
+ chainId: marketChainId,
  query: {
  enabled: redeemDryRunEnabled,
  },
@@ -790,6 +824,9 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
  if (!validateAmount() || !address || !minterAddress || !parsedAmount)
  return;
 
+ // Switch to market chain only when user starts the transaction (not on modal open)
+ if (!(await ensureCorrectNetwork())) return;
+
  setError(null);
 
  // Check if we need to wrap ETH first
@@ -913,6 +950,7 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
        abi: ERC20_ABI,
        functionName: "approve",
        args: [PARASWAP_TOKEN_TRANSFER_PROXY, parsedAmount],
+       chainId: marketChainId,
      });
      await publicClient?.waitForTransactionReceipt({ hash: approveHash });
      updateProgressStep("approveSwap", {
@@ -942,6 +980,7 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
        data: swapTx.data,
        value: swapTx.value,
        gas: swapTx.gas,
+       chainId: marketChainId,
      });
 
      await publicClient?.waitForTransactionReceipt({ hash: swapHash });
@@ -959,6 +998,7 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
        abi: ERC20_ABI,
        functionName: "approve",
        args: [zapAddress, effectiveMintAmount],
+       chainId: marketChainId,
      });
      await publicClient?.waitForTransactionReceipt({ hash: approveHash });
      updateProgressStep("approvePostSwap", {
@@ -982,6 +1022,7 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
        abi: ERC20_ABI,
        functionName:"approve",
        args: [approveTarget, parsedAmount],
+       chainId: marketChainId,
      });
      await publicClient?.waitForTransactionReceipt({ hash: approveHash });
      updateProgressStep("approve", {
@@ -1054,6 +1095,7 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
            functionName: "zapEthToLeveraged",
            args: [address as `0x${string}`, minOutput],
            value: amountForMint,
+           chainId: marketChainId,
          });
        } else if (isStETH) {
          // Use underlyingCollateralToken (stETH), not wrappedCollateralToken (wstETH)
@@ -1093,6 +1135,7 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
                 permitResult.permitSig.r,
                 permitResult.permitSig.s,
               ],
+              chainId: marketChainId,
             });
           } catch (permitError) {
             console.error("Permit zap failed, falling back to approval:", permitError);
@@ -1128,6 +1171,7 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
               abi: ERC20_ABI,
               functionName: "approve",
               args: [zapAddress, amountForMint],
+              chainId: marketChainId,
             });
             updateProgressStep("approve", { status: "completed", txHash: approveHash });
             await publicClient?.waitForTransactionReceipt({ hash: approveHash });
@@ -1138,6 +1182,7 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
             abi: MINTER_ETH_ZAP_V3_ABI,
             functionName: "zapStEthToLeveraged",
             args: [amountForMint, address as `0x${string}`, minOutput],
+            chainId: marketChainId,
           });
         }
        } else {
@@ -1194,6 +1239,7 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
               address: zapAddress,
               abi: MINTER_USDC_ZAP_V3_ABI,
               functionName: "zapUsdcToLeveragedWithPermit",
+              chainId: marketChainId,
               args: [
                 amountForMint,
                 minFxSaveOut,
@@ -1210,6 +1256,7 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
               address: zapAddress,
               abi: MINTER_USDC_ZAP_V3_ABI,
               functionName: "zapFxUsdToLeveragedWithPermit",
+              chainId: marketChainId,
               args: [
                 amountForMint,
                 minFxSaveOut,
@@ -1274,6 +1321,7 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
             abi: ERC20_ABI,
             functionName: "approve",
             args: [approvalTarget, amountForMint],
+            chainId: marketChainId,
           });
           updateProgressStep("approve", { status: "completed", txHash: approveHash });
           await publicClient?.waitForTransactionReceipt({ hash: approveHash });
@@ -1284,6 +1332,7 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
             address: zapAddress,
             abi: MINTER_USDC_ZAP_V3_ABI,
             functionName: "zapUsdcToLeveraged",
+            chainId: marketChainId,
             args: [
               amountForMint,
               minFxSaveOut,
@@ -1296,6 +1345,7 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
             address: zapAddress,
             abi: MINTER_USDC_ZAP_V3_ABI,
             functionName: "zapFxUsdToLeveraged",
+            chainId: marketChainId,
             args: [
               amountForMint,
               minFxSaveOut,
@@ -1327,6 +1377,7 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
        abi: MINTER_ABI,
        functionName:"mintLeveragedToken",
        args: [parsedAmount, address, minOutput],
+       chainId: marketChainId,
      });
    }
    
@@ -1385,6 +1436,9 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
  )
  return;
 
+ // Switch to market chain only when user starts the transaction (not on modal open)
+ if (!(await ensureCorrectNetwork())) return;
+
  setError(null);
 
  // Determine if approval is needed
@@ -1421,6 +1475,7 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
  abi: ERC20_ABI,
  functionName:"approve",
  args: [minterAddress, parsedAmount],
+ chainId: marketChainId,
  });
  await publicClient?.waitForTransactionReceipt({ hash: approveHash });
  updateProgressStep("approve", {
@@ -1440,6 +1495,7 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
  abi: MINTER_ABI,
  functionName:"redeemLeveragedToken",
  args: [parsedAmount, address, minOutput],
+ chainId: marketChainId,
  });
  await publicClient?.waitForTransactionReceipt({ hash: redeemHash });
  updateProgressStep("redeem", { status:"completed", txHash: redeemHash });
@@ -1622,14 +1678,14 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
            options: [
              ...(acceptedAssets.length > 0
                ? [{
-                   label: "Supported Assets",
+                   label: isCollateralOnlyChain ? (isMegaEth ? "Collateral (MegaETH)" : "Collateral") : "Supported Assets",
                    tokens: acceptedAssets.map((a) => ({
                      symbol: a.symbol,
-                     name: a.name,
+                     name: (isMegaEth && a.symbol?.toUpperCase() === "ETH") ? nativeTokenLabel : a.name,
                    })),
                  }]
                : []),
-             ...(allAvailableAssets.filteredUserTokens.length > 0
+             ...(!isCollateralOnlyChain && allAvailableAssets.filteredUserTokens.length > 0
                ? [{
                    label: "Other Tokens (via Swap)",
                    tokens: allAvailableAssets.filteredUserTokens.map((t) => ({
@@ -1643,7 +1699,7 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
            label: "Select Deposit Token",
            placeholder: "Select Deposit Token",
            disabled: isProcessing,
-           showCustomOption: true,
+           showCustomOption: !isCollateralOnlyChain,
            onCustomOptionClick: () => {
              setShowCustomTokenInput(true);
              setSelectedDepositAsset("custom");
@@ -1664,14 +1720,14 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
    }
    betweenTokenAndAmount={
      <>
-       {activeTab === "mint" && needsSwap && (
+       {activeTab === "mint" && !isCollateralOnlyChain && needsSwap && (
          <div className="text-xs text-[#1E4775]/70">
            {isLoadingSwapQuote
              ? "Fetching swap quote..."
              : swapQuoteError
                ? "Swap quote unavailable (try a smaller amount or a different token)."
                : swapQuote
-                 ? `Will swap to ${isWstETHMarket ? "ETH" : "USDC"} before minting.`
+                 ? `Will swap to ${isWstETHMarket ? nativeTokenLabel : "USDC"} before minting.`
                  : null}
          </div>
        )}
@@ -1687,13 +1743,15 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
        >
          {activeTab === "mint" && (
            <>
-             <InfoCallout
-               tone="success"
-               icon={<RefreshCw className="w-4 h-4 flex-shrink-0 mt-0.5 text-green-600" />}
-               title="Tip"
-             >
-               You can deposit any ERC20 token! Non-collateral tokens will be automatically swapped via Velora.
-             </InfoCallout>
+             {!isCollateralOnlyChain && (
+               <InfoCallout
+                 tone="success"
+                 icon={<RefreshCw className="w-4 h-4 flex-shrink-0 mt-0.5 text-green-600" />}
+                 title="Tip"
+               >
+                 You can deposit any ERC20 token! Non-collateral tokens will be automatically swapped via Velora.
+               </InfoCallout>
+             )}
              <InfoCallout
                title="Info"
                icon={<Info className="w-4 h-4 flex-shrink-0 mt-0.5 text-blue-600" />}

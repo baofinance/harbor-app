@@ -3,6 +3,7 @@
 import {useAccount, useBalance, useDisconnect, useSwitchChain} from 'wagmi'
 import {useMemo, useState} from "react";
 import NetworkIconClient from "@/components/NetworkIconClient";
+import { getWeb3iconsNetworkId } from "@/config/web3iconsNetworks";
 import * as React from "react";
 import DecryptedText from "@/components/DecryptedText";
 import {Check, Copy, LogOut, Wallet} from "lucide-react";
@@ -167,12 +168,24 @@ function NetworkOptions() {
     );
 }
 
+// Chain icon ids that get a round white bg for better visibility on dark UI
+const VISIBILITY_ENHANCEMENT_ICONS = new Set(["mega-eth"]);
+
 function NetworkIcon({name}: { name: string }) {
     const resolvedName = name === 'Anvil' ? 'Ethereum' : name;
+    // web3icons expects kebab-case ids (e.g. "mega-eth" for MegaETH)
+    const iconName = getWeb3iconsNetworkId(resolvedName) || resolvedName;
+    const visibilityEnhancement = VISIBILITY_ENHANCEMENT_ICONS.has(iconName);
 
     return (
-        <div className="bg-white-xs rounded-xs">
-            <NetworkIconClient name={resolvedName} size={24} variant="branded"/>
+        <div
+            className={
+                visibilityEnhancement
+                    ? "rounded-full bg-white flex items-center justify-center p-0.5 shrink-0"
+                    : "bg-white-xs rounded-xs"
+            }
+        >
+            <NetworkIconClient name={iconName} size={24} variant="branded"/>
         </div>
     );
 }

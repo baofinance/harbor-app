@@ -1614,6 +1614,7 @@ export default function SailPage() {
     refetch: refetchReads,
   } = useContractReads({
     contracts: sailMarkets.flatMap(([_, m]) => {
+      const mktChainId = (m as any)?.chainId ?? 1;
       const minter = (m as any).addresses?.minter as `0x${string}` | undefined;
       const priceOracle = (m as any).addresses?.collateralPrice as
         | `0x${string}`
@@ -1633,31 +1634,35 @@ export default function SailPage() {
         return [];
       }
 
-      // Build contracts array - always include oracle and token reads if addresses are valid
+      // Build contracts array - always include oracle and token reads if addresses are valid (per-market chainId for multi-chain)
       const contracts: any[] = [
         // 0: leverageRatio
         {
           address: minter,
           abi: minterABI,
           functionName: "leverageRatio" as const,
+          chainId: mktChainId,
         },
         // 1: leveragedTokenPrice
         {
           address: minter,
           abi: minterABI,
           functionName: "leveragedTokenPrice" as const,
+          chainId: mktChainId,
         },
         // 2: collateralRatio
         {
           address: minter,
           abi: minterABI,
           functionName: "collateralRatio" as const,
+          chainId: mktChainId,
         },
         // 3: collateralTokenBalance
         {
           address: minter,
           abi: minterABI,
           functionName: "collateralTokenBalance" as const,
+          chainId: mktChainId,
         },
       ];
 
@@ -1667,6 +1672,7 @@ export default function SailPage() {
           address: priceOracle,
           abi: wrappedPriceOracleABI,
           functionName: "latestAnswer" as const,
+          chainId: mktChainId,
         });
 
         // For fxUSD markets, also call getPrice() to get fxSAVE price in ETH
@@ -1679,6 +1685,7 @@ export default function SailPage() {
             address: priceOracle,
             abi: wrappedPriceOracleABI,
             functionName: "getPrice" as const,
+            chainId: mktChainId,
           });
         }
       }
@@ -1689,11 +1696,13 @@ export default function SailPage() {
           address: leveragedTokenAddress,
           abi: erc20MetadataABI,
           functionName: "name" as const,
+          chainId: mktChainId,
         });
         contracts.push({
           address: leveragedTokenAddress,
           abi: erc20MetadataABI,
           functionName: "totalSupply" as const,
+          chainId: mktChainId,
         });
       }
 
@@ -1703,6 +1712,7 @@ export default function SailPage() {
       enabled: sailMarkets.length > 0,
       retry: 1,
       retryOnMount: false,
+      allowFailure: true,
     },
   });
 
@@ -1759,7 +1769,7 @@ export default function SailPage() {
     return offsets;
   }, [sailMarkets]);
 
-  // Fetch token prices using the hook
+  // Fetch token prices using the hook (per-market chainId for multi-chain)
   const tokenPriceInputs = useMemo(() => {
     return sailMarkets
       .map(([id, m]) => {
@@ -1767,6 +1777,7 @@ export default function SailPage() {
           | `0x${string}`
           | undefined;
         const pegTarget = (m as any).pegTarget || "USD";
+        const chainId = (m as any)?.chainId ?? 1;
         if (!minter || typeof minter !== "string" || !minter.startsWith("0x")) {
           return null;
         }
@@ -1774,6 +1785,7 @@ export default function SailPage() {
           marketId: id,
           minterAddress: minter,
           pegTarget: pegTarget,
+          chainId,
         };
       })
       .filter((input): input is NonNullable<typeof input> => input !== null);
@@ -1781,10 +1793,11 @@ export default function SailPage() {
 
   const tokenPricesByMarket = useMultipleTokenPrices(tokenPriceInputs);
 
-  // Fetch user's leveraged token balances for all markets
+  // Fetch user's leveraged token balances for all markets (per-market chainId for multi-chain)
   const userDepositContracts = useMemo(() => {
     return sailMarkets
       .map(([_, m], index) => {
+        const mktChainId = (m as any)?.chainId ?? 1;
         const leveragedTokenAddress = (m as any).addresses?.leveragedToken as
           | `0x${string}`
           | undefined;
@@ -1803,6 +1816,7 @@ export default function SailPage() {
             abi: erc20ABI,
             functionName: "balanceOf" as const,
             args: [address as `0x${string}`],
+            chainId: mktChainId,
           },
         };
       })
@@ -1820,6 +1834,7 @@ export default function SailPage() {
       enabled: sailMarkets.length > 0 && !!address && !useAnvil,
       retry: 1,
       retryOnMount: false,
+      allowFailure: true,
     },
   });
 
@@ -1828,6 +1843,7 @@ export default function SailPage() {
     query: {
     enabled: sailMarkets.length > 0 && !!address && useAnvil,
     refetchInterval: 5000,
+    allowFailure: true,
     },
   });
 
@@ -2304,18 +2320,6 @@ export default function SailPage() {
           {/* Markets List */}
           <section className="space-y-4">
             {(() => {
-              // Check if any displayed markets have finished genesis (have collateral)
-              const hasAnyFinishedMarkets = displayedSailMarkets.some(([id]) => {
-                  const globalIndex = sailMarkets.findIndex(
-                    ([marketId]) => marketId === id
-                  );
-                  const baseOffset = marketOffsets.get(globalIndex) ?? 0;
-                  const collateralValue = reads?.[baseOffset + 3]?.result as
-                    | bigint
-                    | undefined;
-                return collateralValue !== undefined && collateralValue > 0n;
-                });
-
               // Show loading state while fetching market data
               if (isLoadingReads) {
                 return null; // Don't show anything while loading
@@ -2338,24 +2342,8 @@ export default function SailPage() {
                 );
               }
 
-              // If no markets have finished genesis, show try again message
-              if (!hasAnyFinishedMarkets) {
-                return (
-                  <div className="bg-[#17395F] border border-white/10 p-6 rounded-lg text-center">
-                    <p className="text-white text-lg font-medium mb-4">
-                      No markets available
-                    </p>
-                    <button
-                      onClick={() => refetchReads()}
-                      className="px-4 py-2 bg-[#FF8A7A] text-white rounded hover:bg-[#FF6B5A] transition-colors"
-                    >
-                      Try again
-                    </button>
-                  </div>
-                );
-              }
-
-              // Otherwise, show markets as usual (chain filter applied via displayedSailMarkets)
+              // Always show filter bar + table header (like Anchor/Genesis). When user deselects all
+              // chains or no markets have finished genesis, show header with no rows instead of "No markets available".
               const activeMarkets = displayedSailMarkets.filter(([id, m]) => {
                   const globalIndex = sailMarkets.findIndex(
                     ([marketId]) => marketId === id
@@ -2383,7 +2371,7 @@ export default function SailPage() {
                   <div className="pt-4 mb-3 flex flex-col md:flex-row md:items-center md:justify-between gap-3 flex-wrap">
                     <div className="flex flex-wrap items-center gap-2">
                       <h2 className="text-xs font-medium text-white/70 uppercase tracking-wider">
-                        Leverage
+                        Leverage Position
                       </h2>
                       {sailChainOptions.length > 1 && (
                         <FilterMultiselectDropdown
@@ -2393,7 +2381,7 @@ export default function SailPage() {
                           onChange={setChainFilterSelected}
                           allLabel="All networks"
                           groupLabel="NETWORKS"
-                          minWidthClass="min-w-[235px]"
+                          minWidthClass="min-w-[220px]"
                         />
                       )}
                       <FilterMultiselectDropdown
@@ -2408,7 +2396,7 @@ export default function SailPage() {
                         onChange={setLongFilterSelected}
                         allLabel="All Long"
                         groupLabel="LONG"
-                        minWidthClass="min-w-[235px]"
+                        minWidthClass="min-w-[220px]"
                       />
                       <FilterMultiselectDropdown
                         label="Short"
@@ -2422,7 +2410,7 @@ export default function SailPage() {
                         onChange={setShortFilterSelected}
                         allLabel="All Short"
                         groupLabel="SHORT"
-                        minWidthClass="min-w-[235px]"
+                        minWidthClass="min-w-[220px]"
                       />
                       <SimpleTooltip label="clear filters">
                         <button

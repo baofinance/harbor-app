@@ -12,6 +12,8 @@ import {
  useWriteContract,
  usePublicClient,
  useSendTransaction,
+ useSwitchChain,
+ useChainId,
 } from "wagmi";
 import { BaseError, ContractFunctionRevertedError } from "viem";
 import { GENESIS_ABI, ERC20_ABI, contracts } from "../config/contracts";
@@ -29,6 +31,7 @@ import {
 } from "./TransactionProgressModal";
 import { formatTokenAmount, formatBalance, formatUSD } from "@/utils/formatters";
 import { formatRpcErrorMessage } from "@/utils/formatRpcErrorMessage";
+import { getDepositMode } from "@/utils/depositMode";
 import { amountToUSD } from "@/utils/tokenPriceToUSD";
 import { useWrappedCollateralPrice } from "@/hooks/useWrappedCollateralPrice";
 import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
@@ -69,6 +72,10 @@ priceOracle?: string;
  };
  coinGeckoId?: string;
  peggedTokenSymbol?: string; // haToken symbol (e.g., "haETH", "haBTC")
+ /** Market chainId (for contract reads). Deposit mode (zapper/anyswap) comes from market config when provided. */
+ chainId?: number;
+ /** Full market config for deposit mode (zapper, anyswap). When provided, overrides chain-based defaults. */
+ market?: { chainId?: number; zapper?: boolean; anyswap?: boolean; [k: string]: unknown };
  onSuccess?: () => void;
  embedded?: boolean;
 }
@@ -89,6 +96,8 @@ export const GenesisDepositModal = ({
  marketAddresses,
  coinGeckoId,
  peggedTokenSymbol,
+ chainId,
+ market,
  onSuccess,
  embedded = false,
 }: GenesisDepositModalProps) => {
@@ -96,6 +105,8 @@ export const GenesisDepositModal = ({
  const wagmiPublicClient = usePublicClient();
   // Use wagmi public client
   const publicClient = wagmiPublicClient;
+  // Market's chain for all balance/allowance reads (so modal shows MegaETH balance when market is on MegaETH, etc.)
+  const marketChainId = chainId ?? 1;
  const [amount, setAmount] = useState("");
  const [selectedAsset, setSelectedAsset] = useState<string>(collateralSymbol);
  const [customTokenAddress, setCustomTokenAddress] = useState<string>("");
@@ -298,6 +309,10 @@ const isUSDC = selectedAsset.toLowerCase() ==="usdc";
 const isFXUSD = selectedAsset.toLowerCase() ==="fxusd";
 const isFXSAVE = selectedAsset.toLowerCase() ==="fxsave";
 
+// Deposit mode from market config (zapper, anyswap); fallback to chainId when market not provided
+const depositMode = getDepositMode(market ?? (chainId != null ? { chainId } : undefined));
+const { collateralOnly, nativeTokenLabel, isMegaEth } = depositMode;
+
 // Get genesis zap address from marketAddresses prop
 // Note: Legacy contracts object doesn't have genesisZap, use market config instead
 const genesisZapAddress = marketAddresses?.genesisZap as `0x${string}` | undefined;
@@ -310,15 +325,15 @@ const useETHZap = isETHStETHMarket && (isNativeETH || isStETH);
 // Determine if selected asset needs to be swapped
 // fxSAVE markets: Directly accept USDC, fxUSD, fxSAVE → swap everything else to USDC
 // wstETH markets: Directly accept ETH, stETH, wstETH → swap everything else to ETH
+// MegaETH: no swap — only collateral deposits
 const isFxSAVEMarket = !isETHStETHMarket; // fxSAVE backed markets (ETH/fxUSD, BTC/fxUSD)
 const isDirectlyAccepted = 
   (isFxSAVEMarket && (isUSDC || isFXUSD || isFXSAVE)) || // fxSAVE markets: USDC, fxUSD, fxSAVE accepted
   (isETHStETHMarket && (isNativeETH || isStETH || selectedAsset.toLowerCase() === "wsteth")); // wstETH markets: ETH, stETH, wstETH accepted
 
-// Check if we need to swap: token is not directly accepted AND has a valid address
-// For ETH, check isNativeETH; for other tokens, check selectedAssetAddress exists
+// Check if we need to swap: token is not directly accepted AND has a valid address. No swap when collateral-only.
 const hasValidTokenAddress = isNativeETH || (selectedAssetAddress && selectedAssetAddress !== "0x0000000000000000000000000000000000000000");
-const needsSwap = !isDirectlyAccepted && hasValidTokenAddress;
+const needsSwap = !collateralOnly && !isDirectlyAccepted && hasValidTokenAddress;
 
 // Determine swap target token
 // fxSAVE markets: swap to USDC, wstETH markets: swap to ETH
@@ -355,6 +370,7 @@ const { data: customTokenSymbol } = useContractRead({
   address: isCustomToken ? (customTokenAddress as `0x${string}`) : undefined,
   abi: ERC20_ABI,
   functionName: "symbol",
+  chainId: marketChainId,
   query: {
     enabled: isCustomToken && !!customTokenAddress,
     retry: 1,
@@ -366,6 +382,7 @@ const { data: customTokenName } = useContractRead({
   address: isCustomToken ? (customTokenAddress as `0x${string}`) : undefined,
   abi: ERC20_ABI,
   functionName: "name",
+  chainId: marketChainId,
   query: {
     enabled: isCustomToken && !!customTokenAddress,
     retry: 1,
@@ -386,8 +403,11 @@ const { data: swapQuote, isLoading: isLoadingSwapQuote, error: swapQuoteError } 
   toTokenDecimals
 );
 
-// Merge accepted assets with user tokens (avoid duplicates)
+// Merge accepted assets with user tokens (avoid duplicates). Collateral-only: no "any token" / swap.
 const allAvailableAssets = React.useMemo(() => {
+  if (collateralOnly) {
+    return acceptedAssets.map(asset => ({ ...asset, isUserToken: false as boolean | undefined }));
+  }
   const assetMap = new Map<string, { symbol: string; name: string; isUserToken?: boolean }>();
   
   // Add accepted assets first
@@ -414,7 +434,7 @@ const allAvailableAssets = React.useMemo(() => {
     }
     return a.symbol.localeCompare(b.symbol);
   });
-}, [acceptedAssets, userTokens]);
+}, [acceptedAssets, userTokens, collateralOnly]);
 
 // For stETH markets: stETH is the underlying rebasing token, wstETH is the wrapped version
 const stETHAddress = isETHStETHMarket 
@@ -463,6 +483,7 @@ const isValidSelectedAssetAddress =
 // Get ETH balance for native ETH deposits
 const { data: ethBalance, isLoading: isEthBalanceLoading, isError: isEthBalanceError } = useBalance({
   address: address,
+  chainId: marketChainId,
   query: {
     enabled: !!address && isOpen && mounted && isNativeETH,
   },
@@ -496,13 +517,14 @@ const assetBalanceContracts = acceptedAssets
 // Only fetch balances if we have valid contracts and the modal is open and mounted
 const shouldFetchBalances = !!address && isOpen && mounted && assetBalanceContracts.length > 0;
 
-// Create the contracts array, ensuring it's never empty when the hook is enabled
+// Create the contracts array, ensuring it's never empty when the hook is enabled (read on market's chain)
 const balanceContractsForHook = shouldFetchBalances 
   ? assetBalanceContracts.map(c => ({
       address: c.address,
       abi: c.abi,
       functionName: c.functionName,
       args: c.args,
+      chainId: marketChainId,
     }))
   : []; // Empty array when disabled
 
@@ -548,12 +570,13 @@ const selectedUserToken = userTokens.find(t => t.symbol.toUpperCase() === select
 const isUserTokenNotInAccepted = selectedUserToken && 
   !acceptedAssets.some(a => a.symbol.toUpperCase() === selectedAsset.toUpperCase());
 
-// Fetch balance for custom token or user token not in accepted assets
+// Fetch balance for custom token or user token not in accepted assets (on market's chain)
 const { data: customTokenBalance } = useContractRead({
   address: (isCustomToken ? customTokenAddress : (isUserTokenNotInAccepted ? selectedUserToken.address : undefined)) as `0x${string}` | undefined,
   abi: ERC20_ABI,
   functionName: "balanceOf",
   args: address ? [address] : undefined,
+  chainId: marketChainId,
   query: {
     enabled: (isCustomToken || isUserTokenNotInAccepted) && !!address && isOpen && mounted && 
             ((isCustomToken && customTokenAddress) || (isUserTokenNotInAccepted && selectedUserToken?.address !== "ETH")),
@@ -576,6 +599,7 @@ const allowanceTarget = (useETHZap || useUSDCZap) && genesisZapAddress ? genesis
  abi: ERC20_ABI,
  functionName:"allowance",
     args: address && isValidSelectedAssetAddress ? [address, allowanceTarget as `0x${string}`] : undefined,
+ chainId: marketChainId,
  query: {
  enabled:
  !!address &&
@@ -600,6 +624,7 @@ const allowanceTarget = (useETHZap || useUSDCZap) && genesisZapAddress ? genesis
  address: isValidGenesisAddress ? (genesisAddress as `0x${string}`) : undefined,
  abi: GENESIS_ABI,
  functionName:"genesisIsEnded",
+ chainId: marketChainId,
  query: {
    enabled: isValidGenesisAddress && isOpen && mounted,
    retry: 1,
@@ -607,12 +632,13 @@ const allowanceTarget = (useETHZap || useUSDCZap) && genesisZapAddress ? genesis
  },
  });
 
- // Get current user deposit in Genesis
+ // Get current user deposit in Genesis (on market's chain)
  const { data: currentDeposit, error: currentDepositError } = useContractRead({
  address: isValidGenesisAddress ? (genesisAddress as `0x${string}`) : undefined,
  abi: GENESIS_ABI,
  functionName:"balanceOf",
  args: address ? [address] : undefined,
+ chainId: marketChainId,
  query: {
    enabled: !!address && isValidGenesisAddress && isOpen && mounted,
    refetchInterval: isOpen ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
@@ -624,6 +650,20 @@ const allowanceTarget = (useETHZap || useUSDCZap) && genesisZapAddress ? genesis
  // Contract write hooks
  const { writeContractAsync, isPending: isWritePending } = useWriteContract();
  const { sendTransactionAsync } = useSendTransaction();
+ const { switchChain } = useSwitchChain();
+ const connectedChainId = useChainId();
+
+ const ensureCorrectNetwork = async (): Promise<boolean> => {
+   if (connectedChainId === marketChainId) return true;
+   try {
+     await switchChain({ chainId: marketChainId });
+     return true;
+   } catch (err) {
+     if (process.env.NODE_ENV === "development") console.warn("[GenesisDeposit] Switch network rejected:", err);
+     setError(`Please switch to ${marketChainId === 4326 ? "MegaETH" : "Ethereum Mainnet"} to deposit.`);
+     return false;
+   }
+ };
 
   // Use the balance from the asset balance map or custom token balance
   const balance = selectedAssetBalance;
@@ -670,6 +710,7 @@ const { data: expectedWstETHFromETH } = useContractRead({
   abi: WSTETH_ABI,
   functionName: "getWstETHByStETH",
   args: amountBigInt > 0n && isNativeETH ? [amountBigInt] : undefined, // stETH.submit() gives 1:1 ETH→stETH
+  chainId: marketChainId,
   query: {
     enabled: !!address && isOpen && mounted && isNativeETH && amountBigInt > 0n,
   },
@@ -681,6 +722,7 @@ const { data: expectedWstETHFromStETH } = useContractRead({
   abi: WSTETH_ABI,
   functionName: "getWstETHByStETH",
   args: amountBigInt > 0n && isStETH ? [amountBigInt] : undefined,
+  chainId: marketChainId,
   query: {
     enabled: !!address && isOpen && mounted && isStETH && amountBigInt > 0n && !!wstETHAddress,
   },
@@ -743,6 +785,7 @@ const { data: expectedWstETHFromSwap } = useContractRead({
   abi: WSTETH_ABI,
   functionName: "getWstETHByStETH",
   args: ethFromSwap > 0n ? [ethFromSwap] : undefined, // ETH → stETH is 1:1, so use ethFromSwap as stETH amount
+  chainId: marketChainId,
   query: {
     enabled: !!address && isOpen && mounted && needsSwap && isETHStETHMarket && ethFromSwap > 0n && !!wstETHAddress,
   },
@@ -849,7 +892,7 @@ const buildProgressSteps = (params: {
     });
   }
   if (params.includeSwap) {
-    const swapTarget = isFxSAVEMarket ? "USDC" : "ETH";
+    const swapTarget = isFxSAVEMarket ? "USDC" : nativeTokenLabel;
     steps.push({
       id: "swap",
       label: `Swap ${selectedAsset} → ${swapTarget}`,
@@ -946,6 +989,9 @@ const runApprovalStep = async (params: {
 
  const handleDeposit = async () => {
  if (!validateAmount()) return;
+
+ // Switch to market chain only when user starts the transaction (not on modal open)
+ if (!(await ensureCorrectNetwork())) return;
  
  // Prevent double-clicks and concurrent transactions
  if (step === "approving" || step === "depositing" || isWritePending) {
@@ -1093,7 +1139,7 @@ if (includePermitAttempt) {
    }
 
    try {
-     const targetTokenSymbol = isFxSAVEMarket ? "USDC" : "ETH";
+     const targetTokenSymbol = isFxSAVEMarket ? "USDC" : nativeTokenLabel;
      const targetTokenDecimals = isFxSAVEMarket ? 6 : 18;
 
      // Step 1: For ERC20 tokens, approve ParaSwap TokenTransferProxy BEFORE getting swap tx
@@ -1904,10 +1950,13 @@ const successFmt = formatTokenAmount(
      },
      options: [
        ...(acceptedAssets.length > 0 ? [{
-         label: "Supported Assets",
-         tokens: acceptedAssets.map((a) => ({ symbol: a.symbol, name: a.name })),
+         label: collateralOnly ? (isMegaEth ? "Collateral (MegaETH)" : "Collateral") : "Supported Assets",
+         tokens: acceptedAssets.map((a) => ({
+           symbol: a.symbol,
+           name: (isMegaEth && a.symbol.toUpperCase() === "ETH") ? "Mega ETH" : a.name,
+         })),
        }] : []),
-       ...(userTokens.filter(t => !acceptedAssets.some(a => a.symbol.toUpperCase() === t.symbol.toUpperCase())).length > 0 ? [{
+       ...(!collateralOnly && userTokens.filter(t => !acceptedAssets.some(a => a.symbol.toUpperCase() === t.symbol.toUpperCase())).length > 0 ? [{
          label: "Other Tokens (via Swap)",
          tokens: userTokens.filter(t => !acceptedAssets.some(a => a.symbol.toUpperCase() === t.symbol.toUpperCase())).map((t) => ({ symbol: t.symbol, name: t.name, isUserToken: true })),
        }] : []),
@@ -1915,7 +1964,7 @@ const successFmt = formatTokenAmount(
      label: "Select Deposit Token",
      placeholder: "Select Deposit Asset",
      disabled: step === "approving" || step === "depositing" || genesisEnded,
-     showCustomOption: true,
+     showCustomOption: !collateralOnly,
      onCustomOptionClick: () => {
        setShowCustomTokenInput(true);
        setSelectedAsset("custom");
@@ -1946,11 +1995,11 @@ const successFmt = formatTokenAmount(
          );
        })()}
      >
-       {!needsSwap && (
-         <InfoCallout tone="success" title="Tip:" icon={<RefreshCw className="w-4 h-4 flex-shrink-0 mt-0.5 text-green-600" />}>
-           You can deposit any ERC20 token! Non-collateral tokens will be automatically swapped via Velora.
-         </InfoCallout>
-       )}
+      {!needsSwap && !collateralOnly && (
+        <InfoCallout tone="success" title="Tip:" icon={<RefreshCw className="w-4 h-4 flex-shrink-0 mt-0.5 text-green-600" />}>
+          You can deposit any ERC20 token! Non-collateral tokens will be automatically swapped via Velora.
+        </InfoCallout>
+      )}
        <InfoCallout title="Info:" icon={<Info className="w-4 h-4 flex-shrink-0 mt-0.5 text-blue-600" />}>
          For large deposits, Harbor recommends using wstETH or fxSAVE instead of the built-in swap and zaps.
        </InfoCallout>
@@ -2051,7 +2100,7 @@ const successFmt = formatTokenAmount(
  
  {/* Swap details - show when swapping */}
  {needsSwap && swapQuote && swapQuote.toAmount > 0n && (() => {
-   const targetToken = isFxSAVEMarket ? "USDC" : "ETH";
+   const targetToken = isFxSAVEMarket ? "USDC" : nativeTokenLabel;
    const targetDecimals = isFxSAVEMarket ? 6 : 18;
    return (
    <div className="p-2 bg-blue-50 border border-blue-200 space-y-1 text-xs">

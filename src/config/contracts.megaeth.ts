@@ -60,8 +60,8 @@ const WSTETH_MEGAETH = "0x601aC63637933D88285A025C685AC4e9a92a98dA" as `0x${stri
 const BTC_B_MEGAETH = "0xB0F70C0bD6FD87dbEb7C10dC692a2a6106817072" as `0x${string}`; // btc.b = BTC bridged
 
 export const markets: Markets = {
-  "btc-usdm-megaeth": {
-    id: "btc-usdm-megaeth",
+  "btc-usd-megaeth": {
+    id: "btc-usd-megaeth",
     name: "BTC/USDM",
     description: "BTC pegged to USDM collateral (MegaETH)",
     startBlock: 0,

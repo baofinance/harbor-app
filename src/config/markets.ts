@@ -16,6 +16,8 @@ export const markets = {
     name: "ETH/fxUSD",
     status: "genesis" as const,
     pegTarget: "ETH", // haETH is pegged to ETH
+    zapper: true,
+    anyswap: true,
     chain: {
       name: "Ethereum",
       logo: "icons/eth.png",
@@ -98,6 +100,8 @@ export const markets = {
     name: "BTC/fxUSD",
     status: "genesis" as const,
     pegTarget: "BTC", // haBTC is pegged to BTC
+    zapper: true,
+    anyswap: true,
     chain: {
       name: "Ethereum",
       logo: "icons/eth.png",
@@ -848,13 +852,15 @@ export const markets = {
   },
   }),
   // MegaETH markets (chainId 4326) - only when NEXT_PUBLIC_USE_MEGAETH=true
-  ...(getContractMarket("btc-usdm-megaeth")
+  ...(getContractMarket("btc-usd-megaeth")
     ? {
-        "btc-usdm-megaeth": {
+        "btc-usd-megaeth": {
           name: "BTC-USD",
           status: "genesis" as const,
           pegTarget: "USD",
           chainId: 4326,
+          zapper: false,
+          anyswap: false,
           chain: { name: "MegaETH", logo: "icons/eth.png" },
           collateral: {
             symbol: "BTC",
@@ -865,29 +871,29 @@ export const markets = {
           acceptedAssets: [{ symbol: "BTC", name: "Bitcoin" }],
           rewardTokens: { default: ["USDM"], additional: [] },
           addresses: {
-            minter: contractsMarkets["btc-usdm-megaeth"].addresses.minter,
-            peggedToken: contractsMarkets["btc-usdm-megaeth"].addresses.peggedToken,
-            leveragedToken: contractsMarkets["btc-usdm-megaeth"].addresses.leveragedToken,
-            reservePool: contractsMarkets["btc-usdm-megaeth"].addresses.reservePool,
-            stabilityPoolManager: contractsMarkets["btc-usdm-megaeth"].addresses.stabilityPoolManager,
-            stabilityPoolCollateral: contractsMarkets["btc-usdm-megaeth"].addresses.stabilityPoolCollateral,
-            stabilityPoolLeveraged: contractsMarkets["btc-usdm-megaeth"].addresses.stabilityPoolLeveraged,
-            genesis: contractsMarkets["btc-usdm-megaeth"].addresses.genesis,
-            priceOracle: contractsMarkets["btc-usdm-megaeth"].addresses.priceOracle,
-            collateralPrice: contractsMarkets["btc-usdm-megaeth"].addresses.collateralPrice,
-            feeReceiver: contractsMarkets["btc-usdm-megaeth"].addresses.feeReceiver,
-            collateralToken: contractsMarkets["btc-usdm-megaeth"].addresses.collateralToken,
-            wrappedCollateralToken: contractsMarkets["btc-usdm-megaeth"].addresses.wrappedCollateralToken,
+            minter: contractsMarkets["btc-usd-megaeth"].addresses.minter,
+            peggedToken: contractsMarkets["btc-usd-megaeth"].addresses.peggedToken,
+            leveragedToken: contractsMarkets["btc-usd-megaeth"].addresses.leveragedToken,
+            reservePool: contractsMarkets["btc-usd-megaeth"].addresses.reservePool,
+            stabilityPoolManager: contractsMarkets["btc-usd-megaeth"].addresses.stabilityPoolManager,
+            stabilityPoolCollateral: contractsMarkets["btc-usd-megaeth"].addresses.stabilityPoolCollateral,
+            stabilityPoolLeveraged: contractsMarkets["btc-usd-megaeth"].addresses.stabilityPoolLeveraged,
+            genesis: contractsMarkets["btc-usd-megaeth"].addresses.genesis,
+            priceOracle: contractsMarkets["btc-usd-megaeth"].addresses.priceOracle,
+            collateralPrice: contractsMarkets["btc-usd-megaeth"].addresses.collateralPrice,
+            feeReceiver: contractsMarkets["btc-usd-megaeth"].addresses.feeReceiver,
+            collateralToken: contractsMarkets["btc-usd-megaeth"].addresses.collateralToken,
+            wrappedCollateralToken: contractsMarkets["btc-usd-megaeth"].addresses.wrappedCollateralToken,
           },
-          startBlock: contractsMarkets["btc-usdm-megaeth"].startBlock,
+          startBlock: contractsMarkets["btc-usd-megaeth"].startBlock,
           peggedToken: { name: "Harbor Anchored USD", symbol: "haUSD", description: "Pegged token" },
           leveragedToken: { name: "Harbor Sail USD-BTC", symbol: "hsUSD-BTC", description: "Leveraged token" },
           rewardPoints: { pointsPerDollar: 100, description: "Ledger marks per dollar" },
           marksCampaign: { id: "megaeth", label: "MegaETH" },
           coinGeckoId: "usd",
           genesis: {
-            startDate: contractsMarkets["btc-usdm-megaeth"].genesis.startDate,
-            endDate: contractsMarkets["btc-usdm-megaeth"].genesis.endDate,
+            startDate: contractsMarkets["btc-usd-megaeth"].genesis.startDate,
+            endDate: contractsMarkets["btc-usd-megaeth"].genesis.endDate,
             tokenDistribution: {
               pegged: { ratio: 0.5, description: "50% pegged" },
               leveraged: { ratio: 0.5, description: "50% leveraged" },
@@ -899,6 +905,8 @@ export const markets = {
           status: "genesis" as const,
           pegTarget: "USD",
           chainId: 4326,
+          zapper: false,
+          anyswap: false,
           chain: { name: "MegaETH", logo: "icons/eth.png" },
           collateral: {
             symbol: "wstETH",

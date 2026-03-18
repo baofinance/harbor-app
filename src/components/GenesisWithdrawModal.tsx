@@ -8,6 +8,8 @@ import {
  useWriteContract,
  usePublicClient,
  useSimulateContract,
+ useSwitchChain,
+ useChainId,
 } from "wagmi";
 import { mainnet } from "wagmi/chains";
 import { BaseError, ContractFunctionRevertedError } from "viem";
@@ -29,8 +31,10 @@ interface GenesisWithdrawalModalProps {
  genesisAddress: string;
  collateralSymbol: string;
  userDeposit: bigint;
-priceOracleAddress?: string;
+ priceOracleAddress?: string;
  coinGeckoId?: string;
+ /** Chain ID where the genesis contract lives (e.g. 1 mainnet, 4326 MegaETH). Defaults to mainnet. */
+ chainId?: number;
  onSuccess?: () => void;
  embedded?: boolean;
 }
@@ -46,8 +50,9 @@ export const GenesisWithdrawModal = ({
  genesisAddress,
  collateralSymbol,
  userDeposit,
-priceOracleAddress,
+ priceOracleAddress,
  coinGeckoId,
+ chainId = mainnet.id,
  onSuccess,
  embedded = false,
 }: GenesisWithdrawalModalProps) => {
@@ -70,6 +75,21 @@ const collateralPriceUSD = wrappedPriceData.priceUSD;
 
  // Contract write hooks
  const { writeContractAsync } = useWriteContract();
+ const { switchChain } = useSwitchChain();
+ const connectedChainId = useChainId();
+ const marketChainId = chainId ?? mainnet.id;
+
+ const ensureCorrectNetwork = async (): Promise<boolean> => {
+   if (connectedChainId === marketChainId) return true;
+   try {
+     await switchChain({ chainId: marketChainId });
+     return true;
+   } catch (err) {
+     if (process.env.NODE_ENV === "development") console.warn("[GenesisWithdraw] Switch network rejected:", err);
+     setError(`Please switch to ${marketChainId === 4326 ? "MegaETH" : "Ethereum Mainnet"} to withdraw.`);
+     return false;
+   }
+ };
 
  const amountBigInt = amount ? parseEther(amount) : 0n;
  // Calculate withdraw amount - if amount equals or exceeds userDeposit, use userDeposit
@@ -87,7 +107,7 @@ const collateralPriceUSD = wrappedPriceData.priceUSD;
  abi: GENESIS_ABI,
  functionName:"withdraw",
  args: [withdrawAmount, address as `0x${string}`],
- chainId: mainnet.id,
+ chainId,
  query: {
  enabled:
  !!address &&
@@ -163,6 +183,9 @@ const collateralPriceUSD = wrappedPriceData.priceUSD;
  return;
  }
 
+ // Switch to market chain only when user starts the transaction (not on modal open)
+ if (!(await ensureCorrectNetwork())) return;
+
  try {
  const steps: TransactionStep[] = [
  {
@@ -181,7 +204,7 @@ const collateralPriceUSD = wrappedPriceData.priceUSD;
  abi: GENESIS_ABI,
  functionName:"withdraw",
  args: [withdrawAmount, address as `0x${string}`],
- chainId: mainnet.id,
+ chainId,
  });
 
  setTxHash(hash);

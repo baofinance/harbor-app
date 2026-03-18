@@ -47,6 +47,8 @@ export const GenesisManageModal = ({
   const collateralAddress = market?.addresses?.wrappedCollateralToken as `0x${string}` | undefined;
   const collateralSymbol = market?.collateral?.symbol || "TOKEN";
   const priceOracleAddress = market?.addresses?.collateralPrice as string | undefined;
+  // Use the market's chain so we read from the correct chain (e.g. MegaETH 4326), not the connected wallet chain
+  const chainId = (market as any)?.chainId ?? 1;
 
   // Validate addresses
   const isValidGenesisAddress = 
@@ -61,12 +63,13 @@ export const GenesisManageModal = ({
     collateralAddress.startsWith("0x") && 
     collateralAddress.length === 42;
 
-  // Fetch user's deposit balance (with error handling)
+  // Fetch user's deposit balance (with error handling) — chainId so we read from the market's chain
   const { data: userDeposit, error: depositError, isLoading: depositLoading } = useContractRead({
     address: isValidGenesisAddress ? genesisAddress : undefined,
     abi: GENESIS_ABI,
     functionName: "balanceOf",
     args: address ? [address] : undefined,
+    chainId,
     query: {
       enabled: !!address && isValidGenesisAddress && isOpen && mounted,
       retry: 1,
@@ -75,11 +78,12 @@ export const GenesisManageModal = ({
     },
   });
 
-  // Check if genesis has ended (with error handling)
+  // Check if genesis has ended (with error handling) — chainId so we read from the market's chain
   const { data: isEnded, error: endedError, isLoading: endedLoading } = useContractRead({
     address: isValidGenesisAddress ? genesisAddress : undefined,
     abi: GENESIS_ABI,
     functionName: "genesisIsEnded",
+    chainId,
     query: {
       enabled: isValidGenesisAddress && isOpen && mounted,
       retry: 1,
@@ -215,6 +219,8 @@ export const GenesisManageModal = ({
                 leveragedTokenZap: market?.addresses?.leveragedTokenZap,
               }}
               coinGeckoId={market?.coinGeckoId}
+              chainId={chainId}
+              market={market}
               onSuccess={onSuccess}
               embedded={true}
             />
@@ -230,6 +236,7 @@ export const GenesisManageModal = ({
               userDeposit={userDeposit || 0n}
               priceOracleAddress={priceOracleAddress}
               coinGeckoId={market?.coinGeckoId}
+              chainId={chainId}
               onSuccess={onSuccess}
               embedded={true}
             />

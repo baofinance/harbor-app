@@ -61,6 +61,7 @@ import { useFxSAVEAPR } from "@/hooks/useFxSAVEAPR";
 import { useTotalGenesisTVL } from "@/hooks/useTotalGenesisTVL";
 import { useTotalMaidenVoyageMarks } from "@/hooks/useTotalMaidenVoyageMarks";
 import { getAcceptedDepositAssets } from "@/utils/markets";
+import { getDepositMode } from "@/utils/depositMode";
 import TideAPRTooltip from "@/components/TideAPRTooltip";
 import { GenesisErrorBanner } from "@/components/GenesisErrorBanner";
 import { GenesisMarketExpandedView } from "@/components/GenesisMarketExpandedView";
@@ -86,6 +87,13 @@ import {
 
 // Use ERC20_ABI which includes symbol
 const erc20SymbolABI = ERC20_ABI;
+
+/** Genesis table display: show "BTC-USD" / "wstETH-USD" instead of "USD-BTC" / "USD-wstETH". */
+function formatGenesisMarketDisplayName(name: string): string {
+  if (!name) return name;
+  const m = name.match(/^USD-(.+)$/i);
+  return m ? `${m[1]}-USD` : name;
+}
 
 // Oracle ABIs - Harbor tuple and Chainlink single-value
 const chainlinkOracleABI = HARBOR_ORACLE_WITH_DECIMALS_ABI;
@@ -557,13 +565,12 @@ export default function GenesisIndexPage() {
       return genesisAddress.slice(0, 6) + "..." + genesisAddress.slice(-4);
     const [id, mkt] = market;
     const rowLeveragedSymbol = (mkt as any).rowLeveragedSymbol;
-    if (
+    const raw =
       rowLeveragedSymbol &&
       rowLeveragedSymbol.toLowerCase().startsWith("hs")
-    ) {
-      return rowLeveragedSymbol.slice(2);
-    }
-    return rowLeveragedSymbol || (mkt as any).name || id;
+        ? rowLeveragedSymbol.slice(2)
+        : rowLeveragedSymbol || (mkt as any).name || id;
+    return formatGenesisMarketDisplayName(raw);
   };
 
   // Fetch market bonus status for all markets (early deposit bonus tracking)
@@ -614,6 +621,7 @@ export default function GenesisIndexPage() {
   const genesisReadContracts = useMemo(() => {
     return genesisMarkets.flatMap(([_, mkt]) => {
       const g = (mkt as any).addresses?.genesis as `0x${string}` | undefined;
+      const mktChainId = (mkt as any)?.chainId ?? 1;
       if (!g || typeof g !== "string" || !g.startsWith("0x") || g.length !== 42)
         return [];
       const base = [
@@ -621,6 +629,7 @@ export default function GenesisIndexPage() {
           address: g,
           abi: GENESIS_ABI,
           functionName: "genesisIsEnded" as const,
+          chainId: mktChainId,
         },
       ];
       const user =
@@ -631,12 +640,14 @@ export default function GenesisIndexPage() {
                 abi: GENESIS_ABI,
                 functionName: "balanceOf" as const,
                 args: [address as `0x${string}`],
+                chainId: mktChainId,
               },
               {
                 address: g,
                 abi: GENESIS_ABI,
                 functionName: "claimable" as const,
                 args: [address as `0x${string}`],
+                chainId: mktChainId,
               },
             ]
           : [];
@@ -704,6 +715,7 @@ export default function GenesisIndexPage() {
     return genesisMarkets
       .map(([_, mkt]) => {
         const g = (mkt as any).addresses?.genesis as `0x${string}` | undefined;
+        const mktChainId = (mkt as any)?.chainId ?? 1;
         if (
           !g ||
           typeof g !== "string" ||
@@ -715,6 +727,7 @@ export default function GenesisIndexPage() {
           address: g,
           abi: GENESIS_ABI,
           functionName: "WRAPPED_COLLATERAL_TOKEN" as const,
+          chainId: mktChainId,
         };
       })
       .filter((c): c is NonNullable<typeof c> => c !== null);
@@ -729,6 +742,7 @@ export default function GenesisIndexPage() {
   const totalDepositsContracts = useMemo(() => {
     return genesisMarkets.flatMap(([_, mkt], mi) => {
       const g = (mkt as any).addresses?.genesis as `0x${string}` | undefined;
+      const mktChainId = (mkt as any)?.chainId ?? 1;
       const wrappedCollateralAddress = collateralTokenReads?.[mi]?.result as
         | `0x${string}`
         | undefined;
@@ -749,6 +763,7 @@ export default function GenesisIndexPage() {
           abi: ERC20_ABI,
           functionName: "balanceOf" as const,
           args: [g],
+          chainId: mktChainId,
         },
       ];
     });
@@ -2048,10 +2063,111 @@ export default function GenesisIndexPage() {
             {/* Market Rows - sorted with running markets first, then completed markets */}
             {/* Within each section, markets with deposits are sorted to the top */}
             {(() => {
-              let activeHeaderRendered = false;
+              // Table header bar: always show when showHeaders, even when "deselect all" (0 markets)
+              const activeSectionHeader = showHeaders ? (
+                <div
+                  key="header-active"
+                  className="hidden md:block bg-white py-1.5 px-2 overflow-x-auto mb-0"
+                >
+                  <div className="grid lg:grid-cols-[32px_1.5fr_80px_0.9fr_0.9fr_0.9fr_0.7fr_0.9fr] md:grid-cols-[32px_120px_80px_100px_1fr_1fr_90px_80px] gap-4 items-center uppercase tracking-wider text-[10px] lg:text-[11px] text-[#1E4775] font-semibold">
+                    <div className="min-w-0" aria-label="Network" />
+                    <div className="min-w-0 text-center">Market</div>
+                    <div className="text-center min-w-0">Marks</div>
+                    <div className="text-center min-w-0 flex items-center justify-center gap-1.5">
+                      <span>Deposit Assets</span>
+                      <SimpleTooltip
+                        label={
+                          <div>
+                            <div className="font-semibold mb-1">
+                              Multi-Token Support
+                            </div>
+                            <div className="text-xs opacity-90 mb-2">
+                              Zapper-supported assets are zapped in with
+                              no slippage. Any other ERC20s are swapped
+                              with Velora.
+                            </div>
+                            <div className="flex flex-col gap-2">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="text-[10px] opacity-75">
+                                  wstETH markets:
+                                </span>
+                                <div className="flex items-center gap-1">
+                                  <Image
+                                    src={getLogoPath("ETH")}
+                                    alt="ETH"
+                                    width={16}
+                                    height={16}
+                                    className="rounded-full"
+                                  />
+                                  <span className="text-[10px]">ETH</span>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <Image
+                                    src={getLogoPath("stETH")}
+                                    alt="stETH"
+                                    width={16}
+                                    height={16}
+                                    className="rounded-full"
+                                  />
+                                  <span className="text-[10px]">
+                                    stETH
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="text-[10px] opacity-75">
+                                  fxSAVE markets:
+                                </span>
+                                <div className="flex items-center gap-1">
+                                  <Image
+                                    src={getLogoPath("USDC")}
+                                    alt="USDC"
+                                    width={16}
+                                    height={16}
+                                    className="rounded-full"
+                                  />
+                                  <span className="text-[10px]">
+                                    USDC
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <Image
+                                    src={getLogoPath("fxUSD")}
+                                    alt="fxUSD"
+                                    width={16}
+                                    height={16}
+                                    className="rounded-full"
+                                  />
+                                  <span className="text-[10px]">
+                                    fxUSD
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        }
+                      >
+                        <ArrowPathIcon className="w-3.5 h-3.5 text-[#1E4775] cursor-help" />
+                      </SimpleTooltip>
+                    </div>
+                    <div className="text-center min-w-0">
+                      Total
+                      <span className="hidden lg:inline"> Deposits</span>
+                    </div>
+                    <div className="text-center min-w-0">
+                      Your Deposit
+                    </div>
+                    <div className="text-center min-w-0">Status</div>
+                    <div className="text-center min-w-0">Action</div>
+                  </div>
+                </div>
+              ) : null;
 
               const marketRows = displayedActiveMarkets.map(([id, mkt], idx) => {
                 const mi = genesisMarkets.findIndex((m) => m[0] === id);
+                const depositModeRow = getDepositMode(mkt);
+                const isCollateralOnlyRow = depositModeRow.collateralOnly;
+                const isMegaEthRow = depositModeRow.isMegaEth;
                 // Updated offset: [isEnded, balanceOf?, claimable?] - no totalDeposits anymore
                 const baseOffset = mi * (isConnected ? 3 : 1);
                 const contractReadResult = reads?.[baseOffset];
@@ -2091,122 +2207,17 @@ export default function GenesisIndexPage() {
                   ? (reads?.[baseOffset + 1]?.result as bigint | undefined)
                   : undefined;
 
-                // Add table header row for active markets at the start (title + filters + marks are above)
-                const activeHeader =
-                  showHeaders && !activeHeaderRendered && displayedActiveMarkets.length > 0 ? (
-                    <div
-                      key={`header-active`}
-                      className="hidden md:block bg-white py-1.5 px-2 overflow-x-auto mb-0"
-                    >
-                        <div className="grid lg:grid-cols-[32px_1.5fr_80px_0.9fr_0.9fr_0.9fr_0.7fr_0.9fr] md:grid-cols-[32px_120px_80px_100px_1fr_1fr_90px_80px] gap-4 items-center uppercase tracking-wider text-[10px] lg:text-[11px] text-[#1E4775] font-semibold">
-                          <div className="min-w-0" aria-label="Network" />
-                          <div className="min-w-0 text-center">Market</div>
-                          <div className="text-center min-w-0">Marks</div>
-                          <div className="text-center min-w-0 flex items-center justify-center gap-1.5">
-                            <span>Deposit Assets</span>
-                            <SimpleTooltip
-                              label={
-                                <div>
-                                  <div className="font-semibold mb-1">
-                                    Multi-Token Support
-                                  </div>
-                                  <div className="text-xs opacity-90 mb-2">
-                                    Zapper-supported assets are zapped in with
-                                    no slippage. Any other ERC20s are swapped
-                                    with Velora.
-                                  </div>
-                                  <div className="flex flex-col gap-2">
-                                    <div className="flex items-center gap-1.5 flex-wrap">
-                                      <span className="text-[10px] opacity-75">
-                                        wstETH markets:
-                                      </span>
-                                      <div className="flex items-center gap-1">
-                                        <Image
-                                          src={getLogoPath("ETH")}
-                                          alt="ETH"
-                                          width={16}
-                                          height={16}
-                                          className="rounded-full"
-                                        />
-                                        <span className="text-[10px]">ETH</span>
-                                      </div>
-                                      <div className="flex items-center gap-1">
-                                        <Image
-                                          src={getLogoPath("stETH")}
-                                          alt="stETH"
-                                          width={16}
-                                          height={16}
-                                          className="rounded-full"
-                                        />
-                                        <span className="text-[10px]">
-                                          stETH
-                                        </span>
-                                      </div>
-                                    </div>
-                                    <div className="flex items-center gap-1.5 flex-wrap">
-                                      <span className="text-[10px] opacity-75">
-                                        fxSAVE markets:
-                                      </span>
-                                      <div className="flex items-center gap-1">
-                                        <Image
-                                          src={getLogoPath("USDC")}
-                                          alt="USDC"
-                                          width={16}
-                                          height={16}
-                                          className="rounded-full"
-                                        />
-                                        <span className="text-[10px]">
-                                          USDC
-                                        </span>
-                                      </div>
-                                      <div className="flex items-center gap-1">
-                                        <Image
-                                          src={getLogoPath("fxUSD")}
-                                          alt="fxUSD"
-                                          width={16}
-                                          height={16}
-                                          className="rounded-full"
-                                        />
-                                        <span className="text-[10px]">
-                                          fxUSD
-                                        </span>
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-                              }
-                            >
-                              <ArrowPathIcon className="w-3.5 h-3.5 text-[#1E4775] cursor-help" />
-                            </SimpleTooltip>
-                          </div>
-                          <div className="text-center min-w-0">
-                            Total
-                            <span className="hidden lg:inline"> Deposits</span>
-                          </div>
-                          <div className="text-center min-w-0">
-                            Your Deposit
-                          </div>
-                          <div className="text-center min-w-0">Status</div>
-                          <div className="text-center min-w-0">Action</div>
-                        </div>
-                      </div>
-                  ) : null;
-
-                // Mark that we've rendered the active header
-                if (activeHeader) {
-                  activeHeaderRendered = true;
-                }
-
                 // Get token symbols from market configuration
                 const rowPeggedSymbol =
                   (mkt as any).peggedToken?.symbol || "ha";
                 const rowLeveragedSymbol =
                   (mkt as any).leveragedToken?.symbol || "hs";
-                const displayMarketName =
+                const rawDisplayMarketName =
                   rowLeveragedSymbol &&
                   rowLeveragedSymbol.toLowerCase().startsWith("hs")
                     ? rowLeveragedSymbol.slice(2)
                     : rowLeveragedSymbol || (mkt as any).name || "Market";
+                const displayMarketName = formatGenesisMarketDisplayName(rawDisplayMarketName);
                 const peggedNoPrefix =
                   rowPeggedSymbol &&
                   rowPeggedSymbol.toLowerCase().startsWith("ha")
@@ -2440,7 +2451,6 @@ export default function GenesisIndexPage() {
                 // Show all markets (no skipping)
                 return (
                   <React.Fragment key={id}>
-                    {activeHeader}
                     <div
                       className={`py-2.5 px-2 overflow-x-auto overflow-y-visible transition cursor-pointer ${
                         isExpanded
@@ -2460,10 +2470,7 @@ export default function GenesisIndexPage() {
                         <div className="flex items-center justify-between gap-2 pl-1">
                           <div className="flex items-center justify-start gap-1.5 flex-1 min-w-0">
                             <span className="text-[#1E4775] font-medium text-sm">
-                              {rowLeveragedSymbol &&
-                              rowLeveragedSymbol.toLowerCase().startsWith("hs")
-                                ? rowLeveragedSymbol.slice(2)
-                                : rowLeveragedSymbol || (mkt as any).name}
+                              {displayMarketName}
                             </span>
                             <div className="hidden md:flex items-center gap-0.5">
                               <span className="text-[#1E4775]/60">:</span>
@@ -2928,9 +2935,9 @@ export default function GenesisIndexPage() {
                                   height={20}
                                   className="flex-shrink-0 rounded-full"
                                 />
-                                <div className="flex items-center gap-1 px-1.5 py-0.5 bg-blue-100 text-blue-700 text-[9px] font-semibold uppercase tracking-wide whitespace-nowrap">
-                                  <ArrowPathIcon className="w-2.5 h-2.5" />
-                                  <span>Any Token</span>
+                                <div className={`flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide whitespace-nowrap ${isCollateralOnlyRow ? "bg-[#1E4775]/10 text-[#1E4775]" : "bg-blue-100 text-blue-700"}`}>
+                                  {!isCollateralOnlyRow && <ArrowPathIcon className="w-2.5 h-2.5" />}
+                                  <span>{isCollateralOnlyRow ? "Collateral" : "Any Token"}</span>
                                 </div>
                               </div>
                             </div>
@@ -3087,10 +3094,7 @@ export default function GenesisIndexPage() {
                         {/* Market Title */}
                         <div className="flex items-center justify-center gap-1.5">
                           <span className="text-[#1E4775] font-medium text-sm">
-                            {rowLeveragedSymbol &&
-                            rowLeveragedSymbol.toLowerCase().startsWith("hs")
-                              ? rowLeveragedSymbol.slice(2)
-                              : rowLeveragedSymbol || (mkt as any).name}
+                            {displayMarketName}
                           </span>
                           {isExpanded ? (
                             <ChevronUpIcon className="w-4 h-4 text-[#1E4775] flex-shrink-0" />
@@ -3343,9 +3347,9 @@ export default function GenesisIndexPage() {
                               height={20}
                               className="flex-shrink-0 rounded-full"
                             />
-                            <div className="flex items-center gap-1 px-1.5 py-0.5 bg-blue-100 text-blue-700 text-[9px] font-semibold uppercase tracking-wide whitespace-nowrap">
-                              <ArrowPathIcon className="w-2.5 h-2.5" />
-                              <span>Any Token</span>
+                            <div className={`flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide whitespace-nowrap ${isCollateralOnlyRow ? "bg-[#1E4775]/10 text-[#1E4775]" : "bg-blue-100 text-blue-700"}`}>
+                              {!isCollateralOnlyRow && <ArrowPathIcon className="w-2.5 h-2.5" />}
+                              <span>{isCollateralOnlyRow ? "Collateral" : "Any Token"}</span>
                             </div>
                           </div>
                         )}
@@ -3640,10 +3644,7 @@ export default function GenesisIndexPage() {
                         <div className="min-w-0 overflow-hidden">
                           <div className="flex items-center justify-center gap-1.5">
                             <span className="text-[#1E4775] font-medium text-sm lg:text-base">
-                              {rowLeveragedSymbol &&
-                              rowLeveragedSymbol.toLowerCase().startsWith("hs")
-                                ? rowLeveragedSymbol.slice(2)
-                                : rowLeveragedSymbol || (mkt as any).name}
+                              {displayMarketName}
                             </span>
                             <span className="text-[#1E4775]/60 hidden xl:inline">
                               :
@@ -3938,91 +3939,103 @@ export default function GenesisIndexPage() {
                             </SimpleTooltip>
                             <SimpleTooltip
                               label={
-                                <div>
-                                  <div className="font-semibold mb-1">
-                                    Any Token Supported
+                                isCollateralOnlyRow ? (
+                                  <div>
+                                    <div className="font-semibold mb-1">
+                                      {isMegaEthRow ? "Collateral only (MegaETH)" : "Collateral only"}
+                                    </div>
+                                    <div className="text-xs opacity-90">
+                                      Deposit accepted collateral assets only.
+                                      No token swap on this chain.
+                                    </div>
                                   </div>
-                                  <div className="text-xs opacity-90 mb-2">
-                                    Zapper-supported assets are zapped in with
-                                    no slippage. Any other ERC20s are swapped
-                                    with Velora.
-                                  </div>
-                                  <div className="flex items-center gap-1.5 flex-wrap">
-                                    <span className="text-[10px] opacity-75">
-                                      Zapper-supported:
-                                    </span>
-                                    {(() => {
-                                      const isWstETHMarket =
-                                        collateralSymbol.toLowerCase() ===
-                                        "wsteth";
+                                ) : (
+                                  <div>
+                                    <div className="font-semibold mb-1">
+                                      Any Token Supported
+                                    </div>
+                                    <div className="text-xs opacity-90 mb-2">
+                                      Zapper-supported assets are zapped in with
+                                      no slippage. Any other ERC20s are swapped
+                                      with Velora.
+                                    </div>
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                      <span className="text-[10px] opacity-75">
+                                        Zapper-supported:
+                                      </span>
+                                      {(() => {
+                                        const isWstETHMarket =
+                                          collateralSymbol.toLowerCase() ===
+                                          "wsteth";
 
-                                      if (isWstETHMarket) {
-                                        return (
-                                          <>
-                                            <div className="flex items-center gap-1">
-                                              <Image
-                                                src={getLogoPath("ETH")}
-                                                alt="ETH"
-                                                width={16}
-                                                height={16}
-                                                className="rounded-full"
-                                              />
-                                              <span className="text-[10px]">
-                                                ETH
-                                              </span>
-                                            </div>
-                                            <div className="flex items-center gap-1">
-                                              <Image
-                                                src={getLogoPath("stETH")}
-                                                alt="stETH"
-                                                width={16}
-                                                height={16}
-                                                className="rounded-full"
-                                              />
-                                              <span className="text-[10px]">
-                                                stETH
-                                              </span>
-                                            </div>
-                                          </>
-                                        );
-                                      } else {
-                                        return (
-                                          <>
-                                            <div className="flex items-center gap-1">
-                                              <Image
-                                                src={getLogoPath("USDC")}
-                                                alt="USDC"
-                                                width={16}
-                                                height={16}
-                                                className="rounded-full"
-                                              />
-                                              <span className="text-[10px]">
-                                                USDC
-                                              </span>
-                                            </div>
-                                            <div className="flex items-center gap-1">
-                                              <Image
-                                                src={getLogoPath("fxUSD")}
-                                                alt="fxUSD"
-                                                width={16}
-                                                height={16}
-                                                className="rounded-full"
-                                              />
-                                              <span className="text-[10px]">
-                                                fxUSD
-                                              </span>
-                                            </div>
-                                          </>
-                                        );
-                                      }
-                                    })()}
+                                        if (isWstETHMarket) {
+                                          return (
+                                            <>
+                                              <div className="flex items-center gap-1">
+                                                <Image
+                                                  src={getLogoPath("ETH")}
+                                                  alt="ETH"
+                                                  width={16}
+                                                  height={16}
+                                                  className="rounded-full"
+                                                />
+                                                <span className="text-[10px]">
+                                                  ETH
+                                                </span>
+                                              </div>
+                                              <div className="flex items-center gap-1">
+                                                <Image
+                                                  src={getLogoPath("stETH")}
+                                                  alt="stETH"
+                                                  width={16}
+                                                  height={16}
+                                                  className="rounded-full"
+                                                />
+                                                <span className="text-[10px]">
+                                                  stETH
+                                                </span>
+                                              </div>
+                                            </>
+                                          );
+                                        } else {
+                                          return (
+                                            <>
+                                              <div className="flex items-center gap-1">
+                                                <Image
+                                                  src={getLogoPath("USDC")}
+                                                  alt="USDC"
+                                                  width={16}
+                                                  height={16}
+                                                  className="rounded-full"
+                                                />
+                                                <span className="text-[10px]">
+                                                  USDC
+                                                </span>
+                                              </div>
+                                              <div className="flex items-center gap-1">
+                                                <Image
+                                                  src={getLogoPath("fxUSD")}
+                                                  alt="fxUSD"
+                                                  width={16}
+                                                  height={16}
+                                                  className="rounded-full"
+                                                />
+                                                <span className="text-[10px]">
+                                                  fxUSD
+                                                </span>
+                                              </div>
+                                            </>
+                                          );
+                                        }
+                                      })()}
+                                    </div>
                                   </div>
-                                </div>
+                                )
                               }
                             >
-                              <div className="flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] font-semibold uppercase tracking-wide cursor-help whitespace-nowrap">
-                                <ArrowPathIcon className="w-3 h-3" />
-                                <span>Any Token</span>
+                              <div className={`flex items-center gap-1 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide cursor-help whitespace-nowrap ${isCollateralOnlyRow ? "bg-[#1E4775]/10 text-[#1E4775]" : "bg-blue-100 text-blue-700"}`}>
+                                {!isCollateralOnlyRow && <ArrowPathIcon className="w-3 h-3" />}
+                                <span>{isCollateralOnlyRow ? "Collateral" : "Any Token"}</span>
                               </div>
                             </SimpleTooltip>
                           </div>
@@ -4617,7 +4630,12 @@ export default function GenesisIndexPage() {
                 );
               });
 
-              return marketRows;
+              return (
+                <>
+                  {activeSectionHeader}
+                  {marketRows}
+                </>
+              );
             })()}
           </section>
         )}
@@ -4991,9 +5009,10 @@ export default function GenesisIndexPage() {
                       const userDepositUSD = userDeposit && collateralPriceUSD > 0 ? Number(formatEther(userDeposit)) * collateralPriceUSD : 0;
                       const rowPeggedSymbol = (mkt as any).peggedToken?.symbol || "ha";
                       const rowLeveragedSymbol = (mkt as any).leveragedToken?.symbol || "hs";
-                      const displayMarketName = rowLeveragedSymbol && rowLeveragedSymbol.toLowerCase().startsWith("hs")
+                      const rawDisplayMarketName = rowLeveragedSymbol && rowLeveragedSymbol.toLowerCase().startsWith("hs")
                         ? rowLeveragedSymbol.slice(2)
                         : rowLeveragedSymbol || (mkt as any).name || "Market";
+                      const displayMarketName = formatGenesisMarketDisplayName(rawDisplayMarketName);
 
                       // Get token prices for claimable display
                       const anchorTokenPriceUSD = 1; // Pegged tokens are always $1

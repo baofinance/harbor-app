@@ -113,6 +113,7 @@ import { useStaggeredReady } from "@/hooks/useStaggeredReady";
 import { calculateReadOffset } from "@/utils/anchor/calculateReadOffset";
 import { useMultipleCollateralPrices } from "@/hooks/useCollateralPrice";
 import { DEBUG_ANCHOR } from "@/config/debug";
+import { getDepositMode } from "@/utils/depositMode";
 import { FilterMultiselectDropdown, FILTER_NONE_SENTINEL } from "@/components/FilterMultiselectDropdown";
 import NetworkIconCell from "@/components/NetworkIconCell";
 import { getWeb3iconsNetworkId } from "@/config/web3iconsNetworks";
@@ -6282,7 +6283,10 @@ export default function AnchorPage() {
 
                 // Collect all unique reward tokens from pools for markets in this group
                 const firstMarket = marketList[0]?.market;
-                
+                const depositModeRow = getDepositMode(firstMarket);
+                const isCollateralOnlyRow = depositModeRow.collateralOnly;
+                const isMegaEthRow = depositModeRow.isMegaEth;
+
                 // Helper function to get directly zappable assets (no slippage)
                 // Excludes wrapped collateral since it's already shown in the main deposit assets view
                     const getDirectlyZappableAssets = (
@@ -6804,51 +6808,63 @@ export default function AnchorPage() {
                           })}
                           <SimpleTooltip
                             label={
-                              <div>
-                                <div className="font-semibold mb-1">
-                                  Any Token Supported
-                                </div>
-                                <div className="text-xs opacity-90 space-y-2">
-                                  {directlyZappableAssets.length > 0 && (
-                                    <div>
-                                      <div className="font-semibold mb-1">
-                                        Direct zap (no slippage):
-                                      </div>
-                                      <div className="flex items-center gap-1.5 flex-wrap">
-                                            {directlyZappableAssets.map(
-                                              (asset) => (
-                                          <div
-                                            key={asset.symbol}
-                                            className="flex items-center gap-1"
-                                          >
-                                            <Image
-                                                    src={getLogoPath(
-                                                      asset.symbol
-                                                    )}
-                                              alt={asset.name}
-                                              width={16}
-                                              height={16}
-                                              className="flex-shrink-0 rounded-full"
-                                            />
-                                            <span>{asset.symbol}</span>
-                                          </div>
-                                              )
-                                            )}
-                                      </div>
-                                    </div>
-                                  )}
-                                  <div>
-                                    Other ERC20 tokens can be deposited via
-                                        ParaSwap and will be automatically
-                                        swapped to {collateralSymbol}.
+                              isCollateralOnlyRow ? (
+                                <div>
+                                  <div className="font-semibold mb-1">
+                                    {isMegaEthRow ? "Collateral only (MegaETH)" : "Collateral only"}
+                                  </div>
+                                  <div className="text-xs opacity-90">
+                                    Deposit accepted collateral assets only.
+                                    No token swap on this chain.
                                   </div>
                                 </div>
-                              </div>
+                              ) : (
+                                <div>
+                                  <div className="font-semibold mb-1">
+                                    Any Token Supported
+                                  </div>
+                                  <div className="text-xs opacity-90 space-y-2">
+                                    {directlyZappableAssets.length > 0 && (
+                                      <div>
+                                        <div className="font-semibold mb-1">
+                                          Direct zap (no slippage):
+                                        </div>
+                                        <div className="flex items-center gap-1.5 flex-wrap">
+                                              {directlyZappableAssets.map(
+                                                (asset) => (
+                                            <div
+                                              key={asset.symbol}
+                                              className="flex items-center gap-1"
+                                            >
+                                              <Image
+                                                      src={getLogoPath(
+                                                        asset.symbol
+                                                      )}
+                                                alt={asset.name}
+                                                width={16}
+                                                height={16}
+                                                className="flex-shrink-0 rounded-full"
+                                              />
+                                              <span>{asset.symbol}</span>
+                                            </div>
+                                                )
+                                              )}
+                                        </div>
+                                      </div>
+                                    )}
+                                    <div>
+                                      Other ERC20 tokens can be deposited via
+                                          ParaSwap and will be automatically
+                                          swapped to {collateralSymbol}.
+                                    </div>
+                                  </div>
+                                </div>
+                              )
                             }
                           >
-                            <div className="flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] font-semibold uppercase tracking-wide cursor-help whitespace-nowrap">
-                              <ArrowPathIcon className="w-3 h-3" />
-                              <span>Any Token</span>
+                            <div className={`flex items-center gap-1 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide cursor-help whitespace-nowrap ${isCollateralOnlyRow ? "bg-[#1E4775]/10 text-[#1E4775]" : "bg-blue-100 text-blue-700"}`}>
+                              {!isCollateralOnlyRow && <ArrowPathIcon className="w-3 h-3" />}
+                              <span>{isCollateralOnlyRow ? "Collateral" : "Any Token"}</span>
                             </div>
                           </SimpleTooltip>
                         </div>

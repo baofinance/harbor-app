@@ -9,6 +9,7 @@ import {
 } from "@/utils/formatters";
 import { amountToUSD, getTokenPriceUSD } from "@/utils/tokenPriceToUSD";
 import { REWARD_TOKEN_ADDRESSES } from "@/config/chainlink";
+import { getDepositMode } from "@/utils/depositMode";
 import {
   useAccount,
   useBalance,
@@ -191,9 +192,12 @@ export const AnchorDepositWithdrawModal = ({
   }, [connector]);
 
   const effectiveChainId = walletChainId ?? chainId;
+  const depositMode = getDepositMode(market ?? (effectiveChainId != null ? { chainId: effectiveChainId } : undefined));
+  const { collateralOnly: isCollateralOnlyChain, nativeTokenLabel, isMegaEth } = depositMode;
 
-  // Check if user is on the correct network (mainnet)
-  const isCorrectNetwork = effectiveChainId === mainnet.id;
+  // Target chain for this market (multi-chain: mainnet or e.g. MegaETH 4326)
+  const marketChainId = (market as any)?.chainId ?? mainnet.id;
+  const isCorrectNetwork = effectiveChainId === marketChainId;
   const shouldShowNetworkSwitch = !isCorrectNetwork && isConnected;
 
   const handleTxError = useCallback((msg: string) => {
@@ -204,9 +208,8 @@ export const AnchorDepositWithdrawModal = ({
   // Function to handle network switching (manual trigger from UI)
   const handleSwitchNetwork = async () => {
     try {
-      await switchChain({ chainId: mainnet.id });
+      await switchChain({ chainId: marketChainId });
       setError(null);
-      // Best-effort refresh from connector
       if (connector?.getChainId) {
         const id = await connector.getChainId();
         setWalletChainId(id);
@@ -214,13 +217,12 @@ export const AnchorDepositWithdrawModal = ({
     } catch (err) {
       console.error("[Network Switch] Error:", err);
       handleTxError(
-        "Failed to switch network. Please switch to Ethereum Mainnet manually in your wallet."
+        `Failed to switch network. Please switch to the correct network (${marketChainId === 4326 ? "MegaETH" : "Ethereum Mainnet"}) in your wallet.`
       );
     }
   };
 
-  // Helper function to ensure we're on the correct network before any transaction.
-  // Auto-attempts to switch to mainnet, and only proceeds if the switch succeeds.
+  // Ensure we're on the market's chain before any transaction (multi-chain support).
   const ensureCorrectNetwork = async (): Promise<boolean> => {
     if (!isConnected) return true;
 
@@ -232,11 +234,10 @@ export const AnchorDepositWithdrawModal = ({
     }
 
     const chainToCheck = currentWalletChainId ?? effectiveChainId;
-    if (chainToCheck === mainnet.id) return true;
+    if (chainToCheck === marketChainId) return true;
 
     try {
-      await switchChain({ chainId: mainnet.id });
-      // Best-effort refresh from connector
+      await switchChain({ chainId: marketChainId });
       if (connector?.getChainId) {
         const id = await connector.getChainId();
         setWalletChainId(id);
@@ -246,7 +247,9 @@ export const AnchorDepositWithdrawModal = ({
       if (process.env.NODE_ENV === "development") {
         console.warn("[Network] Auto switch rejected/failed:", err);
       }
-      handleTxError("Please switch to Ethereum Mainnet to continue.");
+      handleTxError(
+        `Please switch to ${marketChainId === 4326 ? "MegaETH" : "Ethereum Mainnet"} to continue.`
+      );
       return false;
     }
   };
@@ -1206,15 +1209,15 @@ export const AnchorDepositWithdrawModal = ({
     }));
   }, [allDepositAssetsWithMarkets]);
 
-  // Dropdown deposit assets (no estimated fees shown)
+  // Dropdown deposit assets (no estimated fees shown). Non-mainnet: collateral only, no "any token".
   const depositAssetsForDropdown = useMemo(() => {
     let result = allDepositAssetsWithMarkets.map((asset) => ({
       ...asset,
       isUserToken: false,
     }));
 
-    // Merge with "any token" assets from user's wallet
-    if (anyTokenDeposit.allAvailableAssets.length > 0) {
+    // Merge with "any token" assets from user's wallet (mainnet only)
+    if (!isCollateralOnlyChain && anyTokenDeposit.allAvailableAssets.length > 0) {
       const existingSymbols = new Set(result.map((a) => a.symbol.toUpperCase()));
 
       anyTokenDeposit.allAvailableAssets.forEach((token) => {
@@ -1238,6 +1241,7 @@ export const AnchorDepositWithdrawModal = ({
     anyTokenDeposit.allAvailableAssets,
     selectedMarketId,
     selectedMarket,
+    isCollateralOnlyChain,
   ]);
 
   // Calculate fees for each market separately (for showing per-market fees)
@@ -1572,9 +1576,10 @@ export const AnchorDepositWithdrawModal = ({
   const isSelectedAssetNativeETH =
     selectedDepositAsset?.toLowerCase() === "eth";
 
-  // Get native ETH balance (for ETH deposits)
+  // Get native ETH balance (for ETH deposits) — read on market's chain so modal shows correct chain balance
   const { data: nativeBalanceData } = useBalance({
     address: address,
+    chainId: marketChainId,
     query: {
       enabled:
         !!address &&
@@ -1620,6 +1625,7 @@ export const AnchorDepositWithdrawModal = ({
     abi: ERC20_ABI,
     functionName: "balanceOf",
     args: address ? [address] : undefined,
+    chainId: marketChainId,
     query: {
       enabled:
         !!address &&
@@ -1726,12 +1732,13 @@ export const AnchorDepositWithdrawModal = ({
     activeTab,
   ]);
 
-  // Contract read hooks - collateral balance for mint (only when not using ha token directly)
+  // Contract read hooks - collateral balance for mint (only when not using ha token directly) — market's chain
   const { data: collateralBalanceData } = useContractRead({
     address: collateralAddress as `0x${string}`,
     abi: ERC20_ABI,
     functionName: "balanceOf",
     args: address ? [address] : undefined,
+    chainId: marketChainId,
     query: {
       enabled:
         !!address &&
@@ -1810,6 +1817,7 @@ export const AnchorDepositWithdrawModal = ({
     abi: ERC20_ABI,
     functionName: "balanceOf",
     args: address ? [address] : undefined,
+    chainId: marketChainId,
     query: {
       enabled:
         !!address &&
@@ -1891,6 +1899,7 @@ export const AnchorDepositWithdrawModal = ({
     abi: ERC20_ABI,
     functionName: "balanceOf",
     args: address ? [address] : undefined,
+    chainId: marketChainId,
     query: {
       enabled:
         !!address &&
@@ -3030,7 +3039,7 @@ export const AnchorDepositWithdrawModal = ({
       ? (Number(aprData[0]) / 1e16) * 100 + (Number(aprData[1]) / 1e16) * 100
       : 0;
 
-  // Check allowance for collateral to minter (for mint tab)
+  // Check allowance for collateral to minter (for mint tab) — market's chain
   const { data: allowanceData, refetch: refetchAllowance } = useContractRead({
     address: collateralAddress as `0x${string}`,
     abi: ERC20_ABI,
@@ -3039,6 +3048,7 @@ export const AnchorDepositWithdrawModal = ({
       address && minterAddress
         ? [address, minterAddress as `0x${string}`]
         : undefined,
+    chainId: marketChainId,
     query: {
       enabled:
         !!address &&
@@ -9338,10 +9348,14 @@ export const AnchorDepositWithdrawModal = ({
                         },
                         options: [
                           ...(depositAssetsForDropdown.filter(a => !a.isUserToken).length > 0 ? [{
-                            label: "Supported Assets",
-                            tokens: depositAssetsForDropdown.filter(a => !a.isUserToken).map((a) => ({ symbol: a.symbol, name: a.name, isUserToken: false })),
+                            label: isCollateralOnlyChain ? (isMegaEth ? "Collateral (MegaETH)" : "Collateral") : "Supported Assets",
+                            tokens: depositAssetsForDropdown.filter(a => !a.isUserToken).map((a) => ({
+                              symbol: a.symbol,
+                              name: (isMegaEth && a.symbol?.toUpperCase() === "ETH") ? nativeTokenLabel : a.name,
+                              isUserToken: false,
+                            })),
                           }] : []),
-                          ...(depositAssetsForDropdown.filter(a => a.isUserToken).length > 0 ? [{
+                          ...(!isCollateralOnlyChain && depositAssetsForDropdown.filter(a => a.isUserToken).length > 0 ? [{
                             label: "Other Tokens (via Swap)",
                             tokens: depositAssetsForDropdown.filter(a => a.isUserToken).map((a) => ({ symbol: a.symbol, name: a.name, isUserToken: true })),
                           }] : []),
@@ -9352,9 +9366,9 @@ export const AnchorDepositWithdrawModal = ({
                       }}
                       betweenTokenAndAmount={
                         <>
-                        {anyTokenDeposit.needsSwap && selectedDepositAsset && amount && parseFloat(amount) > 0 && (() => {
+                        {!isCollateralOnlyChain && anyTokenDeposit.needsSwap && selectedDepositAsset && amount && parseFloat(amount) > 0 && (() => {
                           const isSwappingToUSDC = anyTokenDeposit.swapTargetToken !== "ETH";
-                          const targetToken = isSwappingToUSDC ? "USDC" : "ETH";
+                          const targetToken = isSwappingToUSDC ? "USDC" : nativeTokenLabel;
                           const targetDecimals = isSwappingToUSDC ? 2 : 6;
                           
                           // ParaSwap returns toAmount in smallest units, need to convert to decimal
@@ -9416,7 +9430,7 @@ export const AnchorDepositWithdrawModal = ({
                             );
                           })()}
                         >
-                          {!anyTokenDeposit.needsSwap && (
+                          {!isCollateralOnlyChain && !anyTokenDeposit.needsSwap && (
                             <InfoCallout
                               tone="success"
                               title="Tip:"
