@@ -48,7 +48,7 @@ const ICONS: Record<string, string> = {
     // haUSD markets (e.g. MegaETH) - pegged haUSD + sail tokens
     "hsusd-btc": "/icons/hsUSD_BTC.png",
     "hsusd-eth": "/icons/hsUSD_ETH.png",
-    "hsusd-wsteth": "/icons/hsUSD_ETH.png",
+    "hsusd-wsteth": "/icons/steth_logo.webp",
     "hsusd-xau": "/icons/hsUSD_XAU.png",
     "hssteth-btc": "/icons/hsETHBTC.png",
     hsstethbtc: "/icons/hsETHBTC.png",

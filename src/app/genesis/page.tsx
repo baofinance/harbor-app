@@ -88,11 +88,13 @@ import {
 // Use ERC20_ABI which includes symbol
 const erc20SymbolABI = ERC20_ABI;
 
-/** Genesis table display: show "BTC-USD" / "wstETH-USD" instead of "USD-BTC" / "USD-wstETH". */
+/** Genesis table display: show "BTC-USD" / "STETH-USD" instead of "USD-BTC" / "USD-wstETH". Use STETH for wstETH to match other markets. */
 function formatGenesisMarketDisplayName(name: string): string {
   if (!name) return name;
   const m = name.match(/^USD-(.+)$/i);
-  return m ? `${m[1]}-USD` : name;
+  const base = m ? `${m[1]}-USD` : name;
+  // Show wstETH markets as STETH-USD like STETH-BTC, STETH-GOLD, etc.
+  return base.replace(/^wsteth/i, "STETH");
 }
 
 // Oracle ABIs - Harbor tuple and Chainlink single-value
@@ -465,6 +467,8 @@ export default function GenesisIndexPage() {
   }>({ open: false });
   const [fdv, setFdv] = useState<number>(DEFAULT_FDV);
   const [chainFilterSelected, setChainFilterSelected] = useState<string[]>([]);
+  // Hide completed genesis sections by default; filter to show "Ongoing" only or "All" (ongoing + completed)
+  const [showCompletedGenesis, setShowCompletedGenesis] = useState(false);
 
   const { writeContractAsync } = useWriteContract();
   const publicClient = usePublicClient();
@@ -1991,17 +1995,47 @@ export default function GenesisIndexPage() {
         {/* Only show market rows section if there are active/pending markets or ended markets with claimable tokens */}
         {hasActiveOrPendingMarkets && (
           <section className="space-y-2 overflow-visible">
-            {/* Active campaign + dropdowns left, marks pills right */}
-            <div className="pt-4 pb-3 flex flex-col md:flex-row md:items-center md:justify-between gap-3 flex-wrap">
+            {/* Row 1: Active campaign (left only) */}
+            <div className="pt-4 pb-1 flex flex-wrap items-center gap-2">
+              <h2 className="text-xs font-medium text-white/70 uppercase tracking-wider flex items-center gap-2">
+                Active Campaign:
+                {activeCampaignName && (
+                  <span className="inline-flex items-center px-2.5 py-1 bg-[#E67A6B] hover:bg-[#D66A5B] border border-white text-white text-xs font-semibold uppercase tracking-wider rounded-full transition-colors">
+                    {activeCampaignName}
+                  </span>
+                )}
+              </h2>
+            </div>
+            {/* Row 2: Genesis filter + Network dropdown (left), marks pills (right) */}
+            <div className="pb-3 flex flex-col md:flex-row md:items-center md:justify-between gap-3 flex-wrap">
               <div className="flex flex-wrap items-center gap-2">
-                <h2 className="text-xs font-medium text-white/70 uppercase tracking-wider flex items-center gap-2">
-                  Active Campaign:
-                  {activeCampaignName && (
-                    <span className="inline-flex items-center px-2.5 py-1 bg-[#E67A6B] hover:bg-[#D66A5B] border border-white text-white text-xs font-semibold uppercase tracking-wider rounded-full transition-colors">
-                      {activeCampaignName}
-                    </span>
-                  )}
-                </h2>
+                {displayedCompletedByCampaign.size > 0 && (
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-medium text-white/70 uppercase tracking-wider">Genesis:</span>
+                    <button
+                      type="button"
+                      onClick={() => setShowCompletedGenesis(false)}
+                      className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
+                        !showCompletedGenesis
+                          ? "bg-white text-[#1E4775]"
+                          : "bg-white/10 text-white hover:bg-white/20"
+                      }`}
+                    >
+                      Ongoing
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowCompletedGenesis(true)}
+                      className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
+                        showCompletedGenesis
+                          ? "bg-white text-[#1E4775]"
+                          : "bg-white/10 text-white hover:bg-white/20"
+                      }`}
+                    >
+                      All
+                    </button>
+                  </div>
+                )}
                 {genesisChainOptions.length > 1 && (
                   <>
                     <FilterMultiselectDropdown
@@ -4576,7 +4610,7 @@ export default function GenesisIndexPage() {
                                       effectiveBonusStatus.thresholdAmount
                                     ).toLocaleString(undefined, {
                                       maximumFractionDigits: 0,
-                                    })} ${effectiveBonusStatus.thresholdToken}`}
+                                    })} ${effectiveBonusStatus.thresholdToken === "wstETH" ? "stETH" : effectiveBonusStatus.thresholdToken}`}
                                   </span>
 
                                   {/* User Qualification Status - on same line */}
@@ -4907,8 +4941,8 @@ export default function GenesisIndexPage() {
           </section>
         )}
 
-        {/* Completed Genesis Events - Grouped by Campaign */}
-        {displayedCompletedByCampaign.size > 0 && (
+        {/* Completed Genesis Events - Grouped by Campaign (hidden by default; toggle via Genesis: Ongoing / All) */}
+        {displayedCompletedByCampaign.size > 0 && showCompletedGenesis && (
           <section className="space-y-4 overflow-visible mt-8">
             {Array.from(displayedCompletedByCampaign.entries()).map(([campaignLabel, markets]) => {
               // Extract campaign name from label (e.g., "Launch Maiden Voyage" -> "Launch")

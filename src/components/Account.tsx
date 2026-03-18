@@ -181,11 +181,21 @@ function NetworkIcon({name}: { name: string }) {
         <div
             className={
                 visibilityEnhancement
-                    ? "rounded-full bg-white flex items-center justify-center p-0.5 shrink-0"
+                    ? "relative w-6 h-6 flex items-center justify-center shrink-0"
                     : "bg-white-xs rounded-xs"
             }
         >
-            <NetworkIconClient name={iconName} size={24} variant="branded"/>
+            {visibilityEnhancement && (
+                <div
+                    className="absolute inset-0 flex items-center justify-center pointer-events-none"
+                    aria-hidden
+                >
+                    <div className="w-5 h-5 rounded-full bg-white shrink-0" />
+                </div>
+            )}
+            <span className={visibilityEnhancement ? "relative z-10" : undefined}>
+                <NetworkIconClient name={iconName} size={24} variant="branded"/>
+            </span>
         </div>
     );
 }
