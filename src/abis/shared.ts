@@ -477,6 +477,30 @@ export const STABILITY_POOL_MANAGER_ABI = [
     stateMutability: "view",
     type: "function",
   },
+  {
+    inputs: [],
+    name: "rebalanceable",
+    outputs: [{ type: "bool", name: "" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "rebalanceBountyRatio",
+    outputs: [{ type: "uint256", name: "" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
+      { name: "bountyReceiver", type: "address" },
+      { name: "minPeggedLiquidated", type: "uint256" },
+    ],
+    name: "rebalance",
+    outputs: [{ type: "uint256", name: "" }],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
 ] as const;
 
 /**
