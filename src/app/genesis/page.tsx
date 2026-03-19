@@ -38,6 +38,7 @@ import {
 } from "@heroicons/react/24/outline";
 import InfoTooltip from "@/components/InfoTooltip";
 import SimpleTooltip from "@/components/SimpleTooltip";
+import LedgerMarksCompactBadge from "@/components/LedgerMarksCompactBadge";
 import Image from "next/image";
 import {
   useAllHarborMarks,
@@ -1102,7 +1103,7 @@ export default function GenesisIndexPage() {
   }, [completedByCampaign, chainFilterSelected]);
 
   return (
-    <div className="min-h-screen text-white max-w-[1300px] mx-auto font-sans relative">
+    <div className="flex min-h-0 flex-1 flex-col text-white max-w-[1300px] mx-auto font-sans relative w-full">
       <main className="container mx-auto px-4 sm:px-10 pb-6">
         <GenesisHeaderSummary />
 
@@ -1995,20 +1996,17 @@ export default function GenesisIndexPage() {
         {/* Only show market rows section if there are active/pending markets or ended markets with claimable tokens */}
         {hasActiveOrPendingMarkets && (
           <section className="space-y-2 overflow-visible">
-            {/* Row 1: Active campaign (left only) */}
-            <div className="pt-4 pb-1 flex flex-wrap items-center gap-2">
-              <h2 className="text-xs font-medium text-white/70 uppercase tracking-wider flex items-center gap-2">
-                Active Campaign:
-                {activeCampaignName && (
-                  <span className="inline-flex items-center px-2.5 py-1 bg-[#E67A6B] hover:bg-[#D66A5B] border border-white text-white text-xs font-semibold uppercase tracking-wider rounded-full transition-colors">
-                    {activeCampaignName}
-                  </span>
-                )}
-              </h2>
-            </div>
-            {/* Row 2: Genesis filter + Network dropdown (left), marks pills (right) */}
-            <div className="pb-3 flex flex-col md:flex-row md:items-center md:justify-between gap-3 flex-wrap">
+            {/* Single row: Active campaign first, then Genesis + Network (left), Ledger Marks (right) */}
+            <div className="pt-4 pb-3 flex flex-col md:flex-row md:items-center md:justify-between gap-3 flex-wrap">
               <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-xs font-medium text-white/70 uppercase tracking-wider flex items-center gap-2">
+                  Active Campaign:
+                  {activeCampaignName && (
+                    <span className="inline-flex items-center px-2.5 py-1 bg-[#E67A6B] hover:bg-[#D66A5B] border border-white text-white text-xs font-semibold uppercase tracking-wider rounded-full transition-colors">
+                      {activeCampaignName}
+                    </span>
+                  )}
+                </h2>
                 {displayedCompletedByCampaign.size > 0 && (
                   <div className="flex items-center gap-1.5">
                     <span className="text-xs font-medium text-white/70 uppercase tracking-wider">Genesis:</span>
@@ -2045,7 +2043,7 @@ export default function GenesisIndexPage() {
                       onChange={setChainFilterSelected}
                       allLabel="All networks"
                       groupLabel="NETWORKS"
-                      minWidthClass="min-w-[230px]"
+                      minWidthClass="min-w-[235px]"
                     />
                     <SimpleTooltip label="clear filters">
                       <button
@@ -2061,37 +2059,67 @@ export default function GenesisIndexPage() {
                 )}
               </div>
               <div className="flex flex-wrap items-center gap-2 md:ml-auto">
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#E67A6B] hover:bg-[#D66A5B] border border-white text-white text-xs font-semibold uppercase tracking-wider rounded-full transition-colors">
-                  <span>Earn 10</span>
-                  <Image
-                    src="/icons/marks.png"
-                    alt="Marks"
-                    width={16}
-                    height={16}
-                    className="flex-shrink-0"
-                  />
-                  <span>/$/day + 100</span>
-                  <Image
-                    src="/icons/marks.png"
-                    alt="Marks"
-                    width={16}
-                    height={16}
-                    className="flex-shrink-0"
-                  />
-                  <span>bonus on completion</span>
-                </div>
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#E67A6B] hover:bg-[#D66A5B] border border-white text-white text-xs font-semibold uppercase tracking-wider rounded-full transition-colors">
-                  <span>Early Deposit Bonus!</span>
-                  <span>100</span>
-                  <Image
-                    src="/icons/marks.png"
-                    alt="Marks"
-                    width={20}
-                    height={20}
-                    className="flex-shrink-0"
-                  />
-                  <span>/ $</span>
-                </div>
+                <LedgerMarksCompactBadge
+                  className="md:ml-auto"
+                  tooltipMaxWidth="min(90vw, 22rem)"
+                  intro={
+                    <p>
+                      Active Maiden Voyage Genesis campaigns use the incentive
+                      rates below. Exact bonuses depend on the campaign you
+                      joined.
+                    </p>
+                  }
+                  body={
+                    <div className="space-y-3 text-xs leading-relaxed">
+                      <div>
+                        <div className="font-semibold text-white text-sm mb-1">
+                          Ledger Marks
+                        </div>
+                        <p className="text-white/90">
+                          <span className="font-semibold text-white">
+                            Earn 10
+                          </span>{" "}
+                          Ledger Marks per{" "}
+                          <span className="font-semibold text-white">$</span>{" "}
+                          deposited per day, plus{" "}
+                          <span className="font-semibold text-white">
+                            100
+                          </span>{" "}
+                          bonus marks on Maiden Voyage completion (where the
+                          campaign offers it).
+                        </p>
+                      </div>
+                      <div className="border-t border-white/20 pt-2">
+                        <p className="text-white/90">
+                          <span className="font-semibold text-white">
+                            Early Deposit Bonus!
+                          </span>{" "}
+                          Eligible early deposits can earn extra marks—for
+                          example{" "}
+                          <span className="font-semibold text-white">
+                            100
+                          </span>{" "}
+                          marks per{" "}
+                          <span className="font-semibold text-white">$</span>{" "}
+                          during the bonus window, when your market&apos;s
+                          campaign includes it.
+                        </p>
+                      </div>
+                    </div>
+                  }
+                  earnSummary={
+                    <>
+                      <span className="font-semibold text-white">
+                        Genesis / Maiden Voyage: 10 marks / $ / day
+                      </span>
+                      <span className="text-white/80">
+                        {" "}
+                        • +100 marks bonus on completion • early-deposit bonus
+                        where shown
+                      </span>
+                    </>
+                  }
+                />
               </div>
             </div>
             {/* Market Rows - sorted with running markets first, then completed markets */}

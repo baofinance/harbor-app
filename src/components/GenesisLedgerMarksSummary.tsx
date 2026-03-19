@@ -86,7 +86,7 @@ export const GenesisLedgerMarksSummary = ({
                   <div className="border-t border-white/20 pt-3">
                     <p className="text-white/80 italic leading-relaxed">
                       Think of them as a record of your journey — every mark, a
-                      line in Harbor's logbook.
+                      line in Harbor&apos;s logbook.
                     </p>
                   </div>
                 </div>

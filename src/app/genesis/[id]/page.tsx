@@ -694,7 +694,7 @@ export default function GenesisMarketPage({ params }: PageProps) {
  // If market id is invalid, show not found after hooks have been called
  if (!market) {
  return (
- <div className="min-h-screen text-white max-w-[1300px] mx-auto font-sans relative">
+ <div className="flex min-h-0 flex-1 flex-col text-white max-w-[1300px] mx-auto font-sans relative w-full">
  <main className="container mx-auto px-4 sm:px-10 pb-6">
  <div className="bg-[#17395F] p-6 text-center">
  <h1 className="text-lg font-semibold text-white">
@@ -725,7 +725,7 @@ export default function GenesisMarketPage({ params }: PageProps) {
  const statusLabel = isEnded ?"ENDED" :"ACTIVE";
 
  return (
- <div className="min-h-screen text-white max-w-[1300px] mx-auto font-sans relative px-4 sm:px-10">
+ <div className="flex min-h-0 flex-1 flex-col text-white max-w-[1300px] mx-auto font-sans relative px-4 sm:px-10 w-full">
  <main className="container mx-auto max-w-full pb-8 relative z-10">
  {/* Breadcrumb */}
  <div className="mb-3">

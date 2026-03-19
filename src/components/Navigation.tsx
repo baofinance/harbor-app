@@ -28,7 +28,7 @@ export default function Example() {
   return (
     <Disclosure<"nav">
       as="nav"
-      className="relative bg-[#1E4775] after:pointer-events-none max-w-7xl mx-auto after:absolute after:inset-x-0 after:bottom-0 after:h-px after:bg-white/20 mb-4 sm:mb-6"
+      className="relative shrink-0 bg-[#1E4775] after:pointer-events-none max-w-7xl mx-auto after:absolute after:inset-x-0 after:bottom-0 after:h-px after:bg-white/20 mb-4 sm:mb-6"
     >
       <div className="w-full px-3 sm:px-4 lg:px-8">
         <div className="flex h-16 items-center justify-between">

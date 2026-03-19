@@ -63,7 +63,7 @@ export function FilterMultiselectDropdown({
   allLabel = "All",
   className = "",
   groupLabel,
-  minWidthClass = "min-w-[200px]",
+  minWidthClass = "min-w-[235px]",
   maxHeightClass = "max-h-60",
 }: FilterMultiselectDropdownProps) {
   const isNoneSelected = value.includes(FILTER_NONE_SENTINEL);

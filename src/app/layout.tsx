@@ -75,9 +75,9 @@ export default async function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
  <body
- className={`antialiased font-sans bg-[#1E4775] text-white relative overflow-x-hidden min-h-screen flex flex-col`}
+ className={`antialiased font-sans bg-[#1E4775] text-white relative overflow-x-hidden min-h-full flex flex-col`}
  >
- <div className="relative z-10 flex min-h-screen flex-col">
+ <div className="relative z-10 flex flex-1 flex-col min-h-0">
  <ContextProvider cookies={cookies}>
  <Navigation />
  <FadeContent
@@ -85,11 +85,11 @@ export default async function RootLayout({
  duration={500}
  easing="ease-out"
  initialOpacity={0}
- className="flex-1"
+ className="flex-1 min-h-0 flex flex-col"
  >
  {children}
  </FadeContent>
- <footer className="mt-8 border-t border-white/20">
+ <footer className="mt-auto flex-shrink-0 border-t border-white/20">
    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
      <div className="flex justify-center mb-4">
        <a

@@ -24,6 +24,7 @@ import Image from "next/image";
 import PriceChart from "@/components/PriceChart";
 import InfoTooltip from "@/components/InfoTooltip";
 import SimpleTooltip from "@/components/SimpleTooltip";
+import LedgerMarksCompactBadge from "@/components/LedgerMarksCompactBadge";
 import { getLogoPath } from "@/components/shared";
 import { SailManageModal } from "@/components/SailManageModal";
 import { minterABI } from "@/abis/minter";
@@ -2027,7 +2028,7 @@ export default function SailPage() {
         />
       </Head>
 
-      <div className="min-h-screen text-white max-w-[1300px] mx-auto font-sans relative">
+      <div className="flex min-h-0 flex-1 flex-col text-white max-w-[1300px] mx-auto font-sans relative w-full">
         <main className="container mx-auto px-4 sm:px-10 pb-6">
           {/* Header */}
           <div className="mb-2">
@@ -2381,7 +2382,7 @@ export default function SailPage() {
                           onChange={setChainFilterSelected}
                           allLabel="All networks"
                           groupLabel="NETWORKS"
-                          minWidthClass="min-w-[220px]"
+                          minWidthClass="min-w-[235px]"
                         />
                       )}
                       <FilterMultiselectDropdown
@@ -2396,7 +2397,7 @@ export default function SailPage() {
                         onChange={setLongFilterSelected}
                         allLabel="All Long"
                         groupLabel="LONG"
-                        minWidthClass="min-w-[220px]"
+                        minWidthClass="min-w-[235px]"
                       />
                       <FilterMultiselectDropdown
                         label="Short"
@@ -2410,7 +2411,7 @@ export default function SailPage() {
                         onChange={setShortFilterSelected}
                         allLabel="All Short"
                         groupLabel="SHORT"
-                        minWidthClass="min-w-[220px]"
+                        minWidthClass="min-w-[235px]"
                       />
                       <SimpleTooltip label="clear filters">
                         <button
@@ -2427,42 +2428,28 @@ export default function SailPage() {
                         </button>
                       </SimpleTooltip>
                     </div>
-                    <SimpleTooltip
+                    <LedgerMarksCompactBadge
                       centerOnMobile
-                      label={
-                        <div className="text-left max-w-xs">
-                          <div className="font-semibold mb-1">Ledger Marks</div>
-                          <div className="text-xs text-white/90">
+                      className="w-full md:w-auto md:ml-auto"
+                      pillClassName="w-full md:w-auto justify-center md:justify-start"
+                      body={
+                        <>
+                          <div className="font-semibold">Ledger Marks</div>
+                          <div>
                             Earned by holding sail tokens. Used to qualify for
                             future rewards.
                           </div>
-                        </div>
+                        </>
                       }
-                    >
-                      <div className="cursor-help bg-[#E67A6B] hover:bg-[#D66A5B] border border-white backdrop-blur-sm px-2 py-1 rounded-full transition-colors w-full md:w-auto md:ml-auto">
-                        <div className="flex items-center justify-center md:justify-start gap-1.5 text-white text-sm whitespace-nowrap">
-                          <Image
-                            src="/icons/marks.png"
-                            alt="Marks"
-                            width={18}
-                            height={18}
-                            className="opacity-95"
-                          />
-                          <span>
-                            <span className="font-semibold">
-                              All positions earn Ledger Marks
-                            </span>{" "}
-                            <span className="text-white/90">
-                              •{" "}
-                              {activeSailBoostEndTimestamp ||
-                              sailMarksPerDay >= 9.5
-                                ? "10 / $ / day"
-                                : "10 / $ / day"}
-                            </span>
-                          </span>
-                        </div>
-                      </div>
-                    </SimpleTooltip>
+                      earnSummary={
+                        <>
+                          <span className="font-semibold text-white">
+                            All positions earn Ledger Marks
+                          </span>{" "}
+                          <span className="text-white/80">• 10 / $ / day</span>
+                        </>
+                      }
+                    />
                   </div>
 
                   {/* Header Row */}

@@ -1020,7 +1020,7 @@ const handleAnchorSailSort = (column: typeof anchorSailSortBy) => {
  const leaderboardData = leaderboardRows;
 
  return (
- <div className="min-h-screen bg-[#1E4775] overflow-x-hidden">
+ <div className="flex min-h-0 flex-1 flex-col bg-[#1E4775] overflow-x-hidden">
  <main className="container mx-auto px-3 sm:px-4 lg:px-8 py-4 sm:py-8 max-w-7xl">
         {/* Header */}
         <div className="mb-2">

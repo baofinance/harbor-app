@@ -614,7 +614,7 @@ export default function PoolClient({ marketId, poolType }: PoolClientProps) {
 
   if (!pool) {
     return (
-      <div className="min-h-screen text-white max-w-[1300px] mx-auto font-sans relative px-4 sm:px-10">
+      <div className="flex min-h-0 flex-1 flex-col text-white max-w-[1300px] mx-auto font-sans relative px-4 sm:px-10 w-full">
         <main className="container mx-auto max-w-full pb-10 relative z-10">
           <div className="text-center">
             <h1 className="text-3xl text-white font-semibold font-mono">
@@ -627,7 +627,7 @@ export default function PoolClient({ marketId, poolType }: PoolClientProps) {
   }
 
   return (
-    <div className="min-h-screen text-white max-w-[1300px] mx-auto font-sans relative px-4 sm:px-10">
+    <div className="flex min-h-0 flex-1 flex-col text-white max-w-[1300px] mx-auto font-sans relative px-4 sm:px-10 w-full">
       <main className="container mx-auto max-w-full pb-8 relative z-10">
         {/* Breadcrumb */}
         <div className="mb-3">

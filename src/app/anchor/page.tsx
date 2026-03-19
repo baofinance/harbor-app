@@ -67,6 +67,7 @@ import {
 } from "@/components/CompoundPoolSelectionModal";
 import { AnchorClaimMarketModal } from "@/components/AnchorClaimMarketModal";
 import SimpleTooltip from "@/components/SimpleTooltip";
+import LedgerMarksCompactBadge from "@/components/LedgerMarksCompactBadge";
 import InfoTooltip from "@/components/InfoTooltip";
 import { aprABI } from "@/abis/apr";
 import { rewardsABI } from "@/abis/rewards";
@@ -4160,7 +4161,7 @@ export default function AnchorPage() {
 
   return (
     <>
-      <div className="min-h-screen text-white max-w-[1300px] mx-auto font-sans relative">
+      <div className="flex min-h-0 flex-1 flex-col text-white max-w-[1300px] mx-auto font-sans relative w-full">
         <main className="container mx-auto px-4 sm:px-10 pb-6">
           {/* Header */}
           <div className="mb-2">
@@ -6016,7 +6017,7 @@ export default function AnchorPage() {
                       onChange={setChainFilterSelected}
                       allLabel="All networks"
                       groupLabel="NETWORKS"
-                      minWidthClass="min-w-[230px]"
+                      minWidthClass="min-w-[235px]"
                     />
                     <SimpleTooltip label="clear filters">
                       <button
@@ -6031,35 +6032,26 @@ export default function AnchorPage() {
                   </>
                 )}
               </div>
-              <SimpleTooltip
-                label={
-                  <div className="text-left max-w-xs">
-                    <div className="font-semibold mb-1">Ledger Marks</div>
-                    <div className="text-xs text-white/90">
+              <LedgerMarksCompactBadge
+                className="md:ml-auto"
+                body={
+                  <>
+                    <div className="font-semibold">Ledger Marks</div>
+                    <div>
                       Earned by holding anchor tokens and depositing into stability
                       pools. Used to qualify for future rewards.
                     </div>
-                  </div>
+                  </>
                 }
-              >
-                <div className="cursor-help bg-[#E67A6B] hover:bg-[#D66A5B] border border-white backdrop-blur-sm px-2 py-1 rounded-full transition-colors md:ml-auto">
-                  <div className="flex items-center gap-1.5 text-white text-sm whitespace-nowrap">
-                    <Image
-                      src="/icons/marks.png"
-                      alt="Marks"
-                      width={18}
-                      height={18}
-                      className="opacity-95"
-                    />
-                    <span>
-                      <span className="font-semibold">
-                        All positions earn Ledger Marks
-                      </span>{" "}
-                      <span className="text-white/90">• 1 / $ / day</span>
-                    </span>
-                  </div>
-                </div>
-              </SimpleTooltip>
+                earnSummary={
+                  <>
+                    <span className="font-semibold text-white">
+                      All positions earn Ledger Marks
+                    </span>{" "}
+                    <span className="text-white/80">• 1 / $ / day</span>
+                  </>
+                }
+              />
             </div>
 
             {/* Market Cards/Rows */}

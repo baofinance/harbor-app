@@ -32,7 +32,7 @@ export default function MintRedeemPage() {
  <meta name="description" content="Mint and Redeem tokens" />
  </Head>
 
- <div className="min-h-screen text-white max-w-[1300px] mx-auto font-sans relative overflow-x-hidden">
+ <div className="flex min-h-0 flex-1 flex-col text-white max-w-[1300px] mx-auto font-sans relative overflow-x-hidden w-full">
  <main className="container mx-auto px-3 sm:px-4 lg:px-10 pb-6">
  {/* Header */}
  <section className="mb-6">
