@@ -83,6 +83,12 @@ const POOL_READS_PER_MARKET = 8;
 // Number of user reads per market (2 pools * 2 reads each)
 const USER_READS_PER_MARKET = 4;
 
+/**
+ * Transparency page data: one row per market from `markets` config that has a
+ * `minter` address (same source as Genesis/Anchor/Sail). Contract reads are
+ * batched per market; optional `maintenance` on a market is UI-only (see
+ * `isMarketInMaintenance` on the transparency page).
+ */
 export function useTransparencyData(): TransparencyData {
   const { address: userAddress, isConnected } = useAccount();
 

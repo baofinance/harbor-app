@@ -1,6 +1,25 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
+import { isMarketInMaintenance, markets as marketsConfig } from "@/config/markets";
+import { MaintenanceClaimOnlyTags } from "@/components/MarketMaintenanceTag";
+
+/** Mint dry-run rows from simple compound use `simple-mint-${marketId}`; advanced uses `Mint haETH (marketId)` labels. */
+function isMintFeeRowForMaintenanceMarket(f: {
+  id: string;
+  label: string;
+}): boolean {
+  let marketId: string | null = null;
+  if (f.id.startsWith("simple-mint-")) {
+    marketId = f.id.slice("simple-mint-".length);
+  } else if (/^mint /i.test(f.label.trim())) {
+    const m = /\(([^)]+)\)\s*$/.exec(f.label);
+    if (m) marketId = m[1];
+  }
+  if (!marketId) return false;
+  const cfg = marketsConfig[marketId as keyof typeof marketsConfig];
+  return isMarketInMaintenance(cfg);
+}
 
 export type CompoundTargetMode = "single-token" | "keep-per-token";
 
@@ -299,23 +318,35 @@ export const CompoundTargetTokenModal = ({
             <div className="border border-[#1E4775]/20">
               {positions.map((p) => {
                 const symbol = p.market?.peggedToken?.symbol || p.marketId;
+                const cfg =
+                  marketsConfig[p.marketId as keyof typeof marketsConfig];
+                const showMaintMintTags =
+                  p.poolType === "collateral" &&
+                  isMarketInMaintenance(cfg ?? p.market);
                 return (
                   <div
                     key={`${p.marketId}-${p.poolType}`}
-                    className="flex items-center justify-between px-3 py-2 border-b border-[#1E4775]/10 last:border-b-0"
+                    className="border-b border-[#1E4775]/10 px-3 py-2 last:border-b-0"
                   >
-                    <div className="min-w-0">
-                      <div className="text-sm font-semibold text-[#1E4775] truncate">
+                    <div className="mb-1 flex items-center justify-between gap-2">
+                      <div className="min-w-0 truncate text-sm font-semibold text-[#1E4775]">
                         {symbol} {p.poolType} pool
                       </div>
-                      <div className="text-xs text-[#1E4775]/70">
+                      <div className="shrink-0 text-sm font-semibold text-[#1E4775]">
+                        ${p.rewardsUSD.toFixed(2)}
+                      </div>
+                    </div>
+                    <div className="flex justify-between gap-2 items-end">
+                      <div className="min-w-0 text-xs text-[#1E4775]/70">
                         {p.rewardTokens
                           ?.map((t) => `${t.claimableFormatted} ${t.symbol}`)
                           .join(", ")}
                       </div>
-                    </div>
-                    <div className="text-sm font-semibold text-[#1E4775]">
-                      ${p.rewardsUSD.toFixed(2)}
+                      {showMaintMintTags ? (
+                        <div className="shrink-0 pt-0.5">
+                          <MaintenanceClaimOnlyTags />
+                        </div>
+                      ) : null}
                     </div>
                   </div>
                 );
@@ -371,29 +402,48 @@ export const CompoundTargetTokenModal = ({
                   simplePreflight.key === simplePreflightKey ? (
                     simplePreflight.fees.length ? (
                       <div className="space-y-2">
-                        {simplePreflight.fees.map((f) => (
-                          <div
-                            key={f.id}
-                            className="p-2 border border-amber-200 bg-amber-50 text-xs"
-                          >
-                            <div className="flex items-center justify-between gap-2">
-                              <div className="font-semibold text-amber-900">
-                                {f.label}
+                        {simplePreflight.fees.map((f) => {
+                          const showFeeMaintTags =
+                            isMintFeeRowForMaintenanceMarket(f);
+                          return (
+                            <div
+                              key={f.id}
+                              className="border border-amber-200 bg-amber-50 p-2 text-xs"
+                            >
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="min-w-0 font-semibold text-amber-900">
+                                  {f.label}
+                                </div>
+                                <div className="shrink-0 text-right font-mono font-semibold text-amber-900">
+                                  {f.feeFormatted} {f.tokenSymbol}
+                                  {f.feePercentage !== undefined && (
+                                    <span className="ml-2 text-amber-700">
+                                      ({f.feePercentage.toFixed(2)}%)
+                                    </span>
+                                  )}
+                                </div>
                               </div>
-                              <div className="font-mono font-semibold text-amber-900">
-                                {f.feeFormatted} {f.tokenSymbol}
-                                {f.feePercentage !== undefined && (
-                                  <span className="text-amber-700 ml-2">
-                                    ({f.feePercentage.toFixed(2)}%)
-                                  </span>
-                                )}
-                              </div>
+                              {f.details && !showFeeMaintTags && (
+                                <div className="mt-1 text-amber-800/80">{f.details}</div>
+                              )}
+                              {f.details && showFeeMaintTags && (
+                                <div className="mt-1 flex items-end justify-between gap-2">
+                                  <div className="min-w-0 text-amber-800/80">
+                                    {f.details}
+                                  </div>
+                                  <div className="shrink-0 pt-0.5">
+                                    <MaintenanceClaimOnlyTags />
+                                  </div>
+                                </div>
+                              )}
+                              {!f.details && showFeeMaintTags && (
+                                <div className="mt-1 flex justify-end">
+                                  <MaintenanceClaimOnlyTags />
+                                </div>
+                              )}
                             </div>
-                            {f.details && (
-                              <div className="text-amber-800/80 mt-1">{f.details}</div>
-                            )}
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     ) : (
                       <div className="text-xs text-[#1E4775]/70">
@@ -559,31 +609,50 @@ export const CompoundTargetTokenModal = ({
                             preflight.key === preflightKey ? (
                               preflight.fees.length ? (
                                 <div className="space-y-2">
-                                  {preflight.fees.map((f) => (
-                                    <div
-                                      key={f.id}
-                                      className="p-2 border border-amber-200 bg-amber-50 text-xs"
-                                    >
-                                      <div className="flex items-center justify-between gap-2">
-                                        <div className="font-semibold text-amber-900">
-                                          {f.label}
+                                  {preflight.fees.map((f) => {
+                                    const showAdvFeeMaintTags =
+                                      isMintFeeRowForMaintenanceMarket(f);
+                                    return (
+                                      <div
+                                        key={f.id}
+                                        className="border border-amber-200 bg-amber-50 p-2 text-xs"
+                                      >
+                                        <div className="flex items-start justify-between gap-2">
+                                          <div className="min-w-0 font-semibold text-amber-900">
+                                            {f.label}
+                                          </div>
+                                          <div className="shrink-0 text-right font-mono font-semibold text-amber-900">
+                                            {f.feeFormatted} {f.tokenSymbol}
+                                            {f.feePercentage !== undefined && (
+                                              <span className="ml-2 text-amber-700">
+                                                ({f.feePercentage.toFixed(2)}%)
+                                              </span>
+                                            )}
+                                          </div>
                                         </div>
-                                        <div className="font-mono font-semibold text-amber-900">
-                                          {f.feeFormatted} {f.tokenSymbol}
-                                          {f.feePercentage !== undefined && (
-                                            <span className="text-amber-700 ml-2">
-                                              ({f.feePercentage.toFixed(2)}%)
-                                            </span>
-                                          )}
-                                        </div>
+                                        {f.details && !showAdvFeeMaintTags && (
+                                          <div className="mt-1 text-amber-800/80">
+                                            {f.details}
+                                          </div>
+                                        )}
+                                        {f.details && showAdvFeeMaintTags && (
+                                          <div className="mt-1 flex items-end justify-between gap-2">
+                                            <div className="min-w-0 text-amber-800/80">
+                                              {f.details}
+                                            </div>
+                                            <div className="shrink-0 pt-0.5">
+                                              <MaintenanceClaimOnlyTags />
+                                            </div>
+                                          </div>
+                                        )}
+                                        {!f.details && showAdvFeeMaintTags && (
+                                          <div className="mt-1 flex justify-end">
+                                            <MaintenanceClaimOnlyTags />
+                                          </div>
+                                        )}
                                       </div>
-                                      {f.details && (
-                                        <div className="text-amber-800/80 mt-1">
-                                          {f.details}
-                                        </div>
-                                      )}
-                                    </div>
-                                  ))}
+                                    );
+                                  })}
                                 </div>
                               ) : (
                                 <div className="text-xs text-[#1E4775]/70">

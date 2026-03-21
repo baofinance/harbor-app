@@ -77,6 +77,8 @@ export const markets = {
       label: "Launch Maiden Voyage",
     },
     coinGeckoId: "fx-usd-saving", // CoinGecko ID for fxSAVE (the deposited token)
+    // Optional UI: `maintenance: true` shows a Maintenance tag (Genesis / Anchor / Sail / Transparency).
+    maintenance: true,
     genesis: {
       startDate: contractsMarkets["eth-fxusd"].genesis.startDate,
       endDate: contractsMarkets["eth-fxusd"].genesis.endDate,
@@ -951,6 +953,17 @@ export const markets = {
 } as const;
 
 export type Market = (typeof markets)[keyof typeof markets];
+
+/** Optional UI flag on any market object in `markets`: set `maintenance: true` to show a Maintenance tag. */
+export type MarketWithMaintenance = Market & { maintenance?: boolean };
+
+export function isMarketInMaintenance(mkt: unknown): boolean {
+  return Boolean(
+    mkt &&
+      typeof mkt === "object" &&
+      (mkt as { maintenance?: boolean }).maintenance === true
+  );
+}
 
 // Helper functions for genesis status
 export function getGenesisStatus(

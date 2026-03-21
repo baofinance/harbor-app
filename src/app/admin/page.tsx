@@ -708,6 +708,11 @@ export default function Admin() {
        Reward Deposits
      </button>
    </Link>
+      <Link href="/admin/rebalancing">
+        <button className="py-2 px-4 bg-harbor text-white font-medium hover:bg-harbor transition-colors">
+          Rebalancing
+        </button>
+      </Link>
  </div>
  </div>
 
