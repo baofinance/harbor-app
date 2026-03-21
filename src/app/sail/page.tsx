@@ -4,7 +4,8 @@ import React, { useMemo, useState, useEffect } from "react";
 import Head from "next/head";
 import { useAccount, useContractReads, useContractRead } from "wagmi";
 import { formatEther } from "viem";
-import { markets } from "@/config/markets";
+import { markets, isMarketInMaintenance } from "@/config/markets";
+import { MarketMaintenanceTag } from "@/components/MarketMaintenanceTag";
 import { useAnchorLedgerMarks } from "@/hooks/useAnchorLedgerMarks";
 import {
   ChevronDownIcon,
@@ -425,6 +426,7 @@ function SailMarketRow({
     : undefined;
   const shortSide = parseShortSide(tokenName, market);
   const longSide = parseLongSide(tokenName, market);
+  const showMaintenance = isMarketInMaintenance(market);
 
   // Calculate current value in USD using token price from hook
   let currentValueUSD: number | undefined;
@@ -718,16 +720,22 @@ function SailMarketRow({
                   </button>
                 </div>
                 <div className="flex items-center justify-center pr-2">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onManageClick();
-                    }}
-                    disabled={!isConnected}
-                    className="px-4 py-2 text-sm font-semibold bg-[#1E4775] text-white hover:bg-[#17395F] disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors rounded-full whitespace-nowrap min-w-[160px] justify-center border-2 border-white disabled:border-gray-400"
-                  >
-                    Manage
-                  </button>
+                  {showMaintenance ? (
+                    <div className="flex min-w-[160px] justify-center">
+                      <MarketMaintenanceTag />
+                    </div>
+                  ) : (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onManageClick();
+                      }}
+                      disabled={!isConnected}
+                      className="px-4 py-2 text-sm font-semibold bg-[#1E4775] text-white hover:bg-[#17395F] disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors rounded-full whitespace-nowrap min-w-[160px] justify-center border-2 border-white disabled:border-gray-400"
+                    >
+                      Manage
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -900,16 +908,20 @@ function SailMarketRow({
             className="text-center min-w-0 flex items-center justify-center"
             onClick={(e) => e.stopPropagation()}
           >
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onManageClick();
-              }}
-              disabled={!isConnected}
-              className="px-4 py-2 text-sm font-semibold bg-[#1E4775] text-white hover:bg-[#17395F] disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors rounded-full whitespace-nowrap border-2 border-white disabled:border-gray-400"
-            >
-              Manage
-            </button>
+            {showMaintenance ? (
+              <MarketMaintenanceTag />
+            ) : (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onManageClick();
+                }}
+                disabled={!isConnected}
+                className="px-4 py-2 text-sm font-semibold bg-[#1E4775] text-white hover:bg-[#17395F] disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors rounded-full whitespace-nowrap border-2 border-white disabled:border-gray-400"
+              >
+                Manage
+              </button>
+            )}
           </div>
         </div>
       </div>

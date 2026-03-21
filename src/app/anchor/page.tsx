@@ -16,7 +16,8 @@ import {
 } from "wagmi";
 import { formatEther, parseEther } from "viem";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
-import { markets } from "@/config/markets";
+import { markets, isMarketInMaintenance } from "@/config/markets";
+import { MarketMaintenanceTag } from "@/components/MarketMaintenanceTag";
 import { POLLING_INTERVALS } from "@/config/polling";
 import {
   formatUSD,
@@ -6270,6 +6271,9 @@ export default function AnchorPage() {
                       firstMarket?.collateral?.symbol || "";
 
                     const isExpanded = expandedMarkets.includes(symbol);
+                    const groupHasMaintenance = marketList.some(({ market }) =>
+                      isMarketInMaintenance(market)
+                    );
 
                     const rewardPoolAddresses = marketList
                       .map(
@@ -6332,46 +6336,50 @@ export default function AnchorPage() {
                             className="flex items-center justify-end flex-shrink-0"
                             onClick={(e) => e.stopPropagation()}
                           >
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                    if (!isConnected) return;
-                                    const enrichedAllMarkets = marketList.map(
-                                      (m) => {
-                                  const marketData = marketsData.find(
-                                    (md) => md.marketId === m.marketId
+                            {groupHasMaintenance ? (
+                              <MarketMaintenanceTag />
+                            ) : (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (!isConnected) return;
+                                  const enrichedAllMarkets = marketList.map(
+                                    (m) => {
+                                      const marketData = marketsData.find(
+                                        (md) => md.marketId === m.marketId
+                                      );
+                                      return {
+                                        marketId: m.marketId,
+                                        market: {
+                                          ...m.market,
+                                          wrappedRate:
+                                            marketData?.wrappedRate,
+                                        },
+                                      };
+                                    }
                                   );
-                                  return {
-                                    marketId: m.marketId,
+                                  setManageModal({
+                                    marketId: marketList[0].marketId,
                                     market: {
-                                      ...m.market,
-                                            wrappedRate:
-                                              marketData?.wrappedRate,
+                                      ...marketList[0].market,
+                                      wrappedRate: marketsData.find(
+                                        (md) =>
+                                          md.marketId ===
+                                          marketList[0].marketId
+                                      )?.wrappedRate,
                                     },
-                                  };
-                                      }
-                                    );
-                                setManageModal({
-                                  marketId: marketList[0].marketId,
-                                  market: {
-                                    ...marketList[0].market,
-                                    wrappedRate: marketsData.find(
-                                          (md) =>
-                                            md.marketId ===
-                                            marketList[0].marketId
-                                    )?.wrappedRate,
-                                  },
-                                  initialTab: "deposit",
-                                  simpleMode: true,
-                                  bestPoolType: "collateral",
-                                  allMarkets: enrichedAllMarkets,
-                                });
-                              }}
-                                  disabled={!isConnected}
-                                  className="px-4 py-2 text-sm font-semibold bg-[#1E4775] text-white hover:bg-[#17395F] disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors rounded-full whitespace-nowrap"
-                            >
-                              Manage
-                            </button>
+                                    initialTab: "deposit",
+                                    simpleMode: true,
+                                    bestPoolType: "collateral",
+                                    allMarkets: enrichedAllMarkets,
+                                  });
+                                }}
+                                disabled={!isConnected}
+                                className="px-4 py-2 text-sm font-semibold bg-[#1E4775] text-white hover:bg-[#17395F] disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors rounded-full whitespace-nowrap"
+                              >
+                                Manage
+                              </button>
+                            )}
                           </div>
                         </div>
 
@@ -6625,44 +6633,48 @@ export default function AnchorPage() {
                           className="text-center min-w-0 flex items-center justify-center gap-1.5 pr-2"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                                  if (!isConnected) return;
-                                  const enrichedAllMarkets = marketList.map(
-                                    (m) => {
-                                      const marketData = marketsData.find(
-                                        (md) => md.marketId === m.marketId
-                                      );
-                                return {
-                                  marketId: m.marketId,
-                                        market: {
-                                          ...m.market,
-                                          wrappedRate: marketData?.wrappedRate,
-                                        },
-                                };
-                                    }
-                                  );
-                              setManageModal({
-                                marketId: marketList[0].marketId,
-                                market: {
-                                  ...marketList[0].market,
-                                      wrappedRate: marketsData.find(
-                                        (md) =>
-                                          md.marketId === marketList[0].marketId
-                                      )?.wrappedRate,
-                                },
-                                initialTab: "deposit",
-                                simpleMode: true,
-                                bestPoolType: "collateral",
-                                allMarkets: enrichedAllMarkets,
-                              });
-                            }}
-                                disabled={!isConnected}
-                                className="px-4 py-2 text-sm font-semibold bg-[#1E4775] text-white hover:bg-[#17395F] disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors rounded-full whitespace-nowrap"
-                          >
-                            Manage
-                          </button>
+                          {groupHasMaintenance ? (
+                            <MarketMaintenanceTag />
+                          ) : (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (!isConnected) return;
+                                const enrichedAllMarkets = marketList.map(
+                                  (m) => {
+                                    const marketData = marketsData.find(
+                                      (md) => md.marketId === m.marketId
+                                    );
+                                    return {
+                                      marketId: m.marketId,
+                                      market: {
+                                        ...m.market,
+                                        wrappedRate: marketData?.wrappedRate,
+                                      },
+                                    };
+                                  }
+                                );
+                                setManageModal({
+                                  marketId: marketList[0].marketId,
+                                  market: {
+                                    ...marketList[0].market,
+                                    wrappedRate: marketsData.find(
+                                      (md) =>
+                                        md.marketId === marketList[0].marketId
+                                    )?.wrappedRate,
+                                  },
+                                  initialTab: "deposit",
+                                  simpleMode: true,
+                                  bestPoolType: "collateral",
+                                  allMarkets: enrichedAllMarkets,
+                                });
+                              }}
+                              disabled={!isConnected}
+                              className="px-4 py-2 text-sm font-semibold bg-[#1E4775] text-white hover:bg-[#17395F] disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors rounded-full whitespace-nowrap"
+                            >
+                              Manage
+                            </button>
+                          )}
                         </div>
                       </div>
 
@@ -7321,44 +7333,48 @@ export default function AnchorPage() {
                           className="text-center min-w-0 flex items-center justify-center gap-1.5 pr-2"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              // Find the wrappedRate from marketsData for each market
-                                  const enrichedAllMarkets = marketList.map(
-                                    (m) => {
-                                const marketData = marketsData.find(
-                                  (md) => md.marketId === m.marketId
+                          {groupHasMaintenance ? (
+                            <MarketMaintenanceTag />
+                          ) : (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                // Find the wrappedRate from marketsData for each market
+                                const enrichedAllMarkets = marketList.map(
+                                  (m) => {
+                                    const marketData = marketsData.find(
+                                      (md) => md.marketId === m.marketId
+                                    );
+                                    return {
+                                      marketId: m.marketId,
+                                      market: {
+                                        ...m.market,
+                                        wrappedRate: marketData?.wrappedRate,
+                                      },
+                                    };
+                                  }
                                 );
-                                return {
-                                  marketId: m.marketId,
-                                  market: {
-                                    ...m.market,
-                                    wrappedRate: marketData?.wrappedRate,
-                                  },
-                                };
-                                    }
-                                  );
 
-                              setManageModal({
-                                marketId: marketList[0].marketId,
-                                market: {
-                                  ...marketList[0].market,
-                                  wrappedRate: marketsData.find(
-                                    (md) =>
-                                      md.marketId === marketList[0].marketId
-                                  )?.wrappedRate,
-                                },
-                                initialTab: "deposit",
-                                simpleMode: true,
-                                bestPoolType: "collateral",
-                                allMarkets: enrichedAllMarkets,
-                              });
-                            }}
-                            className="px-4 py-2 text-sm font-semibold bg-[#1E4775] text-white hover:bg-[#17395F] disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors rounded-full whitespace-nowrap"
-                          >
-                            Manage
-                          </button>
+                                setManageModal({
+                                  marketId: marketList[0].marketId,
+                                  market: {
+                                    ...marketList[0].market,
+                                    wrappedRate: marketsData.find(
+                                      (md) =>
+                                        md.marketId === marketList[0].marketId
+                                    )?.wrappedRate,
+                                  },
+                                  initialTab: "deposit",
+                                  simpleMode: true,
+                                  bestPoolType: "collateral",
+                                  allMarkets: enrichedAllMarkets,
+                                });
+                              }}
+                              className="px-4 py-2 text-sm font-semibold bg-[#1E4775] text-white hover:bg-[#17395F] disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors rounded-full whitespace-nowrap"
+                            >
+                              Manage
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>

@@ -33,7 +33,8 @@ import {
 } from "@heroicons/react/24/outline";
 import InfoTooltip from "@/components/InfoTooltip";
 import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
-import { markets as marketsConfig } from "@/config/markets";
+import { isMarketInMaintenance, markets as marketsConfig } from "@/config/markets";
+import { MarketMaintenanceBadge } from "@/components/MarketMaintenanceTag";
 import { useMultipleTokenPrices } from "@/hooks/useTokenPrices";
 import { useMultipleVolatilityProtection } from "@/hooks/useVolatilityProtection";
 import { useReadContract, useAccount } from "wagmi";
@@ -483,6 +484,7 @@ function MarketCard({
  const tokenPrices = tokenPricesByMarket[market.marketId];
 
   const marketCfg = (marketsConfig as any)?.[market.marketId];
+  const showMaintenanceTag = isMarketInMaintenance(marketCfg);
   const peggedTokenSymbol = marketCfg?.peggedToken?.symbol || "haETH";
   const leveragedTokenSymbol = marketCfg?.leveragedToken?.symbol || "hsFXUSD-ETH";
   const collateralHeldSymbol: string =
@@ -614,11 +616,17 @@ function MarketCard({
  <div className="p-3">
  <div className="lg:hidden space-y-2">
  <div className="flex items-center justify-between gap-2">
+ <div className="flex items-center gap-2 min-w-0">
  <div className="text-[#1E4775] font-semibold text-sm truncate">
  {market.marketName}
  </div>
+ </div>
  <div className="flex items-center gap-2 flex-shrink-0">
+ {showMaintenanceTag ? (
+ <MarketMaintenanceBadge compact />
+ ) : (
  <HealthBadge status={healthStatus} compact />
+ )}
  {isExpanded ? (
  <ChevronUpIcon className="w-5 h-5 text-[#1E4775] flex-shrink-0" />
  ) : (
@@ -708,7 +716,7 @@ function MarketCard({
 <div className="hidden lg:grid grid-cols-[1.3fr_1fr_1fr_1fr_1fr_1fr_1fr_auto] gap-4 items-center text-sm">
  {/* Market Name */}
  <div className="whitespace-nowrap min-w-0 overflow-hidden">
- <div className="flex items-center justify-center gap-2">
+ <div className="flex items-center justify-center gap-2 flex-wrap">
  <div className="text-[#1E4775] font-semibold text-sm">
  {market.marketName}
  </div>
@@ -762,7 +770,11 @@ function MarketCard({
 
  {/* Health Status */}
  <div className="text-center">
+ {showMaintenanceTag ? (
+ <MarketMaintenanceBadge compact />
+ ) : (
  <HealthBadge status={healthStatus} compact />
+ )}
  </div>
  </div>
  </div>

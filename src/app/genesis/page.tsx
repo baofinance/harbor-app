@@ -11,7 +11,8 @@ import {
 } from "wagmi";
 import { formatEther } from "viem";
 import { useQueryClient } from "@tanstack/react-query";
-import { markets } from "../../config/markets";
+import { markets, isMarketInMaintenance } from "../../config/markets";
+import { MarketMaintenanceTag } from "@/components/MarketMaintenanceTag";
 import { GenesisManageModal } from "@/components/GenesisManageModal";
 import { contracts } from "../../config/contracts";
 import {
@@ -2123,6 +2124,7 @@ export default function GenesisIndexPage() {
                   rowLeveragedSymbol.toLowerCase().startsWith("hs")
                     ? rowLeveragedSymbol.slice(2)
                     : rowLeveragedSymbol || (mkt as any).name || "Market";
+                const showMaintenanceTag = isMarketInMaintenance(mkt);
                 const peggedNoPrefix =
                   rowPeggedSymbol &&
                   rowPeggedSymbol.toLowerCase().startsWith("ha")
@@ -2338,7 +2340,11 @@ export default function GenesisIndexPage() {
                 const isProcessing = timeHasExpired && !isEnded;
 
                 if (isEnded) {
-                  statusText = hasClaimable ? "Claim available" : "Ended";
+                  statusText = showMaintenanceTag
+                    ? "Maintenance"
+                    : hasClaimable
+                      ? "Claim available"
+                      : "Ended";
                 } else if (isProcessing) {
                   statusText = "Processing";
                 } else {
@@ -2374,7 +2380,7 @@ export default function GenesisIndexPage() {
                       {/* Mobile Card Layout (< md) */}
                       <div className="md:hidden space-y-1.5">
                         <div className="flex items-center justify-between gap-2 pl-1">
-                          <div className="flex items-center justify-start gap-1.5 flex-1 min-w-0">
+                          <div className="flex items-center justify-start gap-1.5 flex-1 min-w-0 flex-wrap">
                             <span className="text-[#1E4775] font-medium text-sm">
                               {rowLeveragedSymbol &&
                               rowLeveragedSymbol.toLowerCase().startsWith("hs")
@@ -2745,7 +2751,9 @@ export default function GenesisIndexPage() {
                             className="flex-shrink-0"
                           >
                             {isEnded ? (
-                              hasClaimable ? (
+                              showMaintenanceTag ? (
+                                <MarketMaintenanceTag />
+                              ) : hasClaimable ? (
                                 <button
                                   onClick={async (e) => {
                                     e.stopPropagation();
@@ -2813,6 +2821,8 @@ export default function GenesisIndexPage() {
                                     : "Claim"}
                                 </button>
                               ) : null
+                            ) : showMaintenanceTag ? (
+                              <MarketMaintenanceTag />
                             ) : (
                               <button
                                 onClick={(e) => {
@@ -2994,7 +3004,7 @@ export default function GenesisIndexPage() {
                         }`}
                       >
                         {/* Market Title */}
-                        <div className="flex items-center justify-center gap-1.5">
+                        <div className="flex items-center justify-center gap-1.5 flex-wrap">
                           <span className="text-[#1E4775] font-medium text-sm">
                             {rowLeveragedSymbol &&
                             rowLeveragedSymbol.toLowerCase().startsWith("hs")
@@ -3444,7 +3454,9 @@ export default function GenesisIndexPage() {
                             className="flex-shrink-0"
                           >
                             {isEnded ? (
-                              hasClaimable ? (
+                              showMaintenanceTag ? (
+                                <MarketMaintenanceTag />
+                              ) : hasClaimable ? (
                                 <button
                                   onClick={async (e) => {
                                     e.stopPropagation();
@@ -3512,6 +3524,8 @@ export default function GenesisIndexPage() {
                                     : "Claim"}
                                 </button>
                               ) : null
+                            ) : showMaintenanceTag ? (
+                              <MarketMaintenanceTag />
                             ) : (
                               <button
                                 onClick={(e) => {
@@ -3540,7 +3554,7 @@ export default function GenesisIndexPage() {
                         }`}
                       >
                         <div className="min-w-0 overflow-hidden">
-                          <div className="flex items-center justify-center gap-1.5">
+                          <div className="flex items-center justify-center gap-1.5 flex-wrap">
                             <span className="text-[#1E4775] font-medium text-sm lg:text-base">
                               {rowLeveragedSymbol &&
                               rowLeveragedSymbol.toLowerCase().startsWith("hs")
@@ -4259,9 +4273,11 @@ export default function GenesisIndexPage() {
                           onClick={(e) => e.stopPropagation()}
                         >
                           {isEnded ? (
-                            // After genesis ends, show claim button only
+                            // After genesis ends: maintenance blocks all minter interaction (no claim)
                             <div className="flex items-center justify-center">
-                              {hasClaimable ? (
+                              {showMaintenanceTag ? (
+                                <MarketMaintenanceTag />
+                              ) : hasClaimable ? (
                                 <button
                                   onClick={async (e) => {
                                     e.stopPropagation();
@@ -4334,6 +4350,10 @@ export default function GenesisIndexPage() {
                                   No tokens to claim
                                 </span>
                               )}
+                            </div>
+                          ) : showMaintenanceTag ? (
+                            <div className="flex items-center justify-center">
+                              <MarketMaintenanceTag />
                             </div>
                           ) : (
                             // Before genesis ends, show manage button
@@ -4887,6 +4907,7 @@ export default function GenesisIndexPage() {
                       const displayMarketName = rowLeveragedSymbol && rowLeveragedSymbol.toLowerCase().startsWith("hs")
                         ? rowLeveragedSymbol.slice(2)
                         : rowLeveragedSymbol || (mkt as any).name || "Market";
+                      const completedShowMaintenanceTag = isMarketInMaintenance(mkt);
 
                       // Get token prices for claimable display
                       const anchorTokenPriceUSD = 1; // Pegged tokens are always $1
@@ -4900,8 +4921,8 @@ export default function GenesisIndexPage() {
                           {/* Desktop layout */}
                           <div className="hidden md:grid lg:grid-cols-[1.5fr_1fr_1fr_1.5fr_1fr] md:grid-cols-[120px_60px_60px_1fr_80px] gap-4 items-center">
                             {/* Market Column */}
-                            <div className="flex items-center gap-2 min-w-0 pl-4">
-                              <div className="text-[#1E4775] font-medium text-sm">
+                            <div className="flex items-center gap-2 min-w-0 pl-4 flex-wrap">
+                              <div className="text-[#1E4775] font-medium text-sm flex items-center gap-1.5 flex-wrap">
                                 {displayMarketName}
                               </div>
                               <div className="flex items-center gap-1">
@@ -4998,8 +5019,10 @@ export default function GenesisIndexPage() {
                             </div>
 
                             {/* Action Column */}
-                            <div className="flex-shrink-0 text-center">
-                              {hasClaimable ? (
+                            <div className="flex-shrink-0 flex items-center justify-center text-center">
+                              {completedShowMaintenanceTag ? (
+                                <MarketMaintenanceTag />
+                              ) : hasClaimable ? (
                                 <button
                                   onClick={async (e) => {
                                     e.stopPropagation();
@@ -5134,51 +5157,55 @@ export default function GenesisIndexPage() {
                                     : "$0"}
                                 </div>
                               </div>
-                              {hasClaimable && (
-                                <button
-                                  onClick={async (e) => {
-                                    e.stopPropagation();
-                                    if (genesisAddress && address && hasClaimable) {
-                                      try {
-                                        setClaimingMarket(id);
-                                        setClaimModal({
-                                          open: true,
-                                          status: "pending",
-                                          marketId: id,
-                                        });
-                                        const tx = await writeContractAsync({
-                                          address: genesisAddress as `0x${string}`,
-                                          abi: GENESIS_ABI,
-                                          functionName: "claim",
-                                          args: [address as `0x${string}`],
-                                        });
-                                        setClaimModal({
-                                          open: true,
-                                          status: "success",
-                                          marketId: id,
-                                        });
-                                        setShareModal({
-                                          open: false,
-                                          marketName: displayMarketName,
-                                          peggedSymbol: rowPeggedSymbol,
-                                        });
-                                      } catch (error) {
-                                        setClaimModal({
-                                          open: true,
-                                          status: "error",
-                                          marketId: id,
-                                          errorMessage: (error as any)?.shortMessage || (error as any)?.message || "Claim failed",
-                                        });
-                                      } finally {
-                                        setClaimingMarket(null);
+                              {completedShowMaintenanceTag ? (
+                                <MarketMaintenanceTag />
+                              ) : (
+                                hasClaimable && (
+                                  <button
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
+                                      if (genesisAddress && address && hasClaimable) {
+                                        try {
+                                          setClaimingMarket(id);
+                                          setClaimModal({
+                                            open: true,
+                                            status: "pending",
+                                            marketId: id,
+                                          });
+                                          const tx = await writeContractAsync({
+                                            address: genesisAddress as `0x${string}`,
+                                            abi: GENESIS_ABI,
+                                            functionName: "claim",
+                                            args: [address as `0x${string}`],
+                                          });
+                                          setClaimModal({
+                                            open: true,
+                                            status: "success",
+                                            marketId: id,
+                                          });
+                                          setShareModal({
+                                            open: false,
+                                            marketName: displayMarketName,
+                                            peggedSymbol: rowPeggedSymbol,
+                                          });
+                                        } catch (error) {
+                                          setClaimModal({
+                                            open: true,
+                                            status: "error",
+                                            marketId: id,
+                                            errorMessage: (error as any)?.shortMessage || (error as any)?.message || "Claim failed",
+                                          });
+                                        } finally {
+                                          setClaimingMarket(null);
+                                        }
                                       }
-                                    }
-                                  }}
-                                  disabled={!genesisAddress || !address || !hasClaimable || claimingMarket === id}
-                                  className="px-3 py-1.5 text-[10px] font-medium bg-[#1E4775] text-white hover:bg-[#17395F] disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors rounded-full whitespace-nowrap"
-                                >
-                                  {claimingMarket === id ? "Claiming..." : "Claim"}
-                                </button>
+                                    }}
+                                    disabled={!genesisAddress || !address || !hasClaimable || claimingMarket === id}
+                                    className="px-3 py-1.5 text-[10px] font-medium bg-[#1E4775] text-white hover:bg-[#17395F] disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors rounded-full whitespace-nowrap"
+                                  >
+                                    {claimingMarket === id ? "Claiming..." : "Claim"}
+                                  </button>
+                                )
                               )}
                             </div>
                           </div>

@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
+import { isMarketInMaintenance, markets as marketsConfig } from "@/config/markets";
+import { MaintenanceClaimOnlyTags } from "@/components/MarketMaintenanceTag";
 
 interface PoolPosition {
  marketId: string;
@@ -86,6 +88,17 @@ export const AnchorClaimAllModal = ({
  .reduce((sum, p) => sum + p.rewardsUSD, 0);
  }, [positions, selectedPools]);
 
+ /** Compound touches the minter; disabled if any selected pool is collateral for a market in maintenance. */
+ const compoundDisabledByMaintenance = useMemo(() => {
+   return positions.some((p) => {
+     if (!selectedPools.has(`${p.marketId}-${p.poolType}`)) return false;
+     if (p.poolType !== "collateral") return false;
+     const cfg =
+       marketsConfig[p.marketId as keyof typeof marketsConfig];
+     return isMarketInMaintenance(cfg ?? p.market);
+   });
+ }, [positions, selectedPools]);
+
  if (!isOpen) return null;
 
  return (
@@ -137,6 +150,11 @@ export const AnchorClaimAllModal = ({
  const isSelected = selectedPools.has(key);
  const marketSymbol =
  position.market?.peggedToken?.symbol || position.marketId;
+ const cfg =
+   marketsConfig[position.marketId as keyof typeof marketsConfig];
+ const showMaintClaimTags =
+   position.poolType === "collateral" &&
+   isMarketInMaintenance(cfg ?? position.market);
 
  return (
  <label
@@ -161,7 +179,8 @@ export const AnchorClaimAllModal = ({
  ${position.rewardsUSD.toFixed(2)}
  </span>
  </div>
- <div className="text-xs text-[#1E4775]/70">
+ <div className="flex justify-between gap-2 items-end">
+ <div className="text-xs text-[#1E4775]/70 min-w-0">
  {position.rewardTokens && position.rewardTokens.length > 0 ? (
  position.rewardTokens.map((token, idx) => {
  const amount = parseFloat(token.claimableFormatted);
@@ -183,6 +202,12 @@ export const AnchorClaimAllModal = ({
  Position: ${position.depositUSD.toFixed(2)}
  </div>
  )}
+ </div>
+ {showMaintClaimTags ? (
+ <div className="shrink-0 pt-0.5">
+ <MaintenanceClaimOnlyTags />
+ </div>
+ ) : null}
  </div>
  </div>
  </label>
@@ -245,13 +270,23 @@ export const AnchorClaimAllModal = ({
  </svg>
  </button>
 
- {/* Compound */}
+ {/* Compound — unavailable while a selected pool is under maintenance (minter interaction). */}
+ <div>
  <button
  onClick={() => {
  onCompound(selectedPoolsArray);
  }}
- disabled={isLoading || selectedPoolsArray.length === 0}
+ disabled={
+ isLoading ||
+ selectedPoolsArray.length === 0 ||
+ compoundDisabledByMaintenance
+ }
  className="w-full p-4 text-left bg-white border-2 border-[#1E4775] hover:bg-[#1E4775]/5 transition-colors flex items-center justify-between group disabled:opacity-50 disabled:cursor-not-allowed"
+ title={
+ compoundDisabledByMaintenance
+   ? "Deselect pools marked Maintenance / Claim only to use Compound, or use Basic Claim"
+   : undefined
+ }
  >
  <div className="flex items-center gap-3">
  <div>
@@ -275,6 +310,13 @@ export const AnchorClaimAllModal = ({
  />
  </svg>
  </button>
+ {compoundDisabledByMaintenance && selectedPoolsArray.length > 0 ? (
+ <p className="mt-1.5 text-xs text-[#1E4775]/80">
+ Compound needs minter interaction. Deselect pools in maintenance (or use{" "}
+ <span className="font-semibold">Basic Claim</span>).
+ </p>
+ ) : null}
+ </div>
 
  {/* Buy $Tide */}
  <button
