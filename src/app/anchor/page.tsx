@@ -114,6 +114,7 @@ import { useAnchorUserDeposits } from "@/hooks/anchor/useAnchorUserDeposits";
 import { useStaggeredReady } from "@/hooks/useStaggeredReady";
 import { calculateReadOffset } from "@/utils/anchor/calculateReadOffset";
 import { useMultipleCollateralPrices } from "@/hooks/useCollateralPrice";
+import { computeGenesisWrappedCollateralPriceUSD } from "@/utils/wrappedCollateralPriceUSD";
 import { DEBUG_ANCHOR } from "@/config/debug";
 import { getDepositMode } from "@/utils/depositMode";
 import { FilterMultiselectDropdown, FILTER_NONE_SENTINEL } from "@/components/FilterMultiselectDropdown";
@@ -7961,82 +7962,26 @@ export default function AnchorPage() {
                               const coinGeckoReturnedPrice =
                                 marketCoinGeckoId &&
                                 coinGeckoPrices?.[marketCoinGeckoId];
-                          
-                          // Check if CoinGecko returned a price for the wrapped token (fxSAVE or wstETH)
-                              const isWstETH =
-                                collateralSymbol.toLowerCase() === "wsteth";
-                              const isFxSAVE =
-                                collateralSymbol.toLowerCase() === "fxsave";
-                          const coinGeckoIsWrappedToken =
-                            coinGeckoReturnedPrice &&
-                            marketCoinGeckoId &&
-                                ((marketCoinGeckoId.toLowerCase() ===
-                                  "wrapped-steth" &&
-                                  isWstETH) ||
-                                  ((marketCoinGeckoId.toLowerCase() ===
-                                    "fx-usd-saving" ||
-                                    marketCoinGeckoId.toLowerCase() ===
-                                      "fxsave") &&
-                                    isFxSAVE));
-                          
-                          // Fallback: Use stETH price from CoinGecko if wstETH price isn't available yet
+
                               const stETHPrice =
                                 coinGeckoPrices?.["lido-staked-ethereum-steth"];
-                          const useStETHFallback =
-                            isWstETH &&
-                            !coinGeckoIsWrappedToken &&
-                            underlyingPriceUSD === 0 &&
-                            stETHPrice &&
-                            stETHPrice > 0 &&
-                            wrappedRate &&
-                            wrappedRate > 0n;
-                          
-                          // Calculate wrapped token price (same logic as genesis page)
-                          // collateralValue is in wrapped tokens, so we need wrapped token price
-                          let wrappedTokenPriceUSD = 0;
-                              if (
-                                coinGeckoIsWrappedToken &&
-                                coinGeckoReturnedPrice &&
-                                coinGeckoReturnedPrice > 0
-                              ) {
-                            // CoinGecko already returns wrapped token price (e.g., wstETH, fxSAVE)
-                            wrappedTokenPriceUSD = coinGeckoReturnedPrice;
-                          } else if (useStETHFallback) {
-                            // Use stETH price * wrapped rate as fallback while wstETH loads
-                                wrappedTokenPriceUSD =
-                                  stETHPrice * wrappedRateNum;
-                              } else if (
-                                (isWstETH || isFxSAVE) &&
-                                coinGeckoLoading &&
-                                marketCoinGeckoId &&
-                                underlyingPriceUSD > 0 &&
-                                wrappedRate
-                              ) {
-                            // While CoinGecko loads, use oracle * wrapped rate for wstETH or fxSAVE
-                                wrappedTokenPriceUSD =
-                                  underlyingPriceUSD * wrappedRateNum;
-                              } else if (
-                                wrappedRate &&
-                                underlyingPriceUSD > 0
-                              ) {
-                            // Multiply underlying by wrapped rate (e.g., fxUSD -> fxSAVE, stETH -> wstETH)
-                                wrappedTokenPriceUSD =
-                                  underlyingPriceUSD * wrappedRateNum;
-                              } else if (
-                                coinGeckoLoading &&
-                                marketCoinGeckoId
-                              ) {
-                            // Still loading CoinGecko, don't use fallback price yet
-                            wrappedTokenPriceUSD = 0;
-                          } else if (isFxSAVE) {
-                            // Hardcoded fallback for fxSAVE if everything fails
-                            wrappedTokenPriceUSD = 1.07;
-                          } else if (underlyingPriceUSD > 0) {
-                            // Fallback to underlying price if no wrapped rate
-                            wrappedTokenPriceUSD = underlyingPriceUSD;
-                          }
-                          
-                          // Use wrapped token price for collateral value calculation (same as genesis page)
+                          const wrappedTokenPriceUSD =
+                            computeGenesisWrappedCollateralPriceUSD({
+                              underlyingPriceUSD,
+                              collateralSymbol,
+                              marketCoinGeckoId,
+                              coinGeckoReturnedPrice:
+                                coinGeckoReturnedPrice != null
+                                  ? coinGeckoReturnedPrice
+                                  : undefined,
+                              stETHPrice: stETHPrice ?? undefined,
+                              wrappedRate:
+                                wrappedRate !== undefined && wrappedRate !== null
+                                  ? (wrappedRate as bigint)
+                                  : undefined,
+                              coinGeckoLoading,
+                            });
+
                           const collateralPriceUSD = wrappedTokenPriceUSD;
 
                           // Get user's position data for price calculation

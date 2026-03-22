@@ -5,6 +5,7 @@ import { ERC20_ABI, CHAINLINK_ORACLE_ABI } from "@/abis/shared";
 import { stabilityPoolABI } from "@/abis/stabilityPool";
 import { minterABI } from "@/abis/minter";
 import { getPriceFeedAddress, queryChainlinkPrice } from "@/utils/priceFeeds";
+import { CHAINLINK_FEEDS } from "@/config/chainlink";
 
 export const runtime = "nodejs";
 
@@ -18,9 +19,6 @@ const COINGECKO_IDS = [
   "stasis-euro",
 ];
 
-const CHAINLINK_ETH_USD = "0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419" as const;
-const CHAINLINK_BTC_USD = "0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c" as const;
-const CHAINLINK_EUR_USD = "0xb49f677943BC038e9857d61E7d053CaA2C1734C1" as const; // USD per EUR, 8 decimals
 const DEFILLAMA_POOLS_URL = "https://yields.llama.fi/pools";
 const FXSAVE_POOL_ID = "ee0b7069-f8f3-4aa2-a415-728f13e6cc3d";
 
@@ -250,9 +248,9 @@ export async function GET(request: Request) {
   const [coinGecko, chainlinkEth, chainlinkBtc, chainlinkEur, defillamaApys] =
     await Promise.all([
     fetchCoinGeckoPrices(),
-    fetchChainlinkPrice(publicClient, CHAINLINK_ETH_USD),
-    fetchChainlinkPrice(publicClient, CHAINLINK_BTC_USD),
-    fetchChainlinkPrice(publicClient, CHAINLINK_EUR_USD),
+    fetchChainlinkPrice(publicClient, CHAINLINK_FEEDS.ETH_USD),
+    fetchChainlinkPrice(publicClient, CHAINLINK_FEEDS.BTC_USD),
+    fetchChainlinkPrice(publicClient, CHAINLINK_FEEDS.EUR_USD),
     fetchDefiLlamaApys(),
   ]);
 

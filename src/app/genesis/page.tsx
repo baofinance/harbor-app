@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useMemo, useState, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import {
   useAccount,
   useContractReads,
@@ -11,50 +11,25 @@ import {
 } from "wagmi";
 import { formatEther } from "viem";
 import { useQueryClient } from "@tanstack/react-query";
-import { markets, isMarketInMaintenance } from "../../config/markets";
+import { isMarketInMaintenance } from "../../config/markets";
 import { MarketMaintenanceTag } from "@/components/MarketMaintenanceTag";
 import { GenesisManageModal } from "@/components/GenesisManageModal";
-import { contracts } from "../../config/contracts";
+import { CHAINLINK_FEEDS } from "@/config/chainlink";
+import { GENESIS_ABI, ERC20_ABI, CHAINLINK_ORACLE_ABI } from "@/abis/shared";
 import {
-  GENESIS_ABI,
-  ERC20_ABI,
-  CHAINLINK_ORACLE_ABI,
-  HARBOR_ORACLE_WITH_DECIMALS_ABI,
-} from "@/abis/shared";
-import {
-  ArrowRightIcon,
-  GiftIcon,
-  ScaleIcon,
-  GlobeAltIcon,
-  WalletIcon,
-  ClockIcon,
-  CheckCircleIcon,
+  ArrowPathIcon,
   ChevronDownIcon,
   ChevronUpIcon,
-  ChevronRightIcon,
-  ArrowPathIcon,
-  StarIcon,
-  QuestionMarkCircleIcon,
-  XMarkIcon,
+  ClockIcon,
 } from "@heroicons/react/24/outline";
-import InfoTooltip from "@/components/InfoTooltip";
 import SimpleTooltip from "@/components/SimpleTooltip";
-import LedgerMarksCompactBadge from "@/components/LedgerMarksCompactBadge";
 import Image from "next/image";
-import {
-  useAllHarborMarks,
-  useAllMarketBonusStatus,
-} from "@/hooks/useHarborMarks";
-import { useMinterTokenMeta } from "@/hooks/useMinterTokenMeta";
 import {
   formatUSD,
   formatToken,
   formatTimeRemaining,
-  formatDateTime,
 } from "@/utils/formatters";
-import { EtherscanLink, getLogoPath, TokenLogo } from "@/components/shared";
-import { MINTER_ABI } from "@/abis/shared";
-import Link from "next/link";
+import { getLogoPath, TokenLogo } from "@/components/shared";
 import { useCoinGeckoPrices } from "@/hooks/useCoinGeckoPrice";
 import { useMultipleTokenPrices } from "@/hooks/useTokenPrices";
 import { useMultipleCollateralPrices } from "@/hooks/useCollateralPrice";
@@ -64,385 +39,27 @@ import { useTotalGenesisTVL } from "@/hooks/useTotalGenesisTVL";
 import { useTotalMaidenVoyageMarks } from "@/hooks/useTotalMaidenVoyageMarks";
 import { getAcceptedDepositAssets } from "@/utils/markets";
 import { getDepositMode } from "@/utils/depositMode";
-import TideAPRTooltip from "@/components/TideAPRTooltip";
-import { GenesisErrorBanner } from "@/components/GenesisErrorBanner";
 import { GenesisMarketExpandedView } from "@/components/GenesisMarketExpandedView";
-import { FilterMultiselectDropdown, FILTER_NONE_SENTINEL } from "@/components/FilterMultiselectDropdown";
+import { FILTER_NONE_SENTINEL } from "@/components/FilterMultiselectDropdown";
 import NetworkIconCell from "@/components/NetworkIconCell";
-import { getWeb3iconsNetworkId } from "@/config/web3iconsNetworks";
 import { useSortedGenesisMarkets } from "@/hooks/useSortedGenesisMarkets";
-import { GenesisHeaderSummary } from "@/components/GenesisHeaderSummary";
-import { GenesisLedgerMarksSummary } from "@/components/GenesisLedgerMarksSummary";
 import {
-  calculateTideAPR,
+  GenesisCampaignStats,
+  GenesisMarketsSections,
+  GenesisPageHero,
+} from "@/components/genesis";
+import {
   calculateMarksForAPR,
   calculateMarksBreakdown,
   calculateTideAPRBreakdown,
 } from "@/utils/tideAPR";
-import {
-  calculateTokenAllocationPercent,
-  calculateTokenAllocationAmount,
-  calculateTokenPrice,
-  TOTAL_TOKEN_SUPPLY,
-  DEFAULT_FDV,
-} from "@/utils/tokenAllocation";
-
-// Use ERC20_ABI which includes symbol
-const erc20SymbolABI = ERC20_ABI;
-
-/** Genesis table display: show "BTC-USD" / "STETH-USD" instead of "USD-BTC" / "USD-wstETH". Use STETH for wstETH to match other markets. */
-function formatGenesisMarketDisplayName(name: string): string {
-  if (!name) return name;
-  const m = name.match(/^USD-(.+)$/i);
-  const base = m ? `${m[1]}-USD` : name;
-  // Show wstETH markets as STETH-USD like STETH-BTC, STETH-GOLD, etc.
-  return base.replace(/^wsteth/i, "STETH");
-}
-
-// Oracle ABIs - Harbor tuple and Chainlink single-value
-const chainlinkOracleABI = HARBOR_ORACLE_WITH_DECIMALS_ABI;
-const chainlinkOracleSingleValueABI = CHAINLINK_ORACLE_ABI;
-
-function MarketExpandedView({
-  marketId,
-  market,
-  genesisAddress,
-  totalDeposits,
-  totalDepositsUSD,
-  userDeposit,
-  isConnected,
-  address,
-  endDate,
-  collateralSymbol,
-  collateralPriceUSD,
-  peggedSymbol,
-  leveragedSymbol,
-  underlyingAPR,
-}: {
-  marketId: string;
-  market: any;
-  genesisAddress: string | undefined;
-  totalDeposits: bigint | undefined;
-  totalDepositsUSD: number;
-  userDeposit: bigint | undefined;
-  isConnected: boolean;
-  address: string | undefined;
-  endDate: string | undefined;
-  collateralSymbol: string;
-  collateralPriceUSD: number;
-  peggedSymbol?: string;
-  leveragedSymbol?: string;
-  underlyingAPR?: number | null;
-}) {
-  // Fetch contract data for expanded view
-  const { data: expandedReads, error: expandedReadsError } = useContractReads({
-    contracts:
-      genesisAddress &&
-      typeof genesisAddress === "string" &&
-      genesisAddress.startsWith("0x") &&
-      genesisAddress.length === 42
-        ? [
-            {
-              address: genesisAddress as `0x${string}`,
-              abi: GENESIS_ABI,
-              functionName: "PEGGED_TOKEN" as const,
-            },
-            {
-              address: genesisAddress as `0x${string}`,
-              abi: GENESIS_ABI,
-              functionName: "LEVERAGED_TOKEN" as const,
-            },
-            {
-              address: genesisAddress as `0x${string}`,
-              abi: GENESIS_ABI,
-              functionName: "WRAPPED_COLLATERAL_TOKEN" as const,
-            },
-          ]
-        : [],
-    query: {
-      enabled:
-        !!genesisAddress &&
-        typeof genesisAddress === "string" &&
-        genesisAddress.startsWith("0x") &&
-        genesisAddress.length === 42,
-      retry: 1,
-      retryOnMount: false,
-    },
-  });
-
-  const peggedTokenAddress = expandedReads?.[0]?.result as
-    | `0x${string}`
-    | undefined;
-  const leveragedTokenAddress = expandedReads?.[1]?.result as
-    | `0x${string}`
-    | undefined;
-  const collateralTokenAddress = expandedReads?.[2]?.result as
-    | `0x${string}`
-    | undefined;
-
-  // Get token symbols
-  const { data: tokenSymbols, error: tokenSymbolsError } = useContractReads({
-    contracts: [
-      ...(peggedTokenAddress &&
-      typeof peggedTokenAddress === "string" &&
-      peggedTokenAddress.startsWith("0x") &&
-      peggedTokenAddress.length === 42
-        ? [
-            {
-              address: peggedTokenAddress,
-              abi: erc20SymbolABI,
-              functionName: "symbol" as const,
-            },
-          ]
-        : []),
-      ...(leveragedTokenAddress &&
-      typeof leveragedTokenAddress === "string" &&
-      leveragedTokenAddress.startsWith("0x") &&
-      leveragedTokenAddress.length === 42
-        ? [
-            {
-              address: leveragedTokenAddress,
-              abi: erc20SymbolABI,
-              functionName: "symbol" as const,
-            },
-          ]
-        : []),
-      ...(collateralTokenAddress &&
-      typeof collateralTokenAddress === "string" &&
-      collateralTokenAddress.startsWith("0x") &&
-      collateralTokenAddress.length === 42
-        ? [
-            {
-              address: collateralTokenAddress,
-              abi: erc20SymbolABI,
-              functionName: "symbol" as const,
-            },
-          ]
-        : []),
-    ],
-    query: {
-      enabled:
-        (!!peggedTokenAddress &&
-          typeof peggedTokenAddress === "string" &&
-          peggedTokenAddress.startsWith("0x") &&
-          peggedTokenAddress.length === 42) ||
-        (!!leveragedTokenAddress &&
-          typeof leveragedTokenAddress === "string" &&
-          leveragedTokenAddress.startsWith("0x") &&
-          leveragedTokenAddress.length === 42) ||
-        (!!collateralTokenAddress &&
-          typeof collateralTokenAddress === "string" &&
-          collateralTokenAddress.startsWith("0x") &&
-          collateralTokenAddress.length === 42),
-      retry: 1,
-      retryOnMount: false,
-    },
-  });
-
-  const peggedTokenSymbol =
-    peggedSymbol ||
-    (peggedTokenAddress && tokenSymbols?.[0]?.result
-      ? (tokenSymbols[0].result as string)
-      : market.peggedToken?.symbol) ||
-    "ha";
-  const leveragedTokenSymbol =
-    leveragedSymbol ||
-    (leveragedTokenAddress && tokenSymbols?.[1]?.result
-      ? (tokenSymbols[1].result as string)
-      : market.leveragedToken?.symbol) ||
-    "hs";
-  const collateralTokenSymbol =
-    collateralTokenAddress && tokenSymbols?.[2]?.result
-      ? (tokenSymbols[2].result as string)
-      : market.collateral?.symbol || "ETH";
-
-  // Calculate USD values
-  const userDepositAmount = userDeposit ? Number(formatEther(userDeposit)) : 0;
-  const userDepositUSD = userDepositAmount * collateralPriceUSD;
-
-  // Calculate ledger marks (dollar value x 100)
-  const estimatedLedgerMarks = userDepositUSD * 100;
-
-  // Calculate share of ledger marks (% of deposit)
-  const shareOfLedgerMarks =
-    totalDepositsUSD > 0 && userDepositUSD > 0
-      ? (userDepositUSD / totalDepositsUSD) * 100
-      : 0;
-
-  // Format end date/time
-  const formatEndDateTime = (dateString: string | undefined): string => {
-    if (!dateString) return "-";
-    try {
-      const date = new Date(dateString);
-      return date.toLocaleString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: true,
-      });
-    } catch {
-      return "-";
-    }
-  };
-
-  const addresses = market.addresses as Record<string, string | undefined>;
-
-  // Get market name for description - use leveraged token symbol without "hs" prefix
-  // This gives us "FXUSD-BTC" from "hsFXUSD-BTC", etc.
-  const marketName =
-    leveragedTokenSymbol && leveragedTokenSymbol.toLowerCase().startsWith("hs")
-      ? leveragedTokenSymbol.slice(2)
-      : leveragedTokenSymbol || (market as any).name || "Market";
-
-  return (
-    <div className="bg-[rgb(var(--surface-selected-rgb))] p-4 border-t border-white/20">
-      {/* Description Box */}
-      <div className="bg-white p-4 mb-2 border border-[#1E4775]/10">
-        <p className="text-xs text-[#1E4775] leading-relaxed">
-          Earn ledger marks for providing liquidity to the{" "}
-          <span className="font-semibold">{marketName}</span> market.{" "}
-          <span className="font-semibold">{collateralTokenSymbol}</span> is
-          split into equal portions of{" "}
-          <span className="font-semibold">{peggedTokenSymbol}</span> and{" "}
-          <span className="font-semibold">{leveragedTokenSymbol}</span>, which
-          are minted on claim. Until you claim, you have{" "}
-          <span className="font-semibold">{collateralTokenSymbol}</span>{" "}
-          exposure. After you claim your net exposure depends on the balance of
-          the market compared to your balance of{" "}
-          <span className="font-semibold">{peggedTokenSymbol}</span> and{" "}
-          <span className="font-semibold">{leveragedTokenSymbol}</span> tokens.
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-        {/* First Column: End Date/Time and Projected APR */}
-        <div className="flex flex-col gap-2 h-full">
-          {/* Genesis Info */}
-          <div className="bg-white p-2 flex flex-col justify-center">
-            <h3 className="text-[#1E4775] font-semibold mb-1 text-xs text-center">
-              End Date/Time
-            </h3>
-            <p className="text-sm font-bold text-[#1E4775] text-center">
-              {formatDateTime(endDate)}
-            </p>
-          </div>
-
-          {/* Projected Stability Pool APR */}
-          {underlyingAPR !== null && underlyingAPR !== undefined && (
-            <div className="text-xs text-white bg-[#1E4775] px-4 py-2 text-center flex-1 flex flex-col justify-center">
-              <div className="font-semibold mb-1">
-                Projected {peggedTokenSymbol} APR (Stability pools)
-              </div>
-              <div>
-                <span className="font-semibold">
-                  {(underlyingAPR * 2 * 100).toFixed(2)}% +
-                </span>
-                <Image
-                  src="/icons/marks.png"
-                  alt="Marks"
-                  width={20}
-                  height={20}
-                  className="inline-block ml-1 align-middle"
-                />
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Contract Info */}
-        <div className="bg-white p-2 flex flex-col">
-          <h3 className="text-[#1E4775] font-semibold mb-1 text-xs">
-            Contract Info
-          </h3>
-          <div>
-            <EtherscanLink
-              label="Genesis"
-              address={addresses.genesis}
-              chainId={(market as any).chainId ?? 1}
-            />
-            <EtherscanLink
-              label="Minter"
-              address={addresses.minter}
-              chainId={(market as any).chainId ?? 1}
-            />
-            <EtherscanLink
-              label="Collateral Token"
-              address={addresses.collateralToken}
-              chainId={(market as any).chainId ?? 1}
-            />
-            <EtherscanLink
-              label="Anchor Token"
-              address={peggedTokenAddress}
-              chainId={(market as any).chainId ?? 1}
-            />
-            <EtherscanLink
-              label="Sail Token"
-              address={leveragedTokenAddress}
-              chainId={(market as any).chainId ?? 1}
-            />
-          </div>
-        </div>
-
-        <div className="bg-white p-2 flex flex-col">
-          <h3 className="text-[#1E4775] font-semibold mb-1 text-xs">Tokens</h3>
-          <div className="space-y-1 text-xs flex-1 flex justify-center flex-col">
-            <div className="flex justify-between items-center">
-              <span className="text-[#1E4775]/70">Market Collateral:</span>
-              <div className="flex items-center gap-1.5">
-                <span className="text-[#1E4775] font-mono">
-                  {collateralTokenSymbol}
-                </span>
-                <Image
-                  src={getLogoPath(collateralTokenSymbol)}
-                  alt={collateralTokenSymbol}
-                  width={20}
-                  height={20}
-                  className="flex-shrink-0"
-                />
-              </div>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-[#1E4775]/70">Anchor Token:</span>
-              <div className="flex items-center gap-1.5">
-                <span className="text-[#1E4775] font-mono">
-                  {peggedTokenSymbol}
-                </span>
-                <Image
-                  src={getLogoPath(peggedTokenSymbol)}
-                  alt={peggedTokenSymbol}
-                  width={20}
-                  height={20}
-                  className="flex-shrink-0"
-                />
-              </div>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-[#1E4775]/70">Sail Token:</span>
-              <div className="flex items-center gap-1.5">
-                <span className="text-[#1E4775] font-mono">
-                  {leveragedTokenSymbol}
-                </span>
-                <Image
-                  src={getLogoPath(leveragedTokenSymbol)}
-                  alt={leveragedTokenSymbol}
-                  width={20}
-                  height={20}
-                  className="flex-shrink-0"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
+import { DEFAULT_FDV } from "@/utils/tokenAllocation";
+import { formatGenesisMarketDisplayName } from "@/utils/genesisDisplay";
+import { useGenesisPageData } from "@/hooks/useGenesisPageData";
+import { computeGenesisRowUsdPricing } from "@/utils/genesisRowPricing";
 
 export default function GenesisIndexPage() {
   const { address, isConnected } = useAccount();
-  const router = useRouter();
   const searchParams = useSearchParams();
   const isAprRevealed =
     process.env.NEXT_PUBLIC_MAIDEN_VOYAGE_APR_REVEALED === "true" ||
@@ -488,135 +105,25 @@ export default function GenesisIndexPage() {
     return () => clearInterval(interval);
   }, []);
 
-  const genesisMarkets = useMemo(
-    () =>
-      Object.entries(markets).filter(([_, mkt]) => {
-        const genesisAddr = (mkt as any).addresses?.genesis;
-        return (
-          genesisAddr &&
-          genesisAddr !== "0x0000000000000000000000000000000000000000" &&
-          (mkt as any).status !== "coming-soon"
-        );
-      }),
-    []
-  );
-
-  const genesisChainOptions = useMemo(() => {
-    const seen = new Set<string>();
-    const options: { id: string; label: string; iconUrl?: string; networkId?: string }[] = [];
-    genesisMarkets.forEach(([, m]) => {
-      const name = (m as any).chain?.name || "Ethereum";
-      if (seen.has(name)) return;
-      seen.add(name);
-      const logo = (m as any).chain?.logo || "icons/eth.png";
-      const networkId = getWeb3iconsNetworkId(name);
-      options.push({
-        id: name,
-        label: name,
-        iconUrl: networkId ? undefined : (logo.startsWith("/") ? logo : `/${logo}`),
-        networkId,
-      });
-    });
-    return options.sort((a, b) => a.label.localeCompare(b.label));
-  }, [genesisMarkets]);
-
-  const comingSoonMarkets = useMemo(
-    () =>
-      Object.entries(markets).filter(
-        ([_, mkt]) =>
-          (mkt as any).status === "coming-soon" &&
-          (mkt as any).marksCampaign?.id === "metals-maiden-voyage"
-      ),
-    []
-  );
-
-  // Get all genesis addresses for subgraph queries
-  // Filter out zero addresses (coming soon markets use placeholder addresses)
-  const genesisAddresses = useMemo(
-    () =>
-      genesisMarkets
-        .map(([_, mkt]) => (mkt as any).addresses?.genesis)
-        .filter(
-          (addr): addr is string =>
-            !!addr &&
-            typeof addr === "string" &&
-            addr !== "0x0000000000000000000000000000000000000000"
-        ),
-    [genesisMarkets]
-  );
-
-  // Fetch marks data from subgraph
   const {
-    data: allMarksData,
-    isLoading: isLoadingMarks,
-    refetch: refetchMarks,
-    error: marksError,
-  } = useAllHarborMarks(genesisAddresses);
-
-  // Extract results and error info from the new structure
-  const marksResults = allMarksData?.results || [];
-  const hasIndexerErrors = allMarksData?.hasIndexerErrors || false;
-  const hasAnyErrors = allMarksData?.hasAnyErrors || false;
-  const marketsWithIndexerErrors = allMarksData?.marketsWithIndexerErrors || [];
-  const marketsWithOtherErrors = allMarksData?.marketsWithOtherErrors || [];
-
-  // Map genesis addresses to market names for error display
-  const getMarketName = (genesisAddress: string) => {
-    const market = genesisMarkets.find(
-      ([_, mkt]) =>
-        (mkt as any).addresses?.genesis?.toLowerCase() ===
-        genesisAddress.toLowerCase()
-    );
-    if (!market)
-      return genesisAddress.slice(0, 6) + "..." + genesisAddress.slice(-4);
-    const [id, mkt] = market;
-    const rowLeveragedSymbol = (mkt as any).rowLeveragedSymbol;
-    const raw =
-      rowLeveragedSymbol &&
-      rowLeveragedSymbol.toLowerCase().startsWith("hs")
-        ? rowLeveragedSymbol.slice(2)
-        : rowLeveragedSymbol || (mkt as any).name || id;
-    return formatGenesisMarketDisplayName(raw);
-  };
-
-  // Fetch market bonus status for all markets (early deposit bonus tracking)
-  const { data: allMarketBonusStatus, isLoading: isLoadingBonusStatus } =
-    useAllMarketBonusStatus(genesisAddresses);
-
-  // Extract error info from bonus status
-  const bonusStatusResults = allMarketBonusStatus?.results || [];
-  const bonusHasIndexerErrors = allMarketBonusStatus?.hasIndexerErrors || false;
-  const bonusHasAnyErrors = allMarketBonusStatus?.hasAnyErrors || false;
-  const bonusMarketsWithIndexerErrors =
-    allMarketBonusStatus?.marketsWithIndexerErrors || [];
-  const bonusMarketsWithOtherErrors =
-    allMarketBonusStatus?.marketsWithOtherErrors || [];
-
-  // Combine errors from marks and bonus status
-  const combinedHasIndexerErrors = hasIndexerErrors || bonusHasIndexerErrors;
-  const combinedHasAnyErrors = hasAnyErrors || bonusHasAnyErrors;
-  const combinedMarketsWithIndexerErrors = Array.from(
-    new Set([...marketsWithIndexerErrors, ...bonusMarketsWithIndexerErrors])
-  );
-  const combinedMarketsWithOtherErrors = Array.from(
-    new Set([...marketsWithOtherErrors, ...bonusMarketsWithOtherErrors])
-  );
-
-  // Oracle pricing failed: user has deposit but subgraph reports 0 USD (oracle unavailable)
-  const marketsWithOraclePricingError = useMemo(() => {
-    const list: string[] = [];
-    (marksResults || []).forEach((r: { genesisAddress?: string; data?: { userHarborMarks?: { currentDeposit?: string; currentDepositUSD?: string } }; errors?: unknown[] }) => {
-      const marks = r.data?.userHarborMarks;
-      if (!marks || r.errors?.length) return;
-      const currentDeposit = parseFloat(marks.currentDeposit || "0");
-      const currentDepositUSD = parseFloat(marks.currentDepositUSD || "0");
-      if (currentDeposit > 0 && currentDepositUSD === 0 && r.genesisAddress) {
-        list.push(r.genesisAddress);
-      }
-    });
-    return list;
-  }, [marksResults]);
-  const hasOraclePricingError = marketsWithOraclePricingError.length > 0;
+    genesisMarkets,
+    genesisChainOptions,
+    comingSoonMarkets,
+    genesisAddresses,
+    marksResults,
+    isLoadingMarks,
+    refetchMarks,
+    marksError,
+    bonusStatusResults,
+    isLoadingBonusStatus,
+    combinedHasIndexerErrors,
+    combinedMarketsWithIndexerErrors,
+    combinedHasAnyErrors,
+    combinedMarketsWithOtherErrors,
+    hasOraclePricingError,
+    marketsWithOraclePricingError,
+    getMarketName,
+  } = useGenesisPageData();
 
   const queryClient = useQueryClient();
 
@@ -995,13 +502,9 @@ export default function GenesisIndexPage() {
   const safeIsLoadingTotalTVL = mounted ? isLoadingTotalTVL : true;
   const safeIsLoadingTotalMarks = mounted ? isLoadingTotalMarks : true;
 
-  // Chainlink BTC/USD Oracle on Mainnet (fallback when CoinGecko fails)
-  const CHAINLINK_BTC_USD_ORACLE =
-    "0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c" as `0x${string}`;
-
-  // Fetch Chainlink BTC/USD as fallback for BTC-pegged markets
+  // Chainlink BTC/USD (mainnet feed from @/config/chainlink — fallback when CoinGecko fails)
   const { data: chainlinkBtcPriceData } = useContractRead({
-    address: CHAINLINK_BTC_USD_ORACLE,
+    address: CHAINLINK_FEEDS.BTC_USD,
     abi: CHAINLINK_ORACLE_ABI,
     functionName: "latestAnswer",
     query: {
@@ -1106,1023 +609,45 @@ export default function GenesisIndexPage() {
   return (
     <div className="flex min-h-0 flex-1 flex-col text-white max-w-[1300px] mx-auto font-sans relative w-full">
       <main className="container mx-auto px-4 sm:px-10 pb-6">
-        <GenesisHeaderSummary />
+        <GenesisPageHero />
 
         {/* Divider */}
         <div className="border-t border-white/10 my-2"></div>
 
-        {/* Subgraph Error Banner */}
-        {marksError && (
-          <div className="bg-[#FF8A7A]/10 border border-[#FF8A7A]/30 rounded p-3 mb-4">
-            <div className="flex items-start gap-3">
-              <div className="text-[#FF8A7A] text-xl mt-0.5">⚠️</div>
-              <div className="flex-1">
-                <p className="text-[#FF8A7A] font-semibold text-sm mb-1">
-                  Harbor Marks Subgraph Error
-                </p>
-                <p className="text-white/70 text-xs">
-                  Unable to load Harbor Marks data. This may be due to rate
-                  limiting or service issues. Your deposits and core
-                  functionality remain unaffected.
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Ledger Marks Section */}
-        {(() => {
-          // Calculate total marks from subgraph data (only maiden voyage/genesis marks)
-          // First, determine which campaign to show (prioritize active campaigns)
-          const campaignInfo = new Map<string, { label: string; isActive: boolean; marks: number; campaignId?: string }>();
-          
-          // First pass: collect campaign info to determine which campaign to display
-          if (process.env.NODE_ENV === "development") {
-            console.log("[Marks Results] Total results received", {
-              totalResults: marksResults?.length || 0,
-              genesisAddressesQueried: genesisAddresses,
-              results: marksResults?.map(r => ({
-                genesisAddress: r.genesisAddress,
-                hasData: !!r.data?.userHarborMarks,
-                campaignId: r.data?.userHarborMarks?.campaignId,
-                campaignLabel: r.data?.userHarborMarks?.campaignLabel,
-                currentDepositUSD: r.data?.userHarborMarks?.currentDepositUSD,
-                hasErrors: r.errors?.length > 0,
-              })) || [],
-            });
-          }
-          
-          if (marksResults && marksResults.length > 0 && !isLoadingMarks) {
-            marksResults.forEach((result) => {
-              const userMarksData = result.data?.userHarborMarks;
-              const marks = Array.isArray(userMarksData) ? userMarksData[0] : userMarksData;
-              
-              const market = genesisMarkets.find(
-                ([_, mkt]) =>
-                  (mkt as any).addresses?.genesis?.toLowerCase() ===
-                  result.genesisAddress?.toLowerCase()
-              );
-              
-              if (!market) return;
-              
-              // Use campaign from market config, fallback to subgraph
-              const marketConfig = market[1] as any;
-              const campaignLabel = marketConfig?.marksCampaign?.label || marks?.campaignLabel;
-              const campaignId = marketConfig?.marksCampaign?.id || marks?.campaignId;
-              
-              if (!campaignLabel) return;
-              
-              let contractSaysEnded: boolean | undefined;
-              const marketIndex = genesisMarkets.findIndex(([id]) => id === market[0]);
-              if (marketIndex >= 0) {
-                const baseOffset = marketIndex * (isConnected ? 3 : 1);
-                const contractReadResult = reads?.[baseOffset];
-                contractSaysEnded =
-                  contractReadResult?.status === "success"
-                    ? (contractReadResult.result as boolean)
-                    : undefined;
-              }
-              
-              const genesisEnded =
-                contractSaysEnded !== undefined
-                  ? contractSaysEnded
-                  : marks?.genesisEnded || false;
-              
-              const originalCurrentMarks = parseFloat(marks?.currentMarks || "0");
-              const currentDepositUSD = parseFloat(marks?.currentDepositUSD || "0");
-              const genesisStartDate = parseInt(marks?.genesisStartDate || "0");
-              const lastUpdated = parseInt(marks?.lastUpdated || "0");
-              const currentTime = Math.floor(Date.now() / 1000);
-              
-              let currentMarks = originalCurrentMarks;
-              if (!genesisEnded && currentDepositUSD > 0 && genesisStartDate > 0) {
-                const timeElapsed = currentTime - lastUpdated;
-                const daysElapsed = Math.max(0, timeElapsed / 86400);
-                const marksAccumulated = currentDepositUSD * 10 * daysElapsed;
-                currentMarks = currentMarks + marksAccumulated;
-              }
-              
-              const existing = campaignInfo.get(campaignLabel) || {
-                label: campaignLabel,
-                isActive: false,
-                marks: 0,
-                campaignId: campaignId,
-              };
-              existing.isActive = existing.isActive || !genesisEnded;
-              existing.marks += currentMarks;
-              campaignInfo.set(campaignLabel, existing);
-            });
-          }
-          
-          // Determine which campaign to show (prioritize active, then by marks)
-          const campaigns = Array.from(campaignInfo.values());
-          const activeCampaigns = campaigns.filter(c => c.isActive);
-          const campaignsToConsider = activeCampaigns.length > 0 ? activeCampaigns : campaigns;
-          campaignsToConsider.sort((a, b) => b.marks - a.marks);
-          const selectedCampaign = campaignsToConsider[0];
-          const selectedCampaignId = selectedCampaign?.campaignId;
-          
-          if (process.env.NODE_ENV === "development") {
-            console.log("[Campaign Selection]", {
-              allCampaigns: Array.from(campaignInfo.entries()).map(([label, info]) => ({
-                label,
-                campaignId: info.campaignId,
-                isActive: info.isActive,
-                marks: info.marks,
-              })),
-              selectedCampaign: selectedCampaign ? {
-                label: selectedCampaign.label,
-                campaignId: selectedCampaign.campaignId,
-                isActive: selectedCampaign.isActive,
-                marks: selectedCampaign.marks,
-              } : null,
-              selectedCampaignId,
-              totalMarksResults: marksResults?.length || 0,
-            });
-          }
-          
-          // Now calculate totals only for the selected campaign
-          let totalCurrentMarks = 0;
-          let totalMarksPerDay = 0;
-          let totalBonusAtEnd = 0;
-          let totalEarlyBonusMarks = 0;
-          let totalEarlyBonusEstimate = 0;
-          let anyGenesisStillActive = false;
-
-          // Check if ALL genesis contracts have ended based on contract reads
-          // This is the authoritative check - bonus marks are only "Applied" when contract says so
-          const allContractsEnded = genesisMarkets.every(([_, mkt], mi) => {
-            const baseOffset = mi * (isConnected ? 3 : 1);
-            const contractSaysEnded = reads?.[baseOffset]?.result as
-              | boolean
-              | undefined;
-            return contractSaysEnded === true;
-          });
-
-          // Check if any genesis is in "processing" state (time expired but contract not ended)
-          const anyInProcessing = genesisMarkets.some(([_, mkt], mi) => {
-            const baseOffset = mi * (isConnected ? 3 : 1);
-            const contractSaysEnded = reads?.[baseOffset]?.result as
-              | boolean
-              | undefined;
-            const endDate = (mkt as any).genesis?.endDate;
-            const timeHasExpired = endDate
-              ? new Date(endDate).getTime() <= Date.now()
-              : false;
-            return timeHasExpired && !contractSaysEnded;
-          });
-
-          if (marksResults && marksResults.length > 0 && !isLoadingMarks) {
-            const currentTime = Math.floor(Date.now() / 1000); // Current Unix timestamp in seconds
-
-            marksResults.forEach((result) => {
-              // Handle both array and single object responses from GraphQL
-              const userMarksData = result.data?.userHarborMarks;
-              // Get a reference to the marks object - but we'll read values directly to avoid mutations
-              const marks = Array.isArray(userMarksData)
-                ? userMarksData[0]
-                : userMarksData;
-
-              if (marks) {
-                // Find the market to get campaign from config
-                const market = genesisMarkets.find(
-                  ([_, mkt]) =>
-                    (mkt as any).addresses?.genesis?.toLowerCase() ===
-                    result.genesisAddress?.toLowerCase()
-                );
-                
-                // Use campaign ID from market config, fallback to subgraph
-                const marketConfig = market?.[1] as any;
-                const marketCampaignId = marketConfig?.marksCampaign?.id || marks?.campaignId;
-                
-                // Only process marks from the selected campaign
-                if (selectedCampaignId && marketCampaignId !== selectedCampaignId) {
-                  if (process.env.NODE_ENV === "development") {
-                    console.log("[Campaign Filter] Skipping marks from different campaign", {
-                      genesisAddress: result.genesisAddress,
-                      marketCampaignId,
-                      selectedCampaignId,
-                      currentDepositUSD: marks.currentDepositUSD,
-                    });
-                  }
-                  return; // Skip marks from other campaigns
-                }
-                
-                if (process.env.NODE_ENV === "development") {
-                  console.log("[Campaign Marks] Processing marks for campaign", {
-                    genesisAddress: result.genesisAddress,
-                    campaignId: marks.campaignId,
-                    campaignLabel: marks.campaignLabel,
-                    currentDepositUSD: marks.currentDepositUSD,
-                    currentMarks: marks.currentMarks,
-                  });
-                }
-                
-                // Read the original subgraph value ONCE at the start - don't mutate the object
-                const originalCurrentMarks = parseFloat(
-                  marks.currentMarks || "0"
-                );
-                const bonusMarks = parseFloat(marks.bonusMarks || "0");
-
-                // Use contract's genesisIsEnded() as authoritative source
-                // (market already found above for campaign filtering)
-                // Fallback to subgraph value if contract read is not available
-                let contractSaysEnded: boolean | undefined;
-                if (market) {
-                  const marketIndex = genesisMarkets.findIndex(
-                    ([id]) => id === market[0]
-                  );
-                  if (marketIndex >= 0) {
-                    const baseOffset = marketIndex * (isConnected ? 3 : 1);
-                    const contractReadResult = reads?.[baseOffset];
-                    contractSaysEnded =
-                      contractReadResult?.status === "success"
-                        ? (contractReadResult.result as boolean)
-                        : undefined;
-                  }
-                }
-
-                // Use contract value if available, otherwise fall back to subgraph
-                const genesisEnded =
-                  contractSaysEnded !== undefined
-                    ? contractSaysEnded
-                    : marks.genesisEnded || false;
-
-                if (!genesisEnded) {
-                  anyGenesisStillActive = true;
-                }
-                const genesisStartDate = parseInt(
-                  marks.genesisStartDate || "0"
-                );
-                const lastUpdated = parseInt(marks.lastUpdated || "0");
-
-                // Use subgraph's USD value - it's the source of truth
-                // The subgraph calculates currentDepositUSD using real-time oracle prices
-                const currentDepositUSD = parseFloat(
-                  marks.currentDepositUSD || "0"
-                );
-
-                // Use subgraph's marksPerDay - it's the source of truth
-                // The subgraph updates this daily with current prices
-                const marksPerDay = parseFloat(marks.marksPerDay || "0");
-
-                // Calculate current marks dynamically based on time elapsed since last update
-                // Marks accumulate at 10 marks per dollar per day
-                // IMPORTANT: Always start from the original subgraph value to prevent accumulation bugs
-                // The subgraph's currentMarks includes:
-                // - Accumulated marks from deposits (10 marks per dollar per day) up to lastUpdated
-                // - Bonus marks (100 marks per dollar) if genesis has ended
-                // - Forfeited marks from withdrawals
-                // We add marks accumulated since lastUpdated to get the current total
-                let currentMarks = originalCurrentMarks;
-
-                // If genesis has ended, the subgraph's currentMarks already includes:
-                // - All accumulated marks up to genesis end
-                // - Bonus marks (100 marks per dollar)
-                // We should use it directly without recalculating
-                if (genesisEnded) {
-                  // Genesis has ended - use subgraph's currentMarks directly (includes bonus)
-                  // No need to accumulate more marks
-                } else if (currentDepositUSD > 0 && genesisStartDate > 0) {
-                  // Calculate time elapsed since last update (not since genesis start)
-                  // This ensures we only accumulate marks for the time since the last event (deposit/withdraw)
-                  // The subgraph's currentMarks already includes all marks up to lastUpdated, including forfeitures
-                  const timeElapsed = currentTime - lastUpdated;
-                  const daysElapsed = Math.max(0, timeElapsed / 86400); // Convert seconds to days, ensure non-negative
-
-                  // Add marks accumulated since last update
-                  // Use the CURRENT deposit USD (after any withdrawals) to calculate new marks
-                  // 10 marks per dollar per day
-                  const marksAccumulated = currentDepositUSD * 10 * daysElapsed;
-                  currentMarks = currentMarks + marksAccumulated;
-                }
-
-                // DO NOT mutate the original subgraph data - this causes marks to compound on each render
-                // Instead, use currentMarks directly for display and calculations
-                // The APR calculation will use calculateMarksForAPR which handles bonus marks separately
-
-                totalCurrentMarks += currentMarks;
-                totalMarksPerDay += marksPerDay;
-                
-                if (process.env.NODE_ENV === "development") {
-                  console.log("[Campaign Totals] After adding market", {
-                    genesisAddress: result.genesisAddress,
-                    marketDepositUSD: currentDepositUSD,
-                    marketMarksPerDay: marksPerDay,
-                    marketCurrentMarks: currentMarks,
-                    runningTotalMarks: totalCurrentMarks,
-                    runningTotalMarksPerDay: totalMarksPerDay,
-                  });
-                }
-
-                // Debug logging for marks calculation
-                if (process.env.NODE_ENV === "development") {
-                  const marksAccumulated = genesisEnded
-                    ? 0
-                    : currentMarks - originalCurrentMarks;
-                  console.log("[Marks Calculation]", {
-                    genesisAddress: result.genesisAddress,
-                    subgraphCurrentMarks: originalCurrentMarks,
-                    calculatedCurrentMarks: currentMarks,
-                    marksAccumulated: marksAccumulated,
-                    subgraphCurrentDepositUSD: currentDepositUSD,
-                    subgraphMarksPerDay: marksPerDay,
-                    bonusAtEnd:
-                      !genesisEnded && currentDepositUSD > 0
-                        ? currentDepositUSD * 100
-                        : 0,
-                    lastUpdated:
-                      lastUpdated > 0
-                        ? new Date(lastUpdated * 1000).toISOString()
-                        : "N/A",
-                    timeSinceUpdate:
-                      lastUpdated > 0
-                        ? `${Math.floor(
-                            (currentTime - lastUpdated) / 3600
-                          )} hours`
-                        : "N/A",
-                    daysElapsed:
-                      lastUpdated > 0 ? (currentTime - lastUpdated) / 86400 : 0,
-                    subgraphCurrentDeposit: marks.currentDeposit || "0",
-                    note: "Subgraph is source of truth for currentDepositUSD and marksPerDay",
-                  });
-                }
-
-                // Calculate bonus at end of genesis
-                // Bonus is 100 marks per dollar deposited
-                // Only calculate if genesis hasn't ended (bonus is given at end)
-                if (!genesisEnded && currentDepositUSD > 0) {
-                  const bonusAtEnd = currentDepositUSD * 100;
-                  totalBonusAtEnd += bonusAtEnd;
-                } else if (genesisEnded) {
-                  // If genesis has ended, bonus is already included in currentMarks
-                  // But we can still show what the bonus was by checking bonusMarks from subgraph
-                  const bonusMarks = parseFloat(marks.bonusMarks || "0");
-                  totalBonusAtEnd += bonusMarks;
-                }
-
-                // Calculate early deposit bonus
-                const earlyBonusEligibleUSD = parseFloat(
-                  marks.earlyBonusEligibleDepositUSD || "0"
-                );
-                const earlyBonusMarks = parseFloat(
-                  marks.earlyBonusMarks || "0"
-                );
-
-                if (!genesisEnded && earlyBonusEligibleUSD > 0) {
-                  // Estimate early bonus for eligible deposits
-                  totalEarlyBonusEstimate += earlyBonusEligibleUSD * 100;
-                } else if (genesisEnded && earlyBonusMarks > 0) {
-                  // If genesis has ended, show actual early bonus earned
-                  totalEarlyBonusMarks += earlyBonusMarks;
-                }
-              }
-            });
-          }
-
-          return (
-            <GenesisLedgerMarksSummary
-              selectedCampaign={selectedCampaign}
-              mounted={mounted}
-              isLoadingMarks={isLoadingMarks}
-              totalCurrentMarks={totalCurrentMarks}
-              totalMarksPerDay={totalMarksPerDay}
-              anyInProcessing={anyInProcessing}
-              allContractsEnded={allContractsEnded}
+        <GenesisCampaignStats
+          marksError={marksError}
+          marksResults={marksResults}
+          genesisAddresses={genesisAddresses}
+          genesisMarkets={genesisMarkets}
+          reads={reads}
               isConnected={isConnected}
-              totalBonusAtEnd={totalBonusAtEnd}
-              totalEarlyBonusEstimate={totalEarlyBonusEstimate}
-              totalEarlyBonusMarks={totalEarlyBonusMarks}
-            />
-          );
-        })()}
-
-        {/* Token Allocation Progress Bar */}
-        {(() => {
-          // Calculate total TVL by summing deposits from all markets
-          let calculatedTVL = 0;
-          if (
-            genesisMarkets.length > 0 &&
-            totalDepositsReads &&
-            collateralPricesMap
-          ) {
-            genesisMarkets.forEach(([id, mkt], mi) => {
-              const totalDeposits = totalDepositsReads?.[mi]?.result as
-                | bigint
-                | undefined;
-              if (!totalDeposits) return;
-
-              const totalDepositsAmount = Number(formatEther(totalDeposits));
-
-              // Get price using the same logic as in market rows
-              const underlyingSymbol =
-                (mkt as any).collateral?.underlyingSymbol ||
-                (mkt as any).collateral?.symbol ||
-                "ETH";
-              const collateralSymbol = (mkt as any).collateral?.symbol || "ETH";
-              const marketCoinGeckoId = (mkt as any)?.coinGeckoId as
-                | string
-                | undefined;
-
-              // Priority 1: Hardcoded $1 for fxUSD
-              let underlyingPriceUSD = 0;
-              if (underlyingSymbol.toLowerCase() === "fxusd") {
-                underlyingPriceUSD = 1.0;
-              } else if (
-                marketCoinGeckoId &&
-                coinGeckoPrices[marketCoinGeckoId] &&
-                coinGeckoPrices[marketCoinGeckoId]! > 0
-              ) {
-                underlyingPriceUSD = coinGeckoPrices[marketCoinGeckoId]!;
-              } else {
-                const oracleAddress = (mkt as any).addresses
-                  ?.collateralPrice as `0x${string}` | undefined;
-                const collateralPriceData = oracleAddress
-                  ? collateralPricesMap.get(oracleAddress.toLowerCase())
-                  : undefined;
-                const underlyingPriceFromOracle =
-                  collateralPriceData?.priceUSD || 0;
-                if (underlyingPriceFromOracle > 0.01) {
-                  underlyingPriceUSD = underlyingPriceFromOracle;
-                }
-              }
-
-              // Calculate wrapped token price
-              const oracleAddress = (mkt as any).addresses?.collateralPrice as
-                | `0x${string}`
-                | undefined;
-              const collateralPriceData = oracleAddress
-                ? collateralPricesMap.get(oracleAddress.toLowerCase())
-                : undefined;
-              const wrappedRate = collateralPriceData?.maxRate;
-
-              const isWstETH = collateralSymbol.toLowerCase() === "wsteth";
-              const isFxSAVE = collateralSymbol.toLowerCase() === "fxsave";
-              const coinGeckoReturnedPrice =
-                marketCoinGeckoId && coinGeckoPrices[marketCoinGeckoId];
-              const coinGeckoIsWrappedToken =
-                coinGeckoReturnedPrice &&
-                ((marketCoinGeckoId?.toLowerCase() === "wrapped-steth" &&
-                  isWstETH) ||
-                  ((marketCoinGeckoId?.toLowerCase() === "fx-usd-saving" ||
-                    marketCoinGeckoId?.toLowerCase() === "fxsave") &&
-                    isFxSAVE));
-
-              const stETHPrice = coinGeckoPrices["lido-staked-ethereum-steth"];
-              const useStETHFallback =
-                isWstETH &&
-                !coinGeckoIsWrappedToken &&
-                underlyingPriceUSD === 0 &&
-                stETHPrice &&
-                stETHPrice > 0 &&
-                wrappedRate &&
-                wrappedRate > 0n;
-
-              const wrappedTokenPriceUSD =
-                coinGeckoIsWrappedToken &&
-                coinGeckoReturnedPrice &&
-                coinGeckoReturnedPrice > 0
-                  ? coinGeckoReturnedPrice
-                  : useStETHFallback
-                  ? stETHPrice! * (Number(wrappedRate) / 1e18)
-                  : wrappedRate && underlyingPriceUSD > 0
-                  ? underlyingPriceUSD * (Number(wrappedRate) / 1e18)
-                  : isFxSAVE
-                  ? 1.07
-                  : underlyingPriceUSD;
-
-              const totalDepositsUSD =
-                totalDepositsAmount * wrappedTokenPriceUSD;
-              calculatedTVL += totalDepositsUSD;
-            });
-          }
-
-          // Use calculated TVL if available, otherwise fall back to safeTotalGenesisTVL
-          const currentTVL =
-            calculatedTVL > 0 ? calculatedTVL : safeTotalGenesisTVL;
-          const currentAllocationPercent =
-            calculateTokenAllocationPercent(currentTVL);
-          const currentAllocationAmount =
-            calculateTokenAllocationAmount(currentTVL);
-
-          // Milestones
-          // Note: < $1M = 1%, $1M-$10M = 1%-4%, $10M-$50M = 4%-10%
-          const milestones = [
-            {
-              tvl: 0,
-              label: "<$1M",
-              percent: 0.01,
-              allocation: TOTAL_TOKEN_SUPPLY * 0.01,
-            }, // Base: 1% for any amount < $1M
-            {
-              tvl: 1_000_000,
-              label: "$1M",
-              percent: 0.01,
-              allocation: TOTAL_TOKEN_SUPPLY * 0.01,
-            }, // Still 1% at $1M
-            {
-              tvl: 10_000_000,
-              label: "$10M",
-              percent: 0.04,
-              allocation: TOTAL_TOKEN_SUPPLY * 0.04,
-            }, // 4% at $10M
-            {
-              tvl: 50_000_000,
-              label: "$50M",
-              percent: 0.1,
-              allocation: TOTAL_TOKEN_SUPPLY * 0.1,
-            }, // 10% at $50M
-          ];
-
-          // Calculate progress percentage
-          // Progress bar represents: 0% = $0, 33.33% = $1M, 66.67% = $10M, 100% = $50M
-          let progressPercent = 0;
-
-          if (currentTVL < 1_000_000) {
-            // < $1M: Show progress from 0% to 33.33% of the bar
-            // Scale from $0 to $1M
-            progressPercent = (currentTVL / 1_000_000) * 33.33;
-          } else if (currentTVL < 10_000_000) {
-            // $1M to $10M: Linear from 33.33% to 66.67% of the bar
-            const segmentStart = 1_000_000;
-            const segmentEnd = 10_000_000;
-            const segmentProgress =
-              (currentTVL - segmentStart) / (segmentEnd - segmentStart);
-            progressPercent = 33.33 + segmentProgress * 33.34; // 33.33% at $1M, 66.67% at $10M
-          } else if (currentTVL < 50_000_000) {
-            // $10M to $50M: Linear from 66.67% to 100% of the bar
-            const segmentStart = 10_000_000;
-            const segmentEnd = 50_000_000;
-            const segmentProgress =
-              (currentTVL - segmentStart) / (segmentEnd - segmentStart);
-            progressPercent = 66.67 + segmentProgress * 33.33; // 66.67% at $10M, 100% at $50M
-          } else {
-            // >= $50M: 100% progress (at the end)
-            progressPercent = 100;
-          }
-
-          // Get next milestone
-          let nextMilestone;
-          let nextAllocationPercent;
-          let nextAllocationAmount;
-
-          if (currentTVL < 1_000_000) {
-            // Next milestone is $1M (but still 1% allocation)
-            nextMilestone = { tvl: 1_000_000, label: "$1M", percent: 0.01 };
-            nextAllocationPercent = 0.01;
-            nextAllocationAmount = TOTAL_TOKEN_SUPPLY * 0.01;
-          } else if (currentTVL < 10_000_000) {
-            // Next milestone is $10M (4% allocation)
-            nextMilestone = { tvl: 10_000_000, label: "$10M", percent: 0.04 };
-            nextAllocationPercent = 0.04;
-            nextAllocationAmount = TOTAL_TOKEN_SUPPLY * 0.04;
-          } else if (currentTVL < 50_000_000) {
-            // Next milestone is $50M (10% allocation)
-            nextMilestone = { tvl: 50_000_000, label: "$50M", percent: 0.1 };
-            nextAllocationPercent = 0.1;
-            nextAllocationAmount = TOTAL_TOKEN_SUPPLY * 0.1;
-          } else {
-            // Already at max
-            nextMilestone = null;
-            nextAllocationPercent = 0.1;
-            nextAllocationAmount = TOTAL_TOKEN_SUPPLY * 0.1;
-          }
-
-          return (
-            <>
-              {/* Two Columns: Allocation (50%) | Allocated + FDV (50%) - HIDDEN */}
-              {false && (
-                <div className="grid grid-cols-1 gap-2 mb-2">
-                  {/* Box 1: Maiden Voyage Airdrop Allocation (takes 50% of row) */}
-                  <div className="bg-[#17395F] px-4 pt-4 pb-4">
-                    <div className="text-xs font-medium text-white/70 uppercase tracking-wider mb-6 text-center">
-                      Maiden Voyage Airdrop Allocation: Increases with TVL
-                    </div>
-                    {/* Combined Progress Bar */}
-                    <div className="mt-3">
-                      {/* TVL Labels above bar */}
-                      <div className="flex items-center justify-between text-xs font-medium text-white/70 mb-1 relative">
-                        <span>$0</span>
-                        <span className="absolute left-[33.33%] transform -translate-x-1/2 text-center font-semibold">
-                          $1M
-                        </span>
-                        <span className="absolute left-[66.67%] transform -translate-x-1/2 text-center font-semibold">
-                          $10M
-                        </span>
-                        <span>$50M</span>
-                      </div>
-
-                      {/* Combined Progress Bar */}
-                      <div className="relative w-full bg-gray-200 rounded-full h-1.5 min-w-[100px]">
-                        {/* Progress fill with gradient segments */}
-                        {(() => {
-                          let progressPercent = 0;
-                          let fillColor = "";
-
-                          if (currentTVL < 1_000_000) {
-                            // < $1M: Show progress from 0% to 33.33% of the bar
-                            progressPercent = (currentTVL / 1_000_000) * 33.33;
-                            fillColor = "bg-[#FF8A7A]";
-                          } else if (currentTVL < 10_000_000) {
-                            // $1M to $10M: Linear from 33.33% to 66.67% of the bar
-                            const segmentStart = 1_000_000;
-                            const segmentEnd = 10_000_000;
-                            const segmentProgress =
-                              (currentTVL - segmentStart) /
-                              (segmentEnd - segmentStart);
-                            progressPercent = 33.33 + segmentProgress * 33.34;
-                            fillColor =
-                              "bg-gradient-to-r from-[#FF8A7A] to-[#FFB84D]";
-                          } else if (currentTVL < 50_000_000) {
-                            // $10M to $50M: Linear from 66.67% to 100% of the bar
-                            const segmentStart = 10_000_000;
-                            const segmentEnd = 50_000_000;
-                            const segmentProgress =
-                              (currentTVL - segmentStart) /
-                              (segmentEnd - segmentStart);
-                            progressPercent = 66.67 + segmentProgress * 33.33;
-                            fillColor = "bg-[#FFB84D]";
-                          } else {
-                            progressPercent = 100;
-                            fillColor = "bg-[#FFB84D]";
-                          }
-
-                          return (
-                            <>
-                              <div
-                                className={`absolute top-0 left-0 h-1.5 ${fillColor} rounded-full transition-all duration-500`}
-                                style={{ width: `${progressPercent}%` }}
-                              />
-                              {currentTVL > 0 && currentTVL < 50_000_000 && (
-                                <div
-                                  className="absolute top-0 bottom-0 w-0.5 bg-white shadow z-10"
-                                  style={{
-                                    left: `${progressPercent}%`,
-                                    transform: "translateX(-50%)",
-                                  }}
-                                />
-                              )}
-                            </>
-                          );
-                        })()}
-
-                        {/* Divider at $1M (33.33%) */}
-                        <div className="absolute top-0 bottom-0 left-[33.33%] w-1 bg-white z-20 shadow-sm" />
-
-                        {/* Divider at $10M (66.67%) */}
-                        <div className="absolute top-0 bottom-0 left-[66.67%] w-1 bg-white z-20 shadow-sm" />
-
-                        {/* Current TVL Tag inline with progress bar, pointing to indicator */}
-                        {currentTVL > 0 &&
-                          currentTVL < 50_000_000 &&
-                          (() => {
-                            let progressPercent = 0;
-                            if (currentTVL < 1_000_000) {
-                              progressPercent =
-                                (currentTVL / 1_000_000) * 33.33;
-                            } else if (currentTVL < 10_000_000) {
-                              const segmentStart = 1_000_000;
-                              const segmentEnd = 10_000_000;
-                              const segmentProgress =
-                                (currentTVL - segmentStart) /
-                                (segmentEnd - segmentStart);
-                              progressPercent = 33.33 + segmentProgress * 33.34;
-                            } else if (currentTVL < 50_000_000) {
-                              const segmentStart = 10_000_000;
-                              const segmentEnd = 50_000_000;
-                              const segmentProgress =
-                                (currentTVL - segmentStart) /
-                                (segmentEnd - segmentStart);
-                              progressPercent = 66.67 + segmentProgress * 33.33;
-                            }
-
-                            // If progress > 50%, position tag on left with arrow on right
-                            const isOver50Percent = progressPercent > 50;
-
-                            return (
-                              <div
-                                className="absolute top-1/2 left-0 transform -translate-y-1/2 z-30 flex items-center"
-                                style={{
-                                  left: `${progressPercent}%`,
-                                  ...(isOver50Percent
-                                    ? {
-                                        marginRight: "8px",
-                                        transform: "translate(-100%, -50%)",
-                                      }
-                                    : { marginLeft: "8px" }),
-                                }}
-                              >
-                                {isOver50Percent ? (
-                                  <>
-                                    {/* Tag on left */}
-                                    <div className="bg-[#2C3E50] text-white text-xs font-semibold px-2.5 py-1 rounded-l shadow whitespace-nowrap">
-                                      TVL: ${(currentTVL / 1_000).toFixed(0)}K
-                                    </div>
-                                    {/* Right-pointing arrow */}
-                                    <div className="w-0 h-0 border-t-[7px] border-b-[7px] border-l-[7px] border-transparent border-l-[#2C3E50]"></div>
-                                  </>
-                                ) : (
-                                  <>
-                                    {/* Left-pointing arrow */}
-                                    <div className="w-0 h-0 border-t-[7px] border-b-[7px] border-r-[7px] border-transparent border-r-[#2C3E50]"></div>
-                                    {/* Tag on right */}
-                                    <div className="bg-[#2C3E50] text-white text-xs font-semibold px-2.5 py-1 rounded-r shadow whitespace-nowrap">
-                                      TVL: ${(currentTVL / 1_000).toFixed(0)}K
-                                    </div>
-                                  </>
-                                )}
-                              </div>
-                            );
-                          })()}
-                      </div>
-
-                      {/* Allocation Labels below bar - aligned with TVL markers above */}
-                      <div className="flex items-center justify-between text-xs font-medium text-white/70 mt-1 relative">
-                        <span>1%</span>
-                        <span className="absolute left-[33.33%] transform -translate-x-1/2 text-center">
-                          1%
-                        </span>
-                        <span className="absolute left-[66.67%] transform -translate-x-1/2 text-center">
-                          4%
-                        </span>
-                        <span>10%</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Right side: Allocated + FDV (takes 50% of row) */}
-                  <div className="flex flex-col gap-2">
-                    <div className="grid grid-cols-2 gap-2">
-                      {/* Box 2: Allocated */}
-                      <div className="bg-[#17395F] px-4 pt-3 pb-3">
-                        <div className="text-xs font-medium text-white/70 uppercase tracking-wider mb-2 text-center">
-                          Allocated
-                        </div>
-                        <div className="text-sm text-white/70 text-center">
-                          <span className="text-white font-bold">
-                            {(currentAllocationAmount / 1_000_000).toFixed(2)}M
-                            $TIDE
-                          </span>
-                          <span className="text-white/60 ml-1">
-                            <span className="text-white font-bold">
-                              (est. $
-                              {(() => {
-                                const estimatedValue =
-                                  currentAllocationAmount *
-                                  calculateTokenPrice(fdv);
-                                if (estimatedValue >= 1_000_000) {
-                                  return (
-                                    (estimatedValue / 1_000_000).toFixed(2) +
-                                    "M"
-                                  );
-                                } else {
-                                  return (
-                                    (estimatedValue / 1_000).toFixed(0) + "k"
-                                  );
-                                }
-                              })()}
-                              )
-                            </span>
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Box 3: FDV */}
-                      <div className="bg-[#17395F] px-4 pt-3 pb-3">
-                        <div className="text-xs font-medium text-white/70 uppercase tracking-wider mb-2 text-center">
-                          FDV (Fully Diluted Valuation)
-                        </div>
-                        <div className="flex items-center justify-center gap-2">
-                          <input
-                            type="text"
-                            inputMode="decimal"
-                            value={fdv / 1_000_000 || ""}
-                            onChange={(e) => {
-                              const inputValue = e.target.value;
-                              if (inputValue === "") {
-                                setFdv(0);
-                              } else {
-                                // Allow intermediate states like "0." or "0.5" while typing
-                                const numValue = parseFloat(inputValue);
-                                if (
-                                  !isNaN(numValue) &&
-                                  numValue >= 0 &&
-                                  numValue <= 1000
-                                ) {
-                                  setFdv(numValue * 1_000_000);
-                                } else if (
-                                  inputValue === "0" ||
-                                  inputValue === "0." ||
-                                  inputValue.startsWith("0.")
-                                ) {
-                                  // Allow typing "0" or "0." or "0.5" etc
-                                  const tempValue =
-                                    inputValue === "0"
-                                      ? 0
-                                      : parseFloat(inputValue) || 0;
-                                  if (tempValue >= 0 && tempValue <= 1000) {
-                                    setFdv(tempValue * 1_000_000);
-                                  }
-                                }
-                              }
-                            }}
-                            onBlur={(e) => {
-                              // On blur, ensure we have a valid number
-                              const inputValue = e.target.value;
-                              const numValue = parseFloat(inputValue);
-                              if (isNaN(numValue) || numValue <= 0) {
-                                setFdv(DEFAULT_FDV);
-                              } else if (numValue > 1000) {
-                                setFdv(1000 * 1_000_000);
-                              }
-                            }}
-                            className="w-16 bg-[#0A1F35] border border-white/20 px-2 py-1 text-white text-sm focus:outline-none focus:border-[#FF8A7A]"
-                          />
-                          <span className="text-white/60 whitespace-nowrap text-sm">
-                            M USD
-                          </span>
-                          <button
-                            onClick={() => setFdv(DEFAULT_FDV)}
-                            className="text-[#FF8A7A] hover:text-[#FFB84D] text-xs underline"
-                          >
-                            Reset
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Box 4: Revenue Tag (under Allocated and FDV) */}
-                    <div className="bg-green-900/30 border border-green-500/30 px-4 py-2">
-                      <div className="text-xs text-green-300 text-center">
-                        ~25% of pre-TGE revenue → protocol-owned liquidity at
-                        $10m FDV & After TGE for buybacks.
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </>
-          );
-        })()}
-
-        {/* GraphQL Error Banner */}
-        {combinedHasIndexerErrors && (
-          <GenesisErrorBanner
-            tone="danger"
-            title="Temporary Service Issue"
-            message="The Graph Network indexers are temporarily unavailable for some markets. Your Harbor Marks are safe and will display correctly once the service is restored. This is a temporary infrastructure issue, not a problem with your account."
-            markets={combinedMarketsWithIndexerErrors.map(getMarketName)}
-          />
-        )}
-        {combinedHasAnyErrors && !combinedHasIndexerErrors && (
-          <GenesisErrorBanner
-            tone="warning"
-            title="Harbor Marks Data Unavailable"
-            message="Unable to load Harbor Marks data for some markets. Your positions and core functionality remain unaffected. Please try refreshing the page."
-            markets={combinedMarketsWithOtherErrors.map(getMarketName)}
-          />
-        )}
-        {hasOraclePricingError && (
-          <GenesisErrorBanner
-            tone="danger"
-            title="Price oracle unavailable"
-            message="The price oracle for some markets is not available. Harbor Marks cannot be calculated until the oracle is working. Your deposit is safe."
-            markets={marketsWithOraclePricingError.map(getMarketName)}
-          />
-        )}
+          isLoadingMarks={isLoadingMarks}
+          mounted={mounted}
+          combinedHasIndexerErrors={combinedHasIndexerErrors}
+          combinedMarketsWithIndexerErrors={combinedMarketsWithIndexerErrors}
+          combinedHasAnyErrors={combinedHasAnyErrors}
+          combinedMarketsWithOtherErrors={combinedMarketsWithOtherErrors}
+          hasOraclePricingError={hasOraclePricingError}
+          marketsWithOraclePricingError={marketsWithOraclePricingError}
+          getMarketName={getMarketName}
+        />
 
         {/* Divider */}
         <div className="border-t border-white/10 mt-2 mb-1"></div>
 
         {/* Only show market rows section if there are active/pending markets or ended markets with claimable tokens */}
         {hasActiveOrPendingMarkets && (
-          <section className="space-y-2 overflow-visible">
-            {/* Single row: Active campaign first, then Genesis + Network (left), Ledger Marks (right) */}
-            <div className="pt-4 pb-3 flex flex-col md:flex-row md:items-center md:justify-between gap-3 flex-wrap">
-              <div className="flex flex-wrap items-center gap-2">
-                <h2 className="text-xs font-medium text-white/70 uppercase tracking-wider flex items-center gap-2">
-                  Active Campaign:
-                  {activeCampaignName && (
-                    <span className="inline-flex items-center px-2.5 py-1 bg-[#E67A6B] hover:bg-[#D66A5B] border border-white text-white text-xs font-semibold uppercase tracking-wider rounded-full transition-colors">
-                      {activeCampaignName}
-                    </span>
-                  )}
-                </h2>
-                {displayedCompletedByCampaign.size > 0 && (
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs font-medium text-white/70 uppercase tracking-wider">Genesis:</span>
-                    <button
-                      type="button"
-                      onClick={() => setShowCompletedGenesis(false)}
-                      className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
-                        !showCompletedGenesis
-                          ? "bg-white text-[#1E4775]"
-                          : "bg-white/10 text-white hover:bg-white/20"
-                      }`}
-                    >
-                      Ongoing
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setShowCompletedGenesis(true)}
-                      className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
-                        showCompletedGenesis
-                          ? "bg-white text-[#1E4775]"
-                          : "bg-white/10 text-white hover:bg-white/20"
-                      }`}
-                    >
-                      All
-                    </button>
-                  </div>
-                )}
-                {genesisChainOptions.length > 1 && (
-                  <>
-                    <FilterMultiselectDropdown
-                      label="Network"
-                      options={genesisChainOptions}
-                      value={chainFilterSelected}
-                      onChange={setChainFilterSelected}
-                      allLabel="All networks"
-                      groupLabel="NETWORKS"
-                      minWidthClass="min-w-[235px]"
-                    />
-                    <SimpleTooltip label="clear filters">
-                      <button
-                        type="button"
-                        onClick={() => setChainFilterSelected([])}
-                        className="p-1.5 text-[#E67A6B] hover:text-[#D66A5B] hover:bg-white/10 rounded transition-colors"
-                        aria-label="clear filters"
-                      >
-                        <XMarkIcon className="w-5 h-5 stroke-[2.5]" />
-                      </button>
-                    </SimpleTooltip>
-                  </>
-                )}
-              </div>
-              <div className="flex flex-wrap items-center gap-2 md:ml-auto">
-                <LedgerMarksCompactBadge
-                  className="md:ml-auto"
-                  tooltipMaxWidth="min(90vw, 22rem)"
-                  intro={
-                    <p>
-                      Active Maiden Voyage Genesis campaigns use the incentive
-                      rates below. Exact bonuses depend on the campaign you
-                      joined.
-                    </p>
-                  }
-                  body={
-                    <div className="space-y-3 text-xs leading-relaxed">
-                      <div>
-                        <div className="font-semibold text-white text-sm mb-1">
-                          Ledger Marks
-                        </div>
-                        <p className="text-white/90">
-                          <span className="font-semibold text-white">
-                            Earn 10
-                          </span>{" "}
-                          Ledger Marks per{" "}
-                          <span className="font-semibold text-white">$</span>{" "}
-                          deposited per day, plus{" "}
-                          <span className="font-semibold text-white">
-                            100
-                          </span>{" "}
-                          bonus marks on Maiden Voyage completion (where the
-                          campaign offers it).
-                        </p>
-                      </div>
-                      <div className="border-t border-white/20 pt-2">
-                        <p className="text-white/90">
-                          <span className="font-semibold text-white">
-                            Early Deposit Bonus!
-                          </span>{" "}
-                          Eligible early deposits can earn extra marks—for
-                          example{" "}
-                          <span className="font-semibold text-white">
-                            100
-                          </span>{" "}
-                          marks per{" "}
-                          <span className="font-semibold text-white">$</span>{" "}
-                          during the bonus window, when your market&apos;s
-                          campaign includes it.
-                        </p>
-                      </div>
-                    </div>
-                  }
-                  earnSummary={
-                    <>
-                      <span className="font-semibold text-white">
-                        Genesis / Maiden Voyage: 10 marks / $ / day
-                      </span>
-                      <span className="text-white/80">
-                        {" "}
-                        • +100 marks bonus on completion • early-deposit bonus
-                        where shown
-                      </span>
-                    </>
-                  }
-                />
-              </div>
-            </div>
+          <GenesisMarketsSections
+            toolbarProps={{
+              activeCampaignName,
+              displayedCompletedByCampaignSize: displayedCompletedByCampaign.size,
+              genesisChainOptions,
+              chainFilterSelected,
+              setChainFilterSelected,
+              setShowCompletedGenesis,
+              showCompletedGenesis,
+            }}
+          >
             {/* Market Rows - sorted with running markets first, then completed markets */}
             {/* Within each section, markets with deposits are sorted to the top */}
             {(() => {
@@ -2130,101 +655,101 @@ export default function GenesisIndexPage() {
               const activeSectionHeader = showHeaders ? (
                 <div
                   key="header-active"
-                  className="hidden md:block bg-white py-1.5 px-2 overflow-x-auto mb-0"
-                >
+                        className="hidden md:block bg-white py-1.5 px-2 overflow-x-auto mb-0"
+                      >
                   <div className="grid lg:grid-cols-[32px_1.5fr_80px_0.9fr_0.9fr_0.9fr_0.7fr_0.9fr] md:grid-cols-[32px_120px_80px_100px_1fr_1fr_90px_80px] gap-4 items-center uppercase tracking-wider text-[10px] lg:text-[11px] text-[#1E4775] font-semibold">
                     <div className="min-w-0" aria-label="Network" />
-                    <div className="min-w-0 text-center">Market</div>
-                    <div className="text-center min-w-0">Marks</div>
-                    <div className="text-center min-w-0 flex items-center justify-center gap-1.5">
-                      <span>Deposit Assets</span>
-                      <SimpleTooltip
-                        label={
-                          <div>
-                            <div className="font-semibold mb-1">
-                              Multi-Token Support
-                            </div>
-                            <div className="text-xs opacity-90 mb-2">
-                              Zapper-supported assets are zapped in with
-                              no slippage. Any other ERC20s are swapped
-                              with Velora.
-                            </div>
-                            <div className="flex flex-col gap-2">
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="text-[10px] opacity-75">
-                                  wstETH markets:
-                                </span>
-                                <div className="flex items-center gap-1">
-                                  <Image
-                                    src={getLogoPath("ETH")}
-                                    alt="ETH"
-                                    width={16}
-                                    height={16}
-                                    className="rounded-full"
-                                  />
-                                  <span className="text-[10px]">ETH</span>
+                          <div className="min-w-0 text-center">Market</div>
+                          <div className="text-center min-w-0">Marks</div>
+                          <div className="text-center min-w-0 flex items-center justify-center gap-1.5">
+                            <span>Deposit Assets</span>
+                            <SimpleTooltip
+                              label={
+                                <div>
+                                  <div className="font-semibold mb-1">
+                                    Multi-Token Support
+                                  </div>
+                                  <div className="text-xs opacity-90 mb-2">
+                                    Zapper-supported assets are zapped in with
+                                    no slippage. Any other ERC20s are swapped
+                                    with Velora.
+                                  </div>
+                                  <div className="flex flex-col gap-2">
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                      <span className="text-[10px] opacity-75">
+                                        wstETH markets:
+                                      </span>
+                                      <div className="flex items-center gap-1">
+                                        <Image
+                                          src={getLogoPath("ETH")}
+                                          alt="ETH"
+                                          width={16}
+                                          height={16}
+                                          className="rounded-full"
+                                        />
+                                        <span className="text-[10px]">ETH</span>
+                                      </div>
+                                      <div className="flex items-center gap-1">
+                                        <Image
+                                          src={getLogoPath("stETH")}
+                                          alt="stETH"
+                                          width={16}
+                                          height={16}
+                                          className="rounded-full"
+                                        />
+                                        <span className="text-[10px]">
+                                          stETH
+                                        </span>
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                      <span className="text-[10px] opacity-75">
+                                        fxSAVE markets:
+                                      </span>
+                                      <div className="flex items-center gap-1">
+                                        <Image
+                                          src={getLogoPath("USDC")}
+                                          alt="USDC"
+                                          width={16}
+                                          height={16}
+                                          className="rounded-full"
+                                        />
+                                        <span className="text-[10px]">
+                                          USDC
+                                        </span>
+                                      </div>
+                                      <div className="flex items-center gap-1">
+                                        <Image
+                                          src={getLogoPath("fxUSD")}
+                                          alt="fxUSD"
+                                          width={16}
+                                          height={16}
+                                          className="rounded-full"
+                                        />
+                                        <span className="text-[10px]">
+                                          fxUSD
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </div>
                                 </div>
-                                <div className="flex items-center gap-1">
-                                  <Image
-                                    src={getLogoPath("stETH")}
-                                    alt="stETH"
-                                    width={16}
-                                    height={16}
-                                    className="rounded-full"
-                                  />
-                                  <span className="text-[10px]">
-                                    stETH
-                                  </span>
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="text-[10px] opacity-75">
-                                  fxSAVE markets:
-                                </span>
-                                <div className="flex items-center gap-1">
-                                  <Image
-                                    src={getLogoPath("USDC")}
-                                    alt="USDC"
-                                    width={16}
-                                    height={16}
-                                    className="rounded-full"
-                                  />
-                                  <span className="text-[10px]">
-                                    USDC
-                                  </span>
-                                </div>
-                                <div className="flex items-center gap-1">
-                                  <Image
-                                    src={getLogoPath("fxUSD")}
-                                    alt="fxUSD"
-                                    width={16}
-                                    height={16}
-                                    className="rounded-full"
-                                  />
-                                  <span className="text-[10px]">
-                                    fxUSD
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
+                              }
+                            >
+                              <ArrowPathIcon className="w-3.5 h-3.5 text-[#1E4775] cursor-help" />
+                            </SimpleTooltip>
                           </div>
-                        }
-                      >
-                        <ArrowPathIcon className="w-3.5 h-3.5 text-[#1E4775] cursor-help" />
-                      </SimpleTooltip>
-                    </div>
-                    <div className="text-center min-w-0">
-                      Total
-                      <span className="hidden lg:inline"> Deposits</span>
-                    </div>
-                    <div className="text-center min-w-0">
-                      Your Deposit
-                    </div>
-                    <div className="text-center min-w-0">Status</div>
-                    <div className="text-center min-w-0">Action</div>
-                  </div>
-                </div>
-              ) : null;
+                          <div className="text-center min-w-0">
+                            Total
+                            <span className="hidden lg:inline"> Deposits</span>
+                          </div>
+                          <div className="text-center min-w-0">
+                            Your Deposit
+                          </div>
+                          <div className="text-center min-w-0">Status</div>
+                          <div className="text-center min-w-0">Action</div>
+                        </div>
+                      </div>
+                  ) : null;
 
               const marketRows = displayedActiveMarkets.map(([id, mkt], idx) => {
                 const mi = genesisMarkets.findIndex((m) => m[0] === id);
@@ -2305,7 +830,6 @@ export default function GenesisIndexPage() {
                 const underlyingSymbol =
                   (mkt as any).collateral?.underlyingSymbol || collateralSymbol; // The underlying/base token
 
-                // Debug logging for collateral address
                 const endDate = (mkt as any).genesis?.endDate;
 
                 // Get price data from the collateral prices hook
@@ -2315,126 +839,24 @@ export default function GenesisIndexPage() {
                   ? collateralPricesMap.get(oracleAddress.toLowerCase())
                   : undefined;
 
-                // Extract wrapped rate and underlying price from hook data (if available)
-                const wrappedRate = collateralPriceData?.maxRate;
-                const underlyingPriceFromOracle =
-                  collateralPriceData?.priceUSD || 0;
-
-                // Calculate price: Priority order: Hardcoded $1 (fxUSD) → CoinGecko → Oracle
-                let underlyingPriceUSD: number = 0;
-                let priceError: string | null = null;
                 const marketCoinGeckoId = (mkt as any)?.coinGeckoId as
                   | string
                   | undefined;
 
-                // Priority 1: For fxUSD underlying (fxSAVE markets), always use hardcoded $1.00
-                if (underlyingSymbol.toLowerCase() === "fxusd") {
-                  underlyingPriceUSD = 1.0;
-                } else if (
-                  marketCoinGeckoId &&
-                  coinGeckoPrices[marketCoinGeckoId] &&
-                  coinGeckoPrices[marketCoinGeckoId]! > 0
-                ) {
-                  // Priority 2: Try CoinGecko price for other markets (preferred when available)
-                  // Only use if price is valid (> 0)
-                  underlyingPriceUSD = coinGeckoPrices[marketCoinGeckoId]!;
-                } else if (underlyingPriceFromOracle > 0) {
-                  // Priority 3: Use oracle price from hook as fallback
-                  let oraclePriceUSD = underlyingPriceFromOracle;
-
-                  // For BTC/stETH markets, oracle might return price in BTC terms, need to convert to USD
-                  const pegTarget = (mkt as any)?.pegTarget?.toLowerCase();
-                  const isBTCMarket =
-                    pegTarget === "btc" || pegTarget === "bitcoin";
-                  if (isBTCMarket && oraclePriceUSD > 0 && oraclePriceUSD < 1) {
-                    // If price is less than $1, it's likely in BTC terms (e.g., 0.041 BTC per wstETH)
-                    // Get BTC price in USD: Priority: CoinGecko → Chainlink
-                    const btcPriceUSD =
-                      coinGeckoPrices["bitcoin"] || chainlinkBtcPrice || 0;
-                    if (btcPriceUSD > 0) {
-                      oraclePriceUSD = oraclePriceUSD * btcPriceUSD;
-                    }
-                  }
-
-                  // Only use oracle price if it's reasonable (not zero or extremely small)
-                  // This prevents showing <0.01 when oracle returns invalid data
-                  if (oraclePriceUSD > 0.01) {
-                    underlyingPriceUSD = oraclePriceUSD;
-                  } else {
-                    priceError =
-                      "Price oracle returned value too small (<0.01)";
-                  }
-                } else {
-                  // Check if there was an error reading the oracle
-                  if (collateralPriceData?.error) {
-                    priceError = `Failed to read price oracle: ${
-                      collateralPriceData.error.message || "Unknown error"
-                    }`;
-                  } else {
-                    priceError = "Price oracle not available";
-                  }
-                }
-
-                // Calculate wrapped token price: underlying price * wrapped rate
-                // Deposits are stored in wrapped collateral tokens, so we need wrapped token price
-                // IMPORTANT: Only skip rate multiplication if CoinGecko actually returned a wrapped token price
-                const coinGeckoId = (mkt as any)?.coinGeckoId as
-                  | string
-                  | undefined;
-                const coinGeckoReturnedPrice =
-                  marketCoinGeckoId && coinGeckoPrices[marketCoinGeckoId];
-                // Check if CoinGecko returned a price for the wrapped token (fxSAVE or wstETH)
-                const coinGeckoIsWrappedToken =
-                  coinGeckoReturnedPrice &&
-                  coinGeckoId &&
-                  ((coinGeckoId.toLowerCase() === "wrapped-steth" &&
-                    collateralSymbol.toLowerCase() === "wsteth") ||
-                    ((coinGeckoId.toLowerCase() === "fx-usd-saving" ||
-                      coinGeckoId.toLowerCase() === "fxsave") &&
-                      collateralSymbol.toLowerCase() === "fxsave"));
-
-                // For wstETH: If CoinGecko is still loading, use oracle price with wrapped rate
-                // If CoinGecko has finished and returned a price, use that (it's already wrapped)
-                // Otherwise, apply wrapped rate to underlying price
-                const isWstETH = collateralSymbol.toLowerCase() === "wsteth";
-                const isFxSAVE = collateralSymbol.toLowerCase() === "fxsave";
-
-                // Fallback: Use stETH price from CoinGecko if wstETH price isn't available yet
-                // This provides immediate price while wstETH-specific price is loading
-                const stETHPrice =
-                  coinGeckoPrices["lido-staked-ethereum-steth"];
-                const useStETHFallback =
-                  isWstETH &&
-                  !coinGeckoIsWrappedToken &&
-                  underlyingPriceUSD === 0 &&
-                  stETHPrice &&
-                  stETHPrice > 0 &&
-                  wrappedRate &&
-                  wrappedRate > 0n;
-
-                const wrappedTokenPriceUSD =
-                  coinGeckoIsWrappedToken &&
-                  coinGeckoReturnedPrice &&
-                  coinGeckoReturnedPrice > 0
-                    ? coinGeckoReturnedPrice // CoinGecko already returns wrapped token price (e.g., wstETH, fxSAVE)
-                    : useStETHFallback
-                    ? stETHPrice * (Number(wrappedRate) / 1e18) // Use stETH price * wrapped rate as fallback while wstETH loads
-                    : (isWstETH || isFxSAVE) &&
-                      coinGeckoLoading &&
-                      marketCoinGeckoId &&
-                      underlyingPriceUSD > 0 &&
-                      wrappedRate
-                    ? underlyingPriceUSD * (Number(wrappedRate) / 1e18) // While CoinGecko loads, use oracle * wrapped rate for wstETH or fxSAVE
-                    : wrappedRate && underlyingPriceUSD > 0
-                    ? underlyingPriceUSD * (Number(wrappedRate) / 1e18) // Multiply underlying by rate (e.g., fxUSD -> fxSAVE)
-                    : coinGeckoLoading && marketCoinGeckoId
-                    ? 0 // Still loading CoinGecko, don't use fallback price yet
-                    : isFxSAVE
-                    ? 1.07 // Hardcoded fallback for fxSAVE if everything fails
-                    : underlyingPriceUSD; // Fallback to underlying price if no rate available and CoinGecko not loading
-
-                // Use wrapped token price for USD calculations since deposits are in wrapped collateral
-                const collateralPriceUSD = wrappedTokenPriceUSD;
+                const {
+                  underlyingPriceUSD,
+                  priceError,
+                  collateralPriceUSD,
+                } = computeGenesisRowUsdPricing({
+                  underlyingSymbol,
+                  pegTarget: (mkt as any)?.pegTarget,
+                  marketCoinGeckoId,
+                  coinGeckoPrices,
+                  collateralPriceData,
+                  chainlinkBtcPrice,
+                  coinGeckoLoading,
+                  collateralSymbol,
+                });
 
                 // Calculate USD values using wrapped token price
                 // Note: totalDeposits is the balance of wrapped collateral token in the genesis contract
@@ -2453,31 +875,6 @@ export default function GenesisIndexPage() {
                   : 0;
                 // userDepositAmount is already in wrapped tokens, so just multiply by wrapped token price
                 const userDepositUSD = userDepositAmount * collateralPriceUSD;
-
-                // Debug logging for marks data (after userDepositUSD and totalDepositsUSD are calculated)
-                if (
-                  process.env.NODE_ENV === "development" &&
-                  marks &&
-                  id === "btc-steth"
-                ) {
-                  console.log("[btc-steth Marks Debug]", {
-                    marketId: id,
-                    genesisAddress: (mkt as any).addresses?.genesis,
-                    marksForMarketFound: !!marksForMarket,
-                    currentMarks: marks.currentMarks,
-                    currentDepositUSD: marks.currentDepositUSD,
-                    marksPerDay: marks.marksPerDay,
-                    bonusMarks: marks.bonusMarks,
-                    genesisEnded: marks.genesisEnded,
-                    genesisStartDate: marks.genesisStartDate,
-                    lastUpdated: marks.lastUpdated,
-                    userDepositUSD,
-                    totalDepositsUSD,
-                    calculatedUserMarks: marks
-                      ? parseFloat(marks.currentMarks || "0")
-                      : 0,
-                  });
-                }
 
                 // Get anchor and sail token prices from the hook
                 const tokenPrices = tokenPricesByMarket[id];
@@ -2767,91 +1164,11 @@ export default function GenesisIndexPage() {
                                         );
                                       // Always return the breakdown if calculation succeeded, even if values are 0
                                       return breakdown;
-                                    } catch (error) {
-                                      console.error(
-                                        "[APR Breakdown] Calculation error:",
-                                        error
-                                      );
+                                    } catch {
                                       return undefined;
                                     }
                                   })()
                                 : undefined;
-
-                            // Debug breakdown calculation
-                            if (
-                              process.env.NODE_ENV === "development" &&
-                              mounted
-                            ) {
-                              console.log("[APR Breakdown Debug]", {
-                                marketId: id,
-                                canShowCombinedAPR,
-                                marksBreakdown,
-                                marksForAPRTotal,
-                                depositForAPR,
-                                tvlForAPR,
-                                genesisDays,
-                                fdv,
-                                aprBreakdown,
-                                hasBreakdown: !!aprBreakdown,
-                                conditions: {
-                                  marksForAPRTotal: marksForAPRTotal > 0,
-                                  depositForAPR: depositForAPR > 0,
-                                  tvlForAPR: tvlForAPR > 0,
-                                  genesisDays: genesisDays > 0,
-                                  allMet:
-                                    marksForAPRTotal > 0 &&
-                                    depositForAPR > 0 &&
-                                    tvlForAPR > 0 &&
-                                    genesisDays > 0,
-                                },
-                              });
-                              if (aprBreakdown) {
-                                console.log(
-                                  "[APR Breakdown Values]",
-                                  aprBreakdown
-                                );
-                              }
-                            }
-
-                            // Debug logging (temporary) - after calculations
-                            if (
-                              process.env.NODE_ENV === "development" &&
-                              mounted
-                            ) {
-                              const debugInfo = {
-                                marketId: id,
-                                mounted,
-                                isValidAPR,
-                                underlyingAPR,
-                                isLoadingTotalTVL: safeIsLoadingTotalTVL,
-                                isLoadingTotalMarks: safeIsLoadingTotalMarks,
-                                totalGenesisTVL: safeTotalGenesisTVL,
-                                totalMaidenVoyageMarks:
-                                  safeTotalMaidenVoyageMarks,
-                                userDepositUSD,
-                                userMarksForMarket,
-                                totalDepositsUSD,
-                                depositForAPR,
-                                marksForAPR,
-                                tvlForAPR,
-                                marksForAPRTotal,
-                                genesisDays,
-                                canShowCombinedAPR,
-                                checks: {
-                                  mounted,
-                                  isValidAPR,
-                                  depositForAPR: depositForAPR > 0,
-                                  marksForAPR: marksForAPR > 0,
-                                  tvlForAPR: tvlForAPR > 0,
-                                  marksForAPRTotal: marksForAPRTotal > 0,
-                                },
-                              };
-                              console.log(
-                                "[APR Debug Full]",
-                                JSON.stringify(debugInfo, null, 2)
-                              );
-                              console.log("[APR Debug]", debugInfo);
-                            }
 
                             // Display marks accumulated for this market (include accumulation since last update)
                             const lastUpdated = marks
@@ -4026,86 +2343,86 @@ export default function GenesisIndexPage() {
                                     </div>
                                   </div>
                                 ) : (
-                                  <div>
-                                    <div className="font-semibold mb-1">
-                                      Any Token Supported
-                                    </div>
-                                    <div className="text-xs opacity-90 mb-2">
-                                      Zapper-supported assets are zapped in with
-                                      no slippage. Any other ERC20s are swapped
-                                      with Velora.
-                                    </div>
-                                    <div className="flex items-center gap-1.5 flex-wrap">
-                                      <span className="text-[10px] opacity-75">
-                                        Zapper-supported:
-                                      </span>
-                                      {(() => {
-                                        const isWstETHMarket =
-                                          collateralSymbol.toLowerCase() ===
-                                          "wsteth";
-
-                                        if (isWstETHMarket) {
-                                          return (
-                                            <>
-                                              <div className="flex items-center gap-1">
-                                                <Image
-                                                  src={getLogoPath("ETH")}
-                                                  alt="ETH"
-                                                  width={16}
-                                                  height={16}
-                                                  className="rounded-full"
-                                                />
-                                                <span className="text-[10px]">
-                                                  ETH
-                                                </span>
-                                              </div>
-                                              <div className="flex items-center gap-1">
-                                                <Image
-                                                  src={getLogoPath("stETH")}
-                                                  alt="stETH"
-                                                  width={16}
-                                                  height={16}
-                                                  className="rounded-full"
-                                                />
-                                                <span className="text-[10px]">
-                                                  stETH
-                                                </span>
-                                              </div>
-                                            </>
-                                          );
-                                        } else {
-                                          return (
-                                            <>
-                                              <div className="flex items-center gap-1">
-                                                <Image
-                                                  src={getLogoPath("USDC")}
-                                                  alt="USDC"
-                                                  width={16}
-                                                  height={16}
-                                                  className="rounded-full"
-                                                />
-                                                <span className="text-[10px]">
-                                                  USDC
-                                                </span>
-                                              </div>
-                                              <div className="flex items-center gap-1">
-                                                <Image
-                                                  src={getLogoPath("fxUSD")}
-                                                  alt="fxUSD"
-                                                  width={16}
-                                                  height={16}
-                                                  className="rounded-full"
-                                                />
-                                                <span className="text-[10px]">
-                                                  fxUSD
-                                                </span>
-                                              </div>
-                                            </>
-                                          );
-                                        }
-                                      })()}
-                                    </div>
+                                <div>
+                                  <div className="font-semibold mb-1">
+                                    Any Token Supported
                                   </div>
+                                  <div className="text-xs opacity-90 mb-2">
+                                    Zapper-supported assets are zapped in with
+                                    no slippage. Any other ERC20s are swapped
+                                    with Velora.
+                                  </div>
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="text-[10px] opacity-75">
+                                      Zapper-supported:
+                                    </span>
+                                    {(() => {
+                                      const isWstETHMarket =
+                                        collateralSymbol.toLowerCase() ===
+                                        "wsteth";
+
+                                      if (isWstETHMarket) {
+                                        return (
+                                          <>
+                                            <div className="flex items-center gap-1">
+                                              <Image
+                                                src={getLogoPath("ETH")}
+                                                alt="ETH"
+                                                width={16}
+                                                height={16}
+                                                className="rounded-full"
+                                              />
+                                              <span className="text-[10px]">
+                                                ETH
+                                              </span>
+                                            </div>
+                                            <div className="flex items-center gap-1">
+                                              <Image
+                                                src={getLogoPath("stETH")}
+                                                alt="stETH"
+                                                width={16}
+                                                height={16}
+                                                className="rounded-full"
+                                              />
+                                              <span className="text-[10px]">
+                                                stETH
+                                              </span>
+                                            </div>
+                                          </>
+                                        );
+                                      } else {
+                                        return (
+                                          <>
+                                            <div className="flex items-center gap-1">
+                                              <Image
+                                                src={getLogoPath("USDC")}
+                                                alt="USDC"
+                                                width={16}
+                                                height={16}
+                                                className="rounded-full"
+                                              />
+                                              <span className="text-[10px]">
+                                                USDC
+                                              </span>
+                                            </div>
+                                            <div className="flex items-center gap-1">
+                                              <Image
+                                                src={getLogoPath("fxUSD")}
+                                                alt="fxUSD"
+                                                width={16}
+                                                height={16}
+                                                className="rounded-full"
+                                              />
+                                              <span className="text-[10px]">
+                                                fxUSD
+                                              </span>
+                                            </div>
+                                          </>
+                                        );
+                                      }
+                                    })()}
+                                  </div>
+                                </div>
                                 )
                               }
                             >
@@ -4719,7 +3036,7 @@ export default function GenesisIndexPage() {
                 </>
               );
             })()}
-          </section>
+          </GenesisMarketsSections>
         )}
 
         {/* Coming Next Markets Section */}
@@ -5046,45 +3363,19 @@ export default function GenesisIndexPage() {
                       const endDate = (mkt as any).genesis?.endDate;
                       const oracleAddress = (mkt as any).addresses?.collateralPrice as `0x${string}` | undefined;
                       const collateralPriceData = oracleAddress ? collateralPricesMap.get(oracleAddress.toLowerCase()) : undefined;
-                      const wrappedRate = collateralPriceData?.maxRate;
-                      const underlyingPriceFromOracle = collateralPriceData?.priceUSD || 0;
                       const marketCoinGeckoId = (mkt as any)?.coinGeckoId as string | undefined;
                       const underlyingSymbol = (mkt as any).collateral?.underlyingSymbol || collateralSymbol;
 
-                      // Calculate price (same logic as active markets)
-                      let underlyingPriceUSD = 0;
-                      if (underlyingSymbol.toLowerCase() === "fxusd") {
-                        underlyingPriceUSD = 1.0;
-                      } else if (marketCoinGeckoId && coinGeckoPrices[marketCoinGeckoId] && coinGeckoPrices[marketCoinGeckoId]! > 0) {
-                        underlyingPriceUSD = coinGeckoPrices[marketCoinGeckoId]!;
-                      } else if (underlyingPriceFromOracle > 0) {
-                        underlyingPriceUSD = underlyingPriceFromOracle;
-                      }
-
-                      const coinGeckoId = (mkt as any)?.coinGeckoId as string | undefined;
-                      const coinGeckoReturnedPrice = marketCoinGeckoId && coinGeckoPrices[marketCoinGeckoId];
-                      const coinGeckoIsWrappedToken = coinGeckoReturnedPrice && coinGeckoId && (
-                        (coinGeckoId.toLowerCase() === "wrapped-steth" && collateralSymbol.toLowerCase() === "wsteth") ||
-                        ((coinGeckoId.toLowerCase() === "fx-usd-saving" || coinGeckoId.toLowerCase() === "fxsave") && collateralSymbol.toLowerCase() === "fxsave")
-                      );
-                      const isWstETH = collateralSymbol.toLowerCase() === "wsteth";
-                      const isFxSAVE = collateralSymbol.toLowerCase() === "fxsave";
-                      const stETHPrice = coinGeckoPrices["lido-staked-ethereum-steth"];
-                      const useStETHFallback = isWstETH && !coinGeckoIsWrappedToken && underlyingPriceUSD === 0 && stETHPrice && stETHPrice > 0 && wrappedRate && wrappedRate > 0n;
-                      const wrappedTokenPriceUSD = coinGeckoIsWrappedToken && coinGeckoReturnedPrice && coinGeckoReturnedPrice > 0
-                        ? coinGeckoReturnedPrice
-                        : useStETHFallback
-                        ? stETHPrice * (Number(wrappedRate) / 1e18)
-                        : (isWstETH || isFxSAVE) && coinGeckoLoading && marketCoinGeckoId && underlyingPriceUSD > 0 && wrappedRate
-                        ? underlyingPriceUSD * (Number(wrappedRate) / 1e18)
-                        : wrappedRate && underlyingPriceUSD > 0
-                        ? underlyingPriceUSD * (Number(wrappedRate) / 1e18)
-                        : coinGeckoLoading && marketCoinGeckoId
-                        ? 0
-                        : isFxSAVE
-                        ? 1.07
-                        : underlyingPriceUSD;
-                      const collateralPriceUSD = wrappedTokenPriceUSD;
+                      const { collateralPriceUSD } = computeGenesisRowUsdPricing({
+                        underlyingSymbol,
+                        pegTarget: (mkt as any)?.pegTarget,
+                        marketCoinGeckoId,
+                        coinGeckoPrices,
+                        collateralPriceData,
+                        chainlinkBtcPrice,
+                        coinGeckoLoading,
+                        collateralSymbol,
+                      });
                       const totalDeposits = totalDepositsReads?.[mi]?.result as bigint | undefined;
                       const totalDepositsAmount = totalDeposits ? Number(formatEther(totalDeposits)) : 0;
                       const totalDepositsUSD = totalDepositsAmount * collateralPriceUSD;
@@ -5356,50 +3647,50 @@ export default function GenesisIndexPage() {
                                 <MarketMaintenanceTag />
                               ) : (
                                 hasClaimable && (
-                                  <button
-                                    onClick={async (e) => {
-                                      e.stopPropagation();
-                                      if (genesisAddress && address && hasClaimable) {
-                                        try {
-                                          setClaimingMarket(id);
-                                          setClaimModal({
-                                            open: true,
-                                            status: "pending",
-                                            marketId: id,
-                                          });
-                                          const tx = await writeContractAsync({
-                                            address: genesisAddress as `0x${string}`,
-                                            abi: GENESIS_ABI,
-                                            functionName: "claim",
-                                            args: [address as `0x${string}`],
-                                          });
-                                          setClaimModal({
-                                            open: true,
-                                            status: "success",
-                                            marketId: id,
-                                          });
-                                          setShareModal({
-                                            open: false,
-                                            marketName: displayMarketName,
-                                            peggedSymbol: rowPeggedSymbol,
-                                          });
-                                        } catch (error) {
-                                          setClaimModal({
-                                            open: true,
-                                            status: "error",
-                                            marketId: id,
-                                            errorMessage: (error as any)?.shortMessage || (error as any)?.message || "Claim failed",
-                                          });
-                                        } finally {
-                                          setClaimingMarket(null);
-                                        }
+                                <button
+                                  onClick={async (e) => {
+                                    e.stopPropagation();
+                                    if (genesisAddress && address && hasClaimable) {
+                                      try {
+                                        setClaimingMarket(id);
+                                        setClaimModal({
+                                          open: true,
+                                          status: "pending",
+                                          marketId: id,
+                                        });
+                                        const tx = await writeContractAsync({
+                                          address: genesisAddress as `0x${string}`,
+                                          abi: GENESIS_ABI,
+                                          functionName: "claim",
+                                          args: [address as `0x${string}`],
+                                        });
+                                        setClaimModal({
+                                          open: true,
+                                          status: "success",
+                                          marketId: id,
+                                        });
+                                        setShareModal({
+                                          open: false,
+                                          marketName: displayMarketName,
+                                          peggedSymbol: rowPeggedSymbol,
+                                        });
+                                      } catch (error) {
+                                        setClaimModal({
+                                          open: true,
+                                          status: "error",
+                                          marketId: id,
+                                          errorMessage: (error as any)?.shortMessage || (error as any)?.message || "Claim failed",
+                                        });
+                                      } finally {
+                                        setClaimingMarket(null);
                                       }
-                                    }}
-                                    disabled={!genesisAddress || !address || !hasClaimable || claimingMarket === id}
-                                    className="px-3 py-1.5 text-[10px] font-medium bg-[#1E4775] text-white hover:bg-[#17395F] disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors rounded-full whitespace-nowrap"
-                                  >
-                                    {claimingMarket === id ? "Claiming..." : "Claim"}
-                                  </button>
+                                    }
+                                  }}
+                                  disabled={!genesisAddress || !address || !hasClaimable || claimingMarket === id}
+                                  className="px-3 py-1.5 text-[10px] font-medium bg-[#1E4775] text-white hover:bg-[#17395F] disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors rounded-full whitespace-nowrap"
+                                >
+                                  {claimingMarket === id ? "Claiming..." : "Claim"}
+                                </button>
                                 )
                               )}
                             </div>
