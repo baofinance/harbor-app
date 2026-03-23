@@ -12,7 +12,7 @@ export interface DepositModalShellProps {
   children: React.ReactNode;
   /** Disable close button (e.g. during tx processing) */
   closeDisabled?: boolean;
-  /** Extra classes for the panel (e.g. rounded-none, max-h-[90vh], flex flex-col) */
+  /** Extra classes for the panel (e.g. max-h-[90vh], flex flex-col). Base includes rounded-md. */
   panelClassName?: string;
   /** Extra classes for the content area */
   contentClassName?: string;
@@ -49,7 +49,7 @@ export function DepositModalShell({
       />
 
       <div
-        className={`relative bg-white shadow-2xl w-full max-w-md mx-2 sm:mx-4 animate-in fade-in-0 scale-in-95 duration-200 overflow-hidden ${panelClassName}`}
+        className={`relative bg-white shadow-2xl w-full max-w-md mx-2 sm:mx-4 animate-in fade-in-0 scale-in-95 duration-200 overflow-hidden rounded-md ${panelClassName}`}
       >
         {banner}
 

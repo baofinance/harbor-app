@@ -44,7 +44,7 @@ export const GenesisErrorBanner = ({
   const styles = toneStyles[tone];
 
   return (
-    <div className={`${styles.wrapper} rounded-none p-3 mb-4`}>
+    <div className={`${styles.wrapper} rounded-md p-3 mb-4`}>
       <div className="flex items-start gap-3">
         <div className={`${styles.icon} text-xl mt-0.5`}>⚠️</div>
         <div className="flex-1">

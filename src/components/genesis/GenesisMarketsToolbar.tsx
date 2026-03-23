@@ -39,7 +39,7 @@ export function GenesisMarketsToolbar({
         <h2 className="text-xs font-medium text-white/70 uppercase tracking-wider flex items-center gap-2">
           Active Campaign:
           {activeCampaignName && (
-            <span className="inline-flex items-center px-2.5 py-1 bg-[#E67A6B] hover:bg-[#D66A5B] border border-white text-white text-xs font-semibold uppercase tracking-wider rounded-full transition-colors">
+            <span className="inline-flex items-center px-2.5 py-1 bg-[#E67A6B] hover:bg-[#D66A5B] border border-white text-white text-xs font-semibold uppercase tracking-wider rounded-md transition-colors">
               {activeCampaignName}
             </span>
           )}
@@ -49,28 +49,37 @@ export function GenesisMarketsToolbar({
             <span className="text-xs font-medium text-white/70 uppercase tracking-wider">
               Genesis:
             </span>
-            <button
-              type="button"
-              onClick={() => setShowCompletedGenesis(false)}
-              className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
-                !showCompletedGenesis
-                  ? "bg-white text-[#1E4775]"
-                  : "bg-white/10 text-white hover:bg-white/20"
-              }`}
+            {/* Segmented control — matches PageLayoutToggle (UI− / UI+): track bg-white/10, active white + Harbor blue, inactive white text; height matches Network dropdown (py-2 text-sm) */}
+            <div
+              className="flex shrink-0 items-center gap-0.5 rounded-md bg-white/10 p-0.5"
+              role="group"
+              aria-label="Genesis markets: ongoing or all campaigns"
             >
-              Ongoing
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowCompletedGenesis(true)}
-              className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
-                showCompletedGenesis
-                  ? "bg-white text-[#1E4775]"
-                  : "bg-white/10 text-white hover:bg-white/20"
-              }`}
-            >
-              All
-            </button>
+              <button
+                type="button"
+                onClick={() => setShowCompletedGenesis(false)}
+                aria-pressed={!showCompletedGenesis}
+                className={`min-w-[4.5rem] rounded px-3 py-2 text-sm font-medium tabular-nums tracking-tight transition-colors ${
+                  !showCompletedGenesis
+                    ? "bg-white text-[#1E4775] shadow-sm"
+                    : "text-white hover:bg-white/20"
+                }`}
+              >
+                Ongoing
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowCompletedGenesis(true)}
+                aria-pressed={showCompletedGenesis}
+                className={`min-w-[3.25rem] rounded px-3 py-2 text-sm font-medium tabular-nums tracking-tight transition-colors ${
+                  showCompletedGenesis
+                    ? "bg-white text-[#1E4775] shadow-sm"
+                    : "text-white hover:bg-white/20"
+                }`}
+              >
+                All
+              </button>
+            </div>
           </div>
         )}
         {genesisChainOptions.length > 1 && (

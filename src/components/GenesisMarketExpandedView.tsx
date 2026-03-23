@@ -60,9 +60,9 @@ export const GenesisMarketExpandedView = ({
       : leveragedTokenSymbol || (market as any).name || "Market";
 
   return (
-    <div className="bg-[rgb(var(--surface-selected-rgb))] p-4 border-t border-white/20">
+    <div className="bg-[rgb(var(--surface-selected-rgb))] p-4 border-t border-white/20 rounded-md overflow-hidden">
       {/* Description Box */}
-      <div className="bg-white p-4 mb-2 border border-[#1E4775]/10">
+      <div className="bg-white p-4 mb-2 border border-[#1E4775]/10 rounded-md">
         <p className="text-xs text-[#1E4775] leading-relaxed">
           Earn ledger marks for providing liquidity to the{" "}
           <span className="font-semibold">{marketName}</span> market.{" "}
@@ -83,7 +83,7 @@ export const GenesisMarketExpandedView = ({
         {/* First Column: End Date/Time and Projected APR */}
         <div className="flex flex-col gap-2 h-full">
           {/* Genesis Info */}
-          <div className="bg-white p-2 flex flex-col justify-center">
+          <div className="bg-white p-2 flex flex-col justify-center rounded-md">
             <h3 className="text-[#1E4775] font-semibold mb-1 text-xs text-center">
               End Date/Time
             </h3>
@@ -115,7 +115,7 @@ export const GenesisMarketExpandedView = ({
         </div>
 
         {/* Contract Info */}
-        <div className="bg-white p-2 flex flex-col">
+        <div className="bg-white p-2 flex flex-col rounded-md">
           <h3 className="text-[#1E4775] font-semibold mb-1 text-xs">
             Contract Info
           </h3>
@@ -148,7 +148,7 @@ export const GenesisMarketExpandedView = ({
           </div>
         </div>
 
-        <div className="bg-white p-2 flex flex-col">
+        <div className="bg-white p-2 flex flex-col rounded-md">
           <h3 className="text-[#1E4775] font-semibold mb-1 text-xs">Tokens</h3>
           <div className="space-y-1 text-xs flex-1 flex justify-center flex-col">
             <div className="flex justify-between items-center">

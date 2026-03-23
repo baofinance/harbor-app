@@ -49,7 +49,7 @@ export default function LedgerMarksCompactBadge({
       className={className}
     >
       <div
-        className={`flex cursor-help items-center bg-[#E67A6B] hover:bg-[#D66A5B] border border-white backdrop-blur-sm px-2 py-1 rounded-full transition-colors ${pillClassName}`}
+        className={`flex cursor-help items-center bg-[#E67A6B] hover:bg-[#D66A5B] border border-white backdrop-blur-sm px-2 py-1 rounded-md transition-colors ${pillClassName}`}
       >
         <div className="flex items-center gap-1.5 text-white text-sm whitespace-nowrap">
           <Image

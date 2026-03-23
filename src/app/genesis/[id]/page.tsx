@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, use } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import {
  useAccount,
@@ -390,6 +391,7 @@ export default function GenesisMarketPage({ params }: PageProps) {
  const { address, isConnected } = useAccount();
  const { writeContractAsync } = useWriteContract();
  const publicClient = usePublicClient();
+ const queryClient = useQueryClient();
 
  // Removed deposit/withdraw modals; keep only claim action
  const [isClaiming, setIsClaiming] = useState(false);
@@ -684,6 +686,7 @@ export default function GenesisMarketPage({ params }: PageProps) {
  });
  setClaimTx(tx);
  await publicClient?.waitForTransactionReceipt({ hash: tx });
+ await queryClient.invalidateQueries({ queryKey: ["allHarborMarks"] });
  } catch (e) {
  setClaimError(e instanceof Error ? e.message :"Claim failed");
  } finally {

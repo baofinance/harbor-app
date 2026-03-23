@@ -61,7 +61,7 @@ export function GenesisCampaignStats({
     <>
       {/* Subgraph Error Banner */}
       {marksError && (
-        <div className="bg-[#FF8A7A]/10 border border-[#FF8A7A]/30 rounded p-3 mb-4">
+        <div className="bg-[#FF8A7A]/10 border border-[#FF8A7A]/30 rounded-md p-3 mb-4">
           <div className="flex items-start gap-3">
             <div className="text-[#FF8A7A] text-xl mt-0.5">⚠️</div>
             <div className="flex-1">

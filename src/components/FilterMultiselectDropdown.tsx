@@ -103,7 +103,7 @@ export function FilterMultiselectDropdown({
         by={(a, b) => a.id === b.id}
       >
         <ListboxButton
-          className="w-full flex items-center justify-between gap-2 px-3 py-2 bg-white text-[#1E4775] border border-[#1E4775]/20 focus:border-[#1E4775]/40 focus:ring-1 focus:ring-[#1E4775]/20 focus:outline-none text-sm cursor-pointer data-[disabled]:opacity-50"
+          className="w-full flex items-center justify-between gap-2 px-3 py-2 bg-white text-[#1E4775] border border-[#1E4775]/20 rounded-md focus:border-[#1E4775]/40 focus:ring-1 focus:ring-[#1E4775]/20 focus:outline-none text-sm cursor-pointer data-[disabled]:opacity-50"
         >
           <span className="text-[#1E4775]/70 text-xs shrink-0">{label}:</span>
           <span className="font-medium truncate">{displayText}</span>
@@ -112,7 +112,7 @@ export function FilterMultiselectDropdown({
 
         <ListboxOptions
           anchor={{ to: "bottom start", gap: 2 }}
-          className={`z-50 w-full ${minWidthClass} min-w-0 bg-white border border-[#1E4775]/20 rounded-none shadow-lg overflow-hidden overflow-y-auto outline-none [width:var(--button-width)] ${maxHeightClass}`}
+          className={`z-50 w-full ${minWidthClass} min-w-0 bg-white border border-[#1E4775]/20 rounded-md shadow-lg overflow-hidden overflow-y-auto outline-none [width:var(--button-width)] ${maxHeightClass}`}
         >
           {groupLabel && (
             <div className="px-4 py-2 bg-[#1E4775]/5 text-xs font-semibold text-[#1E4775]/70 uppercase tracking-wider">

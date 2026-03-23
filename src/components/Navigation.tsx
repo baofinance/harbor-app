@@ -1,4 +1,5 @@
 "use client";
+import { Suspense } from "react";
 import {
   Disclosure,
   DisclosureButton,
@@ -9,6 +10,8 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { ConnectWallet } from "@/components/Wallet";
+import { PageLayoutToggle } from "@/components/PageLayoutToggle";
+import { PAGE_LAYOUT_TOGGLE_PATH_PREFIXES } from "@/config/pageLayoutToggleRoutes";
 
 export default function Example() {
   const pathname = usePathname();
@@ -19,7 +22,7 @@ export default function Example() {
   };
 
   const linkClass = (href: string) =>
-    ` px-3 py-2 text-sm font-medium ${
+    `shrink-0 whitespace-nowrap rounded-md px-2 sm:px-2.5 py-2 text-sm font-medium ${
       isActive(href)
         ? "text-[#1E4775] bg-white"
         : "text-white hover:bg-white/20 hover:text-white"
@@ -31,9 +34,12 @@ export default function Example() {
       className="relative shrink-0 bg-[#1E4775] after:pointer-events-none max-w-7xl mx-auto after:absolute after:inset-x-0 after:bottom-0 after:h-px after:bg-white/20 mb-4 sm:mb-6"
     >
       <div className="w-full px-3 sm:px-4 lg:px-8">
-        <div className="flex h-16 items-center justify-between">
-          <div className="flex items-center">
-            <a href="https://harborfinance.io" className="h-10 w-auto relative mr-4">
+        <div className="flex h-16 items-center justify-between gap-2">
+          <div className="flex min-w-0 flex-1 items-center">
+            <a
+              href="https://harborfinance.io"
+              className="relative mr-2 h-10 w-auto shrink-0 sm:mr-3"
+            >
               <Image
                 src="/logo.svg"
                 alt="Logo"
@@ -43,8 +49,8 @@ export default function Example() {
                 priority
               />
             </a>
-            <div className="hidden sm:block">
-              <div className="flex space-x-2">
+            <div className="hidden min-w-0 flex-1 sm:block">
+              <div className="flex flex-nowrap items-center gap-1 overflow-x-auto py-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 <Link
                   href="/genesis"
                   className={linkClass("/genesis")}
@@ -90,7 +96,12 @@ export default function Example() {
               </div>
             </div>
           </div>
-          <div className="hidden sm:ml-6 sm:block">
+          <div className="hidden shrink-0 sm:ml-2 sm:flex sm:items-center sm:gap-2 lg:gap-3">
+            <Suspense fallback={null}>
+              {PAGE_LAYOUT_TOGGLE_PATH_PREFIXES.map((prefix) => (
+                <PageLayoutToggle key={prefix} pathPrefix={prefix} />
+              ))}
+            </Suspense>
             <ConnectWallet />
           </div>
           <div className="-mr-2 flex sm:hidden">
@@ -122,7 +133,12 @@ export default function Example() {
               />
             </DisclosureButton>
           </div>
-          <div className="flex items-center justify-center mb-4 flex-shrink-0">
+          <div className="flex flex-col items-center justify-center mb-4 flex-shrink-0 gap-3 w-full max-w-sm mx-auto">
+            <Suspense fallback={null}>
+              {PAGE_LAYOUT_TOGGLE_PATH_PREFIXES.map((prefix) => (
+                <PageLayoutToggle key={prefix} pathPrefix={prefix} />
+              ))}
+            </Suspense>
             <ConnectWallet />
           </div>
           <div className="flex flex-col w-full items-stretch justify-center space-y-2.5 py-2">

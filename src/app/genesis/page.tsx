@@ -6,13 +6,10 @@ import {
   useAccount,
   useContractReads,
   useContractRead,
-  useWriteContract,
-  usePublicClient,
 } from "wagmi";
 import { formatEther } from "viem";
 import { useQueryClient } from "@tanstack/react-query";
 import { isMarketInMaintenance } from "../../config/markets";
-import { MarketMaintenanceTag } from "@/components/MarketMaintenanceTag";
 import { GenesisManageModal } from "@/components/GenesisManageModal";
 import { CHAINLINK_FEEDS } from "@/config/chainlink";
 import { GENESIS_ABI, ERC20_ABI, CHAINLINK_ORACLE_ABI } from "@/abis/shared";
@@ -44,23 +41,27 @@ import { FILTER_NONE_SENTINEL } from "@/components/FilterMultiselectDropdown";
 import NetworkIconCell from "@/components/NetworkIconCell";
 import { useSortedGenesisMarkets } from "@/hooks/useSortedGenesisMarkets";
 import {
+  GenesisAprMarksColumn,
   GenesisCampaignStats,
+  GenesisHeroIntroCards,
   GenesisMarketsSections,
-  GenesisPageHero,
+  GenesisMarketRowClaimActions,
+  GenesisMarketTokenStrip,
+  GenesisPageTitleSection,
 } from "@/components/genesis";
-import {
-  calculateMarksForAPR,
-  calculateMarksBreakdown,
-  calculateTideAPRBreakdown,
-} from "@/utils/tideAPR";
+import type { GenesisMarketConfig } from "@/types/genesisMarket";
+import { useGenesisClaimMarket } from "@/hooks/useGenesisClaimMarket";
 import { DEFAULT_FDV } from "@/utils/tokenAllocation";
 import { formatGenesisMarketDisplayName } from "@/utils/genesisDisplay";
 import { useGenesisPageData } from "@/hooks/useGenesisPageData";
 import { computeGenesisRowUsdPricing } from "@/utils/genesisRowPricing";
+import { isBasicPageLayout } from "@/utils/pageLayoutView";
 
 export default function GenesisIndexPage() {
   const { address, isConnected } = useAccount();
   const searchParams = useSearchParams();
+  /** Header toggle: Basic = toolbar + tables only (no hero + Ledger Marks strip). See `pageLayoutView`. */
+  const genesisViewBasic = isBasicPageLayout(searchParams, ["genesisView"]);
   const isAprRevealed =
     process.env.NEXT_PUBLIC_MAIDEN_VOYAGE_APR_REVEALED === "true" ||
     searchParams.get("apr") === "revealed";
@@ -88,9 +89,6 @@ export default function GenesisIndexPage() {
   const [chainFilterSelected, setChainFilterSelected] = useState<string[]>([]);
   // Hide completed genesis sections by default; filter to show "Ongoing" only or "All" (ongoing + completed)
   const [showCompletedGenesis, setShowCompletedGenesis] = useState(false);
-
-  const { writeContractAsync } = useWriteContract();
-  const publicClient = usePublicClient();
 
   // Prevent hydration mismatch by only rendering dynamic content after mount
   useEffect(() => {
@@ -133,8 +131,8 @@ export default function GenesisIndexPage() {
   // Use Anvil-specific hook to ensure reads go to Anvil network
   const genesisReadContracts = useMemo(() => {
     return genesisMarkets.flatMap(([_, mkt]) => {
-      const g = (mkt as any).addresses?.genesis as `0x${string}` | undefined;
-      const mktChainId = (mkt as any)?.chainId ?? 1;
+      const g = (mkt as GenesisMarketConfig).addresses?.genesis as `0x${string}` | undefined;
+      const mktChainId = (mkt as GenesisMarketConfig)?.chainId ?? 1;
       if (!g || typeof g !== "string" || !g.startsWith("0x") || g.length !== 42)
         return [];
       const base = [
@@ -190,7 +188,7 @@ export default function GenesisIndexPage() {
       const marksForMarket = marksResults?.find(
         (marks) =>
           marks.genesisAddress?.toLowerCase() ===
-          (mkt as any).addresses?.genesis?.toLowerCase()
+          (mkt as GenesisMarketConfig).addresses?.genesis?.toLowerCase()
       );
       const userMarksData = marksForMarket?.data?.userHarborMarks;
       const marks = Array.isArray(userMarksData)
@@ -212,7 +210,7 @@ export default function GenesisIndexPage() {
     const grouped = new Map<string, Array<[string, any, any]>>();
     completedMarkets.forEach(([id, mkt, marks]) => {
       // Use campaign from market config, fallback to subgraph, then "Other"
-      const marketConfig = (mkt as any);
+      const marketConfig = (mkt as GenesisMarketConfig);
       const campaignLabel = marketConfig?.marksCampaign?.label || marks?.campaignLabel || "Other";
       if (!grouped.has(campaignLabel)) {
         grouped.set(campaignLabel, []);
@@ -227,8 +225,8 @@ export default function GenesisIndexPage() {
   const collateralTokenContracts = useMemo(() => {
     return genesisMarkets
       .map(([_, mkt]) => {
-        const g = (mkt as any).addresses?.genesis as `0x${string}` | undefined;
-        const mktChainId = (mkt as any)?.chainId ?? 1;
+        const g = (mkt as GenesisMarketConfig).addresses?.genesis as `0x${string}` | undefined;
+        const mktChainId = (mkt as GenesisMarketConfig)?.chainId ?? 1;
         if (
           !g ||
           typeof g !== "string" ||
@@ -254,8 +252,8 @@ export default function GenesisIndexPage() {
 
   const totalDepositsContracts = useMemo(() => {
     return genesisMarkets.flatMap(([_, mkt], mi) => {
-      const g = (mkt as any).addresses?.genesis as `0x${string}` | undefined;
-      const mktChainId = (mkt as any)?.chainId ?? 1;
+      const g = (mkt as GenesisMarketConfig).addresses?.genesis as `0x${string}` | undefined;
+      const mktChainId = (mkt as GenesisMarketConfig)?.chainId ?? 1;
       const wrappedCollateralAddress = collateralTokenReads?.[mi]?.result as
         | `0x${string}`
         | undefined;
@@ -291,14 +289,22 @@ export default function GenesisIndexPage() {
         collateralTokenReads.length > 0,
     });
 
+  const { claimMarket } = useGenesisClaimMarket({
+    setClaimingMarket,
+    setClaimModal,
+    setShareModal,
+    refetchReads,
+    refetchTotalDeposits,
+  });
+
   // Fetch token prices using the dedicated hook
   // This hook reads peggedTokenPrice() and leveragedTokenPrice() from minter contracts
   // and multiplies by peg target USD prices to get final USD prices
   const marketTokenPriceInputs = useMemo(() => {
     return genesisMarkets.map(([id, mkt]) => ({
       marketId: id,
-      minterAddress: (mkt as any).addresses?.minter as `0x${string}`,
-      pegTarget: (mkt as any).pegTarget || "USD",
+      minterAddress: (mkt as GenesisMarketConfig).addresses?.minter as `0x${string}`,
+      pegTarget: (mkt as GenesisMarketConfig).pegTarget || "USD",
     }));
   }, [genesisMarkets]);
 
@@ -443,7 +449,7 @@ export default function GenesisIndexPage() {
   const collateralOracleAddresses = useMemo(() => {
     return genesisMarkets.map(
       ([_, mkt]) =>
-        (mkt as any).addresses?.collateralPrice as `0x${string}` | undefined
+        (mkt as GenesisMarketConfig).addresses?.collateralPrice as `0x${string}` | undefined
     );
   }, [genesisMarkets]);
 
@@ -459,11 +465,11 @@ export default function GenesisIndexPage() {
   // Fetch CoinGecko prices for markets that have coinGeckoId
   const coinGeckoIds = useMemo(() => {
     const ids = genesisMarkets
-      .map(([_, mkt]) => (mkt as any)?.coinGeckoId)
+      .map(([_, mkt]) => (mkt as GenesisMarketConfig)?.coinGeckoId)
       .filter((id): id is string => !!id);
     // Add steth as fallback for wstETH markets
     const hasWstETH = genesisMarkets.some(
-      ([_, mkt]) => (mkt as any)?.collateral?.symbol?.toLowerCase() === "wsteth"
+      ([_, mkt]) => (mkt as GenesisMarketConfig)?.collateral?.symbol?.toLowerCase() === "wsteth"
     );
     if (hasWstETH && !ids.includes("lido-staked-ethereum-steth")) {
       ids.push("lido-staked-ethereum-steth");
@@ -608,32 +614,42 @@ export default function GenesisIndexPage() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col text-white max-w-[1300px] mx-auto font-sans relative w-full">
-      <main className="container mx-auto px-4 sm:px-10 pb-6">
-        <GenesisPageHero />
+      <main className="container mx-auto px-4 sm:px-10 pb-6 pt-2 sm:pt-4">
+        <GenesisPageTitleSection />
 
-        {/* Divider */}
-        <div className="border-t border-white/10 my-2"></div>
+        {genesisViewBasic && (
+          <div className="border-t border-white/10 my-3" aria-hidden />
+        )}
 
-        <GenesisCampaignStats
-          marksError={marksError}
-          marksResults={marksResults}
-          genesisAddresses={genesisAddresses}
-          genesisMarkets={genesisMarkets}
-          reads={reads}
+        {!genesisViewBasic && (
+          <>
+            <GenesisHeroIntroCards />
+
+            {/* Divider */}
+            <div className="border-t border-white/10 my-2"></div>
+
+            <GenesisCampaignStats
+              marksError={marksError}
+              marksResults={marksResults}
+              genesisAddresses={genesisAddresses}
+              genesisMarkets={genesisMarkets}
+              reads={reads}
               isConnected={isConnected}
-          isLoadingMarks={isLoadingMarks}
-          mounted={mounted}
-          combinedHasIndexerErrors={combinedHasIndexerErrors}
-          combinedMarketsWithIndexerErrors={combinedMarketsWithIndexerErrors}
-          combinedHasAnyErrors={combinedHasAnyErrors}
-          combinedMarketsWithOtherErrors={combinedMarketsWithOtherErrors}
-          hasOraclePricingError={hasOraclePricingError}
-          marketsWithOraclePricingError={marketsWithOraclePricingError}
-          getMarketName={getMarketName}
-        />
+              isLoadingMarks={isLoadingMarks}
+              mounted={mounted}
+              combinedHasIndexerErrors={combinedHasIndexerErrors}
+              combinedMarketsWithIndexerErrors={combinedMarketsWithIndexerErrors}
+              combinedHasAnyErrors={combinedHasAnyErrors}
+              combinedMarketsWithOtherErrors={combinedMarketsWithOtherErrors}
+              hasOraclePricingError={hasOraclePricingError}
+              marketsWithOraclePricingError={marketsWithOraclePricingError}
+              getMarketName={getMarketName}
+            />
 
-        {/* Divider */}
-        <div className="border-t border-white/10 mt-2 mb-1"></div>
+            {/* Divider */}
+            <div className="border-t border-white/10 mt-2 mb-1"></div>
+          </>
+        )}
 
         {/* Only show market rows section if there are active/pending markets or ended markets with claimable tokens */}
         {hasActiveOrPendingMarkets && (
@@ -655,7 +671,7 @@ export default function GenesisIndexPage() {
               const activeSectionHeader = showHeaders ? (
                 <div
                   key="header-active"
-                        className="hidden md:block bg-white py-1.5 px-2 overflow-x-auto mb-0"
+                        className="hidden md:block bg-white py-1.5 px-2 overflow-x-auto mb-0 rounded-md"
                       >
                   <div className="grid lg:grid-cols-[32px_1.5fr_80px_0.9fr_0.9fr_0.9fr_0.7fr_0.9fr] md:grid-cols-[32px_120px_80px_100px_1fr_1fr_90px_80px] gap-4 items-center uppercase tracking-wider text-[10px] lg:text-[11px] text-[#1E4775] font-semibold">
                     <div className="min-w-0" aria-label="Network" />
@@ -768,7 +784,7 @@ export default function GenesisIndexPage() {
                 const marksForMarket = marksResults?.find(
                   (marks) =>
                     marks.genesisAddress?.toLowerCase() ===
-                    (mkt as any).addresses?.genesis?.toLowerCase()
+                    (mkt as GenesisMarketConfig).addresses?.genesis?.toLowerCase()
                 );
                 // Extract genesisEnded from subgraph data (handle both array and single object responses)
                 const userMarksData = marksForMarket?.data?.userHarborMarks;
@@ -797,14 +813,14 @@ export default function GenesisIndexPage() {
 
                 // Get token symbols from market configuration
                 const rowPeggedSymbol =
-                  (mkt as any).peggedToken?.symbol || "ha";
+                  (mkt as GenesisMarketConfig).peggedToken?.symbol || "ha";
                 const rowLeveragedSymbol =
-                  (mkt as any).leveragedToken?.symbol || "hs";
+                  (mkt as GenesisMarketConfig).leveragedToken?.symbol || "hs";
                 const rawDisplayMarketName =
                   rowLeveragedSymbol &&
                   rowLeveragedSymbol.toLowerCase().startsWith("hs")
                     ? rowLeveragedSymbol.slice(2)
-                    : rowLeveragedSymbol || (mkt as any).name || "Market";
+                    : rowLeveragedSymbol || (mkt as GenesisMarketConfig).name || "Market";
                 const displayMarketName = formatGenesisMarketDisplayName(rawDisplayMarketName);
                 const showMaintenanceTag = isMarketInMaintenance(mkt);
                 const peggedNoPrefix =
@@ -818,28 +834,28 @@ export default function GenesisIndexPage() {
                   | bigint
                   | undefined;
 
-                const genesisAddress = (mkt as any).addresses?.genesis;
+                const genesisAddress = (mkt as GenesisMarketConfig).addresses?.genesis;
                 // Use on-chain collateral token address from genesis contract, fallback to config
                 const onChainCollateralAddress = collateralTokenReads?.[mi]
                   ?.result as `0x${string}` | undefined;
                 const collateralAddress =
                   onChainCollateralAddress ||
-                  (mkt as any).addresses?.wrappedCollateralToken;
+                  (mkt as GenesisMarketConfig).addresses?.wrappedCollateralToken;
                 const collateralSymbol =
-                  (mkt as any).collateral?.symbol || "ETH"; // What's deposited (wrapped collateral)
+                  (mkt as GenesisMarketConfig).collateral?.symbol || "ETH"; // What's deposited (wrapped collateral)
                 const underlyingSymbol =
-                  (mkt as any).collateral?.underlyingSymbol || collateralSymbol; // The underlying/base token
+                  (mkt as GenesisMarketConfig).collateral?.underlyingSymbol || collateralSymbol; // The underlying/base token
 
-                const endDate = (mkt as any).genesis?.endDate;
+                const endDate = (mkt as GenesisMarketConfig).genesis?.endDate;
 
                 // Get price data from the collateral prices hook
-                const oracleAddress = (mkt as any).addresses
+                const oracleAddress = (mkt as GenesisMarketConfig).addresses
                   ?.collateralPrice as `0x${string}` | undefined;
                 const collateralPriceData = oracleAddress
                   ? collateralPricesMap.get(oracleAddress.toLowerCase())
                   : undefined;
 
-                const marketCoinGeckoId = (mkt as any)?.coinGeckoId as
+                const marketCoinGeckoId = (mkt as GenesisMarketConfig)?.coinGeckoId as
                   | string
                   | undefined;
 
@@ -849,7 +865,7 @@ export default function GenesisIndexPage() {
                   collateralPriceUSD,
                 } = computeGenesisRowUsdPricing({
                   underlyingSymbol,
-                  pegTarget: (mkt as any)?.pegTarget,
+                  pegTarget: (mkt as GenesisMarketConfig)?.pegTarget,
                   marketCoinGeckoId,
                   coinGeckoPrices,
                   collateralPriceData,
@@ -917,7 +933,7 @@ export default function GenesisIndexPage() {
                 return (
                   <React.Fragment key={id}>
                     <div
-                      className={`py-2.5 px-2 overflow-x-auto overflow-y-visible transition cursor-pointer ${
+                      className={`py-2.5 px-2 overflow-x-auto overflow-y-visible transition cursor-pointer rounded-md ${
                         isExpanded
                           ? "bg-[rgb(var(--surface-selected-rgb))]"
                           : "bg-white hover:bg-[rgb(var(--surface-selected-rgb))]"
@@ -937,42 +953,12 @@ export default function GenesisIndexPage() {
                             <span className="text-[#1E4775] font-medium text-sm">
                               {displayMarketName}
                             </span>
-                            <div className="hidden md:flex items-center gap-0.5">
-                              <span className="text-[#1E4775]/60">:</span>
-                              <SimpleTooltip label={underlyingSymbol}>
-                                <Image
-                                  src={getLogoPath(underlyingSymbol)}
-                                  alt={underlyingSymbol}
-                                  width={20}
-                                  height={20}
-                                  className="flex-shrink-0 cursor-help"
-                                />
-                              </SimpleTooltip>
-                              <span className="text-[#1E4775]/60 text-xs">
-                                =
-                              </span>
-                              <SimpleTooltip label={rowPeggedSymbol}>
-                                <Image
-                                  src={getLogoPath(rowPeggedSymbol)}
-                                  alt={rowPeggedSymbol}
-                                  width={20}
-                                  height={20}
-                                  className="flex-shrink-0 cursor-help"
-                                />
-                              </SimpleTooltip>
-                              <span className="text-[#1E4775]/60 text-xs">
-                                +
-                              </span>
-                              <SimpleTooltip label={rowLeveragedSymbol}>
-                                <Image
-                                  src={getLogoPath(rowLeveragedSymbol)}
-                                  alt={rowLeveragedSymbol}
-                                  width={20}
-                                  height={20}
-                                  className="flex-shrink-0 cursor-help"
-                                />
-                              </SimpleTooltip>
-                            </div>
+                            <GenesisMarketTokenStrip
+                              variant="mobile"
+                              underlyingSymbol={underlyingSymbol}
+                              rowPeggedSymbol={rowPeggedSymbol}
+                              rowLeveragedSymbol={rowLeveragedSymbol}
+                            />
                             {isExpanded ? (
                               <ChevronUpIcon className="w-5 h-5 text-[#1E4775] flex-shrink-0 ml-1" />
                             ) : (
@@ -980,334 +966,56 @@ export default function GenesisIndexPage() {
                             )}
                           </div>
                           {/* Combined APR for mobile - next to market title */}
-                          {(() => {
-                            const isWstETH =
-                              collateralSymbol.toLowerCase() === "wsteth";
-                            const isFxSAVE =
-                              collateralSymbol.toLowerCase() === "fxsave";
-                            const underlyingAPR = isWstETH
-                              ? wstETHAPR
-                              : isFxSAVE
-                              ? fxSAVEAPR
-                              : null;
-                            const isLoadingAPR = isWstETH
-                              ? isLoadingWstETHAPR
-                              : isFxSAVE
-                              ? isLoadingFxSAVEAPR
-                              : false;
-
-                            const isValidAPR =
-                              underlyingAPR !== null &&
-                              typeof underlyingAPR === "number" &&
-                              !isNaN(underlyingAPR) &&
-                              isFinite(underlyingAPR) &&
-                              underlyingAPR >= 0;
-
-                            // Get user marks for this market
-                            const userMarksForMarket = marks
-                              ? parseFloat(marks.currentMarks || "0")
-                              : 0;
-
-                            // Calculate genesis days - use market config endDate as primary source
-                            const marketEndDate = endDate
-                              ? new Date(endDate).getTime()
-                              : 0;
-                            const genesisStartDate = marks
-                              ? parseInt(marks.genesisStartDate || "0")
-                              : 0;
-                            const genesisEndDateFromMarks = marks
-                              ? parseInt(marks.genesisEndDate || "0")
-                              : 0;
-                            // Prefer market config endDate, fall back to marks data
-                            const genesisEndDate =
-                              marketEndDate > 0
-                                ? marketEndDate
-                                : genesisEndDateFromMarks;
-                            const genesisDays =
-                              genesisEndDate > genesisStartDate &&
-                              genesisStartDate > 0
-                                ? (genesisEndDate - genesisStartDate) /
-                                  (1000 * 60 * 60 * 24)
-                                : 7; // Default to 7 days if not available
-
-                            // Calculate days left in genesis
-                            const now = Date.now();
-                            const daysLeftInGenesis =
-                              genesisEndDate > now
-                                ? (genesisEndDate - now) / (1000 * 60 * 60 * 24)
-                                : genesisDays; // Fall back to full genesis period if end date not available
-
-                            // Calculate values for APR - use $1 for estimation when no wallet connected or no deposit
-                            // This shows "what would I earn if I deposit $1"
-                            const currentDepositUSD = marks
-                              ? parseFloat(marks.currentDepositUSD || "0")
-                              : 0;
-                            const hasUserDeposit =
-                              userDepositUSD > 0 || currentDepositUSD > 0;
-                            // Use $1 for APR estimation when user has no deposit
-                            const depositForAPR = hasUserDeposit
-                              ? userDepositUSD > 0
-                                ? userDepositUSD
-                                : currentDepositUSD
-                              : 1; // Use $1 for estimation
-
-                            // Get early bonus status for this market to check if cap is filled
-                            const marketBonusData = bonusStatusResults?.find(
-                              (status) =>
-                                status.genesisAddress?.toLowerCase() ===
-                                genesisAddress?.toLowerCase()
-                            );
-                            const marketBonusStatus = marketBonusData?.data;
-                            const earlyBonusCapFilled = marketBonusStatus
-                              ? Number(marketBonusStatus.cumulativeDeposits) >=
-                                Number(marketBonusStatus.thresholdAmount)
-                              : false;
-                            const earlyBonusAvailable = !earlyBonusCapFilled;
-
-                            // Calculate marks for APR calculation including estimated bonus marks
-                            const earlyBonusEligibleDepositUSDFromMarks = marks
-                              ? parseFloat(
-                                  marks.earlyBonusEligibleDepositUSD || "0"
-                                )
-                              : 0;
-                            const genesisEnded = marks
-                              ? marks.genesisEnded
-                              : false;
-                            const qualifiesForEarlyBonusFromMarks = marks
-                              ? marks.qualifiesForEarlyBonus || false
-                              : false;
-
-                            // If early bonus cap is not filled and user has a deposit, all deposits qualify for early bonus
-                            // So earlyBonusEligibleDepositUSD should equal currentDepositUSD
-                            const earlyBonusEligibleDepositUSD =
-                              hasUserDeposit && earlyBonusAvailable
-                                ? depositForAPR
-                                : earlyBonusEligibleDepositUSDFromMarks;
-                            const qualifiesForEarlyBonus =
-                              hasUserDeposit && earlyBonusAvailable
-                                ? true
-                                : qualifiesForEarlyBonusFromMarks;
-
-                            // For estimation, only include early bonus if cap is not filled
-                            const estimatedEarlyBonusEligible =
-                              earlyBonusAvailable ? 1 : 0;
-                            const estimatedQualifiesForEarlyBonus =
-                              earlyBonusAvailable;
-
-                            // For APR estimation, use depositForAPR (either user's deposit or $1)
-                            const marksForAPR = calculateMarksForAPR(
-                              userMarksForMarket,
-                              depositForAPR,
-                              hasUserDeposit
-                                ? earlyBonusEligibleDepositUSD
-                                : estimatedEarlyBonusEligible,
-                              genesisEnded,
-                              hasUserDeposit
-                                ? qualifiesForEarlyBonus
-                                : estimatedQualifiesForEarlyBonus,
-                              daysLeftInGenesis
-                            );
-
-                            // Calculate marks breakdown for APR breakdown
-                            const marksBreakdown = calculateMarksBreakdown(
-                              userMarksForMarket,
-                              depositForAPR,
-                              hasUserDeposit
-                                ? earlyBonusEligibleDepositUSD
-                                : estimatedEarlyBonusEligible,
-                              genesisEnded,
-                              hasUserDeposit
-                                ? qualifiesForEarlyBonus
-                                : estimatedQualifiesForEarlyBonus,
-                              daysLeftInGenesis
-                            );
-
-                            // Use safe values (with mounted check) or fallback values if data not loaded yet
-                            const tvlForAPR =
-                              safeTotalGenesisTVL > 0
-                                ? safeTotalGenesisTVL
-                                : totalDepositsUSD > 0
-                                ? totalDepositsUSD
-                                : 1000000; // Default $1M
-
-                            // Only use real total marks - don't estimate (estimation causes calculation errors)
-                            const marksForAPRTotal = safeTotalMaidenVoyageMarks;
-
-                            // Show combined APR if we have underlying APR and TVL
-                            // Allow showing even if marks are 0 (will show 0% for $TIDE APR)
-                            // This gives users visibility into the breakdown even before marks data loads
-                            const canShowCombinedAPR =
-                              mounted &&
-                              isValidAPR &&
-                              depositForAPR > 0 &&
-                              tvlForAPR > 0 &&
-                              !safeIsLoadingTotalTVL; // Wait for TVL, but marks can be 0
-
-                            // Calculate APR breakdown - show if we have valid data for APR calculation
-                            // Calculate breakdown whenever we have the data needed
-                            const aprBreakdown =
-                              canShowCombinedAPR &&
-                              depositForAPR > 0 &&
-                              tvlForAPR > 0 &&
-                              genesisDays > 0 &&
-                              marksForAPRTotal > 0
-                                ? (() => {
-                                    try {
-                                      const breakdown =
-                                        calculateTideAPRBreakdown(
-                                          marksBreakdown,
-                                          marksForAPRTotal,
-                                          depositForAPR,
-                                          tvlForAPR,
-                                          daysLeftInGenesis,
-                                          fdv
-                                        );
-                                      // Always return the breakdown if calculation succeeded, even if values are 0
-                                      return breakdown;
-                                    } catch {
-                                      return undefined;
-                                    }
-                                  })()
-                                : undefined;
-
-                            // Display marks accumulated for this market (include accumulation since last update)
-                            const lastUpdated = marks
-                              ? parseInt(marks.lastUpdated || "0", 10)
-                              : 0;
-                            const daysElapsed =
-                              lastUpdated > 0
-                                ? (Date.now() / 1000 - lastUpdated) /
-                                  (24 * 60 * 60)
-                                : 0;
-                            const displayMarks = genesisEnded
-                              ? userMarksForMarket
-                              : userMarksForMarket +
-                                daysElapsed * currentDepositUSD * 10;
-
-                            return (
-                              <div className="flex-shrink-0 text-right mr-8">
-                                <div className="text-[#1E4775]/70 text-[10px]">
-                                  Marks
-                                </div>
-                                <span className="text-[#1E4775] font-semibold text-xs flex items-center justify-end gap-1">
-                                  {isLoadingMarks ? (
-                                    "..."
-                                  ) : (
-                                    <>
-                                      {displayMarks >= 0
-                                        ? displayMarks.toLocaleString(
-                                            undefined,
-                                            {
-                                              maximumFractionDigits: 1,
-                                              minimumFractionDigits: 0,
-                                            }
-                                          )
-                                        : "-"}
-                                      <Image
-                                        src="/icons/marks.png"
-                                        alt="Marks"
-                                        width={16}
-                                        height={16}
-                                        className="inline-block"
-                                      />
-                                    </>
-                                  )}
-                                </span>
-                              </div>
-                            );
-                          })()}
+                          <GenesisAprMarksColumn
+                            layout="mobile"
+                            isLoadingMarks={isLoadingMarks}
+                            input={{
+                              collateralSymbol,
+                              wstETHAPR,
+                              fxSAVEAPR,
+                              isLoadingWstETHAPR,
+                              isLoadingFxSAVEAPR,
+                              marks,
+                              endDate,
+                              userDepositUSD,
+                              bonusStatusResults,
+                              genesisAddress,
+                              mounted,
+                              safeTotalGenesisTVL,
+                              safeIsLoadingTotalTVL,
+                              totalDepositsUSD,
+                              safeTotalMaidenVoyageMarks,
+                              fdv,
+                            }}
+                          />
                           <div
                             onClick={(e) => e.stopPropagation()}
                             className="flex-shrink-0"
                           >
-                            {isEnded ? (
-                              showMaintenanceTag ? (
-                                <MarketMaintenanceTag />
-                              ) : hasClaimable ? (
-                                <button
-                                  onClick={async (e) => {
-                                    e.stopPropagation();
-                                    if (
-                                      genesisAddress &&
-                                      address &&
-                                      hasClaimable
-                                    ) {
-                                      try {
-                                        setClaimingMarket(id);
-                                        setClaimModal({
-                                          open: true,
-                                          status: "pending",
-                                          marketId: id,
-                                        });
-                                        const tx = await writeContractAsync({
-                                          address:
-                                            genesisAddress as `0x${string}`,
-                                          abi: GENESIS_ABI,
-                                          functionName: "claim",
-                                          args: [address as `0x${string}`],
-                                        });
-                                        await publicClient?.waitForTransactionReceipt(
-                                          { hash: tx }
-                                        );
-                                        await refetchReads();
-                                        await refetchTotalDeposits();
-                                        queryClient.invalidateQueries({
-                                          queryKey: ["allHarborMarks"],
-                                        });
-                                        setClaimModal((prev) => ({
-                                          ...prev,
-                                          status: "success",
-                                        }));
-                                        setShareModal({
-                                          open: true,
-                                          marketName: displayMarketName,
-                                          peggedSymbol: peggedNoPrefix,
-                                        });
-                                      } catch (error) {
-                                        setClaimModal({
-                                          open: true,
-                                          status: "error",
-                                          marketId: id,
-                                          errorMessage:
-                                            (error as any)?.shortMessage ||
-                                            (error as any)?.message ||
-                                            "Claim failed",
-                                        });
-                                      } finally {
-                                        setClaimingMarket(null);
-                                      }
-                                    }
-                                  }}
-                                  disabled={
-                                    !genesisAddress ||
-                                    !address ||
-                                    !hasClaimable ||
-                                    claimingMarket === id
-                                  }
-                                  className="px-3 py-1.5 text-[10px] font-medium bg-[#1E4775] text-white hover:bg-[#17395F] disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors rounded-full whitespace-nowrap"
-                                >
-                                  {claimingMarket === id
-                                    ? "Claiming..."
-                                    : "Claim"}
-                                </button>
-                              ) : null
-                            ) : showMaintenanceTag ? (
-                              <MarketMaintenanceTag />
-                            ) : (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setManageModal({
-                                    marketId: id,
-                                    market: mkt,
-                                    initialTab: "deposit",
-                                  });
-                                }}
-                                className="px-3 py-1.5 text-[10px] font-medium bg-[#1E4775] text-white hover:bg-[#17395F] transition-colors rounded-full whitespace-nowrap"
-                              >
-                                Manage
-                              </button>
-                            )}
+                            <GenesisMarketRowClaimActions
+                              variant="compact"
+                              isEnded={isEnded}
+                              showMaintenanceTag={showMaintenanceTag}
+                              hasClaimable={hasClaimable}
+                              genesisAddress={genesisAddress}
+                              walletAddress={address}
+                              isClaimingThisMarket={claimingMarket === id}
+                              onClaim={() =>
+                                claimMarket({
+                                  marketId: id,
+                                  genesisAddress,
+                                  displayMarketName,
+                                  peggedSymbolForShare: peggedNoPrefix,
+                                })
+                              }
+                              onManage={() =>
+                                setManageModal({
+                                  marketId: id,
+                                  market: mkt,
+                                  initialTab: "deposit",
+                                })
+                              }
+                            />
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
@@ -1475,8 +1183,8 @@ export default function GenesisIndexPage() {
                       >
                         <div className="flex items-center justify-center">
                           <NetworkIconCell
-                            chainName={(mkt as any).chain?.name || "Ethereum"}
-                            chainLogo={(mkt as any).chain?.logo || "icons/eth.png"}
+                            chainName={(mkt as GenesisMarketConfig).chain?.name || "Ethereum"}
+                            chainLogo={(mkt as GenesisMarketConfig).chain?.logo || "icons/eth.png"}
                             size={18}
                           />
                         </div>
@@ -1494,237 +1202,32 @@ export default function GenesisIndexPage() {
 
                         {/* Combined APR Column - Only show for active markets */}
                         {!isEnded
-                          ? (() => {
-                              const isWstETH =
-                                collateralSymbol.toLowerCase() === "wsteth";
-                              const isFxSAVE =
-                                collateralSymbol.toLowerCase() === "fxsave";
-                              const underlyingAPR = isWstETH
-                                ? wstETHAPR
-                                : isFxSAVE
-                                ? fxSAVEAPR
-                                : null;
-                              const isLoadingAPR = isWstETH
-                                ? isLoadingWstETHAPR
-                                : isFxSAVE
-                                ? isLoadingFxSAVEAPR
-                                : false;
-
-                              const isValidAPR =
-                                underlyingAPR !== null &&
-                                typeof underlyingAPR === "number" &&
-                                !isNaN(underlyingAPR) &&
-                                isFinite(underlyingAPR) &&
-                                underlyingAPR >= 0;
-
-                              // Get user marks for this market
-                              const userMarksForMarket = marks
-                                ? parseFloat(marks.currentMarks || "0")
-                                : 0;
-
-                              // Calculate genesis days - use market config endDate as primary source
-                              const marketEndDateMd = endDate
-                                ? new Date(endDate).getTime()
-                                : 0;
-                              const genesisStartDate = marks
-                                ? parseInt(marks.genesisStartDate || "0")
-                                : 0;
-                              const genesisEndDateFromMarks = marks
-                                ? parseInt(marks.genesisEndDate || "0")
-                                : 0;
-                              // Prefer market config endDate, fall back to marks data
-                              const genesisEndDate =
-                                marketEndDateMd > 0
-                                  ? marketEndDateMd
-                                  : genesisEndDateFromMarks;
-                              const genesisDays =
-                                genesisEndDate > genesisStartDate &&
-                                genesisStartDate > 0
-                                  ? (genesisEndDate - genesisStartDate) /
-                                    (1000 * 60 * 60 * 24)
-                                  : 7; // Default to 7 days if not available
-
-                              // Calculate days left in genesis
-                              const nowMd = Date.now();
-                              const daysLeftInGenesisMd =
-                                genesisEndDate > nowMd
-                                  ? (genesisEndDate - nowMd) /
-                                    (1000 * 60 * 60 * 24)
-                                  : genesisDays; // Fall back to full genesis period if end date not available
-
-                              // Calculate values for APR - use $1 for estimation when no wallet connected or no deposit
-                              const currentDepositUSD = marks
-                                ? parseFloat(marks.currentDepositUSD || "0")
-                                : 0;
-                              const hasUserDeposit =
-                                userDepositUSD > 0 || currentDepositUSD > 0;
-                              const depositForAPR = hasUserDeposit
-                                ? userDepositUSD > 0
-                                  ? userDepositUSD
-                                  : currentDepositUSD
-                                : 1; // Use $1 for estimation
-
-                              // Get early bonus status for this market to check if cap is filled
-                              const marketBonusDataMd =
-                                bonusStatusResults?.find(
-                                  (status) =>
-                                    status.genesisAddress?.toLowerCase() ===
-                                    genesisAddress?.toLowerCase()
-                                );
-                              const marketBonusStatusMd =
-                                marketBonusDataMd?.data;
-                              const earlyBonusCapFilledMd = marketBonusStatusMd
-                                ? Number(
-                                    marketBonusStatusMd.cumulativeDeposits
-                                  ) >=
-                                  Number(marketBonusStatusMd.thresholdAmount)
-                                : false;
-                              const earlyBonusAvailableMd =
-                                !earlyBonusCapFilledMd;
-
-                              // Calculate marks for APR calculation including estimated bonus marks
-                              const earlyBonusEligibleDepositUSDFromMarksMd =
-                                marks
-                                  ? parseFloat(
-                                      marks.earlyBonusEligibleDepositUSD || "0"
-                                    )
-                                  : 0;
-                              const genesisEnded = marks
-                                ? marks.genesisEnded
-                                : false;
-                              const qualifiesForEarlyBonusFromMarksMd = marks
-                                ? marks.qualifiesForEarlyBonus || false
-                                : false;
-
-                              // If early bonus cap is not filled and user has a deposit, all deposits qualify for early bonus
-                              // So earlyBonusEligibleDepositUSD should equal currentDepositUSD
-                              const earlyBonusEligibleDepositUSD =
-                                hasUserDeposit && earlyBonusAvailableMd
-                                  ? depositForAPR
-                                  : earlyBonusEligibleDepositUSDFromMarksMd;
-                              const qualifiesForEarlyBonus =
-                                hasUserDeposit && earlyBonusAvailableMd
-                                  ? true
-                                  : qualifiesForEarlyBonusFromMarksMd;
-
-                              // For estimation, only include early bonus if cap is not filled
-                              const estimatedEarlyBonusEligibleMd =
-                                earlyBonusAvailableMd ? 1 : 0;
-                              const estimatedQualifiesForEarlyBonusMd =
-                                earlyBonusAvailableMd;
-
-                              const marksForAPR = calculateMarksForAPR(
-                                userMarksForMarket,
-                                depositForAPR,
-                                hasUserDeposit
-                                  ? earlyBonusEligibleDepositUSD
-                                  : estimatedEarlyBonusEligibleMd,
-                                genesisEnded,
-                                hasUserDeposit
-                                  ? qualifiesForEarlyBonus
-                                  : estimatedQualifiesForEarlyBonusMd,
-                                daysLeftInGenesisMd
-                              );
-
-                              const tvlForAPR =
-                                safeTotalGenesisTVL > 0
-                                  ? safeTotalGenesisTVL
-                                  : totalDepositsUSD > 0
-                                  ? totalDepositsUSD
-                                  : 1000000;
-                              const marksForAPRTotal =
-                                safeTotalMaidenVoyageMarks;
-
-                              // Show combined APR if we have underlying APR and TVL
-                              // Allow showing even if marks are 0 (will show 0% for $TIDE APR)
-                              const canShowCombinedAPR =
-                                mounted &&
-                                isValidAPR &&
-                                depositForAPR > 0 &&
-                                tvlForAPR > 0 &&
-                                !safeIsLoadingTotalTVL;
-
-                              // Calculate marks breakdown for APR breakdown (md view)
-                              const marksBreakdownMd = calculateMarksBreakdown(
-                                userMarksForMarket,
-                                depositForAPR,
-                                hasUserDeposit
-                                  ? earlyBonusEligibleDepositUSD
-                                  : estimatedEarlyBonusEligibleMd,
-                                genesisEnded,
-                                hasUserDeposit
-                                  ? qualifiesForEarlyBonus
-                                  : estimatedQualifiesForEarlyBonusMd,
-                                daysLeftInGenesisMd
-                              );
-
-                              // Calculate APR breakdown (md view)
-                              const aprBreakdownMd =
-                                canShowCombinedAPR &&
-                                depositForAPR > 0 &&
-                                tvlForAPR > 0 &&
-                                genesisDays > 0 &&
-                                marksForAPRTotal > 0
-                                  ? (() => {
-                                      try {
-                                        return calculateTideAPRBreakdown(
-                                          marksBreakdownMd,
-                                          marksForAPRTotal,
-                                          depositForAPR,
-                                          tvlForAPR,
-                                          daysLeftInGenesisMd,
-                                          fdv
-                                        );
-                                      } catch (error) {
-                                        return undefined;
-                                      }
-                                    })()
-                                  : undefined;
-
-                              // Display marks accumulated for this market
-                              const lastUpdatedMd = marks
-                                ? parseInt(marks.lastUpdated || "0", 10)
-                                : 0;
-                              const daysElapsedMd =
-                                lastUpdatedMd > 0
-                                  ? (Date.now() / 1000 - lastUpdatedMd) /
-                                    (24 * 60 * 60)
-                                  : 0;
-                              const displayMarksMd = genesisEnded
-                                ? userMarksForMarket
-                                : userMarksForMarket +
-                                  daysElapsedMd * currentDepositUSD * 10;
-
-                              return (
-                                <div className="text-center">
-                                  <span className="text-[#1E4775] font-semibold text-xs flex items-center justify-center gap-1">
-                                    {isLoadingMarks ? (
-                                      "..."
-                                    ) : (
-                                      <>
-                                        {displayMarksMd >= 0
-                                          ? displayMarksMd.toLocaleString(
-                                              undefined,
-                                              {
-                                                maximumFractionDigits: 1,
-                                                minimumFractionDigits: 0,
-                                              }
-                                            )
-                                          : "-"}
-                                        <Image
-                                          src="/icons/marks.png"
-                                          alt="Marks"
-                                          width={16}
-                                          height={16}
-                                          className="inline-block"
-                                        />
-                                      </>
-                                    )}
-                                  </span>
-                                </div>
-                              );
-                            })()
+                          ? (
+                              <GenesisAprMarksColumn
+                                layout="md"
+                                isLoadingMarks={isLoadingMarks}
+                                input={{
+                                  collateralSymbol,
+                                  wstETHAPR,
+                                  fxSAVEAPR,
+                                  isLoadingWstETHAPR,
+                                  isLoadingFxSAVEAPR,
+                                  marks,
+                                  endDate,
+                                  userDepositUSD,
+                                  bonusStatusResults,
+                                  genesisAddress,
+                                  mounted,
+                                  safeTotalGenesisTVL,
+                                  safeIsLoadingTotalTVL,
+                                  totalDepositsUSD,
+                                  safeTotalMaidenVoyageMarks,
+                                  fdv,
+                                }}
+                              />
+                            )
                           : null}
+
 
                         {/* Deposit Assets (if not ended) */}
                         {!isEnded && (
@@ -1768,12 +1271,12 @@ export default function GenesisIndexPage() {
                                     <Image
                                       src={getLogoPath(
                                         rowPeggedSymbol ||
-                                          (mkt as any).peggedToken?.symbol ||
+                                          (mkt as GenesisMarketConfig).peggedToken?.symbol ||
                                           "haPB"
                                       )}
                                       alt={
                                         rowPeggedSymbol ||
-                                        (mkt as any).peggedToken?.symbol ||
+                                        (mkt as GenesisMarketConfig).peggedToken?.symbol ||
                                         "haPB"
                                       }
                                       width={20}
@@ -1786,18 +1289,18 @@ export default function GenesisIndexPage() {
                                 <div className="flex items-center justify-center gap-1">
                                   <span className="text-[#1E4775] font-semibold text-xs">
                                     {rowPeggedSymbol ||
-                                      (mkt as any).peggedToken?.symbol ||
+                                      (mkt as GenesisMarketConfig).peggedToken?.symbol ||
                                       "haTOKEN"}
                                   </span>
                                   <Image
                                     src={getLogoPath(
                                       rowPeggedSymbol ||
-                                        (mkt as any).peggedToken?.symbol ||
+                                        (mkt as GenesisMarketConfig).peggedToken?.symbol ||
                                         "haPB"
                                     )}
                                     alt={
                                       rowPeggedSymbol ||
-                                      (mkt as any).peggedToken?.symbol ||
+                                      (mkt as GenesisMarketConfig).peggedToken?.symbol ||
                                       "haPB"
                                     }
                                     width={20}
@@ -1830,12 +1333,12 @@ export default function GenesisIndexPage() {
                                     <Image
                                       src={getLogoPath(
                                         rowLeveragedSymbol ||
-                                          (mkt as any).leveragedToken?.symbol ||
+                                          (mkt as GenesisMarketConfig).leveragedToken?.symbol ||
                                           "hsPB"
                                       )}
                                       alt={
                                         rowLeveragedSymbol ||
-                                        (mkt as any).leveragedToken?.symbol ||
+                                        (mkt as GenesisMarketConfig).leveragedToken?.symbol ||
                                         "hsPB"
                                       }
                                       width={20}
@@ -1848,18 +1351,18 @@ export default function GenesisIndexPage() {
                                 <div className="flex items-center justify-center gap-1">
                                   <span className="text-[#1E4775] font-semibold text-xs">
                                     {rowLeveragedSymbol ||
-                                      (mkt as any).leveragedToken?.symbol ||
+                                      (mkt as GenesisMarketConfig).leveragedToken?.symbol ||
                                       "hsTOKEN"}
                                   </span>
                                   <Image
                                     src={getLogoPath(
                                       rowLeveragedSymbol ||
-                                        (mkt as any).leveragedToken?.symbol ||
+                                        (mkt as GenesisMarketConfig).leveragedToken?.symbol ||
                                         "hsPB"
                                     )}
                                     alt={
                                       rowLeveragedSymbol ||
-                                      (mkt as any).leveragedToken?.symbol ||
+                                      (mkt as GenesisMarketConfig).leveragedToken?.symbol ||
                                       "hsPB"
                                     }
                                     width={20}
@@ -1927,94 +1430,30 @@ export default function GenesisIndexPage() {
                             onClick={(e) => e.stopPropagation()}
                             className="flex-shrink-0"
                           >
-                            {isEnded ? (
-                              showMaintenanceTag ? (
-                                <MarketMaintenanceTag />
-                              ) : hasClaimable ? (
-                                <button
-                                  onClick={async (e) => {
-                                    e.stopPropagation();
-                                    if (
-                                      genesisAddress &&
-                                      address &&
-                                      hasClaimable
-                                    ) {
-                                      try {
-                                        setClaimingMarket(id);
-                                        setClaimModal({
-                                          open: true,
-                                          status: "pending",
-                                          marketId: id,
-                                        });
-                                        const tx = await writeContractAsync({
-                                          address:
-                                            genesisAddress as `0x${string}`,
-                                          abi: GENESIS_ABI,
-                                          functionName: "claim",
-                                          args: [address as `0x${string}`],
-                                        });
-                                        await publicClient?.waitForTransactionReceipt(
-                                          { hash: tx }
-                                        );
-                                        await refetchReads();
-                                        await refetchTotalDeposits();
-                                        queryClient.invalidateQueries({
-                                          queryKey: ["allHarborMarks"],
-                                        });
-                                        setClaimModal((prev) => ({
-                                          ...prev,
-                                          status: "success",
-                                        }));
-                                        setShareModal({
-                                          open: true,
-                                          marketName: displayMarketName,
-                                          peggedSymbol: peggedNoPrefix,
-                                        });
-                                      } catch (error) {
-                                        setClaimModal({
-                                          open: true,
-                                          status: "error",
-                                          marketId: id,
-                                          errorMessage:
-                                            (error as any)?.shortMessage ||
-                                            (error as any)?.message ||
-                                            "Claim failed",
-                                        });
-                                      } finally {
-                                        setClaimingMarket(null);
-                                      }
-                                    }
-                                  }}
-                                  disabled={
-                                    !genesisAddress ||
-                                    !address ||
-                                    !hasClaimable ||
-                                    claimingMarket === id
-                                  }
-                                  className="px-3 py-1.5 text-[10px] font-medium bg-[#1E4775] text-white hover:bg-[#17395F] disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors rounded-full whitespace-nowrap"
-                                >
-                                  {claimingMarket === id
-                                    ? "Claiming..."
-                                    : "Claim"}
-                                </button>
-                              ) : null
-                            ) : showMaintenanceTag ? (
-                              <MarketMaintenanceTag />
-                            ) : (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setManageModal({
-                                    marketId: id,
-                                    market: mkt,
-                                    initialTab: "deposit",
-                                  });
-                                }}
-                                className="px-3 py-1.5 text-[10px] font-medium bg-[#1E4775] text-white hover:bg-[#17395F] transition-colors rounded-full whitespace-nowrap"
-                              >
-                                Manage
-                              </button>
-                            )}
+                            <GenesisMarketRowClaimActions
+                              variant="compact"
+                              isEnded={isEnded}
+                              showMaintenanceTag={showMaintenanceTag}
+                              hasClaimable={hasClaimable}
+                              genesisAddress={genesisAddress}
+                              walletAddress={address}
+                              isClaimingThisMarket={claimingMarket === id}
+                              onClaim={() =>
+                                claimMarket({
+                                  marketId: id,
+                                  genesisAddress,
+                                  displayMarketName,
+                                  peggedSymbolForShare: peggedNoPrefix,
+                                })
+                              }
+                              onManage={() =>
+                                setManageModal({
+                                  marketId: id,
+                                  market: mkt,
+                                  initialTab: "deposit",
+                                })
+                              }
+                            />
                           </div>
                         </div>
                       </div>
@@ -2029,8 +1468,8 @@ export default function GenesisIndexPage() {
                       >
                         <div className="flex items-center justify-center">
                           <NetworkIconCell
-                            chainName={(mkt as any).chain?.name || "Ethereum"}
-                            chainLogo={(mkt as any).chain?.logo || "icons/eth.png"}
+                            chainName={(mkt as GenesisMarketConfig).chain?.name || "Ethereum"}
+                            chainLogo={(mkt as GenesisMarketConfig).chain?.logo || "icons/eth.png"}
                             size={20}
                           />
                         </div>
@@ -2086,225 +1525,32 @@ export default function GenesisIndexPage() {
                         </div>
                         {/* Combined APR Column - Only show for active markets */}
                         {!isEnded
-                          ? (() => {
-                              const isWstETH =
-                                collateralSymbol.toLowerCase() === "wsteth";
-                              const isFxSAVE =
-                                collateralSymbol.toLowerCase() === "fxsave";
-                              const underlyingAPR = isWstETH
-                                ? wstETHAPR
-                                : isFxSAVE
-                                ? fxSAVEAPR
-                                : null;
-                              const isLoadingAPR = isWstETH
-                                ? isLoadingWstETHAPR
-                                : isFxSAVE
-                                ? isLoadingFxSAVEAPR
-                                : false;
-
-                              const isValidAPR =
-                                underlyingAPR !== null &&
-                                typeof underlyingAPR === "number" &&
-                                !isNaN(underlyingAPR) &&
-                                isFinite(underlyingAPR) &&
-                                underlyingAPR >= 0;
-
-                              // Get user marks for this market
-                              const userMarksForMarket = marks
-                                ? parseFloat(marks.currentMarks || "0")
-                                : 0;
-
-                              // Calculate genesis days - use market config endDate as primary source
-                              const marketEndDateLg = endDate
-                                ? new Date(endDate).getTime()
-                                : 0;
-                              const genesisStartDate = marks
-                                ? parseInt(marks.genesisStartDate || "0")
-                                : 0;
-                              const genesisEndDateFromMarks = marks
-                                ? parseInt(marks.genesisEndDate || "0")
-                                : 0;
-                              // Prefer market config endDate, fall back to marks data
-                              const genesisEndDate =
-                                marketEndDateLg > 0
-                                  ? marketEndDateLg
-                                  : genesisEndDateFromMarks;
-                              const genesisDays =
-                                genesisEndDate > genesisStartDate &&
-                                genesisStartDate > 0
-                                  ? (genesisEndDate - genesisStartDate) /
-                                    (1000 * 60 * 60 * 24)
-                                  : 7; // Default to 7 days if not available
-
-                              // Calculate days left in genesis
-                              const nowLg = Date.now();
-                              const daysLeftInGenesisLg =
-                                genesisEndDate > nowLg
-                                  ? (genesisEndDate - nowLg) /
-                                    (1000 * 60 * 60 * 24)
-                                  : genesisDays; // Fall back to full genesis period if end date not available
-
-                              // Calculate values for APR - use $1 for estimation when no wallet connected or no deposit
-                              const currentDepositUSD = marks
-                                ? parseFloat(marks.currentDepositUSD || "0")
-                                : 0;
-                              const hasUserDeposit =
-                                userDepositUSD > 0 || currentDepositUSD > 0;
-                              const depositForAPR = hasUserDeposit
-                                ? userDepositUSD > 0
-                                  ? userDepositUSD
-                                  : currentDepositUSD
-                                : 1; // Use $1 for estimation
-
-                              // Get early bonus status for this market to check if cap is filled
-                              const marketBonusDataLg =
-                                bonusStatusResults?.find(
-                                  (status) =>
-                                    status.genesisAddress?.toLowerCase() ===
-                                    genesisAddress?.toLowerCase()
-                                );
-                              const marketBonusStatusLg =
-                                marketBonusDataLg?.data;
-                              const earlyBonusCapFilledLg = marketBonusStatusLg
-                                ? Number(
-                                    marketBonusStatusLg.cumulativeDeposits
-                                  ) >=
-                                  Number(marketBonusStatusLg.thresholdAmount)
-                                : false;
-                              const earlyBonusAvailableLg =
-                                !earlyBonusCapFilledLg;
-
-                              // Calculate marks for APR calculation including estimated bonus marks
-                              const earlyBonusEligibleDepositUSD = marks
-                                ? parseFloat(
-                                    marks.earlyBonusEligibleDepositUSD || "0"
-                                  )
-                                : 0;
-                              const genesisEnded = marks
-                                ? marks.genesisEnded
-                                : false;
-                              const qualifiesForEarlyBonus = marks
-                                ? marks.qualifiesForEarlyBonus || false
-                                : false;
-
-                              // For estimation, only include early bonus if cap is not filled
-                              const estimatedEarlyBonusEligibleLg =
-                                earlyBonusAvailableLg ? 1 : 0;
-                              const estimatedQualifiesForEarlyBonusLg =
-                                earlyBonusAvailableLg;
-
-                              const marksForAPR = calculateMarksForAPR(
-                                userMarksForMarket,
-                                depositForAPR,
-                                hasUserDeposit
-                                  ? earlyBonusEligibleDepositUSD
-                                  : estimatedEarlyBonusEligibleLg,
-                                genesisEnded,
-                                hasUserDeposit
-                                  ? qualifiesForEarlyBonus
-                                  : estimatedQualifiesForEarlyBonusLg,
-                                daysLeftInGenesisLg
-                              );
-
-                              const tvlForAPR =
-                                safeTotalGenesisTVL > 0
-                                  ? safeTotalGenesisTVL
-                                  : totalDepositsUSD > 0
-                                  ? totalDepositsUSD
-                                  : 1000000;
-                              const marksForAPRTotal =
-                                safeTotalMaidenVoyageMarks;
-
-                              // Show combined APR if we have underlying APR and TVL
-                              // Allow showing even if marks are 0 (will show 0% for $TIDE APR)
-                              const canShowCombinedAPR =
-                                mounted &&
-                                isValidAPR &&
-                                depositForAPR > 0 &&
-                                tvlForAPR > 0 &&
-                                !safeIsLoadingTotalTVL;
-
-                              // Calculate marks breakdown for APR breakdown (lg view)
-                              const marksBreakdownLg = calculateMarksBreakdown(
-                                userMarksForMarket,
-                                depositForAPR,
-                                hasUserDeposit
-                                  ? earlyBonusEligibleDepositUSD
-                                  : estimatedEarlyBonusEligibleLg,
-                                genesisEnded,
-                                hasUserDeposit
-                                  ? qualifiesForEarlyBonus
-                                  : estimatedQualifiesForEarlyBonusLg,
-                                daysLeftInGenesisLg
-                              );
-
-                              // Calculate APR breakdown (lg view)
-                              const aprBreakdownLg =
-                                canShowCombinedAPR &&
-                                depositForAPR > 0 &&
-                                tvlForAPR > 0 &&
-                                genesisDays > 0 &&
-                                marksForAPRTotal > 0
-                                  ? (() => {
-                                      try {
-                                        return calculateTideAPRBreakdown(
-                                          marksBreakdownLg,
-                                          marksForAPRTotal,
-                                          depositForAPR,
-                                          tvlForAPR,
-                                          daysLeftInGenesisLg,
-                                          fdv
-                                        );
-                                      } catch (error) {
-                                        return undefined;
-                                      }
-                                    })()
-                                  : undefined;
-
-                              // Display marks accumulated for this market
-                              const lastUpdatedLg = marks
-                                ? parseInt(marks.lastUpdated || "0", 10)
-                                : 0;
-                              const daysElapsedLg =
-                                lastUpdatedLg > 0
-                                  ? (Date.now() / 1000 - lastUpdatedLg) /
-                                    (24 * 60 * 60)
-                                  : 0;
-                              const displayMarksLg = genesisEnded
-                                ? userMarksForMarket
-                                : userMarksForMarket +
-                                  daysElapsedLg * currentDepositUSD * 10;
-
-                              return (
-                                <div className="text-center min-w-0">
-                                  <span className="text-[#1E4775] font-semibold text-xs flex items-center justify-center gap-1">
-                                    {isLoadingMarks ? (
-                                      "..."
-                                    ) : (
-                                      <>
-                                        {displayMarksLg >= 0
-                                          ? displayMarksLg.toLocaleString(
-                                              undefined,
-                                              {
-                                                maximumFractionDigits: 1,
-                                                minimumFractionDigits: 0,
-                                              }
-                                            )
-                                          : "-"}
-                                        <Image
-                                          src="/icons/marks.png"
-                                          alt="Marks"
-                                          width={16}
-                                          height={16}
-                                          className="inline-block"
-                                        />
-                                      </>
-                                    )}
-                                  </span>
-                                </div>
-                              );
-                            })()
+                          ? (
+                              <GenesisAprMarksColumn
+                                layout="lg"
+                                isLoadingMarks={isLoadingMarks}
+                                input={{
+                                  collateralSymbol,
+                                  wstETHAPR,
+                                  fxSAVEAPR,
+                                  isLoadingWstETHAPR,
+                                  isLoadingFxSAVEAPR,
+                                  marks,
+                                  endDate,
+                                  userDepositUSD,
+                                  bonusStatusResults,
+                                  genesisAddress,
+                                  mounted,
+                                  safeTotalGenesisTVL,
+                                  safeIsLoadingTotalTVL,
+                                  totalDepositsUSD,
+                                  safeTotalMaidenVoyageMarks,
+                                  fdv,
+                                }}
+                              />
+                            )
                           : null}
+
                         {!isEnded ? (
                           <div
                             className="flex items-center justify-center gap-1.5 min-w-0"
@@ -2457,12 +1703,12 @@ export default function GenesisIndexPage() {
                                     <Image
                                       src={getLogoPath(
                                         rowPeggedSymbol ||
-                                          (mkt as any).peggedToken?.symbol ||
+                                          (mkt as GenesisMarketConfig).peggedToken?.symbol ||
                                           "haPB"
                                       )}
                                       alt={
                                         rowPeggedSymbol ||
-                                        (mkt as any).peggedToken?.symbol ||
+                                        (mkt as GenesisMarketConfig).peggedToken?.symbol ||
                                         "haPB"
                                       }
                                       width={20}
@@ -2475,18 +1721,18 @@ export default function GenesisIndexPage() {
                                 <div className="flex items-center justify-center gap-1">
                                   <span className="text-[#1E4775] font-semibold text-xs">
                                     {rowPeggedSymbol ||
-                                      (mkt as any).peggedToken?.symbol ||
+                                      (mkt as GenesisMarketConfig).peggedToken?.symbol ||
                                       "haTOKEN"}
                                   </span>
                                   <Image
                                     src={getLogoPath(
                                       rowPeggedSymbol ||
-                                        (mkt as any).peggedToken?.symbol ||
+                                        (mkt as GenesisMarketConfig).peggedToken?.symbol ||
                                         "haPB"
                                     )}
                                     alt={
                                       rowPeggedSymbol ||
-                                      (mkt as any).peggedToken?.symbol ||
+                                      (mkt as GenesisMarketConfig).peggedToken?.symbol ||
                                       "haPB"
                                     }
                                     width={20}
@@ -2519,12 +1765,12 @@ export default function GenesisIndexPage() {
                                     <Image
                                       src={getLogoPath(
                                         rowLeveragedSymbol ||
-                                          (mkt as any).leveragedToken?.symbol ||
+                                          (mkt as GenesisMarketConfig).leveragedToken?.symbol ||
                                           "hsPB"
                                       )}
                                       alt={
                                         rowLeveragedSymbol ||
-                                        (mkt as any).leveragedToken?.symbol ||
+                                        (mkt as GenesisMarketConfig).leveragedToken?.symbol ||
                                         "hsPB"
                                       }
                                       width={20}
@@ -2537,18 +1783,18 @@ export default function GenesisIndexPage() {
                                 <div className="flex items-center justify-center gap-1">
                                   <span className="text-[#1E4775] font-semibold text-xs">
                                     {rowLeveragedSymbol ||
-                                      (mkt as any).leveragedToken?.symbol ||
+                                      (mkt as GenesisMarketConfig).leveragedToken?.symbol ||
                                       "hsTOKEN"}
                                   </span>
                                   <Image
                                     src={getLogoPath(
                                       rowLeveragedSymbol ||
-                                        (mkt as any).leveragedToken?.symbol ||
+                                        (mkt as GenesisMarketConfig).leveragedToken?.symbol ||
                                         "hsPB"
                                     )}
                                     alt={
                                       rowLeveragedSymbol ||
-                                      (mkt as any).leveragedToken?.symbol ||
+                                      (mkt as GenesisMarketConfig).leveragedToken?.symbol ||
                                       "hsPB"
                                     }
                                     width={20}
@@ -2762,108 +2008,34 @@ export default function GenesisIndexPage() {
                           className="text-center min-w-0 flex items-center justify-center pb-1"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          {isEnded ? (
-                            // After genesis ends: maintenance blocks all minter interaction (no claim)
-                            <div className="flex items-center justify-center">
-                              {showMaintenanceTag ? (
-                                <MarketMaintenanceTag />
-                              ) : hasClaimable ? (
-                                <button
-                                  onClick={async (e) => {
-                                    e.stopPropagation();
-                                    if (
-                                      genesisAddress &&
-                                      address &&
-                                      hasClaimable
-                                    ) {
-                                      try {
-                                        setClaimingMarket(id);
-                                        setClaimModal({
-                                          open: true,
-                                          status: "pending",
-                                          marketId: id,
-                                        });
-                                        const tx = await writeContractAsync({
-                                          address:
-                                            genesisAddress as `0x${string}`,
-                                          abi: GENESIS_ABI,
-                                          functionName: "claim",
-                                          args: [address as `0x${string}`],
-                                        });
-                                        await publicClient?.waitForTransactionReceipt(
-                                          { hash: tx }
-                                        );
-                                        // Refetch data after successful claim
-                                        await refetchReads();
-                                        await refetchTotalDeposits();
-                                        queryClient.invalidateQueries({
-                                          queryKey: ["allHarborMarks"],
-                                        });
-                                        setClaimModal((prev) => ({
-                                          ...prev,
-                                          status: "success",
-                                        }));
-                                        setShareModal({
-                                          open: true,
-                                          marketName: displayMarketName,
-                                          peggedSymbol: peggedNoPrefix,
-                                        });
-                                      } catch (error) {
-                                        setClaimModal({
-                                          open: true,
-                                          status: "error",
-                                          marketId: id,
-                                          errorMessage:
-                                            (error as any)?.shortMessage ||
-                                            (error as any)?.message ||
-                                            "Claim failed",
-                                        });
-                                      } finally {
-                                        setClaimingMarket(null);
-                                      }
-                                    }
-                                  }}
-                                  disabled={
-                                    !genesisAddress ||
-                                    !address ||
-                                    !hasClaimable ||
-                                    claimingMarket === id
-                                  }
-                                  className="px-4 py-2 text-xs font-medium bg-[#1E4775] text-white hover:bg-[#17395F] disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors rounded-full whitespace-nowrap"
-                                >
-                                  {claimingMarket === id
-                                    ? "Claiming..."
-                                    : "Claim"}
-                                </button>
-                              ) : (
-                                <span className="text-xs text-gray-500">
-                                  No tokens to claim
-                                </span>
-                              )}
-                            </div>
-                          ) : showMaintenanceTag ? (
-                            <div className="flex items-center justify-center">
-                              <MarketMaintenanceTag />
-                            </div>
-                          ) : (
-                            // Before genesis ends, show manage button
-                            <div className="flex items-center justify-center">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setManageModal({
-                                    marketId: id,
-                                    market: mkt,
-                                    initialTab: "deposit",
-                                  });
-                                }}
-                                disabled={isEnded || !genesisAddress}
-                                className="px-4 py-2 text-xs font-medium bg-[#1E4775] text-white hover:bg-[#17395F] disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors rounded-full whitespace-nowrap"
-                              >
-                                Manage
-                              </button>
-                            </div>
-                          )}
+                          <div className="flex items-center justify-center">
+                            <GenesisMarketRowClaimActions
+                              variant="desktop"
+                              isEnded={isEnded}
+                              showMaintenanceTag={showMaintenanceTag}
+                              hasClaimable={hasClaimable}
+                              showNoTokensPlaceholder={isEnded}
+                              genesisAddress={genesisAddress}
+                              walletAddress={address}
+                              isClaimingThisMarket={claimingMarket === id}
+                              manageDisabled={!genesisAddress}
+                              onClaim={() =>
+                                claimMarket({
+                                  marketId: id,
+                                  genesisAddress,
+                                  displayMarketName,
+                                  peggedSymbolForShare: peggedNoPrefix,
+                                })
+                              }
+                              onManage={() =>
+                                setManageModal({
+                                  marketId: id,
+                                  market: mkt,
+                                  initialTab: "deposit",
+                                })
+                              }
+                            />
+                          </div>
                         </div>
                       </div>
 
@@ -3047,13 +2219,13 @@ export default function GenesisIndexPage() {
                 <h2 className="text-xs font-medium text-white/70 uppercase tracking-wider">
                   Next Campaign:
                 </h2>
-                <span className="px-2.5 py-0.5 bg-[#E67A6B] hover:bg-[#D66A5B] border border-white text-white text-xs font-semibold uppercase tracking-wider rounded-full transition-colors">
+                <span className="px-2.5 py-0.5 bg-[#E67A6B] hover:bg-[#D66A5B] border border-white text-white text-xs font-semibold uppercase tracking-wider rounded-md transition-colors">
                   Metals
                 </span>
               </div>
             </div>
             {/* Header row - hidden on mobile, shown on desktop */}
-            <div className="hidden md:block bg-white py-1.5 px-2 overflow-x-auto mb-0">
+            <div className="hidden md:block bg-white py-1.5 px-2 overflow-x-auto mb-0 rounded-md">
               <div className="grid lg:grid-cols-[32px_1.5fr_80px_0.9fr_1fr_0.9fr] md:grid-cols-[32px_120px_80px_100px_1fr_90px] gap-4 items-center uppercase tracking-wider text-[10px] lg:text-[11px] text-[#1E4775] font-semibold">
                 <div className="min-w-0" aria-label="Network" />
                 <div className="min-w-0 text-center">Market</div>
@@ -3119,14 +2291,14 @@ export default function GenesisIndexPage() {
                 return (
                   <div
                     key={id}
-                    className="bg-white py-2.5 px-2 rounded-none border border-white/10"
+                    className="bg-white py-2.5 px-2 rounded-md border border-white/10"
                   >
                     {/* Desktop layout - grid matching active events */}
                     <div className="hidden md:grid lg:grid-cols-[32px_1.5fr_80px_0.9fr_1fr_0.9fr] md:grid-cols-[32px_120px_80px_100px_1fr_110px] gap-4 items-center">
                       <div className="flex items-center justify-center">
                         <NetworkIconCell
-                          chainName={(mkt as any).chain?.name || "Ethereum"}
-                          chainLogo={(mkt as any).chain?.logo || "icons/eth.png"}
+                          chainName={(mkt as GenesisMarketConfig).chain?.name || "Ethereum"}
+                          chainLogo={(mkt as GenesisMarketConfig).chain?.logo || "icons/eth.png"}
                           size={20}
                         />
                       </div>
@@ -3205,7 +2377,7 @@ export default function GenesisIndexPage() {
 
                       {/* Status Column */}
                       <div className="flex-shrink-0 text-center min-w-0 overflow-hidden">
-                        <div className="bg-[#FF8A7A] px-2 md:px-3 py-1 rounded-full inline-block max-w-full">
+                        <div className="bg-[#FF8A7A] px-2 md:px-3 py-1 rounded-md inline-block max-w-full">
                           <span className="text-white font-semibold text-[10px] uppercase tracking-wider whitespace-nowrap">
                             Coming Next
                           </span>
@@ -3240,7 +2412,7 @@ export default function GenesisIndexPage() {
                             />
                           </div>
                         </div>
-                        <div className="bg-[#FF8A7A] px-3 py-1 rounded-full">
+                        <div className="bg-[#FF8A7A] px-3 py-1 rounded-md">
                           <span className="text-white font-semibold text-[10px] uppercase tracking-wider">
                             Coming Next
                           </span>
@@ -3321,7 +2493,7 @@ export default function GenesisIndexPage() {
                     </h2>
                   </div>
                   {/* Header row - hidden on mobile, shown on desktop */}
-                  <div className="hidden md:block bg-white py-1.5 px-2 overflow-x-auto mb-0">
+                  <div className="hidden md:block bg-white py-1.5 px-2 overflow-x-auto mb-0 rounded-md">
                     <div className="grid lg:grid-cols-[32px_1.5fr_1fr_1fr_1.5fr_1fr] md:grid-cols-[32px_120px_60px_60px_1fr_80px] gap-4 items-center uppercase tracking-wider text-[10px] lg:text-[11px] text-[#1E4775] font-semibold">
                       <div className="min-w-0" aria-label="Network" />
                       <div className="min-w-0 text-center">Market</div>
@@ -3356,19 +2528,19 @@ export default function GenesisIndexPage() {
                         : undefined;
 
                       // Get all the same market data
-                      const genesisAddress = (mkt as any).addresses?.genesis;
+                      const genesisAddress = (mkt as GenesisMarketConfig).addresses?.genesis;
                       const onChainCollateralAddress = collateralTokenReads?.[mi]?.result as `0x${string}` | undefined;
-                      const collateralAddress = onChainCollateralAddress || (mkt as any).addresses?.wrappedCollateralToken;
-                      const collateralSymbol = (mkt as any).collateral?.symbol || "ETH";
-                      const endDate = (mkt as any).genesis?.endDate;
-                      const oracleAddress = (mkt as any).addresses?.collateralPrice as `0x${string}` | undefined;
+                      const collateralAddress = onChainCollateralAddress || (mkt as GenesisMarketConfig).addresses?.wrappedCollateralToken;
+                      const collateralSymbol = (mkt as GenesisMarketConfig).collateral?.symbol || "ETH";
+                      const endDate = (mkt as GenesisMarketConfig).genesis?.endDate;
+                      const oracleAddress = (mkt as GenesisMarketConfig).addresses?.collateralPrice as `0x${string}` | undefined;
                       const collateralPriceData = oracleAddress ? collateralPricesMap.get(oracleAddress.toLowerCase()) : undefined;
-                      const marketCoinGeckoId = (mkt as any)?.coinGeckoId as string | undefined;
-                      const underlyingSymbol = (mkt as any).collateral?.underlyingSymbol || collateralSymbol;
+                      const marketCoinGeckoId = (mkt as GenesisMarketConfig)?.coinGeckoId as string | undefined;
+                      const underlyingSymbol = (mkt as GenesisMarketConfig).collateral?.underlyingSymbol || collateralSymbol;
 
                       const { collateralPriceUSD } = computeGenesisRowUsdPricing({
                         underlyingSymbol,
-                        pegTarget: (mkt as any)?.pegTarget,
+                        pegTarget: (mkt as GenesisMarketConfig)?.pegTarget,
                         marketCoinGeckoId,
                         coinGeckoPrices,
                         collateralPriceData,
@@ -3380,13 +2552,18 @@ export default function GenesisIndexPage() {
                       const totalDepositsAmount = totalDeposits ? Number(formatEther(totalDeposits)) : 0;
                       const totalDepositsUSD = totalDepositsAmount * collateralPriceUSD;
                       const userDepositUSD = userDeposit && collateralPriceUSD > 0 ? Number(formatEther(userDeposit)) * collateralPriceUSD : 0;
-                      const rowPeggedSymbol = (mkt as any).peggedToken?.symbol || "ha";
-                      const rowLeveragedSymbol = (mkt as any).leveragedToken?.symbol || "hs";
+                      const rowPeggedSymbol = (mkt as GenesisMarketConfig).peggedToken?.symbol || "ha";
+                      const rowLeveragedSymbol = (mkt as GenesisMarketConfig).leveragedToken?.symbol || "hs";
                       const rawDisplayMarketName = rowLeveragedSymbol && rowLeveragedSymbol.toLowerCase().startsWith("hs")
                         ? rowLeveragedSymbol.slice(2)
-                        : rowLeveragedSymbol || (mkt as any).name || "Market";
+                        : rowLeveragedSymbol || (mkt as GenesisMarketConfig).name || "Market";
                       const displayMarketName = formatGenesisMarketDisplayName(rawDisplayMarketName);
                       const completedShowMaintenanceTag = isMarketInMaintenance(mkt);
+                      const peggedNoPrefixCompleted =
+                        rowPeggedSymbol &&
+                        rowPeggedSymbol.toLowerCase().startsWith("ha")
+                          ? rowPeggedSymbol.slice(2)
+                          : rowPeggedSymbol || "pegged token";
 
                       // Get token prices for claimable display
                       const anchorTokenPriceUSD = 1; // Pegged tokens are always $1
@@ -3395,14 +2572,14 @@ export default function GenesisIndexPage() {
                       return (
                         <div
                           key={id}
-                          className="bg-white py-2.5 px-2 rounded-none border border-white/10"
+                          className="bg-white py-2.5 px-2 rounded-md border border-white/10"
                         >
                           {/* Desktop layout */}
                           <div className="hidden md:grid lg:grid-cols-[32px_1.5fr_1fr_1fr_1.5fr_1fr] md:grid-cols-[32px_120px_60px_60px_1fr_80px] gap-4 items-center">
                             <div className="flex items-center justify-center">
                               <NetworkIconCell
-                                chainName={(mkt as any).chain?.name || "Ethereum"}
-                                chainLogo={(mkt as any).chain?.logo || "icons/eth.png"}
+                                chainName={(mkt as GenesisMarketConfig).chain?.name || "Ethereum"}
+                                chainLogo={(mkt as GenesisMarketConfig).chain?.logo || "icons/eth.png"}
                                 size={20}
                               />
                             </div>
@@ -3506,54 +2683,24 @@ export default function GenesisIndexPage() {
 
                             {/* Action Column */}
                             <div className="flex-shrink-0 flex items-center justify-center text-center">
-                              {completedShowMaintenanceTag ? (
-                                <MarketMaintenanceTag />
-                              ) : hasClaimable ? (
-                                <button
-                                  onClick={async (e) => {
-                                    e.stopPropagation();
-                                    if (genesisAddress && address && hasClaimable) {
-                                      try {
-                                        setClaimingMarket(id);
-                                        setClaimModal({
-                                          open: true,
-                                          status: "pending",
-                                          marketId: id,
-                                        });
-                                        const tx = await writeContractAsync({
-                                          address: genesisAddress as `0x${string}`,
-                                          abi: GENESIS_ABI,
-                                          functionName: "claim",
-                                          args: [address as `0x${string}`],
-                                        });
-                                        setClaimModal({
-                                          open: true,
-                                          status: "success",
-                                          marketId: id,
-                                        });
-                                        setShareModal({
-                                          open: false,
-                                          marketName: displayMarketName,
-                                          peggedSymbol: rowPeggedSymbol,
-                                        });
-                                      } catch (error) {
-                                        setClaimModal({
-                                          open: true,
-                                          status: "error",
-                                          marketId: id,
-                                          errorMessage: (error as any)?.shortMessage || (error as any)?.message || "Claim failed",
-                                        });
-                                      } finally {
-                                        setClaimingMarket(null);
-                                      }
-                                    }
-                                  }}
-                                  disabled={!genesisAddress || !address || !hasClaimable || claimingMarket === id}
-                                  className="px-3 py-1.5 text-[10px] font-medium bg-[#1E4775] text-white hover:bg-[#17395F] disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors rounded-full whitespace-nowrap"
-                                >
-                                  {claimingMarket === id ? "Claiming..." : "Claim"}
-                                </button>
-                              ) : null}
+                              <GenesisMarketRowClaimActions
+                                variant="compact"
+                                isEnded
+                                showMaintenanceTag={completedShowMaintenanceTag}
+                                hasClaimable={hasClaimable}
+                                genesisAddress={genesisAddress}
+                                walletAddress={address}
+                                isClaimingThisMarket={claimingMarket === id}
+                                onClaim={() =>
+                                  claimMarket({
+                                    marketId: id,
+                                    genesisAddress,
+                                    displayMarketName,
+                                    peggedSymbolForShare: peggedNoPrefixCompleted,
+                                  })
+                                }
+                                onManage={() => {}}
+                              />
                             </div>
                           </div>
 
@@ -3643,56 +2790,24 @@ export default function GenesisIndexPage() {
                                     : "$0"}
                                 </div>
                               </div>
-                              {completedShowMaintenanceTag ? (
-                                <MarketMaintenanceTag />
-                              ) : (
-                                hasClaimable && (
-                                <button
-                                  onClick={async (e) => {
-                                    e.stopPropagation();
-                                    if (genesisAddress && address && hasClaimable) {
-                                      try {
-                                        setClaimingMarket(id);
-                                        setClaimModal({
-                                          open: true,
-                                          status: "pending",
-                                          marketId: id,
-                                        });
-                                        const tx = await writeContractAsync({
-                                          address: genesisAddress as `0x${string}`,
-                                          abi: GENESIS_ABI,
-                                          functionName: "claim",
-                                          args: [address as `0x${string}`],
-                                        });
-                                        setClaimModal({
-                                          open: true,
-                                          status: "success",
-                                          marketId: id,
-                                        });
-                                        setShareModal({
-                                          open: false,
-                                          marketName: displayMarketName,
-                                          peggedSymbol: rowPeggedSymbol,
-                                        });
-                                      } catch (error) {
-                                        setClaimModal({
-                                          open: true,
-                                          status: "error",
-                                          marketId: id,
-                                          errorMessage: (error as any)?.shortMessage || (error as any)?.message || "Claim failed",
-                                        });
-                                      } finally {
-                                        setClaimingMarket(null);
-                                      }
-                                    }
-                                  }}
-                                  disabled={!genesisAddress || !address || !hasClaimable || claimingMarket === id}
-                                  className="px-3 py-1.5 text-[10px] font-medium bg-[#1E4775] text-white hover:bg-[#17395F] disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors rounded-full whitespace-nowrap"
-                                >
-                                  {claimingMarket === id ? "Claiming..." : "Claim"}
-                                </button>
-                                )
-                              )}
+                              <GenesisMarketRowClaimActions
+                                variant="compact"
+                                isEnded
+                                showMaintenanceTag={completedShowMaintenanceTag}
+                                hasClaimable={hasClaimable}
+                                genesisAddress={genesisAddress}
+                                walletAddress={address}
+                                isClaimingThisMarket={claimingMarket === id}
+                                onClaim={() =>
+                                  claimMarket({
+                                    marketId: id,
+                                    genesisAddress,
+                                    displayMarketName,
+                                    peggedSymbolForShare: peggedNoPrefixCompleted,
+                                  })
+                                }
+                                onManage={() => {}}
+                              />
                             </div>
                           </div>
                         </div>

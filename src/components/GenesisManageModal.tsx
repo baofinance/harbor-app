@@ -120,8 +120,7 @@ export const GenesisManageModal = ({
       />
 
       <div
-        className="relative bg-white shadow-2xl w-full max-w-md mx-2 sm:mx-4 animate-in fade-in-0 scale-in-95 duration-200 rounded-none max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col"
-        style={{ borderRadius: 0 }}
+        className="relative bg-white shadow-2xl w-full max-w-md mx-2 sm:mx-4 animate-in fade-in-0 scale-in-95 duration-200 rounded-md max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col"
       >
         {/* Header with tabs */}
         <div className="flex items-center justify-between p-0 pt-2 sm:pt-3 px-2 sm:px-3 border-b border-[#1E4775]/10">

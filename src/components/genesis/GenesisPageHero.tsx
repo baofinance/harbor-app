@@ -1,6 +1,7 @@
 /**
- * Page hero for the Genesis index: Maiden Voyage title, subtitle, and three intro cards.
- * @see src/app/genesis/README.md
+ * Full page hero: title section + three intro cards (same as `GenesisHeaderSummary`).
+ * Prefer composing `GenesisPageTitleSection` + `GenesisHeroIntroCards` on the page when
+ * Basic vs Extended splits differ.
  */
 import { GenesisHeaderSummary } from "@/components/GenesisHeaderSummary";
 

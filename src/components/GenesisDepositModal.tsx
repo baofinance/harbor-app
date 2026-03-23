@@ -2441,7 +2441,7 @@ const successFmt = formatTokenAmount(
             </div>
           }
           closeDisabled={step === "approving" || step === "depositing" || isWritePending}
-          panelClassName="rounded-none max-h-[95vh] sm:max-h-[90vh] overflow-y-auto"
+          panelClassName="max-h-[95vh] sm:max-h-[90vh] overflow-y-auto"
           headerClassName="p-3 sm:p-4 lg:p-6"
           contentClassName="p-3 sm:p-4 lg:p-6"
         >

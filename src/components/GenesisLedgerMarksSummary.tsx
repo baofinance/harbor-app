@@ -42,7 +42,7 @@ export const GenesisLedgerMarksSummary = ({
 
   return (
     <div className="mb-2">
-      <div className="bg-black/30 backdrop-blur-sm rounded-none overflow-visible border border-white/50">
+      <div className="bg-black/30 backdrop-blur-sm rounded-md overflow-visible border border-white/50">
         <div className="grid grid-cols-1 md:grid-cols-4 divide-y divide-white/15 md:divide-y-0 md:divide-x md:divide-white/20">
           {/* Header */}
           <div className="p-3 flex items-center justify-center gap-2">
