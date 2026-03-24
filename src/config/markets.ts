@@ -14,6 +14,7 @@ export const markets = {
   // ============================================================================
   "eth-fxusd": {
     name: "ETH/fxUSD",
+    maintenance: true,
     status: "genesis" as const,
     pegTarget: "ETH", // haETH is pegged to ETH
     zapper: true,

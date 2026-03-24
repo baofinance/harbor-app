@@ -175,13 +175,18 @@ function formatUSD(value: number | undefined): string {
 function formatToken(
   value: bigint | undefined,
   decimals = 18,
-  maxFrac = 4
+  maxFrac = 4,
+  minFrac?: number
 ): string {
   if (!value) return "0";
   const n = Number(value) / 10 ** decimals;
   if (n > 0 && n < 1 / 10 ** maxFrac)
     return `<${(1 / 10 ** maxFrac).toFixed(maxFrac)}`;
-  return n.toLocaleString(undefined, { maximumFractionDigits: maxFrac });
+  const min = minFrac ?? 0;
+  return n.toLocaleString(undefined, {
+    minimumFractionDigits: min,
+    maximumFractionDigits: maxFrac,
+  });
 }
 
 function formatRatio(value: bigint | undefined): string {
@@ -575,7 +580,7 @@ const SailMarketRow = React.memo(function SailMarketRow({
                   </span>
                   <span className="text-[#1E4775]/70">
                     {userDeposit
-                      ? `(${formatToken(userDeposit)} ${
+                      ? `(${formatToken(userDeposit, 18, 2, 2)} ${
                           market.leveragedToken?.symbol || ""
                         })`
                       : "(-)"}
@@ -637,7 +642,7 @@ const SailMarketRow = React.memo(function SailMarketRow({
         </div>
 
         {/* Desktop / tablet layout */}
-        <div className="hidden lg:grid grid-cols-[32px_2fr_1fr_0.88fr_1fr_1fr_0.92fr_0.8fr] gap-2 md:gap-4 items-stretch text-sm md:justify-items-center overflow-visible">
+        <div className="hidden lg:grid grid-cols-[32px_1.8fr_1fr_0.88fr_1fr_1fr_1.12fr_0.8fr] gap-2 md:gap-4 items-stretch text-sm md:justify-items-center overflow-visible">
           <div className="flex items-center justify-center">
             <NetworkIconCell
               chainName={(market as any).chain?.name || "Ethereum"}
@@ -730,7 +735,7 @@ const SailMarketRow = React.memo(function SailMarketRow({
           <div className="text-center min-w-0 flex items-center justify-center">
             <span className="text-[#1E4775] font-medium text-xs font-mono">
               {userDeposit
-                ? `${formatToken(userDeposit)} ${
+                ? `${formatToken(userDeposit, 18, 2, 2)} ${
                     market.leveragedToken?.symbol || ""
                   }`
                 : "-"}
@@ -755,7 +760,7 @@ const SailMarketRow = React.memo(function SailMarketRow({
             )}
           </div>
           <div className="text-center min-w-0 flex items-center justify-center px-1">
-            <div className="flex items-center justify-center gap-3 flex-wrap">
+            <div className="flex items-center justify-center gap-0 whitespace-nowrap">
               <SimpleTooltip
                 side="left"
                 maxHeight="none"
@@ -779,7 +784,7 @@ const SailMarketRow = React.memo(function SailMarketRow({
                 </span>
               </SimpleTooltip>
               <span
-                className="text-[#1E4775]/50 text-xs shrink-0 px-1 select-none"
+                className="text-[#1E4775]/50 text-[9px] font-bold shrink-0 select-none leading-none px-[3px]"
                 aria-hidden="true"
               >
                 /
