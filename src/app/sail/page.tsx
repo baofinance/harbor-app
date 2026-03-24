@@ -1,11 +1,11 @@
 "use client";
 
-import React, { useMemo, useState, useEffect, useCallback } from "react";
+import React, { useMemo, useState, useCallback } from "react";
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
-import { useAccount, useContractRead } from "wagmi";
+import { useContractRead } from "wagmi";
 import { useQueryClient } from "@tanstack/react-query";
-import { markets, isMarketInMaintenance } from "@/config/markets";
+import { isMarketInMaintenance } from "@/config/markets";
 import { MarketMaintenanceTag } from "@/components/MarketMaintenanceTag";
 import { useSailPageData } from "@/hooks/useSailPageData";
 import { ChevronDownIcon, ChevronUpIcon } from "@heroicons/react/24/outline";
@@ -28,14 +28,8 @@ const PriceChart = dynamic(() => import("@/components/PriceChart"), {
 import SimpleTooltip from "@/components/SimpleTooltip";
 import { getLogoPath } from "@/components/shared";
 import { SailManageModal } from "@/components/SailManageModal";
-import { minterABI } from "@/abis/minter";
-import {
-  ERC20_ABI,
-  WRAPPED_PRICE_ORACLE_ABI,
-  STABILITY_POOL_MANAGER_ABI,
-} from "@/abis/shared";
+import { WRAPPED_PRICE_ORACLE_ABI } from "@/abis/shared";
 import { useSailPositionPnL } from "@/hooks/useSailPositionPnL";
-import { useMultipleTokenPrices } from "@/hooks/useTokenPrices";
 import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
 import { useCollateralPrice } from "@/hooks/useCollateralPrice";
 import {
@@ -49,8 +43,6 @@ import {
 } from "@/components/sail";
 import NetworkIconCell from "@/components/NetworkIconCell";
 import { isBasicPageLayout } from "@/utils/pageLayoutView";
-
-// PnL is now fetched from subgraph (useSailPositionPnL hook)
 
 interface PnLData {
   costBasis: number;
@@ -100,16 +92,34 @@ function getCurrentFee(bands: FeeBand[] | undefined, currentCR?: bigint) {
   );
 }
 
+/** Same band as `getCurrentFee` (for mint-sail block rules on current CR). */
+function getActiveFeeBand(
+  bands: FeeBand[] | undefined,
+  currentCR?: bigint
+): FeeBand | undefined {
+  if (!bands || bands.length === 0 || !currentCR) return undefined;
+  return (
+    bands.find(
+      (b) =>
+        currentCR >= b.lowerBound &&
+        (b.upperBound === undefined || currentCR <= b.upperBound)
+    ) ?? bands[bands.length - 1]
+  );
+}
+
 function FeeBandBadge({
   ratio,
   isMintSail = false,
   lowerBound = 0n,
   upperBound,
+  showHelp = false,
 }: {
   ratio: bigint;
   isMintSail?: boolean;
   lowerBound?: bigint;
   upperBound?: bigint;
+  /** Table mint/redeem column: append [?] inside the tag (tooltip on parent). */
+  showHelp?: boolean;
 }) {
   const pct = Number(ratio) / 1e16;
   const isZeroToHundredRange = lowerBound === 0n && upperBound !== undefined;
@@ -123,19 +133,13 @@ function FeeBandBadge({
   const isDiscount = ratio < 0n;
   const isFree = ratio === 0n;
 
-  /** Match table “Free” / mint promo pills: soft full rounding + teal border */
-  const pillMint =
-    "px-2 py-0.5 rounded-full text-[9px] font-semibold border-2 border-[#6ED6B5] bg-[#A8F3DC] text-[#0B2A2F]";
-  const pillBlocked =
-    "px-2 py-0.5 rounded-full text-[9px] font-semibold border border-red-300/80 bg-red-100 text-red-800";
-  const pillFee =
-    "px-2 py-0.5 rounded-full text-[9px] font-semibold border border-[#1E4775]/25 bg-[#1E4775]/10 text-[#1E4775]";
-
   const className = isBlocked
-    ? pillBlocked
-    : isDiscount || isFree
-    ? pillMint
-    : pillFee;
+    ? "bg-red-500/30 text-red-700 font-semibold"
+    : isDiscount
+    ? "bg-green-500/30 text-green-700 font-semibold"
+    : isFree
+    ? "bg-blue-500/30 text-blue-700 font-semibold"
+    : "bg-orange-500/30 text-orange-700 font-semibold";
 
   const label = isBlocked
     ? "Blocked"
@@ -145,13 +149,17 @@ function FeeBandBadge({
     ? `${pct.toFixed(2)}% discount`
     : `${pct.toFixed(2)}% fee`;
 
-  return <span className={className}>{label}</span>;
+  return (
+    <span
+      className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] whitespace-nowrap ${className}`}
+    >
+      {label}
+      {showHelp ? (
+        <span className="text-inherit font-semibold opacity-90">[?]</span>
+      ) : null}
+    </span>
+  );
 }
-
-// ERC20_ABI has balanceOf, name, symbol, totalSupply
-const erc20ABI = ERC20_ABI;
-const erc20MetadataABI = ERC20_ABI;
-const wrappedPriceOracleABI = WRAPPED_PRICE_ORACLE_ABI;
 
 // Format USD value
 function formatUSD(value: number | undefined): string {
@@ -243,21 +251,13 @@ const SailMarketRow = React.memo(function SailMarketRow({
   minterConfigData: unknown | undefined;
   rebalanceThresholdData: bigint | undefined;
 }) {
-  const { address } = useAccount();
-
   // Parse contract reads using dynamic offsets
   // Offsets: 0-3 = minter reads, 4 = oracle (if exists), 5-6 = token reads (if exists)
   const leverageRatio = reads?.[baseOffset]?.result as bigint | undefined;
-  const leveragedTokenPrice = reads?.[baseOffset + 1]?.result as
-    | bigint
-    | undefined;
   const collateralRatio = reads?.[baseOffset + 2]?.result as bigint | undefined;
   const collateralValue = reads?.[baseOffset + 3]?.result as bigint | undefined;
 
-  // Parse oracle price (at offset 4 if oracle exists)
-  let oracleOffset = 4;
-  let collateralPriceUSD: bigint | undefined;
-  let wrappedRate: bigint | undefined;
+  const oracleOffset = 4;
   let fxSAVEPriceInETH: bigint | undefined;
   const collateralSymbol = market.collateral?.symbol?.toLowerCase() || "";
   const isFxUSDMarket =
@@ -275,7 +275,7 @@ const SailMarketRow = React.memo(function SailMarketRow({
 
   const { data: fxSAVEPriceInETHDirect } = useContractRead({
     address: priceOracleAddress,
-    abi: wrappedPriceOracleABI,
+    abi: WRAPPED_PRICE_ORACLE_ABI,
     functionName: "getPrice",
     query: {
       enabled:
@@ -303,34 +303,19 @@ const SailMarketRow = React.memo(function SailMarketRow({
     [feeBands, collateralRatio]
   );
 
-  if (hasOracle) {
-    const oracleRead = reads?.[baseOffset + oracleOffset];
-    const oracleResult = oracleRead?.result;
+  const activeMintBand = useMemo(
+    () => getActiveFeeBand(feeBands?.mintLeveraged, collateralRatio),
+    [feeBands, collateralRatio]
+  );
+  const activeRedeemBand = useMemo(
+    () => getActiveFeeBand(feeBands?.redeemLeveraged, collateralRatio),
+    [feeBands, collateralRatio]
+  );
 
-    if (oracleResult !== undefined && oracleResult !== null) {
-      if (Array.isArray(oracleResult)) {
-        // latestAnswer returns [minUnderlyingPrice, maxUnderlyingPrice, minWrappedRate, maxWrappedRate]
-        collateralPriceUSD = oracleResult[1] as bigint;
-        wrappedRate = oracleResult[3] as bigint;
-      } else if (typeof oracleResult === "object") {
-        const obj = oracleResult as {
-          maxUnderlyingPrice?: bigint;
-          maxWrappedRate?: bigint;
-        };
-        collateralPriceUSD = obj.maxUnderlyingPrice;
-        wrappedRate = obj.maxWrappedRate;
-      } else if (typeof oracleResult === "bigint") {
-        collateralPriceUSD = oracleResult;
-        wrappedRate = BigInt("1000000000000000000");
-      }
-    }
-
-    // For fxUSD markets, also read getPrice() to get fxSAVE price in ETH
-    if (isFxUSDMarket) {
-      const getPriceRead = reads?.[baseOffset + oracleOffset + 1];
-      if (getPriceRead?.result !== undefined && getPriceRead?.result !== null) {
-        fxSAVEPriceInETH = getPriceRead.result as bigint;
-      }
+  if (hasOracle && isFxUSDMarket) {
+    const getPriceRead = reads?.[baseOffset + oracleOffset + 1];
+    if (getPriceRead?.result !== undefined && getPriceRead?.result !== null) {
+      fxSAVEPriceInETH = getPriceRead.result as bigint;
     }
   }
 
@@ -343,9 +328,6 @@ const SailMarketRow = React.memo(function SailMarketRow({
   const tokenOffset = hasOracle ? (isFxUSDMarket ? 6 : 5) : 4;
   const tokenName = hasToken
     ? (reads?.[baseOffset + tokenOffset]?.result as string | undefined)
-    : undefined;
-  const totalSupply = hasToken
-    ? (reads?.[baseOffset + tokenOffset + 1]?.result as bigint | undefined)
     : undefined;
   const shortSide = parseShortSide(tokenName, market);
   const longSide = parseLongSide(tokenName, market);
@@ -402,10 +384,12 @@ const SailMarketRow = React.memo(function SailMarketRow({
   const pnlFormatted =
     pnlData.unrealizedPnL !== 0 ? formatPnL(pnlData.unrealizedPnL) : null;
 
+  /** Mint/redeem column: same pill tags as fee popups (`FeeBandBadge`). */
   const renderFeeValue = (
     ratio: bigint | undefined,
-    short = false,
-    showQuestion = false
+    isMintSail: boolean,
+    activeBand: FeeBand | undefined,
+    showHelp = false
   ) => {
     if (ratio === undefined) {
       return (
@@ -414,29 +398,14 @@ const SailMarketRow = React.memo(function SailMarketRow({
         </span>
       );
     }
-    const pct = Number(ratio) / 1e16;
-    const isFree = ratio === 0n;
-    const isDiscount = ratio < 0n;
-    const label = isFree
-      ? "Free"
-      : isDiscount
-      ? `${Math.abs(pct).toFixed(2)}% discount`
-      : short
-      ? `${pct.toFixed(2)}%`
-      : `${pct.toFixed(2)}% fee`;
-    /** Mint pill for Free + discount (same as working “Free” chip); soft fee pill otherwise */
-    const pillMint =
-      "inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[9px] font-semibold whitespace-nowrap border-2 border-[#6ED6B5] bg-[#A8F3DC] text-[#0B2A2F]";
-    const pillFeeSoft =
-      "inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[9px] font-semibold whitespace-nowrap border border-[#1E4775]/25 bg-[#1E4775]/8 text-[#1E4775]";
-    const className = isFree || isDiscount ? pillMint : pillFeeSoft;
     return (
-      <span className={className}>
-        {label}
-        {showQuestion && (
-          <span className="text-inherit text-[9px] opacity-90">[?]</span>
-        )}
-      </span>
+      <FeeBandBadge
+        ratio={ratio}
+        isMintSail={isMintSail}
+        lowerBound={activeBand?.lowerBound ?? 0n}
+        upperBound={activeBand?.upperBound}
+        showHelp={showHelp}
+      />
     );
   };
 
@@ -497,7 +466,7 @@ const SailMarketRow = React.memo(function SailMarketRow({
   return (
     <div
       key={id}
-      className="rounded-md border border-[#1E4775]/15 bg-white shadow-sm overflow-hidden"
+      className="rounded-md border border-[#1E4775]/15 bg-white shadow-sm overflow-visible"
     >
       <div
         className={`py-2 px-2 overflow-visible transition cursor-pointer relative group ${
@@ -516,8 +485,8 @@ const SailMarketRow = React.memo(function SailMarketRow({
             />
             <div className="px-3 pt-0 relative overflow-visible">
               <div className="relative flex items-stretch w-full gap-2 overflow-visible">
-                <div className="relative flex items-stretch flex-1 h-[calc(100%+16px)] -mt-2 overflow-hidden rounded-md border border-[#1E4775]/25 bg-[#e8eef5]">
-                <div className="flex items-center justify-between px-3 py-3 min-h-[52px] text-[#0B2A2F] w-1/2 rounded-l-md bg-[linear-gradient(90deg,#f4faf8_0%,#A8F3DC_33%,#A8F3DC_100%)] relative overflow-hidden">
+                <div className="relative flex items-stretch flex-1 h-[calc(100%+16px)] -mt-2 overflow-visible">
+                <div className="flex items-center justify-between px-3 py-3 min-h-[52px] text-[#0B2A2F] w-1/2 bg-[linear-gradient(90deg,#FFFFFF_0%,#A8F3DC_33%,#A8F3DC_100%)] relative overflow-visible">
                   <div className="flex flex-col items-start gap-0.5 relative z-10 text-[#1E4775]">
                     <span className="text-[10px] uppercase tracking-wide text-[#1E4775]/60">
                       V.lev
@@ -552,7 +521,7 @@ const SailMarketRow = React.memo(function SailMarketRow({
                     </div>
                   </div>
                 </div>
-                <div className="relative flex items-center justify-start px-3 py-3 min-h-[52px] text-[#0B2A2F] w-1/2 rounded-r-md bg-[linear-gradient(90deg,#FFC0B5_0%,#FFC0B5_67%,#f8f4f2_100%)] overflow-hidden">
+                <div className="relative flex items-center justify-start px-3 py-3 min-h-[52px] text-[#0B2A2F] w-1/2 bg-[linear-gradient(90deg,#FFC0B5_0%,#FFC0B5_67%,#FFFFFF_100%)] overflow-visible">
                   <div className="flex flex-col items-start gap-0.5 relative z-10 pl-2">
                     <span className="text-[10px] uppercase tracking-wide text-[#0B2A2F]/60">
                       Short
@@ -668,7 +637,7 @@ const SailMarketRow = React.memo(function SailMarketRow({
         </div>
 
         {/* Desktop / tablet layout */}
-        <div className="hidden lg:grid grid-cols-[32px_2fr_1fr_0.9fr_1fr_1fr_0.9fr_0.8fr] gap-2 md:gap-4 items-stretch text-sm md:justify-items-center overflow-visible">
+        <div className="hidden lg:grid grid-cols-[32px_2fr_1fr_0.88fr_1fr_1fr_0.92fr_0.8fr] gap-2 md:gap-4 items-stretch text-sm md:justify-items-center overflow-visible">
           <div className="flex items-center justify-center">
             <NetworkIconCell
               chainName={(market as any).chain?.name || "Ethereum"}
@@ -679,11 +648,11 @@ const SailMarketRow = React.memo(function SailMarketRow({
           <div className="min-w-0 flex items-center w-full sm:justify-self-stretch overflow-visible">
             <div className="flex items-stretch w-full h-full overflow-visible">
               <div
-                className={`relative flex items-stretch w-full h-[calc(100%+16px)] -my-2 -ml-2 after:absolute after:inset-0 after:bg-[rgba(30,71,117,0.06)] after:opacity-0 group-hover:after:opacity-100 after:transition-opacity overflow-hidden rounded-md border border-[#1E4775]/25 bg-[#e8eef5] ${
+                className={`relative flex items-stretch w-full h-[calc(100%+16px)] -my-2 -ml-2 after:absolute after:inset-0 after:bg-[rgba(30,71,117,0.06)] after:opacity-0 group-hover:after:opacity-100 after:transition-opacity overflow-visible ${
                   isExpanded ? "after:opacity-100" : ""
                 }`}
               >
-                <div className="flex items-center justify-end px-3 py-2 text-[#0B2A2F] w-1/2 rounded-l-md bg-[linear-gradient(90deg,#f4faf8_0%,#A8F3DC_33%,#A8F3DC_100%)] overflow-hidden">
+                <div className="flex items-center justify-end px-3 py-2 text-[#0B2A2F] w-1/2 bg-[linear-gradient(90deg,#FFFFFF_0%,#A8F3DC_33%,#A8F3DC_100%)] overflow-visible">
                   <div className="flex items-center gap-2 relative z-10 pr-2">
                     <Image
                       src={getLogoPath(longSide)}
@@ -705,7 +674,7 @@ const SailMarketRow = React.memo(function SailMarketRow({
                     </span>
                   </div>
                 </div>
-                <div className="relative flex items-center justify-start px-3 py-2 text-[#0B2A2F] w-1/2 rounded-r-md bg-[linear-gradient(90deg,#FFC0B5_0%,#FFC0B5_67%,#f8f4f2_100%)] overflow-hidden">
+                <div className="relative flex items-center justify-start px-3 py-2 text-[#0B2A2F] w-1/2 bg-[linear-gradient(90deg,#FFC0B5_0%,#FFC0B5_67%,#FFFFFF_100%)] overflow-visible">
                   <div className="flex items-center gap-2 relative z-10 pl-2">
                     <Image
                       src={getLogoPath(shortSide)}
@@ -785,8 +754,8 @@ const SailMarketRow = React.memo(function SailMarketRow({
               </span>
             )}
           </div>
-          <div className="text-center min-w-0 flex items-center justify-center">
-            <div className="flex items-center">
+          <div className="text-center min-w-0 flex items-center justify-center px-1">
+            <div className="flex items-center justify-center gap-3 flex-wrap">
               <SimpleTooltip
                 side="left"
                 maxHeight="none"
@@ -805,36 +774,38 @@ const SailMarketRow = React.memo(function SailMarketRow({
                   </div>
                 }
               >
-                <span className="cursor-help mr-1">
-                  {renderFeeValue(mintFeeRatio, true, true)}
+                <span className="cursor-help inline-flex shrink-0">
+                  {renderFeeValue(mintFeeRatio, true, activeMintBand, true)}
                 </span>
               </SimpleTooltip>
-              <span className="text-[#1E4775]/60 text-xs">/</span>
-              <div className="-ml-1">
-                <SimpleTooltip
-                  side="left"
-                  maxHeight="none"
-                  maxWidth={720}
-                  label={
-                    <div className="space-y-1.5">
-                      <div className="text-[10px] text-white/80">
-                        Current CR:{" "}
-                        <span className="font-mono font-semibold">
-                          {formatRatio(collateralRatio)}
-                        </span>
-                      </div>
-                      <div className="min-w-[260px]">
-                        {renderFeeBands("Redeem Fees", feeBands?.redeemLeveraged)}
-                      </div>
+              <span
+                className="text-[#1E4775]/50 text-xs shrink-0 px-1 select-none"
+                aria-hidden="true"
+              >
+                /
+              </span>
+              <SimpleTooltip
+                side="left"
+                maxHeight="none"
+                maxWidth={720}
+                label={
+                  <div className="space-y-1.5">
+                    <div className="text-[10px] text-white/80">
+                      Current CR:{" "}
+                      <span className="font-mono font-semibold">
+                        {formatRatio(collateralRatio)}
+                      </span>
                     </div>
-                  }
-                >
-                  <span className="cursor-help text-[#1E4775] text-[10px] font-semibold inline-flex items-center gap-0">
-                    {renderFeeValue(redeemFeeRatio, true)}
-                    <span className="-ml-1">[?]</span>
-                  </span>
-                </SimpleTooltip>
-              </div>
+                    <div className="min-w-[260px]">
+                      {renderFeeBands("Redeem Fees", feeBands?.redeemLeveraged)}
+                    </div>
+                  </div>
+                }
+              >
+                <span className="cursor-help inline-flex shrink-0">
+                  {renderFeeValue(redeemFeeRatio, false, activeRedeemBand, true)}
+                </span>
+              </SimpleTooltip>
             </div>
           </div>
           <div
@@ -867,12 +838,8 @@ const SailMarketRow = React.memo(function SailMarketRow({
           minterConfigData={minterConfigData}
           rebalanceThresholdData={rebalanceThresholdData}
           leverageRatio={leverageRatio}
-          leveragedTokenPrice={leveragedTokenPrice}
           collateralRatio={collateralRatio}
           collateralValue={collateralValue}
-          totalSupply={totalSupply}
-          collateralPriceUSD={collateralPriceUSD}
-          wrappedRate={wrappedRate}
           fxSAVEPriceInETH={fxSAVEPriceInETH}
           pnlData={pnlData}
           currentValueUSD={currentValueUSD}
@@ -890,12 +857,8 @@ function SailMarketExpandedView({
   minterConfigData,
   rebalanceThresholdData,
   leverageRatio,
-  leveragedTokenPrice,
   collateralRatio,
   collateralValue,
-  totalSupply,
-  collateralPriceUSD,
-  wrappedRate,
   fxSAVEPriceInETH,
   pnlData,
   currentValueUSD,
@@ -907,12 +870,8 @@ function SailMarketExpandedView({
   minterConfigData: unknown | undefined;
   rebalanceThresholdData: bigint | undefined;
   leverageRatio: bigint | undefined;
-  leveragedTokenPrice: bigint | undefined;
   collateralRatio: bigint | undefined;
   collateralValue: bigint | undefined;
-  totalSupply: bigint | undefined;
-  collateralPriceUSD: bigint | undefined;
-  wrappedRate: bigint | undefined;
   fxSAVEPriceInETH?: bigint;
   pnlData?: PnLData;
   currentValueUSD?: number;
@@ -934,8 +893,7 @@ function SailMarketExpandedView({
   // Get CoinGecko prices for fxUSD markets fallback
   const { price: fxSAVEPrice, isLoading: isFxSAVEPriceLoading } =
     useCoinGeckoPrice("fx-usd-saving");
-  const { price: usdcPrice, isLoading: isUSDCPriceLoading } =
-    useCoinGeckoPrice("usd-coin");
+  const { isLoading: isUSDCPriceLoading } = useCoinGeckoPrice("usd-coin");
 
   // Get wstETH price from CoinGecko for fallback
   const { price: wstETHPrice, isLoading: isWstETHPriceLoading } =
@@ -1015,19 +973,6 @@ function SailMarketExpandedView({
     }
     return undefined;
   }, [rebalanceThresholdData, minterConfigData]);
-
-  // Calculate max leverage: leverage = collateral ratio / (collateral ratio - 1)
-  // Example: 130% CR = 1.3 means $130 collateral, $100 debt, $30 leveraged tokens
-  // Leverage = $130 / $30 = 1.3 / 0.3 = 4.33x
-  // Collateral ratio is in 18 decimals (e.g., 1.3e18 = 130% = 1.3)
-  const maxLeverage = useMemo(() => {
-    if (!minCollateralRatio) return undefined;
-    // Convert from 18 decimals to decimal (e.g., 1.3e18 -> 1.3)
-    const minCR = Number(minCollateralRatio) / 1e18;
-    // Leverage = CR / (CR - 1)
-    // For 130% (1.3): 1.3 / (1.3 - 1) = 1.3 / 0.3 = 4.33x
-    return minCR / (minCR - 1);
-  }, [minCollateralRatio]);
 
   // Get peg target and underlying token for description
   const pegTarget = (market as any).pegTarget || "USD";
@@ -1157,7 +1102,7 @@ function SailMarketExpandedView({
           </div>
 
           {/* Mobile: Price Chart below description */}
-          <div className="bg-white p-3 flex flex-col md:hidden">
+          <div className="bg-white p-3 flex flex-col md:hidden rounded-md border border-[#1E4775]/12 shadow-sm">
             <h3 className="text-[#1E4775] font-semibold mb-3 text-sm">
               {market.leveragedToken?.symbol || "Token"} (short{" "}
               {getShortSide(market)} against {getLongSide(market)})

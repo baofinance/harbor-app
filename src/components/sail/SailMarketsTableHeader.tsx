@@ -4,7 +4,7 @@
 export function SailMarketsTableHeader() {
   return (
     <div className="hidden md:block bg-white py-1.5 px-2 overflow-x-auto mb-2 rounded-md border border-[#1E4775]/15 shadow-sm">
-      <div className="grid grid-cols-[32px_2fr_1fr_0.9fr_1fr_1fr_0.9fr_0.8fr] gap-4 items-center uppercase tracking-wider text-[10px] lg:text-[11px] text-[#1E4775] font-semibold">
+      <div className="grid grid-cols-[32px_2fr_1fr_0.88fr_1fr_1fr_0.92fr_0.8fr] gap-4 items-center uppercase tracking-wider text-[10px] lg:text-[11px] text-[#1E4775] font-semibold">
         <div className="min-w-0" aria-label="Network" />
         <div className="min-w-0 text-center">Long / Short</div>
         <div className="text-center min-w-0">Token</div>
