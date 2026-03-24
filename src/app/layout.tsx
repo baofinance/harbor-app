@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import ContextProvider from "@/contexts";
 import { headers } from "next/headers";
@@ -12,16 +12,17 @@ const title ="Harbor Protocol";
 const description =
 "A decentralized protocol for creating synthetic assets pegged to any real-world data feed.";
 
-export const metadata: Metadata = {
- metadataBase: new URL(siteUrl),
- title,
- description,
- viewport: {
+export const viewport: Viewport = {
  width: "device-width",
  initialScale: 1,
  maximumScale: 5,
  userScalable: true,
- },
+};
+
+export const metadata: Metadata = {
+ metadataBase: new URL(siteUrl),
+ title,
+ description,
  keywords: [
 "Harbor",
 "DeFi",
