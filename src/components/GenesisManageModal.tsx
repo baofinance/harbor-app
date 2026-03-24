@@ -3,6 +3,9 @@
 import React, { useState, useEffect } from "react";
 import { GenesisDepositModal } from "./GenesisDepositModal";
 import { GenesisWithdrawModal } from "./GenesisWithdrawModal";
+import { DepositModalShell } from "./DepositModalShell";
+import { ProtocolBanner } from "./ProtocolBanner";
+import { DepositModalTabHeader } from "./DepositModalTabHeader";
 import { useContractRead } from "wagmi";
 import { useAccount } from "wagmi";
 import { getAcceptedDepositAssets } from "@/utils/markets";
@@ -112,65 +115,43 @@ export const GenesisManageModal = ({
     onClose();
   };
 
+  const peggedSymbol =
+    (market?.peggedToken?.symbol as string | undefined) || "haTOKEN";
+  const leveragedSymbol = (market?.leveragedToken?.symbol as string | undefined) ?? "";
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4">
-      <div
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-        onClick={handleClose}
-      />
-
-      <div
-        className="relative bg-white shadow-2xl w-full max-w-md mx-2 sm:mx-4 animate-in fade-in-0 scale-in-95 duration-200 rounded-md max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col"
-      >
-        {/* Header with tabs */}
-        <div className="flex items-center justify-between p-0 pt-2 sm:pt-3 px-2 sm:px-3 border-b border-[#1E4775]/10">
-          <div className="flex flex-1 mr-2 sm:mr-4 border border-[#1E4775]/20 border-b-0 overflow-hidden">
-            <button
-              onClick={() => handleTabChange("deposit")}
-              disabled={isEnded}
-              className={`flex-1 py-2 sm:py-3 text-sm sm:text-base font-semibold transition-colors touch-target ${
-                activeTab === "deposit"
-                  ? "bg-[#1E4775] text-white"
-                  : "bg-[#eef1f7] text-[#4b5a78]"
-              } disabled:opacity-50 disabled:cursor-not-allowed`}
-            >
-              Deposit
-            </button>
-            <button
-              onClick={() => handleTabChange("withdraw")}
-              disabled={!hasDeposit}
-              className={`flex-1 py-2 sm:py-3 text-sm sm:text-base font-semibold transition-colors touch-target ${
-                activeTab === "withdraw"
-                  ? "bg-[#1E4775] text-white"
-                  : "bg-[#eef1f7] text-[#4b5a78]"
-              } disabled:opacity-50 disabled:cursor-not-allowed`}
-            >
-              Withdraw
-            </button>
-          </div>
-          <button
-            onClick={handleClose}
-            className="text-[#1E4775]/50 hover:text-[#1E4775] transition-colors flex-shrink-0 touch-target"
-            aria-label="Close modal"
-          >
-            <svg
-              className="w-5 h-5 sm:w-6 sm:h-6"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
-          </button>
-        </div>
-
-        {/* Content - Show forms directly without modal wrapper */}
-        <div className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6">
+    <DepositModalShell
+      isOpen={isOpen}
+      onClose={handleClose}
+      banner={
+        <ProtocolBanner
+          protocolName="Genesis"
+          tokenSymbol={peggedSymbol}
+          tokenIcon={(market?.peggedToken as { icon?: string } | undefined)?.icon}
+          secondaryTokenSymbol={leveragedSymbol}
+          secondaryTokenIcon={
+            (market?.leveragedToken as { icon?: string } | undefined)?.icon
+          }
+        />
+      }
+      header={
+        <DepositModalTabHeader
+          tabs={[
+            { value: "deposit", label: "Deposit" },
+            { value: "withdraw", label: "Withdraw" },
+          ]}
+          activeTab={activeTab}
+          onTabChange={(v) => handleTabChange(v as "deposit" | "withdraw")}
+          tabDisabled={{
+            deposit: !!isEnded,
+            withdraw: !hasDeposit,
+          }}
+        />
+      }
+      headerClassName="p-0 pt-2 sm:pt-3 px-2 sm:px-3 border-b border-[#1E4775]/10"
+      panelClassName="max-h-[95vh] sm:max-h-[90vh] flex flex-col animate-in fade-in-0 scale-in-95 duration-200"
+      contentClassName="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6 min-h-0"
+    >
           {!isValidGenesisAddress || !isValidCollateralAddress ? (
             <div className="text-center text-[#1E4775]/60 py-8">
               <p className="font-semibold mb-2">Invalid Market Configuration</p>
@@ -248,9 +229,7 @@ export const GenesisManageModal = ({
                 : "Loading..."}
             </div>
           )}
-        </div>
-      </div>
-    </div>
+    </DepositModalShell>
   );
 };
 

@@ -44,6 +44,9 @@ Order in [`src/app/genesis/page.tsx`](../src/app/genesis/page.tsx):
 | Genesis index (main) | [`src/app/genesis/page.tsx`](../src/app/genesis/page.tsx) |
 | Genesis detail | [`src/app/genesis/[id]/page.tsx`](../src/app/genesis/[id]/page.tsx) |
 | Page data (marks, errors, markets) | [`src/hooks/useGenesisPageData.ts`](../src/hooks/useGenesisPageData.ts) |
+| Sail index (main) | [`src/app/sail/page.tsx`](../src/app/sail/page.tsx) |
+| Sail page data (filters, PnL, marks, UI aggregates) | [`src/hooks/useSailPageData.ts`](../src/hooks/useSailPageData.ts) |
+| Sail wagmi reads + price/deposit maps | [`src/hooks/useSailContractReads.ts`](../src/hooks/useSailContractReads.ts) |
 | Market config typing | [`src/types/genesisMarket.ts`](../src/types/genesisMarket.ts) |
 
 ### 3.2 UI− / UI+ (generic, reuse on Anchor/Sail)
@@ -52,8 +55,23 @@ Order in [`src/app/genesis/page.tsx`](../src/app/genesis/page.tsx):
 |---------|------|
 | Toggle component (UI− / UI+) | [`src/components/PageLayoutToggle.tsx`](../src/components/PageLayoutToggle.tsx) |
 | Query helpers `view=basic` | [`src/utils/pageLayoutView.ts`](../src/utils/pageLayoutView.ts) |
-| Which routes show the toggle | [`src/config/pageLayoutToggleRoutes.ts`](../src/config/pageLayoutToggleRoutes.ts) — add `/anchor`, `/sail` when ready |
+| Which routes show the toggle | [`src/config/pageLayoutToggleRoutes.ts`](../src/config/pageLayoutToggleRoutes.ts) — `/genesis`, `/sail`; add `/anchor` when ready |
 | Global nav (scroll, link styles, toggle slot) | [`src/components/Navigation.tsx`](../src/components/Navigation.tsx) |
+
+### 3.3a Sail index UI (`src/components/sail/`)
+
+| Component | Role |
+|-----------|------|
+| `SailPageTitleSection` | Title + subtitle (Basic & Extended) |
+| `SailHeroIntroCards` | Five hero cards (Extended) |
+| `SailExtendedHero` | Boost strip + intro cards |
+| `SailUserStatsCards` | Connected wallet stats row (Extended) |
+| `SailMarksSubgraphErrorBanner` | Marks subgraph error (Extended) |
+| `SailLedgerMarksBar` | Sail Marks summary strip (Extended) |
+| `SailMarketsToolbar` | Network / Long / Short filters + clear + Ledger Marks badge |
+| `SailMarketsTableHeader` | Desktop column header for the leverage table |
+| `SailMarketsSections` | `toolbar` + children (rows), same role as `GenesisMarketsSections` |
+| Barrel | [`src/components/sail/index.ts`](../src/components/sail/index.ts) |
 
 ### 3.3 Genesis-specific UI (`src/components/genesis/`)
 
@@ -121,6 +139,7 @@ When each index page is refactored to mirror Genesis structure:
 ## 5. Related docs (not duplicated here)
 
 - [`src/app/genesis/README.md`](../src/app/genesis/README.md) — short index-specific pointer (kept minimal).
+- [`src/app/sail/README.md`](../src/app/sail/README.md) — Sail index pointer + audit extras (batched reads, metadata, parity notes).
 - **[`GENESIS_UI_RADIUS_PROPOSAL.md`](./GENESIS_UI_RADIUS_PROPOSAL.md)** — straight vs rounded edges by zone + wallet-vs-modal options; open [`genesis-ui-radius-preview.html`](./genesis-ui-radius-preview.html) in a browser for a quick visual.
 - [`ANCHOR_LAYOUT_OPTIONS.md`](../ANCHOR_LAYOUT_OPTIONS.md) — historical layout options (may predate this pattern).
 - Subgraph / marks setup — see repo root `HARBOR_MARKS_SETUP.md` and subgraph docs.

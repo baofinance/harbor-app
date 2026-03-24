@@ -2055,32 +2055,57 @@ export default function GenesisIndexPage() {
                           const isEurMarket =
                             id === "steth-eur" || id === "fxusd-eur";
                           const isLaunchMarket =
-                            id === "eth-fxusd" || id === "btc-fxusd" || id === "btc-steth";
+                            id === "eth-fxusd" ||
+                            id === "btc-fxusd" ||
+                            id === "btc-steth" ||
+                            id === "btc-usd-megaeth";
+                          /** BTC genesis markets: early-bonus threshold is shown as 0.5 BTC (not stETH). */
+                          const isBtcGenesisMarket =
+                            id === "btc-fxusd" ||
+                            id === "btc-steth" ||
+                            id === "btc-usd-megaeth";
                           // Metals and all future campaigns use 25k fxSAVE / 15 wstETH
                           const isMetalsOrFuture = !isLaunchMarket && !isEurMarket;
-                          const thresholdAmount = isEurMarket
-                            ? isFxSAVE
-                              ? 50000
-                              : 15
-                            : isMetalsOrFuture
-                            ? isFxSAVE
-                              ? 25000
-                              : 15
-                            : isFxSAVE
-                            ? 250000
-                            : 70;
+                          const thresholdAmount = isBtcGenesisMarket
+                            ? 0.5
+                            : isEurMarket
+                              ? isFxSAVE
+                                ? 50000
+                                : 15
+                              : isMetalsOrFuture
+                                ? isFxSAVE
+                                  ? 25000
+                                  : 15
+                                : isFxSAVE
+                                  ? 250000
+                                  : 70;
                           const fallbackBonusStatus = {
                             cumulativeDeposits: "0",
                             thresholdAmount: String(thresholdAmount),
-                            thresholdToken: isFxSAVE ? "fxSAVE" : "wstETH",
+                            thresholdToken: isBtcGenesisMarket
+                              ? "BTC"
+                              : isFxSAVE
+                                ? "fxSAVE"
+                                : "wstETH",
                             thresholdReached: false,
                           };
                           // Use marketBonusStatus if available, but ensure thresholdToken is set correctly
                           const effectiveBonusStatus = marketBonusStatus
                             ? {
                                 ...marketBonusStatus,
-                                thresholdToken: marketBonusStatus.thresholdToken || (isFxSAVE ? "fxSAVE" : "wstETH"),
-                                thresholdAmount: marketBonusStatus.thresholdAmount || String(thresholdAmount),
+                                ...(isBtcGenesisMarket
+                                  ? {
+                                      thresholdToken: "BTC" as const,
+                                      thresholdAmount: "0.5",
+                                    }
+                                  : {
+                                      thresholdToken:
+                                        marketBonusStatus.thresholdToken ||
+                                        (isFxSAVE ? "fxSAVE" : "wstETH"),
+                                      thresholdAmount:
+                                        marketBonusStatus.thresholdAmount ||
+                                        String(thresholdAmount),
+                                    }),
                               }
                             : fallbackBonusStatus;
 
@@ -2147,7 +2172,13 @@ export default function GenesisIndexPage() {
                                       effectiveBonusStatus.thresholdAmount
                                     ).toLocaleString(undefined, {
                                       maximumFractionDigits: 0,
-                                    })} ${effectiveBonusStatus.thresholdToken === "wstETH" ? "stETH" : effectiveBonusStatus.thresholdToken}`}
+                                    })} ${
+                                      effectiveBonusStatus.thresholdToken === "wstETH"
+                                        ? "stETH"
+                                        : effectiveBonusStatus.thresholdToken === "BTC"
+                                          ? "BTC"
+                                          : effectiveBonusStatus.thresholdToken
+                                    }`}
                                   </span>
 
                                   {/* User Qualification Status - on same line */}

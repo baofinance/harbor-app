@@ -77,8 +77,6 @@ export const markets = {
       label: "Launch Maiden Voyage",
     },
     coinGeckoId: "fx-usd-saving", // CoinGecko ID for fxSAVE (the deposited token)
-    // Optional UI: `maintenance: true` shows a Maintenance tag (Genesis / Anchor / Sail / Transparency).
-    maintenance: true,
     genesis: {
       startDate: contractsMarkets["eth-fxusd"].genesis.startDate,
       endDate: contractsMarkets["eth-fxusd"].genesis.endDate,

@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
-import"./globals.css";
+import "./globals.css";
 import ContextProvider from "@/contexts";
 import { headers } from "next/headers";
 import Navigation from "@/components/Navigation";
 import FadeContent from "@/components/FadeContent";
+import { DocumentTextIcon } from "@heroicons/react/24/outline";
+import { SiDiscord, SiX } from "react-icons/si";
 
 const siteUrl ="https://app.harborfinance.io";
 const title ="Harbor Protocol";
@@ -96,36 +98,42 @@ export default async function RootLayout({
          href="https://www.harborfinance.io/#:~:text=and%20many%20more.-,View%20audit%20report,-Banking%20and%20Crypto"
          target="_blank"
          rel="noopener noreferrer"
-         className="inline-flex items-center rounded-full bg-[#FF8A7A] px-3 py-1 text-xs font-semibold text-white hover:bg-[#E07A6A] transition-colors"
+         className="inline-flex items-center rounded-md bg-[#FF8A7A] px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-[#E07A6A] transition-colors"
        >
          Audited by Sherlock
        </a>
      </div>
 
-     <div className="flex flex-col sm:flex-row items-center justify-center gap-4 text-sm text-white/70">
+     <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-5 text-sm text-white/70">
        <a
          href="https://docs.harborfinance.io/"
          target="_blank"
          rel="noopener noreferrer"
-         className="hover:text-white transition-colors"
+         title="Harbor Docs"
+         className="inline-flex items-center gap-2 rounded-md px-2 py-1.5 font-normal hover:bg-white/10 hover:text-white transition-colors"
        >
+         <DocumentTextIcon className="h-4 w-4 shrink-0" aria-hidden />
          Docs
        </a>
        <a
          href="https://discord.com/invite/BW3P62vJXT"
          target="_blank"
          rel="noopener noreferrer"
-         className="hover:text-white transition-colors"
+         title="Harbor on Discord"
+         className="inline-flex items-center gap-2 rounded-md px-2 py-1.5 font-normal hover:bg-white/10 hover:text-white transition-colors"
        >
+         <SiDiscord className="h-4 w-4 shrink-0" aria-hidden />
          Discord
        </a>
        <a
          href="https://x.com/0xHarborFi"
          target="_blank"
          rel="noopener noreferrer"
-         className="hover:text-white transition-colors"
+         title="@0xHarborFi on X"
+         className="inline-flex items-center gap-2 rounded-md px-2 py-1.5 font-normal hover:bg-white/10 hover:text-white transition-colors"
        >
-         X
+         <SiX className="h-4 w-4 shrink-0" aria-hidden />
+         0xHarborFi
        </a>
      </div>
    </div>
