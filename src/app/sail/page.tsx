@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
 import { useSailPageData } from "@/hooks/useSailPageData";
@@ -16,13 +15,12 @@ import {
   SailUserStatsCards,
   SailMarketRow,
 } from "@/components/sail";
-import { isBasicPageLayout } from "@/utils/pageLayoutView";
+import { usePageLayoutPreference } from "@/contexts/PageLayoutPreferenceContext";
 import type { DefinedMarket } from "@/config/markets";
 
 export default function SailPage() {
-  const searchParams = useSearchParams();
-  /** Nav toggle: Basic = title + markets only (no hero cards, stats strips, Sail Marks bar). See `pageLayoutView`. */
-  const sailViewBasic = isBasicPageLayout(searchParams);
+  /** Nav toggle: Basic = title + markets only (no hero cards, stats strips, Sail Marks bar). Persists across routes. */
+  const { isBasic: sailViewBasic } = usePageLayoutPreference();
 
   const { price: sailPageEthPrice } = useCoinGeckoPrice("ethereum", 120000);
   const { price: sailPageWstETHPrice } = useCoinGeckoPrice(

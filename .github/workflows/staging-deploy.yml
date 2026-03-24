@@ -12,12 +12,14 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 18
-          cache: "npm"
+          node-version: 20
+          cache: "yarn"
+      - name: Enable Corepack (Yarn from package.json)
+        run: corepack enable
       - name: Install dependencies
-        run: npm ci
+        run: yarn install --frozen-lockfile
       - name: Build staging site
-        run: npm run build
+        run: yarn build
         env:
           NEXT_PUBLIC_APP_ENV: staging
       - name: Deploy to GitHub Pages

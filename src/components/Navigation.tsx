@@ -11,7 +11,6 @@ import Link from "next/link";
 import Image from "next/image";
 import { ConnectWallet } from "@/components/Wallet";
 import { PageLayoutToggle } from "@/components/PageLayoutToggle";
-import { PAGE_LAYOUT_TOGGLE_PATH_PREFIXES } from "@/config/pageLayoutToggleRoutes";
 
 export default function Example() {
   const pathname = usePathname();
@@ -98,9 +97,7 @@ export default function Example() {
           </div>
           <div className="hidden shrink-0 sm:ml-2 sm:flex sm:items-center sm:gap-2 lg:gap-3">
             <Suspense fallback={null}>
-              {PAGE_LAYOUT_TOGGLE_PATH_PREFIXES.map((prefix) => (
-                <PageLayoutToggle key={prefix} pathPrefix={prefix} />
-              ))}
+              <PageLayoutToggle />
             </Suspense>
             <ConnectWallet />
           </div>
@@ -135,9 +132,7 @@ export default function Example() {
           </div>
           <div className="flex flex-col items-center justify-center mb-4 flex-shrink-0 gap-3 w-full max-w-sm mx-auto">
             <Suspense fallback={null}>
-              {PAGE_LAYOUT_TOGGLE_PATH_PREFIXES.map((prefix) => (
-                <PageLayoutToggle key={prefix} pathPrefix={prefix} />
-              ))}
+              <PageLayoutToggle />
             </Suspense>
             <ConnectWallet />
           </div>

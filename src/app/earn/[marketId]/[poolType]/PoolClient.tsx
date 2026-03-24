@@ -285,7 +285,7 @@ function RewardsTab({
       <div>
         <p className="text-xs text-white/60 mb-1">Claimable Rewards</p>
         <p className="text-lg font-medium text-white font-mono">
-          {formatAmount(poolWithData?.rewards)} STEAM
+          {formatAmount(poolWithData?.rewards)} TIDE
         </p>
       </div>
       {error && <p className="text-sm text-rose-400">{error}</p>}
@@ -721,7 +721,7 @@ export default function PoolClient({ marketId, poolType }: PoolClientProps) {
             <div className="flex items-center gap-4 mb-1">
               <h3 className="font-semibold font-mono text-white">Boost APR</h3>
               <InfoTooltip
-                label="Additional APR from STEAM boosts."
+                label="Additional APR from TIDE boosts."
                 side="top"
               />
             </div>

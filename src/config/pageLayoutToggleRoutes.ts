@@ -1,10 +1,12 @@
 /**
- * Routes that show the header **Basic / Extended** toggle (index pages only).
- * `/sail` follows the Genesis pattern (Basic = title + list; Extended = hero + stats + marks).
- * Add `/anchor` when that index matches the same split.
+ * Index routes where **Basic / Extended** changes the page (exact pathname match).
+ * Other routes still show the toggle; choice persists but layout is unchanged.
+ * Add `/anchor` when that index implements the split (see playbook).
  */
-export const PAGE_LAYOUT_TOGGLE_PATH_PREFIXES: readonly string[] = [
+export const PAGE_LAYOUT_INDEX_EXACT_PATHS: readonly string[] = [
   "/genesis",
-  // "/anchor",
   "/sail",
 ];
+
+/** @deprecated Use {@link PAGE_LAYOUT_INDEX_EXACT_PATHS} — kept for any legacy imports */
+export const PAGE_LAYOUT_TOGGLE_PATH_PREFIXES = PAGE_LAYOUT_INDEX_EXACT_PATHS;

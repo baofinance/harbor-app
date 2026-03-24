@@ -40,7 +40,7 @@ Header ([`SailMarketsTableHeader`](../../components/sail/SailMarketsTableHeader.
 
 `grid-cols-[32px_2.2fr_0.92fr_0.82fr_0.92fr_0.92fr_0.96fr_0.72fr]`
 
-Columns: Network · Long/Short · Token · Leverage · Your position · Current value · Mint/Redeem fee · Action. Gaps: `gap-2 md:gap-3 lg:gap-3.5` on rows; similar on header.
+Columns: Network · Long/Short · Token · Leverage · Your position · Current value · Mint / Redeem fee · Action. Gaps: `gap-2 md:gap-3 lg:gap-3.5` on rows; similar on header.
 
 **Fee badges (table):** [`SailFeeBandBadge`](../../components/sail/SailFeeBandBadge.tsx) uses fixed width `w-[calc(4.5rem-5px)]` for the mint/redeem pills (5px narrower than `4.5rem`); tooltip content uses full labels.
 

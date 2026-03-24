@@ -55,13 +55,13 @@ import { DEFAULT_FDV } from "@/utils/tokenAllocation";
 import { formatGenesisMarketDisplayName } from "@/utils/genesisDisplay";
 import { useGenesisPageData } from "@/hooks/useGenesisPageData";
 import { computeGenesisRowUsdPricing } from "@/utils/genesisRowPricing";
-import { isBasicPageLayout } from "@/utils/pageLayoutView";
+import { usePageLayoutPreference } from "@/contexts/PageLayoutPreferenceContext";
 
 export default function GenesisIndexPage() {
   const { address, isConnected } = useAccount();
   const searchParams = useSearchParams();
-  /** Header toggle: Basic = toolbar + tables only (no hero + Ledger Marks strip). See `pageLayoutView`. */
-  const genesisViewBasic = isBasicPageLayout(searchParams, ["genesisView"]);
+  /** Header toggle: Basic = toolbar + tables only (no hero + Ledger Marks strip). Persists across routes. */
+  const { isBasic: genesisViewBasic } = usePageLayoutPreference();
   const isAprRevealed =
     process.env.NEXT_PUBLIC_MAIDEN_VOYAGE_APR_REVEALED === "true" ||
     searchParams.get("apr") === "revealed";

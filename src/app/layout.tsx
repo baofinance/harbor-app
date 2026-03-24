@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
+import { Suspense } from "react";
 import "./globals.css";
 import ContextProvider from "@/contexts";
+import { PageLayoutPreferenceProvider } from "@/contexts/PageLayoutPreferenceContext";
 import { headers } from "next/headers";
 import Navigation from "@/components/Navigation";
 import FadeContent from "@/components/FadeContent";
@@ -31,7 +33,7 @@ export const metadata: Metadata = {
 "leverage",
 "crypto",
 "blockchain",
-"STEAM token",
+"TIDE",
  ],
  authors: [{ name:"Harbor Protocol" }],
  icons: {
@@ -82,6 +84,8 @@ export default async function RootLayout({
  >
  <div className="relative z-10 flex flex-1 flex-col min-h-0">
  <ContextProvider cookies={cookies}>
+ <Suspense fallback={null}>
+ <PageLayoutPreferenceProvider>
  <Navigation />
  <FadeContent
  blur={false}
@@ -92,6 +96,8 @@ export default async function RootLayout({
  >
  {children}
  </FadeContent>
+ </PageLayoutPreferenceProvider>
+ </Suspense>
  <footer className="mt-auto flex-shrink-0 border-t border-white/20">
    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
      <div className="flex justify-center mb-4">

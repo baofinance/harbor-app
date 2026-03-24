@@ -11,7 +11,7 @@ export function SailMarketsTableHeader() {
         <div className="text-center min-w-0">Leverage</div>
         <div className="text-center min-w-0">Your Position</div>
         <div className="text-center min-w-0">Current Value</div>
-        <div className="text-center min-w-0">Mint/Redeem Fee</div>
+        <div className="text-center min-w-0">Mint / Redeem Fee</div>
         <div className="text-center min-w-0">Action</div>
       </div>
     </div>
