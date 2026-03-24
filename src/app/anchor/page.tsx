@@ -15,8 +15,7 @@ import {
   useContractRead,
 } from "wagmi";
 import { formatEther, parseEther } from "viem";
-import { useQueryClient, useQuery } from "@tanstack/react-query";
-import { markets, isMarketInMaintenance } from "@/config/markets";
+import { isMarketInMaintenance } from "@/config/markets";
 import { MarketMaintenanceTag } from "@/components/MarketMaintenanceTag";
 import { POLLING_INTERVALS } from "@/config/polling";
 import {
@@ -81,17 +80,8 @@ import {
   WRAPPED_PRICE_ORACLE_ABI,
 } from "@/abis/shared";
 import Image from "next/image";
-import { useProjectedAPR } from "@/hooks/useProjectedAPR";
-import { useAnchorLedgerMarks } from "@/hooks/useAnchorLedgerMarks";
-import { useWithdrawalRequests } from "@/hooks/useWithdrawalRequests";
 import { useStabilityPoolRewards } from "@/hooks/useStabilityPoolRewards";
 import { useAllStabilityPoolRewards } from "@/hooks/useAllStabilityPoolRewards";
-import { useMultipleVolatilityProtection } from "@/hooks/useVolatilityProtection";
-import { useMarketPositions } from "@/hooks/useMarketPositions";
-import { useMultipleTokenPrices } from "@/hooks/useTokenPrices";
-import { useFxSAVEAPR } from "@/hooks/useFxSAVEAPR";
-import { useWstETHAPR } from "@/hooks/useWstETHAPR";
-import { useCoinGeckoPrices } from "@/hooks/useCoinGeckoPrice";
 import { useContractReads as useWagmiContractReads } from "wagmi";
 import {
   formatRatio,
@@ -100,26 +90,17 @@ import {
   calculateVolatilityProtection,
   getAcceptedDepositAssets,
 } from "@/utils/anchor";
-import { useAnchorPrices } from "@/hooks/anchor/useAnchorPrices";
-import { useGroupedMarkets } from "@/hooks/anchor/useGroupedMarkets";
-import { useAnchorMarketData } from "@/hooks/anchor/useAnchorMarketData";
-import { useAnchorContractReads } from "@/hooks/anchor/useAnchorContractReads";
-import { useAnchorRewards } from "@/hooks/anchor/useAnchorRewards";
-import { useAnchorMarks } from "@/hooks/anchor/useAnchorMarks";
+import { useAnchorPageData } from "@/hooks/anchor/useAnchorPageData";
 import { useAnchorTransactions } from "@/hooks/anchor/useAnchorTransactions";
 import { RewardTokensDisplay } from "@/components/anchor/RewardTokensDisplay";
 import { AnchorMarketExpandedView } from "@/components/anchor/AnchorMarketExpandedView";
-import { useAnchorTokenMetadata } from "@/hooks/anchor/useAnchorTokenMetadata";
-import { useAnchorUserDeposits } from "@/hooks/anchor/useAnchorUserDeposits";
-import { useStaggeredReady } from "@/hooks/useStaggeredReady";
 import { calculateReadOffset } from "@/utils/anchor/calculateReadOffset";
 import { useMultipleCollateralPrices } from "@/hooks/useCollateralPrice";
 import { computeGenesisWrappedCollateralPriceUSD } from "@/utils/wrappedCollateralPriceUSD";
 import { DEBUG_ANCHOR } from "@/config/debug";
 import { getDepositMode } from "@/utils/depositMode";
-import { FilterMultiselectDropdown, FILTER_NONE_SENTINEL } from "@/components/FilterMultiselectDropdown";
+import { FilterMultiselectDropdown } from "@/components/FilterMultiselectDropdown";
 import NetworkIconCell from "@/components/NetworkIconCell";
-import { getWeb3iconsNetworkId } from "@/config/web3iconsNetworks";
 
 // Flag to temporarily disable anchor marks (set to false to pause marks)
 const ANCHOR_MARKS_ENABLED = true;
@@ -147,7 +128,7 @@ export default function AnchorPage() {
   const { writeContractAsync } = useWriteContract();
   const publicClient = usePublicClient();
 
-  // CoinGecko prices are now provided by useAnchorPrices hook (see below)
+  // Prices + reads: composed in useAnchorPageData (see below)
   const [expandedMarkets, setExpandedMarkets] = useState<string[]>([]);
   const [chainFilterSelected, setChainFilterSelected] = useState<string[]>([]);
   const [manageModal, setManageModal] = useState<{
@@ -298,192 +279,28 @@ export default function AnchorPage() {
     setMounted(true);
   }, []);
 
-  // Get all markets with pegged tokens (we'll filter by collateral balance later)
-  const anchorMarkets = useMemo(
-    () => Object.entries(markets).filter(([_, m]) => m.peggedToken),
-    []
-  );
-
-  // Filter by chain for display (data still loaded for all markets)
-  const displayedAnchorMarkets = useMemo(
-    () =>
-      chainFilterSelected.includes(FILTER_NONE_SENTINEL)
-        ? []
-        : chainFilterSelected.length === 0
-          ? anchorMarkets
-          : anchorMarkets.filter(([, m]) => {
-              const chainName = (m as any).chain?.name || "Ethereum";
-              return chainFilterSelected.includes(chainName);
-            }),
-    [anchorMarkets, chainFilterSelected]
-  );
-
-  const anchorChainOptions = useMemo(() => {
-    const seen = new Set<string>();
-    const options: { id: string; label: string; iconUrl?: string; networkId?: string }[] = [];
-    anchorMarkets.forEach(([, m]) => {
-      const name = (m as any).chain?.name || "Ethereum";
-      if (seen.has(name)) return;
-      seen.add(name);
-      const logo = (m as any).chain?.logo || "icons/eth.png";
-      const networkId = getWeb3iconsNetworkId(name);
-      options.push({
-        id: name,
-        label: name,
-        iconUrl: networkId ? undefined : (logo.startsWith("/") ? logo : `/${logo}`),
-        networkId,
-      });
-    });
-    return options.sort((a, b) => a.label.localeCompare(b.label));
-  }, [anchorMarkets]);
-
-  // Build markets config for volatility protection hook
-  const volProtectionMarketsConfig = useMemo(
-    () =>
-      anchorMarkets.map(([_, m]) => ({
-        minterAddress: (m as any).addresses?.minter as
-          | `0x${string}`
-          | undefined,
-        collateralPoolAddress: (m as any).addresses?.stabilityPoolCollateral as
-          | `0x${string}`
-          | undefined,
-        sailPoolAddress: (m as any).addresses?.stabilityPoolLeveraged as
-          | `0x${string}`
-          | undefined,
-      })),
-    [anchorMarkets]
-  );
-
-  const queryClient = useQueryClient();
-  const useAnvil = false;
-
-  // Stagger initial fetches to avoid 5-10 multicalls firing simultaneously
-  const stagger = useStaggeredReady(6, 50);
-
-  // Fetch volatility protection data for all markets
-  const { data: volProtectionData } = useMultipleVolatilityProtection(
-    volProtectionMarketsConfig,
-    { refetchInterval: 60_000, enabled: stagger[3] }
-  );
-
-  // Get projected APR for the primary market (pb-steth)
-  const projectedAPR = useProjectedAPR("pb-steth");
-
-  // Wrapped collateral APR (DeFiLlama yields). Used for "projected APR" before pool rewards start.
-  const { data: fxSAVEApy } = useFxSAVEAPR(true);
-  const { data: wstETHApy } = useWstETHAPR(true);
-
-  // Anchor ledger marks are now provided by useAnchorMarks hook (see below)
-
-  // Collect all pool addresses for withdrawal request queries
-  const allPoolAddresses = useMemo(() => {
-    const addresses: `0x${string}`[] = [];
-    anchorMarkets.forEach(([_, market]) => {
-      if ((market as any).addresses?.stabilityPoolCollateral) {
-        addresses.push(
-          (market as any).addresses.stabilityPoolCollateral as `0x${string}`
-        );
-      }
-      if ((market as any).addresses?.stabilityPoolLeveraged) {
-        addresses.push(
-          (market as any).addresses.stabilityPoolLeveraged as `0x${string}`
-        );
-      }
-    });
-    return addresses;
-  }, [anchorMarkets]);
-
-  // Fetch withdrawal requests for all pools
-  const { data: withdrawalRequests = [] } =
-    useWithdrawalRequests(allPoolAddresses);
-
-  // Create a map of pool address to reward token symbols
-  // We'll query reward tokens for each unique pool and combine them per market group
-  const poolToRewardTokens = useMemo(() => {
-    const map = new Map<`0x${string}`, string[]>();
-    anchorMarkets.forEach(([_, market]) => {
-      const collateralPool = (market as any).addresses
-        ?.stabilityPoolCollateral as `0x${string}` | undefined;
-      const sailPool = (market as any).addresses?.stabilityPoolLeveraged as
-        | `0x${string}`
-        | undefined;
-      if (collateralPool) map.set(collateralPool, []);
-      if (sailPool) map.set(sailPool, []);
-    });
-    return map;
-  }, [anchorMarkets]);
-
-  // Note: allMarketContracts is no longer needed - useAnchorMarks can get peggedTokenPrice from reads
-  // We'll pass undefined and let the hook extract it from reads directly
-  const allMarketContracts = undefined;
-
-  // Use extracted hook for token metadata
-  useAnchorTokenMetadata(anchorMarkets, { enabled: stagger[5] });
-
-  // Use extracted hook for contract reads
   const {
+    anchorMarkets,
+    displayedAnchorMarkets,
+    anchorChainOptions,
+    stagger,
+    volProtectionData,
+    projectedAPR,
+    fxSAVEApy,
+    wstETHApy,
+    allPoolAddresses,
+    withdrawalRequests,
+    poolToRewardTokens,
     reads,
     refetchReads,
-    isLoading: isLoadingReads,
-    isError: isReadsError,
-    error: readsError,
-  } = useAnchorContractReads(anchorMarkets, useAnvil, { enabled: stagger[0] });
-
-  // Build a fallback price map from the existing reads (per-market peggedTokenPrice)
-  const peggedPricesFromReads = useMemo(() => {
-    const map: Record<string, bigint | undefined> = {};
-    if (!reads) return map;
-
-    anchorMarkets.forEach(([id, m], mi) => {
-      // Use utility function to calculate offset
-      const baseOffset = calculateReadOffset(anchorMarkets, mi);
-      const priceRead = reads?.[baseOffset + 3];
-      if (
-        priceRead &&
-        priceRead.result !== undefined &&
-        priceRead.result !== null
-      ) {
-        map[id] = priceRead.result as bigint;
-      }
-    });
-
-    return map;
-  }, [anchorMarkets, reads]);
-
-  // Get CoinGecko IDs for underlying collateral (e.g., fxUSD) and wrapped tokens (e.g., fxSAVE, wstETH)
-  const coinGeckoIds = useMemo(() => {
-    const ids = new Set<string>();
-    anchorMarkets.forEach(([id, m]) => {
-      const underlyingCoinGeckoId = (m as any).underlyingCoinGeckoId as
-        | string
-        | undefined;
-      if (underlyingCoinGeckoId) {
-        ids.add(underlyingCoinGeckoId);
-      }
-      // Also add wrapped token CoinGecko IDs
-      const coinGeckoId = (m as any).coinGeckoId as string | undefined;
-      if (coinGeckoId) {
-        ids.add(coinGeckoId);
-      }
-    });
-    // Add wstETH and stETH for fallback
-    ids.add("wrapped-steth");
-    ids.add("lido-staked-ethereum-steth");
-    // Add peg targets used for oracle conversions (BTC/ETH-pegged markets)
-    ids.add("bitcoin");
-    ids.add("ethereum");
-    return Array.from(ids);
-  }, [anchorMarkets]);
-
-  // Fetch collateral prices from CoinGecko (for depeg detection and wrapped token prices)
-  const {
-    prices: coinGeckoPrices,
-    isLoading: coinGeckoLoading,
-    error: coinGeckoError,
-  } = useCoinGeckoPrices(coinGeckoIds);
-
-  // Calculate USD prices using hook (needed for marks calculation)
-  const {
+    isLoadingReads,
+    isReadsError,
+    readsError,
+    peggedPricesFromReads,
+    coinGeckoIds,
+    coinGeckoPrices,
+    coinGeckoLoading,
+    coinGeckoError,
     peggedPriceUSDMap,
     mergedPeggedPriceMap,
     ethPrice,
@@ -494,157 +311,39 @@ export default function AnchorPage() {
     fxUSDPrice,
     fxSAVEPrice,
     usdcPrice,
-  } = useAnchorPrices(anchorMarkets, reads, peggedPricesFromReads);
-
-  // Use extracted hook for marks calculations
-  const {
     totalAnchorMarks,
     totalAnchorMarksPerDay,
     totalMarksPerDay,
     sailMarksPerDay,
-    maidenVoyageMarksPerDay: maidenVoyageMarksPerDayFromHook,
+    maidenVoyageMarksPerDay,
     haBalances,
     poolDeposits,
     sailBalances,
-    isLoading: isLoadingAnchorMarks,
-    error: anchorMarksError,
-  } = useAnchorMarks(anchorMarkets, allMarketContracts, reads);
-
-  // Subgraph-backed ledger marks (source of truth for airdrops)
-  const {
-    haBalances: haLedgerBalances,
-    poolDeposits: poolLedgerDeposits,
-    loading: isLoadingLedgerMarks,
-    error: ledgerMarksError,
-  } = useAnchorLedgerMarks({ enabled: true });
-
-  const { totalAnchorLedgerMarks, totalAnchorLedgerMarksPerDay } =
-    useMemo(() => {
-    const totalMarks =
-        (haLedgerBalances ?? []).reduce(
-          (sum: number, b: any) => sum + (b.estimatedMarks ?? 0),
-          0
-        ) +
-        (poolLedgerDeposits ?? []).reduce(
-          (sum: number, d: any) => sum + (d.estimatedMarks ?? 0),
-          0
-        );
-
-    const totalPerDay =
-        (haLedgerBalances ?? []).reduce(
-          (sum: number, b: any) => sum + (b.marksPerDay ?? 0),
-          0
-        ) +
-        (poolLedgerDeposits ?? []).reduce(
-          (sum: number, d: any) => sum + (d.marksPerDay ?? 0),
-          0
-        );
-
-      return {
-        totalAnchorLedgerMarks: totalMarks,
-        totalAnchorLedgerMarksPerDay: totalPerDay,
-      };
-  }, [haLedgerBalances, poolLedgerDeposits]);
-
-  // Keep for backward compatibility
-  const maidenVoyageMarksPerDay = maidenVoyageMarksPerDayFromHook;
-
-  // Use extracted hook for user deposits
-  const { userDepositMap, refetchUserDeposits } = useAnchorUserDeposits(
-    anchorMarkets,
-    useAnvil,
-    { enabled: stagger[1] }
-  );
-
-  // Use extracted hook for rewards calculations
-  const {
+    isLoadingAnchorMarks,
+    anchorMarksError,
+    haLedgerBalances,
+    poolLedgerDeposits,
+    isLoadingLedgerMarks,
+    ledgerMarksError,
+    totalAnchorLedgerMarks,
+    totalAnchorLedgerMarksPerDay,
+    userDepositMap,
+    refetchUserDeposits,
     allPoolRewards,
     poolRewardsMap,
     isLoadingAllRewards,
     isFetchingAllRewards,
     isErrorAllRewards,
-  } = useAnchorRewards(
-    anchorMarkets,
-    reads,
-    ethPrice,
-    btcPrice,
-    peggedPriceUSDMap
-  );
-
-  const showLiveAprLoading =
-    isLoadingAllRewards || (isFetchingAllRewards && poolRewardsMap.size === 0);
-
-  // Build market configs for positions hook
-  const marketPositionConfigs = useMemo(() => {
-    return anchorMarkets.map(([id, m]) => {
-      const hasCollateralPool = !!(m as any).addresses?.stabilityPoolCollateral;
-      const hasSailPool = !!(m as any).addresses?.stabilityPoolLeveraged;
-      const peggedTokenAddress = (m as any)?.addresses?.peggedToken as
-        | `0x${string}`
-        | undefined;
-
-      return {
-        marketId: id,
-        peggedTokenAddress,
-        collateralPoolAddress: hasCollateralPool
-          ? ((m as any).addresses?.stabilityPoolCollateral as `0x${string}`)
-          : undefined,
-        sailPoolAddress: hasSailPool
-          ? ((m as any).addresses?.stabilityPoolLeveraged as `0x${string}`)
-          : undefined,
-        minterAddress: (m as any).addresses?.minter as
-          | `0x${string}`
-          | undefined,
-      };
-    });
-  }, [anchorMarkets]);
-
-  // Fetch pegged token prices using the new unified hook
-  const tokenPriceInputs = useMemo(() => {
-    return marketPositionConfigs
-      .map((c) => {
-        // Find the market to get pegTarget
-        const market = anchorMarkets.find(([id]) => id === c.marketId)?.[1];
-        return {
-          marketId: c.marketId,
-          minterAddress: c.minterAddress!,
-          pegTarget: (market as any)?.pegTarget || "USD",
-        };
-      })
-      .filter((c) => c.minterAddress); // Filter out markets without minter
-  }, [marketPositionConfigs, anchorMarkets]);
-
-  const tokenPricesByMarket = useMultipleTokenPrices(tokenPriceInputs);
-
-  // Fetch all positions using the unified hook, passing shared prices
-  const {
-    positionsMap: marketPositions,
-    totalPositionUSD: allMarketsTotalPositionUSD,
-    hasPositions: userHasPositions,
-    refetch: refetchPositions,
-  } = useMarketPositions(marketPositionConfigs, address, mergedPeggedPriceMap, {
-    enabled: stagger[2],
-  });
-
-  // Group markets by peggedToken.symbol (for grouping ha tokens)
-  const groupedMarkets = useGroupedMarkets(
-    anchorMarkets,
-    reads,
-    marketPositions
-  );
-
-  // Process all market data using hook
-  const allMarketsData = useAnchorMarketData(
-    anchorMarkets,
-    reads,
+    showLiveAprLoading,
+    marketPositionConfigs,
+    tokenPricesByMarket,
     marketPositions,
-    poolRewardsMap,
-    poolDeposits,
-    projectedAPR,
-    { fxSAVEApy: fxSAVEApy ?? null, wstETHApy: wstETHApy ?? null },
-    peggedPriceUSDMap,
-    ethPrice
-  );
+    allMarketsTotalPositionUSD,
+    userHasPositions,
+    refetchPositions,
+    groupedMarkets,
+    allMarketsData,
+  } = useAnchorPageData(chainFilterSelected, address);
 
   // ---------------------------------------------------------------------------
   // Anchor stats strip (protocol-level)

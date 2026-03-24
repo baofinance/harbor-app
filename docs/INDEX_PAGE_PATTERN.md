@@ -47,6 +47,8 @@ Order in [`src/app/genesis/page.tsx`](../src/app/genesis/page.tsx):
 | Sail index (main) | [`src/app/sail/page.tsx`](../src/app/sail/page.tsx) |
 | Sail page data (filters, PnL, marks, UI aggregates) | [`src/hooks/useSailPageData.ts`](../src/hooks/useSailPageData.ts) |
 | Sail wagmi reads + price/deposit maps | [`src/hooks/useSailContractReads.ts`](../src/hooks/useSailContractReads.ts) |
+| Anchor index (main) + route map | [`src/app/anchor/README.md`](../src/app/anchor/README.md) |
+| Earn (`/earn` pool hub) | [`src/app/earn/README.md`](../src/app/earn/README.md) |
 | Market config typing | [`src/types/genesisMarket.ts`](../src/types/genesisMarket.ts) |
 
 ### 3.2 UI− / UI+ (generic, reuse on Anchor/Sail)

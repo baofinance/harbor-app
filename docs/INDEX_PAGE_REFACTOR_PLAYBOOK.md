@@ -97,6 +97,8 @@ Use as a **checkbox list** for Anchor.
 
 ## Anchor: likely mapping (starting points)
 
+**Living route map:** [`src/app/anchor/README.md`](../src/app/anchor/README.md) (architecture, hooks, modals, refactor roadmap).
+
 Anchor is **large** and already has partial extractions (`src/components/anchor/AnchorMarketExpandedView.tsx`, `FeeDisplayRow.tsx`, etc.). Use this as a **map**, not a strict list:
 
 | Concern | Likely starting points |
@@ -122,6 +124,8 @@ Anchor is **large** and already has partial extractions (`src/components/anchor/
 ## Related
 
 - [`INDEX_PAGE_PATTERN.md`](./INDEX_PAGE_PATTERN.md) — UI+ / UI−, toggle, Genesis/Sail port checklist
+- [`src/app/anchor/README.md`](../src/app/anchor/README.md) — Anchor index route map + refactor roadmap
+- [`src/app/earn/README.md`](../src/app/earn/README.md) — `/earn` stability pool hub (separate from nav “Earn” → `/anchor`)
 - [`src/app/sail/README.md`](../src/app/sail/README.md) — Sail index detail + changelog
 - [`pageLayoutToggleRoutes.ts`](../src/config/pageLayoutToggleRoutes.ts) — add `/anchor` when wiring toggle
 
