@@ -1,7 +1,7 @@
+import type { SailContractReads, SailMarketTuple } from "@/types/sail";
 import { getLongSide, getShortSide } from "@/utils/marketSideLabels";
 
-/** One Sail market row: `[marketId, marketConfig]` (same shape as `markets` entries). */
-export type SailMarketTuple = [string, unknown];
+export type { SailMarketTuple };
 
 /**
  * Markets shown in the leverage table with collateral & optional long/short filters applied.
@@ -11,7 +11,7 @@ export function filterSailActiveMarkets(
   displayedSailMarkets: SailMarketTuple[],
   sailMarketIdToIndex: Map<string, number>,
   marketOffsets: Map<number, number>,
-  reads: readonly unknown[] | undefined,
+  reads: SailContractReads,
   longFilterSelected: string[],
   shortFilterSelected: string[]
 ): SailMarketTuple[] {

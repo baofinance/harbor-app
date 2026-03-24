@@ -953,6 +953,9 @@ export const markets = {
 
 export type Market = (typeof markets)[keyof typeof markets];
 
+/** Market config value when known to be defined (excludes `undefined` from optional `markets` keys). Prefer in Sail UI and modals. */
+export type DefinedMarket = NonNullable<Market>;
+
 /** Optional UI flag on any market object in `markets`: set `maintenance: true` to show a Maintenance tag. */
 export type MarketWithMaintenance = Market & { maintenance?: boolean };
 

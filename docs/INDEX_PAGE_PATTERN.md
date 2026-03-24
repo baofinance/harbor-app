@@ -133,11 +133,13 @@ When each index page is refactored to mirror Genesis structure:
 
 7. **Docs**
    - Add a one-line link from `src/app/anchor/README.md` / `sail` to this file when you start the port.
+   - For a **full refactor** (types, extraction, table grid, modal pattern, QA), follow **[`INDEX_PAGE_REFACTOR_PLAYBOOK.md`](./INDEX_PAGE_REFACTOR_PLAYBOOK.md)** — same depth as the Sail pass.
 
 ---
 
 ## 5. Related docs (not duplicated here)
 
+- **[`INDEX_PAGE_REFACTOR_PLAYBOOK.md`](./INDEX_PAGE_REFACTOR_PLAYBOOK.md)** — Sail → Anchor (and future routes): phased checklist, Sail file inventory, Anchor mapping hints, shared infra notes.
 - [`src/app/genesis/README.md`](../src/app/genesis/README.md) — short index-specific pointer (kept minimal).
 - [`src/app/sail/README.md`](../src/app/sail/README.md) — Sail index pointer + audit extras (batched reads, metadata, parity notes).
 - **[`GENESIS_UI_RADIUS_PROPOSAL.md`](./GENESIS_UI_RADIUS_PROPOSAL.md)** — straight vs rounded edges by zone + wallet-vs-modal options; open [`genesis-ui-radius-preview.html`](./genesis-ui-radius-preview.html) in a browser for a quick visual.

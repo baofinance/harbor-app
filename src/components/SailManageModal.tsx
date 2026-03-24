@@ -42,12 +42,13 @@ import { DepositModalTabHeader } from "@/components/DepositModalTabHeader";
 import { TransactionSuccessMessage } from "@/components/TransactionSuccessMessage";
 import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
 import { getDepositMode } from "@/utils/depositMode";
+import type { DefinedMarket } from "@/config/markets";
 
 interface SailManageModalProps {
  isOpen: boolean;
  onClose: () => void;
  marketId: string;
- market: any;
+ market: DefinedMarket;
  initialTab?:"mint" |"redeem";
  onSuccess?: () => void;
  /** USD price of leveraged token (e.g. hsSTETH-EUR). Used for value-based output estimation when swap+dry-run yields wrong results. */
@@ -68,7 +69,7 @@ type ModalStep =
 
 // Helper function to get accepted deposit assets from market config
 function getAcceptedDepositAssets(
- market: any
+ market: DefinedMarket
 ): Array<{ symbol: string; name: string }> {
  // Use acceptedAssets from market config if available
  if (market?.acceptedAssets && Array.isArray(market.acceptedAssets)) {
@@ -97,7 +98,7 @@ export const SailManageModal = ({
   const publicClient = usePublicClient();
   const depositMode = getDepositMode(market);
   const { collateralOnly: isCollateralOnlyChain, nativeTokenLabel, isMegaEth } = depositMode;
-  const marketChainId = (market as any)?.chainId ?? 1;
+  const marketChainId = (market as DefinedMarket & { chainId?: number }).chainId ?? 1;
   const { writeContractAsync } = useWriteContract();
   const { sendTransactionAsync } = useSendTransaction();
   const { switchChain } = useSwitchChain();
@@ -149,6 +150,11 @@ export const SailManageModal = ({
  const wrappedCollateralAddress = market.addresses?.wrappedCollateralToken as
  | `0x${string}`
  | undefined;
+ /** Some markets omit zap / underlying fields on `addresses`; index for safe access. */
+ const addressByName = market.addresses as Record<
+   string,
+   `0x${string}` | undefined
+ >;
 
  const collateralSymbol = market.collateral?.symbol ||"ETH";
  const leveragedTokenSymbol = market.leveragedToken?.symbol ||"hs";
@@ -190,7 +196,7 @@ export const SailManageModal = ({
    (collateralSymbolLower && selectedDepositAsset?.toLowerCase() === collateralSymbolLower);
 
 // Get zap contract address - use leveragedTokenZap for minting leveraged tokens
-const zapAddress = market.addresses?.leveragedTokenZap as `0x${string}` | undefined;
+const zapAddress = addressByName.leveragedTokenZap;
 
  // Format display helper (after isUSDC is defined)
  const formatDisplay = (
@@ -1099,7 +1105,7 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
          });
        } else if (isStETH) {
          // Use underlyingCollateralToken (stETH), not wrappedCollateralToken (wstETH)
-         let stETHAddress = market.addresses?.underlyingCollateralToken as `0x${string}` | undefined;
+         let stETHAddress = addressByName.underlyingCollateralToken;
          
          // Fallback: use hardcoded stETH address (constant across all markets)
          if (!stETHAddress) {
@@ -1369,7 +1375,7 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
          zapAddress: ${zapAddress || 'undefined'}, 
          useUSDCZap: ${useUSDCZap}, 
          isWrappedCollateral: ${isWrappedCollateral},
-         market.addresses?.leveragedTokenZap: ${market.addresses?.leveragedTokenZap || 'undefined'}`;
+         market.addresses?.leveragedTokenZap: ${addressByName.leveragedTokenZap || 'undefined'}`;
        throw new Error(errorMsg);
      }
      mintHash = await writeContractAsync({

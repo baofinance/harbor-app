@@ -12,3 +12,7 @@ export type { SailMarketsToolbarProps } from "./SailMarketsToolbar";
 export { SailMarketsTableHeader } from "./SailMarketsTableHeader";
 export { SailMarketsSections } from "./SailMarketsSections";
 export type { SailMarketsSectionsProps } from "./SailMarketsSections";
+export { SailMarketRow } from "./SailMarketRow";
+export { SailMarketExpandedView } from "./SailMarketExpandedView";
+export type { SailMarketPnLData } from "./sailMarketTypes";
+export type { DefinedMarket } from "@/config/markets";

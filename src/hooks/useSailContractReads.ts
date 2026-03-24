@@ -3,6 +3,8 @@
 import { useMemo } from "react";
 import { useAccount, useContractReads } from "wagmi";
 import { markets } from "@/config/markets";
+import type { DefinedMarket, Market } from "@/config/markets";
+import type { SailContractReads, SailMarketTuple } from "@/types/sail";
 import { minterABI } from "@/abis/minter";
 import {
   ERC20_ABI,
@@ -23,10 +25,11 @@ const wrappedPriceOracleABI = WRAPPED_PRICE_ORACLE_ABI;
 export function useSailContractReads() {
   const { address } = useAccount();
 
-  const sailMarkets = useMemo(
-    () => Object.entries(markets).filter(([_, m]) => m.leveragedToken),
-    []
-  );
+  const sailMarkets = useMemo((): SailMarketTuple[] => {
+    return (Object.entries(markets) as [string, DefinedMarket][]).filter(
+      ([, m]) => Boolean(m.leveragedToken)
+    );
+  }, []);
 
   const sailMarketIdToIndex = useMemo(() => {
     const m = new Map<string, number>();
@@ -41,14 +44,14 @@ export function useSailContractReads() {
     refetch: refetchReads,
   } = useContractReads({
     contracts: sailMarkets.flatMap(([_, m]) => {
-      const mktChainId = (m as { chainId?: number })?.chainId ?? 1;
-      const minter = (m as { addresses?: { minter?: `0x${string}` } })
-        .addresses?.minter as `0x${string}` | undefined;
-      const priceOracle = (m as { addresses?: { collateralPrice?: `0x${string}` } })
-        .addresses?.collateralPrice as `0x${string}` | undefined;
-      const leveragedTokenAddress = (m as {
-        addresses?: { leveragedToken?: `0x${string}` };
-      }).addresses?.leveragedToken as `0x${string}` | undefined;
+      const mktChainId = (m as Market & { chainId?: number }).chainId ?? 1;
+      const minter = m.addresses?.minter as `0x${string}` | undefined;
+      const priceOracle = m.addresses?.collateralPrice as
+        | `0x${string}`
+        | undefined;
+      const leveragedTokenAddress = m.addresses?.leveragedToken as
+        | `0x${string}`
+        | undefined;
 
       const isValidAddress = (addr: unknown): addr is `0x${string}` =>
         !!addr &&
@@ -60,6 +63,7 @@ export function useSailContractReads() {
         return [];
       }
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- wagmi batch contract union is verbose to name inline
       const contracts: any[] = [
         {
           address: minter,
@@ -96,8 +100,7 @@ export function useSailContractReads() {
         });
 
         const collateralSymbol =
-          (m as { collateral?: { symbol?: string } }).collateral?.symbol?.toLowerCase() ||
-          "";
+          m.collateral?.symbol?.toLowerCase() || "";
         const isFxUSDMarket =
           collateralSymbol === "fxusd" || collateralSymbol === "fxsave";
         if (isFxUSDMarket) {
@@ -142,13 +145,13 @@ export function useSailContractReads() {
     sailMarkets.forEach(([_, m], index) => {
       offsets.set(index, currentOffset);
 
-      const minter = (m as { addresses?: { minter?: `0x${string}` } })
-        .addresses?.minter as `0x${string}` | undefined;
-      const priceOracle = (m as { addresses?: { collateralPrice?: `0x${string}` } })
-        .addresses?.collateralPrice as `0x${string}` | undefined;
-      const leveragedTokenAddress = (m as {
-        addresses?: { leveragedToken?: `0x${string}` };
-      }).addresses?.leveragedToken as `0x${string}` | undefined;
+      const minter = m.addresses?.minter as `0x${string}` | undefined;
+      const priceOracle = m.addresses?.collateralPrice as
+        | `0x${string}`
+        | undefined;
+      const leveragedTokenAddress = m.addresses?.leveragedToken as
+        | `0x${string}`
+        | undefined;
 
       const isValidAddress = (addr: unknown): boolean =>
         !!addr &&
@@ -166,8 +169,7 @@ export function useSailContractReads() {
         currentOffset += 1;
 
         const collateralSymbol =
-          (m as { collateral?: { symbol?: string } }).collateral?.symbol?.toLowerCase() ||
-          "";
+          m.collateral?.symbol?.toLowerCase() || "";
         const isFxUSDMarket =
           collateralSymbol === "fxusd" || collateralSymbol === "fxsave";
         if (isFxUSDMarket) {
@@ -185,9 +187,8 @@ export function useSailContractReads() {
 
   const minterConfigContracts = useMemo(() => {
     return sailMarkets.flatMap(([_, m]) => {
-      const minter = (m as { addresses?: { minter?: `0x${string}` } })
-        .addresses?.minter as `0x${string}` | undefined;
-      const mktChainId = (m as { chainId?: number })?.chainId ?? 1;
+      const minter = m.addresses?.minter as `0x${string}` | undefined;
+      const mktChainId = (m as Market & { chainId?: number }).chainId ?? 1;
       const isValidAddress = (addr: unknown): addr is `0x${string}` =>
         !!addr &&
         typeof addr === "string" &&
@@ -220,8 +221,7 @@ export function useSailContractReads() {
     const map = new Map<string, unknown>();
     let idx = 0;
     sailMarkets.forEach(([id, m]) => {
-      const minter = (m as { addresses?: { minter?: `0x${string}` } })
-        .addresses?.minter as `0x${string}` | undefined;
+      const minter = m.addresses?.minter as `0x${string}` | undefined;
       const isValidAddress = (addr: unknown): addr is `0x${string}` =>
         !!addr &&
         typeof addr === "string" &&
@@ -241,9 +241,10 @@ export function useSailContractReads() {
 
   const rebalanceContracts = useMemo(() => {
     return sailMarkets.flatMap(([_, m]) => {
-      const spm = (m as { addresses?: { stabilityPoolManager?: `0x${string}` } })
-        .addresses?.stabilityPoolManager as `0x${string}` | undefined;
-      const mktChainId = (m as { chainId?: number })?.chainId ?? 1;
+      const spm = m.addresses?.stabilityPoolManager as
+        | `0x${string}`
+        | undefined;
+      const mktChainId = (m as Market & { chainId?: number }).chainId ?? 1;
       const isValidAddress = (addr: unknown): addr is `0x${string}` =>
         !!addr &&
         typeof addr === "string" &&
@@ -276,8 +277,9 @@ export function useSailContractReads() {
     const map = new Map<string, bigint | undefined>();
     let idx = 0;
     sailMarkets.forEach(([id, m]) => {
-      const spm = (m as { addresses?: { stabilityPoolManager?: `0x${string}` } })
-        .addresses?.stabilityPoolManager as `0x${string}` | undefined;
+      const spm = m.addresses?.stabilityPoolManager as
+        | `0x${string}`
+        | undefined;
       const isValidAddress = (addr: unknown): addr is `0x${string}` =>
         !!addr &&
         typeof addr === "string" &&
@@ -298,10 +300,9 @@ export function useSailContractReads() {
   const tokenPriceInputs = useMemo(() => {
     return sailMarkets
       .map(([id, m]) => {
-        const minter = (m as { addresses?: { minter?: string } }).addresses
-          ?.minter as `0x${string}` | undefined;
-        const pegTarget = (m as { pegTarget?: string }).pegTarget || "USD";
-        const chainId = (m as { chainId?: number })?.chainId ?? 1;
+        const minter = m.addresses?.minter as `0x${string}` | undefined;
+        const pegTarget = m.pegTarget || "USD";
+        const chainId = (m as Market & { chainId?: number }).chainId ?? 1;
         if (!minter || typeof minter !== "string" || !minter.startsWith("0x")) {
           return null;
         }
@@ -320,10 +321,10 @@ export function useSailContractReads() {
   const userDepositContracts = useMemo(() => {
     return sailMarkets
       .map(([_, m], index) => {
-        const mktChainId = (m as { chainId?: number })?.chainId ?? 1;
-        const leveragedTokenAddress = (m as {
-          addresses?: { leveragedToken?: `0x${string}` };
-        }).addresses?.leveragedToken as `0x${string}` | undefined;
+        const mktChainId = (m as Market & { chainId?: number }).chainId ?? 1;
+        const leveragedTokenAddress = m.addresses?.leveragedToken as
+          | `0x${string}`
+          | undefined;
         if (
           !leveragedTokenAddress ||
           typeof leveragedTokenAddress !== "string" ||
@@ -391,7 +392,7 @@ export function useSailContractReads() {
   return {
     sailMarkets,
     sailMarketIdToIndex,
-    reads,
+    reads: reads as SailContractReads,
     isLoadingReads,
     isReadsError,
     refetchReads,

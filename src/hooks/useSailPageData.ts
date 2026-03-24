@@ -10,6 +10,7 @@ import { useSailPositionsPnLSummary } from "@/hooks/useSailPositionsPnLSummary";
 import { getSailPriceGraphUrlOptional, getGraphHeaders } from "@/config/graph";
 import { FILTER_NONE_SENTINEL } from "@/components/FilterMultiselectDropdown";
 import { getWeb3iconsNetworkId } from "@/config/web3iconsNetworks";
+import type { SailMarketTuple } from "@/types/sail";
 import { filterSailActiveMarkets } from "@/utils/sailActiveMarkets";
 import { getLongSide, getShortSide } from "@/utils/marketSideLabels";
 
@@ -114,8 +115,7 @@ export function useSailPageData() {
         : chainFilterSelected.length === 0
           ? sailMarkets
           : sailMarkets.filter(([, m]) => {
-              const chainName = (m as { chain?: { name?: string } }).chain
-                ?.name || "Ethereum";
+              const chainName = m.chain?.name || "Ethereum";
               return chainFilterSelected.includes(chainName);
             }),
     [sailMarkets, chainFilterSelected]
@@ -130,13 +130,10 @@ export function useSailPageData() {
       networkId?: string;
     }[] = [];
     sailMarkets.forEach(([, m]) => {
-      const name =
-        (m as { chain?: { name?: string; logo?: string } }).chain?.name ||
-        "Ethereum";
+      const name = m.chain?.name || "Ethereum";
       if (seen.has(name)) return;
       seen.add(name);
-      const logo =
-        (m as { chain?: { logo?: string } }).chain?.logo || "icons/eth.png";
+      const logo = m.chain?.logo || "icons/eth.png";
       const networkId = getWeb3iconsNetworkId(name);
       options.push({
         id: name,
@@ -155,9 +152,9 @@ export function useSailPageData() {
   const sailBoostIds = useMemo(() => {
     const ids: string[] = [];
     for (const [, market] of sailMarkets) {
-      const leveragedTokenAddress = (
-        market as { addresses?: { leveragedToken?: string } }
-      )?.addresses?.leveragedToken as string | undefined;
+      const leveragedTokenAddress = market.addresses?.leveragedToken as
+        | string
+        | undefined;
       if (leveragedTokenAddress) {
         ids.push(`sailToken-${leveragedTokenAddress.toLowerCase()}`);
       }
@@ -347,25 +344,23 @@ export function useSailPageData() {
     sailPnLSummary,
   ]);
 
-  const activeMarkets = useMemo(
-    () =>
-      filterSailActiveMarkets(
-        displayedSailMarkets,
-        sailMarketIdToIndex,
-        marketOffsets,
-        reads,
-        longFilterSelected,
-        shortFilterSelected
-      ),
-    [
+  const activeMarkets = useMemo((): SailMarketTuple[] => {
+    return filterSailActiveMarkets(
       displayedSailMarkets,
-      longFilterSelected,
-      shortFilterSelected,
-      reads,
-      marketOffsets,
       sailMarketIdToIndex,
-    ]
-  );
+      marketOffsets,
+      reads,
+      longFilterSelected,
+      shortFilterSelected
+    );
+  }, [
+    displayedSailMarkets,
+    longFilterSelected,
+    shortFilterSelected,
+    reads,
+    marketOffsets,
+    sailMarketIdToIndex,
+  ]);
 
   return {
     address,

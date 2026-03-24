@@ -3,9 +3,14 @@
  * Keeps parsing logic in one place to avoid drift between index pages.
  */
 
+import type { DefinedMarket } from "@/config/markets";
+
 // Parse the "long" side from token name (fetched from contract)
 // e.g. "Harbor Short USD versus stETH" → "stETH"
-export function parseLongSide(tokenName: string | undefined, market: any): string {
+export function parseLongSide(
+  tokenName: string | undefined,
+  market: DefinedMarket
+): string {
   if (tokenName) {
     const versusMatch = tokenName.match(/versus\s+(\w+)/i);
     if (versusMatch) return versusMatch[1];
@@ -23,7 +28,10 @@ export function parseLongSide(tokenName: string | undefined, market: any): strin
 
 // Parse the "short" side from token name
 // e.g. "Harbor Short USD versus stETH" → "USD"
-export function parseShortSide(tokenName: string | undefined, market: any): string {
+export function parseShortSide(
+  tokenName: string | undefined,
+  market: DefinedMarket
+): string {
   if (tokenName) {
     const shortMatch = tokenName.match(/Short\s+(\w+)/i);
     if (shortMatch) return shortMatch[1];
@@ -37,7 +45,7 @@ export function parseShortSide(tokenName: string | undefined, market: any): stri
 }
 
 /** Long side from market config (for grouping / filters). */
-export function getLongSide(market: any): string {
+export function getLongSide(market: DefinedMarket): string {
   const desc = market.leveragedToken?.description || "";
   const match = desc.match(/Long\s+(\w+)/i);
   if (match) return match[1];
@@ -54,7 +62,7 @@ export function getLongSide(market: any): string {
 }
 
 /** Short side from market config (for display when contract data isn't loaded). */
-export function getShortSide(market: any): string {
+export function getShortSide(market: DefinedMarket): string {
   const desc = market.leveragedToken?.description || "";
   const shortMatch = desc.match(/short\s+(\w+)/i);
   if (shortMatch) return shortMatch[1];

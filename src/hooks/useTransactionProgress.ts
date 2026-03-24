@@ -35,8 +35,19 @@ export interface UseTransactionProgressResult {
   goToStep: (stepId: string) => void;
   /** Set current step by index */
   setCurrentStepIndex: (index: number) => void;
-  /** Replace steps (e.g. for fallback flows) */
-  setSteps: (steps: TransactionStep[] | ((prev: TransactionStep[]) => TransactionStep[])) => void;
+  /** Replace steps (e.g. for fallback flows). Updater may return `{ steps, currentStepIndex }` to sync index. */
+  setSteps: (
+    updater:
+      | TransactionStep[]
+      | ((
+          prev: TransactionStep[]
+        ) =>
+          | TransactionStep[]
+          | {
+              steps: TransactionStep[];
+              currentStepIndex?: number;
+            })
+  ) => void;
 }
 
 const initialState = {
