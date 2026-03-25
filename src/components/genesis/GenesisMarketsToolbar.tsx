@@ -8,6 +8,10 @@ import { XMarkIcon } from "@heroicons/react/24/outline";
 import LedgerMarksCompactBadge from "@/components/LedgerMarksCompactBadge";
 import SimpleTooltip from "@/components/SimpleTooltip";
 import { FilterMultiselectDropdown } from "@/components/FilterMultiselectDropdown";
+import {
+  INDEX_CORAL_INFO_TAG_CLASS,
+  INDEX_MARKETS_TOOLBAR_ROW_CLASS,
+} from "@/components/shared/indexMarketsToolbarStyles";
 
 export type GenesisMarketsToolbarProps = {
   activeCampaignName: string | null;
@@ -34,14 +38,12 @@ export function GenesisMarketsToolbar({
   showCompletedGenesis,
 }: GenesisMarketsToolbarProps) {
   return (
-    <div className="pt-4 pb-3 flex flex-col md:flex-row md:items-center md:justify-between gap-3 flex-wrap">
+    <div className={INDEX_MARKETS_TOOLBAR_ROW_CLASS}>
       <div className="flex flex-wrap items-center gap-2">
         <h2 className="text-xs font-medium text-white/70 uppercase tracking-wider flex items-center gap-2">
           Active Campaign:
           {activeCampaignName && (
-            <span className="inline-flex items-center px-2.5 py-1 bg-[#E67A6B] hover:bg-[#D66A5B] border border-white text-white text-xs font-semibold uppercase tracking-wider rounded-md transition-colors">
-              {activeCampaignName}
-            </span>
+            <span className={INDEX_CORAL_INFO_TAG_CLASS}>{activeCampaignName}</span>
           )}
         </h2>
         {displayedCompletedByCampaignSize > 0 && (

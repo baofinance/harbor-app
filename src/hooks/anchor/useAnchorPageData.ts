@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { formatEther } from "viem";
 import { markets } from "@/config/markets";
 import { FILTER_NONE_SENTINEL } from "@/components/FilterMultiselectDropdown";
 import { getWeb3iconsNetworkId } from "@/config/web3iconsNetworks";
@@ -21,16 +22,18 @@ import { useAnchorLedgerMarks } from "@/hooks/useAnchorLedgerMarks";
 import { useAnchorUserDeposits } from "@/hooks/anchor/useAnchorUserDeposits";
 import { useAnchorTokenMetadata } from "@/hooks/anchor/useAnchorTokenMetadata";
 import { calculateReadOffset } from "@/utils/anchor/calculateReadOffset";
+import type { AnchorMarketTuple } from "@/types/anchor";
 /**
- * Composes Anchor index data reads + derived market state (Phase 2 refactor).
- * Keeps [`page.tsx`](../../app/anchor/page.tsx) wiring-only over time; behavior must match inlined calls.
+ * Composes Anchor index data reads + derived market state (Phase 2–3 refactor).
+ * Includes protocol-level `anchorStats` for the strip; keeps [`page.tsx`](../../app/anchor/page.tsx) thinner over time.
  */
 export function useAnchorPageData(
   chainFilterSelected: string[],
   address: `0x${string}` | undefined
 ) {
   const anchorMarkets = useMemo(
-    () => Object.entries(markets).filter(([_, m]) => m.peggedToken),
+    () =>
+      Object.entries(markets).filter(([_, m]) => m.peggedToken) as AnchorMarketTuple[],
     []
   );
 
@@ -347,6 +350,268 @@ export function useAnchorPageData(
     ethPrice
   );
 
+  /** Protocol-level stats for the Anchor index strip (same logic as previous inline `page.tsx` memo). */
+  const anchorStats = useMemo(() => {
+    const safeEthPrice = ethPrice && ethPrice > 0 ? ethPrice : null;
+
+    let yieldGeneratingTVLUSD = 0;
+    let stabilityPoolTVLUSD = 0;
+
+    let bestApr = 0;
+    let bestAprLabel: string | null = null;
+
+    for (const md of allMarketsData) {
+      const collateralSymbol =
+        md.market?.collateral?.symbol?.toLowerCase?.() || "";
+      const isFxUSDMarket =
+        collateralSymbol === "fxusd" || collateralSymbol === "fxsave";
+      const isWstETHMarket =
+        collateralSymbol === "wsteth" || collateralSymbol === "steth";
+
+      if (md.collateralValue) {
+        if (isFxUSDMarket) {
+          yieldGeneratingTVLUSD += Number(md.collateralValue) / 1e18;
+        } else if (isWstETHMarket && md.wrappedRate) {
+          const wrappedRateNum = Number(md.wrappedRate) / 1e18;
+          const stETHAmount = Number(md.collateralValue) / 1e18;
+          const wstETHAmount =
+            wrappedRateNum > 0 ? stETHAmount / wrappedRateNum : stETHAmount;
+          const wstETHPriceUSD =
+            safeEthPrice !== null ? safeEthPrice * wrappedRateNum : 0;
+          if (wstETHPriceUSD > 0) {
+            yieldGeneratingTVLUSD += wstETHAmount * wstETHPriceUSD;
+          }
+        } else if (md.collateralPrice) {
+          const priceUSD = Number(md.collateralPrice) / 1e18;
+          const amount = Number(md.collateralValue) / 1e18;
+          if (priceUSD > 0 && Number.isFinite(priceUSD)) {
+            yieldGeneratingTVLUSD += amount * priceUSD;
+          }
+        }
+      }
+
+      const peggedUSD =
+        peggedPriceUSDMap && peggedPriceUSDMap[md.marketId]
+          ? Number(peggedPriceUSDMap[md.marketId]) / 1e18
+          : 0;
+
+      if (peggedUSD > 0) {
+        if (md.collateralPoolTVL) {
+          stabilityPoolTVLUSD +=
+            (Number(md.collateralPoolTVL) / 1e18) * peggedUSD;
+        }
+        if (md.sailPoolTVL) {
+          stabilityPoolTVLUSD += (Number(md.sailPoolTVL) / 1e18) * peggedUSD;
+        }
+      }
+
+      const collateralApr = md.collateralPoolAPR
+        ? (md.collateralPoolAPR.collateral || 0) +
+          (md.collateralPoolAPR.steam || 0)
+        : 0;
+      const sailApr = md.sailPoolAPR
+        ? (md.sailPoolAPR.collateral || 0) + (md.sailPoolAPR.steam || 0)
+        : 0;
+
+      const symbol = md.market?.peggedToken?.symbol || md.marketId;
+      if (collateralApr > bestApr) {
+        bestApr = collateralApr;
+        bestAprLabel = `${symbol} Collateral SP`;
+      }
+      if (sailApr > bestApr) {
+        bestApr = sailApr;
+        bestAprLabel = `${symbol} Sail SP`;
+      }
+    }
+
+    const yieldConcentration =
+      stabilityPoolTVLUSD > 0 ? yieldGeneratingTVLUSD / stabilityPoolTVLUSD : 0;
+
+    return {
+      yieldGeneratingTVLUSD,
+      stabilityPoolTVLUSD,
+      yieldConcentration,
+      bestApr,
+      bestAprLabel,
+    };
+  }, [allMarketsData, peggedPriceUSDMap, ethPrice]);
+
+  /** Positions with claimable rewards for “claim all” / compound flows (moved from `page.tsx`). */
+  const claimAllPositions = useMemo(() => {
+    const positions: Array<{
+      marketId: string;
+      market: any;
+      poolType: "collateral" | "sail";
+      rewards: bigint;
+      rewardsUSD: number;
+      deposit: bigint;
+      depositUSD: number;
+      rewardTokens: Array<{
+        symbol: string;
+        claimable: bigint;
+        claimableFormatted: string;
+      }>;
+    }> = [];
+
+    if (reads && anchorMarkets && allPoolRewards) {
+      anchorMarkets.forEach(([id, m], mi) => {
+        const hasCollateralPool = !!(m as any).addresses
+          ?.stabilityPoolCollateral;
+        const hasSailPool = !!(m as any).addresses?.stabilityPoolLeveraged;
+
+        let offset = 0;
+        for (let i = 0; i < mi; i++) {
+          const prevMarket = anchorMarkets[i][1];
+          const prevHasCollateral = !!(prevMarket as any).addresses
+            ?.stabilityPoolCollateral;
+          const prevHasSail = !!(prevMarket as any).addresses
+            ?.stabilityPoolLeveraged;
+          const prevHasPriceOracle = !!(prevMarket as any).addresses
+            ?.collateralPrice;
+          offset += 4;
+          if (prevHasCollateral) offset += 3;
+          if (prevHasSail) offset += 3;
+          if (prevHasPriceOracle) offset += 1;
+        }
+
+        const baseOffset = offset;
+        const peggedTokenPrice = reads?.[baseOffset + 3]?.result as
+          | bigint
+          | undefined;
+        let currentOffset = baseOffset + 4;
+
+        const hasPriceOracle = !!(m as any).addresses?.collateralPrice;
+        const collateralPriceDecimals = 18;
+        let collateralPrice: bigint | undefined;
+        let priceOffset = currentOffset;
+        if (hasCollateralPool) priceOffset += 3;
+        if (hasSailPool) priceOffset += 3;
+        if (hasPriceOracle) {
+          const latestAnswerResult = reads?.[priceOffset]?.result;
+          if (latestAnswerResult !== undefined && latestAnswerResult !== null) {
+            if (Array.isArray(latestAnswerResult)) {
+              collateralPrice = latestAnswerResult[1] as bigint;
+            } else if (typeof latestAnswerResult === "object") {
+              const obj = latestAnswerResult as { maxUnderlyingPrice?: bigint };
+              collateralPrice = obj.maxUnderlyingPrice;
+            } else if (typeof latestAnswerResult === "bigint") {
+              collateralPrice = latestAnswerResult;
+            }
+          }
+        }
+
+        if (hasCollateralPool) {
+          const collateralPoolAddress = (m as any).addresses
+            ?.stabilityPoolCollateral as `0x${string}`;
+          const collateralPoolDeposit = reads?.[currentOffset]?.result as
+            | bigint
+            | undefined;
+
+          const poolReward = allPoolRewards.find(
+            (pr) =>
+              pr.poolAddress.toLowerCase() ===
+              collateralPoolAddress.toLowerCase()
+          );
+
+          let depositUSD = 0;
+          const rewardsUSD = poolReward?.claimableValue || 0;
+
+          const totalRewards =
+            poolReward?.rewardTokens.reduce(
+              (sum, token) => sum + token.claimable,
+              0n
+            ) || 0n;
+
+          if (
+            collateralPoolDeposit &&
+            collateralPrice &&
+            collateralPriceDecimals !== undefined
+          ) {
+            const price =
+              Number(collateralPrice) /
+              10 ** (Number(collateralPriceDecimals) || 8);
+            const depositAmount = Number(collateralPoolDeposit) / 1e18;
+            depositUSD = depositAmount * price;
+          }
+
+          if (poolReward && poolReward.claimableValue > 0) {
+            positions.push({
+              marketId: id,
+              market: m,
+              poolType: "collateral",
+              rewards: totalRewards,
+              rewardsUSD,
+              deposit: collateralPoolDeposit || 0n,
+              depositUSD,
+              rewardTokens: poolReward.rewardTokens.map((token) => ({
+                symbol: token.symbol,
+                claimable: token.claimable,
+                claimableFormatted: formatEther(token.claimable),
+              })),
+            });
+          }
+
+          currentOffset += 3;
+        }
+
+        if (hasSailPool) {
+          const sailPoolAddress = (m as any).addresses
+            ?.stabilityPoolLeveraged as `0x${string}`;
+          const sailPoolDeposit = reads?.[currentOffset]?.result as
+            | bigint
+            | undefined;
+
+          const poolReward = allPoolRewards.find(
+            (pr) =>
+              pr.poolAddress.toLowerCase() === sailPoolAddress.toLowerCase()
+          );
+
+          let depositUSD = 0;
+          const rewardsUSD = poolReward?.claimableValue || 0;
+
+          const totalRewards =
+            poolReward?.rewardTokens.reduce(
+              (sum, token) => sum + token.claimable,
+              0n
+            ) || 0n;
+
+          if (
+            sailPoolDeposit &&
+            peggedTokenPrice &&
+            collateralPrice &&
+            collateralPriceDecimals !== undefined
+          ) {
+            const peggedPrice = Number(peggedTokenPrice) / 1e18;
+            const collateralPriceNum =
+              Number(collateralPrice) /
+              10 ** (Number(collateralPriceDecimals) || 8);
+            const depositAmount = Number(sailPoolDeposit) / 1e18;
+            depositUSD = depositAmount * (peggedPrice * collateralPriceNum);
+          }
+
+          if (poolReward && poolReward.claimableValue > 0) {
+            positions.push({
+              marketId: id,
+              market: m,
+              poolType: "sail",
+              rewards: totalRewards,
+              rewardsUSD,
+              deposit: sailPoolDeposit || 0n,
+              depositUSD,
+              rewardTokens: poolReward.rewardTokens.map((token) => ({
+                symbol: token.symbol,
+                claimable: token.claimable,
+                claimableFormatted: formatEther(token.claimable),
+              })),
+            });
+          }
+        }
+      });
+    }
+
+    return positions;
+  }, [reads, anchorMarkets, allPoolRewards]);
+
   return {
     anchorMarkets,
     displayedAnchorMarkets,
@@ -414,5 +679,7 @@ export function useAnchorPageData(
     refetchPositions,
     groupedMarkets,
     allMarketsData,
+    anchorStats,
+    claimAllPositions,
   };
 }

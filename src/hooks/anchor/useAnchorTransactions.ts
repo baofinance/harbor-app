@@ -1,4 +1,5 @@
 import { useCallback, useRef } from "react";
+import type { AnchorContractReads, AnchorMarketTuple } from "@/types/anchor";
 import { useAccount, useWriteContract, usePublicClient } from "wagmi";
 import { rewardsABI } from "@/abis/rewards";
 import {
@@ -40,8 +41,8 @@ function isUserRejection(error: any): boolean {
 }
 
 interface UseAnchorTransactionsOptions {
-  anchorMarkets: Array<[string, any]>;
-  reads: any;
+  anchorMarkets: AnchorMarketTuple[];
+  reads: AnchorContractReads;
   // USD price for each pegged token (18 decimals). Source of truth on Anchor page.
   // Using this avoids recomputing USD from peggedTokenPrice + pegTarget USD and keeps TVLs consistent across UIs.
   peggedPriceUSDMap?: Record<string, bigint | undefined>;

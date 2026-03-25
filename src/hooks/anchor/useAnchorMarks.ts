@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect } from "react";
+import type { AnchorContractReads, AnchorMarketTuple } from "@/types/anchor";
 import { useAnchorLedgerMarks } from "@/hooks/useAnchorLedgerMarks";
 import { DEBUG_ANCHOR } from "@/config/debug";
 import { useGenesisMarks } from "@/hooks/useGenesisMarks";
@@ -13,9 +14,9 @@ import { useAccount } from "wagmi";
  * @returns Total anchor marks, marks per day, and loading state
  */
 export function useAnchorMarks(
-  anchorMarkets: Array<[string, any]>,
+  anchorMarkets: AnchorMarketTuple[],
   allMarketContracts: any[] | undefined,
-  reads: any
+  reads: AnchorContractReads
 ) {
   const { address } = useAccount();
 

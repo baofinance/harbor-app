@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import SimpleTooltip from "@/components/SimpleTooltip";
+import { INDEX_CORAL_LEDGER_TAG_PILL_CLASS } from "@/components/shared/indexMarketsToolbarStyles";
 
 export type LedgerMarksCompactBadgeProps = {
   /** Optional leading block (e.g. Genesis / Maiden Voyage context) shown above the rest */
@@ -48,18 +49,16 @@ export default function LedgerMarksCompactBadge({
       }
       className={className}
     >
-      <div
-        className={`flex cursor-help items-center bg-[#E67A6B] hover:bg-[#D66A5B] border border-white backdrop-blur-sm px-2 py-1 rounded-md transition-colors ${pillClassName}`}
-      >
-        <div className="flex items-center gap-1.5 text-white text-sm whitespace-nowrap">
+      <div className={`${INDEX_CORAL_LEDGER_TAG_PILL_CLASS} ${pillClassName}`}>
+        <div className="flex items-center gap-1.5 whitespace-nowrap">
           <Image
             src="/icons/marks.png"
             alt=""
             width={18}
             height={18}
-            className="opacity-95 flex-shrink-0"
+            className="opacity-90 flex-shrink-0"
           />
-          <span className="font-semibold">Ledger Marks</span>
+          <span>Ledger Marks</span>
         </div>
       </div>
     </SimpleTooltip>

@@ -1,4 +1,6 @@
 import { useMemo } from "react";
+import type { DefinedMarket } from "@/config/markets";
+import type { AnchorMarketTuple } from "@/types/anchor";
 import { useAccount, useContractReads } from "wagmi";
 import { ERC20_ABI } from "@/abis/shared";
 import { POLLING_INTERVALS } from "@/config/polling";
@@ -11,7 +13,7 @@ import { POLLING_INTERVALS } from "@/config/polling";
  * @returns User deposit map (marketIndex -> balance) and refetch function
  */
 export function useAnchorUserDeposits(
-  anchorMarkets: Array<[string, any]>,
+  anchorMarkets: AnchorMarketTuple[],
   useAnvil: boolean = false,
   options?: { enabled?: boolean }
 ) {
@@ -22,8 +24,8 @@ export function useAnchorUserDeposits(
   const userDepositContracts = useMemo(() => {
     return anchorMarkets
       .map(([_, m], index) => {
-        const mktChainId = (m as any)?.chainId ?? 1;
-        const peggedTokenAddress = (m as any).addresses?.peggedToken as
+        const mktChainId = (m as DefinedMarket & { chainId?: number }).chainId ?? 1;
+        const peggedTokenAddress = m.addresses?.peggedToken as
           | `0x${string}`
           | undefined;
         if (

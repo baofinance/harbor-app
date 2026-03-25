@@ -57,7 +57,7 @@ Order in [`src/app/genesis/page.tsx`](../src/app/genesis/page.tsx):
 |---------|------|
 | Toggle component (UI− / UI+) | [`src/components/PageLayoutToggle.tsx`](../src/components/PageLayoutToggle.tsx) |
 | Query helpers `view=basic` | [`src/utils/pageLayoutView.ts`](../src/utils/pageLayoutView.ts) |
-| Which routes show the toggle | [`src/config/pageLayoutToggleRoutes.ts`](../src/config/pageLayoutToggleRoutes.ts) — `/genesis`, `/sail`; add `/anchor` when ready |
+| Which routes show the toggle | [`src/config/pageLayoutToggleRoutes.ts`](../src/config/pageLayoutToggleRoutes.ts) — `/genesis`, `/sail`, `/anchor` |
 | Global nav (scroll, link styles, toggle slot) | [`src/components/Navigation.tsx`](../src/components/Navigation.tsx) |
 
 ### 3.3a Sail index UI (`src/components/sail/`)

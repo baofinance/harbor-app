@@ -101,7 +101,7 @@ export default function SailPage() {
   return (
     <>
       <div className="flex min-h-0 flex-1 flex-col text-white max-w-[1300px] mx-auto font-sans relative w-full">
-        <main className="container mx-auto px-4 sm:px-10 pb-6">
+        <main className="container mx-auto px-4 sm:px-10 pb-6 pt-2 sm:pt-4">
           <div className="mb-2">
             <SailPageTitleSection />
 

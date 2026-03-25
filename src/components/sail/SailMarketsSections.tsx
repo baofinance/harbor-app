@@ -19,7 +19,7 @@ export function SailMarketsSections({
   children,
 }: SailMarketsSectionsProps) {
   return (
-    <section className="space-y-4 overflow-visible" aria-label="Sail markets">
+    <section className="space-y-2 overflow-visible" aria-label="Sail markets">
       <SailMarketsToolbar {...toolbarProps} />
       {children}
     </section>

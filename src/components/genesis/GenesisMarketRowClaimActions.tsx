@@ -2,6 +2,10 @@
 
 import { memo } from "react";
 import { MarketMaintenanceTag } from "@/components/MarketMaintenanceTag";
+import {
+  INDEX_MANAGE_BUTTON_CLASS_COMPACT,
+  INDEX_MANAGE_BUTTON_CLASS_DESKTOP,
+} from "@/utils/indexPageManageButton";
 
 const claimButtonClassCompact =
   "px-3 py-1.5 text-[10px] font-medium bg-[#1E4775] text-white hover:bg-[#17395F] disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors rounded-md whitespace-nowrap";
@@ -9,11 +13,9 @@ const claimButtonClassCompact =
 const claimButtonClassDesktop =
   "px-4 py-2 text-xs font-medium bg-[#1E4775] text-white hover:bg-[#17395F] disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors rounded-md whitespace-nowrap";
 
-const manageButtonClassCompact =
-  "px-3 py-1.5 text-[10px] font-medium bg-[#1E4775] text-white hover:bg-[#17395F] transition-colors rounded-md whitespace-nowrap";
+const manageButtonClassCompact = INDEX_MANAGE_BUTTON_CLASS_COMPACT;
 
-const manageButtonClassDesktop =
-  "px-4 py-2 text-xs font-medium bg-[#1E4775] text-white hover:bg-[#17395F] disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors rounded-md whitespace-nowrap";
+const manageButtonClassDesktop = INDEX_MANAGE_BUTTON_CLASS_DESKTOP;
 
 export type GenesisMarketRowClaimActionsProps = {
   /** Small buttons (mobile + md + completed grid) vs larger desktop table column */

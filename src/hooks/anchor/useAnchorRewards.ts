@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import type { AnchorContractReads, AnchorMarketTuple } from "@/types/anchor";
 import { useAllStabilityPoolRewards } from "@/hooks/useAllStabilityPoolRewards";
 import { DEBUG_ANCHOR } from "@/config/debug";
 import { calculateReadOffset, calculatePriceOracleOffset } from "@/utils/anchor/calculateReadOffset";
@@ -12,8 +13,8 @@ import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
  * @returns Pool rewards map and loading state
  */
 export function useAnchorRewards(
-  anchorMarkets: Array<[string, any]>,
-  reads: any,
+  anchorMarkets: AnchorMarketTuple[],
+  reads: AnchorContractReads,
   ethPrice?: number | null,
   btcPrice?: number | null,
   peggedPriceUSDMap?: Record<string, bigint | undefined>

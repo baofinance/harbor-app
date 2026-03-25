@@ -99,6 +99,8 @@ Use as a **checkbox list** for Anchor.
 
 **Living route map:** [`src/app/anchor/README.md`](../src/app/anchor/README.md) (architecture, hooks, modals, refactor roadmap).
 
+**Anchor Phases 0–3 audit:** same README section **“Phases 0–3 status”** — checked-off vs open items, kept next to the route.
+
 Anchor is **large** and already has partial extractions (`src/components/anchor/AnchorMarketExpandedView.tsx`, `FeeDisplayRow.tsx`, etc.). Use this as a **map**, not a strict list:
 
 | Concern | Likely starting points |

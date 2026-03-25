@@ -27,6 +27,7 @@ import {
   formatTimeRemaining,
 } from "@/utils/formatters";
 import { getLogoPath, TokenLogo } from "@/components/shared";
+import { INDEX_CORAL_INFO_TAG_CLASS } from "@/components/shared/indexMarketsToolbarStyles";
 import { useCoinGeckoPrices } from "@/hooks/useCoinGeckoPrice";
 import { useMultipleTokenPrices } from "@/hooks/useTokenPrices";
 import { useMultipleCollateralPrices } from "@/hooks/useCollateralPrice";
@@ -2250,9 +2251,7 @@ export default function GenesisIndexPage() {
                 <h2 className="text-xs font-medium text-white/70 uppercase tracking-wider">
                   Next Campaign:
                 </h2>
-                <span className="px-2.5 py-0.5 bg-[#E67A6B] hover:bg-[#D66A5B] border border-white text-white text-xs font-semibold uppercase tracking-wider rounded-md transition-colors">
-                  Metals
-                </span>
+                <span className={INDEX_CORAL_INFO_TAG_CLASS}>Metals</span>
               </div>
             </div>
             {/* Header row - hidden on mobile, shown on desktop */}

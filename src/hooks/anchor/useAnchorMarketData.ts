@@ -1,10 +1,12 @@
 import { useMemo } from "react";
+import type { DefinedMarket } from "@/config/markets";
+import type { AnchorContractReads, AnchorMarketTuple } from "@/types/anchor";
 import { getAcceptedDepositAssets } from "@/utils/anchor";
 import { DEBUG_ANCHOR } from "@/config/debug";
 
 export type MarketData = {
   marketId: string;
-  market: any;
+  market: DefinedMarket;
   marketIndex: number;
   collateralRatio: bigint | undefined;
   collateralValue: bigint | undefined;
@@ -50,8 +52,8 @@ export type MarketData = {
  * @returns Array of processed market data
  */
 export function useAnchorMarketData(
-  anchorMarkets: Array<[string, any]>,
-  reads: any,
+  anchorMarkets: AnchorMarketTuple[],
+  reads: AnchorContractReads,
   marketPositions: Record<string, any>,
   poolRewardsMap: Map<`0x${string}`, any>,
   poolDeposits: Array<any> | undefined,
@@ -74,7 +76,7 @@ export function useAnchorMarketData(
       string,
       Array<{
         marketId: string;
-        market: any;
+        market: DefinedMarket;
         marketIndex: number;
       }>
     > = {};

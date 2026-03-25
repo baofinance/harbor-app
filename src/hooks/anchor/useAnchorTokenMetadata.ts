@@ -1,4 +1,5 @@
 import { useMemo, useEffect } from "react";
+import type { AnchorMarketTuple } from "@/types/anchor";
 import { useContractReads } from "wagmi";
 import { MINTER_ABI, ERC20_ABI } from "@/abis/shared";
 import { markets } from "@/config/markets";
@@ -31,7 +32,7 @@ type TokenMeta = {
  * @returns Token metadata map and loading state
  */
 export function useAnchorTokenMetadata(
-  anchorMarkets: Array<[string, any]>,
+  anchorMarkets: AnchorMarketTuple[],
   options?: { enabled?: boolean }
 ) {
   const enabledOverride = options?.enabled ?? true;

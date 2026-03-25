@@ -27,6 +27,7 @@ import { SailMintRedeemFeeColumn } from "./SailMintRedeemFeeColumn";
 import type { SailContractReads } from "@/types/sail";
 import type { SailMarketPnLData } from "./sailMarketTypes";
 import { SailMarketExpandedView } from "./SailMarketExpandedView";
+import { INDEX_MANAGE_BUTTON_CLASS_DESKTOP } from "@/utils/indexPageManageButton";
 
 export const SailMarketRow = React.memo(function SailMarketRow({
   id,
@@ -344,12 +345,13 @@ export const SailMarketRow = React.memo(function SailMarketRow({
                   </div>
                 ) : (
                   <button
+                    type="button"
                     onClick={(e) => {
                       e.stopPropagation();
                       onManageClick(id, market);
                     }}
                     disabled={!isConnected}
-                    className="px-4 py-2 text-sm font-semibold bg-[#1E4775] text-white hover:bg-[#17395F] disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors rounded-md whitespace-nowrap min-w-[160px] justify-center border-2 border-[#17395F] disabled:border-gray-400"
+                    className={`${INDEX_MANAGE_BUTTON_CLASS_DESKTOP} min-w-[160px] justify-center`}
                   >
                     Manage
                   </button>
@@ -495,12 +497,13 @@ export const SailMarketRow = React.memo(function SailMarketRow({
               <MarketMaintenanceTag />
             ) : (
               <button
+                type="button"
                 onClick={(e) => {
                   e.stopPropagation();
                   onManageClick(id, market);
                 }}
                 disabled={!isConnected}
-                className="px-4 py-2 text-sm font-semibold bg-[#1E4775] text-white hover:bg-[#17395F] disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors rounded-md whitespace-nowrap border-2 border-[#17395F] disabled:border-gray-400"
+                className={INDEX_MANAGE_BUTTON_CLASS_DESKTOP}
               >
                 Manage
               </button>

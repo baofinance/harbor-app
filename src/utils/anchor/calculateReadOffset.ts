@@ -1,27 +1,29 @@
+import type { AnchorMarketTuple } from "@/types/anchor";
+
 /**
  * Utility function to calculate the read offset for a given market index
  * This eliminates duplication of offset calculation logic across multiple hooks
- * 
+ *
  * @param anchorMarkets - Array of [marketId, market] tuples
  * @param marketIndex - Index of the market to calculate offset for
  * @returns The offset value for the given market index
  */
 export function calculateReadOffset(
-  anchorMarkets: Array<[string, any]>,
+  anchorMarkets: AnchorMarketTuple[],
   marketIndex: number
 ): number {
   let offset = 0;
   
   for (let i = 0; i < marketIndex; i++) {
     const prevMarket = anchorMarkets[i][1];
-    const prevHasCollateral = !!(prevMarket as any).addresses?.stabilityPoolCollateral;
-    const prevHasSail = !!(prevMarket as any).addresses?.stabilityPoolLeveraged;
-    const prevHasPriceOracle = !!(prevMarket as any).addresses?.collateralPrice;
-    const prevHasStabilityPoolManager = !!(prevMarket as any).addresses?.stabilityPoolManager;
-    const prevPeggedTokenAddress = (prevMarket as any)?.addresses?.peggedToken;
-    const prevIsFxUSDMarket = 
-      (prevMarket as any).collateral?.symbol?.toLowerCase() === "fxusd" ||
-      (prevMarket as any).collateral?.symbol?.toLowerCase() === "fxsave";
+    const prevHasCollateral = !!prevMarket.addresses?.stabilityPoolCollateral;
+    const prevHasSail = !!prevMarket.addresses?.stabilityPoolLeveraged;
+    const prevHasPriceOracle = !!prevMarket.addresses?.collateralPrice;
+    const prevHasStabilityPoolManager = !!prevMarket.addresses?.stabilityPoolManager;
+    const prevPeggedTokenAddress = prevMarket.addresses?.peggedToken;
+    const prevIsFxUSDMarket =
+      prevMarket.collateral?.symbol?.toLowerCase() === "fxusd" ||
+      prevMarket.collateral?.symbol?.toLowerCase() === "fxsave";
     
     offset += 7; // 7 minter calls: collateralRatio, collateralTokenBalance, peggedTokenBalance, peggedTokenPrice, leveragedTokenBalance, leveragedTokenPrice, config
     if (prevHasStabilityPoolManager) offset += 1; // rebalanceThreshold
@@ -52,22 +54,22 @@ export function calculateReadOffset(
  * @returns The offset to the price oracle reads
  */
 export function calculatePriceOracleOffset(
-  anchorMarkets: Array<[string, any]>,
+  anchorMarkets: AnchorMarketTuple[],
   marketIndex: number
 ): number {
   const baseOffset = calculateReadOffset(anchorMarkets, marketIndex);
   const market = anchorMarkets[marketIndex]?.[1];
-  
+
   if (!market) return baseOffset;
-  
-  const hasStabilityPoolManager = !!(market as any).addresses?.stabilityPoolManager;
-  const hasCollateralPool = !!(market as any).addresses?.stabilityPoolCollateral;
-  const hasSailPool = !!(market as any).addresses?.stabilityPoolLeveraged;
-  const peggedTokenAddress = (market as any)?.addresses?.peggedToken;
-  
-  const isFxUSDMarket = 
-    (market as any).collateral?.symbol?.toLowerCase() === "fxusd" ||
-    (market as any).collateral?.symbol?.toLowerCase() === "fxsave";
+
+  const hasStabilityPoolManager = !!market.addresses?.stabilityPoolManager;
+  const hasCollateralPool = !!market.addresses?.stabilityPoolCollateral;
+  const hasSailPool = !!market.addresses?.stabilityPoolLeveraged;
+  const peggedTokenAddress = market.addresses?.peggedToken;
+
+  const isFxUSDMarket =
+    market.collateral?.symbol?.toLowerCase() === "fxusd" ||
+    market.collateral?.symbol?.toLowerCase() === "fxsave";
   
   let priceOracleOffset = baseOffset + 7; // 7 minter reads: collateralRatio, collateralTokenBalance, peggedTokenBalance, peggedTokenPrice, leveragedTokenBalance, leveragedTokenPrice, config
   if (hasStabilityPoolManager) priceOracleOffset += 1; // rebalanceThreshold

@@ -66,6 +66,8 @@ import { InfoCallout } from "@/components/InfoCallout";
 import { ErrorBanner } from "@/components/anchor/ErrorBanner";
 import { FeeDisplayRow } from "@/components/anchor/FeeDisplayRow";
 import { getRevertReason } from "@/utils/parseViemRevert";
+import type { DefinedMarket } from "@/config/markets";
+import { anchorAddressByName } from "@/types/anchor";
 import {
   calculateDeadline,
   STETH_ZAP_PERMIT_ABI,
@@ -90,19 +92,26 @@ interface AnchorDepositWithdrawModalProps {
   isOpen: boolean;
   onClose: () => void;
   marketId: string;
-  market: any;
-  initialTab?: TabType;
+  market: DefinedMarket;
+  /** Parent may pass legacy Sail-style tab names; mapped to deposit/withdraw internally. */
+  initialTab?: InitialTabInput;
   onSuccess?: () => void;
   simpleMode?: boolean;
   bestPoolType?: "collateral" | "sail";
   // For simple mode: all markets for the same ha token
-  allMarkets?: Array<{ marketId: string; market: any }>;
+  allMarkets?: Array<{ marketId: string; market: DefinedMarket }>;
   initialDepositAsset?: string;
   /** Contract-based pool balances (marketId -> collateral/sail). Used for "Your position" in withdraw list when subgraph is empty. */
   positionsMap?: Record<string, { collateralPool: bigint; sailPool: bigint }>;
 }
 
 type TabType = "deposit" | "withdraw";
+type InitialTabInput =
+  | TabType
+  | "mint"
+  | "redeem"
+  | "deposit-mint"
+  | "withdraw-redeem";
 type ModalStep =
   | "input"
   | "approving"
@@ -129,7 +138,7 @@ type TransactionStatus = {
 
 // Helper function to get accepted deposit assets from market config
 function getAcceptedDepositAssets(
-  market: any
+  market: DefinedMarket
 ): Array<{ symbol: string; name: string }> {
   // Use acceptedAssets from market config if available
   if (market?.acceptedAssets && Array.isArray(market.acceptedAssets)) {
@@ -196,7 +205,7 @@ export const AnchorDepositWithdrawModal = ({
   const { collateralOnly: isCollateralOnlyChain, nativeTokenLabel, isMegaEth } = depositMode;
 
   // Target chain for this market (multi-chain: mainnet or e.g. MegaETH 4326)
-  const marketChainId = (market as any)?.chainId ?? mainnet.id;
+  const marketChainId = (market as DefinedMarket & { chainId?: number }).chainId ?? mainnet.id;
   const isCorrectNetwork = effectiveChainId === marketChainId;
   const shouldShowNetworkSwitch = !isCorrectNetwork && isConnected;
 
@@ -4584,7 +4593,9 @@ export const AnchorDepositWithdrawModal = ({
     (depositAssetMarket && depositAssetWrappedCollateralSymbol && selectedDepositAsset?.toLowerCase() === depositAssetWrappedCollateralSymbol);
   
   // Get zap contract address - use peggedTokenZap for minting pegged tokens
-  const zapAddress = depositAssetMarket?.addresses?.peggedTokenZap as `0x${string}` | undefined;
+  const zapAddress = anchorAddressByName(
+    depositAssetMarket as DefinedMarket | undefined
+  )?.peggedTokenZap as `0x${string}` | undefined;
   
   // Determine which zap to use
   const useZap = !!zapAddress && !isDirectPeggedDeposit && !isWrappedCollateral && activeTab === "deposit";
@@ -4596,7 +4607,9 @@ export const AnchorDepositWithdrawModal = ({
     ((!mintOnly && (isFxSAVE || isWstETH)) || isStETH || isUSDC || isFxUSD);
   
   // Get fxSAVE rate for USDC zap calculations
-  const priceOracleAddress = depositAssetMarket?.addresses?.collateralPrice as `0x${string}` | undefined;
+  const priceOracleAddress = anchorAddressByName(
+    depositAssetMarket as DefinedMarket | undefined
+  )?.collateralPrice as `0x${string}` | undefined;
   const { maxRate: fxSAVERate } = useCollateralPrice(
     priceOracleAddress,
     { enabled: useUSDCZap && !!priceOracleAddress }

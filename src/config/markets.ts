@@ -14,7 +14,7 @@ export const markets = {
   // ============================================================================
   "eth-fxusd": {
     name: "ETH/fxUSD",
-    maintenance: true,
+    maintenance: false,
     status: "genesis" as const,
     pegTarget: "ETH", // haETH is pegged to ETH
     zapper: true,
@@ -99,6 +99,7 @@ export const markets = {
   // ============================================================================
   "btc-fxusd": {
     name: "BTC/fxUSD",
+    maintenance: false,
     status: "genesis" as const,
     pegTarget: "BTC", // haBTC is pegged to BTC
     zapper: true,
@@ -183,6 +184,7 @@ export const markets = {
   // ============================================================================
   "btc-steth": {
     name: "BTC/stETH",
+    maintenance: false,
     status: "genesis" as const,
     pegTarget: "BTC", // haBTC is pegged to BTC
     chain: {
@@ -265,6 +267,7 @@ export const markets = {
   ...(useTest2 ? {} : {
   "fxusd-gold": {
     name: "fxUSD-GOLD",
+    maintenance: false,
     status: "genesis" as const,
     pegTarget: "GOLD",
     chain: {
@@ -340,6 +343,7 @@ export const markets = {
   },
   "steth-gold": {
     name: "stETH-GOLD",
+    maintenance: false,
     status: "genesis" as const,
     pegTarget: "GOLD",
     chain: {
@@ -415,6 +419,7 @@ export const markets = {
   },
   "steth-eur": {
     name: "stETH-EUR",
+    maintenance: false,
     status: "genesis" as const,
     pegTarget: "EUR",
     chain: {
@@ -490,6 +495,7 @@ export const markets = {
   },
   "fxusd-eur": {
     name: "fxUSD-EUR",
+    maintenance: false,
     status: "genesis" as const,
     pegTarget: "EUR",
     chain: {
@@ -565,6 +571,7 @@ export const markets = {
   },
   "steth-mcap": {
     name: "stETH-MCAP",
+    maintenance: false,
     status: "coming-soon" as const,
     pegTarget: "MCAP",
     chain: {
@@ -634,6 +641,7 @@ export const markets = {
   },
   "fxusd-mcap": {
     name: "fxUSD-MCAP",
+    maintenance: false,
     status: "coming-soon" as const,
     pegTarget: "MCAP",
     chain: {
@@ -703,6 +711,7 @@ export const markets = {
   },
   "steth-silver": {
     name: "stETH-SILVER",
+    maintenance: false,
     status: "genesis" as const,
     pegTarget: "SILVER",
     chain: {
@@ -778,6 +787,7 @@ export const markets = {
   },
   "fxusd-silver": {
     name: "fxUSD-SILVER",
+    maintenance: false,
     status: "genesis" as const,
     pegTarget: "SILVER",
     chain: {
@@ -857,6 +867,7 @@ export const markets = {
     ? {
         "btc-usd-megaeth": {
           name: "BTC-USD",
+          maintenance: false,
           status: "genesis" as const,
           pegTarget: "USD",
           chainId: 4326,
@@ -903,6 +914,7 @@ export const markets = {
         },
         "wsteth-usd-megaeth": {
           name: "wstETH-USD",
+          maintenance: false,
           status: "genesis" as const,
           pegTarget: "USD",
           chainId: 4326,
@@ -956,7 +968,7 @@ export type Market = (typeof markets)[keyof typeof markets];
 /** Market config value when known to be defined (excludes `undefined` from optional `markets` keys). Prefer in Sail UI and modals. */
 export type DefinedMarket = NonNullable<Market>;
 
-/** Optional UI flag on any market object in `markets`: set `maintenance: true` to show a Maintenance tag. */
+/** Optional UI flag on any market object in `markets`: set `maintenance: true` to show a Maintenance tag; omit or use `false` otherwise. */
 export type MarketWithMaintenance = Market & { maintenance?: boolean };
 
 export function isMarketInMaintenance(mkt: unknown): boolean {
