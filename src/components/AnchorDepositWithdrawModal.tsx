@@ -11261,7 +11261,7 @@ export const AnchorDepositWithdrawModal = ({
                                 const show1PctToggle = !poolWindowOpen;
                                 return (
                                   <>
-                              <div className="flex items-center bg-[#17395F]/10 p-1 mb-2">
+                              <div className="flex items-center rounded-md overflow-hidden bg-[#17395F]/10 p-1 mb-2">
                                 {showEarlyWithdrawOption && (
                                 <button
                                   type="button"
@@ -12670,7 +12670,7 @@ export const AnchorDepositWithdrawModal = ({
                           <span className="text-xs text-[#1E4775]/70">
                             Pool type:
                           </span>
-                          <div className="flex items-center bg-[#17395F]/10 p-1">
+                          <div className="flex items-center rounded-md overflow-hidden bg-[#17395F]/10 p-1">
                             <button
                               type="button"
                               onClick={() => setStabilityPoolType("collateral")}
@@ -12764,7 +12764,7 @@ export const AnchorDepositWithdrawModal = ({
                       <span className="text-xs text-[#1E4775]/70">
                         Pool type:
                       </span>
-                      <div className="flex items-center bg-[#17395F]/10 p-1">
+                      <div className="flex items-center rounded-md overflow-hidden bg-[#17395F]/10 p-1">
                         <button
                           type="button"
                           onClick={() => setStabilityPoolType("collateral")}

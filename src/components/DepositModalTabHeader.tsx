@@ -24,7 +24,7 @@ export function DepositModalTabHeader({
   tabDisabled,
 }: DepositModalTabHeaderProps) {
   return (
-    <div className="flex flex-1 mr-2 sm:mr-4 overflow-hidden border border-[#1E4775]/20 border-b-0">
+    <div className="flex flex-1 mr-2 sm:mr-4 overflow-hidden rounded-t-md border border-[#1E4775]/20 border-b-0">
       {tabs.map(({ value, label }) => (
         <button
           key={value}

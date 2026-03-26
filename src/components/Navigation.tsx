@@ -56,7 +56,7 @@ export default function Example() {
                   className={linkClass("/genesis")}
                   aria-current={isActive("/genesis") ? "page" : undefined}
                 >
-                  New Market Rewards
+                  Genesis
                 </Link>
                 <Link
                   href="/anchor"
@@ -141,7 +141,7 @@ export default function Example() {
               }`}
               aria-current={isActive("/genesis") ? "page" : undefined}
             >
-              New Market Rewards
+              Genesis
             </DisclosureButton>
             <DisclosureButton
               as={Link}

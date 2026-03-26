@@ -4393,7 +4393,7 @@ export default function AnchorPage() {
                             setIsClaimAllModalOpen(true);
                           }}
                           disabled={isClaimingAll || isCompoundingAll}
-                            className="px-5 py-2 text-xs font-semibold bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white disabled:bg-[#FF8A7A]/40 disabled:text-white/70 disabled:cursor-not-allowed transition-colors rounded-full whitespace-nowrap"
+                          className={INDEX_WITHDRAW_BUTTON_CLASS_DESKTOP_CORAL}
                         >
                           Claim
                         </button>

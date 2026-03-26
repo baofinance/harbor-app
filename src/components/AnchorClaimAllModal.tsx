@@ -69,6 +69,16 @@ export const AnchorClaimAllModal = ({
  });
  };
 
+ const selectAllPools = () => {
+ setSelectedPools(
+ new Set(positions.map((p) => `${p.marketId}-${p.poolType}`))
+ );
+ };
+
+ const deselectAllPools = () => {
+ setSelectedPools(new Set());
+ };
+
  const selectedPoolsArray = useMemo(() => {
  return Array.from(selectedPools).map((key) => {
  // Split from the end to handle marketIds that contain hyphens (e.g.,"pb-steth")
@@ -136,9 +146,31 @@ export const AnchorClaimAllModal = ({
  {/* Left Panel - Positions List */}
  <div className="w-1/2 border-r border-[#1E4775]/20 overflow-y-auto min-h-0">
  <div className="p-4">
- <h3 className="text-lg font-semibold text-[#1E4775] mb-4">
+ <div className="mb-4">
+ <h3 className="text-lg font-semibold text-[#1E4775] mb-2">
  Select Pools to Claim
  </h3>
+ {positions.length > 0 ? (
+ <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+ <button
+ type="button"
+ onClick={selectAllPools}
+ disabled={isLoading}
+ className="text-[#1E4775] font-medium underline underline-offset-2 hover:text-[#17395F] disabled:opacity-50 disabled:cursor-not-allowed disabled:no-underline"
+ >
+ Select all
+ </button>
+ <button
+ type="button"
+ onClick={deselectAllPools}
+ disabled={isLoading}
+ className="text-[#1E4775] font-medium underline underline-offset-2 hover:text-[#17395F] disabled:opacity-50 disabled:cursor-not-allowed disabled:no-underline"
+ >
+ Deselect all
+ </button>
+ </div>
+ ) : null}
+ </div>
  {positions.length === 0 ? (
  <p className="text-sm text-[#1E4775]/70">
  No positions with rewards available.
