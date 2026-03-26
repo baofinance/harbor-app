@@ -83,6 +83,7 @@ import { AnchorMarketGroupExpandedSection } from "@/components/anchor/AnchorMark
 import { AnchorMarketsTableHeader } from "@/components/anchor/AnchorMarketsTableHeader";
 import { AnchorPageTitleSection } from "@/components/anchor/AnchorPageTitleSection";
 import { AnchorHeroIntroCards } from "@/components/anchor/AnchorHeroIntroCards";
+import { AnchorLedgerMarksHero } from "@/components/anchor/AnchorLedgerMarksHero";
 import { AnchorStatsStrip } from "@/components/anchor/AnchorStatsStrip";
 import {
   ANCHOR_MARKETS_WALLET_ROW_LG_CLASSNAME,
@@ -3600,6 +3601,7 @@ export default function AnchorPage() {
           )}
           {!anchorViewBasic && (
             <>
+              <AnchorLedgerMarksHero />
               <AnchorHeroIntroCards />
               <div className="border-t border-white/10 my-2" aria-hidden />
               <AnchorStatsStrip anchorStats={anchorStats} />
