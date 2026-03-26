@@ -124,10 +124,10 @@ function AnchorMarketGroupCollapsedRowInner(
 
   return (
 <div
-  className={`p-3 overflow-visible transition cursor-pointer border border-[#1E4775]/10 ${
+  className={`p-3 transition cursor-pointer ${
     isExpanded
-      ? "rounded-t-md border-b-0 bg-[rgb(var(--surface-selected-rgb))]"
-      : "rounded-md bg-white hover:bg-[rgb(var(--surface-selected-rgb))]"
+      ? "bg-[rgb(var(--surface-selected-rgb))]"
+      : "bg-white hover:bg-[rgb(var(--surface-selected-rgb))]"
   }`}
   onClick={(e) => {
     const target = e.target as HTMLElement;

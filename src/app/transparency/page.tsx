@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useCallback } from "react";
 import {
  useTransparencyData,
  formatCollateralRatio,
@@ -30,7 +30,10 @@ import {
  ChevronDownIcon,
  ChevronUpIcon,
  ArrowTopRightOnSquareIcon,
+ XMarkIcon,
 } from "@heroicons/react/24/outline";
+import SimpleTooltip from "@/components/SimpleTooltip";
+import { FilterMultiselectDropdown } from "@/components/FilterMultiselectDropdown";
 import InfoTooltip from "@/components/InfoTooltip";
 import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
 import { isMarketInMaintenance, markets as marketsConfig } from "@/config/markets";
@@ -38,7 +41,14 @@ import { MarketMaintenanceBadge } from "@/components/MarketMaintenanceTag";
 import { useMultipleTokenPrices } from "@/hooks/useTokenPrices";
 import { useMultipleVolatilityProtection } from "@/hooks/useVolatilityProtection";
 import { useReadContract, useAccount } from "wagmi";
+import { usePageLayoutPreference } from "@/contexts/PageLayoutPreferenceContext";
+import { IndexPageTitleSection } from "@/components/shared/IndexPageTitleSection";
+import { INDEX_MARKETS_TOOLBAR_ROW_CLASS } from "@/components/shared/indexMarketsToolbarStyles";
+import { getWeb3iconsNetworkId } from "@/config/web3iconsNetworks";
 import { minterABI } from "@/abis/minter";
+
+const SCROLLBAR_HIDE_X =
+  "overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden";
 import Image from "next/image";
 import { getLogoPath } from "@/lib/logos";
 import { useAllStabilityPoolRewards } from "@/hooks/useAllStabilityPoolRewards";
@@ -162,7 +172,7 @@ function FeeTransparencyBands({
  const renderTable = (title: string, bands: FeeBand[] | undefined) => {
    if (!bands || bands.length === 0) {
      return (
-       <div className="bg-white p-3">
+       <div className="rounded-lg bg-white p-3">
          <h5 className="text-[#1E4775] font-semibold text-[10px] uppercase tracking-wider mb-1.5">
            {title}
          </h5>
@@ -172,7 +182,7 @@ function FeeTransparencyBands({
    }
 
    return (
-     <div className="bg-white p-3">
+     <div className="rounded-lg bg-white p-3">
        <h5 className="text-[#1E4775] font-semibold text-[10px] uppercase tracking-wider mb-1.5">
          {title}
        </h5>
@@ -187,7 +197,7 @@ function FeeTransparencyBands({
            return (
              <div
                key={idx}
-               className={`flex items-center justify-between text-[10px] px-2 py-1 rounded ${
+               className={`flex items-center justify-between text-[10px] px-2 py-1 rounded-md ${
                  active ? "bg-[#1E4775]/10 border border-[#1E4775]/30" : "bg-[#1E4775]/5"
                }`}
              >
@@ -207,7 +217,7 @@ function FeeTransparencyBands({
  };
 
  return (
-   <div className="bg-white p-3">
+   <div className="rounded-lg bg-white p-3">
      <h4 className="text-[#1E4775] font-semibold text-xs uppercase tracking-wider mb-2">
        Fees & Incentives
      </h4>
@@ -270,7 +280,7 @@ function ContractAddressItem({ label, address }: { label: string; address: strin
  const etherscanUrl = `https://etherscan.io/address/${address}`;
 
  return (
- <div className="flex flex-col gap-1 py-1.5 px-2 bg-[#1E4775]/5 text-center">
+ <div className="flex flex-col gap-1 rounded-md py-1.5 px-2 bg-[#1E4775]/5 text-center">
  <span className="text-[#1E4775]/60 text-[10px]">{label}</span>
  <div className="flex items-center justify-center gap-1.5">
  <button
@@ -603,7 +613,7 @@ function MarketCard({
   }, [market.peggedTokenBalance, market.leveragedTokenBalance, pools]);
 
  return (
- <div className="overflow-hidden">
+ <div className="rounded-xl border border-[#1E4775]/15 bg-white shadow-sm overflow-hidden">
  {/* Market Bar */}
  <div
  className={`cursor-pointer transition-colors ${
@@ -790,12 +800,12 @@ function MarketCard({
 
  <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
  {/* Token Prices & Supply */}
- <div className="bg-white p-2.5 space-y-2 lg:row-span-2">
+ <div className="rounded-lg bg-white p-2.5 space-y-2 lg:row-span-2">
  <h4 className="text-[#1E4775] font-semibold text-xs uppercase tracking-wider mb-2">
  Prices & Supply
  </h4>
  <div className="grid grid-cols-2 gap-1.5 text-xs">
- <div className="bg-[#1E4775]/5 p-1.5 text-center">
+ <div className="rounded-md bg-[#1E4775]/5 p-1.5 text-center">
  <div className="text-[#1E4775]/60 text-[9px]">
  Anchor Price
  </div>
@@ -805,7 +815,7 @@ function MarketCard({
    : "-"}
  </div>
  </div>
- <div className="bg-[#1E4775]/5 p-1.5 text-center">
+ <div className="rounded-md bg-[#1E4775]/5 p-1.5 text-center">
  <div className="text-[#1E4775]/60 text-[9px]">
  Sail Price
  </div>
@@ -815,7 +825,7 @@ function MarketCard({
    : "-"}
  </div>
  </div>
- <div className="bg-[#1E4775]/5 p-1.5 text-center">
+ <div className="rounded-md bg-[#1E4775]/5 p-1.5 text-center">
  <div className="text-[#1E4775]/60 text-[9px]">
  Anchor Supply
  </div>
@@ -832,7 +842,7 @@ function MarketCard({
  </div>
  </div>
  </div>
- <div className="bg-[#1E4775]/5 p-1.5 text-center">
+ <div className="rounded-md bg-[#1E4775]/5 p-1.5 text-center">
  <div className="text-[#1E4775]/60 text-[9px]">
  Sail Supply
  </div>
@@ -926,7 +936,7 @@ function MarketCard({
  </div>
 
  {/* Stability Pools */}
- <div className="bg-white p-2.5 space-y-2 lg:col-span-2">
+ <div className="rounded-lg bg-white p-2.5 space-y-2 lg:col-span-2">
  <h4 className="text-[#1E4775] font-semibold text-xs uppercase tracking-wider mb-2">
  Stability Pools
  </h4>
@@ -951,13 +961,13 @@ function MarketCard({
  {pool.type ==="collateral" ?"Anchor" :"Sail"}
  </span>
  <div className="grid grid-cols-5 gap-1.5 text-xs flex-1">
- <div className="bg-[#1E4775]/5 p-1.5 text-center">
+ <div className="rounded-md bg-[#1E4775]/5 p-1.5 text-center">
  <div className="text-[#1E4775]/60 text-[9px]">Anchor Token TVL</div>
  <div className="text-[#1E4775] font-mono font-semibold text-[10px]">
  {formatCompactUSD((Number(pool.tvl) / 1e18) * poolTokenPriceUSD)} ({formatTokenBalanceMax2Decimals(pool.tvl)} {peggedTokenSymbol})
  </div>
  </div>
- <div className="bg-[#1E4775]/5 p-1.5 text-center">
+ <div className="rounded-md bg-[#1E4775]/5 p-1.5 text-center">
  <div className="text-[#1E4775]/60 text-[9px]">APR</div>
  <div className="text-[#1E4775] font-mono font-semibold text-[10px]">
  {(() => {
@@ -969,19 +979,19 @@ function MarketCard({
  })()}
  </div>
  </div>
- <div className="bg-[#1E4775]/5 p-1.5 text-center">
+ <div className="rounded-md bg-[#1E4775]/5 p-1.5 text-center">
  <div className="text-[#1E4775]/60 text-[9px]">Early Fee</div>
  <div className="text-[#1E4775] font-mono font-semibold text-[10px]">
  {(Number(pool.earlyWithdrawalFee) / 1e16).toFixed(2)}%
  </div>
  </div>
- <div className="bg-[#1E4775]/5 p-1.5 text-center">
+ <div className="rounded-md bg-[#1E4775]/5 p-1.5 text-center">
  <div className="text-[#1E4775]/60 text-[9px]">Wait period</div>
  <div className="text-[#1E4775] font-mono font-semibold text-[10px]">
  {(Number(pool.withdrawWindow.startDelay) / 3600).toFixed(2)}h
  </div>
  </div>
- <div className="bg-[#1E4775]/5 p-1.5 text-center">
+ <div className="rounded-md bg-[#1E4775]/5 p-1.5 text-center">
  <div className="text-[#1E4775]/60 text-[9px]">Fee-free duration</div>
  <div className="text-[#1E4775] font-mono font-semibold text-[10px]">
  {(Number(pool.withdrawWindow.endWindow) / 3600).toFixed(2)}h
@@ -1017,7 +1027,7 @@ function MarketCard({
  </div>
 
  {/* Yield (Anchor Supply) */}
- <div className="bg-white p-2.5 space-y-2 lg:col-span-2">
+ <div className="rounded-lg bg-white p-2.5 space-y-2 lg:col-span-2">
  <h4 className="text-[#1E4775] font-semibold text-xs uppercase tracking-wider mb-2">
  Anchor Supply
  </h4>
@@ -1061,7 +1071,7 @@ function MarketCard({
       return (
         <>
           {/* First box: Yield Generating Collateral */}
-          <div className="bg-[#1E4775]/5 p-1.5 text-center">
+          <div className="rounded-md bg-[#1E4775]/5 p-1.5 text-center">
             <div className="text-[#1E4775]/60 text-[9px]">Yield Generating Collateral</div>
             <div className="text-[#1E4775] font-mono font-semibold text-[10px]">
               {formatCompactUSD(tvlYieldGeneratorUSD)}
@@ -1072,7 +1082,7 @@ function MarketCard({
           </div>
 
           {/* Second box: Anchor Token TVL */}
-          <div className="bg-[#1E4775]/5 p-1.5 text-center">
+          <div className="rounded-md bg-[#1E4775]/5 p-1.5 text-center">
             <div className="text-[#1E4775]/60 text-[9px]">Anchor Token TVL</div>
             <div className="text-[#1E4775] font-mono font-semibold text-[10px]">
               {formatCompactUSD(totalTVL)}
@@ -1090,7 +1100,7 @@ function MarketCard({
             const percent = totalForCat > 0 ? ((valueNum / totalForCat) * 100).toFixed(1) : "0.0";
 
             return (
-              <div key={category.name} className="bg-[#1E4775]/5 p-1.5 text-center">
+              <div key={category.name} className="rounded-md bg-[#1E4775]/5 p-1.5 text-center">
                 <div className="text-[#1E4775]/60 text-[9px]">{category.name}</div>
                 <div className="text-[#1E4775] font-mono font-semibold text-[10px]">
                   {formatCompactUSD(usdValue)}
@@ -1159,7 +1169,7 @@ function MarketCard({
         </div>
 
         {/* Bar container */}
-        <div className="relative h-4 bg-[#1E4775]/10 rounded overflow-visible">
+        <div className="relative h-4 bg-[#1E4775]/10 rounded-md overflow-visible">
           {/* Bar segments */}
           {notDepositedPercent > 0 && (
             <div 
@@ -1223,7 +1233,7 @@ function MarketCard({
  </div>
 
  {/* Contract Addresses */}
- <div className="mt-3 bg-white p-3">
+ <div className="mt-3 rounded-lg bg-white p-3">
  <h4 className="text-[#1E4775] font-semibold text-xs uppercase tracking-wider mb-2">
  Contract Addresses
  </h4>
@@ -1255,6 +1265,7 @@ function MarketCard({
 }
 
 export default function TransparencyPage() {
+ const { isBasic: isBasicLayout } = usePageLayoutPreference();
  const {
  markets,
  pools,
@@ -1277,6 +1288,46 @@ export default function TransparencyPage() {
    () => markets.filter((m) => m.collateralTokenBalance > 0n),
    [markets]
  );
+
+ const [chainFilterSelected, setChainFilterSelected] = useState<string[]>([]);
+
+ /** All configured transparency markets (not only those with collateral). Otherwise the Network
+  *  dropdown is empty during Maiden Voyage / before any market shows TVL — users still expect ETH / MegaETH. */
+ const transparencyChainOptions = useMemo(() => {
+   const seen = new Set<string>();
+   const options: {
+     id: string;
+     label: string;
+     iconUrl?: string;
+     networkId?: string;
+   }[] = [];
+   markets.forEach((m) => {
+     const cfg = (marketsConfig as any)[m.marketId];
+     const name = cfg?.chain?.name || "Ethereum";
+     if (seen.has(name)) return;
+     seen.add(name);
+     const logo = cfg?.chain?.logo || "icons/eth.png";
+     const networkId = getWeb3iconsNetworkId(name);
+     options.push({
+       id: name,
+       label: name,
+       iconUrl: networkId ? undefined : logo.startsWith("/") ? logo : `/${logo}`,
+       networkId,
+     });
+   });
+   return options.sort((a, b) => a.label.localeCompare(b.label));
+ }, [markets]);
+
+ const displayedMarkets = useMemo(() => {
+   if (chainFilterSelected.length === 0) return finishedMarkets;
+   return finishedMarkets.filter((m) => {
+     const cfg = (marketsConfig as any)[m.marketId];
+     const name = cfg?.chain?.name || "Ethereum";
+     return chainFilterSelected.includes(name);
+   });
+ }, [finishedMarkets, chainFilterSelected]);
+
+ const clearChainFilters = useCallback(() => setChainFilterSelected([]), []);
 
  const tokenPriceInputs = useMemo(() => {
    return finishedMarkets
@@ -1440,27 +1491,21 @@ const { data: volatilityProtectionMap } = useMultipleVolatilityProtection(
  }, [allPoolRewards]);
 
  return (
- <div className="flex min-h-0 flex-1 flex-col text-white max-w-[1300px] mx-auto font-sans relative overflow-x-hidden w-full">
- <main className="container mx-auto px-3 sm:px-4 lg:px-10 pb-6">
- {/* Header */}
+ <div className="flex min-h-0 flex-1 flex-col text-white max-w-[1300px] mx-auto font-sans relative w-full">
+ <main className="container mx-auto px-4 sm:px-10 pb-6 pt-2 sm:pt-4">
  <div className="mb-2">
- {/* Title - Full Row */}
- <div className="p-4 flex items-center justify-center mb-0">
- <h1 className="font-bold font-mono text-white text-5xl sm:text-6xl md:text-7xl text-center">
- Transparency
- </h1>
+ <IndexPageTitleSection
+ title="Transparency"
+ subtitle="Real-time protocol metrics from on-chain data"
+ />
  </div>
+ {/* Sail-style divider under hero */}
+ <div className="border-t border-white/10 my-3" aria-hidden />
 
- {/* Subheader */}
- <div className="flex items-center justify-center mb-2 -mt-2">
- <p className="text-white/80 text-lg text-center">
- Real-time protocol metrics from on-chain data
- </p>
- </div>
-
- {/* Info Boxes */}
- <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
- <div className="bg-[#17395F] p-3">
+ {/* Info Boxes — UI+ only */}
+ {!isBasicLayout && (
+ <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-3">
+ <div className="bg-[#17395F] p-3 rounded-xl border border-white/10">
  <div className="flex items-center justify-center mb-1">
  <EyeIcon className="w-5 h-5 text-white mr-2" />
  <h2 className="font-bold text-white text-sm text-center">
@@ -1471,7 +1516,7 @@ const { data: volatilityProtectionMap } = useMultipleVolatilityProtection(
  All data fetched directly from smart contracts
  </p>
  </div>
- <div className="bg-[#17395F] p-3">
+ <div className="bg-[#17395F] p-3 rounded-xl border border-white/10">
  <div className="flex items-center justify-center mb-1">
  <CurrencyDollarIcon className="w-5 h-5 text-white mr-2" />
  <h2 className="font-bold text-white text-sm text-center">
@@ -1482,7 +1527,7 @@ const { data: volatilityProtectionMap } = useMultipleVolatilityProtection(
  Click refresh to update data
  </p>
  </div>
- <div className="bg-[#17395F] p-3">
+ <div className="bg-[#17395F] p-3 rounded-xl border border-white/10">
  <div className="flex items-center justify-center mb-1">
  <Squares2X2Icon className="w-5 h-5 text-white mr-2" />
  <h2 className="font-bold text-white text-sm text-center">
@@ -1494,29 +1539,72 @@ const { data: volatilityProtectionMap } = useMultipleVolatilityProtection(
  </p>
  </div>
  </div>
- </div>
+ )}
 
- {/* Divider with refresh */}
- <div className="flex items-center justify-between border-t border-white/10 my-2 pt-2">
- <span className="text-white/40 text-[10px]" suppressHydrationWarning>
+ {!isBasicLayout && (
+ <div className="border-t border-white/10 my-3" aria-hidden />
+ )}
+
+ <section
+ className="space-y-2 mt-3 sm:mt-4"
+ aria-label="Protocol markets"
+ >
+ {/* Anchor-style toolbar: Markets + Network + clear; last updated + refresh */}
+ <div className={INDEX_MARKETS_TOOLBAR_ROW_CLASS}>
+ <div className="flex flex-wrap items-center gap-2">
+ <h2 className="text-xs font-medium text-white/70 uppercase tracking-wider">
+ Markets:
+ </h2>
+ {transparencyChainOptions.length > 0 && (
+ <FilterMultiselectDropdown
+ label="Network"
+ options={transparencyChainOptions}
+ value={chainFilterSelected}
+ onChange={setChainFilterSelected}
+ allLabel="All networks"
+ groupLabel="NETWORKS"
+ minWidthClass="min-w-[235px]"
+ />
+ )}
+ {chainFilterSelected.length > 0 && (
+ <SimpleTooltip label="clear filters">
+ <button
+ type="button"
+ onClick={clearChainFilters}
+ className="p-1.5 text-[#E67A6B] hover:text-[#D66A5B] hover:bg-white/10 rounded transition-colors"
+ aria-label="clear filters"
+ >
+ <XMarkIcon className="w-5 h-5 stroke-[2.5]" />
+ </button>
+ </SimpleTooltip>
+ )}
+ </div>
+ <div className="flex flex-wrap items-center gap-2 sm:gap-3 md:ml-auto">
+ <span
+ className="text-white/40 text-[10px] max-w-[min(100%,14rem)] sm:max-w-none truncate sm:whitespace-normal"
+ suppressHydrationWarning
+ title={new Date(lastUpdatedTimestamp).toLocaleString()}
+ >
  Last updated: {new Date(lastUpdatedTimestamp).toLocaleString()}
  </span>
  <button
+ type="button"
  onClick={() => refetch()}
  disabled={isLoading}
- className="flex items-center gap-1 px-2 py-1 bg-white/10 hover:bg-white/20 text-xs transition-colors disabled:opacity-50"
+ className="flex shrink-0 items-center gap-1 px-2 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-xs transition-colors disabled:opacity-50"
  >
  <ArrowPathIcon
- className={`h-3 w-3 ${isLoading ?"animate-spin" :""}`}
+ className={`h-3.5 w-3.5 ${isLoading ? "animate-spin" : ""}`}
  />
  Refresh
  </button>
+ </div>
  </div>
 
  {/* Error state */}
  {error && (
  <div className="mb-3">
- <div className="bg-red-500/20 border border-red-500/30 p-3 text-red-300 text-sm">
+ <div className="bg-red-500/20 border border-red-500/30 rounded-xl p-3 text-red-300 text-sm">
  {error}
  </div>
  </div>
@@ -1524,16 +1612,32 @@ const { data: volatilityProtectionMap } = useMultipleVolatilityProtection(
 
  {/* Check if any markets have finished genesis (have collateral) */}
  {!isLoading && finishedMarkets.length === 0 ? (
-       <div className="bg-[#17395F] border border-white/10 p-6 rounded-lg text-center">
+       <div className="bg-[#17395F] border border-white/10 p-6 rounded-2xl text-center">
          <p className="text-white text-lg font-medium">
            Maiden Voyage in progress for Harbor's first markets - coming soon!
          </p>
        </div>
  ) : (
    <>
-       {finishedMarkets.length > 0 && (
-        <div className="hidden lg:block bg-white p-2 mb-2">
-          <div className="grid grid-cols-[1.3fr_1fr_1fr_1fr_1fr_1fr_1fr_auto] gap-4 items-center uppercase tracking-wider text-[10px] text-[#1E4775] font-bold">
+       {!isLoading &&
+         finishedMarkets.length > 0 &&
+         displayedMarkets.length === 0 && (
+           <div className="rounded-xl border border-white/10 bg-[#17395F]/80 px-4 py-6 text-center text-sm text-white/90">
+             No markets match the selected network.{" "}
+             <button
+               type="button"
+               onClick={clearChainFilters}
+               className="font-semibold text-white underline decoration-white/40 underline-offset-2 hover:decoration-white"
+             >
+               Clear filters
+             </button>
+           </div>
+         )}
+       {displayedMarkets.length > 0 && (
+        <div
+          className={`hidden lg:block bg-white py-1.5 px-2 mb-2 rounded-xl border border-[#1E4775]/15 shadow-sm ${SCROLLBAR_HIDE_X}`}
+        >
+          <div className="grid grid-cols-[1.3fr_1fr_1fr_1fr_1fr_1fr_1fr_auto] gap-4 items-center uppercase tracking-wider text-[10px] lg:text-[11px] text-[#1E4775] font-semibold">
            <div className="text-center">Market</div>
              <div className="text-center">Collateral Ratio</div>
              <div className="text-center">Leverage</div>
@@ -1579,12 +1683,15 @@ const { data: volatilityProtectionMap } = useMultipleVolatilityProtection(
        {isLoading && finishedMarkets.length === 0 ? (
          <div className="space-y-2">
            {[1, 2].map((i) => (
-             <div key={i} className="animate-pulse h-14 bg-white/10" />
+             <div
+               key={i}
+               className="animate-pulse h-14 rounded-xl bg-white/10 border border-white/5"
+             />
            ))}
          </div>
        ) : (
          <div className="space-y-2">
-           {finishedMarkets.map((market) => (
+           {displayedMarkets.map((market) => (
              <MarketCard
                key={market.marketId}
                market={market}
@@ -1608,6 +1715,7 @@ const { data: volatilityProtectionMap } = useMultipleVolatilityProtection(
        )}
      </>
  )}
+ </section>
  </main>
  </div>
  );

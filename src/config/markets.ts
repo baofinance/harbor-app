@@ -13,7 +13,7 @@ export const markets = {
   // ETH/fxUSD Market (test2 deployment) - Mainnet deployment Dec 2025
   // ============================================================================
   "eth-fxusd": {
-    name: "ETH/fxUSD",
+    name: "fxUSD - ETH",
     maintenance: false,
     status: "genesis" as const,
     pegTarget: "ETH", // haETH is pegged to ETH
@@ -98,7 +98,7 @@ export const markets = {
   // BTC/fxUSD Market (test2 deployment) - Mainnet deployment Dec 2025
   // ============================================================================
   "btc-fxusd": {
-    name: "BTC/fxUSD",
+    name: "fxUSD - BTC",
     maintenance: false,
     status: "genesis" as const,
     pegTarget: "BTC", // haBTC is pegged to BTC
@@ -183,7 +183,7 @@ export const markets = {
   // BTC/stETH Market (test2 deployment) - Mainnet deployment Dec 2025
   // ============================================================================
   "btc-steth": {
-    name: "BTC/stETH",
+    name: "stETH - BTC",
     maintenance: false,
     status: "genesis" as const,
     pegTarget: "BTC", // haBTC is pegged to BTC
@@ -266,7 +266,7 @@ export const markets = {
   // ============================================================================
   ...(useTest2 ? {} : {
   "fxusd-gold": {
-    name: "fxUSD-GOLD",
+    name: "fxUSD - GOLD",
     maintenance: false,
     status: "genesis" as const,
     pegTarget: "GOLD",
@@ -342,7 +342,7 @@ export const markets = {
     },
   },
   "steth-gold": {
-    name: "stETH-GOLD",
+    name: "stETH - GOLD",
     maintenance: false,
     status: "genesis" as const,
     pegTarget: "GOLD",
@@ -418,7 +418,7 @@ export const markets = {
     },
   },
   "steth-eur": {
-    name: "stETH-EUR",
+    name: "stETH - EUR",
     maintenance: false,
     status: "genesis" as const,
     pegTarget: "EUR",
@@ -494,7 +494,7 @@ export const markets = {
     },
   },
   "fxusd-eur": {
-    name: "fxUSD-EUR",
+    name: "fxUSD - EUR",
     maintenance: false,
     status: "genesis" as const,
     pegTarget: "EUR",
@@ -570,7 +570,7 @@ export const markets = {
     },
   },
   "steth-mcap": {
-    name: "stETH-MCAP",
+    name: "stETH - MCAP",
     maintenance: false,
     status: "coming-soon" as const,
     pegTarget: "MCAP",
@@ -640,7 +640,7 @@ export const markets = {
     },
   },
   "fxusd-mcap": {
-    name: "fxUSD-MCAP",
+    name: "fxUSD - MCAP",
     maintenance: false,
     status: "coming-soon" as const,
     pegTarget: "MCAP",
@@ -710,7 +710,7 @@ export const markets = {
     },
   },
   "steth-silver": {
-    name: "stETH-SILVER",
+    name: "stETH - SILVER",
     maintenance: false,
     status: "genesis" as const,
     pegTarget: "SILVER",
@@ -786,7 +786,7 @@ export const markets = {
     },
   },
   "fxusd-silver": {
-    name: "fxUSD-SILVER",
+    name: "fxUSD - SILVER",
     maintenance: false,
     status: "genesis" as const,
     pegTarget: "SILVER",
@@ -866,7 +866,7 @@ export const markets = {
   ...(getContractMarket("btc-usd-megaeth")
     ? {
         "btc-usd-megaeth": {
-          name: "BTC-USD",
+          name: "BTC - USD",
           maintenance: false,
           status: "genesis" as const,
           pegTarget: "USD",
@@ -913,7 +913,7 @@ export const markets = {
           },
         },
         "wsteth-usd-megaeth": {
-          name: "wstETH-USD",
+          name: "wstETH - USD",
           maintenance: false,
           status: "genesis" as const,
           pegTarget: "USD",

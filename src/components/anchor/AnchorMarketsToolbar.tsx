@@ -34,7 +34,7 @@ export function AnchorMarketsToolbar({
     <div className={INDEX_MARKETS_TOOLBAR_ROW_CLASS}>
       <div className="flex flex-wrap items-center gap-2">
         <h2 className="text-xs font-medium text-white/70 uppercase tracking-wider">
-          Stability Pools
+          Stability Pools:
         </h2>
         {showNetworkFilter && (
           <>

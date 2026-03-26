@@ -15,6 +15,19 @@ import {
 } from "@/hooks/useAnchorLedgerMarks";
 import { useMarketBoostWindows } from "@/hooks/useMarketBoostWindows";
 import { CONTRACTS } from "@/config/contracts";
+import { IndexPageTitleSection } from "@/components/shared/IndexPageTitleSection";
+import { INDEX_MARKETS_TOOLBAR_ROW_CLASS } from "@/components/shared/indexMarketsToolbarStyles";
+import { FilterSingleSelectDropdown } from "@/components/FilterSingleSelectDropdown";
+
+/** Match Navigation / index rows: horizontal scroll without visible scrollbar. */
+const SCROLLBAR_HIDE_X =
+  "overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden";
+
+const CAMPAIGN_FILTER_OPTIONS = [
+  { id: "launch-maiden-voyage", label: "Launch", hint: "1% of $TIDE" },
+  { id: "euro-maiden-voyage", label: "Euro" },
+  { id: "metals-maiden-voyage", label: "Metals" },
+] as const;
 
 // GraphQL queries for leaderboard
 // Note: userHarborMarks requires an ID, so we query deposits first to find all users
@@ -333,17 +346,9 @@ const [campaignTab, setCampaignTab] = useState<
   "asc" | "desc"
  >("desc");
 
-const campaignTabs = [
-  {
-   id: "launch-maiden-voyage",
-   label: "Launch",
-   subtitle: "1% of $TIDE",
-  },
-  { id: "euro-maiden-voyage", label: "Euro" },
-  { id: "metals-maiden-voyage", label: "Metals" },
- ] as const;
  const activeCampaign =
-  campaignTabs.find((tab) => tab.id === campaignTab) ?? campaignTabs[0];
+  CAMPAIGN_FILTER_OPTIONS.find((tab) => tab.id === campaignTab) ??
+  CAMPAIGN_FILTER_OPTIONS[0];
 
  // Sync chain time every 12s; tick locally every 1s (no RPC)
  useEffect(() => {
@@ -1020,122 +1025,17 @@ const handleAnchorSailSort = (column: typeof anchorSailSortBy) => {
  const leaderboardData = leaderboardRows;
 
  return (
- <div className="flex min-h-0 flex-1 flex-col bg-[#1E4775] overflow-x-hidden">
- <main className="container mx-auto px-3 sm:px-4 lg:px-8 py-4 sm:py-8 max-w-7xl">
-        {/* Header */}
+ <div className="flex min-h-0 flex-1 flex-col text-white max-w-[1300px] mx-auto font-sans relative w-full">
+ <main className="container mx-auto px-4 sm:px-10 pb-6 pt-2 sm:pt-4">
         <div className="mb-2">
-          {/* Title Row */}
-          <div className="p-4 flex items-center justify-center mb-0">
-            <h1 className="font-bold font-mono text-white text-5xl sm:text-6xl md:text-7xl text-center">
-              Ledger Marks
-            </h1>
-          </div>
-
-          {/* Subheader */}
-          <div className="flex items-center justify-center mb-2 -mt-2">
-            <p className="text-white/80 text-lg text-center">
-              Leaderboard
-            </p>
-          </div>
-
-          {/** Boost bar removed */}
+          <IndexPageTitleSection title="Ledger Marks" subtitle="Leaderboard" />
         </div>
-
-          {/* Explainer Section */}
-          <div className="bg-black/[0.10] border border-white/10 backdrop-blur-sm rounded-none overflow-hidden p-4 mb-4">
-            <div className="flex items-start gap-3">
-              <Image
-                src="/icons/marks.png"
-                alt="Ledger Marks"
-                width={24}
-                height={24}
-                className="flex-shrink-0 mt-0.5"
-              />
-              <div className="flex-1">
-                <h3 className="font-bold text-lg text-white mb-2">
-                  What are Ledger Marks?
-                </h3>
-                <div className="space-y-3 text-white/90 leading-relaxed text-sm">
-                  <p>
-                    A ledger is both a record of truth and a core DeFi symbol —
-                    and a mark is what every sailor leaves behind on a voyage.
-                  </p>
-                  <p>
-                    Each Ledger Mark is proof that you were here early, helping
-                    stabilize the first Harbor markets and guide them through calm
-                    launch conditions.
-                  </p>
- <div className="space-y-2 mt-3">
- <div className="flex items-start gap-2">
- <span className="text-white/70 mt-0.5">•</span>
- <p>
- <strong>Maiden Voyage Deposits:</strong> Earn 10{" "}
- <Image
-   src="/icons/marks.png"
-   alt="Marks"
-   width={14}
-   height={14}
-   className="inline-block align-middle mx-0.5"
- />{" "}
- per dollar per day during maiden voyage, plus 100{" "}
- <Image
-   src="/icons/marks.png"
-   alt="Marks"
-   width={14}
-   height={14}
-   className="inline-block align-middle mx-0.5"
- />{" "}
- per dollar bonus at maiden voyage end.
- </p>
- </div>
-                <div className="flex items-start gap-2">
-                  <span className="text-white/70 mt-0.5">•</span>
-                  <p>
-                    <strong>Holding Anchor Tokens:</strong> Earn 1{" "}
-                    <Image
-                      src="/icons/marks.png"
-                      alt="Marks"
-                      width={14}
-                      height={14}
-                      className="inline-block align-middle mx-0.5"
-                    />{" "}
-                    per dollar per day.
-                  </p>
-                </div>
-                <div className="flex items-start gap-2">
-                  <span className="text-white/70 mt-0.5">•</span>
-                  <p>
-                    <strong>Holding Sail Tokens:</strong> Earn 10{" "}
-                    <Image
-                      src="/icons/marks.png"
-                      alt="Marks"
-                      width={14}
-                      height={14}
-                      className="inline-block align-middle mx-0.5"
-                    />{" "}
-                    per dollar per day.
-                  </p>
-                </div>
- <div className="flex items-start gap-2">
- <span className="text-white/70 mt-0.5">•</span>
- <p>
- When $TIDE surfaces, these marks will convert into your
- share of rewards and governance power.
- </p>
- </div>
- </div>
- <p className="text-white/80 italic mt-3 pt-3 border-t border-white/20">
- Think of them as a record of your journey — every mark, a line
- in Harbor's logbook.
- </p>
- </div>
- </div>
-        </div>
-        </div>
+        {/* Same rhythm as Sail (title → full-width divider → toolbar) */}
+        <div className="border-t border-white/10 my-3" aria-hidden />
 
         {/* Subgraph Error Banners */}
         {hasIndexerErrors && (
-          <div className="bg-[#FF8A7A]/10 border border-[#FF8A7A]/30 rounded-none p-3 mb-4">
+          <div className="bg-[#FF8A7A]/10 border border-[#FF8A7A]/30 rounded-xl p-3 mb-4">
             <div className="flex items-start gap-3">
               <div className="text-[#FF8A7A] text-xl mt-0.5">⚠️</div>
               <div className="flex-1">
@@ -1157,7 +1057,7 @@ const handleAnchorSailSort = (column: typeof anchorSailSortBy) => {
           </div>
         )}
         {hasAnyErrors && !hasIndexerErrors && (
-          <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-none p-3 mb-4">
+          <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-3 mb-4">
             <div className="flex items-start gap-3">
               <div className="text-yellow-500 text-xl mt-0.5">⚠️</div>
               <div className="flex-1">
@@ -1179,7 +1079,7 @@ const handleAnchorSailSort = (column: typeof anchorSailSortBy) => {
           </div>
         )}
         {anchorLedgerMarksError && !hasIndexerErrors && !hasAnyErrors && (
-          <div className="bg-[#FF8A7A]/10 border border-[#FF8A7A]/30 rounded-none p-3 mb-4">
+          <div className="bg-[#FF8A7A]/10 border border-[#FF8A7A]/30 rounded-xl p-3 mb-4">
             <div className="flex items-start gap-3">
               <div className="text-[#FF8A7A] text-xl mt-0.5">⚠️</div>
               <div className="flex-1">
@@ -1194,64 +1094,69 @@ const handleAnchorSailSort = (column: typeof anchorSailSortBy) => {
           </div>
         )}
 
-        <div className="bg-black/[0.10] border border-white/10 backdrop-blur-sm rounded-none overflow-hidden p-4 mb-2">
-        {/* Leaderboard Tabs */}
-        <div className="flex flex-col gap-2 mb-2">
-          <div className="flex items-center gap-4 border-b border-white/15">
-            <button
-              onClick={() => setLeaderboardTab("campaigns")}
-              className={`px-1 pb-2 pt-1 text-xs font-semibold border-b-2 -mb-px transition-colors ${
-                leaderboardTab === "campaigns"
-                  ? "text-white border-white"
-                  : "text-white/70 border-transparent hover:text-white hover:border-white/50"
-              }`}
+        <section
+          className="space-y-2 overflow-visible"
+          aria-label="Ledger marks leaderboard"
+        >
+        {/* Marks filter — Genesis-style segmented control + campaign dropdown */}
+        <div className={INDEX_MARKETS_TOOLBAR_ROW_CLASS}>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-medium text-white/70 uppercase tracking-wider">
+              Marks:
+            </span>
+            <div
+              className="flex shrink-0 items-center gap-0.5 rounded-md bg-white/10 p-0.5"
+              role="group"
+              aria-label="Leaderboard: Maiden Voyage or Anchor and Sail"
             >
-              Maiden Voyage Campaigns
-            </button>
-            <button
-              onClick={() => setLeaderboardTab("anchor-sail")}
-              className={`px-1 pb-2 pt-1 text-xs font-semibold border-b-2 -mb-px transition-colors ${
-                leaderboardTab === "anchor-sail"
-                  ? "text-white border-white"
-                  : "text-white/70 border-transparent hover:text-white hover:border-white/50"
-              }`}
-            >
-              Anchor &amp; Sail Marks
-            </button>
-          </div>
-          <div
-            className={`flex items-center gap-4 border-b border-white/10 min-h-[30px] overflow-x-auto ${
-              leaderboardTab === "campaigns"
-                ? "opacity-100"
-                : "opacity-0 pointer-events-none"
-            }`}
-          >
-            <div className="flex items-center gap-4 whitespace-nowrap">
-              {campaignTabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setCampaignTab(tab.id)}
-                  className={`px-1 pb-2 pt-1 text-xs font-semibold border-b-2 -mb-px transition-colors ${
-                    campaignTab === tab.id
-                      ? "text-white border-white"
-                      : "text-white/70 border-transparent hover:text-white hover:border-white/50"
-                  }`}
-                >
-                  <span>{tab.label}</span>
-                  {tab.subtitle && (
-                    <span className="ml-2 text-[10px] text-white/60">
-                      {tab.subtitle}
-                    </span>
-                  )}
-                </button>
-              ))}
+              <button
+                type="button"
+                onClick={() => setLeaderboardTab("campaigns")}
+                aria-pressed={leaderboardTab === "campaigns"}
+                className={`whitespace-nowrap rounded px-3 py-2 text-sm font-medium tabular-nums tracking-tight transition-colors ${
+                  leaderboardTab === "campaigns"
+                    ? "bg-white text-[#1E4775] shadow-sm"
+                    : "text-white hover:bg-white/20"
+                }`}
+              >
+                Maiden Voyage
+              </button>
+              <button
+                type="button"
+                onClick={() => setLeaderboardTab("anchor-sail")}
+                aria-pressed={leaderboardTab === "anchor-sail"}
+                className={`whitespace-nowrap rounded px-3 py-2 text-sm font-medium tabular-nums tracking-tight transition-colors ${
+                  leaderboardTab === "anchor-sail"
+                    ? "bg-white text-[#1E4775] shadow-sm"
+                    : "text-white hover:bg-white/20"
+                }`}
+              >
+                Anchor &amp; Sail
+              </button>
             </div>
+            <FilterSingleSelectDropdown
+              label="Campaign"
+              options={[...CAMPAIGN_FILTER_OPTIONS]}
+              value={campaignTab}
+              onChange={(id) =>
+                setCampaignTab(
+                  id as
+                    | "launch-maiden-voyage"
+                    | "euro-maiden-voyage"
+                    | "metals-maiden-voyage"
+                )
+              }
+              disabled={leaderboardTab === "anchor-sail"}
+              groupLabel="MAIDEN VOYAGE"
+              minWidthClass="min-w-[235px]"
+            />
           </div>
         </div>
 
         {/* Ledger Marks Summary */}
         {isConnected && (
-          <div className="bg-[rgb(var(--surface-selected-rgb))] p-3 mb-2">
+          <div className="rounded-md border border-white/40 bg-black/30 backdrop-blur-sm overflow-hidden">
+          <div className="bg-[rgb(var(--surface-selected-rgb))] p-3">
             <div className="flex items-start gap-2">
               <WalletIcon className="w-5 h-5 text-[#1E4775] flex-shrink-0 mt-0.5" />
               <div className="flex-1">
@@ -1267,7 +1172,7 @@ const handleAnchorSailSort = (column: typeof anchorSailSortBy) => {
                     </p>
                   ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
-                      <div className="bg-white p-2">
+                      <div className="bg-white p-2 rounded-lg">
                         <div className="text-xs text-[#1E4775]/70 mb-0.5 text-center">
                           {activeCampaign.label} Maiden Voyage Marks
                         </div>
@@ -1285,7 +1190,7 @@ const handleAnchorSailSort = (column: typeof anchorSailSortBy) => {
                           </div>
                         </div>
                       </div>
-                      <div className="bg-white p-2">
+                      <div className="bg-white p-2 rounded-lg">
                         <div className="text-xs text-[#1E4775]/70 mb-0.5 text-center">
                           Marks per Day
                         </div>
@@ -1303,7 +1208,7 @@ const handleAnchorSailSort = (column: typeof anchorSailSortBy) => {
                           </div>
                         </div>
                       </div>
-                      <div className="bg-white p-2">
+                      <div className="bg-white p-2 rounded-lg">
                         <div className="text-xs text-[#1E4775]/70 mb-0.5 text-center">
                           Bonus at End
                         </div>
@@ -1329,7 +1234,7 @@ const handleAnchorSailSort = (column: typeof anchorSailSortBy) => {
                   </p>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
-                    <div className="bg-white p-2">
+                    <div className="bg-white p-2 rounded-lg">
                       <div className="text-xs text-[#1E4775]/70 mb-0.5 text-center">
                         Anchor Marks per Day
                       </div>
@@ -1344,7 +1249,7 @@ const handleAnchorSailSort = (column: typeof anchorSailSortBy) => {
                         </div>
                       </div>
                     </div>
-                    <div className="bg-white p-2">
+                    <div className="bg-white p-2 rounded-lg">
                       <div className="text-xs text-[#1E4775]/70 mb-0.5 text-center">
                         Anchor Ledger Marks
                       </div>
@@ -1359,7 +1264,7 @@ const handleAnchorSailSort = (column: typeof anchorSailSortBy) => {
                         </div>
                       </div>
                     </div>
-                    <div className="bg-white p-2">
+                    <div className="bg-white p-2 rounded-lg">
                       <div className="text-xs text-[#1E4775]/70 mb-0.5 text-center">
                         Sail Marks per Day
                       </div>
@@ -1374,17 +1279,17 @@ const handleAnchorSailSort = (column: typeof anchorSailSortBy) => {
                         </div>
                       </div>
                     </div>
-                    <div className="bg-[#1E4775] p-2">
-                      <div className="text-xs text-white/70 mb-0.5 text-center">
+                    <div className="bg-white p-2 rounded-lg">
+                      <div className="text-xs text-[#1E4775]/70 mb-0.5 text-center">
                         Total Marks per Day
                       </div>
                       <div className="flex items-baseline gap-1 justify-center">
-                        <div className="text-base font-bold text-white">
+                        <div className="text-base font-bold text-[#1E4775]">
                           {anchorSailMarksPerDay.toLocaleString(undefined, {
                             maximumFractionDigits: 2,
                           })}
                         </div>
-                        <div className="text-[10px] text-white/60">
+                        <div className="text-[10px] text-[#1E4775]/60">
                           marks/day
                         </div>
                       </div>
@@ -1394,17 +1299,16 @@ const handleAnchorSailSort = (column: typeof anchorSailSortBy) => {
               </div>
             </div>
           </div>
+          </div>
         )}
-        </div>
 
- {/* Divider */}
- <div className="border-t border-white/10 my-2"></div>
+        <div className="border-t border-white/10 my-2 shrink-0" />
 
- {/* Leaderboard */}
- <section className="space-y-2 overflow-visible">
         {/* Mobile Header Row */}
         {leaderboardTab === "campaigns" ? (
-          <div className="md:hidden bg-white py-1.5 px-2 overflow-x-auto mb-0">
+          <div
+            className={`md:hidden bg-white py-1.5 px-2 mb-0 rounded-md border border-[#1E4775]/15 shadow-sm ${SCROLLBAR_HIDE_X}`}
+          >
             <div className="grid grid-cols-[auto_1fr_1fr_1fr_1fr] gap-2 sm:gap-4 items-center uppercase tracking-wider text-[10px] text-[#1E4775] font-semibold">
               <div className="min-w-0 text-center pl-2">Rank</div>
               <div className="min-w-0 text-center">Wallet</div>
@@ -1444,7 +1348,9 @@ const handleAnchorSailSort = (column: typeof anchorSailSortBy) => {
             </div>
           </div>
         ) : (
-          <div className="md:hidden bg-white py-1.5 px-2 overflow-x-auto mb-0">
+          <div
+            className={`md:hidden bg-white py-1.5 px-2 mb-0 rounded-md border border-[#1E4775]/15 shadow-sm ${SCROLLBAR_HIDE_X}`}
+          >
             <div className="grid grid-cols-[auto_1fr_1fr_1fr] gap-2 sm:gap-4 items-center uppercase tracking-wider text-[10px] text-[#1E4775] font-semibold">
               <div className="min-w-0 text-center pl-2">Rank</div>
               <div className="min-w-0 text-center">Wallet</div>
@@ -1476,7 +1382,9 @@ const handleAnchorSailSort = (column: typeof anchorSailSortBy) => {
 
         {/* Desktop Header Row */}
         {leaderboardTab === "campaigns" ? (
-          <div className="hidden md:block bg-white py-1.5 px-2 overflow-x-auto mb-0">
+          <div
+            className={`hidden md:block bg-white py-1.5 px-2 mb-0 rounded-md border border-[#1E4775]/15 shadow-sm ${SCROLLBAR_HIDE_X}`}
+          >
             <div className="grid grid-cols-[auto_1fr_1fr_1fr_1fr] gap-4 items-center uppercase tracking-wider text-[10px] lg:text-[11px] text-[#1E4775] font-semibold">
               <div className="min-w-0 text-center pl-6">Rank</div>
               <div className="min-w-0 text-center">Wallet Address</div>
@@ -1516,7 +1424,9 @@ const handleAnchorSailSort = (column: typeof anchorSailSortBy) => {
             </div>
           </div>
         ) : (
-          <div className="hidden md:block bg-white py-1.5 px-2 overflow-x-auto mb-0">
+          <div
+            className={`hidden md:block bg-white py-1.5 px-2 mb-0 rounded-md border border-[#1E4775]/15 shadow-sm ${SCROLLBAR_HIDE_X}`}
+          >
             <div className="grid grid-cols-[auto_1fr_1fr_1fr_1fr_1fr] gap-4 items-center uppercase tracking-wider text-[10px] lg:text-[11px] text-[#1E4775] font-semibold">
               <div className="min-w-0 text-center pl-6">Rank</div>
               <div className="min-w-0 text-center">Wallet Address</div>
@@ -1570,16 +1480,16 @@ const handleAnchorSailSort = (column: typeof anchorSailSortBy) => {
 
  {/* Leaderboard Rows */}
  {isLoading ? (
- <div className="bg-white p-8 text-center text-gray-500">
+ <div className="bg-white p-8 text-center text-gray-500 rounded-lg">
  Loading leaderboard...
  </div>
  ) : error ? (
- <div className="bg-white p-8 text-center text-red-500">
+ <div className="bg-white p-8 text-center text-red-500 rounded-lg">
  Error loading leaderboard:{" "}
  {error instanceof Error ? error.message :"Unknown error"}
  </div>
  ) : leaderboardData.length === 0 ? (
- <div className="bg-white p-8 text-center">
+ <div className="bg-white p-8 text-center rounded-lg">
  {hasAnyErrors || hasIndexerErrors ? (
    <div className="space-y-3">
      <div className="text-[#FF8A7A] font-semibold text-sm">
@@ -1604,7 +1514,7 @@ const handleAnchorSailSort = (column: typeof anchorSailSortBy) => {
  leaderboardData.map((user, index) => (
  <div
  key={`${user.address.toLowerCase()}-${index}`}
- className="bg-white p-2 sm:p-3 overflow-x-auto"
+ className={`bg-white p-2 sm:p-3 rounded-md border border-[#1E4775]/15 shadow-sm ${SCROLLBAR_HIDE_X}`}
  >
  {/* Mobile Row */}
  {leaderboardTab === "campaigns" ? (

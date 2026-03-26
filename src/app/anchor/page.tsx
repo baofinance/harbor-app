@@ -5608,66 +5608,68 @@ export default function AnchorPage() {
 
                 return (
                   <React.Fragment key={symbol}>
-                    <AnchorMarketGroupCollapsedRow
-                      symbol={symbol}
-                      isExpanded={isExpanded}
-                      peggedTokenSymbol={peggedTokenSymbol}
-                      groupHasMaintenance={groupHasMaintenance}
-                      marketList={marketList}
-                      marketsData={marketsData}
-                      minAPR={minAPR}
-                      maxAPR={maxAPR}
-                      minProjectedAPR={minProjectedAPR}
-                      maxProjectedAPR={maxProjectedAPR}
-                      collateralPoolAPRMin={collateralPoolAPRMin}
-                      collateralPoolAPRMax={collateralPoolAPRMax}
-                      sailPoolAPRMin={sailPoolAPRMin}
-                      sailPoolAPRMax={sailPoolAPRMax}
-                      combinedPositionUSD={combinedPositionUSD}
-                      combinedPositionTokens={combinedPositionTokens}
-                      combinedRewardsUSD={combinedRewardsUSD}
-                      collateralPoolAddress={collateralPoolAddress}
-                      sailPoolAddress={sailPoolAddress}
-                      rewardPoolAddresses={rewardPoolAddresses}
-                      allDepositAssets={allDepositAssets}
-                      directlyZappableAssets={directlyZappableAssets}
-                      isCollateralOnlyRow={isCollateralOnlyRow}
-                      isMegaEthRow={isMegaEthRow}
-                      collateralSymbol={collateralSymbol}
-                      poolRewardsMap={poolRewardsMap}
-                      isErrorAllRewards={isErrorAllRewards}
-                      showLiveAprLoading={showLiveAprLoading}
-                      projectedAPR={projectedAPR}
-                      isConnected={isConnected}
-                      onToggleExpand={toggleExpandedMarket}
-                      onOpenManage={setManageModal}
-                    />
-
-                    {/* Expanded View - Show all markets in group */}
-                    {isExpanded && (
-                      <AnchorMarketGroupExpandedSection
-                        activeMarketsData={activeMarketsData}
-                        withdrawalRequests={withdrawalRequests}
-                        volProtectionData={volProtectionData}
-                        marketPositions={marketPositions}
+                    <div className="rounded-md border border-[#1E4775]/10 overflow-hidden">
+                      <AnchorMarketGroupCollapsedRow
+                        symbol={symbol}
+                        isExpanded={isExpanded}
+                        peggedTokenSymbol={peggedTokenSymbol}
+                        groupHasMaintenance={groupHasMaintenance}
+                        marketList={marketList}
+                        marketsData={marketsData}
+                        minAPR={minAPR}
+                        maxAPR={maxAPR}
+                        minProjectedAPR={minProjectedAPR}
+                        maxProjectedAPR={maxProjectedAPR}
+                        collateralPoolAPRMin={collateralPoolAPRMin}
+                        collateralPoolAPRMax={collateralPoolAPRMax}
+                        sailPoolAPRMin={sailPoolAPRMin}
+                        sailPoolAPRMax={sailPoolAPRMax}
+                        combinedPositionUSD={combinedPositionUSD}
+                        combinedPositionTokens={combinedPositionTokens}
+                        combinedRewardsUSD={combinedRewardsUSD}
+                        collateralPoolAddress={collateralPoolAddress}
+                        sailPoolAddress={sailPoolAddress}
+                        rewardPoolAddresses={rewardPoolAddresses}
+                        allDepositAssets={allDepositAssets}
+                        directlyZappableAssets={directlyZappableAssets}
+                        isCollateralOnlyRow={isCollateralOnlyRow}
+                        isMegaEthRow={isMegaEthRow}
+                        collateralSymbol={collateralSymbol}
                         poolRewardsMap={poolRewardsMap}
-                        collateralPricesMap={collateralPricesMap}
-                        peggedPriceUSDMap={peggedPriceUSDMap}
-                        coinGeckoPrices={coinGeckoPrices}
-                        coinGeckoLoading={coinGeckoLoading}
-                        ethPrice={ethPrice}
-                        btcPrice={btcPrice}
-                        eurPrice={eurPrice}
-                        goldPrice={goldPrice}
-                        silverPrice={silverPrice}
+                        isErrorAllRewards={isErrorAllRewards}
                         showLiveAprLoading={showLiveAprLoading}
-                        setWithdrawAmountModal={setWithdrawAmountModal}
-                        setEarlyWithdrawModal={setEarlyWithdrawModal}
-                        setWithdrawAmountInput={setWithdrawAmountInput}
-                        setWithdrawAmountError={setWithdrawAmountError}
-                        setContractAddressesModal={setContractAddressesModal}
+                        projectedAPR={projectedAPR}
+                        isConnected={isConnected}
+                        onToggleExpand={toggleExpandedMarket}
+                        onOpenManage={setManageModal}
                       />
-                    )}
+
+                      {/* Expanded View - Show all markets in group */}
+                      {isExpanded && (
+                        <AnchorMarketGroupExpandedSection
+                          activeMarketsData={activeMarketsData}
+                          withdrawalRequests={withdrawalRequests}
+                          volProtectionData={volProtectionData}
+                          marketPositions={marketPositions}
+                          poolRewardsMap={poolRewardsMap}
+                          collateralPricesMap={collateralPricesMap}
+                          peggedPriceUSDMap={peggedPriceUSDMap}
+                          coinGeckoPrices={coinGeckoPrices}
+                          coinGeckoLoading={coinGeckoLoading}
+                          ethPrice={ethPrice}
+                          btcPrice={btcPrice}
+                          eurPrice={eurPrice}
+                          goldPrice={goldPrice}
+                          silverPrice={silverPrice}
+                          showLiveAprLoading={showLiveAprLoading}
+                          setWithdrawAmountModal={setWithdrawAmountModal}
+                          setEarlyWithdrawModal={setEarlyWithdrawModal}
+                          setWithdrawAmountInput={setWithdrawAmountInput}
+                          setWithdrawAmountError={setWithdrawAmountError}
+                          setContractAddressesModal={setContractAddressesModal}
+                        />
+                      )}
+                    </div>
                   </React.Fragment>
                 );
               })}

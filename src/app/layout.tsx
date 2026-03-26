@@ -99,7 +99,7 @@ export default async function RootLayout({
  </PageLayoutPreferenceProvider>
  </Suspense>
  <footer className="mt-auto flex-shrink-0 border-t border-white/20">
-   <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+   <div className="w-full max-w-[1300px] mx-auto px-4 sm:px-10 py-6">
      <div className="flex justify-center mb-4">
        <a
          href="https://www.harborfinance.io/#:~:text=and%20many%20more.-,View%20audit%20report,-Banking%20and%20Crypto"

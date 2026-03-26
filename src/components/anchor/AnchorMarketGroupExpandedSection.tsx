@@ -97,7 +97,7 @@ export function AnchorMarketGroupExpandedSection({
   setContractAddressesModal,
 }: AnchorMarketGroupExpandedSectionProps) {
   return (
-<div className="bg-[rgb(var(--surface-selected-rgb))] p-4 rounded-b-md border-x border-b border-[#1E4775]/10 border-t border-white/20">
+<div className="bg-[rgb(var(--surface-selected-rgb))] p-4 border-t border-white/20">
   {/* Consolidated Your Positions - shown once for the group */}
   {(() => {
     // Aggregate pool deposits across all markets (wallet balances shown in separate section)
@@ -373,7 +373,7 @@ export function AnchorMarketGroupExpandedSection({
 
         {/* Your Positions - consolidated (only stability pool deposits) */}
         {hasGroupPositions && (
-          <div className="bg-white border border-[#1E4775]/10 shadow-sm p-3 space-y-2">
+          <div className="bg-white border border-[#1E4775]/10 shadow-sm p-3 space-y-2 rounded-md">
             <div className="text-[10px] text-[#1E4775]/70 font-semibold uppercase tracking-wide">
               Your Positions
             </div>
@@ -690,7 +690,7 @@ export function AnchorMarketGroupExpandedSection({
 
     return (
       <React.Fragment key={marketData.marketId}>
-            <div className="bg-white p-2 mb-2 border border-[#1E4775]/10">
+            <div className="bg-white p-2 mb-2 border border-[#1E4775]/10 rounded-md">
         <div className="flex items-center justify-end mb-2">
           <button
             onClick={() =>
