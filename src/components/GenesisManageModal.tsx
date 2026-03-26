@@ -148,7 +148,6 @@ export const GenesisManageModal = ({
           }}
         />
       }
-      headerClassName="p-0 pt-2 sm:pt-3 px-2 sm:px-3 border-b border-[#1E4775]/10"
       panelClassName="max-h-[95vh] sm:max-h-[90vh] flex flex-col animate-in fade-in-0 scale-in-95 duration-200"
       contentClassName="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6 min-h-0"
     >
@@ -168,7 +167,7 @@ export const GenesisManageModal = ({
               </p>
               <button
                 onClick={handleClose}
-                className="px-4 py-2 bg-[#1E4775] text-white rounded-full hover:bg-[#17395F] transition-colors touch-target"
+                className="px-4 py-2 bg-[#1E4775] text-white rounded-md hover:bg-[#17395F] transition-colors touch-target"
               >
                 Close
               </button>

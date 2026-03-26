@@ -10,7 +10,8 @@ import { DocumentTextIcon } from "@heroicons/react/24/outline";
 import { SiDiscord, SiX } from "react-icons/si";
 
 const siteUrl ="https://app.harborfinance.io";
-const title ="Harbor Protocol";
+/** Default tab title for `/`; nested routes use `title` + template `%s | Harbor`. */
+const siteTitleDefault = "Harbor Protocol";
 const description =
 "A decentralized protocol for creating synthetic assets pegged to any real-world data feed.";
 
@@ -23,7 +24,10 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
  metadataBase: new URL(siteUrl),
- title,
+ title: {
+   default: siteTitleDefault,
+   template: "%s | Harbor",
+ },
  description,
  keywords: [
 "Harbor",
@@ -42,10 +46,10 @@ export const metadata: Metadata = {
  apple:"/logowhitenobg.png",
  },
  openGraph: {
- title,
+ title: siteTitleDefault,
  description,
  url: siteUrl,
- siteName: title,
+ siteName: siteTitleDefault,
  images: [
  {
  url: `${siteUrl}/logowhitenobg.png`,
@@ -58,7 +62,7 @@ export const metadata: Metadata = {
  },
  twitter: {
  card:"summary_large_image",
- title,
+ title: siteTitleDefault,
  description,
  creator:"@0xHarborFi",
  site:"@0xHarborFi",

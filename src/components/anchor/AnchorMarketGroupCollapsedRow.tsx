@@ -15,6 +15,7 @@ import { getLogoPath } from "@/components/shared";
 import { formatCompactUSD } from "@/utils/anchor";
 import type { MarketData } from "@/hooks/anchor/useAnchorMarketData";
 import {
+  ANCHOR_COLLATERAL_CHIP_CLASSNAME,
   ANCHOR_MARKETS_TABLE_ROW_LG_CLASSNAME,
   ANCHOR_MARKETS_TABLE_ROW_MD_CLASSNAME,
 } from "./anchorMarketsTableGrid";
@@ -646,7 +647,13 @@ function AnchorMarketGroupCollapsedRowInner(
           )
         }
       >
-        <div className={`flex items-center gap-1 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide cursor-help whitespace-nowrap ${isCollateralOnlyRow ? "bg-[#1E4775]/10 text-[#1E4775]" : "bg-blue-100 text-blue-700"}`}>
+        <div
+          className={`cursor-help flex ${
+            isCollateralOnlyRow
+              ? ANCHOR_COLLATERAL_CHIP_CLASSNAME
+              : "items-center gap-1 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide whitespace-nowrap bg-blue-100 text-blue-700 rounded-none"
+          }`}
+        >
           {!isCollateralOnlyRow && <ArrowPathIcon className="w-3 h-3" />}
           <span>{isCollateralOnlyRow ? "Collateral" : "Any Token"}</span>
         </div>

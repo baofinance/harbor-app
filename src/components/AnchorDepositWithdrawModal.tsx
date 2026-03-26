@@ -9599,7 +9599,7 @@ export const AnchorDepositWithdrawModal = ({
                             )}
                           </div>
                         ),
-                        inputClassName: `w-full h-14 px-4 pr-24 bg-white text-[#1E4775] border-2 ${error ? "border-red-500" : "border-[#1E4775]/30"} focus:border-[#1E4775] focus:ring-2 focus:ring-[#1E4775]/20 focus:outline-none transition-all text-xl font-mono`,
+                        inputClassName: `w-full h-14 rounded-md px-4 pr-24 bg-white text-[#1E4775] border-2 ${error ? "border-red-500" : "border-[#1E4775]/30"} focus:border-[#1E4775] focus:ring-2 focus:ring-[#1E4775]/20 focus:outline-none transition-all text-xl font-mono`,
                         customHandleMax: handleMaxClick,
                         customHandleChange: handleAmountChange,
                       }}
@@ -9607,7 +9607,7 @@ export const AnchorDepositWithdrawModal = ({
                         <>
                       {currentStep === 1 && !isDirectPeggedDeposit && (
                         <div className="space-y-2">
-                          <div className="flex items-center justify-between border border-[#1E4775]/20 bg-[#17395F]/5 px-3 py-2 text-xs">
+                          <div className="flex items-center justify-between rounded-md border border-[#1E4775]/20 bg-[#17395F]/5 px-3 py-2 text-xs">
                             <div className="text-[#1E4775]/80">
                               Mint only (do not deposit to stability pool)
                             </div>
@@ -9655,7 +9655,7 @@ export const AnchorDepositWithdrawModal = ({
                         </div>
                       )}
                       {showPermitToggle && (
-                        <div className="flex items-center justify-between border border-[#1E4775]/20 bg-[#17395F]/5 px-3 py-2 text-xs">
+                        <div className="flex items-center justify-between rounded-md border border-[#1E4775]/20 bg-[#17395F]/5 px-3 py-2 text-xs">
                           <div className="text-[#1E4775]/80">
                             Use permit (gasless approval) for this deposit
                           </div>
@@ -9790,7 +9790,7 @@ export const AnchorDepositWithdrawModal = ({
                           <label className="block text-sm font-semibold text-[#1E4775] mb-1.5">
                             Transaction Overview
                           </label>
-                          <div className="p-2.5 bg-[#17395F]/5 border border-[#1E4775]/10">
+                          <div className="p-2.5 rounded-md bg-[#17395F]/5 border border-[#1E4775]/10">
                             <div className="space-y-2 text-sm">
                               {/* You will receive */}
                               {expectedMintOutput && amount && parseFloat(amount) > 0 ? (
@@ -9954,7 +9954,7 @@ export const AnchorDepositWithdrawModal = ({
                               !!error ||
                               isProcessing
                         }
-                        className="w-full mt-4 py-3 px-4 bg-[#FF8A7A] text-white font-semibold hover:bg-[#FF6B5A] transition-colors disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
+                        className="w-full mt-4 py-3 px-4 rounded-md bg-[#FF8A7A] text-white font-semibold hover:bg-[#FF6B5A] transition-colors disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
                       >
                         {step === "error"
                           ? "Try Again"
@@ -10025,7 +10025,7 @@ export const AnchorDepositWithdrawModal = ({
                         <button
                           onClick={() => setCurrentStep(1)}
                           disabled={isProcessing}
-                          className="flex-1 py-3 px-4 bg-white text-[#1E4775] border-2 border-[#1E4775]/30 font-semibold hover:bg-[#1E4775]/5 transition-colors disabled:opacity-50"
+                          className="flex-1 py-3 px-4 rounded-md bg-white text-[#1E4775] border-2 border-[#1E4775]/30 font-semibold hover:bg-[#1E4775]/5 transition-colors disabled:opacity-50"
                         >
                           ← Back
                         </button>
@@ -10048,7 +10048,7 @@ export const AnchorDepositWithdrawModal = ({
                             !!error ||
                             isProcessing
                           }
-                          className="flex-1 py-3 px-4 bg-[#1E4775] text-white font-semibold hover:bg-[#17395F] transition-colors disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
+                          className="flex-1 py-3 px-4 rounded-md bg-[#1E4775] text-white font-semibold hover:bg-[#17395F] transition-colors disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
                         >
                           {isProcessing
                             ? "Processing..."
@@ -10089,7 +10089,7 @@ export const AnchorDepositWithdrawModal = ({
                               return (
                                 <label
                                   key={poolKey}
-                                  className="flex items-start gap-2 p-2 bg-[#17395F]/5 border border-[#17395F]/20 cursor-pointer hover:bg-[#17395F]/10 transition-colors"
+                                  className="flex items-start gap-2 p-2 rounded-md bg-[#17395F]/5 border border-[#17395F]/20 cursor-pointer hover:bg-[#17395F]/10 transition-colors"
                                 >
                                   <input
                                     type="radio"
@@ -10245,7 +10245,7 @@ export const AnchorDepositWithdrawModal = ({
                           <label className="block text-sm font-semibold text-[#1E4775] mb-1.5">
                             Transaction Overview
                           </label>
-                          <div className="p-3 bg-[#17395F]/5 border border-[#1E4775]/10">
+                          <div className="p-3 rounded-md bg-[#17395F]/5 border border-[#1E4775]/10">
                             {/* Review Summary */}
                             {(() => {
                           // Determine deposit token symbol
@@ -10534,7 +10534,7 @@ export const AnchorDepositWithdrawModal = ({
                                   setCurrentStep(skipRewardStep ? 1 : 2)
                                 }
                                 disabled={isProcessing}
-                                className="flex-1 py-3 px-4 bg-white text-[#1E4775] border-2 border-[#1E4775]/30 font-semibold hover:bg-[#1E4775]/5 transition-colors disabled:opacity-50"
+                                className="flex-1 py-3 px-4 rounded-md bg-white text-[#1E4775] border-2 border-[#1E4775]/30 font-semibold hover:bg-[#1E4775]/5 transition-colors disabled:opacity-50"
                               >
                                 ← Back
                               </button>
@@ -10549,7 +10549,7 @@ export const AnchorDepositWithdrawModal = ({
                                   (selectedRewardToken &&
                                     !selectedStabilityPool)
                                 }
-                                className="flex-1 py-3 px-4 bg-[#FF8A7A] text-white font-semibold hover:bg-[#FF6B5A] transition-colors disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
+                                className="flex-1 py-3 px-4 rounded-md bg-[#FF8A7A] text-white font-semibold hover:bg-[#FF6B5A] transition-colors disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
                               >
                                 {isDirectPeggedDeposit && selectedStabilityPool
                                   ? "Deposit"
@@ -10569,7 +10569,7 @@ export const AnchorDepositWithdrawModal = ({
                           <label className="block text-sm font-semibold text-[#1E4775] mb-1.5">
                             Transaction Overview
                           </label>
-                          <div className="p-3 bg-[#17395F]/5 border border-[#1E4775]/10">
+                          <div className="p-3 rounded-md bg-[#17395F]/5 border border-[#1E4775]/10">
                           {/* You will receive */}
                           <div className="flex justify-between items-center">
                             <span className="text-sm font-medium text-[#1E4775]/70">
@@ -10722,7 +10722,7 @@ export const AnchorDepositWithdrawModal = ({
                               <button
                                 onClick={() => setCurrentStep(2)}
                                 disabled={isProcessing}
-                                className="flex-1 py-3 px-4 bg-white text-[#1E4775] border-2 border-[#1E4775]/30 font-semibold hover:bg-[#1E4775]/5 transition-colors disabled:opacity-50"
+                                className="flex-1 py-3 px-4 rounded-md bg-white text-[#1E4775] border-2 border-[#1E4775]/30 font-semibold hover:bg-[#1E4775]/5 transition-colors disabled:opacity-50"
                               >
                                 ← Back
                               </button>
@@ -10735,7 +10735,7 @@ export const AnchorDepositWithdrawModal = ({
                                   !!error ||
                                   isProcessing
                                 }
-                                className="flex-1 py-3 px-4 bg-[#FF8A7A] text-white font-semibold hover:bg-[#FF6B5A] transition-colors disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
+                                className="flex-1 py-3 px-4 rounded-md bg-[#FF8A7A] text-white font-semibold hover:bg-[#FF6B5A] transition-colors disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
                               >
                                 Confirm & Mint
                               </button>
@@ -10814,7 +10814,7 @@ export const AnchorDepositWithdrawModal = ({
                       {transactionSteps.map((txStep) => (
                         <div
                           key={txStep.id}
-                          className="p-3 bg-[#17395F]/5 border border-[#17395F]/20"
+                          className="p-3 rounded-md bg-[#17395F]/5 border border-[#17395F]/20"
                         >
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
@@ -11054,7 +11054,7 @@ export const AnchorDepositWithdrawModal = ({
                               return (
                                 <div
                                   key={p.key}
-                                  className={`bg-[#17395F]/5 border ${
+                                  className={`rounded-md bg-[#17395F]/5 border ${
                                     !hasBalance
                                       ? "border-[#17395F]/10 opacity-75"
                                       : isSelected
@@ -11308,7 +11308,7 @@ export const AnchorDepositWithdrawModal = ({
                                 </button>
                               </div>
                               {show1PctToggle && (
-                                <div className="flex items-center justify-between border border-[#1E4775]/20 bg-[#17395F]/5 px-2 py-1.5 text-[10px] mb-2">
+                                <div className="flex items-center justify-between rounded-md border border-[#1E4775]/20 bg-[#17395F]/5 px-2 py-1.5 text-[10px] mb-2">
                                   <span className="text-[#1E4775]/80">
                                     Pay 1% fee to withdraw immediately (no waiting)
                                   </span>
@@ -11403,7 +11403,7 @@ export const AnchorDepositWithdrawModal = ({
                                         ),
                                       }));
                                     }}
-                                    className="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 text-xs bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white transition-colors disabled:bg-gray-300 disabled:text-gray-500"
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 text-xs rounded-md bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white transition-colors disabled:bg-gray-300 disabled:text-gray-500"
                                             disabled={
                                               isProcessing || immediateCap === 0n
                                             }
@@ -11448,7 +11448,7 @@ export const AnchorDepositWithdrawModal = ({
                     })()}
 
                     {/* Withdraw only toggle */}
-                    <div className="flex items-center justify-between border border-[#1E4775]/20 bg-[#17395F]/5 px-3 py-2 text-xs">
+                    <div className="flex items-center justify-between rounded-md border border-[#1E4775]/20 bg-[#17395F]/5 px-3 py-2 text-xs">
                       <div className="text-[#1E4775]/80">
                         Withdraw only (do not redeem to collateral)
                       </div>
@@ -11483,7 +11483,7 @@ export const AnchorDepositWithdrawModal = ({
 
                     {/* Wallet Position (ha tokens) - Only show if NOT"Withdraw only" */}
                     {!withdrawOnly && peggedBalance > 0n && (
-                        <div className="p-3 bg-[#17395F]/5 border border-[#17395F]/20">
+                        <div className="p-3 rounded-md bg-[#17395F]/5 border border-[#17395F]/20">
                           <div className="flex items-center justify-between mb-2">
                             <div className="flex items-center gap-3">
                               <input
@@ -11541,7 +11541,7 @@ export const AnchorDepositWithdrawModal = ({
                                   wallet: formatEther(peggedBalance),
                                       }));
                                     }}
-                                    className="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 text-xs bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white transition-colors disabled:bg-gray-300 disabled:text-gray-500"
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 text-xs rounded-md bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white transition-colors disabled:bg-gray-300 disabled:text-gray-500"
                                     disabled={isProcessing}
                                   >
                                     MAX
@@ -11561,7 +11561,7 @@ export const AnchorDepositWithdrawModal = ({
                         peggedBalance === 0n &&
                         collateralPoolBalance === 0n &&
                         sailPoolBalance === 0n)) && (
-                      <div className="p-3 bg-[#17395F]/5 border border-[#17395F]/20 text-center text-sm text-[#1E4775]/50">
+                      <div className="p-3 rounded-md bg-[#17395F]/5 border border-[#17395F]/20 text-center text-sm text-[#1E4775]/50">
                         No positions found
                       </div>
                     )}
@@ -11579,7 +11579,7 @@ export const AnchorDepositWithdrawModal = ({
 
                       {/* Wallet Balance (ha tokens) */}
                       {peggedBalance > 0n && (
-                        <div className="p-2 bg-[#17395F]/5 border border-[#17395F]/20">
+                        <div className="p-2 rounded-md bg-[#17395F]/5 border border-[#17395F]/20">
                           <div className="flex justify-between items-center">
                             <div className="flex items-center gap-2">
                               <span className="text-sm font-medium text-[#1E4775]">
@@ -11600,7 +11600,7 @@ export const AnchorDepositWithdrawModal = ({
                       {(collateralPoolBalance > 0n || sailPoolBalance > 0n) && (
                         <div className="space-y-2">
                           {collateralPoolBalance > 0n && (
-                            <div className="p-2 bg-[#17395F]/5 border border-[#17395F]/20">
+                            <div className="p-2 rounded-md bg-[#17395F]/5 border border-[#17395F]/20">
                               <div className="flex justify-between items-center">
                                 <div className="flex items-center gap-2">
                                   <span className="text-sm font-medium text-[#1E4775]">
@@ -11620,7 +11620,7 @@ export const AnchorDepositWithdrawModal = ({
                             </div>
                           )}
                           {sailPoolBalance > 0n && (
-                            <div className="p-2 bg-[#17395F]/5 border border-[#17395F]/20">
+                            <div className="p-2 rounded-md bg-[#17395F]/5 border border-[#17395F]/20">
                               <div className="flex justify-between items-center">
                                 <div className="flex items-center gap-2">
                                   <span className="text-sm font-medium text-[#1E4775]">
@@ -11645,7 +11645,7 @@ export const AnchorDepositWithdrawModal = ({
                       {peggedBalance === 0n &&
                         collateralPoolBalance === 0n &&
                         sailPoolBalance === 0n && (
-                          <div className="p-3 bg-[#17395F]/5 border border-[#17395F]/20 text-center text-sm text-[#1E4775]/50">
+                          <div className="p-3 rounded-md bg-[#17395F]/5 border border-[#17395F]/20 text-center text-sm text-[#1E4775]/50">
                             No positions found
                           </div>
                         )}
@@ -11653,11 +11653,11 @@ export const AnchorDepositWithdrawModal = ({
 
                     {/* Transaction Overview - Always visible in withdraw (when not withdraw-only) */}
                     {activeTab === "withdraw" && !withdrawOnly && (
-                      <div className="mt-3 space-y-2">
+                      <div className="mt-3 mb-4 space-y-2">
                         <label className="block text-sm font-semibold text-[#1E4775] mb-1.5">
                           Transaction Overview
                         </label>
-                        <div className="p-3 bg-[#17395F]/5 border border-[#1E4775]/10">
+                        <div className="p-3 rounded-md bg-[#17395F]/5 border border-[#1E4775]/10">
                           <div className="space-y-3">
                         {(() => {
                           // Build overview entries grouped by collateral type
@@ -12084,7 +12084,7 @@ export const AnchorDepositWithdrawModal = ({
                       </div>
                       <button
                         onClick={handleMaxClick}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 text-xs bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white transition-colors disabled:bg-gray-300 disabled:text-gray-500"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 text-xs rounded-md bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white transition-colors disabled:bg-gray-300 disabled:text-gray-500"
                         disabled={isProcessing}
                       >
                         MAX
@@ -12100,7 +12100,7 @@ export const AnchorDepositWithdrawModal = ({
                         <label className="block text-sm font-semibold text-[#1E4775] mb-1.5">
                           Transaction Overview
                         </label>
-                        <div className="p-2.5 bg-[#17395F]/5 border border-[#1E4775]/10">
+                        <div className="p-2.5 rounded-md bg-[#17395F]/5 border border-[#1E4775]/10">
                           <div className="space-y-2 text-sm">
                             {/* You will receive */}
                             {expectedOutput && amount && parseFloat(amount) > 0 ? (
@@ -12315,12 +12315,12 @@ export const AnchorDepositWithdrawModal = ({
 
                 {/* Transaction Overview - always visible in withdraw (non withdraw-only) */}
                 {activeTab === "withdraw" && !withdrawOnly && (
-                  <div className="mt-3 space-y-2">
+                  <div className="mt-3 mb-4 space-y-2">
                     <label className="block text-sm font-semibold text-[#1E4775] mb-1.5">
                       Transaction Overview
                     </label>
                     <div
-                      className={`p-3 border ${
+                      className={`p-3 rounded-md border ${
                         redeemDryRun?.feePercentage !== undefined &&
                         redeemDryRun?.feePercentage > 2
                           ? "bg-red-50 border-red-300"
@@ -12586,7 +12586,7 @@ export const AnchorDepositWithdrawModal = ({
                 {activeTab === "withdraw" &&
                   simpleMode &&
                   step !== "success" && (
-                    <div className="flex gap-3 pt-4 border-t border-[#1E4775]/20">
+                    <div className="flex gap-3 pt-5 border-t border-[#1E4775]/20">
                       {isProcessing ? (
                         <button
                           disabled
@@ -12606,7 +12606,7 @@ export const AnchorDepositWithdrawModal = ({
                           {step !== "input" && (
                             <button
                               onClick={handleBackToWithdrawInput}
-                              className="shrink-0 py-2 px-4 bg-white text-[#1E4775] border-2 border-[#1E4775]/30 font-semibold hover:bg-[#1E4775]/5 transition-colors"
+                              className="shrink-0 py-2 px-4 rounded-md bg-white text-[#1E4775] border-2 border-[#1E4775]/30 font-semibold hover:bg-[#1E4775]/5 transition-colors"
                             >
                               Back
                             </button>
@@ -12614,7 +12614,7 @@ export const AnchorDepositWithdrawModal = ({
                           <button
                             onClick={handleAction}
                             disabled={isButtonDisabled()}
-                            className={`py-3 px-4 bg-[#FF8A7A] text-white font-semibold hover:bg-[#FF6B5A] transition-colors disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed ${
+                            className={`py-3 px-4 rounded-md bg-[#FF8A7A] text-white font-semibold hover:bg-[#FF6B5A] transition-colors disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed ${
                               step === "input" ? "w-full" : "flex-1"
                             }`}
                           >
@@ -12719,7 +12719,7 @@ export const AnchorDepositWithdrawModal = ({
                         </div>
 
                         {/* Explainer */}
-                        <div className="p-2 bg-[#17395F]/5 border border-[#17395F]/20">
+                        <div className="p-2 rounded-md bg-[#17395F]/5 border border-[#17395F]/20">
                           <p className="text-xs text-[#1E4775]/80 leading-relaxed">
                             {stabilityPoolType === "collateral" ? (
                               <>
@@ -12813,7 +12813,7 @@ export const AnchorDepositWithdrawModal = ({
                     </div>
 
                     {/* Explainer */}
-                    <div className="p-2 bg-[#17395F]/5 border border-[#17395F]/20">
+                    <div className="p-2 rounded-md bg-[#17395F]/5 border border-[#17395F]/20">
                       <p className="text-xs text-[#1E4775]/80 leading-relaxed">
                         {stabilityPoolType === "collateral" ? (
                           <>

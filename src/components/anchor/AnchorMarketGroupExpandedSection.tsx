@@ -12,6 +12,11 @@ import type { WithdrawalRequest } from "@/hooks/useWithdrawalRequests";
 import type { VolatilityProtectionData } from "@/hooks/useVolatilityProtection";
 import type { CollateralPriceData } from "@/hooks/useCollateralPrice";
 import type { DefinedMarket } from "@/config/markets";
+import {
+  INDEX_MANAGE_BUTTON_CLASS_DESKTOP,
+  INDEX_WITHDRAW_BUTTON_CLASS_DESKTOP_CORAL,
+} from "@/utils/indexPageManageButton";
+import { ANCHOR_COLLATERAL_CHIP_CLASSNAME } from "./anchorMarketsTableGrid";
 
 export type WithdrawAmountModalState =
   | {
@@ -162,7 +167,7 @@ export function AnchorMarketGroupExpandedSection({
       <div className="mb-4">
         {/* Withdrawal requests for the group */}
         {groupWithdrawalRequests.length > 0 && (
-          <div className="bg-white border border-[#1E4775]/10 shadow-sm p-3 space-y-2 mb-3">
+          <div className="bg-white border border-[#1E4775]/10 shadow-sm p-3 space-y-2 mb-3 rounded-md">
             <div className="text-[10px] text-[#1E4775]/70 font-semibold uppercase tracking-wide">
               Withdrawal Requests
             </div>
@@ -266,7 +271,7 @@ export function AnchorMarketGroupExpandedSection({
                     key={`${
                       request.poolAddress
                     }-${request.start.toString()}`}
-                    className="p-2 bg-[#FF8A7A]/10 border border-[#FF8A7A]/30 text-xs flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between"
+                    className="p-2 bg-[#FF8A7A]/10 border border-[#FF8A7A]/30 text-xs flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between rounded-md"
                   >
                     <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2">
                       <span className="text-[#1E4775] font-semibold">
@@ -287,14 +292,14 @@ export function AnchorMarketGroupExpandedSection({
                           )}
                       </span>
                       <span
-                        className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${
+                        className={`inline-flex shrink-0 ${
                                 request.status ===
                                 "window"
-                            ? "bg-green-200 text-green-800 border-green-500"
+                            ? "items-center px-2 py-1 rounded-sm border leading-none bg-green-200 text-[10px] font-medium text-green-800 border-green-500"
                                   : request.status ===
                                     "waiting"
-                            ? "bg-amber-200 text-amber-800 border-amber-500"
-                            : "bg-gray-200 text-gray-700 border-gray-400"
+                            ? "items-center px-2 py-1 rounded-sm border leading-none bg-amber-200 text-[10px] font-medium text-amber-800 border-amber-500"
+                            : ANCHOR_COLLATERAL_CHIP_CLASSNAME
                         }`}
                       >
                         {request.status === "window"
@@ -302,13 +307,16 @@ export function AnchorMarketGroupExpandedSection({
                                 : request.status ===
                                   "waiting"
                           ? "Waiting"
-                          : "Expired"}
+                          : "EXPIRED"}
                       </span>
-                      <span className="text-[11px] text-[#1E4775]/70">
-                              {request.status ===
-                              "waiting"
-                          ? `${countdownLabel} ${countdownText}`
-                                : `${countdownLabel}: ${countdownText}`}
+                      <span className="text-[11px] inline-flex flex-wrap items-baseline gap-x-0.5">
+                        <span className="text-[#1E4775]/70">
+                          {countdownLabel}
+                          {request.status === "waiting" ? " " : ": "}
+                        </span>
+                        <span className="font-extrabold text-[#1E4775]">
+                          {countdownText}
+                        </span>
                       </span>
                     </div>
                     <div className="flex gap-1.5">
@@ -354,11 +362,11 @@ export function AnchorMarketGroupExpandedSection({
                             });
                           }
                         }}
-                        className={`px-2 py-0.5 text-sm font-semibold rounded-full ${
+                        className={
                           isWindowOpen
-                            ? "bg-[#1E4775] text-white hover:bg-[#17395F]"
-                            : "bg-orange-500 text-white hover:bg-orange-600"
-                        } transition-colors whitespace-nowrap`}
+                            ? INDEX_MANAGE_BUTTON_CLASS_DESKTOP
+                            : INDEX_WITHDRAW_BUTTON_CLASS_DESKTOP_CORAL
+                        }
                       >
                         Withdraw
                       </button>
@@ -814,7 +822,7 @@ export function AnchorMarketGroupExpandedSection({
             <>
               {/* Row 1: Collateral, Min CR, Vol. Protection, Collateral Pool TVL, Sail Pool TVL */}
               <div className="grid grid-cols-3 md:grid-cols-5 gap-1.5 mb-1.5">
-                <div className="bg-[#1E4775]/5 p-1.5 text-center">
+                <div className="bg-[#1E4775]/5 p-1.5 text-center rounded-md">
                   <div className="text-[10px] text-[#1E4775]/70 mb-0.5">
                     Collateral
                   </div>
@@ -823,7 +831,7 @@ export function AnchorMarketGroupExpandedSection({
                             ?.symbol || "ETH"}
                   </div>
                 </div>
-                <div className="bg-[#1E4775]/5 p-1.5 text-center">
+                <div className="bg-[#1E4775]/5 p-1.5 text-center rounded-md">
                   <div className="text-[10px] text-[#1E4775]/70 mb-0.5">
                     Min CR
                   </div>
@@ -831,7 +839,7 @@ export function AnchorMarketGroupExpandedSection({
                     {minCollateralRatioFormatted}
                   </div>
                 </div>
-                <div className="bg-[#1E4775]/5 p-1.5 text-center">
+                <div className="bg-[#1E4775]/5 p-1.5 text-center rounded-md">
                   <div className="text-[10px] text-[#1E4775]/70 mb-0.5 flex items-center justify-center gap-1">
                     Vol. Protection
                     <SimpleTooltip
@@ -886,7 +894,7 @@ export function AnchorMarketGroupExpandedSection({
                     {volatilityProtection}
                   </div>
                 </div>
-                <div className="bg-[#1E4775]/5 p-1.5 text-center">
+                <div className="bg-[#1E4775]/5 p-1.5 text-center rounded-md">
                   <div className="text-[10px] text-[#1E4775]/70 mb-0.5">
                     Collateral Pool TVL
                   </div>
@@ -922,7 +930,7 @@ export function AnchorMarketGroupExpandedSection({
                     </div>
                   </SimpleTooltip>
                 </div>
-                <div className="bg-[#1E4775]/5 p-1.5 text-center">
+                <div className="bg-[#1E4775]/5 p-1.5 text-center rounded-md">
                   <div className="text-[10px] text-[#1E4775]/70 mb-0.5">
                     Sail Pool TVL
                   </div>
@@ -962,7 +970,7 @@ export function AnchorMarketGroupExpandedSection({
 
               {/* Row 2: Collateral (USD), Current CR, Total haETH, Collateral Pool APR, Sail Pool APR */}
               <div className="grid grid-cols-3 md:grid-cols-5 gap-1.5">
-                <div className="bg-[#1E4775]/5 p-1.5 text-center">
+                <div className="bg-[#1E4775]/5 p-1.5 text-center rounded-md">
                   <div className="text-[10px] text-[#1E4775]/70 mb-0.5">
                     Collateral (USD)
                   </div>
@@ -1022,7 +1030,7 @@ export function AnchorMarketGroupExpandedSection({
                     </div>
                   </SimpleTooltip>
                 </div>
-                <div className="bg-[#1E4775]/5 p-1.5 text-center">
+                <div className="bg-[#1E4775]/5 p-1.5 text-center rounded-md">
                   <div className="text-[10px] text-[#1E4775]/70 mb-0.5">
                     Current CR
                   </div>
@@ -1032,7 +1040,7 @@ export function AnchorMarketGroupExpandedSection({
                     )}
                   </div>
                 </div>
-                <div className="bg-[#1E4775]/5 p-1.5 text-center">
+                <div className="bg-[#1E4775]/5 p-1.5 text-center rounded-md">
                   <div className="text-[10px] text-[#1E4775]/70 mb-0.5">
                     Total{" "}
                     {marketData.market.peggedToken
@@ -1066,7 +1074,7 @@ export function AnchorMarketGroupExpandedSection({
                     </div>
                   </SimpleTooltip>
                 </div>
-                <div className="bg-[#1E4775]/5 p-1.5 text-center">
+                <div className="bg-[#1E4775]/5 p-1.5 text-center rounded-md">
                   <div className="text-[10px] text-[#1E4775]/70 mb-0.5 flex items-center justify-center gap-1">
                     Collateral Pool APR
                     <SimpleTooltip
@@ -1139,7 +1147,7 @@ export function AnchorMarketGroupExpandedSection({
                       : "-"}
                   </div>
                 </div>
-                <div className="bg-[#1E4775]/5 p-1.5 text-center">
+                <div className="bg-[#1E4775]/5 p-1.5 text-center rounded-md">
                   <div className="text-[10px] text-[#1E4775]/70 mb-0.5 flex items-center justify-center gap-1">
                     Sail Pool APR
                     <SimpleTooltip

@@ -89,7 +89,11 @@ import {
   ANCHOR_MARKETS_WALLET_ROW_MD_CLASSNAME,
 } from "@/components/anchor/anchorMarketsTableGrid";
 import { usePageLayoutPreference } from "@/contexts/PageLayoutPreferenceContext";
-import { INDEX_MANAGE_BUTTON_CLASS_DESKTOP } from "@/utils/indexPageManageButton";
+import {
+  INDEX_MANAGE_BUTTON_CLASS_DESKTOP,
+  INDEX_MODAL_CANCEL_BUTTON_CLASS_DESKTOP,
+  INDEX_WITHDRAW_BUTTON_CLASS_DESKTOP_CORAL,
+} from "@/utils/indexPageManageButton";
 import { calculateReadOffset } from "@/utils/anchor/calculateReadOffset";
 import { useMultipleCollateralPrices } from "@/hooks/useCollateralPrice";
 import { computeGenesisWrappedCollateralPriceUSD } from "@/utils/wrappedCollateralPriceUSD";
@@ -6220,7 +6224,7 @@ export default function AnchorPage() {
         {/* Early withdraw confirmation */}
         {earlyWithdrawModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-            <div className="bg-white shadow-xl max-w-md w-full p-4">
+            <div className="bg-white shadow-xl max-w-md w-full p-4 rounded-lg border border-[#1E4775]/10">
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-[#1E4775] font-semibold">
                   Withdraw early?
@@ -6255,12 +6259,14 @@ export default function AnchorPage() {
               </div>
               <div className="flex justify-end gap-2 mt-4">
                 <button
+                  type="button"
                   onClick={() => setEarlyWithdrawModal(null)}
-                  className="px-3 py-1 text-sm rounded-full border border-[#1E4775]/30 text-[#1E4775]"
+                  className={INDEX_MODAL_CANCEL_BUTTON_CLASS_DESKTOP}
                 >
                   Cancel
                 </button>
                 <button
+                  type="button"
                   onClick={() => {
                     setWithdrawAmountInput("");
                     setWithdrawAmountError(null);
@@ -6273,7 +6279,7 @@ export default function AnchorPage() {
                     });
                     setEarlyWithdrawModal(null);
                   }}
-                  className="px-3 py-1 text-sm rounded-full bg-orange-500 text-white hover:bg-orange-600"
+                  className={INDEX_WITHDRAW_BUTTON_CLASS_DESKTOP_CORAL}
                 >
                   Continue with fee
                 </button>
@@ -6433,7 +6439,7 @@ export default function AnchorPage() {
             onClick={() => setContractAddressesModal(null)}
           >
             <div
-              className="bg-white p-6 max-w-md w-full mx-4"
+              className="bg-white p-6 max-w-md w-full mx-4 rounded-lg border border-[#1E4775]/10 shadow-xl"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between mb-4">

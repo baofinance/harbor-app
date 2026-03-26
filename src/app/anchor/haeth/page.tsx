@@ -20,7 +20,7 @@ const tokenName = tokenMarket?.peggedToken?.name || "Harbor Anchored ETH";
 const collateralSymbol = tokenMarket?.collateral?.symbol || "fxSAVE";
 
 export const metadata: Metadata = {
-  title: `${TOKEN_SYMBOL} — Earn yield on ${pegTarget} exposure`,
+  title: TOKEN_SYMBOL,
   description: `Earn real yield while keeping ${pegTarget}-pegged exposure with ${TOKEN_SYMBOL}.`,
 };
 

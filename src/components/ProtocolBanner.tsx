@@ -30,9 +30,9 @@ function TokenBadge({
       <img
         src={iconSrc}
         alt={symbol}
-        className="w-5 h-5 sm:w-6 sm:h-6 rounded-full flex-shrink-0 bg-white/10"
+        className="h-[18px] w-[18px] flex-shrink-0 rounded-full bg-[#1E4775]/10 ring-1 ring-[#1E4775]/15 sm:h-5 sm:w-5"
       />
-      <span className="text-xs sm:text-sm font-semibold truncate max-w-[9rem] sm:max-w-[12rem]">
+      <span className="max-w-[9rem] truncate text-xs font-semibold text-[#1E4775] sm:max-w-[12rem] sm:text-sm">
         {symbol}
       </span>
     </div>
@@ -40,7 +40,7 @@ function TokenBadge({
 }
 
 /**
- * Blue protocol banner used in Sail, Anchor, and Genesis modals.
+ * Protocol title row for Sail, Anchor, and Genesis modals (light bar + navy text; matches modal body, no blue bleed).
  */
 export function ProtocolBanner({
   protocolName,
@@ -58,16 +58,16 @@ export function ProtocolBanner({
     secondaryTokenIcon ?? getLogoPath(secondaryTokenSymbol ?? "");
 
   return (
-    <div className="bg-[#1E4775] text-white px-3 sm:px-4 py-2 sm:py-2.5 flex items-center justify-between gap-2 rounded-t-md min-h-[2.75rem]">
-      <div className="text-sm sm:text-base font-semibold shrink-0">
+    <div className="flex w-full items-center justify-between gap-2 bg-white px-3 py-2 text-[#1E4775] sm:px-3.5 sm:py-2.5 sm:gap-2">
+      <div className="shrink-0 text-sm font-semibold leading-snug sm:text-base">
         {protocolName}
       </div>
-      <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 justify-end">
+      <div className="flex min-w-0 items-center justify-end gap-1.5 sm:gap-2">
         <TokenBadge symbol={tokenSymbol} iconSrc={primaryIcon} />
         {showPair && (
           <>
             <span
-              className="text-white/70 font-semibold text-xs sm:text-sm shrink-0"
+              className="shrink-0 text-xs font-semibold text-[#1E4775]/50 sm:text-sm"
               aria-hidden
             >
               +

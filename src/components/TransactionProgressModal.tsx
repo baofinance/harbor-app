@@ -3,6 +3,10 @@
 import React from "react";
 import { GenesisTransactionProgressSteps } from "./GenesisTransactionProgressSteps";
 import { formatEther } from "viem";
+import {
+  INDEX_MANAGE_BUTTON_CLASS_DESKTOP,
+  INDEX_MODAL_CANCEL_BUTTON_CLASS_DESKTOP,
+} from "@/utils/indexPageManageButton";
 
 export type TransactionStepStatus ="pending" |"in_progress" |"completed" |"error";
 
@@ -78,8 +82,8 @@ export const TransactionProgressModal = ({
  className="absolute inset-0 bg-black/40 backdrop-blur-sm"
  onClick={onCancel || onClose}
  />
- <div className="relative bg-white shadow-2xl w-full max-w-md mx-4 animate-in fade-in-0 scale-in-95 duration-200 max-h-[90vh] overflow-y-auto">
- <div className="flex items-center justify-between p-6 border-b border-[#1E4775]/20">
+ <div className="relative isolate bg-white shadow-2xl w-full max-w-md mx-4 animate-in fade-in-0 scale-in-95 duration-200 max-h-[90vh] flex flex-col overflow-hidden rounded-xl border border-[#1E4775]/10">
+ <div className="flex items-center justify-between p-6 border-b border-[#1E4775]/20 shrink-0">
  <h2 className="text-2xl font-bold text-[#1E4775]">{title}</h2>
  <button
  onClick={onCancel || onClose}
@@ -102,7 +106,7 @@ export const TransactionProgressModal = ({
  </button>
  </div>
 
- <div className="p-6 space-y-4">
+ <div className="p-6 space-y-4 overflow-y-auto flex-1 min-h-0">
  {/* All Steps Preview with Fees */}
  <div>
  <h3 className="text-sm font-semibold text-[#1E4775] mb-3">
@@ -121,7 +125,7 @@ export const TransactionProgressModal = ({
  });
 
  return (
- <div key={step.id} className="border border-[#1E4775]/20 p-3">
+ <div key={step.id} className="rounded-md border border-[#1E4775]/20 p-3">
  <div className="flex items-center gap-2 mb-2">
  <div className="w-5 h-5 rounded-full bg-gray-300 flex items-center justify-center text-xs text-gray-600">
  {index + 1}
@@ -134,7 +138,7 @@ export const TransactionProgressModal = ({
  </div>
  )}
  {stepFee && (
- <div className="ml-7 mt-2 p-2 bg-yellow-50 border border-yellow-200 text-xs">
+ <div className="ml-7 mt-2 p-2 rounded-md bg-yellow-50 border border-yellow-200 text-xs">
  <div className="font-semibold text-yellow-800 mb-1">Fee:</div>
  <div className="space-y-1 text-yellow-700">
  <div className="flex justify-between">
@@ -170,7 +174,7 @@ export const TransactionProgressModal = ({
 
  {/* Total Fees Summary */}
  {fees.length > 0 && (
- <div className="bg-yellow-50 border border-yellow-200 p-4">
+ <div className="rounded-md bg-yellow-50 border border-yellow-200 p-4">
  <h3 className="text-sm font-semibold text-yellow-800 mb-2">
  Total Fees
  </h3>
@@ -198,14 +202,16 @@ export const TransactionProgressModal = ({
 
  <div className="flex gap-3">
  <button
+ type="button"
  onClick={onCancel || onClose}
- className="flex-1 px-4 py-2 text-sm font-medium bg-white text-[#1E4775] border border-[#1E4775] hover:bg-[#1E4775]/5 transition-colors rounded-full"
+ className={`flex-1 min-w-0 ${INDEX_MODAL_CANCEL_BUTTON_CLASS_DESKTOP}`}
  >
  Cancel
  </button>
  <button
+ type="button"
  onClick={onConfirmFee}
- className="flex-1 px-4 py-2 text-sm font-medium bg-[#1E4775] text-white hover:bg-[#17395F] transition-colors rounded-full"
+ className={`flex-1 min-w-0 ${INDEX_MANAGE_BUTTON_CLASS_DESKTOP}`}
  >
  Continue
  </button>
@@ -222,8 +228,8 @@ export const TransactionProgressModal = ({
  className="absolute inset-0 bg-black/40 backdrop-blur-sm"
  onClick={onClose}
  />
- <div className="relative bg-white shadow-2xl w-full max-w-md mx-4 animate-in fade-in-0 scale-in-95 duration-200 max-h-[90vh] overflow-y-auto">
- <div className="flex items-center justify-between p-6 border-b border-[#1E4775]/20">
+ <div className="relative isolate bg-white shadow-2xl w-full max-w-md mx-4 animate-in fade-in-0 scale-in-95 duration-200 max-h-[90vh] flex flex-col overflow-hidden rounded-xl border border-[#1E4775]/10">
+ <div className="flex items-center justify-between p-6 border-b border-[#1E4775]/20 shrink-0">
  <div>
    <h2 className="text-2xl font-bold text-[#1E4775]">{title}</h2>
    {steps.length > 1 && (
@@ -253,7 +259,7 @@ export const TransactionProgressModal = ({
  </button>
  </div>
 
- <div className="p-6">
+ <div className="p-6 overflow-y-auto flex-1 min-h-0">
  {progressVariant === "horizontal" ? (
    <GenesisTransactionProgressSteps
      steps={steps}
@@ -335,7 +341,7 @@ export const TransactionProgressModal = ({
  </div>
  )}
  {step.fee && (
- <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 text-xs">
+ <div className="mt-2 p-2 rounded-md bg-yellow-50 border border-yellow-200 text-xs">
  <div className="font-semibold text-yellow-800 mb-1">Fee:</div>
  <div className="space-y-1 text-yellow-700">
  <div className="flex justify-between">
@@ -386,7 +392,7 @@ export const TransactionProgressModal = ({
  )}
 
  {steps.every((s) => s.status ==="completed") && (
- <div className="mt-6 p-4 bg-green-50 border border-green-200">
+ <div className="mt-6 p-4 rounded-md bg-green-50 border border-green-200">
  <p className="text-sm font-medium text-green-800 text-center">
  All transactions completed successfully!
  </p>
@@ -394,15 +400,16 @@ export const TransactionProgressModal = ({
  )}
 
  {steps.some((s) => s.status ==="error") && (
- <div className="mt-6 p-4 bg-red-50 border border-red-200">
+ <div className="mt-6 p-4 rounded-md bg-red-50 border border-red-200">
  <p className="text-sm font-medium text-red-800 text-center">
  {errorMessage || "Transaction failed. Please try again or contact support if the issue persists."}
  </p>
         {onRetry && (
           <div className="mt-4 flex justify-center">
             <button
+              type="button"
               onClick={onRetry}
-              className="px-4 py-2 text-sm font-medium bg-[#1E4775] text-white rounded-full hover:bg-[#17395F] transition-colors"
+              className={INDEX_MANAGE_BUTTON_CLASS_DESKTOP}
             >
               {retryButtonLabel}
             </button>
@@ -419,8 +426,9 @@ export const TransactionProgressModal = ({
  {canCancel && !steps.every((s) => s.status ==="completed") && (
  <div className="mt-6 flex justify-end">
  <button
+ type="button"
  onClick={onCancel || onClose}
- className="px-4 py-2 text-sm font-medium bg-white text-[#1E4775] border border-[#1E4775] hover:bg-[#1E4775]/5 transition-colors rounded-full"
+ className={INDEX_MODAL_CANCEL_BUTTON_CLASS_DESKTOP}
  >
  Cancel
  </button>

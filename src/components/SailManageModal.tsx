@@ -1803,7 +1803,7 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
    }}
    afterAmount={
      activeTab === "mint" ? (
-   <div className="flex items-center justify-between border border-[#1E4775]/20 bg-[#17395F]/5 px-3 py-2 text-xs">
+   <div className="flex items-center justify-between rounded-md border border-[#1E4775]/20 bg-[#17395F]/5 px-3 py-2 text-xs">
      <div className="text-[#1E4775]/80">
        Use permit (gasless approval) for this deposit
      </div>
@@ -1850,11 +1850,11 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
  />
 
  {/* Transaction Overview - Anchor-style spacing below */}
- <div className="space-y-2 mt-2">
+ <div className="space-y-2 mt-2 mb-4">
    <label className="block text-sm font-semibold text-[#1E4775] mb-1.5">
      Transaction Overview
    </label>
-   <div className="p-2.5 bg-[#17395F]/5 border border-[#1E4775]/10">
+   <div className="rounded-md border border-[#1E4775]/10 bg-[#17395F]/5 p-2.5">
      {activeTab === "mint" && (
        <div className="space-y-2">
          <div className="flex justify-between items-center">

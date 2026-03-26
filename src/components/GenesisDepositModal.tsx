@@ -2044,7 +2044,7 @@ const successFmt = formatTokenAmount(
    }}
    afterAmount={
      showPermitToggle ? (
-   <div className="flex items-center justify-between border border-[#1E4775]/20 bg-[#17395F]/5 px-3 py-2 text-xs">
+   <div className="flex items-center justify-between rounded-md border border-[#1E4775]/20 bg-[#17395F]/5 px-3 py-2 text-xs">
      <div className="text-[#1E4775]/80">
        Use permit (gasless approval) for this deposit
      </div>
@@ -2090,11 +2090,11 @@ const successFmt = formatTokenAmount(
  />
 
 {/* Transaction Overview */}
-<div className="space-y-2">
+<div className="space-y-2 mb-4">
   <label className="block text-sm font-semibold text-[#1E4775] mb-1.5">
     Transaction Overview
   </label>
-  <div className="p-3 bg-[#17395F]/5 border border-[#1E4775]/10">
+  <div className="p-3 rounded-md bg-[#17395F]/5 border border-[#1E4775]/10">
     {/* Transaction Preview - Always visible */}
     <div className="space-y-2 text-sm">
  
@@ -2103,7 +2103,7 @@ const successFmt = formatTokenAmount(
    const targetToken = isFxSAVEMarket ? "USDC" : nativeTokenLabel;
    const targetDecimals = isFxSAVEMarket ? 6 : 18;
    return (
-   <div className="p-2 bg-blue-50 border border-blue-200 space-y-1 text-xs">
+   <div className="p-2 rounded-md bg-blue-50 border border-blue-200 space-y-1 text-xs">
      <div className="flex items-center justify-between">
        <span className="text-blue-700">Swap via Velora:</span>
        <span className="font-mono text-blue-900">{formatUnits(swapQuote.toAmount, targetDecimals)} {targetToken}</span>
@@ -2362,14 +2362,14 @@ const successFmt = formatTokenAmount(
         <button
           onClick={handleClose}
           disabled={step === "approving" || step === "depositing"}
-          className="flex-1 py-3 px-4 bg-white text-[#1E4775] border-2 border-[#1E4775]/30 font-semibold hover:bg-[#1E4775]/5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex-1 rounded-md py-3 px-4 bg-white text-[#1E4775] border-2 border-[#1E4775]/30 font-semibold hover:bg-[#1E4775]/5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Cancel
         </button>
         <button
           onClick={handleMainButtonClick}
           disabled={isButtonDisabled()}
-          className={`flex-1 py-3 px-4 font-semibold transition-colors ${
+          className={`flex-1 rounded-md py-3 px-4 font-semibold transition-colors ${
             step === "success"
               ? "bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white"
               : "bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"

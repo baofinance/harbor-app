@@ -32,3 +32,7 @@ export const ANCHOR_MARKETS_WALLET_ROW_LG_CLASSNAME =
 
 export const ANCHOR_MARKETS_WALLET_ROW_MD_CLASSNAME =
   "hidden md:grid lg:hidden grid-cols-[32px_minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1.85fr)_minmax(0,auto)] gap-3 md:gap-3.5 items-center text-sm";
+
+/** Deposit Assets column “Collateral” chip — same look for EXPIRED on withdrawal request rows. */
+export const ANCHOR_COLLATERAL_CHIP_CLASSNAME =
+  "items-center gap-1 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide whitespace-nowrap bg-[#1E4775]/10 text-[#1E4775] rounded-none";
