@@ -83,13 +83,13 @@ import { AnchorMarketGroupExpandedSection } from "@/components/anchor/AnchorMark
 import { AnchorMarketsTableHeader } from "@/components/anchor/AnchorMarketsTableHeader";
 import { AnchorPageTitleSection } from "@/components/anchor/AnchorPageTitleSection";
 import { AnchorHeroIntroCards } from "@/components/anchor/AnchorHeroIntroCards";
-import { AnchorLedgerMarksHero } from "@/components/anchor/AnchorLedgerMarksHero";
 import { AnchorStatsStrip } from "@/components/anchor/AnchorStatsStrip";
 import {
   ANCHOR_MARKETS_WALLET_ROW_LG_CLASSNAME,
   ANCHOR_MARKETS_WALLET_ROW_MD_CLASSNAME,
 } from "@/components/anchor/anchorMarketsTableGrid";
 import { usePageLayoutPreference } from "@/contexts/PageLayoutPreferenceContext";
+import { LEDGER_MARKS_STRIP_SURFACE_CLASS } from "@/components/shared/indexMarketsToolbarStyles";
 import {
   INDEX_MANAGE_BUTTON_CLASS_DESKTOP,
   INDEX_MODAL_CANCEL_BUTTON_CLASS_DESKTOP,
@@ -3601,7 +3601,6 @@ export default function AnchorPage() {
           )}
           {!anchorViewBasic && (
             <>
-              <AnchorLedgerMarksHero />
               <AnchorHeroIntroCards />
               <div className="border-t border-white/10 my-2" aria-hidden />
               <AnchorStatsStrip anchorStats={anchorStats} />
@@ -4161,7 +4160,7 @@ export default function AnchorPage() {
 
             return (
               <div className="mb-2">
-                <div className="bg-black/30 backdrop-blur-sm rounded-md overflow-visible border border-white/15">
+                <div className={LEDGER_MARKS_STRIP_SURFACE_CLASS}>
                   <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 lg:divide-x lg:divide-white/20">
                     {/* Rewards Header */}
                     <div className="px-3 py-1 min-h-[60px] flex items-center justify-center gap-2">

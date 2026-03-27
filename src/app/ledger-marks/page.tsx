@@ -18,6 +18,8 @@ import { CONTRACTS } from "@/config/contracts";
 import { IndexPageTitleSection } from "@/components/shared/IndexPageTitleSection";
 import { INDEX_MARKETS_TOOLBAR_ROW_CLASS } from "@/components/shared/indexMarketsToolbarStyles";
 import { FilterSingleSelectDropdown } from "@/components/FilterSingleSelectDropdown";
+import { usePageLayoutPreference } from "@/contexts/PageLayoutPreferenceContext";
+import { AnchorLedgerMarksHero } from "@/components/anchor/AnchorLedgerMarksHero";
 
 /** Match Navigation / index rows: horizontal scroll without visible scrollbar. */
 const SCROLLBAR_HIDE_X =
@@ -293,6 +295,8 @@ function getContractType(
 }
 
 export default function LedgerMarksLeaderboard() {
+ /** UI+ = extended: show “What are Ledger Marks?” hero (matches Anchor). */
+ const { isBasic: ledgerMarksViewBasic } = usePageLayoutPreference();
  const graphUrl = getGraphUrl();
  const { address, isConnected } = useAccount();
  const publicClient = usePublicClient();
@@ -1030,6 +1034,7 @@ const handleAnchorSailSort = (column: typeof anchorSailSortBy) => {
         <div className="mb-2">
           <IndexPageTitleSection title="Ledger Marks" subtitle="Leaderboard" />
         </div>
+        {!ledgerMarksViewBasic && <AnchorLedgerMarksHero />}
         {/* Same rhythm as Sail (title → full-width divider → toolbar) */}
         <div className="border-t border-white/10 my-3" aria-hidden />
 
