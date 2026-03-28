@@ -364,6 +364,26 @@ export default function AnchorPage() {
     return map;
   }, [allMarketsData]);
 
+  /** Same rule as the extended rewards strip: sum `claimableValue` per stability pool from `poolRewardsMap`. */
+  const anchorToolbarTotalClaimableUsd = useMemo(() => {
+    let total = 0;
+    for (const [, m] of anchorMarkets) {
+      const collateralAddr = (m as { addresses?: { stabilityPoolCollateral?: `0x${string}` } })
+        .addresses?.stabilityPoolCollateral;
+      const sailAddr = (m as { addresses?: { stabilityPoolLeveraged?: `0x${string}` } }).addresses
+        ?.stabilityPoolLeveraged;
+      if (collateralAddr) {
+        const pr = poolRewardsMap.get(collateralAddr);
+        if (pr && pr.claimableValue > 0) total += pr.claimableValue;
+      }
+      if (sailAddr) {
+        const pr = poolRewardsMap.get(sailAddr);
+        if (pr && pr.claimableValue > 0) total += pr.claimableValue;
+      }
+    }
+    return total;
+  }, [anchorMarkets, poolRewardsMap]);
+
   // Fetch collateral prices for all markets using the hook
   const collateralPriceOracleAddresses = useMemo(() => {
     return anchorMarkets.map(
@@ -5345,6 +5365,18 @@ export default function AnchorPage() {
               chainFilterSelected,
               onChainFilterChange: setChainFilterSelected,
               onClearFilters: () => setChainFilterSelected([]),
+              ...(anchorViewBasic
+                ? {
+                    basicClaimToolbar: {
+                      claimableUsdDisplay:
+                        anchorToolbarTotalClaimableUsd > 0
+                          ? anchorToolbarTotalClaimableUsd.toFixed(2)
+                          : "0.00",
+                      onClaim: () => setIsClaimAllModalOpen(true),
+                      claimDisabled: isClaimingAll || isCompoundingAll,
+                    },
+                  }
+                : {}),
             }}
           >
             {/* Market Cards/Rows */}

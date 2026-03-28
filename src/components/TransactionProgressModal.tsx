@@ -1,38 +1,43 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { GenesisTransactionProgressSteps } from "./GenesisTransactionProgressSteps";
-import { formatEther } from "viem";
+import { CompactTransactionProgressRail } from "./CompactTransactionProgressRail";
+import { TransactionProgressLayoutToggleIcon } from "./TransactionProgressLayoutToggleIcon";
 import {
   INDEX_MANAGE_BUTTON_CLASS_DESKTOP,
   INDEX_MODAL_CANCEL_BUTTON_CLASS_DESKTOP,
 } from "@/utils/indexPageManageButton";
 
-export type TransactionStepStatus ="pending" |"in_progress" |"completed" |"error";
+export type TransactionStepStatus =
+  | "pending"
+  | "in_progress"
+  | "completed"
+  | "error";
 
 export interface TransactionStep {
- id: string;
- label: string;
- status: TransactionStepStatus;
- txHash?: string;
- error?: string;
- details?: string;
- fee?: {
- amount: bigint;
- formatted: string;
- usd?: number;
- percentage?: number;
- tokenSymbol: string;
- };
+  id: string;
+  label: string;
+  status: TransactionStepStatus;
+  txHash?: string;
+  error?: string;
+  details?: string;
+  fee?: {
+    amount: bigint;
+    formatted: string;
+    usd?: number;
+    percentage?: number;
+    tokenSymbol: string;
+  };
 }
 
 export interface FeeInfo {
- feeAmount: bigint;
- feeFormatted: string;
- feeUSD?: number;
- feePercentage?: number;
- tokenSymbol: string;
- label: string; // e.g., "Redeem Sail Tokens", "Mint Anchor Tokens"
+  feeAmount: bigint;
+  feeFormatted: string;
+  feeUSD?: number;
+  feePercentage?: number;
+  tokenSymbol: string;
+  label: string; // e.g., "Redeem Sail Tokens", "Mint Anchor Tokens"
 }
 
 interface TransactionProgressModalProps {
@@ -52,391 +57,470 @@ interface TransactionProgressModalProps {
   renderSuccessContent?: () => React.ReactNode; // Optional extra content when all steps completed
 }
 
+function TransactionProgressVerticalStepsList({
+  steps,
+  currentStepIndex,
+}: {
+  steps: TransactionStep[];
+  currentStepIndex: number;
+}) {
+  return (
+    <div className="flex flex-col gap-0">
+      {steps.map((step, index) => {
+        const isActive = index === currentStepIndex;
+        const isCompleted = step.status === "completed";
+        const isError = step.status === "error";
+        const showLineBelow = index < steps.length - 1;
+        const lineClass = isCompleted
+          ? "bg-green-500/70"
+          : isError
+            ? "bg-red-300"
+            : "bg-[#1E4775]/25";
+
+        return (
+          <div key={step.id} className="flex gap-3">
+            <div className="flex min-h-0 shrink-0 flex-col items-center self-stretch">
+              <div className="mt-0.5 shrink-0">
+                {isCompleted ? (
+                  <div className="flex h-6 w-6 items-center justify-center rounded-full bg-green-500">
+                    <svg
+                      className="h-4 w-4 text-white"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+                  </div>
+                ) : isError ? (
+                  <div className="flex h-6 w-6 items-center justify-center rounded-full bg-red-500">
+                    <svg
+                      className="h-4 w-4 text-white"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                  </div>
+                ) : isActive ? (
+                  <div className="flex h-6 w-6 animate-pulse items-center justify-center rounded-full bg-[#1E4775]">
+                    <div className="h-2 w-2 rounded-full bg-white"></div>
+                  </div>
+                ) : (
+                  <div className="flex h-6 w-6 items-center justify-center rounded-full bg-gray-300">
+                    <div className="h-2 w-2 rounded-full bg-white"></div>
+                  </div>
+                )}
+              </div>
+              {showLineBelow && (
+                <div
+                  className={`mt-1 w-0.5 flex-1 min-h-[12px] ${lineClass}`}
+                  aria-hidden
+                />
+              )}
+            </div>
+
+            <div className="min-w-0 flex-1 pb-4 pt-0.5 last:pb-0">
+              <div
+                className={`text-sm font-medium ${
+                  isActive
+                    ? "text-[#1E4775]"
+                    : isCompleted
+                      ? "text-green-700"
+                      : isError
+                        ? "text-red-700"
+                        : "text-gray-500"
+                }`}
+              >
+                {step.label}
+              </div>
+              {step.details && (
+                <div className="mt-1 text-xs text-[#1E4775]/70">
+                  {step.details}
+                </div>
+              )}
+              {step.fee && (
+                <div className="mt-2 rounded-md border border-yellow-200 bg-yellow-50 p-2 text-xs">
+                  <div className="mb-1 font-semibold text-yellow-800">Fee:</div>
+                  <div className="space-y-1 text-yellow-700">
+                    <div className="flex justify-between">
+                      <span>Fee Amount:</span>
+                      <span className="font-mono font-semibold">
+                        {step.fee.formatted} {step.fee.tokenSymbol}
+                      </span>
+                    </div>
+                    {step.fee.percentage !== undefined && (
+                      <div className="flex justify-between">
+                        <span>Fee %:</span>
+                        <span className="font-semibold">
+                          {step.fee.percentage.toFixed(2)}%
+                        </span>
+                      </div>
+                    )}
+                    {step.fee.usd !== undefined && (
+                      <div className="flex justify-between">
+                        <span>Fee (USD):</span>
+                        <span className="font-semibold">
+                          ${step.fee.usd.toFixed(2)}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+              {step.txHash && (
+                <a
+                  href={`https://etherscan.io/tx/${step.txHash}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-1 inline-block text-xs text-[#1E4775]/70 underline hover:text-[#1E4775]"
+                >
+                  View transaction on Etherscan
+                </a>
+              )}
+              {step.error && (
+                <div className="mt-1 text-xs text-red-600">{step.error}</div>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export const TransactionProgressModal = ({
- isOpen,
- onClose,
- title,
- steps,
- currentStepIndex,
- progressVariant = "horizontal",
- showFeeInfo,
- onConfirmFee,
- onCancel,
+  isOpen,
+  onClose,
+  title,
+  steps,
+  currentStepIndex,
+  progressVariant = "horizontal",
+  showFeeInfo,
+  onConfirmFee,
+  onCancel,
   canCancel = false,
   onRetry,
   retryButtonLabel = "Try Again",
   errorMessage,
   renderSuccessContent,
 }: TransactionProgressModalProps) => {
- if (!isOpen) return null;
- const allCompleted = steps.every((s) => s.status ==="completed");
+  const manySteps = steps.length > 3;
+  const [fullListExpanded, setFullListExpanded] = useState(
+    () => progressVariant === "vertical" && steps.length > 3
+  );
+  const showCompactRail = manySteps && !fullListExpanded;
 
- // If we're showing fee info, show confirmation screen
- if (showFeeInfo && onConfirmFee) {
- const fees = Array.isArray(showFeeInfo) ? showFeeInfo : [showFeeInfo];
- const totalFeeUSD = fees.reduce((sum, fee) => sum + (fee.feeUSD || 0), 0);
+  useEffect(() => {
+    if (!isOpen || steps.length <= 3) return;
+    setFullListExpanded(progressVariant === "vertical");
+  }, [isOpen, steps.length, progressVariant]);
 
- return (
- <div className="fixed inset-0 z-50 flex items-center justify-center">
- <div
- className="absolute inset-0 bg-black/40 backdrop-blur-sm"
- onClick={onCancel || onClose}
- />
- <div className="relative isolate bg-white shadow-2xl w-full max-w-md mx-4 animate-in fade-in-0 scale-in-95 duration-200 max-h-[90vh] flex flex-col overflow-hidden rounded-xl border border-[#1E4775]/10">
- <div className="flex items-center justify-between p-6 border-b border-[#1E4775]/20 shrink-0">
- <h2 className="text-2xl font-bold text-[#1E4775]">{title}</h2>
- <button
- onClick={onCancel || onClose}
- className="text-[#1E4775]/50 hover:text-[#1E4775] transition-colors"
- aria-label="Close"
- >
- <svg
- className="w-6 h-6"
- fill="none"
- viewBox="0 0 24 24"
- stroke="currentColor"
- >
- <path
- strokeLinecap="round"
- strokeLinejoin="round"
- strokeWidth={2}
- d="M6 18L18 6M6 6l12 12"
- />
- </svg>
- </button>
- </div>
+  if (!isOpen) return null;
+  const allCompleted = steps.every((s) => s.status === "completed");
 
- <div className="p-6 space-y-4 overflow-y-auto flex-1 min-h-0">
- {/* All Steps Preview with Fees */}
- <div>
- <h3 className="text-sm font-semibold text-[#1E4775] mb-3">
- Transaction Steps & Fees
- </h3>
- <div className="space-y-3">
- {steps.map((step, index) => {
- // Find fee for this step
- const stepFee = fees.find((f) => {
- if (step.id ==="redeem") {
- return f.label ==="Redeem Sail Tokens";
- } else if (step.id ==="mint") {
- return f.label ==="Mint Anchor Tokens";
- }
- return false;
- });
+  const currentStepLabel = steps[currentStepIndex]?.label ?? "";
 
- return (
- <div key={step.id} className="rounded-md border border-[#1E4775]/20 p-3">
- <div className="flex items-center gap-2 mb-2">
- <div className="w-5 h-5 rounded-full bg-gray-300 flex items-center justify-center text-xs text-gray-600">
- {index + 1}
- </div>
- <span className="text-sm font-medium text-[#1E4775]">{step.label}</span>
- </div>
- {step.details && (
- <div className="text-xs text-[#1E4775]/70 ml-7 mb-2">
- {step.details}
- </div>
- )}
- {stepFee && (
- <div className="ml-7 mt-2 p-2 rounded-md bg-yellow-50 border border-yellow-200 text-xs">
- <div className="font-semibold text-yellow-800 mb-1">Fee:</div>
- <div className="space-y-1 text-yellow-700">
- <div className="flex justify-between">
- <span>Fee Amount:</span>
- <span className="font-mono font-semibold">
- {stepFee.feeFormatted} {stepFee.tokenSymbol}
- </span>
- </div>
- {stepFee.feePercentage !== undefined && (
- <div className="flex justify-between">
- <span>Fee %:</span>
- <span className="font-semibold">
- {stepFee.feePercentage.toFixed(2)}%
- </span>
- </div>
- )}
- {stepFee.feeUSD !== undefined && (
- <div className="flex justify-between">
- <span>Fee (USD):</span>
- <span className="font-semibold">
- ${stepFee.feeUSD.toFixed(2)}
- </span>
- </div>
- )}
- </div>
- </div>
- )}
- </div>
- );
- })}
- </div>
- </div>
+  // If we're showing fee info, show confirmation screen
+  if (showFeeInfo && onConfirmFee) {
+    const fees = Array.isArray(showFeeInfo) ? showFeeInfo : [showFeeInfo];
+    const totalFeeUSD = fees.reduce((sum, fee) => sum + (fee.feeUSD || 0), 0);
 
- {/* Total Fees Summary */}
- {fees.length > 0 && (
- <div className="rounded-md bg-yellow-50 border border-yellow-200 p-4">
- <h3 className="text-sm font-semibold text-yellow-800 mb-2">
- Total Fees
- </h3>
- <div className="space-y-1 text-sm text-yellow-700">
- {fees.length > 1 && totalFeeUSD > 0 && (
- <div className="flex justify-between font-semibold">
- <span>Total Fees:</span>
- <span>${totalFeeUSD.toFixed(2)}</span>
- </div>
- )}
- {fees.length === 1 && fees[0].feeUSD !== undefined && (
- <div className="flex justify-between font-semibold">
- <span>Fee (USD):</span>
- <span>${fees[0].feeUSD.toFixed(2)}</span>
- </div>
- )}
- </div>
- </div>
- )}
-
- <p className="text-sm text-[#1E4775]/80">
- These fees will be deducted during the transaction process. Do you want to
- continue?
- </p>
-
- <div className="flex gap-3">
- <button
- type="button"
- onClick={onCancel || onClose}
- className={`flex-1 min-w-0 ${INDEX_MODAL_CANCEL_BUTTON_CLASS_DESKTOP}`}
- >
- Cancel
- </button>
- <button
- type="button"
- onClick={onConfirmFee}
- className={`flex-1 min-w-0 ${INDEX_MANAGE_BUTTON_CLASS_DESKTOP}`}
- >
- Continue
- </button>
- </div>
- </div>
- </div>
- </div>
- );
- }
-
- return (
- <div className="fixed inset-0 z-50 flex items-center justify-center">
- <div
- className="absolute inset-0 bg-black/40 backdrop-blur-sm"
- onClick={onClose}
- />
- <div className="relative isolate bg-white shadow-2xl w-full max-w-md mx-4 animate-in fade-in-0 scale-in-95 duration-200 max-h-[90vh] flex flex-col overflow-hidden rounded-xl border border-[#1E4775]/10">
- <div className="flex items-center justify-between p-6 border-b border-[#1E4775]/20 shrink-0">
- <div>
-   <h2 className="text-2xl font-bold text-[#1E4775]">{title}</h2>
-   {steps.length > 1 && (
-     <p className="text-xs text-[#1E4775]/60 mt-0.5">
-       Step {currentStepIndex + 1} of {steps.length}
-     </p>
-   )}
- </div>
- <button
- onClick={onClose}
- className="text-[#1E4775]/50 hover:text-[#1E4775] transition-colors"
- aria-label="Close"
- >
- <svg
- className="w-6 h-6"
- fill="none"
- viewBox="0 0 24 24"
- stroke="currentColor"
- >
- <path
- strokeLinecap="round"
- strokeLinejoin="round"
- strokeWidth={2}
- d="M6 18L18 6M6 6l12 12"
- />
- </svg>
- </button>
- </div>
-
- <div className="p-6 overflow-y-auto flex-1 min-h-0">
- {progressVariant === "horizontal" ? (
-   <GenesisTransactionProgressSteps
-     steps={steps}
-     currentStepIndex={currentStepIndex}
-   />
- ) : (
- <div className="space-y-2">
- {steps.map((step, index) => {
- const isActive = index === currentStepIndex;
- const isCompleted = step.status ==="completed";
- const isError = step.status ==="error";
- const isPending = step.status ==="pending";
-
- return (
- <div key={step.id} className="flex items-start gap-2">
- {/* Status Icon */}
- <div className="flex-shrink-0 mt-0.5">
- {isCompleted ? (
- <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center">
- <svg
- className="w-4 h-4 text-white"
- fill="none"
- viewBox="0 0 24 24"
- stroke="currentColor"
- >
- <path
- strokeLinecap="round"
- strokeLinejoin="round"
- strokeWidth={2}
- d="M5 13l4 4L19 7"
- />
- </svg>
- </div>
- ) : isError ? (
- <div className="w-6 h-6 rounded-full bg-red-500 flex items-center justify-center">
- <svg
- className="w-4 h-4 text-white"
- fill="none"
- viewBox="0 0 24 24"
- stroke="currentColor"
- >
- <path
- strokeLinecap="round"
- strokeLinejoin="round"
- strokeWidth={2}
- d="M6 18L18 6M6 6l12 12"
- />
- </svg>
- </div>
- ) : isActive ? (
- <div className="w-6 h-6 rounded-full bg-[#1E4775] flex items-center justify-center animate-pulse">
- <div className="w-2 h-2 rounded-full bg-white"></div>
- </div>
- ) : (
- <div className="w-6 h-6 rounded-full bg-gray-300 flex items-center justify-center">
- <div className="w-2 h-2 rounded-full bg-white"></div>
- </div>
- )}
- </div>
-
- {/* Step Content */}
- <div className="flex-1 min-w-0">
- <div
- className={`text-sm font-medium ${
- isActive
- ?"text-[#1E4775]"
- : isCompleted
- ?"text-green-700"
- : isError
- ?"text-red-700"
- :"text-gray-500"
- }`}
- >
- {step.label}
- </div>
- {step.details && (
- <div className="text-xs text-[#1E4775]/70 mt-1">
- {step.details}
- </div>
- )}
- {step.fee && (
- <div className="mt-2 p-2 rounded-md bg-yellow-50 border border-yellow-200 text-xs">
- <div className="font-semibold text-yellow-800 mb-1">Fee:</div>
- <div className="space-y-1 text-yellow-700">
- <div className="flex justify-between">
- <span>Fee Amount:</span>
- <span className="font-mono font-semibold">
- {step.fee.formatted} {step.fee.tokenSymbol}
- </span>
- </div>
- {step.fee.percentage !== undefined && (
- <div className="flex justify-between">
- <span>Fee %:</span>
- <span className="font-semibold">
- {step.fee.percentage.toFixed(2)}%
- </span>
- </div>
- )}
- {step.fee.usd !== undefined && (
- <div className="flex justify-between">
- <span>Fee (USD):</span>
- <span className="font-semibold">
- ${step.fee.usd.toFixed(2)}
- </span>
- </div>
- )}
- </div>
- </div>
- )}
- {step.txHash && (
- <a
- href={`https://etherscan.io/tx/${step.txHash}`}
- target="_blank"
- rel="noopener noreferrer"
- className="text-xs text-[#1E4775]/70 hover:text-[#1E4775] mt-1 inline-block underline"
- >
- View transaction on Etherscan
- </a>
- )}
- {step.error && (
- <div className="text-xs text-red-600 mt-1">
- {step.error}
- </div>
- )}
- </div>
- </div>
- );
- })}
- </div>
- )}
-
- {steps.every((s) => s.status ==="completed") && (
- <div className="mt-6 p-4 rounded-md bg-green-50 border border-green-200">
- <p className="text-sm font-medium text-green-800 text-center">
- All transactions completed successfully!
- </p>
- </div>
- )}
-
- {steps.some((s) => s.status ==="error") && (
- <div className="mt-6 p-4 rounded-md bg-red-50 border border-red-200">
- <p className="text-sm font-medium text-red-800 text-center">
- {errorMessage || "Transaction failed. Please try again or contact support if the issue persists."}
- </p>
-        {onRetry && (
-          <div className="mt-4 flex justify-center">
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div
+          className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+          onClick={onCancel || onClose}
+        />
+        <div className="relative isolate mx-4 flex max-h-[90vh] w-full max-w-md flex-col overflow-hidden rounded-xl border border-[#1E4775]/10 bg-white shadow-2xl animate-in fade-in-0 scale-in-95 duration-200">
+          <div className="flex shrink-0 items-center justify-between border-b border-[#1E4775]/20 p-6">
+            <h2 className="text-2xl font-bold text-[#1E4775]">{title}</h2>
             <button
-              type="button"
-              onClick={onRetry}
-              className={INDEX_MANAGE_BUTTON_CLASS_DESKTOP}
+              onClick={onCancel || onClose}
+              className="text-[#1E4775]/50 transition-colors hover:text-[#1E4775]"
+              aria-label="Close"
             >
-              {retryButtonLabel}
+              <svg
+                className="h-6 w-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
             </button>
           </div>
-        )}
- </div>
- )}
 
- {allCompleted && renderSuccessContent && (
- <div className="mt-6">{renderSuccessContent()}</div>
- )}
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-6">
+            {/* All Steps Preview with Fees */}
+            <div>
+              <h3 className="mb-3 text-sm font-semibold text-[#1E4775]">
+                Transaction Steps & Fees
+              </h3>
+              <div className="space-y-3">
+                {steps.map((step, index) => {
+                  const stepFee = fees.find((f) => {
+                    if (step.id === "redeem") {
+                      return f.label === "Redeem Sail Tokens";
+                    } else if (step.id === "mint") {
+                      return f.label === "Mint Anchor Tokens";
+                    }
+                    return false;
+                  });
 
- {/* Cancel button - only show if canCancel is true and not all steps are completed */}
- {canCancel && !steps.every((s) => s.status ==="completed") && (
- <div className="mt-6 flex justify-end">
- <button
- type="button"
- onClick={onCancel || onClose}
- className={INDEX_MODAL_CANCEL_BUTTON_CLASS_DESKTOP}
- >
- Cancel
- </button>
- </div>
- )}
- </div>
- </div>
- </div>
- );
+                  return (
+                    <div
+                      key={step.id}
+                      className="rounded-md border border-[#1E4775]/20 p-3"
+                    >
+                      <div className="mb-2 flex items-center gap-2">
+                        <div className="flex h-5 w-5 items-center justify-center rounded-full bg-gray-300 text-xs text-gray-600">
+                          {index + 1}
+                        </div>
+                        <span className="text-sm font-medium text-[#1E4775]">
+                          {step.label}
+                        </span>
+                      </div>
+                      {step.details && (
+                        <div className="mb-2 ml-7 text-xs text-[#1E4775]/70">
+                          {step.details}
+                        </div>
+                      )}
+                      {stepFee && (
+                        <div className="ml-7 mt-2 rounded-md border border-yellow-200 bg-yellow-50 p-2 text-xs">
+                          <div className="mb-1 font-semibold text-yellow-800">
+                            Fee:
+                          </div>
+                          <div className="space-y-1 text-yellow-700">
+                            <div className="flex justify-between">
+                              <span>Fee Amount:</span>
+                              <span className="font-mono font-semibold">
+                                {stepFee.feeFormatted} {stepFee.tokenSymbol}
+                              </span>
+                            </div>
+                            {stepFee.feePercentage !== undefined && (
+                              <div className="flex justify-between">
+                                <span>Fee %:</span>
+                                <span className="font-semibold">
+                                  {stepFee.feePercentage.toFixed(2)}%
+                                </span>
+                              </div>
+                            )}
+                            {stepFee.feeUSD !== undefined && (
+                              <div className="flex justify-between">
+                                <span>Fee (USD):</span>
+                                <span className="font-semibold">
+                                  ${stepFee.feeUSD.toFixed(2)}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Total Fees Summary */}
+            {fees.length > 0 && (
+              <div className="rounded-md border border-yellow-200 bg-yellow-50 p-4">
+                <h3 className="mb-2 text-sm font-semibold text-yellow-800">
+                  Total Fees
+                </h3>
+                <div className="space-y-1 text-sm text-yellow-700">
+                  {fees.length > 1 && totalFeeUSD > 0 && (
+                    <div className="flex justify-between font-semibold">
+                      <span>Total Fees:</span>
+                      <span>${totalFeeUSD.toFixed(2)}</span>
+                    </div>
+                  )}
+                  {fees.length === 1 && fees[0].feeUSD !== undefined && (
+                    <div className="flex justify-between font-semibold">
+                      <span>Fee (USD):</span>
+                      <span>${fees[0].feeUSD.toFixed(2)}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <p className="text-sm text-[#1E4775]/80">
+              These fees will be deducted during the transaction process. Do you
+              want to continue?
+            </p>
+
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={onCancel || onClose}
+                className={`min-w-0 flex-1 ${INDEX_MODAL_CANCEL_BUTTON_CLASS_DESKTOP}`}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={onConfirmFee}
+                className={`min-w-0 flex-1 ${INDEX_MANAGE_BUTTON_CLASS_DESKTOP}`}
+              >
+                Continue
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div
+        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      <div className="relative isolate mx-4 flex max-h-[90vh] w-full max-w-md flex-col overflow-hidden rounded-xl border border-[#1E4775]/10 bg-white shadow-2xl animate-in fade-in-0 scale-in-95 duration-200">
+        <div className="flex shrink-0 items-start justify-between gap-2 border-b border-[#1E4775]/20 p-6">
+          <div className="min-w-0 flex-1">
+            <h2 className="text-2xl font-bold text-[#1E4775]">{title}</h2>
+            {steps.length > 1 && (
+              <p
+                className="mt-0.5 line-clamp-2 text-xs text-[#1E4775]/60"
+                aria-live="polite"
+              >
+                Step {currentStepIndex + 1} of {steps.length}
+                {currentStepLabel ? (
+                  <>
+                    {" "}
+                    —{" "}
+                    <span className="text-[#1E4775]/80">{currentStepLabel}</span>
+                  </>
+                ) : null}
+              </p>
+            )}
+          </div>
+          <div className="flex shrink-0 items-center gap-1">
+            {manySteps && (
+              <button
+                type="button"
+                onClick={() => setFullListExpanded((v) => !v)}
+                className="rounded-md p-1.5 text-[#1E4775]/60 transition-colors hover:bg-[#1E4775]/10 hover:text-[#1E4775]"
+                aria-pressed={fullListExpanded}
+                aria-label={
+                  fullListExpanded
+                    ? "Show compact progress"
+                    : "Show full step list"
+                }
+                title={
+                  fullListExpanded
+                    ? "Compact progress"
+                    : "Full step list"
+                }
+              >
+                <TransactionProgressLayoutToggleIcon className="h-6 w-6" />
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              className="text-[#1E4775]/50 transition-colors hover:text-[#1E4775]"
+              aria-label="Close"
+            >
+              <svg
+                className="h-6 w-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div className="min-h-0 flex-1 overflow-y-auto p-6">
+          {showCompactRail ? (
+            <CompactTransactionProgressRail
+              steps={steps}
+              currentStepIndex={currentStepIndex}
+            />
+          ) : !manySteps && progressVariant === "horizontal" ? (
+            <GenesisTransactionProgressSteps
+              steps={steps}
+              currentStepIndex={currentStepIndex}
+            />
+          ) : (
+            <TransactionProgressVerticalStepsList
+              steps={steps}
+              currentStepIndex={currentStepIndex}
+            />
+          )}
+
+          {steps.every((s) => s.status === "completed") && (
+            <div className="mt-6 rounded-md border border-green-200 bg-green-50 p-4">
+              <p className="text-center text-sm font-medium text-green-800">
+                All transactions completed successfully!
+              </p>
+            </div>
+          )}
+
+          {steps.some((s) => s.status === "error") && (
+            <div className="mt-6 rounded-md border border-red-200 bg-red-50 p-4">
+              <p className="text-center text-sm font-medium text-red-800">
+                {errorMessage ||
+                  "Transaction failed. Please try again or contact support if the issue persists."}
+              </p>
+              {onRetry && (
+                <div className="mt-4 flex justify-center">
+                  <button
+                    type="button"
+                    onClick={onRetry}
+                    className={INDEX_MANAGE_BUTTON_CLASS_DESKTOP}
+                  >
+                    {retryButtonLabel}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {allCompleted && renderSuccessContent && (
+            <div className="mt-6">{renderSuccessContent()}</div>
+          )}
+
+          {canCancel && !steps.every((s) => s.status === "completed") && (
+            <div className="mt-6 flex justify-end">
+              <button
+                type="button"
+                onClick={onCancel || onClose}
+                className={INDEX_MODAL_CANCEL_BUTTON_CLASS_DESKTOP}
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 };
-
