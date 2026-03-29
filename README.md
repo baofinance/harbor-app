@@ -16,11 +16,15 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+You can start editing the page by modifying [`src/app/page.tsx`](src/app/page.tsx). The page auto-updates as you edit the file.
 
-## App patterns (Genesis / Anchor / Sail)
+## Documentation
 
-- **[`docs/INDEX_PAGE_PATTERN.md`](docs/INDEX_PAGE_PATTERN.md)** — single handbook for the Genesis index refactor, UI−/UI+, shared files, and porting steps for Anchor & Sail.
+- **[`docs/README.md`](docs/README.md)** — index of internal docs (routes, ops, security, subgraph app notes).
+- **[`docs/INDEX_PAGE_PATTERN.md`](docs/INDEX_PAGE_PATTERN.md)** — handbook for Genesis / Anchor / Sail index UX (UI−/UI+, shared files, porting steps).
+- **Route deep-dives:** [`docs/routes/`](docs/routes/) (`anchor.md`, `sail.md`, `genesis.md`, `earn.md`). Each `src/app/<segment>/` folder also has a short README pointing here.
+
+The [subgraph](subgraph/) package keeps its own Markdown guides next to the subgraph code.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 

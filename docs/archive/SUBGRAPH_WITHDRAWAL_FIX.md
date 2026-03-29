@@ -1,3 +1,5 @@
+**Archived (March 2026)** — Point-in-time subgraph fix notes; verify current `subgraph/src/genesis.ts` if debugging marks forfeiture.
+
 # Subgraph Withdrawal Marks Forfeiture Fix
 
 ## Problem

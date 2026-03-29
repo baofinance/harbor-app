@@ -267,7 +267,7 @@ TTL: 600
 2. ✅ Update any hardcoded URLs in the codebase
 3. ✅ Set up monitoring/alerts (optional)
 4. ✅ Document the production URL for the team
-5. ✅ Consider setting up a staging environment at `staging.app.harborfinance.io` (see VERCEL_QUICK_START.md)
+5. ✅ Consider setting up a staging environment at `staging.app.harborfinance.io` (see [VERCEL_QUICK_START.md](./VERCEL_QUICK_START.md))
 
 ## Support
 

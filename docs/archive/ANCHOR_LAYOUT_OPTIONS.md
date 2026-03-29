@@ -1,3 +1,5 @@
+**Archived (March 2026)** — Historical Anchor layout exploration; current index UX is covered in [`../INDEX_PAGE_PATTERN.md`](../INDEX_PAGE_PATTERN.md).
+
 # Anchor Page Layout Options
 
 ## Current Issues

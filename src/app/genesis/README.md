@@ -1,7 +1,3 @@
-# Genesis routes (`/genesis`, `/genesis/[id]`)
+# `/genesis`
 
-**All architecture, file map, UI−/UI+ behavior, and the Anchor/Sail porting checklist live in one place:**
-
-**[`docs/INDEX_PAGE_PATTERN.md`](../../docs/INDEX_PAGE_PATTERN.md)**
-
-This file stays short on purpose — avoid duplicating details here.
+Route documentation: [`docs/routes/genesis.md`](../../../docs/routes/genesis.md).

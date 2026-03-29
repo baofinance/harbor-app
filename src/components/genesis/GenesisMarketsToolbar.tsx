@@ -2,7 +2,7 @@
 
 /**
  * Filter / controls row: active campaign pill, Genesis Ongoing/All, network filter, Ledger Marks badge.
- * @see src/app/genesis/README.md
+ * @see docs/routes/genesis.md
  */
 import { XMarkIcon } from "@heroicons/react/24/outline";
 import LedgerMarksCompactBadge from "@/components/LedgerMarksCompactBadge";

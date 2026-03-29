@@ -1,3 +1,5 @@
+**Archived (March 2026)** — Post-implementation summary; implementation is in [`AnchorDepositWithdrawModal.tsx`](../../src/components/AnchorDepositWithdrawModal.tsx) and related contracts.
+
 # Stability Pool Zaps Implementation Summary
 
 ## ✅ Ready for Testing
@@ -8,7 +10,7 @@
    - **Direct wrapped collateral deposits** (wstETH/fxSAVE):
      - `zapWstEthToStabilityPool` / `zapWstEthToStabilityPoolWithPermit`
      - `zapFxSaveToStabilityPool` / `zapFxSaveToStabilityPoolWithPermit`
-     - Implemented in `AnchorDepositModal` and `AnchorDepositWithdrawModal`
+     - Implemented in `AnchorDepositWithdrawModal`
    - **After swap deposits** (ETH/stETH/USDC/fxUSD):
      - `zapEthToStabilityPool` (payable, no permit needed)
      - `zapStEthToStabilityPool` / `zapStEthToStabilityPoolWithPermit`
@@ -112,7 +114,7 @@
 ### Implementation Details
 
 **Components:**
-- `AnchorDepositModal`: Direct wstETH/fxSAVE deposits to stability pools
+- `AnchorDepositWithdrawModal`: Direct wstETH/fxSAVE deposits to stability pools (and related flows)
 - `AnchorDepositWithdrawModal`: All deposit paths including:
   - Direct wstETH/fxSAVE deposits (with stability pool zaps)
   - After swap: ETH/stETH/USDC/fxUSD → stability pools (with stability pool zaps)

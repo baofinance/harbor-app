@@ -169,7 +169,7 @@ Leaderboards and user-facing Harbor / Anchor / Sail marks: **GraphQL** to marks 
 
 | File | Approx. lines |
 |------|----------------|
-| [`src/app/ledger-marks/page.tsx`](../src/app/ledger-marks/page.tsx) | **~1675** — monolithic: query strings, `fetch(graphUrl)`, React Query, UI |
+| [`src/app/ledger-marks/page.tsx`](../src/app/ledger-marks/page.tsx) | **~1680** — monolithic: query strings, `fetch(graphUrl)`, React Query, UI |
 
 ### Structure (logical)
 

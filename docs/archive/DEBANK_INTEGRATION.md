@@ -1,3 +1,5 @@
+**Archived (March 2026)** — No DeBank code in this repo; for addresses see [`../CONTRACT_ADDRESSES.md`](../CONTRACT_ADDRESSES.md).
+
 # DeBank Integration - Contract Addresses
 
 This document provides all contract addresses needed for DeBank to properly track Harbor Protocol user positions and assets.

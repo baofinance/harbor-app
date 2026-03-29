@@ -1,3 +1,5 @@
+**Archived (March 2026)** — Implemented via `useWstETHAPR` and `useFxSAVEAPR` (see `src/hooks/`).
+
 # Implementation Plan: Display Underlying APR for wstETH and fxSAVE on Genesis Page
 
 ## Overview

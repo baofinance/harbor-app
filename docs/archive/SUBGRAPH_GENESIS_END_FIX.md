@@ -1,3 +1,5 @@
+**Archived (March 2026)** — Point-in-time subgraph / `UserList` runbook; verify deployed subgraph if issues recur.
+
 # Subgraph Genesis End User Marks Update Fix
 
 ## Issue

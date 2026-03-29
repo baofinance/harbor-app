@@ -2,7 +2,7 @@
 
 This document captures **everything we did for `/sail`** so you can apply the **same depth** to **`/anchor`** (or another large index) without re-deriving steps. It complements **[`INDEX_PAGE_PATTERN.md`](./INDEX_PAGE_PATTERN.md)** (layout toggle, regions, port checklist), which stays high-level.
 
-**Reference implementation:** [`src/app/sail/README.md`](../src/app/sail/README.md) (architecture, grid, modal, changelog).
+**Reference implementation:** [`docs/routes/sail.md`](./routes/sail.md) (architecture, grid, modal, changelog).
 
 ---
 
@@ -15,7 +15,7 @@ This document captures **everything we did for `/sail`** so you can apply the **
 | **Modal** | `SailManageModal`: `DefinedMarket`, `addressByName` for optional `addresses` keys on union. | `AnchorDepositWithdrawModal` (or equivalent): same **pattern** for `market` + optional address fields — not a copy-paste of Sail. |
 | **Table UX** | Shared `grid-cols` in header + row; fee badge width; column rebalance; `min-w-0` / no bad `truncate` on key labels. | Match header + row grids; tune `fr` + gaps; fix overflow/ellipsis per product. |
 | **Shared infra** | `marketSideLabels`, `useTransactionProgress.setSteps` typing — already global. | **No extra work** unless Anchor uses different patterns. |
-| **Docs** | Route README + this playbook. | Add `src/app/anchor/README.md` + link here when you start. |
+| **Docs** | Route README + this playbook. | Add / update [`docs/routes/anchor.md`](./routes/anchor.md) + link here when you start. |
 
 ---
 
@@ -55,7 +55,7 @@ Use as a **checkbox list** for Anchor.
 ### 6. Table: header + row must match
 
 - [ ] **Same `grid-cols-[...]`** string on **table header** and **row** (Sail: `SailMarketsTableHeader` + `SailMarketRow`).
-- [ ] Document the template in the route README (copy/paste one line).
+- [ ] Document the template in the matching `docs/routes/<route>.md` (copy/paste one line).
 
 ### 7. Table UX (polish)
 
@@ -73,7 +73,7 @@ Use as a **checkbox list** for Anchor.
 
 ### 9. Documentation
 
-- [ ] Update **route README** (`src/app/sail/README.md` style).
+- [ ] Update **route doc** ([`docs/routes/sail.md`](./routes/sail.md) style).
 - [ ] Link this playbook + [`INDEX_PAGE_PATTERN.md`](./INDEX_PAGE_PATTERN.md).
 
 ---
@@ -91,15 +91,15 @@ Use as a **checkbox list** for Anchor.
 | **Config** | `src/config/markets.ts` (`Market`, `DefinedMarket`) |
 | **Hooks** | `useSailPageData.ts`, `useSailContractReads.ts`, `useTransactionProgress.ts` (shared typing) |
 | **Modal** | `src/components/SailManageModal.tsx` |
-| **Docs** | `src/app/sail/README.md`, this file |
+| **Docs** | [`docs/routes/sail.md`](./routes/sail.md), this file |
 
 ---
 
 ## Anchor: likely mapping (starting points)
 
-**Living route map:** [`src/app/anchor/README.md`](../src/app/anchor/README.md) (architecture, hooks, modals, refactor roadmap).
+**Living route map:** [`docs/routes/anchor.md`](./routes/anchor.md) (architecture, hooks, modals, refactor roadmap).
 
-**Anchor Phases 0–3 audit:** same README section **“Phases 0–3 status”** — checked-off vs open items, kept next to the route.
+**Anchor Phases 0–3 audit:** same doc section **“Phases 0–3 status”** — checked-off vs open items, kept next to the route.
 
 Anchor is **large** and already has partial extractions (`src/components/anchor/AnchorMarketExpandedView.tsx`, `FeeDisplayRow.tsx`, etc.). Use this as a **map**, not a strict list:
 
@@ -126,11 +126,11 @@ Anchor is **large** and already has partial extractions (`src/components/anchor/
 ## Related
 
 - [`INDEX_PAGE_PATTERN.md`](./INDEX_PAGE_PATTERN.md) — UI+ / UI−, toggle, Genesis/Sail port checklist
-- [`src/app/anchor/README.md`](../src/app/anchor/README.md) — Anchor index route map + refactor roadmap
-- [`src/app/earn/README.md`](../src/app/earn/README.md) — `/earn` stability pool hub (separate from nav “Earn” → `/anchor`)
-- [`src/app/sail/README.md`](../src/app/sail/README.md) — Sail index detail + changelog
+- [`docs/routes/anchor.md`](./routes/anchor.md) — Anchor index route map + refactor roadmap
+- [`docs/routes/earn.md`](./routes/earn.md) — `/earn` stability pool hub (separate from nav “Earn” → `/anchor`)
+- [`docs/routes/sail.md`](./routes/sail.md) — Sail index detail + changelog
 - [`pageLayoutToggleRoutes.ts`](../src/config/pageLayoutToggleRoutes.ts) — add `/anchor` when wiring toggle
 
 ---
 
-*Use this playbook + Sail README together when refactoring Anchor to the same standard.*
+*Use this playbook + [`docs/routes/sail.md`](./routes/sail.md) together when refactoring Anchor to the same standard.*

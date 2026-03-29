@@ -1,3 +1,5 @@
+**Archived (March 2026)** — Shipped in [`RewardDeposits.tsx`](../../src/components/admin/RewardDeposits.tsx) (target APR → required deposit).
+
 # Admin Deposit Rewards: Target APR → Required Deposit (Implementation Plan)
 
 ## Goal

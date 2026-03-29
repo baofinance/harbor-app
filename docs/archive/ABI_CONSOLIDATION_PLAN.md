@@ -1,3 +1,5 @@
+**Archived (March 2026)** — All listed phases are marked complete; use [`src/abis/`](../../src/abis/) as the source of truth.
+
 # ABI Consolidation Plan
 
 ## Goal

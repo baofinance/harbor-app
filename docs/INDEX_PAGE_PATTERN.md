@@ -47,8 +47,8 @@ Order in [`src/app/genesis/page.tsx`](../src/app/genesis/page.tsx):
 | Sail index (main) | [`src/app/sail/page.tsx`](../src/app/sail/page.tsx) |
 | Sail page data (filters, PnL, marks, UI aggregates) | [`src/hooks/useSailPageData.ts`](../src/hooks/useSailPageData.ts) |
 | Sail wagmi reads + price/deposit maps | [`src/hooks/useSailContractReads.ts`](../src/hooks/useSailContractReads.ts) |
-| Anchor index (main) + route map | [`src/app/anchor/README.md`](../src/app/anchor/README.md) |
-| Earn (`/earn` pool hub) | [`src/app/earn/README.md`](../src/app/earn/README.md) |
+| Anchor index (main) + route map | [`docs/routes/anchor.md`](./routes/anchor.md) |
+| Earn (`/earn` pool hub) | [`docs/routes/earn.md`](./routes/earn.md) |
 | Market config typing | [`src/types/genesisMarket.ts`](../src/types/genesisMarket.ts) |
 
 ### 3.2 UI− / UI+ (generic, reuse on Anchor/Sail)
@@ -134,7 +134,7 @@ When each index page is refactored to mirror Genesis structure:
    - If users claim from `[id]` pages, align invalidation with index (`allHarborMarks` or your query keys).
 
 7. **Docs**
-   - Add a one-line link from `src/app/anchor/README.md` / `sail` to this file when you start the port.
+   - Add a one-line link from [`docs/routes/anchor.md`](./routes/anchor.md) / [`sail`](./routes/sail.md) (or the stub `src/app/*/README.md`) to this file when you start the port.
    - For a **full refactor** (types, extraction, table grid, modal pattern, QA), follow **[`INDEX_PAGE_REFACTOR_PLAYBOOK.md`](./INDEX_PAGE_REFACTOR_PLAYBOOK.md)** — same depth as the Sail pass.
 
 ---
@@ -142,11 +142,11 @@ When each index page is refactored to mirror Genesis structure:
 ## 5. Related docs (not duplicated here)
 
 - **[`INDEX_PAGE_REFACTOR_PLAYBOOK.md`](./INDEX_PAGE_REFACTOR_PLAYBOOK.md)** — Sail → Anchor (and future routes): phased checklist, Sail file inventory, Anchor mapping hints, shared infra notes.
-- [`src/app/genesis/README.md`](../src/app/genesis/README.md) — short index-specific pointer (kept minimal).
-- [`src/app/sail/README.md`](../src/app/sail/README.md) — Sail index pointer + audit extras (batched reads, metadata, parity notes).
+- [`docs/routes/genesis.md`](./routes/genesis.md) — short index-specific pointer (kept minimal).
+- [`docs/routes/sail.md`](./routes/sail.md) — Sail index pointer + audit extras (batched reads, metadata, parity notes).
 - **[`GENESIS_UI_RADIUS_PROPOSAL.md`](./GENESIS_UI_RADIUS_PROPOSAL.md)** — straight vs rounded edges by zone + wallet-vs-modal options; open [`genesis-ui-radius-preview.html`](./genesis-ui-radius-preview.html) in a browser for a quick visual.
-- [`ANCHOR_LAYOUT_OPTIONS.md`](../ANCHOR_LAYOUT_OPTIONS.md) — historical layout options (may predate this pattern).
-- Subgraph / marks setup — see repo root `HARBOR_MARKS_SETUP.md` and subgraph docs.
+- [`ANCHOR_LAYOUT_OPTIONS.md`](./archive/ANCHOR_LAYOUT_OPTIONS.md) — historical layout options (archived; may predate this pattern).
+- Subgraph / marks setup — see [`HARBOR_MARKS_SETUP.md`](./HARBOR_MARKS_SETUP.md) and [`subgraph/`](../subgraph/) docs.
 
 ---
 

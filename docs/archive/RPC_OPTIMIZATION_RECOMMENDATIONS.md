@@ -1,4 +1,8 @@
+**Archived (March 2026)** — Historical React Query tuning ideas; **grep the codebase** for current `refetchInterval` / `QueryClient` defaults.
+
 # RPC Request Optimization Recommendations
+
+> **Note:** Written against an earlier snapshot. Several modals now use `refetchInterval: isOpen ? 15000 : false` (and similar). Treat priorities as ideas and **grep the codebase** for current `refetchInterval` / `QueryClient` defaults before acting.
 
 ## Current Issues
 
@@ -57,12 +61,11 @@ const { data: allowanceData } = useContractRead({
 });
 ```
 
-**Files to update:**
-- `src/components/GenesisDepositModal.tsx` (2 instances at 5000ms)
-- `src/components/AnchorDepositWithdrawModal.tsx` (17 instances at 5000ms)
-- `src/components/SailManageModal.tsx` (2 instances at 5000ms)
-- `src/components/AnchorDepositModal.tsx` (5 instances at 5000ms)
-- `src/components/AnchorWithdrawModal.tsx` (1 instance at 5000ms)
+**Files to update (verify current `refetchInterval` values in tree — many were already tuned):**
+- `src/components/GenesisDepositModal.tsx`
+- `src/components/AnchorDepositWithdrawModal.tsx`
+- `src/components/SailManageModal.tsx`
+- `src/components/AnchorWithdrawModal.tsx`
 
 **Impact:** Eliminates polling when modals closed
 

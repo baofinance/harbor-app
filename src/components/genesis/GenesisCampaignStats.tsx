@@ -2,7 +2,7 @@
 
 /**
  * Campaign stats strip for Genesis: subgraph marks error, Ledger Marks summary, and GraphQL/oracle error banners.
- * @see src/app/genesis/README.md
+ * @see docs/routes/genesis.md
  */
 import React from "react";
 import { GenesisLedgerMarksSummary } from "@/components/GenesisLedgerMarksSummary";

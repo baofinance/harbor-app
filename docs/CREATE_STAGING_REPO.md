@@ -102,5 +102,5 @@ git push staging main:main
    - Import `harbor-app-staging` repository
    - Configure environment variables
    - Add custom domain: `staging.app.harborfinance.io`
-4. Configure DNS in GoDaddy (see VERCEL_QUICK_START.md)
+4. Configure DNS in GoDaddy (see [VERCEL_QUICK_START.md](./VERCEL_QUICK_START.md))
 

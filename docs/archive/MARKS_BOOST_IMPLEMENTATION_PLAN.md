@@ -1,3 +1,5 @@
+**Archived (March 2026)** — Boost logic lives in [`subgraph/src/marksBoost.ts`](../../subgraph/src/marksBoost.ts) and related handlers.
+
 # Marks Boost Implementation Plan
 
 ## Overview

@@ -1,3 +1,5 @@
+**Archived (March 2026)** — Record of a completed responsive pass; patterns may have drifted—verify in components.
+
 # Mobile Optimization Summary - Complete
 
 ## Overview

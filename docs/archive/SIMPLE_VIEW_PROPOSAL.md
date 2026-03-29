@@ -1,5 +1,7 @@
 # Simple View Proposal for Anchor Page
 
+> **Archived (March 2026)** — Product proposal only; this toggle was not implemented. Index routes use UI−/UI+ (`view=basic`) per [`INDEX_PAGE_PATTERN.md`](../INDEX_PAGE_PATTERN.md) instead.
+
 ## Overview
 Create a toggle between "Simple" and "Advanced" views. Current view becomes "Advanced". Simple view groups similar ha tokens and provides a streamlined flow.
 

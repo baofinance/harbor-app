@@ -2,7 +2,7 @@
 
 /**
  * Wraps the active Genesis market list: toolbar + main table / rows (passed as children).
- * @see src/app/genesis/README.md
+ * @see docs/routes/genesis.md
  */
 import type { ReactNode } from "react";
 import {
