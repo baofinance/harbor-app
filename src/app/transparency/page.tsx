@@ -613,7 +613,7 @@ function MarketCard({
   }, [market.peggedTokenBalance, market.leveragedTokenBalance, pools]);
 
  return (
- <div className="rounded-xl border border-[#1E4775]/15 bg-white shadow-sm overflow-hidden">
+ <div className="rounded-md border border-[#1E4775]/15 bg-white shadow-sm overflow-hidden">
  {/* Market Bar */}
  <div
  className={`cursor-pointer transition-colors ${
@@ -1635,7 +1635,7 @@ const { data: volatilityProtectionMap } = useMultipleVolatilityProtection(
          )}
        {displayedMarkets.length > 0 && (
         <div
-          className={`hidden lg:block bg-white py-1.5 px-2 mb-2 rounded-xl border border-[#1E4775]/15 shadow-sm ${SCROLLBAR_HIDE_X}`}
+          className={`hidden lg:block bg-white py-1.5 px-2 mb-0 overflow-x-auto rounded-md border border-[#1E4775]/15 shadow-sm ${SCROLLBAR_HIDE_X}`}
         >
           <div className="grid grid-cols-[1.3fr_1fr_1fr_1fr_1fr_1fr_1fr_auto] gap-4 items-center uppercase tracking-wider text-[10px] lg:text-[11px] text-[#1E4775] font-semibold">
            <div className="text-center">Market</div>
@@ -1685,7 +1685,7 @@ const { data: volatilityProtectionMap } = useMultipleVolatilityProtection(
            {[1, 2].map((i) => (
              <div
                key={i}
-               className="animate-pulse h-14 rounded-xl bg-white/10 border border-white/5"
+               className="animate-pulse h-14 rounded-md bg-white/10 border border-white/5"
              />
            ))}
          </div>
