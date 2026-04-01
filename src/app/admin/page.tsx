@@ -713,6 +713,11 @@ export default function Admin() {
           Rebalancing
         </button>
       </Link>
+      <Link href="/admin/maiden-voyage-yield">
+        <button className="py-2 px-4 bg-harbor text-white font-medium hover:bg-harbor transition-colors">
+          Maiden voyage yield
+        </button>
+      </Link>
  </div>
  </div>
 

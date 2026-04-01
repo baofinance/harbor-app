@@ -28,6 +28,22 @@ import {
 } from "./marksBoost";
 import { ensureUserRegistered } from "./userRegistry";
 import { accrueWithBoostWindow } from "./marksAccrual";
+import {
+  getMinterForSailToken,
+  HS_FXUSD_ETH,
+  HS_FXUSD_BTC,
+  HS_STETH_BTC,
+  HS_FXUSD_GOLD,
+  HS_STETH_GOLD,
+  HS_STETH_EUR,
+  HS_FXUSD_EUR,
+  HS_FXUSD_SILVER,
+  HS_STETH_SILVER,
+} from "./maidenVoyageConfig";
+import {
+  maidenVoyageMarksMultiplierForSail,
+  onSailTokenBalanceChanged,
+} from "./maidenVoyageBoost";
 
 // Constants
 const SECONDS_PER_DAY = BigDecimal.fromString("86400");
@@ -39,35 +55,14 @@ const ONE_BD = BigDecimal.fromString("1.0");
 const SAIL_PROMO_START_TIMESTAMP = BigInt.fromI32(1768355397);
 const DEFAULT_MARKS_PER_DOLLAR_PER_DAY = BigDecimal.fromString("1.0");
 const ONE_ETHER = BigDecimal.fromString("1000000000000000000");
+const ZERO_ADDR = Address.fromString("0x0000000000000000000000000000000000000000");
 
 // Chainlink (mainnet) feeds
 const ETH_USD_FEED = Address.fromString("0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419");
 const BTC_USD_FEED = Address.fromString("0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c");
-
-// ============================================================================
-// TOKEN TO MINTER MAPPING
-// Maps sail token addresses to their corresponding Minter contracts
-// ============================================================================
-
-// Production v1 Sail tokens (mainnet)
-const HS_FXUSD_ETH = Address.fromString("0x0Cd6BB1a0cfD95e2779EDC6D17b664B481f2EB4C"); // hsFXUSD-ETH
-const HS_FXUSD_BTC = Address.fromString("0x9567c243F647f9Ac37efb7Fc26BD9551Dce0BE1B"); // hsFXUSD-BTC
-const HS_STETH_BTC = Address.fromString("0x817ADaE288eD46B8618AAEffE75ACD26A0a1b0FD"); // hsSTETH-BTC
-
-// Production v1 minters (mainnet)
-const MINTER_ETH_FXUSD = Address.fromString("0xd6E2F8e57b4aFB51C6fA4cbC012e1cE6aEad989F");
-const MINTER_BTC_FXUSD = Address.fromString("0x33e32ff4d0677862fa31582CC654a25b9b1e4888");
-const MINTER_BTC_STETH = Address.fromString("0xF42516EB885E737780EB864dd07cEc8628000919");
-
-/**
- * Get the Minter address for a sail token
- */
-function getMinterForSailToken(tokenAddress: Address): Address | null {
-  if (tokenAddress.equals(HS_FXUSD_ETH)) return MINTER_ETH_FXUSD;
-  if (tokenAddress.equals(HS_FXUSD_BTC)) return MINTER_BTC_FXUSD;
-  if (tokenAddress.equals(HS_STETH_BTC)) return MINTER_BTC_STETH;
-  return null;
-}
+const EUR_USD_FEED = Address.fromString("0xb49f677943C0aD637850Ea3b030e1d3778a050bD");
+const XAU_USD_FEED = Address.fromString("0x214eD9Da11D2fbe465a6fc601a91E62EbEc1a0D6");
+const XAG_USD_FEED = Address.fromString("0x379589227b15F1a12195D3f2d90bBc9F31f95235");
 
 /**
  * Fetch sail token price from Minter.leveragedTokenPrice()
@@ -75,28 +70,31 @@ function getMinterForSailToken(tokenAddress: Address): Address | null {
  */
 function fetchSailTokenPrice(tokenAddress: Address): BigDecimal {
   const minterAddress = getMinterForSailToken(tokenAddress);
-  
-  if (minterAddress === null) {
-    // Unknown token
+  if (minterAddress.equals(ZERO_ADDR)) {
     return BigDecimal.fromString("0");
   }
-  
+
   const minter = Minter.bind(minterAddress);
   const priceResult = minter.try_leveragedTokenPrice();
-  
+
   if (priceResult.reverted) {
     return BigDecimal.fromString("0");
   }
-  
+
   // leveragedTokenPrice() returns NAV in PEG units (ETH/BTC/USD) with 18 decimals.
   const priceInPeg = priceResult.value.toBigDecimal().div(ONE_ETHER);
 
-  // Convert PEG -> USD for BTC/ETH markets
   let pegUsd = BigDecimal.fromString("1.0");
   if (tokenAddress.equals(HS_FXUSD_ETH)) {
     pegUsd = chainlinkUsd(ETH_USD_FEED);
   } else if (tokenAddress.equals(HS_FXUSD_BTC) || tokenAddress.equals(HS_STETH_BTC)) {
     pegUsd = chainlinkUsd(BTC_USD_FEED);
+  } else if (tokenAddress.equals(HS_STETH_EUR) || tokenAddress.equals(HS_FXUSD_EUR)) {
+    pegUsd = chainlinkUsd(EUR_USD_FEED);
+  } else if (tokenAddress.equals(HS_FXUSD_GOLD) || tokenAddress.equals(HS_STETH_GOLD)) {
+    pegUsd = chainlinkUsd(XAU_USD_FEED);
+  } else if (tokenAddress.equals(HS_FXUSD_SILVER) || tokenAddress.equals(HS_STETH_SILVER)) {
+    pegUsd = chainlinkUsd(XAG_USD_FEED);
   }
 
   return priceInPeg.times(pegUsd);
@@ -221,7 +219,7 @@ function accumulateMarks(
   // Marks are awarded for all time held, including partial days
   // Frontend will estimate marks between graph updates
   if (currentTimestamp.gt(lastUpdate)) {
-    const earned = accrueWithBoostWindow(
+    const earnedRaw = accrueWithBoostWindow(
       "sailToken",
       balance.tokenAddress,
       lastUpdate,
@@ -229,6 +227,8 @@ function accumulateMarks(
       balance.balanceUSD,
       baseMarksPerDollarPerDay
     );
+    const mv = maidenVoyageMarksMultiplierForSail(Address.fromBytes(balance.tokenAddress), balance.user);
+    const earned = earnedRaw.times(mv);
     if (earned.gt(BigDecimal.fromString("0"))) {
       balance.accumulatedMarks = balance.accumulatedMarks.plus(earned);
       balance.totalMarksEarned = balance.totalMarksEarned.plus(earned);
@@ -282,6 +282,7 @@ export function handleSailTokenTransfer(event: TransferEvent): void {
     senderBalance.save();
     updateSailTokenMarksInTotal(fromAddress, senderBalance, timestamp);
     ensureUserRegistered(tokenAddress, fromAddress);
+    onSailTokenBalanceChanged(Address.fromBytes(tokenAddress), fromAddress, timestamp);
   }
 
   // Handle receiver (if not zero address)
@@ -306,6 +307,7 @@ export function handleSailTokenTransfer(event: TransferEvent): void {
     receiverBalance.save();
     updateSailTokenMarksInTotal(toAddress, receiverBalance, timestamp);
     ensureUserRegistered(tokenAddress, toAddress);
+    onSailTokenBalanceChanged(Address.fromBytes(tokenAddress), toAddress, timestamp);
   }
 }
 

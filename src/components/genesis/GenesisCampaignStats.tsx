@@ -89,8 +89,6 @@ export function GenesisCampaignStats({
         allContractsEnded={ledgerMarks.allContractsEnded}
         isConnected={isConnected}
         totalBonusAtEnd={ledgerMarks.totalBonusAtEnd}
-        totalEarlyBonusEstimate={ledgerMarks.totalEarlyBonusEstimate}
-        totalEarlyBonusMarks={ledgerMarks.totalEarlyBonusMarks}
       />
 
       {combinedHasIndexerErrors && (

@@ -113,8 +113,8 @@ export default function GenesisIndexPage() {
     isLoadingMarks,
     refetchMarks,
     marksError,
-    bonusStatusResults,
-    isLoadingBonusStatus,
+    maidenVoyageCampaignResults,
+    isLoadingMaidenVoyageIndex,
     combinedHasIndexerErrors,
     combinedMarketsWithIndexerErrors,
     combinedHasAnyErrors,
@@ -187,7 +187,10 @@ export default function GenesisIndexPage() {
           : undefined;
 
       const marksForMarket = marksResults?.find(
-        (marks) =>
+        (marks: {
+          genesisAddress?: string;
+          data?: { userHarborMarks?: unknown };
+        }) =>
           marks.genesisAddress?.toLowerCase() ===
           (mkt as GenesisMarketConfig).addresses?.genesis?.toLowerCase()
       );
@@ -783,7 +786,10 @@ export default function GenesisIndexPage() {
 
                 // Fallback to subgraph data if contract read fails
                 const marksForMarket = marksResults?.find(
-                  (marks) =>
+                  (marks: {
+                    genesisAddress?: string;
+                    data?: { userHarborMarks?: unknown };
+                  }) =>
                     marks.genesisAddress?.toLowerCase() ===
                     (mkt as GenesisMarketConfig).addresses?.genesis?.toLowerCase()
                 );
@@ -979,7 +985,6 @@ export default function GenesisIndexPage() {
                               marks,
                               endDate,
                               userDepositUSD,
-                              bonusStatusResults,
                               genesisAddress,
                               mounted,
                               safeTotalGenesisTVL,
@@ -1216,7 +1221,6 @@ export default function GenesisIndexPage() {
                                   marks,
                                   endDate,
                                   userDepositUSD,
-                                  bonusStatusResults,
                                   genesisAddress,
                                   mounted,
                                   safeTotalGenesisTVL,
@@ -1539,7 +1543,6 @@ export default function GenesisIndexPage() {
                                   marks,
                                   endDate,
                                   userDepositUSD,
-                                  bonusStatusResults,
                                   genesisAddress,
                                   mounted,
                                   safeTotalGenesisTVL,
@@ -2040,157 +2043,108 @@ export default function GenesisIndexPage() {
                         </div>
                       </div>
 
-                      {/* Early Deposit Bonus Progress Bar - inside main market row */}
+                      {/* Maiden voyage USD deposit cap – shared across depositors */}
                       {!isEnded && !isProcessing && (() => {
-                          // Get market bonus status from the hook called at top level
-                          const marketBonusData = bonusStatusResults?.find(
-                            (status) =>
-                              status.genesisAddress?.toLowerCase() ===
+                          const mv = maidenVoyageCampaignResults?.find(
+                            (row: {
+                              genesisAddress?: string;
+                              data?: {
+                                cap?: {
+                                  capUSD?: string;
+                                  cumulativeDepositsUSD?: string;
+                                  capFilled?: boolean;
+                                } | null;
+                              } | null;
+                            }) =>
+                              row.genesisAddress?.toLowerCase() ===
                               genesisAddress?.toLowerCase()
                           );
-                          const marketBonusStatus = marketBonusData?.data;
-
-                          const collateralSymbolNormalized =
-                            collateralSymbol.toLowerCase();
-                          const isFxSAVE = collateralSymbolNormalized === "fxsave";
-                          const isEurMarket =
-                            id === "steth-eur" || id === "fxusd-eur";
-                          const isLaunchMarket =
-                            id === "eth-fxusd" ||
-                            id === "btc-fxusd" ||
-                            id === "btc-steth" ||
-                            id === "btc-usd-megaeth";
-                          /** BTC genesis markets: early-bonus threshold is shown as 0.5 BTC (not stETH). */
-                          const isBtcGenesisMarket =
-                            id === "btc-fxusd" ||
-                            id === "btc-steth" ||
-                            id === "btc-usd-megaeth";
-                          // Metals and all future campaigns use 25k fxSAVE / 15 wstETH
-                          const isMetalsOrFuture = !isLaunchMarket && !isEurMarket;
-                          const thresholdAmount = isBtcGenesisMarket
-                            ? 0.5
-                            : isEurMarket
-                              ? isFxSAVE
-                                ? 50000
-                                : 15
-                              : isMetalsOrFuture
-                                ? isFxSAVE
-                                  ? 25000
-                                  : 15
-                                : isFxSAVE
-                                  ? 250000
-                                  : 70;
-                          const fallbackBonusStatus = {
-                            cumulativeDeposits: "0",
-                            thresholdAmount: String(thresholdAmount),
-                            thresholdToken: isBtcGenesisMarket
-                              ? "BTC"
-                              : isFxSAVE
-                                ? "fxSAVE"
-                                : "wstETH",
-                            thresholdReached: false,
-                          };
-                          // Use marketBonusStatus if available, but ensure thresholdToken is set correctly
-                          const effectiveBonusStatus = marketBonusStatus
-                            ? {
-                                ...marketBonusStatus,
-                                ...(isBtcGenesisMarket
-                                  ? {
-                                      thresholdToken: "BTC" as const,
-                                      thresholdAmount: "0.5",
-                                    }
-                                  : {
-                                      thresholdToken:
-                                        marketBonusStatus.thresholdToken ||
-                                        (isFxSAVE ? "fxSAVE" : "wstETH"),
-                                      thresholdAmount:
-                                        marketBonusStatus.thresholdAmount ||
-                                        String(thresholdAmount),
-                                    }),
+                          const capRow = mv?.data?.cap as
+                            | {
+                                capUSD?: string;
+                                cumulativeDepositsUSD?: string;
+                                capFilled?: boolean;
                               }
-                            : fallbackBonusStatus;
-
-                          if (isLoadingBonusStatus) return null;
-
-                          const bonusProgress = Math.min(
-                            100,
-                            (Number(effectiveBonusStatus.cumulativeDeposits) /
-                              Number(effectiveBonusStatus.thresholdAmount)) *
-                              100
-                          );
-
-                          // Get user's marks for this market
+                            | null
+                            | undefined;
                           const marksForMarket = marksResults?.find(
-                            (marks) =>
-                              marks.genesisAddress?.toLowerCase() ===
+                            (m: {
+                              genesisAddress?: string;
+                              data?: { userHarborMarks?: unknown };
+                            }) =>
+                              m.genesisAddress?.toLowerCase() ===
                               genesisAddress?.toLowerCase()
                           );
                           const userMarksData =
                             marksForMarket?.data?.userHarborMarks;
-                          const marks = Array.isArray(userMarksData)
+                          const um = Array.isArray(userMarksData)
                             ? userMarksData[0]
                             : userMarksData;
+                          const ownership = parseFloat(
+                            um?.finalMaidenVoyageOwnershipShare || "0"
+                          );
+                          const counted = parseFloat(
+                            um?.maidenVoyageDepositCountedUSD || "0"
+                          );
+                          const boost = parseFloat(
+                            um?.maidenVoyageBoostMultiplier || "1"
+                          );
 
-                          const userQualifies =
-                            marks?.qualifiesForEarlyBonus || false;
-                          // Calculate qualified deposit USD:
-                          // - If user has a current deposit, use current deposit USD (calculated with current price)
-                          // - If user has no current deposit (e.g., claimed after genesis ended), use subgraph value
-                          //   (historical data, price at deposit time is fine for display purposes)
-                          const earlyBonusEligibleDepositUSDFromSubgraph =
-                            parseFloat(
-                              marks?.earlyBonusEligibleDepositUSD || "0"
-                            );
-                          const earlyBonusEligibleUSD =
-                            userDepositUSD > 0
-                              ? userDepositUSD // Use current deposit USD (calculated with current price)
-                              : earlyBonusEligibleDepositUSDFromSubgraph; // Use subgraph value if no current deposit
+                          if (isLoadingMaidenVoyageIndex && !capRow) return null;
+
+                          const capUsd = parseFloat(capRow?.capUSD || "0");
+                          const cumulative = parseFloat(
+                            capRow?.cumulativeDepositsUSD || "0"
+                          );
+                          const progressPct =
+                            capUsd > 0
+                              ? Math.min(
+                                  100,
+                                  (cumulative / capUsd) * 100
+                                )
+                              : 0;
 
                           return (
                             <div className="px-2 pt-2.5 pb-0.5 border-t border-[#1E4775]/10 -mb-1 mt-1">
-                              <div className="mb-0 -mt-1">
-                                {/* Progress Bar - label, bar, amounts, and qualification on one line */}
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <span className="text-[10px] text-[#1E4775] font-semibold whitespace-nowrap">
-                                    Early Deposit Bonus
-                                  </span>
-                                  <div className="flex-1 bg-gray-200 rounded-full h-1.5 min-w-[100px]">
-                                    <div
-                                      className={`h-1.5 rounded-full transition-all ${
-                                        effectiveBonusStatus.thresholdReached
-                                          ? "bg-gray-400"
-                                          : "bg-[#FF8A7A]"
-                                      }`}
-                                      style={{ width: `${bonusProgress}%` }}
-                                    />
-                                  </div>
-                                  <span className="text-[10px] text-[#1E4775]/70 whitespace-nowrap">
-                                    {`${Number(
-                                      effectiveBonusStatus.cumulativeDeposits
-                                    ).toLocaleString(undefined, {
-                                      maximumFractionDigits: 0,
-                                    })} / ${Number(
-                                      effectiveBonusStatus.thresholdAmount
-                                    ).toLocaleString(undefined, {
-                                      maximumFractionDigits: 0,
-                                    })} ${
-                                      effectiveBonusStatus.thresholdToken === "wstETH"
-                                        ? "stETH"
-                                        : effectiveBonusStatus.thresholdToken === "BTC"
-                                          ? "BTC"
-                                          : effectiveBonusStatus.thresholdToken
+                              <div className="flex items-center gap-2 flex-wrap mb-1">
+                                <span className="text-[10px] text-[#1E4775] font-semibold whitespace-nowrap">
+                                  Deposit cap (USD)
+                                </span>
+                                <div className="flex-1 bg-gray-200 rounded-full h-1.5 min-w-[100px]">
+                                  <div
+                                    className={`h-1.5 rounded-full transition-all ${
+                                      capRow?.capFilled
+                                        ? "bg-gray-400"
+                                        : "bg-[#FF8A7A]"
                                     }`}
-                                  </span>
-
-                                  {/* User Qualification Status - on same line */}
-                                  {userQualifies &&
-                                    earlyBonusEligibleUSD > 0 && (
-                                      <span className="text-[10px] text-[#1E4775] font-semibold leading-none whitespace-nowrap">
-                                        ✓ {formatUSD(earlyBonusEligibleUSD)}{" "}
-                                        qualified
-                                      </span>
-                                    )}
+                                    style={{ width: `${progressPct}%` }}
+                                  />
                                 </div>
+                                <span className="text-[10px] text-[#1E4775]/70 whitespace-nowrap">
+                                  {formatUSD(cumulative)} / {formatUSD(capUsd)}
+                                </span>
+                              </div>
+                              <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-[#1E4775]/80">
+                                {ownership > 0 && (
+                                  <span>
+                                    Your ownership (at end):{" "}
+                                    <span className="font-semibold text-[#1E4775]">
+                                      {(ownership * 100).toFixed(2)}%
+                                    </span>
+                                  </span>
+                                )}
+                                {counted > 0 && ownership === 0 && (
+                                  <span>
+                                    Counted toward cap: {formatUSD(counted)}
+                                  </span>
+                                )}
+                                <span>
+                                  Post-genesis marks use a voyage boost (up to
+                                  cap); current:{" "}
+                                  <span className="font-mono font-semibold text-[#1E4775]">
+                                    {boost.toFixed(2)}×
+                                  </span>
+                                </span>
                               </div>
                             </div>
                           );

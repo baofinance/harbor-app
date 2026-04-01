@@ -10,8 +10,7 @@ import { redactUrl, redactForLog } from "@/utils/redactUrl";
 // Note: UserHarborMarks id format is {genesisAddress}-{userAddress}
 // userTotalMarks id format is {userAddress}
 const HARBOR_MARKS_QUERY = `
-  query GetUserMarks($userAddress: Bytes!, $genesisAddress: Bytes!, $genesisId: ID!) {
-    # Genesis marks (from deposits during genesis period)
+  query GetUserMarks($userAddress: Bytes!, $genesisAddress: Bytes!, $genesisId: ID!, $capId: ID!) {
     userHarborMarks(id: $genesisId) {
       id
       user
@@ -29,9 +28,20 @@ const HARBOR_MARKS_QUERY = `
       genesisStartDate
       genesisEndDate
       genesisEnded
-      qualifiesForEarlyBonus
-      earlyBonusMarks
-      earlyBonusEligibleDepositUSD
+      maidenVoyageDepositCountedUSD
+      finalMaidenVoyageOwnershipShare
+      baselineClaimUSDForBoost
+      maidenVoyageBoostMultiplier
+      maidenVoyageMaxBoost
+      lastMaidenVoyageClaimUSD
+      lastUpdated
+    }
+    maidenVoyageCapStatus(id: $capId) {
+      id
+      capUSD
+      cumulativeDepositsUSD
+      capFilled
+      capFilledAt
       lastUpdated
     }
     
@@ -106,17 +116,24 @@ const HARBOR_MARKS_QUERY = `
   }
 `;
 
-// Query for market bonus status (early deposit bonus tracking)
-const MARKET_BONUS_STATUS_QUERY = `
-  query GetMarketBonusStatus($contractAddress: Bytes!) {
-    marketBonusStatus(id: $contractAddress) {
+const MAIDEN_VOYAGE_CAMPAIGN_QUERY = `
+  query GetMaidenVoyageCampaignIndex($capId: ID!) {
+    maidenVoyageCapStatus(id: $capId) {
       id
       contractAddress
-      thresholdReached
-      thresholdReachedAt
-      cumulativeDeposits
-      thresholdAmount
-      thresholdToken
+      capUSD
+      cumulativeDepositsUSD
+      capFilled
+      capFilledAt
+      lastUpdated
+    }
+    maidenVoyageYieldGlobal(id: $capId) {
+      id
+      genesisAddress
+      cumulativeYieldUSD
+      cumulativeYieldFromCollateralUSD
+      cumulativeYieldFromMintFeesUSD
+      cumulativeYieldFromRedeemFeesUSD
       lastUpdated
     }
   }
@@ -151,6 +168,20 @@ interface HarborMarksData {
     genesisStartDate: string;
     genesisEndDate: string | null;
     genesisEnded: boolean;
+    maidenVoyageDepositCountedUSD?: string;
+    finalMaidenVoyageOwnershipShare?: string;
+    baselineClaimUSDForBoost?: string;
+    maidenVoyageBoostMultiplier?: string;
+    maidenVoyageMaxBoost?: string;
+    lastMaidenVoyageClaimUSD?: string;
+    lastUpdated: string;
+  } | null;
+  maidenVoyageCapStatus?: {
+    id: string;
+    capUSD: string;
+    cumulativeDepositsUSD: string;
+    capFilled: boolean;
+    capFilledAt?: string | null;
     lastUpdated: string;
   } | null;
   userTotalMarks: {
@@ -220,6 +251,7 @@ export function useHarborMarks({
             userAddress: userAddress,
             genesisAddress: genesisAddressLower,
             genesisId: genesisId,
+            capId: genesisAddressLower,
           },
         }),
       });
@@ -313,7 +345,13 @@ export function useAllHarborMarks(genesisAddresses: string[]) {
         });
       }
       if (!address || genesisAddresses.length === 0) {
-        return [];
+        return {
+          results: [],
+          hasIndexerErrors: false,
+          hasAnyErrors: false,
+          marketsWithIndexerErrors: [] as string[],
+          marketsWithOtherErrors: [] as string[],
+        };
       }
 
       // Log configuration for debugging (URL redacted to avoid leaking endpoint/API key)
@@ -338,6 +376,7 @@ export function useAllHarborMarks(genesisAddresses: string[]) {
               userAddress: userAddress,
               genesisAddress: genesisAddressLower,
               genesisId: genesisId,
+              capId: genesisAddressLower,
             },
           }),
             });
@@ -511,67 +550,84 @@ export function useAllHarborMarks(genesisAddresses: string[]) {
   });
 }
 
-// Hook to get all market bonus statuses (early deposit bonus tracking)
-export function useAllMarketBonusStatus(genesisAddresses: string[]) {
+/** Per-genesis USD cap progress + aggregated yield pool (requires maiden voyage schema). */
+export function useAllMaidenVoyageCampaignIndex(genesisAddresses: string[]) {
   const graphUrl = getGraphUrl();
 
   return useQuery({
-    queryKey: ["allMarketBonusStatus", genesisAddresses],
+    queryKey: ["allMaidenVoyageCampaignIndex", genesisAddresses],
     queryFn: async () => {
       if (genesisAddresses.length === 0) {
-        return [];
+        return {
+          results: [],
+          hasIndexerErrors: false,
+          hasAnyErrors: false,
+          marketsWithIndexerErrors: [] as string[],
+          marketsWithOtherErrors: [] as string[],
+        };
       }
 
-      // Query all markets in parallel
       const queries = genesisAddresses.map((genesisAddress) => {
+        const capId = genesisAddress.toLowerCase();
         return fetch(graphUrl, {
           method: "POST",
-          headers: getGraphHeaders(),
+          headers: getGraphHeaders(graphUrl),
           body: JSON.stringify({
-            query: MARKET_BONUS_STATUS_QUERY,
-            variables: {
-              contractAddress: genesisAddress.toLowerCase(),
-            },
+            query: MAIDEN_VOYAGE_CAMPAIGN_QUERY,
+            variables: { capId },
           }),
-        }).then(async (res) => {
-          if (!res.ok) {
-            const errorText = await res.text().catch(() => res.statusText);
-            return { data: null, errors: [{ message: res.statusText }] };
-          }
-          const json = await res.json();
-          return json;
-        }).catch((error) => {
-          return { data: null, errors: [{ message: error.message }] };
-        });
+        })
+          .then(async (res) => {
+            if (!res.ok) {
+              return { data: null, errors: [{ message: res.statusText }] };
+            }
+            const json = await res.json();
+            if (json.errors?.length) {
+              return { data: null, errors: json.errors };
+            }
+            return json;
+          })
+          .catch((error: { message?: string }) => {
+            return { data: null, errors: [{ message: error.message }] };
+          });
       });
 
       const results = await Promise.all(queries);
 
-      // Map results with error details
       const mappedResults = results.map((result, index) => {
         const genesisAddress = genesisAddresses[index];
-        const hasErrors = result.errors && result.errors.length > 0;
+        const hasErrors =
+          !!(result as { errors?: unknown[] }).errors?.length;
         let isIndexerError = false;
-        
+
         if (hasErrors) {
-          const errorMessages = result.errors.map((err: any) => err.message || String(err)).join('; ');
-          isIndexerError = errorMessages.includes('bad indexers') || errorMessages.includes('indexer');
+          const errorMessages = (result as { errors: { message?: string }[] }).errors
+            .map((err) => err.message || String(err))
+            .join("; ");
+          isIndexerError =
+            errorMessages.includes("bad indexers") ||
+            errorMessages.includes("indexer");
         }
-        
+
+        const data = (result as { data?: Record<string, unknown> }).data;
         return {
           genesisAddress,
-          data: result.data?.marketBonusStatus || null,
-          errors: result.errors,
+          data:
+            data &&
+            (data.maidenVoyageCapStatus || data.maidenVoyageYieldGlobal)
+              ? {
+                  cap: data.maidenVoyageCapStatus ?? null,
+                  yieldGlobal: data.maidenVoyageYieldGlobal ?? null,
+                }
+              : null,
+          errors: (result as { errors?: unknown[] }).errors,
           hasErrors,
           isIndexerError,
         };
       });
 
-      // Check if any errors indicate indexer issues
       const hasIndexerErrors = mappedResults.some((r) => r.isIndexerError);
       const hasAnyErrors = mappedResults.some((r) => r.hasErrors);
-      
-      // Get list of markets with errors
       const marketsWithIndexerErrors = mappedResults
         .filter((r) => r.isIndexerError)
         .map((r) => r.genesisAddress);
@@ -588,7 +644,7 @@ export function useAllMarketBonusStatus(genesisAddresses: string[]) {
       };
     },
     enabled: genesisAddresses.length > 0,
-    refetchInterval: 30000, // Refetch every 30 seconds to show real-time progress
+    refetchInterval: 30000,
     staleTime: 20000,
     refetchOnWindowFocus: false,
     retry: false,

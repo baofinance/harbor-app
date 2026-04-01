@@ -39,8 +39,6 @@ const MARKS_BY_IDS_QUERY = `
       currentMarks
       genesisEnded
       currentDepositUSD
-      earlyBonusEligibleDepositUSD
-      qualifiesForEarlyBonus
       contractAddress
     }
   }
@@ -82,8 +80,6 @@ export function useTotalMaidenVoyageMarks() {
       currentMarks: string; 
       genesisEnded: boolean;
       currentDepositUSD: string;
-      earlyBonusEligibleDepositUSD: string;
-      qualifiesForEarlyBonus: boolean;
       contractAddress: string;
       marksForAPR?: number;
     }>;
@@ -287,8 +283,6 @@ export function useTotalMaidenVoyageMarks() {
                           currentMarks
                           genesisEnded
                           currentDepositUSD
-                          earlyBonusEligibleDepositUSD
-                          qualifiesForEarlyBonus
                           contractAddress
                         }
                       }
@@ -353,8 +347,6 @@ export function useTotalMaidenVoyageMarks() {
             currentMarks: string; 
             genesisEnded: boolean;
             currentDepositUSD: string;
-            earlyBonusEligibleDepositUSD: string;
-            qualifiesForEarlyBonus: boolean;
             marksForAPR?: number;
           }>;
         }>(["totalMaidenVoyageMarks", genesisAddresses]);
@@ -393,40 +385,50 @@ export function useTotalMaidenVoyageMarks() {
           endedCount: rawMarks.length - activeMarks.length,
         });
         
-        const validMarks = activeMarks.map((marks: any) => {
+        type ActiveMarkRow = {
+          id: string;
+          currentMarks: string;
+          genesisEnded: boolean;
+          currentDepositUSD: string;
+          contractAddress: string;
+          marksForAPR: number;
+        };
+
+        const validMarks: ActiveMarkRow[] = activeMarks.map((marks: any) => {
           const currentMarks = parseFloat(marks.currentMarks || "0");
           const currentDepositUSD = parseFloat(marks.currentDepositUSD || "0");
-          const earlyBonusEligibleDepositUSD = parseFloat(marks.earlyBonusEligibleDepositUSD || "0");
-          const genesisEnded = marks.genesisEnded;
-          const qualifiesForEarlyBonus = marks.qualifiesForEarlyBonus || false;
-
+          const genesisEnded = Boolean(marks.genesisEnded);
+          const daysLeftInGenesis = 7;
           const marksForAPR = calculateMarksForAPR(
             currentMarks,
             currentDepositUSD,
-            earlyBonusEligibleDepositUSD,
             genesisEnded,
-            qualifiesForEarlyBonus
+            daysLeftInGenesis
           );
 
           return {
-            ...marks,
-            marksForAPR, // Include calculated marks with bonuses
+            id: marks.id as string,
+            currentMarks: marks.currentMarks as string,
+            genesisEnded: marks.genesisEnded as boolean,
+            currentDepositUSD: marks.currentDepositUSD as string,
+            contractAddress: marks.contractAddress as string,
+            marksForAPR,
           };
         });
 
         // Group by contract address for debugging
-        const marksByContract = new Map<string, typeof validMarks>();
-        validMarks.forEach((marks) => {
-          const contract = marks.contractAddress.toLowerCase();
+        const marksByContract = new Map<string, ActiveMarkRow[]>();
+        validMarks.forEach((row) => {
+          const contract = row.contractAddress.toLowerCase();
           if (!marksByContract.has(contract)) {
             marksByContract.set(contract, []);
           }
-          marksByContract.get(contract)!.push(marks);
+          marksByContract.get(contract)!.push(row);
         });
         
         console.log('[useTotalMaidenVoyageMarks] Marks by contract:', 
           Array.from(marksByContract.entries()).map(([contract, entries]) => {
-            const totalMarksForContract = entries.reduce((sum, e) => sum + (e.marksForAPR || parseFloat(e.currentMarks || "0")), 0);
+            const totalMarksForContract = entries.reduce((sum: number, e: ActiveMarkRow) => sum + (e.marksForAPR || parseFloat(e.currentMarks || "0")), 0);
             return {
               contract,
               entries: entries.length,
@@ -442,14 +444,14 @@ export function useTotalMaidenVoyageMarks() {
 
         console.log('[useTotalMaidenVoyageMarks] Query result:', {
           totalEntries: validMarks.length,
-          sampleEntries: validMarks.slice(0, 3).map(e => ({
+          sampleEntries: validMarks.slice(0, 3).map((e: ActiveMarkRow) => ({
             id: e.id,
             currentMarks: e.currentMarks,
             marksForAPR: e.marksForAPR,
             currentDepositUSD: e.currentDepositUSD,
           })),
-          totalMarksBase: validMarks.reduce((sum, e) => sum + parseFloat(e.currentMarks || "0"), 0),
-          totalMarksWithBonuses: validMarks.reduce((sum, e) => sum + (e.marksForAPR || 0), 0),
+          totalMarksBase: validMarks.reduce((sum: number, e: ActiveMarkRow) => sum + parseFloat(e.currentMarks || "0"), 0),
+          totalMarksWithBonuses: validMarks.reduce((sum: number, e: ActiveMarkRow) => sum + (e.marksForAPR || 0), 0),
         });
 
         return { userHarborMarks: validMarks };

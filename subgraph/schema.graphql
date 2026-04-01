@@ -15,9 +15,8 @@ type Deposit @entity(immutable: true) {
   # Withdrawal tracking
   withdrawnAmount: BigInt! # Amount withdrawn (0 if not withdrawn)
   withdrawnAt: BigInt # Timestamp when withdrawn (null if not withdrawn)
-  # Early deposit bonus tracking
-  qualifiesForEarlyBonus: Boolean! # Whether this deposit qualifies for early bonus (deposited before threshold)
-  earlyBonusAmount: BigDecimal! # Bonus marks this deposit would earn (100 marks per dollar)
+  # Maiden voyage ownership cap: USD portion of this deposit counted toward fixed cap (0 if cap already filled)
+  countedTowardCapUSD: BigDecimal!
 }
 
 type Withdrawal @entity(immutable: true) {
@@ -80,10 +79,14 @@ type UserHarborMarks @entity(immutable: false) {
   genesisStartDate: BigInt! # Genesis start timestamp
   genesisEndDate: BigInt # Genesis end timestamp (null if not ended)
   genesisEnded: Boolean! # Whether genesis has ended
-  # Early deposit bonus
-  qualifiesForEarlyBonus: Boolean! # Whether user has any qualifying deposits
-  earlyBonusMarks: BigDecimal! # Early bonus marks earned (calculated at genesis end)
-  earlyBonusEligibleDepositUSD: BigDecimal! # USD value of deposits that qualify for bonus (reduces on withdrawal)
+  # Maiden voyage: deposit counted under USD cap (pre–genesis-end); final ownership = deposit counted / cap
+  maidenVoyageDepositCountedUSD: BigDecimal!
+  finalMaidenVoyageOwnershipShare: BigDecimal! # Set at genesis end: counted USD / cap USD (0–1)
+  # ve-style boost (post genesis): claim on ha+sail vs baseline
+  baselineClaimUSDForBoost: BigDecimal! # Snapshot at genesis end (currentDepositUSD)
+  maidenVoyageBoostMultiplier: BigDecimal! # Effective multiplier 1 .. maxBoost (monotonic non-increasing)
+  maidenVoyageMaxBoost: BigDecimal! # Config cap (e.g. 5)
+  lastMaidenVoyageClaimUSD: BigDecimal! # Last computed anchor+sail USD for this market
   # Last updated
   lastUpdated: BigInt! # Last block timestamp when updated
 }
@@ -94,16 +97,26 @@ type UserList @entity(immutable: false) {
   users: [Bytes!]! # Array of user addresses who have deposits
 }
 
-# Market-level early deposit bonus tracking
-type MarketBonusStatus @entity(immutable: false) {
+# Per-genesis maiden voyage deposit cap (USD) and fill progress
+type MaidenVoyageCapStatus @entity(immutable: false) {
   id: ID! # {contractAddress}
   contractAddress: Bytes! # Genesis contract address
-  thresholdReached: Boolean! # Whether threshold has been reached
-  thresholdReachedAt: BigInt # Block timestamp when threshold was reached (null if not reached)
-  cumulativeDeposits: BigDecimal! # Cumulative deposits in token amounts (fxUSD or wstETH)
-  thresholdAmount: BigDecimal! # 250000 fxUSD tokens for fxSAVE markets, 70 wstETH tokens for wstETH markets
-  thresholdToken: String! # "fxSAVE" or "wstETH"
-  lastUpdated: BigInt! # Last update timestamp
+  capUSD: BigDecimal! # Maximum USD accepted for ownership (e.g. 250000)
+  cumulativeDepositsUSD: BigDecimal! # Sum of countedTowardCapUSD from deposits
+  capFilled: Boolean!
+  capFilledAt: BigInt
+  lastUpdated: BigInt!
+}
+
+# Per-genesis aggregate yield pool (participants split by finalMaidenVoyageOwnershipShare)
+type MaidenVoyageYieldGlobal @entity(immutable: false) {
+  id: ID! # {genesisAddress}
+  genesisAddress: Bytes!
+  cumulativeYieldUSD: BigDecimal!
+  cumulativeYieldFromCollateralUSD: BigDecimal!
+  cumulativeYieldFromMintFeesUSD: BigDecimal!
+  cumulativeYieldFromRedeemFeesUSD: BigDecimal!
+  lastUpdated: BigInt!
 }
 
 # ============ Entities for Multi-Market Marks Tracking ============

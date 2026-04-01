@@ -21,8 +21,6 @@ interface GenesisLedgerMarksSummaryProps {
   allContractsEnded: boolean;
   isConnected: boolean;
   totalBonusAtEnd: number;
-  totalEarlyBonusEstimate: number;
-  totalEarlyBonusMarks: number;
 }
 
 export const GenesisLedgerMarksSummary = ({
@@ -35,8 +33,6 @@ export const GenesisLedgerMarksSummary = ({
   allContractsEnded,
   isConnected,
   totalBonusAtEnd,
-  totalEarlyBonusEstimate,
-  totalEarlyBonusMarks,
 }: GenesisLedgerMarksSummaryProps) => {
   const extractCampaignName = (label: string): string =>
     label.replace(/\s+Maiden Voyage\s*$/i, "").trim();
@@ -81,6 +77,15 @@ export const GenesisLedgerMarksSummary = ({
                       <p className="text-white/90 leading-relaxed">
                         When $TIDE surfaces, these marks will convert into your
                         share of rewards and governance power.
+                      </p>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-white/70 mt-0.5">•</span>
+                      <p className="text-white/90 leading-relaxed">
+                        Maiden voyage uses a shared USD deposit cap for
+                        ownership. After launch, collateral yield accrues to
+                        the pool (split by share) and marks can receive a
+                        one-way voyage boost tied to anchor and sail claims.
                       </p>
                     </div>
                   </div>
@@ -159,26 +164,6 @@ export const GenesisLedgerMarksSummary = ({
                 "0"
               )}
             </div>
-            {mounted && !isLoadingMarks && (
-              <>
-                {!allContractsEnded && totalEarlyBonusEstimate > 0 && (
-                  <div className="text-[10px] text-green-300 mt-0.5">
-                    Early deposit bonus: +
-                    {totalEarlyBonusEstimate.toLocaleString(undefined, {
-                      maximumFractionDigits: 0,
-                    })}
-                  </div>
-                )}
-                {allContractsEnded && totalEarlyBonusMarks > 0 && (
-                  <div className="text-[10px] text-green-300 mt-0.5">
-                    Early deposit bonus:{" "}
-                    {totalEarlyBonusMarks.toLocaleString(undefined, {
-                      maximumFractionDigits: 0,
-                    })}
-                  </div>
-                )}
-              </>
-            )}
           </div>
         </div>
       </div>

@@ -24,6 +24,10 @@ import {
 } from "./marksBoost";
 import { ensureUserRegistered } from "./userRegistry";
 import { accrueWithBoostWindow } from "./marksAccrual";
+import {
+  maidenVoyageMarksMultiplierForHa,
+  onHaTokenBalanceChanged,
+} from "./maidenVoyageBoost";
 // import { runDailyMarksUpdate } from "./dailyUpdate";
 
 // Constants
@@ -35,6 +39,13 @@ const ONE_E18 = BigDecimal.fromString("1000000000000000000");
 // Chainlink (mainnet) feeds
 const ETH_USD_FEED = Address.fromString("0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419");
 const BTC_USD_FEED = Address.fromString("0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c");
+const XAU_USD_FEED = Address.fromString("0x214eD9Da11D2fbe465a6fc601a91E62EbEc1a0D6");
+const XAG_USD_FEED = Address.fromString("0x379589227b15F1a12195D3f2d90bBc9F31f95235");
+const EUR_USD_FEED = Address.fromString("0xb49f677943C0aD637850Ea3b030e1d3778a050bD");
+
+const HA_GOLD_ADDR = Address.fromString("0x5b66D86932aE5D9751da588d91D494950554061d");
+const HA_SILVER_ADDR = Address.fromString("0x7dE413B0Abee6f685a8ff7fB53330E3C56523e74");
+const HA_EUR_ADDR = Address.fromString("0x83Fd69E0FF5767972b46E61C6833408361bF7346");
 
 // Production v1 ha tokens
 const HAETH = Address.fromString("0x7A53EBc85453DD006824084c4f4bE758FcF8a5B5");
@@ -76,6 +87,12 @@ function calculateBalanceUSDForToken(balance: BigInt, tokenAddress: Bytes, block
     priceUSD = fetchChainlinkPrice(ETH_USD_FEED);
   } else if (tokenAddr.equals(HABTC)) {
     priceUSD = fetchChainlinkPrice(BTC_USD_FEED);
+  } else if (tokenAddr.equals(HA_GOLD_ADDR)) {
+    priceUSD = fetchChainlinkPrice(XAU_USD_FEED);
+  } else if (tokenAddr.equals(HA_SILVER_ADDR)) {
+    priceUSD = fetchChainlinkPrice(XAG_USD_FEED);
+  } else if (tokenAddr.equals(HA_EUR_ADDR)) {
+    priceUSD = fetchChainlinkPrice(EUR_USD_FEED);
   }
 
   const amount = balance.toBigDecimal().div(ONE_E18);
@@ -168,7 +185,7 @@ function accumulateMarks(
   // Marks are awarded for all time held, including partial days
   // Frontend will estimate marks between graph updates
   if (currentTimestamp.gt(lastUpdate)) {
-    const earned = accrueWithBoostWindow(
+    const earnedRaw = accrueWithBoostWindow(
       "haToken",
       balance.tokenAddress,
       lastUpdate,
@@ -176,6 +193,8 @@ function accumulateMarks(
       balance.balanceUSD,
       baseMarksPerDollarPerDay
     );
+    const mv = maidenVoyageMarksMultiplierForHa(Address.fromBytes(balance.tokenAddress), balance.user);
+    const earned = earnedRaw.times(mv);
     if (earned.gt(BigDecimal.fromString("0"))) {
       balance.accumulatedMarks = balance.accumulatedMarks.plus(earned);
       balance.totalMarksEarned = balance.totalMarksEarned.plus(earned);
@@ -242,6 +261,7 @@ export function handleHaTokenTransfer(event: TransferEvent): void {
     
     fromBalance.save();
     updateHaTokenMarksInTotal(from, fromBalance, timestamp);
+    onHaTokenBalanceChanged(tokenContract, from, timestamp);
   }
   
   // Update receiver balance (if not zero address)
@@ -273,6 +293,7 @@ export function handleHaTokenTransfer(event: TransferEvent): void {
     
     toBalance.save();
     updateHaTokenMarksInTotal(to, toBalance, timestamp);
+    onHaTokenBalanceChanged(tokenContract, to, timestamp);
   }
 
   // Append-only holder registry for daily updates
