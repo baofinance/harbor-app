@@ -76,24 +76,21 @@ export function useAllStabilityPoolRewards({
     }));
   }, [pools]);
 
-  // Coarse key: only "ready" vs "waiting" to avoid refetching on every price tick.
-  // Refetch once when we transition from no-USD-prices to having some (e.g. wstETH loads).
-  const priceAvailabilityKey = useMemo(() => {
-    let hasUsdPrice = false;
-    if (tokenPriceMap) {
-      tokenPriceMap.forEach((price) => {
-        if (price > 1000) hasUsdPrice = true;
-      });
-    }
-    const result = hasUsdPrice ? "ready" : "waiting";
-    if (DEBUG_ANCHOR) {
-      console.log("[useAllStabilityPoolRewards] priceAvailabilityKey:", {
-        result,
-        tokenPriceMapSize: tokenPriceMap?.size,
-      });
-    }
-    return result;
+  // Refetch when the *set* of tokens with any USD/oracle price in the map changes (e.g. CoinGecko
+  // loads fxSAVE ~$1). The old `price > 1000` gate never flipped for stablecoins-only maps, so APR
+  // stayed at 0 on Transparency while Anchor (multi-market, often incl. wstETH > $1k) still refetched.
+  const tokenPriceMapKey = useMemo(() => {
+    if (!tokenPriceMap || tokenPriceMap.size === 0) return "empty";
+    return [...tokenPriceMap.keys()].sort().join(",");
   }, [tokenPriceMap]);
+
+  const peggedPriceUsdKey = useMemo(() => {
+    if (!peggedPriceUSDMap) return "none";
+    return Object.keys(peggedPriceUSDMap)
+      .filter((k) => peggedPriceUSDMap[k] != null && peggedPriceUSDMap[k] !== undefined)
+      .sort()
+      .join(",");
+  }, [peggedPriceUSDMap]);
 
   return useQuery({
     queryKey: [
@@ -101,7 +98,8 @@ export function useAllStabilityPoolRewards({
       stablePoolsKey,
       addressKey,
       overrideAddress ? "override" : "account",
-      priceAvailabilityKey,
+      tokenPriceMapKey,
+      peggedPriceUsdKey,
     ],
     queryFn: async () => {
       // We can compute pool APRs without a connected wallet (skip per-user claimable).

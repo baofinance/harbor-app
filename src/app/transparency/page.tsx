@@ -225,7 +225,9 @@ type MarketCardProps = {
     stETHPrice?: number;
     btcPrice?: number;
     ethPrice?: number;
-    poolRewardsMap: Map<any, any>;
+    poolRewardsMap: Map<string, any>;
+    /** True while pool APR query has not returned data yet (avoid showing "-" during load). */
+    poolRewardsAprPending?: boolean;
 };
 
 function MarketCard({
@@ -240,6 +242,7 @@ function MarketCard({
                                btcPrice,
                                ethPrice,
                                poolRewardsMap,
+                               poolRewardsAprPending = false,
                            }: MarketCardProps) {
     const [isExpanded, setIsExpanded] = useState(false);
 
@@ -791,11 +794,13 @@ function MarketCard({
                                                         <div
                                                             className="text-[#1E4775] font-mono font-semibold text-[10px]">
                                                             {(() => {
-                                                                // Get APR from poolRewardsMap (same as anchor page)
-                                                                const poolReward = poolRewardsMap.get(pool.address);
+                                                                const poolReward = poolRewardsMap.get(
+                                                                    pool.address.toLowerCase()
+                                                                );
                                                                 const apr = poolReward?.totalRewardAPR ?? 0;
-                                                                // Format APR same as anchor page: show value if > 0, otherwise "-"
-                                                                return apr > 0 ? `${apr.toFixed(2)}%` : "-";
+                                                                if (apr > 0) return `${apr.toFixed(2)}%`;
+                                                                if (poolRewardsAprPending) return "…";
+                                                                return "—";
                                                             })()}
                                                         </div>
                                                     </div>
@@ -1573,7 +1578,11 @@ export default function TransparencyPage() {
         }, [finishedMarkets, tokenPricesByMarket]);
 
         // Calculate APR for all pools at page level (same as anchor page)
-        const {data: allPoolRewards = []} = useAllStabilityPoolRewards({
+        const {
+            data: allPoolRewards = [],
+            isLoading: isPoolRewardsLoading,
+            isFetching: isPoolRewardsFetching,
+        } = useAllStabilityPoolRewards({
             pools: allPoolsForRewards,
             tokenPriceMap: globalTokenPriceMap, // Pass the token price map for reward token price lookup
             ethPrice: ethPrice ?? undefined,
@@ -1583,11 +1592,16 @@ export default function TransparencyPage() {
             overrideAddress: userAddress || ("0x0000000000000000000000000000000000000000" as `0x${string}`), // Use user address if available, otherwise dummy
         });
 
-        // Create a map for quick lookup: poolAddress -> rewards (same as anchor page)
+        const poolRewardsAprPending =
+            finishedMarkets.length > 0 &&
+            allPoolsForRewards.length > 0 &&
+            (isPoolRewardsLoading || (isPoolRewardsFetching && allPoolRewards.length === 0));
+
+        // Create a map for quick lookup: poolAddress -> rewards (lowercase keys for checksum safety)
         const poolRewardsMap = useMemo(() => {
-            const map = new Map<`0x${string}`, (typeof allPoolRewards)[0]>();
+            const map = new Map<string, (typeof allPoolRewards)[0]>();
             allPoolRewards.forEach((poolReward) => {
-                map.set(poolReward.poolAddress, poolReward);
+                map.set(poolReward.poolAddress.toLowerCase(), poolReward);
             });
             return map;
         }, [allPoolRewards]);
@@ -1806,6 +1820,7 @@ export default function TransparencyPage() {
                                                 btcPrice={btcPrice || undefined}
                                                 ethPrice={ethPrice || undefined}
                                                 poolRewardsMap={poolRewardsMap}
+                                                poolRewardsAprPending={poolRewardsAprPending}
                                             />
                                         ))}
                                     </div>
