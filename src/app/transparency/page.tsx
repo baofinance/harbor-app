@@ -633,60 +633,6 @@ function MarketCard({
                                         Sail Supply
                                     </div>
                                     <div className="flex items-center justify-center gap-1">
-                                        {(() => {
-                                            // Determine sail token icon based on market type
-                                            const marketIdLower = market.marketId.toLowerCase();
-                                            const isBtcMarket = marketIdLower.includes("btc");
-                                            const collateralLower = collateralHeldSymbol.toLowerCase();
-
-                                            if (isBtcMarket) {
-                                                // BTC markets
-                                                if (collateralLower.includes("fxusd") || collateralLower.includes("fxsave")) {
-                                                    return (
-                                                        <Image
-                                                            src="/icons/hsUSDBTC.png"
-                                                            alt="hsUSDBTC"
-                                                            width={16}
-                                                            height={16}
-                                                            className="flex-shrink-0"
-                                                        />
-                                                    );
-                                                } else if (collateralLower.includes("steth") || collateralLower.includes("wsteth")) {
-                                                    return (
-                                                        <Image
-                                                            src="/icons/hsETHBTC.png"
-                                                            alt="hsETHBTC"
-                                                            width={16}
-                                                            height={16}
-                                                            className="flex-shrink-0"
-                                                        />
-                                                    );
-                                                }
-                                            } else {
-                                                // ETH markets
-                                                if (collateralLower.includes("fxusd") || collateralLower.includes("fxsave")) {
-                                                    return (
-                                                        <Image
-                                                            src="/icons/hsUSDETH.png"
-                                                            alt="hsUSDETH"
-                                                            width={16}
-                                                            height={16}
-                                                            className="flex-shrink-0"
-                                                        />
-                                                    );
-                                                }
-                                            }
-                                            // Fallback to default
-                                            return (
-                                                <Image
-                                                    src="/icons/hsUSDETH.png"
-                                                    alt="hsToken"
-                                                    width={16}
-                                                    height={16}
-                                                    className="flex-shrink-0"
-                                                />
-                                            );
-                                        })()}
                                         <Image
                                             src={getLogoPath(leveragedTokenSymbol)}
                                             alt={leveragedTokenSymbol}
