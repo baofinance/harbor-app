@@ -68,12 +68,12 @@ import { FeeDisplayRow } from "@/components/anchor/FeeDisplayRow";
 import { getRevertReason } from "@/utils/parseViemRevert";
 import type { DefinedMarket } from "@/config/markets";
 import { anchorAddressByName } from "@/types/anchor";
+import { calculateDeadline } from "@/utils/permit";
 import {
-  calculateDeadline,
-  STETH_ZAP_PERMIT_ABI,
-  STABILITY_POOL_ZAP_ABI,
-  STABILITY_POOL_ZAP_PERMIT_ABI,
-} from "@/utils/permit";
+  DEFAULT_WRAP_LEG_SLIPPAGE_BPS,
+  minWrappedCollateralAfterUnderlyingToWrapped,
+  minWrappedCollateralForEthBaseZap,
+} from "@/utils/minterZapV4";
 
 // -----------------------------------------------------------------------------
 // Debug logging helpers
@@ -3928,6 +3928,44 @@ export const AnchorDepositWithdrawModal = ({
   const tempWarningTimerRef = useRef<NodeJS.Timeout | null>(null);
   const lastAdjustedAmountRef = useRef<string | null>(null);
 
+  /** Simple-mode deposit: clear amount, tx/progress, pool/reward picks; keep selected deposit token. */
+  const resetSimpleDepositFlowKeepToken = () => {
+    setAmount("");
+    anyTokenDeposit.setAmount("");
+    setStep("input");
+    setError(null);
+    setTxHash(null);
+    setTxHashes({});
+    setCurrentStep(1);
+    setSelectedRewardToken(null);
+    setSelectedStabilityPool(null);
+    setDepositInStabilityPool(false);
+    setDepositLimitWarning(null);
+    lastAdjustedAmountRef.current = null;
+    progress.reset();
+    setProgressConfig({ ...defaultProgressConfig });
+    setTempMaxWarning((prev) => {
+      if (prev && tempWarningTimerRef.current) {
+        clearTimeout(tempWarningTimerRef.current);
+        tempWarningTimerRef.current = null;
+      }
+      return null;
+    });
+  };
+
+  /** From stability-pool step back to reward-token step: clear pool + tx state; keep amount & reward token. */
+  const leaveStabilityPoolStepToReward = () => {
+    setStep("input");
+    setError(null);
+    setTxHash(null);
+    setTxHashes({});
+    setSelectedStabilityPool(null);
+    setDepositInStabilityPool(false);
+    progress.reset();
+    setProgressConfig({ ...defaultProgressConfig });
+    setCurrentStep(2);
+  };
+
   // Helper function to calculate max acceptable amount for swap deposits
   const calculateMaxSwapAmount = useMemo(() => {
     // Skip for direct deposits (wstETH, fxSAVE) that don't need swaps
@@ -4865,7 +4903,6 @@ export const AnchorDepositWithdrawModal = ({
     setStep("input");
     setError(null);
     setTxHash(null);
-    setIsProcessing(false);
   };
 
   const handleTabChange = (tab: TabType) => {
@@ -5968,6 +6005,19 @@ export const AnchorDepositWithdrawModal = ({
                 isActuallyStETH,
               });
             }
+
+            let zapWrapRateForMinW =
+              marketForDepositAsset?.wrappedRate || selectedMarket?.wrappedRate;
+            if (!zapWrapRateForMinW && zapAddress) {
+              const marketByZap = marketsForToken.find(
+                ({ market: m }) =>
+                  m?.addresses?.peggedTokenZap?.toLowerCase() ===
+                    zapAddress.toLowerCase() ||
+                  m?.addresses?.leveragedTokenZap?.toLowerCase() ===
+                    zapAddress.toLowerCase()
+              )?.market;
+              zapWrapRateForMinW = marketByZap?.wrappedRate;
+            }
             
             // Check network before sending transaction
             if (!(await ensureCorrectNetwork())) {
@@ -5987,13 +6037,21 @@ export const AnchorDepositWithdrawModal = ({
             // Call the correct zap function based on asset type
             let zapHash: `0x${string}`;
             if (isActuallyETH) {
+              const minWEth = await minWrappedCollateralForEthBaseZap(
+                publicClient ?? undefined,
+                zapAddress as `0x${string}`,
+                swappedAmount,
+                zapWrapRateForMinW,
+                DEFAULT_WRAP_LEG_SLIPPAGE_BPS
+              );
               if (shouldDepositToPool && stabilityPoolAddress) {
                 const minStabilityPoolOut = (minPeggedOut * (feePercentage !== undefined && feePercentage >= 1 ? 98n : 99n)) / 100n;
                 zapHash = await writeContractAsync({
                   address: zapAddress,
-                  abi: STABILITY_POOL_ZAP_ABI,
-                  functionName: "zapEthToStabilityPool",
+                  abi: MINTER_ETH_ZAP_V3_ABI,
+                  functionName: "zapBaseAssetToStabilityPool",
                   args: [
+                    minWEth,
                     address as `0x${string}`,
                     minPeggedOut,
                     stabilityPoolAddress as `0x${string}`,
@@ -6007,17 +6065,21 @@ export const AnchorDepositWithdrawModal = ({
                 if (onSuccess) onSuccess();
                 return;
               }
-              debugTx("zap/ethToPegged", {
+              debugTx("zap/baseAssetToPegged", {
                 zapAddress,
-                function: "zapEthToPegged",
+                function: "zapBaseAssetToPegged",
                 args: [address, minPeggedOut.toString()],
                 value: swappedAmount.toString(),
               });
               zapHash = await writeContractAsync({
               address: zapAddress,
                 abi: MINTER_ETH_ZAP_V3_ABI,
-                functionName: "zapEthToPegged",
-                args: [address as `0x${string}`, minPeggedOut],
+                functionName: "zapBaseAssetToPegged",
+                args: [
+                  minWEth,
+                  address as `0x${string}`,
+                  minPeggedOut,
+                ],
               value: swappedAmount,
             });
             } else if (isActuallyStETH) {
@@ -6049,6 +6111,12 @@ export const AnchorDepositWithdrawModal = ({
               
               if (!stETHAddress) throw new Error("stETH address not found. Please ensure you're depositing to a wstETH market.");
 
+              const minWSteth = minWrappedCollateralAfterUnderlyingToWrapped(
+                swappedAmount,
+                zapWrapRateForMinW,
+                DEFAULT_WRAP_LEG_SLIPPAGE_BPS
+              );
+
               if (permitEnabled && (mintOnly || shouldDepositToPool)) {
                 try {
                   const permitResult = await handlePermitOrApproval(
@@ -6077,10 +6145,11 @@ export const AnchorDepositWithdrawModal = ({
                       const deadline = permitResult.deadline || calculateDeadline(3600);
                       const permitHash = await writeContractAsync({
                         address: zapAddress,
-                        abi: STABILITY_POOL_ZAP_PERMIT_ABI,
-                        functionName: "zapStEthToStabilityPoolWithPermit",
+                        abi: MINTER_ETH_ZAP_V3_ABI,
+                        functionName: "zapCollateralToStabilityPoolWithPermit",
                         args: [
                           swappedAmount,
+                          minWSteth,
                           address as `0x${string}`,
                           minPeggedOut,
                           stabilityPoolAddress as `0x${string}`,
@@ -6107,10 +6176,11 @@ export const AnchorDepositWithdrawModal = ({
                     setStep("minting");
                     const permitHash = await writeContractAsync({
                       address: zapAddress,
-                      abi: STETH_ZAP_PERMIT_ABI,
-                      functionName: "zapStEthToPeggedWithPermit",
+                      abi: MINTER_ETH_ZAP_V3_ABI,
+                      functionName: "zapCollateralToPeggedWithPermit",
                       args: [
                         swappedAmount,
+                        minWSteth,
                         address as `0x${string}`,
                         minPeggedOut,
                         permitResult.deadline,
@@ -6164,16 +6234,21 @@ export const AnchorDepositWithdrawModal = ({
                 setStep("minting");
               }
               
-              debugTx("zap/stEthToPegged", {
+              debugTx("zap/collateralToPegged", {
                 zapAddress,
-                function: "zapStEthToPegged",
+                function: "zapCollateralToPegged",
                 args: [swappedAmount.toString(), address, minPeggedOut.toString()],
               });
               zapHash = await writeContractAsync({
                 address: zapAddress,
                 abi: MINTER_ETH_ZAP_V3_ABI,
-                functionName: "zapStEthToPegged",
-                args: [swappedAmount, address as `0x${string}`, minPeggedOut],
+                functionName: "zapCollateralToPegged",
+                args: [
+                  swappedAmount,
+                  minWSteth,
+                  address as `0x${string}`,
+                  minPeggedOut,
+                ],
               });
             } else {
               throw new Error("Invalid asset for ETH/stETH zap");
@@ -6364,11 +6439,11 @@ export const AnchorDepositWithdrawModal = ({
                   ) {
                     const minStabilityPoolOut = (minPeggedOut * (feePercentage !== undefined && feePercentage >= 1 ? 98n : 99n)) / 100n;
                     const functionName = isActuallyUSDC
-                      ? "zapUsdcToStabilityPoolWithPermit"
-                      : "zapFxUsdToStabilityPoolWithPermit";
+                      ? "zapBaseAssetToStabilityPoolWithPermit"
+                      : "zapCollateralToStabilityPoolWithPermit";
                     const permitHash = await writeContractAsync({
                       address: zapAddress,
-                      abi: STABILITY_POOL_ZAP_PERMIT_ABI,
+                      abi: MINTER_USDC_ZAP_V3_ABI,
                       functionName,
                       args: [
                         swappedAmount,
@@ -6393,8 +6468,8 @@ export const AnchorDepositWithdrawModal = ({
                   }
 
                   const functionName = isActuallyUSDC
-                    ? "zapUsdcToPeggedWithPermit"
-                    : "zapFxUsdToPeggedWithPermit";
+                    ? "zapBaseAssetToPeggedWithPermit"
+                    : "zapCollateralToPeggedWithPermit";
                   const permitHash = await writeContractAsync({
                     address: zapAddress,
                     abi: MINTER_USDC_ZAP_V3_ABI,
@@ -6468,9 +6543,9 @@ export const AnchorDepositWithdrawModal = ({
             // Call the correct zap function based on asset type
             let zapHash: `0x${string}`;
             if (isActuallyUSDC) {
-              debugTx("zap/usdcToPegged", {
+              debugTx("zap/baseAssetToPegged", {
                 zapAddress,
-                function: "zapUsdcToPegged",
+                function: "zapBaseAssetToPegged",
                 args: [
                   swappedAmount.toString(),
                   minFxSaveOut.toString(),
@@ -6481,7 +6556,7 @@ export const AnchorDepositWithdrawModal = ({
               zapHash = await writeContractAsync({
               address: zapAddress,
                 abi: MINTER_USDC_ZAP_V3_ABI,
-                functionName: "zapUsdcToPegged",
+                functionName: "zapBaseAssetToPegged",
                 args: [
                   swappedAmount,
                   minFxSaveOut,
@@ -6490,9 +6565,9 @@ export const AnchorDepositWithdrawModal = ({
                 ],
               });
             } else if (isActuallyFxUSD) {
-              debugTx("zap/fxUsdToPegged", {
+              debugTx("zap/collateralToPegged", {
                 zapAddress,
-                function: "zapFxUsdToPegged",
+                function: "zapCollateralToPegged",
                 args: [
                   swappedAmount.toString(),
                   minFxSaveOut.toString(),
@@ -6503,14 +6578,14 @@ export const AnchorDepositWithdrawModal = ({
               zapHash = await writeContractAsync({
                 address: zapAddress,
                 abi: MINTER_USDC_ZAP_V3_ABI,
-                functionName: "zapFxUsdToPegged",
+                functionName: "zapCollateralToPegged",
                 args: [
                   swappedAmount,
                   minFxSaveOut,
                   address as `0x${string}`,
                   minPeggedOut,
                 ],
-            });
+              });
             } else {
               throw new Error("Invalid asset for USDC/fxUSD zap");
             }
@@ -7114,16 +7189,27 @@ export const AnchorDepositWithdrawModal = ({
           // Use zap contract to mint
           if (useETHZap) {
             // ETH/stETH zap for wstETH markets
+            const ethStEthWrapRate =
+              marketForDepositAsset?.wrappedRate ??
+              selectedMarket?.wrappedRate;
             if (isNativeETH) {
               const useZapEthToPool =
                 shouldDepositToPool &&
                 !!stabilityPoolAddress;
               const minStabilityPoolOut = (minPeggedOut * stabilityPoolSlip) / 100n;
 
+              const minWEth2 = await minWrappedCollateralForEthBaseZap(
+                txClient ?? publicClient ?? undefined,
+                zapAddress,
+                amountBigInt,
+                ethStEthWrapRate,
+                DEFAULT_WRAP_LEG_SLIPPAGE_BPS
+              );
+
               if (useZapEthToPool) {
-                debugTx("zap/ethToStabilityPool", {
+                debugTx("zap/baseAssetToStabilityPool", {
                   zapAddress,
-                  function: "zapEthToStabilityPool",
+                  function: "zapBaseAssetToStabilityPool",
                   args: [
                     address,
                     minPeggedOut.toString(),
@@ -7134,9 +7220,10 @@ export const AnchorDepositWithdrawModal = ({
                 });
                 mintHash = await writeContractAsync({
                   address: zapAddress,
-                  abi: STABILITY_POOL_ZAP_ABI,
-                  functionName: "zapEthToStabilityPool",
+                  abi: MINTER_ETH_ZAP_V3_ABI,
+                  functionName: "zapBaseAssetToStabilityPool",
                   args: [
+                    minWEth2,
                     address as `0x${string}`,
                     minPeggedOut,
                     stabilityPoolAddress as `0x${string}`,
@@ -7151,17 +7238,21 @@ export const AnchorDepositWithdrawModal = ({
                 return;
               }
 
-              debugTx("zap/ethToPegged", {
+              debugTx("zap/baseAssetToPegged", {
                 zapAddress,
-                function: "zapEthToPegged",
+                function: "zapBaseAssetToPegged",
                 args: [address, minPeggedOut.toString()],
                 value: amountBigInt.toString(),
               });
               mintHash = await writeContractAsync({
                 address: zapAddress,
                 abi: MINTER_ETH_ZAP_V3_ABI,
-                functionName: "zapEthToPegged",
-                args: [address as `0x${string}`, minPeggedOut],
+                functionName: "zapBaseAssetToPegged",
+                args: [
+                  minWEth2,
+                  address as `0x${string}`,
+                  minPeggedOut,
+                ],
                 value: amountBigInt,
               });
             } else if (isStETH) {
@@ -7170,6 +7261,12 @@ export const AnchorDepositWithdrawModal = ({
                 !!stabilityPoolAddress;
               const minStabilityPoolOutStEth = (minPeggedOut * stabilityPoolSlip) / 100n;
 
+              const minWSteth2 = minWrappedCollateralAfterUnderlyingToWrapped(
+                amountBigInt,
+                ethStEthWrapRate,
+                DEFAULT_WRAP_LEG_SLIPPAGE_BPS
+              );
+
               if (
                 useZapStEthToPool &&
                 usePermitZap &&
@@ -7177,7 +7274,7 @@ export const AnchorDepositWithdrawModal = ({
                 zapPermit?.deadline
               ) {
                 const deadline = zapPermit.deadline || calculateDeadline(3600);
-                debugTx("zap/stEthToStabilityPoolWithPermit", {
+                debugTx("zap/collateralToStabilityPoolWithPermit", {
                   zapAddress,
                   args: [
                     amountBigInt.toString(),
@@ -7190,10 +7287,11 @@ export const AnchorDepositWithdrawModal = ({
                 });
                 mintHash = await writeContractAsync({
                   address: zapAddress,
-                  abi: STABILITY_POOL_ZAP_PERMIT_ABI,
-                  functionName: "zapStEthToStabilityPoolWithPermit",
+                  abi: MINTER_ETH_ZAP_V3_ABI,
+                  functionName: "zapCollateralToStabilityPoolWithPermit",
                   args: [
                     amountBigInt,
+                    minWSteth2,
                     address as `0x${string}`,
                     minPeggedOut,
                     stabilityPoolAddress as `0x${string}`,
@@ -7211,9 +7309,9 @@ export const AnchorDepositWithdrawModal = ({
                 return;
               }
 
-              debugTx("zap/stEthToPegged", {
+              debugTx("zap/collateralToPegged", {
                 zapAddress,
-                function: "zapStEthToPegged",
+                function: "zapCollateralToPegged",
                 args: [
                   amountBigInt.toString(),
                   address,
@@ -7227,10 +7325,11 @@ export const AnchorDepositWithdrawModal = ({
               ) {
                 mintHash = await writeContractAsync({
                   address: zapAddress,
-                  abi: STETH_ZAP_PERMIT_ABI,
-                  functionName: "zapStEthToPeggedWithPermit",
+                  abi: MINTER_ETH_ZAP_V3_ABI,
+                  functionName: "zapCollateralToPeggedWithPermit",
                   args: [
                     amountBigInt,
+                    minWSteth2,
                     address as `0x${string}`,
                     minPeggedOut,
                     zapPermit.deadline,
@@ -7243,8 +7342,13 @@ export const AnchorDepositWithdrawModal = ({
                 mintHash = await writeContractAsync({
                   address: zapAddress,
                   abi: MINTER_ETH_ZAP_V3_ABI,
-                  functionName: "zapStEthToPegged",
-                  args: [amountBigInt, address as `0x${string}`, minPeggedOut],
+                  functionName: "zapCollateralToPegged",
+                  args: [
+                    amountBigInt,
+                    minWSteth2,
+                    address as `0x${string}`,
+                    minPeggedOut,
+                  ],
                 });
               }
             } else {
@@ -7267,7 +7371,7 @@ export const AnchorDepositWithdrawModal = ({
             if (useZapToPoolWithPermit) {
               const deadline = zapPermit!.deadline || calculateDeadline(3600);
               if (isFxUSD) {
-                debugTx("zap/fxUsdToStabilityPoolWithPermit", {
+                debugTx("zap/collateralToStabilityPoolWithPermit", {
                   zapAddress,
                   args: [
                     amountBigInt.toString(),
@@ -7280,8 +7384,8 @@ export const AnchorDepositWithdrawModal = ({
                 });
                 mintHash = await writeContractAsync({
                   address: zapAddress,
-                  abi: STABILITY_POOL_ZAP_PERMIT_ABI,
-                  functionName: "zapFxUsdToStabilityPoolWithPermit",
+                  abi: MINTER_USDC_ZAP_V3_ABI,
+                  functionName: "zapCollateralToStabilityPoolWithPermit",
                   args: [
                     amountBigInt,
                     minFxSaveOut,
@@ -7296,7 +7400,7 @@ export const AnchorDepositWithdrawModal = ({
                   ],
                 });
               } else {
-                debugTx("zap/usdcToStabilityPoolWithPermit", {
+                debugTx("zap/baseAssetToStabilityPoolWithPermit", {
                   zapAddress,
                   args: [
                     amountBigInt.toString(),
@@ -7309,8 +7413,8 @@ export const AnchorDepositWithdrawModal = ({
                 });
                 mintHash = await writeContractAsync({
                   address: zapAddress,
-                  abi: STABILITY_POOL_ZAP_PERMIT_ABI,
-                  functionName: "zapUsdcToStabilityPoolWithPermit",
+                  abi: MINTER_USDC_ZAP_V3_ABI,
+                  functionName: "zapBaseAssetToStabilityPoolWithPermit",
                   args: [
                     amountBigInt,
                     minFxSaveOut,
@@ -7333,9 +7437,9 @@ export const AnchorDepositWithdrawModal = ({
             }
 
             if (isUSDC) {
-              debugTx("zap/usdcToPegged", {
+              debugTx("zap/baseAssetToPegged", {
                 zapAddress,
-                function: "zapUsdcToPegged",
+                function: "zapBaseAssetToPegged",
                 args: [
                   amountBigInt.toString(),
                   minFxSaveOut.toString(),
@@ -7348,7 +7452,7 @@ export const AnchorDepositWithdrawModal = ({
                 mintHash = await writeContractAsync({
                   address: zapAddress,
                   abi: MINTER_USDC_ZAP_V3_ABI,
-                  functionName: "zapUsdcToPeggedWithPermit",
+                  functionName: "zapBaseAssetToPeggedWithPermit",
                   args: [
                     amountBigInt,
                     minFxSaveOut,
@@ -7364,7 +7468,7 @@ export const AnchorDepositWithdrawModal = ({
                 mintHash = await writeContractAsync({
                   address: zapAddress,
                   abi: MINTER_USDC_ZAP_V3_ABI,
-                  functionName: "zapUsdcToPegged",
+                  functionName: "zapBaseAssetToPegged",
                   args: [
                     amountBigInt,
                     minFxSaveOut,
@@ -7374,9 +7478,9 @@ export const AnchorDepositWithdrawModal = ({
                 });
               }
             } else if (isFxUSD) {
-              debugTx("zap/fxUsdToPegged", {
+              debugTx("zap/collateralToPegged", {
                 zapAddress,
-                function: "zapFxUsdToPegged",
+                function: "zapCollateralToPegged",
                 args: [
                   amountBigInt.toString(),
                   minFxSaveOut.toString(),
@@ -7389,7 +7493,7 @@ export const AnchorDepositWithdrawModal = ({
                 mintHash = await writeContractAsync({
                   address: zapAddress,
                   abi: MINTER_USDC_ZAP_V3_ABI,
-                  functionName: "zapFxUsdToPeggedWithPermit",
+                  functionName: "zapCollateralToPeggedWithPermit",
                   args: [
                     amountBigInt,
                     minFxSaveOut,
@@ -7405,7 +7509,7 @@ export const AnchorDepositWithdrawModal = ({
                 mintHash = await writeContractAsync({
                   address: zapAddress,
                   abi: MINTER_USDC_ZAP_V3_ABI,
-                  functionName: "zapFxUsdToPegged",
+                  functionName: "zapCollateralToPegged",
                   args: [
                     amountBigInt,
                     minFxSaveOut,
@@ -7432,7 +7536,7 @@ export const AnchorDepositWithdrawModal = ({
           const deadlineWrapped =
             wrapZapPermit.deadline || calculateDeadline(3600);
           if (isWstETH) {
-            debugTx("zap/wstEthToStabilityPoolWithPermit", {
+            debugTx("zap/wrappedCollateralToStabilityPoolWithPermit", {
               zapAddress,
               args: [
                 amountBigInt.toString(),
@@ -7445,8 +7549,8 @@ export const AnchorDepositWithdrawModal = ({
             });
             mintHash = await writeContractAsync({
               address: zapAddress,
-              abi: STABILITY_POOL_ZAP_PERMIT_ABI,
-              functionName: "zapWstEthToStabilityPoolWithPermit",
+              abi: MINTER_ETH_ZAP_V3_ABI,
+              functionName: "zapWrappedCollateralToStabilityPoolWithPermit",
               args: [
                 amountBigInt,
                 address as `0x${string}`,
@@ -7460,7 +7564,7 @@ export const AnchorDepositWithdrawModal = ({
               ],
             });
           } else if (isFxSAVE) {
-            debugTx("zap/fxSaveToStabilityPoolWithPermit", {
+            debugTx("zap/wrappedCollateralToStabilityPoolWithPermit", {
               zapAddress,
               args: [
                 amountBigInt.toString(),
@@ -7473,8 +7577,8 @@ export const AnchorDepositWithdrawModal = ({
             });
             mintHash = await writeContractAsync({
               address: zapAddress,
-              abi: STABILITY_POOL_ZAP_PERMIT_ABI,
-              functionName: "zapFxSaveToStabilityPoolWithPermit",
+              abi: MINTER_USDC_ZAP_V3_ABI,
+              functionName: "zapWrappedCollateralToStabilityPoolWithPermit",
               args: [
                 amountBigInt,
                 address as `0x${string}`,
@@ -9349,15 +9453,7 @@ export const AnchorDepositWithdrawModal = ({
                         onChange: (newAsset) => {
                           setSelectedDepositAsset(newAsset);
                           anyTokenDeposit.setSelectedAsset(newAsset);
-                          setAmount("");
-                          setError(null);
-                          if (tempMaxWarning) {
-                            setTempMaxWarning(null);
-                            if (tempWarningTimerRef.current) {
-                              clearTimeout(tempWarningTimerRef.current);
-                              tempWarningTimerRef.current = null;
-                            }
-                          }
+                          resetSimpleDepositFlowKeepToken();
                         },
                         options: [
                           ...(depositAssetsForDropdown.filter(a => !a.isUserToken).length > 0 ? [{
@@ -10023,7 +10119,7 @@ export const AnchorDepositWithdrawModal = ({
 
                       <div className="flex gap-3">
                         <button
-                          onClick={() => setCurrentStep(1)}
+                          onClick={() => resetSimpleDepositFlowKeepToken()}
                           disabled={isProcessing}
                           className="flex-1 py-3 px-4 rounded-md bg-white text-[#1E4775] border-2 border-[#1E4775]/30 font-semibold hover:bg-[#1E4775]/5 transition-colors disabled:opacity-50"
                         >
@@ -10531,7 +10627,9 @@ export const AnchorDepositWithdrawModal = ({
                             <>
                               <button
                                 onClick={() =>
-                                  setCurrentStep(skipRewardStep ? 1 : 2)
+                                  skipRewardStep
+                                    ? resetSimpleDepositFlowKeepToken()
+                                    : leaveStabilityPoolStepToReward()
                                 }
                                 disabled={isProcessing}
                                 className="flex-1 py-3 px-4 rounded-md bg-white text-[#1E4775] border-2 border-[#1E4775]/30 font-semibold hover:bg-[#1E4775]/5 transition-colors disabled:opacity-50"
@@ -10720,7 +10818,11 @@ export const AnchorDepositWithdrawModal = ({
                           ) : (
                             <>
                               <button
-                                onClick={() => setCurrentStep(2)}
+                                onClick={() =>
+                                  skipRewardStep
+                                    ? resetSimpleDepositFlowKeepToken()
+                                    : leaveStabilityPoolStepToReward()
+                                }
                                 disabled={isProcessing}
                                 className="flex-1 py-3 px-4 rounded-md bg-white text-[#1E4775] border-2 border-[#1E4775]/30 font-semibold hover:bg-[#1E4775]/5 transition-colors disabled:opacity-50"
                               >

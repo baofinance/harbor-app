@@ -18,9 +18,14 @@ import { ERC20_ABI, MINTER_ABI } from "@/abis/shared";
 import { WSTETH_ABI } from "@/abis";
 import { MINTER_ETH_ZAP_V3_ABI } from "@/abis";
 import { MINTER_USDC_ZAP_V3_ABI } from "@/abis";
-import { STETH_ZAP_PERMIT_ABI, calculateDeadline } from "@/utils/permit";
+import { calculateDeadline } from "@/utils/permit";
 import { usePermitFlow } from "@/hooks/usePermitFlow";
 import { useCollateralPrice } from "@/hooks/useCollateralPrice";
+import {
+  DEFAULT_WRAP_LEG_SLIPPAGE_BPS,
+  minWrappedCollateralAfterUnderlyingToWrapped,
+  minWrappedCollateralForEthBaseZap,
+} from "@/utils/minterZapV4";
 import SimpleTooltip from "@/components/SimpleTooltip";
 import { ArrowPathIcon } from "@heroicons/react/24/outline";
 import { InfoCallout } from "@/components/InfoCallout";
@@ -139,6 +144,14 @@ export const SailManageModal = ({
  const [showNotifications, setShowNotifications] = useState(false);
 
  const progress = useTransactionProgress();
+
+ const resetSailMintFormKeepToken = () => {
+   setAmount("");
+   setStep("input");
+   setError(null);
+   setTxHash(null);
+   progress.reset();
+ };
 
  const minterAddress = market.addresses?.minter as `0x${string}` | undefined;
  const leveragedTokenAddress = market.addresses?.leveragedToken as
@@ -278,7 +291,10 @@ const useUSDCZap = useZap && isFxUSDMarket && (isUSDC || isFxUSD || needsSwap);
 const priceOracleAddress = market.addresses?.collateralPrice as `0x${string}` | undefined;
 const { maxRate: fxSAVERate } = useCollateralPrice(
   priceOracleAddress,
-  { enabled: useUSDCZap && !!priceOracleAddress }
+  {
+    enabled:
+      (useUSDCZap || useETHZap) && !!priceOracleAddress,
+  }
 );
 
 // Get USD prices for overview display (use props from Sail page when available - they're pre-loaded)
@@ -1093,13 +1109,31 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
    if (useZap && zapAddress) {
      // Use zap contract to mint
      if (useETHZap) {
+       const minWrappedCollateralOut =
+         includeSwap || isNativeETH
+           ? await minWrappedCollateralForEthBaseZap(
+               publicClient ?? undefined,
+               zapAddress,
+               amountForMint,
+               fxSAVERate,
+               DEFAULT_WRAP_LEG_SLIPPAGE_BPS
+             )
+           : minWrappedCollateralAfterUnderlyingToWrapped(
+               amountForMint,
+               fxSAVERate,
+               DEFAULT_WRAP_LEG_SLIPPAGE_BPS
+             );
        // ETH/stETH zap for wstETH markets
        if (includeSwap || isNativeETH) {
          mintHash = await writeContractAsync({
            address: zapAddress,
            abi: MINTER_ETH_ZAP_V3_ABI,
-           functionName: "zapEthToLeveraged",
-           args: [address as `0x${string}`, minOutput],
+           functionName: "zapBaseAssetToLeveraged",
+           args: [
+             minWrappedCollateralOut,
+             address as `0x${string}`,
+             minOutput,
+           ],
            value: amountForMint,
            chainId: marketChainId,
          });
@@ -1126,14 +1160,14 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
         let usePermit = permitResult != null && permitResult.usePermit && !!permitResult.permitSig && !!permitResult.deadline;
         
         if (usePermit && permitResult && permitResult.permitSig && permitResult.deadline) {
-          // Use permit function - zapStEthToLeveragedWithPermit
           try {
             mintHash = await writeContractAsync({
               address: zapAddress,
-              abi: [...MINTER_ETH_ZAP_V3_ABI, ...STETH_ZAP_PERMIT_ABI] as const,
-              functionName: "zapStEthToLeveragedWithPermit",
+              abi: MINTER_ETH_ZAP_V3_ABI,
+              functionName: "zapCollateralToLeveragedWithPermit",
               args: [
                 amountForMint,
+                minWrappedCollateralOut,
                 address as `0x${string}`,
                 minOutput,
                 permitResult.deadline,
@@ -1186,8 +1220,13 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
           mintHash = await writeContractAsync({
             address: zapAddress,
             abi: MINTER_ETH_ZAP_V3_ABI,
-            functionName: "zapStEthToLeveraged",
-            args: [amountForMint, address as `0x${string}`, minOutput],
+            functionName: "zapCollateralToLeveraged",
+            args: [
+              amountForMint,
+              minWrappedCollateralOut,
+              address as `0x${string}`,
+              minOutput,
+            ],
             chainId: marketChainId,
           });
         }
@@ -1244,7 +1283,7 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
             mintHash = await writeContractAsync({
               address: zapAddress,
               abi: MINTER_USDC_ZAP_V3_ABI,
-              functionName: "zapUsdcToLeveragedWithPermit",
+              functionName: "zapBaseAssetToLeveragedWithPermit",
               chainId: marketChainId,
               args: [
                 amountForMint,
@@ -1261,7 +1300,7 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
             mintHash = await writeContractAsync({
               address: zapAddress,
               abi: MINTER_USDC_ZAP_V3_ABI,
-              functionName: "zapFxUsdToLeveragedWithPermit",
+              functionName: "zapCollateralToLeveragedWithPermit",
               chainId: marketChainId,
               args: [
                 amountForMint,
@@ -1337,7 +1376,7 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
           mintHash = await writeContractAsync({
             address: zapAddress,
             abi: MINTER_USDC_ZAP_V3_ABI,
-            functionName: "zapUsdcToLeveraged",
+            functionName: "zapBaseAssetToLeveraged",
             chainId: marketChainId,
             args: [
               amountForMint,
@@ -1350,7 +1389,7 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
           mintHash = await writeContractAsync({
             address: zapAddress,
             abi: MINTER_USDC_ZAP_V3_ABI,
-            functionName: "zapFxUsdToLeveraged",
+            functionName: "zapCollateralToLeveraged",
             chainId: marketChainId,
             args: [
               amountForMint,
@@ -1677,9 +1716,8 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
                setShowCustomTokenInput(false);
                setSelectedDepositAsset(newAsset);
                setCustomTokenAddress("");
-               setAmount("");
-               setError(null);
              }
+             resetSailMintFormKeepToken();
            },
            options: [
              ...(acceptedAssets.length > 0
@@ -1709,6 +1747,7 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
            onCustomOptionClick: () => {
              setShowCustomTokenInput(true);
              setSelectedDepositAsset("custom");
+             resetSailMintFormKeepToken();
            },
            customOptionLabel: "+ Add Custom Token Address",
          }
