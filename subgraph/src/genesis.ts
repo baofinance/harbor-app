@@ -222,7 +222,7 @@ function applyMarketBoostWindowsFromGenesisEnd(
     );
     setMarketBoostWindow(
       "stabilityPoolLeveraged",
-      Bytes.fromHexString("0x7553fb328ef35af1c2ac4e91e53d6a6b62dfdddea"),
+      Bytes.fromHexString("0x7553fb328ef35aF1c2ac4E91e53d6a6B62DFDdEa"),
       start,
       end,
       ANCHOR_BOOST_MULTIPLIER
@@ -279,7 +279,7 @@ function applyMarketBoostWindowsFromGenesisEnd(
     );
     setMarketBoostWindow(
       "stabilityPoolCollateral",
-      Bytes.fromHexString("0xc1ef32d4b959f2200efdeddada226461d14dac"),
+      Bytes.fromHexString("0xC1EF32d4B959F2200efDeDdedadA226461d14DaC"),
       start,
       end,
       ANCHOR_BOOST_MULTIPLIER

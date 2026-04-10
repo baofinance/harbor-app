@@ -25,7 +25,7 @@ export const GEN_BTC_STETH_T2 = Address.fromString("0x9ae0b57ceada0056dbe21edcd6
 export const GEN_ETH_FXUSD_ALT = Address.fromString("0x1454707877cdb966e29cea8a190c2169eeca4b8c");
 
 // Minters
-export const MINT_ETH_FXUSD = Address.fromString("0xd6e2f8e57b4afb51c6fa4cbc012e1ce6aad989f");
+export const MINT_ETH_FXUSD = Address.fromString("0xd6E2F8e57b4aFB51C6fA4cbC012e1cE6aEad989F");
 export const MINT_BTC_FXUSD = Address.fromString("0x33e32ff4d0677862fa31582cc654a25b9b1e4888");
 export const MINT_BTC_STETH = Address.fromString("0xf42516eb885e737780eb864dd07cec8628000919");
 export const MINT_STETH_EUR = Address.fromString("0x68911ea33e11bc77e07f6da4db6cd23d723641ce");

@@ -39,6 +39,7 @@ dataSources:
         - SailTokenRedeemEvent
         - SailTokenPricePoint
         - HourlyPriceSnapshot
+        - MaidenVoyageYieldGlobal
         - PriceTracker
       abis:
         - name: Minter
@@ -80,6 +81,7 @@ dataSources:
         - UserHarborMarks
         - UserList
         - MarksMultiplier
+        - MaidenVoyageCapStatus
         - UserTotalMarks
       abis:
         - name: Genesis
@@ -253,6 +255,7 @@ dataSources:
         - SailTokenRedeemEvent
         - SailTokenPricePoint
         - HourlyPriceSnapshot
+        - MaidenVoyageYieldGlobal
         - PriceTracker
       abis:
         - name: Minter
@@ -289,6 +292,7 @@ dataSources:
         - UserHarborMarks
         - UserList
         - MarksMultiplier
+        - MaidenVoyageCapStatus
         - UserTotalMarks
       abis:
         - name: Genesis
@@ -457,6 +461,7 @@ dataSources:
         - SailTokenRedeemEvent
         - SailTokenPricePoint
         - HourlyPriceSnapshot
+        - MaidenVoyageYieldGlobal
         - PriceTracker
       abis:
         - name: Minter
@@ -493,6 +498,7 @@ dataSources:
         - UserHarborMarks
         - UserList
         - MarksMultiplier
+        - MaidenVoyageCapStatus
         - UserTotalMarks
       abis:
         - name: Genesis
@@ -531,6 +537,7 @@ dataSources:
         - UserHarborMarks
         - UserList
         - MarksMultiplier
+        - MaidenVoyageCapStatus
         - UserTotalMarks
       abis:
         - name: Genesis
@@ -569,6 +576,7 @@ dataSources:
         - UserHarborMarks
         - UserList
         - MarksMultiplier
+        - MaidenVoyageCapStatus
         - UserTotalMarks
       abis:
         - name: Genesis
@@ -607,6 +615,7 @@ dataSources:
         - UserHarborMarks
         - UserList
         - MarksMultiplier
+        - MaidenVoyageCapStatus
         - UserTotalMarks
       abis:
         - name: Genesis
@@ -645,6 +654,7 @@ dataSources:
         - UserHarborMarks
         - UserList
         - MarksMultiplier
+        - MaidenVoyageCapStatus
         - UserTotalMarks
       abis:
         - name: Genesis
@@ -683,6 +693,7 @@ dataSources:
         - UserHarborMarks
         - UserList
         - MarksMultiplier
+        - MaidenVoyageCapStatus
         - UserTotalMarks
       abis:
         - name: Genesis
@@ -721,6 +732,7 @@ dataSources:
         - UserHarborMarks
         - UserList
         - MarksMultiplier
+        - MaidenVoyageCapStatus
         - UserTotalMarks
       abis:
         - name: Genesis

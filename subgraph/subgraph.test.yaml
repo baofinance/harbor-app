@@ -38,6 +38,7 @@ dataSources:
         - SailTokenMintEvent
         - SailTokenRedeemEvent
         - SailTokenPricePoint
+        - MaidenVoyageYieldGlobal
         - PriceTracker
       abis:
         - name: Minter
@@ -74,6 +75,7 @@ dataSources:
         - UserHarborMarks
         - UserList
         - MarksMultiplier
+        - MaidenVoyageCapStatus
         - UserTotalMarks
       abis:
         - name: Genesis
@@ -241,6 +243,7 @@ dataSources:
         - SailTokenMintEvent
         - SailTokenRedeemEvent
         - SailTokenPricePoint
+        - MaidenVoyageYieldGlobal
         - PriceTracker
       abis:
         - name: Minter
@@ -277,6 +280,7 @@ dataSources:
         - UserHarborMarks
         - UserList
         - MarksMultiplier
+        - MaidenVoyageCapStatus
         - UserTotalMarks
       abis:
         - name: Genesis
@@ -444,6 +448,7 @@ dataSources:
         - SailTokenMintEvent
         - SailTokenRedeemEvent
         - SailTokenPricePoint
+        - MaidenVoyageYieldGlobal
         - PriceTracker
       abis:
         - name: Minter
@@ -480,6 +485,7 @@ dataSources:
         - UserHarborMarks
         - UserList
         - MarksMultiplier
+        - MaidenVoyageCapStatus
         - UserTotalMarks
       abis:
         - name: Genesis
