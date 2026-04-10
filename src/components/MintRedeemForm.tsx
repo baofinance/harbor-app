@@ -22,8 +22,14 @@ import { minterABI } from "@/abis/minter";
 import { ERC20_ABI, GENESIS_ABI } from "@/abis/shared";
 import { MINTER_ETH_ZAP_V3_ABI, MINTER_USDC_ZAP_V3_ABI } from "@/abis";
 import { parseUnits } from "viem";
-import { calculateDeadline, STETH_ZAP_PERMIT_ABI, USDC_ZAP_PERMIT_ABI } from "@/utils/permit";
+import { calculateDeadline } from "@/utils/permit";
 import { usePermitOrApproval } from "@/hooks/usePermitOrApproval";
+import { useCollateralPrice } from "@/hooks/useCollateralPrice";
+import {
+  DEFAULT_WRAP_LEG_SLIPPAGE_BPS,
+  minWrappedCollateralAfterUnderlyingToWrapped,
+  minWrappedCollateralForEthBaseZap,
+} from "@/utils/minterZapV4";
 
 // Constants (to be moved from page.tsx)
 const tokens = {
@@ -190,6 +196,16 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
   // Get market info from prop or fallback to config lookup
   const marketInfoData =
     marketInfo || markets[currentMarket.id as keyof typeof markets];
+
+  const ethZapOracleAddress = marketInfoData?.addresses
+    ?.collateralPrice as `0x${string}` | undefined;
+  const { maxRate: ethZapWrappedRate } = useCollateralPrice(
+    ethZapOracleAddress,
+    {
+      enabled:
+        !!ethZapOracleAddress && useETHZap && useZap && isCollateralAtTop,
+    }
+  );
 
   // On-chain check: has genesis been ended?
   const { data: onChainEnded, refetch: refetchOnChainEnded } = useContractRead({
@@ -1188,7 +1204,20 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
         // Check if we should use zap contract
         if (useZap && zapAddress) {
           if (useETHZap) {
-            // ETH/stETH zap for wstETH markets
+            // ETH/stETH zap: minWrappedCollateralOut = expected wstETH from oracle (or zap preview for ETH), then slip
+            const minWrappedCollateralOut = isNativeETH
+              ? await minWrappedCollateralForEthBaseZap(
+                  publicClient ?? undefined,
+                  zapAddress,
+                  parsedAmount,
+                  ethZapWrappedRate,
+                  DEFAULT_WRAP_LEG_SLIPPAGE_BPS
+                )
+              : minWrappedCollateralAfterUnderlyingToWrapped(
+                  parsedAmount,
+                  ethZapWrappedRate,
+                  DEFAULT_WRAP_LEG_SLIPPAGE_BPS
+                );
             if (selectedType === "LONG") {
               // Mint pegged token via zap
               // Default slippage tolerance (1%, minimum 2% to account for dynamic fees)
@@ -1215,8 +1244,12 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                 const hash = await writeContractAsync({
                   address: zapAddress,
                   abi: MINTER_ETH_ZAP_V3_ABI,
-                  functionName: "zapEthToPegged",
-                  args: [userAddress as `0x${string}`, minPeggedOut],
+                  functionName: "zapBaseAssetToPegged",
+                  args: [
+                    minWrappedCollateralOut,
+                    userAddress as `0x${string}`,
+                    minPeggedOut,
+                  ],
                   value: parsedAmount,
                 });
                 setTransactionHash(hash);
@@ -1238,14 +1271,14 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                 let usePermit = permitResult?.usePermit && !!permitResult.permitSig && !!permitResult.deadline;
                 
                 if (usePermit && permitResult.permitSig && permitResult.deadline) {
-                  // Use permit function - zapStEthToPeggedWithPermit
                   try {
                     const hash = await writeContractAsync({
                       address: zapAddress,
-                      abi: [...MINTER_ETH_ZAP_V3_ABI, ...STETH_ZAP_PERMIT_ABI] as const,
-                      functionName: "zapStEthToPeggedWithPermit",
+                      abi: MINTER_ETH_ZAP_V3_ABI,
+                      functionName: "zapCollateralToPeggedWithPermit",
                       args: [
                         parsedAmount,
+                        minWrappedCollateralOut,
                         userAddress as `0x${string}`,
                         minPeggedOut,
                         permitResult.deadline,
@@ -1286,8 +1319,13 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                   const hash = await writeContractAsync({
                     address: zapAddress,
                     abi: MINTER_ETH_ZAP_V3_ABI,
-                    functionName: "zapStEthToPegged",
-                    args: [parsedAmount, userAddress as `0x${string}`, minPeggedOut],
+                    functionName: "zapCollateralToPegged",
+                    args: [
+                      parsedAmount,
+                      minWrappedCollateralOut,
+                      userAddress as `0x${string}`,
+                      minPeggedOut,
+                    ],
                   });
                   setTransactionHash(hash);
                 }
@@ -1318,8 +1356,12 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                 const hash = await writeContractAsync({
                   address: zapAddress,
                   abi: MINTER_ETH_ZAP_V3_ABI,
-                  functionName: "zapEthToLeveraged",
-                  args: [userAddress as `0x${string}`, minLeveragedOut],
+                  functionName: "zapBaseAssetToLeveraged",
+                  args: [
+                    minWrappedCollateralOut,
+                    userAddress as `0x${string}`,
+                    minLeveragedOut,
+                  ],
                   value: parsedAmount,
                 });
                 setTransactionHash(hash);
@@ -1341,14 +1383,14 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                 let usePermit = permitResult?.usePermit && !!permitResult.permitSig && !!permitResult.deadline;
                 
                 if (usePermit && permitResult.permitSig && permitResult.deadline) {
-                  // Use permit function - zapStEthToLeveragedWithPermit
                   try {
                     const hash = await writeContractAsync({
                       address: zapAddress,
-                      abi: [...MINTER_ETH_ZAP_V3_ABI, ...STETH_ZAP_PERMIT_ABI] as const,
-                      functionName: "zapStEthToLeveragedWithPermit",
+                      abi: MINTER_ETH_ZAP_V3_ABI,
+                      functionName: "zapCollateralToLeveragedWithPermit",
                       args: [
                         parsedAmount,
+                        minWrappedCollateralOut,
                         userAddress as `0x${string}`,
                         minLeveragedOut,
                         permitResult.deadline,
@@ -1389,8 +1431,13 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                   const hash = await writeContractAsync({
                     address: zapAddress,
                     abi: MINTER_ETH_ZAP_V3_ABI,
-                    functionName: "zapStEthToLeveraged",
-                    args: [parsedAmount, userAddress as `0x${string}`, minLeveragedOut],
+                    functionName: "zapCollateralToLeveraged",
+                    args: [
+                      parsedAmount,
+                      minWrappedCollateralOut,
+                      userAddress as `0x${string}`,
+                      minLeveragedOut,
+                    ],
                   });
                   setTransactionHash(hash);
                 }
@@ -1448,13 +1495,12 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
               const deadline = permitResult?.deadline || calculateDeadline(3600);
               
               if (usePermit && permitResult.permitSig) {
-                // Use permit functions - requires minFxSaveOut parameter
                 try {
                   if (isActuallyUSDC) {
                     const hash = await writeContractAsync({
                       address: zapAddress,
-                      abi: [...MINTER_USDC_ZAP_V3_ABI, ...USDC_ZAP_PERMIT_ABI] as const,
-                      functionName: "zapUsdcToPeggedWithPermit",
+                      abi: MINTER_USDC_ZAP_V3_ABI,
+                      functionName: "zapBaseAssetToPeggedWithPermit",
                       args: [
                         amountForZap,
                         minFxSaveOut,
@@ -1470,8 +1516,8 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                   } else if (isActuallyFxUSD) {
                     const hash = await writeContractAsync({
                       address: zapAddress,
-                      abi: [...MINTER_USDC_ZAP_V3_ABI, ...USDC_ZAP_PERMIT_ABI] as const,
-                      functionName: "zapFxUsdToPeggedWithPermit",
+                      abi: MINTER_USDC_ZAP_V3_ABI,
+                      functionName: "zapCollateralToPeggedWithPermit",
                       args: [
                         amountForZap,
                         minFxSaveOut,
@@ -1517,7 +1563,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                   const hash = await writeContractAsync({
                     address: zapAddress,
                     abi: MINTER_USDC_ZAP_V3_ABI,
-                    functionName: "zapUsdcToPegged",
+                    functionName: "zapBaseAssetToPegged",
                     args: [
                       amountForZap,
                       minFxSaveOut,
@@ -1530,7 +1576,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                   const hash = await writeContractAsync({
                     address: zapAddress,
                     abi: MINTER_USDC_ZAP_V3_ABI,
-                    functionName: "zapFxUsdToPegged",
+                    functionName: "zapCollateralToPegged",
                     args: [
                       amountForZap,
                       minFxSaveOut,
@@ -1587,13 +1633,12 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
               const deadline = permitResult?.deadline || calculateDeadline(3600);
               
               if (usePermit && permitResult.permitSig) {
-                // Use permit functions - requires minFxSaveOut parameter
                 try {
                   if (isActuallyUSDC) {
                     const hash = await writeContractAsync({
                       address: zapAddress,
-                      abi: [...MINTER_USDC_ZAP_V3_ABI, ...USDC_ZAP_PERMIT_ABI] as const,
-                      functionName: "zapUsdcToLeveragedWithPermit",
+                      abi: MINTER_USDC_ZAP_V3_ABI,
+                      functionName: "zapBaseAssetToLeveragedWithPermit",
                       args: [
                         amountForZap,
                         minFxSaveOut,
@@ -1609,8 +1654,8 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                   } else if (isActuallyFxUSD) {
                     const hash = await writeContractAsync({
                       address: zapAddress,
-                      abi: [...MINTER_USDC_ZAP_V3_ABI, ...USDC_ZAP_PERMIT_ABI] as const,
-                      functionName: "zapFxUsdToLeveragedWithPermit",
+                      abi: MINTER_USDC_ZAP_V3_ABI,
+                      functionName: "zapCollateralToLeveragedWithPermit",
                       args: [
                         amountForZap,
                         minFxSaveOut,
@@ -1656,7 +1701,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                   const hash = await writeContractAsync({
                     address: zapAddress,
                     abi: MINTER_USDC_ZAP_V3_ABI,
-                    functionName: "zapUsdcToLeveraged",
+                    functionName: "zapBaseAssetToLeveraged",
                     args: [
                       amountForZap,
                       minFxSaveOut,
@@ -1669,7 +1714,7 @@ const MintRedeemForm: React.FC<MintRedeemFormProps> = ({
                   const hash = await writeContractAsync({
                     address: zapAddress,
                     abi: MINTER_USDC_ZAP_V3_ABI,
-                    functionName: "zapFxUsdToLeveraged",
+                    functionName: "zapCollateralToLeveraged",
                     args: [
                       amountForZap,
                       minFxSaveOut,

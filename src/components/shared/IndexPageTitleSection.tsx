@@ -1,6 +1,7 @@
 /**
  * Shared hero title band for Genesis (Maiden Voyage), Sail, and Anchor index pages.
  * Same min-height, padding, and subtitle offset so headings align across routes.
+ * Subtitle uses a modest top margin so descenders on the large h1 do not crowd the subtitle.
  */
 export type IndexPageTitleSectionProps = {
   title: string;
@@ -15,7 +16,7 @@ export function IndexPageTitleSection({ title, subtitle }: IndexPageTitleSection
           {title}
         </h1>
       </div>
-      <div className="flex items-center justify-center px-4 pb-1 -mt-2">
+      <div className="flex items-center justify-center px-4 pb-1 mt-[2px]">
         <p className="text-white/80 text-lg text-center max-w-3xl">{subtitle}</p>
       </div>
     </div>

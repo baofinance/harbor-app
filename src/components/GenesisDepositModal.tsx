@@ -129,6 +129,7 @@ export const GenesisDepositModal = ({
  const [error, setError] = useState<string | null>(null);
  const [txHash, setTxHash] = useState<string | null>(null);
  const progress = useTransactionProgress();
+
  const [successfulDepositAmount, setSuccessfulDepositAmount] =
  useState<string>("");
  const [successfulDepositToken, setSuccessfulDepositToken] =
@@ -137,6 +138,19 @@ export const GenesisDepositModal = ({
   address && genesisAddress
     ? `genesisDepositProgress:${address.toLowerCase()}:${genesisAddress.toLowerCase()}`
     : null;
+
+ const resetGenesisDepositUiKeepAsset = () => {
+   setAmount("");
+   setStep("input");
+   setError(null);
+   setTxHash(null);
+   setSuccessfulDepositAmount("");
+   setSuccessfulDepositToken("");
+   progress.reset();
+   if (progressStorageKey && typeof window !== "undefined") {
+     window.localStorage.removeItem(progressStorageKey);
+   }
+ };
 
  // Delay contract reads until modal is fully mounted to avoid fetch errors
  const [mounted, setMounted] = useState(false);
@@ -1947,6 +1961,7 @@ const successFmt = formatTokenAmount(
        setShowCustomTokenInput(false);
        setSelectedAsset(newValue);
        setCustomTokenAddress("");
+       resetGenesisDepositUiKeepAsset();
      },
      options: [
        ...(acceptedAssets.length > 0 ? [{
@@ -1968,6 +1983,7 @@ const successFmt = formatTokenAmount(
      onCustomOptionClick: () => {
        setShowCustomTokenInput(true);
        setSelectedAsset("custom");
+       resetGenesisDepositUiKeepAsset();
      },
    }}
    customToken={showCustomTokenInput ? {

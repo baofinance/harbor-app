@@ -8,6 +8,8 @@
   /* Let body flex layout fill viewport so footer can stick to bottom */
   html {
     height: 100%;
+    /* Reserve scrollbar width so long pages (e.g. ledger marks) don’t shift layout vs short pages */
+    scrollbar-gutter: stable;
   }
 
   :root {
