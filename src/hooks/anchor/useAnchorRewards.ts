@@ -87,8 +87,6 @@ export function useAnchorRewards(
         }
       }
 
-      const currentOffset = baseOffset + 5 + (hasStabilityPoolManager ? 1 : 0);
-
       if (hasCollateralPool) {
         const collateralPoolAddress = (m as any).addresses
           ?.stabilityPoolCollateral as `0x${string}`;

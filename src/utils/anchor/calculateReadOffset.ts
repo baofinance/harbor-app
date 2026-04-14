@@ -28,14 +28,14 @@ export function calculateReadOffset(
     offset += 7; // 7 minter calls: collateralRatio, collateralTokenBalance, peggedTokenBalance, peggedTokenPrice, leveragedTokenBalance, leveragedTokenPrice, config
     if (prevHasStabilityPoolManager) offset += 1; // rebalanceThreshold
     if (prevHasCollateral) {
-      offset += 4; // 4 base pool reads: totalAssets, totalAssetSupply, getAPRBreakdown, getClaimableRewards
-      offset += 1; // assetBalanceOf (5th pool read)
-      if (prevPeggedTokenAddress) offset += 1; // rewardData (6th pool read if peggedToken exists)
+      offset += 3; // totalAssets, totalAssetSupply, getClaimableRewards
+      offset += 1; // assetBalanceOf
+      if (prevPeggedTokenAddress) offset += 1; // rewardData
     }
     if (prevHasSail) {
-      offset += 4; // 4 base pool reads: totalAssets, totalAssetSupply, getAPRBreakdown, getClaimableRewards
-      offset += 1; // assetBalanceOf (5th pool read)
-      if (prevPeggedTokenAddress) offset += 1; // rewardData (6th pool read if peggedToken exists)
+      offset += 3; // totalAssets, totalAssetSupply, getClaimableRewards
+      offset += 1; // assetBalanceOf
+      if (prevPeggedTokenAddress) offset += 1; // rewardData
     }
     if (prevHasPriceOracle) {
       offset += 1; // latestAnswer
@@ -74,14 +74,14 @@ export function calculatePriceOracleOffset(
   let priceOracleOffset = baseOffset + 7; // 7 minter reads: collateralRatio, collateralTokenBalance, peggedTokenBalance, peggedTokenPrice, leveragedTokenBalance, leveragedTokenPrice, config
   if (hasStabilityPoolManager) priceOracleOffset += 1; // rebalanceThreshold
   if (hasCollateralPool) {
-    priceOracleOffset += 4; // 4 base pool reads: totalAssets, totalAssetSupply, getAPRBreakdown, getClaimableRewards
-    priceOracleOffset += 1; // assetBalanceOf (5th pool read)
-    if (peggedTokenAddress) priceOracleOffset += 1; // rewardData (6th pool read if peggedToken exists)
+    priceOracleOffset += 3; // totalAssets, totalAssetSupply, getClaimableRewards
+    priceOracleOffset += 1; // assetBalanceOf
+    if (peggedTokenAddress) priceOracleOffset += 1; // rewardData
   }
   if (hasSailPool) {
-    priceOracleOffset += 4; // 4 base pool reads: totalAssets, totalAssetSupply, getAPRBreakdown, getClaimableRewards
-    priceOracleOffset += 1; // assetBalanceOf (5th pool read)
-    if (peggedTokenAddress) priceOracleOffset += 1; // rewardData (6th pool read if peggedToken exists)
+    priceOracleOffset += 3; // totalAssets, totalAssetSupply, getClaimableRewards
+    priceOracleOffset += 1; // assetBalanceOf
+    if (peggedTokenAddress) priceOracleOffset += 1; // rewardData
   }
   // Now priceOracleOffset points to latestAnswer (the oracle read)
   // For fxUSD markets, getPrice comes after latestAnswer at priceOracleOffset + 1

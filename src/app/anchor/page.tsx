@@ -56,7 +56,6 @@ import {
 import { AnchorClaimMarketModal } from "@/components/AnchorClaimMarketModal";
 import SimpleTooltip from "@/components/SimpleTooltip";
 import InfoTooltip from "@/components/InfoTooltip";
-import { aprABI } from "@/abis/apr";
 import { rewardsABI } from "@/abis/rewards";
 import {
   STABILITY_POOL_ABI,

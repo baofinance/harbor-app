@@ -32,6 +32,7 @@ import {
 import SimpleTooltip from "@/components/SimpleTooltip";
 import { FilterMultiselectDropdown } from "@/components/FilterMultiselectDropdown";
 import InfoTooltip from "@/components/InfoTooltip";
+import { InfinityOutlineIcon } from "@/components/icons/InfinityOutlineIcon";
 import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
 import { isMarketInMaintenance, markets as marketsConfig } from "@/config/markets";
 import { MarketMaintenanceBadge } from "@/components/MarketMaintenanceTag";
@@ -148,6 +149,8 @@ const EMPTY_BANDS: Record<string, FeeBand[]> = {
 };
 
 const WAD = 10n ** 18n;
+const COLLATERAL_RATIO_INFINITY_THRESHOLD_PERCENT = 10_000;
+const COLLATERAL_RATIO_INFINITY_TOOLTIP = "Collateral ratio very high.";
 
 const usdFormatter = new Intl.NumberFormat(undefined, {
     minimumFractionDigits: 2,
@@ -157,6 +160,53 @@ const usdFormatter = new Intl.NumberFormat(undefined, {
 export function formatUSD(value: number | undefined): string {
     if (value === undefined || !Number.isFinite(value)) return "-";
     return `$${usdFormatter.format(value)}`;
+}
+
+function getCollateralRatioDisplay(ratio: bigint): {
+    value: string;
+    showInfinityTooltip: boolean;
+} {
+    const percentage = Number(ratio) / 1e16;
+    if (
+        !Number.isFinite(percentage) ||
+        percentage >= COLLATERAL_RATIO_INFINITY_THRESHOLD_PERCENT
+    ) {
+        return { value: "∞", showInfinityTooltip: true };
+    }
+
+    return {
+        value: formatCollateralRatio(ratio),
+        showInfinityTooltip: false,
+    };
+}
+
+function CollateralRatioDisplay({
+    ratio,
+    className = "",
+}: {
+    ratio: bigint;
+    className?: string;
+}) {
+    const { value, showInfinityTooltip } = getCollateralRatioDisplay(ratio);
+
+    if (!showInfinityTooltip) {
+        return <span className={className}>{value}</span>;
+    }
+
+    return (
+        <InfoTooltip side="top" label={COLLATERAL_RATIO_INFINITY_TOOLTIP}>
+            <span
+                className={`inline-flex items-center justify-center cursor-help ${className}`}
+                role="img"
+                aria-label={COLLATERAL_RATIO_INFINITY_TOOLTIP}
+            >
+                <InfinityOutlineIcon
+                    className="h-[1.65em] w-[1.65em] min-h-[18px] min-w-[18px] text-current"
+                    strokeWidth={2}
+                />
+            </span>
+        </InfoTooltip>
+    );
 }
 
 function formatTokenBalanceMax2Decimals(balance: bigint, decimals: number = 18): string {
@@ -425,7 +475,7 @@ function MarketCard({
                                 </div>
                                 <div
                                     className="text-[#1E4775] font-mono font-semibold text-[11px] whitespace-nowrap">
-                                    {formatCollateralRatio(market.collateralRatio)}
+                                    <CollateralRatioDisplay ratio={market.collateralRatio} />
                                 </div>
                             </div>
                             <div className="flex flex-col gap-0.5 min-w-0">
@@ -525,7 +575,7 @@ function MarketCard({
                         {/* Collateral Ratio */}
                         <div className="text-center">
                             <div className="text-[#1E4775] font-mono text-sm font-semibold">
-                                {formatCollateralRatio(market.collateralRatio)}
+                                <CollateralRatioDisplay ratio={market.collateralRatio} />
                             </div>
                         </div>
 
@@ -1219,7 +1269,7 @@ function FeeTransparencyBands({
             <div className="text-[10px] text-[#1E4775]/60 mb-2">
                 Current CR:{" "}
                 <span className="font-mono font-semibold">
-          {formatCollateralRatio(currentCR)}
+          <CollateralRatioDisplay ratio={currentCR} />
         </span>
             </div>
 
