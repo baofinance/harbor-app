@@ -2446,7 +2446,7 @@ const successFmt = formatTokenAmount(
                 <h2 className="text-lg sm:text-2xl font-bold text-[#1E4775]">
                   Deposit — Maiden voyage
                 </h2>
-                <span className="rounded px-1.5 py-0.5 text-xs font-bold font-mono bg-[#FF8A7A]/15 text-[#E0604A] border border-[#FF8A7A]/35">
+                <span className="rounded px-1.5 py-0.5 text-xs font-bold font-mono bg-[#1E4775] text-white border border-[#1E4775]">
                   2.0
                 </span>
                 <div className="flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] font-semibold uppercase tracking-wide">

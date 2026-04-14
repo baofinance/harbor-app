@@ -1126,7 +1126,13 @@ const handleAnchorSailSort = (column: typeof anchorSailSortBy) => {
               >
                 <span className="inline-flex items-center gap-1">
                   <span>Maiden voyage</span>
-                  <span className="rounded px-1 py-0 text-[9px] font-bold font-mono bg-[#FF8A7A]/20 text-[#E0604A] border border-[#FF8A7A]/35">
+                  <span
+                    className={`rounded px-1 py-0 text-[9px] font-bold font-mono border ${
+                      leaderboardTab === "campaigns"
+                        ? "border-[#1E4775]/30 bg-[#1E4775] text-white"
+                        : "border-white/40 bg-white/10 text-white"
+                    }`}
+                  >
                     2.0
                   </span>
                 </span>

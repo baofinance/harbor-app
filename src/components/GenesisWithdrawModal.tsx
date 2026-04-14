@@ -496,7 +496,7 @@ const successUSD = successAmountNum > 0 && collateralPriceUSD > 0
           header={
             <h2 className="text-lg sm:text-2xl font-bold text-[#1E4775] flex flex-wrap items-center gap-2">
               <span>Withdraw — Maiden voyage</span>
-              <span className="rounded px-1.5 py-0.5 text-sm font-bold font-mono bg-[#FF8A7A]/15 text-[#E0604A] border border-[#FF8A7A]/35">
+              <span className="rounded px-1.5 py-0.5 text-sm font-bold font-mono bg-[#1E4775] text-white border border-[#1E4775]">
                 2.0
               </span>
             </h2>

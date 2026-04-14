@@ -6,7 +6,7 @@
 export type IndexPageTitleSectionProps = {
   title: string;
   subtitle: string;
-  /** Renders after `title` in accent color (e.g. version tag for Maiden voyage 2.0). */
+  /** Renders after `title` (e.g. version tag for Maiden voyage 2.0; Genesis uses white). */
   titleAccentSuffix?: string;
   /**
    * Soft frame + gradient behind the title block (Genesis relaunch / featured hero).
@@ -27,7 +27,7 @@ export function IndexPageTitleSection({
         <h1 className="font-bold font-mono text-white text-5xl sm:text-6xl md:text-7xl text-center leading-[1.05]">
           <span className="text-white">{title}</span>
           {titleAccentSuffix ? (
-            <span className="text-[#FF8A7A] whitespace-nowrap">
+            <span className="text-white whitespace-nowrap">
               {" "}
               {titleAccentSuffix}
             </span>

@@ -47,7 +47,7 @@ export function GenesisMarketsToolbar({
               <span className={INDEX_CORAL_INFO_TAG_CLASS}>{activeCampaignName}</span>
             )}
             {activeCampaignName ? (
-              <span className="rounded px-1.5 py-0.5 text-[10px] font-bold font-mono tracking-tight bg-white/15 text-[#FF8A7A] border border-[#FF8A7A]/40">
+              <span className="rounded px-1.5 py-0.5 text-[10px] font-bold font-mono tracking-tight border border-white/40 bg-white/10 text-white">
                 2.0
               </span>
             ) : null}

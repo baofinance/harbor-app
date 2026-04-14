@@ -57,7 +57,13 @@ export default function Example() {
                   aria-current={isActive("/genesis") ? "page" : undefined}
                 >
                   <span>Maiden voyage</span>
-                  <span className="rounded px-1 py-0.5 text-[10px] font-bold leading-none font-mono bg-[#FF8A7A]/20 text-[#FF8A7A] border border-[#FF8A7A]/40">
+                  <span
+                    className={`rounded px-1 py-0.5 text-[10px] font-bold leading-none font-mono border ${
+                      isActive("/genesis")
+                        ? "border-[#1E4775]/30 bg-[#1E4775] text-white"
+                        : "border-white/40 bg-white/10 text-white"
+                    }`}
+                  >
                     2.0
                   </span>
                 </Link>
@@ -146,7 +152,13 @@ export default function Example() {
             >
               <span className="inline-flex items-center justify-center gap-2">
                 <span>Maiden voyage</span>
-                <span className="rounded px-1.5 py-0.5 text-xs font-bold font-mono bg-[#FF8A7A]/20 text-[#FF8A7A] border border-[#FF8A7A]/40">
+                <span
+                  className={`rounded px-1.5 py-0.5 text-xs font-bold font-mono border ${
+                    isActive("/genesis")
+                      ? "border-[#1E4775]/30 bg-[#1E4775] text-white"
+                      : "border-white/40 bg-white/10 text-white"
+                  }`}
+                >
                   2.0
                 </span>
               </span>

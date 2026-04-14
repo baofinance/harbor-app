@@ -9,7 +9,6 @@ export function GenesisPageTitleSection() {
       title="Maiden voyage"
       titleAccentSuffix="2.0"
       subtitle="Become a shareholder of new markets."
-      featuredHero
     />
   );
 }

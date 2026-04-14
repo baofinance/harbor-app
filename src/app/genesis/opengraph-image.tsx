@@ -42,7 +42,7 @@ export default function Image() {
             style={{
               fontSize: 72,
               fontWeight: 700,
-              color: "#ff8a7a",
+              color: "#ffffff",
               letterSpacing: "-0.03em",
               fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, monospace",
             }}
