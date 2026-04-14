@@ -58,13 +58,13 @@ export function AnchorLedgerMarksHero() {
               </span>
               <span>
                 <span className="font-semibold text-white">
-                  Maiden Voyage Deposits:
+                  Maiden voyage 2.0 deposits:
                 </span>{" "}
                 Earn 10{" "}
                 <MarksGlyph className="inline-block h-3.5 w-3.5 -translate-y-px align-middle" />{" "}
-                per dollar per day during maiden voyage, plus 100{" "}
+                per dollar per day during genesis, plus 100{" "}
                 <MarksGlyph className="inline-block h-3.5 w-3.5 -translate-y-px align-middle" />{" "}
-                per dollar bonus at maiden voyage end.
+                per dollar bonus at genesis close.
               </span>
             </li>
             <li className="flex gap-2 leading-relaxed">

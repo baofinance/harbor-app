@@ -40,11 +40,18 @@ export function GenesisMarketsToolbar({
   return (
     <div className={INDEX_MARKETS_TOOLBAR_ROW_CLASS}>
       <div className="flex flex-wrap items-center gap-2">
-        <h2 className="text-xs font-medium text-white/70 uppercase tracking-wider flex items-center gap-2">
-          Active Campaign:
-          {activeCampaignName && (
-            <span className={INDEX_CORAL_INFO_TAG_CLASS}>{activeCampaignName}</span>
-          )}
+        <h2 className="text-xs font-medium text-white/70 uppercase tracking-wider flex items-center gap-2 flex-wrap">
+          <span className="flex items-center gap-1.5">
+            Active Campaign:
+            {activeCampaignName && (
+              <span className={INDEX_CORAL_INFO_TAG_CLASS}>{activeCampaignName}</span>
+            )}
+            {activeCampaignName ? (
+              <span className="rounded px-1.5 py-0.5 text-[10px] font-bold font-mono tracking-tight bg-white/15 text-[#FF8A7A] border border-[#FF8A7A]/40">
+                2.0
+              </span>
+            ) : null}
+          </span>
         </h2>
         {displayedCompletedByCampaignSize > 0 && (
           <div className="flex items-center gap-1.5">
@@ -114,8 +121,8 @@ export function GenesisMarketsToolbar({
           tooltipMaxWidth="min(90vw, 22rem)"
           intro={
             <p>
-              Active Maiden Voyage Genesis campaigns use the incentive rates
-              below. Exact bonuses depend on the campaign you joined.
+              Active genesis campaigns use the mark rates below. USD caps set
+              pool ownership; bonuses depend on the campaign you joined.
             </p>
           }
           body={
@@ -130,8 +137,7 @@ export function GenesisMarketsToolbar({
                   <span className="font-semibold text-white">$</span> deposited
                   per day, plus{" "}
                   <span className="font-semibold text-white">100</span> bonus
-                  marks on Maiden Voyage completion (where the campaign offers
-                  it).
+                  marks at genesis close (where the campaign offers it).
                 </p>
               </div>
               <div className="border-t border-white/20 pt-2">
@@ -151,7 +157,7 @@ export function GenesisMarketsToolbar({
           earnSummary={
             <>
               <span className="font-semibold text-white">
-                Genesis / Maiden Voyage: 10 marks / $ / day
+                Maiden voyage 2.0: 10 marks / $ / day
               </span>
               <span className="text-white/80">
                 {" "}

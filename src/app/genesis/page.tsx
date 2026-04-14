@@ -318,7 +318,7 @@ export default function GenesisIndexPage() {
     marketName: string,
     peggedSymbolNoPrefix: string
   ) => {
-    return `The ${marketName} market is now live! Earn unbeatable yields on ${peggedSymbolNoPrefix} or get liquidation protected, funding free leverage on ${marketName} on @0xharborfi at harborfinance.io\n\nParticipate for your share of the $TIDE airdrop`;
+    return `The ${marketName} market is live on @0xharborfi — Maiden voyage 2.0. Become a shareholder: ${peggedSymbolNoPrefix} and leveraged ${marketName} at harborfinance.io\n\n$TIDE airdrop and ledger marks for early Harbor liquidity.`;
   };
 
   const openShareIntent = (marketName: string, peggedSymbol: string) => {
@@ -2089,6 +2089,11 @@ export default function GenesisIndexPage() {
                           const boost = parseFloat(
                             um?.maidenVoyageBoostMultiplier || "1"
                           );
+                          const maxBoost = parseFloat(
+                            um?.maidenVoyageMaxBoost || "1"
+                          );
+                          const genesisEndedForBoost =
+                            um?.genesisEnded === true;
 
                           if (isLoadingMaidenVoyageIndex && !capRow) return null;
 
@@ -2139,11 +2144,33 @@ export default function GenesisIndexPage() {
                                   </span>
                                 )}
                                 <span>
-                                  Post-genesis marks use a voyage boost (up to
-                                  cap); current:{" "}
+                                  {genesisEndedForBoost
+                                    ? "Maiden voyage yield share (and ha/sail ledger marks) is multiplied by voyage boost from Harbor value you keep—remaining genesis position plus Anchor + Sail for this market—vs your USD at genesis close. That is separate from the deposit cap above, which only sets ownership share."
+                                    : "After genesis closes, the same boost scales yield share and ha/sail marks from Harbor value you retain (genesis position plus Anchor + Sail) vs your USD at close."}
+                                  {maxBoost > 1 && (
+                                    <>
+                                      {" "}
+                                      Ceiling{" "}
+                                      <span className="font-mono font-semibold text-[#1E4775]">
+                                        {Number.isInteger(maxBoost)
+                                          ? maxBoost.toFixed(0)
+                                          : maxBoost.toFixed(2)}
+                                        ×
+                                      </span>
+                                      .
+                                    </>
+                                  )}{" "}
+                                  Current:{" "}
                                   <span className="font-mono font-semibold text-[#1E4775]">
                                     {boost.toFixed(2)}×
                                   </span>
+                                  {!genesisEndedForBoost &&
+                                    boost <= 1.001 && (
+                                      <span className="text-[#1E4775]/70">
+                                        {" "}
+                                        (1× until genesis closes)
+                                      </span>
+                                    )}
                                 </span>
                               </div>
                             </div>

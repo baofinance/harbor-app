@@ -10,40 +10,38 @@ import {
 export function GenesisHeroIntroCards() {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 mb-2 relative">
-      <div className="bg-black/[0.10] backdrop-blur-sm rounded-md overflow-hidden px-3 py-2 flex flex-col items-center justify-center text-center relative">
+      <div className="bg-black/[0.10] backdrop-blur-sm rounded-lg border border-white/10 overflow-hidden px-3 py-2.5 flex flex-col items-center justify-center text-center relative">
         <div className="flex items-center justify-center gap-2">
-          <BanknotesIcon className="w-5 h-5 text-white" />
+          <BanknotesIcon className="w-5 h-5 text-[#FF8A7A]" />
           <h2 className="font-bold text-white text-base">Deposit</h2>
         </div>
         <p className="text-xs text-white/75 mt-1">
-          Deposit <span className="font-semibold text-white">any token</span> via
-          Velora
+          Commit <span className="font-semibold text-white">any token</span> via
+          Velora to join the cap table
         </p>
       </div>
 
-      <div className="bg-black/[0.10] backdrop-blur-sm rounded-md overflow-hidden px-3 py-2 flex flex-col items-center justify-center text-center relative">
+      <div className="bg-black/[0.10] backdrop-blur-sm rounded-lg border border-white/10 overflow-hidden px-3 py-2.5 flex flex-col items-center justify-center text-center relative ring-1 ring-[#FF8A7A]/25">
         <div className="flex items-center justify-center gap-2">
-          <CurrencyDollarIcon className="w-5 h-5 text-white" />
-          <h2 className="font-bold text-white text-base">
-            Earn Maiden Voyage Marks
-          </h2>
+          <CurrencyDollarIcon className="w-5 h-5 text-[#FF8A7A]" />
+          <h2 className="font-bold text-white text-base">Ownership & marks</h2>
         </div>
         <p className="text-xs text-white/75 mt-1">
-          and secure your share of the $TIDE airdrop
+          Pool share under the USD cap, maiden voyage marks, and $TIDE eligibility
         </p>
         <p className="text-xs text-white/60 mt-1">(TGE Beginning Q2 2026)</p>
       </div>
 
-      <div className="bg-black/[0.10] backdrop-blur-sm rounded-md overflow-hidden px-3 py-2 flex flex-col items-center justify-center text-center relative">
+      <div className="bg-black/[0.10] backdrop-blur-sm rounded-lg border border-white/10 overflow-hidden px-3 py-2.5 flex flex-col items-center justify-center text-center relative">
         <div className="flex items-center justify-center gap-2">
-          <ArrowPathIcon className="w-5 h-5 text-white" />
-          <h2 className="font-bold text-white text-base">After Maiden Voyage</h2>
+          <ArrowPathIcon className="w-5 h-5 text-[#FF8A7A]" />
+          <h2 className="font-bold text-white text-base">After genesis</h2>
         </div>
         <p className="text-xs text-white/75 mt-1">
-          Claim anchor + sail tokens. Value = deposit value.
+          Claim Anchor + Sail. Boosted yield share while you stay in Harbor.
         </p>
         <p className="text-xs text-white/75 mt-1 font-semibold">
-          Earn real yield and more marks!
+          Real yield + ongoing ledger marks
         </p>
       </div>
     </div>

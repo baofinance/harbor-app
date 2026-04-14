@@ -4,6 +4,11 @@ const ZERO_ADDR = Address.fromString("0x0000000000000000000000000000000000000000
 
 /** Default USD ownership cap per genesis market */
 const DEFAULT_CAP_USD = BigDecimal.fromString("250000");
+
+/**
+ * Default max ve-style boost (e.g. 5 => 1x at 0% retention … 5x at 100%).
+ * Override per genesis in getMaidenVoyageMaxBoost below when a market needs a different ceiling.
+ */
 const DEFAULT_MAX_BOOST = BigDecimal.fromString("5");
 
 // —— Genesis (production + test2) ——
@@ -62,6 +67,8 @@ export function getMaidenVoyageCapUSD(genesis: Address): BigDecimal {
 }
 
 export function getMaidenVoyageMaxBoost(genesis: Address): BigDecimal {
+  // Optional: return different ceilings per genesis, e.g.
+  // if (genesis.equals(GEN_STETH_EUR)) return BigDecimal.fromString("4");
   return DEFAULT_MAX_BOOST;
 }
 

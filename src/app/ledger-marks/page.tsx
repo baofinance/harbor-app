@@ -1112,7 +1112,7 @@ const handleAnchorSailSort = (column: typeof anchorSailSortBy) => {
             <div
               className="flex shrink-0 items-center gap-0.5 rounded-md bg-white/10 p-0.5"
               role="group"
-              aria-label="Leaderboard: Maiden Voyage or Anchor and Sail"
+              aria-label="Leaderboard: Maiden voyage 2.0 campaigns or Anchor and Sail"
             >
               <button
                 type="button"
@@ -1124,7 +1124,12 @@ const handleAnchorSailSort = (column: typeof anchorSailSortBy) => {
                     : "text-white hover:bg-white/20"
                 }`}
               >
-                Maiden Voyage
+                <span className="inline-flex items-center gap-1">
+                  <span>Maiden voyage</span>
+                  <span className="rounded px-1 py-0 text-[9px] font-bold font-mono bg-[#FF8A7A]/20 text-[#E0604A] border border-[#FF8A7A]/35">
+                    2.0
+                  </span>
+                </span>
               </button>
               <button
                 type="button"
@@ -1152,7 +1157,7 @@ const handleAnchorSailSort = (column: typeof anchorSailSortBy) => {
                 )
               }
               disabled={leaderboardTab === "anchor-sail"}
-              groupLabel="MAIDEN VOYAGE"
+              groupLabel="MAIDEN VOYAGE 2.0"
               minWidthClass="min-w-[235px]"
             />
           </div>
@@ -1167,7 +1172,7 @@ const handleAnchorSailSort = (column: typeof anchorSailSortBy) => {
               <div className="flex-1">
                 <h3 className="font-bold text-base text-[#1E4775] mb-2">
                   {leaderboardTab === "campaigns"
-                    ? `${activeCampaign.label} Maiden Voyage Summary`
+                    ? `${activeCampaign.label} — maiden voyage 2.0`
                     : "Anchor & Sail Marks Summary"}
                 </h3>
                 {leaderboardTab === "campaigns" ? (
@@ -1179,7 +1184,7 @@ const handleAnchorSailSort = (column: typeof anchorSailSortBy) => {
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
                       <div className="bg-white p-2 rounded-lg">
                         <div className="text-xs text-[#1E4775]/70 mb-0.5 text-center">
-                          {activeCampaign.label} Maiden Voyage Marks
+                          {activeCampaign.label} marks
                         </div>
                         <div className="flex items-baseline gap-1 justify-center">
                           <div className="text-base font-bold text-[#1E4775]">

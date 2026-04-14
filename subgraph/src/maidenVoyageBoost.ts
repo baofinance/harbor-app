@@ -121,8 +121,11 @@ export function sumMaidenVoyageClaimUSD(genesis: Address, user: Bytes): BigDecim
 }
 
 /**
- * Recompute ve-style maiden voyage boost from current claim USD vs baseline.
- * Only applies when user participated (final share > 0) and genesis ended.
+ * Recompute ve-style maiden voyage boost from retention: claim USD vs baseline at genesis end.
+ * Linear in retention: 0% -> 1x, 50% -> midpoint, 100% -> maxBoost (e.g. 1x / 3x / 5x for max 5).
+ * Boost only ever moves down (sticky high-water): if you withdraw and later add liquidity back,
+ * you do not regain a higher multiplier — yield weight uses min(previous, rawBoost).
+ * Only applies when user has positive final ownership share and genesis ended.
  */
 export function refreshMaidenVoyageBoost(
   userMarks: UserHarborMarks,
@@ -146,6 +149,7 @@ export function refreshMaidenVoyageBoost(
   let ratio = claim.div(baseline);
   if (ratio.gt(ONE_BD)) ratio = ONE_BD;
 
+  // rawBoost = 1 + (maxBoost - 1) * retention
   const rawBoost = ONE_BD.plus(maxB.minus(ONE_BD).times(ratio));
   let prev = userMarks.maidenVoyageBoostMultiplier;
   if (prev.lt(ONE_BD) || prev.equals(ZERO_BD)) prev = maxB;

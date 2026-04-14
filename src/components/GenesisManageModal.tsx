@@ -222,7 +222,7 @@ export const GenesisManageModal = ({
           ) : (
             <div className="text-center text-[#1E4775]/60 py-8">
               {activeTab === "withdraw" && !hasDeposit
-                ? "No deposit to withdraw. Deposit first to participate in the Maiden Voyage."
+                ? "No deposit to withdraw. Deposit first to join Maiden voyage 2.0."
                 : isEnded && activeTab === "deposit"
                 ? "Genesis has ended. Deposits are no longer accepted."
                 : "Loading..."}

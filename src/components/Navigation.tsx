@@ -53,10 +53,13 @@ export default function Example() {
               <div className="flex flex-nowrap items-center justify-start gap-1 overflow-x-auto py-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 <Link
                   href="/genesis"
-                  className={linkClass("/genesis")}
+                  className={`${linkClass("/genesis")} inline-flex items-center gap-1`}
                   aria-current={isActive("/genesis") ? "page" : undefined}
                 >
-                  Genesis
+                  <span>Maiden voyage</span>
+                  <span className="rounded px-1 py-0.5 text-[10px] font-bold leading-none font-mono bg-[#FF8A7A]/20 text-[#FF8A7A] border border-[#FF8A7A]/40">
+                    2.0
+                  </span>
                 </Link>
                 <Link
                   href="/anchor"
@@ -141,7 +144,12 @@ export default function Example() {
               }`}
               aria-current={isActive("/genesis") ? "page" : undefined}
             >
-              Genesis
+              <span className="inline-flex items-center justify-center gap-2">
+                <span>Maiden voyage</span>
+                <span className="rounded px-1.5 py-0.5 text-xs font-bold font-mono bg-[#FF8A7A]/20 text-[#FF8A7A] border border-[#FF8A7A]/40">
+                  2.0
+                </span>
+              </span>
             </DisclosureButton>
             <DisclosureButton
               as={Link}

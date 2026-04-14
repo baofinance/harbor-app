@@ -82,10 +82,10 @@ type UserHarborMarks @entity(immutable: false) {
   # Maiden voyage: deposit counted under USD cap (pre–genesis-end); final ownership = deposit counted / cap
   maidenVoyageDepositCountedUSD: BigDecimal!
   finalMaidenVoyageOwnershipShare: BigDecimal! # Set at genesis end: counted USD / cap USD (0–1)
-  # ve-style boost (post genesis): claim on ha+sail vs baseline
+  # ve-style boost (post genesis): retention = (genesis deposit + ha+sail claim USD) / baseline; linear 1x..maxBoost, sticky-down
   baselineClaimUSDForBoost: BigDecimal! # Snapshot at genesis end (currentDepositUSD)
-  maidenVoyageBoostMultiplier: BigDecimal! # Effective multiplier 1 .. maxBoost (monotonic non-increasing)
-  maidenVoyageMaxBoost: BigDecimal! # Config cap (e.g. 5)
+  maidenVoyageBoostMultiplier: BigDecimal! # 1..maxBoost; yield split uses ownershipShare * this vs sum of same (competing boosts)
+  maidenVoyageMaxBoost: BigDecimal! # Ceiling (e.g. 5); set per genesis in maidenVoyageConfig.getMaidenVoyageMaxBoost
   lastMaidenVoyageClaimUSD: BigDecimal! # Last computed anchor+sail USD for this market
   # Last updated
   lastUpdated: BigInt! # Last block timestamp when updated
@@ -116,6 +116,8 @@ type MaidenVoyageYieldGlobal @entity(immutable: false) {
   cumulativeYieldFromCollateralUSD: BigDecimal!
   cumulativeYieldFromMintFeesUSD: BigDecimal!
   cumulativeYieldFromRedeemFeesUSD: BigDecimal!
+  # Realized wrapped-collateral fees: Transfer(minter -> feeReceiver()) on WRAPPED_COLLATERAL_TOKEN (authoritative)
+  cumulativeYieldFromMinterFeeTransfersUSD: BigDecimal!
   lastUpdated: BigInt!
 }
 

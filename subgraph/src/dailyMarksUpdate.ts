@@ -23,18 +23,24 @@ const LAST_HOURLY_SAIL_KEY = "lastHourlySailMarksUpdate";
 // Chainlink feeds (mainnet, 8 decimals)
 const ETH_USD_FEED = Address.fromString("0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419");
 const BTC_USD_FEED = Address.fromString("0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c");
+const EUR_USD_FEED = Address.fromString("0xb49f677943C0aD637850Ea3b030e1d3778a050bD");
 
 // Production v1 tokens/pools
 const HAETH = Address.fromString("0x7A53EBc85453DD006824084c4f4bE758FcF8a5B5");
 const HABTC = Address.fromString("0x25bA4A826E1A1346dcA2Ab530831dbFF9C08bEA7");
+const HAEUR = Address.fromString("0x83Fd69E0FF5767972b46E61C6833408361bF7346");
 
 const HS_FXUSD_ETH = Address.fromString("0x0Cd6BB1a0cfD95e2779EDC6D17b664B481f2EB4C");
 const HS_FXUSD_BTC = Address.fromString("0x9567c243F647f9Ac37efb7Fc26BD9551Dce0BE1B");
 const HS_STETH_BTC = Address.fromString("0x817ADaE288eD46B8618AAEffE75ACD26A0a1b0FD");
+const HS_FXUSD_EUR = Address.fromString("0x7A7C1f2502c19193C44662A2Aff51c2B76fDDAEA");
+const HS_STETH_EUR = Address.fromString("0xEA23FaAf5e464488ECc29883760238B68410D92b");
 
 const MINTER_ETH_FXUSD = Address.fromString("0xd6E2F8e57b4aFB51C6fA4cbC012e1cE6aEad989F");
 const MINTER_BTC_FXUSD = Address.fromString("0x33e32ff4d0677862fa31582CC654a25b9b1e4888");
 const MINTER_BTC_STETH = Address.fromString("0xF42516EB885E737780EB864dd07cEc8628000919");
+const MINTER_EUR_FXUSD = Address.fromString("0xDEFB2C04062350678965CBF38A216Cc50723B246");
+const MINTER_EUR_STETH = Address.fromString("0x68911ea33E11bc77e07f6dA4db6cd23d723641cE");
 
 const POOL_COLL_ETH_FXUSD = Address.fromString("0x1F985CF7C10A81DE1940da581208D2855D263D72");
 const POOL_LEV_ETH_FXUSD = Address.fromString("0x438B29EC7a1770dDbA37D792f1A6e76231Ef8E06");
@@ -42,6 +48,10 @@ const POOL_COLL_BTC_FXUSD = Address.fromString("0x86561cdB34ebe8B9abAbb0DD7bEA29
 const POOL_LEV_BTC_FXUSD = Address.fromString("0x9e56F1E1E80EBf165A1dAa99F9787B41cD5bFE40");
 const POOL_COLL_BTC_STETH = Address.fromString("0x667Ceb303193996697A5938cD6e17255EeAcef51");
 const POOL_LEV_BTC_STETH = Address.fromString("0xCB4F3e21DE158bf858Aa03E63e4cEc7342177013");
+const POOL_COLL_EUR_FXUSD = Address.fromString("0xe60054E6b518f67411834282cE1557381f050B13");
+const POOL_LEV_EUR_FXUSD = Address.fromString("0xc5e0dA7e0a178850438E5E97ed59b6eb2562e88E");
+const POOL_COLL_EUR_STETH = Address.fromString("0x000564B33FFde65E6c3b718166856654e039D69B");
+const POOL_LEV_EUR_STETH = Address.fromString("0x7553fb328ef35aF1c2ac4E91e53d6a6B62DFDdEa");
 
 // Genesis contracts (production v1)
 const GENESIS_ETH_FXUSD = Address.fromString("0xc9df4f62474cf6cde6c064db29416a9f4f27ebdc");
@@ -80,6 +90,7 @@ function chainlinkUsd(feed: Address): BigDecimal {
 function pegUsdForHs(token: Address): BigDecimal {
   if (token.equals(HS_FXUSD_ETH)) return chainlinkUsd(ETH_USD_FEED);
   if (token.equals(HS_FXUSD_BTC) || token.equals(HS_STETH_BTC)) return chainlinkUsd(BTC_USD_FEED);
+  if (token.equals(HS_FXUSD_EUR) || token.equals(HS_STETH_EUR)) return chainlinkUsd(EUR_USD_FEED);
   return BigDecimal.fromString("1.0");
 }
 
@@ -87,6 +98,8 @@ function minterForHs(token: Address): Address {
   if (token.equals(HS_FXUSD_ETH)) return MINTER_ETH_FXUSD;
   if (token.equals(HS_FXUSD_BTC)) return MINTER_BTC_FXUSD;
   if (token.equals(HS_STETH_BTC)) return MINTER_BTC_STETH;
+  if (token.equals(HS_FXUSD_EUR)) return MINTER_EUR_FXUSD;
+  if (token.equals(HS_STETH_EUR)) return MINTER_EUR_STETH;
   return Address.zero();
 }
 
@@ -103,6 +116,7 @@ function hsPriceUsd(token: Address): BigDecimal {
 function haPriceUsd(token: Address): BigDecimal {
   if (token.equals(HAETH)) return chainlinkUsd(ETH_USD_FEED);
   if (token.equals(HABTC)) return chainlinkUsd(BTC_USD_FEED);
+  if (token.equals(HAEUR)) return chainlinkUsd(EUR_USD_FEED);
   return BigDecimal.fromString("1.0");
 }
 
@@ -164,7 +178,15 @@ function updateHsBalances(token: Address, now: BigInt, priceUsd: BigDecimal): vo
 }
 
 function poolType(pool: Address): string {
-  if (pool.equals(POOL_LEV_ETH_FXUSD) || pool.equals(POOL_LEV_BTC_FXUSD) || pool.equals(POOL_LEV_BTC_STETH)) return "stabilityPoolLeveraged";
+  if (
+    pool.equals(POOL_LEV_ETH_FXUSD) ||
+    pool.equals(POOL_LEV_BTC_FXUSD) ||
+    pool.equals(POOL_LEV_BTC_STETH) ||
+    pool.equals(POOL_LEV_EUR_FXUSD) ||
+    pool.equals(POOL_LEV_EUR_STETH)
+  ) {
+    return "stabilityPoolLeveraged";
+  }
   return "stabilityPoolCollateral";
 }
 
@@ -174,15 +196,20 @@ function poolAssetUsd(
   haBtcUsd: BigDecimal,
   hsEthUsd: BigDecimal,
   hsBtcUsd: BigDecimal,
-  hsStethUsd: BigDecimal
+  hsStethUsd: BigDecimal,
+  haEurUsd: BigDecimal
 ): BigDecimal {
   if (pool.equals(POOL_COLL_ETH_FXUSD)) return haEthUsd;
   if (pool.equals(POOL_COLL_BTC_FXUSD)) return haBtcUsd;
   if (pool.equals(POOL_COLL_BTC_STETH)) return haBtcUsd;
+  if (pool.equals(POOL_COLL_EUR_FXUSD)) return haEurUsd;
+  if (pool.equals(POOL_COLL_EUR_STETH)) return haEurUsd;
   // Leveraged pools deposit ha tokens (confirmed): treat as ha-valued deposits
   if (pool.equals(POOL_LEV_ETH_FXUSD)) return haEthUsd;
   if (pool.equals(POOL_LEV_BTC_FXUSD)) return haBtcUsd;
   if (pool.equals(POOL_LEV_BTC_STETH)) return haBtcUsd;
+  if (pool.equals(POOL_LEV_EUR_FXUSD)) return haEurUsd;
+  if (pool.equals(POOL_LEV_EUR_STETH)) return haEurUsd;
   return BigDecimal.fromString("0");
 }
 
@@ -278,21 +305,38 @@ export function runDailyMarksUpdate(block: ethereum.Block): void {
   // Snapshot prices once per day.
   const haEthUsd = haPriceUsd(HAETH);
   const haBtcUsd = haPriceUsd(HABTC);
+  const haEurUsd = haPriceUsd(HAEUR);
   const hsEthUsd = hsPriceUsd(HS_FXUSD_ETH);
   const hsBtcUsd = hsPriceUsd(HS_FXUSD_BTC);
   const hsStethUsd = hsPriceUsd(HS_STETH_BTC);
+  const hsFxusdEurUsd = hsPriceUsd(HS_FXUSD_EUR);
+  const hsStethEurUsd = hsPriceUsd(HS_STETH_EUR);
 
   // Roll user marks forward + refresh snapshots for the new price.
   updateHaBalances(HAETH, now, haEthUsd);
   updateHaBalances(HABTC, now, haBtcUsd);
+  updateHaBalances(HAEUR, now, haEurUsd);
   updateHsBalances(HS_FXUSD_ETH, now, hsEthUsd);
   updateHsBalances(HS_FXUSD_BTC, now, hsBtcUsd);
   updateHsBalances(HS_STETH_BTC, now, hsStethUsd);
+  updateHsBalances(HS_FXUSD_EUR, now, hsFxusdEurUsd);
+  updateHsBalances(HS_STETH_EUR, now, hsStethEurUsd);
 
-  const pools: Address[] = [POOL_COLL_ETH_FXUSD, POOL_LEV_ETH_FXUSD, POOL_COLL_BTC_FXUSD, POOL_LEV_BTC_FXUSD, POOL_COLL_BTC_STETH, POOL_LEV_BTC_STETH];
+  const pools: Address[] = [
+    POOL_COLL_ETH_FXUSD,
+    POOL_LEV_ETH_FXUSD,
+    POOL_COLL_BTC_FXUSD,
+    POOL_LEV_BTC_FXUSD,
+    POOL_COLL_BTC_STETH,
+    POOL_LEV_BTC_STETH,
+    POOL_COLL_EUR_FXUSD,
+    POOL_LEV_EUR_FXUSD,
+    POOL_COLL_EUR_STETH,
+    POOL_LEV_EUR_STETH,
+  ];
   for (let i = 0; i < pools.length; i++) {
     const p = pools[i];
-    const assetUsd = poolAssetUsd(p, haEthUsd, haBtcUsd, hsEthUsd, hsBtcUsd, hsStethUsd);
+    const assetUsd = poolAssetUsd(p, haEthUsd, haBtcUsd, hsEthUsd, hsBtcUsd, hsStethUsd, haEurUsd);
     if (assetUsd.gt(BigDecimal.fromString("0"))) updatePoolDeposits(p, now, assetUsd);
   }
 
@@ -327,11 +371,15 @@ export function runHourlySailMarksUpdate(block: ethereum.Block): void {
   const hsEthUsd = hsPriceUsd(HS_FXUSD_ETH);
   const hsBtcUsd = hsPriceUsd(HS_FXUSD_BTC);
   const hsStethUsd = hsPriceUsd(HS_STETH_BTC);
+  const hsFxusdEurUsd = hsPriceUsd(HS_FXUSD_EUR);
+  const hsStethEurUsd = hsPriceUsd(HS_STETH_EUR);
 
   // Update sail token holders (wallet balances)
   if (hsEthUsd.gt(BigDecimal.fromString("0"))) updateHsBalances(HS_FXUSD_ETH, now, hsEthUsd);
   if (hsBtcUsd.gt(BigDecimal.fromString("0"))) updateHsBalances(HS_FXUSD_BTC, now, hsBtcUsd);
   if (hsStethUsd.gt(BigDecimal.fromString("0"))) updateHsBalances(HS_STETH_BTC, now, hsStethUsd);
+  if (hsFxusdEurUsd.gt(BigDecimal.fromString("0"))) updateHsBalances(HS_FXUSD_EUR, now, hsFxusdEurUsd);
+  if (hsStethEurUsd.gt(BigDecimal.fromString("0"))) updateHsBalances(HS_STETH_EUR, now, hsStethEurUsd);
 
   t.lastUpdated = now;
   t.save();

@@ -202,8 +202,16 @@ function getOraclePricesForMinter(minterAddress: Address): BigDecimal[] {
 
   const maxUnderlyingPrice = toE18(ans.value.value1);
   const maxWrappedRate = toE18(ans.value.value3);
-  if (maxUnderlyingPrice.equals(ZERO_BD)) return [ZERO_BD, ZERO_BD, ZERO_BD];
   if (maxWrappedRate.equals(ZERO_BD)) return [ZERO_BD, ZERO_BD, ZERO_BD];
+
+  // stETH/EUR: match genesis.ts — wstETH USD from ETH/USD × stETH-per-wstETH (oracle value3 only).
+  if (isStethEurMinter(minterAddress)) {
+    const ethUsd = chainlinkUsd(ETH_USD_FEED);
+    const wstethUsd = ethUsd.times(maxWrappedRate);
+    return [wstethUsd, ONE, wstethUsd];
+  }
+
+  if (maxUnderlyingPrice.equals(ZERO_BD)) return [ZERO_BD, ZERO_BD, ZERO_BD];
 
   const pegUsd = getPegUsdForMinter(minterAddress);
   const underlyingPriceUSD = maxUnderlyingPrice.times(pegUsd);
@@ -412,7 +420,7 @@ export function handleBlock(block: ethereum.Block): void {
  *
  * wrappedTokenUsd = maxUnderlyingPrice * maxWrappedRate * pegUsd
  */
-function valueCollateralUsd(
+export function valueCollateralUsd(
   minterAddress: Address,
   collateralAmount: BigInt
 ): BigDecimal {
@@ -448,11 +456,18 @@ function valueCollateralUsd(
 
   const maxUnderlyingPrice = toE18(ans.value.value1);
   const maxWrappedRate = toE18(ans.value.value3);
-  if (maxUnderlyingPrice.equals(ZERO_BD)) return ZERO_BD;
   if (maxWrappedRate.equals(ZERO_BD)) return ZERO_BD;
 
-  const pegUsd = getPegUsdForMinter(minterAddress);
   const amountDec = toE18(collateralAmount);
+
+  if (isStethEurMinter(minterAddress)) {
+    const ethUsd = chainlinkUsd(ETH_USD_FEED);
+    return amountDec.times(maxWrappedRate).times(ethUsd);
+  }
+
+  if (maxUnderlyingPrice.equals(ZERO_BD)) return ZERO_BD;
+
+  const pegUsd = getPegUsdForMinter(minterAddress);
   // For BTC/stETH, collateralAmount is already underlying stETH units, so don't apply wrapped rate.
   if (isBtcStethMinter(minterAddress)) {
     return amountDec.times(maxUnderlyingPrice).times(pegUsd);

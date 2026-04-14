@@ -83,9 +83,13 @@ export const GenesisLedgerMarksSummary = ({
                       <span className="text-white/70 mt-0.5">•</span>
                       <p className="text-white/90 leading-relaxed">
                         Maiden voyage uses a shared USD deposit cap for
-                        ownership. After launch, collateral yield accrues to
-                        the pool (split by share) and marks can receive a
-                        one-way voyage boost tied to anchor and sail claims.
+                        ownership only. After genesis, pool yield is split by
+                        ownership times a voyage boost: retention compares
+                        Harbor value you still hold—unclaimed genesis plus
+                        Anchor and Sail for that market—to your USD at genesis
+                        close. The multiplier never increases after it has
+                        dropped, even if you deposit again. It is not the same
+                        thing as the deposit cap.
                       </p>
                     </div>
                   </div>
@@ -105,10 +109,10 @@ export const GenesisLedgerMarksSummary = ({
             <div className="text-[11px] text-white/80 uppercase tracking-widest">
               {(() => {
                 if (!selectedCampaign) {
-                  return "Current Maiden Voyage Marks";
+                  return "Current maiden voyage marks";
                 }
                 const campaignName = extractCampaignName(selectedCampaign.label);
-                return `${campaignName} Maiden Voyage Marks`;
+                return `${campaignName} marks`;
               })()}
             </div>
             <div className="text-sm font-semibold text-white font-mono mt-1">

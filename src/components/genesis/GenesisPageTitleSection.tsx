@@ -6,8 +6,10 @@ import { IndexPageTitleSection } from "@/components/shared/IndexPageTitleSection
 export function GenesisPageTitleSection() {
   return (
     <IndexPageTitleSection
-      title="Maiden Voyage"
-      subtitle="Earn rewards for providing initial liquidity for new markets"
+      title="Maiden voyage"
+      titleAccentSuffix="2.0"
+      subtitle="Become a shareholder of new markets."
+      featuredHero
     />
   );
 }

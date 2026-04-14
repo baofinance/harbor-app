@@ -134,6 +134,7 @@ const MAIDEN_VOYAGE_CAMPAIGN_QUERY = `
       cumulativeYieldFromCollateralUSD
       cumulativeYieldFromMintFeesUSD
       cumulativeYieldFromRedeemFeesUSD
+      cumulativeYieldFromMinterFeeTransfersUSD
       lastUpdated
     }
   }

@@ -16,6 +16,7 @@ function getOrCreateYieldGlobal(genesis: Address, timestamp: BigInt): MaidenVoya
     y.cumulativeYieldFromCollateralUSD = ZERO_BD;
     y.cumulativeYieldFromMintFeesUSD = ZERO_BD;
     y.cumulativeYieldFromRedeemFeesUSD = ZERO_BD;
+    y.cumulativeYieldFromMinterFeeTransfersUSD = ZERO_BD;
     y.lastUpdated = timestamp;
     y.save();
   }
@@ -60,8 +61,15 @@ export function accrueMaidenVoyageCollateralYieldAfterSnapshot(
   y.save();
 }
 
-/** Stub: mint fee share to yield pool when protocol exposes fee amounts in events. */
-export function accrueMaidenVoyageMintFeeUSD(minterAddress: Address, feeUSD: BigDecimal, now: BigInt): void {
+/**
+ * Realized mint/redeem fees: wrapped collateral ERC20 Transfer(minter -> feeReceiver()).
+ * Same pool counter regardless of mint vs redeem (distinguish via tx logs off-chain if needed).
+ */
+export function accrueMaidenVoyageMinterWrappedFeeUSD(
+  minterAddress: Address,
+  feeUSD: BigDecimal,
+  now: BigInt
+): void {
   if (feeUSD.le(ZERO_BD)) return;
   const genesis = getGenesisForMinter(minterAddress);
   if (genesis.equals(ZERO_ADDR)) return;
@@ -69,22 +77,7 @@ export function accrueMaidenVoyageMintFeeUSD(minterAddress: Address, feeUSD: Big
   if (GenesisEnd.load(genesis.toHexString()) == null) return;
 
   const y = getOrCreateYieldGlobal(genesis, now);
-  y.cumulativeYieldFromMintFeesUSD = y.cumulativeYieldFromMintFeesUSD.plus(feeUSD);
-  y.cumulativeYieldUSD = y.cumulativeYieldUSD.plus(feeUSD);
-  y.lastUpdated = now;
-  y.save();
-}
-
-/** Stub: redeem fee share to yield pool when protocol exposes fee amounts in events. */
-export function accrueMaidenVoyageRedeemFeeUSD(minterAddress: Address, feeUSD: BigDecimal, now: BigInt): void {
-  if (feeUSD.le(ZERO_BD)) return;
-  const genesis = getGenesisForMinter(minterAddress);
-  if (genesis.equals(ZERO_ADDR)) return;
-  if (!isKnownMaidenVoyageGenesis(genesis)) return;
-  if (GenesisEnd.load(genesis.toHexString()) == null) return;
-
-  const y = getOrCreateYieldGlobal(genesis, now);
-  y.cumulativeYieldFromRedeemFeesUSD = y.cumulativeYieldFromRedeemFeesUSD.plus(feeUSD);
+  y.cumulativeYieldFromMinterFeeTransfersUSD = y.cumulativeYieldFromMinterFeeTransfersUSD.plus(feeUSD);
   y.cumulativeYieldUSD = y.cumulativeYieldUSD.plus(feeUSD);
   y.lastUpdated = now;
   y.save();

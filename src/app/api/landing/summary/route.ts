@@ -443,7 +443,7 @@ export async function GET(request: Request) {
   for (const [marketId, market] of maidenVoyageMarkets) {
     const campaignLabel =
       (market as any)?.marksCampaign?.label ||
-      "Maiden Voyage";
+      "Maiden voyage 2.0";
     const campaignId = (market as any)?.marksCampaign?.id;
     const collateralSymbol = market.collateral?.symbol;
     const peggedSymbol = market.peggedToken?.symbol;

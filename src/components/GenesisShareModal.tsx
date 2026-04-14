@@ -17,9 +17,9 @@ export const GenesisShareModal = ({
 }: GenesisShareModalProps) => {
  if (!isOpen) return null;
 
- const shareMessage = `Just secured my @0xharborfi airdrop with their maiden voyage. ⚓️
+ const shareMessage = `Just joined @0xharborfi Maiden voyage 2.0 — staking a claim as a shareholder in new markets. ⚓️
 
-Predeposits are still open for a limited time - don't miss out!
+Genesis is open for a limited time.
 
 https://www.harborfinance.io/`;
 
@@ -70,7 +70,7 @@ https://www.harborfinance.io/`;
  Welcome Aboard!
  </h2>
  <p className="text-[#1E4775]/80 text-lg">
- Thank you for joining the Maiden Voyage!
+ Welcome to Maiden voyage 2.0 — you&apos;re on the cap table.
  </p>
  </div>
 

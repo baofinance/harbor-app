@@ -26,6 +26,7 @@ type GraphCampaign = {
   yieldGlobal?: {
     cumulativeYieldUSD: string;
     cumulativeYieldFromCollateralUSD: string;
+    cumulativeYieldFromMinterFeeTransfersUSD?: string;
   };
 };
 
@@ -39,6 +40,7 @@ const PARTICIPANTS_QUERY = `
     maidenVoyageYieldGlobal(id: $capId) {
       cumulativeYieldUSD
       cumulativeYieldFromCollateralUSD
+      cumulativeYieldFromMinterFeeTransfersUSD
     }
     userHarborMarks(
       first: 500
@@ -247,21 +249,32 @@ export function MaidenVoyageYieldAdmin() {
   );
 
   const rows = useMemo(() => {
-    return participants
-      .map((p) => {
-        const share = parseFloat(p.finalMaidenVoyageOwnershipShare || "0");
-        const attributed = cumulativeYield * share;
+    const withWeights = participants.map((p) => {
+      const share = parseFloat(p.finalMaidenVoyageOwnershipShare || "0");
+      const boost = parseFloat(p.maidenVoyageBoostMultiplier || "1");
+      const weight = share * boost;
+      return { p, share, boost, weight };
+    });
+
+    const totalWeight = withWeights.reduce((s, r) => s + r.weight, 0);
+
+    return withWeights
+      .map(({ p, share, boost, weight }) => {
+        const attributed =
+          totalWeight > 0
+            ? (cumulativeYield * weight) / totalWeight
+            : cumulativeYield * share;
         const w = p.user.toLowerCase();
         const paid = parseFloat(paidByWallet[w] || "0");
         const outstanding = attributed - paid;
-        const boost = parseFloat(p.maidenVoyageBoostMultiplier || "1");
         return {
           wallet: p.user,
           share,
+          boost,
+          weight,
           attributed,
           paid,
           outstanding,
-          boost,
         };
       })
       .filter((r) => r.share > 0 || r.paid > 0);
@@ -289,9 +302,13 @@ export function MaidenVoyageYieldAdmin() {
           Subgraph + ledger
         </h2>
         <p className="text-xs text-white/60 mb-4">
-          Attributed yield uses pool total ×{" "}
-          <code className="text-white/80">finalMaidenVoyageOwnershipShare</code>
-          . Outstanding = attributed − cumulative paid (this ledger).
+          Attributed yield splits the pool by competing weights: each wallet gets{" "}
+          <code className="text-white/80">cumulativeYield × (share × boost) / Σ(share × boost)</code>
+          , where <code className="text-white/80">share</code> is{" "}
+          <code className="text-white/80">finalMaidenVoyageOwnershipShare</code> and{" "}
+          <code className="text-white/80">boost</code> is the ve-style multiplier (1× at
+          no retention … max× at full retention, never increases after you withdraw).
+          Outstanding = attributed − cumulative paid (this ledger).
         </p>
         <div className="flex flex-wrap gap-3 items-end">
           <div>
@@ -338,6 +355,12 @@ export function MaidenVoyageYieldAdmin() {
             <div>
               Pool cumulative yield:{" "}
               {campaign.yieldGlobal?.cumulativeYieldUSD ?? "0"} USD
+            </div>
+            <div>
+              From minter→feeReceiver (wrapped transfers):{" "}
+              {campaign.yieldGlobal?.cumulativeYieldFromMinterFeeTransfersUSD ??
+                "0"}{" "}
+              USD
             </div>
           </div>
         )}
@@ -407,6 +430,7 @@ export function MaidenVoyageYieldAdmin() {
               <th className="py-2 pr-3 text-right">Attributed</th>
               <th className="py-2 pr-3 text-right">Paid</th>
               <th className="py-2 pr-3 text-right">Outstanding</th>
+              <th className="py-2 pr-3 text-right">Weight</th>
               <th className="py-2 text-right">Boost</th>
             </tr>
           </thead>
@@ -427,6 +451,9 @@ export function MaidenVoyageYieldAdmin() {
                 </td>
                 <td className="py-2 pr-3 text-right font-mono text-amber-200">
                   {r.outstanding.toFixed(2)}
+                </td>
+                <td className="py-2 pr-3 text-right font-mono text-white/70">
+                  {r.weight.toFixed(6)}
                 </td>
                 <td className="py-2 text-right font-mono">
                   {r.boost.toFixed(2)}×

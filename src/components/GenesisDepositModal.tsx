@@ -860,9 +860,9 @@ const newTotalDepositActual: bigint = userCurrentDeposit + actualCollateralDepos
  };
 
  const handleShareOnX = () => {
- const shareMessage = `Just secured my @0xharborfi airdrop with their maiden voyage. ⚓️
+ const shareMessage = `Just joined @0xharborfi Maiden voyage 2.0 — staking a claim as a shareholder in new markets. ⚓️
 
-Predeposits are still open for a limited time - don't miss out!
+Genesis is open for a limited time.
 
 https://www.harborfinance.io/`;
  const encodedMessage = encodeURIComponent(shareMessage);
@@ -1893,7 +1893,7 @@ const successFmt = formatTokenAmount(
  <div className="space-y-4">
  <div className="p-4 bg-[rgb(var(--surface-selected-rgb))]/20 border border-[rgb(var(--surface-selected-border-rgb))]/30 text-center">
  <p className="text-sm text-[#1E4775]/80">
- Thank you for joining the Maiden Voyage!
+ Welcome to Maiden voyage 2.0 — you&apos;re on the cap table.
  </p>
  {successfulDepositAmount && (
 <>
@@ -2442,10 +2442,13 @@ const successFmt = formatTokenAmount(
           onClose={handleClose}
           header={
             <div className="flex-1">
-              <div className="flex items-center gap-2 mb-1">
+              <div className="flex items-center gap-2 mb-1 flex-wrap">
                 <h2 className="text-lg sm:text-2xl font-bold text-[#1E4775]">
-                  Deposit in Maiden Voyage
+                  Deposit — Maiden voyage
                 </h2>
+                <span className="rounded px-1.5 py-0.5 text-xs font-bold font-mono bg-[#FF8A7A]/15 text-[#E0604A] border border-[#FF8A7A]/35">
+                  2.0
+                </span>
                 <div className="flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] font-semibold uppercase tracking-wide">
                   <ArrowPathIcon className="w-3 h-3" />
                   <span>Any Token</span>
