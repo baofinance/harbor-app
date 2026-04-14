@@ -16,16 +16,34 @@ const MULTICALL3 = {
 // Mainnet RPC URL - must be set in env for production (e.g. Alchemy). No hardcoded key.
 const PUBLIC_MAINNET_RPC = "https://eth.llamarpc.com";
 
-/** When USE_RPC_PROXY is true, client uses our /api/rpc so the Alchemy key stays server-side (MAINNET_RPC_URL). */
-function getClientMainnetRpcUrl(): string {
-  if (process.env.NEXT_PUBLIC_USE_RPC_PROXY === "true" && process.env.NEXT_PUBLIC_APP_URL) {
-    const base = process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "");
-    return `${base}/api/rpc`;
+/**
+ * Upstream JSON-RPC URL (Alchemy, etc.). Used by server-side clients and chain metadata.
+ * Prefer server-only `MAINNET_RPC_URL`; falls back to public RPC for local/dev.
+ */
+function getUpstreamMainnetRpcUrl(): string {
+  return (
+    process.env.MAINNET_RPC_URL ||
+    process.env.NEXT_PUBLIC_MAINNET_RPC_URL ||
+    PUBLIC_MAINNET_RPC
+  );
+}
+
+/**
+ * URL passed to wagmi/viem `http()` for browser reads.
+ * When `NEXT_PUBLIC_USE_RPC_PROXY=true`, use same-origin `/api/rpc` so previews (e.g. Vercel)
+ * do not call `NEXT_PUBLIC_APP_URL/api/rpc` on another host and hit CORS.
+ */
+function getBrowserMainnetRpcTransportUrl(): string {
+  if (process.env.NEXT_PUBLIC_USE_RPC_PROXY === "true") {
+    return "/api/rpc";
   }
   return process.env.NEXT_PUBLIC_MAINNET_RPC_URL || PUBLIC_MAINNET_RPC;
 }
 
-export const MAINNET_RPC_URL = getClientMainnetRpcUrl();
+const UPSTREAM_MAINNET_RPC = getUpstreamMainnetRpcUrl();
+
+/** Wagmi / browser transport (relative `/api/rpc` when proxy is on). */
+export const MAINNET_RPC_URL = getBrowserMainnetRpcTransportUrl();
 
 // Arbitrum RPC URL - must be set in env for production. Public fallback.
 const PUBLIC_ARBITRUM_RPC = "https://arb1.arbitrum.io/rpc";
@@ -56,10 +74,10 @@ const mainnetChain = defineChain({
   },
   rpcUrls: {
     default: {
-      http: [MAINNET_RPC_URL],
+      http: [UPSTREAM_MAINNET_RPC],
     },
     public: {
-      http: [MAINNET_RPC_URL],
+      http: [UPSTREAM_MAINNET_RPC],
     },
   },
 });
@@ -151,7 +169,7 @@ const megaethChain = defineChain({
 export function getRpcClient() {
   return createPublicClient({
     chain: mainnetChain,
-    transport: http(MAINNET_RPC_URL),
+    transport: http(UPSTREAM_MAINNET_RPC),
   });
 }
 

@@ -417,6 +417,7 @@ export function useAnchorPrices(
   const btcPrice = pegTargetPrices.btcPrice ?? null;
   const goldPrice = pegTargetPrices.goldPrice ?? null;
   const silverPrice = pegTargetPrices.silverPrice ?? null;
+  const eurPriceCoinGecko = pegTargetPrices.eurPriceCoinGecko ?? null;
 
   // Build USD price map for useMarketPositions (peggedTokenPrice * collateralPriceUSD)
   const peggedPriceUSDMap = useMemo(() => {
@@ -615,6 +616,7 @@ export function useAnchorPrices(
     ethPrice,
     btcPrice,
     eurPrice,
+    eurPriceCoinGecko,
     goldPrice,
     silverPrice,
     isDebug,
