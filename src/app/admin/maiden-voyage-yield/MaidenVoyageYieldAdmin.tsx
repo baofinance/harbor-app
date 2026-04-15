@@ -40,7 +40,7 @@ const PARTICIPANTS_QUERY = `
       cumulativeYieldUSD
       cumulativeYieldFromCollateralUSD
     }
-    userHarborMarks(
+    userHarborMarks_collection(
       first: 500
       skip: $skip
       where: { contractAddress: $genesis }
