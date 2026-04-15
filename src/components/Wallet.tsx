@@ -63,13 +63,16 @@ function WalletOptions() {
 
 function WalletOption({connector, onClick}: { connector: Connector; onClick: () => void }) {
     const [ready, setReady] = React.useState(false)
+    const shouldGateByProvider = connector.id === "injected"
 
     React.useEffect(() => {
         connector.getProvider().then((provider) => setReady(!!provider))
     }, [connector])
 
+    const canConnect = shouldGateByProvider ? ready : true
+
     return (
-        <button disabled={!ready} onClick={onClick}
+        <button disabled={!canConnect} onClick={onClick}
                 className="w-full flex items-center gap-2 px-3 py-2 bg-white/10 text-white enabled:hover:bg-[#FF8A7A]/20 text-md disabled:opacity-50 rounded-md"
         >
             <WalletIcon name={connector.name}/> {connector.name}
