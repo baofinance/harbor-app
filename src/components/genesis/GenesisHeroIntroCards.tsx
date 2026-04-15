@@ -16,8 +16,8 @@ export function GenesisHeroIntroCards() {
           <h2 className="font-bold text-white text-base">Deposit</h2>
         </div>
         <p className="text-xs text-white/80 leading-relaxed">
-          Help fill a market&apos;s initial liquidity and in return own a slice
-          of its revenue for life.
+          Help fill a market&apos;s launch liquidity &amp; in return own a share
+          of all mint/redeem fees and collateral yield.
         </p>
       </div>
 
@@ -29,7 +29,6 @@ export function GenesisHeroIntroCards() {
         <p className="text-xs text-white/80 leading-relaxed">
           Markets launch once their deposit cap is filled
         </p>
-        <p className="text-xs text-white/60 mt-1.5">(TGE Beginning Q2 2026)</p>
       </div>
 
       <div className="bg-black/[0.10] backdrop-blur-sm rounded-lg border border-white/10 overflow-hidden px-3 py-2.5 flex flex-col items-center justify-center text-center relative">
