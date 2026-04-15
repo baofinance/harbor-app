@@ -78,7 +78,7 @@ export function GenesisCampaignStats({
         </div>
       )}
 
-      {/* Ledger Marks Section */}
+      {/* Ledger Marks Section (temporarily hidden in + view)
       <GenesisLedgerMarksSummary
         selectedCampaign={ledgerMarks.selectedCampaign ?? null}
         mounted={mounted}
@@ -90,6 +90,7 @@ export function GenesisCampaignStats({
         isConnected={isConnected}
         totalBonusAtEnd={ledgerMarks.totalBonusAtEnd}
       />
+      */}
 
       {combinedHasIndexerErrors && (
         <GenesisErrorBanner

@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 /**
  * Shared hero title band for Genesis (Maiden Voyage), Sail, and Anchor index pages.
  * Same min-height, padding, and subtitle offset so headings align across routes.
@@ -5,7 +7,7 @@
  */
 export type IndexPageTitleSectionProps = {
   title: string;
-  subtitle: string;
+  subtitle: ReactNode;
   /** Renders after `title` (e.g. version tag for Maiden voyage 2.0; Genesis uses white). */
   titleAccentSuffix?: string;
   /**
