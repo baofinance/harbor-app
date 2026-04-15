@@ -13,7 +13,20 @@ const connectors = [
   injected(), // This will automatically detect injected providers like MetaMask
   // Temporarily disabled due to Next.js 15 build issue with @noble/curves in ox package
   // coinbaseWallet({ appName: "harbor" }),
- ...(WC_PROJECT_ID ? [walletConnect({ projectId: WC_PROJECT_ID })] : []),
+  ...(WC_PROJECT_ID
+    ? [
+        walletConnect({
+          projectId: WC_PROJECT_ID,
+          showQrModal: true,
+          metadata: {
+            name: "Harbor",
+            description: "Harbor app",
+            url: "https://app.harborfinance.io",
+            icons: ["https://app.harborfinance.io/favicon.ico"],
+          },
+        }),
+      ]
+    : []),
 ];
 
 export const wagmiConfig = createConfig({
