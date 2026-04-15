@@ -10,7 +10,7 @@ export function GenesisPageTitleSection() {
       titleAccentSuffix="2.0"
       subtitle={
         <>
-          Maiden voyage depositors own 5% of market revenue <strong>forever</strong>.
+          Depositors own 5% of market revenue <strong>forever</strong>.
         </>
       }
     />
