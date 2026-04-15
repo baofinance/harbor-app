@@ -143,7 +143,8 @@ export function MaidenVoyageYieldAdmin() {
           });
           capSet = true;
         }
-        const chunk = d.userHarborMarks as GraphParticipant[];
+        const chunk = (d.userHarborMarks_collection ||
+          []) as GraphParticipant[];
         all.push(...chunk);
         if (chunk.length < 500) break;
         skip += 500;
