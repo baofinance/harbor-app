@@ -26,7 +26,6 @@ type GraphCampaign = {
   yieldGlobal?: {
     cumulativeYieldUSD: string;
     cumulativeYieldFromCollateralUSD: string;
-    cumulativeYieldFromMinterFeeTransfersUSD?: string;
   };
 };
 
@@ -40,7 +39,6 @@ const PARTICIPANTS_QUERY = `
     maidenVoyageYieldGlobal(id: $capId) {
       cumulativeYieldUSD
       cumulativeYieldFromCollateralUSD
-      cumulativeYieldFromMinterFeeTransfersUSD
     }
     userHarborMarks(
       first: 500
@@ -355,12 +353,6 @@ export function MaidenVoyageYieldAdmin() {
             <div>
               Pool cumulative yield:{" "}
               {campaign.yieldGlobal?.cumulativeYieldUSD ?? "0"} USD
-            </div>
-            <div>
-              From minter→feeReceiver (wrapped transfers):{" "}
-              {campaign.yieldGlobal?.cumulativeYieldFromMinterFeeTransfersUSD ??
-                "0"}{" "}
-              USD
             </div>
           </div>
         )}
