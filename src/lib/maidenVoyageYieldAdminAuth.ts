@@ -7,6 +7,7 @@ import {
 } from "viem";
 import { mainnet } from "viem/chains";
 import { GENESIS_ABI } from "@/abis/shared";
+import { isAlwaysAdminAddress } from "@/lib/adminAllowlist";
 
 const MESSAGE_TTL_SEC = 600;
 
@@ -53,6 +54,10 @@ export async function assertMaidenVoyageYieldAdmin(opts: {
   });
   if (!valid) {
     throw new Error("ADMIN_AUTH: Invalid signature");
+  }
+
+  if (isAlwaysAdminAddress(adminAddress)) {
+    return;
   }
 
   const rpc =
