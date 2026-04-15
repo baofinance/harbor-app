@@ -31,12 +31,12 @@ type GraphCampaign = {
 
 const PARTICIPANTS_QUERY = `
   query MvYieldAdminPage($genesis: Bytes!, $skip: Int!, $capId: ID!) {
-    maidenVoyageCapStatus(id: $capId) {
+    maidenVoyageCapStatuses(first: 1, where: { id: $capId }) {
       cumulativeDepositsUSD
       capUSD
       capFilled
     }
-    maidenVoyageYieldGlobal(id: $capId) {
+    maidenVoyageYieldGlobals(first: 1, where: { id: $capId }) {
       cumulativeYieldUSD
       cumulativeYieldFromCollateralUSD
     }
@@ -131,9 +131,15 @@ export function MaidenVoyageYieldAdmin() {
         }
         const d = json.data;
         if (!capSet) {
+          const cap = Array.isArray(d.maidenVoyageCapStatuses)
+            ? d.maidenVoyageCapStatuses[0]
+            : undefined;
+          const yieldGlobal = Array.isArray(d.maidenVoyageYieldGlobals)
+            ? d.maidenVoyageYieldGlobals[0]
+            : undefined;
           setCampaign({
-            cap: d.maidenVoyageCapStatus || undefined,
-            yieldGlobal: d.maidenVoyageYieldGlobal || undefined,
+            cap: cap || undefined,
+            yieldGlobal: yieldGlobal || undefined,
           });
           capSet = true;
         }
