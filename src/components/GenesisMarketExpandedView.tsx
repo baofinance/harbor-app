@@ -3,6 +3,7 @@ import Image from "next/image";
 import { formatDateTime } from "@/utils/formatters";
 import { EtherscanLink, getLogoPath } from "@/components/shared";
 import { useGenesisMarketExpandedData } from "@/hooks/useGenesisMarketExpandedData";
+import { maidenVoyageYieldOwnerSharePercent } from "@/config/maidenVoyageYield";
 
 interface GenesisMarketExpandedViewProps {
   marketId: string;
@@ -50,6 +51,24 @@ export const GenesisMarketExpandedView = ({
   void totalDepositsUSD;
   void collateralPriceUSD;
 
+  const yieldOwnerSharePct = maidenVoyageYieldOwnerSharePercent(
+    genesisAddress?.toLowerCase() ?? null
+  );
+  const yieldShareSentence =
+    yieldOwnerSharePct != null ? (
+      <>
+        <span className="font-semibold text-[#1E4775]">
+          {yieldOwnerSharePct}% of attributed revenue
+        </span>{" "}
+      </>
+    ) : (
+      <>
+        <span className="font-semibold text-[#1E4775]">
+          A configured share of attributed revenue
+        </span>{" "}
+      </>
+    );
+
   const addresses = market.addresses as Record<string, string | undefined>;
 
   // Get market name for description - use leveraged token symbol without "hs" prefix
@@ -77,6 +96,41 @@ export const GenesisMarketExpandedView = ({
           <span className="font-semibold">{peggedTokenSymbol}</span> and{" "}
           <span className="font-semibold">{leveragedTokenSymbol}</span> tokens.
         </p>
+      </div>
+
+      <div className="bg-[#17395F]/10 p-4 mb-2 border border-[#1E4775]/15 rounded-md">
+        <h3 className="text-xs font-semibold text-[#1E4775] mb-2">
+          How yield works (this market)
+        </h3>
+        <ul className="text-xs text-[#1E4775]/90 space-y-1.5 list-disc pl-4 leading-relaxed">
+          <li>
+            This genesis has its own maiden voyage yield pool on-chain.{" "}
+            {yieldShareSentence}
+            (mint/redeem fees on wrapped collateral + hourly collateral carry,
+            in USD) is credited into the pool; that credited amount is split
+            across participants using final ownership (from the USD cap) and
+            voyage boost after genesis.
+          </li>
+          <li>
+            The cap bar on the main page shows how much ownership is already
+            counted. The{" "}
+            <span className="font-semibold text-[#1E4775]">% still open</span>{" "}
+            is how much capped ownership headroom remains—not a promised APR.
+          </li>
+          <li>
+            Ledger marks and $TIDE are separate incentives from the yield pool.
+            Full walkthrough:{" "}
+            <a
+              href="https://docs.harborfinance.io/maiden-voyage"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-semibold text-[#FF8A7A] hover:underline"
+            >
+              Harbor maiden voyage docs
+            </a>
+            .
+          </li>
+        </ul>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-2">

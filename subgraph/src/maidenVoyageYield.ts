@@ -1,10 +1,24 @@
 import { Address, BigDecimal, BigInt } from "@graphprotocol/graph-ts";
 import { GenesisEnd, HourlyPriceSnapshot, MaidenVoyageYieldGlobal } from "../generated/schema";
-import { getGenesisForMinter, isKnownMaidenVoyageGenesis } from "./maidenVoyageConfig";
+import {
+  getGenesisForMinter,
+  getMaidenVoyageYieldOwnerShareBps,
+  isKnownMaidenVoyageGenesis,
+} from "./maidenVoyageConfig";
 
 const ZERO_BD = BigDecimal.fromString("0");
+const BD_10000 = BigDecimal.fromString("10000");
 const HOUR = BigInt.fromI32(3600);
 const ZERO_ADDR = Address.fromString("0x0000000000000000000000000000000000000000");
+
+/** Apply configurable owner share (bps) to USD before crediting the yield pool. */
+function scaleUsdToYieldPool(genesis: Address, usd: BigDecimal): BigDecimal {
+  if (usd.le(ZERO_BD)) return ZERO_BD;
+  const bps = getMaidenVoyageYieldOwnerShareBps(genesis);
+  if (bps.le(BigInt.fromI32(0))) return ZERO_BD;
+  if (bps.equals(BigInt.fromI32(10000))) return usd;
+  return usd.times(bps.toBigDecimal()).div(BD_10000);
+}
 
 function getOrCreateYieldGlobal(genesis: Address, timestamp: BigInt): MaidenVoyageYieldGlobal {
   const id = genesis.toHexString();
@@ -54,9 +68,12 @@ export function accrueMaidenVoyageCollateralYieldAfterSnapshot(
   let delta = newN.minus(oldN);
   if (delta.le(ZERO_BD)) return;
 
+  const allocated = scaleUsdToYieldPool(genesis, delta);
+  if (allocated.le(ZERO_BD)) return;
+
   const y = getOrCreateYieldGlobal(genesis, now);
-  y.cumulativeYieldFromCollateralUSD = y.cumulativeYieldFromCollateralUSD.plus(delta);
-  y.cumulativeYieldUSD = y.cumulativeYieldUSD.plus(delta);
+  y.cumulativeYieldFromCollateralUSD = y.cumulativeYieldFromCollateralUSD.plus(allocated);
+  y.cumulativeYieldUSD = y.cumulativeYieldUSD.plus(allocated);
   y.lastUpdated = now;
   y.save();
 }
@@ -76,9 +93,14 @@ export function accrueMaidenVoyageMinterWrappedFeeUSD(
   if (!isKnownMaidenVoyageGenesis(genesis)) return;
   if (GenesisEnd.load(genesis.toHexString()) == null) return;
 
+  const allocated = scaleUsdToYieldPool(genesis, feeUSD);
+  if (allocated.le(ZERO_BD)) return;
+
   const y = getOrCreateYieldGlobal(genesis, now);
-  y.cumulativeYieldFromMinterFeeTransfersUSD = y.cumulativeYieldFromMinterFeeTransfersUSD.plus(feeUSD);
-  y.cumulativeYieldUSD = y.cumulativeYieldUSD.plus(feeUSD);
+  y.cumulativeYieldFromMinterFeeTransfersUSD = y.cumulativeYieldFromMinterFeeTransfersUSD.plus(
+    allocated
+  );
+  y.cumulativeYieldUSD = y.cumulativeYieldUSD.plus(allocated);
   y.lastUpdated = now;
   y.save();
 }

@@ -16,8 +16,12 @@ export function GenesisHeroIntroCards() {
           <h2 className="font-bold text-white text-base">Deposit</h2>
         </div>
         <p className="text-xs text-white/80 leading-relaxed">
-          Deposit with any token via Velora to secure your share of a
-          market&apos;s revenue for life.
+          One-time deposit during genesis fixes your share of{" "}
+          <span className="font-semibold text-white">
+            this market&apos;s maiden yield pool
+          </span>{" "}
+          (bounded by the USD cap). That slice keeps earning from market revenue
+          after launch. Deposit any token via Velora.
         </p>
       </div>
 
@@ -38,9 +42,8 @@ export function GenesisHeroIntroCards() {
           <h2 className="font-bold text-white text-base">After genesis</h2>
         </div>
         <p className="text-xs text-white/80 leading-relaxed">
-          Claim Anchor + Sail. Earn a share of market revenue even after
-          withdrawing. Yield share is boosted 5× and declines linearly to a
-          minimum of 1× as withdrawals are made.
+          Claim Anchor + Sail. Yield share is boosted 5× and declines linearly
+          to a minimum of 1× as withdrawals are made.
         </p>
         <p className="text-xs text-white/80 mt-1.5 font-semibold">
           Real yield + ongoing ledger marks

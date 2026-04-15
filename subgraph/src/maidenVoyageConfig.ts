@@ -1,4 +1,4 @@
-import { Address, BigDecimal } from "@graphprotocol/graph-ts";
+import { Address, BigDecimal, BigInt } from "@graphprotocol/graph-ts";
 
 const ZERO_ADDR = Address.fromString("0x0000000000000000000000000000000000000000");
 
@@ -70,6 +70,30 @@ export function getMaidenVoyageMaxBoost(genesis: Address): BigDecimal {
   // Optional: return different ceilings per genesis, e.g.
   // if (genesis.equals(GEN_STETH_EUR)) return BigDecimal.fromString("4");
   return DEFAULT_MAX_BOOST;
+}
+
+/**
+ * Basis points of **attributed** minter fee USD + hourly collateral carry USD
+ * that are credited to this genesis's `MaidenVoyageYieldGlobal` (owners split
+ * that pool by ownership × boost). 500 = 5%; 10000 = 100%. Each known genesis
+ * must be listed explicitly — keep in sync with
+ * `src/config/maidenVoyageYield.ts` `MAIDEN_VOYAGE_YIELD_OWNER_SHARE_BPS_BY_GENESIS_HEX`.
+ */
+export function getMaidenVoyageYieldOwnerShareBps(genesis: Address): BigInt {
+  if (genesis.equals(GEN_ETH_FXUSD)) return BigInt.fromI32(500);
+  if (genesis.equals(GEN_BTC_FXUSD)) return BigInt.fromI32(500);
+  if (genesis.equals(GEN_BTC_STETH)) return BigInt.fromI32(500);
+  if (genesis.equals(GEN_STETH_EUR)) return BigInt.fromI32(500);
+  if (genesis.equals(GEN_FXUSD_EUR)) return BigInt.fromI32(500);
+  if (genesis.equals(GEN_GOLD_FXUSD)) return BigInt.fromI32(500);
+  if (genesis.equals(GEN_GOLD_STETH)) return BigInt.fromI32(500);
+  if (genesis.equals(GEN_SILVER_FXUSD)) return BigInt.fromI32(500);
+  if (genesis.equals(GEN_SILVER_STETH)) return BigInt.fromI32(500);
+  if (genesis.equals(GEN_ETH_FXUSD_T2)) return BigInt.fromI32(500);
+  if (genesis.equals(GEN_BTC_FXUSD_T2)) return BigInt.fromI32(500);
+  if (genesis.equals(GEN_BTC_STETH_T2)) return BigInt.fromI32(500);
+  if (genesis.equals(GEN_ETH_FXUSD_ALT)) return BigInt.fromI32(500);
+  return BigInt.fromI32(0);
 }
 
 /** Minter contract -> maiden voyage genesis (Address.zero if none). */

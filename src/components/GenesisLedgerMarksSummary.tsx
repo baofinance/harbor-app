@@ -92,6 +92,22 @@ export const GenesisLedgerMarksSummary = ({
                         thing as the deposit cap.
                       </p>
                     </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-white/70 mt-0.5">•</span>
+                      <p className="text-white/90 leading-relaxed">
+                        <span className="font-semibold text-white">
+                          Yield for life
+                        </span>{" "}
+                        here means your finalized ownership slice of{" "}
+                        <span className="font-semibold text-white">
+                          this market&apos;s
+                        </span>{" "}
+                        maiden voyage yield pool. A configurable portion of fee +
+                        carry revenue is credited to that pool (see genesis UI);
+                        your share tracks the pool until rules or governance say
+                        otherwise. It is not a fixed APR.
+                      </p>
+                    </div>
                   </div>
                   <div className="border-t border-white/20 pt-3">
                     <p className="text-white/80 italic leading-relaxed">

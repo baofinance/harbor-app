@@ -18,6 +18,7 @@ import {
   ChevronDownIcon,
   ChevronUpIcon,
   ClockIcon,
+  InformationCircleIcon,
 } from "@heroicons/react/24/outline";
 import SimpleTooltip from "@/components/SimpleTooltip";
 import Image from "next/image";
@@ -55,6 +56,7 @@ import { useGenesisClaimMarket } from "@/hooks/useGenesisClaimMarket";
 import { DEFAULT_FDV } from "@/utils/tokenAllocation";
 import { formatGenesisMarketDisplayName } from "@/utils/genesisDisplay";
 import { useGenesisPageData } from "@/hooks/useGenesisPageData";
+import { maidenVoyageYieldOwnerSharePercent } from "@/config/maidenVoyageYield";
 import { computeGenesisRowUsdPricing } from "@/utils/genesisRowPricing";
 import { usePageLayoutPreference } from "@/contexts/PageLayoutPreferenceContext";
 
@@ -2086,15 +2088,6 @@ export default function GenesisIndexPage() {
                           const counted = parseFloat(
                             um?.maidenVoyageDepositCountedUSD || "0"
                           );
-                          const boost = parseFloat(
-                            um?.maidenVoyageBoostMultiplier || "1"
-                          );
-                          const maxBoost = parseFloat(
-                            um?.maidenVoyageMaxBoost || "1"
-                          );
-                          const genesisEndedForBoost =
-                            um?.genesisEnded === true;
-
                           if (isLoadingMaidenVoyageIndex && !capRow) return null;
 
                           const capUsd = parseFloat(capRow?.capUSD || "0");
@@ -2108,13 +2101,34 @@ export default function GenesisIndexPage() {
                                   (cumulative / capUsd) * 100
                                 )
                               : 0;
+                          const yieldRevSharePct =
+                            maidenVoyageYieldOwnerSharePercent(
+                              genesisAddress?.toLowerCase() ?? null
+                            );
 
                           return (
                             <div className="px-2 pt-2.5 pb-0.5 border-t border-[#1E4775]/10 -mb-1 mt-1">
                               <div className="flex items-center gap-2 flex-wrap mb-1">
-                                <span className="text-[10px] text-[#1E4775] font-semibold whitespace-nowrap">
-                                  Deposit cap (USD)
-                                </span>
+                                <SimpleTooltip
+                                  label={
+                                    <span className="text-xs leading-relaxed block max-w-xs">
+                                      Deposits count toward this market&apos;s USD
+                                      cap. At genesis close, your counted deposit
+                                      ÷ cap fixes your{" "}
+                                      <strong>ownership share</strong> of this
+                                      market&apos;s maiden voyage yield pool.
+                                      Voyage boost is separate and only adjusts
+                                      weight after genesis. Only a configured
+                                      share of fee + carry revenue is credited to
+                                      the maiden pool (see expanded row).
+                                    </span>
+                                  }
+                                >
+                                  <span className="inline-flex items-center gap-0.5 text-[10px] text-[#1E4775] font-semibold whitespace-nowrap cursor-help">
+                                    Deposit cap (USD)
+                                    <InformationCircleIcon className="w-3.5 h-3.5 shrink-0 text-[#1E4775]/55" />
+                                  </span>
+                                </SimpleTooltip>
                                 <div className="flex-1 bg-gray-200 rounded-full h-1.5 min-w-[100px]">
                                   <div
                                     className={`h-1.5 rounded-full transition-all ${
@@ -2129,50 +2143,69 @@ export default function GenesisIndexPage() {
                                   {formatUSD(cumulative)} / {formatUSD(capUsd)}
                                 </span>
                               </div>
-                              <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-[#1E4775]/80">
-                                {ownership > 0 && (
-                                  <span>
-                                    Your ownership (at end):{" "}
-                                    <span className="font-semibold text-[#1E4775]">
-                                      {(ownership * 100).toFixed(2)}%
-                                    </span>
-                                  </span>
-                                )}
-                                {counted > 0 && ownership === 0 && (
-                                  <span>
-                                    Counted toward cap: {formatUSD(counted)}
-                                  </span>
-                                )}
-                                <span>
-                                  {genesisEndedForBoost
-                                    ? "Maiden voyage yield share (and ha/sail ledger marks) is multiplied by voyage boost from Harbor value you keep—remaining genesis position plus Anchor + Sail for this market—vs your USD at genesis close. That is separate from the deposit cap above, which only sets ownership share."
-                                    : "After genesis closes, the same boost scales yield share and ha/sail marks from Harbor value you retain (genesis position plus Anchor + Sail) vs your USD at close."}
-                                  {maxBoost > 1 && (
+                              {capUsd > 0 && (
+                                <p className="text-[10px] text-[#1E4775]/80 leading-snug mb-0.5">
+                                  {capRow?.capFilled ? (
                                     <>
-                                      {" "}
-                                      Ceiling{" "}
-                                      <span className="font-mono font-semibold text-[#1E4775]">
-                                        {Number.isInteger(maxBoost)
-                                          ? maxBoost.toFixed(0)
-                                          : maxBoost.toFixed(2)}
-                                        ×
-                                      </span>
-                                      .
+                                      <span className="font-semibold text-[#1E4775]">
+                                        0%
+                                      </span>{" "}
+                                      of capped maiden-yield{" "}
+                                      <span className="font-semibold">
+                                        ownership
+                                      </span>{" "}
+                                      remains — cap is full for this market.
                                     </>
-                                  )}{" "}
-                                  Current:{" "}
-                                  <span className="font-mono font-semibold text-[#1E4775]">
-                                    {boost.toFixed(2)}×
-                                  </span>
-                                  {!genesisEndedForBoost &&
-                                    boost <= 1.001 && (
-                                      <span className="text-[#1E4775]/70">
-                                        {" "}
-                                        (1× until genesis closes)
+                                  ) : (
+                                    <>
+                                      <span className="font-semibold text-[#1E4775]">
+                                        {(100 - progressPct).toFixed(0)}%
+                                      </span>{" "}
+                                      of this market&apos;s capped maiden-yield{" "}
+                                      <span className="font-semibold">
+                                        ownership
+                                      </span>{" "}
+                                      is still open (headroom for new deposits).
+                                      {yieldRevSharePct != null ? (
+                                        <>
+                                          {" "}
+                                          {yieldRevSharePct}% of attributed
+                                          mint/redeem fee + collateral carry revenue
+                                          is credited to this pool; that slice is
+                                          split among owners.
+                                        </>
+                                      ) : (
+                                        <>
+                                          {" "}
+                                          A configured share of attributed
+                                          mint/redeem fee + collateral carry revenue
+                                          is credited to this pool; that slice is
+                                          split among owners.
+                                        </>
+                                      )}{" "}
+                                      Not an APR guarantee.
+                                    </>
+                                  )}
+                                </p>
+                              )}
+                              {(ownership > 0 ||
+                                (counted > 0 && ownership === 0)) && (
+                                <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-[#1E4775]/80">
+                                  {ownership > 0 && (
+                                    <span>
+                                      Your ownership (at end):{" "}
+                                      <span className="font-semibold text-[#1E4775]">
+                                        {(ownership * 100).toFixed(2)}%
                                       </span>
-                                    )}
-                                </span>
-                              </div>
+                                    </span>
+                                  )}
+                                  {counted > 0 && ownership === 0 && (
+                                    <span>
+                                      Counted toward cap: {formatUSD(counted)}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
                             </div>
                           );
                         })()}
