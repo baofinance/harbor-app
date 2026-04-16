@@ -105,10 +105,6 @@ export default function SailPage() {
           <div className="mb-2">
             <SailPageTitleSection />
 
-            {sailViewBasic && (
-              <div className="border-t border-white/10 my-3" aria-hidden />
-            )}
-
             {!sailViewBasic && (
               <SailExtendedHero
                 boostEndTimestamp={activeSailBoostEndTimestamp}

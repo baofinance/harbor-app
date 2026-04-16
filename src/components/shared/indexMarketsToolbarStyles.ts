@@ -43,6 +43,17 @@ export const INDEX_CORAL_INFO_TAG_CLASS =
   "inline-flex items-center rounded-none px-2 py-0.5 text-sm font-semibold uppercase tracking-wide whitespace-nowrap bg-[#E67A6B]/15 text-[#F5D4CC]";
 
 /**
+ * Genesis market row — “TEST” when `test: true` (replaces status / “ENDS IN …”).
+ * Dark Harbor pill + cream text (toolbar campaign contrast on white rows); `text-[10px]` to match Collateral chip scale.
+ */
+export const GENESIS_MARKET_TEST_TAG_CLASS =
+  "inline-flex cursor-help items-center justify-center rounded-none px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide whitespace-nowrap bg-[#0a1628] text-[#F5D4CC]";
+
+/** Shown on hover over the TEST tag (see {@link GENESIS_MARKET_TEST_TAG_CLASS}). */
+export const GENESIS_MARKET_TEST_TAG_TOOLTIP =
+  "Don't deposit, do so at your own risk.";
+
+/**
  * Ledger Marks strip — same `text-sm` scale as `INDEX_CORAL_INFO_TAG_CLASS` (above `text-xs` row labels).
  */
 export const INDEX_CORAL_LEDGER_TAG_PILL_CLASS =
@@ -54,6 +65,14 @@ export const INDEX_CORAL_LEDGER_TAG_PILL_CLASS =
  */
 export const LEDGER_MARKS_STRIP_SURFACE_CLASS =
   "rounded-md overflow-visible border border-white/15 bg-[#0a1628]/50 backdrop-blur-sm shadow-[0_8px_32px_-12px_rgba(0,0,0,0.45)]";
+
+/**
+ * Same surface as {@link LEDGER_MARKS_STRIP_SURFACE_CLASS} but no bottom border.
+ * Use when this strip sits directly above {@link INDEX_MARKETS_TOOLBAR_ROW_WITH_TOP_RULE_CLASS}
+ * so the toolbar’s `border-t` is the only horizontal rule (matches Transparency).
+ */
+export const LEDGER_MARKS_STRIP_SURFACE_ABOVE_TOOLBAR_CLASS =
+  "rounded-md overflow-visible border-x border-t border-white/15 border-b-0 bg-[#0a1628]/50 backdrop-blur-sm shadow-[0_8px_32px_-12px_rgba(0,0,0,0.45)]";
 
 /** Same fill as `LEDGER_MARKS_STRIP_SURFACE_CLASS` with hero padding + radius. */
 export const LEDGER_MARKS_HERO_CARD_CLASS =

@@ -637,8 +637,11 @@ function MarketCard({
                 <div className="bg-[rgb(var(--surface-selected-rgb))] border-t border-[#1E4775]/10 p-3">
                     {/* Fees & Incentives (bands) */}
                     <div className="mb-3">
-                        <FeeTransparencyBands minterAddress={market.minterAddress}
-                                              currentCR={market.collateralRatio}/>
+                        <FeeTransparencyBands
+                            minterAddress={market.minterAddress}
+                            currentCR={market.collateralRatio}
+                            chainId={market.chainId}
+                        />
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
@@ -1244,14 +1247,18 @@ function BandTable({
 function FeeTransparencyBands({
                                   minterAddress,
                                   currentCR,
+                                  chainId,
                               }: {
     minterAddress: `0x${string}`;
     currentCR: bigint;
+    /** Chain the minter lives on — must match wallet-agnostic transparency reads. */
+    chainId: number;
 }) {
     const { data: configData } = useReadContract({
         address: minterAddress,
         abi: minterABI,
         functionName: "config",
+        chainId,
     });
 
     const feeBands = useMemo(() => {

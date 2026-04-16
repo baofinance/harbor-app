@@ -88,7 +88,9 @@ import {
   ANCHOR_MARKETS_WALLET_ROW_MD_CLASSNAME,
 } from "@/components/anchor/anchorMarketsTableGrid";
 import { usePageLayoutPreference } from "@/contexts/PageLayoutPreferenceContext";
-import { LEDGER_MARKS_STRIP_SURFACE_CLASS } from "@/components/shared/indexMarketsToolbarStyles";
+import {
+  LEDGER_MARKS_STRIP_SURFACE_ABOVE_TOOLBAR_CLASS,
+} from "@/components/shared/indexMarketsToolbarStyles";
 import {
   INDEX_MANAGE_BUTTON_CLASS_DESKTOP,
   INDEX_MODAL_CANCEL_BUTTON_CLASS_DESKTOP,
@@ -3615,9 +3617,6 @@ export default function AnchorPage() {
       <div className="flex min-h-0 flex-1 flex-col text-white max-w-[1300px] mx-auto font-sans relative w-full">
         <main className="container mx-auto px-4 sm:px-10 pb-6 pt-2 sm:pt-4">
           <AnchorPageTitleSection />
-          {anchorViewBasic && (
-            <div className="border-t border-white/10 my-3" aria-hidden />
-          )}
           {!anchorViewBasic && (
             <>
               <AnchorHeroIntroCards />
@@ -4180,7 +4179,7 @@ export default function AnchorPage() {
 
             return (
               <div className="mb-2">
-                <div className={LEDGER_MARKS_STRIP_SURFACE_CLASS}>
+                <div className={LEDGER_MARKS_STRIP_SURFACE_ABOVE_TOOLBAR_CLASS}>
                   <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 lg:divide-x lg:divide-white/20">
                     {/* Rewards Header */}
                     <div className="px-3 py-1 min-h-[60px] flex items-center justify-center gap-2">

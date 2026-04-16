@@ -2,7 +2,7 @@ import React from "react";
 import { ClockIcon } from "@heroicons/react/24/outline";
 import InfoTooltip from "@/components/InfoTooltip";
 import SimpleTooltip from "@/components/SimpleTooltip";
-import { LEDGER_MARKS_STRIP_SURFACE_CLASS } from "@/components/shared/indexMarketsToolbarStyles";
+import { LEDGER_MARKS_STRIP_SURFACE_ABOVE_TOOLBAR_CLASS } from "@/components/shared/indexMarketsToolbarStyles";
 
 interface SelectedCampaign {
   label: string;
@@ -43,7 +43,7 @@ export const GenesisLedgerMarksSummary = ({
 
   return (
     <div className="mb-2">
-      <div className={LEDGER_MARKS_STRIP_SURFACE_CLASS}>
+      <div className={LEDGER_MARKS_STRIP_SURFACE_ABOVE_TOOLBAR_CLASS}>
         <div className="grid grid-cols-1 md:grid-cols-4 divide-y divide-white/15 md:divide-y-0 md:divide-x md:divide-white/20">
           {/* Header */}
           <div className="p-3 flex items-center justify-center gap-2">

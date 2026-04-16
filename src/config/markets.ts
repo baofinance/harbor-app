@@ -868,6 +868,8 @@ export const markets = {
         "btc-usd-megaeth": {
           name: "BTC - USD",
           maintenance: false,
+          /** `true` = square “TEST” label in Genesis Status column (QA / staging). */
+          test: true,
           status: "genesis" as const,
           pegTarget: "USD",
           chainId: 4326,
@@ -915,6 +917,8 @@ export const markets = {
         "wsteth-usd-megaeth": {
           name: "wstETH - USD",
           maintenance: false,
+          /** Same as `btc-usd-megaeth`: square “TEST” label in Genesis Status when enabled. */
+          test: true,
           status: "genesis" as const,
           pegTarget: "USD",
           chainId: 4326,

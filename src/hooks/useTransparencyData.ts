@@ -8,9 +8,16 @@ import {
   WRAPPED_PRICE_ORACLE_ABI,
 } from "@/abis/shared";
 
+/** Chain where this market’s contracts are deployed (default Ethereum mainnet). */
+function marketChainId(market: { chainId?: number }): number {
+  return market.chainId ?? 1;
+}
+
 export interface MarketTransparencyData {
   marketId: string;
   marketName: string;
+  /** RPC chain for this market’s contracts (for reads / expanded UI). */
+  chainId: number;
   // Minter data
   collateralRatio: bigint;
   leverageRatio: bigint;
@@ -97,65 +104,69 @@ export function useTransparencyData(): TransparencyData {
     ([_, market]) => market.addresses?.minter // Only include markets with minter address
   );
 
-  // Build contract reads for all markets
+  // Build contract reads for all markets — each call carries `chainId` so batches use the
+  // correct RPC regardless of the wallet’s connected chain (see @wagmi/core readContracts).
   const allMarketContracts = marketEntries.flatMap(([_, market]) => {
+    const cid = marketChainId(market);
     const minterAddress = market.addresses.minter as `0x${string}`;
     const oracleAddress = market.addresses.priceOracle as `0x${string}`;
     const stabilityPoolManager = market.addresses.stabilityPoolManager as `0x${string}`;
 
     return [
       // Minter reads (0-13)
-      { address: minterAddress, abi: minterABI, functionName: "collateralRatio" },
-      { address: minterAddress, abi: minterABI, functionName: "leverageRatio" },
-      { address: minterAddress, abi: minterABI, functionName: "peggedTokenPrice" },
-      { address: minterAddress, abi: minterABI, functionName: "leveragedTokenPrice" },
-      { address: minterAddress, abi: minterABI, functionName: "peggedTokenBalance" },
-      { address: minterAddress, abi: minterABI, functionName: "leveragedTokenBalance" },
-      { address: minterAddress, abi: minterABI, functionName: "collateralTokenBalance" },
-      { address: minterAddress, abi: minterABI, functionName: "priceOracle" },
-      { address: minterAddress, abi: minterABI, functionName: "feeReceiver" },
-      { address: minterAddress, abi: minterABI, functionName: "reservePool" },
-      { address: minterAddress, abi: minterABI, functionName: "mintPeggedTokenIncentiveRatio" },
-      { address: minterAddress, abi: minterABI, functionName: "redeemPeggedTokenIncentiveRatio" },
-      { address: minterAddress, abi: minterABI, functionName: "mintLeveragedTokenIncentiveRatio" },
-      { address: minterAddress, abi: minterABI, functionName: "redeemLeveragedTokenIncentiveRatio" },
+      { address: minterAddress, abi: minterABI, functionName: "collateralRatio", chainId: cid },
+      { address: minterAddress, abi: minterABI, functionName: "leverageRatio", chainId: cid },
+      { address: minterAddress, abi: minterABI, functionName: "peggedTokenPrice", chainId: cid },
+      { address: minterAddress, abi: minterABI, functionName: "leveragedTokenPrice", chainId: cid },
+      { address: minterAddress, abi: minterABI, functionName: "peggedTokenBalance", chainId: cid },
+      { address: minterAddress, abi: minterABI, functionName: "leveragedTokenBalance", chainId: cid },
+      { address: minterAddress, abi: minterABI, functionName: "collateralTokenBalance", chainId: cid },
+      { address: minterAddress, abi: minterABI, functionName: "priceOracle", chainId: cid },
+      { address: minterAddress, abi: minterABI, functionName: "feeReceiver", chainId: cid },
+      { address: minterAddress, abi: minterABI, functionName: "reservePool", chainId: cid },
+      { address: minterAddress, abi: minterABI, functionName: "mintPeggedTokenIncentiveRatio", chainId: cid },
+      { address: minterAddress, abi: minterABI, functionName: "redeemPeggedTokenIncentiveRatio", chainId: cid },
+      { address: minterAddress, abi: minterABI, functionName: "mintLeveragedTokenIncentiveRatio", chainId: cid },
+      { address: minterAddress, abi: minterABI, functionName: "redeemLeveragedTokenIncentiveRatio", chainId: cid },
       // Oracle reads (14)
-      { address: oracleAddress, abi: WRAPPED_PRICE_ORACLE_ABI, functionName: "latestAnswer" },
+      { address: oracleAddress, abi: WRAPPED_PRICE_ORACLE_ABI, functionName: "latestAnswer", chainId: cid },
       // Stability pool manager (15)
-      { address: stabilityPoolManager, abi: STABILITY_POOL_MANAGER_ABI, functionName: "rebalanceThreshold" },
+      { address: stabilityPoolManager, abi: STABILITY_POOL_MANAGER_ABI, functionName: "rebalanceThreshold", chainId: cid },
     ];
   });
 
   // Pool reads for all markets
   const allPoolContracts = marketEntries.flatMap(([_, market]) => {
+    const cid = marketChainId(market);
     const stabilityPoolCollateral = market.addresses.stabilityPoolCollateral as `0x${string}`;
     const stabilityPoolLeveraged = market.addresses.stabilityPoolLeveraged as `0x${string}`;
 
     return [
       // Collateral pool (0-3)
-      { address: stabilityPoolCollateral, abi: stabilityPoolABI, functionName: "totalAssetSupply" },
-      { address: stabilityPoolCollateral, abi: stabilityPoolABI, functionName: "activeRewardTokens" },
-      { address: stabilityPoolCollateral, abi: stabilityPoolABI, functionName: "getEarlyWithdrawalFee" },
-      { address: stabilityPoolCollateral, abi: stabilityPoolABI, functionName: "getWithdrawalWindow" },
+      { address: stabilityPoolCollateral, abi: stabilityPoolABI, functionName: "totalAssetSupply", chainId: cid },
+      { address: stabilityPoolCollateral, abi: stabilityPoolABI, functionName: "activeRewardTokens", chainId: cid },
+      { address: stabilityPoolCollateral, abi: stabilityPoolABI, functionName: "getEarlyWithdrawalFee", chainId: cid },
+      { address: stabilityPoolCollateral, abi: stabilityPoolABI, functionName: "getWithdrawalWindow", chainId: cid },
       // Leveraged pool (4-7)
-      { address: stabilityPoolLeveraged, abi: stabilityPoolABI, functionName: "totalAssetSupply" },
-      { address: stabilityPoolLeveraged, abi: stabilityPoolABI, functionName: "activeRewardTokens" },
-      { address: stabilityPoolLeveraged, abi: stabilityPoolABI, functionName: "getEarlyWithdrawalFee" },
-      { address: stabilityPoolLeveraged, abi: stabilityPoolABI, functionName: "getWithdrawalWindow" },
+      { address: stabilityPoolLeveraged, abi: stabilityPoolABI, functionName: "totalAssetSupply", chainId: cid },
+      { address: stabilityPoolLeveraged, abi: stabilityPoolABI, functionName: "activeRewardTokens", chainId: cid },
+      { address: stabilityPoolLeveraged, abi: stabilityPoolABI, functionName: "getEarlyWithdrawalFee", chainId: cid },
+      { address: stabilityPoolLeveraged, abi: stabilityPoolABI, functionName: "getWithdrawalWindow", chainId: cid },
     ];
   });
 
   // User-specific reads for all markets (only if connected)
   const allUserContracts = isConnected && userAddress
     ? marketEntries.flatMap(([_, market]) => {
+        const cid = marketChainId(market);
         const stabilityPoolCollateral = market.addresses.stabilityPoolCollateral as `0x${string}`;
         const stabilityPoolLeveraged = market.addresses.stabilityPoolLeveraged as `0x${string}`;
 
         return [
-          { address: stabilityPoolCollateral, abi: stabilityPoolABI, functionName: "assetBalanceOf", args: [userAddress] },
-          { address: stabilityPoolCollateral, abi: stabilityPoolABI, functionName: "withdrawRequest", args: [userAddress] },
-          { address: stabilityPoolLeveraged, abi: stabilityPoolABI, functionName: "assetBalanceOf", args: [userAddress] },
-          { address: stabilityPoolLeveraged, abi: stabilityPoolABI, functionName: "withdrawRequest", args: [userAddress] },
+          { address: stabilityPoolCollateral, abi: stabilityPoolABI, functionName: "assetBalanceOf", args: [userAddress], chainId: cid },
+          { address: stabilityPoolCollateral, abi: stabilityPoolABI, functionName: "withdrawRequest", args: [userAddress], chainId: cid },
+          { address: stabilityPoolLeveraged, abi: stabilityPoolABI, functionName: "assetBalanceOf", args: [userAddress], chainId: cid },
+          { address: stabilityPoolLeveraged, abi: stabilityPoolABI, functionName: "withdrawRequest", args: [userAddress], chainId: cid },
         ];
       })
     : [];
@@ -200,6 +211,7 @@ export function useTransparencyData(): TransparencyData {
     return {
       marketId,
       marketName: market.name,
+      chainId: marketChainId(market),
       collateralRatio: parseResult(baseIndex + 0, 0n),
       leverageRatio: parseResult(baseIndex + 1, 0n),
       peggedTokenPrice: parseResult(baseIndex + 2, 0n),

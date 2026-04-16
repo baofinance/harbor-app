@@ -27,7 +27,11 @@ import {
   formatTimeRemaining,
 } from "@/utils/formatters";
 import { getLogoPath, TokenLogo } from "@/components/shared";
-import { INDEX_CORAL_INFO_TAG_CLASS } from "@/components/shared/indexMarketsToolbarStyles";
+import {
+  GENESIS_MARKET_TEST_TAG_CLASS,
+  GENESIS_MARKET_TEST_TAG_TOOLTIP,
+  INDEX_CORAL_INFO_TAG_CLASS,
+} from "@/components/shared/indexMarketsToolbarStyles";
 import { useCoinGeckoPrices } from "@/hooks/useCoinGeckoPrice";
 import { useMultipleTokenPrices } from "@/hooks/useTokenPrices";
 import { useMultipleCollateralPrices } from "@/hooks/useCollateralPrice";
@@ -618,10 +622,6 @@ export default function GenesisIndexPage() {
       <main className="container mx-auto px-4 sm:px-10 pb-6 pt-2 sm:pt-4">
         <GenesisPageTitleSection />
 
-        {genesisViewBasic && (
-          <div className="border-t border-white/10 my-3" aria-hidden />
-        )}
-
         {!genesisViewBasic && (
           <>
             <GenesisHeroIntroCards />
@@ -922,6 +922,8 @@ export default function GenesisIndexPage() {
                 }
 
                 const isExpanded = expandedMarkets.includes(id);
+                const showTestMarketTag =
+                  (mkt as GenesisMarketConfig).test === true;
                 const acceptedAssets = getAcceptedDepositAssets(mkt);
 
                 // Show all markets (no skipping)
@@ -1151,7 +1153,18 @@ export default function GenesisIndexPage() {
                                     Status
                                   </div>
                                   <div>
-                                    {isProcessing ? (
+                                    {showTestMarketTag ? (
+                                      <SimpleTooltip
+                                        label={GENESIS_MARKET_TEST_TAG_TOOLTIP}
+                                        side="top"
+                                      >
+                                        <span
+                                          className={GENESIS_MARKET_TEST_TAG_CLASS}
+                                        >
+                                          TEST
+                                        </span>
+                                      </SimpleTooltip>
+                                    ) : isProcessing ? (
                                       <span className="text-[10px] uppercase px-2 py-1 bg-yellow-100 text-yellow-800 whitespace-nowrap">
                                         {statusText}
                                       </span>
@@ -1405,7 +1418,18 @@ export default function GenesisIndexPage() {
                             </div>
                             <div className="text-center">
                               <div>
-                                {isProcessing ? (
+                                {showTestMarketTag ? (
+                                  <SimpleTooltip
+                                    label={GENESIS_MARKET_TEST_TAG_TOOLTIP}
+                                    side="top"
+                                  >
+                                    <span
+                                      className={GENESIS_MARKET_TEST_TAG_CLASS}
+                                    >
+                                      TEST
+                                    </span>
+                                  </SimpleTooltip>
+                                ) : isProcessing ? (
                                   <span className="text-[10px] uppercase px-2 py-1 bg-yellow-100 text-yellow-800 whitespace-nowrap">
                                     {statusText}
                                   </span>
@@ -1959,7 +1983,18 @@ export default function GenesisIndexPage() {
                         )}
                         {!isEnded && (
                           <div className="text-center min-w-0">
-                            {isProcessing ? (
+                            {showTestMarketTag ? (
+                              <SimpleTooltip
+                                label={GENESIS_MARKET_TEST_TAG_TOOLTIP}
+                                side="top"
+                              >
+                                <span
+                                  className={GENESIS_MARKET_TEST_TAG_CLASS}
+                                >
+                                  TEST
+                                </span>
+                              </SimpleTooltip>
+                            ) : isProcessing ? (
                               <SimpleTooltip
                                 label={
                                   <div className="text-left max-w-xs">

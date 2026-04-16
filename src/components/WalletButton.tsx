@@ -7,6 +7,7 @@ import {
  useDisconnect,
  useBalance,
  useChainId,
+ useChains,
  useSwitchChain,
 } from "wagmi";
 import { Copy, Check, LogOut, Wallet, AlertTriangle } from "lucide-react";
@@ -35,6 +36,7 @@ export default function WalletButton() {
  const { disconnect } = useDisconnect();
  const { isSafeApp } = useSafeApp();
  const chainId = useChainId();
+ const configuredChains = useChains();
  const { data: balance } = useBalance({
  address,
  query: { enabled: !!address },
@@ -78,7 +80,9 @@ export default function WalletButton() {
  [connectors, isSafeApp]
  );
 
- const wrongNetwork = isConnected && chainId !== mainnet.id;
+ /** Any chain configured in wagmi (e.g. mainnet + MegaETH) is valid for browsing the app. */
+ const wrongNetwork =
+   isConnected && !configuredChains.some((c) => c.id === chainId);
  const displayAddr = useMemo(
  () => (address ? formatAddress(address) :""),
  [address]
