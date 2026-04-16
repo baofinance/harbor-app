@@ -626,9 +626,6 @@ export default function GenesisIndexPage() {
           <>
             <GenesisHeroIntroCards />
 
-            {/* Divider */}
-            <div className="border-t border-white/10 my-2"></div>
-
             <GenesisCampaignStats
               marksError={marksError}
               marksResults={marksResults}
@@ -646,9 +643,6 @@ export default function GenesisIndexPage() {
               marketsWithOraclePricingError={marketsWithOraclePricingError}
               getMarketName={getMarketName}
             />
-
-            {/* Divider */}
-            <div className="border-t border-white/10 mt-2 mb-1"></div>
           </>
         )}
 

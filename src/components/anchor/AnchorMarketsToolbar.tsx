@@ -4,7 +4,7 @@ import { XMarkIcon } from "@heroicons/react/24/outline";
 import SimpleTooltip from "@/components/SimpleTooltip";
 import LedgerMarksCompactBadge from "@/components/LedgerMarksCompactBadge";
 import { FilterMultiselectDropdown } from "@/components/FilterMultiselectDropdown";
-import { INDEX_MARKETS_TOOLBAR_ROW_CLASS } from "@/components/shared/indexMarketsToolbarStyles";
+import { INDEX_MARKETS_TOOLBAR_ROW_WITH_TOP_RULE_CLASS } from "@/components/shared/indexMarketsToolbarStyles";
 import { INDEX_WITHDRAW_BUTTON_CLASS_DESKTOP_CORAL } from "@/utils/indexPageManageButton";
 
 /** Shown in Basic (UI−) layout between filters and Ledger Marks — matches toolbar label/value scale. */
@@ -42,7 +42,7 @@ export function AnchorMarketsToolbar({
     anchorChainOptions.length > 1 || chainFilterSelected.length > 0;
 
   return (
-    <div className={INDEX_MARKETS_TOOLBAR_ROW_CLASS}>
+    <div className={INDEX_MARKETS_TOOLBAR_ROW_WITH_TOP_RULE_CLASS}>
       <div className="flex flex-wrap items-center gap-2">
         <h2 className="text-xs font-medium text-white/70 uppercase tracking-wider">
           Stability Pools:

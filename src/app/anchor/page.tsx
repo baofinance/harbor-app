@@ -3621,8 +3621,9 @@ export default function AnchorPage() {
           {!anchorViewBasic && (
             <>
               <AnchorHeroIntroCards />
-              <div className="border-t border-white/10 my-2" aria-hidden />
-              <AnchorStatsStrip anchorStats={anchorStats} />
+              <div className="mt-2">
+                <AnchorStatsStrip anchorStats={anchorStats} />
+              </div>
 
               {ledgerMarksError && (
                 <div className="bg-[#FF8A7A]/10 border border-[#FF8A7A]/30 rounded-md p-3 mb-4">
@@ -4474,11 +4475,6 @@ export default function AnchorPage() {
             );
           })()}
             </>
-          )}
-
-          {/* Separator after Extended-only rewards strip — omit in Basic (UI−) to avoid a double rule under the title */}
-          {!anchorViewBasic && (
-            <div className="border-t border-white/10 my-2" aria-hidden />
           )}
 
           {/* Earnings Section */}
@@ -5351,8 +5347,6 @@ export default function AnchorPage() {
                   )}
                 </div>
 
-                {/* Separator bar */}
-                <div className="border-t border-white/10 mt-4"></div>
               </section>
             );
           })()}

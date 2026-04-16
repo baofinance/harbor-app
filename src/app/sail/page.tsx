@@ -118,8 +118,6 @@ export default function SailPage() {
 
           {!sailViewBasic && (
             <>
-              <div className="border-t border-white/10 my-2" />
-
               {isConnected && (
                 <SailUserStatsCards
                   sailUserStats={sailUserStats}
@@ -135,8 +133,6 @@ export default function SailPage() {
                 totalSailMarks={totalSailMarks}
                 sailMarksPerDay={sailMarksPerDay}
               />
-
-              <div className="border-t border-white/10 mb-3" />
             </>
           )}
 

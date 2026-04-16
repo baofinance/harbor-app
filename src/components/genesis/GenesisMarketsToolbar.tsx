@@ -10,7 +10,7 @@ import SimpleTooltip from "@/components/SimpleTooltip";
 import { FilterMultiselectDropdown } from "@/components/FilterMultiselectDropdown";
 import {
   INDEX_CORAL_INFO_TAG_CLASS,
-  INDEX_MARKETS_TOOLBAR_ROW_CLASS,
+  INDEX_MARKETS_TOOLBAR_ROW_WITH_TOP_RULE_CLASS,
 } from "@/components/shared/indexMarketsToolbarStyles";
 
 export type GenesisMarketsToolbarProps = {
@@ -38,7 +38,7 @@ export function GenesisMarketsToolbar({
   showCompletedGenesis,
 }: GenesisMarketsToolbarProps) {
   return (
-    <div className={INDEX_MARKETS_TOOLBAR_ROW_CLASS}>
+    <div className={INDEX_MARKETS_TOOLBAR_ROW_WITH_TOP_RULE_CLASS}>
       <div className="flex flex-wrap items-center gap-2">
         <h2 className="text-xs font-medium text-white/70 uppercase tracking-wider flex items-center gap-2">
           Active Campaign:

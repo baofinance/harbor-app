@@ -41,7 +41,14 @@ import { useMultipleVolatilityProtection } from "@/hooks/useVolatilityProtection
 import { useReadContract, useAccount } from "wagmi";
 import { usePageLayoutPreference } from "@/contexts/PageLayoutPreferenceContext";
 import { IndexPageTitleSection } from "@/components/shared/IndexPageTitleSection";
-import { INDEX_MARKETS_TOOLBAR_ROW_CLASS } from "@/components/shared/indexMarketsToolbarStyles";
+import {
+  INDEX_HERO_INTRO_BODY_CLASS,
+  INDEX_HERO_INTRO_CARD_CLASS,
+  INDEX_HERO_INTRO_CARD_RING_ACCENT_CLASS,
+  INDEX_HERO_INTRO_ICON_CLASS,
+  INDEX_HERO_INTRO_TITLE_CLASS,
+  INDEX_MARKETS_TOOLBAR_ROW_WITH_TOP_RULE_CLASS,
+} from "@/components/shared/indexMarketsToolbarStyles";
 import { getWeb3iconsNetworkId } from "@/config/web3iconsNetworks";
 import { minterABI } from "@/abis/minter";
 
@@ -1611,55 +1618,52 @@ export default function TransparencyPage() {
                             subtitle="Real-time protocol metrics from on-chain data"
                         />
                     </div>
-                    <div className="border-t border-white/10 my-3" aria-hidden />
 
                     {!isBasicLayout && (
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-3">
-                            <div className="bg-[#17395F] p-3 rounded-xl border border-white/10">
-                                <div className="flex items-center justify-center mb-1">
-                                    <EyeIcon className="w-5 h-5 text-white mr-2" />
-                                    <h2 className="font-bold text-white text-sm text-center">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-2">
+                            <div className={INDEX_HERO_INTRO_CARD_CLASS}>
+                                <div className="flex items-center justify-center gap-2 mb-1">
+                                    <EyeIcon className={INDEX_HERO_INTRO_ICON_CLASS} />
+                                    <h2 className={INDEX_HERO_INTRO_TITLE_CLASS}>
                                         Fully On-Chain
                                     </h2>
                                 </div>
-                                <p className="text-xs text-white/80 text-center">
+                                <p className={INDEX_HERO_INTRO_BODY_CLASS}>
                                     All data fetched directly from smart contracts
                                 </p>
                             </div>
-                            <div className="bg-[#17395F] p-3 rounded-xl border border-white/10">
-                                <div className="flex items-center justify-center mb-1">
-                                    <CurrencyDollarIcon className="w-5 h-5 text-white mr-2" />
-                                    <h2 className="font-bold text-white text-sm text-center">
+                            <div
+                                className={`${INDEX_HERO_INTRO_CARD_CLASS} ${INDEX_HERO_INTRO_CARD_RING_ACCENT_CLASS}`}
+                            >
+                                <div className="flex items-center justify-center gap-2 mb-1">
+                                    <CurrencyDollarIcon className={INDEX_HERO_INTRO_ICON_CLASS} />
+                                    <h2 className={INDEX_HERO_INTRO_TITLE_CLASS}>
                                         Real-Time
                                     </h2>
                                 </div>
-                                <p className="text-xs text-white/80 text-center">
+                                <p className={INDEX_HERO_INTRO_BODY_CLASS}>
                                     Click refresh to update data
                                 </p>
                             </div>
-                            <div className="bg-[#17395F] p-3 rounded-xl border border-white/10">
-                                <div className="flex items-center justify-center mb-1">
-                                    <Squares2X2Icon className="w-5 h-5 text-white mr-2" />
-                                    <h2 className="font-bold text-white text-sm text-center">
+                            <div className={INDEX_HERO_INTRO_CARD_CLASS}>
+                                <div className="flex items-center justify-center gap-2 mb-1">
+                                    <Squares2X2Icon className={INDEX_HERO_INTRO_ICON_CLASS} />
+                                    <h2 className={INDEX_HERO_INTRO_TITLE_CLASS}>
                                         All Markets
                                     </h2>
                                 </div>
-                                <p className="text-xs text-white/80 text-center">
+                                <p className={INDEX_HERO_INTRO_BODY_CLASS}>
                                     View metrics for all Harbor markets
                                 </p>
                             </div>
                         </div>
                     )}
 
-                    {!isBasicLayout && (
-                        <div className="border-t border-white/10 my-3" aria-hidden />
-                    )}
-
                     <section
-                        className="space-y-2 mt-3 sm:mt-4"
+                        className="space-y-2 mt-2 sm:mt-3"
                         aria-label="Protocol markets"
                     >
-                        <div className={INDEX_MARKETS_TOOLBAR_ROW_CLASS}>
+                        <div className={INDEX_MARKETS_TOOLBAR_ROW_WITH_TOP_RULE_CLASS}>
                             <div className="flex flex-wrap items-center gap-2">
                                 <h2 className="text-xs font-medium text-white/70 uppercase tracking-wider">
                                     Markets:
@@ -1719,7 +1723,7 @@ export default function TransparencyPage() {
                         )}
 
                         {!isLoading && finishedMarkets.length === 0 ? (
-                            <div className="bg-[#17395F] border border-white/10 p-6 rounded-2xl text-center">
+                            <div className="rounded-lg border border-white/10 bg-black/[0.10] backdrop-blur-sm px-6 py-6 text-center">
                                 <p className="text-white text-lg font-medium">
                                     Maiden Voyage in progress for Harbor&apos;s first markets - coming soon!
                                 </p>
@@ -1729,7 +1733,7 @@ export default function TransparencyPage() {
                                 {!isLoading &&
                                     finishedMarkets.length > 0 &&
                                     displayedMarkets.length === 0 && (
-                                        <div className="rounded-xl border border-white/10 bg-[#17395F]/80 px-4 py-6 text-center text-sm text-white/90">
+                                        <div className="rounded-lg border border-white/10 bg-black/[0.10] backdrop-blur-sm px-4 py-6 text-center text-sm text-white/90">
                                             No markets match the selected network.{" "}
                                             <button
                                                 type="button"

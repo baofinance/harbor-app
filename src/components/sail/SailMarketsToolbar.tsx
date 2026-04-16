@@ -6,7 +6,7 @@ import LedgerMarksCompactBadge from "@/components/LedgerMarksCompactBadge";
 import SimpleTooltip from "@/components/SimpleTooltip";
 import { FilterMultiselectDropdown } from "@/components/FilterMultiselectDropdown";
 import { getLogoPath } from "@/components/shared";
-import { INDEX_MARKETS_TOOLBAR_ROW_CLASS } from "@/components/shared/indexMarketsToolbarStyles";
+import { INDEX_MARKETS_TOOLBAR_ROW_WITH_TOP_RULE_CLASS } from "@/components/shared/indexMarketsToolbarStyles";
 
 export type SailMarketsToolbarProps = {
   sailChainOptions: Array<{
@@ -45,7 +45,7 @@ export function SailMarketsToolbar({
   onClearFilters,
 }: SailMarketsToolbarProps) {
   return (
-    <div className={INDEX_MARKETS_TOOLBAR_ROW_CLASS}>
+    <div className={INDEX_MARKETS_TOOLBAR_ROW_WITH_TOP_RULE_CLASS}>
       <div className="flex flex-wrap items-center gap-2">
         <h2 className="text-xs font-medium text-white/70 uppercase tracking-wider">
           Leverage Position:

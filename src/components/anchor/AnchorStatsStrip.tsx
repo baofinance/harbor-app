@@ -1,4 +1,5 @@
 import { formatCompactUSD } from "@/utils/anchor";
+import { INDEX_HERO_INTRO_CARD_CLASS } from "@/components/shared/indexMarketsToolbarStyles";
 
 export type AnchorStatsStripProps = {
   anchorStats: {
@@ -15,7 +16,7 @@ export type AnchorStatsStripProps = {
 export function AnchorStatsStrip({ anchorStats }: AnchorStatsStripProps) {
   return (
     <div className="mb-2 grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2">
-      <div className="bg-black/20 backdrop-blur-sm rounded-md overflow-hidden border border-white/10 px-3 py-2">
+      <div className={INDEX_HERO_INTRO_CARD_CLASS}>
         <div className="flex flex-col items-center justify-center text-center">
           <div className="text-[11px] text-white/80 uppercase tracking-widest">
             Yield Generating TVL
@@ -26,7 +27,7 @@ export function AnchorStatsStrip({ anchorStats }: AnchorStatsStripProps) {
         </div>
       </div>
 
-      <div className="bg-black/20 backdrop-blur-sm rounded-md overflow-hidden border border-white/10 px-3 py-2">
+      <div className={INDEX_HERO_INTRO_CARD_CLASS}>
         <div className="flex flex-col items-center justify-center text-center">
           <div className="text-[11px] text-white/80 uppercase tracking-widest">
             Stability Pool TVL
@@ -37,7 +38,7 @@ export function AnchorStatsStrip({ anchorStats }: AnchorStatsStripProps) {
         </div>
       </div>
 
-      <div className="bg-black/20 backdrop-blur-sm rounded-md overflow-hidden border border-white/10 px-3 py-2">
+      <div className={INDEX_HERO_INTRO_CARD_CLASS}>
         <div className="flex flex-col items-center justify-center text-center">
           <div className="text-[11px] text-white/80 uppercase tracking-widest">
             Avg Yield Concentration
@@ -50,7 +51,7 @@ export function AnchorStatsStrip({ anchorStats }: AnchorStatsStripProps) {
         </div>
       </div>
 
-      <div className="bg-black/20 backdrop-blur-sm rounded-md overflow-hidden border border-white/10 px-3 py-2">
+      <div className={INDEX_HERO_INTRO_CARD_CLASS}>
         <div className="flex flex-col items-center justify-center text-center">
           <div className="text-[11px] text-white/80 uppercase tracking-widest">
             Highest APR Pool
