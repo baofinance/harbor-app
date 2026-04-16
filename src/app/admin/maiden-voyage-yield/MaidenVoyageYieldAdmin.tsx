@@ -8,6 +8,7 @@ import { getGraphHeaders, getGraphUrl } from "@/config/graph";
 import { useAdminAccess } from "@/hooks/useAdminAccess";
 import { buildMaidenVoyageYieldAdminMessage } from "@/lib/maidenVoyageYieldAdminAuth";
 import type { MaidenVoyageDistributionEvent } from "@/lib/maidenVoyageYieldLedgerStore";
+import { maidenVoyageYieldOwnerSharePercent } from "@/config/maidenVoyageYield";
 
 type GraphParticipant = {
   user: string;
@@ -262,9 +263,16 @@ export function MaidenVoyageYieldAdmin() {
     });
 
     const totalWeight = withWeights.reduce((s, r) => s + r.weight, 0);
+    const totalShare = withWeights.reduce((s, r) => s + r.share, 0);
 
     return withWeights
       .map(({ p, share, boost, weight }) => {
+        const poolShare =
+          totalWeight > 0
+            ? weight / totalWeight
+            : totalShare > 0
+              ? share / totalShare
+              : 0;
         const attributed =
           totalWeight > 0
             ? (cumulativeYield * weight) / totalWeight
@@ -275,6 +283,7 @@ export function MaidenVoyageYieldAdmin() {
         return {
           wallet: p.user,
           share,
+          poolShare,
           boost,
           weight,
           attributed,
@@ -284,6 +293,11 @@ export function MaidenVoyageYieldAdmin() {
       })
       .filter((r) => r.share > 0 || r.paid > 0);
   }, [participants, cumulativeYield, paidByWallet]);
+
+  const protocolOwnerPct =
+    genesis && isAddress(genesis)
+      ? maidenVoyageYieldOwnerSharePercent(genesis.toLowerCase())
+      : null;
 
   if (!isAdmin) {
     return (
@@ -307,12 +321,22 @@ export function MaidenVoyageYieldAdmin() {
           Subgraph + ledger
         </h2>
         <p className="text-xs text-white/60 mb-4">
-          Attributed yield splits the pool by competing weights: each wallet gets{" "}
-          <code className="text-white/80">cumulativeYield × (share × boost) / Σ(share × boost)</code>
-          , where <code className="text-white/80">share</code> is{" "}
-          <code className="text-white/80">finalMaidenVoyageOwnershipShare</code> and{" "}
-          <code className="text-white/80">boost</code> is the ve-style multiplier (1× at
-          no retention … max× at full retention, never increases after you withdraw).
+          <strong className="text-white/80">Ownership %</strong> is cap ownership at
+          genesis end (<code className="text-white/80">finalMaidenVoyageOwnershipShare</code>
+          ). <strong className="text-white/80">Pool share %</strong> is how attributed
+          yield splits among participants:{" "}
+          <code className="text-white/80">(ownership × boost) / Σ(ownership × boost)</code>
+          , so pool shares sum to 100% of this table&apos;s attributed pool (the{" "}
+          <code className="text-white/80">cumulativeYieldUSD</code> total for this genesis).
+          {protocolOwnerPct != null ? (
+            <>
+              {" "}
+              Protocol revenue routing to this maiden pool is{" "}
+              <code className="text-white/80">{protocolOwnerPct}%</code> of the relevant
+              fee stream (see subgraph config); that is separate from the 100% split below.
+            </>
+          ) : null}{" "}
+          <code className="text-white/80">Boost</code> is the ve-style retention multiplier.
           Outstanding = attributed − cumulative paid (this ledger).
         </p>
         <div className="flex flex-wrap gap-3 items-end">
@@ -425,7 +449,8 @@ export function MaidenVoyageYieldAdmin() {
           <thead>
             <tr className="text-left text-white/60 border-b border-white/10">
               <th className="py-2 pr-3">Wallet</th>
-              <th className="py-2 pr-3">Share</th>
+              <th className="py-2 pr-3">Ownership %</th>
+              <th className="py-2 pr-3">Pool share %</th>
               <th className="py-2 pr-3 text-right">Attributed</th>
               <th className="py-2 pr-3 text-right">Paid</th>
               <th className="py-2 pr-3 text-right">Outstanding</th>
@@ -441,6 +466,9 @@ export function MaidenVoyageYieldAdmin() {
                 </td>
                 <td className="py-2 pr-3 text-white">
                   {(r.share * 100).toFixed(4)}%
+                </td>
+                <td className="py-2 pr-3 text-white">
+                  {(r.poolShare * 100).toFixed(4)}%
                 </td>
                 <td className="py-2 pr-3 text-right font-mono">
                   {r.attributed.toFixed(2)}

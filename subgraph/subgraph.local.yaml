@@ -43,6 +43,8 @@ dataSources:
           handler: handleDeposit
         - event: Withdraw(indexed address,indexed address,uint256)
           handler: handleWithdraw
+        - event: Claim(indexed address,indexed address,uint256,uint256)
+          handler: handleClaim
         - event: GenesisEnds()
           handler: handleGenesisEnd
       file: ./src/genesis.ts

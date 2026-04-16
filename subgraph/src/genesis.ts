@@ -2,6 +2,7 @@ import {
   Deposit as DepositEvent,
   Withdraw as WithdrawEvent,
   GenesisEnds as GenesisEndsEvent,
+  Claim as ClaimEvent,
 } from "../generated/Genesis_ETH_fxUSD/Genesis";
 import {
   Deposit,
@@ -1046,6 +1047,36 @@ export function handleWithdraw(event: WithdrawEvent): void {
       userMarks.maidenVoyageDepositCountedUSD = BigDecimal.fromString("0");
     }
   }
+
+  if (userMarks.genesisEnded) {
+    refreshMaidenVoyageBoost(userMarks, Address.fromBytes(contractAddress), timestamp);
+  }
+
+  userMarks.lastUpdated = timestamp;
+  userMarks.save();
+}
+
+/**
+ * After genesis ends, `claim(receiver)` mints pegged + leveraged tokens and clears the
+ * user's remaining wrapped-collateral position. Without this handler, `currentDepositUSD`
+ * stays positive while ha+sail balances accrue, so retention is overstated and boost sticks at max.
+ */
+export function handleClaim(event: ClaimEvent): void {
+  const contractAddress = event.address;
+  const userAddress = event.params.receiver;
+  const timestamp = event.block.timestamp;
+
+  let userMarks = getOrCreateUserMarks(contractAddress, userAddress);
+
+  const genesisEnd = GenesisEnd.load(contractAddress.toHexString());
+  if (genesisEnd != null && !userMarks.genesisEnded) {
+    updateUserMarksForGenesisEnd(userMarks, genesisEnd.timestamp);
+    userMarks = getOrCreateUserMarks(contractAddress, userAddress);
+  }
+
+  userMarks.currentDeposit = BigInt.fromI32(0);
+  userMarks.currentDepositUSD = BigDecimal.fromString("0");
+  userMarks.marksPerDay = BigDecimal.fromString("0");
 
   if (userMarks.genesisEnded) {
     refreshMaidenVoyageBoost(userMarks, Address.fromBytes(contractAddress), timestamp);
