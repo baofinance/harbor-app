@@ -262,12 +262,11 @@ export function MaidenVoyageYieldAdmin() {
   const collateralYield = parseFloat(
     campaign?.yieldGlobal?.cumulativeYieldFromCollateralUSD || "0"
   );
-  const feesCollected =
-    parseFloat(campaign?.yieldGlobal?.cumulativeYieldFromMintFeesUSD || "0") +
-    parseFloat(campaign?.yieldGlobal?.cumulativeYieldFromRedeemFeesUSD || "0") +
-    parseFloat(
-      campaign?.yieldGlobal?.cumulativeYieldFromMinterFeeTransfersUSD || "0"
-    );
+  // Authoritative realized-fee counter in current subgraph logic:
+  // wrapped collateral Transfer(minter -> feeReceiver), already scaled by owner-share bps.
+  const feesCollected = parseFloat(
+    campaign?.yieldGlobal?.cumulativeYieldFromMinterFeeTransfersUSD || "0"
+  );
 
   const rows = useMemo(() => {
     const withWeights = participants.map((p) => {
@@ -397,7 +396,7 @@ export function MaidenVoyageYieldAdmin() {
               {campaign.cap.capFilled ? " (filled)" : ""}
             </div>
             <div>Collateral yield: {collateralYield.toFixed(2)} USD</div>
-            <div>Fees collected: {feesCollected.toFixed(2)} USD</div>
+            <div>Fees collected (transfer-based): {feesCollected.toFixed(2)} USD</div>
             <div>
               Pool cumulative yield: {cumulativeYield.toFixed(2)} USD
             </div>
