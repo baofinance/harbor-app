@@ -25,7 +25,8 @@ import {
   MinterHourlyTracker,
 } from "../generated/schema";
 import { runDailyMarksUpdate, runHourlySailMarksUpdate } from "./dailyMarksUpdate";
-import { accrueMaidenVoyageCollateralYieldAfterSnapshot } from "./maidenVoyageYield";
+import { accrueMaidenVoyageCollateralYieldUSD } from "./maidenVoyageYield";
+import { minterUsesSpmHarvestEvents } from "./maidenVoyageConfig";
 
 const ZERO_BI = BigInt.fromI32(0);
 const ZERO_BD = BigDecimal.fromString("0");
@@ -283,15 +284,6 @@ function maybeWriteHourlySnapshot(
   snapshot.collateralRatio = ZERO_BI;
   snapshot.save();
 
-  accrueMaidenVoyageCollateralYieldAfterSnapshot(
-    token,
-    minterAddress,
-    hourTs,
-    collateralPriceUSD,
-    wrappedRate,
-    timestamp
-  );
-
   tracker.lastHourlySnapshot = hourTs;
   tracker.lastBlockNumber = blockNumber;
   tracker.save();
@@ -311,6 +303,7 @@ function getOrCreateMinterHourlyTracker(
     t.minterAddress = minterAddress;
     t.tokenAddress = tokenRes.value;
     t.lastHourTimestamp = ZERO_BI;
+    t.lastHarvestableUSD = ZERO_BD;
     t.save();
   }
   return t as MinterHourlyTracker;
@@ -393,11 +386,17 @@ export function handleBlock(block: ethereum.Block): void {
   const navRes = minter.try_leveragedTokenPrice();
   const tokenPriceUSD = navRes.reverted ? ZERO_BD : toE18(navRes.value).times(pegUsd);
 
-  if (collateralPriceUSD.equals(ZERO_BD)) collateralPriceUSD = pegUsd;
+  // fxSAVE markets: collateralPriceUSD is ~$1 from getPrice(); never substitute pegUsd (ETH/BTC spot ~thousands)
+  // or hour-over-hour "carry" in maidenVoyageYield will see bogus multi-thousand-dollar deltas.
+  if (collateralPriceUSD.equals(ZERO_BD) && !isFxUsdMinter(minterAddress)) {
+    collateralPriceUSD = pegUsd;
+  }
   if (wrappedRate.equals(ZERO_BD)) wrappedRate = ONE;
 
   // Only write if we have a non-zero token price.
   if (tokenPriceUSD.equals(ZERO_BD)) return;
+  // fxUSD: require a real fxSAVE USD price for snapshots used by collateral-yield accrual.
+  if (isFxUsdMinter(minterAddress) && collateralPriceUSD.equals(ZERO_BD)) return;
 
   maybeWriteHourlySnapshot(
     token,
@@ -408,6 +407,24 @@ export function handleBlock(block: ethereum.Block): void {
     collateralPriceUSD,
     wrappedRate
   );
+
+  // Collateral yield (non-SPM markets): hourly harvestable() delta.
+  // v1 ETH/BTC fxUSD + BTC/stETH use `StabilityPoolManager.Harvested` instead (see stabilityPoolManagerYield.ts).
+  if (!minterUsesSpmHarvestEvents(minterAddress)) {
+    const h = minter.try_harvestable();
+    if (!h.reverted) {
+      const harvestableUSD = valueCollateralUsd(minterAddress, h.value);
+      if (harvestableUSD.gt(ZERO_BD)) {
+        const prevHarvestableUSD = mt.lastHarvestableUSD;
+        if (harvestableUSD.gt(prevHarvestableUSD)) {
+          const deltaUSD = harvestableUSD.minus(prevHarvestableUSD);
+          accrueMaidenVoyageCollateralYieldUSD(minterAddress, deltaUSD, block.timestamp);
+        }
+      }
+      mt.lastHarvestableUSD = harvestableUSD;
+      mt.save();
+    }
+  }
 }
 
 /**
@@ -628,8 +645,10 @@ export function handleMintLeveragedToken(event: MintLeveragedToken): void {
     collateralValueUSD = outDec.times(tokenPriceUSD);
   }
 
-  // If oraclePrices are missing, fill reasonable defaults so charts/snapshots aren't blocked.
-  if (collateralPriceUSD.equals(ZERO_BD)) collateralPriceUSD = pegUsd;
+  // If oraclePrices are missing: for fxSAVE markets do not use pegUsd as collateral (see handleBlock).
+  if (collateralPriceUSD.equals(ZERO_BD) && !isFxUsdMinter(minterAddress)) {
+    collateralPriceUSD = pegUsd;
+  }
   if (wrappedRate.equals(ZERO_BD)) wrappedRate = ONE;
   if (wrappedCollateralUsd.equals(ZERO_BD)) wrappedCollateralUsd = collateralPriceUSD.times(wrappedRate);
 
@@ -726,7 +745,9 @@ export function handleRedeemLeveragedToken(event: RedeemLeveragedToken): void {
     collateralValueUSD = burnDec.times(tokenPriceUSD);
   }
 
-  if (collateralPriceUSD.equals(ZERO_BD)) collateralPriceUSD = pegUsd;
+  if (collateralPriceUSD.equals(ZERO_BD) && !isFxUsdMinter(minterAddress)) {
+    collateralPriceUSD = pegUsd;
+  }
   if (wrappedRate.equals(ZERO_BD)) wrappedRate = ONE;
   if (wrappedCollateralUsd.equals(ZERO_BD)) wrappedCollateralUsd = collateralPriceUSD.times(wrappedRate);
 

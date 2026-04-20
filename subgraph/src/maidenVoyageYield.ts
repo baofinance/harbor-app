@@ -1,5 +1,5 @@
 import { Address, BigDecimal, BigInt } from "@graphprotocol/graph-ts";
-import { GenesisEnd, HourlyPriceSnapshot, MaidenVoyageYieldGlobal } from "../generated/schema";
+import { GenesisEnd, MaidenVoyageYieldGlobal } from "../generated/schema";
 import {
   getGenesisForMinter,
   getMaidenVoyageYieldOwnerShareBps,
@@ -8,7 +8,6 @@ import {
 
 const ZERO_BD = BigDecimal.fromString("0");
 const BD_10000 = BigDecimal.fromString("10000");
-const HOUR = BigInt.fromI32(3600);
 const ZERO_ADDR = Address.fromString("0x0000000000000000000000000000000000000000");
 
 /** Apply configurable owner share (bps) to USD before crediting the yield pool. */
@@ -38,17 +37,16 @@ function getOrCreateYieldGlobal(genesis: Address, timestamp: BigInt): MaidenVoya
 }
 
 /**
- * After a new hourly price snapshot is written, estimate collateral carry vs the previous hour
- * and credit the maiden voyage yield pool (only after genesis ended for that market).
+ * Credit collateral yield USD (contract-native) into maiden voyage owner pool.
+ * Source: `StabilityPoolManager.Harvested` (v1 ETH/BTC fxUSD + BTC/stETH) or hourly
+ * `Minter.harvestable()` deltas in `minterPnL` for other minters.
  */
-export function accrueMaidenVoyageCollateralYieldAfterSnapshot(
-  token: Address,
+export function accrueMaidenVoyageCollateralYieldUSD(
   minterAddress: Address,
-  hourTimestamp: BigInt,
-  collateralPriceUSD: BigDecimal,
-  wrappedRate: BigDecimal,
+  collateralYieldUSD: BigDecimal,
   now: BigInt
 ): void {
+  if (collateralYieldUSD.le(ZERO_BD)) return;
   const genesis = getGenesisForMinter(minterAddress);
   if (genesis.equals(ZERO_ADDR)) return;
   if (!isKnownMaidenVoyageGenesis(genesis)) return;
@@ -56,19 +54,7 @@ export function accrueMaidenVoyageCollateralYieldAfterSnapshot(
   const geId = genesis.toHexString();
   if (GenesisEnd.load(geId) == null) return;
 
-  const prevTs = hourTimestamp.minus(HOUR);
-  if (prevTs.lt(BigInt.fromI32(0))) return;
-
-  const prevId = token.toHexString() + "-" + prevTs.toString();
-  const prev = HourlyPriceSnapshot.load(prevId);
-  if (prev == null) return;
-
-  const newN = collateralPriceUSD.times(wrappedRate);
-  const oldN = prev.collateralPriceUSD.times(prev.wrappedRate);
-  let delta = newN.minus(oldN);
-  if (delta.le(ZERO_BD)) return;
-
-  const allocated = scaleUsdToYieldPool(genesis, delta);
+  const allocated = scaleUsdToYieldPool(genesis, collateralYieldUSD);
   if (allocated.le(ZERO_BD)) return;
 
   const y = getOrCreateYieldGlobal(genesis, now);

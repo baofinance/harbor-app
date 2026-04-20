@@ -1,0 +1,17 @@
+[
+  {
+    "inputs": [],
+    "name": "MINTER",
+    "outputs": [{ "internalType": "address", "name": "", "type": "address" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      { "indexed": false, "internalType": "uint256", "name": "amount", "type": "uint256" }
+    ],
+    "name": "Harvested",
+    "type": "event"
+  }
+]

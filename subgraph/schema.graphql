@@ -101,7 +101,7 @@ type UserList @entity(immutable: false) {
 type MaidenVoyageCapStatus @entity(immutable: false) {
   id: ID! # {contractAddress}
   contractAddress: Bytes! # Genesis contract address
-  capUSD: BigDecimal! # Maximum USD accepted for ownership (e.g. 250000)
+  capUSD: BigDecimal! # Maximum USD accepted for ownership / ownership denominator (config-driven, e.g. 100000)
   cumulativeDepositsUSD: BigDecimal! # Sum of countedTowardCapUSD from deposits
   capFilled: Boolean!
   capFilledAt: BigInt
@@ -119,6 +119,19 @@ type MaidenVoyageYieldGlobal @entity(immutable: false) {
   # Realized wrapped-collateral fees: Transfer(minter -> feeReceiver()) on WRAPPED_COLLATERAL_TOKEN (authoritative)
   cumulativeYieldFromMinterFeeTransfersUSD: BigDecimal!
   lastUpdated: BigInt!
+}
+
+# Gross wrapped-collateral harvest from minter (StabilityPoolManager `Harvested`).
+# Maiden voyage collateral yield is credited from this event for v1 markets; see `minterPnL` / `stabilityPoolManagerYield`.
+type StabilityPoolManagerHarvest @entity(immutable: true) {
+  id: ID! # txHash-logIndex
+  manager: Bytes!
+  minter: Bytes!
+  amount: BigInt!
+  amountUsd: BigDecimal!
+  timestamp: BigInt!
+  blockNumber: BigInt!
+  transactionHash: Bytes!
 }
 
 # ============ Entities for Multi-Market Marks Tracking ============
@@ -289,6 +302,7 @@ type MinterHourlyTracker @entity(immutable: false) {
   minterAddress: Bytes!
   tokenAddress: Bytes!
   lastHourTimestamp: BigInt! # Hour timestamp of last snapshot attempt
+  lastHarvestableUSD: BigDecimal! # Last observed Minter.harvestable() valued in USD
 }
 
 # User's sail token position with cost basis (for PnL)

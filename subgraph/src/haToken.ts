@@ -25,7 +25,6 @@ import {
 import { ensureUserRegistered } from "./userRegistry";
 import { accrueWithBoostWindow } from "./marksAccrual";
 import {
-  maidenVoyageMarksMultiplierForHa,
   onHaTokenBalanceChanged,
 } from "./maidenVoyageBoost";
 // import { runDailyMarksUpdate } from "./dailyUpdate";
@@ -185,7 +184,7 @@ function accumulateMarks(
   // Marks are awarded for all time held, including partial days
   // Frontend will estimate marks between graph updates
   if (currentTimestamp.gt(lastUpdate)) {
-    const earnedRaw = accrueWithBoostWindow(
+    const earned = accrueWithBoostWindow(
       "haToken",
       balance.tokenAddress,
       lastUpdate,
@@ -193,8 +192,6 @@ function accumulateMarks(
       balance.balanceUSD,
       baseMarksPerDollarPerDay
     );
-    const mv = maidenVoyageMarksMultiplierForHa(Address.fromBytes(balance.tokenAddress), balance.user);
-    const earned = earnedRaw.times(mv);
     if (earned.gt(BigDecimal.fromString("0"))) {
       balance.accumulatedMarks = balance.accumulatedMarks.plus(earned);
       balance.totalMarksEarned = balance.totalMarksEarned.plus(earned);

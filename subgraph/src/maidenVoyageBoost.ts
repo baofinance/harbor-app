@@ -124,7 +124,8 @@ export function sumMaidenVoyageClaimUSD(genesis: Address, user: Bytes): BigDecim
  * Recompute ve-style maiden voyage boost from retention: claim USD vs baseline at genesis end.
  * Linear in retention: 0% -> 1x, 50% -> midpoint, 100% -> maxBoost (e.g. 1x / 3x / 5x for max 5).
  * Boost only ever moves down (sticky high-water): if you withdraw and later add liquidity back,
- * you do not regain a higher multiplier — yield weight uses min(previous, rawBoost).
+ * you do not regain a higher multiplier — yield attribution (off-chain / UI) uses min(previous, rawBoost).
+ * Maiden voyage boost is not applied to marks; only market boost windows (marksBoost) affect marks.
  * Only applies when user has positive final ownership share and genesis ended.
  */
 export function refreshMaidenVoyageBoost(
@@ -199,46 +200,3 @@ export function onSailTokenBalanceChanged(sailToken: Address, user: Bytes, times
   refreshIfParticipant(g, user, timestamp);
 }
 
-function marksMultFromUserMarks(um: UserHarborMarks | null): BigDecimal {
-  if (um == null) return ONE_BD;
-  if (!um.genesisEnded) return ONE_BD;
-  if (um.finalMaidenVoyageOwnershipShare.le(ZERO_BD)) return ONE_BD;
-  let m = um.maidenVoyageBoostMultiplier;
-  if (m.lt(ONE_BD) || m.equals(ZERO_BD)) return ONE_BD;
-  return m;
-}
-
-function maxMarksMultForGenesis(best: BigDecimal, gen: Address, user: Bytes): BigDecimal {
-  const id = gen.toHexString() + "-" + user.toHexString();
-  const m = marksMultFromUserMarks(UserHarborMarks.load(id));
-  return m.gt(best) ? m : best;
-}
-
-/** Marks accrual multiplier for ha balances (max when ha token is shared across two genesis markets). */
-export function maidenVoyageMarksMultiplierForHa(haToken: Address, user: Bytes): BigDecimal {
-  const t = haToken.toHexString().toLowerCase();
-  let best = ONE_BD;
-  if (t == HA_ETH.toHexString().toLowerCase()) {
-    best = maxMarksMultForGenesis(best, GEN_ETH_FXUSD, user);
-  } else if (t == HA_BTC.toHexString().toLowerCase()) {
-    best = maxMarksMultForGenesis(best, GEN_BTC_FXUSD, user);
-    best = maxMarksMultForGenesis(best, GEN_BTC_STETH, user);
-  } else if (t == HA_EUR.toHexString().toLowerCase()) {
-    best = maxMarksMultForGenesis(best, GEN_STETH_EUR, user);
-    best = maxMarksMultForGenesis(best, GEN_FXUSD_EUR, user);
-  } else if (t == HA_GOLD.toHexString().toLowerCase()) {
-    best = maxMarksMultForGenesis(best, GEN_GOLD_FXUSD, user);
-    best = maxMarksMultForGenesis(best, GEN_GOLD_STETH, user);
-  } else if (t == HA_SILVER.toHexString().toLowerCase()) {
-    best = maxMarksMultForGenesis(best, GEN_SILVER_FXUSD, user);
-    best = maxMarksMultForGenesis(best, GEN_SILVER_STETH, user);
-  }
-  return best;
-}
-
-export function maidenVoyageMarksMultiplierForSail(sailToken: Address, user: Bytes): BigDecimal {
-  const g = getGenesisForSailToken(sailToken);
-  if (g.equals(ZERO_ADDR)) return ONE_BD;
-  const id = g.toHexString() + "-" + user.toHexString();
-  return marksMultFromUserMarks(UserHarborMarks.load(id));
-}

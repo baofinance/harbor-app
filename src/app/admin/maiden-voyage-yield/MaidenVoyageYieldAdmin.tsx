@@ -27,6 +27,9 @@ type GraphCampaign = {
   yieldGlobal?: {
     cumulativeYieldUSD: string;
     cumulativeYieldFromCollateralUSD: string;
+    cumulativeYieldFromMintFeesUSD: string;
+    cumulativeYieldFromRedeemFeesUSD: string;
+    cumulativeYieldFromMinterFeeTransfersUSD: string;
   };
 };
 
@@ -40,6 +43,9 @@ const PARTICIPANTS_QUERY = `
     maidenVoyageYieldGlobals(first: 1, where: { id: $capId }) {
       cumulativeYieldUSD
       cumulativeYieldFromCollateralUSD
+      cumulativeYieldFromMintFeesUSD
+      cumulativeYieldFromRedeemFeesUSD
+      cumulativeYieldFromMinterFeeTransfersUSD
     }
     userHarborMarks_collection(
       first: 500
@@ -253,6 +259,15 @@ export function MaidenVoyageYieldAdmin() {
   const cumulativeYield = parseFloat(
     campaign?.yieldGlobal?.cumulativeYieldUSD || "0"
   );
+  const collateralYield = parseFloat(
+    campaign?.yieldGlobal?.cumulativeYieldFromCollateralUSD || "0"
+  );
+  const feesCollected =
+    parseFloat(campaign?.yieldGlobal?.cumulativeYieldFromMintFeesUSD || "0") +
+    parseFloat(campaign?.yieldGlobal?.cumulativeYieldFromRedeemFeesUSD || "0") +
+    parseFloat(
+      campaign?.yieldGlobal?.cumulativeYieldFromMinterFeeTransfersUSD || "0"
+    );
 
   const rows = useMemo(() => {
     const withWeights = participants.map((p) => {
@@ -375,15 +390,16 @@ export function MaidenVoyageYieldAdmin() {
           <p className="text-red-400 text-sm mt-2">{graphError}</p>
         )}
         {campaign?.cap && (
-          <div className="mt-4 text-sm text-white/80 grid sm:grid-cols-2 gap-2">
+          <div className="mt-4 text-sm text-white/80 grid sm:grid-cols-2 lg:grid-cols-4 gap-2">
             <div>
               Cap fill: {campaign.cap.cumulativeDepositsUSD} /{" "}
               {campaign.cap.capUSD} USD
               {campaign.cap.capFilled ? " (filled)" : ""}
             </div>
+            <div>Collateral yield: {collateralYield.toFixed(2)} USD</div>
+            <div>Fees collected: {feesCollected.toFixed(2)} USD</div>
             <div>
-              Pool cumulative yield:{" "}
-              {campaign.yieldGlobal?.cumulativeYieldUSD ?? "0"} USD
+              Pool cumulative yield: {cumulativeYield.toFixed(2)} USD
             </div>
           </div>
         )}

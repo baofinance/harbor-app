@@ -1,6 +1,11 @@
 # Harbor Marks Subgraph - Ethereum Mainnet Configuration
-# Deployment: production v1 markets (ETH/fxUSD, BTC/fxUSD, BTC/stETH)
+# Deployment: production v1 markets (ETH/fxUSD, BTC/fxUSD, BTC/stETH) + EUR + metals genesis, etc.
 # Last Updated: 2025-12-19
+#
+# StabilityPoolManager proxy addresses: canonical list in DeployLog/harbor_v1.state.json
+# (`{PEG}::{quote}::stabilityPoolManager`). Minter → manager is not on-chain on the minter; handlers
+# use manager.MINTER(). Keep `minterUsesSpmHarvestEvents` in sync with each Minter_* that has a
+# matching StabilityPoolManager_* data source here.
 #
 # Markets tracked:
 #   - ETH/fxUSD market (harbor_v1::ETH::fxUSD) - block 24049488
@@ -234,6 +239,29 @@ dataSources:
           handler: handleStabilityPoolDepositChange
       file: ./src/stabilityPoolLeveraged.ts
 
+  # Stability Pool Manager — ETH/fxUSD (on-chain `Harvested` → maiden voyage collateral yield)
+  - kind: ethereum
+    name: StabilityPoolManager_ETH_fxUSD
+    network: mainnet
+    source:
+      address: "0xE39165aDE355988EFb24dA4f2403971101134CAB"
+      abi: StabilityPoolManager
+      startBlock: 24049488
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - MaidenVoyageYieldGlobal
+        - StabilityPoolManagerHarvest
+      abis:
+        - name: StabilityPoolManager
+          file: ./abis/StabilityPoolManager.json
+      eventHandlers:
+        - event: Harvested(uint256)
+          handler: handleStabilityPoolManagerHarvested
+      file: ./src/stabilityPoolManagerYield.ts
+
   # ============================================================================
   # MARKET 2: BTC/fxUSD (harbor_v1::BTC::fxUSD)
   # ============================================================================
@@ -441,6 +469,29 @@ dataSources:
         - event: UserDepositChange(indexed address,uint256,uint256)
           handler: handleStabilityPoolDepositChange
       file: ./src/stabilityPoolLeveraged.ts
+
+  # Stability Pool Manager — BTC/fxUSD
+  - kind: ethereum
+    name: StabilityPoolManager_BTC_fxUSD
+    network: mainnet
+    source:
+      address: "0x768E0a386e1972eB5995429Fe21E7aC0f22F516e"
+      abi: StabilityPoolManager
+      startBlock: 24049375
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - MaidenVoyageYieldGlobal
+        - StabilityPoolManagerHarvest
+      abis:
+        - name: StabilityPoolManager
+          file: ./abis/StabilityPoolManager.json
+      eventHandlers:
+        - event: Harvested(uint256)
+          handler: handleStabilityPoolManagerHarvested
+      file: ./src/stabilityPoolManagerYield.ts
 
   # ============================================================================
   # MARKET 3: BTC/stETH (harbor_v1::BTC::stETH)
@@ -961,6 +1012,52 @@ dataSources:
           handler: handleStabilityPoolDepositChange
       file: ./src/stabilityPoolLeveraged.ts
 
+  # Stability Pool Manager — EUR/fxUSD (proxy: EUR::fxUSD::stabilityPoolManager in harbor_v1.state.json)
+  - kind: ethereum
+    name: StabilityPoolManager_EUR_fxUSD
+    network: mainnet
+    source:
+      address: "0x756766756880ceA06270Fd507b09Ef32714Ec7C2"
+      abi: StabilityPoolManager
+      startBlock: 24271147
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - MaidenVoyageYieldGlobal
+        - StabilityPoolManagerHarvest
+      abis:
+        - name: StabilityPoolManager
+          file: ./abis/StabilityPoolManager.json
+      eventHandlers:
+        - event: Harvested(uint256)
+          handler: handleStabilityPoolManagerHarvested
+      file: ./src/stabilityPoolManagerYield.ts
+
+  # Stability Pool Manager — EUR/stETH
+  - kind: ethereum
+    name: StabilityPoolManager_EUR_stETH
+    network: mainnet
+    source:
+      address: "0x29AAEe8b76A5970D7d5041F500512e2b9d70Aa94"
+      abi: StabilityPoolManager
+      startBlock: 24271147
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - MaidenVoyageYieldGlobal
+        - StabilityPoolManagerHarvest
+      abis:
+        - name: StabilityPoolManager
+          file: ./abis/StabilityPoolManager.json
+      eventHandlers:
+        - event: Harvested(uint256)
+          handler: handleStabilityPoolManagerHarvested
+      file: ./src/stabilityPoolManagerYield.ts
+
   # Genesis - fxUSD/GOLD market (Metals Maiden Voyage)
   - kind: ethereum
     name: Genesis_fxUSD_GOLD
@@ -1224,3 +1321,26 @@ dataSources:
         - event: UserDepositChange(indexed address,uint256,uint256)
           handler: handleStabilityPoolDepositChange
       file: ./src/stabilityPoolLeveraged.ts
+
+  # Stability Pool Manager — BTC/stETH
+  - kind: ethereum
+    name: StabilityPoolManager_BTC_stETH
+    network: mainnet
+    source:
+      address: "0x5e9Bcaa1EDfD665c09a9e6693B447581d61A85A1"
+      abi: StabilityPoolManager
+      startBlock: 24049273
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - MaidenVoyageYieldGlobal
+        - StabilityPoolManagerHarvest
+      abis:
+        - name: StabilityPoolManager
+          file: ./abis/StabilityPoolManager.json
+      eventHandlers:
+        - event: Harvested(uint256)
+          handler: handleStabilityPoolManagerHarvested
+      file: ./src/stabilityPoolManagerYield.ts

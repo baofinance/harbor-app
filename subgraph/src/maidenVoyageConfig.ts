@@ -2,8 +2,13 @@ import { Address, BigDecimal, BigInt } from "@graphprotocol/graph-ts";
 
 const ZERO_ADDR = Address.fromString("0x0000000000000000000000000000000000000000");
 
-/** Default USD ownership cap per genesis market */
-const DEFAULT_CAP_USD = BigDecimal.fromString("250000");
+/**
+ * Default USD maiden ownership cap (live policy). Unknown genesis falls back here until
+ * explicitly listed in `getMaidenVoyageCapUSD`.
+ *
+ * **Must stay aligned** with `MAIDEN_VOYAGE_CAP_USD_DEFAULT` in `src/config/maidenVoyageCap.ts`.
+ */
+const DEFAULT_CAP_USD = BigDecimal.fromString("100000");
 
 /**
  * Default max ve-style boost (e.g. 5 => 1x at 0% retention … 5x at 100%).
@@ -62,8 +67,14 @@ export const HS_FXUSD_EUR = Address.fromString("0x7a7c1f2502c19193c44662a2aff51c
 export const HS_FXUSD_SILVER = Address.fromString("0x74692d22a0cb924e4299785cc299291e560df9cf");
 export const HS_STETH_SILVER = Address.fromString("0x5bb5672be4553e648c1d20f093826faf77386d34");
 
+/**
+ * Per-genesis USD cap counting toward maiden ownership share.
+ * **Must match** `MAIDEN_VOYAGE_CAP_USD_BY_GENESIS_HEX` in `src/config/maidenVoyageCap.ts`
+ * (same USD for every known genesis today; vary per branch here when a market needs a different cap).
+ */
 export function getMaidenVoyageCapUSD(genesis: Address): BigDecimal {
-  return DEFAULT_CAP_USD;
+  if (isKnownMaidenVoyageGenesis(genesis)) return DEFAULT_CAP_USD;
+  return BigDecimal.fromString("0");
 }
 
 export function getMaidenVoyageMaxBoost(genesis: Address): BigDecimal {
@@ -115,6 +126,20 @@ export function getGenesisForMinter(minter: Address): Address {
   if (m == MINT_BTC_STETH_T2.toHexString().toLowerCase()) return GEN_BTC_STETH_T2;
 
   return ZERO_ADDR;
+}
+
+/**
+ * Markets where `StabilityPoolManager.Harvested` is indexed (see `subgraph.yaml`).
+ * Minter does not expose its manager; mapping is deployment manifest / `harbor_v1.state.json` proxies.
+ * Other minters still use the hourly `Minter.harvestable()` delta in `minterPnL`.
+ */
+export function minterUsesSpmHarvestEvents(minter: Address): boolean {
+  if (minter.equals(MINT_ETH_FXUSD)) return true;
+  if (minter.equals(MINT_BTC_FXUSD)) return true;
+  if (minter.equals(MINT_BTC_STETH)) return true;
+  if (minter.equals(MINT_FXUSD_EUR)) return true;
+  if (minter.equals(MINT_STETH_EUR)) return true;
+  return false;
 }
 
 export function isKnownMaidenVoyageGenesis(genesis: Address): boolean {
