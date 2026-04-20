@@ -4,8 +4,10 @@ import React, { useMemo, useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   useAccount,
+  useChainId,
   useContractReads,
   useContractRead,
+  useSwitchChain,
 } from "wagmi";
 import { formatEther } from "viem";
 import { useQueryClient } from "@tanstack/react-query";
@@ -61,9 +63,13 @@ import { formatGenesisMarketDisplayName } from "@/utils/genesisDisplay";
 import { useGenesisPageData } from "@/hooks/useGenesisPageData";
 import { computeGenesisRowUsdPricing } from "@/utils/genesisRowPricing";
 import { usePageLayoutPreference } from "@/contexts/PageLayoutPreferenceContext";
+import { ensureMarketWalletChain } from "@/utils/ensureMarketWalletChain";
+import { formatCompactUSD } from "@/utils/anchor";
 
 export default function GenesisIndexPage() {
   const { address, isConnected } = useAccount();
+  const connectedChainId = useChainId();
+  const { switchChain } = useSwitchChain();
   const searchParams = useSearchParams();
   /** Header toggle: Basic = toolbar + tables only (no hero + Ledger Marks strip). Persists across routes. */
   const { isBasic: genesisViewBasic } = usePageLayoutPreference();
@@ -94,6 +100,32 @@ export default function GenesisIndexPage() {
   const [chainFilterSelected, setChainFilterSelected] = useState<string[]>([]);
   // Hide completed genesis sections by default; filter to show "Ongoing" only or "All" (ongoing + completed)
   const [showCompletedGenesis, setShowCompletedGenesis] = useState(false);
+
+  const openManageModal = async (marketId: string, market: GenesisMarketConfig) => {
+    const marketChainId = market?.chainId ?? 1;
+
+    const isReady = await ensureMarketWalletChain({
+      isConnected,
+      connectedChainId,
+      marketChainId,
+      switchChain,
+      onSwitchRejected: (err) => {
+        if (process.env.NODE_ENV === "development") {
+          console.warn(
+            "[Genesis] Network switch rejected before opening manage modal:",
+            err
+          );
+        }
+      },
+    });
+    if (!isReady) return;
+
+    setManageModal({
+      marketId,
+      market,
+      initialTab: "deposit",
+    });
+  };
 
   // Prevent hydration mismatch by only rendering dynamic content after mount
   useEffect(() => {
@@ -617,6 +649,55 @@ export default function GenesisIndexPage() {
     return next;
   }, [completedByCampaign, chainFilterSelected]);
 
+  const activeGenesisTvlUsd = useMemo(() => {
+    if (!totalDepositsReads || !collateralPricesMap) return 0;
+    const activeIds = new Set(activeMarkets.map(([id]) => id));
+    let total = 0;
+
+    genesisMarkets.forEach(([id, mkt], marketIndex) => {
+      if (!activeIds.has(id)) return;
+      const totalDeposits = totalDepositsReads?.[marketIndex]?.result as bigint | undefined;
+      if (!totalDeposits || totalDeposits <= 0n) return;
+
+      const oracleAddress = (mkt as GenesisMarketConfig).addresses?.collateralPrice as
+        | `0x${string}`
+        | undefined;
+      if (!oracleAddress) return;
+      const priceData = collateralPricesMap.get(oracleAddress.toLowerCase());
+      const collateralPriceUsd = priceData?.priceUSD || 0;
+      if (collateralPriceUsd <= 0) return;
+
+      total += Number(formatEther(totalDeposits)) * collateralPriceUsd;
+    });
+
+    return total;
+  }, [activeMarkets, totalDepositsReads, collateralPricesMap, genesisMarkets]);
+
+  const activeGenesisYourDepositsUsd = useMemo(() => {
+    if (!reads || !isConnected) return 0;
+    const activeIds = new Set(activeMarkets.map(([id]) => id));
+    let total = 0;
+
+    genesisMarkets.forEach(([id, mkt], marketIndex) => {
+      if (!activeIds.has(id)) return;
+      const baseOffset = marketIndex * (isConnected ? 3 : 1);
+      const userDeposit = reads?.[baseOffset + 1]?.result as bigint | undefined;
+      if (!userDeposit || userDeposit <= 0n) return;
+
+      const oracleAddress = (mkt as GenesisMarketConfig).addresses?.collateralPrice as
+        | `0x${string}`
+        | undefined;
+      if (!oracleAddress) return;
+      const priceData = collateralPricesMap.get(oracleAddress.toLowerCase());
+      const collateralPriceUsd = priceData?.priceUSD || 0;
+      if (collateralPriceUsd <= 0) return;
+
+      total += Number(formatEther(userDeposit)) * collateralPriceUsd;
+    });
+
+    return total;
+  }, [activeMarkets, reads, isConnected, genesisMarkets, collateralPricesMap]);
+
   return (
     <div className="flex min-h-0 flex-1 flex-col text-white max-w-[1300px] mx-auto font-sans relative w-full">
       <main className="container mx-auto px-4 sm:px-10 pb-6 pt-2 sm:pt-4">
@@ -657,6 +738,16 @@ export default function GenesisIndexPage() {
               setChainFilterSelected,
               setShowCompletedGenesis,
               showCompletedGenesis,
+              metrics: [
+                {
+                  label: "TVL",
+                  value: formatCompactUSD(activeGenesisTvlUsd),
+                },
+                {
+                  label: "Your Deposits",
+                  value: formatCompactUSD(activeGenesisYourDepositsUsd),
+                },
+              ],
             }}
           >
             {/* Market Rows - sorted with running markets first, then completed markets */}
@@ -1006,11 +1097,7 @@ export default function GenesisIndexPage() {
                                 })
                               }
                               onManage={() =>
-                                setManageModal({
-                                  marketId: id,
-                                  market: mkt,
-                                  initialTab: "deposit",
-                                })
+                                void openManageModal(id, mkt as GenesisMarketConfig)
                               }
                             />
                           </div>
@@ -1466,11 +1553,7 @@ export default function GenesisIndexPage() {
                                 })
                               }
                               onManage={() =>
-                                setManageModal({
-                                  marketId: id,
-                                  market: mkt,
-                                  initialTab: "deposit",
-                                })
+                                void openManageModal(id, mkt as GenesisMarketConfig)
                               }
                             />
                           </div>
@@ -2058,11 +2141,7 @@ export default function GenesisIndexPage() {
                                 })
                               }
                               onManage={() =>
-                                setManageModal({
-                                  marketId: id,
-                                  market: mkt,
-                                  initialTab: "deposit",
-                                })
+                                void openManageModal(id, mkt as GenesisMarketConfig)
                               }
                             />
                           </div>

@@ -48,7 +48,8 @@ const ICONS: Record<string, string> = {
     // haUSD markets (e.g. MegaETH) - pegged haUSD + sail tokens
     "hsusd-btc": "/icons/hsUSD_BTC.png",
     "hsusd-eth": "/icons/hsUSD_ETH.png",
-    "hsusd-wsteth": "/icons/steth_logo.webp",
+    "hsusd-wsteth": "/icons/hsUSD_ETH.png",
+    "hsusd-steth": "/icons/hsUSD_ETH.png",
     "hsusd-xau": "/icons/hsUSD_XAU.png",
     "hssteth-btc": "/icons/hsETHBTC.png",
     hsstethbtc: "/icons/hsETHBTC.png",
@@ -61,11 +62,19 @@ const ICONS: Record<string, string> = {
 
 const STOCK_TICKERS = ["aapl", "amzn", "googl", "meta", "msft", "nvda", "spy", "tsla"];
 
+function normalizeSymbolKey(symbol: string): string {
+    return symbol.toLowerCase().trim();
+}
+
 export function getLogoPath(symbol: string): string {
-    const key = symbol.toLowerCase();
+    const key = normalizeSymbolKey(symbol);
+    const compactKey = key.replace(/[\s._/:-]+/g, "");
 
     if (ICONS[key]) {
         return ICONS[key];
+    }
+    if (ICONS[compactKey]) {
+        return ICONS[compactKey];
     }
 
     // Harbor tokens - ha (pegged) tokens fallback
@@ -75,6 +84,16 @@ export function getLogoPath(symbol: string): string {
     
     // Harbor tokens - hs (leveraged) tokens fallback
     if (key.startsWith("hs")) {
+        // Prefer market-specific hs icons when symbol format varies
+        // (e.g. hsUSD-BTC.b, hsUSD_BTC, hsUSDBTC, etc.)
+        if (compactKey.includes("btc")) return "/icons/hsUSD_BTC.png";
+        if (compactKey.includes("wsteth") || compactKey.includes("steth")) {
+            return "/icons/hsUSD_ETH.png";
+        }
+        if (compactKey.includes("xau") || compactKey.includes("gold")) {
+            return "/icons/hsUSD_XAU.png";
+        }
+        if (compactKey.includes("eth")) return "/icons/hsUSD_ETH.png";
         return "/icons/hsUSDETH.png"; // Fallback for other hs tokens
     }
 

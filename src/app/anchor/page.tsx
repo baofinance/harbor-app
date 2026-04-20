@@ -7,7 +7,13 @@ import React, {
   useRef,
   useCallback,
 } from "react";
-import { useAccount, useWriteContract, usePublicClient } from "wagmi";
+import {
+  useAccount,
+  useChainId,
+  useWriteContract,
+  usePublicClient,
+  useSwitchChain,
+} from "wagmi";
 import { formatEther, parseEther } from "viem";
 import { isMarketInMaintenance, type DefinedMarket } from "@/config/markets";
 import { MarketMaintenanceTag } from "@/components/MarketMaintenanceTag";
@@ -84,6 +90,10 @@ import { AnchorPageTitleSection } from "@/components/anchor/AnchorPageTitleSecti
 import { AnchorHeroIntroCards } from "@/components/anchor/AnchorHeroIntroCards";
 import { AnchorStatsStrip } from "@/components/anchor/AnchorStatsStrip";
 import {
+  AnchorVaprTooltipContent,
+  type AnchorVaprPositionApr,
+} from "@/components/anchor/AnchorVaprTooltipContent";
+import {
   ANCHOR_MARKETS_WALLET_ROW_LG_CLASSNAME,
   ANCHOR_MARKETS_WALLET_ROW_MD_CLASSNAME,
 } from "@/components/anchor/anchorMarketsTableGrid";
@@ -102,6 +112,7 @@ import { computeGenesisWrappedCollateralPriceUSD } from "@/utils/wrappedCollater
 import { DEBUG_ANCHOR } from "@/config/debug";
 import { getDepositMode } from "@/utils/depositMode";
 import NetworkIconCell from "@/components/NetworkIconCell";
+import { ensureMarketWalletChain } from "@/utils/ensureMarketWalletChain";
 
 // Flag to temporarily disable anchor marks (set to false to pause marks)
 const ANCHOR_MARKS_ENABLED = true;
@@ -118,6 +129,22 @@ const erc20ABI = ERC20_ABI;
 const wrappedPriceOracleABI = WRAPPED_PRICE_ORACLE_ABI;
 const chainlinkOracleABI = WRAPPED_PRICE_ORACLE_ABI;
 
+type AnchorManageModalPayload = {
+  marketId: string;
+  market: DefinedMarket;
+  initialTab?:
+    | "mint"
+    | "deposit"
+    | "withdraw"
+    | "redeem"
+    | "deposit-mint"
+    | "withdraw-redeem";
+  simpleMode?: boolean;
+  bestPoolType?: "collateral" | "sail";
+  allMarkets?: Array<{ marketId: string; market: DefinedMarket }>;
+  initialDepositAsset?: string;
+};
+
 // Helper function to get accepted deposit assets from market config
 
 // Component to display reward tokens for a market group
@@ -126,6 +153,8 @@ const chainlinkOracleABI = WRAPPED_PRICE_ORACLE_ABI;
 
 export default function AnchorPage() {
   const { address, isConnected } = useAccount();
+  const connectedChainId = useChainId();
+  const { switchChain } = useSwitchChain();
   const { writeContractAsync } = useWriteContract();
   const publicClient = usePublicClient();
 
@@ -137,21 +166,33 @@ export default function AnchorPage() {
     );
   }, []);
   const [chainFilterSelected, setChainFilterSelected] = useState<string[]>([]);
-  const [manageModal, setManageModal] = useState<{
-    marketId: string;
-    market: DefinedMarket;
-    initialTab?:
-      | "mint"
-      | "deposit"
-      | "withdraw"
-      | "redeem"
-      | "deposit-mint"
-      | "withdraw-redeem";
-    simpleMode?: boolean;
-    bestPoolType?: "collateral" | "sail";
-    allMarkets?: Array<{ marketId: string; market: DefinedMarket }>;
-    initialDepositAsset?: string;
-  } | null>(null);
+  const [manageModal, setManageModal] = useState<AnchorManageModalPayload | null>(
+    null
+  );
+  const openManageModal = useCallback(
+    async (payload: AnchorManageModalPayload) => {
+      const marketChainId =
+        (payload.market as DefinedMarket & { chainId?: number }).chainId ?? 1;
+      const isReady = await ensureMarketWalletChain({
+        isConnected,
+        connectedChainId,
+        marketChainId,
+        switchChain,
+        onSwitchRejected: (err) => {
+          if (process.env.NODE_ENV === "development") {
+            console.warn(
+              "[Anchor] Network switch rejected before opening manage modal:",
+              err
+            );
+          }
+        },
+      });
+      if (!isReady) return;
+
+      setManageModal(payload);
+    },
+    [connectedChainId, isConnected, switchChain]
+  );
   const [compoundModal, setCompoundModal] = useState<{
     marketId: string;
     market: any;
@@ -384,6 +425,61 @@ export default function AnchorPage() {
     }
     return total;
   }, [anchorMarkets, poolRewardsMap]);
+
+  const anchorToolbarYourTotalDepositUsd = useMemo(() => {
+    return Object.values(marketPositions).reduce(
+      (sum, pos) => sum + (pos.collateralPoolUSD || 0) + (pos.sailPoolUSD || 0),
+      0
+    );
+  }, [marketPositions]);
+
+  const anchorToolbarPositionAprs = useMemo(() => {
+    const positionAprs: AnchorVaprPositionApr[] = [];
+    for (const [marketId, market] of anchorMarkets) {
+      const position = marketPositions?.[marketId];
+      if (!position) continue;
+
+      const collateralPoolAddress = (market as { addresses?: { stabilityPoolCollateral?: `0x${string}` } })
+        .addresses?.stabilityPoolCollateral;
+      if (collateralPoolAddress && position.collateralPoolUSD > 0) {
+        const collateralApr = poolRewardsMap.get(collateralPoolAddress)?.totalRewardAPR || 0;
+        if (collateralApr > 0) {
+          positionAprs.push({
+            poolType: "collateral",
+            marketId,
+            depositUSD: position.collateralPoolUSD,
+            apr: collateralApr,
+          });
+        }
+      }
+
+      const sailPoolAddress = (market as { addresses?: { stabilityPoolLeveraged?: `0x${string}` } })
+        .addresses?.stabilityPoolLeveraged;
+      if (sailPoolAddress && position.sailPoolUSD > 0) {
+        const sailApr = poolRewardsMap.get(sailPoolAddress)?.totalRewardAPR || 0;
+        if (sailApr > 0) {
+          positionAprs.push({
+            poolType: "sail",
+            marketId,
+            depositUSD: position.sailPoolUSD,
+            apr: sailApr,
+          });
+        }
+      }
+    }
+
+    return positionAprs;
+  }, [anchorMarkets, marketPositions, poolRewardsMap]);
+
+  const anchorToolbarVapr = useMemo(() => {
+    let totalWeightedApr = 0;
+    let totalDepositUsd = 0;
+    for (const pos of anchorToolbarPositionAprs) {
+      totalWeightedApr += pos.depositUSD * pos.apr;
+      totalDepositUsd += pos.depositUSD;
+    }
+    return totalDepositUsd > 0 ? totalWeightedApr / totalDepositUsd : 0;
+  }, [anchorToolbarPositionAprs]);
 
   // Fetch collateral prices for all markets using the hook
   const collateralPriceOracleAddresses = useMemo(() => {
@@ -3653,12 +3749,7 @@ export default function AnchorPage() {
             // Total stability pool deposits (USD). Excludes wallet balances.
             let totalStabilityPoolDepositsUSD = 0;
             // Track individual positions for tooltip
-            const positionAPRs: Array<{
-              poolType: "collateral" | "sail";
-              marketId: string;
-              depositUSD: number;
-              apr: number;
-            }> = [];
+            const positionAPRs: AnchorVaprPositionApr[] = [];
 
             if (reads) {
               anchorMarkets.forEach(([id, m], mi) => {
@@ -4275,123 +4366,13 @@ export default function AnchorPage() {
                           <InfoTooltip
                             side="left"
                             label={
-                              <div className="text-left">
-                                <div className="font-semibold mb-1">
-                                  Blended APR from Your Positions
-                                </div>
-                                {positionAPRs.length > 0 ? (
-                                  <div className="text-xs space-y-1">
-                                    {positionAPRs.length > 10 ? (
-                                      // If more than 10 positions, show summary
-                                      <>
-                                        <div>
-                                            • Total positions:{" "}
-                                            {positionAPRs.length}
-                                        </div>
-                                        {(() => {
-                                            const collateralCount =
-                                              positionAPRs.filter(
-                                                (pos) =>
-                                                  pos.poolType === "collateral"
-                                          ).length;
-                                            const sailCount =
-                                              positionAPRs.filter(
-                                            (pos) => pos.poolType === "sail"
-                                          ).length;
-                                          return (
-                                            <>
-                                              {collateralCount > 0 && (
-                                                <div className="ml-2">
-                                                    - Collateral:{" "}
-                                                    {collateralCount}
-                                                </div>
-                                              )}
-                                              {sailCount > 0 && (
-                                                <div className="ml-2">
-                                                  - Sail: {sailCount}
-                                                </div>
-                                              )}
-                                            </>
-                                          );
-                                        })()}
-                                        <div className="mt-2 pt-2 border-t border-white/20 font-semibold">
-                                            Weighted Average:{" "}
-                                          {blendedAPRForBar > 0
-                                              ? `${blendedAPRForBar.toFixed(
-                                                  2
-                                                )}%`
-                                            : "-"}
-                                        </div>
-                                      </>
-                                    ) : (
-                                      // If 10 or fewer positions, show individual positions
-                                      <>
-                                        {positionAPRs.map((pos, idx) => (
-                                          <div key={idx}>
-                                              •{" "}
-                                            {pos.poolType === "collateral"
-                                              ? "Collateral"
-                                                : "Sail"}{" "}
-                                              Pool ({pos.marketId}):{" "}
-                                            {pos.apr.toFixed(2)}% (
-                                              {formatCompactUSD(pos.depositUSD)}
-                                              )
-                                          </div>
-                                        ))}
-                                        <div className="mt-2 pt-2 border-t border-white/20 font-semibold">
-                                            Weighted Average:{" "}
-                                          {blendedAPRForBar > 0
-                                              ? `${blendedAPRForBar.toFixed(
-                                                  2
-                                                )}%`
-                                            : "-"}
-                                        </div>
-                                      </>
-                                    )}
-                                  </div>
-                                ) : (
-                                  <div className="text-xs">
-                                    No stability pool positions found
-                                  </div>
-                                )}
-                                {/** Hide projected APRs while live reward APRs are still loading */}
-                                {!showLiveAprLoading &&
-                                  !isErrorAllRewards &&
-                                  projectedAPR.harvestableAmount !== null &&
-                                  projectedAPR.harvestableAmount > 0n &&
-                                  blendedAPRForBar <= 0 && (
-                                    <div className="mt-2 pt-2 border-t border-white/20 text-xs opacity-90">
-                                        Projected APR (next 7 days):{" "}
-                                      {projectedAPR.collateralPoolAPR !==
-                                        null &&
-                                        `${projectedAPR.collateralPoolAPR.toFixed(
-                                          2
-                                        )}% (Collateral)`}
-                                      {projectedAPR.collateralPoolAPR !==
-                                        null &&
-                                        projectedAPR.leveragedPoolAPR !==
-                                          null &&
-                                        " /"}
-                                        {projectedAPR.leveragedPoolAPR !==
-                                          null &&
-                                        `${projectedAPR.leveragedPoolAPR.toFixed(
-                                          2
-                                        )}% (Sail)`}
-                                      <br />
-                                        Based on{" "}
-                                      {(
-                                          Number(
-                                            projectedAPR.harvestableAmount
-                                          ) / 1e18
-                                        ).toFixed(4)}{" "}
-                                      wstETH harvestable.
-                                      {projectedAPR.remainingDays !== null &&
-                                        ` ~${projectedAPR.remainingDays.toFixed(
-                                          1
-                                        )} days until harvest.`}
-                                    </div>
-                                  )}
-                              </div>
+                              <AnchorVaprTooltipContent
+                                positionAPRs={positionAPRs}
+                                blendedAPR={blendedAPRForBar}
+                                showLiveAprLoading={showLiveAprLoading}
+                                isErrorAllRewards={isErrorAllRewards}
+                                projectedAPR={projectedAPR}
+                              />
                             }
                           >
                             <span className="text-white/50 cursor-help text-xs">
@@ -5172,7 +5153,7 @@ export default function AnchorPage() {
                                   },
                                     })
                                   );
-                                setManageModal({
+                                void openManageModal({
                                   marketId: firstMarket.marketId,
                                   market: {
                                     ...firstMarket.market,
@@ -5253,7 +5234,7 @@ export default function AnchorPage() {
                                   },
                                     })
                                   );
-                                  setManageModal({
+                                  void openManageModal({
                                     marketId: firstMarket.marketId,
                                     market: {
                                       ...firstMarket.market,
@@ -5311,7 +5292,7 @@ export default function AnchorPage() {
                                             m.marketData?.wrappedRate,
                                     },
                                   }));
-                                  setManageModal({
+                                  void openManageModal({
                                     marketId: firstMarket.marketId,
                                     market: {
                                       ...firstMarket.market,
@@ -5364,6 +5345,45 @@ export default function AnchorPage() {
                         anchorToolbarTotalClaimableUsd > 0
                           ? anchorToolbarTotalClaimableUsd.toFixed(2)
                           : "0.00",
+                      leftMetrics: [
+                        {
+                          label: "TVL",
+                          value: formatCompactUSD(
+                            anchorStats?.yieldGeneratingTVLUSD || 0
+                          ),
+                        },
+                        {
+                          label: "Your Deposits",
+                          value: formatCompactUSD(anchorToolbarYourTotalDepositUsd),
+                        },
+                        {
+                          label: (
+                            <span className="inline-flex items-center gap-1">
+                              <span>VAPR</span>
+                              <InfoTooltip
+                                side="left"
+                                label={
+                                  <AnchorVaprTooltipContent
+                                    positionAPRs={anchorToolbarPositionAprs}
+                                    blendedAPR={anchorToolbarVapr}
+                                    showLiveAprLoading={showLiveAprLoading}
+                                    isErrorAllRewards={isErrorAllRewards}
+                                    projectedAPR={projectedAPR}
+                                  />
+                                }
+                              >
+                                <span className="text-white/50 cursor-help text-xs">
+                                  [?]
+                                </span>
+                              </InfoTooltip>
+                            </span>
+                          ),
+                          value:
+                            anchorToolbarVapr > 0
+                              ? `${anchorToolbarVapr.toFixed(2)}%`
+                              : "-",
+                        },
+                      ],
                       onClaim: () => setIsClaimAllModalOpen(true),
                       claimDisabled: isClaimingAll || isCompoundingAll,
                     },
@@ -5670,7 +5690,9 @@ export default function AnchorPage() {
                         projectedAPR={projectedAPR}
                         isConnected={isConnected}
                         onToggleExpand={toggleExpandedMarket}
-                        onOpenManage={setManageModal}
+                        onOpenManage={(payload) => {
+                          void openManageModal(payload);
+                        }}
                       />
 
                       {/* Expanded View - Show all markets in group */}

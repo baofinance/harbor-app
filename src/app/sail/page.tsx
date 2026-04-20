@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useChainId, useSwitchChain } from "wagmi";
 import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
 import { useSailPageData } from "@/hooks/useSailPageData";
 import { SailManageModal } from "@/components/SailManageModal";
@@ -17,8 +18,13 @@ import {
 } from "@/components/sail";
 import { usePageLayoutPreference } from "@/contexts/PageLayoutPreferenceContext";
 import type { DefinedMarket } from "@/config/markets";
+import { ensureMarketWalletChain } from "@/utils/ensureMarketWalletChain";
+import { formatCompactUSD } from "@/utils/anchor";
 
 export default function SailPage() {
+  const connectedChainId = useChainId();
+  const { switchChain } = useSwitchChain();
+
   /** Nav toggle: Basic = title + markets only (no hero cards, stats strips, Sail Marks bar). Persists across routes. */
   const { isBasic: sailViewBasic } = usePageLayoutPreference();
 
@@ -90,12 +96,32 @@ export default function SailPage() {
 
   const handleManageMarketOpen = useCallback(
     (marketId: string, m: DefinedMarket) => {
-      setSelectedMarketId(marketId);
-      setSelectedMarket(m);
-      setManageModalTab("mint");
-      setManageModalOpen(true);
+      void (async () => {
+        const marketChainId =
+          (m as DefinedMarket & { chainId?: number }).chainId ?? 1;
+        const isReady = await ensureMarketWalletChain({
+          isConnected,
+          connectedChainId,
+          marketChainId,
+          switchChain,
+          onSwitchRejected: (err) => {
+            if (process.env.NODE_ENV === "development") {
+              console.warn(
+                "[Sail] Network switch rejected before opening manage modal:",
+                err
+              );
+            }
+          },
+        });
+        if (!isReady) return;
+
+        setSelectedMarketId(marketId);
+        setSelectedMarket(m);
+        setManageModalTab("mint");
+        setManageModalOpen(true);
+      })();
     },
-    []
+    [connectedChainId, isConnected, switchChain]
   );
 
   return (
@@ -159,6 +185,12 @@ export default function SailPage() {
                 shortFilterSelected,
                 setShortFilterSelected,
                 onClearFilters: clearFilters,
+                metrics: [
+                  {
+                    label: "Your Deposits",
+                    value: formatCompactUSD(sailUserStats.totalPositionsUSD || 0),
+                  },
+                ],
               }}
             >
               <SailMarketsTableHeader />
