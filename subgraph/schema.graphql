@@ -121,6 +121,17 @@ type MaidenVoyageYieldGlobal @entity(immutable: false) {
   lastUpdated: BigInt!
 }
 
+# Tx-local context for principal collateral outflows on redeem paths.
+# Used to avoid classifying principal transfers to feeReceiver as protocol fees.
+type RedeemPrincipalOutContext @entity(immutable: false) {
+  id: ID! # {minter}-{receiver}-{txHash}
+  minter: Bytes!
+  receiver: Bytes!
+  txHash: Bytes!
+  remainingCollateralOut: BigInt!
+  lastUpdated: BigInt!
+}
+
 # Gross wrapped-collateral harvest from minter (StabilityPoolManager `Harvested`).
 # Maiden voyage collateral yield is credited from this event for v1 markets; see `minterPnL` / `stabilityPoolManagerYield`.
 type StabilityPoolManagerHarvest @entity(immutable: true) {

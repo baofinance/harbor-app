@@ -78,7 +78,7 @@ dataSources:
       eventHandlers:
         - event: MintLeveragedToken(indexed address,indexed address,uint256,uint256)
           handler: handleMintLeveragedToken
-        - event: RedeemLeveragedToken(indexed address,uint256,uint256)
+        - event: RedeemLeveragedToken(indexed address,indexed address,uint256,uint256)
           handler: handleRedeemLeveragedToken
       blockHandlers:
         - handler: handleBlock
@@ -159,7 +159,7 @@ dataSources:
       eventHandlers:
         - event: MintLeveragedToken(indexed address,indexed address,uint256,uint256)
           handler: handleMintLeveragedToken
-        - event: RedeemLeveragedToken(indexed address,uint256,uint256)
+        - event: RedeemLeveragedToken(indexed address,indexed address,uint256,uint256)
           handler: handleRedeemLeveragedToken
       blockHandlers:
         - handler: handleBlock
@@ -240,7 +240,7 @@ dataSources:
       eventHandlers:
         - event: MintLeveragedToken(indexed address,indexed address,uint256,uint256)
           handler: handleMintLeveragedToken
-        - event: RedeemLeveragedToken(indexed address,uint256,uint256)
+        - event: RedeemLeveragedToken(indexed address,indexed address,uint256,uint256)
           handler: handleRedeemLeveragedToken
       blockHandlers:
         - handler: handleBlock

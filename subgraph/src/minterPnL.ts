@@ -27,6 +27,7 @@ import {
 import { runDailyMarksUpdate, runHourlySailMarksUpdate } from "./dailyMarksUpdate";
 import { accrueMaidenVoyageCollateralYieldUSD } from "./maidenVoyageYield";
 import { minterUsesSpmHarvestEvents } from "./maidenVoyageConfig";
+import { addRedeemPrincipalOut } from "./redeemPrincipalContext";
 
 const ZERO_BI = BigInt.fromI32(0);
 const ZERO_BD = BigDecimal.fromString("0");
@@ -726,8 +727,19 @@ export function handleRedeemLeveragedToken(event: RedeemLeveragedToken): void {
   const token = tokenRes.value;
 
   const sender = event.params.sender;
+  const receiver = event.params.receiver;
   const leveragedBurned = event.params.leveragedTokenBurned;
   const collateralOut = event.params.collateralOut;
+
+  // Record redeem principal outflow context so wrapped-collateral fee accrual
+  // can exclude principal transfers when receiver == feeReceiver.
+  addRedeemPrincipalOut(
+    minterAddress,
+    receiver,
+    event.transaction.hash,
+    collateralOut,
+    event.block.timestamp
+  );
 
   let collateralValueUSD = valueCollateralUsd(minterAddress, collateralOut);
 

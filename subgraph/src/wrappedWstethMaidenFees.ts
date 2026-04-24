@@ -6,6 +6,7 @@ export function handleWrappedCollateralTransfer(event: Transfer): void {
     event.params.from,
     event.params.to,
     event.params.value,
+    event.transaction.hash,
     event.block.timestamp
   );
 }

@@ -8,7 +8,11 @@ import { getGraphHeaders, getGraphUrl } from "@/config/graph";
 import { useAdminAccess } from "@/hooks/useAdminAccess";
 import { buildMaidenVoyageYieldAdminMessage } from "@/lib/maidenVoyageYieldAdminAuth";
 import type { MaidenVoyageDistributionEvent } from "@/lib/maidenVoyageYieldLedgerStore";
-import { maidenVoyageYieldOwnerSharePercent } from "@/config/maidenVoyageYield";
+import {
+  maidenVoyageYieldOwnerShareBps,
+  maidenVoyageYieldOwnerSharePercent,
+} from "@/config/maidenVoyageYield";
+import { redactUrl } from "@/utils/redactUrl";
 
 type GraphParticipant = {
   user: string;
@@ -148,6 +152,66 @@ export function MaidenVoyageYieldAdmin() {
             cap: cap || undefined,
             yieldGlobal: yieldGlobal || undefined,
           });
+          // #region agent log
+          (() => {
+            let graphHost = "";
+            try {
+              graphHost = new URL(graphUrl).hostname;
+            } catch {
+              graphHost = "invalid-url";
+            }
+            const shareBps = maidenVoyageYieldOwnerShareBps(genesis.toLowerCase());
+            const feesStr =
+              yieldGlobal?.cumulativeYieldFromMinterFeeTransfersUSD ?? "0";
+            const feesNum = Number.parseFloat(feesStr);
+            const bpsFrac =
+              shareBps != null && shareBps > 0 ? shareBps / 10000 : null;
+            const impliedGrossIfCounterIsPoolScaled =
+              bpsFrac != null && Number.isFinite(feesNum) && bpsFrac > 0
+                ? feesNum / bpsFrac
+                : null;
+            const impliedPoolIfCounterIsGross =
+              bpsFrac != null && Number.isFinite(feesNum)
+                ? feesNum * bpsFrac
+                : null;
+            void fetch(
+              "http://127.0.0.1:7849/ingest/5ee3e29c-d4d3-41ac-9654-83f8efdc557d",
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "X-Debug-Session-Id": "00fb26",
+                },
+                body: JSON.stringify({
+                  sessionId: "00fb26",
+                  runId: "pre-fix-1",
+                  hypothesisId: "H1-H5",
+                  location: "MaidenVoyageYieldAdmin.tsx:after-setCampaign",
+                  message: "maiden voyage yield global from graph",
+                  data: {
+                    capId,
+                    genesisLower: genesis.toLowerCase(),
+                    capIdMatchesGenesis: capId === genesis.toLowerCase(),
+                    graphHost,
+                    graphUrlRedacted: redactUrl(graphUrl),
+                    shareBps,
+                    cumulativeYieldUSD: yieldGlobal?.cumulativeYieldUSD,
+                    cumulativeYieldFromCollateralUSD:
+                      yieldGlobal?.cumulativeYieldFromCollateralUSD,
+                    cumulativeYieldFromMinterFeeTransfersUSD: feesStr,
+                    cumulativeYieldFromMintFeesUSD:
+                      yieldGlobal?.cumulativeYieldFromMintFeesUSD,
+                    cumulativeYieldFromRedeemFeesUSD:
+                      yieldGlobal?.cumulativeYieldFromRedeemFeesUSD,
+                    impliedGrossIfCounterIsPoolScaled,
+                    impliedPoolIfCounterIsGross,
+                  },
+                  timestamp: Date.now(),
+                }),
+              }
+            ).catch(() => {});
+          })();
+          // #endregion
           capSet = true;
         }
         const chunk = (d.userHarborMarks_collection ||
