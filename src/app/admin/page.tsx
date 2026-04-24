@@ -8,7 +8,7 @@ import {
  useContractReads,
  usePublicClient,
 } from "wagmi";
-import { parseEther, formatEther } from "viem";
+import { parseEther, formatEther, formatUnits } from "viem";
 import { markets } from "../../config/markets";
 import { ConnectWallet } from "@/components/Wallet";
 import Link from "next/link";
@@ -37,6 +37,20 @@ const safeParseEther = (value: string): bigint => {
  return BigInt(0);
  }
 };
+
+/** Human-readable token amount using on-chain decimals (not always 18). */
+function formatTokenAmount(
+  value: bigint,
+  decimals: number,
+  maxFrac = 6
+): string {
+  const d = Math.min(255, Math.max(0, Math.floor(decimals)));
+  const s = formatUnits(value, d);
+  if (maxFrac <= 0 || !s.includes(".")) return s;
+  const [whole, frac = ""] = s.split(".");
+  const trimmed = frac.slice(0, maxFrac).replace(/0+$/, "");
+  return trimmed ? `${whole}.${trimmed}` : whole;
+}
 
 export default function Admin() {
  const { isConnected, address } = useAccount();
@@ -326,9 +340,54 @@ export default function Admin() {
    } as any,
  });
 
+ const wrappedDecimalsReads = (minterReadData
+   ? marketOptions
+       .map((m, i) => {
+         const base = i * 3;
+         const wrappedToken =
+           minterReadData?.[base + 2]?.status === "success"
+             ? (minterReadData?.[base + 2]?.result as `0x${string}` | undefined)
+             : undefined;
+         if (!wrappedToken) return null;
+         return {
+           marketIndex: i,
+           contract: {
+             address: wrappedToken,
+             abi: ERC20_ABI,
+             functionName: "decimals" as const,
+           },
+         };
+       })
+       .filter((x): x is NonNullable<typeof x> => !!x)
+   : []);
+
+ const { data: wrappedDecimalsData, isLoading: isLoadingWrappedDecimals, refetch: refetchWrappedDecimals } =
+   useContractReads({
+     contracts: wrappedDecimalsReads.map((x) => x.contract),
+     query: {
+       enabled:
+         mounted && isConnected && wrappedDecimalsReads.length > 0,
+       refetchInterval: 30000,
+       staleTime: 15000,
+       retry: 1,
+       allowFailure: true,
+     } as any,
+   });
+
  const RATIO_DEN = 10n ** 18n;
 
  const feesTableRows = useMemo(() => {
+   const decimalsByMarketIndex = new Map<number, number>();
+   wrappedDecimalsReads.forEach((meta, idx) => {
+     const res = wrappedDecimalsData?.[idx];
+     const raw =
+       res?.status === "success" && res.result !== undefined && res.result !== null
+         ? Number(res.result as number | bigint)
+         : 18;
+     const d = Number.isFinite(raw) && raw >= 0 && raw <= 255 ? Math.floor(raw) : 18;
+     decimalsByMarketIndex.set(meta.marketIndex, d);
+   });
+
    const feeBalByMarketIndex = new Map<number, bigint>();
    feeBalanceReads.forEach((meta, idx) => {
      const res = feeBalanceData?.[idx];
@@ -404,6 +463,10 @@ export default function Admin() {
 
      const spm = spmByMarketId.get(m.id);
      const addrs = (markets as any)[m.id]?.addresses;
+     const marketMeta = (markets as any)[m.id];
+     const collateralSymbol =
+       (marketMeta?.collateral?.symbol as string | undefined) ?? "collateral";
+     const wrappedDecimals = decimalsByMarketIndex.get(i) ?? 18;
      const hasSpmConfig = !!(addrs as any)?.stabilityPoolManager;
      const spmH = spm?.spmHarvestable ?? 0n;
      return {
@@ -413,6 +476,8 @@ export default function Admin() {
        wrappedToken,
        feeBalance,
        total,
+       collateralSymbol,
+       wrappedDecimals,
        hasSpmConfig,
        spmAddress: spm?.spmAddress,
        spmHarvestable: spmH,
@@ -434,6 +499,8 @@ export default function Admin() {
    feeBalanceReads,
    spmReadData,
    spmMarketIndices,
+   wrappedDecimalsReads,
+   wrappedDecimalsData,
  ]);
 
  // Get the minter address from the first market
@@ -464,7 +531,13 @@ export default function Admin() {
 
  useEffect(() => {
    if (!mounted || !isConnected) return;
-   if (isLoadingMinterReads || isLoadingSpmReads || isLoadingFeeBalances) return;
+   if (
+     isLoadingMinterReads ||
+     isLoadingSpmReads ||
+     isLoadingFeeBalances ||
+     isLoadingWrappedDecimals
+   )
+     return;
    if (selectionTouchedRef.current) return;
    setSelectedMarketIds(
      new Set(feesTableRows.filter((r) => r.canCheck).map((r) => r.id))
@@ -475,6 +548,7 @@ export default function Admin() {
    isLoadingMinterReads,
    isLoadingSpmReads,
    isLoadingFeeBalances,
+   isLoadingWrappedDecimals,
    feesTableRows,
  ]);
 
@@ -491,13 +565,26 @@ export default function Admin() {
  }, [feesTableRows, selectedMarketIds]);
 
  const harvestSummary = useMemo(() => {
-   let sumB = 0n;
-   let sumC = 0n;
-   let sumP = 0n;
+   const totalsByDenom = new Map<
+     string,
+     { symbol: string; decimals: number; sumB: bigint; sumC: bigint; sumP: bigint }
+   >();
    for (const r of harvestTargetRows) {
-     sumB += r.expectedBounty;
-     sumC += r.expectedCut;
-     sumP += r.expectedToPools;
+     const key = `${r.collateralSymbol}:${r.wrappedDecimals}`;
+     let b = totalsByDenom.get(key);
+     if (!b) {
+       b = {
+         symbol: r.collateralSymbol,
+         decimals: r.wrappedDecimals,
+         sumB: 0n,
+         sumC: 0n,
+         sumP: 0n,
+       };
+       totalsByDenom.set(key, b);
+     }
+     b.sumB += r.expectedBounty;
+     b.sumC += r.expectedCut;
+     b.sumP += r.expectedToPools;
    }
    const cutReceivers = new Map<`0x${string}`, string[]>();
    harvestTargetRows.forEach((r) => {
@@ -506,7 +593,10 @@ export default function Admin() {
      list.push(r.name);
      cutReceivers.set(r.feeReceiver, list);
    });
-   return { sumB, sumC, sumP, cutReceivers };
+   const totalsByDenomList = [...totalsByDenom.values()].sort((a, b) =>
+     a.symbol.localeCompare(b.symbol)
+   );
+   return { totalsByDenomList, cutReceivers };
  }, [harvestTargetRows]);
 
  // Contract writes
@@ -802,6 +892,7 @@ export default function Admin() {
        refetchMinterReads(),
        refetchSpmReads(),
        refetchFeeBalances(),
+       refetchWrappedDecimals(),
      ]);
    } catch (e: unknown) {
      const message = e instanceof Error ? e.message : String(e);
@@ -932,12 +1023,18 @@ export default function Admin() {
            token balance at <span className="font-mono">feeReceiver()</span>.
            Pool yield uses StabilityPoolManager
            <span className="font-mono"> harvestable()</span> (aligns with{" "}
-           <span className="font-mono">harvest()</span>).
+           <span className="font-mono">harvest()</span>). Numeric columns use
+           each market&apos;s wrapped collateral token (e.g.{" "}
+           <span className="font-mono">wstETH</span> vs{" "}
+           <span className="font-mono">fxSAVE</span>) with{" "}
+           <span className="font-mono">decimals()</span> read on-chain — do not
+           mix amounts across different tokens.
          </div>
        </div>
        {(isLoadingMinterReads ||
          isLoadingFeeBalances ||
-         isLoadingSpmReads) && (
+         isLoadingSpmReads ||
+         isLoadingWrappedDecimals) && (
          <div className="text-xs text-white/60">Loading…</div>
        )}
      </div>
@@ -980,6 +1077,12 @@ export default function Admin() {
              <th className="text-right py-2.5 pr-3">Total</th>
              <th className="text-left py-2.5 pr-2 min-w-[7rem]">Fee recv.</th>
              <th className="text-left py-2.5 pl-1 w-8" />
+           </tr>
+           <tr className="text-[10px] text-white/45 border-b border-white/10">
+             <th colSpan={8} className="text-left font-normal py-1.5 pl-2 pr-2">
+               Units per row: wrapped collateral amount + symbol (decimals from
+               token contract).
+             </th>
            </tr>
          </thead>
          <tbody>
@@ -1024,19 +1127,38 @@ export default function Admin() {
                  <td className="py-2 pr-4 text-white font-medium align-top">
                    {r.name}
                  </td>
-                 <td className="py-2 pr-3 text-right font-mono text-white align-top">
-                   {formatEther(r.minterHarvestable)}
+                 <td className="py-2 pr-3 text-right font-mono text-white align-top whitespace-nowrap">
+                   {formatTokenAmount(r.minterHarvestable, r.wrappedDecimals)}{" "}
+                   <span className="text-white/50 text-[10px]">
+                     {r.collateralSymbol}
+                   </span>
                  </td>
-                 <td className="py-2 pr-3 text-right font-mono text-white align-top">
+                 <td className="py-2 pr-3 text-right font-mono text-white align-top whitespace-nowrap">
                    {!r.hasSpmConfig
                      ? "—"
-                     : formatEther(r.spmHarvestable)}
+                     : (
+                         <>
+                           {formatTokenAmount(
+                             r.spmHarvestable,
+                             r.wrappedDecimals
+                           )}{" "}
+                           <span className="text-white/50 text-[10px]">
+                             {r.collateralSymbol}
+                           </span>
+                         </>
+                       )}
                  </td>
-                 <td className="py-2 pr-3 text-right font-mono text-white align-top">
-                   {formatEther(r.feeBalance)}
+                 <td className="py-2 pr-3 text-right font-mono text-white align-top whitespace-nowrap">
+                   {formatTokenAmount(r.feeBalance, r.wrappedDecimals)}{" "}
+                   <span className="text-white/50 text-[10px]">
+                     {r.collateralSymbol}
+                   </span>
                  </td>
-                 <td className="py-2 pr-3 text-right font-mono text-white align-top">
-                   {formatEther(r.total)}
+                 <td className="py-2 pr-3 text-right font-mono text-white align-top whitespace-nowrap">
+                   {formatTokenAmount(r.total, r.wrappedDecimals)}{" "}
+                   <span className="text-white/50 text-[10px]">
+                     {r.collateralSymbol}
+                   </span>
                  </td>
                  <td
                    className="py-2 pr-1 text-xs text-white/80 font-mono max-w-[7rem] truncate align-top"
@@ -1073,9 +1195,19 @@ export default function Admin() {
                          Preview (selected tx)
                        </div>
                        <div className="font-mono text-[11px] text-white/90">
-                         bounty {formatEther(r.expectedBounty)} · cut{" "}
-                         {formatEther(r.expectedCut)} · to pools{" "}
-                         {formatEther(r.expectedToPools)}
+                         bounty{" "}
+                         {formatTokenAmount(
+                           r.expectedBounty,
+                           r.wrappedDecimals
+                         )}{" "}
+                         {r.collateralSymbol} · cut{" "}
+                         {formatTokenAmount(r.expectedCut, r.wrappedDecimals)}{" "}
+                         {r.collateralSymbol} · to pools{" "}
+                         {formatTokenAmount(
+                           r.expectedToPools,
+                           r.wrappedDecimals
+                         )}{" "}
+                         {r.collateralSymbol}
                        </div>
                        <div className="text-white/50 text-[10px] pt-1 uppercase tracking-wide">
                          Destinations (proportional split on-chain)
@@ -1190,13 +1322,33 @@ export default function Admin() {
              )}
            </div>
          </div>
-         {harvestTargetRows.length > 0 && (
-           <div className="sm:col-span-2 font-mono text-[11px] text-white/70 space-x-3">
-             <span>Σ bounty {formatEther(harvestSummary.sumB)}</span>
-             <span>Σ cut {formatEther(harvestSummary.sumC)}</span>
-             <span>Σ to pools {formatEther(harvestSummary.sumP)}</span>
-           </div>
-         )}
+         {harvestTargetRows.length > 0 &&
+           harvestSummary.totalsByDenomList.length > 0 && (
+             <div className="sm:col-span-2 space-y-2">
+               {harvestSummary.totalsByDenomList.length > 1 && (
+                 <p className="text-[10px] text-white/50 leading-snug">
+                   Preview totals are summed per wrapped collateral token only
+                   (e.g. all <span className="font-mono">wstETH</span> markets
+                   together, all <span className="font-mono">fxSAVE</span>{" "}
+                   together). Do not add across different symbols.
+                 </p>
+               )}
+               {harvestSummary.totalsByDenomList.map((t) => (
+                 <div
+                   key={`${t.symbol}-${t.decimals}`}
+                   className="font-mono text-[11px] text-white/80"
+                 >
+                   <span className="text-white/50">
+                     {t.symbol} · {t.decimals} decimals
+                   </span>
+                   : Σ bounty{" "}
+                   {formatTokenAmount(t.sumB, t.decimals)} · Σ cut{" "}
+                   {formatTokenAmount(t.sumC, t.decimals)} · Σ to pools{" "}
+                   {formatTokenAmount(t.sumP, t.decimals)}
+                 </div>
+               ))}
+             </div>
+           )}
        </div>
      </div>
    </div>
