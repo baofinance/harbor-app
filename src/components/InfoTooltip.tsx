@@ -88,7 +88,7 @@ export default function InfoTooltip({
   const tooltip = isVisible && (
     <div
       role="tooltip"
-      className="pointer-events-none fixed z-[2147483647] bg-gray-900 px-6 py-4 text-base text-white shadow-xl min-w-[400px] max-w-2xl border border-gray-700"
+      className="pointer-events-none fixed z-[2147483647] w-max max-w-2xl border border-gray-700 bg-gray-900 px-6 py-4 text-base text-white shadow-xl"
       style={{
         top: `${position.top}px`,
         left: `${position.left}px`,

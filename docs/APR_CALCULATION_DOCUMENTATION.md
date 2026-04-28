@@ -2,77 +2,28 @@
 
 ## Overview
 
-This document explains how APY/APR is calculated for collateral pools and stability pools in the Harbor DApp. There are three main calculation methods used.
+This document explains how APY/APR is calculated for collateral pools and stability pools in the Harbor DApp.
 
 ---
 
-## 1. Contract APR (On-chain) — `getAPRBreakdown()`
+## 1. Stability pool on-chain surface (no `getAPRBreakdown`)
 
-### Description
-- **On-chain call** to stability pool contracts
-- Returns: `[collateralTokenAPR, steamTokenAPR]` (both in 16 decimals, e.g., `1e16 = 1%`)
-- Used for:
-  - **Collateral Pool APR**: `collateralPoolAPR.collateral + collateralPoolAPR.steam`
-  - **Sail Pool APR**: `sailPoolAPR.collateral + sailPoolAPR.steam`
+The deployed **StabilityPool** implementation does **not** expose `getAPRBreakdown` or per-leg `collateralTokenAPR` / `steamTokenAPR` views. The app therefore **does not** `eth_call` those selectors (they always reverted and wasted RPC).
 
-### Code Location
-- `src/app/anchor/page.tsx` lines 2044-2052 (Collateral Pool)
-- `src/app/anchor/page.tsx` lines 2281-2289 (Sail Pool)
+Pool APR in the UI comes from:
 
-### Code Snippet
-
-**Collateral Pool APR:**
-```typescript
-// Location: src/app/anchor/page.tsx lines 2044-2052
-const collateralAPRResult = reads?.[currentOffset + 1]
-  ?.result as [bigint, bigint] | undefined;
-collateralPoolAPR = collateralAPRResult
-  ? {
-      collateral:
-        (Number(collateralAPRResult[0]) / 1e16) * 100,
-      steam: (Number(collateralAPRResult[1]) / 1e16) * 100,
-    }
-  : undefined;
-```
-
-**Sail Pool APR:**
-```typescript
-// Location: src/app/anchor/page.tsx lines 2281-2289
-const sailAPRResult = reads?.[currentOffset + 1]
-  ?.result as [bigint, bigint] | undefined;
-sailPoolAPR = sailAPRResult
-  ? {
-      collateral: (Number(sailAPRResult[0]) / 1e16) * 100,
-      steam: (Number(sailAPRResult[1]) / 1e16) * 100,
-    }
-  : undefined;
-```
-
-**ABI Definition:**
-```typescript
-// Location: src/abis/apr.ts
-export const aprABI = [
-  {
-    inputs: [{ name: "account", type: "address" }],
-    name: "getAPRBreakdown",
-    outputs: [
-      { name: "collateralTokenAPR", type: "uint256" },
-      { name: "steamTokenAPR", type: "uint256" },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
-```
+- **`rewardData(token)`** + **`totalAssetSupply()`** + USD pricing (emission math), and/or  
+- **`useAllStabilityPoolRewards`** (aggregated live APR across active reward tokens), and/or  
+- **`useProjectedAPR`** (next-period projection from minter harvestable, etc.).
 
 ---
 
-## 2. Reward Rate APR (On-chain + Client-side Calculation)
+## 2. Reward rate APR (on-chain + client-side)
 
 ### Description
 - **On-chain call**: `rewardData(tokenAddress)` returns `[lastUpdate, finishAt, rate, queued]`
 - **Client-side calculation**: APR is calculated from the reward rate
-- **Used as**: Fallback/addition when contract APR is 0 or missing
+- **Used as**: Primary path for live pool APR where `rate` and TVL are available
 
 ### Formula
 ```
@@ -486,8 +437,8 @@ if (safeLeveragedPoolSupply > 0n && collateralPriceUSD > 0) {
 
 | APR Type | Source | Calculation Method | Code Location |
 |----------|--------|-------------------|---------------|
-| **Contract APR** | On-chain `getAPRBreakdown()` | Direct contract return (16 decimals) | `src/app/anchor/page.tsx` lines 2044-2052, 2281-2289 |
-| **Reward Rate APR** | On-chain `rewardData()` + client calc | `(rate * seconds_per_year / TVL) * price_ratio * 100` | `src/hooks/usePoolRewardAPR.ts` lines 132-148<br>`src/app/anchor/page.tsx` lines 2086-2132, 2256-2302<br>`src/hooks/anchor/useAnchorMarketData.ts` lines 364-412 |
+| **Live pool APR (emission)** | `rewardData()` + `totalAssetSupply()` + USD prices | Annualized reward USD ÷ TVL USD × 100; summed per active reward token | `src/hooks/useAllStabilityPoolRewards.ts`<br>`src/hooks/usePoolRewardAPR.ts`<br>`src/hooks/anchor/useAnchorMarketData.ts` |
+| **Reward Rate APR** | On-chain `rewardData()` + client calc | `(rate * seconds_per_year / TVL) * price_ratio * 100` | `src/hooks/usePoolRewardAPR.ts` lines 132-148<br>`src/hooks/anchor/useAnchorMarketData.ts` |
 | **Projected APR** | On-chain `harvestable()` + `rewardData()` + client calc | `(harvestable + queued) / 7 days * 365 / TVL * 100` | `src/hooks/useProjectedAPR.ts` lines 452-494 |
 
 ---
@@ -496,18 +447,15 @@ if (safeLeveragedPoolSupply > 0n && collateralPriceUSD > 0) {
 
 1. **All three methods use on-chain data** - Some calculations are done client-side, but all data originates from on-chain contract calls.
 
-2. **Priority order in UI**:
-   - **Projected APR** is used when available (most accurate for future rewards)
-   - Falls back to **Contract APR + Reward Rate APR** when Projected APR is unavailable
+2. **Priority order in UI** (varies by screen):
+   - **Projected APR** (`useProjectedAPR`) for forward-looking harvest-based estimates where wired
+   - **Live emission APR** from `rewardData` / `useAllStabilityPoolRewards` for pool lists and transparency
 
-3. **APR accumulation**:
-   - Contract APR and Reward Rate APR are **accumulated** (added together), not replaced
-   - Multiple reward tokens can contribute to the total APR
+3. **Multiple reward tokens**: `useAllStabilityPoolRewards` sums APR contributions from each active reward token.
 
 4. **Decimal handling**:
-   - Contract APR: 16 decimals (`1e16 = 1%`)
-   - Reward rates: 18 decimals (standard ERC20)
-   - All calculations convert to percentage (multiply by 100)
+   - Reward `rate` and TVL: treated as 18-decimal style wei in client formulas where documented in code
+   - Display APR is a percentage (× 100) unless noted otherwise
 
 5. **Price sources**:
    - `peggedTokenPrice`: From minter contract (18 decimals)
@@ -601,30 +549,7 @@ const minterAddress = market.addresses.minter;
 
 ## Contract ABIs
 
-### APR ABI (`getAPRBreakdown`)
-
-**Location**: `src/abis/apr.ts`
-
-```typescript
-export const aprABI = [
-  {
-    inputs: [{ name: "account", type: "address" }],
-    name: "getAPRBreakdown",
-    outputs: [
-      { name: "collateralTokenAPR", type: "uint256" }, // 16 decimals (1e16 = 1%)
-      { name: "steamTokenAPR", type: "uint256" },      // 16 decimals (1e16 = 1%)
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-] as const;
-```
-
-**Usage**: Called on stability pool contracts (both collateral and leveraged pools).
-
----
-
-### Stability Pool ABI (Relevant Functions)
+### Stability Pool ABI (relevant functions)
 
 **Location**: `src/abis/shared.ts` lines 195-377
 
@@ -872,7 +797,6 @@ export const ERC20_ABI = [
 - `src/hooks/usePoolRewardAPR.ts` - Generic pool reward APR hook
 - `src/hooks/anchor/useAnchorMarketData.ts` - Market data processing with APR
 - `src/hooks/anchor/useAnchorContractReads.ts` - Contract reads setup
-- `src/abis/apr.ts` - APR contract ABI
 - `src/abis/shared.ts` - Shared ABIs including STABILITY_POOL_ABI, MINTER_ABI, ERC20_ABI
 - `src/config/contracts.ts` - Contract addresses configuration
 - `src/config/markets.ts` - Market configurations (references contracts.ts)

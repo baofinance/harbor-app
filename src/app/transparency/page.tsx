@@ -32,6 +32,7 @@ import {
 import SimpleTooltip from "@/components/SimpleTooltip";
 import { FilterMultiselectDropdown } from "@/components/FilterMultiselectDropdown";
 import InfoTooltip from "@/components/InfoTooltip";
+import { InfinityOutlineIcon } from "@/components/icons/InfinityOutlineIcon";
 import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
 import { isMarketInMaintenance, markets as marketsConfig } from "@/config/markets";
 import { MarketMaintenanceBadge } from "@/components/MarketMaintenanceTag";
@@ -40,7 +41,14 @@ import { useMultipleVolatilityProtection } from "@/hooks/useVolatilityProtection
 import { useReadContract, useAccount } from "wagmi";
 import { usePageLayoutPreference } from "@/contexts/PageLayoutPreferenceContext";
 import { IndexPageTitleSection } from "@/components/shared/IndexPageTitleSection";
-import { INDEX_MARKETS_TOOLBAR_ROW_CLASS } from "@/components/shared/indexMarketsToolbarStyles";
+import {
+  INDEX_HERO_INTRO_BODY_CLASS,
+  INDEX_HERO_INTRO_CARD_CLASS,
+  INDEX_HERO_INTRO_CARD_RING_ACCENT_CLASS,
+  INDEX_HERO_INTRO_ICON_CLASS,
+  INDEX_HERO_INTRO_TITLE_CLASS,
+  INDEX_MARKETS_TOOLBAR_ROW_WITH_TOP_RULE_CLASS,
+} from "@/components/shared/indexMarketsToolbarStyles";
 import { getWeb3iconsNetworkId } from "@/config/web3iconsNetworks";
 import { minterABI } from "@/abis/minter";
 
@@ -148,6 +156,8 @@ const EMPTY_BANDS: Record<string, FeeBand[]> = {
 };
 
 const WAD = 10n ** 18n;
+const COLLATERAL_RATIO_INFINITY_THRESHOLD_PERCENT = 10_000;
+const COLLATERAL_RATIO_INFINITY_TOOLTIP = "Collateral ratio very high.";
 
 const usdFormatter = new Intl.NumberFormat(undefined, {
     minimumFractionDigits: 2,
@@ -157,6 +167,53 @@ const usdFormatter = new Intl.NumberFormat(undefined, {
 export function formatUSD(value: number | undefined): string {
     if (value === undefined || !Number.isFinite(value)) return "-";
     return `$${usdFormatter.format(value)}`;
+}
+
+function getCollateralRatioDisplay(ratio: bigint): {
+    value: string;
+    showInfinityTooltip: boolean;
+} {
+    const percentage = Number(ratio) / 1e16;
+    if (
+        !Number.isFinite(percentage) ||
+        percentage >= COLLATERAL_RATIO_INFINITY_THRESHOLD_PERCENT
+    ) {
+        return { value: "∞", showInfinityTooltip: true };
+    }
+
+    return {
+        value: formatCollateralRatio(ratio),
+        showInfinityTooltip: false,
+    };
+}
+
+function CollateralRatioDisplay({
+    ratio,
+    className = "",
+}: {
+    ratio: bigint;
+    className?: string;
+}) {
+    const { value, showInfinityTooltip } = getCollateralRatioDisplay(ratio);
+
+    if (!showInfinityTooltip) {
+        return <span className={className}>{value}</span>;
+    }
+
+    return (
+        <InfoTooltip side="top" label={COLLATERAL_RATIO_INFINITY_TOOLTIP}>
+            <span
+                className={`inline-flex items-center justify-center cursor-help ${className}`}
+                role="img"
+                aria-label={COLLATERAL_RATIO_INFINITY_TOOLTIP}
+            >
+                <InfinityOutlineIcon
+                    className="h-[1.65em] w-[1.65em] min-h-[18px] min-w-[18px] text-current"
+                    strokeWidth={2}
+                />
+            </span>
+        </InfoTooltip>
+    );
 }
 
 function formatTokenBalanceMax2Decimals(balance: bigint, decimals: number = 18): string {
@@ -425,7 +482,7 @@ function MarketCard({
                                 </div>
                                 <div
                                     className="text-[#1E4775] font-mono font-semibold text-[11px] whitespace-nowrap">
-                                    {formatCollateralRatio(market.collateralRatio)}
+                                    <CollateralRatioDisplay ratio={market.collateralRatio} />
                                 </div>
                             </div>
                             <div className="flex flex-col gap-0.5 min-w-0">
@@ -525,7 +582,7 @@ function MarketCard({
                         {/* Collateral Ratio */}
                         <div className="text-center">
                             <div className="text-[#1E4775] font-mono text-sm font-semibold">
-                                {formatCollateralRatio(market.collateralRatio)}
+                                <CollateralRatioDisplay ratio={market.collateralRatio} />
                             </div>
                         </div>
 
@@ -580,8 +637,11 @@ function MarketCard({
                 <div className="bg-[rgb(var(--surface-selected-rgb))] border-t border-[#1E4775]/10 p-3">
                     {/* Fees & Incentives (bands) */}
                     <div className="mb-3">
-                        <FeeTransparencyBands minterAddress={market.minterAddress}
-                                              currentCR={market.collateralRatio}/>
+                        <FeeTransparencyBands
+                            minterAddress={market.minterAddress}
+                            currentCR={market.collateralRatio}
+                            chainId={market.chainId}
+                        />
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
@@ -1187,14 +1247,18 @@ function BandTable({
 function FeeTransparencyBands({
                                   minterAddress,
                                   currentCR,
+                                  chainId,
                               }: {
     minterAddress: `0x${string}`;
     currentCR: bigint;
+    /** Chain the minter lives on — must match wallet-agnostic transparency reads. */
+    chainId: number;
 }) {
     const { data: configData } = useReadContract({
         address: minterAddress,
         abi: minterABI,
         functionName: "config",
+        chainId,
     });
 
     const feeBands = useMemo(() => {
@@ -1219,7 +1283,7 @@ function FeeTransparencyBands({
             <div className="text-[10px] text-[#1E4775]/60 mb-2">
                 Current CR:{" "}
                 <span className="font-mono font-semibold">
-          {formatCollateralRatio(currentCR)}
+          <CollateralRatioDisplay ratio={currentCR} />
         </span>
             </div>
 
@@ -1561,55 +1625,52 @@ export default function TransparencyPage() {
                             subtitle="Real-time protocol metrics from on-chain data"
                         />
                     </div>
-                    <div className="border-t border-white/10 my-3" aria-hidden />
 
                     {!isBasicLayout && (
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-3">
-                            <div className="bg-[#17395F] p-3 rounded-xl border border-white/10">
-                                <div className="flex items-center justify-center mb-1">
-                                    <EyeIcon className="w-5 h-5 text-white mr-2" />
-                                    <h2 className="font-bold text-white text-sm text-center">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-2">
+                            <div className={INDEX_HERO_INTRO_CARD_CLASS}>
+                                <div className="flex items-center justify-center gap-2 mb-1">
+                                    <EyeIcon className={INDEX_HERO_INTRO_ICON_CLASS} />
+                                    <h2 className={INDEX_HERO_INTRO_TITLE_CLASS}>
                                         Fully On-Chain
                                     </h2>
                                 </div>
-                                <p className="text-xs text-white/80 text-center">
+                                <p className={INDEX_HERO_INTRO_BODY_CLASS}>
                                     All data fetched directly from smart contracts
                                 </p>
                             </div>
-                            <div className="bg-[#17395F] p-3 rounded-xl border border-white/10">
-                                <div className="flex items-center justify-center mb-1">
-                                    <CurrencyDollarIcon className="w-5 h-5 text-white mr-2" />
-                                    <h2 className="font-bold text-white text-sm text-center">
+                            <div
+                                className={`${INDEX_HERO_INTRO_CARD_CLASS} ${INDEX_HERO_INTRO_CARD_RING_ACCENT_CLASS}`}
+                            >
+                                <div className="flex items-center justify-center gap-2 mb-1">
+                                    <CurrencyDollarIcon className={INDEX_HERO_INTRO_ICON_CLASS} />
+                                    <h2 className={INDEX_HERO_INTRO_TITLE_CLASS}>
                                         Real-Time
                                     </h2>
                                 </div>
-                                <p className="text-xs text-white/80 text-center">
+                                <p className={INDEX_HERO_INTRO_BODY_CLASS}>
                                     Click refresh to update data
                                 </p>
                             </div>
-                            <div className="bg-[#17395F] p-3 rounded-xl border border-white/10">
-                                <div className="flex items-center justify-center mb-1">
-                                    <Squares2X2Icon className="w-5 h-5 text-white mr-2" />
-                                    <h2 className="font-bold text-white text-sm text-center">
+                            <div className={INDEX_HERO_INTRO_CARD_CLASS}>
+                                <div className="flex items-center justify-center gap-2 mb-1">
+                                    <Squares2X2Icon className={INDEX_HERO_INTRO_ICON_CLASS} />
+                                    <h2 className={INDEX_HERO_INTRO_TITLE_CLASS}>
                                         All Markets
                                     </h2>
                                 </div>
-                                <p className="text-xs text-white/80 text-center">
+                                <p className={INDEX_HERO_INTRO_BODY_CLASS}>
                                     View metrics for all Harbor markets
                                 </p>
                             </div>
                         </div>
                     )}
 
-                    {!isBasicLayout && (
-                        <div className="border-t border-white/10 my-3" aria-hidden />
-                    )}
-
                     <section
-                        className="space-y-2 mt-3 sm:mt-4"
+                        className="space-y-2 mt-2 sm:mt-3"
                         aria-label="Protocol markets"
                     >
-                        <div className={INDEX_MARKETS_TOOLBAR_ROW_CLASS}>
+                        <div className={INDEX_MARKETS_TOOLBAR_ROW_WITH_TOP_RULE_CLASS}>
                             <div className="flex flex-wrap items-center gap-2">
                                 <h2 className="text-xs font-medium text-white/70 uppercase tracking-wider">
                                     Markets:
@@ -1669,7 +1730,7 @@ export default function TransparencyPage() {
                         )}
 
                         {!isLoading && finishedMarkets.length === 0 ? (
-                            <div className="bg-[#17395F] border border-white/10 p-6 rounded-2xl text-center">
+                            <div className="rounded-lg border border-white/10 bg-black/[0.10] backdrop-blur-sm px-6 py-6 text-center">
                                 <p className="text-white text-lg font-medium">
                                     Maiden voyage 2.0 — new market genesis campaigns will appear here when live.
                                 </p>
@@ -1679,7 +1740,7 @@ export default function TransparencyPage() {
                                 {!isLoading &&
                                     finishedMarkets.length > 0 &&
                                     displayedMarkets.length === 0 && (
-                                        <div className="rounded-xl border border-white/10 bg-[#17395F]/80 px-4 py-6 text-center text-sm text-white/90">
+                                        <div className="rounded-lg border border-white/10 bg-black/[0.10] backdrop-blur-sm px-4 py-6 text-center text-sm text-white/90">
                                             No markets match the selected network.{" "}
                                             <button
                                                 type="button"

@@ -3,7 +3,6 @@ import { useAccount, useContractReads } from "wagmi";
 import type { AnchorContractReads, AnchorMarketTuple } from "@/types/anchor";
 import type { DefinedMarket } from "@/config/markets";
 import { POLLING_INTERVALS } from "@/config/polling";
-import { aprABI } from "@/abis/apr";
 import { rewardsABI } from "@/abis/rewards";
 import { 
   STABILITY_POOL_ABI, 
@@ -135,15 +134,6 @@ export function useAnchorContractReads(
           } as any,
           {
             address: collateralStabilityPool,
-            abi: aprABI as any,
-            functionName: "getAPRBreakdown" as any,
-            args: address
-              ? [address as `0x${string}`]
-              : ["0x0000000000000000000000000000000000000000"],
-            chainId: mktChainId,
-          } as any,
-          {
-            address: collateralStabilityPool,
             abi: rewardsABI as any,
             functionName: "getClaimableRewards" as any,
             args: address
@@ -191,15 +181,6 @@ export function useAnchorContractReads(
             address: sailStabilityPool,
             abi: STABILITY_POOL_ABI as any,
             functionName: "totalAssetSupply" as any,
-            chainId: mktChainId,
-          } as any,
-          {
-            address: sailStabilityPool,
-            abi: aprABI as any,
-            functionName: "getAPRBreakdown" as any,
-            args: address
-              ? [address as `0x${string}`]
-              : ["0x0000000000000000000000000000000000000000"],
             chainId: mktChainId,
           } as any,
           {

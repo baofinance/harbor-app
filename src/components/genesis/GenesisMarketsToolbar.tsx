@@ -8,9 +8,12 @@ import { XMarkIcon } from "@heroicons/react/24/outline";
 import LedgerMarksCompactBadge from "@/components/LedgerMarksCompactBadge";
 import SimpleTooltip from "@/components/SimpleTooltip";
 import { FilterMultiselectDropdown } from "@/components/FilterMultiselectDropdown";
+import IndexToolbarMetricsGroup, {
+  type IndexToolbarMetric,
+} from "@/components/shared/IndexToolbarMetricsGroup";
 import {
   INDEX_CORAL_INFO_TAG_CLASS,
-  INDEX_MARKETS_TOOLBAR_ROW_CLASS,
+  INDEX_MARKETS_TOOLBAR_ROW_WITH_TOP_RULE_CLASS,
 } from "@/components/shared/indexMarketsToolbarStyles";
 
 export type GenesisMarketsToolbarProps = {
@@ -26,6 +29,7 @@ export type GenesisMarketsToolbarProps = {
   setChainFilterSelected: React.Dispatch<React.SetStateAction<string[]>>;
   setShowCompletedGenesis: (value: boolean) => void;
   showCompletedGenesis: boolean;
+  metrics?: IndexToolbarMetric[];
 };
 
 export function GenesisMarketsToolbar({
@@ -36,9 +40,10 @@ export function GenesisMarketsToolbar({
   setChainFilterSelected,
   setShowCompletedGenesis,
   showCompletedGenesis,
+  metrics,
 }: GenesisMarketsToolbarProps) {
   return (
-    <div className={INDEX_MARKETS_TOOLBAR_ROW_CLASS}>
+    <div className={INDEX_MARKETS_TOOLBAR_ROW_WITH_TOP_RULE_CLASS}>
       <div className="flex flex-wrap items-center gap-2">
         <h2 className="text-xs font-medium text-white/70 uppercase tracking-wider flex items-center gap-2 flex-wrap">
           <span className="flex items-center gap-1.5">
@@ -115,9 +120,17 @@ export function GenesisMarketsToolbar({
           </>
         )}
       </div>
-      <div className="flex flex-wrap items-center gap-2 md:ml-auto">
+      <div className="w-full md:flex-1 md:min-w-0 grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] items-center gap-2 md:gap-3">
+        <div className="hidden md:block" />
+        {metrics && metrics.length > 0 ? (
+          <div className="md:justify-self-center">
+            <IndexToolbarMetricsGroup metrics={metrics} />
+          </div>
+        ) : (
+          <div />
+        )}
         <LedgerMarksCompactBadge
-          className="md:ml-auto"
+          className="md:justify-self-end"
           tooltipMaxWidth="min(90vw, 22rem)"
           intro={
             <p>

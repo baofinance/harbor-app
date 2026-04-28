@@ -4,39 +4,49 @@ import {
   SparklesIcon,
 } from "@heroicons/react/24/outline";
 
+import {
+  INDEX_HERO_INTRO_BODY_CLASS,
+  INDEX_HERO_INTRO_CARD_CLASS,
+  INDEX_HERO_INTRO_CARD_RING_ACCENT_CLASS,
+  INDEX_HERO_INTRO_ICON_CLASS,
+  INDEX_HERO_INTRO_TITLE_CLASS,
+} from "@/components/shared/indexMarketsToolbarStyles";
+
 /**
  * Three intro cards below the Maiden Voyage title — Extended layout only.
  */
 export function GenesisHeroIntroCards() {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 mb-2 relative">
-      <div className="bg-black/[0.10] backdrop-blur-sm rounded-lg border border-white/10 overflow-hidden px-3 py-2.5 flex flex-col items-center justify-center text-center relative">
+      <div className={INDEX_HERO_INTRO_CARD_CLASS}>
         <div className="flex items-center justify-center gap-2 mb-1">
-          <BanknotesIcon className="w-5 h-5 text-[#FF8A7A]" />
-          <h2 className="font-bold text-white text-base">Deposit</h2>
+          <BanknotesIcon className={INDEX_HERO_INTRO_ICON_CLASS} />
+          <h2 className={INDEX_HERO_INTRO_TITLE_CLASS}>Deposit</h2>
         </div>
-        <p className="text-xs text-white/80 leading-relaxed">
+        <p className={INDEX_HERO_INTRO_BODY_CLASS}>
           Help fill a market&apos;s launch liquidity &amp; in return own a share
           of all mint/redeem fees and collateral yield.
         </p>
       </div>
 
-      <div className="bg-black/[0.10] backdrop-blur-sm rounded-lg border border-white/10 overflow-hidden px-3 py-2.5 flex flex-col items-center justify-center text-center relative ring-1 ring-[#FF8A7A]/25">
+      <div
+        className={`${INDEX_HERO_INTRO_CARD_CLASS} ${INDEX_HERO_INTRO_CARD_RING_ACCENT_CLASS}`}
+      >
         <div className="flex items-center justify-center gap-2 mb-1">
-          <SparklesIcon className="w-5 h-5 text-[#FF8A7A]" />
-          <h2 className="font-bold text-white text-base">Launch</h2>
+          <SparklesIcon className={INDEX_HERO_INTRO_ICON_CLASS} />
+          <h2 className={INDEX_HERO_INTRO_TITLE_CLASS}>Launch</h2>
         </div>
-        <p className="text-xs text-white/80 leading-relaxed">
+        <p className={INDEX_HERO_INTRO_BODY_CLASS}>
           Markets launch once their deposit cap is filled
         </p>
       </div>
 
-      <div className="bg-black/[0.10] backdrop-blur-sm rounded-lg border border-white/10 overflow-hidden px-3 py-2.5 flex flex-col items-center justify-center text-center relative">
+      <div className={INDEX_HERO_INTRO_CARD_CLASS}>
         <div className="flex items-center justify-center gap-2 mb-1">
-          <ArrowPathIcon className="w-5 h-5 text-[#FF8A7A]" />
-          <h2 className="font-bold text-white text-base">After genesis</h2>
+          <ArrowPathIcon className={INDEX_HERO_INTRO_ICON_CLASS} />
+          <h2 className={INDEX_HERO_INTRO_TITLE_CLASS}>After genesis</h2>
         </div>
-        <p className="text-xs text-white/80 leading-relaxed">
+        <p className={INDEX_HERO_INTRO_BODY_CLASS}>
           Claim Anchor + Sail. Stay deposited to maximize share of revenue.{" "}
           <a
             href="https://docs.harborfinance.io/maiden-voyage"

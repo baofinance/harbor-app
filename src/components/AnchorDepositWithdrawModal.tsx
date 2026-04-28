@@ -31,7 +31,6 @@ import {
   MINTER_PEGGED_ABI,
 } from "@/abis";
 import { stabilityPoolABI } from "@/abis/stabilityPool";
-import { aprABI } from "@/abis/apr";
 import { ZAP_ABI, USDC_ZAP_ABI, WSTETH_ABI } from "@/abis";
 import { MINTER_ETH_ZAP_V3_ABI } from "@/abis";
 import { MINTER_USDC_ZAP_V3_ABI } from "@/abis";
@@ -2599,15 +2598,6 @@ export const AnchorDepositWithdrawModal = ({
         pool.address.length === 42;
 
       if (isValidAddress) {
-        // APR
-        contracts.push({
-          address: pool.address,
-          abi: aprABI,
-          functionName: "getAPRBreakdown",
-          args: address
-            ? [address as `0x${string}`]
-            : ["0x0000000000000000000000000000000000000000"],
-        });
         // TVL
         contracts.push({
           address: pool.address,
@@ -2640,7 +2630,7 @@ export const AnchorDepositWithdrawModal = ({
     },
   });
 
-  // Map pool data to pools (4 reads per pool: APR, TVL, gaugeRewardToken, liquidationToken)
+  // Map pool data to pools (3 reads per pool: TVL, gaugeRewardToken, liquidationToken). APR = emission fallback below.
   const poolsWithData = useMemo(() => {
     if (!allPoolData || allPoolData.length === 0) {
       if (isOpen && simpleMode) {
@@ -2659,27 +2649,8 @@ export const AnchorDepositWithdrawModal = ({
       }));
     }
 
-    const extractAprBreakdown = (
-      val: unknown
-    ): { collateral: bigint; steam: bigint } | null => {
-      if (!val) return null;
-      // viem can return tuples as arrays, named objects, or array-like objects with named keys.
-      if (Array.isArray(val) && val.length >= 2) {
-        const a = val[0];
-        const b = val[1];
-        if (typeof a === "bigint" && typeof b === "bigint") return { collateral: a, steam: b };
-      }
-      if (typeof val === "object") {
-        const v: any = val as any;
-        const a = v.collateralTokenAPR ?? v[0];
-        const b = v.steamTokenAPR ?? v[1];
-        if (typeof a === "bigint" && typeof b === "bigint") return { collateral: a, steam: b };
-      }
-      return null;
-    };
-
     // IMPORTANT: poolContracts only includes reads for *valid* pool addresses.
-    // So we must advance through allPoolData with a cursor, not by index*4.
+    // So we must advance through allPoolData with a cursor, not by index*3.
     let cursor = 0;
     return allStabilityPools.map((pool) => {
       const isValidAddress =
@@ -2697,25 +2668,18 @@ export const AnchorDepositWithdrawModal = ({
         };
       }
 
-      const aprBreakdown = extractAprBreakdown(allPoolData[cursor]?.result);
-      const tvl = allPoolData[cursor + 1]?.result as bigint | undefined;
-      const gaugeRewardToken = allPoolData[cursor + 2]?.result as
+      const tvl = allPoolData[cursor]?.result as bigint | undefined;
+      const gaugeRewardToken = allPoolData[cursor + 1]?.result as
         | `0x${string}`
         | undefined;
-      const liquidationToken = allPoolData[cursor + 3]?.result as
+      const liquidationToken = allPoolData[cursor + 2]?.result as
         | `0x${string}`
         | undefined;
-      cursor += 4;
-
-      const apr =
-        aprBreakdown
-          ? (Number(aprBreakdown.collateral) / 1e16) * 100 +
-            (Number(aprBreakdown.steam) / 1e16) * 100
-          : undefined;
+      cursor += 3;
 
       return {
         ...pool,
-        apr,
+        apr: undefined,
         tvl,
         gaugeRewardToken,
         liquidationToken,
@@ -2724,8 +2688,7 @@ export const AnchorDepositWithdrawModal = ({
   }, [allPoolData, allStabilityPools, isOpen, simpleMode]);
 
   // ---------------------------------------------------------------------------
-  // APR fallback: compute APR from reward emission rates if getAPRBreakdown fails.
-  // This fixes "APR: ..." in the stability pool selector while TVL loads fine.
+  // Pool APR: emission-based (deployed StabilityPool has no getAPRBreakdown view).
   // ---------------------------------------------------------------------------
   const rewardTokenUsdPriceMap = useMemo(() => {
     const map = new Map<string, number>();
@@ -3008,26 +2971,49 @@ export const AnchorDepositWithdrawModal = ({
     );
   }, [poolsWithSymbols, selectedRewardToken]);
 
-  // Get APR for selected stability pool (advanced mode)
+  // APR for selected stability pool (advanced): emission from rewardData(wrapped collateral) + TVL USD
   const isValidStabilityPoolAddress =
     stabilityPoolAddress &&
     typeof stabilityPoolAddress === "string" &&
     stabilityPoolAddress.startsWith("0x") &&
     stabilityPoolAddress.length === 42;
-  const { data: aprData } = useContractRead({
-    address: isValidStabilityPoolAddress ? stabilityPoolAddress : undefined,
-    abi: aprABI,
-    functionName: "getAPRBreakdown",
-    args: address
-      ? [address as `0x${string}`]
-      : ["0x0000000000000000000000000000000000000000"],
+
+  const wrappedForAdvancedApr = selectedMarket?.addresses
+    ?.wrappedCollateralToken as `0x${string}` | undefined;
+  const advAprWrappedOk =
+    !!wrappedForAdvancedApr &&
+    wrappedForAdvancedApr.startsWith("0x") &&
+    wrappedForAdvancedApr.length === 42;
+
+  const advancedStabilityPoolAprReadsEnabled =
+    !!isValidStabilityPoolAddress &&
+    advAprWrappedOk &&
+    isOpen &&
+    !simpleMode &&
+    ((activeTab === "deposit" && depositInStabilityPool) ||
+      activeTab === "deposit");
+
+  const { data: advancedStabilityPoolAprReads } = useContractReads({
+    contracts:
+      advancedStabilityPoolAprReadsEnabled &&
+      stabilityPoolAddress &&
+      wrappedForAdvancedApr
+        ? [
+            {
+              address: stabilityPoolAddress as `0x${string}`,
+              abi: STABILITY_POOL_ABI,
+              functionName: "totalAssetSupply",
+            },
+            {
+              address: stabilityPoolAddress as `0x${string}`,
+              abi: STABILITY_POOL_ABI,
+              functionName: "rewardData",
+              args: [wrappedForAdvancedApr],
+            },
+          ]
+        : [],
     query: {
-      enabled:
-        !!isValidStabilityPoolAddress &&
-        isOpen &&
-        !simpleMode &&
-        ((activeTab === "deposit" && depositInStabilityPool) ||
-          activeTab === "deposit"),
+      enabled: advancedStabilityPoolAprReadsEnabled,
       refetchInterval: 30000,
       retry: 1,
       allowFailure: true,
@@ -3042,11 +3028,57 @@ export const AnchorDepositWithdrawModal = ({
     return `${apr.toFixed(2)}%`;
   };
 
-  // Calculate total APR from breakdown
-  const stabilityPoolAPR =
-    aprData && Array.isArray(aprData) && aprData.length >= 2
-      ? (Number(aprData[0]) / 1e16) * 100 + (Number(aprData[1]) / 1e16) * 100
-      : 0;
+  const stabilityPoolAPR = useMemo(() => {
+    if (
+      !advancedStabilityPoolAprReadsEnabled ||
+      !advancedStabilityPoolAprReads?.length
+    ) {
+      return 0;
+    }
+    const tvlRead = advancedStabilityPoolAprReads[0];
+    const rdRead = advancedStabilityPoolAprReads[1];
+    if (
+      tvlRead?.status !== "success" ||
+      rdRead?.status !== "success" ||
+      tvlRead.result === undefined ||
+      rdRead.result === undefined
+    ) {
+      return 0;
+    }
+    const tvl = tvlRead.result as bigint;
+    const tuple = rdRead.result as readonly [bigint, bigint, bigint, bigint];
+    const rate = tuple[2];
+    if (tvl <= 0n || rate <= 0n) return 0;
+    if (!peggedTokenPrice || (peggedTokenPrice as bigint) <= 0n || pegTargetUsdWei <= 0n)
+      return 0;
+    const tvlUsdWei =
+      (tvl * (peggedTokenPrice as bigint) * pegTargetUsdWei) / 10n ** 36n;
+    const tvlUsd = parseFloat(formatUnits(tvlUsdWei, 18));
+    if (!Number.isFinite(tvlUsd) || tvlUsd <= 0) return 0;
+    const tokenKey = (wrappedForAdvancedApr as string).toLowerCase();
+    const rewardUsd = new Map<string, number>();
+    if (fxSAVEPrice && fxSAVEPrice > 0)
+      rewardUsd.set(REWARD_TOKEN_ADDRESSES.FXSAVE.toLowerCase(), fxSAVEPrice);
+    if (wstETHPrice && wstETHPrice > 0)
+      rewardUsd.set(REWARD_TOKEN_ADDRESSES.WSTETH.toLowerCase(), wstETHPrice);
+    if (stETHPrice && stETHPrice > 0)
+      rewardUsd.set(REWARD_TOKEN_ADDRESSES.STETH.toLowerCase(), stETHPrice);
+    const tokenPriceUsd = rewardUsd.get(tokenKey);
+    if (!tokenPriceUsd || tokenPriceUsd <= 0) return 0;
+    const SECONDS_PER_YEAR = 365 * 24 * 60 * 60;
+    const annualRewardsTokens = (Number(rate) * SECONDS_PER_YEAR) / 1e18;
+    const annualRewardsUsd = annualRewardsTokens * tokenPriceUsd;
+    return (annualRewardsUsd / tvlUsd) * 100;
+  }, [
+    advancedStabilityPoolAprReadsEnabled,
+    advancedStabilityPoolAprReads,
+    wrappedForAdvancedApr,
+    peggedTokenPrice,
+    pegTargetUsdWei,
+    fxSAVEPrice,
+    wstETHPrice,
+    stETHPrice,
+  ]);
 
   // Check allowance for collateral to minter (for mint tab) — market's chain
   const { data: allowanceData, refetch: refetchAllowance } = useContractRead({

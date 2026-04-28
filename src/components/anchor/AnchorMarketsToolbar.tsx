@@ -1,15 +1,21 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { XMarkIcon } from "@heroicons/react/24/outline";
 import SimpleTooltip from "@/components/SimpleTooltip";
 import LedgerMarksCompactBadge from "@/components/LedgerMarksCompactBadge";
 import { FilterMultiselectDropdown } from "@/components/FilterMultiselectDropdown";
-import { INDEX_MARKETS_TOOLBAR_ROW_CLASS } from "@/components/shared/indexMarketsToolbarStyles";
+import { INDEX_MARKETS_TOOLBAR_ROW_WITH_TOP_RULE_CLASS } from "@/components/shared/indexMarketsToolbarStyles";
 import { INDEX_WITHDRAW_BUTTON_CLASS_DESKTOP_CORAL } from "@/utils/indexPageManageButton";
+import IndexToolbarMetricsGroup from "@/components/shared/IndexToolbarMetricsGroup";
 
 /** Shown in Basic (UI−) layout between filters and Ledger Marks — matches toolbar label/value scale. */
 export type AnchorBasicClaimToolbarProps = {
   claimableUsdDisplay: string;
+  leftMetrics?: Array<{
+    label: ReactNode;
+    value: string;
+  }>;
   onClaim: () => void;
   claimDisabled: boolean;
 };
@@ -42,7 +48,7 @@ export function AnchorMarketsToolbar({
     anchorChainOptions.length > 1 || chainFilterSelected.length > 0;
 
   return (
-    <div className={INDEX_MARKETS_TOOLBAR_ROW_CLASS}>
+    <div className={INDEX_MARKETS_TOOLBAR_ROW_WITH_TOP_RULE_CLASS}>
       <div className="flex flex-wrap items-center gap-2">
         <h2 className="text-xs font-medium text-white/70 uppercase tracking-wider">
           Stability Pools:
@@ -71,29 +77,35 @@ export function AnchorMarketsToolbar({
           </>
         )}
       </div>
-      <div className="flex flex-1 flex-wrap items-center justify-end gap-2 md:gap-3 min-w-0">
+      <div className="w-full md:flex-1 md:min-w-0 grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] items-center gap-2 md:gap-3">
+        <div className="hidden md:block" />
         {basicClaimToolbar ? (
-          <div className="flex flex-wrap items-center gap-2 md:gap-3 shrink-0">
-            <div className="flex flex-col min-w-0">
-              <span className="text-xs font-medium text-white/70 uppercase tracking-wider leading-tight">
-                Claimable value
-              </span>
-              <span className="text-sm font-semibold text-white font-mono tabular-nums mt-0.5">
-                ${basicClaimToolbar.claimableUsdDisplay}
-              </span>
-            </div>
-            <button
-              type="button"
-              onClick={basicClaimToolbar.onClaim}
-              disabled={basicClaimToolbar.claimDisabled}
-              className={INDEX_WITHDRAW_BUTTON_CLASS_DESKTOP_CORAL}
-            >
-              Claim
-            </button>
+          <div className="md:justify-self-center">
+            <IndexToolbarMetricsGroup
+              metrics={[
+                ...(basicClaimToolbar.leftMetrics ?? []),
+                {
+                  label: "Claimable value",
+                  value: `$${basicClaimToolbar.claimableUsdDisplay}`,
+                },
+              ]}
+              action={
+                <button
+                  type="button"
+                  onClick={basicClaimToolbar.onClaim}
+                  disabled={basicClaimToolbar.claimDisabled}
+                  className={INDEX_WITHDRAW_BUTTON_CLASS_DESKTOP_CORAL}
+                >
+                  Claim
+                </button>
+              }
+            />
           </div>
-        ) : null}
+        ) : (
+          <div />
+        )}
         <LedgerMarksCompactBadge
-          className="shrink-0"
+          className="md:justify-self-end shrink-0"
           body={
             <>
               <div className="font-semibold">Ledger Marks</div>

@@ -9,6 +9,10 @@ export type GenesisMarketConfig = {
   rowLeveragedSymbol?: string;
   coinGeckoId?: string;
   maintenance?: boolean;
+  /**
+   * When true, show a square “TEST” label in the Status column instead of time / state text.
+   */
+  test?: boolean;
   /** Chain id when present on market config (e.g. multi-chain rows). */
   chainId?: number;
   collateral?: {
