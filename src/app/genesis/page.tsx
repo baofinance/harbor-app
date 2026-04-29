@@ -711,7 +711,7 @@ export default function GenesisIndexPage() {
       <div className="flex min-h-0 flex-1 flex-col text-white max-w-[1300px] mx-auto font-sans relative w-full">
         <main className="container mx-auto px-4 sm:px-10 pb-6 pt-2 sm:pt-4">
           <section className="flex min-h-[calc(100vh-7rem)] items-center justify-center">
-            <div className="w-full max-w-5xl overflow-hidden rounded-3xl border border-white/10 bg-white shadow-[0_24px_80px_-32px_rgba(0,0,0,0.55)]">
+            <div className="relative w-full max-w-5xl overflow-hidden rounded-3xl border border-white/10 bg-white shadow-[0_24px_80px_-32px_rgba(0,0,0,0.55)]">
               <Image
                 src="/MV2.png"
                 alt="Deposit once, own a share, earn forever. Coming soon."
@@ -720,6 +720,11 @@ export default function GenesisIndexPage() {
                 priority
                 className="h-auto w-full"
               />
+              <div className="pointer-events-none absolute bottom-4 left-4 sm:bottom-6 sm:left-6 rounded-xl border border-white/40 bg-[#CFE5DD]/95 px-4 py-2 sm:px-5 sm:py-2.5 shadow-[0_10px_30px_-12px_rgba(0,0,0,0.45)]">
+                <span className="font-mono text-lg sm:text-2xl font-extrabold tracking-[0.12em] text-[#2F4572]">
+                  COMING SOON
+                </span>
+              </div>
             </div>
           </section>
         </main>
