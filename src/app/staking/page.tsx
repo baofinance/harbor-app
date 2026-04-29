@@ -166,7 +166,7 @@ export default function Staking() {
   };
 
   return (
-    <div className="min-h-screen text-white font-sans relative max-w-[1300px] mx-auto">
+    <div className="flex min-h-0 flex-1 flex-col text-white font-sans relative max-w-[1300px] mx-auto w-full">
       {/* Main Content */}
       <main className="container mx-auto px-6 pt-[6rem] pb-20 relative z-10">
         {/* Header */}

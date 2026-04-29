@@ -5,6 +5,13 @@
 @tailwind utilities;
 
 @layer base {
+  /* Let body flex layout fill viewport so footer can stick to bottom */
+  html {
+    height: 100%;
+    /* Reserve scrollbar width so long pages (e.g. ledger marks) don’t shift layout vs short pages */
+    scrollbar-gutter: stable;
+  }
+
   :root {
     /* Selection surfaces */
     --surface-selected-rgb: 238, 241, 246; /* slightly darker gray */
@@ -49,7 +56,7 @@
   }
 
   body {
-    @apply bg-[#1E4775] text-white min-h-screen;
+    @apply bg-[#1E4775] text-white min-h-full;
   }
 
   .dark {

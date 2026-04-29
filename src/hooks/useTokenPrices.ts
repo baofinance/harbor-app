@@ -18,6 +18,8 @@ interface MarketTokenPriceInput {
   marketId: string;
   minterAddress: `0x${string}`;
   pegTarget: string;
+  /** Chain ID for multi-chain (e.g. 1 mainnet, 4326 MegaETH). Omit to use connected chain. */
+  chainId?: number;
 }
 
 /**
@@ -35,24 +37,30 @@ export function useMultipleTokenPrices(
   const pegTargetPrices = usePegTargetPrices();
 
   const minterContracts = useMemo(() => {
-    return markets.flatMap((market) => [
-      {
-        address: market.minterAddress,
-        abi: minterABI,
-        functionName: "peggedTokenPrice" as const,
-      },
-      {
-        address: market.minterAddress,
-        abi: minterABI,
-        functionName: "leveragedTokenPrice" as const,
-      },
-    ]);
+    return markets.flatMap((market) => {
+      const chainId = market.chainId ?? 1;
+      return [
+        {
+          address: market.minterAddress,
+          abi: minterABI,
+          functionName: "peggedTokenPrice" as const,
+          chainId,
+        },
+        {
+          address: market.minterAddress,
+          abi: minterABI,
+          functionName: "leveragedTokenPrice" as const,
+          chainId,
+        },
+      ];
+    });
   }, [markets]);
 
   const { data: tokenPriceData, isLoading: isPriceLoading, error: priceError } = useReadContracts({
     contracts: minterContracts,
     query: {
       enabled: minterContracts.length > 0,
+      allowFailure: true,
     },
   });
 

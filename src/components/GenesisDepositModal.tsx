@@ -12,6 +12,8 @@ import {
  useWriteContract,
  usePublicClient,
  useSendTransaction,
+ useSwitchChain,
+ useChainId,
 } from "wagmi";
 import { BaseError, ContractFunctionRevertedError } from "viem";
 import { GENESIS_ABI, ERC20_ABI, contracts } from "../config/contracts";
@@ -29,6 +31,7 @@ import {
 } from "./TransactionProgressModal";
 import { formatTokenAmount, formatBalance, formatUSD } from "@/utils/formatters";
 import { formatRpcErrorMessage } from "@/utils/formatRpcErrorMessage";
+import { getDepositMode } from "@/utils/depositMode";
 import { amountToUSD } from "@/utils/tokenPriceToUSD";
 import { useWrappedCollateralPrice } from "@/hooks/useWrappedCollateralPrice";
 import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
@@ -69,6 +72,10 @@ priceOracle?: string;
  };
  coinGeckoId?: string;
  peggedTokenSymbol?: string; // haToken symbol (e.g., "haETH", "haBTC")
+ /** Market chainId (for contract reads). Deposit mode (zapper/anyswap) comes from market config when provided. */
+ chainId?: number;
+ /** Full market config for deposit mode (zapper, anyswap). When provided, overrides chain-based defaults. */
+ market?: { chainId?: number; zapper?: boolean; anyswap?: boolean; [k: string]: unknown };
  onSuccess?: () => void;
  embedded?: boolean;
 }
@@ -89,6 +96,8 @@ export const GenesisDepositModal = ({
  marketAddresses,
  coinGeckoId,
  peggedTokenSymbol,
+ chainId,
+ market,
  onSuccess,
  embedded = false,
 }: GenesisDepositModalProps) => {
@@ -96,6 +105,8 @@ export const GenesisDepositModal = ({
  const wagmiPublicClient = usePublicClient();
   // Use wagmi public client
   const publicClient = wagmiPublicClient;
+  // Market's chain for all balance/allowance reads (so modal shows MegaETH balance when market is on MegaETH, etc.)
+  const marketChainId = chainId ?? 1;
  const [amount, setAmount] = useState("");
  const [selectedAsset, setSelectedAsset] = useState<string>(collateralSymbol);
  const [customTokenAddress, setCustomTokenAddress] = useState<string>("");
@@ -118,6 +129,7 @@ export const GenesisDepositModal = ({
  const [error, setError] = useState<string | null>(null);
  const [txHash, setTxHash] = useState<string | null>(null);
  const progress = useTransactionProgress();
+
  const [successfulDepositAmount, setSuccessfulDepositAmount] =
  useState<string>("");
  const [successfulDepositToken, setSuccessfulDepositToken] =
@@ -126,6 +138,19 @@ export const GenesisDepositModal = ({
   address && genesisAddress
     ? `genesisDepositProgress:${address.toLowerCase()}:${genesisAddress.toLowerCase()}`
     : null;
+
+ const resetGenesisDepositUiKeepAsset = () => {
+   setAmount("");
+   setStep("input");
+   setError(null);
+   setTxHash(null);
+   setSuccessfulDepositAmount("");
+   setSuccessfulDepositToken("");
+   progress.reset();
+   if (progressStorageKey && typeof window !== "undefined") {
+     window.localStorage.removeItem(progressStorageKey);
+   }
+ };
 
  // Delay contract reads until modal is fully mounted to avoid fetch errors
  const [mounted, setMounted] = useState(false);
@@ -298,6 +323,10 @@ const isUSDC = selectedAsset.toLowerCase() ==="usdc";
 const isFXUSD = selectedAsset.toLowerCase() ==="fxusd";
 const isFXSAVE = selectedAsset.toLowerCase() ==="fxsave";
 
+// Deposit mode from market config (zapper, anyswap); fallback to chainId when market not provided
+const depositMode = getDepositMode(market ?? (chainId != null ? { chainId } : undefined));
+const { collateralOnly, nativeTokenLabel, isMegaEth } = depositMode;
+
 // Get genesis zap address from marketAddresses prop
 // Note: Legacy contracts object doesn't have genesisZap, use market config instead
 const genesisZapAddress = marketAddresses?.genesisZap as `0x${string}` | undefined;
@@ -310,15 +339,15 @@ const useETHZap = isETHStETHMarket && (isNativeETH || isStETH);
 // Determine if selected asset needs to be swapped
 // fxSAVE markets: Directly accept USDC, fxUSD, fxSAVE → swap everything else to USDC
 // wstETH markets: Directly accept ETH, stETH, wstETH → swap everything else to ETH
+// MegaETH: no swap — only collateral deposits
 const isFxSAVEMarket = !isETHStETHMarket; // fxSAVE backed markets (ETH/fxUSD, BTC/fxUSD)
 const isDirectlyAccepted = 
   (isFxSAVEMarket && (isUSDC || isFXUSD || isFXSAVE)) || // fxSAVE markets: USDC, fxUSD, fxSAVE accepted
   (isETHStETHMarket && (isNativeETH || isStETH || selectedAsset.toLowerCase() === "wsteth")); // wstETH markets: ETH, stETH, wstETH accepted
 
-// Check if we need to swap: token is not directly accepted AND has a valid address
-// For ETH, check isNativeETH; for other tokens, check selectedAssetAddress exists
+// Check if we need to swap: token is not directly accepted AND has a valid address. No swap when collateral-only.
 const hasValidTokenAddress = isNativeETH || (selectedAssetAddress && selectedAssetAddress !== "0x0000000000000000000000000000000000000000");
-const needsSwap = !isDirectlyAccepted && hasValidTokenAddress;
+const needsSwap = !collateralOnly && !isDirectlyAccepted && hasValidTokenAddress;
 
 // Determine swap target token
 // fxSAVE markets: swap to USDC, wstETH markets: swap to ETH
@@ -355,6 +384,7 @@ const { data: customTokenSymbol } = useContractRead({
   address: isCustomToken ? (customTokenAddress as `0x${string}`) : undefined,
   abi: ERC20_ABI,
   functionName: "symbol",
+  chainId: marketChainId,
   query: {
     enabled: isCustomToken && !!customTokenAddress,
     retry: 1,
@@ -366,6 +396,7 @@ const { data: customTokenName } = useContractRead({
   address: isCustomToken ? (customTokenAddress as `0x${string}`) : undefined,
   abi: ERC20_ABI,
   functionName: "name",
+  chainId: marketChainId,
   query: {
     enabled: isCustomToken && !!customTokenAddress,
     retry: 1,
@@ -386,8 +417,11 @@ const { data: swapQuote, isLoading: isLoadingSwapQuote, error: swapQuoteError } 
   toTokenDecimals
 );
 
-// Merge accepted assets with user tokens (avoid duplicates)
+// Merge accepted assets with user tokens (avoid duplicates). Collateral-only: no "any token" / swap.
 const allAvailableAssets = React.useMemo(() => {
+  if (collateralOnly) {
+    return acceptedAssets.map(asset => ({ ...asset, isUserToken: false as boolean | undefined }));
+  }
   const assetMap = new Map<string, { symbol: string; name: string; isUserToken?: boolean }>();
   
   // Add accepted assets first
@@ -414,7 +448,7 @@ const allAvailableAssets = React.useMemo(() => {
     }
     return a.symbol.localeCompare(b.symbol);
   });
-}, [acceptedAssets, userTokens]);
+}, [acceptedAssets, userTokens, collateralOnly]);
 
 // For stETH markets: stETH is the underlying rebasing token, wstETH is the wrapped version
 const stETHAddress = isETHStETHMarket 
@@ -463,6 +497,7 @@ const isValidSelectedAssetAddress =
 // Get ETH balance for native ETH deposits
 const { data: ethBalance, isLoading: isEthBalanceLoading, isError: isEthBalanceError } = useBalance({
   address: address,
+  chainId: marketChainId,
   query: {
     enabled: !!address && isOpen && mounted && isNativeETH,
   },
@@ -496,13 +531,14 @@ const assetBalanceContracts = acceptedAssets
 // Only fetch balances if we have valid contracts and the modal is open and mounted
 const shouldFetchBalances = !!address && isOpen && mounted && assetBalanceContracts.length > 0;
 
-// Create the contracts array, ensuring it's never empty when the hook is enabled
+// Create the contracts array, ensuring it's never empty when the hook is enabled (read on market's chain)
 const balanceContractsForHook = shouldFetchBalances 
   ? assetBalanceContracts.map(c => ({
       address: c.address,
       abi: c.abi,
       functionName: c.functionName,
       args: c.args,
+      chainId: marketChainId,
     }))
   : []; // Empty array when disabled
 
@@ -548,12 +584,13 @@ const selectedUserToken = userTokens.find(t => t.symbol.toUpperCase() === select
 const isUserTokenNotInAccepted = selectedUserToken && 
   !acceptedAssets.some(a => a.symbol.toUpperCase() === selectedAsset.toUpperCase());
 
-// Fetch balance for custom token or user token not in accepted assets
+// Fetch balance for custom token or user token not in accepted assets (on market's chain)
 const { data: customTokenBalance } = useContractRead({
   address: (isCustomToken ? customTokenAddress : (isUserTokenNotInAccepted ? selectedUserToken.address : undefined)) as `0x${string}` | undefined,
   abi: ERC20_ABI,
   functionName: "balanceOf",
   args: address ? [address] : undefined,
+  chainId: marketChainId,
   query: {
     enabled: (isCustomToken || isUserTokenNotInAccepted) && !!address && isOpen && mounted && 
             ((isCustomToken && customTokenAddress) || (isUserTokenNotInAccepted && selectedUserToken?.address !== "ETH")),
@@ -576,6 +613,7 @@ const allowanceTarget = (useETHZap || useUSDCZap) && genesisZapAddress ? genesis
  abi: ERC20_ABI,
  functionName:"allowance",
     args: address && isValidSelectedAssetAddress ? [address, allowanceTarget as `0x${string}`] : undefined,
+ chainId: marketChainId,
  query: {
  enabled:
  !!address &&
@@ -600,6 +638,7 @@ const allowanceTarget = (useETHZap || useUSDCZap) && genesisZapAddress ? genesis
  address: isValidGenesisAddress ? (genesisAddress as `0x${string}`) : undefined,
  abi: GENESIS_ABI,
  functionName:"genesisIsEnded",
+ chainId: marketChainId,
  query: {
    enabled: isValidGenesisAddress && isOpen && mounted,
    retry: 1,
@@ -607,12 +646,13 @@ const allowanceTarget = (useETHZap || useUSDCZap) && genesisZapAddress ? genesis
  },
  });
 
- // Get current user deposit in Genesis
+ // Get current user deposit in Genesis (on market's chain)
  const { data: currentDeposit, error: currentDepositError } = useContractRead({
  address: isValidGenesisAddress ? (genesisAddress as `0x${string}`) : undefined,
  abi: GENESIS_ABI,
  functionName:"balanceOf",
  args: address ? [address] : undefined,
+ chainId: marketChainId,
  query: {
    enabled: !!address && isValidGenesisAddress && isOpen && mounted,
    refetchInterval: isOpen ? 15000 : false, // Only poll when modal is open, reduced from 5s to 15s
@@ -624,6 +664,20 @@ const allowanceTarget = (useETHZap || useUSDCZap) && genesisZapAddress ? genesis
  // Contract write hooks
  const { writeContractAsync, isPending: isWritePending } = useWriteContract();
  const { sendTransactionAsync } = useSendTransaction();
+ const { switchChain } = useSwitchChain();
+ const connectedChainId = useChainId();
+
+ const ensureCorrectNetwork = async (): Promise<boolean> => {
+   if (connectedChainId === marketChainId) return true;
+   try {
+     await switchChain({ chainId: marketChainId });
+     return true;
+   } catch (err) {
+     if (process.env.NODE_ENV === "development") console.warn("[GenesisDeposit] Switch network rejected:", err);
+     setError(`Please switch to ${marketChainId === 4326 ? "MegaETH" : "Ethereum Mainnet"} to deposit.`);
+     return false;
+   }
+ };
 
   // Use the balance from the asset balance map or custom token balance
   const balance = selectedAssetBalance;
@@ -670,6 +724,7 @@ const { data: expectedWstETHFromETH } = useContractRead({
   abi: WSTETH_ABI,
   functionName: "getWstETHByStETH",
   args: amountBigInt > 0n && isNativeETH ? [amountBigInt] : undefined, // stETH.submit() gives 1:1 ETH→stETH
+  chainId: marketChainId,
   query: {
     enabled: !!address && isOpen && mounted && isNativeETH && amountBigInt > 0n,
   },
@@ -681,6 +736,7 @@ const { data: expectedWstETHFromStETH } = useContractRead({
   abi: WSTETH_ABI,
   functionName: "getWstETHByStETH",
   args: amountBigInt > 0n && isStETH ? [amountBigInt] : undefined,
+  chainId: marketChainId,
   query: {
     enabled: !!address && isOpen && mounted && isStETH && amountBigInt > 0n && !!wstETHAddress,
   },
@@ -743,6 +799,7 @@ const { data: expectedWstETHFromSwap } = useContractRead({
   abi: WSTETH_ABI,
   functionName: "getWstETHByStETH",
   args: ethFromSwap > 0n ? [ethFromSwap] : undefined, // ETH → stETH is 1:1, so use ethFromSwap as stETH amount
+  chainId: marketChainId,
   query: {
     enabled: !!address && isOpen && mounted && needsSwap && isETHStETHMarket && ethFromSwap > 0n && !!wstETHAddress,
   },
@@ -803,9 +860,9 @@ const newTotalDepositActual: bigint = userCurrentDeposit + actualCollateralDepos
  };
 
  const handleShareOnX = () => {
- const shareMessage = `Just secured my @0xharborfi airdrop with their maiden voyage. ⚓️
+ const shareMessage = `Just joined @0xharborfi Maiden voyage 2.0 — staking a claim as a shareholder in new markets. ⚓️
 
-Predeposits are still open for a limited time - don't miss out!
+Genesis is open for a limited time.
 
 https://www.harborfinance.io/`;
  const encodedMessage = encodeURIComponent(shareMessage);
@@ -849,7 +906,7 @@ const buildProgressSteps = (params: {
     });
   }
   if (params.includeSwap) {
-    const swapTarget = isFxSAVEMarket ? "USDC" : "ETH";
+    const swapTarget = isFxSAVEMarket ? "USDC" : nativeTokenLabel;
     steps.push({
       id: "swap",
       label: `Swap ${selectedAsset} → ${swapTarget}`,
@@ -946,6 +1003,9 @@ const runApprovalStep = async (params: {
 
  const handleDeposit = async () => {
  if (!validateAmount()) return;
+
+ // Switch to market chain only when user starts the transaction (not on modal open)
+ if (!(await ensureCorrectNetwork())) return;
  
  // Prevent double-clicks and concurrent transactions
  if (step === "approving" || step === "depositing" || isWritePending) {
@@ -1093,7 +1153,7 @@ if (includePermitAttempt) {
    }
 
    try {
-     const targetTokenSymbol = isFxSAVEMarket ? "USDC" : "ETH";
+     const targetTokenSymbol = isFxSAVEMarket ? "USDC" : nativeTokenLabel;
      const targetTokenDecimals = isFxSAVEMarket ? 6 : 18;
 
      // Step 1: For ERC20 tokens, approve ParaSwap TokenTransferProxy BEFORE getting swap tx
@@ -1833,7 +1893,7 @@ const successFmt = formatTokenAmount(
  <div className="space-y-4">
  <div className="p-4 bg-[rgb(var(--surface-selected-rgb))]/20 border border-[rgb(var(--surface-selected-border-rgb))]/30 text-center">
  <p className="text-sm text-[#1E4775]/80">
- Thank you for joining the Maiden Voyage!
+ Welcome to Maiden voyage 2.0 — you&apos;re on the cap table.
  </p>
  {successfulDepositAmount && (
 <>
@@ -1901,13 +1961,17 @@ const successFmt = formatTokenAmount(
        setShowCustomTokenInput(false);
        setSelectedAsset(newValue);
        setCustomTokenAddress("");
+       resetGenesisDepositUiKeepAsset();
      },
      options: [
        ...(acceptedAssets.length > 0 ? [{
-         label: "Supported Assets",
-         tokens: acceptedAssets.map((a) => ({ symbol: a.symbol, name: a.name })),
+         label: collateralOnly ? (isMegaEth ? "Collateral (MegaETH)" : "Collateral") : "Supported Assets",
+         tokens: acceptedAssets.map((a) => ({
+           symbol: a.symbol,
+           name: (isMegaEth && a.symbol.toUpperCase() === "ETH") ? "Mega ETH" : a.name,
+         })),
        }] : []),
-       ...(userTokens.filter(t => !acceptedAssets.some(a => a.symbol.toUpperCase() === t.symbol.toUpperCase())).length > 0 ? [{
+       ...(!collateralOnly && userTokens.filter(t => !acceptedAssets.some(a => a.symbol.toUpperCase() === t.symbol.toUpperCase())).length > 0 ? [{
          label: "Other Tokens (via Swap)",
          tokens: userTokens.filter(t => !acceptedAssets.some(a => a.symbol.toUpperCase() === t.symbol.toUpperCase())).map((t) => ({ symbol: t.symbol, name: t.name, isUserToken: true })),
        }] : []),
@@ -1915,10 +1979,11 @@ const successFmt = formatTokenAmount(
      label: "Select Deposit Token",
      placeholder: "Select Deposit Asset",
      disabled: step === "approving" || step === "depositing" || genesisEnded,
-     showCustomOption: true,
+     showCustomOption: !collateralOnly,
      onCustomOptionClick: () => {
        setShowCustomTokenInput(true);
        setSelectedAsset("custom");
+       resetGenesisDepositUiKeepAsset();
      },
    }}
    customToken={showCustomTokenInput ? {
@@ -1946,11 +2011,11 @@ const successFmt = formatTokenAmount(
          );
        })()}
      >
-       {!needsSwap && (
-         <InfoCallout tone="success" title="Tip:" icon={<RefreshCw className="w-4 h-4 flex-shrink-0 mt-0.5 text-green-600" />}>
-           You can deposit any ERC20 token! Non-collateral tokens will be automatically swapped via Velora.
-         </InfoCallout>
-       )}
+      {!needsSwap && !collateralOnly && (
+        <InfoCallout tone="success" title="Tip:" icon={<RefreshCw className="w-4 h-4 flex-shrink-0 mt-0.5 text-green-600" />}>
+          You can deposit any ERC20 token! Non-collateral tokens will be automatically swapped via Velora.
+        </InfoCallout>
+      )}
        <InfoCallout title="Info:" icon={<Info className="w-4 h-4 flex-shrink-0 mt-0.5 text-blue-600" />}>
          For large deposits, Harbor recommends using wstETH or fxSAVE instead of the built-in swap and zaps.
        </InfoCallout>
@@ -1995,7 +2060,7 @@ const successFmt = formatTokenAmount(
    }}
    afterAmount={
      showPermitToggle ? (
-   <div className="flex items-center justify-between border border-[#1E4775]/20 bg-[#17395F]/5 px-3 py-2 text-xs">
+   <div className="flex items-center justify-between rounded-md border border-[#1E4775]/20 bg-[#17395F]/5 px-3 py-2 text-xs">
      <div className="text-[#1E4775]/80">
        Use permit (gasless approval) for this deposit
      </div>
@@ -2041,20 +2106,20 @@ const successFmt = formatTokenAmount(
  />
 
 {/* Transaction Overview */}
-<div className="space-y-2">
+<div className="space-y-2 mb-4">
   <label className="block text-sm font-semibold text-[#1E4775] mb-1.5">
     Transaction Overview
   </label>
-  <div className="p-3 bg-[#17395F]/5 border border-[#1E4775]/10">
+  <div className="p-3 rounded-md bg-[#17395F]/5 border border-[#1E4775]/10">
     {/* Transaction Preview - Always visible */}
     <div className="space-y-2 text-sm">
  
  {/* Swap details - show when swapping */}
  {needsSwap && swapQuote && swapQuote.toAmount > 0n && (() => {
-   const targetToken = isFxSAVEMarket ? "USDC" : "ETH";
+   const targetToken = isFxSAVEMarket ? "USDC" : nativeTokenLabel;
    const targetDecimals = isFxSAVEMarket ? 6 : 18;
    return (
-   <div className="p-2 bg-blue-50 border border-blue-200 space-y-1 text-xs">
+   <div className="p-2 rounded-md bg-blue-50 border border-blue-200 space-y-1 text-xs">
      <div className="flex items-center justify-between">
        <span className="text-blue-700">Swap via Velora:</span>
        <span className="font-mono text-blue-900">{formatUnits(swapQuote.toAmount, targetDecimals)} {targetToken}</span>
@@ -2313,14 +2378,14 @@ const successFmt = formatTokenAmount(
         <button
           onClick={handleClose}
           disabled={step === "approving" || step === "depositing"}
-          className="flex-1 py-3 px-4 bg-white text-[#1E4775] border-2 border-[#1E4775]/30 font-semibold hover:bg-[#1E4775]/5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex-1 rounded-md py-3 px-4 bg-white text-[#1E4775] border-2 border-[#1E4775]/30 font-semibold hover:bg-[#1E4775]/5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Cancel
         </button>
         <button
           onClick={handleMainButtonClick}
           disabled={isButtonDisabled()}
-          className={`flex-1 py-3 px-4 font-semibold transition-colors ${
+          className={`flex-1 rounded-md py-3 px-4 font-semibold transition-colors ${
             step === "success"
               ? "bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white"
               : "bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
@@ -2377,10 +2442,13 @@ const successFmt = formatTokenAmount(
           onClose={handleClose}
           header={
             <div className="flex-1">
-              <div className="flex items-center gap-2 mb-1">
+              <div className="flex items-center gap-2 mb-1 flex-wrap">
                 <h2 className="text-lg sm:text-2xl font-bold text-[#1E4775]">
-                  Deposit in Maiden Voyage
+                  Deposit — Maiden voyage
                 </h2>
+                <span className="rounded px-1.5 py-0.5 text-xs font-bold font-mono bg-[#1E4775] text-white border border-[#1E4775]">
+                  2.0
+                </span>
                 <div className="flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] font-semibold uppercase tracking-wide">
                   <ArrowPathIcon className="w-3 h-3" />
                   <span>Any Token</span>
@@ -2392,7 +2460,7 @@ const successFmt = formatTokenAmount(
             </div>
           }
           closeDisabled={step === "approving" || step === "depositing" || isWritePending}
-          panelClassName="rounded-none max-h-[95vh] sm:max-h-[90vh] overflow-y-auto"
+          panelClassName="max-h-[95vh] sm:max-h-[90vh] overflow-y-auto"
           headerClassName="p-3 sm:p-4 lg:p-6"
           contentClassName="p-3 sm:p-4 lg:p-6"
         >

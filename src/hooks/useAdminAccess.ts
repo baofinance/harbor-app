@@ -1,5 +1,6 @@
 import { useAccount, useReadContract } from "wagmi";
 import { contracts, CONTRACTS, GENESIS_ABI } from "../config/contracts";
+import { isAlwaysAdminAddress } from "@/lib/adminAllowlist";
 
 export function useAdminAccess() {
   const { address } = useAccount();
@@ -12,7 +13,8 @@ export function useAdminAccess() {
   });
 
   const isAdmin =
-    address && owner && address.toLowerCase() === owner.toLowerCase();
+    isAlwaysAdminAddress(address) ||
+    !!(address && owner && address.toLowerCase() === owner.toLowerCase());
 
   return { isAdmin, owner };
 }

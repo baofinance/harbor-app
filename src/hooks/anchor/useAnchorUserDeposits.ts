@@ -1,4 +1,6 @@
 import { useMemo } from "react";
+import type { DefinedMarket } from "@/config/markets";
+import type { AnchorMarketTuple } from "@/types/anchor";
 import { useAccount, useContractReads } from "wagmi";
 import { ERC20_ABI } from "@/abis/shared";
 import { POLLING_INTERVALS } from "@/config/polling";
@@ -11,18 +13,19 @@ import { POLLING_INTERVALS } from "@/config/polling";
  * @returns User deposit map (marketIndex -> balance) and refetch function
  */
 export function useAnchorUserDeposits(
-  anchorMarkets: Array<[string, any]>,
+  anchorMarkets: AnchorMarketTuple[],
   useAnvil: boolean = false,
   options?: { enabled?: boolean }
 ) {
   const enabledOverride = options?.enabled ?? true;
   const { address } = useAccount();
 
-  // Create contracts for user deposit reads
+  // Create contracts for user deposit reads (per-market chainId for multi-chain)
   const userDepositContracts = useMemo(() => {
     return anchorMarkets
       .map(([_, m], index) => {
-        const peggedTokenAddress = (m as any).addresses?.peggedToken as
+        const mktChainId = (m as DefinedMarket & { chainId?: number }).chainId ?? 1;
+        const peggedTokenAddress = m.addresses?.peggedToken as
           | `0x${string}`
           | undefined;
         if (
@@ -40,6 +43,7 @@ export function useAnchorUserDeposits(
             abi: ERC20_ABI,
             functionName: "balanceOf" as const,
             args: [address as `0x${string}`],
+            chainId: mktChainId,
           },
         };
       })
@@ -56,6 +60,7 @@ export function useAnchorUserDeposits(
       enabled: enabledOverride && anchorMarkets.length > 0 && !!address && !useAnvil,
       retry: 1,
       retryOnMount: false,
+      allowFailure: true,
       staleTime: 30_000, // 30 seconds - consider data fresh for 30s to prevent unnecessary refetches
       gcTime: 300_000, // 5 minutes - keep in cache for 5 minutes
       structuralSharing: true, // Only update if values actually changed
@@ -67,6 +72,7 @@ export function useAnchorUserDeposits(
     query: {
       enabled: enabledOverride && anchorMarkets.length > 0 && !!address && useAnvil,
       refetchInterval: POLLING_INTERVALS.FAST,
+      allowFailure: true,
       staleTime: 10_000, // 10 seconds for anvil (shorter since we're polling)
       gcTime: 300_000, // 5 minutes - keep in cache
       structuralSharing: true, // Only update if values actually changed

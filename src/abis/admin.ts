@@ -144,3 +144,39 @@ export const STABILITY_POOL_REWARDS_ABI = [
     stateMutability: "view",
   },
 ] as const;
+
+export const STABILITY_POOL_MANAGER_ABI = [
+  { type: "error", name: "NoHarvestable", inputs: [] },
+  { type: "error", name: "InsufficientBounty", inputs: [] },
+  {
+    type: "function",
+    name: "harvestable",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "harvestBountyRatio",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "harvestCutRatio",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256", internalType: "uint256" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "harvest",
+    inputs: [
+      { name: "bountyReceiver", type: "address", internalType: "address" },
+      { name: "minBounty", type: "uint256", internalType: "uint256" },
+    ],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+] as const;

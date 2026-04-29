@@ -2,6 +2,8 @@
  * Utility functions for the Flow/Map Room page
  */
 
+import { getBlockExplorerAddressUrl } from "@/config/blockExplorers";
+
 export function formatHeartbeat(value?: bigint): string {
   if (value === undefined) return "-";
   const seconds = Number(value);
@@ -42,37 +44,44 @@ export function getTokenFullName(symbol: string): string {
   return tokenNames[symbol.toUpperCase()] || symbol;
 }
 
+const NETWORK_CHAIN_IDS: Record<string, number> = {
+  mainnet: 1,
+  arbitrum: 42161,
+  base: 8453,
+  megaeth: 4326,
+};
+
+/** Explorer address URL for a network (mainnet, arbitrum, base, megaeth). */
+export function getExplorerUrl(
+  address: string,
+  network: "mainnet" | "arbitrum" | "base" | "megaeth"
+): string | undefined {
+  if (!address) return undefined;
+  const chainId = NETWORK_CHAIN_IDS[network] ?? 1;
+  return getBlockExplorerAddressUrl(address, chainId);
+}
+
+/** @deprecated Use getBlockExplorerAddressUrl from @/config/blockExplorers */
 export function etherscanAddressUrl(
   address?: `0x${string}` | string
 ): string | undefined {
   if (!address) return undefined;
-  return `https://etherscan.io/address/${address}`;
+  return getBlockExplorerAddressUrl(address, 1);
 }
 
+/** @deprecated Use getBlockExplorerAddressUrl from @/config/blockExplorers */
 export function arbitrumAddressUrl(
   address?: `0x${string}` | string
 ): string | undefined {
   if (!address) return undefined;
-  return `https://arbiscan.io/address/${address}`;
+  return getBlockExplorerAddressUrl(address, 42161);
 }
 
+/** @deprecated Use getBlockExplorerAddressUrl from @/config/blockExplorers */
 export function baseAddressUrl(
   address?: `0x${string}` | string
 ): string | undefined {
   if (!address) return undefined;
-  return `https://basescan.org/address/${address}`;
-}
-
-export function getExplorerUrl(
-  address: string,
-  network: "mainnet" | "arbitrum" | "base"
-): string | undefined {
-  if (network === "arbitrum") {
-    return arbitrumAddressUrl(address);
-  }
-  if (network === "base") {
-    return baseAddressUrl(address);
-  }
-  return etherscanAddressUrl(address);
+  return getBlockExplorerAddressUrl(address, 8453);
 }
 

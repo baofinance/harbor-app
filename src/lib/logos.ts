@@ -35,6 +35,7 @@ const ICONS: Record<string, string> = {
     bom5: "/icons/stock.svg", // Financial index - using stock icon
     all: "/icons/logo-blue.svg", // "All pools" filter – Harbor logo (blue for visibility on white)
     // Harbor tokens - ha (pegged) tokens
+    hausd: "/icons/haUSD_1.png",
     haeth: "/icons/haETH.png",
     habtc: "/icons/haBTC.png",
     haeur: "/icons/haEUR.png",
@@ -44,6 +45,12 @@ const ICONS: Record<string, string> = {
     hsfxusdeth: "/icons/hsUSDETH.png",
     "hsfxusd-btc": "/icons/hsUSDBTC.png",
     hsfxusdbtc: "/icons/hsUSDBTC.png",
+    // haUSD markets (e.g. MegaETH) - pegged haUSD + sail tokens
+    "hsusd-btc": "/icons/hsUSD_BTC.png",
+    "hsusd-eth": "/icons/hsUSD_ETH.png",
+    "hsusd-wsteth": "/icons/hsUSD_ETH.png",
+    "hsusd-steth": "/icons/hsUSD_ETH.png",
+    "hsusd-xau": "/icons/hsUSD_XAU.png",
     "hssteth-btc": "/icons/hsETHBTC.png",
     hsstethbtc: "/icons/hsETHBTC.png",
     "hssteth-eur": "/icons/hsSTETHEUR.png",
@@ -55,11 +62,19 @@ const ICONS: Record<string, string> = {
 
 const STOCK_TICKERS = ["aapl", "amzn", "googl", "meta", "msft", "nvda", "spy", "tsla"];
 
+function normalizeSymbolKey(symbol: string): string {
+    return symbol.toLowerCase().trim();
+}
+
 export function getLogoPath(symbol: string): string {
-    const key = symbol.toLowerCase();
+    const key = normalizeSymbolKey(symbol);
+    const compactKey = key.replace(/[\s._/:-]+/g, "");
 
     if (ICONS[key]) {
         return ICONS[key];
+    }
+    if (ICONS[compactKey]) {
+        return ICONS[compactKey];
     }
 
     // Harbor tokens - ha (pegged) tokens fallback
@@ -69,6 +84,16 @@ export function getLogoPath(symbol: string): string {
     
     // Harbor tokens - hs (leveraged) tokens fallback
     if (key.startsWith("hs")) {
+        // Prefer market-specific hs icons when symbol format varies
+        // (e.g. hsUSD-BTC.b, hsUSD_BTC, hsUSDBTC, etc.)
+        if (compactKey.includes("btc")) return "/icons/hsUSD_BTC.png";
+        if (compactKey.includes("wsteth") || compactKey.includes("steth")) {
+            return "/icons/hsUSD_ETH.png";
+        }
+        if (compactKey.includes("xau") || compactKey.includes("gold")) {
+            return "/icons/hsUSD_XAU.png";
+        }
+        if (compactKey.includes("eth")) return "/icons/hsUSD_ETH.png";
         return "/icons/hsUSDETH.png"; // Fallback for other hs tokens
     }
 

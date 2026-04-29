@@ -44,7 +44,7 @@ export default function AnchorTokenPage() {
   const collateralSymbol = tokenMarket?.collateral?.symbol || "fxSAVE";
 
   return (
-    <div className="min-h-screen text-white max-w-[1300px] mx-auto font-sans relative">
+    <div className="flex min-h-0 flex-1 flex-col text-white max-w-[1300px] mx-auto font-sans relative w-full">
       <main className="container mx-auto px-4 sm:px-10 pb-10">
         <div className="mb-4">
           <div className="p-4 flex items-center justify-center mb-0">

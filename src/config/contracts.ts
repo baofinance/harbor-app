@@ -117,7 +117,7 @@ const productionMarkets: Markets = {
   // ============================================================================
   "eth-fxusd": {
     id: "eth-fxusd",
-    name: "ETH/fxUSD",
+    name: "fxUSD - ETH",
     description: "ETH pegged to fxUSD collateral",
     startBlock: 24049488,
     addresses: {
@@ -165,7 +165,7 @@ const productionMarkets: Markets = {
   // ============================================================================
   "btc-fxusd": {
     id: "btc-fxusd",
-    name: "BTC/fxUSD",
+    name: "fxUSD - BTC",
     description: "BTC pegged to fxUSD collateral",
     startBlock: 24049375,
     addresses: {
@@ -213,7 +213,7 @@ const productionMarkets: Markets = {
   // ============================================================================
   "btc-steth": {
     id: "btc-steth",
-    name: "BTC/stETH",
+    name: "stETH - BTC",
     description: "BTC pegged to stETH collateral",
     startBlock: 24049273,
     addresses: {
@@ -259,7 +259,7 @@ const productionMarkets: Markets = {
   // ============================================================================
   "fxusd-gold": {
     id: "fxusd-gold",
-    name: "fxUSD/GOLD",
+    name: "fxUSD - GOLD",
     description: "fxUSD pegged to GOLD collateral",
     startBlock: 0, // Placeholder - will be updated when deployed
     addresses: {
@@ -302,7 +302,7 @@ const productionMarkets: Markets = {
   },
   "steth-gold": {
     id: "steth-gold",
-    name: "stETH/GOLD",
+    name: "stETH - GOLD",
     description: "stETH pegged to GOLD collateral",
     startBlock: 0, // Placeholder - will be updated when deployed
     addresses: {
@@ -345,7 +345,7 @@ const productionMarkets: Markets = {
   },
   "steth-eur": {
     id: "steth-eur",
-    name: "stETH/EUR",
+    name: "stETH - EUR",
     description: "stETH pegged to EUR collateral",
     startBlock: 24271147, // Current block when markets added
     addresses: {
@@ -388,7 +388,7 @@ const productionMarkets: Markets = {
   },
   "fxusd-eur": {
     id: "fxusd-eur",
-    name: "fxUSD/EUR",
+    name: "fxUSD - EUR",
     description: "fxUSD pegged to EUR collateral",
     startBlock: 24271147, // Current block when markets added
     addresses: {
@@ -432,7 +432,7 @@ const productionMarkets: Markets = {
   },
   "steth-mcap": {
     id: "steth-mcap",
-    name: "stETH/MCAP",
+    name: "stETH - MCAP",
     description: "stETH pegged to MCAP collateral",
     startBlock: 0, // Placeholder - will be updated when deployed
     addresses: {
@@ -472,7 +472,7 @@ const productionMarkets: Markets = {
   },
   "fxusd-mcap": {
     id: "fxusd-mcap",
-    name: "fxUSD/MCAP",
+    name: "fxUSD - MCAP",
     description: "fxUSD pegged to MCAP collateral",
     startBlock: 0, // Placeholder - will be updated when deployed
     addresses: {
@@ -512,7 +512,7 @@ const productionMarkets: Markets = {
   },
   "fxusd-silver": {
     id: "fxusd-silver",
-    name: "fxUSD/SILVER",
+    name: "fxUSD - SILVER",
     description: "fxUSD pegged to SILVER collateral",
     startBlock: 0, // Placeholder - will be updated when deployed
     addresses: {
@@ -555,7 +555,7 @@ const productionMarkets: Markets = {
   },
   "steth-silver": {
     id: "steth-silver",
-    name: "stETH/SILVER",
+    name: "stETH - SILVER",
     description: "stETH pegged to SILVER collateral",
     startBlock: 0, // Placeholder - will be updated when deployed
     addresses: {

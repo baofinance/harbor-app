@@ -9,6 +9,8 @@ export interface DepositModalTabHeaderProps {
   activeTab: string;
   onTabChange: (value: string) => void;
   disabled?: boolean;
+  /** Per-tab disable (e.g. Genesis: deposit when ended, withdraw when no balance) */
+  tabDisabled?: Partial<Record<string, boolean>>;
 }
 
 /**
@@ -19,15 +21,16 @@ export function DepositModalTabHeader({
   activeTab,
   onTabChange,
   disabled = false,
+  tabDisabled,
 }: DepositModalTabHeaderProps) {
   return (
-    <div className="flex flex-1 mr-2 sm:mr-4 border border-[#1E4775]/20 border-b-0 overflow-hidden">
+    <div className="flex flex-1 mr-2 sm:mr-4 overflow-hidden rounded-t-md border border-[#1E4775]/20 border-b-0">
       {tabs.map(({ value, label }) => (
         <button
           key={value}
           onClick={() => onTabChange(value)}
-          disabled={disabled}
-          className={`flex-1 py-2 sm:py-3 text-sm sm:text-base font-semibold transition-colors touch-target ${
+          disabled={disabled || tabDisabled?.[value]}
+          className={`flex-1 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold transition-colors touch-target ${
             activeTab === value
               ? "bg-[#1E4775] text-white"
               : "bg-[#eef1f7] text-[#4b5a78]"

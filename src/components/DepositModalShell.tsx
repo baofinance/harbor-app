@@ -1,18 +1,19 @@
 "use client";
 
 import React from "react";
+import { cn } from "@/lib/utils";
 
 export interface DepositModalShellProps {
   isOpen: boolean;
   onClose: () => void;
-  /** Optional protocol banner above header (e.g. Sail/Anchor blue bar with token icon) */
+  /** Optional protocol row above tabs (Sail/Anchor/Genesis title + tokens) */
   banner?: React.ReactNode;
   /** Header content (title, tabs, etc.). Close button is auto-added on the right. */
   header: React.ReactNode;
   children: React.ReactNode;
   /** Disable close button (e.g. during tx processing) */
   closeDisabled?: boolean;
-  /** Extra classes for the panel (e.g. rounded-none, max-h-[90vh], flex flex-col) */
+  /** Extra classes for the panel (e.g. max-h-[90vh], flex flex-col). Base includes rounded-xl + border. */
   panelClassName?: string;
   /** Extra classes for the content area */
   contentClassName?: string;
@@ -25,6 +26,10 @@ export interface DepositModalShellProps {
 /**
  * Shared modal shell for Genesis, Sail, and Anchor deposit/manage modals.
  * Provides: overlay, backdrop, panel, optional protocol banner, header + close button, content area.
+ *
+ * All modal chrome (outer radius, banner slot, tab row spacing, white strip) should live here only—
+ * individual modals pass `header`, `banner`, and optional `panelClassName` / `contentClassName` but
+ * should not reimplement the frame.
  */
 export function DepositModalShell({
   isOpen,
@@ -49,11 +54,30 @@ export function DepositModalShell({
       />
 
       <div
-        className={`relative bg-white shadow-2xl w-full max-w-md mx-2 sm:mx-4 animate-in fade-in-0 scale-in-95 duration-200 overflow-hidden ${panelClassName}`}
+        className={cn(
+          "relative isolate bg-white shadow-2xl w-full max-w-md mx-2 sm:mx-4 animate-in fade-in-0 scale-in-95 duration-200 border-x border-b border-[#1E4775]/20",
+          panelClassName,
+          /* Ensure consumers cannot strip outer rounding (tw-merge: last wins for conflicting utilities) */
+          "overflow-hidden rounded-xl",
+        )}
       >
-        {banner}
+        {/* Protocol row — light bar (see ProtocolBanner); no dark fill so nothing bleeds into the tab strip */}
+        {banner ? (
+          <div className="relative z-10 shrink-0 overflow-hidden rounded-t-xl border-b border-[#1E4775]/15 bg-white">
+            {banner}
+          </div>
+        ) : null}
 
-        <div className={`flex items-center justify-between border-b border-[#1E4775]/20 ${headerClassName || "p-0 pt-2 sm:pt-3 px-2 sm:px-3"}`}>
+        <div
+          className={cn(
+            "relative z-20 flex w-full items-center justify-between border-b border-[#1E4775]/20",
+            banner && "bg-white",
+            headerClassName ||
+              (banner
+                ? "pt-1.5 sm:pt-2 pb-0 pl-[5px] pr-2 sm:pr-3"
+                : "p-0 pt-2 sm:pt-3 px-2 sm:px-3"),
+          )}
+        >
           <div className="flex-1 mr-2 sm:mr-4 min-w-0">{header}</div>
           <button
             onClick={onClose}

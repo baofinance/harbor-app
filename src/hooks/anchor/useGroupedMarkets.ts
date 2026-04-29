@@ -1,10 +1,12 @@
 import { useMemo } from "react";
+import type { DefinedMarket } from "@/config/markets";
+import type { AnchorContractReads, AnchorMarketTuple } from "@/types/anchor";
 
 export type GroupedMarket = {
   symbol: string;
-  markets: Array<{ marketId: string; market: any; marketIndex: number }>;
+  markets: Array<{ marketId: string; market: DefinedMarket; marketIndex: number }>;
   bestMarketId: string;
-  bestMarket: any;
+  bestMarket: DefinedMarket;
   bestMarketIndex: number;
   bestPoolType: "collateral" | "sail";
   combinedAPR: number;
@@ -24,8 +26,8 @@ export type GroupedMarket = {
  * @returns Array of grouped market data or null if reads not available
  */
 export function useGroupedMarkets(
-  anchorMarkets: Array<[string, any]>,
-  reads: any,
+  anchorMarkets: AnchorMarketTuple[],
+  reads: AnchorContractReads,
   marketPositions: Record<string, any>
 ): GroupedMarket[] | null {
   return useMemo(() => {
@@ -35,7 +37,7 @@ export function useGroupedMarkets(
       string,
       Array<{
         marketId: string;
-        market: any;
+        market: DefinedMarket;
         marketIndex: number;
       }>
     > = {};

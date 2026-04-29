@@ -12,20 +12,20 @@ export type FeedEntry = {
 export const feeds = {
     mainnet: {
         fxUSD: [
-            { label: "fxUSD/ETH", address: "0x78D74eA76Fbfd476A06c1678dC89c025595c8536" as const, status: "active" as const },
-            { label: "fxUSD/BTC", address: "0x9f62503D61cdA530216ad46c1d239258bd201034" as const, status: "active" as const },
-            { label: "fxUSD/EUR", address: "0x8f6F9C8af44f5f15a18d0fa93B5814a623Fa6353" as const, status: "available" as const },
-            { label: "fxUSD/GOLD", address: "0x4be4501336130E61e5872cB953e886a3a84D34Cc" as const, status: "available" as const },
-            { label: "fxUSD/MCAP", address: "0x63d961913cd855f5f8C8cA7cDC22771abA3326FE" as const, status: "available" as const },
-            { label: "fxUSD/SILVER", address: "0xD59a1c8D1fa8f3FAE1E1f835E243A7BFb6173f91" as const, status: "available" as const },
+            { label: "fxUSD - ETH", address: "0x78D74eA76Fbfd476A06c1678dC89c025595c8536" as const, status: "active" as const },
+            { label: "fxUSD - BTC", address: "0x9f62503D61cdA530216ad46c1d239258bd201034" as const, status: "active" as const },
+            { label: "fxUSD - EUR", address: "0x8f6F9C8af44f5f15a18d0fa93B5814a623Fa6353" as const, status: "available" as const },
+            { label: "fxUSD - GOLD", address: "0x4be4501336130E61e5872cB953e886a3a84D34Cc" as const, status: "available" as const },
+            { label: "fxUSD - MCAP", address: "0x63d961913cd855f5f8C8cA7cDC22771abA3326FE" as const, status: "available" as const },
+            { label: "fxUSD - SILVER", address: "0xD59a1c8D1fa8f3FAE1E1f835E243A7BFb6173f91" as const, status: "available" as const },
         ],
 
         stETH: [
-            { label: "stETH/BTC", address: "0xC52B9C4eB5139E817e625290874c1CeBD44b2f6A" as const, status: "active" as const },
-            { label: "stETH/EUR", address: "0x6Daab5e7999D634ae849c30658B17D0e94f0f965" as const, status: "available" as const },
-            { label: "stETH/GOLD", address: "0x863C1185470b3D2d3E9D5FbB82e7837de081F46c" as const, status: "available" as const },
-            { label: "stETH/MCAP", address: "0x6B5A6950f7f2b380c33aF81dbbD7DA31caaFEA63" as const, status: "available" as const },
-            { label: "stETH/SILVER", address: "0xE0Ba50991B891df0f0F92d06127B43314a5e427d" as const, status: "available" as const },
+            { label: "stETH - BTC", address: "0xC52B9C4eB5139E817e625290874c1CeBD44b2f6A" as const, status: "active" as const },
+            { label: "stETH - EUR", address: "0x6Daab5e7999D634ae849c30658B17D0e94f0f965" as const, status: "available" as const },
+            { label: "stETH - GOLD", address: "0x863C1185470b3D2d3E9D5FbB82e7837de081F46c" as const, status: "available" as const },
+            { label: "stETH - MCAP", address: "0x6B5A6950f7f2b380c33aF81dbbD7DA31caaFEA63" as const, status: "available" as const },
+            { label: "stETH - SILVER", address: "0xE0Ba50991B891df0f0F92d06127B43314a5e427d" as const, status: "available" as const },
         ],
         USDE: [],
     },
@@ -63,6 +63,17 @@ export const feeds = {
         USDE: [],
         stETH: [
             { label: "stETH/BOM5", address: "0x2877330d6fbA9BC0299588BcBaf16bA42d12b05a" as const, status: "available" as const },
+        ],
+    },
+
+    megaeth: {
+        fxUSD: [
+            { label: "USDMY/BTC", address: "0xD150d2523120559C4a26C288B749D224427A5D28" as const, status: "active" as const },
+            { label: "USDMY/ETH", address: "0x45e4a5E934Cc199E1643A1dC05f5b25352e73a8B" as const, status: "active" as const },
+        ],
+        USDE: [],
+        stETH: [
+            { label: "wstETH/USD", address: "0x8EDE2Ba210e96f23294063938Bc080aFC8F0BAf1" as const, status: "active" as const },
         ],
     },
 

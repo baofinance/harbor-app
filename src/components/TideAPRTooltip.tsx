@@ -64,7 +64,6 @@ export default function TideAPRTooltip({
       console.log('[TideAPRTooltip] Breakdown values:', {
         depositAPR: aprBreakdown.depositAPR,
         endBonusAPR: aprBreakdown.endBonusAPR,
-        earlyBonusAPR: aprBreakdown.earlyBonusAPR,
         totalAPR: aprBreakdown.totalAPR
       });
     }
@@ -181,12 +180,6 @@ export default function TideAPRTooltip({
                     <span className="text-white/70">End Bonus:</span>
                     <span className="text-white font-medium">
                       {aprBreakdown.endBonusAPR?.toFixed(2) ?? '0.00'}%
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-white/70">Early Bonus:</span>
-                    <span className="text-white font-medium">
-                      {aprBreakdown.earlyBonusAPR?.toFixed(2) ?? '0.00'}%
                     </span>
                   </div>
                   <div className="flex justify-between items-center pt-1 border-t border-white/10">

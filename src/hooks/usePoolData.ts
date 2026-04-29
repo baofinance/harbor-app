@@ -120,7 +120,7 @@ export const usePoolData = (pools: Pool[]) => {
 
       if (rewards && tvlUSD > 0) {
         // Assuming rewards are for a year. This might need adjustment.
-        const rewardsUSD = (Number(rewards) / 1e18) * 1; // Assuming 1 STEAM = $1
+        const rewardsUSD = (Number(rewards) / 1e18) * 1; // Assuming 1 TIDE = $1
         aprBreakdown.collateral = (rewardsUSD / tvlUSD) * 100;
       }
 

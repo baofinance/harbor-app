@@ -68,5 +68,5 @@ echo "Next steps:"
 echo "1. Go to Vercel and import the new repository"
 echo "2. Add environment variable: NEXT_PUBLIC_APP_ENV=staging"
 echo "3. Add custom domain: staging.app.harborfinance.io"
-echo "4. Configure DNS in GoDaddy (see VERCEL_QUICK_START.md)"
+echo "4. Configure DNS in GoDaddy (see docs/VERCEL_QUICK_START.md)"
 

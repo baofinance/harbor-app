@@ -163,7 +163,7 @@ export default function Staking() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-bg-zinc-900/50 to-black text-white font-sans relative max-w-[1300px] mx-auto">
+    <div className="flex min-h-0 flex-1 flex-col bg-gradient-to-b from-bg-zinc-900/50 to-black text-white font-sans relative max-w-[1300px] mx-auto w-full">
       {/* Steam Background */}
       <div className="fixed inset-0 pointer-events-none">
         {/* Large base squares */}

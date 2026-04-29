@@ -12,45 +12,9 @@ import { rewardsABI } from "@/abis/rewards";
 import InfoTooltip from "@/components/InfoTooltip";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import HistoricalDataChart from "@/components/HistoricalDataChart";
+import { EtherscanLink } from "@/components/shared";
 import type { Pool } from "@/config/pools";
 import type { MarketConfig } from "@/config/contracts";
-
-interface EtherscanLinkProps {
-  label: string;
-  address?: string;
-}
-
-function EtherscanLink({ label, address }: EtherscanLinkProps) {
-  if (!address) return null;
-  const etherscanBaseUrl = "https://etherscan.io/address/";
-  return (
-    <div className="flex justify-between items-center text-sm py-2 border-b border-white/10 last:border-b-0">
-      <span className="text-white/70">{label}</span>
-      <a
-        href={`${etherscanBaseUrl}${address}`}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="font-mono text-white hover:underline flex items-center gap-4"
-      >
-        {`${address.slice(0, 6)}...${address.slice(-4)}`}
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          className="h-3 w-3"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-          />
-        </svg>
-      </a>
-    </div>
-  );
-}
 
 function ContractInfoSection({
   pool,
@@ -74,25 +38,42 @@ function ContractInfoSection({
     pool.poolType === "collateral"
       ? market.addresses.collateralToken
       : market.addresses.peggedToken;
+  const chainId = (market as any).chainId ?? 1;
 
   return (
     <div className="p-3 h-full">
       <h2 className="font-semibold font-mono text-white mb-2">Contract Info</h2>
       <div className="divide-y divide-white/10">
-        <EtherscanLink label={pool.name} address={pool.address} />
+        <EtherscanLink
+          label={pool.name}
+          address={pool.address}
+          chainId={chainId}
+          className="!border-white/10 !py-2 [&_span]:!text-white/70 [&_a]:!text-white"
+        />
         <EtherscanLink
           label={`Deposit Token (${pool.tokenSymbol})`}
           address={assetAddress}
+          chainId={chainId}
+          className="!border-white/10 !py-2 [&_span]:!text-white/70 [&_a]:!text-white"
         />
         <EtherscanLink
           label="Collateral Token"
           address={market.addresses.collateralToken}
+          chainId={chainId}
+          className="!border-white/10 !py-2 [&_span]:!text-white/70 [&_a]:!text-white"
         />
         <EtherscanLink
           label="Pegged Token"
           address={market.addresses.peggedToken}
+          chainId={chainId}
+          className="!border-white/10 !py-2 [&_span]:!text-white/70 [&_a]:!text-white"
         />
-        <EtherscanLink label="Minter" address={market.addresses.minter} />
+        <EtherscanLink
+          label="Minter"
+          address={market.addresses.minter}
+          chainId={chainId}
+          className="!border-white/10 !py-2 [&_span]:!text-white/70 [&_a]:!text-white"
+        />
       </div>
     </div>
   );
@@ -304,7 +285,7 @@ function RewardsTab({
       <div>
         <p className="text-xs text-white/60 mb-1">Claimable Rewards</p>
         <p className="text-lg font-medium text-white font-mono">
-          {formatAmount(poolWithData?.rewards)} STEAM
+          {formatAmount(poolWithData?.rewards)} TIDE
         </p>
       </div>
       {error && <p className="text-sm text-rose-400">{error}</p>}
@@ -633,7 +614,7 @@ export default function PoolClient({ marketId, poolType }: PoolClientProps) {
 
   if (!pool) {
     return (
-      <div className="min-h-screen text-white max-w-[1300px] mx-auto font-sans relative px-4 sm:px-10">
+      <div className="flex min-h-0 flex-1 flex-col text-white max-w-[1300px] mx-auto font-sans relative px-4 sm:px-10 w-full">
         <main className="container mx-auto max-w-full pb-10 relative z-10">
           <div className="text-center">
             <h1 className="text-3xl text-white font-semibold font-mono">
@@ -646,7 +627,7 @@ export default function PoolClient({ marketId, poolType }: PoolClientProps) {
   }
 
   return (
-    <div className="min-h-screen text-white max-w-[1300px] mx-auto font-sans relative px-4 sm:px-10">
+    <div className="flex min-h-0 flex-1 flex-col text-white max-w-[1300px] mx-auto font-sans relative px-4 sm:px-10 w-full">
       <main className="container mx-auto max-w-full pb-8 relative z-10">
         {/* Breadcrumb */}
         <div className="mb-3">
@@ -740,7 +721,7 @@ export default function PoolClient({ marketId, poolType }: PoolClientProps) {
             <div className="flex items-center gap-4 mb-1">
               <h3 className="font-semibold font-mono text-white">Boost APR</h3>
               <InfoTooltip
-                label="Additional APR from STEAM boosts."
+                label="Additional APR from TIDE boosts."
                 side="top"
               />
             </div>

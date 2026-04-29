@@ -69,7 +69,7 @@ export const markets: Markets = {
   // ============================================================================
   "eth-fxusd": {
     id: "eth-fxusd",
-    name: "ETH/fxUSD",
+    name: "fxUSD - ETH",
     description: "ETH pegged to fxUSD collateral",
     startBlock: 24025347,
     addresses: {
@@ -118,7 +118,7 @@ export const markets: Markets = {
   // ============================================================================
   "btc-fxusd": {
     id: "btc-fxusd",
-    name: "BTC/fxUSD",
+    name: "fxUSD - BTC",
     description: "BTC pegged to fxUSD collateral",
     startBlock: 24025557,
     addresses: {
@@ -167,7 +167,7 @@ export const markets: Markets = {
   // ============================================================================
   "btc-steth": {
     id: "btc-steth",
-    name: "BTC/stETH",
+    name: "stETH - BTC",
     description: "BTC pegged to stETH collateral",
     startBlock: 24025785,
     addresses: {

@@ -1,4 +1,5 @@
 import { useMemo, useEffect } from "react";
+import type { AnchorMarketTuple } from "@/types/anchor";
 import { useContractReads } from "wagmi";
 import { MINTER_ABI, ERC20_ABI } from "@/abis/shared";
 import { markets } from "@/config/markets";
@@ -31,7 +32,7 @@ type TokenMeta = {
  * @returns Token metadata map and loading state
  */
 export function useAnchorTokenMetadata(
-  anchorMarkets: Array<[string, any]>,
+  anchorMarkets: AnchorMarketTuple[],
   options?: { enabled?: boolean }
 ) {
   const enabledOverride = options?.enabled ?? true;
@@ -41,6 +42,7 @@ export function useAnchorTokenMetadata(
     const meta: TokenAddressMeta[] = [];
 
     anchorMarkets.forEach(([marketId, m]) => {
+      const mktChainId = (m as any)?.chainId ?? 1;
       const minter = (m as any).addresses?.minter as `0x${string}` | undefined;
       if (
         !minter ||
@@ -54,6 +56,7 @@ export function useAnchorTokenMetadata(
         address: minter,
         abi: MINTER_ABI,
         functionName: "PEGGED_TOKEN" as const,
+        chainId: mktChainId,
       });
       meta.push({ marketId, kind: TOKEN_KIND_PEGGED });
 
@@ -61,6 +64,7 @@ export function useAnchorTokenMetadata(
         address: minter,
         abi: MINTER_ABI,
         functionName: "LEVERAGED_TOKEN" as const,
+        chainId: mktChainId,
       });
       meta.push({ marketId, kind: TOKEN_KIND_LEVERAGED });
     });
@@ -73,6 +77,7 @@ export function useAnchorTokenMetadata(
     query: {
       enabled: enabledOverride && tokenAddressContracts.contracts.length > 0,
       staleTime: 300_000, // 5 minutes
+      allowFailure: true,
     },
   });
 
@@ -91,7 +96,11 @@ export function useAnchorTokenMetadata(
     return map;
   }, [tokenAddressContracts.meta, tokenAddressReads]);
 
-  // Step 2: Fetch token symbols and names from ERC20 contracts
+  // Step 2: Fetch token symbols and names from ERC20 contracts (per-market chainId for multi-chain)
+  const marketIdToChainId = useMemo(
+    () => new Map(anchorMarkets.map(([id, m]) => [id, (m as any)?.chainId ?? 1])),
+    [anchorMarkets]
+  );
   const tokenMetaContracts = useMemo(() => {
     const contracts: any[] = [];
     const meta: Array<{
@@ -99,13 +108,16 @@ export function useAnchorTokenMetadata(
       kind: TokenKind;
       field: "symbol" | "name";
     }> = [];
+    const getChainId = (marketId: string) => marketIdToChainId.get(marketId) ?? 1;
 
     tokenAddressesByMarket.forEach((entry, marketId) => {
+      const chainId = getChainId(marketId);
       if (entry.peggedAddress) {
         contracts.push({
           address: entry.peggedAddress,
           abi: ERC20_ABI,
           functionName: "symbol" as const,
+          chainId,
         });
         meta.push({ marketId, kind: TOKEN_KIND_PEGGED, field: "symbol" });
 
@@ -113,6 +125,7 @@ export function useAnchorTokenMetadata(
           address: entry.peggedAddress,
           abi: ERC20_ABI,
           functionName: "name" as const,
+          chainId,
         });
         meta.push({ marketId, kind: TOKEN_KIND_PEGGED, field: "name" });
       }
@@ -122,6 +135,7 @@ export function useAnchorTokenMetadata(
           address: entry.leveragedAddress,
           abi: ERC20_ABI,
           functionName: "symbol" as const,
+          chainId,
         });
         meta.push({ marketId, kind: TOKEN_KIND_LEVERAGED, field: "symbol" });
 
@@ -129,19 +143,21 @@ export function useAnchorTokenMetadata(
           address: entry.leveragedAddress,
           abi: ERC20_ABI,
           functionName: "name" as const,
+          chainId,
         });
         meta.push({ marketId, kind: TOKEN_KIND_LEVERAGED, field: "name" });
       }
     });
 
     return { contracts, meta };
-  }, [tokenAddressesByMarket]);
+  }, [tokenAddressesByMarket, marketIdToChainId]);
 
   const { data: tokenMetaReads } = useContractReads({
     contracts: tokenMetaContracts.contracts,
     query: {
       enabled: tokenMetaContracts.contracts.length > 0,
       staleTime: 300_000,
+      allowFailure: true,
     },
   });
 

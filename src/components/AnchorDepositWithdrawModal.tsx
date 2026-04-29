@@ -9,6 +9,7 @@ import {
 } from "@/utils/formatters";
 import { amountToUSD, getTokenPriceUSD } from "@/utils/tokenPriceToUSD";
 import { REWARD_TOKEN_ADDRESSES } from "@/config/chainlink";
+import { getDepositMode } from "@/utils/depositMode";
 import {
   useAccount,
   useBalance,
@@ -30,7 +31,6 @@ import {
   MINTER_PEGGED_ABI,
 } from "@/abis";
 import { stabilityPoolABI } from "@/abis/stabilityPool";
-import { aprABI } from "@/abis/apr";
 import { ZAP_ABI, USDC_ZAP_ABI, WSTETH_ABI } from "@/abis";
 import { MINTER_ETH_ZAP_V3_ABI } from "@/abis";
 import { MINTER_USDC_ZAP_V3_ABI } from "@/abis";
@@ -65,12 +65,14 @@ import { InfoCallout } from "@/components/InfoCallout";
 import { ErrorBanner } from "@/components/anchor/ErrorBanner";
 import { FeeDisplayRow } from "@/components/anchor/FeeDisplayRow";
 import { getRevertReason } from "@/utils/parseViemRevert";
+import type { DefinedMarket } from "@/config/markets";
+import { anchorAddressByName } from "@/types/anchor";
+import { calculateDeadline } from "@/utils/permit";
 import {
-  calculateDeadline,
-  STETH_ZAP_PERMIT_ABI,
-  STABILITY_POOL_ZAP_ABI,
-  STABILITY_POOL_ZAP_PERMIT_ABI,
-} from "@/utils/permit";
+  DEFAULT_WRAP_LEG_SLIPPAGE_BPS,
+  minWrappedCollateralAfterUnderlyingToWrapped,
+  minWrappedCollateralForEthBaseZap,
+} from "@/utils/minterZapV4";
 
 // -----------------------------------------------------------------------------
 // Debug logging helpers
@@ -89,19 +91,26 @@ interface AnchorDepositWithdrawModalProps {
   isOpen: boolean;
   onClose: () => void;
   marketId: string;
-  market: any;
-  initialTab?: TabType;
+  market: DefinedMarket;
+  /** Parent may pass legacy Sail-style tab names; mapped to deposit/withdraw internally. */
+  initialTab?: InitialTabInput;
   onSuccess?: () => void;
   simpleMode?: boolean;
   bestPoolType?: "collateral" | "sail";
   // For simple mode: all markets for the same ha token
-  allMarkets?: Array<{ marketId: string; market: any }>;
+  allMarkets?: Array<{ marketId: string; market: DefinedMarket }>;
   initialDepositAsset?: string;
   /** Contract-based pool balances (marketId -> collateral/sail). Used for "Your position" in withdraw list when subgraph is empty. */
   positionsMap?: Record<string, { collateralPool: bigint; sailPool: bigint }>;
 }
 
 type TabType = "deposit" | "withdraw";
+type InitialTabInput =
+  | TabType
+  | "mint"
+  | "redeem"
+  | "deposit-mint"
+  | "withdraw-redeem";
 type ModalStep =
   | "input"
   | "approving"
@@ -128,7 +137,7 @@ type TransactionStatus = {
 
 // Helper function to get accepted deposit assets from market config
 function getAcceptedDepositAssets(
-  market: any
+  market: DefinedMarket
 ): Array<{ symbol: string; name: string }> {
   // Use acceptedAssets from market config if available
   if (market?.acceptedAssets && Array.isArray(market.acceptedAssets)) {
@@ -191,9 +200,12 @@ export const AnchorDepositWithdrawModal = ({
   }, [connector]);
 
   const effectiveChainId = walletChainId ?? chainId;
+  const depositMode = getDepositMode(market ?? (effectiveChainId != null ? { chainId: effectiveChainId } : undefined));
+  const { collateralOnly: isCollateralOnlyChain, nativeTokenLabel, isMegaEth } = depositMode;
 
-  // Check if user is on the correct network (mainnet)
-  const isCorrectNetwork = effectiveChainId === mainnet.id;
+  // Target chain for this market (multi-chain: mainnet or e.g. MegaETH 4326)
+  const marketChainId = (market as DefinedMarket & { chainId?: number }).chainId ?? mainnet.id;
+  const isCorrectNetwork = effectiveChainId === marketChainId;
   const shouldShowNetworkSwitch = !isCorrectNetwork && isConnected;
 
   const handleTxError = useCallback((msg: string) => {
@@ -204,9 +216,8 @@ export const AnchorDepositWithdrawModal = ({
   // Function to handle network switching (manual trigger from UI)
   const handleSwitchNetwork = async () => {
     try {
-      await switchChain({ chainId: mainnet.id });
+      await switchChain({ chainId: marketChainId });
       setError(null);
-      // Best-effort refresh from connector
       if (connector?.getChainId) {
         const id = await connector.getChainId();
         setWalletChainId(id);
@@ -214,13 +225,12 @@ export const AnchorDepositWithdrawModal = ({
     } catch (err) {
       console.error("[Network Switch] Error:", err);
       handleTxError(
-        "Failed to switch network. Please switch to Ethereum Mainnet manually in your wallet."
+        `Failed to switch network. Please switch to the correct network (${marketChainId === 4326 ? "MegaETH" : "Ethereum Mainnet"}) in your wallet.`
       );
     }
   };
 
-  // Helper function to ensure we're on the correct network before any transaction.
-  // Auto-attempts to switch to mainnet, and only proceeds if the switch succeeds.
+  // Ensure we're on the market's chain before any transaction (multi-chain support).
   const ensureCorrectNetwork = async (): Promise<boolean> => {
     if (!isConnected) return true;
 
@@ -232,11 +242,10 @@ export const AnchorDepositWithdrawModal = ({
     }
 
     const chainToCheck = currentWalletChainId ?? effectiveChainId;
-    if (chainToCheck === mainnet.id) return true;
+    if (chainToCheck === marketChainId) return true;
 
     try {
-      await switchChain({ chainId: mainnet.id });
-      // Best-effort refresh from connector
+      await switchChain({ chainId: marketChainId });
       if (connector?.getChainId) {
         const id = await connector.getChainId();
         setWalletChainId(id);
@@ -246,7 +255,9 @@ export const AnchorDepositWithdrawModal = ({
       if (process.env.NODE_ENV === "development") {
         console.warn("[Network] Auto switch rejected/failed:", err);
       }
-      handleTxError("Please switch to Ethereum Mainnet to continue.");
+      handleTxError(
+        `Please switch to ${marketChainId === 4326 ? "MegaETH" : "Ethereum Mainnet"} to continue.`
+      );
       return false;
     }
   };
@@ -1206,15 +1217,15 @@ export const AnchorDepositWithdrawModal = ({
     }));
   }, [allDepositAssetsWithMarkets]);
 
-  // Dropdown deposit assets (no estimated fees shown)
+  // Dropdown deposit assets (no estimated fees shown). Non-mainnet: collateral only, no "any token".
   const depositAssetsForDropdown = useMemo(() => {
     let result = allDepositAssetsWithMarkets.map((asset) => ({
       ...asset,
       isUserToken: false,
     }));
 
-    // Merge with "any token" assets from user's wallet
-    if (anyTokenDeposit.allAvailableAssets.length > 0) {
+    // Merge with "any token" assets from user's wallet (mainnet only)
+    if (!isCollateralOnlyChain && anyTokenDeposit.allAvailableAssets.length > 0) {
       const existingSymbols = new Set(result.map((a) => a.symbol.toUpperCase()));
 
       anyTokenDeposit.allAvailableAssets.forEach((token) => {
@@ -1238,6 +1249,7 @@ export const AnchorDepositWithdrawModal = ({
     anyTokenDeposit.allAvailableAssets,
     selectedMarketId,
     selectedMarket,
+    isCollateralOnlyChain,
   ]);
 
   // Calculate fees for each market separately (for showing per-market fees)
@@ -1572,9 +1584,10 @@ export const AnchorDepositWithdrawModal = ({
   const isSelectedAssetNativeETH =
     selectedDepositAsset?.toLowerCase() === "eth";
 
-  // Get native ETH balance (for ETH deposits)
+  // Get native ETH balance (for ETH deposits) — read on market's chain so modal shows correct chain balance
   const { data: nativeBalanceData } = useBalance({
     address: address,
+    chainId: marketChainId,
     query: {
       enabled:
         !!address &&
@@ -1620,6 +1633,7 @@ export const AnchorDepositWithdrawModal = ({
     abi: ERC20_ABI,
     functionName: "balanceOf",
     args: address ? [address] : undefined,
+    chainId: marketChainId,
     query: {
       enabled:
         !!address &&
@@ -1726,12 +1740,13 @@ export const AnchorDepositWithdrawModal = ({
     activeTab,
   ]);
 
-  // Contract read hooks - collateral balance for mint (only when not using ha token directly)
+  // Contract read hooks - collateral balance for mint (only when not using ha token directly) — market's chain
   const { data: collateralBalanceData } = useContractRead({
     address: collateralAddress as `0x${string}`,
     abi: ERC20_ABI,
     functionName: "balanceOf",
     args: address ? [address] : undefined,
+    chainId: marketChainId,
     query: {
       enabled:
         !!address &&
@@ -1810,6 +1825,7 @@ export const AnchorDepositWithdrawModal = ({
     abi: ERC20_ABI,
     functionName: "balanceOf",
     args: address ? [address] : undefined,
+    chainId: marketChainId,
     query: {
       enabled:
         !!address &&
@@ -1891,6 +1907,7 @@ export const AnchorDepositWithdrawModal = ({
     abi: ERC20_ABI,
     functionName: "balanceOf",
     args: address ? [address] : undefined,
+    chainId: marketChainId,
     query: {
       enabled:
         !!address &&
@@ -2581,15 +2598,6 @@ export const AnchorDepositWithdrawModal = ({
         pool.address.length === 42;
 
       if (isValidAddress) {
-        // APR
-        contracts.push({
-          address: pool.address,
-          abi: aprABI,
-          functionName: "getAPRBreakdown",
-          args: address
-            ? [address as `0x${string}`]
-            : ["0x0000000000000000000000000000000000000000"],
-        });
         // TVL
         contracts.push({
           address: pool.address,
@@ -2622,7 +2630,7 @@ export const AnchorDepositWithdrawModal = ({
     },
   });
 
-  // Map pool data to pools (4 reads per pool: APR, TVL, gaugeRewardToken, liquidationToken)
+  // Map pool data to pools (3 reads per pool: TVL, gaugeRewardToken, liquidationToken). APR = emission fallback below.
   const poolsWithData = useMemo(() => {
     if (!allPoolData || allPoolData.length === 0) {
       if (isOpen && simpleMode) {
@@ -2641,27 +2649,8 @@ export const AnchorDepositWithdrawModal = ({
       }));
     }
 
-    const extractAprBreakdown = (
-      val: unknown
-    ): { collateral: bigint; steam: bigint } | null => {
-      if (!val) return null;
-      // viem can return tuples as arrays, named objects, or array-like objects with named keys.
-      if (Array.isArray(val) && val.length >= 2) {
-        const a = val[0];
-        const b = val[1];
-        if (typeof a === "bigint" && typeof b === "bigint") return { collateral: a, steam: b };
-      }
-      if (typeof val === "object") {
-        const v: any = val as any;
-        const a = v.collateralTokenAPR ?? v[0];
-        const b = v.steamTokenAPR ?? v[1];
-        if (typeof a === "bigint" && typeof b === "bigint") return { collateral: a, steam: b };
-      }
-      return null;
-    };
-
     // IMPORTANT: poolContracts only includes reads for *valid* pool addresses.
-    // So we must advance through allPoolData with a cursor, not by index*4.
+    // So we must advance through allPoolData with a cursor, not by index*3.
     let cursor = 0;
     return allStabilityPools.map((pool) => {
       const isValidAddress =
@@ -2679,25 +2668,18 @@ export const AnchorDepositWithdrawModal = ({
         };
       }
 
-      const aprBreakdown = extractAprBreakdown(allPoolData[cursor]?.result);
-      const tvl = allPoolData[cursor + 1]?.result as bigint | undefined;
-      const gaugeRewardToken = allPoolData[cursor + 2]?.result as
+      const tvl = allPoolData[cursor]?.result as bigint | undefined;
+      const gaugeRewardToken = allPoolData[cursor + 1]?.result as
         | `0x${string}`
         | undefined;
-      const liquidationToken = allPoolData[cursor + 3]?.result as
+      const liquidationToken = allPoolData[cursor + 2]?.result as
         | `0x${string}`
         | undefined;
-      cursor += 4;
-
-      const apr =
-        aprBreakdown
-          ? (Number(aprBreakdown.collateral) / 1e16) * 100 +
-            (Number(aprBreakdown.steam) / 1e16) * 100
-          : undefined;
+      cursor += 3;
 
       return {
         ...pool,
-        apr,
+        apr: undefined,
         tvl,
         gaugeRewardToken,
         liquidationToken,
@@ -2706,8 +2688,7 @@ export const AnchorDepositWithdrawModal = ({
   }, [allPoolData, allStabilityPools, isOpen, simpleMode]);
 
   // ---------------------------------------------------------------------------
-  // APR fallback: compute APR from reward emission rates if getAPRBreakdown fails.
-  // This fixes "APR: ..." in the stability pool selector while TVL loads fine.
+  // Pool APR: emission-based (deployed StabilityPool has no getAPRBreakdown view).
   // ---------------------------------------------------------------------------
   const rewardTokenUsdPriceMap = useMemo(() => {
     const map = new Map<string, number>();
@@ -2990,26 +2971,49 @@ export const AnchorDepositWithdrawModal = ({
     );
   }, [poolsWithSymbols, selectedRewardToken]);
 
-  // Get APR for selected stability pool (advanced mode)
+  // APR for selected stability pool (advanced): emission from rewardData(wrapped collateral) + TVL USD
   const isValidStabilityPoolAddress =
     stabilityPoolAddress &&
     typeof stabilityPoolAddress === "string" &&
     stabilityPoolAddress.startsWith("0x") &&
     stabilityPoolAddress.length === 42;
-  const { data: aprData } = useContractRead({
-    address: isValidStabilityPoolAddress ? stabilityPoolAddress : undefined,
-    abi: aprABI,
-    functionName: "getAPRBreakdown",
-    args: address
-      ? [address as `0x${string}`]
-      : ["0x0000000000000000000000000000000000000000"],
+
+  const wrappedForAdvancedApr = selectedMarket?.addresses
+    ?.wrappedCollateralToken as `0x${string}` | undefined;
+  const advAprWrappedOk =
+    !!wrappedForAdvancedApr &&
+    wrappedForAdvancedApr.startsWith("0x") &&
+    wrappedForAdvancedApr.length === 42;
+
+  const advancedStabilityPoolAprReadsEnabled =
+    !!isValidStabilityPoolAddress &&
+    advAprWrappedOk &&
+    isOpen &&
+    !simpleMode &&
+    ((activeTab === "deposit" && depositInStabilityPool) ||
+      activeTab === "deposit");
+
+  const { data: advancedStabilityPoolAprReads } = useContractReads({
+    contracts:
+      advancedStabilityPoolAprReadsEnabled &&
+      stabilityPoolAddress &&
+      wrappedForAdvancedApr
+        ? [
+            {
+              address: stabilityPoolAddress as `0x${string}`,
+              abi: STABILITY_POOL_ABI,
+              functionName: "totalAssetSupply",
+            },
+            {
+              address: stabilityPoolAddress as `0x${string}`,
+              abi: STABILITY_POOL_ABI,
+              functionName: "rewardData",
+              args: [wrappedForAdvancedApr],
+            },
+          ]
+        : [],
     query: {
-      enabled:
-        !!isValidStabilityPoolAddress &&
-        isOpen &&
-        !simpleMode &&
-        ((activeTab === "deposit" && depositInStabilityPool) ||
-          activeTab === "deposit"),
+      enabled: advancedStabilityPoolAprReadsEnabled,
       refetchInterval: 30000,
       retry: 1,
       allowFailure: true,
@@ -3024,13 +3028,59 @@ export const AnchorDepositWithdrawModal = ({
     return `${apr.toFixed(2)}%`;
   };
 
-  // Calculate total APR from breakdown
-  const stabilityPoolAPR =
-    aprData && Array.isArray(aprData) && aprData.length >= 2
-      ? (Number(aprData[0]) / 1e16) * 100 + (Number(aprData[1]) / 1e16) * 100
-      : 0;
+  const stabilityPoolAPR = useMemo(() => {
+    if (
+      !advancedStabilityPoolAprReadsEnabled ||
+      !advancedStabilityPoolAprReads?.length
+    ) {
+      return 0;
+    }
+    const tvlRead = advancedStabilityPoolAprReads[0];
+    const rdRead = advancedStabilityPoolAprReads[1];
+    if (
+      tvlRead?.status !== "success" ||
+      rdRead?.status !== "success" ||
+      tvlRead.result === undefined ||
+      rdRead.result === undefined
+    ) {
+      return 0;
+    }
+    const tvl = tvlRead.result as bigint;
+    const tuple = rdRead.result as readonly [bigint, bigint, bigint, bigint];
+    const rate = tuple[2];
+    if (tvl <= 0n || rate <= 0n) return 0;
+    if (!peggedTokenPrice || (peggedTokenPrice as bigint) <= 0n || pegTargetUsdWei <= 0n)
+      return 0;
+    const tvlUsdWei =
+      (tvl * (peggedTokenPrice as bigint) * pegTargetUsdWei) / 10n ** 36n;
+    const tvlUsd = parseFloat(formatUnits(tvlUsdWei, 18));
+    if (!Number.isFinite(tvlUsd) || tvlUsd <= 0) return 0;
+    const tokenKey = (wrappedForAdvancedApr as string).toLowerCase();
+    const rewardUsd = new Map<string, number>();
+    if (fxSAVEPrice && fxSAVEPrice > 0)
+      rewardUsd.set(REWARD_TOKEN_ADDRESSES.FXSAVE.toLowerCase(), fxSAVEPrice);
+    if (wstETHPrice && wstETHPrice > 0)
+      rewardUsd.set(REWARD_TOKEN_ADDRESSES.WSTETH.toLowerCase(), wstETHPrice);
+    if (stETHPrice && stETHPrice > 0)
+      rewardUsd.set(REWARD_TOKEN_ADDRESSES.STETH.toLowerCase(), stETHPrice);
+    const tokenPriceUsd = rewardUsd.get(tokenKey);
+    if (!tokenPriceUsd || tokenPriceUsd <= 0) return 0;
+    const SECONDS_PER_YEAR = 365 * 24 * 60 * 60;
+    const annualRewardsTokens = (Number(rate) * SECONDS_PER_YEAR) / 1e18;
+    const annualRewardsUsd = annualRewardsTokens * tokenPriceUsd;
+    return (annualRewardsUsd / tvlUsd) * 100;
+  }, [
+    advancedStabilityPoolAprReadsEnabled,
+    advancedStabilityPoolAprReads,
+    wrappedForAdvancedApr,
+    peggedTokenPrice,
+    pegTargetUsdWei,
+    fxSAVEPrice,
+    wstETHPrice,
+    stETHPrice,
+  ]);
 
-  // Check allowance for collateral to minter (for mint tab)
+  // Check allowance for collateral to minter (for mint tab) — market's chain
   const { data: allowanceData, refetch: refetchAllowance } = useContractRead({
     address: collateralAddress as `0x${string}`,
     abi: ERC20_ABI,
@@ -3039,6 +3089,7 @@ export const AnchorDepositWithdrawModal = ({
       address && minterAddress
         ? [address, minterAddress as `0x${string}`]
         : undefined,
+    chainId: marketChainId,
     query: {
       enabled:
         !!address &&
@@ -3909,6 +3960,44 @@ export const AnchorDepositWithdrawModal = ({
   const tempWarningTimerRef = useRef<NodeJS.Timeout | null>(null);
   const lastAdjustedAmountRef = useRef<string | null>(null);
 
+  /** Simple-mode deposit: clear amount, tx/progress, pool/reward picks; keep selected deposit token. */
+  const resetSimpleDepositFlowKeepToken = () => {
+    setAmount("");
+    anyTokenDeposit.setAmount("");
+    setStep("input");
+    setError(null);
+    setTxHash(null);
+    setTxHashes({});
+    setCurrentStep(1);
+    setSelectedRewardToken(null);
+    setSelectedStabilityPool(null);
+    setDepositInStabilityPool(false);
+    setDepositLimitWarning(null);
+    lastAdjustedAmountRef.current = null;
+    progress.reset();
+    setProgressConfig({ ...defaultProgressConfig });
+    setTempMaxWarning((prev) => {
+      if (prev && tempWarningTimerRef.current) {
+        clearTimeout(tempWarningTimerRef.current);
+        tempWarningTimerRef.current = null;
+      }
+      return null;
+    });
+  };
+
+  /** From stability-pool step back to reward-token step: clear pool + tx state; keep amount & reward token. */
+  const leaveStabilityPoolStepToReward = () => {
+    setStep("input");
+    setError(null);
+    setTxHash(null);
+    setTxHashes({});
+    setSelectedStabilityPool(null);
+    setDepositInStabilityPool(false);
+    progress.reset();
+    setProgressConfig({ ...defaultProgressConfig });
+    setCurrentStep(2);
+  };
+
   // Helper function to calculate max acceptable amount for swap deposits
   const calculateMaxSwapAmount = useMemo(() => {
     // Skip for direct deposits (wstETH, fxSAVE) that don't need swaps
@@ -4574,7 +4663,9 @@ export const AnchorDepositWithdrawModal = ({
     (depositAssetMarket && depositAssetWrappedCollateralSymbol && selectedDepositAsset?.toLowerCase() === depositAssetWrappedCollateralSymbol);
   
   // Get zap contract address - use peggedTokenZap for minting pegged tokens
-  const zapAddress = depositAssetMarket?.addresses?.peggedTokenZap as `0x${string}` | undefined;
+  const zapAddress = anchorAddressByName(
+    depositAssetMarket as DefinedMarket | undefined
+  )?.peggedTokenZap as `0x${string}` | undefined;
   
   // Determine which zap to use
   const useZap = !!zapAddress && !isDirectPeggedDeposit && !isWrappedCollateral && activeTab === "deposit";
@@ -4586,7 +4677,9 @@ export const AnchorDepositWithdrawModal = ({
     ((!mintOnly && (isFxSAVE || isWstETH)) || isStETH || isUSDC || isFxUSD);
   
   // Get fxSAVE rate for USDC zap calculations
-  const priceOracleAddress = depositAssetMarket?.addresses?.collateralPrice as `0x${string}` | undefined;
+  const priceOracleAddress = anchorAddressByName(
+    depositAssetMarket as DefinedMarket | undefined
+  )?.collateralPrice as `0x${string}` | undefined;
   const { maxRate: fxSAVERate } = useCollateralPrice(
     priceOracleAddress,
     { enabled: useUSDCZap && !!priceOracleAddress }
@@ -4842,7 +4935,6 @@ export const AnchorDepositWithdrawModal = ({
     setStep("input");
     setError(null);
     setTxHash(null);
-    setIsProcessing(false);
   };
 
   const handleTabChange = (tab: TabType) => {
@@ -5945,6 +6037,19 @@ export const AnchorDepositWithdrawModal = ({
                 isActuallyStETH,
               });
             }
+
+            let zapWrapRateForMinW =
+              marketForDepositAsset?.wrappedRate || selectedMarket?.wrappedRate;
+            if (!zapWrapRateForMinW && zapAddress) {
+              const marketByZap = marketsForToken.find(
+                ({ market: m }) =>
+                  m?.addresses?.peggedTokenZap?.toLowerCase() ===
+                    zapAddress.toLowerCase() ||
+                  m?.addresses?.leveragedTokenZap?.toLowerCase() ===
+                    zapAddress.toLowerCase()
+              )?.market;
+              zapWrapRateForMinW = marketByZap?.wrappedRate;
+            }
             
             // Check network before sending transaction
             if (!(await ensureCorrectNetwork())) {
@@ -5964,13 +6069,21 @@ export const AnchorDepositWithdrawModal = ({
             // Call the correct zap function based on asset type
             let zapHash: `0x${string}`;
             if (isActuallyETH) {
+              const minWEth = await minWrappedCollateralForEthBaseZap(
+                publicClient ?? undefined,
+                zapAddress as `0x${string}`,
+                swappedAmount,
+                zapWrapRateForMinW,
+                DEFAULT_WRAP_LEG_SLIPPAGE_BPS
+              );
               if (shouldDepositToPool && stabilityPoolAddress) {
                 const minStabilityPoolOut = (minPeggedOut * (feePercentage !== undefined && feePercentage >= 1 ? 98n : 99n)) / 100n;
                 zapHash = await writeContractAsync({
                   address: zapAddress,
-                  abi: STABILITY_POOL_ZAP_ABI,
-                  functionName: "zapEthToStabilityPool",
+                  abi: MINTER_ETH_ZAP_V3_ABI,
+                  functionName: "zapBaseAssetToStabilityPool",
                   args: [
+                    minWEth,
                     address as `0x${string}`,
                     minPeggedOut,
                     stabilityPoolAddress as `0x${string}`,
@@ -5984,17 +6097,21 @@ export const AnchorDepositWithdrawModal = ({
                 if (onSuccess) onSuccess();
                 return;
               }
-              debugTx("zap/ethToPegged", {
+              debugTx("zap/baseAssetToPegged", {
                 zapAddress,
-                function: "zapEthToPegged",
+                function: "zapBaseAssetToPegged",
                 args: [address, minPeggedOut.toString()],
                 value: swappedAmount.toString(),
               });
               zapHash = await writeContractAsync({
               address: zapAddress,
                 abi: MINTER_ETH_ZAP_V3_ABI,
-                functionName: "zapEthToPegged",
-                args: [address as `0x${string}`, minPeggedOut],
+                functionName: "zapBaseAssetToPegged",
+                args: [
+                  minWEth,
+                  address as `0x${string}`,
+                  minPeggedOut,
+                ],
               value: swappedAmount,
             });
             } else if (isActuallyStETH) {
@@ -6026,6 +6143,12 @@ export const AnchorDepositWithdrawModal = ({
               
               if (!stETHAddress) throw new Error("stETH address not found. Please ensure you're depositing to a wstETH market.");
 
+              const minWSteth = minWrappedCollateralAfterUnderlyingToWrapped(
+                swappedAmount,
+                zapWrapRateForMinW,
+                DEFAULT_WRAP_LEG_SLIPPAGE_BPS
+              );
+
               if (permitEnabled && (mintOnly || shouldDepositToPool)) {
                 try {
                   const permitResult = await handlePermitOrApproval(
@@ -6054,10 +6177,11 @@ export const AnchorDepositWithdrawModal = ({
                       const deadline = permitResult.deadline || calculateDeadline(3600);
                       const permitHash = await writeContractAsync({
                         address: zapAddress,
-                        abi: STABILITY_POOL_ZAP_PERMIT_ABI,
-                        functionName: "zapStEthToStabilityPoolWithPermit",
+                        abi: MINTER_ETH_ZAP_V3_ABI,
+                        functionName: "zapCollateralToStabilityPoolWithPermit",
                         args: [
                           swappedAmount,
+                          minWSteth,
                           address as `0x${string}`,
                           minPeggedOut,
                           stabilityPoolAddress as `0x${string}`,
@@ -6084,10 +6208,11 @@ export const AnchorDepositWithdrawModal = ({
                     setStep("minting");
                     const permitHash = await writeContractAsync({
                       address: zapAddress,
-                      abi: STETH_ZAP_PERMIT_ABI,
-                      functionName: "zapStEthToPeggedWithPermit",
+                      abi: MINTER_ETH_ZAP_V3_ABI,
+                      functionName: "zapCollateralToPeggedWithPermit",
                       args: [
                         swappedAmount,
+                        minWSteth,
                         address as `0x${string}`,
                         minPeggedOut,
                         permitResult.deadline,
@@ -6141,16 +6266,21 @@ export const AnchorDepositWithdrawModal = ({
                 setStep("minting");
               }
               
-              debugTx("zap/stEthToPegged", {
+              debugTx("zap/collateralToPegged", {
                 zapAddress,
-                function: "zapStEthToPegged",
+                function: "zapCollateralToPegged",
                 args: [swappedAmount.toString(), address, minPeggedOut.toString()],
               });
               zapHash = await writeContractAsync({
                 address: zapAddress,
                 abi: MINTER_ETH_ZAP_V3_ABI,
-                functionName: "zapStEthToPegged",
-                args: [swappedAmount, address as `0x${string}`, minPeggedOut],
+                functionName: "zapCollateralToPegged",
+                args: [
+                  swappedAmount,
+                  minWSteth,
+                  address as `0x${string}`,
+                  minPeggedOut,
+                ],
               });
             } else {
               throw new Error("Invalid asset for ETH/stETH zap");
@@ -6341,11 +6471,11 @@ export const AnchorDepositWithdrawModal = ({
                   ) {
                     const minStabilityPoolOut = (minPeggedOut * (feePercentage !== undefined && feePercentage >= 1 ? 98n : 99n)) / 100n;
                     const functionName = isActuallyUSDC
-                      ? "zapUsdcToStabilityPoolWithPermit"
-                      : "zapFxUsdToStabilityPoolWithPermit";
+                      ? "zapBaseAssetToStabilityPoolWithPermit"
+                      : "zapCollateralToStabilityPoolWithPermit";
                     const permitHash = await writeContractAsync({
                       address: zapAddress,
-                      abi: STABILITY_POOL_ZAP_PERMIT_ABI,
+                      abi: MINTER_USDC_ZAP_V3_ABI,
                       functionName,
                       args: [
                         swappedAmount,
@@ -6370,8 +6500,8 @@ export const AnchorDepositWithdrawModal = ({
                   }
 
                   const functionName = isActuallyUSDC
-                    ? "zapUsdcToPeggedWithPermit"
-                    : "zapFxUsdToPeggedWithPermit";
+                    ? "zapBaseAssetToPeggedWithPermit"
+                    : "zapCollateralToPeggedWithPermit";
                   const permitHash = await writeContractAsync({
                     address: zapAddress,
                     abi: MINTER_USDC_ZAP_V3_ABI,
@@ -6445,9 +6575,9 @@ export const AnchorDepositWithdrawModal = ({
             // Call the correct zap function based on asset type
             let zapHash: `0x${string}`;
             if (isActuallyUSDC) {
-              debugTx("zap/usdcToPegged", {
+              debugTx("zap/baseAssetToPegged", {
                 zapAddress,
-                function: "zapUsdcToPegged",
+                function: "zapBaseAssetToPegged",
                 args: [
                   swappedAmount.toString(),
                   minFxSaveOut.toString(),
@@ -6458,7 +6588,7 @@ export const AnchorDepositWithdrawModal = ({
               zapHash = await writeContractAsync({
               address: zapAddress,
                 abi: MINTER_USDC_ZAP_V3_ABI,
-                functionName: "zapUsdcToPegged",
+                functionName: "zapBaseAssetToPegged",
                 args: [
                   swappedAmount,
                   minFxSaveOut,
@@ -6467,9 +6597,9 @@ export const AnchorDepositWithdrawModal = ({
                 ],
               });
             } else if (isActuallyFxUSD) {
-              debugTx("zap/fxUsdToPegged", {
+              debugTx("zap/collateralToPegged", {
                 zapAddress,
-                function: "zapFxUsdToPegged",
+                function: "zapCollateralToPegged",
                 args: [
                   swappedAmount.toString(),
                   minFxSaveOut.toString(),
@@ -6480,14 +6610,14 @@ export const AnchorDepositWithdrawModal = ({
               zapHash = await writeContractAsync({
                 address: zapAddress,
                 abi: MINTER_USDC_ZAP_V3_ABI,
-                functionName: "zapFxUsdToPegged",
+                functionName: "zapCollateralToPegged",
                 args: [
                   swappedAmount,
                   minFxSaveOut,
                   address as `0x${string}`,
                   minPeggedOut,
                 ],
-            });
+              });
             } else {
               throw new Error("Invalid asset for USDC/fxUSD zap");
             }
@@ -7091,16 +7221,27 @@ export const AnchorDepositWithdrawModal = ({
           // Use zap contract to mint
           if (useETHZap) {
             // ETH/stETH zap for wstETH markets
+            const ethStEthWrapRate =
+              marketForDepositAsset?.wrappedRate ??
+              selectedMarket?.wrappedRate;
             if (isNativeETH) {
               const useZapEthToPool =
                 shouldDepositToPool &&
                 !!stabilityPoolAddress;
               const minStabilityPoolOut = (minPeggedOut * stabilityPoolSlip) / 100n;
 
+              const minWEth2 = await minWrappedCollateralForEthBaseZap(
+                txClient ?? publicClient ?? undefined,
+                zapAddress,
+                amountBigInt,
+                ethStEthWrapRate,
+                DEFAULT_WRAP_LEG_SLIPPAGE_BPS
+              );
+
               if (useZapEthToPool) {
-                debugTx("zap/ethToStabilityPool", {
+                debugTx("zap/baseAssetToStabilityPool", {
                   zapAddress,
-                  function: "zapEthToStabilityPool",
+                  function: "zapBaseAssetToStabilityPool",
                   args: [
                     address,
                     minPeggedOut.toString(),
@@ -7111,9 +7252,10 @@ export const AnchorDepositWithdrawModal = ({
                 });
                 mintHash = await writeContractAsync({
                   address: zapAddress,
-                  abi: STABILITY_POOL_ZAP_ABI,
-                  functionName: "zapEthToStabilityPool",
+                  abi: MINTER_ETH_ZAP_V3_ABI,
+                  functionName: "zapBaseAssetToStabilityPool",
                   args: [
+                    minWEth2,
                     address as `0x${string}`,
                     minPeggedOut,
                     stabilityPoolAddress as `0x${string}`,
@@ -7128,17 +7270,21 @@ export const AnchorDepositWithdrawModal = ({
                 return;
               }
 
-              debugTx("zap/ethToPegged", {
+              debugTx("zap/baseAssetToPegged", {
                 zapAddress,
-                function: "zapEthToPegged",
+                function: "zapBaseAssetToPegged",
                 args: [address, minPeggedOut.toString()],
                 value: amountBigInt.toString(),
               });
               mintHash = await writeContractAsync({
                 address: zapAddress,
                 abi: MINTER_ETH_ZAP_V3_ABI,
-                functionName: "zapEthToPegged",
-                args: [address as `0x${string}`, minPeggedOut],
+                functionName: "zapBaseAssetToPegged",
+                args: [
+                  minWEth2,
+                  address as `0x${string}`,
+                  minPeggedOut,
+                ],
                 value: amountBigInt,
               });
             } else if (isStETH) {
@@ -7147,6 +7293,12 @@ export const AnchorDepositWithdrawModal = ({
                 !!stabilityPoolAddress;
               const minStabilityPoolOutStEth = (minPeggedOut * stabilityPoolSlip) / 100n;
 
+              const minWSteth2 = minWrappedCollateralAfterUnderlyingToWrapped(
+                amountBigInt,
+                ethStEthWrapRate,
+                DEFAULT_WRAP_LEG_SLIPPAGE_BPS
+              );
+
               if (
                 useZapStEthToPool &&
                 usePermitZap &&
@@ -7154,7 +7306,7 @@ export const AnchorDepositWithdrawModal = ({
                 zapPermit?.deadline
               ) {
                 const deadline = zapPermit.deadline || calculateDeadline(3600);
-                debugTx("zap/stEthToStabilityPoolWithPermit", {
+                debugTx("zap/collateralToStabilityPoolWithPermit", {
                   zapAddress,
                   args: [
                     amountBigInt.toString(),
@@ -7167,10 +7319,11 @@ export const AnchorDepositWithdrawModal = ({
                 });
                 mintHash = await writeContractAsync({
                   address: zapAddress,
-                  abi: STABILITY_POOL_ZAP_PERMIT_ABI,
-                  functionName: "zapStEthToStabilityPoolWithPermit",
+                  abi: MINTER_ETH_ZAP_V3_ABI,
+                  functionName: "zapCollateralToStabilityPoolWithPermit",
                   args: [
                     amountBigInt,
+                    minWSteth2,
                     address as `0x${string}`,
                     minPeggedOut,
                     stabilityPoolAddress as `0x${string}`,
@@ -7188,9 +7341,9 @@ export const AnchorDepositWithdrawModal = ({
                 return;
               }
 
-              debugTx("zap/stEthToPegged", {
+              debugTx("zap/collateralToPegged", {
                 zapAddress,
-                function: "zapStEthToPegged",
+                function: "zapCollateralToPegged",
                 args: [
                   amountBigInt.toString(),
                   address,
@@ -7204,10 +7357,11 @@ export const AnchorDepositWithdrawModal = ({
               ) {
                 mintHash = await writeContractAsync({
                   address: zapAddress,
-                  abi: STETH_ZAP_PERMIT_ABI,
-                  functionName: "zapStEthToPeggedWithPermit",
+                  abi: MINTER_ETH_ZAP_V3_ABI,
+                  functionName: "zapCollateralToPeggedWithPermit",
                   args: [
                     amountBigInt,
+                    minWSteth2,
                     address as `0x${string}`,
                     minPeggedOut,
                     zapPermit.deadline,
@@ -7220,8 +7374,13 @@ export const AnchorDepositWithdrawModal = ({
                 mintHash = await writeContractAsync({
                   address: zapAddress,
                   abi: MINTER_ETH_ZAP_V3_ABI,
-                  functionName: "zapStEthToPegged",
-                  args: [amountBigInt, address as `0x${string}`, minPeggedOut],
+                  functionName: "zapCollateralToPegged",
+                  args: [
+                    amountBigInt,
+                    minWSteth2,
+                    address as `0x${string}`,
+                    minPeggedOut,
+                  ],
                 });
               }
             } else {
@@ -7244,7 +7403,7 @@ export const AnchorDepositWithdrawModal = ({
             if (useZapToPoolWithPermit) {
               const deadline = zapPermit!.deadline || calculateDeadline(3600);
               if (isFxUSD) {
-                debugTx("zap/fxUsdToStabilityPoolWithPermit", {
+                debugTx("zap/collateralToStabilityPoolWithPermit", {
                   zapAddress,
                   args: [
                     amountBigInt.toString(),
@@ -7257,8 +7416,8 @@ export const AnchorDepositWithdrawModal = ({
                 });
                 mintHash = await writeContractAsync({
                   address: zapAddress,
-                  abi: STABILITY_POOL_ZAP_PERMIT_ABI,
-                  functionName: "zapFxUsdToStabilityPoolWithPermit",
+                  abi: MINTER_USDC_ZAP_V3_ABI,
+                  functionName: "zapCollateralToStabilityPoolWithPermit",
                   args: [
                     amountBigInt,
                     minFxSaveOut,
@@ -7273,7 +7432,7 @@ export const AnchorDepositWithdrawModal = ({
                   ],
                 });
               } else {
-                debugTx("zap/usdcToStabilityPoolWithPermit", {
+                debugTx("zap/baseAssetToStabilityPoolWithPermit", {
                   zapAddress,
                   args: [
                     amountBigInt.toString(),
@@ -7286,8 +7445,8 @@ export const AnchorDepositWithdrawModal = ({
                 });
                 mintHash = await writeContractAsync({
                   address: zapAddress,
-                  abi: STABILITY_POOL_ZAP_PERMIT_ABI,
-                  functionName: "zapUsdcToStabilityPoolWithPermit",
+                  abi: MINTER_USDC_ZAP_V3_ABI,
+                  functionName: "zapBaseAssetToStabilityPoolWithPermit",
                   args: [
                     amountBigInt,
                     minFxSaveOut,
@@ -7310,9 +7469,9 @@ export const AnchorDepositWithdrawModal = ({
             }
 
             if (isUSDC) {
-              debugTx("zap/usdcToPegged", {
+              debugTx("zap/baseAssetToPegged", {
                 zapAddress,
-                function: "zapUsdcToPegged",
+                function: "zapBaseAssetToPegged",
                 args: [
                   amountBigInt.toString(),
                   minFxSaveOut.toString(),
@@ -7325,7 +7484,7 @@ export const AnchorDepositWithdrawModal = ({
                 mintHash = await writeContractAsync({
                   address: zapAddress,
                   abi: MINTER_USDC_ZAP_V3_ABI,
-                  functionName: "zapUsdcToPeggedWithPermit",
+                  functionName: "zapBaseAssetToPeggedWithPermit",
                   args: [
                     amountBigInt,
                     minFxSaveOut,
@@ -7341,7 +7500,7 @@ export const AnchorDepositWithdrawModal = ({
                 mintHash = await writeContractAsync({
                   address: zapAddress,
                   abi: MINTER_USDC_ZAP_V3_ABI,
-                  functionName: "zapUsdcToPegged",
+                  functionName: "zapBaseAssetToPegged",
                   args: [
                     amountBigInt,
                     minFxSaveOut,
@@ -7351,9 +7510,9 @@ export const AnchorDepositWithdrawModal = ({
                 });
               }
             } else if (isFxUSD) {
-              debugTx("zap/fxUsdToPegged", {
+              debugTx("zap/collateralToPegged", {
                 zapAddress,
-                function: "zapFxUsdToPegged",
+                function: "zapCollateralToPegged",
                 args: [
                   amountBigInt.toString(),
                   minFxSaveOut.toString(),
@@ -7366,7 +7525,7 @@ export const AnchorDepositWithdrawModal = ({
                 mintHash = await writeContractAsync({
                   address: zapAddress,
                   abi: MINTER_USDC_ZAP_V3_ABI,
-                  functionName: "zapFxUsdToPeggedWithPermit",
+                  functionName: "zapCollateralToPeggedWithPermit",
                   args: [
                     amountBigInt,
                     minFxSaveOut,
@@ -7382,7 +7541,7 @@ export const AnchorDepositWithdrawModal = ({
                 mintHash = await writeContractAsync({
                   address: zapAddress,
                   abi: MINTER_USDC_ZAP_V3_ABI,
-                  functionName: "zapFxUsdToPegged",
+                  functionName: "zapCollateralToPegged",
                   args: [
                     amountBigInt,
                     minFxSaveOut,
@@ -7409,7 +7568,7 @@ export const AnchorDepositWithdrawModal = ({
           const deadlineWrapped =
             wrapZapPermit.deadline || calculateDeadline(3600);
           if (isWstETH) {
-            debugTx("zap/wstEthToStabilityPoolWithPermit", {
+            debugTx("zap/wrappedCollateralToStabilityPoolWithPermit", {
               zapAddress,
               args: [
                 amountBigInt.toString(),
@@ -7422,8 +7581,8 @@ export const AnchorDepositWithdrawModal = ({
             });
             mintHash = await writeContractAsync({
               address: zapAddress,
-              abi: STABILITY_POOL_ZAP_PERMIT_ABI,
-              functionName: "zapWstEthToStabilityPoolWithPermit",
+              abi: MINTER_ETH_ZAP_V3_ABI,
+              functionName: "zapWrappedCollateralToStabilityPoolWithPermit",
               args: [
                 amountBigInt,
                 address as `0x${string}`,
@@ -7437,7 +7596,7 @@ export const AnchorDepositWithdrawModal = ({
               ],
             });
           } else if (isFxSAVE) {
-            debugTx("zap/fxSaveToStabilityPoolWithPermit", {
+            debugTx("zap/wrappedCollateralToStabilityPoolWithPermit", {
               zapAddress,
               args: [
                 amountBigInt.toString(),
@@ -7450,8 +7609,8 @@ export const AnchorDepositWithdrawModal = ({
             });
             mintHash = await writeContractAsync({
               address: zapAddress,
-              abi: STABILITY_POOL_ZAP_PERMIT_ABI,
-              functionName: "zapFxSaveToStabilityPoolWithPermit",
+              abi: MINTER_USDC_ZAP_V3_ABI,
+              functionName: "zapWrappedCollateralToStabilityPoolWithPermit",
               args: [
                 amountBigInt,
                 address as `0x${string}`,
@@ -9326,22 +9485,18 @@ export const AnchorDepositWithdrawModal = ({
                         onChange: (newAsset) => {
                           setSelectedDepositAsset(newAsset);
                           anyTokenDeposit.setSelectedAsset(newAsset);
-                          setAmount("");
-                          setError(null);
-                          if (tempMaxWarning) {
-                            setTempMaxWarning(null);
-                            if (tempWarningTimerRef.current) {
-                              clearTimeout(tempWarningTimerRef.current);
-                              tempWarningTimerRef.current = null;
-                            }
-                          }
+                          resetSimpleDepositFlowKeepToken();
                         },
                         options: [
                           ...(depositAssetsForDropdown.filter(a => !a.isUserToken).length > 0 ? [{
-                            label: "Supported Assets",
-                            tokens: depositAssetsForDropdown.filter(a => !a.isUserToken).map((a) => ({ symbol: a.symbol, name: a.name, isUserToken: false })),
+                            label: isCollateralOnlyChain ? (isMegaEth ? "Collateral (MegaETH)" : "Collateral") : "Supported Assets",
+                            tokens: depositAssetsForDropdown.filter(a => !a.isUserToken).map((a) => ({
+                              symbol: a.symbol,
+                              name: (isMegaEth && a.symbol?.toUpperCase() === "ETH") ? nativeTokenLabel : a.name,
+                              isUserToken: false,
+                            })),
                           }] : []),
-                          ...(depositAssetsForDropdown.filter(a => a.isUserToken).length > 0 ? [{
+                          ...(!isCollateralOnlyChain && depositAssetsForDropdown.filter(a => a.isUserToken).length > 0 ? [{
                             label: "Other Tokens (via Swap)",
                             tokens: depositAssetsForDropdown.filter(a => a.isUserToken).map((a) => ({ symbol: a.symbol, name: a.name, isUserToken: true })),
                           }] : []),
@@ -9352,9 +9507,9 @@ export const AnchorDepositWithdrawModal = ({
                       }}
                       betweenTokenAndAmount={
                         <>
-                        {anyTokenDeposit.needsSwap && selectedDepositAsset && amount && parseFloat(amount) > 0 && (() => {
+                        {!isCollateralOnlyChain && anyTokenDeposit.needsSwap && selectedDepositAsset && amount && parseFloat(amount) > 0 && (() => {
                           const isSwappingToUSDC = anyTokenDeposit.swapTargetToken !== "ETH";
-                          const targetToken = isSwappingToUSDC ? "USDC" : "ETH";
+                          const targetToken = isSwappingToUSDC ? "USDC" : nativeTokenLabel;
                           const targetDecimals = isSwappingToUSDC ? 2 : 6;
                           
                           // ParaSwap returns toAmount in smallest units, need to convert to decimal
@@ -9416,7 +9571,7 @@ export const AnchorDepositWithdrawModal = ({
                             );
                           })()}
                         >
-                          {!anyTokenDeposit.needsSwap && (
+                          {!isCollateralOnlyChain && !anyTokenDeposit.needsSwap && (
                             <InfoCallout
                               tone="success"
                               title="Tip:"
@@ -9572,7 +9727,7 @@ export const AnchorDepositWithdrawModal = ({
                             )}
                           </div>
                         ),
-                        inputClassName: `w-full h-14 px-4 pr-24 bg-white text-[#1E4775] border-2 ${error ? "border-red-500" : "border-[#1E4775]/30"} focus:border-[#1E4775] focus:ring-2 focus:ring-[#1E4775]/20 focus:outline-none transition-all text-xl font-mono`,
+                        inputClassName: `w-full h-14 rounded-md px-4 pr-24 bg-white text-[#1E4775] border-2 ${error ? "border-red-500" : "border-[#1E4775]/30"} focus:border-[#1E4775] focus:ring-2 focus:ring-[#1E4775]/20 focus:outline-none transition-all text-xl font-mono`,
                         customHandleMax: handleMaxClick,
                         customHandleChange: handleAmountChange,
                       }}
@@ -9580,7 +9735,7 @@ export const AnchorDepositWithdrawModal = ({
                         <>
                       {currentStep === 1 && !isDirectPeggedDeposit && (
                         <div className="space-y-2">
-                          <div className="flex items-center justify-between border border-[#1E4775]/20 bg-[#17395F]/5 px-3 py-2 text-xs">
+                          <div className="flex items-center justify-between rounded-md border border-[#1E4775]/20 bg-[#17395F]/5 px-3 py-2 text-xs">
                             <div className="text-[#1E4775]/80">
                               Mint only (do not deposit to stability pool)
                             </div>
@@ -9628,7 +9783,7 @@ export const AnchorDepositWithdrawModal = ({
                         </div>
                       )}
                       {showPermitToggle && (
-                        <div className="flex items-center justify-between border border-[#1E4775]/20 bg-[#17395F]/5 px-3 py-2 text-xs">
+                        <div className="flex items-center justify-between rounded-md border border-[#1E4775]/20 bg-[#17395F]/5 px-3 py-2 text-xs">
                           <div className="text-[#1E4775]/80">
                             Use permit (gasless approval) for this deposit
                           </div>
@@ -9763,7 +9918,7 @@ export const AnchorDepositWithdrawModal = ({
                           <label className="block text-sm font-semibold text-[#1E4775] mb-1.5">
                             Transaction Overview
                           </label>
-                          <div className="p-2.5 bg-[#17395F]/5 border border-[#1E4775]/10">
+                          <div className="p-2.5 rounded-md bg-[#17395F]/5 border border-[#1E4775]/10">
                             <div className="space-y-2 text-sm">
                               {/* You will receive */}
                               {expectedMintOutput && amount && parseFloat(amount) > 0 ? (
@@ -9927,7 +10082,7 @@ export const AnchorDepositWithdrawModal = ({
                               !!error ||
                               isProcessing
                         }
-                        className="w-full mt-4 py-3 px-4 bg-[#FF8A7A] text-white font-semibold hover:bg-[#FF6B5A] transition-colors disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
+                        className="w-full mt-4 py-3 px-4 rounded-md bg-[#FF8A7A] text-white font-semibold hover:bg-[#FF6B5A] transition-colors disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
                       >
                         {step === "error"
                           ? "Try Again"
@@ -9996,9 +10151,9 @@ export const AnchorDepositWithdrawModal = ({
 
                       <div className="flex gap-3">
                         <button
-                          onClick={() => setCurrentStep(1)}
+                          onClick={() => resetSimpleDepositFlowKeepToken()}
                           disabled={isProcessing}
-                          className="flex-1 py-3 px-4 bg-white text-[#1E4775] border-2 border-[#1E4775]/30 font-semibold hover:bg-[#1E4775]/5 transition-colors disabled:opacity-50"
+                          className="flex-1 py-3 px-4 rounded-md bg-white text-[#1E4775] border-2 border-[#1E4775]/30 font-semibold hover:bg-[#1E4775]/5 transition-colors disabled:opacity-50"
                         >
                           ← Back
                         </button>
@@ -10021,7 +10176,7 @@ export const AnchorDepositWithdrawModal = ({
                             !!error ||
                             isProcessing
                           }
-                          className="flex-1 py-3 px-4 bg-[#1E4775] text-white font-semibold hover:bg-[#17395F] transition-colors disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
+                          className="flex-1 py-3 px-4 rounded-md bg-[#1E4775] text-white font-semibold hover:bg-[#17395F] transition-colors disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
                         >
                           {isProcessing
                             ? "Processing..."
@@ -10062,7 +10217,7 @@ export const AnchorDepositWithdrawModal = ({
                               return (
                                 <label
                                   key={poolKey}
-                                  className="flex items-start gap-2 p-2 bg-[#17395F]/5 border border-[#17395F]/20 cursor-pointer hover:bg-[#17395F]/10 transition-colors"
+                                  className="flex items-start gap-2 p-2 rounded-md bg-[#17395F]/5 border border-[#17395F]/20 cursor-pointer hover:bg-[#17395F]/10 transition-colors"
                                 >
                                   <input
                                     type="radio"
@@ -10218,7 +10373,7 @@ export const AnchorDepositWithdrawModal = ({
                           <label className="block text-sm font-semibold text-[#1E4775] mb-1.5">
                             Transaction Overview
                           </label>
-                          <div className="p-3 bg-[#17395F]/5 border border-[#1E4775]/10">
+                          <div className="p-3 rounded-md bg-[#17395F]/5 border border-[#1E4775]/10">
                             {/* Review Summary */}
                             {(() => {
                           // Determine deposit token symbol
@@ -10504,10 +10659,12 @@ export const AnchorDepositWithdrawModal = ({
                             <>
                               <button
                                 onClick={() =>
-                                  setCurrentStep(skipRewardStep ? 1 : 2)
+                                  skipRewardStep
+                                    ? resetSimpleDepositFlowKeepToken()
+                                    : leaveStabilityPoolStepToReward()
                                 }
                                 disabled={isProcessing}
-                                className="flex-1 py-3 px-4 bg-white text-[#1E4775] border-2 border-[#1E4775]/30 font-semibold hover:bg-[#1E4775]/5 transition-colors disabled:opacity-50"
+                                className="flex-1 py-3 px-4 rounded-md bg-white text-[#1E4775] border-2 border-[#1E4775]/30 font-semibold hover:bg-[#1E4775]/5 transition-colors disabled:opacity-50"
                               >
                                 ← Back
                               </button>
@@ -10522,7 +10679,7 @@ export const AnchorDepositWithdrawModal = ({
                                   (selectedRewardToken &&
                                     !selectedStabilityPool)
                                 }
-                                className="flex-1 py-3 px-4 bg-[#FF8A7A] text-white font-semibold hover:bg-[#FF6B5A] transition-colors disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
+                                className="flex-1 py-3 px-4 rounded-md bg-[#FF8A7A] text-white font-semibold hover:bg-[#FF6B5A] transition-colors disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
                               >
                                 {isDirectPeggedDeposit && selectedStabilityPool
                                   ? "Deposit"
@@ -10542,7 +10699,7 @@ export const AnchorDepositWithdrawModal = ({
                           <label className="block text-sm font-semibold text-[#1E4775] mb-1.5">
                             Transaction Overview
                           </label>
-                          <div className="p-3 bg-[#17395F]/5 border border-[#1E4775]/10">
+                          <div className="p-3 rounded-md bg-[#17395F]/5 border border-[#1E4775]/10">
                           {/* You will receive */}
                           <div className="flex justify-between items-center">
                             <span className="text-sm font-medium text-[#1E4775]/70">
@@ -10693,9 +10850,13 @@ export const AnchorDepositWithdrawModal = ({
                           ) : (
                             <>
                               <button
-                                onClick={() => setCurrentStep(2)}
+                                onClick={() =>
+                                  skipRewardStep
+                                    ? resetSimpleDepositFlowKeepToken()
+                                    : leaveStabilityPoolStepToReward()
+                                }
                                 disabled={isProcessing}
-                                className="flex-1 py-3 px-4 bg-white text-[#1E4775] border-2 border-[#1E4775]/30 font-semibold hover:bg-[#1E4775]/5 transition-colors disabled:opacity-50"
+                                className="flex-1 py-3 px-4 rounded-md bg-white text-[#1E4775] border-2 border-[#1E4775]/30 font-semibold hover:bg-[#1E4775]/5 transition-colors disabled:opacity-50"
                               >
                                 ← Back
                               </button>
@@ -10708,7 +10869,7 @@ export const AnchorDepositWithdrawModal = ({
                                   !!error ||
                                   isProcessing
                                 }
-                                className="flex-1 py-3 px-4 bg-[#FF8A7A] text-white font-semibold hover:bg-[#FF6B5A] transition-colors disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
+                                className="flex-1 py-3 px-4 rounded-md bg-[#FF8A7A] text-white font-semibold hover:bg-[#FF6B5A] transition-colors disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
                               >
                                 Confirm & Mint
                               </button>
@@ -10787,7 +10948,7 @@ export const AnchorDepositWithdrawModal = ({
                       {transactionSteps.map((txStep) => (
                         <div
                           key={txStep.id}
-                          className="p-3 bg-[#17395F]/5 border border-[#17395F]/20"
+                          className="p-3 rounded-md bg-[#17395F]/5 border border-[#17395F]/20"
                         >
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
@@ -11027,7 +11188,7 @@ export const AnchorDepositWithdrawModal = ({
                               return (
                                 <div
                                   key={p.key}
-                                  className={`bg-[#17395F]/5 border ${
+                                  className={`rounded-md bg-[#17395F]/5 border ${
                                     !hasBalance
                                       ? "border-[#17395F]/10 opacity-75"
                                       : isSelected
@@ -11234,7 +11395,7 @@ export const AnchorDepositWithdrawModal = ({
                                 const show1PctToggle = !poolWindowOpen;
                                 return (
                                   <>
-                              <div className="flex items-center bg-[#17395F]/10 p-1 mb-2">
+                              <div className="flex items-center rounded-md overflow-hidden bg-[#17395F]/10 p-1 mb-2">
                                 {showEarlyWithdrawOption && (
                                 <button
                                   type="button"
@@ -11281,7 +11442,7 @@ export const AnchorDepositWithdrawModal = ({
                                 </button>
                               </div>
                               {show1PctToggle && (
-                                <div className="flex items-center justify-between border border-[#1E4775]/20 bg-[#17395F]/5 px-2 py-1.5 text-[10px] mb-2">
+                                <div className="flex items-center justify-between rounded-md border border-[#1E4775]/20 bg-[#17395F]/5 px-2 py-1.5 text-[10px] mb-2">
                                   <span className="text-[#1E4775]/80">
                                     Pay 1% fee to withdraw immediately (no waiting)
                                   </span>
@@ -11376,7 +11537,7 @@ export const AnchorDepositWithdrawModal = ({
                                         ),
                                       }));
                                     }}
-                                    className="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 text-xs bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white transition-colors disabled:bg-gray-300 disabled:text-gray-500"
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 text-xs rounded-md bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white transition-colors disabled:bg-gray-300 disabled:text-gray-500"
                                             disabled={
                                               isProcessing || immediateCap === 0n
                                             }
@@ -11421,7 +11582,7 @@ export const AnchorDepositWithdrawModal = ({
                     })()}
 
                     {/* Withdraw only toggle */}
-                    <div className="flex items-center justify-between border border-[#1E4775]/20 bg-[#17395F]/5 px-3 py-2 text-xs">
+                    <div className="flex items-center justify-between rounded-md border border-[#1E4775]/20 bg-[#17395F]/5 px-3 py-2 text-xs">
                       <div className="text-[#1E4775]/80">
                         Withdraw only (do not redeem to collateral)
                       </div>
@@ -11456,7 +11617,7 @@ export const AnchorDepositWithdrawModal = ({
 
                     {/* Wallet Position (ha tokens) - Only show if NOT"Withdraw only" */}
                     {!withdrawOnly && peggedBalance > 0n && (
-                        <div className="p-3 bg-[#17395F]/5 border border-[#17395F]/20">
+                        <div className="p-3 rounded-md bg-[#17395F]/5 border border-[#17395F]/20">
                           <div className="flex items-center justify-between mb-2">
                             <div className="flex items-center gap-3">
                               <input
@@ -11514,7 +11675,7 @@ export const AnchorDepositWithdrawModal = ({
                                   wallet: formatEther(peggedBalance),
                                       }));
                                     }}
-                                    className="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 text-xs bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white transition-colors disabled:bg-gray-300 disabled:text-gray-500"
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 text-xs rounded-md bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white transition-colors disabled:bg-gray-300 disabled:text-gray-500"
                                     disabled={isProcessing}
                                   >
                                     MAX
@@ -11534,7 +11695,7 @@ export const AnchorDepositWithdrawModal = ({
                         peggedBalance === 0n &&
                         collateralPoolBalance === 0n &&
                         sailPoolBalance === 0n)) && (
-                      <div className="p-3 bg-[#17395F]/5 border border-[#17395F]/20 text-center text-sm text-[#1E4775]/50">
+                      <div className="p-3 rounded-md bg-[#17395F]/5 border border-[#17395F]/20 text-center text-sm text-[#1E4775]/50">
                         No positions found
                       </div>
                     )}
@@ -11552,7 +11713,7 @@ export const AnchorDepositWithdrawModal = ({
 
                       {/* Wallet Balance (ha tokens) */}
                       {peggedBalance > 0n && (
-                        <div className="p-2 bg-[#17395F]/5 border border-[#17395F]/20">
+                        <div className="p-2 rounded-md bg-[#17395F]/5 border border-[#17395F]/20">
                           <div className="flex justify-between items-center">
                             <div className="flex items-center gap-2">
                               <span className="text-sm font-medium text-[#1E4775]">
@@ -11573,7 +11734,7 @@ export const AnchorDepositWithdrawModal = ({
                       {(collateralPoolBalance > 0n || sailPoolBalance > 0n) && (
                         <div className="space-y-2">
                           {collateralPoolBalance > 0n && (
-                            <div className="p-2 bg-[#17395F]/5 border border-[#17395F]/20">
+                            <div className="p-2 rounded-md bg-[#17395F]/5 border border-[#17395F]/20">
                               <div className="flex justify-between items-center">
                                 <div className="flex items-center gap-2">
                                   <span className="text-sm font-medium text-[#1E4775]">
@@ -11593,7 +11754,7 @@ export const AnchorDepositWithdrawModal = ({
                             </div>
                           )}
                           {sailPoolBalance > 0n && (
-                            <div className="p-2 bg-[#17395F]/5 border border-[#17395F]/20">
+                            <div className="p-2 rounded-md bg-[#17395F]/5 border border-[#17395F]/20">
                               <div className="flex justify-between items-center">
                                 <div className="flex items-center gap-2">
                                   <span className="text-sm font-medium text-[#1E4775]">
@@ -11618,7 +11779,7 @@ export const AnchorDepositWithdrawModal = ({
                       {peggedBalance === 0n &&
                         collateralPoolBalance === 0n &&
                         sailPoolBalance === 0n && (
-                          <div className="p-3 bg-[#17395F]/5 border border-[#17395F]/20 text-center text-sm text-[#1E4775]/50">
+                          <div className="p-3 rounded-md bg-[#17395F]/5 border border-[#17395F]/20 text-center text-sm text-[#1E4775]/50">
                             No positions found
                           </div>
                         )}
@@ -11626,11 +11787,11 @@ export const AnchorDepositWithdrawModal = ({
 
                     {/* Transaction Overview - Always visible in withdraw (when not withdraw-only) */}
                     {activeTab === "withdraw" && !withdrawOnly && (
-                      <div className="mt-3 space-y-2">
+                      <div className="mt-3 mb-4 space-y-2">
                         <label className="block text-sm font-semibold text-[#1E4775] mb-1.5">
                           Transaction Overview
                         </label>
-                        <div className="p-3 bg-[#17395F]/5 border border-[#1E4775]/10">
+                        <div className="p-3 rounded-md bg-[#17395F]/5 border border-[#1E4775]/10">
                           <div className="space-y-3">
                         {(() => {
                           // Build overview entries grouped by collateral type
@@ -12057,7 +12218,7 @@ export const AnchorDepositWithdrawModal = ({
                       </div>
                       <button
                         onClick={handleMaxClick}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 text-xs bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white transition-colors disabled:bg-gray-300 disabled:text-gray-500"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 text-xs rounded-md bg-[#FF8A7A] hover:bg-[#FF6B5A] text-white transition-colors disabled:bg-gray-300 disabled:text-gray-500"
                         disabled={isProcessing}
                       >
                         MAX
@@ -12073,7 +12234,7 @@ export const AnchorDepositWithdrawModal = ({
                         <label className="block text-sm font-semibold text-[#1E4775] mb-1.5">
                           Transaction Overview
                         </label>
-                        <div className="p-2.5 bg-[#17395F]/5 border border-[#1E4775]/10">
+                        <div className="p-2.5 rounded-md bg-[#17395F]/5 border border-[#1E4775]/10">
                           <div className="space-y-2 text-sm">
                             {/* You will receive */}
                             {expectedOutput && amount && parseFloat(amount) > 0 ? (
@@ -12288,12 +12449,12 @@ export const AnchorDepositWithdrawModal = ({
 
                 {/* Transaction Overview - always visible in withdraw (non withdraw-only) */}
                 {activeTab === "withdraw" && !withdrawOnly && (
-                  <div className="mt-3 space-y-2">
+                  <div className="mt-3 mb-4 space-y-2">
                     <label className="block text-sm font-semibold text-[#1E4775] mb-1.5">
                       Transaction Overview
                     </label>
                     <div
-                      className={`p-3 border ${
+                      className={`p-3 rounded-md border ${
                         redeemDryRun?.feePercentage !== undefined &&
                         redeemDryRun?.feePercentage > 2
                           ? "bg-red-50 border-red-300"
@@ -12559,7 +12720,7 @@ export const AnchorDepositWithdrawModal = ({
                 {activeTab === "withdraw" &&
                   simpleMode &&
                   step !== "success" && (
-                    <div className="flex gap-3 pt-4 border-t border-[#1E4775]/20">
+                    <div className="flex gap-3 pt-5 border-t border-[#1E4775]/20">
                       {isProcessing ? (
                         <button
                           disabled
@@ -12579,7 +12740,7 @@ export const AnchorDepositWithdrawModal = ({
                           {step !== "input" && (
                             <button
                               onClick={handleBackToWithdrawInput}
-                              className="shrink-0 py-2 px-4 bg-white text-[#1E4775] border-2 border-[#1E4775]/30 font-semibold hover:bg-[#1E4775]/5 transition-colors"
+                              className="shrink-0 py-2 px-4 rounded-md bg-white text-[#1E4775] border-2 border-[#1E4775]/30 font-semibold hover:bg-[#1E4775]/5 transition-colors"
                             >
                               Back
                             </button>
@@ -12587,7 +12748,7 @@ export const AnchorDepositWithdrawModal = ({
                           <button
                             onClick={handleAction}
                             disabled={isButtonDisabled()}
-                            className={`py-3 px-4 bg-[#FF8A7A] text-white font-semibold hover:bg-[#FF6B5A] transition-colors disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed ${
+                            className={`py-3 px-4 rounded-md bg-[#FF8A7A] text-white font-semibold hover:bg-[#FF6B5A] transition-colors disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed ${
                               step === "input" ? "w-full" : "flex-1"
                             }`}
                           >
@@ -12643,7 +12804,7 @@ export const AnchorDepositWithdrawModal = ({
                           <span className="text-xs text-[#1E4775]/70">
                             Pool type:
                           </span>
-                          <div className="flex items-center bg-[#17395F]/10 p-1">
+                          <div className="flex items-center rounded-md overflow-hidden bg-[#17395F]/10 p-1">
                             <button
                               type="button"
                               onClick={() => setStabilityPoolType("collateral")}
@@ -12692,7 +12853,7 @@ export const AnchorDepositWithdrawModal = ({
                         </div>
 
                         {/* Explainer */}
-                        <div className="p-2 bg-[#17395F]/5 border border-[#17395F]/20">
+                        <div className="p-2 rounded-md bg-[#17395F]/5 border border-[#17395F]/20">
                           <p className="text-xs text-[#1E4775]/80 leading-relaxed">
                             {stabilityPoolType === "collateral" ? (
                               <>
@@ -12737,7 +12898,7 @@ export const AnchorDepositWithdrawModal = ({
                       <span className="text-xs text-[#1E4775]/70">
                         Pool type:
                       </span>
-                      <div className="flex items-center bg-[#17395F]/10 p-1">
+                      <div className="flex items-center rounded-md overflow-hidden bg-[#17395F]/10 p-1">
                         <button
                           type="button"
                           onClick={() => setStabilityPoolType("collateral")}
@@ -12786,7 +12947,7 @@ export const AnchorDepositWithdrawModal = ({
                     </div>
 
                     {/* Explainer */}
-                    <div className="p-2 bg-[#17395F]/5 border border-[#17395F]/20">
+                    <div className="p-2 rounded-md bg-[#17395F]/5 border border-[#17395F]/20">
                       <p className="text-xs text-[#1E4775]/80 leading-relaxed">
                         {stabilityPoolType === "collateral" ? (
                           <>

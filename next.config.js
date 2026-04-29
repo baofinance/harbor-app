@@ -39,6 +39,8 @@ const nextConfig = {
     const path = require("path");
     config.resolve.alias = {
       ...config.resolve.alias,
+      // MetaMask SDK references RN async-storage in optional paths; not used on web
+      "@react-native-async-storage/async-storage": false,
       "@wagmi/connectors/dist/esm/baseAccount": false,
       "@wagmi/connectors/dist/esm/coinbaseWallet": false,
       "@base-org/account": false,

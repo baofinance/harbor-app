@@ -2,6 +2,8 @@
 
 import { useState, useRef, useEffect } from "react";
 import { markets } from "../config/markets";
+import { getWeb3iconsNetworkId } from "@/config/web3iconsNetworks";
+import NetworkIconClient from "@/components/NetworkIconClient";
 
 interface MarketSelectorProps {
  selectedMarketId: string;
@@ -63,13 +65,34 @@ export default function MarketSelector({
  );
  };
 
+ const getChainBadge = (chain: { name: string; logo: string }) => {
+   const networkId = getWeb3iconsNetworkId(chain.name);
+   return (
+     <span className="inline-flex items-center gap-1.5 text-xs text-zinc-400 bg-zinc-800/80 border border-zinc-700 rounded-md px-2 py-1 font-medium">
+       {networkId ? (
+         <span className="w-3.5 h-3.5 flex items-center justify-center">
+           <NetworkIconClient name={networkId} size={14} variant="branded" />
+         </span>
+       ) : (
+         <img
+           src={chain.logo.startsWith("/") ? chain.logo : `/${chain.logo}`}
+           alt=""
+           className="w-3.5 h-3.5 rounded-full object-contain"
+         />
+       )}
+       {chain.name}
+     </span>
+   );
+ };
+
  return (
  <div className="relative" ref={dropdownRef}>
  <button
  onClick={() => setIsOpen(!isOpen)}
  className="flex items-center gap-4 text-4xl font-semibold font-geo text-white hover:text-zinc-300 transition-colors"
  >
- <span>{selectedMarket?.name ||"Select Market"}</span>
+ {selectedMarket?.chain && getChainBadge(selectedMarket.chain)}
+ <span>{selectedMarket?.name || "Select Market"}</span>
  <svg
  className={`w-6 h-6 text-zinc-400 transition-transform ${
  isOpen ?"rotate-180" :""
@@ -108,10 +131,11 @@ export default function MarketSelector({
  className="w-full p-3 text-left hover:bg-gray-800 transition-colors flex justify-between items-center"
  >
  <div>
- <div className="flex items-center gap-4">
+ <div className="flex items-center gap-4 flex-wrap">
  <span className="font-semibold text-base">
  {market.name}
  </span>
+ {market.chain && getChainBadge(market.chain)}
  {getStatusBadge(market.status)}
  </div>
                 <div className="text-sm text-zinc-400">

@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import type { AnchorContractReads, AnchorMarketTuple } from "@/types/anchor";
 import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
 import { usePegTargetPrices } from "@/hooks/usePegTargetPrices";
 import { DEBUG_ANCHOR } from "@/config/debug";
@@ -14,8 +15,8 @@ import { calculatePriceOracleOffset } from "@/utils/anchor/calculateReadOffset";
  * @returns Object containing peggedPriceUSDMap and mergedPeggedPriceMap
  */
 export function useAnchorPrices(
-  anchorMarkets: Array<[string, any]>,
-  reads: any,
+  anchorMarkets: AnchorMarketTuple[],
+  reads: AnchorContractReads,
   peggedPriceMap: Record<string, bigint | undefined>
 ) {
   const isDebug = DEBUG_ANCHOR;
@@ -416,6 +417,7 @@ export function useAnchorPrices(
   const btcPrice = pegTargetPrices.btcPrice ?? null;
   const goldPrice = pegTargetPrices.goldPrice ?? null;
   const silverPrice = pegTargetPrices.silverPrice ?? null;
+  const eurPriceCoinGecko = pegTargetPrices.eurPriceCoinGecko ?? null;
 
   // Build USD price map for useMarketPositions (peggedTokenPrice * collateralPriceUSD)
   const peggedPriceUSDMap = useMemo(() => {
@@ -614,6 +616,7 @@ export function useAnchorPrices(
     ethPrice,
     btcPrice,
     eurPrice,
+    eurPriceCoinGecko,
     goldPrice,
     silverPrice,
     isDebug,

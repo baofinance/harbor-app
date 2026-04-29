@@ -69,6 +69,16 @@ export const AnchorClaimAllModal = ({
  });
  };
 
+ const selectAllPools = () => {
+ setSelectedPools(
+ new Set(positions.map((p) => `${p.marketId}-${p.poolType}`))
+ );
+ };
+
+ const deselectAllPools = () => {
+ setSelectedPools(new Set());
+ };
+
  const selectedPoolsArray = useMemo(() => {
  return Array.from(selectedPools).map((key) => {
  // Split from the end to handle marketIds that contain hyphens (e.g.,"pb-steth")
@@ -108,8 +118,8 @@ export const AnchorClaimAllModal = ({
  onClick={onClose}
  />
 
-        <div className="relative bg-white shadow-2xl w-full max-w-4xl mx-2 sm:mx-4 animate-in fade-in-0 scale-in-95 duration-200 flex flex-col max-h-[95vh] sm:max-h-[90vh] rounded-none">
-          <div className="flex items-center justify-between p-3 sm:p-4 lg:p-6 border-b border-[#1E4775]/20">
+        <div className="relative isolate bg-white shadow-2xl w-full max-w-4xl mx-2 sm:mx-4 animate-in fade-in-0 scale-in-95 duration-200 flex flex-col max-h-[95vh] sm:max-h-[90vh] overflow-hidden rounded-xl border border-[#1E4775]/10">
+          <div className="flex items-center justify-between p-3 sm:p-4 lg:p-6 border-b border-[#1E4775]/20 shrink-0">
  <h2 className="text-2xl font-bold text-[#1E4775]">Claim Rewards</h2>
  <button
  onClick={onClose}
@@ -132,13 +142,35 @@ export const AnchorClaimAllModal = ({
  </button>
  </div>
 
- <div className="flex flex-1 overflow-hidden">
+ <div className="flex flex-1 min-h-0 overflow-hidden">
  {/* Left Panel - Positions List */}
- <div className="w-1/2 border-r border-[#1E4775]/20 overflow-y-auto">
+ <div className="w-1/2 border-r border-[#1E4775]/20 overflow-y-auto min-h-0">
  <div className="p-4">
- <h3 className="text-lg font-semibold text-[#1E4775] mb-4">
+ <div className="mb-4">
+ <h3 className="text-lg font-semibold text-[#1E4775] mb-2">
  Select Pools to Claim
  </h3>
+ {positions.length > 0 ? (
+ <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+ <button
+ type="button"
+ onClick={selectAllPools}
+ disabled={isLoading}
+ className="text-[#1E4775] font-medium underline underline-offset-2 hover:text-[#17395F] disabled:opacity-50 disabled:cursor-not-allowed disabled:no-underline"
+ >
+ Select all
+ </button>
+ <button
+ type="button"
+ onClick={deselectAllPools}
+ disabled={isLoading}
+ className="text-[#1E4775] font-medium underline underline-offset-2 hover:text-[#17395F] disabled:opacity-50 disabled:cursor-not-allowed disabled:no-underline"
+ >
+ Deselect all
+ </button>
+ </div>
+ ) : null}
+ </div>
  {positions.length === 0 ? (
  <p className="text-sm text-[#1E4775]/70">
  No positions with rewards available.
@@ -159,7 +191,7 @@ export const AnchorClaimAllModal = ({
  return (
  <label
  key={key}
- className="flex items-center gap-3 p-3 border border-[#1E4775]/20 hover:bg-[#1E4775]/5 cursor-pointer transition-colors"
+ className="flex items-center gap-3 p-3 rounded-md border border-[#1E4775]/20 hover:bg-[#1E4775]/5 cursor-pointer transition-colors"
  >
  <input
  type="checkbox"
@@ -224,7 +256,7 @@ export const AnchorClaimAllModal = ({
  <p className="text-sm text-[#1E4775]/80 mb-2">
  Choose how you would like to handle your rewards:
  </p>
- <div className="bg-[#1E4775]/5 p-3">
+ <div className="bg-[#1E4775]/5 p-3 rounded-md">
  <div className="text-xs text-[#1E4775]/70 mb-1">
  Total Selected Rewards
  </div>
@@ -243,7 +275,7 @@ export const AnchorClaimAllModal = ({
  onClose();
  }}
  disabled={isLoading || selectedPoolsArray.length === 0}
- className="w-full p-4 text-left bg-white border-2 border-[#1E4775] hover:bg-[#1E4775]/5 transition-colors flex items-center justify-between group disabled:opacity-50 disabled:cursor-not-allowed"
+ className="w-full p-4 text-left rounded-md bg-white border-2 border-[#1E4775] hover:bg-[#1E4775]/5 transition-colors flex items-center justify-between group disabled:opacity-50 disabled:cursor-not-allowed"
  >
  <div className="flex items-center gap-3">
  <div>
@@ -281,7 +313,7 @@ export const AnchorClaimAllModal = ({
  selectedPoolsArray.length === 0 ||
  compoundDisabledByMaintenance
  }
- className="w-full p-4 text-left bg-white border-2 border-[#1E4775] hover:bg-[#1E4775]/5 transition-colors flex items-center justify-between group disabled:opacity-50 disabled:cursor-not-allowed"
+ className="w-full p-4 text-left rounded-md bg-white border-2 border-[#1E4775] hover:bg-[#1E4775]/5 transition-colors flex items-center justify-between group disabled:opacity-50 disabled:cursor-not-allowed"
  title={
  compoundDisabledByMaintenance
    ? "Deselect pools marked Maintenance / Claim only to use Compound, or use Basic Claim"
@@ -325,7 +357,7 @@ export const AnchorClaimAllModal = ({
  onClose();
  }}
  disabled={true}
- className="w-full p-4 text-left bg-white border-2 border-gray-300 transition-colors flex items-center justify-between group disabled:opacity-50 disabled:cursor-not-allowed"
+ className="w-full p-4 text-left rounded-md bg-white border-2 border-gray-300 transition-colors flex items-center justify-between group disabled:opacity-50 disabled:cursor-not-allowed"
  >
  <div className="flex items-center gap-3">
  <div>

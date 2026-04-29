@@ -1,13 +1,14 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import {
  useAccount,
  useWriteContract,
  useReadContract,
  useContractReads,
+ usePublicClient,
 } from "wagmi";
-import { parseEther, formatEther } from "viem";
+import { parseEther, formatEther, formatUnits } from "viem";
 import { markets } from "../../config/markets";
 import { ConnectWallet } from "@/components/Wallet";
 import Link from "next/link";
@@ -18,6 +19,7 @@ import {
   ADMIN_MINTER_ABI,
   MOCK_PRICE_FEED_ABI,
   STABILITY_POOL_REWARDS_ABI,
+  STABILITY_POOL_MANAGER_ABI,
 } from "@/abis/admin";
 import { ERC20_ABI } from "@/abis/shared";
 
@@ -35,6 +37,20 @@ const safeParseEther = (value: string): bigint => {
  return BigInt(0);
  }
 };
+
+/** Human-readable token amount using on-chain decimals (not always 18). */
+function formatTokenAmount(
+  value: bigint,
+  decimals: number,
+  maxFrac = 6
+): string {
+  const d = Math.min(255, Math.max(0, Math.floor(decimals)));
+  const s = formatUnits(value, d);
+  if (maxFrac <= 0 || !s.includes(".")) return s;
+  const [whole, frac = ""] = s.split(".");
+  const trimmed = frac.slice(0, maxFrac).replace(/0+$/, "");
+  return trimmed ? `${whole}.${trimmed}` : whole;
+}
 
 export default function Admin() {
  const { isConnected, address } = useAccount();
@@ -55,7 +71,17 @@ export default function Admin() {
  const [receiverAddress, setReceiverAddress] = useState("");
  const [approvalAmount, setApprovalAmount] = useState("");
  const [isApproving, setIsApproving] = useState(false);
-
+ const [selectedMarketIds, setSelectedMarketIds] = useState<Set<string>>(
+   () => new Set()
+ );
+ const selectionTouchedRef = useRef(false);
+ const [harvestError, setHarvestError] = useState<string | null>(null);
+ const [harvestSuccess, setHarvestSuccess] = useState<string | null>(null);
+ const [harvestProgress, setHarvestProgress] = useState<{
+   phase: "confirm" | "mining";
+   step: number;
+   total: number;
+ } | null>(null);
  useEffect(() => {
  setMounted(true);
  }, []);
@@ -63,13 +89,50 @@ export default function Admin() {
  // ---------------------------------------------------------------------------
  // Fees + Harvestable summary (per market) - shown above "System Controls"
  // ---------------------------------------------------------------------------
- const marketOptions = Object.entries(markets)
-   .filter(([, m]) => (m as any)?.addresses?.minter)
-   .map(([id, m]) => ({
-     id,
-     name: (m as any)?.name ?? id,
-     minter: (m as any)?.addresses?.minter as `0x${string}`,
-   }));
+ const marketOptions = useMemo(
+   () =>
+     Object.entries(markets)
+       .filter(([, m]) => (m as any)?.addresses?.minter)
+       .map(([id, m]) => ({
+         id,
+         name: (m as any)?.name ?? id,
+         minter: (m as any)?.addresses?.minter as `0x${string}`,
+       })),
+   []
+ );
+
+ const { spmReadContracts, spmMarketIndices } = useMemo(() => {
+   const contracts: Array<{
+     address: `0x${string}`;
+     abi: typeof STABILITY_POOL_MANAGER_ABI;
+     functionName: "harvestable" | "harvestBountyRatio" | "harvestCutRatio";
+   }> = [];
+   const spmMarketIndices: number[] = [];
+   marketOptions.forEach((m, i) => {
+     const spm = (markets as any)[m.id]?.addresses
+       ?.stabilityPoolManager as `0x${string}` | undefined;
+     if (!spm) return;
+     spmMarketIndices.push(i);
+     contracts.push(
+       {
+         address: spm,
+         abi: STABILITY_POOL_MANAGER_ABI,
+         functionName: "harvestable",
+       },
+       {
+         address: spm,
+         abi: STABILITY_POOL_MANAGER_ABI,
+         functionName: "harvestBountyRatio",
+       },
+       {
+         address: spm,
+         abi: STABILITY_POOL_MANAGER_ABI,
+         functionName: "harvestCutRatio",
+       }
+     );
+   });
+   return { spmReadContracts: contracts, spmMarketIndices };
+ }, [marketOptions]);
 
   const poolOptions = Object.entries(markets).flatMap(([id, m]) => {
     const marketName = (m as any)?.name ?? id;
@@ -113,7 +176,7 @@ export default function Admin() {
    { address: m.minter, abi: MINTER_FEES_READS_ABI, functionName: "WRAPPED_COLLATERAL_TOKEN" as const },
  ]);
 
- const { data: minterReadData, isLoading: isLoadingMinterReads } = useContractReads({
+ const { data: minterReadData, isLoading: isLoadingMinterReads, refetch: refetchMinterReads } = useContractReads({
    contracts: minterReads,
    query: {
      enabled: mounted && isConnected && minterReads.length > 0,
@@ -123,6 +186,21 @@ export default function Admin() {
      allowFailure: true,
    } as any,
  });
+
+ const { data: spmReadData, isLoading: isLoadingSpmReads, refetch: refetchSpmReads } =
+   useContractReads({
+     contracts: spmReadContracts,
+     query: {
+       enabled:
+         mounted &&
+         isConnected &&
+         spmReadContracts.length > 0,
+       refetchInterval: 30000,
+       staleTime: 15000,
+       retry: 1,
+       allowFailure: true,
+     } as any,
+   });
 
   const { data: poolRewardTokensData, isLoading: isLoadingPoolRewardTokens } =
     useContractReads({
@@ -251,7 +329,7 @@ export default function Admin() {
        .filter((x): x is NonNullable<typeof x> => !!x)
    : []);
 
- const { data: feeBalanceData, isLoading: isLoadingFeeBalances } = useContractReads({
+ const { data: feeBalanceData, isLoading: isLoadingFeeBalances, refetch: refetchFeeBalances } = useContractReads({
    contracts: feeBalanceReads.map((x) => x.contract),
    query: {
      enabled: mounted && isConnected && feeBalanceReads.length > 0,
@@ -262,7 +340,54 @@ export default function Admin() {
    } as any,
  });
 
- const feesSummaryRows = (() => {
+ const wrappedDecimalsReads = (minterReadData
+   ? marketOptions
+       .map((m, i) => {
+         const base = i * 3;
+         const wrappedToken =
+           minterReadData?.[base + 2]?.status === "success"
+             ? (minterReadData?.[base + 2]?.result as `0x${string}` | undefined)
+             : undefined;
+         if (!wrappedToken) return null;
+         return {
+           marketIndex: i,
+           contract: {
+             address: wrappedToken,
+             abi: ERC20_ABI,
+             functionName: "decimals" as const,
+           },
+         };
+       })
+       .filter((x): x is NonNullable<typeof x> => !!x)
+   : []);
+
+ const { data: wrappedDecimalsData, isLoading: isLoadingWrappedDecimals, refetch: refetchWrappedDecimals } =
+   useContractReads({
+     contracts: wrappedDecimalsReads.map((x) => x.contract),
+     query: {
+       enabled:
+         mounted && isConnected && wrappedDecimalsReads.length > 0,
+       refetchInterval: 30000,
+       staleTime: 15000,
+       retry: 1,
+       allowFailure: true,
+     } as any,
+   });
+
+ const RATIO_DEN = 10n ** 18n;
+
+ const feesTableRows = useMemo(() => {
+   const decimalsByMarketIndex = new Map<number, number>();
+   wrappedDecimalsReads.forEach((meta, idx) => {
+     const res = wrappedDecimalsData?.[idx];
+     const raw =
+       res?.status === "success" && res.result !== undefined && res.result !== null
+         ? Number(res.result as number | bigint)
+         : 18;
+     const d = Number.isFinite(raw) && raw >= 0 && raw <= 255 ? Math.floor(raw) : 18;
+     decimalsByMarketIndex.set(meta.marketIndex, d);
+   });
+
    const feeBalByMarketIndex = new Map<number, bigint>();
    feeBalanceReads.forEach((meta, idx) => {
      const res = feeBalanceData?.[idx];
@@ -273,9 +398,54 @@ export default function Admin() {
      feeBalByMarketIndex.set(meta.marketIndex, bal);
    });
 
+   const spmByMarketId = new Map<
+     string,
+     {
+       spmAddress: `0x${string}`;
+       spmHarvestable: bigint;
+       bountyRatio: bigint;
+       cutRatio: bigint;
+       expectedBounty: bigint;
+       expectedCut: bigint;
+       expectedToPools: bigint;
+       minBounty: bigint;
+     }
+   >();
+
+   spmMarketIndices.forEach((mi, j) => {
+     const m = marketOptions[mi];
+     const base = j * 3;
+     const r0 = spmReadData?.[base];
+     const r1 = spmReadData?.[base + 1];
+     const r2 = spmReadData?.[base + 2];
+     const h =
+       r0?.status === "success" && r0.result != null ? (r0.result as bigint) : 0n;
+     const br =
+       r1?.status === "success" && r1.result != null ? (r1.result as bigint) : 0n;
+     const cr =
+       r2?.status === "success" && r2.result != null ? (r2.result as bigint) : 0n;
+     const spmAddress = (markets as any)[m.id]?.addresses
+       ?.stabilityPoolManager as `0x${string}`;
+     const expectedBounty = (h * br) / RATIO_DEN;
+     const expectedCut = (h * cr) / RATIO_DEN;
+     const expectedToPools =
+       h > expectedBounty + expectedCut ? h - expectedBounty - expectedCut : 0n;
+     const minBounty = (expectedBounty * 995n) / 1000n;
+     spmByMarketId.set(m.id, {
+       spmAddress,
+       spmHarvestable: h,
+       bountyRatio: br,
+       cutRatio: cr,
+       expectedBounty,
+       expectedCut,
+       expectedToPools,
+       minBounty,
+     });
+   });
+
    return marketOptions.map((m, i) => {
      const base = i * 3;
-     const harvestable =
+     const minterHarvestable =
        minterReadData?.[base]?.status === "success"
          ? (minterReadData?.[base]?.result as bigint | undefined)
          : undefined;
@@ -288,28 +458,156 @@ export default function Admin() {
          ? (minterReadData?.[base + 2]?.result as `0x${string}` | undefined)
          : undefined;
      const feeBalance = feeBalByMarketIndex.get(i) ?? 0n;
-     const harvest = harvestable ?? 0n;
-     const total = feeBalance + harvest;
+     const mHarv = minterHarvestable ?? 0n;
+     const total = feeBalance + mHarv;
+
+     const spm = spmByMarketId.get(m.id);
+     const addrs = (markets as any)[m.id]?.addresses;
+     const marketMeta = (markets as any)[m.id];
+     const collateralSymbol =
+       (marketMeta?.collateral?.symbol as string | undefined) ?? "collateral";
+     const wrappedDecimals = decimalsByMarketIndex.get(i) ?? 18;
+     const hasSpmConfig = !!(addrs as any)?.stabilityPoolManager;
+     const spmH = spm?.spmHarvestable ?? 0n;
      return {
        ...m,
-       harvestable: harvest,
+       minterHarvestable: mHarv,
        feeReceiver,
        wrappedToken,
        feeBalance,
        total,
+       collateralSymbol,
+       wrappedDecimals,
+       hasSpmConfig,
+       spmAddress: spm?.spmAddress,
+       spmHarvestable: spmH,
+       harvestBountyRatio: spm?.bountyRatio ?? 0n,
+       harvestCutRatio: spm?.cutRatio ?? 0n,
+       expectedBounty: spm?.expectedBounty ?? 0n,
+       expectedCut: spm?.expectedCut ?? 0n,
+       expectedToPools: spm?.expectedToPools ?? 0n,
+       minBounty: spm?.minBounty ?? 0n,
+       poolCollateral: addrs?.stabilityPoolCollateral as `0x${string}` | undefined,
+       poolLeveraged: addrs?.stabilityPoolLeveraged as `0x${string}` | undefined,
+       canCheck: hasSpmConfig && spmH > 0n,
      };
    });
- })();
+ }, [
+   marketOptions,
+   minterReadData,
+   feeBalanceData,
+   feeBalanceReads,
+   spmReadData,
+   spmMarketIndices,
+   wrappedDecimalsReads,
+   wrappedDecimalsData,
+ ]);
 
  // Get the minter address from the first market
  const minterAddress = (markets as any)[Object.keys(markets)[0]].addresses
  .minter as `0x${string}`;
+ const publicClient = usePublicClient();
+
+ const checkableRowIds = useMemo(
+   () => feesTableRows.filter((r) => r.canCheck).map((r) => r.id),
+   [feesTableRows]
+ );
+
+ const selectAllInputRef = useRef<HTMLInputElement>(null);
+ const selectedInCheckable = useMemo(() => {
+   return checkableRowIds.filter((id) => selectedMarketIds.has(id));
+ }, [checkableRowIds, selectedMarketIds]);
+ const allCheckableSelected =
+   checkableRowIds.length > 0 &&
+   selectedInCheckable.length === checkableRowIds.length;
+ const someCheckableSelected =
+   selectedInCheckable.length > 0 && !allCheckableSelected;
+
+ useEffect(() => {
+   const el = selectAllInputRef.current;
+   if (!el) return;
+   el.indeterminate = someCheckableSelected;
+ }, [someCheckableSelected]);
+
+ useEffect(() => {
+   if (!mounted || !isConnected) return;
+   if (
+     isLoadingMinterReads ||
+     isLoadingSpmReads ||
+     isLoadingFeeBalances ||
+     isLoadingWrappedDecimals
+   )
+     return;
+   if (selectionTouchedRef.current) return;
+   setSelectedMarketIds(
+     new Set(feesTableRows.filter((r) => r.canCheck).map((r) => r.id))
+   );
+ }, [
+   mounted,
+   isConnected,
+   isLoadingMinterReads,
+   isLoadingSpmReads,
+   isLoadingFeeBalances,
+   isLoadingWrappedDecimals,
+   feesTableRows,
+ ]);
+
+ const harvestTargetRows = useMemo(() => {
+   const set = new Set(
+     feesTableRows
+       .filter((r) => r.canCheck && selectedMarketIds.has(r.id))
+       .map((r) => r.id)
+   );
+   return [...set]
+     .sort()
+     .map((id) => feesTableRows.find((r) => r.id === id))
+     .filter((r): r is (typeof feesTableRows)[0] => !!r);
+ }, [feesTableRows, selectedMarketIds]);
+
+ const harvestSummary = useMemo(() => {
+   const totalsByDenom = new Map<
+     string,
+     { symbol: string; decimals: number; sumB: bigint; sumC: bigint; sumP: bigint }
+   >();
+   for (const r of harvestTargetRows) {
+     const key = `${r.collateralSymbol}:${r.wrappedDecimals}`;
+     let b = totalsByDenom.get(key);
+     if (!b) {
+       b = {
+         symbol: r.collateralSymbol,
+         decimals: r.wrappedDecimals,
+         sumB: 0n,
+         sumC: 0n,
+         sumP: 0n,
+       };
+       totalsByDenom.set(key, b);
+     }
+     b.sumB += r.expectedBounty;
+     b.sumC += r.expectedCut;
+     b.sumP += r.expectedToPools;
+   }
+   const cutReceivers = new Map<`0x${string}`, string[]>();
+   harvestTargetRows.forEach((r) => {
+     if (!r.feeReceiver) return;
+     const list = cutReceivers.get(r.feeReceiver) ?? [];
+     list.push(r.name);
+     cutReceivers.set(r.feeReceiver, list);
+   });
+   const totalsByDenomList = [...totalsByDenom.values()].sort((a, b) =>
+     a.symbol.localeCompare(b.symbol)
+   );
+   return { totalsByDenomList, cutReceivers };
+ }, [harvestTargetRows]);
 
  // Contract writes
  const {
  writeContract: updateFeeReceiverWrite,
  data: updateFeeReceiverHash,
  isPending: isUpdatingFeeReceiver,
+ } = useWriteContract();
+ const {
+   writeContractAsync,
+   isPending: isHarvestSubmitting,
  } = useWriteContract();
  const {
  writeContract: updateReservePoolWrite,
@@ -544,6 +842,81 @@ export default function Admin() {
  });
  };
 
+ const handleBatchHarvest = async () => {
+   setHarvestError(null);
+   setHarvestSuccess(null);
+   if (!address) {
+     setHarvestError("Connect wallet");
+     return;
+   }
+   if (harvestTargetRows.length === 0) {
+     setHarvestError("No markets with pool harvestable selected.");
+     return;
+   }
+   if (!publicClient) {
+     setHarvestError("Missing public client");
+     return;
+   }
+   const toHarvest = harvestTargetRows.filter((r) => r.spmAddress);
+   if (toHarvest.length === 0) {
+     setHarvestError("No StabilityPoolManager address for the selected markets.");
+     return;
+   }
+   const total = toHarvest.length;
+   try {
+     for (let i = 0; i < toHarvest.length; i++) {
+       const row = toHarvest[i];
+       const step = i + 1;
+       setHarvestProgress({
+         phase: "confirm",
+         step,
+         total,
+       });
+       const hash = await writeContractAsync({
+         address: row.spmAddress,
+         abi: STABILITY_POOL_MANAGER_ABI,
+         functionName: "harvest",
+         args: [address, row.minBounty],
+       });
+       setHarvestProgress({
+         phase: "mining",
+         step,
+         total,
+       });
+       await publicClient.waitForTransactionReceipt({ hash });
+     }
+     setHarvestSuccess(
+       `Harvest complete: ${total} market${total === 1 ? "" : "s"}.`
+     );
+     await Promise.all([
+       refetchMinterReads(),
+       refetchSpmReads(),
+       refetchFeeBalances(),
+       refetchWrappedDecimals(),
+     ]);
+   } catch (e: unknown) {
+     const message = e instanceof Error ? e.message : String(e);
+     if (message.includes("NoHarvestable")) {
+       setHarvestError("NoHarvestable: no harvestable amount available.");
+     } else if (message.includes("InsufficientBounty")) {
+       setHarvestError(
+         "InsufficientBounty: preview became stale or minBounty is too high."
+       );
+     } else {
+       setHarvestError(message);
+     }
+   } finally {
+     setHarvestProgress(null);
+   }
+ };
+
+ const harvestInFlight = harvestProgress !== null;
+ const harvestActionDisabled =
+   !isConnected ||
+   !address ||
+   harvestTargetRows.length === 0 ||
+   harvestInFlight;
+
  // Return a placeholder during server-side rendering
  if (!mounted) {
  return (
@@ -638,53 +1011,345 @@ export default function Admin() {
       </div>
     </div>
 
-    {/* Fees & Harvestable summary (per market) */}
-    <div className="bg-zinc-900/50 p-4 sm:p-6">
+    {/* Fees & Harvestable + batch pool harvest */}
+    <div className="bg-zinc-900/50 p-4 sm:p-6 flex flex-col min-h-0">
      <div className="flex items-center justify-between gap-4 mb-3">
        <div>
          <h2 className="text-lg font-medium text-white font-geo">
            Fees & Harvestable
          </h2>
-         <div className="text-xs text-white/60 mt-1">
-           `harvestable()` on Minter + wrapped collateral token balance at `feeReceiver()`
+         <div className="text-xs text-white/60 mt-1 max-w-xl">
+           Minter <span className="font-mono">harvestable()</span> and wrapped
+           token balance at <span className="font-mono">feeReceiver()</span>.
+           Pool yield uses StabilityPoolManager
+           <span className="font-mono"> harvestable()</span> (aligns with{" "}
+           <span className="font-mono">harvest()</span>). Numeric columns use
+           each market&apos;s wrapped collateral token (e.g.{" "}
+           <span className="font-mono">wstETH</span> vs{" "}
+           <span className="font-mono">fxSAVE</span>) with{" "}
+           <span className="font-mono">decimals()</span> read on-chain — do not
+           mix amounts across different tokens.
          </div>
        </div>
-       {(isLoadingMinterReads || isLoadingFeeBalances) && (
+       {(isLoadingMinterReads ||
+         isLoadingFeeBalances ||
+         isLoadingSpmReads ||
+         isLoadingWrappedDecimals) && (
          <div className="text-xs text-white/60">Loading…</div>
        )}
      </div>
 
-     <div className="overflow-x-auto">
-       <table className="w-full text-sm">
-         <thead>
+     <div className="min-h-0 max-h-[min(55vh,560px)] overflow-auto rounded border border-white/10">
+       <table className="w-full text-sm border-collapse min-w-[720px]">
+         <thead className="sticky top-0 z-10 bg-zinc-900/95 backdrop-blur">
            <tr className="text-xs text-white/60 border-b border-white/10">
-             <th className="text-left py-2 pr-4">Market</th>
-             <th className="text-right py-2 pr-4">Harvestable</th>
-             <th className="text-right py-2 pr-4">Fees</th>
-             <th className="text-right py-2 pr-4">Total</th>
-             <th className="text-left py-2">Fee Receiver</th>
+             <th className="text-left py-2.5 pl-2 pr-2 w-10">
+               <input
+                 ref={selectAllInputRef}
+                 type="checkbox"
+                 className="h-3.5 w-3.5 align-middle"
+                 checked={allCheckableSelected}
+                 onChange={() => {
+                   selectionTouchedRef.current = true;
+                   setSelectedMarketIds((prev) => {
+                     if (allCheckableSelected) {
+                       const n = new Set(prev);
+                       checkableRowIds.forEach((id) => n.delete(id));
+                       return n;
+                     }
+                     const n = new Set(prev);
+                     checkableRowIds.forEach((id) => n.add(id));
+                     return n;
+                   });
+                 }}
+                 disabled={checkableRowIds.length === 0}
+                 aria-label="Select all markets that can be pool-harvested"
+               />
+             </th>
+             <th className="text-left py-2.5 pr-4">Market</th>
+             <th className="text-right py-2.5 pr-3 whitespace-nowrap">
+               Minter harvestable
+             </th>
+             <th className="text-right py-2.5 pr-3 whitespace-nowrap">
+               Pool yield (SPM)
+             </th>
+             <th className="text-right py-2.5 pr-3">Fees</th>
+             <th className="text-right py-2.5 pr-3">Total</th>
+             <th className="text-left py-2.5 pr-2 min-w-[7rem]">Fee recv.</th>
+             <th className="text-left py-2.5 pl-1 w-8" />
+           </tr>
+           <tr className="text-[10px] text-white/45 border-b border-white/10">
+             <th colSpan={8} className="text-left font-normal py-1.5 pl-2 pr-2">
+               Units per row: wrapped collateral amount + symbol (decimals from
+               token contract).
+             </th>
            </tr>
          </thead>
          <tbody>
-           {feesSummaryRows.map((r) => (
-             <tr key={r.id} className="border-t border-white/5">
-               <td className="py-2 pr-4 text-white">{r.name}</td>
-               <td className="py-2 pr-4 text-right font-mono text-white">
-                 {formatEther(r.harvestable)}
-               </td>
-               <td className="py-2 pr-4 text-right font-mono text-white">
-                 {formatEther(r.feeBalance)}
-               </td>
-               <td className="py-2 pr-4 text-right font-mono text-white">
-                 {formatEther(r.total)}
-               </td>
-               <td className="py-2 text-xs text-white/60 font-mono">
-                 {r.feeReceiver ?? "-"}
-               </td>
-             </tr>
-           ))}
+           {feesTableRows.map((r, i) => {
+             const short = (a: `0x${string}` | undefined) =>
+               a
+                 ? `${a.slice(0, 6)}…${a.slice(-4)}`
+                 : "—";
+             const rowSel = selectedMarketIds.has(r.id);
+             return (
+               <tr
+                 key={r.id}
+                 className={`border-t border-white/5 ${
+                   i % 2 ? "bg-white/[0.02]" : ""
+                 }`}
+               >
+                 <td className="py-2 pl-2 pr-1 align-top">
+                   <input
+                     type="checkbox"
+                     className="h-3.5 w-3.5 mt-0.5"
+                     checked={rowSel}
+                     disabled={!r.canCheck}
+                     title={
+                       !r.hasSpmConfig
+                         ? "Not configured for pool harvest on this market"
+                         : r.spmHarvestable === 0n
+                         ? "No pool yield to harvest"
+                         : undefined
+                     }
+                     onChange={() => {
+                       if (!r.canCheck) return;
+                       selectionTouchedRef.current = true;
+                       setSelectedMarketIds((prev) => {
+                         const n = new Set(prev);
+                         if (n.has(r.id)) n.delete(r.id);
+                         else n.add(r.id);
+                         return n;
+                       });
+                     }}
+                   />
+                 </td>
+                 <td className="py-2 pr-4 text-white font-medium align-top">
+                   {r.name}
+                 </td>
+                 <td className="py-2 pr-3 text-right font-mono text-white align-top whitespace-nowrap">
+                   {formatTokenAmount(r.minterHarvestable, r.wrappedDecimals)}{" "}
+                   <span className="text-white/50 text-[10px]">
+                     {r.collateralSymbol}
+                   </span>
+                 </td>
+                 <td className="py-2 pr-3 text-right font-mono text-white align-top whitespace-nowrap">
+                   {!r.hasSpmConfig
+                     ? "—"
+                     : (
+                         <>
+                           {formatTokenAmount(
+                             r.spmHarvestable,
+                             r.wrappedDecimals
+                           )}{" "}
+                           <span className="text-white/50 text-[10px]">
+                             {r.collateralSymbol}
+                           </span>
+                         </>
+                       )}
+                 </td>
+                 <td className="py-2 pr-3 text-right font-mono text-white align-top whitespace-nowrap">
+                   {formatTokenAmount(r.feeBalance, r.wrappedDecimals)}{" "}
+                   <span className="text-white/50 text-[10px]">
+                     {r.collateralSymbol}
+                   </span>
+                 </td>
+                 <td className="py-2 pr-3 text-right font-mono text-white align-top whitespace-nowrap">
+                   {formatTokenAmount(r.total, r.wrappedDecimals)}{" "}
+                   <span className="text-white/50 text-[10px]">
+                     {r.collateralSymbol}
+                   </span>
+                 </td>
+                 <td
+                   className="py-2 pr-1 text-xs text-white/80 font-mono max-w-[7rem] truncate align-top"
+                   title={r.feeReceiver ?? ""}
+                 >
+                   {r.feeReceiver ? short(r.feeReceiver) : "—"}
+                 </td>
+                 <td className="py-2 pl-0 align-top text-right">
+                   <details className="text-xs text-harbor">
+                     <summary className="cursor-pointer select-none list-none text-white/50 hover:text-white/80">
+                       ⋯
+                     </summary>
+                     <div className="mt-2 p-2 rounded border border-white/10 bg-black/20 text-left space-y-1.5 min-w-[16rem]">
+                       <div className="text-white/50 text-[10px] uppercase tracking-wide">
+                         Addresses
+                       </div>
+                       <div className="break-all text-[11px] text-white/90">
+                         <div className="text-white/50">Minter feeReceiver</div>
+                         {r.feeReceiver ?? "—"}
+                       </div>
+                       <div className="text-[11px] text-white/80">
+                         <span className="text-white/50">
+                           Protocol cut (likely destination)
+                         </span>
+                         : Minter <span className="font-mono">feeReceiver</span>{" "}
+                         above. Exact routing is enforced on-chain; cut typically
+                         follows protocol config.
+                       </div>
+                       <div className="break-all text-[11px] text-white/90">
+                         <div className="text-white/50">StabilityPoolManager</div>
+                         {r.spmAddress ?? "—"}
+                       </div>
+                       <div className="text-white/50 text-[10px] pt-1 uppercase tracking-wide">
+                         Preview (selected tx)
+                       </div>
+                       <div className="font-mono text-[11px] text-white/90">
+                         bounty{" "}
+                         {formatTokenAmount(
+                           r.expectedBounty,
+                           r.wrappedDecimals
+                         )}{" "}
+                         {r.collateralSymbol} · cut{" "}
+                         {formatTokenAmount(r.expectedCut, r.wrappedDecimals)}{" "}
+                         {r.collateralSymbol} · to pools{" "}
+                         {formatTokenAmount(
+                           r.expectedToPools,
+                           r.wrappedDecimals
+                         )}{" "}
+                         {r.collateralSymbol}
+                       </div>
+                       <div className="text-white/50 text-[10px] pt-1 uppercase tracking-wide">
+                         Destinations (proportional split on-chain)
+                       </div>
+                       <div className="text-[11px] font-mono break-all text-white/80">
+                         <div>Anchor: {r.poolCollateral ?? "—"}</div>
+                         <div>Sail: {r.poolLeveraged ?? "—"}</div>
+                       </div>
+                     </div>
+                   </details>
+                 </td>
+               </tr>
+             );
+           })}
          </tbody>
        </table>
+     </div>
+
+     <div className="mt-4 shrink-0 flex flex-col lg:flex-row lg:items-stretch gap-4 border-t border-white/10 pt-4 sticky bottom-0 z-[1] bg-zinc-900/90">
+       <div className="flex flex-col gap-2">
+         <button
+           onClick={handleBatchHarvest}
+           disabled={
+             harvestActionDisabled || isHarvestSubmitting
+           }
+           className="py-2.5 px-4 bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed self-start"
+         >
+           {isHarvestSubmitting
+             ? "Confirming…"
+             : harvestInFlight
+             ? `Harvesting… ${
+                 harvestProgress
+                   ? `${harvestProgress.step}/${harvestProgress.total}`
+                   : ""
+               }`
+             : "Harvest (pool yield)"}
+         </button>
+         {harvestError && (
+           <p className="text-red-400 text-sm max-w-md">{harvestError}</p>
+         )}
+         {harvestSuccess && !harvestError && (
+           <p className="text-green-400 text-sm max-w-md">{harvestSuccess}</p>
+         )}
+       </div>
+
+       <div className="flex-1 grid sm:grid-cols-2 gap-3 text-xs">
+         <div className="rounded border border-white/10 bg-black/15 p-3 space-y-1.5">
+           <div className="text-white/50 text-[10px] uppercase tracking-wide">
+             Bounty (receiver)
+           </div>
+           <div className="font-mono text-white/90 break-all text-[11px]">
+             {address ?? "—"}
+           </div>
+         </div>
+         <div className="rounded border border-white/10 bg-black/15 p-3 space-y-1.5">
+           <div className="text-white/50 text-[10px] uppercase tracking-wide">
+             Protocol cut (likely dest.)
+           </div>
+           {harvestTargetRows.length === 0 ? (
+             <div className="text-white/40">—</div>
+           ) : harvestSummary.cutReceivers.size <= 3 ? (
+             [...harvestSummary.cutReceivers.entries()].map(
+               ([addr, names]) => (
+                 <div key={addr} className="font-mono text-[11px] break-all text-white/90">
+                   <div>{addr}</div>
+                   <div className="text-white/40">{names.join(", ")}</div>
+                 </div>
+               )
+             )
+           ) : (
+             <details>
+               <summary className="cursor-pointer text-harbor text-[11px]">
+                 {harvestSummary.cutReceivers.size} unique fee receivers
+               </summary>
+               <div className="mt-1 space-y-1 max-h-32 overflow-y-auto">
+                 {[...harvestSummary.cutReceivers.entries()].map(
+                   ([addr, names]) => (
+                     <div
+                       key={addr}
+                       className="font-mono text-[11px] break-all text-white/80"
+                     >
+                       {addr} ({names.join(", ")})
+                     </div>
+                   )
+                 )}
+               </div>
+             </details>
+           )}
+         </div>
+         <div className="sm:col-span-2 rounded border border-white/10 bg-black/15 p-3">
+           <div className="text-white/50 text-[10px] uppercase tracking-wide mb-2">
+             To pools (destinations) · selected markets
+           </div>
+           <div className="space-y-1">
+             {harvestTargetRows.length === 0 ? (
+               <div className="text-white/40">—</div>
+             ) : (
+               harvestTargetRows.map((m) => (
+                 <details
+                   key={m.id}
+                   className="border border-white/5 rounded px-2 py-1.5"
+                 >
+                   <summary className="cursor-pointer text-white/90 text-[11px]">
+                     {m.name}
+                   </summary>
+                   <div className="mt-1 pl-2 space-y-0.5 font-mono text-[10px] text-white/70 break-all">
+                     <div>Anchor: {m.poolCollateral ?? "—"}</div>
+                     <div>Sail: {m.poolLeveraged ?? "—"}</div>
+                   </div>
+                 </details>
+               ))
+             )}
+           </div>
+         </div>
+         {harvestTargetRows.length > 0 &&
+           harvestSummary.totalsByDenomList.length > 0 && (
+             <div className="sm:col-span-2 space-y-2">
+               {harvestSummary.totalsByDenomList.length > 1 && (
+                 <p className="text-[10px] text-white/50 leading-snug">
+                   Preview totals are summed per wrapped collateral token only
+                   (e.g. all <span className="font-mono">wstETH</span> markets
+                   together, all <span className="font-mono">fxSAVE</span>{" "}
+                   together). Do not add across different symbols.
+                 </p>
+               )}
+               {harvestSummary.totalsByDenomList.map((t) => (
+                 <div
+                   key={`${t.symbol}-${t.decimals}`}
+                   className="font-mono text-[11px] text-white/80"
+                 >
+                   <span className="text-white/50">
+                     {t.symbol} · {t.decimals} decimals
+                   </span>
+                   : Σ bounty{" "}
+                   {formatTokenAmount(t.sumB, t.decimals)} · Σ cut{" "}
+                   {formatTokenAmount(t.sumC, t.decimals)} · Σ to pools{" "}
+                   {formatTokenAmount(t.sumP, t.decimals)}
+                 </div>
+               ))}
+             </div>
+           )}
+       </div>
      </div>
    </div>
 
@@ -713,8 +1378,13 @@ export default function Admin() {
           Rebalancing
         </button>
       </Link>
- </div>
- </div>
+      <Link href="/admin/maiden-voyage-yield">
+        <button className="py-2 px-4 bg-harbor text-white font-medium hover:bg-harbor transition-colors">
+          Maiden voyage yield
+        </button>
+      </Link>
+</div>
+</div>
 
  <div className="bg-zinc-900/50 p-4 sm:p-6">
  <h2 className="text-lg font-medium text-white mb-4 font-geo">

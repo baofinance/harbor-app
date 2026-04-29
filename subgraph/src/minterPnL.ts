@@ -25,6 +25,9 @@ import {
   MinterHourlyTracker,
 } from "../generated/schema";
 import { runDailyMarksUpdate, runHourlySailMarksUpdate } from "./dailyMarksUpdate";
+import { accrueMaidenVoyageCollateralYieldUSD } from "./maidenVoyageYield";
+import { minterUsesSpmHarvestEvents } from "./maidenVoyageConfig";
+import { addRedeemPrincipalOut } from "./redeemPrincipalContext";
 
 const ZERO_BI = BigInt.fromI32(0);
 const ZERO_BD = BigDecimal.fromString("0");
@@ -34,6 +37,9 @@ const ONE = BigDecimal.fromString("1");
 // Chainlink (mainnet) - 8 decimals
 const ETH_USD_FEED = Address.fromString("0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419");
 const BTC_USD_FEED = Address.fromString("0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c");
+const EUR_USD_FEED = Address.fromString("0xb49f677943C0aD637850Ea3b030e1d3778a050bD");
+const XAU_USD_FEED = Address.fromString("0x214eD9Da11D2fbe465a6fc601a91E62EbEc1a0D6");
+const XAG_USD_FEED = Address.fromString("0x379589227b15F1a12195D3f2d90bBc9F31f95235");
 const CHAINLINK_1E8 = BigDecimal.fromString("100000000");
 const HOUR_SECONDS = BigInt.fromI32(3600);
 
@@ -70,6 +76,24 @@ function getOracleAddressForMinter(minter: Address): Address {
   if (minter.equals(Address.fromString("0x042e7cb5b993312490ea07fb89f360a65b8a9056"))) {
     return Address.fromString("0xe370289af2145a5b2f0f7a4a900ebfd478a156db"); // BTC/stETH test2
   }
+  if (minter.equals(Address.fromString("0x68911ea33e11bc77e07f6da4db6cd23d723641ce"))) {
+    return Address.fromString("0xe370289af2145a5b2f0f7a4a900ebfd478a156db"); // EUR/stETH
+  }
+  if (minter.equals(Address.fromString("0xdefb2c04062350678965cbf38a216cc50723b246"))) {
+    return Address.fromString("0x71437c90f1e0785dd691fd02f7be0b90cd14c097"); // EUR/fxUSD
+  }
+  if (minter.equals(Address.fromString("0x880600e0c803d836e305b7c242fc095eed234a8f"))) {
+    return Address.fromString("0x1f7f62889e599e51b9e21b27d589fa521516d147"); // GOLD/fxUSD
+  }
+  if (minter.equals(Address.fromString("0xb315dc4698df45a477d8bb4b0bc694c4d1be91b5"))) {
+    return Address.fromString("0x4ebde6143c5e366264ba7416fdea18bc27c04a31"); // GOLD/stETH
+  }
+  if (minter.equals(Address.fromString("0x177bb50574cda129bdd0b0f50d4e061d38aa75ef"))) {
+    return Address.fromString("0x14816ff286f2ea46ab48c3275401fd4b1ef817b5"); // SILVER/fxUSD
+  }
+  if (minter.equals(Address.fromString("0x1c0067bee039a293804b8be951b368d2ec65b3e9"))) {
+    return Address.fromString("0x7223e17bd4527acbe44644300ea0f09a4aebc995"); // SILVER/stETH
+  }
   return Address.zero();
 }
 
@@ -81,6 +105,9 @@ function isFxUsdMinter(minter: Address): boolean {
   // Test2
   if (minter.equals(Address.fromString("0x565f90dc7c022e7857734352c7bf645852d8d4e7"))) return true; // ETH/fxUSD test2
   if (minter.equals(Address.fromString("0x7ffe3acb524fb40207709ba597d39c085d258f15"))) return true; // BTC/fxUSD test2
+  if (minter.equals(Address.fromString("0xdefb2c04062350678965cbf38a216cc50723b246"))) return true; // EUR/fxUSD
+  if (minter.equals(Address.fromString("0x880600e0c803d836e305b7c242fc095eed234a8f"))) return true; // GOLD/fxUSD
+  if (minter.equals(Address.fromString("0x177bb50574cda129bdd0b0f50d4e061d38aa75ef"))) return true; // SILVER/fxUSD
   return false;
 }
 
@@ -110,6 +137,18 @@ function isBtcStethMinter(minter: Address): boolean {
   return false;
 }
 
+function isStethEurMinter(minter: Address): boolean {
+  return minter.equals(Address.fromString("0x68911ea33e11bc77e07f6da4db6cd23d723641ce"));
+}
+
+function isGoldStethMinter(minter: Address): boolean {
+  return minter.equals(Address.fromString("0xb315dc4698df45a477d8bb4b0bc694c4d1be91b5"));
+}
+
+function isSilverStethMinter(minter: Address): boolean {
+  return minter.equals(Address.fromString("0x1c0067bee039a293804b8be951b368d2ec65b3e9"));
+}
+
 function peggedUsdPrice(): BigDecimal {
   // Default to $1 if unknown.
   return ONE;
@@ -122,6 +161,9 @@ function peggedUsdPriceFromChainlink(feed: Address): BigDecimal {
 function getPegUsdForMinter(minterAddress: Address): BigDecimal {
   if (isEthPegged(minterAddress)) return chainlinkUsd(ETH_USD_FEED);
   if (isBtcPegged(minterAddress)) return chainlinkUsd(BTC_USD_FEED);
+  if (isStethEurMinter(minterAddress)) return chainlinkUsd(EUR_USD_FEED);
+  if (isGoldStethMinter(minterAddress)) return chainlinkUsd(XAU_USD_FEED);
+  if (isSilverStethMinter(minterAddress)) return chainlinkUsd(XAG_USD_FEED);
   return peggedUsdPrice();
 }
 
@@ -162,8 +204,16 @@ function getOraclePricesForMinter(minterAddress: Address): BigDecimal[] {
 
   const maxUnderlyingPrice = toE18(ans.value.value1);
   const maxWrappedRate = toE18(ans.value.value3);
-  if (maxUnderlyingPrice.equals(ZERO_BD)) return [ZERO_BD, ZERO_BD, ZERO_BD];
   if (maxWrappedRate.equals(ZERO_BD)) return [ZERO_BD, ZERO_BD, ZERO_BD];
+
+  // stETH/EUR: match genesis.ts — wstETH USD from ETH/USD × stETH-per-wstETH (oracle value3 only).
+  if (isStethEurMinter(minterAddress)) {
+    const ethUsd = chainlinkUsd(ETH_USD_FEED);
+    const wstethUsd = ethUsd.times(maxWrappedRate);
+    return [wstethUsd, ONE, wstethUsd];
+  }
+
+  if (maxUnderlyingPrice.equals(ZERO_BD)) return [ZERO_BD, ZERO_BD, ZERO_BD];
 
   const pegUsd = getPegUsdForMinter(minterAddress);
   const underlyingPriceUSD = maxUnderlyingPrice.times(pegUsd);
@@ -254,34 +304,10 @@ function getOrCreateMinterHourlyTracker(
     t.minterAddress = minterAddress;
     t.tokenAddress = tokenRes.value;
     t.lastHourTimestamp = ZERO_BI;
+    t.lastHarvestableUSD = ZERO_BD;
     t.save();
   }
   return t as MinterHourlyTracker;
-}
-
-function getGenesisAddressForMinter(minter: Address): Address {
-  // Production
-  if (minter.equals(Address.fromString("0xd6E2F8e57b4aFB51C6fA4cbC012e1cE6aEad989F"))) {
-    return Address.fromString("0xc9df4f62474cf6cde6c064db29416a9f4f27ebdc"); // ETH/fxUSD
-  }
-  if (minter.equals(Address.fromString("0x33e32ff4d0677862fa31582CC654a25b9b1e4888"))) {
-    return Address.fromString("0x42cc9a19b358a2a918f891d8a6199d8b05f0bc1c"); // BTC/fxUSD
-  }
-  if (minter.equals(Address.fromString("0xF42516EB885E737780EB864dd07cEc8628000919"))) {
-    return Address.fromString("0xc64fc46eed431e92c1b5e24dc296b5985ce6cc00"); // BTC/stETH
-  }
-
-  // Test2
-  if (minter.equals(Address.fromString("0x565f90dc7c022e7857734352c7bf645852d8d4e7"))) {
-    return Address.fromString("0x5f4398e1d3e33f93e3d7ee710d797e2a154cb073"); // ETH/fxUSD test2
-  }
-  if (minter.equals(Address.fromString("0x7ffe3acb524fb40207709ba597d39c085d258f15"))) {
-    return Address.fromString("0x288c61c3b3684ff21adf38d878c81457b19bd2fe"); // BTC/fxUSD test2
-  }
-  if (minter.equals(Address.fromString("0x042e7cb5b993312490ea07fb89f360a65b8a9056"))) {
-    return Address.fromString("0x9ae0b57ceada0056dbe21edcd638476fcba3ccc0"); // BTC/stETH test2
-  }
-  return Address.zero();
 }
 
 function hasGenesisLot(positionId: string): boolean {
@@ -361,11 +387,17 @@ export function handleBlock(block: ethereum.Block): void {
   const navRes = minter.try_leveragedTokenPrice();
   const tokenPriceUSD = navRes.reverted ? ZERO_BD : toE18(navRes.value).times(pegUsd);
 
-  if (collateralPriceUSD.equals(ZERO_BD)) collateralPriceUSD = pegUsd;
+  // fxSAVE markets: collateralPriceUSD is ~$1 from getPrice(); never substitute pegUsd (ETH/BTC spot ~thousands)
+  // or hour-over-hour "carry" in maidenVoyageYield will see bogus multi-thousand-dollar deltas.
+  if (collateralPriceUSD.equals(ZERO_BD) && !isFxUsdMinter(minterAddress)) {
+    collateralPriceUSD = pegUsd;
+  }
   if (wrappedRate.equals(ZERO_BD)) wrappedRate = ONE;
 
   // Only write if we have a non-zero token price.
   if (tokenPriceUSD.equals(ZERO_BD)) return;
+  // fxUSD: require a real fxSAVE USD price for snapshots used by collateral-yield accrual.
+  if (isFxUsdMinter(minterAddress) && collateralPriceUSD.equals(ZERO_BD)) return;
 
   maybeWriteHourlySnapshot(
     token,
@@ -376,6 +408,24 @@ export function handleBlock(block: ethereum.Block): void {
     collateralPriceUSD,
     wrappedRate
   );
+
+  // Collateral yield (non-SPM markets): hourly harvestable() delta.
+  // v1 ETH/BTC fxUSD + BTC/stETH use `StabilityPoolManager.Harvested` instead (see stabilityPoolManagerYield.ts).
+  if (!minterUsesSpmHarvestEvents(minterAddress)) {
+    const h = minter.try_harvestable();
+    if (!h.reverted) {
+      const harvestableUSD = valueCollateralUsd(minterAddress, h.value);
+      if (harvestableUSD.gt(ZERO_BD)) {
+        const prevHarvestableUSD = mt.lastHarvestableUSD;
+        if (harvestableUSD.gt(prevHarvestableUSD)) {
+          const deltaUSD = harvestableUSD.minus(prevHarvestableUSD);
+          accrueMaidenVoyageCollateralYieldUSD(minterAddress, deltaUSD, block.timestamp);
+        }
+      }
+      mt.lastHarvestableUSD = harvestableUSD;
+      mt.save();
+    }
+  }
 }
 
 /**
@@ -388,7 +438,7 @@ export function handleBlock(block: ethereum.Block): void {
  *
  * wrappedTokenUsd = maxUnderlyingPrice * maxWrappedRate * pegUsd
  */
-function valueCollateralUsd(
+export function valueCollateralUsd(
   minterAddress: Address,
   collateralAmount: BigInt
 ): BigDecimal {
@@ -424,11 +474,18 @@ function valueCollateralUsd(
 
   const maxUnderlyingPrice = toE18(ans.value.value1);
   const maxWrappedRate = toE18(ans.value.value3);
-  if (maxUnderlyingPrice.equals(ZERO_BD)) return ZERO_BD;
   if (maxWrappedRate.equals(ZERO_BD)) return ZERO_BD;
 
-  const pegUsd = getPegUsdForMinter(minterAddress);
   const amountDec = toE18(collateralAmount);
+
+  if (isStethEurMinter(minterAddress)) {
+    const ethUsd = chainlinkUsd(ETH_USD_FEED);
+    return amountDec.times(maxWrappedRate).times(ethUsd);
+  }
+
+  if (maxUnderlyingPrice.equals(ZERO_BD)) return ZERO_BD;
+
+  const pegUsd = getPegUsdForMinter(minterAddress);
   // For BTC/stETH, collateralAmount is already underlying stETH units, so don't apply wrapped rate.
   if (isBtcStethMinter(minterAddress)) {
     return amountDec.times(maxUnderlyingPrice).times(pegUsd);
@@ -589,8 +646,10 @@ export function handleMintLeveragedToken(event: MintLeveragedToken): void {
     collateralValueUSD = outDec.times(tokenPriceUSD);
   }
 
-  // If oraclePrices are missing, fill reasonable defaults so charts/snapshots aren't blocked.
-  if (collateralPriceUSD.equals(ZERO_BD)) collateralPriceUSD = pegUsd;
+  // If oraclePrices are missing: for fxSAVE markets do not use pegUsd as collateral (see handleBlock).
+  if (collateralPriceUSD.equals(ZERO_BD) && !isFxUsdMinter(minterAddress)) {
+    collateralPriceUSD = pegUsd;
+  }
   if (wrappedRate.equals(ZERO_BD)) wrappedRate = ONE;
   if (wrappedCollateralUsd.equals(ZERO_BD)) wrappedCollateralUsd = collateralPriceUSD.times(wrappedRate);
 
@@ -668,8 +727,19 @@ export function handleRedeemLeveragedToken(event: RedeemLeveragedToken): void {
   const token = tokenRes.value;
 
   const sender = event.params.sender;
+  const receiver = event.params.receiver;
   const leveragedBurned = event.params.leveragedTokenBurned;
   const collateralOut = event.params.collateralOut;
+
+  // Record redeem principal outflow context so wrapped-collateral fee accrual
+  // can exclude principal transfers when receiver == feeReceiver.
+  addRedeemPrincipalOut(
+    minterAddress,
+    receiver,
+    event.transaction.hash,
+    collateralOut,
+    event.block.timestamp
+  );
 
   let collateralValueUSD = valueCollateralUsd(minterAddress, collateralOut);
 
@@ -687,7 +757,9 @@ export function handleRedeemLeveragedToken(event: RedeemLeveragedToken): void {
     collateralValueUSD = burnDec.times(tokenPriceUSD);
   }
 
-  if (collateralPriceUSD.equals(ZERO_BD)) collateralPriceUSD = pegUsd;
+  if (collateralPriceUSD.equals(ZERO_BD) && !isFxUsdMinter(minterAddress)) {
+    collateralPriceUSD = pegUsd;
+  }
   if (wrappedRate.equals(ZERO_BD)) wrappedRate = ONE;
   if (wrappedCollateralUsd.equals(ZERO_BD)) wrappedCollateralUsd = collateralPriceUSD.times(wrappedRate);
 

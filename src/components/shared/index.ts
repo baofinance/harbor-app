@@ -4,6 +4,8 @@
  */
 
 export * from "./EtherscanLink";
+export * from "./IndexPageTitleSection";
+export * from "./indexMarketsToolbarStyles";
 export * from "./TokenLogo";
 
 

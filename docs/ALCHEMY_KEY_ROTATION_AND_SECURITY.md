@@ -36,7 +36,7 @@ If the Alchemy URL is sent to the browser (e.g. via `NEXT_PUBLIC_MAINNET_RPC_URL
 
 ### How it works
 
-- The **browser** only talks to your app: `https://app.harborfinance.io/api/rpc`.
+- The **browser** only talks to **same-origin** `/api/rpc` on whatever host serves the app (production, staging, or a Vercel preview).
 - Your **Next.js API route** (`/api/rpc`) receives those requests and forwards them to Alchemy using a **server-only** env var.
 - The Alchemy key is never in the frontend bundle, so it can’t be scraped or abused by third parties.
 
@@ -48,23 +48,22 @@ If the Alchemy URL is sent to the browser (e.g. via `NEXT_PUBLIC_MAINNET_RPC_URL
 
    | Name                | Value                                              | Environments   |
    |---------------------|----------------------------------------------------|----------------|
-   | `MAINNET_RPC_URL`   | `https://eth-mainnet.g.alchemy.com/v2/YOUR_NEW_KEY` | Production     |
+   | `MAINNET_RPC_URL`   | `https://eth-mainnet.g.alchemy.com/v2/YOUR_NEW_KEY` | Production, Preview (if previews use `NEXT_PUBLIC_USE_RPC_PROXY=true`) |
 
    - **Do not** add `NEXT_PUBLIC_` to this variable.  
    - Use the **new** key you created in Part 1.  
-   - Leave it empty for Preview/Development if you want those to use a public RPC.
+   - For **Preview** deployments that use the proxy, set `MAINNET_RPC_URL` on Preview too (otherwise `/api/rpc` returns 503). Development can use a public RPC if you turn the proxy off locally.
 
-### Step 2: Turn on the RPC proxy and set app URL
+### Step 2: Turn on the RPC proxy
 
 In the same **Environment Variables** section, add:
 
 | Name                         | Value                           | Environments   |
 |-----------------------------|----------------------------------|----------------|
-| `NEXT_PUBLIC_USE_RPC_PROXY` | `true`                           | Production     |
-| `NEXT_PUBLIC_APP_URL`       | `https://app.harborfinance.io`   | Production     |
+| `NEXT_PUBLIC_USE_RPC_PROXY` | `true`                           | Production, Preview (as needed) |
 
-- `NEXT_PUBLIC_USE_RPC_PROXY=true` makes the app use `/api/rpc` for mainnet instead of a direct RPC URL.
-- `NEXT_PUBLIC_APP_URL` is the canonical origin of the app (no trailing slash). The client will request `NEXT_PUBLIC_APP_URL + '/api/rpc'`.
+- `NEXT_PUBLIC_USE_RPC_PROXY=true` makes the app use same-origin `/api/rpc` for mainnet instead of a direct RPC URL in the browser.
+- You do **not** need `NEXT_PUBLIC_APP_URL` for the RPC proxy; each deployment calls its own `/api/rpc` (avoids CORS when previews are on `*.vercel.app`). Set `NEXT_PUBLIC_APP_URL` only if other features require a canonical site URL.
 
 ### Step 3: Remove the old public RPC env var (if set)
 
@@ -79,7 +78,7 @@ then **remove** it for Production (or set it to empty). With the proxy enabled, 
 Trigger a new production deployment so the new env vars and the proxy route are used. After deploy:
 
 - The site should work as before.
-- In the browser, network requests for RPC will go to `https://app.harborfinance.io/api/rpc` instead of Alchemy.
+- In the browser, network requests for RPC will go to `/api/rpc` on the same host as the page instead of directly to Alchemy.
 - Your Alchemy key is only in `MAINNET_RPC_URL` on the server.
 
 ---
@@ -94,10 +93,9 @@ In `.env.local`:
 ```bash
 MAINNET_RPC_URL=https://eth-mainnet.g.alchemy.com/v2/YOUR_NEW_KEY
 NEXT_PUBLIC_USE_RPC_PROXY=true
-NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
 
-Run the app; it will call `http://localhost:3000/api/rpc`, and the server will forward to Alchemy.
+Run the app; the browser will call `http://localhost:3000/api/rpc`, and the server will forward to Alchemy. (Optional: `NEXT_PUBLIC_APP_URL=http://localhost:3000` if other code needs a canonical base URL.)
 
 **Option B – Direct URL (no proxy)**  
 In `.env.local`:

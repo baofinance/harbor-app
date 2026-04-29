@@ -8,13 +8,8 @@
 specVersion: 0.0.8
 schema:
   file: ./schema.graphql
-features:
-  - grafting
-graft:
-  # Base is the currently-published Gateway deployment (serving correct BTC fxUSD cost basis, etc).
-  # We graft from just BEFORE genesis end so that genesis end is replayed with corrected stETH wrapped-rate handling.
-  base: QmSGKrbUwYTmkmTGxyXUJUBwDqkBuDV6agnF12Twz2Fego
-  block: 24164127
+# Grafting removed 2026-04: prior base QmSGK… predates schema fields (UserHarborMarks maiden voyage, etc.)
+# and caused deploy failures. Re-add graft with a current deployment IPFS hash after a full sync if needed.
 dataSources:
   # ETH/fxUSD (prod)
   - kind: ethereum
@@ -47,6 +42,8 @@ dataSources:
           handler: handleDeposit
         - event: Withdraw(indexed address,indexed address,uint256)
           handler: handleWithdraw
+        - event: Claim(indexed address,indexed address,uint256,uint256)
+          handler: handleClaim
         - event: GenesisEnds()
           handler: handleGenesisEnd
       callHandlers:
@@ -85,7 +82,7 @@ dataSources:
       eventHandlers:
         - event: MintLeveragedToken(indexed address,indexed address,uint256,uint256)
           handler: handleMintLeveragedToken
-        - event: RedeemLeveragedToken(indexed address,uint256,uint256)
+        - event: RedeemLeveragedToken(indexed address,indexed address,uint256,uint256)
           handler: handleRedeemLeveragedToken
       blockHandlers:
         - handler: handleBlock
@@ -125,6 +122,8 @@ dataSources:
           handler: handleDeposit
         - event: Withdraw(indexed address,indexed address,uint256)
           handler: handleWithdraw
+        - event: Claim(indexed address,indexed address,uint256,uint256)
+          handler: handleClaim
         - event: GenesisEnds()
           handler: handleGenesisEnd
       callHandlers:
@@ -163,7 +162,7 @@ dataSources:
       eventHandlers:
         - event: MintLeveragedToken(indexed address,indexed address,uint256,uint256)
           handler: handleMintLeveragedToken
-        - event: RedeemLeveragedToken(indexed address,uint256,uint256)
+        - event: RedeemLeveragedToken(indexed address,indexed address,uint256,uint256)
           handler: handleRedeemLeveragedToken
       blockHandlers:
         - handler: handleBlock
@@ -203,6 +202,8 @@ dataSources:
           handler: handleDeposit
         - event: Withdraw(indexed address,indexed address,uint256)
           handler: handleWithdraw
+        - event: Claim(indexed address,indexed address,uint256,uint256)
+          handler: handleClaim
         - event: GenesisEnds()
           handler: handleGenesisEnd
       callHandlers:
@@ -241,7 +242,7 @@ dataSources:
       eventHandlers:
         - event: MintLeveragedToken(indexed address,indexed address,uint256,uint256)
           handler: handleMintLeveragedToken
-        - event: RedeemLeveragedToken(indexed address,uint256,uint256)
+        - event: RedeemLeveragedToken(indexed address,indexed address,uint256,uint256)
           handler: handleRedeemLeveragedToken
       blockHandlers:
         - handler: handleBlock
@@ -281,6 +282,8 @@ dataSources:
           handler: handleDeposit
         - event: Withdraw(indexed address,indexed address,uint256)
           handler: handleWithdraw
+        - event: Claim(indexed address,indexed address,uint256,uint256)
+          handler: handleClaim
         - event: GenesisEnds()
           handler: handleGenesisEnd
       callHandlers:
@@ -319,7 +322,7 @@ dataSources:
       eventHandlers:
         - event: MintLeveragedToken(indexed address,indexed address,uint256,uint256)
           handler: handleMintLeveragedToken
-        - event: RedeemLeveragedToken(indexed address,uint256,uint256)
+        - event: RedeemLeveragedToken(indexed address,indexed address,uint256,uint256)
           handler: handleRedeemLeveragedToken
       blockHandlers:
         - handler: handleBlock
@@ -359,6 +362,8 @@ dataSources:
           handler: handleDeposit
         - event: Withdraw(indexed address,indexed address,uint256)
           handler: handleWithdraw
+        - event: Claim(indexed address,indexed address,uint256,uint256)
+          handler: handleClaim
         - event: GenesisEnds()
           handler: handleGenesisEnd
       callHandlers:
@@ -397,7 +402,7 @@ dataSources:
       eventHandlers:
         - event: MintLeveragedToken(indexed address,indexed address,uint256,uint256)
           handler: handleMintLeveragedToken
-        - event: RedeemLeveragedToken(indexed address,uint256,uint256)
+        - event: RedeemLeveragedToken(indexed address,indexed address,uint256,uint256)
           handler: handleRedeemLeveragedToken
       blockHandlers:
         - handler: handleBlock

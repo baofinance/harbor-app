@@ -37,7 +37,7 @@ export const InfoCallout = ({
   const styles = toneStyles[tone];
 
   return (
-    <div className={`p-2.5 border text-xs ${styles.wrapper}`}>
+    <div className={`rounded-md p-2.5 border text-xs ${styles.wrapper}`}>
       <div className="flex items-start gap-2">
         {icon ?? (
           <span

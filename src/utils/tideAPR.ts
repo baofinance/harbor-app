@@ -7,51 +7,28 @@ import {
 } from "./tokenAllocation";
 
 /**
- * Calculate marks for APR calculation, including projected and bonus marks
- * 
+ * Calculate marks for APR calculation, including projected end-of-genesis bonus.
+ *
  * When genesis is active, we project marks based on days left:
  * - Deposit marks: marksPerDay (10 marks/$/day) × daysLeftInGenesis
  * - End of genesis bonus: 100 marks per dollar (for all depositors)
- * - Early deposit bonus: 100 marks per dollar (only for early depositors)
- * 
- * When genesis has ended, bonus marks are already included in currentMarks
- * 
- * @param currentMarks - Current marks from subgraph (accumulated marks)
- * @param currentDepositUSD - User's current deposit in USD
- * @param earlyBonusEligibleDepositUSD - USD amount eligible for early bonus
- * @param genesisEnded - Whether genesis has ended
- * @param qualifiesForEarlyBonus - Whether user qualifies for early bonus
- * @param daysLeftInGenesis - Days remaining until genesis ends (optional, defaults to 7)
- * @returns Total marks including bonuses (estimated if genesis active, actual if ended)
+ *
+ * When genesis has ended, subgraph `currentMarks` already includes accrued marks.
  */
 export function calculateMarksForAPR(
   currentMarks: number,
   currentDepositUSD: number,
-  earlyBonusEligibleDepositUSD: number,
   genesisEnded: boolean,
-  qualifiesForEarlyBonus: boolean,
   daysLeftInGenesis: number = 7
 ): number {
   if (genesisEnded) {
-    // Genesis has ended - bonuses are already included in currentMarks
     return currentMarks;
   }
 
-  // Genesis is active - project marks based on days left
-  
-  // Deposit marks: 10 marks per $ per day × days left
   const marksPerDay = currentDepositUSD * 10;
   const projectedDepositMarks = marksPerDay * daysLeftInGenesis;
-
-  // End of genesis bonus: 100 marks per dollar (all depositors get this)
   const endBonusMarks = currentDepositUSD * 100;
-
-  // Early deposit bonus: 100 marks per dollar (only for early depositors)
-  const earlyBonusMarks = qualifiesForEarlyBonus && earlyBonusEligibleDepositUSD > 0
-    ? earlyBonusEligibleDepositUSD * 100
-    : 0;
-
-  return projectedDepositMarks + endBonusMarks + earlyBonusMarks;
+  return projectedDepositMarks + endBonusMarks;
 }
 
 /**
@@ -165,66 +142,35 @@ export function calculateUserEstimatedValue(
  * Breakdown of marks into components for APR calculation
  */
 export interface MarksBreakdown {
-  depositMarks: number; // Marks from regular deposit accumulation
-  endBonusMarks: number; // Marks from end of genesis bonus
-  earlyBonusMarks: number; // Marks from early deposit bonus
-  totalMarks: number; // Total marks (sum of all components)
+  depositMarks: number;
+  endBonusMarks: number;
+  totalMarks: number;
 }
 
 /**
- * Calculate marks breakdown for APR calculation
- * 
- * When genesis is active, projects marks based on days left:
- * - Deposit marks: marksPerDay (10 marks/$/day) × daysLeftInGenesis
- * - End bonus: 100 marks per dollar (applied at end of genesis)
- * - Early bonus: 100 marks per dollar (for early depositors)
- * 
- * @param currentMarks - Current marks from subgraph (accumulated marks, used if genesis ended)
- * @param currentDepositUSD - User's current deposit in USD
- * @param earlyBonusEligibleDepositUSD - USD amount eligible for early bonus
- * @param genesisEnded - Whether genesis has ended
- * @param qualifiesForEarlyBonus - Whether user qualifies for early bonus
- * @param daysLeftInGenesis - Days remaining until genesis ends (optional, defaults to 7)
- * @returns Breakdown of marks by component
+ * When genesis is active, projects deposit marks and end-of-campaign bonus.
  */
 export function calculateMarksBreakdown(
   currentMarks: number,
   currentDepositUSD: number,
-  earlyBonusEligibleDepositUSD: number,
   genesisEnded: boolean,
-  qualifiesForEarlyBonus: boolean,
   daysLeftInGenesis: number = 7
 ): MarksBreakdown {
   if (genesisEnded) {
-    // Genesis has ended - bonuses are already included in currentMarks
-    // We can't separate them, so we'll show all as deposit marks
     return {
       depositMarks: currentMarks,
       endBonusMarks: 0,
-      earlyBonusMarks: 0,
       totalMarks: currentMarks,
     };
   }
 
-  // Genesis is active - project marks based on days left
-  
-  // Deposit marks: 10 marks per $ per day × days left
   const marksPerDay = currentDepositUSD * 10;
   const depositMarks = marksPerDay * daysLeftInGenesis;
-  
-  // End bonus: 100 marks per $ (applied at end of genesis)
   const endBonusMarks = currentDepositUSD * 100;
-  
-  // Early bonus: 100 marks per $ (for early depositors)
-  const earlyBonusMarks = qualifiesForEarlyBonus && earlyBonusEligibleDepositUSD > 0
-    ? earlyBonusEligibleDepositUSD * 100
-    : 0;
-
   return {
     depositMarks,
     endBonusMarks,
-    earlyBonusMarks,
-    totalMarks: depositMarks + endBonusMarks + earlyBonusMarks,
+    totalMarks: depositMarks + endBonusMarks,
   };
 }
 
@@ -232,10 +178,9 @@ export function calculateMarksBreakdown(
  * Breakdown of $TIDE APR into components
  */
 export interface TideAPRBreakdown {
-  depositAPR: number; // APR from deposit marks
-  endBonusAPR: number; // APR from end bonus marks
-  earlyBonusAPR: number; // APR from early bonus marks
-  totalAPR: number; // Total APR (sum of all components)
+  depositAPR: number;
+  endBonusAPR: number;
+  totalAPR: number;
 }
 
 /**
@@ -267,7 +212,6 @@ export function calculateTideAPRBreakdown(
     return {
       depositAPR: 0,
       endBonusAPR: 0,
-      earlyBonusAPR: 0,
       totalAPR: 0,
     };
   }
@@ -295,15 +239,11 @@ export function calculateTideAPRBreakdown(
   // Calculate APR for each component
   const depositAPR = calculateAPRForMarks(marksBreakdown.depositMarks);
   const endBonusAPR = calculateAPRForMarks(marksBreakdown.endBonusMarks);
-  const earlyBonusAPR = calculateAPRForMarks(marksBreakdown.earlyBonusMarks);
-
-  // Total APR (should match calculateTideAPR result)
   const totalAPR = calculateAPRForMarks(marksBreakdown.totalMarks);
 
   return {
     depositAPR,
     endBonusAPR,
-    earlyBonusAPR,
     totalAPR,
   };
 }

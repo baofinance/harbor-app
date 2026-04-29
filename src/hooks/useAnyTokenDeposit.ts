@@ -9,14 +9,17 @@ import { ZAP_ABI, USDC_ZAP_ABI, WSTETH_ABI } from "@/abis";
 
 /**
  * Hook for handling "any token" deposits with automatic swapping and zapping
- * Supports deposits from any token in user's wallet
- * 
+ * Supports deposits from any token in user's wallet (mainnet/ETH only; non-ETH chains are collateral-only).
+ *
  * Flow:
  * 1. User selects any token from their wallet
  * 2. If token is not directly accepted by market:
  *    - Swap to intermediate token (ETH for wstETH markets, USDC for fxSAVE markets)
  * 3. Use zap contracts for efficient conversion to collateral
  * 4. Execute deposit to target contract (Genesis, Minter, or Stability Pool)
+ *
+ * Future: A dedicated stability-pool zapper (collateral → stability pool in one step) could
+ * reduce approvals further (e.g. one permit + one tx instead of approve → mint → approve → deposit).
  */
 
 interface UseAnyTokenDepositOptions {

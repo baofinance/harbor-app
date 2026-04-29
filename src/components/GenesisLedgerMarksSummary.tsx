@@ -2,6 +2,7 @@ import React from "react";
 import { ClockIcon } from "@heroicons/react/24/outline";
 import InfoTooltip from "@/components/InfoTooltip";
 import SimpleTooltip from "@/components/SimpleTooltip";
+import { LEDGER_MARKS_STRIP_SURFACE_ABOVE_TOOLBAR_CLASS } from "@/components/shared/indexMarketsToolbarStyles";
 
 interface SelectedCampaign {
   label: string;
@@ -20,8 +21,6 @@ interface GenesisLedgerMarksSummaryProps {
   allContractsEnded: boolean;
   isConnected: boolean;
   totalBonusAtEnd: number;
-  totalEarlyBonusEstimate: number;
-  totalEarlyBonusMarks: number;
 }
 
 export const GenesisLedgerMarksSummary = ({
@@ -34,15 +33,13 @@ export const GenesisLedgerMarksSummary = ({
   allContractsEnded,
   isConnected,
   totalBonusAtEnd,
-  totalEarlyBonusEstimate,
-  totalEarlyBonusMarks,
 }: GenesisLedgerMarksSummaryProps) => {
   const extractCampaignName = (label: string): string =>
     label.replace(/\s+Maiden Voyage\s*$/i, "").trim();
 
   return (
     <div className="mb-2">
-      <div className="bg-black/30 backdrop-blur-sm rounded-none overflow-visible border border-white/50">
+      <div className={LEDGER_MARKS_STRIP_SURFACE_ABOVE_TOOLBAR_CLASS}>
         <div className="grid grid-cols-1 md:grid-cols-4 divide-y divide-white/15 md:divide-y-0 md:divide-x md:divide-white/20">
           {/* Header */}
           <div className="p-3 flex items-center justify-center gap-2">
@@ -82,11 +79,40 @@ export const GenesisLedgerMarksSummary = ({
                         share of rewards and governance power.
                       </p>
                     </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-white/70 mt-0.5">•</span>
+                      <p className="text-white/90 leading-relaxed">
+                        Maiden voyage uses a shared USD deposit cap for
+                        ownership only. After genesis, pool yield is split by
+                        ownership times a voyage boost: retention compares
+                        Harbor value you still hold—unclaimed genesis plus
+                        Anchor and Sail for that market—to your USD at genesis
+                        close. The multiplier never increases after it has
+                        dropped, even if you deposit again. It is not the same
+                        thing as the deposit cap.
+                      </p>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-white/70 mt-0.5">•</span>
+                      <p className="text-white/90 leading-relaxed">
+                        <span className="font-semibold text-white">
+                          Yield for life
+                        </span>{" "}
+                        here means your finalized ownership slice of{" "}
+                        <span className="font-semibold text-white">
+                          this market&apos;s
+                        </span>{" "}
+                        maiden voyage yield pool. A configurable portion of fee +
+                        carry revenue is credited to that pool (see genesis UI);
+                        your share tracks the pool until rules or governance say
+                        otherwise. It is not a fixed APR.
+                      </p>
+                    </div>
                   </div>
                   <div className="border-t border-white/20 pt-3">
                     <p className="text-white/80 italic leading-relaxed">
                       Think of them as a record of your journey — every mark, a
-                      line in Harbor's logbook.
+                      line in Harbor&apos;s logbook.
                     </p>
                   </div>
                 </div>
@@ -99,10 +125,10 @@ export const GenesisLedgerMarksSummary = ({
             <div className="text-[11px] text-white/80 uppercase tracking-widest">
               {(() => {
                 if (!selectedCampaign) {
-                  return "Current Maiden Voyage Marks";
+                  return "Current maiden voyage marks";
                 }
                 const campaignName = extractCampaignName(selectedCampaign.label);
-                return `${campaignName} Maiden Voyage Marks`;
+                return `${campaignName} marks`;
               })()}
             </div>
             <div className="text-sm font-semibold text-white font-mono mt-1">
@@ -158,26 +184,6 @@ export const GenesisLedgerMarksSummary = ({
                 "0"
               )}
             </div>
-            {mounted && !isLoadingMarks && (
-              <>
-                {!allContractsEnded && totalEarlyBonusEstimate > 0 && (
-                  <div className="text-[10px] text-green-300 mt-0.5">
-                    Early deposit bonus: +
-                    {totalEarlyBonusEstimate.toLocaleString(undefined, {
-                      maximumFractionDigits: 0,
-                    })}
-                  </div>
-                )}
-                {allContractsEnded && totalEarlyBonusMarks > 0 && (
-                  <div className="text-[10px] text-green-300 mt-0.5">
-                    Early deposit bonus:{" "}
-                    {totalEarlyBonusMarks.toLocaleString(undefined, {
-                      maximumFractionDigits: 0,
-                    })}
-                  </div>
-                )}
-              </>
-            )}
           </div>
         </div>
       </div>

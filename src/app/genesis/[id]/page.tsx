@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, use } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import {
  useAccount,
@@ -25,60 +26,52 @@ type PageProps = {
 // ERC20_ABI includes symbol
 const erc20SymbolABI = ERC20_ABI;
 
-// Reusable UI pieces styled like PoolClient
-function EtherscanLink({
- label,
- address,
-}: {
- label: string;
- address?: string;
-}) {
- if (!address) return null;
- const etherscanBaseUrl ="https://etherscan.io/address/";
- return (
- <div className="flex justify-between items-center text-sm py-2 border-b border-white/10 last:border-b-0">
- <span className="text-white/70">{label}</span>
- <a
- href={`${etherscanBaseUrl}${address}`}
- target="_blank"
- rel="noopener noreferrer"
- className="font-mono text-white hover:underline flex items-center gap-4"
- >
- {`${address.slice(0, 6)}...${address.slice(-4)}`}
- <svg
- xmlns="http://www.w3.org/2000/svg"
- className="h-3 w-3"
- fill="none"
- viewBox="0 0 24 24"
- stroke="currentColor"
- >
- <path
- strokeLinecap="round"
- strokeLinejoin="round"
- strokeWidth={2}
- d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
- />
- </svg>
- </a>
- </div>
- );
-}
-
 function ContractInfoSection({ market }: { market: Market }) {
- const a = market.addresses as unknown as Record<string, string | undefined>;
- return (
- <div className="bg-[#17395F] p-3 h-full">
- <h2 className="font-semibold font-mono text-white mb-2">Contract Info</h2>
- <div className="divide-y divide-white/10">
- <EtherscanLink label="Genesis" address={a.genesis} />
- <EtherscanLink label="Collateral Token" address={a.collateralToken} />
- <EtherscanLink label="Pegged Token" address={a.peggedToken} />
- <EtherscanLink label="Leveraged Token" address={a.leveragedToken} />
- <EtherscanLink label="Minter" address={a.minter} />
- <EtherscanLink label="Price Oracle" address={a.priceOracle} />
- </div>
- </div>
- );
+  const a = market.addresses as unknown as Record<string, string | undefined>;
+  const chainId = (market as any).chainId ?? 1;
+  return (
+    <div className="bg-[#17395F] p-3 h-full">
+      <h2 className="font-semibold font-mono text-white mb-2">Contract Info</h2>
+      <div className="divide-y divide-white/10">
+        <EtherscanLink
+          label="Genesis"
+          address={a.genesis}
+          chainId={chainId}
+          className="!border-white/10 !py-2 [&_span]:!text-white/70 [&_a]:!text-white"
+        />
+        <EtherscanLink
+          label="Collateral Token"
+          address={a.collateralToken}
+          chainId={chainId}
+          className="!border-white/10 !py-2 [&_span]:!text-white/70 [&_a]:!text-white"
+        />
+        <EtherscanLink
+          label="Pegged Token"
+          address={a.peggedToken}
+          chainId={chainId}
+          className="!border-white/10 !py-2 [&_span]:!text-white/70 [&_a]:!text-white"
+        />
+        <EtherscanLink
+          label="Leveraged Token"
+          address={a.leveragedToken}
+          chainId={chainId}
+          className="!border-white/10 !py-2 [&_span]:!text-white/70 [&_a]:!text-white"
+        />
+        <EtherscanLink
+          label="Minter"
+          address={a.minter}
+          chainId={chainId}
+          className="!border-white/10 !py-2 [&_span]:!text-white/70 [&_a]:!text-white"
+        />
+        <EtherscanLink
+          label="Price Oracle"
+          address={a.priceOracle}
+          chainId={chainId}
+          className="!border-white/10 !py-2 [&_span]:!text-white/70 [&_a]:!text-white"
+        />
+      </div>
+    </div>
+  );
 }
 
 function InputField({
@@ -398,6 +391,7 @@ export default function GenesisMarketPage({ params }: PageProps) {
  const { address, isConnected } = useAccount();
  const { writeContractAsync } = useWriteContract();
  const publicClient = usePublicClient();
+ const queryClient = useQueryClient();
 
  // Removed deposit/withdraw modals; keep only claim action
  const [isClaiming, setIsClaiming] = useState(false);
@@ -692,6 +686,7 @@ export default function GenesisMarketPage({ params }: PageProps) {
  });
  setClaimTx(tx);
  await publicClient?.waitForTransactionReceipt({ hash: tx });
+ await queryClient.invalidateQueries({ queryKey: ["allHarborMarks"] });
  } catch (e) {
  setClaimError(e instanceof Error ? e.message :"Claim failed");
  } finally {
@@ -702,7 +697,7 @@ export default function GenesisMarketPage({ params }: PageProps) {
  // If market id is invalid, show not found after hooks have been called
  if (!market) {
  return (
- <div className="min-h-screen text-white max-w-[1300px] mx-auto font-sans relative">
+ <div className="flex min-h-0 flex-1 flex-col text-white max-w-[1300px] mx-auto font-sans relative w-full">
  <main className="container mx-auto px-4 sm:px-10 pb-6">
  <div className="bg-[#17395F] p-6 text-center">
  <h1 className="text-lg font-semibold text-white">
@@ -733,7 +728,7 @@ export default function GenesisMarketPage({ params }: PageProps) {
  const statusLabel = isEnded ?"ENDED" :"ACTIVE";
 
  return (
- <div className="min-h-screen text-white max-w-[1300px] mx-auto font-sans relative px-4 sm:px-10">
+ <div className="flex min-h-0 flex-1 flex-col text-white max-w-[1300px] mx-auto font-sans relative px-4 sm:px-10 w-full">
  <main className="container mx-auto max-w-full pb-8 relative z-10">
  {/* Breadcrumb */}
  <div className="mb-3">

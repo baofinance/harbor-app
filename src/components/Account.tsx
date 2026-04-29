@@ -3,6 +3,7 @@
 import {useAccount, useBalance, useDisconnect, useSwitchChain} from 'wagmi'
 import {useMemo, useState} from "react";
 import NetworkIconClient from "@/components/NetworkIconClient";
+import { getWeb3iconsNetworkId } from "@/config/web3iconsNetworks";
 import * as React from "react";
 import DecryptedText from "@/components/DecryptedText";
 import {Check, Copy, LogOut, Wallet} from "lucide-react";
@@ -42,7 +43,7 @@ function AccountModal({showModal, setShowModal}: { showModal: boolean, setShowMo
                         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
                         onClick={() => setShowModal(false)}
                     />
-                    <div className="relative w-full max-w-md mt-36 bg-[#1E4775] flex flex-col overflow-hidden shadow-lg">
+                    <div className="relative w-full max-w-md mt-36 bg-[#1E4775] flex flex-col overflow-hidden rounded-lg shadow-lg">
                         <button
                             type="button"
                             onClick={() => setShowModal(false)}
@@ -89,8 +90,9 @@ function AccountModal({showModal, setShowModal}: { showModal: boolean, setShowMo
                                     </div>
                                 </div>
                                 <button
+                                    type="button"
                                     onClick={handleCopy}
-                                    className="inline-flex items-center gap-4 px-2 py-1 text-xs bg-white/10 hover:bg-white/20 rounded-full"
+                                    className="inline-flex items-center gap-2 px-2 py-1 text-xs bg-white/10 hover:bg-white/20 rounded-md"
                                 >
                                     {copied ? (
                                         <>
@@ -103,7 +105,7 @@ function AccountModal({showModal, setShowModal}: { showModal: boolean, setShowMo
                                     )}
                                 </button>
                             </div>
-                            <div className="bg-white/5 p-3">
+                            <div className="bg-white/5 p-3 rounded-md">
                                 <div className="text-xs text-white/60">Balance</div>
                                 <div className="font-mono text-white">
                                     {balance
@@ -127,8 +129,9 @@ function AccountModal({showModal, setShowModal}: { showModal: boolean, setShowMo
 
                         <div className="px-6 py-4 flex items-center justify-center ">
                             <button
+                                type="button"
                                 onClick={() => disconnect()}
-                                className="w-full bg-[#153A5F] inline-flex items-center justify-center gap-4 px-3 py-2 hover:bg-white/20 rounded-full"
+                                className="w-full bg-[#153A5F] inline-flex items-center justify-center gap-2 px-3 py-2 hover:bg-white/20 rounded-md"
                             >
                                 <LogOut className="h-4 w-4" /> Disconnect
                             </button>
@@ -148,31 +151,45 @@ function NetworkOptions() {
 
     return (
         <ul className="space-y-1">
-
-            {chains.map((network) => (
-                <li key={network.id}>
-                    <button
-                        disabled={!switchChain || network.id === chain?.id}
-                        onClick={() => switchChain({chainId: network.id})}
-                        className="w-full flex items-center gap-2 px-3 py-2 bg-white/10 text-white enabled:hover:bg-[#FF8A7A]/20 text-md disabled:opacity-50 rounded-full"
-                    >
-                        <NetworkIcon name={network.name}/>
-                        {network.name}
-                        {status === 'pending' && ' (switching)'}
-                    </button>
-                </li>
-            ))}
+            {chains.map((network) => {
+                const isCurrent = network.id === chain?.id
+                const canUseSwitch = Boolean(switchChain)
+                return (
+                    <li key={network.id}>
+                        <button
+                            type="button"
+                            disabled={!canUseSwitch}
+                            aria-current={isCurrent ? "true" : undefined}
+                            aria-disabled={isCurrent || !canUseSwitch}
+                            onClick={() => {
+                                if (!switchChain || isCurrent) return
+                                switchChain({chainId: network.id})
+                            }}
+                            className={`w-full flex items-center gap-2 px-3 py-2 text-sm font-medium text-[#1E4775] rounded-md transition-colors ${
+                                isCurrent
+                                    ? "bg-white cursor-default shadow-md ring-2 ring-[#1E4775]/40"
+                                    : "bg-gray-300 hover:bg-gray-400"
+                            } ${!canUseSwitch ? "opacity-50 cursor-not-allowed" : ""}`}
+                        >
+                            <NetworkIcon name={network.name} />
+                            {network.name}
+                            {status === "pending" && " (switching)"}
+                        </button>
+                    </li>
+                )
+            })}
         </ul>
-
-    );
+    )
 }
 
 function NetworkIcon({name}: { name: string }) {
-    const resolvedName = name === 'Anvil' ? 'Ethereum' : name;
+    const resolvedName = name === "Anvil" ? "Ethereum" : name;
+    // web3icons expects kebab-case ids (e.g. "mega-eth" for MegaETH)
+    const iconName = getWeb3iconsNetworkId(resolvedName) || resolvedName;
 
     return (
-        <div className="bg-white-xs rounded-xs">
-            <NetworkIconClient name={resolvedName} size={24} variant="branded"/>
+        <div className="flex h-6 w-6 shrink-0 items-center justify-center">
+            <NetworkIconClient name={iconName} size={24} variant="branded" />
         </div>
     );
 }
@@ -195,15 +212,16 @@ export function Account() {
         <>
             <button
                 onClick={() => setShowModal(true)}
-                className="relative inline-flex items-center gap-4 px-3 py-1.5 text-sm text-white bg-white/10 hover:bg-[#FF8A7A]/20 rounded-full"
+                className="relative inline-flex items-center gap-2 px-2.5 sm:px-3 py-2 text-sm font-medium text-[#1E4775] bg-white shadow-sm hover:bg-white/90 rounded-md"
             >
-                <Wallet className="h-4 w-4 text-white/70" />
-                <div className="flex items-center space-x-2">
+                <Wallet className="h-4 w-4 shrink-0 text-[#1E4775]/80" />
+                <div className="flex items-center gap-2">
                     {chain && <NetworkIcon name={chain.name} />}
                     <DecryptedText
                         text={displayAddr}
-                        parentClassName="inline-block"
-                        encryptedClassName="text-white/40"
+                        parentClassName="inline-block text-[#1E4775]"
+                        className="text-[#1E4775]"
+                        encryptedClassName="text-[#1E4775]/40"
                         animateOn="view"
                         useOriginalCharsOnly
                         speed={60}

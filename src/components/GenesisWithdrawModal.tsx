@@ -8,6 +8,8 @@ import {
  useWriteContract,
  usePublicClient,
  useSimulateContract,
+ useSwitchChain,
+ useChainId,
 } from "wagmi";
 import { mainnet } from "wagmi/chains";
 import { BaseError, ContractFunctionRevertedError } from "viem";
@@ -29,8 +31,10 @@ interface GenesisWithdrawalModalProps {
  genesisAddress: string;
  collateralSymbol: string;
  userDeposit: bigint;
-priceOracleAddress?: string;
+ priceOracleAddress?: string;
  coinGeckoId?: string;
+ /** Chain ID where the genesis contract lives (e.g. 1 mainnet, 4326 MegaETH). Defaults to mainnet. */
+ chainId?: number;
  onSuccess?: () => void;
  embedded?: boolean;
 }
@@ -46,8 +50,9 @@ export const GenesisWithdrawModal = ({
  genesisAddress,
  collateralSymbol,
  userDeposit,
-priceOracleAddress,
+ priceOracleAddress,
  coinGeckoId,
+ chainId = mainnet.id,
  onSuccess,
  embedded = false,
 }: GenesisWithdrawalModalProps) => {
@@ -70,6 +75,21 @@ const collateralPriceUSD = wrappedPriceData.priceUSD;
 
  // Contract write hooks
  const { writeContractAsync } = useWriteContract();
+ const { switchChain } = useSwitchChain();
+ const connectedChainId = useChainId();
+ const marketChainId = chainId ?? mainnet.id;
+
+ const ensureCorrectNetwork = async (): Promise<boolean> => {
+   if (connectedChainId === marketChainId) return true;
+   try {
+     await switchChain({ chainId: marketChainId });
+     return true;
+   } catch (err) {
+     if (process.env.NODE_ENV === "development") console.warn("[GenesisWithdraw] Switch network rejected:", err);
+     setError(`Please switch to ${marketChainId === 4326 ? "MegaETH" : "Ethereum Mainnet"} to withdraw.`);
+     return false;
+   }
+ };
 
  const amountBigInt = amount ? parseEther(amount) : 0n;
  // Calculate withdraw amount - if amount equals or exceeds userDeposit, use userDeposit
@@ -87,7 +107,7 @@ const collateralPriceUSD = wrappedPriceData.priceUSD;
  abi: GENESIS_ABI,
  functionName:"withdraw",
  args: [withdrawAmount, address as `0x${string}`],
- chainId: mainnet.id,
+ chainId,
  query: {
  enabled:
  !!address &&
@@ -163,6 +183,9 @@ const collateralPriceUSD = wrappedPriceData.priceUSD;
  return;
  }
 
+ // Switch to market chain only when user starts the transaction (not on modal open)
+ if (!(await ensureCorrectNetwork())) return;
+
  try {
  const steps: TransactionStep[] = [
  {
@@ -181,7 +204,7 @@ const collateralPriceUSD = wrappedPriceData.priceUSD;
  abi: GENESIS_ABI,
  functionName:"withdraw",
  args: [withdrawAmount, address as `0x${string}`],
- chainId: mainnet.id,
+ chainId,
  });
 
  setTxHash(hash);
@@ -304,9 +327,8 @@ const successUSD = successAmountNum > 0 && collateralPriceUSD > 0
      title="Harbor Marks Warning:"
    >
      Withdrawing forfeits any <span className="font-semibold">Harbor Marks</span> for withdrawn
-     assets. Only assets deposited at the end of Maiden Voyage
-     are eligible for Harbor Marks earned throughout the Maiden
-     Voyage period.
+     assets. Only assets still deposited at genesis close are eligible for
+     completion bonus marks earned during the genesis period.
    </InfoCallout>
  </ModalNotificationsPanel>
 
@@ -472,11 +494,14 @@ const successUSD = successAmountNum > 0 && collateralPriceUSD > 0
           isOpen={isOpen}
           onClose={handleClose}
           header={
-            <h2 className="text-lg sm:text-2xl font-bold text-[#1E4775]">
-              Withdraw from Maiden Voyage
+            <h2 className="text-lg sm:text-2xl font-bold text-[#1E4775] flex flex-wrap items-center gap-2">
+              <span>Withdraw — Maiden voyage</span>
+              <span className="rounded px-1.5 py-0.5 text-sm font-bold font-mono bg-[#1E4775] text-white border border-[#1E4775]">
+                2.0
+              </span>
             </h2>
           }
-          panelClassName="rounded-none max-h-[95vh] sm:max-h-[90vh] overflow-y-auto"
+          panelClassName="max-h-[95vh] sm:max-h-[90vh] overflow-y-auto"
           headerClassName="p-3 sm:p-4 lg:p-6"
           contentClassName="p-3 sm:p-4 lg:p-6"
         >

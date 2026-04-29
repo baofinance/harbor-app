@@ -2,6 +2,10 @@
 
 import React from "react";
 import InfoTooltip from "./InfoTooltip";
+import {
+  INDEX_MANAGE_BUTTON_CLASS_DESKTOP,
+  INDEX_WITHDRAW_BUTTON_CLASS_DESKTOP_CORAL,
+} from "@/utils/indexPageManageButton";
 
 interface AnchorClaimMarketModalProps {
  isOpen: boolean;
@@ -55,14 +59,14 @@ export const AnchorClaimMarketModal = ({
  </button>
  </div>
 
-          <div className="p-3 sm:p-4 lg:p-6 space-y-3 sm:space-y-4">
+          <div className="p-3 sm:p-4 lg:p-6 space-y-3 sm:space-y-4 overflow-y-auto flex-1 min-h-0">
  <p className="text-sm text-[#1E4775]/80 leading-relaxed">
  Choose how you&apos;d like to handle your claimable rewards for {marketSymbol}.
  </p>
 
  <div className="space-y-3">
  {/* Basic Claim */}
- <div className="flex items-center justify-between p-3 bg-[#F0F4F8]">
+ <div className="flex items-center justify-between p-3 rounded-md bg-[#F0F4F8]">
  <div className="flex items-center gap-2">
  <span className="text-lg font-semibold text-[#1E4775]">Basic Claim</span>
  <InfoTooltip
@@ -72,23 +76,24 @@ export const AnchorClaimMarketModal = ({
  />
  </div>
  <button
+ type="button"
  onClick={() => {
  onBasicClaim();
  onClose();
  }}
  disabled={isLoading}
- className={`px-4 py-2 text-sm font-medium transition-colors rounded-full ${
+ className={
  isLoading
- ?"bg-gray-300 text-gray-500 cursor-not-allowed"
- :"bg-[#1E4775] hover:bg-[#17395F] text-white"
- }`}
+ ? "inline-flex items-center justify-center min-w-[7rem] px-4 py-2 text-xs font-medium rounded-md bg-gray-300 text-gray-500 cursor-not-allowed"
+ : INDEX_MANAGE_BUTTON_CLASS_DESKTOP
+ }
  >
  {isLoading ?"Claiming..." :"Claim"}
  </button>
  </div>
 
  {/* Compound */}
- <div className="flex items-center justify-between p-3 bg-[#F0F4F8]">
+ <div className="flex items-center justify-between p-3 rounded-md bg-[#F0F4F8]">
  <div className="flex items-center gap-2">
  <span className="text-lg font-semibold text-[#1E4775]">Compound</span>
  <InfoTooltip
@@ -98,22 +103,23 @@ export const AnchorClaimMarketModal = ({
  />
  </div>
  <button
+ type="button"
  onClick={() => {
  onCompound();
  }}
  disabled={isLoading}
- className={`px-4 py-2 text-sm font-medium transition-colors rounded-full ${
+ className={
  isLoading
- ?"bg-gray-300 text-gray-500 cursor-not-allowed"
- :"bg-[#FF8A7A] hover:bg-[#E07A6A] text-white"
- }`}
+ ? "inline-flex items-center justify-center min-w-[7rem] px-4 py-2 text-xs font-medium rounded-md bg-gray-300 text-gray-500 cursor-not-allowed"
+ : INDEX_WITHDRAW_BUTTON_CLASS_DESKTOP_CORAL
+ }
  >
  {isLoading ?"Compounding..." :"Compound"}
  </button>
  </div>
 
  {/* Buy $TIDE */}
- <div className="flex items-center justify-between p-3 bg-[#F0F4F8]">
+ <div className="flex items-center justify-between p-3 rounded-md bg-[#F0F4F8]">
  <div className="flex items-center gap-2">
  <span className="text-lg font-semibold text-[#1E4775]">Buy $TIDE</span>
  <InfoTooltip
@@ -123,12 +129,13 @@ export const AnchorClaimMarketModal = ({
  />
  </div>
  <button
+ type="button"
  onClick={() => {
  onBuyTide();
  onClose();
  }}
  disabled={true}
- className="px-4 py-2 text-sm font-medium transition-colors rounded-full bg-gray-300 text-gray-500 cursor-not-allowed"
+ className="inline-flex items-center justify-center min-w-[7rem] px-4 py-2 text-xs font-medium rounded-md bg-gray-300 text-gray-500 cursor-not-allowed"
  >
  Coming Soon
  </button>

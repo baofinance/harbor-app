@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Genesis UI — applied radius &amp; chrome (preview)</title>
+  <style>
+    :root {
+      --harbor: #1e4775;
+      --harbor-deep: #153a5f;
+      --coral: #e67a6b;
+      --white: #fff;
+      --md: 6px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, sans-serif;
+      background: var(--harbor);
+      color: #fff;
+      padding: 24px;
+      line-height: 1.45;
+    }
+    h1 { font-size: 1.35rem; margin: 0 0 8px; font-weight: 700; }
+    p.sub { color: rgba(255,255,255,.78); font-size: 0.9rem; margin: 0 0 8px; max-width: 52rem; }
+    p.note { color: rgba(255,255,255,.65); font-size: 0.8rem; margin: 0 0 28px; max-width: 52rem; }
+    code { background: rgba(0,0,0,.2); padding: 0.1em 0.35em; border-radius: 4px; font-size: 0.85em; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+    .card {
+      padding: 16px;
+      border: 1px solid rgba(255,255,255,.22);
+      background: rgba(0,0,0,.12);
+      border-radius: var(--md);
+    }
+    .label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,.55);
+      margin-bottom: 12px;
+    }
+    .badge-applied {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #86efac;
+      background: rgba(22, 101, 52, 0.35);
+      border: 1px solid rgba(134, 239, 172, 0.4);
+      padding: 4px 8px;
+      border-radius: var(--md);
+      margin-bottom: 10px;
+    }
+    .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 8px; }
+    .r-md { border-radius: var(--md); }
+    .chip { display: inline-flex; align-items: center; padding: 0.35rem 0.65rem; font-size: 12px; font-weight: 600; }
+    .chip-light { background: #fff; color: var(--harbor); }
+    .chip-coral { background: var(--coral); color: #fff; border: 1px solid #fff; }
+    /* Segmented Genesis: Ongoing | All — matches PageLayoutToggle */
+    .segment-track {
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+      padding: 4px;
+      background: rgba(255,255,255,.1);
+      border-radius: var(--md);
+    }
+    .segment {
+      border: none;
+      cursor: default;
+      font-size: 0.875rem;
+      font-weight: 500;
+      padding: 0.5rem 0.75rem;
+      border-radius: 4px;
+      font-family: inherit;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.01em;
+    }
+    .segment.on {
+      background: #fff;
+      color: var(--harbor);
+      box-shadow: 0 1px 2px rgba(0,0,0,.08);
+    }
+    .segment.off {
+      background: transparent;
+      color: #fff;
+    }
+    .segment.off:hover {
+      background: rgba(255,255,255,.2);
+    }
+    .panel { background: rgba(255,255,255,.96); color: var(--harbor); padding: 10px 12px; font-size: 12px; font-weight: 600; }
+    .fake-table { text-transform: uppercase; letter-spacing: 0.04em; font-size: 11px; }
+    .cta-md {
+      display: inline-flex;
+      align-items: center;
+      padding: 8px 14px;
+      font-size: 11px;
+      font-weight: 600;
+      background: var(--harbor);
+      color: #fff;
+      border: none;
+      border-radius: var(--md);
+      font-family: inherit;
+    }
+    .section-title {
+      font-size: 0.95rem;
+      font-weight: 600;
+      margin: 28px 0 12px;
+      color: rgba(255,255,255,.92);
+      border-bottom: 1px solid rgba(255,255,255,.15);
+      padding-bottom: 8px;
+    }
+    /* Ledger bar */
+    .ledger-bar {
+      background: rgba(0,0,0,.3);
+      border: 1px solid rgba(255,255,255,.5);
+      padding: 10px 14px;
+      font-size: 12px;
+      color: rgba(255,255,255,.9);
+      border-radius: var(--md);
+    }
+    /* Hero intro cards */
+    .hero-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      max-width: 720px;
+    }
+    @media (max-width: 640px) {
+      .hero-grid { grid-template-columns: 1fr; }
+    }
+    .hero-card {
+      background: rgba(0,0,0,.1);
+      backdrop-filter: blur(6px);
+      padding: 10px 12px;
+      text-align: center;
+      font-size: 11px;
+      color: rgba(255,255,255,.85);
+      border-radius: var(--md);
+    }
+    .hero-card strong { color: #fff; font-size: 12px; display: block; margin-bottom: 4px; }
+    /* Wallet modal network rows (Account.tsx) */
+    .modal-panel {
+      background: var(--harbor);
+      padding: 14px;
+      border-radius: var(--md);
+      max-width: 320px;
+    }
+    .net-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      padding: 10px 12px;
+      margin-bottom: 6px;
+      border: none;
+      font-size: 13px;
+      font-weight: 600;
+      font-family: inherit;
+      border-radius: var(--md);
+      text-align: left;
+      color: var(--harbor);
+    }
+    .net-row:last-child { margin-bottom: 0; }
+    .net-row.selected {
+      background: #fff;
+      box-shadow:
+        0 4px 6px -1px rgba(0,0,0,.1),
+        0 0 0 2px rgba(30, 71, 117, 0.4);
+    }
+    .net-row.muted {
+      background: #d1d5db;
+      color: var(--harbor);
+    }
+    .net-row.muted:hover { background: #9ca3af; }
+    .ico { width: 22px; height: 22px; border-radius: 50%; background: linear-gradient(135deg, #627eea, #c99cff); flex-shrink: 0; }
+    .ico.m { background: #111; border: 2px solid #333; }
+    /* Deposit shell */
+    .deposit-shell {
+      background: #fff;
+      color: var(--harbor);
+      max-width: 280px;
+      border-radius: var(--md);
+      box-shadow: 0 25px 50px -12px rgba(0,0,0,.35);
+      overflow: hidden;
+    }
+    .deposit-shell .hd {
+      padding: 12px 14px;
+      border-bottom: 1px solid rgba(30,71,117,.15);
+      font-weight: 700;
+      font-size: 15px;
+    }
+    .deposit-shell .bd { padding: 14px; font-size: 12px; color: rgba(30,71,117,.75); }
+    /* Expanded market */
+    .exp-outer {
+      background: rgba(230, 235, 245, 0.95);
+      padding: 14px;
+      border-radius: var(--md);
+      max-width: 520px;
+      overflow: hidden;
+    }
+    .exp-banner {
+      background: #fff;
+      border: 1px solid rgba(30,71,117,.1);
+      padding: 12px;
+      font-size: 11px;
+      color: var(--harbor);
+      border-radius: var(--md);
+      margin-bottom: 10px;
+    }
+    .exp-cols {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+    @media (max-width: 520px) { .exp-cols { grid-template-columns: 1fr; } }
+    .exp-card {
+      background: #fff;
+      padding: 10px;
+      font-size: 10px;
+      color: var(--harbor);
+      border-radius: var(--md);
+      text-align: center;
+    }
+    .ref {
+      margin-top: 36px;
+      padding-top: 20px;
+      border-top: 1px solid rgba(255,255,255,.12);
+    }
+    .ref h2 { font-size: 0.85rem; color: rgba(255,255,255,.55); font-weight: 600; margin: 0 0 12px; }
+    .compare { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
+    .compare .mini { font-size: 10px; color: rgba(255,255,255,.45); margin-bottom: 4px; }
+  </style>
+</head>
+<body>
+  <h1>Genesis UI — applied selections (preview)</h1>
+  <p class="sub">
+    Static snapshot aligned with <code>docs/GENESIS_UI_RADIUS_PROPOSAL.md</code> §7 (March 2026). This is not wired to the app.
+  </p>
+  <p class="note">
+    <strong>Chosen system:</strong> soft <code>rounded-md</code> (~6px) for content chrome (toolbar, table deck, hero cards, CTAs, modals, expanded rows).
+    <strong>Closed wallet</strong> stays white <code>rounded-md</code> (nav match). Wallet modals use <code>rounded-lg</code> outer shell; Account network rows use white vs gray-300 + Harbor blue text.
+    <strong>Genesis Ongoing / All</strong> matches <strong>UI− / UI+</strong>: track <code>bg-white/10</code>, selected white + <code>text-[#1E4775]</code>, inactive <code>text-white hover:bg-white/20</code>; <code>py-2 text-sm</code> with Network dropdown.
+  </p>
+
+  <div class="section-title">Toolbar — campaign + Genesis filter (segmented)</div>
+  <div class="grid">
+    <div class="card">
+      <span class="badge-applied">Applied</span>
+      <div class="label">Active campaign pill + Ongoing / All</div>
+      <div class="row" style="flex-direction: column; align-items: flex-start; gap: 12px;">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <span style="font-size:11px;font-weight:600;color:rgba(255,255,255,.65);text-transform:uppercase;letter-spacing:.06em;">Active Campaign:</span>
+          <span class="chip chip-coral r-md">Maiden Voyage</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <span style="font-size:11px;font-weight:600;color:rgba(255,255,255,.65);text-transform:uppercase;letter-spacing:.06em;">Genesis:</span>
+          <div class="segment-track" role="group" aria-label="Genesis scope">
+            <button type="button" class="segment on" aria-pressed="true">Ongoing</button>
+            <button type="button" class="segment off" aria-pressed="false">All</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-title">Ledger / stats strip</div>
+  <div class="grid">
+    <div class="card">
+      <span class="badge-applied">Applied</span>
+      <div class="label">Maiden Voyage marks bar (example)</div>
+      <div class="ledger-bar">Ledger Marks · 10 marks / $ / day · +100 on completion</div>
+    </div>
+  </div>
+
+  <div class="section-title">Intro hero — three cards</div>
+  <div class="grid">
+    <div class="card">
+      <span class="badge-applied">Applied</span>
+      <div class="label">Glass panels · rounded-md</div>
+      <div class="hero-grid">
+        <div class="hero-card"><strong>Deposit</strong>Any token via Velora</div>
+        <div class="hero-card"><strong>Earn Marks</strong>Secure TIDE share</div>
+        <div class="hero-card"><strong>After Voyage</strong>Claim anchor + sail</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-title">Table “deck” — header + row</div>
+  <div class="grid">
+    <div class="card">
+      <span class="badge-applied">Applied</span>
+      <div class="label">White strips · rounded-md</div>
+      <div class="fake-table panel r-md">Market · Proj. APR · Anchor · Sail · Action</div>
+      <div class="panel r-md" style="margin-top:8px;font-weight:500;">BTC-USD · … · Manage · Claim</div>
+    </div>
+  </div>
+
+  <div class="section-title">Manage / Claim</div>
+  <div class="grid">
+    <div class="card">
+      <span class="badge-applied">Applied</span>
+      <div class="label">Soft md — not full pills</div>
+      <div class="row">
+        <button type="button" class="cta-md">Manage</button>
+        <button type="button" class="cta-md">Claim</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-title">Closed wallet (header)</div>
+  <div class="grid">
+    <div class="card">
+      <span class="badge-applied">Applied</span>
+      <div class="label">White chip · text-[#1E4775] · rounded-md</div>
+      <div class="row">
+        <span class="chip chip-light r-md" style="padding:0.45rem 0.85rem;font-weight:600;">0xb9…0E7F</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-title">Account modal — network rows</div>
+  <div class="grid">
+    <div class="card" style="background: rgba(0,0,0,.18);">
+      <span class="badge-applied">Applied</span>
+      <div class="label">Selected: white + ring · Unselected: gray-300 · text #1E4775</div>
+      <div class="modal-panel">
+        <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.5);text-transform:uppercase;margin-bottom:10px;">Networks</div>
+        <button type="button" class="net-row muted" disabled>
+          <span class="ico" aria-hidden="true"></span>
+          Ethereum
+        </button>
+        <button type="button" class="net-row selected" disabled>
+          <span class="ico m" aria-hidden="true"></span>
+          MegaETH
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-title">Genesis deposit / manage — modal shell</div>
+  <div class="grid">
+    <div class="card">
+      <span class="badge-applied">Applied</span>
+      <div class="label">DepositModalShell / GenesisManageModal · rounded-md</div>
+      <div class="deposit-shell">
+        <div class="hd">Deposit in Maiden Voyage</div>
+        <div class="bd">Outer white panel uses <code>rounded-md</code> + overflow hidden (matches app).</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-title">Expanded market row</div>
+  <div class="grid">
+    <div class="card">
+      <span class="badge-applied">Applied</span>
+      <div class="label">GenesisMarketExpandedView — outer + inner cards</div>
+      <div class="exp-outer">
+        <div class="exp-banner">Liquidity copy for <strong>USD-BTC</strong> · haUSD · hsUSD-BTC…</div>
+        <div class="exp-cols">
+          <div class="exp-card"><strong>End Date/Time</strong><br/>Jan 1, 2027</div>
+          <div class="exp-card"><strong>Contracts</strong><br/>Genesis · Minter…</div>
+          <div class="exp-card"><strong>Tokens</strong><br/>Collateral · Anchor · Sail</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ref">
+    <h2>Historical A / B / C (radius only)</h2>
+    <p class="sub" style="margin-bottom:16px">Earlier exploration: sharp vs <code>rounded-md</code> vs pills. Production toolbar + table now follow <strong>B — soft md</strong> + segmented Genesis filter, not separate loose pills.</p>
+    <div class="compare">
+      <div>
+        <div class="mini">A sharp</div>
+        <span class="chip chip-coral" style="border-radius:0">Campaign</span>
+      </div>
+      <div>
+        <div class="mini">B soft md (applied)</div>
+        <span class="chip chip-coral r-md">Campaign</span>
+      </div>
+      <div>
+        <div class="mini">C pill</div>
+        <span class="chip chip-coral" style="border-radius:9999px">Campaign</span>
+      </div>
+    </div>
+  </div>
+
+  <p class="sub" style="margin-top:32px">
+    Full checklist: <code>docs/GENESIS_UI_RADIUS_PROPOSAL.md</code>
+  </p>
+</body>
+</html>

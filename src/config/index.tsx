@@ -4,7 +4,7 @@ import { injected, walletConnect } from "wagmi/connectors";
 // Temporarily disabled due to Next.js 15 build issue with @noble/curves
 // import { coinbaseWallet } from "wagmi/connectors";
 import { safeConnector } from "./safeConnector";
-import { MAINNET_RPC_URL } from "./rpc";
+import { MAINNET_RPC_URL, megaethChain, MEGAETH_RPC_URL } from "./rpc";
 
 const WC_PROJECT_ID = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID;
 
@@ -13,14 +13,28 @@ const connectors = [
   injected(), // This will automatically detect injected providers like MetaMask
   // Temporarily disabled due to Next.js 15 build issue with @noble/curves in ox package
   // coinbaseWallet({ appName: "harbor" }),
- ...(WC_PROJECT_ID ? [walletConnect({ projectId: WC_PROJECT_ID })] : []),
+  ...(WC_PROJECT_ID
+    ? [
+        walletConnect({
+          projectId: WC_PROJECT_ID,
+          showQrModal: true,
+          metadata: {
+            name: "Harbor",
+            description: "Harbor app",
+            url: "https://app.harborfinance.io",
+            icons: ["https://app.harborfinance.io/favicon.ico"],
+          },
+        }),
+      ]
+    : []),
 ];
 
 export const wagmiConfig = createConfig({
- chains: [mainnet],
- connectors,
- transports: {
+  chains: [mainnet, megaethChain],
+  connectors,
+  transports: {
     [mainnet.id]: http(MAINNET_RPC_URL),
- },
+    [megaethChain.id]: http(MEGAETH_RPC_URL || "https://rpc.megaeth.org"),
+  },
   ssr: true,
 });

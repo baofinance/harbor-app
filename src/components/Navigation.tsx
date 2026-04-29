@@ -1,4 +1,5 @@
 "use client";
+import { Suspense } from "react";
 import {
   Disclosure,
   DisclosureButton,
@@ -9,6 +10,7 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { ConnectWallet } from "@/components/Wallet";
+import { PageLayoutToggle } from "@/components/PageLayoutToggle";
 
 export default function Example() {
   const pathname = usePathname();
@@ -19,7 +21,7 @@ export default function Example() {
   };
 
   const linkClass = (href: string) =>
-    ` px-3 py-2 text-sm font-medium ${
+    `shrink-0 whitespace-nowrap rounded-md px-2 sm:px-2.5 py-2 text-sm font-medium ${
       isActive(href)
         ? "text-[#1E4775] bg-white"
         : "text-white hover:bg-white/20 hover:text-white"
@@ -28,12 +30,16 @@ export default function Example() {
   return (
     <Disclosure<"nav">
       as="nav"
-      className="relative bg-[#1E4775] after:pointer-events-none max-w-7xl mx-auto after:absolute after:inset-x-0 after:bottom-0 after:h-px after:bg-white/20 mb-4 sm:mb-6"
+      className="relative w-full max-w-[1300px] shrink-0 bg-[#1E4775] after:pointer-events-none mx-auto after:absolute after:inset-x-0 after:bottom-0 after:h-px after:bg-white/20 mb-4 sm:mb-6"
     >
-      <div className="w-full px-3 sm:px-4 lg:px-8">
-        <div className="flex h-16 items-center justify-between">
-          <div className="flex items-center">
-            <a href="https://harborfinance.io" className="h-10 w-auto relative mr-4">
+      {/* Match index pages: `max-w-[1300px]` + `px-4 sm:px-10` on main */}
+      <div className="w-full px-4 sm:px-10">
+        <div className="flex h-16 items-center justify-between gap-3">
+          <div className="flex min-w-0 flex-1 items-center justify-start">
+            <a
+              href="https://harborfinance.io"
+              className="relative mr-2 h-10 w-auto shrink-0 sm:mr-3"
+            >
               <Image
                 src="/logo.svg"
                 alt="Logo"
@@ -43,14 +49,23 @@ export default function Example() {
                 priority
               />
             </a>
-            <div className="hidden sm:block">
-              <div className="flex space-x-2">
+            <div className="hidden min-w-0 sm:block">
+              <div className="flex flex-nowrap items-center justify-start gap-1 overflow-x-auto py-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 <Link
                   href="/genesis"
-                  className={linkClass("/genesis")}
+                  className={`${linkClass("/genesis")} inline-flex items-center gap-1`}
                   aria-current={isActive("/genesis") ? "page" : undefined}
                 >
-                  New Market Rewards
+                  <span>Maiden voyage</span>
+                  <span
+                    className={`rounded px-1 py-0.5 text-[10px] font-bold leading-none font-mono border ${
+                      isActive("/genesis")
+                        ? "border-[#1E4775]/30 bg-[#1E4775] text-white"
+                        : "border-white/40 bg-white/10 text-white"
+                    }`}
+                  >
+                    2.0
+                  </span>
                 </Link>
                 <Link
                   href="/anchor"
@@ -65,13 +80,6 @@ export default function Example() {
                   aria-current={isActive("/sail") ? "page" : undefined}
                 >
                   Leverage
-                </Link>
-                <Link
-                  href="/flow"
-                  className={linkClass("/flow")}
-                  aria-current={isActive("/flow") ? "page" : undefined}
-                >
-                  Vote for Markets
                 </Link>
                 <Link
                   href="/ledger-marks"
@@ -90,7 +98,10 @@ export default function Example() {
               </div>
             </div>
           </div>
-          <div className="hidden sm:ml-6 sm:block">
+          <div className="hidden shrink-0 sm:flex sm:items-center sm:gap-2 lg:gap-3">
+            <Suspense fallback={null}>
+              <PageLayoutToggle />
+            </Suspense>
             <ConnectWallet />
           </div>
           <div className="-mr-2 flex sm:hidden">
@@ -122,7 +133,10 @@ export default function Example() {
               />
             </DisclosureButton>
           </div>
-          <div className="flex items-center justify-center mb-4 flex-shrink-0">
+          <div className="flex flex-col items-center justify-center mb-4 flex-shrink-0 gap-3 w-full max-w-sm mx-auto">
+            <Suspense fallback={null}>
+              <PageLayoutToggle />
+            </Suspense>
             <ConnectWallet />
           </div>
           <div className="flex flex-col w-full items-stretch justify-center space-y-2.5 py-2">
@@ -136,7 +150,18 @@ export default function Example() {
               }`}
               aria-current={isActive("/genesis") ? "page" : undefined}
             >
-              New Market Rewards
+              <span className="inline-flex items-center justify-center gap-2">
+                <span>Maiden voyage</span>
+                <span
+                  className={`rounded px-1.5 py-0.5 text-xs font-bold font-mono border ${
+                    isActive("/genesis")
+                      ? "border-[#1E4775]/30 bg-[#1E4775] text-white"
+                      : "border-white/40 bg-white/10 text-white"
+                  }`}
+                >
+                  2.0
+                </span>
+              </span>
             </DisclosureButton>
             <DisclosureButton
               as={Link}
@@ -161,18 +186,6 @@ export default function Example() {
               aria-current={isActive("/sail") ? "page" : undefined}
             >
               Leverage
-            </DisclosureButton>
-            <DisclosureButton
-              as={Link}
-              href="/flow"
-              className={`block w-full max-w-sm mx-auto px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 text-center ${
-                isActive("/flow")
-                  ? "text-[#1E4775] bg-white"
-                  : "text-white bg-white/10 hover:bg-white/20"
-              }`}
-              aria-current={isActive("/flow") ? "page" : undefined}
-            >
-              Vote for Markets
             </DisclosureButton>
             <DisclosureButton
               as={Link}
