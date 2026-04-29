@@ -713,7 +713,7 @@ export default function GenesisIndexPage() {
           <section className="flex min-h-[calc(100vh-7rem)] items-center justify-center">
             <div className="w-full max-w-5xl overflow-hidden rounded-3xl border border-white/10 bg-white shadow-[0_24px_80px_-32px_rgba(0,0,0,0.55)]">
               <Image
-                src="/marketing/deposit-own-earn-coming-soon.png"
+                src="/MV2.png"
                 alt="Deposit once, own a share, earn forever. Coming soon."
                 width={1024}
                 height={681}
