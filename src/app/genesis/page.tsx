@@ -68,6 +68,9 @@ import { usePageLayoutPreference } from "@/contexts/PageLayoutPreferenceContext"
 import { ensureMarketWalletChain } from "@/utils/ensureMarketWalletChain";
 import { formatCompactUSD } from "@/utils/anchor";
 
+const SHOW_MAIDEN_VOYAGE_COMING_SOON =
+  process.env.NEXT_PUBLIC_SHOW_MAIDEN_VOYAGE_COMING_SOON !== "false";
+
 export default function GenesisIndexPage() {
   const { address, isConnected } = useAccount();
   const connectedChainId = useChainId();
@@ -702,6 +705,27 @@ export default function GenesisIndexPage() {
 
     return total;
   }, [activeMarkets, reads, isConnected, genesisMarkets, collateralPricesMap]);
+
+  if (SHOW_MAIDEN_VOYAGE_COMING_SOON) {
+    return (
+      <div className="flex min-h-0 flex-1 flex-col text-white max-w-[1300px] mx-auto font-sans relative w-full">
+        <main className="container mx-auto px-4 sm:px-10 pb-6 pt-2 sm:pt-4">
+          <section className="flex min-h-[calc(100vh-7rem)] items-center justify-center">
+            <div className="w-full max-w-5xl overflow-hidden rounded-3xl border border-white/10 bg-white shadow-[0_24px_80px_-32px_rgba(0,0,0,0.55)]">
+              <Image
+                src="/marketing/deposit-own-earn-coming-soon.png"
+                alt="Deposit once, own a share, earn forever. Coming soon."
+                width={1024}
+                height={681}
+                priority
+                className="h-auto w-full"
+              />
+            </div>
+          </section>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-0 flex-1 flex-col text-white max-w-[1300px] mx-auto font-sans relative w-full">
