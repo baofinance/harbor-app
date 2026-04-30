@@ -11119,11 +11119,17 @@ export const AnchorDepositWithdrawModal = ({
                               </span>
                               <TokenSelectorDropdown
                                 value={withdrawCollateralFilter}
-                                onChange={(v) =>
-                                  setWithdrawCollateralFilter(
-                                    v as "all" | "fxSAVE" | "wstETH"
-                                  )
-                                }
+                                onChange={(v) => {
+                                  const nextFilter = v as
+                                    | "all"
+                                    | "fxSAVE"
+                                    | "wstETH";
+                                  setWithdrawCollateralFilter(nextFilter);
+                                  // Keep redeem target aligned with explicit collateral selection.
+                                  if (nextFilter !== "all") {
+                                    setSelectedRedeemAsset(nextFilter);
+                                  }
+                                }}
                                 options={[
                                   {
                                     symbol: "all",
