@@ -10,7 +10,10 @@
 // To include MegaETH markets (alongside current base):
 //   1. Set environment variable: NEXT_PUBLIC_USE_MEGAETH=true
 //   2. Set NEXT_PUBLIC_MEGAETH_RPC_URL to your MegaETH RPC
-//   2. Restart your dev server
+//   3. Restart your dev server
+//
+// Vercel: set `NEXT_PUBLIC_USE_MEGAETH` the same way on Preview vs Production if you want
+// identical Genesis market lists across staging and feature branches.
 
 import * as productionContracts from "./contracts";
 import { markets as test2Markets, contracts as test2Contracts } from "./contracts.test2";

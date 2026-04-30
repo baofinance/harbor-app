@@ -14,8 +14,6 @@ export type GenesisLedgerMarksTotalsResult = {
   totalCurrentMarks: number;
   totalMarksPerDay: number;
   totalBonusAtEnd: number;
-  totalEarlyBonusMarks: number;
-  totalEarlyBonusEstimate: number;
   anyInProcessing: boolean;
   allContractsEnded: boolean;
 };
@@ -50,8 +48,6 @@ type HarborMarksRecord = {
   lastUpdated?: string;
   marksPerDay?: string;
   bonusMarks?: string;
-  earlyBonusEligibleDepositUSD?: string;
-  earlyBonusMarks?: string;
 };
 
 function parseUserHarborMarks(raw: unknown): HarborMarksRecord | undefined {
@@ -158,9 +154,6 @@ export function computeGenesisLedgerMarksTotals(
   let totalCurrentMarks = 0;
   let totalMarksPerDay = 0;
   let totalBonusAtEnd = 0;
-  let totalEarlyBonusMarks = 0;
-  let totalEarlyBonusEstimate = 0;
-
   const allContractsEnded = genesisMarkets.every((_, mi) => {
     const baseOffset = mi * (isConnected ? 3 : 1);
     const contractSaysEnded = reads?.[baseOffset]?.result as
@@ -249,16 +242,6 @@ export function computeGenesisLedgerMarksTotals(
           totalBonusAtEnd += bonusMarks;
         }
 
-        const earlyBonusEligibleUSD = parseFloat(
-          marks.earlyBonusEligibleDepositUSD || "0"
-        );
-        const earlyBonusMarks = parseFloat(marks.earlyBonusMarks || "0");
-
-        if (!genesisEnded && earlyBonusEligibleUSD > 0) {
-          totalEarlyBonusEstimate += earlyBonusEligibleUSD * 100;
-        } else if (genesisEnded && earlyBonusMarks > 0) {
-          totalEarlyBonusMarks += earlyBonusMarks;
-        }
       }
     });
   }
@@ -268,8 +251,6 @@ export function computeGenesisLedgerMarksTotals(
     totalCurrentMarks,
     totalMarksPerDay,
     totalBonusAtEnd,
-    totalEarlyBonusMarks,
-    totalEarlyBonusEstimate,
     anyInProcessing,
     allContractsEnded,
   };

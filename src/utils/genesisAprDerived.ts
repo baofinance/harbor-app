@@ -1,6 +1,5 @@
 /**
  * Shared Tide / marks math for Genesis index APR columns (mobile, md, lg breakpoints).
- * Keeps three layout paths aligned without copying the same block.
  */
 
 import {
@@ -14,19 +13,9 @@ export type HarborMarksLike = {
   genesisStartDate?: string;
   genesisEndDate?: string;
   genesisEnded?: boolean;
-  earlyBonusEligibleDepositUSD?: string;
-  qualifiesForEarlyBonus?: boolean;
   lastUpdated?: string;
   currentDepositUSD?: string;
 } | null;
-
-export type BonusStatusResultLike = {
-  genesisAddress?: string;
-  data?: {
-    cumulativeDeposits?: string;
-    thresholdAmount?: string;
-  };
-};
 
 export type GenesisAprDerivedInput = {
   collateralSymbol: string;
@@ -37,7 +26,6 @@ export type GenesisAprDerivedInput = {
   marks: HarborMarksLike;
   endDate: string | undefined;
   userDepositUSD: number;
-  bonusStatusResults: BonusStatusResultLike[] | undefined;
   genesisAddress: string | undefined;
   mounted: boolean;
   safeTotalGenesisTVL: number;
@@ -78,8 +66,6 @@ export function computeGenesisAprDerivedState(
     marks,
     endDate,
     userDepositUSD,
-    bonusStatusResults,
-    genesisAddress,
     mounted,
     safeTotalGenesisTVL,
     safeIsLoadingTotalTVL,
@@ -142,60 +128,19 @@ export function computeGenesisAprDerivedState(
       : currentDepositUSD
     : 1;
 
-  const marketBonusData = bonusStatusResults?.find(
-    (status) =>
-      status.genesisAddress?.toLowerCase() === genesisAddress?.toLowerCase()
-  );
-  const marketBonusStatus = marketBonusData?.data;
-  const earlyBonusCapFilled = marketBonusStatus
-    ? Number(marketBonusStatus.cumulativeDeposits) >=
-      Number(marketBonusStatus.thresholdAmount)
-    : false;
-  const earlyBonusAvailable = !earlyBonusCapFilled;
-
-  const earlyBonusEligibleDepositUSDFromMarks = marks
-    ? parseFloat(marks.earlyBonusEligibleDepositUSD || "0")
-    : 0;
-  const genesisEnded = marks ? marks.genesisEnded : false;
-  const qualifiesForEarlyBonusFromMarks = marks
-    ? marks.qualifiesForEarlyBonus || false
-    : false;
-
-  const earlyBonusEligibleDepositUSD =
-    hasUserDeposit && earlyBonusAvailable
-      ? depositForAPR
-      : earlyBonusEligibleDepositUSDFromMarks;
-  const qualifiesForEarlyBonus =
-    hasUserDeposit && earlyBonusAvailable
-      ? true
-      : qualifiesForEarlyBonusFromMarks;
-
-  const estimatedEarlyBonusEligible = earlyBonusAvailable ? 1 : 0;
-  const estimatedQualifiesForEarlyBonus = earlyBonusAvailable;
+  const genesisEnded = Boolean(marks?.genesisEnded);
 
   const marksForAPR = calculateMarksForAPR(
     userMarksForMarket,
     depositForAPR,
-    hasUserDeposit
-      ? earlyBonusEligibleDepositUSD
-      : estimatedEarlyBonusEligible,
     genesisEnded,
-    hasUserDeposit
-      ? qualifiesForEarlyBonus
-      : estimatedQualifiesForEarlyBonus,
     daysLeftInGenesis
   );
 
   const marksBreakdown = calculateMarksBreakdown(
     userMarksForMarket,
     depositForAPR,
-    hasUserDeposit
-      ? earlyBonusEligibleDepositUSD
-      : estimatedEarlyBonusEligible,
     genesisEnded,
-    hasUserDeposit
-      ? qualifiesForEarlyBonus
-      : estimatedQualifiesForEarlyBonus,
     daysLeftInGenesis
   );
 

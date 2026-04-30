@@ -1,5 +1,12 @@
 import { Address, BigDecimal, BigInt, Bytes, dataSource, ethereum } from "@graphprotocol/graph-ts";
-import { Deposit, Withdraw, GenesisEnds, Genesis, EndGenesisCall } from "../generated/SailGenesis_ETH_fxUSD/Genesis";
+import {
+  Claim,
+  Deposit,
+  Withdraw,
+  GenesisEnds,
+  Genesis,
+  EndGenesisCall,
+} from "../generated/SailGenesis_ETH_fxUSD/Genesis";
 import { ERC20 } from "../generated/SailGenesis_ETH_fxUSD/ERC20";
 import { WrappedPriceOracle } from "../generated/SailGenesis_ETH_fxUSD/WrappedPriceOracle";
 import { ChainlinkAggregator } from "../generated/SailGenesis_ETH_fxUSD/ChainlinkAggregator";
@@ -395,6 +402,28 @@ export function handleWithdraw(event: Withdraw): void {
   totals.totalNetDeposit = totals.totalNetDeposit.minus(event.params.amount);
   if (totals.totalNetDeposit.lt(ZERO_BI)) totals.totalNetDeposit = ZERO_BI;
   totals.totalNetDepositUSD = totals.totalNetDepositUSD.minus(amountUsd);
+  if (totals.totalNetDepositUSD.lt(ZERO_BD)) totals.totalNetDepositUSD = ZERO_BD;
+  totals.save();
+}
+
+export function handleClaim(event: Claim): void {
+  const genesisAddress = event.address;
+  const user = event.params.receiver;
+  addUserToList(genesisAddress, user);
+
+  const gu = getOrCreateGenesisUser(genesisAddress, user, event.block.timestamp);
+  const dep = gu.netDeposit;
+  const depUsd = gu.netDepositUSD;
+
+  gu.netDeposit = ZERO_BI;
+  gu.netDepositUSD = ZERO_BD;
+  gu.lastUpdated = event.block.timestamp;
+  gu.save();
+
+  const totals = getOrCreateSailGenesisTotals(genesisAddress);
+  totals.totalNetDeposit = totals.totalNetDeposit.minus(dep);
+  if (totals.totalNetDeposit.lt(ZERO_BI)) totals.totalNetDeposit = ZERO_BI;
+  totals.totalNetDepositUSD = totals.totalNetDepositUSD.minus(depUsd);
   if (totals.totalNetDepositUSD.lt(ZERO_BD)) totals.totalNetDepositUSD = ZERO_BD;
   totals.save();
 }

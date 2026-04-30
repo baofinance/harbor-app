@@ -105,6 +105,8 @@ export function usePegTargetPrices() {
       eurPrice,
       goldPrice,
       silverPrice,
+      /** Raw EUR/USD from CoinGecko (stasis-euro); for fallbacks when composite `eurPrice` is null. */
+      eurPriceCoinGecko,
       ethPriceWei: toWei(ethPrice),
       btcPriceWei: toWei(btcPrice),
       eurPriceWei: toWei(eurPrice),

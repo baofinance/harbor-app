@@ -2,6 +2,7 @@ import {
   Deposit as DepositEvent,
   Withdraw as WithdrawEvent,
   GenesisEnds as GenesisEndsEvent,
+  Claim as ClaimEvent,
 } from "../generated/Genesis_ETH_fxUSD/Genesis";
 import {
   Deposit,
@@ -9,24 +10,21 @@ import {
   GenesisEnd,
   UserHarborMarks,
   UserList,
-  MarketBonusStatus,
+  MaidenVoyageCapStatus,
 } from "../generated/schema";
 import { BigDecimal, BigInt, Bytes, ethereum, Address } from "@graphprotocol/graph-ts";
 import { WrappedPriceOracle } from "../generated/Genesis_ETH_fxUSD/WrappedPriceOracle";
 import { ChainlinkAggregator } from "../generated/HaToken_haETH/ChainlinkAggregator";
 import { setMarketBoostWindow, ANCHOR_BOOST_MULTIPLIER, SAIL_BOOST_MULTIPLIER } from "./marksBoost";
+import {
+  getMaidenVoyageCapUSD,
+  getMaidenVoyageMaxBoost,
+} from "./maidenVoyageConfig";
+import { refreshMaidenVoyageBoost } from "./maidenVoyageBoost";
 
 // Constants (v1.0.3)
 const MARKS_PER_DOLLAR_PER_DAY = BigDecimal.fromString("10");
 const BONUS_MARKS_PER_DOLLAR = BigDecimal.fromString("100"); // 100 marks per dollar bonus at genesis end
-const EARLY_BONUS_MARKS_PER_DOLLAR = BigDecimal.fromString("100"); // 100 marks per dollar for early depositors
-const EARLY_BONUS_THRESHOLD_FXSAVE = BigDecimal.fromString("250000"); // 250k fxUSD tokens (not USD)
-const EARLY_BONUS_THRESHOLD_WSTETH = BigDecimal.fromString("70"); // 70 wstETH tokens (not USD)
-const EARLY_BONUS_THRESHOLD_FXSAVE_EUR = BigDecimal.fromString("50000"); // 50k fxUSD tokens (EUR markets)
-const EARLY_BONUS_THRESHOLD_WSTETH_EUR = BigDecimal.fromString("15"); // ~50k USD in wstETH (EUR markets)
-// Metals and all future campaigns (lower threshold)
-const EARLY_BONUS_THRESHOLD_FXSAVE_METALS = BigDecimal.fromString("25000"); // 25k fxSAVE
-const EARLY_BONUS_THRESHOLD_WSTETH_METALS = BigDecimal.fromString("15"); // 15 wstETH
 const SECONDS_PER_DAY = BigDecimal.fromString("86400");
 const E18 = BigDecimal.fromString("1000000000000000000"); // 10^18
 const CHAINLINK_DECIMALS = BigDecimal.fromString("100000000"); // 10^8 - Chainlink USD feeds
@@ -201,6 +199,198 @@ function applyMarketBoostWindowsFromGenesisEnd(
     setMarketBoostWindow(
       "sailToken",
       Bytes.fromHexString("0x817adae288ed46b8618aaeffe75acd26a0a1b0fd"),
+      start,
+      end,
+      SAIL_BOOST_MULTIPLIER
+    );
+  }
+
+  // EUR::stETH
+  if (addr == "0xf4f97218a00213a57a32e4606aaecc99e1805a89") {
+    setMarketBoostWindow(
+      "haToken",
+      Bytes.fromHexString("0x83fd69e0ff5767972b46e61c6833408361bf7346"),
+      start,
+      end,
+      ANCHOR_BOOST_MULTIPLIER
+    );
+    setMarketBoostWindow(
+      "stabilityPoolCollateral",
+      Bytes.fromHexString("0x000564b33ffde65e6c3b718166856654e039d69b"),
+      start,
+      end,
+      ANCHOR_BOOST_MULTIPLIER
+    );
+    setMarketBoostWindow(
+      "stabilityPoolLeveraged",
+      Bytes.fromHexString("0x7553fb328ef35aF1c2ac4E91e53d6a6B62DFDdEa"),
+      start,
+      end,
+      ANCHOR_BOOST_MULTIPLIER
+    );
+    setMarketBoostWindow(
+      "sailToken",
+      Bytes.fromHexString("0xea23faaf5e464488ecc29883760238b68410d92b"),
+      start,
+      end,
+      SAIL_BOOST_MULTIPLIER
+    );
+  }
+
+  // EUR::fxUSD
+  if (addr == "0xa9eb43ed6ba3b953a82741f3e226c1d6b029699b") {
+    setMarketBoostWindow(
+      "haToken",
+      Bytes.fromHexString("0x83fd69e0ff5767972b46e61c6833408361bf7346"),
+      start,
+      end,
+      ANCHOR_BOOST_MULTIPLIER
+    );
+    setMarketBoostWindow(
+      "stabilityPoolCollateral",
+      Bytes.fromHexString("0xe60054e6b518f67411834282ce1557381f050b13"),
+      start,
+      end,
+      ANCHOR_BOOST_MULTIPLIER
+    );
+    setMarketBoostWindow(
+      "stabilityPoolLeveraged",
+      Bytes.fromHexString("0xc5e0da7e0a178850438e5e97ed59b6eb2562e88e"),
+      start,
+      end,
+      ANCHOR_BOOST_MULTIPLIER
+    );
+    setMarketBoostWindow(
+      "sailToken",
+      Bytes.fromHexString("0x7a7c1f2502c19193c44662a2aff51c2b76fddaea"),
+      start,
+      end,
+      SAIL_BOOST_MULTIPLIER
+    );
+  }
+
+  // GOLD::fxUSD
+  if (addr == "0x2cbf457112ef5a16cfca10fb173d56a5cc9daa66") {
+    setMarketBoostWindow(
+      "haToken",
+      Bytes.fromHexString("0x5b66d86932ae5d9751da588d91d494950554061d"),
+      start,
+      end,
+      ANCHOR_BOOST_MULTIPLIER
+    );
+    setMarketBoostWindow(
+      "stabilityPoolCollateral",
+      Bytes.fromHexString("0xC1EF32d4B959F2200efDeDdedadA226461d14DaC"),
+      start,
+      end,
+      ANCHOR_BOOST_MULTIPLIER
+    );
+    setMarketBoostWindow(
+      "stabilityPoolLeveraged",
+      Bytes.fromHexString("0x5bded171f1c08b903b466593b0e022f9fde8399c"),
+      start,
+      end,
+      ANCHOR_BOOST_MULTIPLIER
+    );
+    setMarketBoostWindow(
+      "sailToken",
+      Bytes.fromHexString("0x85730af3a7d7a872ee1d84306e0575f1e00c0980"),
+      start,
+      end,
+      SAIL_BOOST_MULTIPLIER
+    );
+  }
+
+  // GOLD::stETH
+  if (addr == "0x8ad6b177137a6c33070c27d98355717849ce526c") {
+    setMarketBoostWindow(
+      "haToken",
+      Bytes.fromHexString("0x5b66d86932ae5d9751da588d91d494950554061d"),
+      start,
+      end,
+      ANCHOR_BOOST_MULTIPLIER
+    );
+    setMarketBoostWindow(
+      "stabilityPoolCollateral",
+      Bytes.fromHexString("0x215c28dcce0041ef9a17277ca271f100d9f345cf"),
+      start,
+      end,
+      ANCHOR_BOOST_MULTIPLIER
+    );
+    setMarketBoostWindow(
+      "stabilityPoolLeveraged",
+      Bytes.fromHexString("0x2af96e906d568c92e53e96bb2878ce35e05de69a"),
+      start,
+      end,
+      ANCHOR_BOOST_MULTIPLIER
+    );
+    setMarketBoostWindow(
+      "sailToken",
+      Bytes.fromHexString("0x94460c6477cda339da0e7e39f6aa66ef047e2f6a"),
+      start,
+      end,
+      SAIL_BOOST_MULTIPLIER
+    );
+  }
+
+  // SILVER::fxUSD
+  if (addr == "0x66d18b9dd5d1cd51957dfea0e0373b54e06118c8") {
+    setMarketBoostWindow(
+      "haToken",
+      Bytes.fromHexString("0x7de413b0abee6f685a8ff7fb53330e3c56523e74"),
+      start,
+      end,
+      ANCHOR_BOOST_MULTIPLIER
+    );
+    setMarketBoostWindow(
+      "stabilityPoolCollateral",
+      Bytes.fromHexString("0x7619664fe05c9cbda5b622455856d7ca11cb8800"),
+      start,
+      end,
+      ANCHOR_BOOST_MULTIPLIER
+    );
+    setMarketBoostWindow(
+      "stabilityPoolLeveraged",
+      Bytes.fromHexString("0x24aef2d27146497b18df180791424b1010bf1889"),
+      start,
+      end,
+      ANCHOR_BOOST_MULTIPLIER
+    );
+    setMarketBoostWindow(
+      "sailToken",
+      Bytes.fromHexString("0x74692d22a0cb924e4299785cc299291e560df9cf"),
+      start,
+      end,
+      SAIL_BOOST_MULTIPLIER
+    );
+  }
+
+  // SILVER::stETH
+  if (addr == "0x8f655ca32a1fa8032955989c19e91886f26439dc") {
+    setMarketBoostWindow(
+      "haToken",
+      Bytes.fromHexString("0x7de413b0abee6f685a8ff7fb53330e3c56523e74"),
+      start,
+      end,
+      ANCHOR_BOOST_MULTIPLIER
+    );
+    setMarketBoostWindow(
+      "stabilityPoolCollateral",
+      Bytes.fromHexString("0x1c9c1cf9aa9fc86df980086cbc5a5607522cfc3e"),
+      start,
+      end,
+      ANCHOR_BOOST_MULTIPLIER
+    );
+    setMarketBoostWindow(
+      "stabilityPoolLeveraged",
+      Bytes.fromHexString("0x4c0f988b3c0c58f5ea323238e9d62b79582738e6"),
+      start,
+      end,
+      ANCHOR_BOOST_MULTIPLIER
+    );
+    setMarketBoostWindow(
+      "sailToken",
+      Bytes.fromHexString("0x5bb5672be4553e648c1d20f093826faf77386d34"),
       start,
       end,
       SAIL_BOOST_MULTIPLIER
@@ -567,93 +757,33 @@ function getOrCreateUserMarks(
     userMarks.genesisStartDate = BigInt.fromI32(0);
     userMarks.genesisEndDate = null;
     userMarks.genesisEnded = false;
-    userMarks.qualifiesForEarlyBonus = false;
-    userMarks.earlyBonusMarks = BigDecimal.fromString("0");
-    userMarks.earlyBonusEligibleDepositUSD = BigDecimal.fromString("0");
+    userMarks.maidenVoyageDepositCountedUSD = BigDecimal.fromString("0");
+    userMarks.finalMaidenVoyageOwnershipShare = BigDecimal.fromString("0");
+    userMarks.baselineClaimUSDForBoost = BigDecimal.fromString("0");
+    userMarks.maidenVoyageBoostMultiplier = BigDecimal.fromString("1");
+    userMarks.maidenVoyageMaxBoost = getMaidenVoyageMaxBoost(Address.fromBytes(contractAddress));
+    userMarks.lastMaidenVoyageClaimUSD = BigDecimal.fromString("0");
     userMarks.lastUpdated = BigInt.fromI32(0);
   }
   return userMarks;
 }
 
-// Helper to get collateral symbol for a genesis contract
-function getCollateralSymbol(genesisAddress: string): string {
-  // Normalize address to lowercase for comparison
-  const addr = genesisAddress.toLowerCase();
-  
-  // Production v1: ETH/fxUSD and BTC/fxUSD markets use fxSAVE
-  if (addr == "0xc9df4f62474cf6cde6c064db29416a9f4f27ebdc" || // ETH/fxUSD (production v1)
-      addr == "0x42cc9a19b358a2a918f891d8a6199d8b05f0bc1c" || // BTC/fxUSD (production v1)
-      addr == "0xa9eb43ed6ba3b953a82741f3e226c1d6b029699b" || // fxUSD/EUR (new)
-      addr == "0x2cbf457112ef5a16cfca10fb173d56a5cc9daa66" || // GOLD::fxUSD::genesis (Metals)
-      addr == "0x66d18b9dd5d1cd51957dfea0e0373b54e06118c8" || // SILVER::fxUSD::genesis (Metals)
-      // Legacy test contracts (for backward compatibility)
-      addr == "0x5f4398e1d3e33f93e3d7ee710d797e2a154cb073" ||
-      addr == "0x288c61c3b3684ff21adf38d878c81457b19bd2fe" ||
-      addr == "0x1454707877cdb966e29cea8a190c2169eeca4b8c") {
-    return "fxSAVE";
-  }
-  // Production v1: BTC/stETH market uses wstETH
-  if (addr == "0xc64fc46eed431e92c1b5e24dc296b5985ce6cc00" || // BTC/stETH (production v1)
-      addr == "0xf4f97218a00213a57a32e4606aaecc99e1805a89" || // stETH/EUR
-      addr == "0x8ad6b177137a6c33070c27d98355717849ce526c" || // GOLD::stETH::genesis (Metals)
-      addr == "0x8f655ca32a1fa8032955989c19e91886f26439dc" || // SILVER::stETH::genesis (Metals)
-      // Legacy test contract (for backward compatibility)
-      addr == "0x9ae0b57ceada0056dbe21edcd638476fcba3ccc0") {
-    return "wstETH";
-  }
-  return "unknown";
-}
-
-function getEarlyBonusThresholdAmount(
-  contractAddress: Bytes,
-  collateralSymbol: string
-): BigDecimal {
-  const addr = contractAddress.toHexString().toLowerCase();
-  // EUR markets
-  if (addr == "0xf4f97218a00213a57a32e4606aaecc99e1805a89") {
-    // stETH-EUR genesis
-    return EARLY_BONUS_THRESHOLD_WSTETH_EUR;
-  }
-  if (addr == "0xa9eb43ed6ba3b953a82741f3e226c1d6b029699b") {
-    // fxUSD-EUR genesis
-    return EARLY_BONUS_THRESHOLD_FXSAVE_EUR;
-  }
-  // Metals maiden voyage (and default for all future campaigns)
-  if (addr == "0x2cbf457112ef5a16cfca10fb173d56a5cc9daa66" || addr == "0x66d18b9dd5d1cd51957dfea0e0373b54e06118c8") {
-    return EARLY_BONUS_THRESHOLD_FXSAVE_METALS; // fxUSD-GOLD, fxUSD-SILVER
-  }
-  if (addr == "0x8ad6b177137a6c33070c27d98355717849ce526c" || addr == "0x8f655ca32a1fa8032955989c19e91886f26439dc") {
-    return EARLY_BONUS_THRESHOLD_WSTETH_METALS; // stETH-GOLD, stETH-SILVER
-  }
-  const isFxSAVE = collateralSymbol == "fxSAVE";
-  return isFxSAVE ? EARLY_BONUS_THRESHOLD_FXSAVE : EARLY_BONUS_THRESHOLD_WSTETH;
-}
-
-// Helper to get or create market bonus status
-function getOrCreateMarketBonusStatus(
-  contractAddress: Bytes
-): MarketBonusStatus {
+function getOrCreateMaidenVoyageCapStatus(contractAddress: Bytes): MaidenVoyageCapStatus {
   const id = contractAddress.toHexString();
-  let marketBonus = MarketBonusStatus.load(id);
-  if (marketBonus == null) {
-    marketBonus = new MarketBonusStatus(id);
-    marketBonus.contractAddress = contractAddress;
-    marketBonus.thresholdReached = false;
-    marketBonus.thresholdReachedAt = null;
-    marketBonus.cumulativeDeposits = BigDecimal.fromString("0");
-    marketBonus.lastUpdated = BigInt.fromI32(0);
+  let cap = MaidenVoyageCapStatus.load(id);
+  const capUsd = getMaidenVoyageCapUSD(Address.fromBytes(contractAddress));
+  if (cap == null) {
+    cap = new MaidenVoyageCapStatus(id);
+    cap.contractAddress = contractAddress;
+    cap.capUSD = capUsd;
+    cap.cumulativeDepositsUSD = BigDecimal.fromString("0");
+    cap.capFilled = false;
+    cap.capFilledAt = null;
+    cap.lastUpdated = BigInt.fromI32(0);
+  } else {
+    cap.capUSD = capUsd;
   }
-  
-  // Determine collateral type and set threshold (in token amounts, not USD)
-  // Update even if entity exists (fixes entities created with "unknown")
-  const collateralSymbol = getCollateralSymbol(contractAddress.toHexString());
-  marketBonus.thresholdAmount = getEarlyBonusThresholdAmount(
-    contractAddress,
-    collateralSymbol
-  );
-  marketBonus.thresholdToken = collateralSymbol;
-  
-  return marketBonus;
+  return cap as MaidenVoyageCapStatus;
 }
 
 export function handleDeposit(event: DepositEvent): void {
@@ -689,35 +819,27 @@ export function handleDeposit(event: DepositEvent): void {
   deposit.isActive = true;
   deposit.withdrawnAmount = BigInt.fromI32(0);
   deposit.withdrawnAt = null;
-  
-  // Early deposit bonus tracking
-  // Get market bonus status to check if threshold has been reached
-  const marketBonus = getOrCreateMarketBonusStatus(contractAddress);
-  
-  // Check if threshold already reached before this deposit
-  const qualifiesForBonus = !marketBonus.thresholdReached;
-  deposit.qualifiesForEarlyBonus = qualifiesForBonus;
-  deposit.earlyBonusAmount = qualifiesForBonus 
-    ? amountUSD.times(EARLY_BONUS_MARKS_PER_DOLLAR)
-    : BigDecimal.fromString("0");
-  
-  deposit.save();
-  
-  // Update market bonus status with this deposit (track token amounts, not USD)
-  // Always update and save to ensure entity exists (fixes entities created with "unknown")
-  if (!marketBonus.thresholdReached) {
-    marketBonus.cumulativeDeposits = marketBonus.cumulativeDeposits.plus(amountInTokens);
-    
-    // Check if threshold is reached with this deposit
-    if (marketBonus.cumulativeDeposits.ge(marketBonus.thresholdAmount)) {
-      marketBonus.thresholdReached = true;
-      marketBonus.thresholdReachedAt = timestamp;
-    }
+
+  const capStatus = getOrCreateMaidenVoyageCapStatus(contractAddress);
+  const capUsd = capStatus.capUSD;
+  let remainingCap = capUsd.minus(capStatus.cumulativeDepositsUSD);
+  if (remainingCap.lt(BigDecimal.fromString("0"))) {
+    remainingCap = BigDecimal.fromString("0");
   }
-  
-  // Always update lastUpdated and save to ensure entity exists
-  marketBonus.lastUpdated = timestamp;
-  marketBonus.save();
+  let countedUsd = BigDecimal.fromString("0");
+  if (remainingCap.gt(BigDecimal.fromString("0"))) {
+    countedUsd = amountUSD.lt(remainingCap) ? amountUSD : remainingCap;
+  }
+  deposit.countedTowardCapUSD = countedUsd;
+  deposit.save();
+
+  capStatus.cumulativeDepositsUSD = capStatus.cumulativeDepositsUSD.plus(countedUsd);
+  if (!capStatus.capFilled && capStatus.cumulativeDepositsUSD.ge(capUsd)) {
+    capStatus.capFilled = true;
+    capStatus.capFilledAt = timestamp;
+  }
+  capStatus.lastUpdated = timestamp;
+  capStatus.save();
   
   // Update user marks
   let userMarks = getOrCreateUserMarks(contractAddress, userAddress);
@@ -793,12 +915,8 @@ export function handleDeposit(event: DepositEvent): void {
     userMarks.marksPerDay = userMarks.currentDepositUSD.times(MARKS_PER_DOLLAR_PER_DAY);
   }
   
-  // Update early bonus eligibility
-  if (deposit.qualifiesForEarlyBonus) {
-    userMarks.qualifiesForEarlyBonus = true;
-    userMarks.earlyBonusEligibleDepositUSD = userMarks.earlyBonusEligibleDepositUSD.plus(amountUSD);
-  }
-  
+  userMarks.maidenVoyageDepositCountedUSD = userMarks.maidenVoyageDepositCountedUSD.plus(countedUsd);
+
   userMarks.lastUpdated = timestamp;
   userMarks.save();
 }
@@ -918,20 +1036,52 @@ export function handleWithdraw(event: WithdrawEvent): void {
     userMarks.marksPerDay = BigDecimal.fromString("0");
   }
   
-  // Reduce early bonus eligible deposit proportionally
-  // If user withdraws, they lose early bonus eligibility for the withdrawn portion
-  if (userMarks.earlyBonusEligibleDepositUSD.gt(BigDecimal.fromString("0")) && depositUSDBeforeWithdrawal.gt(BigDecimal.fromString("0"))) {
+  if (
+    userMarks.maidenVoyageDepositCountedUSD.gt(BigDecimal.fromString("0")) &&
+    depositUSDBeforeWithdrawal.gt(BigDecimal.fromString("0"))
+  ) {
     const withdrawalPercentage = amountUSD.div(depositUSDBeforeWithdrawal);
-    const earlyBonusReduction = userMarks.earlyBonusEligibleDepositUSD.times(withdrawalPercentage);
-    userMarks.earlyBonusEligibleDepositUSD = userMarks.earlyBonusEligibleDepositUSD.minus(earlyBonusReduction);
-    
-    // If no more eligible deposit, mark as not qualifying
-    if (userMarks.earlyBonusEligibleDepositUSD.le(BigDecimal.fromString("0"))) {
-      userMarks.qualifiesForEarlyBonus = false;
-      userMarks.earlyBonusEligibleDepositUSD = BigDecimal.fromString("0");
+    const countedReduction = userMarks.maidenVoyageDepositCountedUSD.times(withdrawalPercentage);
+    userMarks.maidenVoyageDepositCountedUSD = userMarks.maidenVoyageDepositCountedUSD.minus(countedReduction);
+    if (userMarks.maidenVoyageDepositCountedUSD.lt(BigDecimal.fromString("0"))) {
+      userMarks.maidenVoyageDepositCountedUSD = BigDecimal.fromString("0");
     }
   }
-  
+
+  if (userMarks.genesisEnded) {
+    refreshMaidenVoyageBoost(userMarks, Address.fromBytes(contractAddress), timestamp);
+  }
+
+  userMarks.lastUpdated = timestamp;
+  userMarks.save();
+}
+
+/**
+ * After genesis ends, `claim(receiver)` mints pegged + leveraged tokens and clears the
+ * user's remaining wrapped-collateral position. Without this handler, `currentDepositUSD`
+ * stays positive while ha+sail balances accrue, so retention is overstated and boost sticks at max.
+ */
+export function handleClaim(event: ClaimEvent): void {
+  const contractAddress = event.address;
+  const userAddress = event.params.receiver;
+  const timestamp = event.block.timestamp;
+
+  let userMarks = getOrCreateUserMarks(contractAddress, userAddress);
+
+  const genesisEnd = GenesisEnd.load(contractAddress.toHexString());
+  if (genesisEnd != null && !userMarks.genesisEnded) {
+    updateUserMarksForGenesisEnd(userMarks, genesisEnd.timestamp);
+    userMarks = getOrCreateUserMarks(contractAddress, userAddress);
+  }
+
+  userMarks.currentDeposit = BigInt.fromI32(0);
+  userMarks.currentDepositUSD = BigDecimal.fromString("0");
+  userMarks.marksPerDay = BigDecimal.fromString("0");
+
+  if (userMarks.genesisEnded) {
+    refreshMaidenVoyageBoost(userMarks, Address.fromBytes(contractAddress), timestamp);
+  }
+
   userMarks.lastUpdated = timestamp;
   userMarks.save();
 }
@@ -1014,14 +1164,22 @@ function updateUserMarksForGenesisEnd(
     userMarks.totalMarksEarned = userMarks.totalMarksEarned.plus(bonusMarks);
   }
   
-  // Calculate early deposit bonus (100 marks per dollar for early depositors)
-  if (userMarks.qualifiesForEarlyBonus && userMarks.earlyBonusEligibleDepositUSD.gt(BigDecimal.fromString("0"))) {
-    const earlyBonus = userMarks.earlyBonusEligibleDepositUSD.times(EARLY_BONUS_MARKS_PER_DOLLAR);
-    userMarks.earlyBonusMarks = earlyBonus;
-    userMarks.currentMarks = userMarks.currentMarks.plus(earlyBonus);
-    userMarks.totalMarksEarned = userMarks.totalMarksEarned.plus(earlyBonus);
+  const capForShare = getMaidenVoyageCapUSD(Address.fromBytes(userMarks.contractAddress));
+  if (capForShare.gt(BigDecimal.fromString("0"))) {
+    userMarks.finalMaidenVoyageOwnershipShare = userMarks.maidenVoyageDepositCountedUSD.div(
+      capForShare
+    );
+  } else {
+    userMarks.finalMaidenVoyageOwnershipShare = BigDecimal.fromString("0");
   }
-  
+  userMarks.baselineClaimUSDForBoost = userMarks.currentDepositUSD;
+  const maxB = userMarks.maidenVoyageMaxBoost;
+  if (maxB.lt(BigDecimal.fromString("1")) || maxB.equals(BigDecimal.fromString("0"))) {
+    userMarks.maidenVoyageMaxBoost = BigDecimal.fromString("5");
+  }
+  userMarks.maidenVoyageBoostMultiplier = userMarks.maidenVoyageMaxBoost;
+  refreshMaidenVoyageBoost(userMarks, Address.fromBytes(userMarks.contractAddress), genesisEndTimestamp);
+
   // No more marks per day after genesis ends
   userMarks.marksPerDay = BigDecimal.fromString("0");
   userMarks.lastUpdated = genesisEndTimestamp;

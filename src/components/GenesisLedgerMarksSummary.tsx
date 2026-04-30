@@ -21,8 +21,6 @@ interface GenesisLedgerMarksSummaryProps {
   allContractsEnded: boolean;
   isConnected: boolean;
   totalBonusAtEnd: number;
-  totalEarlyBonusEstimate: number;
-  totalEarlyBonusMarks: number;
 }
 
 export const GenesisLedgerMarksSummary = ({
@@ -35,8 +33,6 @@ export const GenesisLedgerMarksSummary = ({
   allContractsEnded,
   isConnected,
   totalBonusAtEnd,
-  totalEarlyBonusEstimate,
-  totalEarlyBonusMarks,
 }: GenesisLedgerMarksSummaryProps) => {
   const extractCampaignName = (label: string): string =>
     label.replace(/\s+Maiden Voyage\s*$/i, "").trim();
@@ -83,6 +79,35 @@ export const GenesisLedgerMarksSummary = ({
                         share of rewards and governance power.
                       </p>
                     </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-white/70 mt-0.5">•</span>
+                      <p className="text-white/90 leading-relaxed">
+                        Maiden voyage uses a shared USD deposit cap for
+                        ownership only. After genesis, pool yield is split by
+                        ownership times a voyage boost: retention compares
+                        Harbor value you still hold—unclaimed genesis plus
+                        Anchor and Sail for that market—to your USD at genesis
+                        close. The multiplier never increases after it has
+                        dropped, even if you deposit again. It is not the same
+                        thing as the deposit cap.
+                      </p>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-white/70 mt-0.5">•</span>
+                      <p className="text-white/90 leading-relaxed">
+                        <span className="font-semibold text-white">
+                          Yield for life
+                        </span>{" "}
+                        here means your finalized ownership slice of{" "}
+                        <span className="font-semibold text-white">
+                          this market&apos;s
+                        </span>{" "}
+                        maiden voyage yield pool. A configurable portion of fee +
+                        carry revenue is credited to that pool (see genesis UI);
+                        your share tracks the pool until rules or governance say
+                        otherwise. It is not a fixed APR.
+                      </p>
+                    </div>
                   </div>
                   <div className="border-t border-white/20 pt-3">
                     <p className="text-white/80 italic leading-relaxed">
@@ -100,10 +125,10 @@ export const GenesisLedgerMarksSummary = ({
             <div className="text-[11px] text-white/80 uppercase tracking-widest">
               {(() => {
                 if (!selectedCampaign) {
-                  return "Current Maiden Voyage Marks";
+                  return "Current maiden voyage marks";
                 }
                 const campaignName = extractCampaignName(selectedCampaign.label);
-                return `${campaignName} Maiden Voyage Marks`;
+                return `${campaignName} marks`;
               })()}
             </div>
             <div className="text-sm font-semibold text-white font-mono mt-1">
@@ -159,26 +184,6 @@ export const GenesisLedgerMarksSummary = ({
                 "0"
               )}
             </div>
-            {mounted && !isLoadingMarks && (
-              <>
-                {!allContractsEnded && totalEarlyBonusEstimate > 0 && (
-                  <div className="text-[10px] text-green-300 mt-0.5">
-                    Early deposit bonus: +
-                    {totalEarlyBonusEstimate.toLocaleString(undefined, {
-                      maximumFractionDigits: 0,
-                    })}
-                  </div>
-                )}
-                {allContractsEnded && totalEarlyBonusMarks > 0 && (
-                  <div className="text-[10px] text-green-300 mt-0.5">
-                    Early deposit bonus:{" "}
-                    {totalEarlyBonusMarks.toLocaleString(undefined, {
-                      maximumFractionDigits: 0,
-                    })}
-                  </div>
-                )}
-              </>
-            )}
           </div>
         </div>
       </div>

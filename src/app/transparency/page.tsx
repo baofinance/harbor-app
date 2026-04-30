@@ -1732,7 +1732,7 @@ export default function TransparencyPage() {
                         {!isLoading && finishedMarkets.length === 0 ? (
                             <div className="rounded-lg border border-white/10 bg-black/[0.10] backdrop-blur-sm px-6 py-6 text-center">
                                 <p className="text-white text-lg font-medium">
-                                    Maiden Voyage in progress for Harbor&apos;s first markets - coming soon!
+                                    Maiden voyage 2.0 — new market genesis campaigns will appear here when live.
                                 </p>
                             </div>
                         ) : (

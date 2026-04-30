@@ -5,7 +5,7 @@ import { markets } from "@/config/markets";
 import { getWeb3iconsNetworkId } from "@/config/web3iconsNetworks";
 import {
   useAllHarborMarks,
-  useAllMarketBonusStatus,
+  useAllMaidenVoyageCampaignIndex,
 } from "@/hooks/useHarborMarks";
 import { formatGenesisMarketDisplayName } from "@/utils/genesisDisplay";
 
@@ -111,24 +111,32 @@ export function useGenesisPageData() {
     [genesisMarkets]
   );
 
-  const { data: allMarketBonusStatus, isLoading: isLoadingBonusStatus } =
-    useAllMarketBonusStatus(genesisAddresses);
+  const { data: maidenVoyageCampaign, isLoading: isLoadingMaidenVoyageIndex } =
+    useAllMaidenVoyageCampaignIndex(genesisAddresses);
 
-  const bonusStatusResults = allMarketBonusStatus?.results ?? [];
-  const bonusHasIndexerErrors = allMarketBonusStatus?.hasIndexerErrors ?? false;
-  const bonusHasAnyErrors = allMarketBonusStatus?.hasAnyErrors ?? false;
-  const bonusMarketsWithIndexerErrors =
-    allMarketBonusStatus?.marketsWithIndexerErrors ?? [];
-  const bonusMarketsWithOtherErrors =
-    allMarketBonusStatus?.marketsWithOtherErrors ?? [];
+  const maidenVoyageCampaignResults = maidenVoyageCampaign?.results ?? [];
+  const maidenVoyageHasIndexerErrors =
+    maidenVoyageCampaign?.hasIndexerErrors ?? false;
+  const maidenVoyageHasAnyErrors = maidenVoyageCampaign?.hasAnyErrors ?? false;
+  const maidenVoyageMarketsWithIndexerErrors =
+    maidenVoyageCampaign?.marketsWithIndexerErrors ?? [];
+  const maidenVoyageMarketsWithOtherErrors =
+    maidenVoyageCampaign?.marketsWithOtherErrors ?? [];
 
-  const combinedHasIndexerErrors = hasIndexerErrors || bonusHasIndexerErrors;
-  const combinedHasAnyErrors = hasAnyErrors || bonusHasAnyErrors;
+  const combinedHasIndexerErrors =
+    hasIndexerErrors || maidenVoyageHasIndexerErrors;
+  const combinedHasAnyErrors = hasAnyErrors || maidenVoyageHasAnyErrors;
   const combinedMarketsWithIndexerErrors = Array.from(
-    new Set([...marketsWithIndexerErrors, ...bonusMarketsWithIndexerErrors])
+    new Set([
+      ...marketsWithIndexerErrors,
+      ...maidenVoyageMarketsWithIndexerErrors,
+    ])
   );
   const combinedMarketsWithOtherErrors = Array.from(
-    new Set([...marketsWithOtherErrors, ...bonusMarketsWithOtherErrors])
+    new Set([
+      ...marketsWithOtherErrors,
+      ...maidenVoyageMarketsWithOtherErrors,
+    ])
   );
 
   const marketsWithOraclePricingError = useMemo(() => {
@@ -166,8 +174,8 @@ export function useGenesisPageData() {
     isLoadingMarks,
     refetchMarks,
     marksError,
-    bonusStatusResults,
-    isLoadingBonusStatus,
+    maidenVoyageCampaignResults,
+    isLoadingMaidenVoyageIndex,
     combinedHasIndexerErrors,
     combinedMarketsWithIndexerErrors,
     combinedHasAnyErrors,
