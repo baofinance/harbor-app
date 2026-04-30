@@ -69,7 +69,7 @@ import { ensureMarketWalletChain } from "@/utils/ensureMarketWalletChain";
 import { formatCompactUSD } from "@/utils/anchor";
 
 const SHOW_MAIDEN_VOYAGE_COMING_SOON =
-  process.env.NEXT_PUBLIC_SHOW_MAIDEN_VOYAGE_COMING_SOON !== "false";
+  process.env.NEXT_PUBLIC_SHOW_MAIDEN_VOYAGE_COMING_SOON === "true";
 
 export default function GenesisIndexPage() {
   const { address, isConnected } = useAccount();
@@ -1960,23 +1960,15 @@ export default function GenesisIndexPage() {
                                 >
                                   <div className="font-mono text-[#1E4775] font-semibold cursor-help text-xs">
                                     {userDeposit && userDeposit > 0n ? (
-                                      collateralPriceUSD > 0 ? (
-                                        formatUSD(userDepositUSD)
-                                      ) : priceError ? (
-                                        <span className="text-red-500">
-                                          Price Error
-                                        </span>
-                                      ) : (
-                                        `${formatToken(
-                                          userDeposit
-                                        )} ${collateralSymbol}`
-                                      )
+                                      collateralPriceUSD > 0
+                                        ? formatUSD(userDepositUSD)
+                                        : priceError
+                                        ? "$0"
+                                        : `${formatToken(
+                                            userDeposit
+                                          )} ${collateralSymbol}`
                                     ) : collateralPriceUSD > 0 ? (
                                       "$0"
-                                    ) : priceError ? (
-                                      <span className="text-red-500 text-xs">
-                                        Error
-                                      </span>
                                     ) : (
                                       "0"
                                     )}
@@ -2013,23 +2005,15 @@ export default function GenesisIndexPage() {
                             >
                               <div className="font-mono text-[#1E4775] font-semibold cursor-help text-xs">
                                 {totalDeposits && totalDeposits > 0n ? (
-                                  collateralPriceUSD > 0 ? (
-                                    formatUSD(totalDepositsUSD)
-                                  ) : priceError ? (
-                                    <span className="text-red-500">
-                                      Price Error
-                                    </span>
-                                  ) : (
-                                    `${formatToken(
-                                      totalDeposits
-                                    )} ${collateralSymbol}`
-                                  )
+                                  collateralPriceUSD > 0
+                                    ? formatUSD(totalDepositsUSD)
+                                    : priceError
+                                    ? "$0"
+                                    : `${formatToken(
+                                        totalDeposits
+                                      )} ${collateralSymbol}`
                                 ) : collateralPriceUSD > 0 ? (
                                   "$0"
-                                ) : priceError ? (
-                                  <span className="text-red-500 text-xs">
-                                    Error
-                                  </span>
                                 ) : (
                                   "0"
                                 )}
@@ -2065,23 +2049,15 @@ export default function GenesisIndexPage() {
                             >
                               <div className="font-mono text-[#1E4775] font-semibold cursor-help text-xs">
                                 {userDeposit && userDeposit > 0n ? (
-                                  collateralPriceUSD > 0 ? (
-                                    formatUSD(userDepositUSD)
-                                  ) : priceError ? (
-                                    <span className="text-red-500">
-                                      Price Error
-                                    </span>
-                                  ) : (
-                                    `${formatToken(
-                                      userDeposit
-                                    )} ${collateralSymbol}`
-                                  )
+                                  collateralPriceUSD > 0
+                                    ? formatUSD(userDepositUSD)
+                                    : priceError
+                                    ? "$0"
+                                    : `${formatToken(
+                                        userDeposit
+                                      )} ${collateralSymbol}`
                                 ) : collateralPriceUSD > 0 ? (
                                   "$0"
-                                ) : priceError ? (
-                                  <span className="text-red-500 text-xs">
-                                    Error
-                                  </span>
                                 ) : (
                                   "0"
                                 )}
@@ -2231,11 +2207,18 @@ export default function GenesisIndexPage() {
                           const cumulative = parseFloat(
                             capRow?.cumulativeDepositsUSD || "0"
                           );
+                          const tokenCapAmount =
+                            id === "wsteth-usd-megaeth" ? 50 : 0;
+                          const useTokenCap = tokenCapAmount > 0;
+                          const capTotal = useTokenCap ? tokenCapAmount : capUsd;
+                          const capCurrent = useTokenCap
+                            ? totalDepositsAmount
+                            : cumulative;
                           const progressPct =
-                            capUsd > 0
+                            capTotal > 0
                               ? Math.min(
                                   100,
-                                  (cumulative / capUsd) * 100
+                                  (capCurrent / capTotal) * 100
                                 )
                               : 0;
                           const yieldRevSharePct =
@@ -2262,14 +2245,17 @@ export default function GenesisIndexPage() {
                                   }
                                 >
                                   <span className="inline-flex items-center gap-0.5 text-[10px] text-[#1E4775] font-semibold whitespace-nowrap cursor-help">
-                                    Deposit cap (USD)
+                                    {useTokenCap
+                                      ? "Deposit cap (wstETH)"
+                                      : "Deposit cap (USD)"}
                                     <InformationCircleIcon className="w-3.5 h-3.5 shrink-0 text-[#1E4775]/55" />
                                   </span>
                                 </SimpleTooltip>
                                 <div className="flex-1 bg-gray-200 rounded-full h-1.5 min-w-[100px]">
                                   <div
                                     className={`h-1.5 rounded-full transition-all ${
-                                      capRow?.capFilled
+                                      (useTokenCap && capCurrent >= capTotal) ||
+                                      (!useTokenCap && capRow?.capFilled)
                                         ? "bg-gray-400"
                                         : "bg-[#FF8A7A]"
                                     }`}
@@ -2277,12 +2263,19 @@ export default function GenesisIndexPage() {
                                   />
                                 </div>
                                 <span className="text-[10px] text-[#1E4775]/70 whitespace-nowrap">
-                                  {formatUSD(cumulative)} / {formatUSD(capUsd)}
+                                  {useTokenCap
+                                    ? `${formatToken(totalDeposits || 0n)} ${collateralSymbol} / ${tokenCapAmount.toFixed(
+                                        0
+                                      )} ${collateralSymbol}`
+                                    : `${formatUSD(cumulative)} / ${formatUSD(
+                                        capUsd
+                                      )}`}
                                 </span>
                               </div>
-                              {capUsd > 0 && (
+                              {capTotal > 0 && (
                                 <p className="text-[10px] text-[#1E4775]/80 leading-snug mb-0.5">
-                                  {capRow?.capFilled ? (
+                                  {(useTokenCap && capCurrent >= capTotal) ||
+                                  (!useTokenCap && capRow?.capFilled) ? (
                                     <>
                                       <span className="font-semibold text-[#1E4775]">
                                         0%

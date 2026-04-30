@@ -8,6 +8,7 @@ import { XMarkIcon } from "@heroicons/react/24/outline";
 import LedgerMarksCompactBadge from "@/components/LedgerMarksCompactBadge";
 import SimpleTooltip from "@/components/SimpleTooltip";
 import { FilterMultiselectDropdown } from "@/components/FilterMultiselectDropdown";
+import IndexToolbarSegmentedToggle from "@/components/shared/IndexToolbarSegmentedToggle";
 import IndexToolbarMetricsGroup, {
   type IndexToolbarMetric,
 } from "@/components/shared/IndexToolbarMetricsGroup";
@@ -63,40 +64,42 @@ export function GenesisMarketsToolbar({
             <span className="text-xs font-medium text-white/70 uppercase tracking-wider">
               Genesis:
             </span>
-            {/* Segmented control — matches PageLayoutToggle (UI− / UI+): track bg-white/10, active white + Harbor blue, inactive white text; height matches Network dropdown (py-2 text-sm) */}
-            <div
-              className="flex shrink-0 items-center gap-0.5 rounded-md bg-white/10 p-0.5"
-              role="group"
-              aria-label="Genesis markets: ongoing or all campaigns"
-            >
-              <button
-                type="button"
-                onClick={() => setShowCompletedGenesis(false)}
-                aria-pressed={!showCompletedGenesis}
-                className={`min-w-[4.5rem] rounded px-3 py-2 text-sm font-medium tabular-nums tracking-tight transition-colors ${
-                  !showCompletedGenesis
-                    ? "bg-white text-[#1E4775] shadow-sm"
-                    : "text-white hover:bg-white/20"
-                }`}
-              >
-                Ongoing
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowCompletedGenesis(true)}
-                aria-pressed={showCompletedGenesis}
-                className={`min-w-[3.25rem] rounded px-3 py-2 text-sm font-medium tabular-nums tracking-tight transition-colors ${
-                  showCompletedGenesis
-                    ? "bg-white text-[#1E4775] shadow-sm"
-                    : "text-white hover:bg-white/20"
-                }`}
-              >
-                All
-              </button>
-            </div>
+            {genesisChainOptions.length > 1 && (
+              <FilterMultiselectDropdown
+                label="Network"
+                options={genesisChainOptions}
+                value={chainFilterSelected}
+                onChange={setChainFilterSelected}
+                allLabel="All networks"
+                groupLabel="NETWORKS"
+                minWidthClass="min-w-[235px]"
+              />
+            )}
+            <IndexToolbarSegmentedToggle
+              label="Status:"
+              value={showCompletedGenesis ? "all" : "ongoing"}
+              onChange={(id) => setShowCompletedGenesis(id === "all")}
+              options={[
+                { id: "ongoing", label: "Ongoing" },
+                { id: "all", label: "All" },
+              ]}
+              ariaLabel="Genesis status"
+            />
+            {chainFilterSelected.length > 0 && (
+              <SimpleTooltip label="clear filters">
+                <button
+                  type="button"
+                  onClick={() => setChainFilterSelected([])}
+                  className="p-1.5 text-[#E67A6B] hover:text-[#D66A5B] hover:bg-white/10 rounded transition-colors"
+                  aria-label="clear filters"
+                >
+                  <XMarkIcon className="w-5 h-5 stroke-[2.5]" />
+                </button>
+              </SimpleTooltip>
+            )}
           </div>
         )}
-        {genesisChainOptions.length > 1 && (
+        {displayedCompletedByCampaignSize === 0 && genesisChainOptions.length > 1 && (
           <>
             <FilterMultiselectDropdown
               label="Network"
@@ -107,16 +110,18 @@ export function GenesisMarketsToolbar({
               groupLabel="NETWORKS"
               minWidthClass="min-w-[235px]"
             />
-            <SimpleTooltip label="clear filters">
-              <button
-                type="button"
-                onClick={() => setChainFilterSelected([])}
-                className="p-1.5 text-[#E67A6B] hover:text-[#D66A5B] hover:bg-white/10 rounded transition-colors"
-                aria-label="clear filters"
-              >
-                <XMarkIcon className="w-5 h-5 stroke-[2.5]" />
-              </button>
-            </SimpleTooltip>
+            {chainFilterSelected.length > 0 && (
+              <SimpleTooltip label="clear filters">
+                <button
+                  type="button"
+                  onClick={() => setChainFilterSelected([])}
+                  className="p-1.5 text-[#E67A6B] hover:text-[#D66A5B] hover:bg-white/10 rounded transition-colors"
+                  aria-label="clear filters"
+                >
+                  <XMarkIcon className="w-5 h-5 stroke-[2.5]" />
+                </button>
+              </SimpleTooltip>
+            )}
           </>
         )}
       </div>
@@ -130,7 +135,8 @@ export function GenesisMarketsToolbar({
           <div />
         )}
         <LedgerMarksCompactBadge
-          className="md:justify-self-end"
+          className="max-w-full md:justify-self-end"
+          pillClassName="text-xs sm:text-sm max-w-full"
           tooltipMaxWidth="min(90vw, 22rem)"
           intro={
             <p>

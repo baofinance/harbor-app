@@ -49,8 +49,10 @@ import {
   INDEX_HERO_INTRO_TITLE_CLASS,
   INDEX_MARKETS_TOOLBAR_ROW_WITH_TOP_RULE_CLASS,
 } from "@/components/shared/indexMarketsToolbarStyles";
+import IndexToolbarSegmentedToggle from "@/components/shared/IndexToolbarSegmentedToggle";
 import { getWeb3iconsNetworkId } from "@/config/web3iconsNetworks";
 import { minterABI } from "@/abis/minter";
+import NetworkIconCell from "@/components/NetworkIconCell";
 
 const SCROLLBAR_HIDE_X =
   "overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden";
@@ -66,7 +68,7 @@ type FeeBand = {
 };
 
 type FeeVariant = "blocked" | "free" | "discount" | "fee" ;
-type HealthStatus = "green" | "yellow" | "red";
+type HealthStatus = "green" | "yellow" | "red" | "genesis";
 type WithdrawalStatus = "none" | "waiting" | "open" | "expired";
 
 type BadgeVariantConfig = {
@@ -118,6 +120,11 @@ const HEALTH_CONFIG: Record<HealthStatus, BadgeVariantConfig> = {
         bg: "bg-red-500/20",
         text: "text-red-700",
         icon: XCircleIcon,
+    },
+    genesis: {
+        label: "Genesis",
+        bg: "bg-[#E9DFF0]/85",
+        text: "text-[#6C4E84]",
     },
 };
 
@@ -315,6 +322,18 @@ function MarketCard({
 
     const marketCfg = (marketsConfig as any)?.[market.marketId];
     const showMaintenanceTag = isMarketInMaintenance(marketCfg);
+    const chainName = marketCfg?.chain?.name || "Ethereum";
+    const chainLogo = marketCfg?.chain?.logo || "icons/eth.png";
+    const isGenesisPending =
+        marketCfg?.status === "genesis" &&
+        market.peggedTokenBalance === 0n &&
+        market.leveragedTokenBalance === 0n;
+    const leverageDisplay = isGenesisPending
+        ? "-"
+        : formatLeverageRatio(market.leverageRatio);
+    const healthBadgeStatus: HealthStatus = isGenesisPending
+        ? "genesis"
+        : healthStatus;
     const peggedTokenSymbol = marketCfg?.peggedToken?.symbol || "haETH";
     const leveragedTokenSymbol = marketCfg?.leveragedToken?.symbol || "hsFXUSD-ETH";
     const collateralHeldSymbol: string =
@@ -456,15 +475,25 @@ function MarketCard({
                     <div className="lg:hidden space-y-2">
                         <div className="flex items-center justify-between gap-2">
                             <div className="flex items-center gap-2 min-w-0">
-                                <div className="text-[#1E4775] font-semibold text-sm truncate">
-                                    {market.marketName}
+                                <NetworkIconCell
+                                    chainName={chainName}
+                                    chainLogo={chainLogo}
+                                    size={16}
+                                />
+                                <div className="min-w-0">
+                                    <div className="text-[9px] text-[#1E4775]/55 leading-none mb-0.5">
+                                        {chainName}
+                                    </div>
+                                    <div className="text-[#1E4775] font-semibold text-sm truncate leading-tight">
+                                        {market.marketName}
+                                    </div>
                                 </div>
                             </div>
                             <div className="flex items-center gap-2 flex-shrink-0">
                                 {showMaintenanceTag ? (
                                     <MarketMaintenanceBadge compact/>
                                 ) : (
-                                    <HealthBadge status={healthStatus} compact/>
+                                    <HealthBadge status={healthBadgeStatus} compact/>
                                 )}
                                 {isExpanded ? (
                                     <ChevronUpIcon className="w-5 h-5 text-[#1E4775] flex-shrink-0"/>
@@ -491,7 +520,7 @@ function MarketCard({
                                 </div>
                                 <div
                                     className="text-[#1E4775] font-mono font-semibold text-[11px] whitespace-nowrap">
-                                    {formatLeverageRatio(market.leverageRatio)}
+                                    {leverageDisplay}
                                 </div>
                             </div>
                             <div className="flex flex-col gap-0.5 min-w-0">
@@ -567,9 +596,19 @@ function MarketCard({
                         className="hidden lg:grid grid-cols-[1.3fr_1fr_1fr_1fr_1fr_1fr_1fr_auto] gap-4 items-center text-sm">
                         {/* Market Name */}
                         <div className="whitespace-nowrap min-w-0 overflow-hidden">
-                            <div className="flex items-center justify-center gap-2 flex-wrap">
-                                <div className="text-[#1E4775] font-semibold text-sm">
-                                    {market.marketName}
+                            <div className="flex items-center justify-start gap-2 min-w-0">
+                                <NetworkIconCell
+                                    chainName={chainName}
+                                    chainLogo={chainLogo}
+                                    size={16}
+                                />
+                                <div className="min-w-0">
+                                    <div className="text-[10px] text-[#1E4775]/55 leading-none mb-0.5">
+                                        {chainName}
+                                    </div>
+                                    <div className="text-[#1E4775] font-semibold text-sm truncate">
+                                        {market.marketName}
+                                    </div>
                                 </div>
                                 {isExpanded ? (
                                     <ChevronUpIcon className="w-5 h-5 text-[#1E4775] flex-shrink-0"/>
@@ -589,7 +628,7 @@ function MarketCard({
                         {/* Leverage Ratio */}
                         <div className="text-center">
                             <div className="text-[#1E4775] font-mono text-sm font-semibold">
-                                {formatLeverageRatio(market.leverageRatio)}
+                                {leverageDisplay}
                             </div>
                         </div>
 
@@ -625,7 +664,7 @@ function MarketCard({
                             {showMaintenanceTag ? (
                                 <MarketMaintenanceBadge compact/>
                             ) : (
-                                <HealthBadge status={healthStatus} compact/>
+                                <HealthBadge status={healthBadgeStatus} compact/>
                             )}
                         </div>
                     </div>
@@ -768,7 +807,7 @@ function MarketCard({
                             <div className="space-y-2">
                                 {pools.map((pool) => {
                                     const userData = userPools?.find(
-                                        (u) => u.poolAddress === pool.address
+                                        (u: UserPoolData) => u.poolAddress === pool.address
                                     );
                                     // Both collateral and sail pools hold haBTC/haETH tokens, so use peggedPriceUSD for both
                                     const poolTokenPriceUSD = tokenPrices?.peggedPriceUSD ?? 0;
@@ -1131,7 +1170,12 @@ function MarketCard({
                                     address: pool.address,
                                 })),
                             ].map(({label, address}) => (
-                                <ContractAddressItem key={label} label={label} address={address}/>
+                                <ContractAddressItem
+                                    key={label}
+                                    label={label}
+                                    address={address}
+                                    chainId={market.chainId}
+                                />
                             ))}
                         </div>
                     </div>
@@ -1299,7 +1343,20 @@ function FeeTransparencyBands({
 
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
-function ContractAddressItem({ label, address }: { label: string; address: string }) {
+function getExplorerBaseUrl(chainId?: number): string {
+    if (chainId === 4326) return "https://mega.etherscan.io";
+    return "https://etherscan.io";
+}
+
+function ContractAddressItem({
+    label,
+    address,
+    chainId,
+}: {
+    label: string;
+    address: string;
+    chainId?: number;
+}) {
     const [copied, setCopied] = useState(false);
     const timeoutRef = useRef<number | undefined>(undefined);
 
@@ -1312,7 +1369,7 @@ function ContractAddressItem({ label, address }: { label: string; address: strin
     const truncated = hasAddress
         ? `${normalized.slice(0, 6)}…${normalized.slice(-4)}`
         : "—";
-    const etherscanUrl = `https://etherscan.io/address/${normalized}`;
+    const explorerUrl = `${getExplorerBaseUrl(chainId)}/address/${normalized}`;
 
     const handleCopy = async (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -1349,11 +1406,11 @@ function ContractAddressItem({ label, address }: { label: string; address: strin
                             <code className="font-mono text-[10px] text-[#1E4775]">{truncated}</code>
                         </button>
                         <a
-                            href={etherscanUrl}
+                            href={explorerUrl}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-[#1E4775] hover:text-[#163a61] shrink-0 p-0.5 rounded-md hover:bg-[#1E4775]/10 transition-colors"
-                            aria-label={`View ${label} on Etherscan`}
+                            aria-label={`View ${label} on explorer`}
                         >
                             <ArrowTopRightOnSquareIcon className="h-3.5 w-3.5" />
                         </a>
@@ -1404,11 +1461,16 @@ export default function TransparencyPage() {
         const {price: ethPrice} = useCoinGeckoPrice("ethereum", 120000);
 
         const finishedMarkets = useMemo(
-            () => markets.filter((m) => m.collateralTokenBalance > 0n),
+            () =>
+                markets.filter((m) => {
+                    const cfg = (marketsConfig as any)[m.marketId];
+                    return cfg?.displayTransparency !== false;
+                }),
             [markets]
         );
 
         const [chainFilterSelected, setChainFilterSelected] = useState<string[]>([]);
+        const [showGenesisMarketsOnly, setShowGenesisMarketsOnly] = useState(false);
 
         const transparencyChainOptions = useMemo(() => {
             const seen = new Set<string>();
@@ -1418,7 +1480,7 @@ export default function TransparencyPage() {
                 iconUrl?: string;
                 networkId?: string;
             }[] = [];
-            markets.forEach((m) => {
+            finishedMarkets.forEach((m) => {
                 const cfg = (marketsConfig as any)[m.marketId];
                 const name = cfg?.chain?.name || "Ethereum";
                 if (seen.has(name)) return;
@@ -1433,18 +1495,50 @@ export default function TransparencyPage() {
                 });
             });
             return options.sort((a, b) => a.label.localeCompare(b.label));
-        }, [markets]);
+        }, [finishedMarkets]);
 
         const displayedMarkets = useMemo(() => {
-            if (chainFilterSelected.length === 0) return finishedMarkets;
-            return finishedMarkets.filter((m) => {
-                const cfg = (marketsConfig as any)[m.marketId];
-                const name = cfg?.chain?.name || "Ethereum";
-                return chainFilterSelected.includes(name);
-            });
-        }, [finishedMarkets, chainFilterSelected]);
+            let filtered = finishedMarkets;
 
-        const clearChainFilters = useCallback(() => setChainFilterSelected([]), []);
+            if (chainFilterSelected.length > 0) {
+                filtered = filtered.filter((m) => {
+                    const cfg = (marketsConfig as any)[m.marketId];
+                    const name = cfg?.chain?.name || "Ethereum";
+                    return chainFilterSelected.includes(name);
+                });
+            }
+
+            if (showGenesisMarketsOnly) {
+                filtered = filtered.filter((m) => {
+                    const cfg = (marketsConfig as any)[m.marketId];
+                    const genesisAddress = cfg?.addresses?.genesis;
+                    return (
+                        typeof genesisAddress === "string" &&
+                        genesisAddress.startsWith("0x") &&
+                        genesisAddress.length === 42 &&
+                        genesisAddress.toLowerCase() !==
+                            "0x0000000000000000000000000000000000000000"
+                    );
+                });
+            } else {
+                // Hide non-live genesis markets unless explicitly requested.
+                filtered = filtered.filter((m) => {
+                    const cfg = (marketsConfig as any)[m.marketId];
+                    const isPendingGenesis =
+                        cfg?.status === "genesis" &&
+                        m.peggedTokenBalance === 0n &&
+                        m.leveragedTokenBalance === 0n;
+                    return !isPendingGenesis;
+                });
+            }
+
+            return filtered;
+        }, [finishedMarkets, chainFilterSelected, showGenesisMarketsOnly]);
+
+        const clearFilters = useCallback(() => {
+            setChainFilterSelected([]);
+            setShowGenesisMarketsOnly(false);
+        }, []);
 
         const tokenPriceInputs = useMemo(() => {
             return finishedMarkets
@@ -1686,11 +1780,21 @@ export default function TransparencyPage() {
                                         minWidthClass="min-w-[235px]"
                                     />
                                 )}
-                                {chainFilterSelected.length > 0 && (
+                                <IndexToolbarSegmentedToggle
+                                    label="Show Genesis Markets:"
+                                    value={showGenesisMarketsOnly ? "yes" : "no"}
+                                    onChange={(id) => setShowGenesisMarketsOnly(id === "yes")}
+                                    options={[
+                                        { id: "yes", label: "YES" },
+                                        { id: "no", label: "NO" },
+                                    ]}
+                                    ariaLabel="Show genesis markets"
+                                />
+                                {(chainFilterSelected.length > 0 || showGenesisMarketsOnly) && (
                                     <SimpleTooltip label="clear filters">
                                         <button
                                             type="button"
-                                            onClick={clearChainFilters}
+                                            onClick={clearFilters}
                                             className="p-1.5 text-[#E67A6B] hover:text-[#D66A5B] hover:bg-white/10 rounded transition-colors"
                                             aria-label="clear filters"
                                         >
@@ -1744,7 +1848,7 @@ export default function TransparencyPage() {
                                             No markets match the selected network.{" "}
                                             <button
                                                 type="button"
-                                                onClick={clearChainFilters}
+                                                onClick={clearFilters}
                                                 className="font-semibold text-white underline decoration-white/40 underline-offset-2 hover:decoration-white"
                                             >
                                                 Clear filters
@@ -1821,9 +1925,9 @@ export default function TransparencyPage() {
                                                 userPools={userPools}
                                                 tokenPricesByMarket={tokenPricesByMarket as any}
                                                 volatilityProtectionMap={volatilityProtectionMap}
-                                                fxSAVEPrice={fxSAVEPrice}
-                                                wstETHPrice={wstETHPrice}
-                                                stETHPrice={stETHPrice}
+                                                fxSAVEPrice={fxSAVEPrice ?? undefined}
+                                                wstETHPrice={wstETHPrice ?? undefined}
+                                                stETHPrice={stETHPrice ?? undefined}
                                                 btcPrice={btcPrice || undefined}
                                                 ethPrice={ethPrice || undefined}
                                                 poolRewardsMap={poolRewardsMap}
