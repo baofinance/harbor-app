@@ -1,23 +1,19 @@
 "use client";
 
 import type { Dispatch, SetStateAction } from "react";
-import { XMarkIcon } from "@heroicons/react/24/outline";
 import LedgerMarksCompactBadge from "@/components/LedgerMarksCompactBadge";
-import SimpleTooltip from "@/components/SimpleTooltip";
 import { FilterMultiselectDropdown } from "@/components/FilterMultiselectDropdown";
 import { getLogoPath } from "@/components/shared";
 import IndexToolbarMetricsGroup, {
   type IndexToolbarMetric,
 } from "@/components/shared/IndexToolbarMetricsGroup";
 import { INDEX_MARKETS_TOOLBAR_ROW_WITH_TOP_RULE_CLASS } from "@/components/shared/indexMarketsToolbarStyles";
+import type { NetworkFilterOption } from "@/utils/networkFilter";
+import IndexToolbarNetworkFilter from "@/components/shared/IndexToolbarNetworkFilter";
+import IndexToolbarClearFiltersButton from "@/components/shared/IndexToolbarClearFiltersButton";
 
 export type SailMarketsToolbarProps = {
-  sailChainOptions: Array<{
-    id: string;
-    label: string;
-    iconUrl?: string;
-    networkId?: string;
-  }>;
+  sailChainOptions: NetworkFilterOption[];
   /** When false, Network dropdown is hidden (single-chain). */
   showNetworkFilter: boolean;
   chainFilterSelected: string[];
@@ -56,14 +52,10 @@ export function SailMarketsToolbar({
           Leverage Position:
         </h2>
         {showNetworkFilter && (
-          <FilterMultiselectDropdown
-            label="Network"
+          <IndexToolbarNetworkFilter
             options={sailChainOptions}
             value={chainFilterSelected}
             onChange={setChainFilterSelected}
-            allLabel="All networks"
-            groupLabel="NETWORKS"
-            minWidthClass="min-w-[235px]"
           />
         )}
         <FilterMultiselectDropdown
@@ -94,16 +86,11 @@ export function SailMarketsToolbar({
           groupLabel="SHORT"
           minWidthClass="min-w-[235px]"
         />
-        <SimpleTooltip label="clear filters">
-          <button
-            type="button"
-            onClick={onClearFilters}
-            className="p-1.5 text-[#E67A6B] hover:text-[#D66A5B] hover:bg-white/10 rounded transition-colors"
-            aria-label="clear filters"
-          >
-            <XMarkIcon className="w-5 h-5 stroke-[2.5]" />
-          </button>
-        </SimpleTooltip>
+        {(chainFilterSelected.length > 0 ||
+          longFilterSelected.length > 0 ||
+          shortFilterSelected.length > 0) && (
+          <IndexToolbarClearFiltersButton onClick={onClearFilters} />
+        )}
       </div>
       <div className="w-full md:flex-1 md:min-w-0 grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] items-center gap-2 md:gap-3">
         <div className="hidden md:block" />

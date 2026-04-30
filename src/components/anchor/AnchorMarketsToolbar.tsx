@@ -1,13 +1,13 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { XMarkIcon } from "@heroicons/react/24/outline";
-import SimpleTooltip from "@/components/SimpleTooltip";
 import LedgerMarksCompactBadge from "@/components/LedgerMarksCompactBadge";
-import { FilterMultiselectDropdown } from "@/components/FilterMultiselectDropdown";
 import { INDEX_MARKETS_TOOLBAR_ROW_WITH_TOP_RULE_CLASS } from "@/components/shared/indexMarketsToolbarStyles";
 import { INDEX_WITHDRAW_BUTTON_CLASS_DESKTOP_CORAL } from "@/utils/indexPageManageButton";
 import IndexToolbarMetricsGroup from "@/components/shared/IndexToolbarMetricsGroup";
+import type { NetworkFilterOption } from "@/utils/networkFilter";
+import IndexToolbarNetworkFilter from "@/components/shared/IndexToolbarNetworkFilter";
+import IndexToolbarClearFiltersButton from "@/components/shared/IndexToolbarClearFiltersButton";
 
 /** Shown in Basic (UI−) layout between filters and Ledger Marks — matches toolbar label/value scale. */
 export type AnchorBasicClaimToolbarProps = {
@@ -21,12 +21,7 @@ export type AnchorBasicClaimToolbarProps = {
 };
 
 export type AnchorMarketsToolbarProps = {
-  anchorChainOptions: Array<{
-    id: string;
-    label: string;
-    iconUrl?: string;
-    networkId?: string;
-  }>;
+  anchorChainOptions: NetworkFilterOption[];
   chainFilterSelected: string[];
   onChainFilterChange: (next: string[]) => void;
   onClearFilters: () => void;
@@ -55,25 +50,14 @@ export function AnchorMarketsToolbar({
         </h2>
         {showNetworkFilter && (
           <>
-            <FilterMultiselectDropdown
-              label="Network"
+            <IndexToolbarNetworkFilter
               options={anchorChainOptions}
               value={chainFilterSelected}
               onChange={onChainFilterChange}
-              allLabel="All networks"
-              groupLabel="NETWORKS"
-              minWidthClass="min-w-[235px]"
             />
-            <SimpleTooltip label="clear filters">
-              <button
-                type="button"
-                onClick={onClearFilters}
-                className="p-1.5 text-[#E67A6B] hover:text-[#D66A5B] hover:bg-white/10 rounded transition-colors"
-                aria-label="clear filters"
-              >
-                <XMarkIcon className="w-5 h-5 stroke-[2.5]" />
-              </button>
-            </SimpleTooltip>
+            {chainFilterSelected.length > 0 && (
+              <IndexToolbarClearFiltersButton onClick={onClearFilters} />
+            )}
           </>
         )}
       </div>

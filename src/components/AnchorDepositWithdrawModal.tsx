@@ -30,6 +30,7 @@ import {
   STABILITY_POOL_ABI,
   MINTER_PEGGED_ABI,
 } from "@/abis";
+import { REDEEM_PEGGED_WITH_PERMIT_ABI } from "@/abis/redeemPermit";
 import { stabilityPoolABI } from "@/abis/stabilityPool";
 import { ZAP_ABI, USDC_ZAP_ABI, WSTETH_ABI } from "@/abis";
 import { MINTER_ETH_ZAP_V3_ABI } from "@/abis";
@@ -303,6 +304,7 @@ export const AnchorDepositWithdrawModal = ({
     zapAndDeposit: false,
     wrappedZapAndDeposit: false,
     wrappedZapAsset: null as string | null,
+    includePermitRedeem: false,
     includeApproveRedeem: false,
     includeRedeem: false,
     withdrawCollateralLabel: "Withdraw from collateral pool",
@@ -428,7 +430,11 @@ export const AnchorDepositWithdrawModal = ({
     setPermitEnabled,
   } = usePermitFlow({
     enabled: isOpen && !!address,
-    depositAssetSymbol: selectedDepositAsset || null,
+    depositAssetSymbol:
+      activeTab === "deposit"
+        ? selectedDepositAsset || null
+        : market?.peggedToken?.symbol || null,
+    tokenCheckMode: activeTab === "withdraw" ? "optimistic" : "strict",
   });
 
   // Simple mode: stability pool selection - now includes marketId and pool type
@@ -534,6 +540,9 @@ export const AnchorDepositWithdrawModal = ({
           txHashes.withdrawSail || txHashes.requestSail
         );
       }
+      if (progressConfig.includePermitRedeem) {
+        addStep("permit-redeem", "Sign permit for anchor token (no gas)");
+      }
       if (progressConfig.includeApproveRedeem || hasApproveRedeemTx) {
         addStep("approve-redeem", "Approve anchor token for redemption", txHashes.approveRedeem);
       }
@@ -562,6 +571,9 @@ export const AnchorDepositWithdrawModal = ({
       );
       const withdrawSailIndex = steps.findIndex(
         (s) => s.id === "withdraw-sail"
+      );
+      const permitRedeemIndex = steps.findIndex(
+        (s) => s.id === "permit-redeem"
       );
       const approveRedeemIndex = steps.findIndex(
         (s) => s.id === "approve-redeem"
@@ -596,6 +608,7 @@ export const AnchorDepositWithdrawModal = ({
         // - direct mode: approve ha token
         // - withdraw/redeem mode: approve redeem
         if (permitCollateralIndex >= 0) return permitCollateralIndex;
+        if (permitRedeemIndex >= 0) return permitRedeemIndex;
         if (approveCollateralIndex >= 0) return approveCollateralIndex;
         if (approveDirectIndex >= 0) return approveDirectIndex;
         if (approveRedeemIndex >= 0) return approveRedeemIndex;
@@ -4677,9 +4690,12 @@ export const AnchorDepositWithdrawModal = ({
   const useETHZap = useZap && isWstETHMarket && (isNativeETH || isStETH);
   const useUSDCZap = useZap && isFxUSDMarket && (isUSDC || isFxUSD);
 
-  const showPermitToggle =
+  const showDepositPermitToggle =
     activeTab === "deposit" &&
     ((!mintOnly && (isFxSAVE || isWstETH)) || isStETH || isUSDC || isFxUSD);
+  const showRedeemPermitToggle =
+    activeTab === "withdraw" && !withdrawOnly;
+  const showPermitToggle = showDepositPermitToggle || showRedeemPermitToggle;
   
   // Get fxSAVE rate for USDC zap calculations
   const priceOracleAddress = anchorAddressByName(
@@ -8497,8 +8513,17 @@ export const AnchorDepositWithdrawModal = ({
         zapAndDeposit: false,
         wrappedZapAndDeposit: false,
         wrappedZapAsset: null,
+        includePermitRedeem:
+          shouldAutoRedeem &&
+          redeemableTotal > 0n &&
+          estimatedNeedsRedeemApproval &&
+          permitEnabled &&
+          isPermitCapable,
         includeApproveRedeem:
-          shouldAutoRedeem && redeemableTotal > 0n && estimatedNeedsRedeemApproval,
+          shouldAutoRedeem &&
+          redeemableTotal > 0n &&
+          estimatedNeedsRedeemApproval &&
+          !(permitEnabled && isPermitCapable),
         includeRedeem: shouldAutoRedeem && redeemableTotal > 0n,
         withdrawCollateralLabel:
           withdrawalMethods.collateralPool === "request"
@@ -8846,27 +8871,73 @@ export const AnchorDepositWithdrawModal = ({
         }
 
           const needsApproval = redeemAmount > currentAllowance;
+          const canAttemptPermitRedeem =
+            needsApproval && permitEnabled && isPermitCapable;
+          let permitRedeemResult:
+            | {
+                usePermit: boolean;
+                permitSig?: { v: number; r: `0x${string}`; s: `0x${string}` };
+                deadline?: bigint;
+              }
+            | null = null;
+          let usePermitRedeem = false;
         console.log("[handleWithdrawExecution] Redeem approval check:", {
             redeemAmount: redeemAmount.toString(),
           currentAllowance: currentAllowance.toString(),
           needsApproval,
+          canAttemptPermitRedeem,
         });
 
-        if (needsApproval) {
-          setStep("approving");
-          setError(null);
-          setTxHash(null);
+        if (canAttemptPermitRedeem) {
+          try {
+            setStep("approving");
+            permitRedeemResult = await handlePermitOrApproval(
+              targetRedeemPeggedTokenAddress as `0x${string}`,
+              targetRedeemMinterAddress as `0x${string}`,
+              redeemAmount
+            );
+            usePermitRedeem =
+              !!permitRedeemResult?.usePermit &&
+              !!permitRedeemResult?.permitSig &&
+              !!permitRedeemResult?.deadline;
+            if (!usePermitRedeem) {
+              setProgressConfig((prev) => ({
+                ...prev,
+                includePermitRedeem: false,
+                includeApproveRedeem: true,
+              }));
+            }
+          } catch (permitErr) {
+            console.warn(
+              "[handleWithdrawExecution] Permit precheck failed, falling back to approve",
+              permitErr
+            );
+            usePermitRedeem = false;
+            setProgressConfig((prev) => ({
+              ...prev,
+              includePermitRedeem: false,
+              includeApproveRedeem: true,
+            }));
+          }
+        }
 
-          const approveHash = await writeContractAsync({
-            address: targetRedeemPeggedTokenAddress as `0x${string}`,
-            abi: ERC20_ABI,
-            functionName: "approve",
-              args: [targetRedeemMinterAddress as `0x${string}`, redeemAmount],
-          });
-          setTxHash(approveHash);
-          setTxHashes((prev) => ({ ...prev, approveRedeem: approveHash }));
-          await client.waitForTransactionReceipt({ hash: approveHash });
-          await new Promise((resolve) => setTimeout(resolve, 500));
+        if (needsApproval) {
+          if (!usePermitRedeem) {
+            setStep("approving");
+            setError(null);
+            setTxHash(null);
+
+            const approveHash = await writeContractAsync({
+              address: targetRedeemPeggedTokenAddress as `0x${string}`,
+              abi: ERC20_ABI,
+              functionName: "approve",
+                args: [targetRedeemMinterAddress as `0x${string}`, redeemAmount],
+            });
+            setTxHash(approveHash);
+            setTxHashes((prev) => ({ ...prev, approveRedeem: approveHash }));
+            await client.waitForTransactionReceipt({ hash: approveHash });
+            await new Promise((resolve) => setTimeout(resolve, 500));
+          }
         }
 
         // Step 2: Redeem pegged tokens
@@ -8890,24 +8961,72 @@ export const AnchorDepositWithdrawModal = ({
           } catch {}
 
         let redeemHash: `0x${string}` | undefined;
-        try {
-          redeemHash = await writeContractAsync({
-            address: targetRedeemMinterAddress as `0x${string}`,
-            abi: MINTER_PEGGED_ABI,
-            functionName: "redeemPeggedToken",
+        if (
+          usePermitRedeem &&
+          permitRedeemResult?.permitSig &&
+          permitRedeemResult?.deadline
+        ) {
+          try {
+            redeemHash = await writeContractAsync({
+              address: targetRedeemMinterAddress as `0x${string}`,
+              abi: REDEEM_PEGGED_WITH_PERMIT_ABI,
+              functionName: "redeemPeggedTokenWithPermit",
+              args: [
+                redeemAmount,
+                address as `0x${string}`,
+                minCollateralOut,
+                permitRedeemResult.deadline,
+                permitRedeemResult.permitSig.v,
+                permitRedeemResult.permitSig.r,
+                permitRedeemResult.permitSig.s,
+              ],
+            });
+          } catch (permitRedeemErr) {
+            console.warn(
+              "[handleWithdrawExecution] redeemPeggedTokenWithPermit failed, falling back to approve+redeem",
+              permitRedeemErr
+            );
+            setProgressConfig((prev) => ({
+              ...prev,
+              includePermitRedeem: false,
+              includeApproveRedeem: true,
+            }));
+            setStep("approving");
+            const approveHash = await writeContractAsync({
+              address: targetRedeemPeggedTokenAddress as `0x${string}`,
+              abi: ERC20_ABI,
+              functionName: "approve",
+              args: [targetRedeemMinterAddress as `0x${string}`, redeemAmount],
+            });
+            setTxHashes((prev) => ({ ...prev, approveRedeem: approveHash }));
+            await client.waitForTransactionReceipt({ hash: approveHash });
+            redeemHash = await writeContractAsync({
+              address: targetRedeemMinterAddress as `0x${string}`,
+              abi: MINTER_PEGGED_ABI,
+              functionName: "redeemPeggedToken",
               args: [redeemAmount, address as `0x${string}`, minCollateralOut],
-          });
-        } catch (redeemErr: any) {
-          console.warn(
-            "[handleWithdrawExecution] redeemPeggedToken reverted with minCollateralOut, retrying with 0",
-            redeemErr
-          );
-          redeemHash = await writeContractAsync({
-            address: targetRedeemMinterAddress as `0x${string}`,
-            abi: MINTER_PEGGED_ABI,
-            functionName: "redeemPeggedToken",
-              args: [redeemAmount, address as `0x${string}`, 0n],
-          });
+            });
+          }
+        } else {
+          try {
+            redeemHash = await writeContractAsync({
+              address: targetRedeemMinterAddress as `0x${string}`,
+              abi: MINTER_PEGGED_ABI,
+              functionName: "redeemPeggedToken",
+                args: [redeemAmount, address as `0x${string}`, minCollateralOut],
+            });
+          } catch (redeemErr: any) {
+            console.warn(
+              "[handleWithdrawExecution] redeemPeggedToken reverted with minCollateralOut, retrying with 0",
+              redeemErr
+            );
+            redeemHash = await writeContractAsync({
+              address: targetRedeemMinterAddress as `0x${string}`,
+              abi: MINTER_PEGGED_ABI,
+              functionName: "redeemPeggedToken",
+                args: [redeemAmount, address as `0x${string}`, 0n],
+            });
+          }
         }
 
         setTxHash(redeemHash);
@@ -9019,19 +9138,25 @@ export const AnchorDepositWithdrawModal = ({
       }
 
       const needsApproval = redeemAmount > currentAllowance;
+      const canAttemptPermitRedeem =
+        needsApproval && permitEnabled && isPermitCapable;
+      let permitRedeemResult:
+        | {
+            usePermit: boolean;
+            permitSig?: { v: number; r: `0x${string}`; s: `0x${string}` };
+            deadline?: bigint;
+          }
+        | null = null;
+      let usePermitRedeem = false;
 
       // Set up progress modal for redeem flow
       setProgressConfig({
+        ...defaultProgressConfig,
         mode: "withdraw",
-        includeApproveCollateral: false,
-        includeMint: false,
-        includeApprovePegged: false,
-        includeDeposit: false,
-        includeDirectApprove: false,
-        includeDirectDeposit: false,
-        includeWithdrawCollateral: false,
-        includeWithdrawSail: false,
-        includeApproveRedeem: needsApproval,
+        includePermitRedeem:
+          needsApproval && permitEnabled && isPermitCapable,
+        includeApproveRedeem:
+          needsApproval && !(permitEnabled && isPermitCapable),
         includeRedeem: true,
         title: "Redeem",
       });
@@ -9047,11 +9172,45 @@ export const AnchorDepositWithdrawModal = ({
           amount: redeemAmount.toString(),
           currentAllowance: currentAllowance.toString(),
           needsApproval,
+          canAttemptPermitRedeem,
         });
       }
 
+      if (canAttemptPermitRedeem) {
+        try {
+          setStep("approving");
+          permitRedeemResult = await handlePermitOrApproval(
+            targetPeggedTokenAddress as `0x${string}`,
+            targetMinterAddress as `0x${string}`,
+            redeemAmount
+          );
+          usePermitRedeem =
+            !!permitRedeemResult?.usePermit &&
+            !!permitRedeemResult?.permitSig &&
+            !!permitRedeemResult?.deadline;
+          if (!usePermitRedeem) {
+            setProgressConfig((prev) => ({
+              ...prev,
+              includePermitRedeem: false,
+              includeApproveRedeem: true,
+            }));
+          }
+        } catch (permitErr) {
+          console.warn(
+            "[handleRedeem] Permit precheck failed, falling back to approval",
+            permitErr
+          );
+          usePermitRedeem = false;
+          setProgressConfig((prev) => ({
+            ...prev,
+            includePermitRedeem: false,
+            includeApproveRedeem: true,
+          }));
+        }
+      }
+
       // Step 1: Approve pegged token for minter (if needed)
-      if (needsApproval) {
+      if (needsApproval && !usePermitRedeem) {
         setStep("approving");
         setError(null);
         setTxHash(null);
@@ -9096,30 +9255,79 @@ export const AnchorDepositWithdrawModal = ({
       }
 
       let redeemHash: `0x${string}` | undefined;
-      try {
-        redeemHash = await writeContractAsync({
-          address: targetMinterAddress as `0x${string}`,
-          abi: MINTER_PEGGED_ABI,
-          functionName: "redeemPeggedToken",
-          args: [redeemAmount, address as `0x${string}`, minCollateralOut],
-        });
-      } catch (callErr: any) {
-        // Retry once with minCollateralOut=0 to bypass slippage floor and surface real issues.
-        if (minCollateralOut > 0n) {
-          if (process.env.NODE_ENV === "development") {
-            console.warn(
-              "[handleRedeem] redeemPeggedToken reverted with minCollateralOut, retrying with 0",
-              callErr
-            );
-          }
+      if (
+        usePermitRedeem &&
+        permitRedeemResult?.permitSig &&
+        permitRedeemResult?.deadline
+      ) {
+        try {
+          redeemHash = await writeContractAsync({
+            address: targetMinterAddress as `0x${string}`,
+            abi: REDEEM_PEGGED_WITH_PERMIT_ABI,
+            functionName: "redeemPeggedTokenWithPermit",
+            args: [
+              redeemAmount,
+              address as `0x${string}`,
+              minCollateralOut,
+              permitRedeemResult.deadline,
+              permitRedeemResult.permitSig.v,
+              permitRedeemResult.permitSig.r,
+              permitRedeemResult.permitSig.s,
+            ],
+          });
+        } catch (permitRedeemErr) {
+          console.warn(
+            "[handleRedeem] redeemPeggedTokenWithPermit failed, falling back to approve+redeem",
+            permitRedeemErr
+          );
+          setProgressConfig((prev) => ({
+            ...prev,
+            includePermitRedeem: false,
+            includeApproveRedeem: true,
+          }));
+          setStep("approving");
+          const approveHash = await writeContractAsync({
+            address: targetPeggedTokenAddress as `0x${string}`,
+            abi: ERC20_ABI,
+            functionName: "approve",
+            args: [targetMinterAddress as `0x${string}`, redeemAmount],
+          });
+          setTxHash(approveHash);
+          setTxHashes((prev) => ({ ...prev, approveRedeem: approveHash }));
+          await publicClient?.waitForTransactionReceipt({ hash: approveHash });
           redeemHash = await writeContractAsync({
             address: targetMinterAddress as `0x${string}`,
             abi: MINTER_PEGGED_ABI,
             functionName: "redeemPeggedToken",
-            args: [redeemAmount, address as `0x${string}`, 0n],
+            args: [redeemAmount, address as `0x${string}`, minCollateralOut],
           });
-        } else {
-          throw callErr;
+        }
+      } else {
+        try {
+          redeemHash = await writeContractAsync({
+            address: targetMinterAddress as `0x${string}`,
+            abi: MINTER_PEGGED_ABI,
+            functionName: "redeemPeggedToken",
+            args: [redeemAmount, address as `0x${string}`, minCollateralOut],
+          });
+        } catch (callErr: any) {
+          // Retry once with minCollateralOut=0 to bypass slippage floor and surface real issues.
+          if (minCollateralOut > 0n) {
+            if (process.env.NODE_ENV === "development") {
+              console.warn(
+                "[handleRedeem] redeemPeggedToken reverted with minCollateralOut, retrying with 0",
+                callErr
+              );
+            }
+            redeemHash = await writeContractAsync({
+              address: targetMinterAddress as `0x${string}`,
+              abi: MINTER_PEGGED_ABI,
+              functionName: "redeemPeggedToken",
+              args: [redeemAmount, address as `0x${string}`, 0n],
+            });
+          } else {
+            throw callErr;
+          }
         }
       }
       setTxHash(redeemHash);
@@ -9801,7 +10009,9 @@ export const AnchorDepositWithdrawModal = ({
                       {showPermitToggle && (
                         <div className="flex items-center justify-between rounded-md border border-[#1E4775]/20 bg-[#17395F]/5 px-3 py-2 text-xs">
                           <div className="text-[#1E4775]/80">
-                            Use permit (gasless approval) for this deposit
+                            {showDepositPermitToggle
+                              ? "Use permit (gasless approval) for this deposit"
+                              : "Use permit (gasless approval) for this redemption"}
                           </div>
                           {disableReason ? (
                             <SimpleTooltip label={disableReason}>
@@ -11415,6 +11625,14 @@ export const AnchorDepositWithdrawModal = ({
                                 })();
                                 const showEarlyWithdrawOption = poolWindowOpen || earlyWithdraw1PctEnabled;
                                 const show1PctToggle = !poolWindowOpen;
+                                const immediateFeeDisplay = getFeeFreeDisplay(
+                                  request,
+                                  feePercent
+                                );
+                                const immediateWithdrawLabel =
+                                  immediateFeeDisplay === "free"
+                                    ? "Withdraw"
+                                    : "Early Withdraw";
                                 return (
                                   <>
                               <div className="flex items-center rounded-md overflow-hidden bg-[#17395F]/10 p-1 mb-2">
@@ -11434,14 +11652,7 @@ export const AnchorDepositWithdrawModal = ({
                                       : "text-[#1E4775]/70 hover:text-[#1E4775]"
                                   } disabled:opacity-50 disabled:cursor-not-allowed`}
                                 >
-                                  Early Withdraw
-                                          {(() => {
-                                            const display = getFeeFreeDisplay(
-                                              request,
-                                              feePercent
-                                            );
-                                            return ` (${display})`;
-                                          })()}
+                                  {immediateWithdrawLabel} ({immediateFeeDisplay})
                                 </button>
                                 )}
                                 <button

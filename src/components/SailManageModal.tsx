@@ -15,6 +15,7 @@ import {
 } from "wagmi";
 import { BaseError, ContractFunctionRevertedError } from "viem";
 import { ERC20_ABI, MINTER_ABI } from "@/abis/shared";
+import { REDEEM_LEVERAGED_WITH_PERMIT_ABI } from "@/abis/redeemPermit";
 import { WSTETH_ABI } from "@/abis";
 import { MINTER_ETH_ZAP_V3_ABI } from "@/abis";
 import { MINTER_USDC_ZAP_V3_ABI } from "@/abis";
@@ -134,7 +135,11 @@ export const SailManageModal = ({
     setPermitEnabled,
   } = usePermitFlow({
     enabled: isOpen && !!address,
-    depositAssetSymbol: selectedDepositAsset ?? undefined,
+    depositAssetSymbol:
+      activeTab === "redeem"
+        ? market?.leveragedToken?.symbol
+        : selectedDepositAsset ?? undefined,
+    tokenCheckMode: activeTab === "redeem" ? "optimistic" : "strict",
   });
  const [showCustomTokenInput, setShowCustomTokenInput] = useState(false);
  const [customTokenAddress, setCustomTokenAddress] = useState<string>("");
@@ -1489,10 +1494,20 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
  // Determine if approval is needed
  const needsApproval =
  ((leveragedTokenAllowance as bigint) || 0n) < parsedAmount;
+const canAttemptPermitRedeem =
+  needsApproval && permitEnabled && isPermitCapable;
 
  // Build steps
  const steps: TransactionStep[] = [];
- if (needsApproval) {
+if (canAttemptPermitRedeem) {
+steps.push({
+id:"signPermit",
+label: `Sign permit for ${leveragedTokenSymbol} (no gas)`,
+status:"pending",
+details: "Sign permit to skip approval transaction",
+});
+}
+if (needsApproval && !canAttemptPermitRedeem) {
  steps.push({
  id:"approve",
  label: `Approve ${leveragedTokenSymbol} for redemption`,
@@ -1512,8 +1527,49 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
  flushSync(() => {}); // Force React to paint before first action
 
  try {
- // Step 1: Approve (if needed)
- if (needsApproval) {
+let permitResult:
+  | {
+      usePermit: boolean;
+      permitSig?: { v: number; r: `0x${string}`; s: `0x${string}` };
+      deadline?: bigint;
+    }
+  | null = null;
+let usePermitRedeem = false;
+
+if (canAttemptPermitRedeem) {
+  updateProgressStep("signPermit", { status: "in_progress" });
+  permitResult = await handlePermitOrApproval(
+    leveragedTokenAddress,
+    minterAddress,
+    parsedAmount
+  );
+  usePermitRedeem =
+    !!permitResult?.usePermit &&
+    !!permitResult?.permitSig &&
+    !!permitResult?.deadline;
+  if (usePermitRedeem) {
+    updateProgressStep("signPermit", { status: "completed" });
+  } else {
+    progress.setSteps((prev) => {
+      if (prev.some((s) => s.id === "approve")) return prev;
+      const redeemIdx = prev.findIndex((s) => s.id === "redeem");
+      const next = [...prev];
+      next.splice(redeemIdx >= 0 ? redeemIdx : next.length, 0, {
+        id: "approve",
+        label: `Approve ${leveragedTokenSymbol} for redemption`,
+        status: "pending",
+        details: "Approve token for redemption",
+      });
+      return {
+        steps: next,
+        currentStepIndex: next.findIndex((s) => s.id === "approve"),
+      };
+    });
+  }
+}
+
+// Step 1: Approve (if needed and permit not used)
+if (needsApproval && !usePermitRedeem) {
  updateProgressStep("approve", { status:"in_progress" });
  const approveHash = await writeContractAsync({
  address: leveragedTokenAddress,
@@ -1535,13 +1591,74 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
  ? (expectedRedeemOutput * 99n) / 100n
  : 0n;
 
- const redeemHash = await writeContractAsync({
- address: minterAddress,
- abi: MINTER_ABI,
- functionName:"redeemLeveragedToken",
- args: [parsedAmount, address, minOutput],
- chainId: marketChainId,
- });
+let redeemHash: `0x${string}`;
+if (usePermitRedeem && permitResult?.permitSig && permitResult?.deadline) {
+  try {
+    redeemHash = await writeContractAsync({
+      address: minterAddress,
+      abi: REDEEM_LEVERAGED_WITH_PERMIT_ABI,
+      functionName: "redeemLeveragedTokenWithPermit",
+      args: [
+        parsedAmount,
+        address,
+        minOutput,
+        permitResult.deadline,
+        permitResult.permitSig.v,
+        permitResult.permitSig.r,
+        permitResult.permitSig.s,
+      ],
+      chainId: marketChainId,
+    });
+  } catch (permitRedeemErr) {
+    console.warn(
+      "[SailManage] redeemLeveragedTokenWithPermit failed, falling back to approve+redeem",
+      permitRedeemErr
+    );
+    progress.setSteps((prev) => {
+      if (prev.some((s) => s.id === "approve")) return prev;
+      const redeemIdx = prev.findIndex((s) => s.id === "redeem");
+      const next = [...prev];
+      next.splice(redeemIdx >= 0 ? redeemIdx : next.length, 0, {
+        id: "approve",
+        label: `Approve ${leveragedTokenSymbol} for redemption`,
+        status: "pending",
+        details: "Approve token for redemption",
+      });
+      return {
+        steps: next,
+        currentStepIndex: next.findIndex((s) => s.id === "approve"),
+      };
+    });
+    updateProgressStep("approve", { status: "in_progress" });
+    const approveHash = await writeContractAsync({
+      address: leveragedTokenAddress,
+      abi: ERC20_ABI,
+      functionName: "approve",
+      args: [minterAddress, parsedAmount],
+      chainId: marketChainId,
+    });
+    await publicClient?.waitForTransactionReceipt({ hash: approveHash });
+    updateProgressStep("approve", {
+      status: "completed",
+      txHash: approveHash,
+    });
+    redeemHash = await writeContractAsync({
+      address: minterAddress,
+      abi: MINTER_ABI,
+      functionName: "redeemLeveragedToken",
+      args: [parsedAmount, address, minOutput],
+      chainId: marketChainId,
+    });
+  }
+} else {
+  redeemHash = await writeContractAsync({
+    address: minterAddress,
+    abi: MINTER_ABI,
+    functionName:"redeemLeveragedToken",
+    args: [parsedAmount, address, minOutput],
+    chainId: marketChainId,
+  });
+}
  await publicClient?.waitForTransactionReceipt({ hash: redeemHash });
  updateProgressStep("redeem", { status:"completed", txHash: redeemHash });
 
@@ -1841,10 +1958,12 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
      balanceMaxDecimals: 4,
    }}
    afterAmount={
-     activeTab === "mint" ? (
+    activeTab === "mint" || activeTab === "redeem" ? (
    <div className="flex items-center justify-between rounded-md border border-[#1E4775]/20 bg-[#17395F]/5 px-3 py-2 text-xs">
      <div className="text-[#1E4775]/80">
-       Use permit (gasless approval) for this deposit
+      {activeTab === "mint"
+        ? "Use permit (gasless approval) for this deposit"
+        : "Use permit (gasless approval) for this redemption"}
      </div>
      {disableReason ? (
        <SimpleTooltip label={disableReason}>

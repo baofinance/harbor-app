@@ -27,10 +27,8 @@ import {
  ChevronDownIcon,
  ChevronUpIcon,
  ArrowTopRightOnSquareIcon,
- XMarkIcon,
 } from "@heroicons/react/24/outline";
 import SimpleTooltip from "@/components/SimpleTooltip";
-import { FilterMultiselectDropdown } from "@/components/FilterMultiselectDropdown";
 import InfoTooltip from "@/components/InfoTooltip";
 import { InfinityOutlineIcon } from "@/components/icons/InfinityOutlineIcon";
 import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
@@ -50,9 +48,14 @@ import {
   INDEX_MARKETS_TOOLBAR_ROW_WITH_TOP_RULE_CLASS,
 } from "@/components/shared/indexMarketsToolbarStyles";
 import IndexToolbarSegmentedToggle from "@/components/shared/IndexToolbarSegmentedToggle";
-import { getWeb3iconsNetworkId } from "@/config/web3iconsNetworks";
+import IndexToolbarNetworkFilter from "@/components/shared/IndexToolbarNetworkFilter";
+import IndexToolbarClearFiltersButton from "@/components/shared/IndexToolbarClearFiltersButton";
 import { minterABI } from "@/abis/minter";
 import NetworkIconCell from "@/components/NetworkIconCell";
+import {
+    buildNetworkFilterOptions,
+    filterBySelectedNetworks,
+} from "@/utils/networkFilter";
 
 const SCROLLBAR_HIDE_X =
   "overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden";
@@ -1472,40 +1475,24 @@ export default function TransparencyPage() {
         const [chainFilterSelected, setChainFilterSelected] = useState<string[]>([]);
         const [showGenesisMarketsOnly, setShowGenesisMarketsOnly] = useState(false);
 
-        const transparencyChainOptions = useMemo(() => {
-            const seen = new Set<string>();
-            const options: {
-                id: string;
-                label: string;
-                iconUrl?: string;
-                networkId?: string;
-            }[] = [];
-            finishedMarkets.forEach((m) => {
-                const cfg = (marketsConfig as any)[m.marketId];
-                const name = cfg?.chain?.name || "Ethereum";
-                if (seen.has(name)) return;
-                seen.add(name);
-                const logo = cfg?.chain?.logo || "icons/eth.png";
-                const networkId = getWeb3iconsNetworkId(name);
-                options.push({
-                    id: name,
-                    label: name,
-                    iconUrl: networkId ? undefined : logo.startsWith("/") ? logo : `/${logo}`,
-                    networkId,
-                });
-            });
-            return options.sort((a, b) => a.label.localeCompare(b.label));
-        }, [finishedMarkets]);
+        const transparencyChainOptions = useMemo(
+            () =>
+                buildNetworkFilterOptions(
+                    finishedMarkets,
+                    (m) => (marketsConfig as any)[m.marketId] || {}
+                ),
+            [finishedMarkets]
+        );
 
         const displayedMarkets = useMemo(() => {
             let filtered = finishedMarkets;
 
             if (chainFilterSelected.length > 0) {
-                filtered = filtered.filter((m) => {
-                    const cfg = (marketsConfig as any)[m.marketId];
-                    const name = cfg?.chain?.name || "Ethereum";
-                    return chainFilterSelected.includes(name);
-                });
+                filtered = filterBySelectedNetworks(
+                    filtered,
+                    chainFilterSelected,
+                    (m) => (marketsConfig as any)[m.marketId] || {}
+                );
             }
 
             if (showGenesisMarketsOnly) {
@@ -1770,14 +1757,10 @@ export default function TransparencyPage() {
                                     Markets:
                                 </h2>
                                 {transparencyChainOptions.length > 0 && (
-                                    <FilterMultiselectDropdown
-                                        label="Network"
+                                    <IndexToolbarNetworkFilter
                                         options={transparencyChainOptions}
                                         value={chainFilterSelected}
                                         onChange={setChainFilterSelected}
-                                        allLabel="All networks"
-                                        groupLabel="NETWORKS"
-                                        minWidthClass="min-w-[235px]"
                                     />
                                 )}
                                 <IndexToolbarSegmentedToggle
@@ -1791,16 +1774,7 @@ export default function TransparencyPage() {
                                     ariaLabel="Show genesis markets"
                                 />
                                 {(chainFilterSelected.length > 0 || showGenesisMarketsOnly) && (
-                                    <SimpleTooltip label="clear filters">
-                                        <button
-                                            type="button"
-                                            onClick={clearFilters}
-                                            className="p-1.5 text-[#E67A6B] hover:text-[#D66A5B] hover:bg-white/10 rounded transition-colors"
-                                            aria-label="clear filters"
-                                        >
-                                            <XMarkIcon className="w-5 h-5 stroke-[2.5]" />
-                                        </button>
-                                    </SimpleTooltip>
+                                    <IndexToolbarClearFiltersButton onClick={clearFilters} />
                                 )}
                             </div>
                             <div className="flex flex-wrap items-center gap-2 sm:gap-3 md:ml-auto">

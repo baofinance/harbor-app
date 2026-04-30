@@ -9,10 +9,13 @@ import { useSailContractReads } from "@/hooks/useSailContractReads";
 import { useSailPositionsPnLSummary } from "@/hooks/useSailPositionsPnLSummary";
 import { getSailPriceGraphUrlOptional, getGraphHeaders } from "@/config/graph";
 import { FILTER_NONE_SENTINEL } from "@/components/FilterMultiselectDropdown";
-import { getWeb3iconsNetworkId } from "@/config/web3iconsNetworks";
 import type { SailMarketTuple } from "@/types/sail";
 import { filterSailActiveMarkets } from "@/utils/sailActiveMarkets";
 import { getLongSide, getShortSide } from "@/utils/marketSideLabels";
+import {
+  buildNetworkFilterOptions,
+  filterBySelectedNetworks,
+} from "@/utils/networkFilter";
 
 /**
  * Sail index route: filters, subgraph marks/PnL, aggregates, and derived `activeMarkets`.
@@ -114,40 +117,14 @@ export function useSailPageData() {
         ? []
         : chainFilterSelected.length === 0
           ? sailMarkets
-          : sailMarkets.filter(([, m]) => {
-              const chainName = m.chain?.name || "Ethereum";
-              return chainFilterSelected.includes(chainName);
-            }),
+          : filterBySelectedNetworks(sailMarkets, chainFilterSelected, ([, m]) => m),
     [sailMarkets, chainFilterSelected]
   );
 
-  const sailChainOptions = useMemo(() => {
-    const seen = new Set<string>();
-    const options: {
-      id: string;
-      label: string;
-      iconUrl?: string;
-      networkId?: string;
-    }[] = [];
-    sailMarkets.forEach(([, m]) => {
-      const name = m.chain?.name || "Ethereum";
-      if (seen.has(name)) return;
-      seen.add(name);
-      const logo = m.chain?.logo || "icons/eth.png";
-      const networkId = getWeb3iconsNetworkId(name);
-      options.push({
-        id: name,
-        label: name,
-        iconUrl: networkId
-          ? undefined
-          : logo.startsWith("/")
-            ? logo
-            : `/${logo}`,
-        networkId,
-      });
-    });
-    return options.sort((a, b) => a.label.localeCompare(b.label));
-  }, [sailMarkets]);
+  const sailChainOptions = useMemo(
+    () => buildNetworkFilterOptions(sailMarkets, ([, m]) => m),
+    [sailMarkets]
+  );
 
   const sailBoostIds = useMemo(() => {
     const ids: string[] = [];

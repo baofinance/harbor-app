@@ -11,9 +11,13 @@ import Link from "next/link";
 import Image from "next/image";
 import { ConnectWallet } from "@/components/Wallet";
 import { PageLayoutToggle } from "@/components/PageLayoutToggle";
+import { useAppBackground } from "@/contexts/AppBackgroundContext";
 
 export default function Example() {
   const pathname = usePathname();
+  const { mode: backgroundMode } = useAppBackground();
+  const navBgClass =
+    backgroundMode === "megaeth" ? "bg-[#10141A]" : "bg-[#1E4775]";
 
   const isActive = (href: string) => {
     if (href === "/") return pathname === "/";
@@ -30,7 +34,7 @@ export default function Example() {
   return (
     <Disclosure<"nav">
       as="nav"
-      className="relative w-full max-w-[1300px] shrink-0 bg-[#1E4775] after:pointer-events-none mx-auto after:absolute after:inset-x-0 after:bottom-0 after:h-px after:bg-white/20 mb-4 sm:mb-6"
+      className={`app-nav-shell relative w-full max-w-[1300px] shrink-0 ${navBgClass} after:pointer-events-none mx-auto after:absolute after:inset-x-0 after:bottom-0 after:h-px after:bg-white/20 mb-4 sm:mb-6`}
     >
       {/* Match index pages: `max-w-[1300px]` + `px-4 sm:px-10` on main */}
       <div className="w-full px-4 sm:px-10">
@@ -122,7 +126,7 @@ export default function Example() {
         </div>
       </div>
 
-      <DisclosurePanel className="sm:hidden fixed inset-0 z-50 bg-[#1E4775] overflow-y-auto" style={{ height: '100dvh', maxHeight: '100dvh' }}>
+      <DisclosurePanel className={`sm:hidden fixed inset-0 z-50 ${navBgClass} overflow-y-auto`} style={{ height: '100dvh', maxHeight: '100dvh' }}>
         <div className="flex flex-col min-h-full px-6 py-4 pb-24 space-y-2">
           <div className="flex justify-end mb-2 flex-shrink-0">
             <DisclosureButton className="inline-flex items-center justify-center p-2 text-gray-200 hover:bg-[#FF8A7A]/20 hover:text-white focus:outline-2 focus:-outline-offset-1 focus:outline-[#FF8A7A] rounded-full">

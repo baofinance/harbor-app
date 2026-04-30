@@ -2,7 +2,6 @@ import { useMemo } from "react";
 import { formatEther } from "viem";
 import { markets } from "@/config/markets";
 import { FILTER_NONE_SENTINEL } from "@/components/FilterMultiselectDropdown";
-import { getWeb3iconsNetworkId } from "@/config/web3iconsNetworks";
 import { useStaggeredReady } from "@/hooks/useStaggeredReady";
 import { useMultipleVolatilityProtection } from "@/hooks/useVolatilityProtection";
 import { useProjectedAPR } from "@/hooks/useProjectedAPR";
@@ -23,6 +22,10 @@ import { useAnchorUserDeposits } from "@/hooks/anchor/useAnchorUserDeposits";
 import { useAnchorTokenMetadata } from "@/hooks/anchor/useAnchorTokenMetadata";
 import { calculateReadOffset } from "@/utils/anchor/calculateReadOffset";
 import type { AnchorMarketTuple } from "@/types/anchor";
+import {
+  buildNetworkFilterOptions,
+  filterBySelectedNetworks,
+} from "@/utils/networkFilter";
 /**
  * Composes Anchor index data reads + derived market state (Phase 2–3 refactor).
  * Includes protocol-level `anchorStats` for the strip; keeps [`page.tsx`](../../app/anchor/page.tsx) thinner over time.
@@ -43,36 +46,14 @@ export function useAnchorPageData(
         ? []
         : chainFilterSelected.length === 0
           ? anchorMarkets
-          : anchorMarkets.filter(([, m]) => {
-              const chainName = (m as any).chain?.name || "Ethereum";
-              return chainFilterSelected.includes(chainName);
-            }),
+          : filterBySelectedNetworks(anchorMarkets, chainFilterSelected, ([, m]) => m),
     [anchorMarkets, chainFilterSelected]
   );
 
-  const anchorChainOptions = useMemo(() => {
-    const seen = new Set<string>();
-    const options: {
-      id: string;
-      label: string;
-      iconUrl?: string;
-      networkId?: string;
-    }[] = [];
-    anchorMarkets.forEach(([, m]) => {
-      const name = (m as any).chain?.name || "Ethereum";
-      if (seen.has(name)) return;
-      seen.add(name);
-      const logo = (m as any).chain?.logo || "icons/eth.png";
-      const networkId = getWeb3iconsNetworkId(name);
-      options.push({
-        id: name,
-        label: name,
-        iconUrl: networkId ? undefined : logo.startsWith("/") ? logo : `/${logo}`,
-        networkId,
-      });
-    });
-    return options.sort((a, b) => a.label.localeCompare(b.label));
-  }, [anchorMarkets]);
+  const anchorChainOptions = useMemo(
+    () => buildNetworkFilterOptions(anchorMarkets, ([, m]) => m),
+    [anchorMarkets]
+  );
 
   const volProtectionMarketsConfig = useMemo(
     () =>

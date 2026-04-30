@@ -87,6 +87,40 @@
   }
 }
 
+body.app-bg-eth {
+  background-image: none;
+}
+
+body.app-bg-megaeth {
+  background-image:
+    linear-gradient(
+      to bottom,
+      rgba(10, 20, 35, 0.5),
+      rgba(10, 20, 35, 0.7)
+    ),
+    url("/backgrounds/megaeth-bg.png");
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-attachment: fixed;
+}
+
+body.app-bg-megaeth .app-nav-shell {
+  background-color: #10141a;
+}
+
+body.app-bg-megaeth .app-index-metrics-strip {
+  background-color: #10141a;
+}
+
+body.app-bg-megaeth .app-index-manage-btn {
+  background-color: #10141a;
+}
+
+body.app-bg-megaeth .app-index-manage-btn:hover {
+  background-color: #1a2029;
+}
+
 .smoke-particle-el {
   position: absolute;
   border-radius: 50%;
