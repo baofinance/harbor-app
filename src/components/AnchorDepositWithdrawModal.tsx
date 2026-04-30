@@ -2451,6 +2451,7 @@ export const AnchorDepositWithdrawModal = ({
       selectedPositions.collateralPool &&
       positionAmounts.collateralPool &&
       withdrawalMethods.collateralPool === "immediate" &&
+      !isWindowOpen(collateralPoolRequest) &&
       collateralPoolEarlyFee &&
       collateralPoolFeePercent !== undefined
     ) {
@@ -2470,6 +2471,7 @@ export const AnchorDepositWithdrawModal = ({
       selectedPositions.sailPool &&
       positionAmounts.sailPool &&
       withdrawalMethods.sailPool === "immediate" &&
+      !isWindowOpen(sailPoolRequest) &&
       sailPoolEarlyFee &&
       sailPoolFeePercent !== undefined
     ) {
@@ -2492,6 +2494,9 @@ export const AnchorDepositWithdrawModal = ({
     collateralPoolFeePercent,
     sailPoolEarlyFee,
     sailPoolFeePercent,
+    collateralPoolRequest,
+    sailPoolRequest,
+    isWindowOpen,
   ]);
 
   const showEarlyWithdrawalFees =
@@ -8362,15 +8367,14 @@ export const AnchorDepositWithdrawModal = ({
       writeContractAsync: !!writeContractAsync,
     });
 
-    if (!address || !minterAddress) {
+    if (!address) {
       console.error(
-        "[handleWithdrawExecution] Missing address or minterAddress",
+        "[handleWithdrawExecution] Missing wallet address",
         {
           address,
-          minterAddress,
         }
       );
-      setError("Wallet not connected or minter not configured");
+      setError("Wallet not connected");
       return;
     }
 
@@ -8422,6 +8426,18 @@ export const AnchorDepositWithdrawModal = ({
       const shouldAutoRedeem =
         !withdrawOnly &&
         (walletAmount > 0n || collateralIsImmediate || sailIsImmediate);
+      const targetRedeemMinterAddress = redeemMinterAddress || minterAddress;
+      const targetRedeemPeggedTokenAddress =
+        selectedRedeemMarket?.market?.addresses?.peggedToken || peggedTokenAddress;
+
+      if (
+        shouldAutoRedeem &&
+        (!targetRedeemMinterAddress || !targetRedeemPeggedTokenAddress)
+      ) {
+        throw new Error(
+          "Redeem market is not configured. Please choose a different redeem asset."
+        );
+      }
 
       const estimatedNeedsRedeemApproval =
         shouldAutoRedeem &&
@@ -8813,12 +8829,12 @@ export const AnchorDepositWithdrawModal = ({
         try {
           currentAllowance =
             ((await client.readContract({
-              address: peggedTokenAddress as `0x${string}`,
+              address: targetRedeemPeggedTokenAddress as `0x${string}`,
               abi: ERC20_ABI,
               functionName: "allowance",
                 args: [
                   address as `0x${string}`,
-                  minterAddress as `0x${string}`,
+                  targetRedeemMinterAddress as `0x${string}`,
                 ],
             })) as bigint) || 0n;
         } catch (allowErr) {
@@ -8842,10 +8858,10 @@ export const AnchorDepositWithdrawModal = ({
           setTxHash(null);
 
           const approveHash = await writeContractAsync({
-            address: peggedTokenAddress as `0x${string}`,
+            address: targetRedeemPeggedTokenAddress as `0x${string}`,
             abi: ERC20_ABI,
             functionName: "approve",
-              args: [minterAddress as `0x${string}`, redeemAmount],
+              args: [targetRedeemMinterAddress as `0x${string}`, redeemAmount],
           });
           setTxHash(approveHash);
           setTxHashes((prev) => ({ ...prev, approveRedeem: approveHash }));
@@ -8861,7 +8877,7 @@ export const AnchorDepositWithdrawModal = ({
           let minCollateralOut = 0n;
         try {
           const freshDryRunResult = (await client.readContract({
-            address: minterAddress as `0x${string}`,
+            address: targetRedeemMinterAddress as `0x${string}`,
             abi: MINTER_PEGGED_ABI,
             functionName: "redeemPeggedTokenDryRun",
               args: [redeemAmount],
@@ -8876,7 +8892,7 @@ export const AnchorDepositWithdrawModal = ({
         let redeemHash: `0x${string}` | undefined;
         try {
           redeemHash = await writeContractAsync({
-            address: minterAddress as `0x${string}`,
+            address: targetRedeemMinterAddress as `0x${string}`,
             abi: MINTER_PEGGED_ABI,
             functionName: "redeemPeggedToken",
               args: [redeemAmount, address as `0x${string}`, minCollateralOut],
@@ -8887,7 +8903,7 @@ export const AnchorDepositWithdrawModal = ({
             redeemErr
           );
           redeemHash = await writeContractAsync({
-            address: minterAddress as `0x${string}`,
+            address: targetRedeemMinterAddress as `0x${string}`,
             abi: MINTER_PEGGED_ABI,
             functionName: "redeemPeggedToken",
               args: [redeemAmount, address as `0x${string}`, 0n],
@@ -12065,29 +12081,13 @@ export const AnchorDepositWithdrawModal = ({
                                   const isImmediateWithdrawal = 
                                     (entry.poolType === "collateral" && withdrawalMethods.collateralPool === "immediate") ||
                                     (entry.poolType === "sail" && withdrawalMethods.sailPool === "immediate");
-                                  const isRequestWithdrawal = !isImmediateWithdrawal;
                                   
                                   // Calculate fee USD value
                                   const feeUSD = entry.fee && priceUSD > 0
                                     ? (Number(entry.fee.amount) / 1e18) * priceUSD
                                     : 0;
                                   
-                                  // Calculate 1% fee USD value for request withdrawals when redemption is active
-                                  const requestFeeUSD = isRequestWithdrawal && !withdrawOnly && entry.amount > 0n && priceUSD > 0
-                                    ? (Number(entry.amount) / 1e18) * priceUSD * 0.01
-                                    : 0;
-                                  
-                                  // Calculate 1% withdraw fee when redemption is not active and window is not active
-                                  const withdrawAmountPegged = redeemInputAmount || 0n;
-                                  const peggedPriceUSD = peggedTokenPriceUsdWei > 0n
-                                    ? Number(formatUnits(peggedTokenPriceUsdWei, 18))
-                                    : 0;
-                                  const withdrawFeeAmount = withdrawOnly && !isImmediateWithdrawal && withdrawAmountPegged > 0n
-                                    ? (Number(withdrawAmountPegged) / 1e18) * 0.01
-                                    : 0;
-                                  const withdrawFeeUSD = withdrawFeeAmount * peggedPriceUSD;
-                                  
-                                  return (entry.fee || entry.bonus || (isRequestWithdrawal && !withdrawOnly) || (withdrawOnly && !isImmediateWithdrawal)) ? (
+                                  return (entry.fee || entry.bonus) ? (
                                     <div className="pt-2 border-t border-[#1E4775]/30 space-y-1 text-xs mt-2">
                                       {entry.fee && (
                                         <div className="flex justify-between items-center">
@@ -12106,31 +12106,6 @@ export const AnchorDepositWithdrawModal = ({
                                           </span>
                                         </div>
                                       )}
-                                      
-                                      {/* Show 1% withdraw fee when redemption is not active and window is not active */}
-                                      {withdrawOnly && !isImmediateWithdrawal && !entry.fee && (
-                                        <div className="flex justify-between items-center">
-                                          <span className="text-[#1E4775]/70">
-                                            Withdraw Fee:
-                                          </span>
-                                          <span className="font-bold font-mono text-[#1E4775]">
-                                            1.00% - {withdrawFeeAmount > 0 ? `${withdrawFeeAmount.toFixed(6)} ${peggedTokenSymbol}` : "..."} ({withdrawFeeUSD > 0 ? `$${withdrawFeeUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "..."})
-                                          </span>
-                                        </div>
-                                      )}
-                                      
-                                      {/* Show 1% fee for request withdrawals when redemption is active */}
-                                      {isRequestWithdrawal && !withdrawOnly && !entry.fee && (
-                                        <div className="flex justify-between items-center">
-                                          <span className="text-[#1E4775]/70">
-                                            Request Fee:
-                                          </span>
-                                          <span className="font-bold font-mono text-[#1E4775]">
-                                            1.00% ({requestFeeUSD > 0 ? `$${requestFeeUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "..."})
-                                          </span>
-                                        </div>
-                                      )}
-
                                       {entry.bonus && (
                                         <div className="flex justify-between items-center text-green-700">
                                           <span>Bonus:</span>
@@ -12609,71 +12584,6 @@ export const AnchorDepositWithdrawModal = ({
                                   </span>
                                 </div>
                               )}
-
-                              {/* 1% Withdraw Fee - shown when redemption is not active and withdrawal window is not active */}
-                              {(() => {
-                                // Check if redemption is not active (withdrawOnly is true)
-                                if (!withdrawOnly) return null;
-                                
-                                // Check if withdrawal window is active (immediate withdrawal)
-                                const isImmediateWithdrawal = 
-                                  (selectedPositions.collateralPool && withdrawalMethods.collateralPool === "immediate") ||
-                                  (selectedPositions.sailPool && withdrawalMethods.sailPool === "immediate");
-                                
-                                // Only show 1% fee if window is NOT active (it's a request withdrawal)
-                                if (isImmediateWithdrawal) return null;
-                                
-                                // Calculate fee based on pegged token amount being withdrawn
-                                const withdrawAmountPegged = redeemInputAmount || 0n;
-                                const peggedPriceUSD = peggedTokenPriceUsdWei > 0n
-                                  ? Number(formatUnits(peggedTokenPriceUsdWei, 18))
-                                  : 0;
-                                const withdrawFeeAmount = withdrawAmountPegged > 0n
-                                  ? (Number(withdrawAmountPegged) / 1e18) * 0.01
-                                  : 0;
-                                const withdrawFeeUSD = withdrawFeeAmount * peggedPriceUSD;
-                                
-                                return (
-                                  <div className="flex justify-between items-center">
-                                    <span className="text-[#1E4775]/70">
-                                      Withdraw Fee:
-                                    </span>
-                                    <span className="font-bold font-mono text-[#1E4775]">
-                                      1.00% - {withdrawFeeAmount > 0 ? `${withdrawFeeAmount.toFixed(6)} ${peggedTokenSymbol}` : "..."} ({withdrawFeeUSD > 0 ? `$${withdrawFeeUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "..."})
-                                    </span>
-                                  </div>
-                                );
-                              })()}
-
-                              {/* 1% Request Fee - shown when redemption is active and it's a request withdrawal */}
-                              {(() => {
-                                // Only show if redemption is active (withdrawOnly is false)
-                                if (withdrawOnly) return null;
-                                
-                                const isRequestWithdrawal = 
-                                  (selectedPositions.collateralPool && withdrawalMethods.collateralPool === "request") ||
-                                  (selectedPositions.sailPool && withdrawalMethods.sailPool === "request");
-                                if (!isRequestWithdrawal) return null;
-                                
-                                const outputAmount = Number(formatEther(redeemDryRun.netCollateralReturned || 0n));
-                                const requestFeeSymbol = selectedRedeemAsset || collateralSymbol;
-                                const requestFeeUSD = amountToUSD(outputAmount * 0.01, requestFeeSymbol, {
-                                  ethPrice: ethPrice ?? 0,
-                                  wstETHPrice: wstETHPrice ?? 0,
-                                  fxSAVEPrice: fxSAVEPrice ?? 1.08,
-                                });
-                                
-                                return (
-                                  <div className="flex justify-between items-center">
-                                    <span className="text-[#1E4775]/70">
-                                      Request Fee:
-                                    </span>
-                                    <span className="font-bold font-mono text-[#1E4775]">
-                                      1.00% ({requestFeeUSD > 0 ? `$${requestFeeUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "..."})
-                                    </span>
-                                  </div>
-                                );
-                              })()}
 
                               {redeemDryRun.discountPercentage > 0 && (
                                 <div className="flex justify-between items-center text-green-700">
