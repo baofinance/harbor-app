@@ -2,6 +2,12 @@ import { markets as contractsMarkets } from "./contracts.index";
 
 // Check if we're using test2 contracts
 const useTest2 = process.env.NEXT_PUBLIC_USE_TEST2_CONTRACTS === "true";
+const resolveStabilityPoolManager = (
+  marketId: keyof typeof contractsMarkets,
+  fallback?: `0x${string}`
+): `0x${string}` | undefined =>
+  contractsMarkets[marketId]?.addresses?.stabilityPoolManager ??
+  (useTest2 ? undefined : fallback);
 
 export const markets = {
   // ============================================================================
@@ -39,7 +45,10 @@ export const markets = {
       peggedToken: contractsMarkets["eth-fxusd"].addresses.peggedToken, // haETH
       leveragedToken: contractsMarkets["eth-fxusd"].addresses.leveragedToken, // hsFXUSD-ETH
       reservePool: contractsMarkets["eth-fxusd"].addresses.reservePool,
-      stabilityPoolManager: "0xE39165aDE355988EFb24dA4f2403971101134CAB" as `0x${string}`,
+      stabilityPoolManager: resolveStabilityPoolManager(
+        "eth-fxusd",
+        "0xE39165aDE355988EFb24dA4f2403971101134CAB"
+      ),
       stabilityPoolCollateral: contractsMarkets["eth-fxusd"].addresses.stabilityPoolCollateral,
       stabilityPoolLeveraged: contractsMarkets["eth-fxusd"].addresses.stabilityPoolLeveraged,
       genesis: contractsMarkets["eth-fxusd"].addresses.genesis,
@@ -124,7 +133,10 @@ export const markets = {
       peggedToken: contractsMarkets["btc-fxusd"].addresses.peggedToken, // haBTC
       leveragedToken: contractsMarkets["btc-fxusd"].addresses.leveragedToken, // hsFXUSD-BTC
       reservePool: contractsMarkets["btc-fxusd"].addresses.reservePool,
-      stabilityPoolManager: "0x768E0a386e1972eB5995429Fe21E7aC0f22F516e" as `0x${string}`,
+      stabilityPoolManager: resolveStabilityPoolManager(
+        "btc-fxusd",
+        "0x768E0a386e1972eB5995429Fe21E7aC0f22F516e"
+      ),
       stabilityPoolCollateral: contractsMarkets["btc-fxusd"].addresses.stabilityPoolCollateral,
       stabilityPoolLeveraged: contractsMarkets["btc-fxusd"].addresses.stabilityPoolLeveraged,
       genesis: contractsMarkets["btc-fxusd"].addresses.genesis,
@@ -206,7 +218,10 @@ export const markets = {
       peggedToken: contractsMarkets["btc-steth"].addresses.peggedToken, // haBTC (shared)
       leveragedToken: contractsMarkets["btc-steth"].addresses.leveragedToken, // hsSTETH-BTC
       reservePool: contractsMarkets["btc-steth"].addresses.reservePool,
-      stabilityPoolManager: "0x5e9Bcaa1EDfD665c09a9e6693B447581d61A85A1" as `0x${string}`,
+      stabilityPoolManager: resolveStabilityPoolManager(
+        "btc-steth",
+        "0x5e9Bcaa1EDfD665c09a9e6693B447581d61A85A1"
+      ),
       stabilityPoolCollateral: contractsMarkets["btc-steth"].addresses.stabilityPoolCollateral,
       stabilityPoolLeveraged: contractsMarkets["btc-steth"].addresses.stabilityPoolLeveraged,
       genesis: contractsMarkets["btc-steth"].addresses.genesis,
@@ -289,7 +304,10 @@ export const markets = {
       peggedToken: contractsMarkets["fxusd-gold"].addresses.peggedToken,
       leveragedToken: contractsMarkets["fxusd-gold"].addresses.leveragedToken,
       reservePool: contractsMarkets["fxusd-gold"].addresses.reservePool,
-      stabilityPoolManager: "0x5b69069CC4012a96342B0FeCC28aD15bDE6447B5" as `0x${string}`, // GOLD::fxUSD proxy (harbor_v1.state)
+      stabilityPoolManager: resolveStabilityPoolManager(
+        "fxusd-gold",
+        "0x5b69069CC4012a96342B0FeCC28aD15bDE6447B5"
+      ), // GOLD::fxUSD proxy (harbor_v1.state)
       stabilityPoolCollateral: contractsMarkets["fxusd-gold"].addresses.stabilityPoolCollateral,
       stabilityPoolLeveraged: contractsMarkets["fxusd-gold"].addresses.stabilityPoolLeveraged,
       genesis: contractsMarkets["fxusd-gold"].addresses.genesis,
@@ -365,7 +383,10 @@ export const markets = {
       peggedToken: contractsMarkets["steth-gold"].addresses.peggedToken,
       leveragedToken: contractsMarkets["steth-gold"].addresses.leveragedToken,
       reservePool: contractsMarkets["steth-gold"].addresses.reservePool,
-      stabilityPoolManager: "0x322b19DFBeF5F41d1FA6436886349EEE02408867" as `0x${string}`,
+      stabilityPoolManager: resolveStabilityPoolManager(
+        "steth-gold",
+        "0x322b19DFBeF5F41d1FA6436886349EEE02408867"
+      ),
       stabilityPoolCollateral: contractsMarkets["steth-gold"].addresses.stabilityPoolCollateral,
       stabilityPoolLeveraged: contractsMarkets["steth-gold"].addresses.stabilityPoolLeveraged,
       genesis: contractsMarkets["steth-gold"].addresses.genesis,
@@ -441,7 +462,10 @@ export const markets = {
       peggedToken: contractsMarkets["steth-eur"].addresses.peggedToken,
       leveragedToken: contractsMarkets["steth-eur"].addresses.leveragedToken,
       reservePool: contractsMarkets["steth-eur"].addresses.reservePool,
-      stabilityPoolManager: "0x29AAEe8b76A5970D7d5041F500512e2b9d70Aa94" as `0x${string}`, // EUR::stETH::stabilityPoolManager from harbor_v1.state
+      stabilityPoolManager: resolveStabilityPoolManager(
+        "steth-eur",
+        "0x29AAEe8b76A5970D7d5041F500512e2b9d70Aa94"
+      ), // EUR::stETH::stabilityPoolManager from harbor_v1.state
       stabilityPoolCollateral: contractsMarkets["steth-eur"].addresses.stabilityPoolCollateral,
       stabilityPoolLeveraged: contractsMarkets["steth-eur"].addresses.stabilityPoolLeveraged,
       genesis: contractsMarkets["steth-eur"].addresses.genesis,
@@ -517,7 +541,10 @@ export const markets = {
       peggedToken: contractsMarkets["fxusd-eur"].addresses.peggedToken,
       leveragedToken: contractsMarkets["fxusd-eur"].addresses.leveragedToken,
       reservePool: contractsMarkets["fxusd-eur"].addresses.reservePool,
-      stabilityPoolManager: "0x756766756880ceA06270Fd507b09Ef32714Ec7C2" as `0x${string}`, // EUR::fxUSD::stabilityPoolManager from harbor_v1.state
+      stabilityPoolManager: resolveStabilityPoolManager(
+        "fxusd-eur",
+        "0x756766756880ceA06270Fd507b09Ef32714Ec7C2"
+      ), // EUR::fxUSD::stabilityPoolManager from harbor_v1.state
       stabilityPoolCollateral: contractsMarkets["fxusd-eur"].addresses.stabilityPoolCollateral,
       stabilityPoolLeveraged: contractsMarkets["fxusd-eur"].addresses.stabilityPoolLeveraged,
       genesis: contractsMarkets["fxusd-eur"].addresses.genesis,
@@ -593,7 +620,10 @@ export const markets = {
       peggedToken: contractsMarkets["steth-mcap"].addresses.peggedToken,
       leveragedToken: contractsMarkets["steth-mcap"].addresses.leveragedToken,
       reservePool: contractsMarkets["steth-mcap"].addresses.reservePool,
-      stabilityPoolManager: "0x1298ab1957ee023E228d57bE2db73494b649E52F" as `0x${string}`,
+      stabilityPoolManager: resolveStabilityPoolManager(
+        "steth-mcap",
+        "0x1298ab1957ee023E228d57bE2db73494b649E52F"
+      ),
       stabilityPoolCollateral: contractsMarkets["steth-mcap"].addresses.stabilityPoolCollateral,
       stabilityPoolLeveraged: contractsMarkets["steth-mcap"].addresses.stabilityPoolLeveraged,
       genesis: contractsMarkets["steth-mcap"].addresses.genesis,
@@ -663,7 +693,10 @@ export const markets = {
       peggedToken: contractsMarkets["fxusd-mcap"].addresses.peggedToken,
       leveragedToken: contractsMarkets["fxusd-mcap"].addresses.leveragedToken,
       reservePool: contractsMarkets["fxusd-mcap"].addresses.reservePool,
-      stabilityPoolManager: "0x52DC69cbdC6Ef508b7419A456dD36967DAEfD538" as `0x${string}`,
+      stabilityPoolManager: resolveStabilityPoolManager(
+        "fxusd-mcap",
+        "0x52DC69cbdC6Ef508b7419A456dD36967DAEfD538"
+      ),
       stabilityPoolCollateral: contractsMarkets["fxusd-mcap"].addresses.stabilityPoolCollateral,
       stabilityPoolLeveraged: contractsMarkets["fxusd-mcap"].addresses.stabilityPoolLeveraged,
       genesis: contractsMarkets["fxusd-mcap"].addresses.genesis,
@@ -733,7 +766,10 @@ export const markets = {
       peggedToken: contractsMarkets["steth-silver"].addresses.peggedToken,
       leveragedToken: contractsMarkets["steth-silver"].addresses.leveragedToken,
       reservePool: contractsMarkets["steth-silver"].addresses.reservePool,
-      stabilityPoolManager: "0xbA6b54ED8D76bD4f6B4efD4f1f2344B2Ec386c3E" as `0x${string}`,
+      stabilityPoolManager: resolveStabilityPoolManager(
+        "steth-silver",
+        "0xbA6b54ED8D76bD4f6B4efD4f1f2344B2Ec386c3E"
+      ),
       stabilityPoolCollateral: contractsMarkets["steth-silver"].addresses.stabilityPoolCollateral,
       stabilityPoolLeveraged: contractsMarkets["steth-silver"].addresses.stabilityPoolLeveraged,
       genesis: contractsMarkets["steth-silver"].addresses.genesis,
@@ -809,7 +845,10 @@ export const markets = {
       peggedToken: contractsMarkets["fxusd-silver"].addresses.peggedToken,
       leveragedToken: contractsMarkets["fxusd-silver"].addresses.leveragedToken,
       reservePool: contractsMarkets["fxusd-silver"].addresses.reservePool,
-      stabilityPoolManager: "0x1EF76C3f4B426dFeC271a8a3904035dE0A6E6d75" as `0x${string}`,
+      stabilityPoolManager: resolveStabilityPoolManager(
+        "fxusd-silver",
+        "0x1EF76C3f4B426dFeC271a8a3904035dE0A6E6d75"
+      ),
       stabilityPoolCollateral: contractsMarkets["fxusd-silver"].addresses.stabilityPoolCollateral,
       stabilityPoolLeveraged: contractsMarkets["fxusd-silver"].addresses.stabilityPoolLeveraged,
       genesis: contractsMarkets["fxusd-silver"].addresses.genesis,

@@ -69,6 +69,7 @@ export type MarketConfig = {
     priceOracle: `0x${string}`;
     stabilityPoolCollateral: `0x${string}`;
     stabilityPoolLeveraged: `0x${string}`;
+    stabilityPoolManager?: `0x${string}`;
     reservePool: `0x${string}`;
     rebalancePoolCollateral: `0x${string}`;
     rebalancePoolLeveraged: `0x${string}`;
@@ -133,6 +134,7 @@ const productionMarkets: Markets = {
       priceOracle: "0x71437C90F1E0785dd691FD02f7bE0B90cd14c097",
       stabilityPoolCollateral: "0x1F985CF7C10A81DE1940da581208D2855D263D72",
       stabilityPoolLeveraged: "0x438B29EC7a1770dDbA37D792F1A6e76231Ef8E06",
+      stabilityPoolManager: "0xE39165aDE355988EFb24dA4f2403971101134CAB",
       reservePool: "0x7A5c4ca972CE2168d5215d252946dDbd1cAd2015",
       rebalancePoolCollateral: "0x0000000000000000000000000000000000000000", // Not deployed yet
       rebalancePoolLeveraged: "0x0000000000000000000000000000000000000000", // Not deployed yet
@@ -181,6 +183,7 @@ const productionMarkets: Markets = {
       priceOracle: "0x8F76a260c5D21586aFfF18f880FFC808D0524A73",
       stabilityPoolCollateral: "0x86561cdB34ebe8B9abAbb0DD7bEA299fA8532a49",
       stabilityPoolLeveraged: "0x9e56F1E1E80EBf165A1dAa99F9787B41cD5bFE40",
+      stabilityPoolManager: "0x768E0a386e1972eB5995429Fe21E7aC0f22F516e",
       reservePool: "0xfDE46D4425138aA01319bB8587Cb935a0393DfE3",
       rebalancePoolCollateral: "0x0000000000000000000000000000000000000000", // Not deployed yet
       rebalancePoolLeveraged: "0x0000000000000000000000000000000000000000", // Not deployed yet
@@ -229,6 +232,7 @@ const productionMarkets: Markets = {
       priceOracle: "0xE370289aF2145A5B2F0F7a4a900eBfD478A156dB",
       stabilityPoolCollateral: "0x667Ceb303193996697A5938cD6e17255EeAcef51",
       stabilityPoolLeveraged: "0xCB4F3e21DE158bf858Aa03E63e4cEc7342177013",
+      stabilityPoolManager: "0x5e9Bcaa1EDfD665c09a9e6693B447581d61A85A1",
       reservePool: "0x515ECa19Ac381b0f37D616F99628136906fC5355",
       rebalancePoolCollateral: "0x0000000000000000000000000000000000000000", // Not deployed yet
       rebalancePoolLeveraged: "0x0000000000000000000000000000000000000000", // Not deployed yet
