@@ -35,6 +35,7 @@ import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
 import { isMarketInMaintenance, markets as marketsConfig } from "@/config/markets";
 import { MarketMaintenanceBadge } from "@/components/MarketMaintenanceTag";
 import { useMultipleTokenPrices } from "@/hooks/useTokenPrices";
+import { buildTokenPriceInput } from "@/utils/tokenPriceInput";
 import { useMultipleVolatilityProtection } from "@/hooks/useVolatilityProtection";
 import { useReadContract, useAccount } from "wagmi";
 import { usePageLayoutPreference } from "@/contexts/PageLayoutPreferenceContext";
@@ -1532,15 +1533,16 @@ export default function TransparencyPage() {
                 .map((m) => {
                     const pegTarget =
                         (marketsConfig as any)?.[m.marketId]?.pegTarget || "USD";
-                    return {
+                    return buildTokenPriceInput({
                         marketId: m.marketId,
                         minterAddress: m.minterAddress,
                         pegTarget,
-                    };
+                        chainId: m.chainId,
+                    });
                 })
-                .filter((x) => !!x.minterAddress);
+                .filter((x): x is NonNullable<typeof x> => x !== null);
         }, [finishedMarkets]);
-        const tokenPricesByMarket = useMultipleTokenPrices(tokenPriceInputs as any);
+        const tokenPricesByMarket = useMultipleTokenPrices(tokenPriceInputs);
         const {address: userAddress} = useAccount();
 
         const volatilityMarkets = useMemo(
