@@ -4,10 +4,24 @@ export const runtime = "nodejs";
 
 /**
  * JSON-RPC proxy for Ethereum mainnet.
- * Keeps the Alchemy (or other provider) API key server-side only.
- * Client sends requests here; we forward to MAINNET_RPC_URL (no NEXT_PUBLIC_).
+ * Keeps provider API keys server-side only.
+ * Client sends requests here; we forward to MAINNET_RPC_URL (+ optional fallbacks).
  */
 const MAINNET_RPC_URL = process.env.MAINNET_RPC_URL;
+const MAINNET_RPC_FALLBACK_URLS = (process.env.MAINNET_RPC_FALLBACK_URLS || "")
+  .split(",")
+  .map((url) => url.trim())
+  .filter(Boolean);
+
+function getUpstreamUrls(): string[] {
+  return [MAINNET_RPC_URL, ...MAINNET_RPC_FALLBACK_URLS].filter(
+    (url): url is string => Boolean(url)
+  );
+}
+
+function shouldRetryWithFallback(status: number): boolean {
+  return status === 429 || status >= 500;
+}
 
 function corsHeaders(request: Request): Record<string, string> {
   const origin = request.headers.get("origin");
@@ -31,10 +45,14 @@ export async function OPTIONS(request: Request) {
 
 export async function POST(request: Request) {
   const headers = corsHeaders(request);
+  const upstreamUrls = getUpstreamUrls();
 
-  if (!MAINNET_RPC_URL) {
+  if (!upstreamUrls.length) {
     return NextResponse.json(
-      { error: "RPC proxy not configured (MAINNET_RPC_URL missing)" },
+      {
+        error:
+          "RPC proxy not configured (MAINNET_RPC_URL missing and no MAINNET_RPC_FALLBACK_URLS)",
+      },
       { status: 503, headers }
     );
   }
@@ -60,47 +78,93 @@ export async function POST(request: Request) {
     );
   }
 
-  try {
-    const bodyToSend = isBatch ? payload : payload[0];
-    const res = await fetch(MAINNET_RPC_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(bodyToSend),
-    });
+  const bodyToSend = isBatch ? payload : payload[0];
+  const attemptErrors: string[] = [];
 
-    const text = await res.text();
-    if (!res.ok) {
-      return NextResponse.json(
-        { error: `Upstream RPC error: ${res.status}`, details: text },
-        { status: 502, headers }
-      );
-    }
+  for (let i = 0; i < upstreamUrls.length; i++) {
+    const isLastAttempt = i === upstreamUrls.length - 1;
+    const upstreamUrl = upstreamUrls[i];
 
-    let data: unknown;
     try {
-      data = JSON.parse(text);
-    } catch {
+      const res = await fetch(upstreamUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(bodyToSend),
+      });
+
+      const text = await res.text();
+      if (!res.ok) {
+        const errorSummary = `attempt ${i + 1}: upstream status ${res.status}`;
+        attemptErrors.push(errorSummary);
+
+        if (!isLastAttempt && shouldRetryWithFallback(res.status)) {
+          console.warn(`[api/rpc] ${errorSummary}, trying fallback`);
+          continue;
+        }
+
+        return NextResponse.json(
+          {
+            error: `Upstream RPC error: ${res.status}`,
+            details: text,
+            fallbackAttempts: upstreamUrls.length,
+            attemptErrors,
+          },
+          { status: 502, headers }
+        );
+      }
+
+      let data: unknown;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        const errorSummary = `attempt ${i + 1}: invalid JSON from upstream`;
+        attemptErrors.push(errorSummary);
+        if (!isLastAttempt) {
+          console.warn(`[api/rpc] ${errorSummary}, trying fallback`);
+          continue;
+        }
+        return NextResponse.json(
+          { error: "Upstream returned invalid JSON", jsonrpc: "2.0", id: null, attemptErrors },
+          { status: 502, headers }
+        );
+      }
+
+      return NextResponse.json(data, {
+        headers: { ...headers, "Cache-Control": "no-store" },
+      });
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Unknown error";
+      const errorSummary = `attempt ${i + 1}: ${message}`;
+      attemptErrors.push(errorSummary);
+
+      if (!isLastAttempt) {
+        console.warn("[api/rpc] Proxy error, trying fallback:", message);
+        continue;
+      }
+
+      // Log message only; do not log error object (may contain upstream URL in some runtimes)
+      console.error("[api/rpc] Proxy error:", message);
       return NextResponse.json(
-        { error: "Upstream returned invalid JSON", jsonrpc: "2.0", id: null },
-        { status: 502, headers }
+        {
+          jsonrpc: "2.0",
+          error: { code: -32603, message: "Internal proxy error" },
+          id: Array.isArray(body) ? body[0]?.id : (body as { id?: unknown })?.id ?? null,
+          attemptErrors,
+        },
+        { status: 500, headers }
       );
     }
-
-    return NextResponse.json(data, {
-      headers: { ...headers, "Cache-Control": "no-store" },
-    });
-  } catch (e) {
-    // Log message only; do not log error object (may contain upstream URL in some runtimes)
-    console.error("[api/rpc] Proxy error:", e instanceof Error ? e.message : "Unknown error");
-    return NextResponse.json(
-      {
-        jsonrpc: "2.0",
-        error: { code: -32603, message: "Internal proxy error" },
-        id: Array.isArray(body) ? body[0]?.id : (body as { id?: unknown })?.id ?? null,
-      },
-      { status: 500, headers }
-    );
   }
+
+  return NextResponse.json(
+    {
+      jsonrpc: "2.0",
+      error: { code: -32603, message: "No RPC upstream available" },
+      id: Array.isArray(body) ? body[0]?.id : (body as { id?: unknown })?.id ?? null,
+      attemptErrors,
+    },
+    { status: 500, headers }
+  );
 }

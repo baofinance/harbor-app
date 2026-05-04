@@ -54,6 +54,18 @@ If the Alchemy URL is sent to the browser (e.g. via `NEXT_PUBLIC_MAINNET_RPC_URL
    - Use the **new** key you created in Part 1.  
    - For **Preview** deployments that use the proxy, set `MAINNET_RPC_URL` on Preview too (otherwise `/api/rpc` returns 503). Development can use a public RPC if you turn the proxy off locally.
 
+#### Optional: add automatic fallback providers
+
+You can provide backup RPC endpoints that are used automatically when the primary returns `429` (rate/capacity) or `5xx` errors.
+
+| Name                           | Value example                                                                 | Environments |
+|--------------------------------|-------------------------------------------------------------------------------|--------------|
+| `MAINNET_RPC_FALLBACK_URLS`    | `https://mainnet.infura.io/v3/KEY,https://eth-mainnet.public.blastapi.io`    | Production, Preview |
+
+- Comma-separated list, no spaces required.
+- Keep these server-only (no `NEXT_PUBLIC_` prefix).
+- Primary remains `MAINNET_RPC_URL`; fallbacks are tried in order.
+
 ### Step 2: Turn on the RPC proxy
 
 In the same **Environment Variables** section, add:
