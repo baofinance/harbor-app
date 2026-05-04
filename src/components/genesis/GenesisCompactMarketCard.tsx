@@ -76,28 +76,26 @@ export function GenesisCompactMarketCard({
     <article className="overflow-hidden rounded-lg bg-white text-[#1E4775] shadow-sm ring-1 ring-[#1E4775]/10">
       <div className="grid gap-4 px-4 py-4 md:grid-cols-[0.75fr_2.1fr_1.15fr] md:items-stretch">
         <div className="flex min-w-0 h-full flex-col justify-between rounded-md p-3">
-          <div className="space-y-2.5">
-            <div className="flex flex-wrap items-center gap-2">
-              <h3 className="text-base font-semibold tracking-tight">
-                Market: {marketName}
-              </h3>
-            </div>
-            <div className="flex flex-wrap items-center gap-2 text-sm">
-              <span className="inline-flex items-center gap-1.5 self-start rounded-md border border-[#10141A] bg-white px-2.5 py-1.5 font-semibold text-[#10141A] shadow-sm">
+          <div className="space-y-3">
+            <h3 className="text-base font-semibold tracking-tight">
+              Market: {marketName}
+            </h3>
+            <div className="text-sm">
+              <span className="inline-flex items-center gap-2 rounded-md border border-[#10141A] bg-white px-2.5 py-1.5 font-semibold text-[#10141A] shadow-sm">
               <NetworkIconCell
                 chainName={chainName}
                 chainLogo={chainLogo}
-                size={18}
+                size={22}
               />
               <span>{chainName}</span>
             </span>
             </div>
-            <div className="text-sm font-bold text-[#FF8A7A]">
+            <div className="text-sm font-bold leading-tight text-[#FF8A7A]">
               Status: {statusText}
             </div>
           </div>
-          <div className="mt-3 flex w-fit max-w-full items-center rounded-md border border-[#1E4775]/15 bg-[#F5F8FC] px-2 py-1.5">
-            <div className="flex flex-wrap items-center gap-1.5">
+          <div className="mt-3 inline-flex w-fit max-w-full items-center rounded-md border border-[#1E4775]/15 bg-[#F5F8FC] px-2 py-1.5">
+            <div className="inline-flex items-center gap-1.5 whitespace-nowrap">
               <TokenLogo symbol={collateralSymbol} size={22} />
               <span className="text-[#1E4775]/55">+</span>
               <TokenLogo symbol={peggedSymbol} size={22} />
