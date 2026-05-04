@@ -51,6 +51,7 @@ import { useSortedGenesisMarkets } from "@/hooks/useSortedGenesisMarkets";
 import {
   GenesisAprMarksColumn,
   GenesisCampaignStats,
+  GenesisCompactMarketCard,
   GenesisHeroIntroCards,
   GenesisMarketsSections,
   GenesisMarketRowClaimActions,
@@ -67,6 +68,7 @@ import { computeGenesisRowUsdPricing } from "@/utils/genesisRowPricing";
 import { usePageLayoutPreference } from "@/contexts/PageLayoutPreferenceContext";
 import { ensureMarketWalletChain } from "@/utils/ensureMarketWalletChain";
 import { formatCompactUSD } from "@/utils/anchor";
+import { getGenesisDepositCapData } from "@/utils/genesisDepositCap";
 
 const SHOW_MAIDEN_VOYAGE_COMING_SOON =
   process.env.NEXT_PUBLIC_SHOW_MAIDEN_VOYAGE_COMING_SOON === "true";
@@ -106,7 +108,11 @@ export default function GenesisIndexPage() {
   // Hide completed genesis sections by default; filter to show "Ongoing" only or "All" (ongoing + completed)
   const [showCompletedGenesis, setShowCompletedGenesis] = useState(false);
 
-  const openManageModal = async (marketId: string, market: GenesisMarketConfig) => {
+  const openManageModal = async (
+    marketId: string,
+    market: GenesisMarketConfig,
+    initialTab: "deposit" | "withdraw" = "deposit"
+  ) => {
     const marketChainId = market?.chainId ?? 1;
 
     const isReady = await ensureMarketWalletChain({
@@ -128,7 +134,7 @@ export default function GenesisIndexPage() {
     setManageModal({
       marketId,
       market,
-      initialTab: "deposit",
+      initialTab,
     });
   };
 
@@ -1053,12 +1059,99 @@ export default function GenesisIndexPage() {
                 const showTestMarketTag =
                   (mkt as GenesisMarketConfig).test === true;
                 const acceptedAssets = getAcceptedDepositAssets(mkt);
+                const depositCapData = getGenesisDepositCapData({
+                  marketId: id,
+                  genesisAddress,
+                  collateralSymbol,
+                  totalDepositsAmount,
+                  maidenVoyageCampaignResults: maidenVoyageCampaignResults || [],
+                  marksResults: marksResults || [],
+                });
+
+                if (genesisViewBasic) {
+                  const isWstETH = collateralSymbol.toLowerCase() === "wsteth";
+                  const isFxSAVE = collateralSymbol.toLowerCase() === "fxsave";
+                  const underlyingAPR = isWstETH
+                    ? wstETHAPR
+                    : isFxSAVE
+                      ? fxSAVEAPR
+                      : null;
+
+                  return (
+                    <GenesisCompactMarketCard
+                      key={id}
+                      marketName={displayMarketName}
+                      chainName={(mkt as GenesisMarketConfig).chain?.name || "Ethereum"}
+                      chainLogo={(mkt as GenesisMarketConfig).chain?.logo || "icons/eth.png"}
+                      collateralSymbol={collateralSymbol}
+                      peggedSymbol={rowPeggedSymbol}
+                      leveragedSymbol={rowLeveragedSymbol}
+                      statusText={statusText}
+                      isExpanded={isExpanded}
+                      isEnded={isEnded}
+                      isProcessing={isProcessing}
+                      showMaintenanceTag={showMaintenanceTag}
+                      hasClaimable={hasClaimable}
+                      isClaiming={claimingMarket === id}
+                      canWithdraw={Boolean(userDeposit && userDeposit > 0n)}
+                      userDepositDisplay={
+                        userDeposit && userDeposit > 0n
+                          ? collateralPriceUSD > 0
+                            ? formatUSD(userDepositUSD)
+                            : `${formatToken(userDeposit)} ${collateralSymbol}`
+                          : "$0"
+                      }
+                      capData={depositCapData}
+                      onToggleExpand={() =>
+                        setExpandedMarkets((prev) =>
+                          prev.includes(id)
+                            ? prev.filter((x) => x !== id)
+                            : [...prev, id]
+                        )
+                      }
+                      onDeposit={() =>
+                        void openManageModal(id, mkt as GenesisMarketConfig, "deposit")
+                      }
+                      onWithdraw={() =>
+                        void openManageModal(id, mkt as GenesisMarketConfig, "withdraw")
+                      }
+                      onClaim={() =>
+                        claimMarket({
+                          marketId: id,
+                          genesisAddress,
+                          displayMarketName,
+                          peggedSymbolForShare: peggedNoPrefix,
+                        })
+                      }
+                      expandedContent={
+                        <GenesisMarketExpandedView
+                          marketId={id}
+                          market={mkt}
+                          genesisAddress={genesisAddress}
+                          totalDeposits={totalDeposits}
+                          totalDepositsUSD={totalDepositsUSD}
+                          userDeposit={userDeposit}
+                          isConnected={isConnected}
+                          address={address}
+                          endDate={endDate}
+                          collateralSymbol={collateralSymbol}
+                          collateralPriceUSD={collateralPriceUSD}
+                          peggedSymbol={rowPeggedSymbol}
+                          leveragedSymbol={rowLeveragedSymbol}
+                          underlyingAPR={underlyingAPR}
+                        />
+                      }
+                    />
+                  );
+                }
 
                 // Show all markets (no skipping)
                 return (
                   <React.Fragment key={id}>
                     <div
-                      className={`py-2.5 px-2 overflow-x-auto overflow-y-visible transition cursor-pointer rounded-md ${
+                      className={`py-2.5 px-2 overflow-x-auto overflow-y-visible transition cursor-pointer ${
+                        isExpanded ? "rounded-t-lg" : "rounded-lg"
+                      } ${
                         isExpanded
                           ? "bg-[rgb(var(--surface-selected-rgb))]"
                           : "bg-white hover:bg-[rgb(var(--surface-selected-rgb))]"
@@ -2355,22 +2448,24 @@ export default function GenesisIndexPage() {
                           : null;
 
                         return (
-                          <GenesisMarketExpandedView
-                            marketId={id}
-                            market={mkt}
-                            genesisAddress={genesisAddress}
-                            totalDeposits={totalDeposits}
-                            totalDepositsUSD={totalDepositsUSD}
-                            userDeposit={userDeposit}
-                            isConnected={isConnected}
-                            address={address}
-                            endDate={endDate}
-                            collateralSymbol={collateralSymbol}
-                            collateralPriceUSD={collateralPriceUSD}
-                            peggedSymbol={rowPeggedSymbol}
-                            leveragedSymbol={rowLeveragedSymbol}
-                            underlyingAPR={underlyingAPR}
-                          />
+                          <div className="overflow-hidden rounded-b-lg">
+                            <GenesisMarketExpandedView
+                              marketId={id}
+                              market={mkt}
+                              genesisAddress={genesisAddress}
+                              totalDeposits={totalDeposits}
+                              totalDepositsUSD={totalDepositsUSD}
+                              userDeposit={userDeposit}
+                              isConnected={isConnected}
+                              address={address}
+                              endDate={endDate}
+                              collateralSymbol={collateralSymbol}
+                              collateralPriceUSD={collateralPriceUSD}
+                              peggedSymbol={rowPeggedSymbol}
+                              leveragedSymbol={rowLeveragedSymbol}
+                              underlyingAPR={underlyingAPR}
+                            />
+                          </div>
                         );
                       })()}
                   </React.Fragment>
@@ -2379,7 +2474,7 @@ export default function GenesisIndexPage() {
 
               return (
                 <>
-                  {activeSectionHeader}
+                  {!genesisViewBasic ? activeSectionHeader : null}
                   {marketRows}
                 </>
               );

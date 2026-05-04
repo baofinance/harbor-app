@@ -71,38 +71,13 @@ export const GenesisMarketExpandedView = ({
 
   const addresses = market.addresses as Record<string, string | undefined>;
 
-  // Get market name for description - use leveraged token symbol without "hs" prefix
-  // This gives us "FXUSD-BTC" from "hsFXUSD-BTC", etc.
-  const marketName =
-    leveragedTokenSymbol && leveragedTokenSymbol.toLowerCase().startsWith("hs")
-      ? leveragedTokenSymbol.slice(2)
-      : leveragedTokenSymbol || (market as any).name || "Market";
-
   return (
-    <div className="bg-[rgb(var(--surface-selected-rgb))] p-4 border-t border-white/20 rounded-md overflow-hidden">
-      {/* Description Box */}
-      <div className="bg-white p-4 mb-2 border border-[#1E4775]/10 rounded-md">
-        <p className="text-xs text-[#1E4775] leading-relaxed">
-          Earn ledger marks for providing liquidity to the{" "}
-          <span className="font-semibold">{marketName}</span> market.{" "}
-          <span className="font-semibold">{collateralTokenSymbol}</span> is
-          split into equal portions of{" "}
-          <span className="font-semibold">{peggedTokenSymbol}</span> and{" "}
-          <span className="font-semibold">{leveragedTokenSymbol}</span>, which
-          are minted on claim. Until you claim, you have{" "}
-          <span className="font-semibold">{collateralTokenSymbol}</span>{" "}
-          exposure. After you claim your net exposure depends on the balance of
-          the market compared to your balance of{" "}
-          <span className="font-semibold">{peggedTokenSymbol}</span> and{" "}
-          <span className="font-semibold">{leveragedTokenSymbol}</span> tokens.
-        </p>
-      </div>
-
-      <div className="bg-[#17395F]/10 p-4 mb-2 border border-[#1E4775]/15 rounded-md">
-        <h3 className="text-xs font-semibold text-[#1E4775] mb-2">
+    <div className="bg-[rgb(var(--surface-selected-rgb))] p-4 border-t border-white/20 rounded-lg overflow-hidden">
+      <div className="bg-[#17395F]/10 p-4 mb-2 border border-[#1E4775]/15 rounded-lg">
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-[#1E4775]/85 mb-2">
           How yield works (this market)
         </h3>
-        <ul className="text-xs text-[#1E4775]/90 space-y-1.5 list-disc pl-4 leading-relaxed">
+        <ul className="text-[13px] text-[#1E4775]/90 space-y-1.5 list-disc pl-4 leading-snug">
           <li>
             This genesis has its own maiden voyage yield pool on-chain.{" "}
             {yieldShareSentence}
@@ -117,19 +92,6 @@ export const GenesisMarketExpandedView = ({
             <span className="font-semibold text-[#1E4775]">% still open</span>{" "}
             is how much capped ownership headroom remains—not a promised APR.
           </li>
-          <li>
-            Ledger marks and $TIDE are separate incentives from the yield pool.
-            Full walkthrough:{" "}
-            <a
-              href="https://docs.harborfinance.io/maiden-voyage"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-semibold text-[#FF8A7A] hover:underline"
-            >
-              Harbor maiden voyage docs
-            </a>
-            .
-          </li>
         </ul>
       </div>
 
@@ -137,7 +99,7 @@ export const GenesisMarketExpandedView = ({
         {/* First Column: End Date/Time and Projected APR */}
         <div className="flex flex-col gap-2 h-full">
           {/* Genesis Info */}
-          <div className="bg-white p-2 flex flex-col justify-center rounded-md">
+          <div className="bg-white p-2 flex flex-col justify-center rounded-lg">
             <h3 className="text-[#1E4775] font-semibold mb-1 text-xs text-center">
               End Date/Time
             </h3>
@@ -148,7 +110,7 @@ export const GenesisMarketExpandedView = ({
 
           {/* Projected Stability Pool APR */}
           {underlyingAPR !== null && underlyingAPR !== undefined && (
-            <div className="text-xs text-white bg-[#1E4775] px-4 py-2 text-center flex-1 flex flex-col justify-center">
+            <div className="rounded-lg bg-[#1E4775] px-4 py-2 text-center text-xs text-white flex-1 flex flex-col justify-center">
               <div className="font-semibold mb-1">
                 Projected {peggedTokenSymbol} APR (Stability pools)
               </div>
@@ -169,7 +131,7 @@ export const GenesisMarketExpandedView = ({
         </div>
 
         {/* Contract Info */}
-        <div className="bg-white p-2 flex flex-col rounded-md">
+        <div className="bg-white p-2 flex flex-col rounded-lg">
           <h3 className="text-[#1E4775] font-semibold mb-1 text-xs">
             Contract Info
           </h3>
@@ -202,7 +164,7 @@ export const GenesisMarketExpandedView = ({
           </div>
         </div>
 
-        <div className="bg-white p-2 flex flex-col rounded-md">
+        <div className="bg-white p-2 flex flex-col rounded-lg">
           <h3 className="text-[#1E4775] font-semibold mb-1 text-xs">Tokens</h3>
           <div className="space-y-1 text-xs flex-1 flex justify-center flex-col">
             <div className="flex justify-between items-center">

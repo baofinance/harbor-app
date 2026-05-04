@@ -99,6 +99,13 @@ export default function Example() {
                 >
                   Transparency
                 </Link>
+                <Link
+                  href="/tide"
+                  className={linkClass("/tide")}
+                  aria-current={isActive("/tide") ? "page" : undefined}
+                >
+                  TIDE
+                </Link>
               </div>
             </div>
           </div>
@@ -214,6 +221,18 @@ export default function Example() {
               aria-current={isActive("/transparency") ? "page" : undefined}
             >
               Transparency
+            </DisclosureButton>
+            <DisclosureButton
+              as={Link}
+              href="/tide"
+              className={`block w-full max-w-sm mx-auto px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 text-center ${
+                isActive("/tide")
+                  ? "text-[#1E4775] bg-white"
+                  : "text-white bg-white/10 hover:bg-white/20"
+              }`}
+              aria-current={isActive("/tide") ? "page" : undefined}
+            >
+              TIDE
             </DisclosureButton>
           </div>
         </div>

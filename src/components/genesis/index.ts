@@ -12,3 +12,5 @@ export { GenesisAprMarksColumn } from "./GenesisAprMarksColumn";
 export type { GenesisAprMarksColumnProps } from "./GenesisAprMarksColumn";
 export { GenesisMarketRowClaimActions } from "./GenesisMarketRowClaimActions";
 export type { GenesisMarketRowClaimActionsProps } from "./GenesisMarketRowClaimActions";
+export { GenesisCompactMarketCard } from "./GenesisCompactMarketCard";
+export type { GenesisCompactMarketCardProps } from "./GenesisCompactMarketCard";
