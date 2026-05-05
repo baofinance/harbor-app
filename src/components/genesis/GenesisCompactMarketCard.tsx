@@ -71,17 +71,26 @@ export function GenesisCompactMarketCard({
   const disableClaim = !hasClaimable || isClaiming;
   const disableManage = isProcessing || showMaintenanceTag || isEnded;
   const progressPct = capData ? Math.min(100, Math.max(0, capData.progressPct)) : 0;
+  const primaryMarketIcon =
+    collateralSymbol.toLowerCase() === "wsteth" ? "stETH" : collateralSymbol;
 
   return (
     <article className="overflow-hidden rounded-lg bg-white text-[#1E4775] shadow-sm ring-1 ring-[#1E4775]/10">
       <div className="grid gap-4 px-4 py-4 md:grid-cols-[0.75fr_2.1fr_1.15fr] md:items-stretch">
-        <div className="flex min-w-0 h-full flex-col justify-between rounded-md p-3">
-          <div className="space-y-3">
-            <h3 className="text-base font-semibold tracking-tight">
-              Market: {marketName}
-            </h3>
+        <div className="flex min-w-0 h-full flex-col justify-evenly rounded-md p-3">
+          <div className="space-y-3.5">
+            <div className="flex items-center gap-2">
+              <TokenLogo
+                symbol={primaryMarketIcon}
+                size={40}
+                className="ring-2 ring-[#1E4775]/10"
+              />
+              <h3 className="text-lg font-semibold tracking-tight">
+                {marketName}
+              </h3>
+            </div>
             <div className="text-sm">
-              <span className="inline-flex items-center gap-2 rounded-md border border-[#10141A] bg-white px-2.5 py-1.5 font-semibold text-[#10141A] shadow-sm">
+              <span className="inline-flex items-center gap-2 rounded-md border border-[#FF8A7A]/45 bg-[#FF8A7A]/20 px-2.5 py-1.5 font-semibold text-[#1E4775] shadow-sm">
               <NetworkIconCell
                 chainName={chainName}
                 chainLogo={chainLogo}
@@ -90,11 +99,11 @@ export function GenesisCompactMarketCard({
               <span>{chainName}</span>
             </span>
             </div>
-            <div className="text-sm font-bold leading-tight text-[#FF8A7A]">
+            <div className="text-sm font-bold leading-tight text-[#9FD5C8]">
               Status: {statusText}
             </div>
           </div>
-          <div className="mt-3 inline-flex w-fit max-w-full items-center rounded-md border border-[#1E4775]/15 bg-[#F5F8FC] px-2 py-1.5">
+          <div className="inline-flex w-fit max-w-full items-center rounded-md border border-[#1E4775]/15 bg-[#F5F8FC] px-2 py-1.5">
             <div className="inline-flex items-center gap-1.5 whitespace-nowrap">
               <TokenLogo symbol={collateralSymbol} size={22} />
               <span className="text-[#1E4775]/55">+</span>
@@ -123,19 +132,48 @@ export function GenesisCompactMarketCard({
               )}
             </button>
           </div>
-          <ol className="space-y-1 text-[13px] leading-snug text-[#1E4775]/95">
-            <li>1. Deposit {collateralSymbol} into this market.</li>
-            <li>
-              2. Your deposit is split into {peggedSymbol} and {leveragedSymbol} when claimed after genesis ends.
+          <ol className="space-y-3 text-[13px] leading-snug text-[#1E4775]/95">
+            <li className="flex items-start gap-2">
+              <span className="mt-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-[#1E4775]/30 text-[10px] font-semibold">
+                1
+              </span>
+              <span>Deposit {collateralSymbol} into the {marketName} market.</span>
             </li>
-            <li>3. Hold your position to participate in yield-for-life distribution.</li>
-            <li>
-              4. Burn {peggedSymbol} to redeem collateral, or stake {peggedSymbol} in the
-              Stability Pool for extra yield.
+
+            <li className="flex items-start gap-2">
+              <span className="mt-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-[#1E4775]/30 text-[10px] font-semibold">
+                2
+              </span>
+              <span>
+                Your deposit is automatically split into {peggedSymbol} + {leveragedSymbol} when genesis ends.
+              </span>
             </li>
-            <li>
-              5. Redeem collateral by burning {leveragedSymbol}, or keep your position to ride
-              volatility.
+
+            <li className="flex items-start gap-2">
+              <span className="mt-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-[#1E4775]/30 text-[10px] font-semibold">
+                3
+              </span>
+              <span className="leading-snug">
+                The depositor pool owns{" "}
+                <span className="font-semibold text-[#FF8A7A]">
+                  5% of this market&apos;s revenue forever
+                </span>
+                . Your share is based on your final ownership at genesis close.
+              </span>
+            </li>
+
+            <li className="flex items-start gap-2">
+              <span className="mt-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-[#1E4775]/30 text-[10px] font-semibold">
+                4
+              </span>
+              <span>Exit anytime: burn {peggedSymbol} or {leveragedSymbol} to redeem collateral.</span>
+            </li>
+
+            <li className="flex items-start gap-2">
+              <span className="mt-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-[#1E4775]/30 text-[10px] font-semibold">
+                5
+              </span>
+              <span>Keep your positions to ride volatility and earn yield.</span>
             </li>
           </ol>
         </div>
@@ -184,10 +222,10 @@ export function GenesisCompactMarketCard({
 
           {capData && !isEnded && (
             <div className="mt-auto space-y-1.5 pt-2">
-              <div className={sectionHeaderClass}>
-                Early deposit headroom
+              <div className={`${sectionHeaderClass} font-bold`}>
+                Early Depositor Advantage
               </div>
-              <div className="h-1.5 overflow-hidden rounded-full bg-[#1E4775]/10">
+              <div className="h-2 overflow-hidden rounded-full border border-[#FF8A7A]/40 bg-[#1E4775]/10">
                 <div
                   className={`h-full rounded-full ${
                     capData.capFilled ? "bg-[#9AA5B8]" : "bg-[#FF8A7A]"
@@ -230,20 +268,25 @@ export function GenesisCompactMarketCard({
                 <InformationCircleIcon className="h-3.5 w-3.5 text-[#1E4775]/60" />
               </span>
             </SimpleTooltip>
-            <span className="text-[11px] text-[#1E4775]/70">
+            <span className="text-[11px] text-[#1E4775]/70 mr-auto">
               {capData.useTokenCap
                 ? `${capData.capCurrent.toFixed(2)} ${capData.collateralSymbol} / ${capData.tokenCapAmount.toFixed(0)} ${capData.collateralSymbol}`
                 : `${formatUSD(capData.capCurrentUsd)} / ${formatUSD(capData.capTotalUsd)}`}
             </span>
           </div>
           <div className="mt-2">
-            <div className="h-2 overflow-hidden rounded-full border border-[#1E4775]/15 bg-[#DDE6F2]">
-              <div
-                className={`h-full rounded-full transition-all ${
-                  capData.capFilled ? "bg-[#9AA5B8]" : "bg-[#FF8A7A]"
-                }`}
-                style={{ width: `${progressPct}%` }}
-              />
+            <div className="flex items-center gap-2">
+              <div className="h-2.5 flex-1 overflow-hidden rounded-full border border-[#1E4775]/20 bg-[#DDE6F2]">
+                <div
+                  className={`h-full rounded-full transition-all ${
+                    capData.capFilled ? "bg-[#9AA5B8]" : "bg-[#FF8A7A]"
+                  }`}
+                  style={{ width: `${progressPct}%` }}
+                />
+              </div>
+              <span className="text-[11px] font-semibold text-[#1E4775]/75 tabular-nums">
+                {progressPct.toFixed(0)}%
+              </span>
             </div>
           </div>
           {capData.yieldRevSharePct != null && (

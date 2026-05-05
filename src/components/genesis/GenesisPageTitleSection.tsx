@@ -10,7 +10,11 @@ export function GenesisPageTitleSection() {
       titleAccentSuffix="2.0"
       subtitle={
         <>
-          Depositors own 5% of market revenue <strong>forever</strong>.
+          Depositors own{" "}
+          <span className="rounded-md bg-[#FF8A7A]/25 px-2 py-0.5 font-semibold text-white">
+            5% of market revenue
+          </span>{" "}
+          <strong>forever</strong>.
         </>
       }
     />

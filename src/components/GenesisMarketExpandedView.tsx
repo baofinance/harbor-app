@@ -77,22 +77,43 @@ export const GenesisMarketExpandedView = ({
         <h3 className="text-xs font-semibold uppercase tracking-wide text-[#1E4775]/85 mb-2">
           How yield works (this market)
         </h3>
-        <ul className="text-[13px] text-[#1E4775]/90 space-y-1.5 list-disc pl-4 leading-snug">
-          <li>
-            This genesis has its own maiden voyage yield pool on-chain.{" "}
-            {yieldShareSentence}
-            (mint/redeem fees on wrapped collateral + hourly collateral carry,
-            in USD) is credited into the pool; that credited amount is split
-            across participants using final ownership (from the USD cap) and
-            voyage boost after genesis.
+        <ol className="text-[13px] text-[#1E4775]/90 space-y-1.5 leading-snug">
+          <li className="flex items-start gap-2">
+            <span className="mt-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-[#1E4775]/30 text-[10px] font-semibold">
+              1
+            </span>
+            <span>
+              <strong>This market has its own on-chain yield pool.</strong>
+            </span>
           </li>
-          <li>
-            The cap bar on the main page shows how much ownership is already
-            counted. The{" "}
-            <span className="font-semibold text-[#1E4775]">% still open</span>{" "}
-            is how much capped ownership headroom remains—not a promised APR.
+          <li className="flex items-start gap-2">
+            <span className="mt-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-[#1E4775]/30 text-[10px] font-semibold">
+              2
+            </span>
+            <span>
+              <strong>Revenue from fees + collateral carry</strong> is credited to
+              this pool. {yieldShareSentence} (in USD) is distributed to owners.
+            </span>
           </li>
-        </ul>
+          <li className="flex items-start gap-2">
+            <span className="mt-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-[#1E4775]/30 text-[10px] font-semibold">
+              3
+            </span>
+            <span>
+              <strong>Your final ownership % is set at Genesis close</strong> (plus
+              voyage boost), this determines your lifetime share.
+            </span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="mt-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-[#1E4775]/30 text-[10px] font-semibold">
+              4
+            </span>
+            <span>
+              <strong>% still open</strong> shows remaining capped ownership
+              headroom (<strong>not</strong> an APR).
+            </span>
+          </li>
+        </ol>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
