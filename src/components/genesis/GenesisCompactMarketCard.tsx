@@ -77,33 +77,35 @@ export function GenesisCompactMarketCard({
   return (
     <article className="overflow-hidden rounded-lg bg-white text-[#1E4775] shadow-sm ring-1 ring-[#1E4775]/10">
       <div className="grid gap-4 px-4 py-4 md:grid-cols-[0.75fr_2.1fr_1.15fr] md:items-stretch">
-        <div className="flex min-w-0 h-full flex-col justify-evenly rounded-md p-3">
-          <div className="space-y-3.5">
-            <div className="flex items-center gap-2">
-              <TokenLogo
-                symbol={primaryMarketIcon}
-                size={40}
-                className="ring-2 ring-[#1E4775]/10"
-              />
-              <h3 className="text-lg font-semibold tracking-tight">
-                {marketName}
-              </h3>
-            </div>
+        <div className="flex min-w-0 h-full flex-col rounded-md p-4">
+          <div className="flex items-center gap-2">
+            <TokenLogo
+              symbol={primaryMarketIcon}
+              size={44}
+              className="ring-2 ring-[#1E4775]/10"
+            />
+            <h3 className="text-[20px] font-semibold tracking-tight">
+              {marketName}
+            </h3>
+          </div>
+
+          <div className="mt-4 space-y-3">
             <div className="text-sm">
               <span className="inline-flex items-center gap-2 rounded-md border border-[#FF8A7A]/45 bg-[#FF8A7A]/20 px-2.5 py-1.5 font-semibold text-[#1E4775] shadow-sm">
-              <NetworkIconCell
-                chainName={chainName}
-                chainLogo={chainLogo}
-                size={22}
-              />
-              <span>{chainName}</span>
-            </span>
+                <NetworkIconCell
+                  chainName={chainName}
+                  chainLogo={chainLogo}
+                  size={22}
+                />
+                <span>{chainName}</span>
+              </span>
             </div>
-            <div className="text-sm font-bold leading-tight text-[#9FD5C8]">
+            <div className="text-sm font-bold leading-tight text-[#6EC1AE]">
               Status: {statusText}
             </div>
           </div>
-          <div className="inline-flex w-fit max-w-full items-center rounded-md border border-[#1E4775]/15 bg-[#F5F8FC] px-2 py-1.5">
+
+          <div className="mt-auto inline-flex w-fit max-w-full items-center rounded-md border border-[#1E4775]/15 bg-[#F5F8FC] px-2 py-1.5">
             <div className="inline-flex items-center gap-1.5 whitespace-nowrap">
               <TokenLogo symbol={collateralSymbol} size={22} />
               <span className="text-[#1E4775]/55">+</span>
@@ -154,11 +156,12 @@ export function GenesisCompactMarketCard({
                 3
               </span>
               <span className="leading-snug">
-                The depositor pool owns{" "}
-                <span className="font-semibold text-[#FF8A7A]">
-                  5% of this market&apos;s revenue forever
+                <strong className="text-[#FF8A7A]">
+                  The depositor pool owns 5% of this market&apos;s revenue forever.
+                </strong>
+                <span className="block">
+                  Your share is set by final ownership at Genesis close.
                 </span>
-                . Your share is based on your final ownership at genesis close.
               </span>
             </li>
 
