@@ -208,9 +208,9 @@ export function GenesisCompactMarketCard({
             </div>
           </div>
 
-          <div className="mt-4 min-w-0">
+          <div className="mt-3 min-w-0">
             <span
-              className={`box-border inline-flex min-w-0 max-w-full items-center gap-2.5 ${GENESIS_CARD_CONTROL_RADIUS} px-3 py-2.5 sm:px-4 ${statusPillSurfaceClass}`}
+              className={`box-border inline-flex min-w-0 max-w-full items-center justify-center gap-3 ${GENESIS_CARD_CONTROL_RADIUS} px-3.5 py-2.5 sm:px-4 ${statusPillSurfaceClass}`}
               style={
                 statusBarTotalWidthPx != null
                   ? {
@@ -221,12 +221,17 @@ export function GenesisCompactMarketCard({
               }
             >
               <span
-                className={`h-2 w-2 shrink-0 rounded-full shadow-[0_0_0_3px_rgba(255,255,255,0.75)] ${statusVisual.dotClass}`}
+                className={
+                  statusVisual.variant === "open"
+                    ? `h-2 w-2 shrink-0 rounded-full bg-[#4A9784] shadow-[0_0_0_3px_rgba(255,255,255,0.75)] animate-genesis-status-open-dot`
+                    : `h-2 w-2 shrink-0 rounded-full shadow-[0_0_0_3px_rgba(255,255,255,0.75)] ${statusVisual.dotClass}`
+                }
               />
               <span
-                className={`min-w-0 flex-1 text-[13px] font-medium leading-snug tracking-tight sm:text-sm ${statusPillLabelClass}`}
+                className={`shrink min-w-0 text-[13px] font-medium leading-snug tracking-normal sm:text-sm ${statusPillLabelClass}`}
               >
-                Status: <span className="font-semibold">{statusVisual.text}</span>
+                <span className="mr-1 inline">Status:</span>
+                <span className="font-semibold">{statusVisual.text}</span>
               </span>
             </span>
           </div>

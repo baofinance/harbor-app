@@ -219,6 +219,28 @@ body.app-bg-megaeth .app-index-manage-btn:hover {
   animation: pulse-once 0.4s ease-out;
 }
 
+/* Genesis compact card: “Genesis Open” status dot — soft seafoam pulse */
+@keyframes genesis-status-open-dot {
+  0%,
+  100% {
+    background-color: #4a9784;
+  }
+  50% {
+    /* Brighter mint than base, but still reads on #B8EBD5 pill chrome */
+    background-color: #7ec4a9;
+  }
+}
+
+.animate-genesis-status-open-dot {
+  animation: genesis-status-open-dot 2.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-genesis-status-open-dot {
+    animation: none;
+  }
+}
+
 @layer base {
   * {
     @apply border-border;
