@@ -7,6 +7,7 @@ import {
   type ReactNode,
 } from "react";
 import {
+  ArrowDownIcon,
   ChevronDownIcon,
   ChevronUpIcon,
   InformationCircleIcon,
@@ -32,15 +33,46 @@ const secondaryActionClass =
 const sectionHeaderClass =
   "text-xs font-semibold uppercase tracking-wide text-[#1E4775]/80";
 
-/** Match `TokenLogo` `size` for the left market icon (used for status bar width math). */
+/** Match `TokenLogo` `size` for the left market icon. */
 const MARKET_ICON_PX = 80;
+/** Smallest `ch` width for the title rail; longer `marketName` values grow the rail naturally (e.g. FXUSD-GOLD). */
+const COMPACT_CARD_TITLE_MIN_CH_FLOOR = 8;
+/**
+ * Floor for chain + status pill width (px) when title is shorter; below full title `ch` width so
+ * `fr` columns grow. Keep in sync with `lg:min-w-[…px]` on the left rail.
+ */
+const COMPACT_CARD_STATUS_RAIL_MIN_PX = 256;
 
-const TOKEN_STRIP_ICON_PX = 36;
+/** Vertical token equation column (between How it works and Your deposit). */
+const VERTICAL_TOKEN_STRIP_ICON_PX = 32;
 /** MegaETH pill: disc stays compact; network glyph is sized up inside the disc. */
 const MEGAETH_CHAIN_DISC_PX = 34;
 const MEGAETH_CHAIN_NETWORK_ICON_PX = 32;
-/** `gap-3` between icon column and text column */
-const HEADER_GAP_PX = 12;
+
+/** Extra px so chain/status pills are slightly wider than the icon+title row (“Status: Genesis Open” one line). */
+const LEFT_RAIL_WIDTH_BUFFER_PX = 16;
+
+/** Labels under vertical strip icons (canonical casing: wstETH, haUSD, hsSTETH-USD, …). */
+function compactStripTokenLabel(symbol: string): string {
+  const s = symbol.trim();
+  const lower = s.toLowerCase();
+  if (lower === "wsteth") return "wstETH";
+  if (lower === "steth") return "stETH";
+  if (lower === "fxsave") return "fxSAVE";
+  if (lower === "fxusd") return "fxUSD";
+  if (lower === "hausd") return "haUSD";
+  if (lower === "usdc") return "USDC";
+  if (lower === "eth") return "ETH";
+  if (lower.startsWith("hs")) return `hs${s.slice(2)}`;
+  if (lower.startsWith("ha")) return `ha${s.slice(2)}`;
+  return s;
+}
+
+/** Used token amount beside progress bar: always round down to two decimals. */
+function floorTokenAmountTwoDecimals(amount: number): string {
+  if (!Number.isFinite(amount) || amount <= 0) return "0.00";
+  return (Math.floor(amount * 100) / 100).toFixed(2);
+}
 
 export type GenesisCompactMarketCardProps = {
   marketName: string;
@@ -89,6 +121,11 @@ export function GenesisCompactMarketCard({
   onClaim,
   expandedContent,
 }: GenesisCompactMarketCardProps) {
+  const compactTitleMinCh = Math.max(
+    COMPACT_CARD_TITLE_MIN_CH_FLOOR,
+    marketName.trim().length,
+  );
+
   const showClaimAction = isEnded && !showMaintenanceTag;
   const disableClaim = !hasClaimable || isClaiming;
   const disableManage = isProcessing || showMaintenanceTag || isEnded;
@@ -166,50 +203,70 @@ export function GenesisCompactMarketCard({
     ? "pr-0.5 text-[14px] font-black leading-none tracking-[0.05em] text-[#FAFCFF] antialiased sm:text-[15px]"
     : "pr-0.5 text-sm font-semibold tracking-tight text-[#FFFFFF]";
 
-  const brandStackRef = useRef<HTMLDivElement>(null);
+  /** Icon + market title row only — chain, status, and token strip match this width (left: icon edge, right: title edge). */
+  const headerTitleRowRef = useRef<HTMLDivElement>(null);
   const [statusBarTotalWidthPx, setStatusBarTotalWidthPx] = useState<number | undefined>(
     undefined,
   );
 
   useLayoutEffect(() => {
-    const el = brandStackRef.current;
+    const el = headerTitleRowRef.current;
     if (!el) return;
 
     const measure = () => {
-      // Full width of icon+title row and chain row (chain is below title, indented to title start).
       const w = Math.ceil(el.getBoundingClientRect().width);
-      setStatusBarTotalWidthPx(w);
+      setStatusBarTotalWidthPx(
+        Math.max(w + LEFT_RAIL_WIDTH_BUFFER_PX, COMPACT_CARD_STATUS_RAIL_MIN_PX)
+      );
     };
 
     measure();
     const ro = new ResizeObserver(measure);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [marketName, chainName, chainLogo]);
+  }, [marketName, primaryMarketIcon]);
 
   return (
     <article className="overflow-hidden rounded-xl bg-white text-[#1E4775] shadow-[0_16px_40px_-30px_rgba(0,0,0,0.55)] ring-1 ring-black/5">
-      <div className="grid gap-5 px-5 py-5 md:grid-cols-2 md:items-stretch lg:grid-cols-[auto_minmax(0,1.95fr)_minmax(0,1fr)] lg:gap-x-0 lg:gap-y-5">
-        <div className="flex h-full max-w-full w-fit flex-col justify-self-start py-2 min-w-0 lg:pr-6">
-          <div
-            ref={brandStackRef}
-            className="flex w-fit max-w-full min-w-0 flex-col gap-2"
-          >
-            <div className="flex min-w-0 items-center gap-3">
+      {/* lg: tighter left rail; `fr` split favors Your deposit over How it works. */}
+      <div className="grid gap-4 px-4 py-4 md:grid-cols-2 md:items-stretch lg:grid-cols-[auto_minmax(0,1.82fr)_calc(5.5rem+10px)_minmax(0,1.12fr)] lg:items-stretch lg:gap-x-0 lg:gap-y-4">
+        <div
+          className="flex h-full min-h-0 min-w-0 max-w-full w-full flex-col justify-self-start py-2 lg:min-w-[256px] lg:pr-4"
+          style={{
+            minWidth: `min(100%, calc(${MARKET_ICON_PX}px + 0.75rem + ${compactTitleMinCh}ch))`,
+          }}
+        >
+          {/* Equal gap (gap-3) between icon+title row, chain, and status; rail width matches measured header + buffer */}
+          <div className="flex w-full min-w-0 max-w-full flex-col gap-3">
+            <div
+              ref={headerTitleRowRef}
+              className="flex w-fit max-w-full min-w-0 items-center gap-3"
+              style={{
+                minWidth: `calc(${MARKET_ICON_PX}px + 0.75rem + ${compactTitleMinCh}ch)`,
+              }}
+            >
               <TokenLogo
                 symbol={primaryMarketIcon}
                 size={MARKET_ICON_PX}
                 className="translate-y-[3px] shrink-0 ring-2 ring-[#1E4775]/40 shadow-[0_0_0_1px_rgba(30,71,117,0.28),0_0_40px_-4px_rgba(30,71,117,0.52),0_10px_60px_-16px_rgba(30,71,117,0.42),0_0_80px_-6px_rgba(30,71,117,0.2)]"
               />
-              <h3 className="min-w-0 text-left text-xl font-bold tracking-tight text-[#1E4775] sm:text-[22px]">
+              <h3
+                className="shrink-0 text-left text-xl font-bold tracking-tight text-[#1E4775] sm:text-[22px]"
+                style={{ minWidth: `${compactTitleMinCh}ch` }}
+              >
                 {marketName}
               </h3>
             </div>
             <div
-              className="min-w-0 max-w-full"
-              style={{
-                paddingLeft: MARKET_ICON_PX + HEADER_GAP_PX,
-              }}
+              className="min-w-0 max-w-full shrink-0 self-start"
+              style={
+                statusBarTotalWidthPx != null
+                  ? {
+                      width: statusBarTotalWidthPx,
+                      maxWidth: "100%",
+                    }
+                  : undefined
+              }
             >
               <span className={chainBadgeShellClass}>
                 <span
@@ -236,72 +293,45 @@ export function GenesisCompactMarketCard({
                 <span className={chainBadgeLabelClass}>{chainName}</span>
               </span>
             </div>
-          </div>
 
-          <div className="mt-3 min-w-0">
-            <span
-              className={`inline-flex min-w-0 max-w-full items-center justify-center gap-2.5 ${GENESIS_CARD_CONTROL_RADIUS} ${GENESIS_LEFT_RAIL_CHIP_HEIGHT} ${GENESIS_LEFT_RAIL_CHIP_INSET_X} ${statusPillSurfaceClass}`}
-              style={
-                statusBarTotalWidthPx != null
-                  ? {
-                      width: statusBarTotalWidthPx,
-                      maxWidth: "100%",
-                    }
-                  : undefined
-              }
-            >
+            <div className="min-w-0 max-w-full self-start">
               <span
-                className={
-                  statusVisual.variant === "open"
-                    ? `h-2 w-2 shrink-0 rounded-full bg-[#4A9784] shadow-[0_0_0_3px_rgba(255,255,255,0.75)] animate-genesis-status-open-dot`
-                    : `h-2 w-2 shrink-0 rounded-full shadow-[0_0_0_3px_rgba(255,255,255,0.75)] ${statusVisual.dotClass}`
+                className={`flex min-w-0 max-w-full items-center justify-center gap-2 ${GENESIS_CARD_CONTROL_RADIUS} ${GENESIS_LEFT_RAIL_CHIP_HEIGHT} ${GENESIS_LEFT_RAIL_CHIP_INSET_X} ${statusPillSurfaceClass}`}
+                style={
+                  statusBarTotalWidthPx != null
+                    ? {
+                        width: statusBarTotalWidthPx,
+                        maxWidth: "100%",
+                      }
+                    : undefined
                 }
-              />
-              <span
-                className={`shrink min-w-0 text-[14px] font-black leading-none tracking-[0.05em] antialiased sm:text-[15px] ${statusPillLabelClass}`}
               >
-                <span className="mr-1 inline">Status:</span>
-                <span>{statusVisual.text}</span>
+                <span
+                  className={
+                    statusVisual.variant === "open"
+                      ? `h-2 w-2 shrink-0 rounded-full bg-[#4A9784] shadow-[0_0_0_3px_rgba(255,255,255,0.75)] animate-genesis-status-open-dot`
+                      : `h-2 w-2 shrink-0 rounded-full shadow-[0_0_0_3px_rgba(255,255,255,0.75)] ${statusVisual.dotClass}`
+                  }
+                />
+                <span
+                  className={`text-center text-[13px] font-black leading-tight tracking-[0.04em] antialiased sm:text-[14px] ${statusPillLabelClass}`}
+                >
+                  <span className="mr-1 inline">Status:</span>
+                  <span>{statusVisual.text}</span>
+                </span>
               </span>
-            </span>
-          </div>
-
-          <div
-            className="mt-4 flex min-w-0 shrink-0 justify-center pt-0"
-            style={
-              statusBarTotalWidthPx != null
-                ? { width: statusBarTotalWidthPx, maxWidth: "100%" }
-                : { width: "100%", maxWidth: "100%" }
-            }
-          >
-            <div className="inline-flex items-center gap-3 whitespace-nowrap text-[#10141A]/55">
-              <SimpleTooltip label={collateralSymbol} className="cursor-help">
-                <TokenLogo symbol={collateralSymbol} size={TOKEN_STRIP_ICON_PX} className="ring-0" />
-              </SimpleTooltip>
-              <span aria-hidden className="text-base">
-                =
-              </span>
-              <SimpleTooltip label={peggedSymbol} className="cursor-help">
-                <TokenLogo symbol={peggedSymbol} size={TOKEN_STRIP_ICON_PX} className="ring-0" />
-              </SimpleTooltip>
-              <span aria-hidden className="text-base">
-                +
-              </span>
-              <SimpleTooltip label={leveragedSymbol} className="cursor-help">
-                <TokenLogo symbol={leveragedSymbol} size={TOKEN_STRIP_ICON_PX} className="ring-0" />
-              </SimpleTooltip>
             </div>
           </div>
         </div>
 
-        <div className="h-full min-w-0 space-y-2 border-t border-[#1E4775]/12 py-2 pt-5 md:border-l md:border-t-0 md:pl-5 md:pt-2 lg:pl-6 lg:pr-4">
-          <div className="flex items-center justify-between gap-2">
-            <h4 className={sectionHeaderClass}>
+        <div className="flex h-full min-h-0 min-w-0 flex-col border-t border-[#1E4775]/12 py-2 pt-5 md:border-l md:border-t-0 md:pl-4 md:pt-2 lg:pl-5 lg:pr-3">
+          <div className="flex shrink-0 items-start justify-between gap-2">
+            <h4 className={`${sectionHeaderClass} leading-none`}>
               How it works
             </h4>
             <button
               type="button"
-              className="inline-flex items-center gap-1 text-[11px] font-medium text-[#1E4775]/80 hover:text-[#1E4775]"
+              className="inline-flex shrink-0 items-center gap-1 self-center text-[11px] font-medium text-[#1E4775]/80 hover:text-[#1E4775]"
               onClick={onToggleExpand}
             >
               Learn more
@@ -312,7 +342,7 @@ export function GenesisCompactMarketCard({
               )}
             </button>
           </div>
-          <ul className="space-y-3 text-[13px] leading-snug text-[#1E4775]/90">
+          <ul className="mt-2 flex min-h-0 flex-1 flex-col justify-between gap-y-2 text-[13px] leading-snug text-[#1E4775]/90 lg:mt-2 lg:gap-y-0">
             <li className="flex items-center gap-2">
               <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#1E4775]/40" aria-hidden />
               <span>
@@ -351,9 +381,56 @@ export function GenesisCompactMarketCard({
           </ul>
         </div>
 
-        <div className="flex h-full min-w-0 flex-col gap-3 border-t border-[#1E4775]/12 py-2 pt-5 md:col-span-2 lg:col-span-1 lg:border-l lg:border-t-0 lg:pl-6 lg:pt-2">
+        {/* Collateral → anchor + sail; full column height like “How it works” bullets (justify-between) */}
+        <div
+          className="flex h-full min-h-0 min-w-0 flex-col items-center justify-between self-stretch border-t border-[#1E4775]/12 py-3 pt-5 md:border-l md:border-t-0 md:py-3 md:pt-2 lg:border-x lg:px-0.5 lg:pb-4 lg:pt-[11px]"
+          aria-label={`${compactStripTokenLabel(collateralSymbol)} splits into ${compactStripTokenLabel(peggedSymbol)} and ${compactStripTokenLabel(leveragedSymbol)}`}
+        >
+          <div className="flex shrink-0 flex-col items-center gap-0.5">
+            <SimpleTooltip label={collateralSymbol} className="cursor-help">
+              <TokenLogo
+                symbol={collateralSymbol}
+                size={VERTICAL_TOKEN_STRIP_ICON_PX}
+                className="ring-0"
+              />
+            </SimpleTooltip>
+            <span className="max-w-[6rem] truncate text-center font-mono text-[10px] font-semibold tracking-wide text-[#1E4775]/65">
+              {compactStripTokenLabel(collateralSymbol)}
+            </span>
+          </div>
+          <ArrowDownIcon
+            aria-hidden
+            className="h-4 w-4 shrink-0 text-[#1E4775]/35"
+          />
+          <div className="flex shrink-0 flex-col items-center gap-0.5">
+            <SimpleTooltip label={peggedSymbol} className="cursor-help">
+              <TokenLogo
+                symbol={peggedSymbol}
+                size={VERTICAL_TOKEN_STRIP_ICON_PX}
+                className="ring-0"
+              />
+            </SimpleTooltip>
+            <span className="max-w-[6rem] truncate text-center font-mono text-[10px] font-semibold tracking-wide text-[#1E4775]/65">
+              {compactStripTokenLabel(peggedSymbol)}
+            </span>
+          </div>
+          <div className="flex min-w-0 max-w-full shrink-0 flex-col items-center gap-0.5 px-0.5">
+            <SimpleTooltip label={leveragedSymbol} className="cursor-help">
+              <TokenLogo
+                symbol={leveragedSymbol}
+                size={VERTICAL_TOKEN_STRIP_ICON_PX}
+                className="ring-0"
+              />
+            </SimpleTooltip>
+            <span className="w-full max-w-[min(100%,7.5rem)] truncate text-center font-mono text-[10px] font-semibold tracking-wide text-[#1E4775]/65">
+              {compactStripTokenLabel(leveragedSymbol)}
+            </span>
+          </div>
+        </div>
+
+        <div className="flex h-full min-h-0 min-w-0 flex-col gap-2.5 border-t border-[#1E4775]/12 py-2 pt-5 md:border-l md:border-t-0 md:pl-4 md:pt-2 lg:col-span-1 lg:border-l-0 lg:pl-4 lg:pt-2">
           <div className="space-y-1.5">
-            <div className={sectionHeaderClass}>
+            <div className={`${sectionHeaderClass} leading-none`}>
               Your deposit
             </div>
             <div className="text-xl leading-none font-semibold">{userDepositDisplay}</div>
@@ -406,19 +483,40 @@ export function GenesisCompactMarketCard({
                   style={{ width: `${Math.max(0, 100 - capData.progressPct)}%` }}
                 />
               </div>
+              <p className="text-[11px] leading-snug text-[#1E4775]/55">
+                <span className="font-semibold tabular-nums text-[#1E4775]/70">
+                  {availablePct.toFixed(0)}%
+                </span>{" "}
+                capped ownership still open.
+              </p>
             </div>
           )}
         </div>
       </div>
 
       {capData && !isEnded && (
-        <div className="border-t border-black/5 bg-[#FAFCFF] px-5 py-3.5">
+        <div className="border-t border-black/5 bg-[#FAFCFF] px-4 py-3">
           <div className="mb-1 flex items-center gap-2">
             <SimpleTooltip
               label={
-                <span className="block max-w-xs text-xs leading-relaxed">
-                  Deposits count toward this market&apos;s cap. At genesis close,
-                  your counted deposit share sets your maiden-yield ownership share.
+                <span className="flex max-w-xs flex-col gap-2 text-xs leading-relaxed">
+                  <span>
+                    Deposits count toward this market&apos;s cap. At genesis close,
+                    your counted deposit share sets your maiden-yield ownership share.
+                  </span>
+                  {capData.useTokenCap ? (
+                    <span className="font-medium leading-snug text-[#FF8A7A]">
+                      {availablePct.toFixed(0)}% of {capData.tokenCapAmount.toFixed(0)}{" "}
+                      {compactStripTokenLabel(capData.collateralSymbol)} still available for
+                      early depositors.
+                    </span>
+                  ) : (
+                    <span className="font-medium leading-snug text-[#FF8A7A]">
+                      {formatUSD(capData.capCurrentUsd)} cumulative toward a{" "}
+                      {formatUSD(capData.capTotalUsd)} cap ({availablePct.toFixed(0)}% headroom
+                      for early depositors).
+                    </span>
+                  )}
                 </span>
               }
             >
@@ -427,11 +525,6 @@ export function GenesisCompactMarketCard({
                 <InformationCircleIcon className="h-3.5 w-3.5 text-[#1E4775]/60" />
               </span>
             </SimpleTooltip>
-            <span className="text-[11px] text-[#1E4775]/70 mr-auto">
-              {capData.useTokenCap
-                ? `${availablePct.toFixed(0)}% of ${capData.tokenCapAmount.toFixed(0)} ${capData.collateralSymbol} still available for early depositors`
-                : `${formatUSD(capData.capCurrentUsd)} / ${formatUSD(capData.capTotalUsd)}`}
-            </span>
           </div>
           <div className="mt-2">
             <div className="flex items-center gap-2">
@@ -443,8 +536,18 @@ export function GenesisCompactMarketCard({
                   style={{ width: `${progressPct}%` }}
                 />
               </div>
-              <span className="text-[11px] font-semibold text-[#1E4775]/75 tabular-nums">
-                {availablePct.toFixed(0)}%
+              <span className="max-w-[min(100%,11rem)] shrink-0 text-right text-[11px] font-semibold leading-tight text-[#1E4775]/75 tabular-nums">
+                {capData.useTokenCap ? (
+                  <>
+                    {floorTokenAmountTwoDecimals(capData.capCurrent)} /{" "}
+                    {capData.tokenCapAmount.toFixed(0)}{" "}
+                    {compactStripTokenLabel(capData.collateralSymbol)}
+                  </>
+                ) : (
+                  <>
+                    {formatUSD(capData.capCurrentUsd)} / {formatUSD(capData.capTotalUsd)}
+                  </>
+                )}
               </span>
             </div>
           </div>
@@ -473,7 +576,7 @@ export function GenesisCompactMarketCard({
       )}
 
       {isExpanded && expandedContent ? (
-        <div className="overflow-hidden border-t border-[#1E4775]/12 bg-white px-5 py-4">
+        <div className="overflow-hidden border-t border-[#1E4775]/12 bg-white px-4 py-3.5">
           {expandedContent}
         </div>
       ) : null}
