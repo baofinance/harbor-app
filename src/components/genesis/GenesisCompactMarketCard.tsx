@@ -32,6 +32,9 @@ const sectionHeaderClass =
 const MARKET_ICON_PX = 80;
 
 const TOKEN_STRIP_ICON_PX = 36;
+/** MegaETH pill: disc stays compact; network glyph is sized up inside the disc. */
+const MEGAETH_CHAIN_DISC_PX = 34;
+const MEGAETH_CHAIN_NETWORK_ICON_PX = 32;
 /** `gap-3` between icon column and text column */
 const HEADER_GAP_PX = 12;
 
@@ -150,9 +153,10 @@ export function GenesisCompactMarketCard({
     ? `flex min-h-0 min-w-0 w-full flex-wrap items-center justify-center gap-2.5 ${GENESIS_CARD_CONTROL_RADIUS} border border-white/[0.09] bg-gradient-to-br from-[#0f2832] via-[#1a253e] to-[#321a3a] px-3 py-2 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.09),0_12px_36px_-20px_rgba(10,8,24,0.48)] ring-1 ring-black/[0.05]`
     : `flex min-h-0 min-w-0 w-full flex-wrap items-center justify-center gap-2 ${GENESIS_CARD_CONTROL_RADIUS} border border-[#10141A]/10 bg-gradient-to-b from-[#1E4775] to-[#153B56] px-2.5 py-1.5 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_10px_24px_-16px_rgba(30,71,117,0.35)]`;
 
-  const chainBadgeIconWrapClass = isMegaEthChainBadge
-    ? "flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full bg-[#EEF2F7] shadow-[inset_0_0_0_1px_rgba(16,20,26,0.05),0_1px_4px_-1px_rgba(0,0,0,0.35)] ring-1 ring-black/[0.045] [&_svg]:contrast-[1.04]"
-    : "flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#FFFFFF] shadow-[inset_0_0_0_1px_rgba(16,20,26,0.06)]";
+  const chainBadgeIconEthereumWrapClass =
+    "flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#FFFFFF] shadow-[inset_0_0_0_1px_rgba(16,20,26,0.06)]";
+  const chainBadgeIconMegaEthWrapClass =
+    "flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#EEF2F7] shadow-[inset_0_0_0_1px_rgba(16,20,26,0.05),0_1px_4px_-1px_rgba(0,0,0,0.35)] [&_svg]:contrast-[1.04]";
 
   const chainBadgeLabelClass = isMegaEthChainBadge
     ? "pr-0.5 text-[14px] font-black leading-none tracking-[0.05em] text-[#FAFCFF] antialiased sm:text-[15px]"
@@ -196,11 +200,25 @@ export function GenesisCompactMarketCard({
                 {marketName}
               </h3>
               <span className={chainBadgeShellClass}>
-                <span className={chainBadgeIconWrapClass}>
+                <span
+                  className={
+                    isMegaEthChainBadge
+                      ? chainBadgeIconMegaEthWrapClass
+                      : chainBadgeIconEthereumWrapClass
+                  }
+                  style={
+                    isMegaEthChainBadge
+                      ? {
+                          width: MEGAETH_CHAIN_DISC_PX,
+                          height: MEGAETH_CHAIN_DISC_PX,
+                        }
+                      : undefined
+                  }
+                >
                   <NetworkIconCell
                     chainName={chainName}
                     chainLogo={chainLogo}
-                    size={isMegaEthChainBadge ? 28 : 22}
+                    size={isMegaEthChainBadge ? MEGAETH_CHAIN_NETWORK_ICON_PX : 22}
                   />
                 </span>
                 <span className={chainBadgeLabelClass}>{chainName}</span>
@@ -376,21 +394,6 @@ export function GenesisCompactMarketCard({
                   style={{ width: `${Math.max(0, 100 - capData.progressPct)}%` }}
                 />
               </div>
-              <p className="text-[11px] leading-tight text-[#1E4775]/65">
-                {capData.capFilled ? (
-                  <>
-                    <span className="font-medium text-[#1E4775]/80">0%</span>{" "}
-                    capped ownership still open.
-                  </>
-                ) : (
-                  <>
-                    <span className="font-medium text-[#1E4775]/80">
-                      {availablePct.toFixed(0)}%
-                    </span>{" "}
-                    capped ownership still open.
-                  </>
-                )}
-              </p>
             </div>
           )}
         </div>
