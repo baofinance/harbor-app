@@ -14,3 +14,10 @@ export { GenesisMarketRowClaimActions } from "./GenesisMarketRowClaimActions";
 export type { GenesisMarketRowClaimActionsProps } from "./GenesisMarketRowClaimActions";
 export { GenesisCompactMarketCard } from "./GenesisCompactMarketCard";
 export type { GenesisCompactMarketCardProps } from "./GenesisCompactMarketCard";
+export { GenesisComingNextMarketsSection } from "./GenesisComingNextMarketsSection";
+export type { GenesisComingNextMarketsSectionProps } from "./GenesisComingNextMarketsSection";
+export { GenesisCompletedMarketsSection } from "./GenesisCompletedMarketsSection";
+export type {
+  GenesisClaimMarketArgs,
+  GenesisCompletedMarketsSectionProps,
+} from "./GenesisCompletedMarketsSection";

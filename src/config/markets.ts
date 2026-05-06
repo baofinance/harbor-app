@@ -903,6 +903,8 @@ export const markets = {
           leveragedToken: { name: "Harbor Sail stETH-USD", symbol: "hsSTETH-USD", description: "Leveraged token" },
           rewardPoints: { pointsPerDollar: 100, description: "Ledger marks per dollar" },
           marksCampaign: { id: "megaeth", label: "MegaETH" },
+          /** wstETH-denominated early depositor cap (see `getGenesisDepositCapData` / Genesis index row). */
+          genesisTokenCapAmount: 50,
           coinGeckoId: "wrapped-steth",
           genesis: {
             startDate: contractsMarkets["wsteth-usd-megaeth"].genesis.startDate,

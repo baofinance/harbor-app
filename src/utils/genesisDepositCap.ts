@@ -35,6 +35,15 @@ export type GenesisDepositCapData = {
   yieldRevSharePct: number | null;
 };
 
+/** Normalize optional market config: positive numbers only; otherwise no token-denominated cap. */
+export function resolveGenesisTokenCapAmount(
+  genesisTokenCapAmount: number | undefined
+): number {
+  return typeof genesisTokenCapAmount === "number" && genesisTokenCapAmount > 0
+    ? genesisTokenCapAmount
+    : 0;
+}
+
 function safeToNumber(value: unknown): number {
   if (typeof value === "number") return Number.isFinite(value) ? value : 0;
   if (typeof value === "string") {
@@ -63,19 +72,20 @@ function getUserHarborMarks(
 }
 
 export function getGenesisDepositCapData({
-  marketId,
   genesisAddress,
   collateralSymbol,
   totalDepositsAmount,
   maidenVoyageCampaignResults,
   marksResults,
+  genesisTokenCapAmount: genesisTokenCapAmountFromConfig,
 }: {
-  marketId: string;
   genesisAddress?: string;
   collateralSymbol: string;
   totalDepositsAmount: number;
   maidenVoyageCampaignResults: MaidenVoyageCampaignResult[];
   marksResults: MaidenVoyageMarksRow[];
+  /** From market config (`genesisTokenCapAmount`); omit or ≤0 to use USD cap from indexer only. */
+  genesisTokenCapAmount?: number;
 }): GenesisDepositCapData | null {
   const capResult = maidenVoyageCampaignResults.find(
     (row) =>
@@ -85,7 +95,9 @@ export function getGenesisDepositCapData({
   const capUsd = safeToNumber(capRow?.capUSD);
   const cumulativeUsd = safeToNumber(capRow?.cumulativeDepositsUSD);
 
-  const tokenCapAmount = marketId === "wsteth-usd-megaeth" ? 50 : 0;
+  const tokenCapAmount = resolveGenesisTokenCapAmount(
+    genesisTokenCapAmountFromConfig
+  );
   const useTokenCap = tokenCapAmount > 0;
 
   const capTotal = useTokenCap ? tokenCapAmount : capUsd;

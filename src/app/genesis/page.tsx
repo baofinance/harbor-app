@@ -33,7 +33,6 @@ import { getLogoPath, TokenLogo } from "@/components/shared";
 import {
   GENESIS_MARKET_TEST_TAG_CLASS,
   GENESIS_MARKET_TEST_TAG_TOOLTIP,
-  INDEX_CORAL_INFO_TAG_CLASS,
 } from "@/components/shared/indexMarketsToolbarStyles";
 import { useCoinGeckoPrices } from "@/hooks/useCoinGeckoPrice";
 import { useMultipleTokenPrices } from "@/hooks/useTokenPrices";
@@ -51,7 +50,9 @@ import { useSortedGenesisMarkets } from "@/hooks/useSortedGenesisMarkets";
 import {
   GenesisAprMarksColumn,
   GenesisCampaignStats,
+  GenesisComingNextMarketsSection,
   GenesisCompactMarketCard,
+  GenesisCompletedMarketsSection,
   GenesisHeroIntroCards,
   GenesisMarketsSections,
   GenesisMarketRowClaimActions,
@@ -68,7 +69,10 @@ import { computeGenesisRowUsdPricing } from "@/utils/genesisRowPricing";
 import { usePageLayoutPreference } from "@/contexts/PageLayoutPreferenceContext";
 import { ensureMarketWalletChain } from "@/utils/ensureMarketWalletChain";
 import { formatCompactUSD } from "@/utils/anchor";
-import { getGenesisDepositCapData } from "@/utils/genesisDepositCap";
+import {
+  getGenesisDepositCapData,
+  resolveGenesisTokenCapAmount,
+} from "@/utils/genesisDepositCap";
 
 const SHOW_MAIDEN_VOYAGE_COMING_SOON =
   process.env.NEXT_PUBLIC_SHOW_MAIDEN_VOYAGE_COMING_SOON === "true";
@@ -1055,12 +1059,13 @@ export default function GenesisIndexPage() {
                   (mkt as GenesisMarketConfig).test === true;
                 const acceptedAssets = getAcceptedDepositAssets(mkt);
                 const depositCapData = getGenesisDepositCapData({
-                  marketId: id,
                   genesisAddress,
                   collateralSymbol,
                   totalDepositsAmount,
                   maidenVoyageCampaignResults: maidenVoyageCampaignResults || [],
                   marksResults: marksResults || [],
+                  genesisTokenCapAmount: (mkt as GenesisMarketConfig)
+                    .genesisTokenCapAmount,
                 });
 
                 if (genesisViewBasic) {
@@ -1141,8 +1146,10 @@ export default function GenesisIndexPage() {
                 }
 
                 // Show all markets (no skipping)
+                // One wrapper per market so parent `space-y-2` does not insert a gap between the
+                // table row and expanded panel (that gap showed the dark page bg as a “black line”).
                 return (
-                  <React.Fragment key={id}>
+                  <div key={id} className="overflow-visible">
                     <div
                       className={`py-2.5 px-2 overflow-x-auto overflow-y-visible transition cursor-pointer ${
                         isExpanded ? "rounded-t-lg" : "rounded-lg"
@@ -2295,8 +2302,9 @@ export default function GenesisIndexPage() {
                           const cumulative = parseFloat(
                             capRow?.cumulativeDepositsUSD || "0"
                           );
-                          const tokenCapAmount =
-                            id === "wsteth-usd-megaeth" ? 50 : 0;
+                          const tokenCapAmount = resolveGenesisTokenCapAmount(
+                            (mkt as GenesisMarketConfig).genesisTokenCapAmount
+                          );
                           const useTokenCap = tokenCapAmount > 0;
                           const capTotal = useTokenCap ? tokenCapAmount : capUsd;
                           const capCurrent = useTokenCap
@@ -2443,7 +2451,7 @@ export default function GenesisIndexPage() {
                           : null;
 
                         return (
-                          <div className="overflow-hidden rounded-b-lg">
+                          <div className="overflow-hidden rounded-b-lg border-t border-[#1E4775]/12 bg-white px-5 py-4">
                             <GenesisMarketExpandedView
                               marketId={id}
                               market={mkt}
@@ -2463,7 +2471,7 @@ export default function GenesisIndexPage() {
                           </div>
                         );
                       })()}
-                  </React.Fragment>
+                  </div>
                 );
               });
 
@@ -2477,611 +2485,26 @@ export default function GenesisIndexPage() {
           </GenesisMarketsSections>
         )}
 
-        {/* Coming Next Markets Section */}
-        {comingSoonMarkets.length > 0 && (
-          <section className="space-y-2 overflow-visible mt-8">
-            <div className="pt-4 mb-1">
-              <div className="flex items-center gap-2">
-                <h2 className="text-xs font-medium text-white/70 uppercase tracking-wider">
-                  Next Campaign:
-                </h2>
-                <span className={INDEX_CORAL_INFO_TAG_CLASS}>Metals</span>
-              </div>
-            </div>
-            {/* Header row - hidden on mobile, shown on desktop */}
-            <div className="hidden md:block bg-white py-1.5 px-2 overflow-x-auto mb-0 rounded-md">
-              <div className="grid lg:grid-cols-[32px_1.5fr_80px_0.9fr_1fr_0.9fr] md:grid-cols-[32px_120px_80px_100px_1fr_90px] gap-4 items-center uppercase tracking-wider text-[10px] lg:text-[11px] text-[#1E4775] font-semibold">
-                <div className="min-w-0" aria-label="Network" />
-                <div className="min-w-0 text-center">Market</div>
-                <div className="text-center min-w-0 whitespace-nowrap">Proj. SP APR</div>
-                <div className="text-center min-w-0">Anchor Token</div>
-                <div className="text-center min-w-0">Sail Token</div>
-                <div className="text-center min-w-0">Status</div>
-              </div>
-            </div>
-            <div className="space-y-2">
-              {comingSoonMarkets.map(([id, mkt]) => {
-                const peggedSymbol = mkt.peggedToken?.symbol || "haTOKEN";
-                const leveragedSymbol = mkt.leveragedToken?.symbol || "hsTOKEN";
-                const collateralSymbol = mkt.collateral?.symbol || "COLLATERAL";
+        <GenesisComingNextMarketsSection
+          markets={comingSoonMarkets as Array<[string, GenesisMarketConfig]>}
+          wstETHAPR={wstETHAPR}
+          fxSAVEAPR={fxSAVEAPR}
+        />
 
-                // Parse long/short sides from market config (similar to sail page)
-                const getLongSide = (market: any): string => {
-                  const desc = market.leveragedToken?.description || "";
-                  const match = desc.match(/Long\s+(\w+)/i);
-                  if (match) return match[1];
-                  const name = market.leveragedToken?.name || "";
-                  const versusMatch = name.match(/versus\s+(\w+)/i);
-                  if (versusMatch) return versusMatch[1];
-                  const symbol = market.leveragedToken?.symbol || "";
-                  const symbolMatch = symbol.match(/^hs([A-Z]+)-/i);
-                  if (symbolMatch) return symbolMatch[1];
-                  return "Other";
-                };
-
-                const getShortSide = (market: any): string => {
-                  const desc = market.leveragedToken?.description || "";
-                  const shortMatch = desc.match(/short\s+(\w+)/i);
-                  if (shortMatch) return shortMatch[1];
-                  const name = market.leveragedToken?.name || "";
-                  const nameShortMatch = name.match(/Short\s+(\w+)/i);
-                  if (nameShortMatch) return nameShortMatch[1];
-                  const longMatch = desc.match(/Long\s+\w+\s+vs\s+(\w+)/i);
-                  if (longMatch) return longMatch[1];
-                  const symbol = market.leveragedToken?.symbol || "";
-                  const symbolMatch = symbol.match(/^hs[A-Z]+-(.+)$/i);
-                  if (symbolMatch) return symbolMatch[1];
-                  return "Other";
-                };
-
-                const longSide = getLongSide(mkt);
-                const shortSide = getShortSide(mkt);
-                const sailDescription = longSide && shortSide 
-                  ? `Long ${longSide} / Short ${shortSide}`
-                  : leveragedSymbol;
-
-                // Calculate underlying APR for coming soon markets
-                const isWstETH = collateralSymbol.toLowerCase() === "wsteth";
-                const isFxSAVE = collateralSymbol.toLowerCase() === "fxsave";
-                const underlyingAPR = isWstETH
-                  ? wstETHAPR
-                  : isFxSAVE
-                  ? fxSAVEAPR
-                  : null;
-
-                // Format market name
-                const marketName = `${collateralSymbol}-${mkt.pegTarget?.toUpperCase() || "TOKEN"}`;
-
-                return (
-                  <div
-                    key={id}
-                    className="bg-white py-2.5 px-2 rounded-md border border-white/10"
-                  >
-                    {/* Desktop layout - grid matching active events */}
-                    <div className="hidden md:grid lg:grid-cols-[32px_1.5fr_80px_0.9fr_1fr_0.9fr] md:grid-cols-[32px_120px_80px_100px_1fr_110px] gap-4 items-center">
-                      <div className="flex items-center justify-center">
-                        <NetworkIconCell
-                          chainName={(mkt as GenesisMarketConfig).chain?.name || "Ethereum"}
-                          chainLogo={(mkt as GenesisMarketConfig).chain?.logo || "icons/eth.png"}
-                          size={20}
-                        />
-                      </div>
-                      {/* Market Column */}
-                      <div className="flex items-center gap-2 min-w-0 pl-4">
-                        <div className="text-[#1E4775] font-medium text-sm">
-                          {marketName}
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <TokenLogo
-                            symbol={collateralSymbol}
-                            size={20}
-                            className="flex-shrink-0"
-                          />
-                          <span className="text-[#1E4775]/60 text-xs">=</span>
-                          <TokenLogo
-                            symbol={peggedSymbol}
-                            size={20}
-                            className="flex-shrink-0"
-                          />
-                          <span className="text-[#1E4775]/60 text-xs">+</span>
-                          <TokenLogo
-                            symbol={leveragedSymbol}
-                            size={20}
-                            className="flex-shrink-0"
-                          />
-                        </div>
-                      </div>
-
-                      {/* APR Column */}
-                      <div className="flex-shrink-0 text-center">
-                        {underlyingAPR !== null && underlyingAPR !== undefined ? (
-                          <div className="text-[#1E4775] font-semibold text-xs">
-                            {(underlyingAPR * 2 * 100).toFixed(2)}% +
-                            <Image
-                              src="/icons/marks.png"
-                              alt="Marks"
-                              width={20}
-                              height={20}
-                              className="inline-block ml-1 align-middle"
-                            />
-                          </div>
-                        ) : (
-                          <span className="text-xs text-gray-400">-</span>
-                        )}
-                      </div>
-
-                      {/* Anchor Token Column */}
-                      <div className="flex items-center justify-center gap-1.5 min-w-0">
-                        <TokenLogo
-                          symbol={peggedSymbol}
-                          size={20}
-                          className="flex-shrink-0"
-                        />
-                        <span className="text-[#1E4775] font-semibold text-xs">
-                          {peggedSymbol}
-                        </span>
-                      </div>
-
-                      {/* Sail Token Column */}
-                      <div className="flex flex-col items-center gap-0.5 min-w-0">
-                        <div className="flex items-center justify-center gap-1.5">
-                          <TokenLogo
-                            symbol={leveragedSymbol}
-                            size={20}
-                            className="flex-shrink-0"
-                          />
-                          <span className="text-[#1E4775] font-semibold text-xs">
-                            {leveragedSymbol}
-                          </span>
-                        </div>
-                        <div className="text-[#1E4775]/60 text-[9px] italic text-center">
-                          {sailDescription}
-                        </div>
-                      </div>
-
-                      {/* Status Column */}
-                      <div className="flex-shrink-0 text-center min-w-0 overflow-hidden">
-                        <div className="bg-[#FF8A7A] px-2 md:px-3 py-1 rounded-md inline-block max-w-full">
-                          <span className="text-white font-semibold text-[10px] uppercase tracking-wider whitespace-nowrap">
-                            Coming Next
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Mobile layout */}
-                    <div className="md:hidden space-y-2">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <div className="text-[#1E4775] font-medium text-sm">
-                            {marketName}
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <TokenLogo
-                              symbol={collateralSymbol}
-                              size={20}
-                              className="flex-shrink-0"
-                            />
-                            <span className="text-[#1E4775]/60 text-xs">=</span>
-                            <TokenLogo
-                              symbol={peggedSymbol}
-                              size={20}
-                              className="flex-shrink-0"
-                            />
-                            <span className="text-[#1E4775]/60 text-xs">+</span>
-                            <TokenLogo
-                              symbol={leveragedSymbol}
-                              size={20}
-                              className="flex-shrink-0"
-                            />
-                          </div>
-                        </div>
-                        <div className="bg-[#FF8A7A] px-3 py-1 rounded-md">
-                          <span className="text-white font-semibold text-[10px] uppercase tracking-wider">
-                            Coming Next
-                          </span>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <div className="text-[#1E4775]/70 text-[10px] mb-1">
-                            Anchor Token
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                            <TokenLogo
-                              symbol={peggedSymbol}
-                              size={16}
-                              className="flex-shrink-0"
-                            />
-                            <span className="text-[#1E4775] font-semibold text-xs">
-                              {peggedSymbol}
-                            </span>
-                          </div>
-                        </div>
-                        <div>
-                          <div className="text-[#1E4775]/70 text-[10px] mb-1">
-                            Sail Token
-                          </div>
-                          <div className="flex flex-col gap-0.5">
-                            <div className="flex items-center gap-1.5">
-                              <TokenLogo
-                                symbol={leveragedSymbol}
-                                size={16}
-                                className="flex-shrink-0"
-                              />
-                              <span className="text-[#1E4775] font-semibold text-xs">
-                                {leveragedSymbol}
-                              </span>
-                            </div>
-                            <div className="text-[#1E4775]/60 text-[9px] italic">
-                              {sailDescription}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                      {underlyingAPR !== null && underlyingAPR !== undefined && (
-                        <div className="text-sm text-[#1E4775]">
-                          <span className="font-semibold">
-                            Projected {peggedSymbol} APR:{" "}
-                            {(underlyingAPR * 2 * 100).toFixed(2)}% +
-                          </span>
-                          <Image
-                            src="/icons/marks.png"
-                            alt="Marks"
-                            width={18}
-                            height={18}
-                            className="inline-block ml-1 align-middle"
-                          />
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-        )}
-
-        {/* Completed Genesis Events - Grouped by Campaign (hidden by default; toggle via Genesis: Ongoing / All) */}
         {displayedCompletedByCampaign.size > 0 && showCompletedGenesis && (
-          <section className="space-y-4 overflow-visible mt-8">
-            {Array.from(displayedCompletedByCampaign.entries()).map(([campaignLabel, markets]) => {
-              // Extract campaign name from label (e.g., "Launch Maiden Voyage" -> "Launch")
-              const campaignName = campaignLabel.replace(/\s+Maiden Voyage.*/i, "").trim() || campaignLabel;
-              
-              return (
-                <div key={campaignLabel} className="space-y-2">
-                  <div className="pt-4 mb-1">
-                    <h2 className="text-xs font-medium text-white/70 uppercase tracking-wider">
-                      Completed: {campaignName}
-                    </h2>
-                  </div>
-                  {/* Header row - hidden on mobile, shown on desktop */}
-                  <div className="hidden md:block bg-white py-1.5 px-2 overflow-x-auto mb-0 rounded-md">
-                    <div className="grid lg:grid-cols-[32px_1.5fr_1fr_1fr_1.5fr_1fr] md:grid-cols-[32px_120px_60px_60px_1fr_80px] gap-4 items-center uppercase tracking-wider text-[10px] lg:text-[11px] text-[#1E4775] font-semibold">
-                      <div className="min-w-0" aria-label="Network" />
-                      <div className="min-w-0 text-center">Market</div>
-                      <div className="text-center min-w-0">
-                        Anchor
-                        <span className="hidden lg:inline"> Tokens</span>
-                      </div>
-                      <div className="text-center min-w-0">
-                        Sail
-                        <span className="hidden lg:inline"> Tokens</span>
-                      </div>
-                      <div className="min-w-0 text-center">
-                        Your Deposit
-                      </div>
-                      <div className="text-center min-w-0">Action</div>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    {markets.map(([id, mkt, marks]) => {
-                      // Reuse the same rendering logic from the active markets
-                      // We need to get all the same data for this market
-                      const mi = genesisMarkets.findIndex((m) => m[0] === id);
-                      const baseOffset = mi * (isConnected ? 3 : 1);
-                      const claimableResult = isConnected
-                        ? (reads?.[baseOffset + 2]?.result as [bigint, bigint] | undefined)
-                        : undefined;
-                      const claimablePegged = claimableResult?.[0] || 0n;
-                      const claimableLeveraged = claimableResult?.[1] || 0n;
-                      const hasClaimable = claimablePegged > 0n || claimableLeveraged > 0n;
-                      const userDeposit = isConnected
-                        ? (reads?.[baseOffset + 1]?.result as bigint | undefined)
-                        : undefined;
-
-                      // Get all the same market data
-                      const genesisAddress = (mkt as GenesisMarketConfig).addresses?.genesis;
-                      const onChainCollateralAddress = collateralTokenReads?.[mi]?.result as `0x${string}` | undefined;
-                      const collateralAddress = onChainCollateralAddress || (mkt as GenesisMarketConfig).addresses?.wrappedCollateralToken;
-                      const collateralSymbol = (mkt as GenesisMarketConfig).collateral?.symbol || "ETH";
-                      const endDate = (mkt as GenesisMarketConfig).genesis?.endDate;
-                      const oracleAddress = (mkt as GenesisMarketConfig).addresses?.collateralPrice as `0x${string}` | undefined;
-                      const collateralPriceData = oracleAddress ? collateralPricesMap.get(oracleAddress.toLowerCase()) : undefined;
-                      const marketCoinGeckoId = (mkt as GenesisMarketConfig)?.coinGeckoId as string | undefined;
-                      const underlyingSymbol = (mkt as GenesisMarketConfig).collateral?.underlyingSymbol || collateralSymbol;
-
-                      const { collateralPriceUSD } = computeGenesisRowUsdPricing({
-                        underlyingSymbol,
-                        pegTarget: (mkt as GenesisMarketConfig)?.pegTarget,
-                        marketCoinGeckoId,
-                        coinGeckoPrices,
-                        collateralPriceData,
-                        chainlinkBtcPrice,
-                        coinGeckoLoading,
-                        collateralSymbol,
-                      });
-                      const totalDeposits = totalDepositsReads?.[mi]?.result as bigint | undefined;
-                      const totalDepositsAmount = totalDeposits ? Number(formatEther(totalDeposits)) : 0;
-                      const totalDepositsUSD = totalDepositsAmount * collateralPriceUSD;
-                      const userDepositUSD = userDeposit && collateralPriceUSD > 0 ? Number(formatEther(userDeposit)) * collateralPriceUSD : 0;
-                      const rowPeggedSymbol = (mkt as GenesisMarketConfig).peggedToken?.symbol || "ha";
-                      const rowLeveragedSymbol = (mkt as GenesisMarketConfig).leveragedToken?.symbol || "hs";
-                      const rawDisplayMarketName = rowLeveragedSymbol && rowLeveragedSymbol.toLowerCase().startsWith("hs")
-                        ? rowLeveragedSymbol.slice(2)
-                        : rowLeveragedSymbol || (mkt as GenesisMarketConfig).name || "Market";
-                      const displayMarketName = formatGenesisMarketDisplayName(rawDisplayMarketName);
-                      const completedShowMaintenanceTag = isMarketInMaintenance(mkt);
-                      const peggedNoPrefixCompleted =
-                        rowPeggedSymbol &&
-                        rowPeggedSymbol.toLowerCase().startsWith("ha")
-                          ? rowPeggedSymbol.slice(2)
-                          : rowPeggedSymbol || "pegged token";
-
-                      // Get token prices for claimable display
-                      const anchorTokenPriceUSD = 1; // Pegged tokens are always $1
-                      const sailTokenPriceUSD = collateralPriceUSD; // Leveraged tokens use collateral price
-
-                      return (
-                        <div
-                          key={id}
-                          className="bg-white py-2.5 px-2 rounded-md border border-white/10"
-                        >
-                          {/* Desktop layout */}
-                          <div className="hidden md:grid lg:grid-cols-[32px_1.5fr_1fr_1fr_1.5fr_1fr] md:grid-cols-[32px_120px_60px_60px_1fr_80px] gap-4 items-center">
-                            <div className="flex items-center justify-center">
-                              <NetworkIconCell
-                                chainName={(mkt as GenesisMarketConfig).chain?.name || "Ethereum"}
-                                chainLogo={(mkt as GenesisMarketConfig).chain?.logo || "icons/eth.png"}
-                                size={20}
-                              />
-                            </div>
-                            {/* Market Column */}
-                            <div className="flex items-center gap-2 min-w-0 pl-4 flex-wrap">
-                              <div className="text-[#1E4775] font-medium text-sm flex items-center gap-1.5 flex-wrap">
-                                {displayMarketName}
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <Image
-                                  src={getLogoPath(collateralSymbol)}
-                                  alt={collateralSymbol}
-                                  width={20}
-                                  height={20}
-                                  className="flex-shrink-0 rounded-full"
-                                />
-                                <span className="text-[#1E4775]/60 text-xs">=</span>
-                                <Image
-                                  src={getLogoPath(rowPeggedSymbol)}
-                                  alt={rowPeggedSymbol}
-                                  width={20}
-                                  height={20}
-                                  className="flex-shrink-0 rounded-full"
-                                />
-                                <span className="text-[#1E4775]/60 text-xs">+</span>
-                                <Image
-                                  src={getLogoPath(rowLeveragedSymbol)}
-                                  alt={rowLeveragedSymbol}
-                                  width={20}
-                                  height={20}
-                                  className="flex-shrink-0 rounded-full"
-                                />
-                              </div>
-                            </div>
-
-                            {/* Anchor Tokens Column */}
-                            <div className="flex items-center justify-center gap-1.5 min-w-0">
-                              <Image
-                                src={getLogoPath(rowPeggedSymbol)}
-                                alt={rowPeggedSymbol}
-                                width={20}
-                                height={20}
-                                className="flex-shrink-0 rounded-full"
-                              />
-                              <SimpleTooltip
-                                label={
-                                  claimablePegged > 0n && anchorTokenPriceUSD > 0
-                                    ? formatUSD(Number(formatEther(claimablePegged)) * anchorTokenPriceUSD)
-                                    : claimablePegged > 0n
-                                    ? `${formatToken(claimablePegged)} ${rowPeggedSymbol}`
-                                    : ""
-                                }
-                              >
-                                <div className="text-[#1E4775] font-semibold text-xs cursor-help">
-                                  {claimablePegged > 0n ? formatToken(claimablePegged) : "-"}
-                                </div>
-                              </SimpleTooltip>
-                            </div>
-
-                            {/* Sail Tokens Column */}
-                            <div className="flex items-center justify-center gap-1.5 min-w-0">
-                              <Image
-                                src={getLogoPath(rowLeveragedSymbol)}
-                                alt={rowLeveragedSymbol}
-                                width={20}
-                                height={20}
-                                className="flex-shrink-0 rounded-full"
-                              />
-                              <SimpleTooltip
-                                label={
-                                  claimableLeveraged > 0n && sailTokenPriceUSD > 0
-                                    ? formatUSD(Number(formatEther(claimableLeveraged)) * sailTokenPriceUSD)
-                                    : claimableLeveraged > 0n
-                                    ? `${formatToken(claimableLeveraged)} ${rowLeveragedSymbol}`
-                                    : ""
-                                }
-                              >
-                                <div className="text-[#1E4775] font-semibold text-xs cursor-help">
-                                  {claimableLeveraged > 0n ? formatToken(claimableLeveraged) : "-"}
-                                </div>
-                              </SimpleTooltip>
-                            </div>
-
-                            {/* Your Deposit Column */}
-                            <div className="flex items-center justify-center gap-1 min-w-0">
-                              <Image
-                                src={getLogoPath(collateralSymbol)}
-                                alt={collateralSymbol}
-                                width={14}
-                                height={14}
-                                className="flex-shrink-0 rounded-full"
-                              />
-                              <div className="text-[#1E4775] font-semibold text-xs">
-                                {userDeposit && userDeposit > 0n
-                                  ? collateralPriceUSD > 0
-                                    ? formatUSD(userDepositUSD)
-                                    : `${formatToken(userDeposit)} ${collateralSymbol}`
-                                  : "$0"}
-                              </div>
-                            </div>
-
-                            {/* Action Column */}
-                            <div className="flex-shrink-0 flex items-center justify-center text-center">
-                              <GenesisMarketRowClaimActions
-                                variant="compact"
-                                isEnded
-                                showMaintenanceTag={completedShowMaintenanceTag}
-                                hasClaimable={hasClaimable}
-                                genesisAddress={genesisAddress}
-                                walletAddress={address}
-                                isClaimingThisMarket={claimingMarket === id}
-                                onClaim={() =>
-                                  claimMarket({
-                                    marketId: id,
-                                    genesisAddress,
-                                    displayMarketName,
-                                    peggedSymbolForShare: peggedNoPrefixCompleted,
-                                  })
-                                }
-                                onManage={() => {}}
-                              />
-                            </div>
-                          </div>
-
-                          {/* Mobile layout */}
-                          <div className="md:hidden space-y-2">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <div className="text-[#1E4775] font-medium text-sm">
-                                  {displayMarketName}
-                                </div>
-                                <div className="flex items-center gap-1">
-                                  <Image
-                                    src={getLogoPath(collateralSymbol)}
-                                    alt={collateralSymbol}
-                                    width={20}
-                                    height={20}
-                                    className="flex-shrink-0 rounded-full"
-                                  />
-                                  <span className="text-[#1E4775]/60 text-xs">=</span>
-                                  <Image
-                                    src={getLogoPath(rowPeggedSymbol)}
-                                    alt={rowPeggedSymbol}
-                                    width={20}
-                                    height={20}
-                                    className="flex-shrink-0 rounded-full"
-                                  />
-                                  <span className="text-[#1E4775]/60 text-xs">+</span>
-                                  <Image
-                                    src={getLogoPath(rowLeveragedSymbol)}
-                                    alt={rowLeveragedSymbol}
-                                    width={20}
-                                    height={20}
-                                    className="flex-shrink-0 rounded-full"
-                                  />
-                                </div>
-                              </div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-3">
-                              <div>
-                                <div className="text-[#1E4775]/70 text-[10px] mb-1">Anchor</div>
-                                <div className="flex items-center gap-1.5">
-                                  <Image
-                                    src={getLogoPath(rowPeggedSymbol)}
-                                    alt={rowPeggedSymbol}
-                                    width={16}
-                                    height={16}
-                                    className="flex-shrink-0 rounded-full"
-                                  />
-                                  <span className="text-[#1E4775] font-semibold text-xs">
-                                    {claimablePegged > 0n ? formatToken(claimablePegged) : "-"}
-                                  </span>
-                                </div>
-                              </div>
-                              <div>
-                                <div className="text-[#1E4775]/70 text-[10px] mb-1">Sail</div>
-                                <div className="flex items-center gap-1.5">
-                                  <Image
-                                    src={getLogoPath(rowLeveragedSymbol)}
-                                    alt={rowLeveragedSymbol}
-                                    width={16}
-                                    height={16}
-                                    className="flex-shrink-0 rounded-full"
-                                  />
-                                  <span className="text-[#1E4775] font-semibold text-xs">
-                                    {claimableLeveraged > 0n ? formatToken(claimableLeveraged) : "-"}
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <div className="text-[#1E4775]/70 text-[10px] flex items-center gap-1">
-                                  <Image
-                                    src={getLogoPath(collateralSymbol)}
-                                    alt={collateralSymbol}
-                                    width={14}
-                                    height={14}
-                                    className="flex-shrink-0 rounded-full"
-                                  />
-                                  <span>Your Deposit</span>
-                                </div>
-                                <div className="text-[#1E4775] font-semibold text-xs">
-                                  {userDeposit && userDeposit > 0n
-                                    ? collateralPriceUSD > 0
-                                      ? formatUSD(userDepositUSD)
-                                      : `${formatToken(userDeposit)} ${collateralSymbol}`
-                                    : "$0"}
-                                </div>
-                              </div>
-                              <GenesisMarketRowClaimActions
-                                variant="compact"
-                                isEnded
-                                showMaintenanceTag={completedShowMaintenanceTag}
-                                hasClaimable={hasClaimable}
-                                genesisAddress={genesisAddress}
-                                walletAddress={address}
-                                isClaimingThisMarket={claimingMarket === id}
-                                onClaim={() =>
-                                  claimMarket({
-                                    marketId: id,
-                                    genesisAddress,
-                                    displayMarketName,
-                                    peggedSymbolForShare: peggedNoPrefixCompleted,
-                                  })
-                                }
-                                onManage={() => {}}
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
-          </section>
+          <GenesisCompletedMarketsSection
+            displayedCompletedByCampaign={displayedCompletedByCampaign}
+            genesisMarkets={genesisMarkets}
+            reads={reads}
+            isConnected={isConnected}
+            collateralPricesMap={collateralPricesMap}
+            coinGeckoPrices={coinGeckoPrices}
+            coinGeckoLoading={coinGeckoLoading}
+            chainlinkBtcPrice={chainlinkBtcPrice}
+            address={address}
+            claimingMarket={claimingMarket}
+            onClaim={claimMarket}
+          />
         )}
       </main>
 
