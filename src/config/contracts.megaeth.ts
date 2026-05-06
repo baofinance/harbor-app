@@ -126,7 +126,7 @@ export const markets: Markets = {
       endDate: "2027-01-01T00:00:00Z",
       rewards: {
         pegged: { symbol: "haUSD", amount: "0" },
-        leveraged: { symbol: "hsstETH-USD", amount: "0" },
+        leveraged: { symbol: "hsSTETH-USD", amount: "0" },
       },
       collateralRatio: 1.0,
       leverageRatio: 2 * 1e18,

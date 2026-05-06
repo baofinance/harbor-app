@@ -1047,23 +1047,7 @@ export default function GenesisIndexPage() {
                 } else if (isProcessing) {
                   statusText = "Processing";
                 } else {
-                  // Show time remaining only if genesis is still active
-                  if (endDate) {
-                    const diffMs = new Date(endDate).getTime() - now.getTime();
-                    if (diffMs > 0) {
-                      const dayMs = 1000 * 60 * 60 * 24;
-                      if (diffMs >= dayMs) {
-                        const dayCount = Math.max(1, Math.round(diffMs / dayMs));
-                        statusText = `Ends in ${dayCount} days`;
-                      } else {
-                        statusText = formatTimeRemaining(endDate, now);
-                      }
-                    } else {
-                      statusText = "Ended";
-                    }
-                  } else {
-                    statusText = "Active";
-                  }
+                  statusText = "Genesis Open";
                 }
 
                 const isExpanded = expandedMarkets.includes(id);

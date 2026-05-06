@@ -3,5 +3,7 @@ export function formatGenesisMarketDisplayName(name: string): string {
   if (!name) return name;
   const m = name.match(/^USD-(.+)$/i);
   const base = m ? `${m[1]}-USD` : name;
-  return base.replace(/^wsteth/i, "STETH");
+  return base
+    .replace(/^wsteth/i, "STETH")
+    .replace(/hssteth/gi, "hsSTETH");
 }

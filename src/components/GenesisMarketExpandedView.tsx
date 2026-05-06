@@ -1,9 +1,18 @@
+"use client";
+
 import React from "react";
 import Image from "next/image";
 import { formatDateTime } from "@/utils/formatters";
-import { EtherscanLink, getLogoPath } from "@/components/shared";
+import { EtherscanLink, TokenLogo } from "@/components/shared";
+import SimpleTooltip from "@/components/SimpleTooltip";
 import { useGenesisMarketExpandedData } from "@/hooks/useGenesisMarketExpandedData";
-import { maidenVoyageYieldOwnerSharePercent } from "@/config/maidenVoyageYield";
+
+const sectionHeaderClass =
+  "text-xs font-semibold uppercase tracking-wide text-[#1E4775]/80";
+
+const yieldBulletStrongClass = "font-semibold text-[#1E4775]";
+
+const TOKEN_ROW_ICON_PX = 28;
 
 interface GenesisMarketExpandedViewProps {
   marketId: string;
@@ -23,6 +32,7 @@ interface GenesisMarketExpandedViewProps {
 }
 
 export const GenesisMarketExpandedView = ({
+  marketId: _marketId,
   market,
   genesisAddress,
   totalDepositsUSD,
@@ -51,186 +61,167 @@ export const GenesisMarketExpandedView = ({
   void totalDepositsUSD;
   void collateralPriceUSD;
 
-  const yieldOwnerSharePct = maidenVoyageYieldOwnerSharePercent(
-    genesisAddress?.toLowerCase() ?? null
-  );
-  const yieldShareSentence =
-    yieldOwnerSharePct != null ? (
-      <>
-        <span className="font-semibold text-[#1E4775]">
-          {yieldOwnerSharePct}% of attributed revenue
-        </span>{" "}
-      </>
-    ) : (
-      <>
-        <span className="font-semibold text-[#1E4775]">
-          A configured share of attributed revenue
-        </span>{" "}
-      </>
-    );
-
   const addresses = market.addresses as Record<string, string | undefined>;
+  const chainId = (market as { chainId?: number }).chainId ?? 1;
 
   return (
-    <div className="bg-[rgb(var(--surface-selected-rgb))] p-4 border-t border-white/20 rounded-lg overflow-hidden">
-      <div className="bg-[#17395F]/10 p-4 mb-2 border border-[#1E4775]/15 rounded-lg">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-[#1E4775]/85 mb-2">
-          How yield works (this market)
-        </h3>
-        <ol className="text-[13px] text-[#1E4775]/90 space-y-1.5 leading-snug">
+    <div className="space-y-5">
+      <div className="space-y-3">
+        <h3 className={sectionHeaderClass}>How yield works (this market)</h3>
+        <ul className="space-y-3 text-[13px] leading-snug text-[#1E4775]/90">
           <li className="flex items-start gap-2">
-            <span className="mt-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-[#1E4775]/30 text-[10px] font-semibold">
-              1
-            </span>
+            <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[#1E4775]/40" />
             <span>
-              <strong>This market has its own on-chain yield pool.</strong>
+              <strong className={yieldBulletStrongClass}>
+                This market has its own on-chain yield pool.
+              </strong>
             </span>
           </li>
           <li className="flex items-start gap-2">
-            <span className="mt-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-[#1E4775]/30 text-[10px] font-semibold">
-              2
-            </span>
+            <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[#1E4775]/40" />
             <span>
-              <strong>Revenue from fees + collateral carry</strong> is credited to
-              this pool. {yieldShareSentence} (in USD) is distributed to owners.
+              <strong className={yieldBulletStrongClass}>
+                Revenue from fees + collateral carry
+              </strong>{" "}
+              is credited to this pool.
             </span>
           </li>
           <li className="flex items-start gap-2">
-            <span className="mt-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-[#1E4775]/30 text-[10px] font-semibold">
-              3
-            </span>
+            <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[#1E4775]/40" />
             <span>
-              <strong>Your final ownership % is set at Genesis close</strong> (plus
-              voyage boost), this determines your lifetime share.
+              <strong className={yieldBulletStrongClass}>
+                A configured share of attributed revenue (in USD)
+              </strong>{" "}
+              is distributed to owners.
             </span>
           </li>
           <li className="flex items-start gap-2">
-            <span className="mt-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-[#1E4775]/30 text-[10px] font-semibold">
-              4
-            </span>
+            <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[#1E4775]/40" />
             <span>
-              <strong>% still open</strong> shows remaining capped ownership
-              headroom (<strong>not</strong> an APR).
+              <strong className={yieldBulletStrongClass}>
+                Your final ownership % is set at Genesis close
+              </strong>{" "}
+              (plus voyage boost), this determines your lifetime share.
             </span>
           </li>
-        </ol>
+          <li className="flex items-start gap-2">
+            <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[#1E4775]/40" />
+            <span>
+              <strong className={yieldBulletStrongClass}>% still open</strong> shows remaining
+              capped ownership headroom (<strong className={yieldBulletStrongClass}>not</strong>{" "}
+              an APR).
+            </span>
+          </li>
+        </ul>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-        {/* First Column: End Date/Time and Projected APR */}
-        <div className="flex flex-col gap-2 h-full">
-          {/* Genesis Info */}
-          <div className="bg-white p-2 flex flex-col justify-center rounded-lg">
-            <h3 className="text-[#1E4775] font-semibold mb-1 text-xs text-center">
-              End Date/Time
-            </h3>
-            <p className="text-sm font-bold text-[#1E4775] text-center">
+      <div className="grid grid-cols-1 gap-5 border-t border-[#1E4775]/12 pt-5 md:grid-cols-3 md:gap-0 md:gap-y-5">
+        <div className="flex flex-col gap-3 md:pr-6">
+          <div className="text-center md:text-left">
+            <div className={sectionHeaderClass}>End Date/Time</div>
+            <p className="mt-1 text-base font-semibold tracking-tight text-[#10141A]">
               {formatDateTime(endDate)}
             </p>
           </div>
 
-          {/* Projected Stability Pool APR */}
           {underlyingAPR !== null && underlyingAPR !== undefined && (
-            <div className="rounded-lg bg-[#1E4775] px-4 py-2 text-center text-xs text-white flex-1 flex flex-col justify-center">
-              <div className="font-semibold mb-1">
+            <div className="rounded-xl bg-[#1E4775] px-4 py-3.5 text-center text-[#FFFFFF] shadow-sm">
+              <div className="text-sm font-semibold leading-snug text-white/95">
                 Projected {peggedTokenSymbol} APR (Stability pools)
               </div>
-              <div>
-                <span className="font-semibold">
+              <div className="mt-2.5 flex items-center justify-center gap-2">
+                <span className="text-lg font-semibold tabular-nums sm:text-xl">
                   {(underlyingAPR * 2 * 100).toFixed(2)}% +
                 </span>
                 <Image
                   src="/icons/marks.png"
                   alt="Marks"
-                  width={14}
-                  height={14}
-                  className="inline-block ml-1 align-middle"
+                  width={22}
+                  height={22}
+                  className="inline-block shrink-0 align-middle opacity-95"
                 />
               </div>
             </div>
           )}
         </div>
 
-        {/* Contract Info */}
-        <div className="bg-white p-2 flex flex-col rounded-lg">
-          <h3 className="text-[#1E4775] font-semibold mb-1 text-xs">
-            Contract Info
-          </h3>
-          <div>
+        <div className="border-t border-[#1E4775]/12 pt-5 md:border-l md:border-t-0 md:px-5 md:pt-0">
+          <div className={sectionHeaderClass}>Contract Info</div>
+          <div className="mt-2 space-y-0.5 text-[13px]">
             <EtherscanLink
               label="Genesis"
               address={addresses.genesis}
-              chainId={(market as any).chainId ?? 1}
+              chainId={chainId}
             />
             <EtherscanLink
               label="Minter"
               address={addresses.minter}
-              chainId={(market as any).chainId ?? 1}
+              chainId={chainId}
             />
             <EtherscanLink
               label="Collateral Token"
               address={addresses.collateralToken}
-              chainId={(market as any).chainId ?? 1}
+              chainId={chainId}
             />
             <EtherscanLink
               label="Anchor Token"
               address={peggedTokenAddress}
-              chainId={(market as any).chainId ?? 1}
+              chainId={chainId}
             />
             <EtherscanLink
               label="Sail Token"
               address={leveragedTokenAddress}
-              chainId={(market as any).chainId ?? 1}
+              chainId={chainId}
             />
           </div>
         </div>
 
-        <div className="bg-white p-2 flex flex-col rounded-lg">
-          <h3 className="text-[#1E4775] font-semibold mb-1 text-xs">Tokens</h3>
-          <div className="space-y-1 text-xs flex-1 flex justify-center flex-col">
-            <div className="flex justify-between items-center">
-              <span className="text-[#1E4775]/70">Market Collateral:</span>
-              <div className="flex items-center gap-1.5">
-                <span className="text-[#1E4775] font-mono">
+        <div className="border-t border-[#1E4775]/12 pt-5 md:border-l md:border-t-0 md:pl-5 md:pr-0 md:pt-0">
+          <div className={sectionHeaderClass}>Tokens</div>
+          <div className="mt-3 space-y-2.5 text-[13px]">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-[#1E4775]/75">Market Collateral:</span>
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-[#10141A]">
                   {collateralTokenSymbol}
                 </span>
-                <Image
-                  src={getLogoPath(collateralTokenSymbol)}
-                  alt={collateralTokenSymbol}
-                  width={20}
-                  height={20}
-                  className="flex-shrink-0"
-                />
+                <SimpleTooltip label={collateralTokenSymbol} className="cursor-help">
+                  <TokenLogo
+                    symbol={collateralTokenSymbol}
+                    size={TOKEN_ROW_ICON_PX}
+                    className="ring-0"
+                  />
+                </SimpleTooltip>
               </div>
             </div>
-            <div className="flex justify-between items-center">
-              <span className="text-[#1E4775]/70">Anchor Token:</span>
-              <div className="flex items-center gap-1.5">
-                <span className="text-[#1E4775] font-mono">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-[#1E4775]/75">Anchor Token:</span>
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-[#10141A]">
                   {peggedTokenSymbol}
                 </span>
-                <Image
-                  src={getLogoPath(peggedTokenSymbol)}
-                  alt={peggedTokenSymbol}
-                  width={20}
-                  height={20}
-                  className="flex-shrink-0"
-                />
+                <SimpleTooltip label={peggedTokenSymbol} className="cursor-help">
+                  <TokenLogo
+                    symbol={peggedTokenSymbol}
+                    size={TOKEN_ROW_ICON_PX}
+                    className="ring-0"
+                  />
+                </SimpleTooltip>
               </div>
             </div>
-            <div className="flex justify-between items-center">
-              <span className="text-[#1E4775]/70">Sail Token:</span>
-              <div className="flex items-center gap-1.5">
-                <span className="text-[#1E4775] font-mono">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-[#1E4775]/75">Sail Token:</span>
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-[#10141A]">
                   {leveragedTokenSymbol}
                 </span>
-                <Image
-                  src={getLogoPath(leveragedTokenSymbol)}
-                  alt={leveragedTokenSymbol}
-                  width={20}
-                  height={20}
-                  className="flex-shrink-0"
-                />
+                <SimpleTooltip label={leveragedTokenSymbol} className="cursor-help">
+                  <TokenLogo
+                    symbol={leveragedTokenSymbol}
+                    size={TOKEN_ROW_ICON_PX}
+                    className="ring-0"
+                  />
+                </SimpleTooltip>
               </div>
             </div>
           </div>

@@ -900,7 +900,7 @@ export const markets = {
           },
           startBlock: contractsMarkets["wsteth-usd-megaeth"].startBlock,
           peggedToken: { name: "Harbor Anchored USD", symbol: "haUSD", description: "Pegged token" },
-          leveragedToken: { name: "Harbor Sail stETH-USD", symbol: "hsstETH-USD", description: "Leveraged token" },
+          leveragedToken: { name: "Harbor Sail stETH-USD", symbol: "hsSTETH-USD", description: "Leveraged token" },
           rewardPoints: { pointsPerDollar: 100, description: "Ledger marks per dollar" },
           marksCampaign: { id: "megaeth", label: "MegaETH" },
           coinGeckoId: "wrapped-steth",
