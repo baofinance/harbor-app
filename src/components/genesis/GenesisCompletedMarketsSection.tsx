@@ -5,13 +5,22 @@ import SimpleTooltip from "@/components/SimpleTooltip";
 import { isMarketInMaintenance } from "@/config/markets";
 import type { CollateralPriceData } from "@/hooks/useCollateralPrice";
 import { getLogoPath } from "@/components/shared";
-import NetworkIconCell from "@/components/NetworkIconCell";
 import { GenesisMarketRowClaimActions } from "./GenesisMarketRowClaimActions";
+import {
+  GenesisMarketChainCell,
+  GenesisMarketCollateralEquationStrip,
+  GenesisYourDepositAmountText,
+} from "./GenesisMarketSharedRowCells";
+import {
+  GENESIS_COMPLETED_DESKTOP_ROW_GRID_CLASS,
+  GENESIS_COMPLETED_HEADER_INNER_GRID_CLASS,
+} from "./genesisActiveTableStyles";
 import type { GenesisMarketConfig } from "@/types/genesisMarket";
 import { formatUSD, formatToken } from "@/utils/formatters";
 import { formatGenesisMarketDisplayName } from "@/utils/genesisDisplay";
 import { computeGenesisRowUsdPricing } from "@/utils/genesisRowPricing";
 import { formatEther } from "viem";
+import { readContractRowResult } from "./readContractRow";
 
 export type GenesisClaimMarketArgs = {
   marketId: string;
@@ -66,7 +75,7 @@ export function GenesisCompletedMarketsSection({
               </h2>
             </div>
             <div className="hidden md:block bg-white py-1.5 px-2 overflow-x-auto mb-0 rounded-md">
-              <div className="grid lg:grid-cols-[32px_1.5fr_1fr_1fr_1.5fr_1fr] md:grid-cols-[32px_120px_60px_60px_1fr_80px] gap-4 items-center uppercase tracking-wider text-[10px] lg:text-[11px] text-[#1E4775] font-semibold">
+              <div className={GENESIS_COMPLETED_HEADER_INNER_GRID_CLASS}>
                 <div className="min-w-0" aria-label="Network" />
                 <div className="min-w-0 text-center">Market</div>
                 <div className="text-center min-w-0">
@@ -86,13 +95,13 @@ export function GenesisCompletedMarketsSection({
                 const mi = genesisMarkets.findIndex((m) => m[0] === id);
                 const baseOffset = mi * (isConnected ? 3 : 1);
                 const claimableResult = isConnected
-                  ? (reads?.[baseOffset + 2]?.result as [bigint, bigint] | undefined)
+                  ? readContractRowResult<[bigint, bigint]>(reads, baseOffset + 2)
                   : undefined;
                 const claimablePegged = claimableResult?.[0] || 0n;
                 const claimableLeveraged = claimableResult?.[1] || 0n;
                 const hasClaimable = claimablePegged > 0n || claimableLeveraged > 0n;
                 const userDeposit = isConnected
-                  ? (reads?.[baseOffset + 1]?.result as bigint | undefined)
+                  ? readContractRowResult<bigint>(reads, baseOffset + 1)
                   : undefined;
 
                 const genesisAddress = mkt.addresses?.genesis;
@@ -139,43 +148,22 @@ export function GenesisCompletedMarketsSection({
                     key={id}
                     className="bg-white py-2.5 px-2 rounded-md border border-white/10"
                   >
-                    <div className="hidden md:grid lg:grid-cols-[32px_1.5fr_1fr_1fr_1.5fr_1fr] md:grid-cols-[32px_120px_60px_60px_1fr_80px] gap-4 items-center">
-                      <div className="flex items-center justify-center">
-                        <NetworkIconCell
-                          chainName={mkt.chain?.name || "Ethereum"}
-                          chainLogo={mkt.chain?.logo || "icons/eth.png"}
-                          size={20}
-                        />
-                      </div>
+                    <div className={GENESIS_COMPLETED_DESKTOP_ROW_GRID_CLASS}>
+                      <GenesisMarketChainCell
+                        chainName={mkt.chain?.name || "Ethereum"}
+                        chainLogo={mkt.chain?.logo || "icons/eth.png"}
+                        size={20}
+                      />
                       <div className="flex items-center gap-2 min-w-0 pl-4 flex-wrap">
                         <div className="text-[#1E4775] font-medium text-sm flex items-center gap-1.5 flex-wrap">
                           {displayMarketName}
                         </div>
-                        <div className="flex items-center gap-1">
-                          <Image
-                            src={getLogoPath(collateralSymbol)}
-                            alt={collateralSymbol}
-                            width={20}
-                            height={20}
-                            className="flex-shrink-0 rounded-full"
-                          />
-                          <span className="text-[#1E4775]/60 text-xs">=</span>
-                          <Image
-                            src={getLogoPath(rowPeggedSymbol)}
-                            alt={rowPeggedSymbol}
-                            width={20}
-                            height={20}
-                            className="flex-shrink-0 rounded-full"
-                          />
-                          <span className="text-[#1E4775]/60 text-xs">+</span>
-                          <Image
-                            src={getLogoPath(rowLeveragedSymbol)}
-                            alt={rowLeveragedSymbol}
-                            width={20}
-                            height={20}
-                            className="flex-shrink-0 rounded-full"
-                          />
-                        </div>
+                        <GenesisMarketCollateralEquationStrip
+                          collateralSymbol={collateralSymbol}
+                          peggedSymbol={rowPeggedSymbol}
+                          leveragedSymbol={rowLeveragedSymbol}
+                          iconSize={20}
+                        />
                       </div>
 
                       <div className="flex items-center justify-center gap-1.5 min-w-0">
@@ -232,13 +220,12 @@ export function GenesisCompletedMarketsSection({
                           height={14}
                           className="flex-shrink-0 rounded-full"
                         />
-                        <div className="text-[#1E4775] font-semibold text-xs">
-                          {userDeposit && userDeposit > 0n
-                            ? collateralPriceUSD > 0
-                              ? formatUSD(userDepositUSD)
-                              : `${formatToken(userDeposit)} ${collateralSymbol}`
-                            : "$0"}
-                        </div>
+                        <GenesisYourDepositAmountText
+                          userDeposit={userDeposit}
+                          collateralPriceUSD={collateralPriceUSD}
+                          collateralSymbol={collateralSymbol}
+                          userDepositUSD={userDepositUSD}
+                        />
                       </div>
 
                       <div className="flex-shrink-0 flex items-center justify-center text-center">
@@ -267,31 +254,12 @@ export function GenesisCompletedMarketsSection({
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <div className="text-[#1E4775] font-medium text-sm">{displayMarketName}</div>
-                          <div className="flex items-center gap-1">
-                            <Image
-                              src={getLogoPath(collateralSymbol)}
-                              alt={collateralSymbol}
-                              width={20}
-                              height={20}
-                              className="flex-shrink-0 rounded-full"
-                            />
-                            <span className="text-[#1E4775]/60 text-xs">=</span>
-                            <Image
-                              src={getLogoPath(rowPeggedSymbol)}
-                              alt={rowPeggedSymbol}
-                              width={20}
-                              height={20}
-                              className="flex-shrink-0 rounded-full"
-                            />
-                            <span className="text-[#1E4775]/60 text-xs">+</span>
-                            <Image
-                              src={getLogoPath(rowLeveragedSymbol)}
-                              alt={rowLeveragedSymbol}
-                              width={20}
-                              height={20}
-                              className="flex-shrink-0 rounded-full"
-                            />
-                          </div>
+                          <GenesisMarketCollateralEquationStrip
+                            collateralSymbol={collateralSymbol}
+                            peggedSymbol={rowPeggedSymbol}
+                            leveragedSymbol={rowLeveragedSymbol}
+                            iconSize={20}
+                          />
                         </div>
                       </div>
                       <div className="grid grid-cols-2 gap-3">
@@ -338,13 +306,12 @@ export function GenesisCompletedMarketsSection({
                             />
                             <span>Your Deposit</span>
                           </div>
-                          <div className="text-[#1E4775] font-semibold text-xs">
-                            {userDeposit && userDeposit > 0n
-                              ? collateralPriceUSD > 0
-                                ? formatUSD(userDepositUSD)
-                                : `${formatToken(userDeposit)} ${collateralSymbol}`
-                              : "$0"}
-                          </div>
+                          <GenesisYourDepositAmountText
+                            userDeposit={userDeposit}
+                            collateralPriceUSD={collateralPriceUSD}
+                            collateralSymbol={collateralSymbol}
+                            userDepositUSD={userDepositUSD}
+                          />
                         </div>
                         <GenesisMarketRowClaimActions
                           variant="compact"

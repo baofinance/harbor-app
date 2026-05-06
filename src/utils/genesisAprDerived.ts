@@ -17,6 +17,40 @@ export type HarborMarksLike = {
   currentDepositUSD?: string;
 } | null;
 
+/** Rates from page-level hooks (`useWstETHAPR` / `useFxSAVEAPR`). */
+export type GenesisUnderlyingAprRates = {
+  wstETHAPR: number | null | undefined;
+  fxSAVEAPR: number | null | undefined;
+  isLoadingWstETHAPR?: boolean;
+  isLoadingFxSAVEAPR?: boolean;
+};
+
+/**
+ * Single rule: wrapped collateral symbol selects which underlying yield feed applies.
+ * Used by APR column math, expanded view, and compact cards — keep in sync here only.
+ */
+export function resolveGenesisUnderlyingApr(collateralSymbol: string, rates: GenesisUnderlyingAprRates) {
+  const isWstETH = collateralSymbol.toLowerCase() === "wsteth";
+  const isFxSAVE = collateralSymbol.toLowerCase() === "fxsave";
+  const underlyingAPR = isWstETH
+    ? rates.wstETHAPR
+    : isFxSAVE
+      ? rates.fxSAVEAPR
+      : null;
+  const isLoadingAPR = isWstETH
+    ? Boolean(rates.isLoadingWstETHAPR)
+    : isFxSAVE
+      ? Boolean(rates.isLoadingFxSAVEAPR)
+      : false;
+
+  return {
+    isWstETH,
+    isFxSAVE,
+    underlyingAPR,
+    isLoadingAPR,
+  };
+}
+
 export type GenesisAprDerivedInput = {
   collateralSymbol: string;
   wstETHAPR: number | null | undefined;
@@ -74,18 +108,13 @@ export function computeGenesisAprDerivedState(
     fdv,
   } = input;
 
-  const isWstETH = collateralSymbol.toLowerCase() === "wsteth";
-  const isFxSAVE = collateralSymbol.toLowerCase() === "fxsave";
-  const underlyingAPR = isWstETH
-    ? wstETHAPR
-    : isFxSAVE
-      ? fxSAVEAPR
-      : null;
-  const isLoadingAPR = isWstETH
-    ? isLoadingWstETHAPR
-    : isFxSAVE
-      ? isLoadingFxSAVEAPR
-      : false;
+  const { isWstETH, isFxSAVE, underlyingAPR, isLoadingAPR } =
+    resolveGenesisUnderlyingApr(collateralSymbol, {
+      wstETHAPR,
+      fxSAVEAPR,
+      isLoadingWstETHAPR,
+      isLoadingFxSAVEAPR,
+    });
 
   const isValidAPR =
     underlyingAPR !== null &&

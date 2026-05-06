@@ -5,6 +5,7 @@ import NetworkIconCell from "@/components/NetworkIconCell";
 import { TokenLogo } from "@/components/shared";
 import { INDEX_CORAL_INFO_TAG_CLASS } from "@/components/shared/indexMarketsToolbarStyles";
 import type { GenesisMarketConfig } from "@/types/genesisMarket";
+import { resolveGenesisUnderlyingApr } from "@/utils/genesisAprDerived";
 
 function getLongSide(market: { leveragedToken?: { description?: string; name?: string; symbol?: string } }): string {
   const desc = market.leveragedToken?.description || "";
@@ -77,9 +78,10 @@ export function GenesisComingNextMarketsSection({
           const shortSide = getShortSide(mkt);
           const sailDescription =
             longSide && shortSide ? `Long ${longSide} / Short ${shortSide}` : leveragedSymbol;
-          const isWstETH = collateralSymbol.toLowerCase() === "wsteth";
-          const isFxSAVE = collateralSymbol.toLowerCase() === "fxsave";
-          const underlyingAPR = isWstETH ? wstETHAPR : isFxSAVE ? fxSAVEAPR : null;
+          const { underlyingAPR } = resolveGenesisUnderlyingApr(collateralSymbol, {
+            wstETHAPR,
+            fxSAVEAPR,
+          });
           const marketName = `${collateralSymbol}-${mkt.pegTarget?.toUpperCase() || "TOKEN"}`;
 
           return (
