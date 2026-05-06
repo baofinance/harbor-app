@@ -21,6 +21,10 @@ import type { GenesisDepositCapData } from "@/utils/genesisDepositCap";
 /** Match chain badge + status + expanded APR: one corner radius family on the card. */
 const GENESIS_CARD_CONTROL_RADIUS = "rounded-xl";
 
+/** MegaETH badge + Genesis status: same outer height; content vertically centered inside. */
+const GENESIS_LEFT_RAIL_CHIP_HEIGHT = "box-border h-12 min-h-12";
+const GENESIS_LEFT_RAIL_CHIP_INSET_X = "px-3.5 sm:px-4";
+
 const primaryActionClass =
   `w-full ${GENESIS_CARD_CONTROL_RADIUS} bg-[#153B63] px-3.5 py-2.5 text-xs font-semibold text-white shadow-sm transition hover:bg-[#0F2F52] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#153B63]/30 disabled:cursor-not-allowed disabled:bg-[#153B63]/35`;
 const secondaryActionClass =
@@ -150,7 +154,7 @@ export function GenesisCompactMarketCard({
   const isMegaEthChainBadge = chainName.trim().toLowerCase() === "megaeth";
 
   const chainBadgeShellClass = isMegaEthChainBadge
-    ? `flex min-h-0 min-w-0 w-full flex-wrap items-center justify-center gap-2.5 ${GENESIS_CARD_CONTROL_RADIUS} border border-white/[0.09] bg-gradient-to-br from-[#0f2832] via-[#1a253e] to-[#321a3a] px-3 py-2 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.09),0_12px_36px_-20px_rgba(10,8,24,0.48)] ring-1 ring-black/[0.05]`
+    ? `flex flex-nowrap min-h-0 min-w-0 w-full items-center justify-center gap-2.5 ${GENESIS_CARD_CONTROL_RADIUS} ${GENESIS_LEFT_RAIL_CHIP_HEIGHT} ${GENESIS_LEFT_RAIL_CHIP_INSET_X} border border-white/[0.09] bg-gradient-to-br from-[#0f2832] via-[#1a253e] to-[#321a3a] text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.09),0_12px_36px_-20px_rgba(10,8,24,0.48)] ring-1 ring-black/[0.05]`
     : `flex min-h-0 min-w-0 w-full flex-wrap items-center justify-center gap-2 ${GENESIS_CARD_CONTROL_RADIUS} border border-[#10141A]/10 bg-gradient-to-b from-[#1E4775] to-[#153B56] px-2.5 py-1.5 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_10px_24px_-16px_rgba(30,71,117,0.35)]`;
 
   const chainBadgeIconEthereumWrapClass =
@@ -190,7 +194,7 @@ export function GenesisCompactMarketCard({
             <TokenLogo
               symbol={primaryMarketIcon}
               size={MARKET_ICON_PX}
-              className="translate-y-[3px] shrink-0 shadow-[0_10px_24px_-16px_rgba(16,20,26,0.35)] ring-1 ring-[#10141A]/6"
+              className="translate-y-[3px] shrink-0 ring-2 ring-[#1E4775]/40 shadow-[0_0_0_1px_rgba(30,71,117,0.28),0_0_40px_-4px_rgba(30,71,117,0.52),0_10px_60px_-16px_rgba(30,71,117,0.42),0_0_80px_-6px_rgba(30,71,117,0.2)]"
             />
             <div
               ref={brandStackRef}
@@ -228,7 +232,7 @@ export function GenesisCompactMarketCard({
 
           <div className="mt-3 min-w-0">
             <span
-              className={`box-border inline-flex min-w-0 max-w-full items-center justify-center gap-3 ${GENESIS_CARD_CONTROL_RADIUS} px-3.5 py-2.5 sm:px-4 ${statusPillSurfaceClass}`}
+              className={`inline-flex min-w-0 max-w-full items-center justify-center gap-2.5 ${GENESIS_CARD_CONTROL_RADIUS} ${GENESIS_LEFT_RAIL_CHIP_HEIGHT} ${GENESIS_LEFT_RAIL_CHIP_INSET_X} ${statusPillSurfaceClass}`}
               style={
                 statusBarTotalWidthPx != null
                   ? {
@@ -246,10 +250,10 @@ export function GenesisCompactMarketCard({
                 }
               />
               <span
-                className={`shrink min-w-0 text-[13px] font-medium leading-snug tracking-normal sm:text-sm ${statusPillLabelClass}`}
+                className={`shrink min-w-0 text-[14px] font-black leading-none tracking-[0.05em] antialiased sm:text-[15px] ${statusPillLabelClass}`}
               >
                 <span className="mr-1 inline">Status:</span>
-                <span className="font-semibold">{statusVisual.text}</span>
+                <span>{statusVisual.text}</span>
               </span>
             </span>
           </div>
