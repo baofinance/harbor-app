@@ -305,39 +305,39 @@ export function GenesisCompactMarketCard({
             </button>
           </div>
           <ul className="space-y-3 text-[13px] leading-snug text-[#1E4775]/90">
-            <li className="flex items-start gap-2">
-              <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[#1E4775]/40" />
+            <li className="flex items-center gap-2">
+              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#1E4775]/40" aria-hidden />
               <span>
                 Deposit {collateralSymbol} into the {marketName} market.
               </span>
             </li>
-            <li className="flex items-start gap-2">
-              <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[#1E4775]/40" />
+            <li className="flex items-center gap-2">
+              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#1E4775]/40" aria-hidden />
               <span>
                 Your deposit is automatically split into {peggedSymbol} + {leveragedSymbol} when
                 genesis ends.
               </span>
             </li>
-            <li className="flex items-start gap-2">
-              <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[#1E4775]/40" />
+            <li className="flex items-center gap-2">
+              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#1E4775]/40" aria-hidden />
               <span className="leading-snug">
                 <strong className="text-[#FF8A7A]">
                   The depositor pool owns 5% of this market&apos;s revenue forever.
                 </strong>
               </span>
             </li>
-            <li className="flex items-start gap-2">
-              <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[#1E4775]/40" />
+            <li className="flex items-center gap-2">
+              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#1E4775]/40" aria-hidden />
               <span>Your share is set by final ownership at Genesis close.</span>
             </li>
-            <li className="flex items-start gap-2">
-              <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[#1E4775]/40" />
+            <li className="flex items-center gap-2">
+              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#1E4775]/40" aria-hidden />
               <span>
                 Exit anytime: burn {peggedSymbol} or {leveragedSymbol} to redeem collateral.
               </span>
             </li>
-            <li className="flex items-start gap-2">
-              <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[#1E4775]/40" />
+            <li className="flex items-center gap-2">
+              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#1E4775]/40" aria-hidden />
               <span>Keep your positions to ride volatility and earn yield.</span>
             </li>
           </ul>

@@ -69,16 +69,16 @@ export const GenesisMarketExpandedView = ({
       <div className="space-y-3">
         <h3 className={sectionHeaderClass}>How yield works (this market)</h3>
         <ul className="space-y-3 text-[13px] leading-snug text-[#1E4775]/90">
-          <li className="flex items-start gap-2">
-            <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[#1E4775]/40" />
+          <li className="flex items-center gap-2">
+            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#1E4775]/40" aria-hidden />
             <span>
               <strong className={yieldBulletStrongClass}>
                 This market has its own on-chain yield pool.
               </strong>
             </span>
           </li>
-          <li className="flex items-start gap-2">
-            <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[#1E4775]/40" />
+          <li className="flex items-center gap-2">
+            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#1E4775]/40" aria-hidden />
             <span>
               <strong className={yieldBulletStrongClass}>
                 Revenue from fees + collateral carry
@@ -86,8 +86,8 @@ export const GenesisMarketExpandedView = ({
               is credited to this pool.
             </span>
           </li>
-          <li className="flex items-start gap-2">
-            <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[#1E4775]/40" />
+          <li className="flex items-center gap-2">
+            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#1E4775]/40" aria-hidden />
             <span>
               <strong className={yieldBulletStrongClass}>
                 A configured share of attributed revenue (in USD)
@@ -95,8 +95,8 @@ export const GenesisMarketExpandedView = ({
               is distributed to owners.
             </span>
           </li>
-          <li className="flex items-start gap-2">
-            <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[#1E4775]/40" />
+          <li className="flex items-center gap-2">
+            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#1E4775]/40" aria-hidden />
             <span>
               <strong className={yieldBulletStrongClass}>
                 Your final ownership % is set at Genesis close
@@ -104,8 +104,8 @@ export const GenesisMarketExpandedView = ({
               (plus voyage boost), this determines your lifetime share.
             </span>
           </li>
-          <li className="flex items-start gap-2">
-            <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[#1E4775]/40" />
+          <li className="flex items-center gap-2">
+            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#1E4775]/40" aria-hidden />
             <span>
               <strong className={yieldBulletStrongClass}>% still open</strong> shows remaining
               capped ownership headroom (<strong className={yieldBulletStrongClass}>not</strong>{" "}
@@ -130,14 +130,14 @@ export const GenesisMarketExpandedView = ({
                 Projected {peggedTokenSymbol} APR (Stability pools)
               </div>
               <div className="mt-2.5 flex items-center justify-center gap-2">
-                <span className="text-lg font-semibold tabular-nums sm:text-xl">
+                <span className="text-sm font-semibold tabular-nums leading-snug text-white/95">
                   {(underlyingAPR * 2 * 100).toFixed(2)}% +
                 </span>
                 <Image
                   src="/icons/marks.png"
                   alt="Marks"
-                  width={22}
-                  height={22}
+                  width={16}
+                  height={16}
                   className="inline-block shrink-0 align-middle opacity-95"
                 />
               </div>
