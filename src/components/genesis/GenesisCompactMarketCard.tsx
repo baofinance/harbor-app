@@ -182,15 +182,15 @@ export function GenesisCompactMarketCard({
     <article className="overflow-hidden rounded-xl bg-white text-[#1E4775] shadow-[0_16px_40px_-30px_rgba(0,0,0,0.55)] ring-1 ring-black/5">
       <div className="grid gap-5 px-5 py-5 md:grid-cols-2 md:items-stretch lg:grid-cols-[auto_minmax(0,1.95fr)_minmax(0,1fr)] lg:gap-x-0 lg:gap-y-5">
         <div className="flex h-full max-w-full w-fit flex-col justify-self-start py-2 min-w-0 lg:pr-6">
-          <div className="flex w-fit max-w-full min-w-0 items-start gap-3">
+          <div className="flex w-fit max-w-full min-w-0 items-center gap-3">
             <TokenLogo
               symbol={primaryMarketIcon}
               size={MARKET_ICON_PX}
-              className="shrink-0 shadow-[0_10px_24px_-16px_rgba(16,20,26,0.35)] ring-1 ring-[#10141A]/6"
+              className="translate-y-[3px] shrink-0 shadow-[0_10px_24px_-16px_rgba(16,20,26,0.35)] ring-1 ring-[#10141A]/6"
             />
             <div
               ref={brandStackRef}
-              className="inline-grid max-w-full min-w-0 grid-cols-1 gap-2 pt-0.5"
+              className="inline-grid max-w-full min-w-0 grid-cols-1 gap-2"
             >
               <h3 className="min-w-0 w-full text-left text-xl font-bold tracking-tight text-[#1E4775] sm:text-[22px]">
                 {marketName}
