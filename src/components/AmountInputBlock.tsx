@@ -31,10 +31,12 @@ export const AmountInputBlock = ({
 }: AmountInputBlockProps) => {
   return (
     <div className="space-y-2">
-      <div className="flex justify-between items-center text-sm">
+      <div className="flex items-start justify-between gap-2 text-xs sm:items-center sm:text-sm">
         <span className="font-semibold text-[#1E4775]">{label}</span>
         {balanceContent && (
-          <span className="text-[#1E4775]/70">{balanceContent}</span>
+          <span className="text-right text-[#1E4775]/70 break-words">
+            {balanceContent}
+          </span>
         )}
       </div>
       <div className="relative">

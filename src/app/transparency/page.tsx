@@ -1754,7 +1754,8 @@ export default function TransparencyPage() {
                         aria-label="Protocol markets"
                     >
                         <div className={INDEX_MARKETS_TOOLBAR_ROW_WITH_TOP_RULE_CLASS}>
-                            <div className="flex flex-wrap items-center gap-2">
+                            <div className="w-full lg:flex-1 lg:min-w-0">
+                                <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
                                 <h2 className="text-xs font-medium text-white/70 uppercase tracking-wider">
                                     Markets:
                                 </h2>
@@ -1763,6 +1764,7 @@ export default function TransparencyPage() {
                                         options={transparencyChainOptions}
                                         value={chainFilterSelected}
                                         onChange={setChainFilterSelected}
+                                        minWidthClass="w-full min-w-0 sm:w-auto sm:min-w-[235px]"
                                     />
                                 )}
                                 <IndexToolbarSegmentedToggle
@@ -1778,8 +1780,9 @@ export default function TransparencyPage() {
                                 {(chainFilterSelected.length > 0 || showGenesisMarketsOnly) && (
                                     <IndexToolbarClearFiltersButton onClick={clearFilters} />
                                 )}
+                                </div>
                             </div>
-                            <div className="flex flex-wrap items-center gap-2 sm:gap-3 md:ml-auto">
+                            <div className="w-full lg:w-auto flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center lg:ml-auto">
                                 <span
                                     className="text-white/40 text-[10px] max-w-[min(100%,14rem)] sm:max-w-none truncate sm:whitespace-normal"
                                     suppressHydrationWarning

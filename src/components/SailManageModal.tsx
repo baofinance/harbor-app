@@ -1801,7 +1801,8 @@ if (usePermitRedeem && permitResult?.permitSig && permitResult?.deadline) {
      />
    }
    closeDisabled={isProcessing}
-   contentClassName="p-4"
+  panelClassName="max-h-[calc(100dvh-1rem)] sm:max-h-[90vh] flex flex-col"
+  contentClassName="min-h-0 flex-1 overflow-y-auto p-3 sm:p-4"
  >
  {step ==="success" ? (
  <TransactionSuccessMessage

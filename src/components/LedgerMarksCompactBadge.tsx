@@ -58,7 +58,7 @@ export default function LedgerMarksCompactBadge({
             height={18}
             className="opacity-90 flex-shrink-0"
           />
-          <span>Ledger Marks</span>
+          <span className="whitespace-nowrap">Ledger Marks</span>
         </div>
       </div>
     </SimpleTooltip>

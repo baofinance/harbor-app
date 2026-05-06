@@ -46,7 +46,7 @@ export function DepositModalShell({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-end justify-center px-2 pt-2 pb-[max(env(safe-area-inset-bottom),0.5rem)] sm:items-center sm:px-4 sm:py-4">
       <div
         className="absolute inset-0 bg-black/40 backdrop-blur-sm"
         onClick={onClose}
@@ -55,7 +55,7 @@ export function DepositModalShell({
 
       <div
         className={cn(
-          "relative isolate bg-white shadow-2xl w-full max-w-md mx-2 sm:mx-4 animate-in fade-in-0 scale-in-95 duration-200 border-x border-b border-[#1E4775]/20",
+          "relative isolate w-full max-w-md md:max-w-lg animate-in fade-in-0 scale-in-95 duration-200 bg-white shadow-2xl border-x border-b border-[#1E4775]/20 flex max-h-[calc(100dvh-1rem)] sm:max-h-[90vh] flex-col",
           panelClassName,
           /* Ensure consumers cannot strip outer rounding (tw-merge: last wins for conflicting utilities) */
           "overflow-hidden rounded-xl",
@@ -102,7 +102,13 @@ export function DepositModalShell({
           </button>
         </div>
 
-        <div className={contentClassName || "p-3 sm:p-4 lg:p-6"}>{children}</div>
+        <div
+          className={
+            contentClassName || "min-h-0 flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6"
+          }
+        >
+          {children}
+        </div>
       </div>
     </div>
   );

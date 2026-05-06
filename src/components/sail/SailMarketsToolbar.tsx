@@ -47,7 +47,8 @@ export function SailMarketsToolbar({
 }: SailMarketsToolbarProps) {
   return (
     <div className={INDEX_MARKETS_TOOLBAR_ROW_WITH_TOP_RULE_CLASS}>
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="w-full lg:w-auto lg:min-w-0">
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
         <h2 className="text-xs font-medium text-white/70 uppercase tracking-wider">
           Leverage Position:
         </h2>
@@ -56,6 +57,7 @@ export function SailMarketsToolbar({
             options={sailChainOptions}
             value={chainFilterSelected}
             onChange={setChainFilterSelected}
+            minWidthClass="w-full min-w-0 sm:w-auto sm:min-w-[235px]"
           />
         )}
         <FilterMultiselectDropdown
@@ -70,7 +72,7 @@ export function SailMarketsToolbar({
           onChange={setLongFilterSelected}
           allLabel="All Long"
           groupLabel="LONG"
-          minWidthClass="min-w-[235px]"
+          minWidthClass="w-full min-w-0 sm:w-auto sm:min-w-[235px]"
         />
         <FilterMultiselectDropdown
           label="Short"
@@ -84,27 +86,25 @@ export function SailMarketsToolbar({
           onChange={setShortFilterSelected}
           allLabel="All Short"
           groupLabel="SHORT"
-          minWidthClass="min-w-[235px]"
+          minWidthClass="w-full min-w-0 sm:w-auto sm:min-w-[235px]"
         />
         {(chainFilterSelected.length > 0 ||
           longFilterSelected.length > 0 ||
           shortFilterSelected.length > 0) && (
           <IndexToolbarClearFiltersButton onClick={onClearFilters} />
         )}
+        </div>
       </div>
-      <div className="w-full md:flex-1 md:min-w-0 grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] items-center gap-2 md:gap-3">
-        <div className="hidden md:block" />
+      <div className="w-full lg:ml-auto lg:w-auto lg:min-w-0 flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-end">
         {metrics && metrics.length > 0 ? (
-          <div className="md:justify-self-center">
-            <IndexToolbarMetricsGroup metrics={metrics} />
+          <div className="w-full lg:w-auto">
+            <IndexToolbarMetricsGroup metrics={metrics} className="w-full lg:w-auto" />
           </div>
-        ) : (
-          <div />
-        )}
+        ) : null}
         <LedgerMarksCompactBadge
           centerOnMobile
-          className="w-full md:w-auto md:justify-self-end"
-          pillClassName="w-full md:w-auto justify-center md:justify-start"
+          className="w-full lg:w-auto"
+          pillClassName="w-full lg:w-auto min-h-[52px] px-3 py-1.5 justify-center lg:justify-start"
           body={
             <>
               <div className="font-semibold">Ledger Marks</div>

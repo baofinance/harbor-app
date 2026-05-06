@@ -76,7 +76,7 @@ export function GenesisCompactMarketCard({
 
   return (
     <article className="overflow-hidden rounded-lg bg-white text-[#1E4775] shadow-sm ring-1 ring-[#1E4775]/10">
-      <div className="grid gap-4 px-4 py-4 md:grid-cols-[0.75fr_2.1fr_1.15fr] md:items-stretch">
+      <div className="grid gap-4 px-4 py-4 md:grid-cols-2 md:items-stretch lg:grid-cols-[0.75fr_2.1fr_1.15fr]">
         <div className="flex min-w-0 h-full flex-col rounded-md p-4">
           <div className="flex items-center gap-2">
             <TokenLogo
@@ -181,7 +181,7 @@ export function GenesisCompactMarketCard({
           </ol>
         </div>
 
-        <div className="h-full rounded-md border border-[#1E4775]/12 p-3.5 flex flex-col gap-2.5">
+        <div className="h-full rounded-md border border-[#1E4775]/12 p-3.5 flex flex-col gap-2.5 md:col-span-2 lg:col-span-1">
           <div className="space-y-1.5">
             <div className={sectionHeaderClass}>
               Your deposit
@@ -236,7 +236,7 @@ export function GenesisCompactMarketCard({
                   style={{ width: `${Math.max(0, 100 - capData.progressPct)}%` }}
                 />
               </div>
-              <p className="text-[11px] leading-tight text-[#1E4775]/70 whitespace-nowrap">
+              <p className="text-[11px] leading-tight text-[#1E4775]/70">
                 {capData.capFilled ? (
                   <>
                     <span className="font-medium">0%</span> capped ownership still open.

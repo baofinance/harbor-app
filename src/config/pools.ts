@@ -33,14 +33,14 @@ const launchPools: Pool[] = [
     groupIcon: "🟢",
     name: "fxSAVE",
     assetIcons: ["/icons/fxSave.png"],
-    address: markets.zheeth.addresses.stabilityPoolCollateral as `0x${string}`,
+    address: markets["eth-fxusd"].addresses.stabilityPoolCollateral as `0x${string}`,
     type: "Collateral",
     tokenSymbol: "fxSAVE",
     chain: "Ethereum",
     chainId: 1,
     chainIcon: "/icons/eth.png",
     description: "Deposit fxSAVE to earn yield and secure the protocol.",
-    marketId: "zheeth",
+    marketId: "eth-fxusd",
     poolType: "collateral",
     assetDecimals: 18,
   },
@@ -50,7 +50,7 @@ const launchPools: Pool[] = [
     groupIcon: "🟢",
     name: "steamedUSD / ETH",
     assetIcons: ["/icons/steamedUSD.png", "/icons/eth.png"], // TODO: Update steamedUSD icon when available
-    address: markets.zheeth.addresses.stabilityPoolLeveraged as `0x${string}`,
+    address: markets["eth-fxusd"].addresses.stabilityPoolLeveraged as `0x${string}`,
     type: "Leveraged",
     tokenSymbol: "steamedUSD/ETH",
     chain: "Ethereum",
@@ -58,7 +58,7 @@ const launchPools: Pool[] = [
     chainIcon: "/icons/eth.png",
     description:
       "Provide liquidity for the steamedUSD/ETH pair to earn leveraged rewards.",
-    marketId: "zheeth",
+    marketId: "eth-fxusd",
     poolType: "leveraged",
     assetDecimals: 18,
   },
@@ -70,7 +70,7 @@ const launchPools: Pool[] = [
     groupSubText: "(fxSAVE collateral)",
     name: "fxSAVE",
     assetIcons: ["/icons/fxSave.png"],
-    address: markets["zhebtc-fxsave"].addresses
+    address: markets["btc-fxusd"].addresses
       .stabilityPoolCollateral as `0x${string}`,
     type: "Collateral",
     tokenSymbol: "fxSAVE",
@@ -78,7 +78,7 @@ const launchPools: Pool[] = [
     chainId: 1,
     chainIcon: "/icons/eth.png",
     description: "Deposit fxSAVE to earn yield and secure the protocol.",
-    marketId: "zhebtc-fxsave",
+    marketId: "btc-fxusd",
     poolType: "collateral",
     assetDecimals: 18,
   },
@@ -89,7 +89,7 @@ const launchPools: Pool[] = [
     groupSubText: "(fxSAVE collateral)",
     name: "steamedUSD / BTC",
     assetIcons: ["/icons/steamedUSD.png", "/icons/btc.png"], // TODO: Update steamedUSD and BTC icons when available
-    address: markets["zhebtc-fxsave"].addresses
+    address: markets["btc-fxusd"].addresses
       .stabilityPoolLeveraged as `0x${string}`,
     type: "Leveraged",
     tokenSymbol: "steamedUSD/BTC",
@@ -98,7 +98,7 @@ const launchPools: Pool[] = [
     chainIcon: "/icons/eth.png",
     description:
       "Provide liquidity for the steamedUSD/BTC pair to earn leveraged rewards.",
-    marketId: "zhebtc-fxsave",
+    marketId: "btc-fxusd",
     poolType: "leveraged",
     assetDecimals: 18,
   },
@@ -110,7 +110,7 @@ const launchPools: Pool[] = [
     groupSubText: "(wstETH collateral)",
     name: "wstETH",
     assetIcons: ["/icons/wstETH.webp"],
-    address: markets["zhebtc-wsteth"].addresses
+    address: markets["btc-steth"].addresses
       .stabilityPoolCollateral as `0x${string}`,
     type: "Collateral",
     tokenSymbol: "wstETH",
@@ -118,7 +118,7 @@ const launchPools: Pool[] = [
     chainId: 1,
     chainIcon: "/icons/eth.png",
     description: "Deposit wstETH to earn yield and secure the protocol.",
-    marketId: "zhebtc-wsteth",
+    marketId: "btc-steth",
     poolType: "collateral",
     assetDecimals: 18,
   },
@@ -129,7 +129,7 @@ const launchPools: Pool[] = [
     groupSubText: "(wstETH collateral)",
     name: "steamedETH / BTC",
     assetIcons: ["/icons/steamedeth.svg", "/icons/btc.png"], // TODO: Update BTC icon when available
-    address: markets["zhebtc-wsteth"].addresses
+    address: markets["btc-steth"].addresses
       .stabilityPoolLeveraged as `0x${string}`,
     type: "Leveraged",
     tokenSymbol: "steamedETH/BTC",
@@ -138,7 +138,7 @@ const launchPools: Pool[] = [
     chainIcon: "/icons/eth.png",
     description:
       "Provide liquidity for the steamedETH/BTC pair to earn leveraged rewards.",
-    marketId: "zhebtc-wsteth",
+    marketId: "btc-steth",
     poolType: "leveraged",
     assetDecimals: 18,
   },

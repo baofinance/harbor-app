@@ -9608,8 +9608,8 @@ export const AnchorDepositWithdrawModal = ({
           }
           closeDisabled={isProcessing}
           closeTitle={isProcessing ? "Close modal (will cancel transaction)" : "Close"}
-          panelClassName="max-h-[90vh] flex flex-col overflow-hidden"
-          contentClassName="p-5 flex-1 overflow-y-auto"
+          panelClassName="max-h-[calc(100dvh-1rem)] sm:max-h-[90vh] flex flex-col overflow-hidden"
+          contentClassName="min-h-0 flex-1 overflow-y-auto p-3 sm:p-5"
         >
             {simpleMode && activeTab === "deposit" ? (
               // Simple Mode: Step-by-Step Flow

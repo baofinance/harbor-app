@@ -2,7 +2,7 @@
  * Shared layout for Genesis / Sail / Anchor index filter rows — keep padding in sync.
  */
 export const INDEX_MARKETS_TOOLBAR_ROW_CLASS =
-  "pt-3 pb-3 flex flex-col md:flex-row md:items-center md:justify-between gap-3 flex-wrap";
+  "pt-3 pb-3 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 flex-wrap lg:flex-nowrap";
 
 /**
  * Same as {@link INDEX_MARKETS_TOOLBAR_ROW_CLASS} plus one top rule — use as the sole separator
@@ -57,7 +57,7 @@ export const GENESIS_MARKET_TEST_TAG_TOOLTIP =
  * Ledger Marks strip — same `text-sm` scale as `INDEX_CORAL_INFO_TAG_CLASS` (above `text-xs` row labels).
  */
 export const INDEX_CORAL_LEDGER_TAG_PILL_CLASS =
-  "flex cursor-help items-center gap-1.5 rounded-none bg-[#E67A6B]/15 px-2 py-0.5 text-[#F5D4CC] text-sm font-semibold tracking-wide";
+  "inline-flex cursor-help items-center gap-1.5 rounded-none bg-[#E67A6B]/15 px-2 py-0.5 text-[#F5D4CC] text-sm font-semibold tracking-wide whitespace-nowrap";
 
 /**
  * Dark navy (#0a1628) at 50% opacity so the page blue shows through.

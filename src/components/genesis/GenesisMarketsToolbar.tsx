@@ -40,76 +40,77 @@ export function GenesisMarketsToolbar({
 }: GenesisMarketsToolbarProps) {
   return (
     <div className={INDEX_MARKETS_TOOLBAR_ROW_WITH_TOP_RULE_CLASS}>
-      <div className="flex flex-wrap items-center gap-2">
-        <h2 className="text-xs font-medium text-white/70 uppercase tracking-wider flex items-center gap-2 flex-wrap">
-          <span className="flex items-center gap-1.5">
-            Active Campaign:
-            {activeCampaignName && (
-              <span className={INDEX_CORAL_INFO_TAG_CLASS}>{activeCampaignName}</span>
-            )}
-            {activeCampaignName ? (
-              <span className="rounded px-1.5 py-0.5 text-[10px] font-bold font-mono tracking-tight border border-white/40 bg-white/10 text-white">
-                2.0
-              </span>
-            ) : null}
-          </span>
-        </h2>
-        {displayedCompletedByCampaignSize > 0 && (
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs font-medium text-white/70 uppercase tracking-wider">
-              Genesis:
+      <div className="w-full lg:w-auto lg:min-w-0">
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+          <h2 className="text-xs font-medium text-white/70 uppercase tracking-wider flex items-center gap-2 flex-wrap">
+            <span className="flex items-center gap-1.5">
+              Active Campaign:
+              {activeCampaignName && (
+                <span className={INDEX_CORAL_INFO_TAG_CLASS}>{activeCampaignName}</span>
+              )}
+              {activeCampaignName ? (
+                <span className="rounded px-1.5 py-0.5 text-[10px] font-bold font-mono tracking-tight border border-white/40 bg-white/10 text-white">
+                  2.0
+                </span>
+              ) : null}
             </span>
-            {genesisChainOptions.length > 1 && (
+          </h2>
+          {displayedCompletedByCampaignSize > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+              <span className="text-xs font-medium text-white/70 uppercase tracking-wider">
+                Genesis:
+              </span>
+              {genesisChainOptions.length > 1 && (
+                <IndexToolbarNetworkFilter
+                  options={genesisChainOptions}
+                  value={chainFilterSelected}
+                  onChange={setChainFilterSelected}
+                  minWidthClass="w-full min-w-0 sm:w-auto sm:min-w-[235px]"
+                />
+              )}
+              <IndexToolbarSegmentedToggle
+                label="Status:"
+                value={showCompletedGenesis ? "all" : "ongoing"}
+                onChange={(id) => setShowCompletedGenesis(id === "all")}
+                options={[
+                  { id: "ongoing", label: "Ongoing" },
+                  { id: "all", label: "All" },
+                ]}
+                ariaLabel="Genesis status"
+              />
+              {chainFilterSelected.length > 0 && (
+                <IndexToolbarClearFiltersButton
+                  onClick={() => setChainFilterSelected([])}
+                />
+              )}
+            </div>
+          )}
+          {displayedCompletedByCampaignSize === 0 && genesisChainOptions.length > 1 && (
+            <div className="flex flex-wrap items-center gap-2">
               <IndexToolbarNetworkFilter
                 options={genesisChainOptions}
                 value={chainFilterSelected}
                 onChange={setChainFilterSelected}
+                minWidthClass="w-full min-w-0 sm:w-auto sm:min-w-[235px]"
               />
-            )}
-            <IndexToolbarSegmentedToggle
-              label="Status:"
-              value={showCompletedGenesis ? "all" : "ongoing"}
-              onChange={(id) => setShowCompletedGenesis(id === "all")}
-              options={[
-                { id: "ongoing", label: "Ongoing" },
-                { id: "all", label: "All" },
-              ]}
-              ariaLabel="Genesis status"
-            />
-            {chainFilterSelected.length > 0 && (
-              <IndexToolbarClearFiltersButton
-                onClick={() => setChainFilterSelected([])}
-              />
-            )}
-          </div>
-        )}
-        {displayedCompletedByCampaignSize === 0 && genesisChainOptions.length > 1 && (
-          <>
-            <IndexToolbarNetworkFilter
-              options={genesisChainOptions}
-              value={chainFilterSelected}
-              onChange={setChainFilterSelected}
-            />
-            {chainFilterSelected.length > 0 && (
-              <IndexToolbarClearFiltersButton
-                onClick={() => setChainFilterSelected([])}
-              />
-            )}
-          </>
-        )}
+              {chainFilterSelected.length > 0 && (
+                <IndexToolbarClearFiltersButton
+                  onClick={() => setChainFilterSelected([])}
+                />
+              )}
+            </div>
+          )}
+        </div>
       </div>
-      <div className="w-full md:flex-1 md:min-w-0 grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] items-center gap-2 md:gap-3">
-        <div className="hidden md:block" />
+      <div className="w-full lg:ml-auto lg:w-auto lg:min-w-0 flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-end">
         {metrics && metrics.length > 0 ? (
-          <div className="md:justify-self-center">
-            <IndexToolbarMetricsGroup metrics={metrics} />
+          <div className="w-full lg:w-auto">
+            <IndexToolbarMetricsGroup metrics={metrics} className="w-full lg:w-auto" />
           </div>
-        ) : (
-          <div />
-        )}
+        ) : null}
         <LedgerMarksCompactBadge
-          className="max-w-full md:justify-self-end"
-          pillClassName="text-xs sm:text-sm max-w-full"
+          className="max-w-full lg:w-auto"
+          pillClassName="text-xs sm:text-sm max-w-full min-h-[52px] px-3 py-1.5 justify-center lg:justify-start"
           tooltipMaxWidth="min(90vw, 22rem)"
           intro={
             <p>
