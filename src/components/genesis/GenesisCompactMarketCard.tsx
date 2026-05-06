@@ -176,8 +176,9 @@ export function GenesisCompactMarketCard({
     if (!el) return;
 
     const measure = () => {
+      // Full width of icon+title row and chain row (chain is below title, indented to title start).
       const w = Math.ceil(el.getBoundingClientRect().width);
-      setStatusBarTotalWidthPx(MARKET_ICON_PX + HEADER_GAP_PX + w);
+      setStatusBarTotalWidthPx(w);
     };
 
     measure();
@@ -190,19 +191,26 @@ export function GenesisCompactMarketCard({
     <article className="overflow-hidden rounded-xl bg-white text-[#1E4775] shadow-[0_16px_40px_-30px_rgba(0,0,0,0.55)] ring-1 ring-black/5">
       <div className="grid gap-5 px-5 py-5 md:grid-cols-2 md:items-stretch lg:grid-cols-[auto_minmax(0,1.95fr)_minmax(0,1fr)] lg:gap-x-0 lg:gap-y-5">
         <div className="flex h-full max-w-full w-fit flex-col justify-self-start py-2 min-w-0 lg:pr-6">
-          <div className="flex w-fit max-w-full min-w-0 items-center gap-3">
-            <TokenLogo
-              symbol={primaryMarketIcon}
-              size={MARKET_ICON_PX}
-              className="translate-y-[3px] shrink-0 ring-2 ring-[#1E4775]/40 shadow-[0_0_0_1px_rgba(30,71,117,0.28),0_0_40px_-4px_rgba(30,71,117,0.52),0_10px_60px_-16px_rgba(30,71,117,0.42),0_0_80px_-6px_rgba(30,71,117,0.2)]"
-            />
-            <div
-              ref={brandStackRef}
-              className="inline-grid max-w-full min-w-0 grid-cols-1 gap-2"
-            >
-              <h3 className="min-w-0 w-full text-left text-xl font-bold tracking-tight text-[#1E4775] sm:text-[22px]">
+          <div
+            ref={brandStackRef}
+            className="flex w-fit max-w-full min-w-0 flex-col gap-2"
+          >
+            <div className="flex min-w-0 items-center gap-3">
+              <TokenLogo
+                symbol={primaryMarketIcon}
+                size={MARKET_ICON_PX}
+                className="translate-y-[3px] shrink-0 ring-2 ring-[#1E4775]/40 shadow-[0_0_0_1px_rgba(30,71,117,0.28),0_0_40px_-4px_rgba(30,71,117,0.52),0_10px_60px_-16px_rgba(30,71,117,0.42),0_0_80px_-6px_rgba(30,71,117,0.2)]"
+              />
+              <h3 className="min-w-0 text-left text-xl font-bold tracking-tight text-[#1E4775] sm:text-[22px]">
                 {marketName}
               </h3>
+            </div>
+            <div
+              className="min-w-0 max-w-full"
+              style={{
+                paddingLeft: MARKET_ICON_PX + HEADER_GAP_PX,
+              }}
+            >
               <span className={chainBadgeShellClass}>
                 <span
                   className={
