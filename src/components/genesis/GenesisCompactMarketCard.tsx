@@ -45,6 +45,7 @@ const COMPACT_CARD_STATUS_RAIL_MIN_PX = 256;
 
 /** Vertical token equation column (between How it works and Your deposit). */
 const VERTICAL_TOKEN_STRIP_ICON_PX = 32;
+/** Token strip column (lg grid col 3): `calc(5.5rem + 10px)` in `lg:grid-cols-[…]` below. */
 /** MegaETH pill: disc stays compact; network glyph is sized up inside the disc. */
 const MEGAETH_CHAIN_DISC_PX = 34;
 const MEGAETH_CHAIN_NETWORK_ICON_PX = 32;
@@ -228,10 +229,10 @@ export function GenesisCompactMarketCard({
 
   return (
     <article className="overflow-hidden rounded-xl bg-white text-[#1E4775] shadow-[0_16px_40px_-30px_rgba(0,0,0,0.55)] ring-1 ring-black/5">
-      {/* lg: tighter left rail; `fr` split favors Your deposit over How it works. */}
-      <div className="grid gap-4 px-4 py-4 md:grid-cols-2 md:items-stretch lg:grid-cols-[auto_minmax(0,1.82fr)_calc(5.5rem+10px)_minmax(0,1.12fr)] lg:items-stretch lg:gap-x-0 lg:gap-y-4">
+      {/* lg: `1.15fr` / `2.7fr` / strip / `1.15fr` — outer cols equal */}
+      <div className="grid gap-4 px-4 py-4 md:grid-cols-2 md:items-stretch lg:grid-cols-[minmax(0,_1.15fr)_minmax(0,_2.7fr)_calc(5.5rem_+_10px)_minmax(0,_1.15fr)] lg:items-stretch lg:gap-x-0 lg:gap-y-4">
         <div
-          className="flex h-full min-h-0 min-w-0 max-w-full w-full flex-col justify-self-start py-2 lg:min-w-[256px] lg:pr-4"
+          className="flex h-full min-h-0 min-w-0 max-w-full w-full flex-col py-2 lg:pr-4"
           style={{
             minWidth: `min(100%, calc(${MARKET_ICON_PX}px + 0.75rem + ${compactTitleMinCh}ch))`,
           }}

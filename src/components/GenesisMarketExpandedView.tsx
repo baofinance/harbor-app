@@ -107,6 +107,13 @@ export const GenesisMarketExpandedView = ({
           <li className="flex items-center gap-2">
             <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#1E4775]/40" aria-hidden />
             <span>
+              <strong className={yieldBulletStrongClass}>Exiting your initial position</strong>{" "}
+              reduces your share to the <strong className={yieldBulletStrongClass}>minimum share</strong>.
+            </span>
+          </li>
+          <li className="flex items-center gap-2">
+            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#1E4775]/40" aria-hidden />
+            <span>
               <strong className={yieldBulletStrongClass}>% still open</strong> shows remaining
               capped ownership headroom (<strong className={yieldBulletStrongClass}>not</strong>{" "}
               an APR).
