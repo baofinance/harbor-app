@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { formatEther } from "viem";
-import { markets } from "@/config/markets";
+import { markets, isAnchorActiveForBasicUi } from "@/config/markets";
 import { FILTER_NONE_SENTINEL } from "@/components/FilterMultiselectDropdown";
 import { useStaggeredReady } from "@/hooks/useStaggeredReady";
 import { useMultipleVolatilityProtection } from "@/hooks/useVolatilityProtection";
@@ -32,7 +32,8 @@ import {
  */
 export function useAnchorPageData(
   chainFilterSelected: string[],
-  address: `0x${string}` | undefined
+  address: `0x${string}` | undefined,
+  layoutIsBasic: boolean
 ) {
   const anchorMarkets = useMemo(
     () =>
@@ -40,15 +41,16 @@ export function useAnchorPageData(
     []
   );
 
-  const displayedAnchorMarkets = useMemo(
-    () =>
+  const displayedAnchorMarkets = useMemo(() => {
+    const byChain =
       chainFilterSelected.includes(FILTER_NONE_SENTINEL)
         ? []
         : chainFilterSelected.length === 0
           ? anchorMarkets
-          : filterBySelectedNetworks(anchorMarkets, chainFilterSelected, ([, m]) => m),
-    [anchorMarkets, chainFilterSelected]
-  );
+          : filterBySelectedNetworks(anchorMarkets, chainFilterSelected, ([, m]) => m);
+    if (!layoutIsBasic) return byChain;
+    return byChain.filter(([, m]) => isAnchorActiveForBasicUi(m));
+  }, [anchorMarkets, chainFilterSelected, layoutIsBasic]);
 
   const anchorChainOptions = useMemo(
     () => buildNetworkFilterOptions(anchorMarkets, ([, m]) => m),

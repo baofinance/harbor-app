@@ -103,9 +103,10 @@ export function DepositModalShell({
         </div>
 
         <div
-          className={
-            contentClassName || "min-h-0 flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6"
-          }
+          className={cn(
+            "min-h-0 flex-1 overflow-y-auto",
+            contentClassName || "p-3 sm:p-4 lg:p-6",
+          )}
         >
           {children}
         </div>

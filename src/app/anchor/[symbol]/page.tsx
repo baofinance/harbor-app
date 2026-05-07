@@ -15,6 +15,7 @@ const tokenIconMap: Record<string, string> = {
   haeth: "/icons/haETH.png",
   habtc: "/icons/haBTC.png",
   haeur: "/icons/haEUR.png",
+  hausd: "/icons/haUSD2.png",
   hsausd: "/icons/haUSD2.png",
 };
 

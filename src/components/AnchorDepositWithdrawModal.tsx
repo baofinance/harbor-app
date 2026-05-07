@@ -9609,91 +9609,63 @@ export const AnchorDepositWithdrawModal = ({
           closeDisabled={isProcessing}
           closeTitle={isProcessing ? "Close modal (will cancel transaction)" : "Close"}
           panelClassName="max-h-[calc(100dvh-1rem)] sm:max-h-[90vh] flex flex-col overflow-hidden"
-          contentClassName="min-h-0 flex-1 overflow-y-auto p-3 sm:p-5"
+          contentClassName="p-3 sm:p-5"
         >
             {simpleMode && activeTab === "deposit" ? (
               // Simple Mode: Step-by-Step Flow
               <div className="space-y-4">
                 {/* Step Labels with arrows */}
-                <div className="flex items-center justify-center text-xs text-[#1E4775]/50 pb-3 border-b border-[#d1d7e5]">
+                <div className="flex flex-wrap items-center justify-center gap-x-1 gap-y-2 border-b border-[#e2e8f0] pb-3 text-center text-[11px] text-[#94a3b8] sm:text-xs">
                   <div
                     className={`${
-                      currentStep === 1 ? "text-[#1E4775] font-semibold" : ""
+                      currentStep === 1
+                        ? "font-semibold text-[#153B63]"
+                        : ""
                     }`}
                   >
                     1. Deposit Collateral & Amount
                   </div>
                   {!mintOnly && !skipRewardStep && (
                     <>
-                      <svg
-                        className="w-4 h-4 mx-3 text-[#1E4775]/30"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M9 5l7 7-7 7"
-                        />
-                      </svg>
+                      <span className="mx-1 text-[#cbd5e1]" aria-hidden>
+                        ›
+                      </span>
                       <div
                         className={`${
                           currentStep === 2
-                            ? "text-[#1E4775] font-semibold"
+                            ? "font-semibold text-[#153B63]"
                             : ""
                         }`}
                       >
-                        2. Reward Token
+                        2. Reward token
                       </div>
-                      <svg
-                        className="w-4 h-4 mx-3 text-[#1E4775]/30"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M9 5l7 7-7 7"
-                        />
-                      </svg>
+                      <span className="mx-1 text-[#cbd5e1]" aria-hidden>
+                        ›
+                      </span>
                       <div
                         className={`${
                           currentStep === 3
-                            ? "text-[#1E4775] font-semibold"
+                            ? "font-semibold text-[#153B63]"
                             : ""
                         }`}
                       >
-                        3. Stability Pool
+                        3. Stability pool
                       </div>
                     </>
                   )}
                   {!mintOnly && skipRewardStep && (
                     <>
-                      <svg
-                        className="w-4 h-4 mx-3 text-[#1E4775]/30"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M9 5l7 7-7 7"
-                        />
-                      </svg>
+                      <span className="mx-1 text-[#cbd5e1]" aria-hidden>
+                        ›
+                      </span>
                       <div
                         className={`${
                           currentStep === 2
-                            ? "text-[#1E4775] font-semibold"
+                            ? "font-semibold text-[#153B63]"
                             : ""
                         }`}
                       >
-                        2. Stability Pool
+                        2. Stability pool
                       </div>
                     </>
                   )}
@@ -9959,7 +9931,7 @@ export const AnchorDepositWithdrawModal = ({
                         <>
                       {currentStep === 1 && !isDirectPeggedDeposit && (
                         <div className="space-y-2">
-                          <div className="flex items-center justify-between rounded-md border border-[#1E4775]/20 bg-[#17395F]/5 px-3 py-2 text-xs">
+                          <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-[#f8fafc] px-3 py-2.5 text-xs">
                             <div className="text-[#1E4775]/80">
                               Mint only (do not deposit to stability pool)
                             </div>
@@ -10007,7 +9979,7 @@ export const AnchorDepositWithdrawModal = ({
                         </div>
                       )}
                       {showPermitToggle && (
-                        <div className="flex items-center justify-between rounded-md border border-[#1E4775]/20 bg-[#17395F]/5 px-3 py-2 text-xs">
+                        <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-[#f8fafc] px-3 py-2.5 text-xs">
                           <div className="text-[#1E4775]/80">
                             {showDepositPermitToggle
                               ? "Use permit (gasless approval) for this deposit"
@@ -10141,10 +10113,10 @@ export const AnchorDepositWithdrawModal = ({
                       {/* Transaction Overview - Show on first step, otherwise show simple preview */}
                       {!isDirectPeggedDeposit && currentStep === 1 ? (
                         <div className="space-y-2">
-                          <label className="block text-sm font-semibold text-[#1E4775] mb-1.5">
+                          <label className="block text-sm font-semibold text-[#153B63] mb-1.5">
                             Transaction Overview
                           </label>
-                          <div className="p-2.5 rounded-md bg-[#17395F]/5 border border-[#1E4775]/10">
+                          <div className="rounded-lg border border-slate-200 bg-[#f8fafc] p-3">
                             <div className="space-y-2 text-sm">
                               {/* You will receive */}
                               {expectedMintOutput && amount && parseFloat(amount) > 0 ? (
@@ -10219,7 +10191,7 @@ export const AnchorDepositWithdrawModal = ({
                           </div>
                         </div>
                       ) : !isDirectPeggedDeposit ? (
-                        <div className="bg-[rgb(var(--surface-selected-rgb))]/30 border border-[rgb(var(--surface-selected-border-rgb))]/50 p-2.5">
+                        <div className="rounded-lg border border-slate-200 bg-[#f8fafc] p-3">
                           <div className="flex justify-between items-center">
                             <span className="text-sm font-medium text-[#1E4775]/70">
                               You will receive:
@@ -10239,7 +10211,7 @@ export const AnchorDepositWithdrawModal = ({
                       {isDirectPeggedDeposit &&
                         amount &&
                         parseFloat(amount) > 0 && (
-                          <div className="bg-[rgb(var(--surface-selected-rgb))]/30 border border-[rgb(var(--surface-selected-border-rgb))]/50 p-2.5">
+                          <div className="rounded-lg border border-slate-200 bg-[#f8fafc] p-3">
                             <div className="flex justify-between items-center">
                               <span className="text-sm font-medium text-[#1E4775]/70">
                                 You will deposit:
@@ -10308,7 +10280,17 @@ export const AnchorDepositWithdrawModal = ({
                               !!error ||
                               isProcessing
                         }
-                        className="w-full mt-4 py-3 px-4 rounded-md bg-[#FF8A7A] text-white font-semibold hover:bg-[#FF6B5A] transition-colors disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
+                        className={
+                          step === "error"
+                            ? "mt-4 w-full rounded-xl bg-[#FF8A7A] px-4 py-3 font-semibold text-white transition-colors hover:bg-[#FF6B5A]"
+                            : !selectedDepositAsset ||
+                                !amount ||
+                                parseFloat(amount) <= 0 ||
+                                !!error ||
+                                isProcessing
+                              ? "mt-4 w-full cursor-not-allowed rounded-xl border border-slate-200/80 bg-[#e8ecf2] px-4 py-3 font-semibold text-[#64748b]"
+                              : "mt-4 w-full rounded-xl bg-[#153B63] px-4 py-3 font-semibold text-white shadow-sm transition-colors hover:bg-[#0F2F52]"
+                        }
                       >
                         {step === "error"
                           ? "Try Again"
@@ -10402,7 +10384,7 @@ export const AnchorDepositWithdrawModal = ({
                             !!error ||
                             isProcessing
                           }
-                          className="flex-1 py-3 px-4 rounded-md bg-[#1E4775] text-white font-semibold hover:bg-[#17395F] transition-colors disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
+                          className="flex-1 rounded-xl bg-[#153B63] px-4 py-3 font-semibold text-white shadow-sm transition-colors hover:bg-[#0F2F52] disabled:cursor-not-allowed disabled:bg-[#e8ecf2] disabled:text-[#64748b] disabled:shadow-none disabled:hover:bg-[#e8ecf2]"
                         >
                           {isProcessing
                             ? "Processing..."
@@ -10443,7 +10425,7 @@ export const AnchorDepositWithdrawModal = ({
                               return (
                                 <label
                                   key={poolKey}
-                                  className="flex items-start gap-2 p-2 rounded-md bg-[#17395F]/5 border border-[#17395F]/20 cursor-pointer hover:bg-[#17395F]/10 transition-colors"
+                                  className="flex cursor-pointer items-start gap-2 rounded-lg border border-slate-200 bg-[#f8fafc] p-2.5 transition-colors hover:bg-slate-100"
                                 >
                                   <input
                                     type="radio"
@@ -10596,10 +10578,10 @@ export const AnchorDepositWithdrawModal = ({
 
                         {/* Transaction Overview */}
                         <div className="space-y-2">
-                          <label className="block text-sm font-semibold text-[#1E4775] mb-1.5">
+                          <label className="mb-1.5 block text-sm font-semibold text-[#153B63]">
                             Transaction Overview
                           </label>
-                          <div className="p-3 rounded-md bg-[#17395F]/5 border border-[#1E4775]/10">
+                          <div className="rounded-lg border border-slate-200 bg-[#f8fafc] p-3">
                             {/* Review Summary */}
                             {(() => {
                           // Determine deposit token symbol
@@ -10905,7 +10887,7 @@ export const AnchorDepositWithdrawModal = ({
                                   (selectedRewardToken &&
                                     !selectedStabilityPool)
                                 }
-                                className="flex-1 py-3 px-4 rounded-md bg-[#FF8A7A] text-white font-semibold hover:bg-[#FF6B5A] transition-colors disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
+                                className="flex-1 rounded-xl bg-[#153B63] px-4 py-3 font-semibold text-white shadow-sm transition-colors hover:bg-[#0F2F52] disabled:cursor-not-allowed disabled:bg-[#e8ecf2] disabled:text-[#64748b] disabled:shadow-none disabled:hover:bg-[#e8ecf2]"
                               >
                                 {isDirectPeggedDeposit && selectedStabilityPool
                                   ? "Deposit"
@@ -10922,10 +10904,10 @@ export const AnchorDepositWithdrawModal = ({
                       <div className="space-y-4">
                         {/* Transaction Overview */}
                         <div className="space-y-2">
-                          <label className="block text-sm font-semibold text-[#1E4775] mb-1.5">
+                          <label className="mb-1.5 block text-sm font-semibold text-[#153B63]">
                             Transaction Overview
                           </label>
-                          <div className="p-3 rounded-md bg-[#17395F]/5 border border-[#1E4775]/10">
+                          <div className="rounded-lg border border-slate-200 bg-[#f8fafc] p-3">
                           {/* You will receive */}
                           <div className="flex justify-between items-center">
                             <span className="text-sm font-medium text-[#1E4775]/70">
