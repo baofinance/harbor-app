@@ -68,11 +68,6 @@ function tokenStripCollateralLogoSymbol(collateralSymbol: string): string {
   return s;
 }
 
-/** Match `GenesisCompactMarketCard` primary market icon (haToken header on basic Anchor cards). */
-const ANCHOR_BASIC_HA_TOKEN_LOGO_PX = 80;
-const ANCHOR_BASIC_HA_TOKEN_LOGO_CLASS =
-  "mb-1 shrink-0 translate-y-[3px] ring-2 ring-[#1E4775]/40 shadow-[0_0_0_1px_rgba(30,71,117,0.28),0_0_40px_-4px_rgba(30,71,117,0.52),0_10px_60px_-16px_rgba(30,71,117,0.42),0_0_80px_-6px_rgba(30,71,117,0.2)]";
-
 /** 20px box: bullets + flow use the same icon footprint. */
 const ICON_BOX = "flex h-5 w-5 shrink-0 items-center justify-center";
 const BULLET_ROW_CLASS =
@@ -360,12 +355,8 @@ function AnchorBasicMarketCard({
   return (
     <article className={CARD_SHELL_CLASS}>
       <div className="flex shrink-0 flex-col items-center text-center">
-        <TokenLogo
-          symbol={symbol}
-          size={ANCHOR_BASIC_HA_TOKEN_LOGO_PX}
-          className={ANCHOR_BASIC_HA_TOKEN_LOGO_CLASS}
-        />
-        <h3 className="font-mono text-2xl font-bold leading-tight tracking-tight text-[#1E4775] sm:text-[22px]">
+        <TokenLogo symbol={symbol} size={72} className="mb-1 shrink-0" />
+        <h3 className="font-mono text-2xl font-bold leading-tight tracking-tight text-[#0f172a]">
           {symbol}
         </h3>
         <div className={CARD_RAIL_SLOT}>{yieldRailControl}</div>
@@ -481,12 +472,8 @@ function AnchorBasicComingSoonCard({ symbol }: { symbol: string }) {
   return (
     <article className={CARD_SHELL_CLASS}>
       <div className="flex shrink-0 flex-col items-center text-center">
-        <TokenLogo
-          symbol={symbol}
-          size={ANCHOR_BASIC_HA_TOKEN_LOGO_PX}
-          className={`${ANCHOR_BASIC_HA_TOKEN_LOGO_CLASS} opacity-90`}
-        />
-        <h3 className="font-mono text-2xl font-bold leading-tight tracking-tight text-[#1E4775] sm:text-[22px]">
+        <TokenLogo symbol={symbol} size={72} className="mb-1 shrink-0 opacity-90" />
+        <h3 className="font-mono text-2xl font-bold leading-tight tracking-tight text-[#0f172a]">
           {symbol}
         </h3>
         <div className={CARD_RAIL_SLOT}>
