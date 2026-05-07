@@ -15,6 +15,7 @@ import {
   SailPageTitleSection,
   SailUserStatsCards,
   SailMarketRow,
+  SailBasicMarketCardsGrid,
 } from "@/components/sail";
 import { usePageLayoutPreference } from "@/contexts/PageLayoutPreferenceContext";
 import type { DefinedMarket } from "@/config/markets";
@@ -193,52 +194,65 @@ export default function SailPage() {
                 ],
               }}
             >
-              <SailMarketsTableHeader />
-              <div className="space-y-2">
-                {activeMarkets.map(([id, m]) => {
-                  const globalIndex = sailMarketIdToIndex.get(id);
-                  if (globalIndex === undefined) return null;
-                  const userDeposit = userDepositMap.get(globalIndex);
-                  const baseOffset = marketOffsets.get(globalIndex) ?? 0;
+              {sailViewBasic ? (
+                <SailBasicMarketCardsGrid
+                  activeMarkets={activeMarkets}
+                  sailMarketIdToIndex={sailMarketIdToIndex}
+                  marketOffsets={marketOffsets}
+                  reads={reads}
+                  minterConfigByMarketId={minterConfigByMarketId}
+                  isConnected={isConnected}
+                  onExploreMarket={handleManageMarketOpen}
+                />
+              ) : (
+                <>
+                  <SailMarketsTableHeader />
+                  <div className="space-y-2">
+                    {activeMarkets.map(([id, m]) => {
+                      const globalIndex = sailMarketIdToIndex.get(id);
+                      if (globalIndex === undefined) return null;
+                      const userDeposit = userDepositMap.get(globalIndex);
+                      const baseOffset = marketOffsets.get(globalIndex) ?? 0;
 
-                  const priceOracle = m.addresses?.collateralPrice as
-                    | `0x${string}`
-                    | undefined;
-                  const leveragedTokenAddress = m.addresses?.leveragedToken as
-                    | `0x${string}`
-                    | undefined;
-                  const isValidAddress = (addr: unknown): boolean =>
-                    typeof addr === "string" &&
-                    addr.startsWith("0x") &&
-                    addr.length === 42;
-                  const hasOracle = isValidAddress(priceOracle);
-                  const hasToken = isValidAddress(leveragedTokenAddress);
+                      const priceOracle = m.addresses?.collateralPrice as
+                        | `0x${string}`
+                        | undefined;
+                      const leveragedTokenAddress = m.addresses
+                        ?.leveragedToken as `0x${string}` | undefined;
+                      const isValidAddress = (addr: unknown): boolean =>
+                        typeof addr === "string" &&
+                        addr.startsWith("0x") &&
+                        addr.length === 42;
+                      const hasOracle = isValidAddress(priceOracle);
+                      const hasToken = isValidAddress(leveragedTokenAddress);
 
-                  const tokenPrices = tokenPricesByMarket[id];
+                      const tokenPrices = tokenPricesByMarket[id];
 
-                  return (
-                    <SailMarketRow
-                      key={id}
-                      id={id}
-                      market={m}
-                      baseOffset={baseOffset}
-                      hasOracle={hasOracle}
-                      hasToken={hasToken}
-                      reads={reads}
-                      userDeposit={userDeposit}
-                      isExpanded={expandedMarkets.includes(id)}
-                      onToggleExpand={handleToggleMarketExpand}
-                      onManageClick={handleManageMarketOpen}
-                      isConnected={isConnected}
-                      tokenPrices={tokenPrices}
-                      minterConfigData={minterConfigByMarketId.get(id)}
-                      rebalanceThresholdData={rebalanceThresholdByMarketId.get(
-                        id
-                      )}
-                    />
-                  );
-                })}
-              </div>
+                      return (
+                        <SailMarketRow
+                          key={id}
+                          id={id}
+                          market={m}
+                          baseOffset={baseOffset}
+                          hasOracle={hasOracle}
+                          hasToken={hasToken}
+                          reads={reads}
+                          userDeposit={userDeposit}
+                          isExpanded={expandedMarkets.includes(id)}
+                          onToggleExpand={handleToggleMarketExpand}
+                          onManageClick={handleManageMarketOpen}
+                          isConnected={isConnected}
+                          tokenPrices={tokenPrices}
+                          minterConfigData={minterConfigByMarketId.get(id)}
+                          rebalanceThresholdData={rebalanceThresholdByMarketId.get(
+                            id
+                          )}
+                        />
+                      );
+                    })}
+                  </div>
+                </>
+              )}
             </SailMarketsSections>
           )}
         </main>

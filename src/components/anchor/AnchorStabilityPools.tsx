@@ -3,11 +3,12 @@
 import { useMemo } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { markets } from "@/config/markets";
+import { markets, type DefinedMarket } from "@/config/markets";
 import { useAnchorContractReads } from "@/hooks/anchor/useAnchorContractReads";
 import { useAnchorPrices } from "@/hooks/anchor/useAnchorPrices";
 import { useAnchorRewards } from "@/hooks/anchor/useAnchorRewards";
 import { usePeggedTokenPrices } from "@/hooks/usePeggedTokenPrices";
+import { getLogoPath } from "@/lib/logos";
 
 type AnchorStabilityPoolsProps = {
   tokenSymbol: string;
@@ -21,29 +22,6 @@ const poolCopy = {
     title: "Sail Stability Pool",
   },
 };
-
-const tokenIconMap: Record<string, string> = {
-  haeth: "/icons/haETH.png",
-  habtc: "/icons/haBTC.png",
-  haeur: "/icons/haEUR.png",
-  hsausd: "/icons/haUSD2.png",
-  fxsave: "/icons/fxSave.png",
-  fxusd: "/icons/fxUSD.webp",
-  usdc: "/icons/usdc.webp",
-  wsteth: "/icons/wstETH.webp",
-  steth: "/icons/steth_logo.webp",
-  hsethbtc: "/icons/hsETHBTC.png",
-  hsusdbtc: "/icons/hsUSDBTC.png",
-  hsusdeth: "/icons/hsUSDETH.png",
-  hsusdeur: "/icons/hsUSDeur.png",
-  hsstetheur: "/icons/hsSTETHEUR.png",
-  steamedeth: "/icons/steamedeth.svg",
-  steamedusd: "/icons/steamedUSD.png",
-};
-
-function getTokenIcon(symbol: string) {
-  return tokenIconMap[symbol.toLowerCase()] || "/icons/placeholder.svg";
-}
 
 export function AnchorStabilityPools({ tokenSymbol }: AnchorStabilityPoolsProps) {
   const anchorMarkets = useMemo(() => {
@@ -60,7 +38,7 @@ export function AnchorStabilityPools({ tokenSymbol }: AnchorStabilityPoolsProps)
     () =>
       anchorMarkets.map(([marketId, market]) => ({
         marketId,
-        minterAddress: (market as any).addresses?.minter as
+        minterAddress: (market as DefinedMarket).addresses?.minter as
           | `0x${string}`
           | undefined,
       })),
@@ -184,12 +162,12 @@ export function AnchorStabilityPools({ tokenSymbol }: AnchorStabilityPoolsProps)
                   earnedSymbols.map((symbol) => (
                     <Image
                       key={symbol}
-                      src={getTokenIcon(symbol)}
+                      src={getLogoPath(symbol)}
                       alt={symbol}
                       title={symbol}
                       width={36}
                       height={36}
-                      className="h-9 w-9"
+                      className="h-9 w-9 rounded-full border border-white/30 object-contain"
                     />
                   ))
                 ) : (
