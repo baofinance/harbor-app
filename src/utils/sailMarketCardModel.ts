@@ -86,7 +86,7 @@ export function buildSailMarketCardModel(
   const collateral = (market.collateral?.symbol || "").trim().toLowerCase();
 
   /**
-   * Direction rules (UI- cards):
+   * Direction rules (compact basic cards):
    * - USD collateral (fxSAVE/fxUSD) → SHORT
    * - stETH collateral vs USD/EUR → LONG
    * - stETH collateral vs BTC → SHORT

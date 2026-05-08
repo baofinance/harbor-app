@@ -17,8 +17,8 @@ export type PageLayoutToggleProps = {
 };
 
 /**
- * **UI-** (compact) / **UI+** (full) — persists across routes; on index routes with a
- * layout split (`PAGE_LAYOUT_INDEX_EXACT_PATHS`), updates `?view=basic` and page chrome.
+ * **UI** (compact) / **UI+** (full) — persists across routes; on index routes with a layout
+ * split (`PAGE_LAYOUT_INDEX_EXACT_PATHS`), updates `?view=basic` and page chrome.
  */
 export function PageLayoutToggle({
   ariaLabel = "Page density: compact or full",
@@ -95,7 +95,7 @@ export function PageLayoutToggle({
           aria-pressed={isBasic}
           title="Compact layout where available: title + toolbar and tables"
         >
-          UI-
+          UI
         </button>
         <button
           type="button"
