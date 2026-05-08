@@ -5,6 +5,7 @@ import type { DefinedMarket } from "@/config/markets";
 import { buildSailMarketCardModel } from "@/utils/sailMarketCardModel";
 import type { SailContractReads } from "@/types/sail";
 import { SailBasicMarketCard } from "./SailBasicMarketCard";
+import { getLongSide, getShortSide } from "@/utils/marketSideLabels";
 
 export type SailBasicMarketCardsGridProps = {
   activeMarkets: Array<[string, DefinedMarket]>;
@@ -37,10 +38,40 @@ export function SailBasicMarketCardsGrid({
       if (globalIndex === undefined) return [];
       const baseOffset = marketOffsets.get(globalIndex) ?? 0;
 
+      const sailActive = (m as { sailActive?: boolean | "soon" }).sailActive;
+      if (sailActive === false) return [];
+
       const priceOracle = m.addresses?.collateralPrice;
       const leveragedTokenAddress = m.addresses?.leveragedToken;
       const hasOracle = isValidContractAddress(priceOracle);
       const hasToken = isValidContractAddress(leveragedTokenAddress);
+
+      const forcedSoon =
+        sailActive === "soon" ||
+        (m.leveragedToken?.symbol || "").toLowerCase() === "hssteth-usd";
+      if (forcedSoon) {
+        return [
+          {
+            id,
+            market: m,
+            model: {
+              leverageRatio: 10n ** 18n, // 1.00x
+              collateralRatio: undefined,
+              longSide: getLongSide(m),
+              shortSide: getShortSide(m),
+              mintFeeRatio: 10n ** 18n, // Blocked
+              redeemFeeRatio: 10n ** 18n, // Blocked
+              activeMintBand: undefined,
+              activeRedeemBand: undefined,
+              mintBands: undefined,
+              redeemBands: undefined,
+              direction: "LONG",
+              collateralSymbol: m.collateral?.symbol || "",
+            },
+            isComingSoon: true as const,
+          },
+        ];
+      }
 
       const model = buildSailMarketCardModel(
         m,
@@ -51,7 +82,7 @@ export function SailBasicMarketCardsGrid({
         minterConfigByMarketId.get(id)
       );
 
-      return [{ id, market: m, model }];
+      return [{ id, market: m, model, isComingSoon: false as const }];
     });
   }, [
     activeMarkets,
@@ -63,16 +94,19 @@ export function SailBasicMarketCardsGrid({
 
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-      {rows.map(({ id, market, model }) => (
-        <SailBasicMarketCard
-          key={id}
-          marketId={id}
-          market={market}
-          model={model}
-          isConnected={isConnected}
-          onExploreMarket={onExploreMarket}
-        />
-      ))}
+      {rows.map(({ id, market, model, isComingSoon }) => {
+        return (
+          <SailBasicMarketCard
+            key={id}
+            marketId={id}
+            market={market}
+            model={model}
+            isConnected={isConnected}
+            onExploreMarket={onExploreMarket}
+            isComingSoon={isComingSoon}
+          />
+        );
+      })}
     </div>
   );
 }

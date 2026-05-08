@@ -159,8 +159,6 @@ function AnchorBasicHorizontalTokenStrip({
 /** Shared vertical slots so haUSD / haETH / … line up in the grid row. */
 const CARD_RAIL_SLOT =
   "mt-1.5 flex min-h-[2rem] w-full max-w-[280px] items-center justify-center";
-const CARD_CHAINS_SLOT =
-  "mt-1.5 flex min-h-[1.5rem] w-full flex-wrap items-center justify-center gap-1.5";
 const CARD_STATUS_SLOT =
   "mt-1.5 flex min-h-[1.25rem] w-full items-center justify-center";
 const CARD_APR_SLOT =
@@ -361,18 +359,6 @@ function AnchorBasicMarketCard({
         </h3>
         <div className={CARD_RAIL_SLOT}>{yieldRailControl}</div>
 
-        <div className={CARD_CHAINS_SLOT} aria-label="Networks">
-          {chains.map((c) => (
-            <NetworkIconCell
-              key={c.name}
-              chainName={c.name}
-              chainLogo={c.logo}
-              size={22}
-              className="rounded-full ring-1 ring-[#1E4775]/10"
-            />
-          ))}
-        </div>
-
         <div className={CARD_STATUS_SLOT}>
           <span className="inline-flex items-center gap-1.5">
             <span
@@ -463,6 +449,33 @@ function AnchorBasicMarketCard({
           Learn more
           <ArrowRightIcon className="h-3.5 w-3.5" />
         </Link>
+
+        <div className="mt-2 w-full border-t border-[#e2e8f0]" />
+        <div className="flex items-center justify-center pt-3">
+          {chains.length <= 1 ? (
+            <span className="inline-flex items-center justify-center gap-2 text-xs font-semibold text-[#64748b]">
+              <NetworkIconCell
+                chainName={chains[0]?.name || "Ethereum"}
+                chainLogo={chains[0]?.logo}
+                size={18}
+                className="rounded-full ring-1 ring-[#1E4775]/10"
+              />
+              <span className="leading-none">{chains[0]?.name || "Ethereum"}</span>
+            </span>
+          ) : (
+            <span className="inline-flex items-center justify-center gap-1.5" aria-label="Networks">
+              {chains.map((c) => (
+                <NetworkIconCell
+                  key={c.name}
+                  chainName={c.name}
+                  chainLogo={c.logo}
+                  size={18}
+                  className="rounded-full ring-1 ring-[#1E4775]/10"
+                />
+              ))}
+            </span>
+          )}
+        </div>
       </div>
     </article>
   );
@@ -478,14 +491,6 @@ function AnchorBasicComingSoonCard({ symbol }: { symbol: string }) {
         </h3>
         <div className={CARD_RAIL_SLOT}>
           <YieldRailSingleEthStatic />
-        </div>
-        <div className={CARD_CHAINS_SLOT} aria-label="Networks">
-          <NetworkIconCell
-            chainName="MegaETH"
-            chainLogo="icons/eth.png"
-            size={22}
-            className="rounded-full ring-1 ring-[#1E4775]/10"
-          />
         </div>
         <div className={CARD_STATUS_SLOT}>
           <span className="inline-flex items-center rounded-full bg-[#f1f5f9] px-3 py-0.5 text-xs font-semibold uppercase tracking-wide text-[#64748b]">
@@ -560,6 +565,19 @@ function AnchorBasicComingSoonCard({ symbol }: { symbol: string }) {
           Learn more
           <ArrowRightIcon className="h-3.5 w-3.5" />
         </Link>
+
+        <div className="mt-2 w-full border-t border-[#e2e8f0]" />
+        <div className="flex items-center justify-center pt-3">
+          <span className="inline-flex items-center justify-center gap-2 text-xs font-semibold text-[#64748b]">
+            <NetworkIconCell
+              chainName="MegaETH"
+              chainLogo="icons/eth.png"
+              size={18}
+              className="rounded-full ring-1 ring-[#1E4775]/10"
+            />
+            <span className="leading-none">MegaETH</span>
+          </span>
+        </div>
       </div>
     </article>
   );

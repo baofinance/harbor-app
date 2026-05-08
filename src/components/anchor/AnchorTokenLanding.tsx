@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
+import { useState } from "react";
 import {
   InformationCircleIcon,
   WrenchScrewdriverIcon,
@@ -18,12 +18,17 @@ export type AnchorTokenLandingProps = {
 
 const shellClass =
   "flex min-h-0 flex-1 flex-col text-white max-w-[1300px] mx-auto font-sans relative w-full";
-const panelOuterClass = "rounded-xl bg-white/10 p-px";
-const panelInnerClass =
-  "rounded-[11px] border border-white/10 bg-[#17395F]/90 p-5 shadow-sm";
-const faqOuterClass = "rounded-xl bg-white/10 p-px";
-const faqInnerClass =
-  "rounded-[11px] border border-white/10 bg-black/[0.10] p-4";
+
+// Genesis / index-card style surfaces (white card on dark background)
+const GENESIS_CARD_SHELL =
+  "rounded-xl bg-white text-[#1E4775] shadow-[0_16px_40px_-30px_rgba(0,0,0,0.55)] ring-1 ring-black/5";
+const GENESIS_CARD_BODY = "px-5 py-5";
+const GENESIS_CARD_HEADER = "text-sm font-semibold uppercase tracking-wider text-[#1E4775]";
+const GENESIS_CARD_SUBTEXT = "mt-2 text-sm leading-relaxed text-[#1E4775]/80";
+
+const FAQ_ROW_SHELL =
+  "w-full rounded-xl bg-white text-[#1E4775] shadow-[0_16px_40px_-34px_rgba(0,0,0,0.5)] ring-1 ring-black/5";
+const FAQ_ROW_HOVER = "transition";
 
 export function AnchorTokenLanding({
   tokenSymbol,
@@ -31,13 +36,14 @@ export function AnchorTokenLanding({
   tokenName,
 }: AnchorTokenLandingProps) {
   const heroIcon = getLogoPath(tokenSymbol);
+  const [openFaq, setOpenFaq] = useState<string | null>(null);
 
   return (
     <div className={shellClass}>
       <main className="container mx-auto px-4 pb-10 sm:px-10">
-        <header className="mb-8 mt-2">
+        <header className="relative mb-8 mt-2">
           <div className="flex flex-col items-center justify-center gap-4 sm:flex-row sm:gap-6">
-            <div className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white shadow-md sm:h-24 sm:w-24 md:h-28 md:w-28">
+            <div className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white shadow-md ring-1 ring-black/5 sm:h-24 sm:w-24 md:h-28 md:w-28">
               <Image
                 src={heroIcon}
                 alt={`${tokenSymbol} logo`}
@@ -59,17 +65,17 @@ export function AnchorTokenLanding({
         </header>
 
         <div className="mb-8 grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-6">
-          <div className={panelOuterClass}>
-            <div className={panelInnerClass}>
+          <div className={GENESIS_CARD_SHELL}>
+            <div className={GENESIS_CARD_BODY}>
               <div className="flex items-start gap-3">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/5">
-                  <InformationCircleIcon className="h-5 w-5 text-white" />
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#1E4775]/5">
+                  <InformationCircleIcon className="h-5 w-5 text-[#1E4775]" />
                 </div>
                 <div className="min-w-0">
-                  <h2 className="text-sm font-semibold uppercase tracking-wider text-white">
+                  <h2 className={GENESIS_CARD_HEADER}>
                     What is <span className="normal-case">{tokenSymbol}</span>?
                   </h2>
-                  <p className="mt-2 text-sm leading-relaxed text-white/80">
+                  <p className={GENESIS_CARD_SUBTEXT}>
                     {tokenName} is a pegged token designed to track the value of{" "}
                     {pegTarget} while letting you earn protocol yield.
                   </p>
@@ -77,17 +83,15 @@ export function AnchorTokenLanding({
               </div>
             </div>
           </div>
-          <div className={panelOuterClass}>
-            <div className={panelInnerClass}>
+          <div className={GENESIS_CARD_SHELL}>
+            <div className={GENESIS_CARD_BODY}>
               <div className="flex items-start gap-3">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/5">
-                  <WrenchScrewdriverIcon className="h-5 w-5 text-white" />
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#1E4775]/5">
+                  <WrenchScrewdriverIcon className="h-5 w-5 text-[#1E4775]" />
                 </div>
                 <div className="min-w-0">
-                  <h2 className="text-sm font-semibold uppercase tracking-wider text-white">
-                    How it works
-                  </h2>
-                  <p className="mt-2 text-sm leading-relaxed text-white/80">
+                  <h2 className={GENESIS_CARD_HEADER}>How it works</h2>
+                  <p className={GENESIS_CARD_SUBTEXT}>
                     Yield from collateral and trading fees is paid to stability
                     pools for helping protect the protocol.
                   </p>
@@ -98,9 +102,9 @@ export function AnchorTokenLanding({
         </div>
 
         <section className="mb-8 space-y-4">
-          <div className={`${panelOuterClass} mb-6`}>
-            <div className={panelInnerClass}>
-              <h3 className="mb-3 text-base font-semibold text-white">
+          <div className={`${GENESIS_CARD_SHELL} mb-6`}>
+            <div className={GENESIS_CARD_BODY}>
+              <h3 className="mb-3 text-base font-semibold text-[#1E4775]">
                 How to earn yield with {tokenSymbol}
               </h3>
               <AnchorHowToGuide />
@@ -116,71 +120,56 @@ export function AnchorTokenLanding({
         <section className="mb-10">
           <h3 className="mb-4 text-base font-semibold text-white">FAQ</h3>
           <div className="space-y-3">
-            <div className={faqOuterClass}>
-              <div className={faqInnerClass}>
-                <div className="font-semibold text-white">
-                  What is {tokenSymbol}?
-                </div>
-                <div className="mt-2 text-sm leading-relaxed text-white/80">
-                  {tokenSymbol} is Harbor’s {pegTarget}-pegged token designed to
-                  track {pegTarget} value while letting users earn yield through
-                  protocol rewards.
-                </div>
-              </div>
-            </div>
-            <div className={faqOuterClass}>
-              <div className={faqInnerClass}>
-                <div className="font-semibold text-white">
-                  Where does the yield come from?
-                </div>
-                <div className="mt-2 text-sm leading-relaxed text-white/80">
-                  Yield is funded by collateral yield and trading fees and is
-                  distributed to stability pools that help protect the protocol.
-                </div>
-              </div>
-            </div>
-            <div className={faqOuterClass}>
-              <div className={faqInnerClass}>
-                <div className="font-semibold text-white">
-                  What are stability pools?
-                </div>
-                <div className="mt-2 text-sm leading-relaxed text-white/80">
-                  Stability pools are where {tokenSymbol} holders deposit to earn
-                  rewards. Pools help the protocol rebalance by exchanging pegged
-                  tokens for collateral or leveraged tokens when needed.
-                </div>
-              </div>
-            </div>
-            <div className={faqOuterClass}>
-              <div className={faqInnerClass}>
-                <div className="font-semibold text-white">
-                  Can {tokenSymbol} deviate from {pegTarget}?
-                </div>
-                <div className="mt-2 text-sm leading-relaxed text-white/80">
-                  {tokenSymbol} is always redeemable for collateral at the market
-                  price of {pegTarget}.
-                </div>
-              </div>
-            </div>
+            {[
+              {
+                id: "what",
+                q: `What is ${tokenSymbol}?`,
+                a: `${tokenSymbol} is Harbor’s ${pegTarget}-pegged token designed to track ${pegTarget} value while letting users earn yield through protocol rewards.`,
+              },
+              {
+                id: "yield",
+                q: "Where does the yield come from?",
+                a: "Yield is funded by collateral yield and trading fees and is distributed to stability pools that help protect the protocol.",
+              },
+              {
+                id: "pools",
+                q: "What are stability pools?",
+                a: `Stability pools are where ${tokenSymbol} holders deposit to earn rewards. Pools help the protocol rebalance by exchanging pegged tokens for collateral or leveraged tokens when needed.`,
+              },
+              {
+                id: "deviate",
+                q: `Can ${tokenSymbol} deviate from ${pegTarget}?`,
+                a: `${tokenSymbol} is always redeemable for collateral at the market price of ${pegTarget}.`,
+              },
+            ].map((item) => {
+              const isOpen = openFaq === item.id;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  className={`${FAQ_ROW_SHELL} ${FAQ_ROW_HOVER} px-5 py-4 text-left`}
+                  onClick={() =>
+                    setOpenFaq((prev) => (prev === item.id ? null : item.id))
+                  }
+                  aria-expanded={isOpen}
+                >
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="font-semibold text-[#1E4775]">{item.q}</div>
+                    <span className="text-[#1E4775]/60" aria-hidden>
+                      {isOpen ? "–" : "+"}
+                    </span>
+                  </div>
+                  {isOpen && (
+                    <div className="mt-2 text-sm leading-relaxed text-[#1E4775]/80">
+                      {item.a}
+                    </div>
+                  )}
+                </button>
+              );
+            })}
           </div>
         </section>
 
-        <footer className="flex flex-col items-center justify-center gap-3 sm:flex-row">
-          <Link
-            href="https://docs.harborfinance.io/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex min-w-[10rem] items-center justify-center rounded-full border border-white/15 bg-white/10 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-white/20"
-          >
-            Learn more
-          </Link>
-          <Link
-            href="/transparency"
-            className="inline-flex min-w-[10rem] items-center justify-center rounded-full border border-white/15 bg-white/10 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-white/20"
-          >
-            View protocol stats
-          </Link>
-        </footer>
       </main>
     </div>
   );

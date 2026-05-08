@@ -15,6 +15,7 @@ export const markets = {
     maintenance: false,
     /** UI− Anchor card grid: only `true` rows are listed when layout is basic. */
     anchorActive: true,
+    sailActive: true,
     status: "genesis" as const,
     pegTarget: "ETH", // haETH is pegged to ETH
     zapper: true,
@@ -101,6 +102,7 @@ export const markets = {
     name: "fxUSD - BTC",
     maintenance: false,
     anchorActive: true,
+    sailActive: true,
     status: "genesis" as const,
     pegTarget: "BTC", // haBTC is pegged to BTC
     zapper: true,
@@ -187,6 +189,7 @@ export const markets = {
     name: "stETH - BTC",
     maintenance: false,
     anchorActive: true,
+    sailActive: true,
     status: "genesis" as const,
     pegTarget: "BTC", // haBTC is pegged to BTC
     chain: {
@@ -271,6 +274,7 @@ export const markets = {
     name: "fxUSD - GOLD",
     maintenance: false,
     anchorActive: false,
+    sailActive: false,
     status: "genesis" as const,
     pegTarget: "GOLD",
     chain: {
@@ -348,6 +352,7 @@ export const markets = {
     name: "stETH - GOLD",
     maintenance: false,
     anchorActive: false,
+    sailActive: false,
     status: "genesis" as const,
     pegTarget: "GOLD",
     chain: {
@@ -425,6 +430,7 @@ export const markets = {
     name: "stETH - EUR",
     maintenance: false,
     anchorActive: true,
+    sailActive: true,
     status: "genesis" as const,
     pegTarget: "EUR",
     chain: {
@@ -502,6 +508,7 @@ export const markets = {
     name: "fxUSD - EUR",
     maintenance: false,
     anchorActive: true,
+    sailActive: true,
     status: "genesis" as const,
     pegTarget: "EUR",
     chain: {
@@ -580,6 +587,7 @@ export const markets = {
     displayTransparency: false,
     maintenance: false,
     anchorActive: false,
+    sailActive: false,
     status: "coming-soon" as const,
     pegTarget: "MCAP",
     chain: {
@@ -652,6 +660,7 @@ export const markets = {
     displayTransparency: false,
     maintenance: false,
     anchorActive: false,
+    sailActive: false,
     status: "coming-soon" as const,
     pegTarget: "MCAP",
     chain: {
@@ -723,6 +732,7 @@ export const markets = {
     name: "stETH - SILVER",
     maintenance: false,
     anchorActive: false,
+    sailActive: false,
     status: "genesis" as const,
     pegTarget: "SILVER",
     chain: {
@@ -800,6 +810,7 @@ export const markets = {
     name: "fxUSD - SILVER",
     maintenance: false,
     anchorActive: false,
+    sailActive: false,
     status: "genesis" as const,
     pegTarget: "SILVER",
     chain: {
@@ -881,6 +892,7 @@ export const markets = {
           name: "stETH - USD",
           maintenance: false,
           anchorActive: true,
+          sailActive: "soon",
           test: false,
           status: "genesis" as const,
           pegTarget: "USD",
@@ -1062,9 +1074,9 @@ export function isGenesisActive(market: Market | undefined) {
 }
 
 export function getPrimaryRewardToken(market: Market) {
-  return (market as any).rewardToken;
+  return (market as { rewardToken?: unknown }).rewardToken;
 }
 
 export function getRewardPoints(market: Market) {
-  return (market as any).rewardPoints;
+  return (market as { rewardPoints?: unknown }).rewardPoints;
 }

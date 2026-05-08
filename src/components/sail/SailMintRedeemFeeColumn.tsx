@@ -34,7 +34,7 @@ export function SailMintRedeemFeeColumn({
   );
 
   return (
-    <div className="flex items-center justify-center gap-0 whitespace-nowrap max-w-full">
+    <div className="inline-grid w-full max-w-[260px] grid-cols-[1fr_1px_1fr] items-stretch justify-center">
       <SimpleTooltip
         side="left"
         maxHeight="none"
@@ -53,21 +53,23 @@ export function SailMintRedeemFeeColumn({
           </div>
         }
       >
-        <span className="cursor-help inline-flex shrink-0">
-          <SailFeeRatioCell
-            ratio={mintFeeRatio}
-            isMintSail
-            activeBand={activeMintBand}
-            showHelp
-          />
+        <span className="cursor-help inline-flex w-full justify-center">
+          <span className="flex w-full flex-col items-center justify-center gap-1 px-3 py-1">
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-[#1E4775]/70">
+              Mint Fee
+            </span>
+            <SailFeeRatioCell
+              ratio={mintFeeRatio}
+              isMintSail
+              activeBand={activeMintBand}
+              showHelp
+            />
+          </span>
         </span>
       </SimpleTooltip>
-      <span
-        className="text-[#1E4775]/50 text-[9px] font-bold shrink-0 select-none leading-none px-1"
-        aria-hidden="true"
-      >
-        /
-      </span>
+
+      <span className="w-px self-stretch bg-[#1E4775]/25" aria-hidden="true" />
+
       <SimpleTooltip
         side="left"
         maxHeight="none"
@@ -85,13 +87,18 @@ export function SailMintRedeemFeeColumn({
           </div>
         }
       >
-        <span className="cursor-help inline-flex shrink-0">
-          <SailFeeRatioCell
-            ratio={redeemFeeRatio}
-            isMintSail={false}
-            activeBand={activeRedeemBand}
-            showHelp
-          />
+        <span className="cursor-help inline-flex w-full justify-center">
+          <span className="flex w-full flex-col items-center justify-center gap-1 px-3 py-1">
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-[#1E4775]/70">
+              Redeem Fee
+            </span>
+            <SailFeeRatioCell
+              ratio={redeemFeeRatio}
+              isMintSail={false}
+              activeBand={activeRedeemBand}
+              showHelp
+            />
+          </span>
         </span>
       </SimpleTooltip>
     </div>

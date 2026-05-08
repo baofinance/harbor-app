@@ -71,12 +71,40 @@ export function buildSailMarketCardModel(
     market.leveragedToken?.description ||
     ""
   ).toLowerCase();
-  /** Heuristic: explicit “short” product naming → SHORT badge; else LONG (matches typical Sail cards). */
-  const direction: SailDirectionBadge =
-    /\bharbor short\b/.test(haystack) ||
-    /\bshort\s+[a-z]{2,4}\s+versus\b/.test(haystack)
-      ? "SHORT"
-      : "LONG";
+  const pegTargetRaw =
+    market.pegTarget ||
+    (market.peggedToken?.symbol?.toLowerCase() === "hausd"
+      ? "USD"
+      : market.peggedToken?.symbol?.toLowerCase() === "haeur"
+        ? "EUR"
+        : market.peggedToken?.symbol?.toLowerCase() === "habtc"
+          ? "BTC"
+          : market.peggedToken?.symbol?.toLowerCase() === "haeth"
+            ? "ETH"
+            : "");
+  const pegTarget = (pegTargetRaw || "").toString().trim().toLowerCase();
+  const collateral = (market.collateral?.symbol || "").trim().toLowerCase();
+
+  /**
+   * Direction rules (UI- cards):
+   * - USD collateral (fxSAVE/fxUSD) → SHORT
+   * - stETH collateral vs USD/EUR → LONG
+   * - stETH collateral vs BTC → SHORT
+   * Fallback: explicit “short” product naming → SHORT; else LONG.
+   */
+  const direction: SailDirectionBadge = (() => {
+    if (collateral === "fxsave" || collateral === "fxusd") return "SHORT";
+    const isStethCollateral = collateral === "wsteth" || collateral === "steth";
+    if (isStethCollateral && (pegTarget === "usd" || pegTarget === "eur"))
+      return "LONG";
+    if (isStethCollateral && pegTarget === "btc") return "SHORT";
+    if (
+      /\bharbor short\b/.test(haystack) ||
+      /\bshort\s+[a-z]{2,6}\s+versus\b/.test(haystack)
+    )
+      return "SHORT";
+    return "LONG";
+  })();
 
   return {
     leverageRatio,

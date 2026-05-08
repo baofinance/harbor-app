@@ -73,6 +73,7 @@ export default function SailPage() {
     pnlFromMarkets,
     activeSailBoostEndTimestamp,
     activeMarkets,
+    displayedSailMarkets,
   } = useSailPageData();
 
   const [expandedMarkets, setExpandedMarkets] = useState<string[]>([]);
@@ -196,7 +197,7 @@ export default function SailPage() {
             >
               {sailViewBasic ? (
                 <SailBasicMarketCardsGrid
-                  activeMarkets={activeMarkets}
+                  activeMarkets={displayedSailMarkets}
                   sailMarketIdToIndex={sailMarketIdToIndex}
                   marketOffsets={marketOffsets}
                   reads={reads}
