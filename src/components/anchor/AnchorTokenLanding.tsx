@@ -18,10 +18,12 @@ export type AnchorTokenLandingProps = {
 
 const shellClass =
   "flex min-h-0 flex-1 flex-col text-white max-w-[1300px] mx-auto font-sans relative w-full";
-const panelClass =
-  "rounded-xl border border-white/10 bg-[#17395F]/90 p-5 shadow-sm";
-const faqItemClass =
-  "rounded-xl border border-white/10 bg-black/[0.10] p-4";
+const panelOuterClass = "rounded-xl bg-white/10 p-px";
+const panelInnerClass =
+  "rounded-[11px] border border-white/10 bg-[#17395F]/90 p-5 shadow-sm";
+const faqOuterClass = "rounded-xl bg-white/10 p-px";
+const faqInnerClass =
+  "rounded-[11px] border border-white/10 bg-black/[0.10] p-4";
 
 export function AnchorTokenLanding({
   tokenSymbol,
@@ -35,7 +37,7 @@ export function AnchorTokenLanding({
       <main className="container mx-auto px-4 pb-10 sm:px-10">
         <header className="mb-8 mt-2">
           <div className="flex flex-col items-center justify-center gap-4 sm:flex-row sm:gap-6">
-            <div className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-white/25 bg-white/5 shadow-md ring-1 ring-white/15 sm:h-24 sm:w-24 md:h-28 md:w-28">
+            <div className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white shadow-md sm:h-24 sm:w-24 md:h-28 md:w-28">
               <Image
                 src={heroIcon}
                 alt={`${tokenSymbol} logo`}
@@ -57,46 +59,52 @@ export function AnchorTokenLanding({
         </header>
 
         <div className="mb-8 grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-6">
-          <div className={panelClass}>
-            <div className="flex items-start gap-3">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/5">
-                <InformationCircleIcon className="h-5 w-5 text-white" />
-              </div>
-              <div className="min-w-0">
-                <h2 className="text-sm font-semibold uppercase tracking-wider text-white">
-                  What is <span className="normal-case">{tokenSymbol}</span>?
-                </h2>
-                <p className="mt-2 text-sm leading-relaxed text-white/80">
-                  {tokenName} is a pegged token designed to track the value of{" "}
-                  {pegTarget} while letting you earn protocol yield.
-                </p>
+          <div className={panelOuterClass}>
+            <div className={panelInnerClass}>
+              <div className="flex items-start gap-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/5">
+                  <InformationCircleIcon className="h-5 w-5 text-white" />
+                </div>
+                <div className="min-w-0">
+                  <h2 className="text-sm font-semibold uppercase tracking-wider text-white">
+                    What is <span className="normal-case">{tokenSymbol}</span>?
+                  </h2>
+                  <p className="mt-2 text-sm leading-relaxed text-white/80">
+                    {tokenName} is a pegged token designed to track the value of{" "}
+                    {pegTarget} while letting you earn protocol yield.
+                  </p>
+                </div>
               </div>
             </div>
           </div>
-          <div className={panelClass}>
-            <div className="flex items-start gap-3">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/5">
-                <WrenchScrewdriverIcon className="h-5 w-5 text-white" />
-              </div>
-              <div className="min-w-0">
-                <h2 className="text-sm font-semibold uppercase tracking-wider text-white">
-                  How it works
-                </h2>
-                <p className="mt-2 text-sm leading-relaxed text-white/80">
-                  Yield from collateral and trading fees is paid to stability
-                  pools for helping protect the protocol.
-                </p>
+          <div className={panelOuterClass}>
+            <div className={panelInnerClass}>
+              <div className="flex items-start gap-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/5">
+                  <WrenchScrewdriverIcon className="h-5 w-5 text-white" />
+                </div>
+                <div className="min-w-0">
+                  <h2 className="text-sm font-semibold uppercase tracking-wider text-white">
+                    How it works
+                  </h2>
+                  <p className="mt-2 text-sm leading-relaxed text-white/80">
+                    Yield from collateral and trading fees is paid to stability
+                    pools for helping protect the protocol.
+                  </p>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
         <section className="mb-8 space-y-4">
-          <div className={`${panelClass} mb-6`}>
-            <h3 className="mb-3 text-base font-semibold text-white">
-              How to earn yield with {tokenSymbol}
-            </h3>
-            <AnchorHowToGuide />
+          <div className={`${panelOuterClass} mb-6`}>
+            <div className={panelInnerClass}>
+              <h3 className="mb-3 text-base font-semibold text-white">
+                How to earn yield with {tokenSymbol}
+              </h3>
+              <AnchorHowToGuide />
+            </div>
           </div>
 
           <h3 className="text-base font-semibold text-white">
@@ -108,42 +116,50 @@ export function AnchorTokenLanding({
         <section className="mb-10">
           <h3 className="mb-4 text-base font-semibold text-white">FAQ</h3>
           <div className="space-y-3">
-            <div className={faqItemClass}>
-              <div className="font-semibold text-white">
-                What is {tokenSymbol}?
-              </div>
-              <div className="mt-2 text-sm leading-relaxed text-white/80">
-                {tokenSymbol} is Harbor’s {pegTarget}-pegged token designed to
-                track {pegTarget} value while letting users earn yield through
-                protocol rewards.
-              </div>
-            </div>
-            <div className={faqItemClass}>
-              <div className="font-semibold text-white">
-                Where does the yield come from?
-              </div>
-              <div className="mt-2 text-sm leading-relaxed text-white/80">
-                Yield is funded by collateral yield and trading fees and is
-                distributed to stability pools that help protect the protocol.
+            <div className={faqOuterClass}>
+              <div className={faqInnerClass}>
+                <div className="font-semibold text-white">
+                  What is {tokenSymbol}?
+                </div>
+                <div className="mt-2 text-sm leading-relaxed text-white/80">
+                  {tokenSymbol} is Harbor’s {pegTarget}-pegged token designed to
+                  track {pegTarget} value while letting users earn yield through
+                  protocol rewards.
+                </div>
               </div>
             </div>
-            <div className={faqItemClass}>
-              <div className="font-semibold text-white">
-                What are stability pools?
-              </div>
-              <div className="mt-2 text-sm leading-relaxed text-white/80">
-                Stability pools are where {tokenSymbol} holders deposit to earn
-                rewards. Pools help the protocol rebalance by exchanging pegged
-                tokens for collateral or leveraged tokens when needed.
+            <div className={faqOuterClass}>
+              <div className={faqInnerClass}>
+                <div className="font-semibold text-white">
+                  Where does the yield come from?
+                </div>
+                <div className="mt-2 text-sm leading-relaxed text-white/80">
+                  Yield is funded by collateral yield and trading fees and is
+                  distributed to stability pools that help protect the protocol.
+                </div>
               </div>
             </div>
-            <div className={faqItemClass}>
-              <div className="font-semibold text-white">
-                Can {tokenSymbol} deviate from {pegTarget}?
+            <div className={faqOuterClass}>
+              <div className={faqInnerClass}>
+                <div className="font-semibold text-white">
+                  What are stability pools?
+                </div>
+                <div className="mt-2 text-sm leading-relaxed text-white/80">
+                  Stability pools are where {tokenSymbol} holders deposit to earn
+                  rewards. Pools help the protocol rebalance by exchanging pegged
+                  tokens for collateral or leveraged tokens when needed.
+                </div>
               </div>
-              <div className="mt-2 text-sm leading-relaxed text-white/80">
-                {tokenSymbol} is always redeemable for collateral at the market
-                price of {pegTarget}.
+            </div>
+            <div className={faqOuterClass}>
+              <div className={faqInnerClass}>
+                <div className="font-semibold text-white">
+                  Can {tokenSymbol} deviate from {pegTarget}?
+                </div>
+                <div className="mt-2 text-sm leading-relaxed text-white/80">
+                  {tokenSymbol} is always redeemable for collateral at the market
+                  price of {pegTarget}.
+                </div>
               </div>
             </div>
           </div>
