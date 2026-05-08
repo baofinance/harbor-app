@@ -28,7 +28,14 @@ import {
  ChevronUpIcon,
  ArrowTopRightOnSquareIcon,
 } from "@heroicons/react/24/outline";
-import SimpleTooltip from "@/components/SimpleTooltip";
+import {
+  HARBOR_FEE_BAND_PILL_CLASS,
+  HARBOR_FEE_BAND_ROW_ACTIVE_CLASS,
+  HARBOR_FEE_BAND_ROW_QUIET_CLASS,
+  HARBOR_FEE_BAND_RANGE_TEXT_CLASS,
+  resolveHarborFeeBandKind,
+  isCollateralRatioInFeeBandRow,
+} from "@/lib/harborFeeBandStyles";
 import InfoTooltip from "@/components/InfoTooltip";
 import { InfinityOutlineIcon } from "@/components/icons/InfinityOutlineIcon";
 import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
@@ -71,39 +78,17 @@ type FeeBand = {
     ratio: bigint;
 };
 
-type FeeVariant = "blocked" | "free" | "discount" | "fee" ;
 type HealthStatus = "green" | "yellow" | "red" | "genesis";
 type WithdrawalStatus = "none" | "waiting" | "open" | "expired";
 
 type BadgeVariantConfig = {
     label: string;
-    bg: string;      // background color classes
-    text: string;    // text color classes
-    icon?: React.ElementType; // optional icon component
-    size?: "sm" | "md";      // optional size
-};
-
-const FEE_CONFIG: Record<FeeVariant, BadgeVariantConfig> = {
-    blocked: {
-        label: "Blocked",
-        bg: "bg-red-500/30",
-        text: "text-red-700",
-    },
-    free: {
-        label: "Free",
-        bg: "bg-blue-500/30",
-        text: "text-blue-700",
-    },
-    discount: {
-        label: "",
-        bg: "bg-green-500/30",
-        text: "text-green-700",
-    },
-    fee: {
-        label: "",
-        bg: "bg-orange-500/30",
-        text: "text-orange-700",
-    },
+    /** Harbor fee tiers: single surface token (preferred over bg+text). */
+    surfaceClass?: string;
+    bg?: string;
+    text?: string;
+    icon?: React.ElementType;
+    size?: "sm" | "md";
 };
 
 const HEALTH_CONFIG: Record<HealthStatus, BadgeVariantConfig> = {
@@ -263,7 +248,9 @@ export function Badge({
     config: BadgeVariantConfig;
     size?: "sm" | "md";
 }) {
-    const { label, bg, text, icon: Icon } = config;
+    const { label, surfaceClass, bg = "", text = "", icon: Icon } = config;
+    const surface =
+        surfaceClass ?? `${bg} ${text}`.trim();
 
     const sizeClasses =
         size === "sm"
@@ -274,7 +261,7 @@ export function Badge({
 
     return (
         <span
-            className={`inline-flex items-center font-medium ${sizeClasses} ${bg} ${text}`}
+            className={`inline-flex items-center font-medium ${sizeClasses} ${surface}`}
         >
       {Icon && <Icon className={iconSize} />}
             {label}
@@ -1206,36 +1193,32 @@ function FeeBandBadge({
     lowerBound?: bigint;
     upperBound?: bigint;
 }) {
-    const isBlocked = ratio >= WAD;
-    const isFree = ratio === 0n;
-    const isDiscount = ratio < 0n;
-
     const pct = Number(ratio) / 1e16;
+    const kind = resolveHarborFeeBandKind(
+        ratio,
+        isMintSail,
+        lowerBound,
+        upperBound,
+    );
 
-    const isZeroToHundredRange = lowerBound === 0n && upperBound !== undefined;
-    const tolerance = 10n ** 14n;
-    const is100PercentOrClose = ratio >= (WAD - tolerance) && ratio <= WAD;
+    const label =
+        kind === "blocked"
+            ? "Blocked"
+            : kind === "free"
+                ? "Free"
+                : kind === "discount"
+                    ? `${pct.toFixed(2)}% discount`
+                    : `${pct.toFixed(2)}% fee`;
 
-    const shouldBlockMintSail =
-        isMintSail && isZeroToHundredRange && is100PercentOrClose;
-
-    const finalIsBlocked = isBlocked || shouldBlockMintSail;
-
-    const variant: FeeVariant = finalIsBlocked
-        ? "blocked"
-        : isFree
-            ? "free"
-            : isDiscount
-                ? "discount"
-                : "fee";
-
-    const config = { ...FEE_CONFIG[variant] };
-
-    if (!finalIsBlocked && !isFree) {
-        config.label = `${pct.toFixed(2)}% ${isDiscount ? "discount" : "fee"}`;
-    }
-
-    return <Badge config={config} size="sm" />;
+    return (
+        <Badge
+            config={{
+                label,
+                surfaceClass: HARBOR_FEE_BAND_PILL_CLASS[kind],
+            }}
+            size="sm"
+        />
+    );
 }
 
 function BandTable({
@@ -1254,26 +1237,24 @@ function BandTable({
             </h5>
 
             {bands.length === 0 ? (
-                <div className="text-[10px] text-[#1E4775]/60">Loading…</div>
+                <div className="text-[10px] text-[#10141A]/55">Loading…</div>
             ) : (
                 <div className="space-y-1">
                     {bands.map((b, idx) => {
-                        const active =
-                            currentCR >= b.lowerBound &&
-                            (b.upperBound === undefined || currentCR <= b.upperBound);
+                        const active = isCollateralRatioInFeeBandRow(currentCR, b);
 
                         const isMintSail = title === "Mint Sail";
 
                         return (
                             <div
                                 key={idx}
-                                className={`flex items-center justify-between text-[10px] px-2 py-1.5 rounded-lg ${
+                                className={`flex items-center justify-between rounded-lg px-2 py-1.5 text-[10px] ${
                                     active
-                                        ? "bg-[#1E4775]/10 border border-[#1E4775]/30"
-                                        : "bg-[#1E4775]/5"
+                                        ? HARBOR_FEE_BAND_ROW_ACTIVE_CLASS
+                                        : HARBOR_FEE_BAND_ROW_QUIET_CLASS
                                 }`}
                             >
-                <span className="text-[#1E4775]/70 font-mono">
+                <span className={HARBOR_FEE_BAND_RANGE_TEXT_CLASS}>
                   {formatBandRange(b)}
                 </span>
 
@@ -1328,9 +1309,9 @@ function FeeTransparencyBands({
                 Fees & Incentives
             </h4>
 
-            <div className="text-[10px] text-[#1E4775]/60 mb-2">
+            <div className="mb-2 text-[10px] text-[#10141A]/80">
                 Current CR:{" "}
-                <span className="font-mono font-semibold">
+                <span className="font-mono font-semibold text-[#10141A]">
           <CollateralRatioDisplay ratio={currentCR} />
         </span>
             </div>

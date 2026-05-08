@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import type { DefinedMarket } from "@/config/markets";
 import { buildSailMarketCardModel } from "@/utils/sailMarketCardModel";
 import type { SailContractReads } from "@/types/sail";
+import { BASIC_MARKET_CARDS_GRID_CLASS } from "@/components/market-cards/harborBasicMarketTokens";
 import { SailBasicMarketCard } from "./SailBasicMarketCard";
 import { getLongSide, getShortSide } from "@/utils/marketSideLabels";
 
@@ -92,8 +93,9 @@ export function SailBasicMarketCardsGrid({
     minterConfigByMarketId,
   ]);
 
+  // Basic grid token shared with Anchor basic cards — see BASIC_MARKET_CARDS_GRID_CLASS.
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+    <div className={BASIC_MARKET_CARDS_GRID_CLASS}>
       {rows.map(({ id, market, model, isComingSoon }) => {
         return (
           <SailBasicMarketCard

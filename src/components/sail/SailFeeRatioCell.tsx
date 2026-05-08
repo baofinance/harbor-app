@@ -17,7 +17,9 @@ export function SailFeeRatioCell({
 }: SailFeeRatioCellProps) {
   if (ratio === undefined) {
     return (
-      <span className="text-[#1E4775] font-medium text-[10px] font-mono">-</span>
+      <span className="font-mono text-[10px] font-medium text-[#10141A]/65">
+        -
+      </span>
     );
   }
   return (

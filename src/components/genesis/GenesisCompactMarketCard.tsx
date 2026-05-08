@@ -16,6 +16,11 @@ import NetworkIconCell from "@/components/NetworkIconCell";
 import { MarketMaintenanceTag } from "@/components/MarketMaintenanceTag";
 import { TokenLogo } from "@/components/shared";
 import SimpleTooltip from "@/components/SimpleTooltip";
+import {
+  BASIC_MARKET_FEATURE_BODY_CLASS,
+  HARBOR_GENESIS_PRIMARY_CTA_CLASS,
+  HARBOR_GENESIS_SECONDARY_CTA_CLASS,
+} from "@/components/market-cards/harborBasicMarketTokens";
 import { formatUSD } from "@/utils/formatters";
 import type { GenesisDepositCapData } from "@/utils/genesisDepositCap";
 
@@ -26,10 +31,9 @@ const GENESIS_CARD_CONTROL_RADIUS = "rounded-xl";
 const GENESIS_LEFT_RAIL_CHIP_HEIGHT = "box-border h-12 min-h-12";
 const GENESIS_LEFT_RAIL_CHIP_INSET_X = "px-3.5 sm:px-4";
 
-const primaryActionClass =
-  `w-full ${GENESIS_CARD_CONTROL_RADIUS} bg-[#153B63] px-3.5 py-2.5 text-xs font-semibold text-white shadow-sm transition hover:bg-[#0F2F52] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#153B63]/30 disabled:cursor-not-allowed disabled:bg-[#153B63]/35`;
-const secondaryActionClass =
-  `w-full ${GENESIS_CARD_CONTROL_RADIUS} border border-[#1E4775]/20 bg-white px-3.5 py-2.5 text-xs font-semibold text-[#1E4775] transition hover:bg-[#1E4775]/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1E4775]/15 disabled:cursor-not-allowed disabled:text-[#64748b] disabled:border-[#CBD5E1] disabled:bg-[#F8FAFC]`;
+/** Primary Deposit / Claim — Nautical Blue + compact padding (`harborBasicMarketTokens`). */
+const primaryActionClass = HARBOR_GENESIS_PRIMARY_CTA_CLASS;
+const secondaryActionClass = HARBOR_GENESIS_SECONDARY_CTA_CLASS;
 const sectionHeaderClass =
   "text-xs font-semibold uppercase tracking-wide text-[#1E4775]/80";
 
@@ -343,22 +347,22 @@ export function GenesisCompactMarketCard({
               )}
             </button>
           </div>
-          <ul className="mt-2 flex min-h-0 flex-1 flex-col justify-between gap-y-2 text-[13px] leading-snug text-[#1E4775]/90 lg:mt-2 lg:gap-y-0">
+          <ul className={`mt-2 flex min-h-0 flex-1 flex-col justify-between gap-y-2 lg:mt-2 lg:gap-y-0 ${BASIC_MARKET_FEATURE_BODY_CLASS}`}>
             <li className="flex items-center gap-2">
-              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#1E4775]/40" aria-hidden />
+              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#10141A]/35" aria-hidden />
               <span>
                 Deposit {collateralSymbol} into the {marketName} market.
               </span>
             </li>
             <li className="flex items-center gap-2">
-              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#1E4775]/40" aria-hidden />
+              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#10141A]/35" aria-hidden />
               <span>
                 Your deposit is automatically split into {peggedSymbol} + {leveragedSymbol} when
                 genesis ends.
               </span>
             </li>
             <li className="flex items-center gap-2">
-              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#1E4775]/40" aria-hidden />
+              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#10141A]/35" aria-hidden />
               <span className="leading-snug">
                 <strong className="text-[#FF8A7A]">
                   The depositor pool owns 5% of this market&apos;s revenue forever.
@@ -366,17 +370,17 @@ export function GenesisCompactMarketCard({
               </span>
             </li>
             <li className="flex items-center gap-2">
-              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#1E4775]/40" aria-hidden />
+              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#10141A]/35" aria-hidden />
               <span>Your share is set by final ownership at Genesis close.</span>
             </li>
             <li className="flex items-center gap-2">
-              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#1E4775]/40" aria-hidden />
+              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#10141A]/35" aria-hidden />
               <span>
                 Exit anytime: burn {peggedSymbol} or {leveragedSymbol} to redeem collateral.
               </span>
             </li>
             <li className="flex items-center gap-2">
-              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#1E4775]/40" aria-hidden />
+              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#10141A]/35" aria-hidden />
               <span>Keep your positions to ride volatility and earn yield.</span>
             </li>
           </ul>
@@ -476,10 +480,10 @@ export function GenesisCompactMarketCard({
               <div className={`${sectionHeaderClass} font-bold`}>
                 Early depositor advantage
               </div>
-              <div className="h-2 overflow-hidden rounded-full border border-[#FF8A7A]/40 bg-[#1E4775]/10">
+              <div className="h-2 overflow-hidden rounded-full border border-[#B8EBD5]/50 bg-[#1E4775]/10">
                 <div
                   className={`h-full rounded-full ${
-                    capData.capFilled ? "bg-[#9AA5B8]" : "bg-[#FF8A7A]"
+                    capData.capFilled ? "bg-[#9AA5B8]" : "bg-[#B8EBD5]"
                   }`}
                   style={{ width: `${Math.max(0, 100 - capData.progressPct)}%` }}
                 />
@@ -529,10 +533,10 @@ export function GenesisCompactMarketCard({
           </div>
           <div className="mt-2">
             <div className="flex items-center gap-2">
-              <div className="h-2.5 flex-1 overflow-hidden rounded-full border border-[#1E4775]/20 bg-[#DDE6F2]">
+              <div className="h-2.5 flex-1 overflow-hidden rounded-full border border-[#B8EBD5]/35 bg-[#DDE6F2]">
                 <div
                   className={`h-full rounded-full transition-all ${
-                    capData.capFilled ? "bg-[#9AA5B8]" : "bg-[#FF8A7A]"
+                    capData.capFilled ? "bg-[#9AA5B8]" : "bg-[#B8EBD5]"
                   }`}
                   style={{ width: `${progressPct}%` }}
                 />

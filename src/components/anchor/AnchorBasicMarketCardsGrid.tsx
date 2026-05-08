@@ -2,16 +2,39 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowRightIcon } from "@heroicons/react/24/outline";
+import {
+  ArrowRightIcon,
+  ChevronRightIcon,
+} from "@heroicons/react/24/outline";
 import { CurrencyDollarIcon, ShieldCheckIcon } from "@heroicons/react/24/solid";
 import { Vault, Wallet } from "lucide-react";
 import { MarketMaintenanceTag } from "@/components/MarketMaintenanceTag";
-import NetworkIconCell from "@/components/NetworkIconCell";
 import type { DefinedMarket } from "@/config/markets";
 import { isMarketInMaintenance } from "@/config/markets";
 import type { MarketData } from "@/hooks/anchor/useAnchorMarketData";
 import { TokenLogo } from "@/components/shared";
 import type { AnchorMarketGroupCollapsedRowProps } from "@/components/anchor/AnchorMarketGroupCollapsedRow";
+import { HarborBasicMarketNetworkFooter } from "@/components/market-cards/HarborBasicMarketNetworkFooter";
+import {
+  BASIC_MARKET_APR_MONO_CLASS,
+  BASIC_MARKET_CARD_SHELL_CLASS,
+  BASIC_MARKET_CARDS_GRID_CLASS,
+  BASIC_MARKET_COMING_SOON_CHIP_CLASS,
+  BASIC_MARKET_COMING_SOON_CONTENT_DIM_CLASS,
+  BASIC_MARKET_COMING_SOON_NEUTRAL_DOT_CLASS,
+  BASIC_MARKET_COMING_SOON_VEIL_CLASS,
+  BASIC_MARKET_DIRECTION_LONG_DOT_CLASS,
+  BASIC_MARKET_FEATURE_BODY_CLASS,
+  BASIC_MARKET_FLOW_ARROW_CLASS,
+  BASIC_MARKET_FLOW_LOGO_PX,
+  BASIC_MARKET_ICON_WELL_CLASS,
+  BASIC_MARKET_SYMBOL_TITLE_CLASS,
+  BASIC_MARKET_TOKEN_STRIP_OUTER_CLASS,
+  BASIC_MARKET_TOKEN_STRIP_ROW_CLASS,
+  HARBOR_COMING_SOON_CTA_SURFACE_CLASS,
+  HARBOR_LEARN_MORE_INLINE_LINK_CLASS,
+  HARBOR_PRIMARY_CTA_CLASS,
+} from "@/components/market-cards/harborBasicMarketTokens";
 
 export const ANCHOR_BASIC_CARD_SYMBOL_ORDER = [
   "haETH",
@@ -68,8 +91,6 @@ function tokenStripCollateralLogoSymbol(collateralSymbol: string): string {
   return s;
 }
 
-/** 20px box: bullets + flow use the same icon footprint. */
-const ICON_BOX = "flex h-5 w-5 shrink-0 items-center justify-center";
 const BULLET_ROW_CLASS =
   "grid grid-cols-[theme(spacing.5)_minmax(0,1fr)] items-center gap-x-3";
 
@@ -87,7 +108,7 @@ function NoLockupsBulletIcon() {
         cx="10"
         cy="10"
         r="7.25"
-        fill="#fb923c"
+        fill="#FF8A7A"
         stroke="#9a3412"
         strokeWidth="1.25"
       />
@@ -101,10 +122,6 @@ function NoLockupsBulletIcon() {
   );
 }
 
-const FLOW_LOGO_PX = 26;
-const FLOW_ICON_CLASS = "h-5 w-5 shrink-0 text-[#1E4775]";
-const FLOW_ARROW_CLASS = `${FLOW_ICON_CLASS} opacity-40`;
-
 function AnchorBasicHorizontalTokenStrip({
   collateralSymbol,
   peggedSymbol,
@@ -115,42 +132,38 @@ function AnchorBasicHorizontalTokenStrip({
   const collateralLogo = tokenStripCollateralLogoSymbol(collateralSymbol);
   return (
     <div
-      className="flex min-h-[48px] w-full max-w-full flex-nowrap items-center justify-evenly gap-0 rounded-md border border-[#1E4775]/12 bg-[#f8fafc] px-0 py-1 sm:py-1.5"
+      className={`${BASIC_MARKET_TOKEN_STRIP_OUTER_CLASS} w-full max-w-full`}
       title={`${collateralSymbol} → ${peggedSymbol} → wallet or vault`}
       aria-label={`${collateralSymbol} to ${peggedSymbol}, then wallet or vault`}
     >
-      <span className={ICON_BOX} title={collateralSymbol}>
+      <div className={BASIC_MARKET_TOKEN_STRIP_ROW_CLASS}>
+      <span className={BASIC_MARKET_ICON_WELL_CLASS} title={collateralSymbol}>
         <TokenLogo
           symbol={collateralLogo}
-          size={FLOW_LOGO_PX}
+          size={BASIC_MARKET_FLOW_LOGO_PX}
           className="ring-0"
         />
       </span>
-      <ArrowRightIcon
-        className={`${FLOW_ARROW_CLASS} shrink-0`}
-        aria-hidden
-      />
-      <span className={ICON_BOX} title={peggedSymbol}>
+      <ChevronRightIcon className={BASIC_MARKET_FLOW_ARROW_CLASS} aria-hidden />
+      <span className={BASIC_MARKET_ICON_WELL_CLASS} title={peggedSymbol}>
         <TokenLogo
           symbol={peggedSymbol}
-          size={FLOW_LOGO_PX}
+          size={BASIC_MARKET_FLOW_LOGO_PX}
           className="ring-0"
         />
       </span>
-      <ArrowRightIcon
-        className={`${FLOW_ARROW_CLASS} shrink-0`}
-        aria-hidden
-      />
+      <ChevronRightIcon className={BASIC_MARKET_FLOW_ARROW_CLASS} aria-hidden />
       <div
         className="flex shrink-0 flex-col items-center justify-center gap-px text-[#1E4775]"
         aria-hidden
       >
-        <span className={ICON_BOX}>
+        <span className={BASIC_MARKET_ICON_WELL_CLASS}>
           <Wallet className="h-5 w-5" strokeWidth={1.75} />
         </span>
-        <span className={ICON_BOX}>
+        <span className={BASIC_MARKET_ICON_WELL_CLASS}>
           <Vault className="h-5 w-5" strokeWidth={1.75} />
         </span>
+      </div>
       </div>
     </div>
   );
@@ -168,7 +181,7 @@ const YIELD_SEGMENT_TRACK_CLASS =
   "flex w-full max-w-[280px] rounded-lg bg-[#e2e8f0] p-0.5";
 /** Single backing collateral: one rail label only (no toggle). */
 const YIELD_SINGLE_RAIL_CLASS =
-  "w-full rounded-md bg-white py-1 text-center text-xs font-semibold text-[#153B63] shadow-sm";
+  "w-full rounded-md bg-white py-1 text-center text-xs font-semibold text-[#1E4775] shadow-sm";
 
 /** Coming-soon haUSD: single ETH rail (no fake second segment). */
 function YieldRailSingleEthStatic() {
@@ -178,9 +191,6 @@ function YieldRailSingleEthStatic() {
     </div>
   );
 }
-
-const CARD_SHELL_CLASS =
-  "flex h-full min-h-0 flex-col rounded-xl border border-[#1E4775]/12 bg-white p-4 shadow-[0_16px_40px_-28px_rgba(0,0,0,0.35)] ring-1 ring-black/[0.04] sm:p-5";
 
 function AnchorBasicMarketCard({
   symbol,
@@ -293,7 +303,7 @@ function AnchorBasicMarketCard({
                 aria-selected={active}
                 className={`flex-1 rounded-md py-1 text-center text-xs font-semibold transition ${
                   active
-                    ? "bg-white text-[#153B63] shadow-sm"
+                    ? "bg-white text-[#1E4775] shadow-sm"
                     : "bg-transparent text-[#94a3b8] hover:text-[#64748b]"
                 }`}
                 onClick={() => setSelectedMarketId(m.marketId)}
@@ -351,21 +361,18 @@ function AnchorBasicMarketCard({
   };
 
   return (
-    <article className={CARD_SHELL_CLASS}>
+    <article className={BASIC_MARKET_CARD_SHELL_CLASS}>
       <div className="flex shrink-0 flex-col items-center text-center">
         <TokenLogo symbol={symbol} size={72} className="mb-1 shrink-0" />
-        <h3 className="font-mono text-2xl font-bold leading-tight tracking-tight text-[#0f172a]">
+        <h3 className={BASIC_MARKET_SYMBOL_TITLE_CLASS}>
           {symbol}
         </h3>
         <div className={CARD_RAIL_SLOT}>{yieldRailControl}</div>
 
         <div className={CARD_STATUS_SLOT}>
           <span className="inline-flex items-center gap-1.5">
-            <span
-              className="h-2 w-2 shrink-0 rounded-full bg-[#4A9784] shadow-[0_0_0_3px_rgba(74,151,132,0.2)]"
-              aria-hidden
-            />
-            <span className="text-xs font-semibold uppercase tracking-wide text-[#4A9784]">
+            <span className={`shrink-0 ${BASIC_MARKET_DIRECTION_LONG_DOT_CLASS}`} aria-hidden />
+            <span className="text-xs font-semibold uppercase tracking-wide text-[#16a34a]">
               Market active
             </span>
           </span>
@@ -373,18 +380,18 @@ function AnchorBasicMarketCard({
       </div>
 
       <div className={CARD_APR_SLOT}>
-        <span className="inline-flex items-center gap-2 rounded-full bg-[#E0F2FE] px-2.5 py-0.5 text-xs font-semibold text-[#0369A1]">
-          <span className="text-[10px] font-bold uppercase tracking-wide text-[#0369A1]/80">
+        <span className="inline-flex items-center gap-2 rounded-full bg-[#B8EBD5]/20 px-2.5 py-0.5 text-xs font-semibold text-[#1E4775] ring-1 ring-[#1E4775]/10">
+          <span className="text-[10px] font-bold uppercase tracking-wide text-[#1E4775]/65">
             APR
           </span>
-          <span className="font-mono tabular-nums">{aprDisplay}</span>
+          <span className={BASIC_MARKET_APR_MONO_CLASS}>{aprDisplay}</span>
         </span>
       </div>
 
       <div className="mt-2.5 flex min-h-0 flex-1 flex-col gap-2.5">
-        <ul className="flex flex-col gap-2 text-left text-[13px] leading-snug text-[#475569]">
+        <ul className={`flex flex-col gap-2 text-left ${BASIC_MARKET_FEATURE_BODY_CLASS}`}>
           <li className={BULLET_ROW_CLASS}>
-            <span className={ICON_BOX}>
+            <span className={BASIC_MARKET_ICON_WELL_CLASS}>
               <CurrencyDollarIcon
                 className="h-5 w-5 text-[#16a34a]"
                 aria-hidden
@@ -395,7 +402,7 @@ function AnchorBasicMarketCard({
             </span>
           </li>
           <li className={BULLET_ROW_CLASS}>
-            <span className={ICON_BOX}>
+            <span className={BASIC_MARKET_ICON_WELL_CLASS}>
               <ShieldCheckIcon
                 className="h-5 w-5 text-[#1E4775]"
                 aria-hidden
@@ -406,7 +413,7 @@ function AnchorBasicMarketCard({
             </span>
           </li>
           <li className={BULLET_ROW_CLASS}>
-            <span className={ICON_BOX}>
+            <span className={BASIC_MARKET_ICON_WELL_CLASS}>
               <NoLockupsBulletIcon />
             </span>
             <span className="min-w-0 self-center leading-snug">
@@ -438,44 +445,19 @@ function AnchorBasicMarketCard({
           type="button"
           disabled={!isConnected || groupHasMaintenance}
           onClick={handleStartEarning}
-          className="w-full rounded-xl bg-[#153B63] px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#0F2F52] disabled:cursor-not-allowed disabled:bg-[#153B63]/40"
+          className={HARBOR_PRIMARY_CTA_CLASS}
         >
           Start Earning
         </button>
         <Link
           href={`/anchor/${encodeURIComponent(symbol)}`}
-          className="flex items-center justify-center gap-1 text-center text-xs font-semibold text-[#1E4775] hover:text-[#0c2a4a]"
+          className={HARBOR_LEARN_MORE_INLINE_LINK_CLASS}
         >
           Learn more
-          <ArrowRightIcon className="h-3.5 w-3.5" />
+          <ArrowRightIcon className="h-3.5 w-3.5 shrink-0" />
         </Link>
 
-        <div className="mt-2 w-full border-t border-[#e2e8f0]" />
-        <div className="flex items-center justify-center pt-3">
-          {chains.length <= 1 ? (
-            <span className="inline-flex items-center justify-center gap-2 text-xs font-semibold text-[#64748b]">
-              <NetworkIconCell
-                chainName={chains[0]?.name || "Ethereum"}
-                chainLogo={chains[0]?.logo}
-                size={18}
-                className="rounded-full ring-1 ring-[#1E4775]/10"
-              />
-              <span className="leading-none">{chains[0]?.name || "Ethereum"}</span>
-            </span>
-          ) : (
-            <span className="inline-flex items-center justify-center gap-1.5" aria-label="Networks">
-              {chains.map((c) => (
-                <NetworkIconCell
-                  key={c.name}
-                  chainName={c.name}
-                  chainLogo={c.logo}
-                  size={18}
-                  className="rounded-full ring-1 ring-[#1E4775]/10"
-                />
-              ))}
-            </span>
-          )}
-        </div>
+        <HarborBasicMarketNetworkFooter chains={chains} />
       </div>
     </article>
   );
@@ -483,18 +465,21 @@ function AnchorBasicMarketCard({
 
 function AnchorBasicComingSoonCard({ symbol }: { symbol: string }) {
   return (
-    <article className={CARD_SHELL_CLASS}>
+    <article className={`${BASIC_MARKET_CARD_SHELL_CLASS} relative overflow-hidden`}>
+      <div aria-hidden className={BASIC_MARKET_COMING_SOON_VEIL_CLASS} />
+      <div className={`flex min-h-0 flex-1 flex-col ${BASIC_MARKET_COMING_SOON_CONTENT_DIM_CLASS}`}>
       <div className="flex shrink-0 flex-col items-center text-center">
         <TokenLogo symbol={symbol} size={72} className="mb-1 shrink-0 opacity-90" />
-        <h3 className="font-mono text-2xl font-bold leading-tight tracking-tight text-[#0f172a]">
+        <h3 className={BASIC_MARKET_SYMBOL_TITLE_CLASS}>
           {symbol}
         </h3>
         <div className={CARD_RAIL_SLOT}>
           <YieldRailSingleEthStatic />
         </div>
         <div className={CARD_STATUS_SLOT}>
-          <span className="inline-flex items-center rounded-full bg-[#f1f5f9] px-3 py-0.5 text-xs font-semibold uppercase tracking-wide text-[#64748b]">
-            Coming soon
+          <span className={BASIC_MARKET_COMING_SOON_CHIP_CLASS}>
+            <span className={BASIC_MARKET_COMING_SOON_NEUTRAL_DOT_CLASS} />
+            <span>Coming soon</span>
           </span>
         </div>
       </div>
@@ -504,14 +489,14 @@ function AnchorBasicComingSoonCard({ symbol }: { symbol: string }) {
           <span className="text-[10px] font-bold uppercase tracking-wide text-[#64748b]/80">
             APR
           </span>
-          <span className="font-mono tabular-nums">—</span>
+          <span className={`${BASIC_MARKET_APR_MONO_CLASS} text-[#64748b]`}>—</span>
         </span>
       </div>
 
-      <div className="mt-2.5 flex min-h-0 flex-1 flex-col gap-2.5 opacity-90">
-        <ul className="flex flex-col gap-2 text-left text-[13px] leading-snug text-[#94a3b8]">
+      <div className="mt-2.5 flex min-h-0 flex-1 flex-col gap-2.5 opacity-95">
+        <ul className={`flex flex-col gap-2 text-left ${BASIC_MARKET_FEATURE_BODY_CLASS}`}>
           <li className={BULLET_ROW_CLASS}>
-            <span className={ICON_BOX}>
+            <span className={BASIC_MARKET_ICON_WELL_CLASS}>
               <CurrencyDollarIcon
                 className="h-5 w-5 text-[#16a34a]/90"
                 aria-hidden
@@ -522,7 +507,7 @@ function AnchorBasicComingSoonCard({ symbol }: { symbol: string }) {
             </span>
           </li>
           <li className={BULLET_ROW_CLASS}>
-            <span className={ICON_BOX}>
+            <span className={BASIC_MARKET_ICON_WELL_CLASS}>
               <ShieldCheckIcon
                 className="h-5 w-5 text-[#1E4775]/90"
                 aria-hidden
@@ -533,7 +518,7 @@ function AnchorBasicComingSoonCard({ symbol }: { symbol: string }) {
             </span>
           </li>
           <li className={BULLET_ROW_CLASS}>
-            <span className={ICON_BOX}>
+            <span className={BASIC_MARKET_ICON_WELL_CLASS}>
               <NoLockupsBulletIcon />
             </span>
             <span className="min-w-0 self-center leading-snug">
@@ -550,34 +535,26 @@ function AnchorBasicComingSoonCard({ symbol }: { symbol: string }) {
         </div>
       </div>
 
-      <div className="mt-auto flex shrink-0 cursor-not-allowed flex-col gap-2 pt-4 opacity-75">
+      <div className="mt-auto flex shrink-0 flex-col gap-2 pt-4">
         <button
           type="button"
           disabled
-          className="w-full rounded-xl border border-[#cbd5e1] bg-[#f8fafc] px-4 py-3 text-sm font-semibold text-[#94a3b8]"
+          className={HARBOR_COMING_SOON_CTA_SURFACE_CLASS}
         >
           Coming soon
         </button>
         <Link
           href={`/anchor/${encodeURIComponent(symbol)}`}
-          className="pointer-events-auto flex items-center justify-center gap-1 text-center text-xs font-semibold text-[#1E4775] opacity-100 hover:text-[#0c2a4a]"
+          className={HARBOR_LEARN_MORE_INLINE_LINK_CLASS}
         >
           Learn more
-          <ArrowRightIcon className="h-3.5 w-3.5" />
+          <ArrowRightIcon className="h-3.5 w-3.5 shrink-0" />
         </Link>
 
-        <div className="mt-2 w-full border-t border-[#e2e8f0]" />
-        <div className="flex items-center justify-center pt-3">
-          <span className="inline-flex items-center justify-center gap-2 text-xs font-semibold text-[#64748b]">
-            <NetworkIconCell
-              chainName="MegaETH"
-              chainLogo="icons/eth.png"
-              size={18}
-              className="rounded-full ring-1 ring-[#1E4775]/10"
-            />
-            <span className="leading-none">MegaETH</span>
-          </span>
-        </div>
+        <HarborBasicMarketNetworkFooter
+          chains={[{ name: "MegaETH", logo: "icons/eth.png" }]}
+        />
+      </div>
       </div>
     </article>
   );
@@ -606,8 +583,9 @@ export function AnchorBasicMarketCardsGrid({
     return sortBasicCardGroups(rows).map(([symbol, list]) => ({ symbol, list }));
   }, [marketGroups, alwaysShowSymbols]);
 
+  // Basic market grids: Sail + Anchor share BASIC_MARKET_CARDS_GRID_CLASS token.
   return (
-    <div className="grid grid-cols-1 items-stretch gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+    <div className={BASIC_MARKET_CARDS_GRID_CLASS}>
       {sorted.map(({ symbol, list }) => {
         if (list.length === 0) {
           if (symbol === "haUSD") {

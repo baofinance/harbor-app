@@ -1,3 +1,4 @@
+import { BASIC_MARKET_FEE_COLUMN_LABEL_CLASS } from "@/components/market-cards/harborBasicMarketTokens";
 import SimpleTooltip from "@/components/SimpleTooltip";
 import type { FeeBand } from "@/utils/sailFeeBands";
 import { formatRatio } from "@/utils/sailDisplayFormat";
@@ -35,29 +36,27 @@ export function SailMintRedeemFeeColumn({
 
   return (
     <div className="inline-grid w-full max-w-[260px] grid-cols-[1fr_1px_1fr] items-stretch justify-center">
-      <SimpleTooltip
-        side="left"
-        maxHeight="none"
-        maxWidth={720}
-        label={
-          <div className="space-y-1.5">
-            {crLine}
-            <div className="min-w-[260px]">
-              <SailFeeBandsPanel
-                title="Mint Fees"
-                bands={mintBands}
-                collateralRatio={collateralRatio}
-                isMintSail
-              />
+      <div className="flex w-full flex-col items-center justify-center gap-1 px-3 py-1">
+        <span className={BASIC_MARKET_FEE_COLUMN_LABEL_CLASS}>Mint Fee</span>
+        <SimpleTooltip
+          side="bottom"
+          maxHeight="none"
+          maxWidth={720}
+          label={
+            <div className="space-y-1.5">
+              {crLine}
+              <div className="min-w-[260px]">
+                <SailFeeBandsPanel
+                  title="Mint Fees"
+                  bands={mintBands}
+                  collateralRatio={collateralRatio}
+                  isMintSail
+                />
+              </div>
             </div>
-          </div>
-        }
-      >
-        <span className="cursor-help inline-flex w-full justify-center">
-          <span className="flex w-full flex-col items-center justify-center gap-1 px-3 py-1">
-            <span className="text-[10px] font-semibold uppercase tracking-wide text-[#1E4775]/70">
-              Mint Fee
-            </span>
+          }
+        >
+          <span className="cursor-help inline-flex">
             <SailFeeRatioCell
               ratio={mintFeeRatio}
               isMintSail
@@ -65,33 +64,31 @@ export function SailMintRedeemFeeColumn({
               showHelp
             />
           </span>
-        </span>
-      </SimpleTooltip>
+        </SimpleTooltip>
+      </div>
 
       <span className="w-px self-stretch bg-[#1E4775]/25" aria-hidden="true" />
 
-      <SimpleTooltip
-        side="left"
-        maxHeight="none"
-        maxWidth={720}
-        label={
-          <div className="space-y-1.5">
-            {crLine}
-            <div className="min-w-[260px]">
-              <SailFeeBandsPanel
-                title="Redeem Fees"
-                bands={redeemBands}
-                collateralRatio={collateralRatio}
-              />
+      <div className="flex w-full flex-col items-center justify-center gap-1 px-3 py-1">
+        <span className={BASIC_MARKET_FEE_COLUMN_LABEL_CLASS}>Redeem Fee</span>
+        <SimpleTooltip
+          side="bottom"
+          maxHeight="none"
+          maxWidth={720}
+          label={
+            <div className="space-y-1.5">
+              {crLine}
+              <div className="min-w-[260px]">
+                <SailFeeBandsPanel
+                  title="Redeem Fees"
+                  bands={redeemBands}
+                  collateralRatio={collateralRatio}
+                />
+              </div>
             </div>
-          </div>
-        }
-      >
-        <span className="cursor-help inline-flex w-full justify-center">
-          <span className="flex w-full flex-col items-center justify-center gap-1 px-3 py-1">
-            <span className="text-[10px] font-semibold uppercase tracking-wide text-[#1E4775]/70">
-              Redeem Fee
-            </span>
+          }
+        >
+          <span className="cursor-help inline-flex">
             <SailFeeRatioCell
               ratio={redeemFeeRatio}
               isMintSail={false}
@@ -99,8 +96,8 @@ export function SailMintRedeemFeeColumn({
               showHelp
             />
           </span>
-        </span>
-      </SimpleTooltip>
+        </SimpleTooltip>
+      </div>
     </div>
   );
 }
