@@ -60,7 +60,7 @@ export default function Example() {
                   className={`${linkClass("/genesis")} inline-flex items-center gap-1`}
                   aria-current={isActive("/genesis") ? "page" : undefined}
                 >
-                  <span>Genesis</span>
+                  <span>Maiden Voyage</span>
                   <span
                     className={`rounded px-1 py-0.5 text-[10px] font-bold leading-none font-mono border ${
                       isActive("/genesis")
@@ -169,7 +169,7 @@ export default function Example() {
               aria-current={isActive("/genesis") ? "page" : undefined}
             >
               <span className="inline-flex items-center justify-center gap-2">
-                <span>Genesis</span>
+                <span>Maiden Voyage</span>
                 <span
                   className={`rounded px-1.5 py-0.5 text-xs font-bold font-mono border ${
                     isActive("/genesis")
