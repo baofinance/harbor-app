@@ -1226,7 +1226,7 @@ export default function Admin() {
        </table>
      </div>
 
-     <div className="mt-4 shrink-0 flex flex-col lg:flex-row lg:items-stretch gap-4 border-t border-white/10 pt-4 sticky bottom-0 z-[1] bg-zinc-900/90">
+     <div className="mt-4 shrink-0 flex flex-col lg:flex-row lg:items-stretch gap-4 border-t border-white/10 pt-4 bg-zinc-900/90">
        <div className="flex flex-col gap-2">
          <button
            onClick={handleBatchHarvest}
