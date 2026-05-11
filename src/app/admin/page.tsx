@@ -962,42 +962,42 @@ export default function Admin() {
  </div>
  ) : (
   <div className="space-y-4">
- <div className="bg-zinc-900/50 p-4 sm:p-6">
+ <div className="bg-zinc-900/50 p-4 sm:p-6 relative z-20">
  <h2 className="text-lg font-medium text-white mb-4 font-geo">
  System Controls
  </h2>
-<div className="flex flex-wrap gap-2">
+ <div className="flex flex-wrap gap-2 pointer-events-auto">
   <Link
     href="/admin/genesis"
-    className="inline-flex py-2 px-4 bg-harbor text-white font-medium hover:bg-harbor transition-colors"
+    className="inline-flex items-center rounded py-2 px-4 bg-harbor text-white font-medium hover:bg-harbor/90 transition-colors"
   >
     Genesis Admin
   </Link>
   <Link
     href="/admin/fees"
-    className="inline-flex py-2 px-4 bg-harbor text-white font-medium hover:bg-harbor transition-colors"
+    className="inline-flex items-center rounded py-2 px-4 bg-harbor text-white font-medium hover:bg-harbor/90 transition-colors"
   >
     Mint/Redeem Fees
   </Link>
   <Link
     href="/admin/rewards"
-    className="inline-flex py-2 px-4 bg-harbor text-white font-medium hover:bg-harbor transition-colors"
+    className="inline-flex items-center rounded py-2 px-4 bg-harbor text-white font-medium hover:bg-harbor/90 transition-colors"
   >
     Reward Deposits
   </Link>
   <Link
     href="/admin/rebalancing"
-    className="inline-flex py-2 px-4 bg-harbor text-white font-medium hover:bg-harbor transition-colors"
+    className="inline-flex items-center rounded py-2 px-4 bg-harbor text-white font-medium hover:bg-harbor/90 transition-colors"
   >
     Rebalancing
   </Link>
   <Link
     href="/admin/maiden-voyage-yield"
-    className="inline-flex py-2 px-4 bg-harbor text-white font-medium hover:bg-harbor transition-colors"
+    className="inline-flex items-center rounded py-2 px-4 bg-harbor text-white font-medium hover:bg-harbor/90 transition-colors"
   >
     Maiden voyage yield
   </Link>
-</div>
+ </div>
  </div>
     {/* Rewards Streaming (per pool) */}
     <div className="bg-zinc-900/50 p-4 sm:p-6">
