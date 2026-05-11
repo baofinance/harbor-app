@@ -962,6 +962,38 @@ export default function Admin() {
  </div>
  ) : (
   <div className="space-y-4">
+ <div className="bg-zinc-900/50 p-4 sm:p-6">
+ <h2 className="text-lg font-medium text-white mb-4 font-geo">
+ System Controls
+ </h2>
+ <div className="flex flex-wrap gap-2">
+   <Link href="/admin/genesis">
+     <button className="py-2 px-4 bg-harbor text-white font-medium hover:bg-harbor transition-colors">
+       Genesis Admin
+     </button>
+   </Link>
+   <Link href="/admin/fees">
+     <button className="py-2 px-4 bg-harbor text-white font-medium hover:bg-harbor transition-colors">
+       Mint/Redeem Fees
+     </button>
+   </Link>
+   <Link href="/admin/rewards">
+     <button className="py-2 px-4 bg-harbor text-white font-medium hover:bg-harbor transition-colors">
+       Reward Deposits
+     </button>
+   </Link>
+      <Link href="/admin/rebalancing">
+        <button className="py-2 px-4 bg-harbor text-white font-medium hover:bg-harbor transition-colors">
+          Rebalancing
+        </button>
+      </Link>
+      <Link href="/admin/maiden-voyage-yield">
+        <button className="py-2 px-4 bg-harbor text-white font-medium hover:bg-harbor transition-colors">
+          Maiden voyage yield
+        </button>
+      </Link>
+ </div>
+ </div>
     {/* Rewards Streaming (per pool) */}
     <div className="bg-zinc-900/50 p-4 sm:p-6">
       <div className="flex items-center justify-between gap-4 mb-3">
@@ -1352,39 +1384,6 @@ export default function Admin() {
        </div>
      </div>
    </div>
-
- <div className="bg-zinc-900/50 p-4 sm:p-6">
- <h2 className="text-lg font-medium text-white mb-4 font-geo">
- System Controls
- </h2>
- <div className="flex flex-wrap gap-2">
-   <Link href="/admin/genesis">
-     <button className="py-2 px-4 bg-harbor text-white font-medium hover:bg-harbor transition-colors">
-       Genesis Admin
-     </button>
-   </Link>
-   <Link href="/admin/fees">
-     <button className="py-2 px-4 bg-harbor text-white font-medium hover:bg-harbor transition-colors">
-       Mint/Redeem Fees
-     </button>
-   </Link>
-   <Link href="/admin/rewards">
-     <button className="py-2 px-4 bg-harbor text-white font-medium hover:bg-harbor transition-colors">
-       Reward Deposits
-     </button>
-   </Link>
-      <Link href="/admin/rebalancing">
-        <button className="py-2 px-4 bg-harbor text-white font-medium hover:bg-harbor transition-colors">
-          Rebalancing
-        </button>
-      </Link>
-      <Link href="/admin/maiden-voyage-yield">
-        <button className="py-2 px-4 bg-harbor text-white font-medium hover:bg-harbor transition-colors">
-          Maiden voyage yield
-        </button>
-      </Link>
-</div>
-</div>
 
  <div className="bg-zinc-900/50 p-4 sm:p-6">
  <h2 className="text-lg font-medium text-white mb-4 font-geo">
