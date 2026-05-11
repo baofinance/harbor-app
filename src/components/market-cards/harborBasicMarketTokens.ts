@@ -57,7 +57,7 @@ export const BASIC_MARKET_NETWORK_ICON_RING_CLASS =
 export const BASIC_MARKET_DIRECTION_LONG_CHIP_CLASS =
   "bg-[#B8EBD5]/15 text-[#10141A] ring-1 ring-[#10141A]/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)]";
 export const BASIC_MARKET_DIRECTION_SHORT_CHIP_CLASS =
-  "bg-[#FF8A7A]/15 text-[#FF8A7A] ring-1 ring-[#FF8A7A]/20 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)]";
+  "bg-[#FF8A7A]/15 text-[#10141A] ring-1 ring-[#FF8A7A]/20 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)]";
 export const BASIC_MARKET_DIRECTION_LONG_DOT_CLASS =
   "h-2 w-2 rounded-full bg-[#16a34a] shadow-[0_0_0_3px_rgba(22,163,74,0.18)]";
 export const BASIC_MARKET_DIRECTION_SHORT_DOT_CLASS =

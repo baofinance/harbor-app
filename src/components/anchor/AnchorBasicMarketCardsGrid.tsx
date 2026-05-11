@@ -371,8 +371,11 @@ function AnchorBasicMarketCard({
 
         <div className={CARD_STATUS_SLOT}>
           <span className="inline-flex items-center gap-1.5">
-            <span className={`shrink-0 ${BASIC_MARKET_DIRECTION_LONG_DOT_CLASS}`} aria-hidden />
-            <span className="text-xs font-semibold uppercase tracking-wide text-[#16a34a]">
+            <span
+              className="h-2 w-2 shrink-0 rounded-full bg-[#4A9784] shadow-[0_0_0_3px_rgba(74,151,132,0.22)]"
+              aria-hidden
+            />
+            <span className="text-xs font-semibold uppercase tracking-wide text-[#4A9784]">
               Market active
             </span>
           </span>

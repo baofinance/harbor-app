@@ -57,7 +57,7 @@ export function SailBasicMarketCard({
   isComingSoon?: boolean;
 }) {
   const showMaintenance = isMarketInMaintenance(market);
-  const { longSide, shortSide, direction, collateralSymbol } = model;
+  const { longSide, shortSide, collateralSymbol } = model;
   const hsSymbol =
     (longSide || "").toLowerCase().startsWith("hs")
       ? longSide
@@ -75,15 +75,6 @@ export function SailBasicMarketCard({
     collateralSymbol ||
     "fxUSD";
 
-  const directionPillClass =
-    direction === "LONG"
-      ? BASIC_MARKET_DIRECTION_LONG_CHIP_CLASS
-      : BASIC_MARKET_DIRECTION_SHORT_CHIP_CLASS;
-  const directionDotClass =
-    direction === "LONG"
-      ? BASIC_MARKET_DIRECTION_LONG_DOT_CLASS
-      : BASIC_MARKET_DIRECTION_SHORT_DOT_CLASS;
-
   const comingSoonChip = (
     <span className={BASIC_MARKET_COMING_SOON_CHIP_CLASS}>
       <span className={BASIC_MARKET_COMING_SOON_NEUTRAL_DOT_CLASS} />
@@ -91,8 +82,33 @@ export function SailBasicMarketCard({
     </span>
   );
 
-  const directionChipClass =
-    `flex w-full items-center justify-center gap-2 rounded-xl px-3.5 py-1.5 text-[12px] font-black uppercase tracking-[0.10em] ${directionPillClass}`;
+  const normalizeSideLabel = (value: string): string => {
+    const v = (value || "").trim().toLowerCase();
+    if (!v) return "";
+    if (v.includes("fxusd") || v.includes("fxsave") || v === "usd") return "USD";
+    if (v.includes("wsteth") || v.includes("steth") || v === "eth") return "ETH";
+    if (v.includes("btc")) return "BTC";
+    if (v.includes("eur")) return "EUR";
+    return value.trim().toUpperCase();
+  };
+
+  const pairByHsSymbol: Record<string, { long: string; short: string }> = {
+    "HSFXUSD-ETH": { long: "USD", short: "ETH" },
+    "HSFXUSD-BTC": { long: "USD", short: "BTC" },
+    "HSSTETH-BTC": { long: "ETH", short: "BTC" },
+    "HSSTETH-EUR": { long: "ETH", short: "EUR" },
+    "HSFXUSD-EUR": { long: "USD", short: "EUR" },
+    "HSSTETH-USD": { long: "ETH", short: "USD" },
+  };
+
+  const mappedSides = pairByHsSymbol[hsSymbol.toUpperCase()];
+  const longChipLabel = mappedSides?.long ?? normalizeSideLabel(longSide);
+  const shortChipLabel = mappedSides?.short ?? normalizeSideLabel(shortSide);
+
+  const longChipClass =
+    `flex w-full items-center justify-center gap-2 rounded-xl px-2.5 py-1.5 text-[11px] font-black tracking-[0.03em] ${BASIC_MARKET_DIRECTION_LONG_CHIP_CLASS}`;
+  const shortChipClass =
+    `flex w-full items-center justify-center gap-2 rounded-xl px-2.5 py-1.5 text-[11px] font-black tracking-[0.03em] ${BASIC_MARKET_DIRECTION_SHORT_CHIP_CLASS}`;
 
   return (
     <article
@@ -112,10 +128,7 @@ export function SailBasicMarketCard({
           height={72}
           className="mb-1 h-[72px] w-[72px] rounded-full ring-1 ring-black/5"
         />
-        <h3 className={BASIC_MARKET_SYMBOL_TITLE_CLASS}>
-          {hsSymbol}
-        </h3>
-        <div className="mt-1 text-center space-y-0.5">
+        <div className="mt-0.5 text-center space-y-0.5">
           <div className={BASIC_MARKET_SUBTITLE_PRIMARY_CLASS}>{footerLine}</div>
           <div className={BASIC_MARKET_SUBTITLE_MUTED_LINE_CLASS}>{subtitle}</div>
         </div>
@@ -123,10 +136,22 @@ export function SailBasicMarketCard({
           {isComingSoon ? (
             comingSoonChip
           ) : (
-            <span className={directionChipClass}>
-              <span className={directionDotClass} aria-hidden />
-              <span>{direction}</span>
-            </span>
+            <div className="flex w-full items-center gap-2">
+              <span className={`${longChipClass} flex-1`}>
+                <span
+                  className={`${BASIC_MARKET_DIRECTION_LONG_DOT_CLASS} shrink-0 animate-pulse`}
+                  aria-hidden
+                />
+                <span className="leading-none">{`Long ${longChipLabel}`}</span>
+              </span>
+              <span className={`${shortChipClass} flex-1`}>
+                <span className="leading-none">{`Short ${shortChipLabel}`}</span>
+                <span
+                  className={`${BASIC_MARKET_DIRECTION_SHORT_DOT_CLASS} shrink-0 animate-pulse`}
+                  aria-hidden
+                />
+              </span>
+            </div>
           )}
         </div>
 
