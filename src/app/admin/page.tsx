@@ -966,33 +966,38 @@ export default function Admin() {
  <h2 className="text-lg font-medium text-white mb-4 font-geo">
  System Controls
  </h2>
- <div className="flex flex-wrap gap-2">
-   <Link href="/admin/genesis">
-     <button className="py-2 px-4 bg-harbor text-white font-medium hover:bg-harbor transition-colors">
-       Genesis Admin
-     </button>
-   </Link>
-   <Link href="/admin/fees">
-     <button className="py-2 px-4 bg-harbor text-white font-medium hover:bg-harbor transition-colors">
-       Mint/Redeem Fees
-     </button>
-   </Link>
-   <Link href="/admin/rewards">
-     <button className="py-2 px-4 bg-harbor text-white font-medium hover:bg-harbor transition-colors">
-       Reward Deposits
-     </button>
-   </Link>
-      <Link href="/admin/rebalancing">
-        <button className="py-2 px-4 bg-harbor text-white font-medium hover:bg-harbor transition-colors">
-          Rebalancing
-        </button>
-      </Link>
-      <Link href="/admin/maiden-voyage-yield">
-        <button className="py-2 px-4 bg-harbor text-white font-medium hover:bg-harbor transition-colors">
-          Maiden voyage yield
-        </button>
-      </Link>
- </div>
+<div className="flex flex-wrap gap-2">
+  <Link
+    href="/admin/genesis"
+    className="inline-flex py-2 px-4 bg-harbor text-white font-medium hover:bg-harbor transition-colors"
+  >
+    Genesis Admin
+  </Link>
+  <Link
+    href="/admin/fees"
+    className="inline-flex py-2 px-4 bg-harbor text-white font-medium hover:bg-harbor transition-colors"
+  >
+    Mint/Redeem Fees
+  </Link>
+  <Link
+    href="/admin/rewards"
+    className="inline-flex py-2 px-4 bg-harbor text-white font-medium hover:bg-harbor transition-colors"
+  >
+    Reward Deposits
+  </Link>
+  <Link
+    href="/admin/rebalancing"
+    className="inline-flex py-2 px-4 bg-harbor text-white font-medium hover:bg-harbor transition-colors"
+  >
+    Rebalancing
+  </Link>
+  <Link
+    href="/admin/maiden-voyage-yield"
+    className="inline-flex py-2 px-4 bg-harbor text-white font-medium hover:bg-harbor transition-colors"
+  >
+    Maiden voyage yield
+  </Link>
+</div>
  </div>
     {/* Rewards Streaming (per pool) */}
     <div className="bg-zinc-900/50 p-4 sm:p-6">
