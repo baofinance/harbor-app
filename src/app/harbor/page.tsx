@@ -1,21 +1,23 @@
 import Image from "next/image";
 import { IndexPageTitleSection } from "@/components/shared/IndexPageTitleSection";
 
-export default function TidePage() {
+export default function HarborPage() {
   return (
     <div className="flex min-h-0 flex-1 flex-col text-white max-w-[1300px] mx-auto font-sans relative w-full">
       <main className="container mx-auto px-4 sm:px-10 pb-8 pt-2 sm:pt-4">
         <IndexPageTitleSection
-          title="$TIDE"
-          subtitle={<>Coming Soon</>}
+          title="Harbor"
+          subtitle={
+            <>Coming soon. Tradeable. Auto-compounding. Always working.</>
+          }
         />
 
-        <section className="mt-4 rounded-lg border border-white/15 bg-[#b6e8d8] p-2 sm:p-3">
+        <section className="mt-4 rounded-lg border border-white/15 bg-[#b7e7d8] p-2 sm:p-3">
           <Image
-            src="/marketing/tide-content-flow.png"
-            alt="TIDE protocol revenue and burn flow"
+            src="/marketing/harbor-coming-soon.png"
+            alt="Harbor transformation from haTOKEN to hyTOKEN"
             width={1024}
-            height={768}
+            height={1024}
             className="h-auto w-full rounded-md"
             priority
           />

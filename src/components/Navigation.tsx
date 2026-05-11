@@ -60,7 +60,7 @@ export default function Example() {
                   className={`${linkClass("/genesis")} inline-flex items-center gap-1`}
                   aria-current={isActive("/genesis") ? "page" : undefined}
                 >
-                  <span>Maiden voyage</span>
+                  <span>Genesis</span>
                   <span
                     className={`rounded px-1 py-0.5 text-[10px] font-bold leading-none font-mono border ${
                       isActive("/genesis")
@@ -70,6 +70,13 @@ export default function Example() {
                   >
                     2.0
                   </span>
+                </Link>
+                <Link
+                  href="/harbor"
+                  className={linkClass("/harbor")}
+                  aria-current={isActive("/harbor") ? "page" : undefined}
+                >
+                  Harbor
                 </Link>
                 <Link
                   href="/anchor"
@@ -90,21 +97,21 @@ export default function Example() {
                   className={linkClass("/ledger-marks")}
                   aria-current={isActive("/ledger-marks") ? "page" : undefined}
                 >
-                  Marks Leaderboard
+                  Leaderboard
                 </Link>
                 <Link
                   href="/transparency"
                   className={linkClass("/transparency")}
                   aria-current={isActive("/transparency") ? "page" : undefined}
                 >
-                  Transparency
+                  Transperancy
                 </Link>
                 <Link
                   href="/tide"
                   className={linkClass("/tide")}
                   aria-current={isActive("/tide") ? "page" : undefined}
                 >
-                  TIDE
+                  Tide
                 </Link>
               </div>
             </div>
@@ -162,7 +169,7 @@ export default function Example() {
               aria-current={isActive("/genesis") ? "page" : undefined}
             >
               <span className="inline-flex items-center justify-center gap-2">
-                <span>Maiden voyage</span>
+                <span>Genesis</span>
                 <span
                   className={`rounded px-1.5 py-0.5 text-xs font-bold font-mono border ${
                     isActive("/genesis")
@@ -173,6 +180,18 @@ export default function Example() {
                   2.0
                 </span>
               </span>
+            </DisclosureButton>
+            <DisclosureButton
+              as={Link}
+              href="/harbor"
+              className={`block w-full max-w-sm mx-auto px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 text-center ${
+                isActive("/harbor")
+                  ? "text-[#1E4775] bg-white"
+                  : "text-white bg-white/10 hover:bg-white/20"
+              }`}
+              aria-current={isActive("/harbor") ? "page" : undefined}
+            >
+              Harbor
             </DisclosureButton>
             <DisclosureButton
               as={Link}
@@ -208,7 +227,7 @@ export default function Example() {
               }`}
               aria-current={isActive("/ledger-marks") ? "page" : undefined}
             >
-              Marks Leaderboard
+              Leaderboard
             </DisclosureButton>
             <DisclosureButton
               as={Link}
@@ -220,7 +239,7 @@ export default function Example() {
               }`}
               aria-current={isActive("/transparency") ? "page" : undefined}
             >
-              Transparency
+              Transperancy
             </DisclosureButton>
             <DisclosureButton
               as={Link}
@@ -232,7 +251,7 @@ export default function Example() {
               }`}
               aria-current={isActive("/tide") ? "page" : undefined}
             >
-              TIDE
+              Tide
             </DisclosureButton>
           </div>
         </div>
