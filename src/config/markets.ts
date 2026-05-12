@@ -6,6 +6,14 @@ const useMegaeth = process.env.NEXT_PUBLIC_USE_MEGAETH === "true";
 
 const getContractMarket = (marketId: string) => contractsMarkets[marketId];
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- main branch market configs call this helper
+const resolveStabilityPoolManager = (
+  marketId: keyof typeof contractsMarkets,
+  fallback?: `0x${string}`
+): `0x${string}` | undefined =>
+  contractsMarkets[marketId]?.addresses?.stabilityPoolManager ??
+  (useTest2 ? undefined : fallback);
+
 export const markets = {
   // ============================================================================
   // ETH/fxUSD Market (test2 deployment) - Mainnet deployment Dec 2025
