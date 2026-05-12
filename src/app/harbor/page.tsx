@@ -12,13 +12,13 @@ export default function HarborPage() {
           }
         />
 
-        <section className="mt-4 rounded-lg border border-white/15 bg-[#b7e7d8] p-2 sm:p-3">
+        <section className="mt-4 rounded-xl border border-white/15 bg-[#2c2c2c] p-2 shadow-[0_12px_40px_rgba(0,0,0,0.45)] ring-1 ring-black/40 sm:p-3">
           <Image
-            src="/marketing/harbor-coming-soon.png"
-            alt="Harbor transformation from haTOKEN to hyTOKEN"
+            src="/marketing/harbor-hatoken-hytoken-yield.png"
+            alt="Harbor haToken versus hyToken: stable value and manual management compared with stable value plus growth, auto-compounding, and effortless optimization"
             width={1024}
             height={1024}
-            className="h-auto w-full rounded-md"
+            className="h-auto w-full rounded-lg border border-white/10 shadow-inner"
             priority
           />
         </section>
