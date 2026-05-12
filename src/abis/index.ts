@@ -19,7 +19,13 @@ export * from "./permit";
 export * from "./permitZaps";
 export * from "./chainlink";
 export * from "./votingEscrow";
-export * from "./admin";
+export {
+  MINTER_FEES_READS_ABI,
+  ADMIN_MINTER_ABI,
+  MOCK_PRICE_FEED_ABI,
+  STABILITY_POOL_REWARDS_ABI,
+  STABILITY_POOL_MANAGER_ABI as ADMIN_STABILITY_POOL_MANAGER_ABI,
+} from "./admin";
 
 
 

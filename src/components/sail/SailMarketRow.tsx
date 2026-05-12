@@ -480,6 +480,7 @@ export const SailMarketRow = React.memo(function SailMarketRow({
           </div>
           <div className="text-center min-w-0 flex items-center justify-center px-0.5">
             <SailMintRedeemFeeColumn
+              compactRow
               collateralRatio={collateralRatio}
               mintFeeRatio={mintFeeRatio}
               redeemFeeRatio={redeemFeeRatio}

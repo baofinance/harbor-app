@@ -1,9 +1,18 @@
+"use client";
+
 import React from "react";
 import Image from "next/image";
 import { formatDateTime } from "@/utils/formatters";
-import { EtherscanLink, getLogoPath } from "@/components/shared";
+import { EtherscanLink, TokenLogo } from "@/components/shared";
+import SimpleTooltip from "@/components/SimpleTooltip";
 import { useGenesisMarketExpandedData } from "@/hooks/useGenesisMarketExpandedData";
-import { maidenVoyageYieldOwnerSharePercent } from "@/config/maidenVoyageYield";
+
+const sectionHeaderClass =
+  "text-xs font-semibold uppercase tracking-wide text-[#1E4775]/80";
+
+const yieldBulletStrongClass = "font-semibold text-[#1E4775]";
+
+const TOKEN_ROW_ICON_PX = 28;
 
 interface GenesisMarketExpandedViewProps {
   marketId: string;
@@ -23,6 +32,7 @@ interface GenesisMarketExpandedViewProps {
 }
 
 export const GenesisMarketExpandedView = ({
+  marketId: _marketId,
   market,
   genesisAddress,
   totalDepositsUSD,
@@ -51,203 +61,174 @@ export const GenesisMarketExpandedView = ({
   void totalDepositsUSD;
   void collateralPriceUSD;
 
-  const yieldOwnerSharePct = maidenVoyageYieldOwnerSharePercent(
-    genesisAddress?.toLowerCase() ?? null
-  );
-  const yieldShareSentence =
-    yieldOwnerSharePct != null ? (
-      <>
-        <span className="font-semibold text-[#1E4775]">
-          {yieldOwnerSharePct}% of attributed revenue
-        </span>{" "}
-      </>
-    ) : (
-      <>
-        <span className="font-semibold text-[#1E4775]">
-          A configured share of attributed revenue
-        </span>{" "}
-      </>
-    );
-
   const addresses = market.addresses as Record<string, string | undefined>;
-
-  // Get market name for description - use leveraged token symbol without "hs" prefix
-  // This gives us "FXUSD-BTC" from "hsFXUSD-BTC", etc.
-  const marketName =
-    leveragedTokenSymbol && leveragedTokenSymbol.toLowerCase().startsWith("hs")
-      ? leveragedTokenSymbol.slice(2)
-      : leveragedTokenSymbol || (market as any).name || "Market";
+  const chainId = (market as { chainId?: number }).chainId ?? 1;
 
   return (
-    <div className="bg-[rgb(var(--surface-selected-rgb))] p-4 border-t border-white/20 rounded-md overflow-hidden">
-      {/* Description Box */}
-      <div className="bg-white p-4 mb-2 border border-[#1E4775]/10 rounded-md">
-        <p className="text-xs text-[#1E4775] leading-relaxed">
-          Earn ledger marks for providing liquidity to the{" "}
-          <span className="font-semibold">{marketName}</span> market.{" "}
-          <span className="font-semibold">{collateralTokenSymbol}</span> is
-          split into equal portions of{" "}
-          <span className="font-semibold">{peggedTokenSymbol}</span> and{" "}
-          <span className="font-semibold">{leveragedTokenSymbol}</span>, which
-          are minted on claim. Until you claim, you have{" "}
-          <span className="font-semibold">{collateralTokenSymbol}</span>{" "}
-          exposure. After you claim your net exposure depends on the balance of
-          the market compared to your balance of{" "}
-          <span className="font-semibold">{peggedTokenSymbol}</span> and{" "}
-          <span className="font-semibold">{leveragedTokenSymbol}</span> tokens.
-        </p>
-      </div>
-
-      <div className="bg-[#17395F]/10 p-4 mb-2 border border-[#1E4775]/15 rounded-md">
-        <h3 className="text-xs font-semibold text-[#1E4775] mb-2">
-          How yield works (this market)
-        </h3>
-        <ul className="text-xs text-[#1E4775]/90 space-y-1.5 list-disc pl-4 leading-relaxed">
-          <li>
-            This genesis has its own maiden voyage yield pool on-chain.{" "}
-            {yieldShareSentence}
-            (mint/redeem fees on wrapped collateral + hourly collateral carry,
-            in USD) is credited into the pool; that credited amount is split
-            across participants using final ownership (from the USD cap) and
-            voyage boost after genesis.
+    <div className="space-y-5">
+      <div className="space-y-3">
+        <h3 className={sectionHeaderClass}>How yield works (this market)</h3>
+        <ul className="space-y-3 text-[13px] leading-snug text-[#1E4775]/90">
+          <li className="flex items-center gap-2">
+            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#1E4775]/40" aria-hidden />
+            <span>
+              <strong className={yieldBulletStrongClass}>
+                This market has its own on-chain yield pool.
+              </strong>
+            </span>
           </li>
-          <li>
-            The cap bar on the main page shows how much ownership is already
-            counted. The{" "}
-            <span className="font-semibold text-[#1E4775]">% still open</span>{" "}
-            is how much capped ownership headroom remains—not a promised APR.
+          <li className="flex items-center gap-2">
+            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#1E4775]/40" aria-hidden />
+            <span>
+              <strong className={yieldBulletStrongClass}>
+                Revenue from fees + collateral carry
+              </strong>{" "}
+              is credited to this pool.
+            </span>
           </li>
-          <li>
-            Ledger marks and $TIDE are separate incentives from the yield pool.
-            Full walkthrough:{" "}
-            <a
-              href="https://docs.harborfinance.io/maiden-voyage"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-semibold text-[#FF8A7A] hover:underline"
-            >
-              Harbor maiden voyage docs
-            </a>
-            .
+          <li className="flex items-center gap-2">
+            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#1E4775]/40" aria-hidden />
+            <span>
+              <strong className={yieldBulletStrongClass}>
+                A configured share of attributed revenue (in USD)
+              </strong>{" "}
+              is distributed to owners.
+            </span>
+          </li>
+          <li className="flex items-center gap-2">
+            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#1E4775]/40" aria-hidden />
+            <span>
+              <strong className={yieldBulletStrongClass}>
+                Your final ownership % is set at Genesis close
+              </strong>{" "}
+              (plus voyage boost), this determines your lifetime share.
+            </span>
+          </li>
+          <li className="flex items-center gap-2">
+            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#1E4775]/40" aria-hidden />
+            <span>
+              <strong className={yieldBulletStrongClass}>Exiting your initial position</strong>{" "}
+              reduces your share to the <strong className={yieldBulletStrongClass}>minimum share</strong>.
+            </span>
+          </li>
+          <li className="flex items-center gap-2">
+            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#1E4775]/40" aria-hidden />
+            <span>
+              <strong className={yieldBulletStrongClass}>% still open</strong> shows remaining
+              capped ownership headroom (<strong className={yieldBulletStrongClass}>not</strong>{" "}
+              an APR).
+            </span>
           </li>
         </ul>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-        {/* First Column: End Date/Time and Projected APR */}
-        <div className="flex flex-col gap-2 h-full">
-          {/* Genesis Info */}
-          <div className="bg-white p-2 flex flex-col justify-center rounded-md">
-            <h3 className="text-[#1E4775] font-semibold mb-1 text-xs text-center">
-              End Date/Time
-            </h3>
-            <p className="text-sm font-bold text-[#1E4775] text-center">
+      <div className="grid grid-cols-1 gap-5 border-t border-[#1E4775]/12 pt-5 md:grid-cols-3 md:gap-0 md:gap-y-5">
+        <div className="flex flex-col gap-3 md:pr-6">
+          <div className="text-center md:text-left">
+            <div className={sectionHeaderClass}>End Date/Time</div>
+            <p className="mt-1 text-base font-semibold tracking-tight text-[#10141A]">
               {formatDateTime(endDate)}
             </p>
           </div>
 
-          {/* Projected Stability Pool APR */}
           {underlyingAPR !== null && underlyingAPR !== undefined && (
-            <div className="text-xs text-white bg-[#1E4775] px-4 py-2 text-center flex-1 flex flex-col justify-center">
-              <div className="font-semibold mb-1">
+            <div className="rounded-xl bg-[#1E4775] px-4 py-3.5 text-center text-[#FFFFFF] shadow-sm">
+              <div className="text-sm font-semibold leading-snug text-white/95">
                 Projected {peggedTokenSymbol} APR (Stability pools)
               </div>
-              <div>
-                <span className="font-semibold">
+              <div className="mt-2.5 flex items-center justify-center gap-2">
+                <span className="text-sm font-semibold tabular-nums leading-snug text-white/95">
                   {(underlyingAPR * 2 * 100).toFixed(2)}% +
                 </span>
                 <Image
                   src="/icons/marks.png"
                   alt="Marks"
-                  width={14}
-                  height={14}
-                  className="inline-block ml-1 align-middle"
+                  width={16}
+                  height={16}
+                  className="inline-block shrink-0 align-middle opacity-95"
                 />
               </div>
             </div>
           )}
         </div>
 
-        {/* Contract Info */}
-        <div className="bg-white p-2 flex flex-col rounded-md">
-          <h3 className="text-[#1E4775] font-semibold mb-1 text-xs">
-            Contract Info
-          </h3>
-          <div>
+        <div className="border-t border-[#1E4775]/12 pt-5 md:border-l md:border-t-0 md:px-5 md:pt-0">
+          <div className={sectionHeaderClass}>Contract Info</div>
+          <div className="mt-2 space-y-0.5 text-[13px]">
             <EtherscanLink
               label="Genesis"
               address={addresses.genesis}
-              chainId={(market as any).chainId ?? 1}
+              chainId={chainId}
             />
             <EtherscanLink
               label="Minter"
               address={addresses.minter}
-              chainId={(market as any).chainId ?? 1}
+              chainId={chainId}
             />
             <EtherscanLink
               label="Collateral Token"
               address={addresses.collateralToken}
-              chainId={(market as any).chainId ?? 1}
+              chainId={chainId}
             />
             <EtherscanLink
               label="Anchor Token"
               address={peggedTokenAddress}
-              chainId={(market as any).chainId ?? 1}
+              chainId={chainId}
             />
             <EtherscanLink
               label="Sail Token"
               address={leveragedTokenAddress}
-              chainId={(market as any).chainId ?? 1}
+              chainId={chainId}
             />
           </div>
         </div>
 
-        <div className="bg-white p-2 flex flex-col rounded-md">
-          <h3 className="text-[#1E4775] font-semibold mb-1 text-xs">Tokens</h3>
-          <div className="space-y-1 text-xs flex-1 flex justify-center flex-col">
-            <div className="flex justify-between items-center">
-              <span className="text-[#1E4775]/70">Market Collateral:</span>
-              <div className="flex items-center gap-1.5">
-                <span className="text-[#1E4775] font-mono">
+        <div className="border-t border-[#1E4775]/12 pt-5 md:border-l md:border-t-0 md:pl-5 md:pr-0 md:pt-0">
+          <div className={sectionHeaderClass}>Tokens</div>
+          <div className="mt-3 space-y-2.5 text-[13px]">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-[#1E4775]/75">Market Collateral:</span>
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-[#10141A]">
                   {collateralTokenSymbol}
                 </span>
-                <Image
-                  src={getLogoPath(collateralTokenSymbol)}
-                  alt={collateralTokenSymbol}
-                  width={20}
-                  height={20}
-                  className="flex-shrink-0"
-                />
+                <SimpleTooltip label={collateralTokenSymbol} className="cursor-help">
+                  <TokenLogo
+                    symbol={collateralTokenSymbol}
+                    size={TOKEN_ROW_ICON_PX}
+                    className="ring-0"
+                  />
+                </SimpleTooltip>
               </div>
             </div>
-            <div className="flex justify-between items-center">
-              <span className="text-[#1E4775]/70">Anchor Token:</span>
-              <div className="flex items-center gap-1.5">
-                <span className="text-[#1E4775] font-mono">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-[#1E4775]/75">Anchor Token:</span>
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-[#10141A]">
                   {peggedTokenSymbol}
                 </span>
-                <Image
-                  src={getLogoPath(peggedTokenSymbol)}
-                  alt={peggedTokenSymbol}
-                  width={20}
-                  height={20}
-                  className="flex-shrink-0"
-                />
+                <SimpleTooltip label={peggedTokenSymbol} className="cursor-help">
+                  <TokenLogo
+                    symbol={peggedTokenSymbol}
+                    size={TOKEN_ROW_ICON_PX}
+                    className="ring-0"
+                  />
+                </SimpleTooltip>
               </div>
             </div>
-            <div className="flex justify-between items-center">
-              <span className="text-[#1E4775]/70">Sail Token:</span>
-              <div className="flex items-center gap-1.5">
-                <span className="text-[#1E4775] font-mono">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-[#1E4775]/75">Sail Token:</span>
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-[#10141A]">
                   {leveragedTokenSymbol}
                 </span>
-                <Image
-                  src={getLogoPath(leveragedTokenSymbol)}
-                  alt={leveragedTokenSymbol}
-                  width={20}
-                  height={20}
-                  className="flex-shrink-0"
-                />
+                <SimpleTooltip label={leveragedTokenSymbol} className="cursor-help">
+                  <TokenLogo
+                    symbol={leveragedTokenSymbol}
+                    size={TOKEN_ROW_ICON_PX}
+                    className="ring-0"
+                  />
+                </SimpleTooltip>
               </div>
             </div>
           </div>

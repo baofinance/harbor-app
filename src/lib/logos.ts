@@ -51,6 +51,8 @@ const ICONS: Record<string, string> = {
     "hsusd-wsteth": "/icons/hsUSD_ETH.png",
     "hsusd-steth": "/icons/hsUSD_ETH.png",
     "hsusd-xau": "/icons/hsUSD_XAU.png",
+    "hssteth-usd": "/icons/hsUSD_ETH.png",
+    hsstethusd: "/icons/hsUSD_ETH.png",
     "hssteth-btc": "/icons/hsETHBTC.png",
     hsstethbtc: "/icons/hsETHBTC.png",
     "hssteth-eur": "/icons/hsSTETHEUR.png",

@@ -31,4 +31,9 @@ export type GenesisMarketConfig = {
   chain?: { name?: string; logo?: string };
   genesis?: { endDate?: string; startDate?: string };
   marksCampaign?: { id?: string; label?: string };
+  /**
+   * When set (>0), early-depositor Genesis cap UI uses this many **collateral token** units
+   * (with indexer progress), instead of the maiden-voyage USD cap from the indexer alone.
+   */
+  genesisTokenCapAmount?: number;
 };

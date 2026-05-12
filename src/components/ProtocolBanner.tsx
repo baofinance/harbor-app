@@ -59,7 +59,7 @@ export function ProtocolBanner({
 
   return (
     <div className="flex w-full items-center justify-between gap-2 bg-white px-3 py-2 text-[#1E4775] sm:px-3.5 sm:py-2.5 sm:gap-2">
-      <div className="shrink-0 text-sm font-semibold leading-snug sm:text-base">
+      <div className="shrink-0 text-base font-bold leading-snug tracking-tight text-[#153B63] sm:text-lg">
         {protocolName}
       </div>
       <div className="flex min-w-0 items-center justify-end gap-1.5 sm:gap-2">

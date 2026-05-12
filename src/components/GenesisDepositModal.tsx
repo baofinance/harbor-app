@@ -2374,7 +2374,7 @@ const successFmt = formatTokenAmount(
  )}
 
       {/* Submit Buttons */}
-      <div className="flex gap-2">
+      <div className="flex flex-col-reverse gap-2 sm:flex-row">
         <button
           onClick={handleClose}
           disabled={step === "approving" || step === "depositing"}
@@ -2460,9 +2460,9 @@ const successFmt = formatTokenAmount(
             </div>
           }
           closeDisabled={step === "approving" || step === "depositing" || isWritePending}
-          panelClassName="max-h-[95vh] sm:max-h-[90vh] overflow-y-auto"
+          panelClassName="max-h-[calc(100dvh-1rem)] sm:max-h-[90vh] flex flex-col"
           headerClassName="p-3 sm:p-4 lg:p-6"
-          contentClassName="p-3 sm:p-4 lg:p-6"
+          contentClassName="min-h-0 flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6"
         >
           {formContent}
         </DepositModalShell>

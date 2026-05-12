@@ -53,7 +53,6 @@ Full portable checklist lives in **[`docs/INDEX_PAGE_REFACTOR_PLAYBOOK.md`](../I
 |------|------|--------|
 | `/anchor` | [`page.tsx`](../../src/app/anchor/page.tsx) | Main index (monolithic; refactor target). |
 | `/anchor/[symbol]` | `[symbol]/page.tsx` | Per-symbol view. |
-| `/anchor/haeth` | [`haeth/page.tsx`](../../src/app/anchor/haeth/page.tsx) | haETH-focused route. |
 
 ---
 

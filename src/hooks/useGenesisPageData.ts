@@ -2,12 +2,12 @@
 
 import { useCallback, useMemo } from "react";
 import { markets } from "@/config/markets";
-import { getWeb3iconsNetworkId } from "@/config/web3iconsNetworks";
 import {
   useAllHarborMarks,
   useAllMaidenVoyageCampaignIndex,
 } from "@/hooks/useHarborMarks";
 import { formatGenesisMarketDisplayName } from "@/utils/genesisDisplay";
+import { buildNetworkFilterOptions } from "@/utils/networkFilter";
 
 /**
  * Genesis index route: market list config, subgraph marks, bonus status, combined error flags, and display helpers.
@@ -28,29 +28,10 @@ export function useGenesisPageData() {
     []
   );
 
-  const genesisChainOptions = useMemo(() => {
-    const seen = new Set<string>();
-    const options: {
-      id: string;
-      label: string;
-      iconUrl?: string;
-      networkId?: string;
-    }[] = [];
-    genesisMarkets.forEach(([, m]) => {
-      const name = (m as { chain?: { name?: string } }).chain?.name || "Ethereum";
-      if (seen.has(name)) return;
-      seen.add(name);
-      const logo = (m as { chain?: { logo?: string } }).chain?.logo || "icons/eth.png";
-      const networkId = getWeb3iconsNetworkId(name);
-      options.push({
-        id: name,
-        label: name,
-        iconUrl: networkId ? undefined : logo.startsWith("/") ? logo : `/${logo}`,
-        networkId,
-      });
-    });
-    return options.sort((a, b) => a.label.localeCompare(b.label));
-  }, [genesisMarkets]);
+  const genesisChainOptions = useMemo(
+    () => buildNetworkFilterOptions(genesisMarkets, ([, m]) => m),
+    [genesisMarkets]
+  );
 
   const comingSoonMarkets = useMemo(
     () =>

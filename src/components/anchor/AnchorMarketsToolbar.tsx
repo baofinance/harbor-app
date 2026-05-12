@@ -1,13 +1,13 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { XMarkIcon } from "@heroicons/react/24/outline";
-import SimpleTooltip from "@/components/SimpleTooltip";
 import LedgerMarksCompactBadge from "@/components/LedgerMarksCompactBadge";
-import { FilterMultiselectDropdown } from "@/components/FilterMultiselectDropdown";
 import { INDEX_MARKETS_TOOLBAR_ROW_WITH_TOP_RULE_CLASS } from "@/components/shared/indexMarketsToolbarStyles";
 import { INDEX_WITHDRAW_BUTTON_CLASS_DESKTOP_CORAL } from "@/utils/indexPageManageButton";
 import IndexToolbarMetricsGroup from "@/components/shared/IndexToolbarMetricsGroup";
+import type { NetworkFilterOption } from "@/utils/networkFilter";
+import IndexToolbarNetworkFilter from "@/components/shared/IndexToolbarNetworkFilter";
+import IndexToolbarClearFiltersButton from "@/components/shared/IndexToolbarClearFiltersButton";
 
 /** Shown in Basic (UI−) layout between filters and Ledger Marks — matches toolbar label/value scale. */
 export type AnchorBasicClaimToolbarProps = {
@@ -21,12 +21,7 @@ export type AnchorBasicClaimToolbarProps = {
 };
 
 export type AnchorMarketsToolbarProps = {
-  anchorChainOptions: Array<{
-    id: string;
-    label: string;
-    iconUrl?: string;
-    networkId?: string;
-  }>;
+  anchorChainOptions: NetworkFilterOption[];
   chainFilterSelected: string[];
   onChainFilterChange: (next: string[]) => void;
   onClearFilters: () => void;
@@ -49,38 +44,29 @@ export function AnchorMarketsToolbar({
 
   return (
     <div className={INDEX_MARKETS_TOOLBAR_ROW_WITH_TOP_RULE_CLASS}>
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="w-full lg:w-auto lg:min-w-0">
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
         <h2 className="text-xs font-medium text-white/70 uppercase tracking-wider">
           Stability Pools:
         </h2>
         {showNetworkFilter && (
           <>
-            <FilterMultiselectDropdown
-              label="Network"
+            <IndexToolbarNetworkFilter
               options={anchorChainOptions}
               value={chainFilterSelected}
               onChange={onChainFilterChange}
-              allLabel="All networks"
-              groupLabel="NETWORKS"
-              minWidthClass="min-w-[235px]"
+              minWidthClass="w-full min-w-0 sm:w-auto sm:min-w-[235px]"
             />
-            <SimpleTooltip label="clear filters">
-              <button
-                type="button"
-                onClick={onClearFilters}
-                className="p-1.5 text-[#E67A6B] hover:text-[#D66A5B] hover:bg-white/10 rounded transition-colors"
-                aria-label="clear filters"
-              >
-                <XMarkIcon className="w-5 h-5 stroke-[2.5]" />
-              </button>
-            </SimpleTooltip>
+            {chainFilterSelected.length > 0 && (
+              <IndexToolbarClearFiltersButton onClick={onClearFilters} />
+            )}
           </>
         )}
+        </div>
       </div>
-      <div className="w-full md:flex-1 md:min-w-0 grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] items-center gap-2 md:gap-3">
-        <div className="hidden md:block" />
+      <div className="w-full lg:ml-auto lg:w-auto lg:min-w-0 flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-end">
         {basicClaimToolbar ? (
-          <div className="md:justify-self-center">
+          <div className="w-full lg:w-auto">
             <IndexToolbarMetricsGroup
               metrics={[
                 ...(basicClaimToolbar.leftMetrics ?? []),
@@ -99,13 +85,14 @@ export function AnchorMarketsToolbar({
                   Claim
                 </button>
               }
+              className="w-full lg:w-auto"
             />
           </div>
-        ) : (
-          <div />
-        )}
+        ) : null}
         <LedgerMarksCompactBadge
-          className="md:justify-self-end shrink-0"
+          centerOnMobile
+          className="w-full lg:w-auto"
+          pillClassName="w-full lg:w-auto min-h-[52px] px-3 py-1.5 justify-center lg:justify-start"
           body={
             <>
               <div className="font-semibold">Ledger Marks</div>

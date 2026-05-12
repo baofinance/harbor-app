@@ -1,6 +1,6 @@
 // GraphQL configuration for Harbor subgraphs
+// Never ship a fallback API key in source: it is bundled for the client when using NEXT_PUBLIC_*.
 
-const GRAPH_API_KEY = process.env.NEXT_PUBLIC_GRAPH_API_KEY || "247d3c7824af808d9ba8a671c7bddfdf";
 const useTest2 = process.env.NEXT_PUBLIC_USE_TEST2_CONTRACTS === "true";
 
 // Default marks subgraph (v0.1.4 = metals consistent pricing). Override with NEXT_PUBLIC_GRAPH_URL if needed.
@@ -43,7 +43,7 @@ export const CONTRACTS = {
   genesis: "0x1454707877cdb966e29cea8a190c2169eeca4b8c",
   minter: "0x8b17b6e8f9ce3477ddaf372a4140ac6005787901",
   peggedToken: "0x6ff0fe773d4ad4ea923ba9ea9cc1c1b42b70f5fc", // haUSD-stETH
-  leveragedToken: "0x469ddfcfa98d0661b7efedc82aceeab84133f7fe", // hsUSD-stETH
+  leveragedToken: "0x469ddfcfa98d0661b7efedc82aceeab84133f7fe", // hsSTETH-USD
   collateralToken: "0xae7ab96520de3a18e5e111b5eaab095312d7fe84", // stETH (mainnet)
   wrappedCollateralToken: "0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0", // wstETH (mainnet)
   stabilityPoolCollateral: "0xac8113ef28c8ef06064e8d78b69890d670273c73",
@@ -84,22 +84,30 @@ export const getGraphHeaders = (url?: string): Record<string, string> => {
     "Content-Type": "application/json",
   };
   
-  // If using Graph Network gateway, add API key in Authorization header
+  // If using Graph Network gateway, add API key in Authorization header (env only; no repo fallback).
   const graphUrl = url || getGraphUrl();
-  const graphApiKey = process.env.NEXT_PUBLIC_GRAPH_API_KEY || GRAPH_API_KEY;
-  
-  if (typeof window !== "undefined") {
-    console.log("[getGraphHeaders] GraphQL URL:", redactUrl(graphUrl), "API key present:", !!graphApiKey && graphApiKey.length > 0);
+  const graphApiKey = (process.env.NEXT_PUBLIC_GRAPH_API_KEY || "").trim();
+
+  if (
+    typeof window !== "undefined" &&
+    process.env.NODE_ENV === "development"
+  ) {
+    console.log(
+      "[getGraphHeaders] GraphQL URL:",
+      redactUrl(graphUrl),
+      "API key present:",
+      graphApiKey.length > 0
+    );
   }
-  
+
   // Check if URL is a Graph Network gateway (requires auth)
   // gateway.thegraph.com uses Bearer token in Authorization header
   // gateway-arbitrum.network.thegraph.com uses API key in URL path
-  if (graphUrl.includes("gateway.thegraph.com")) {
-    headers["Authorization"] = `Bearer ${graphApiKey}`;
-  } else if (graphUrl.includes("gateway-arbitrum.network.thegraph.com")) {
-    // API key is already in the URL path for this gateway
-    // But we can also add it as Authorization header for extra security
+  if (
+    graphApiKey &&
+    (graphUrl.includes("gateway.thegraph.com") ||
+      graphUrl.includes("gateway-arbitrum.network.thegraph.com"))
+  ) {
     headers["Authorization"] = `Bearer ${graphApiKey}`;
   }
   

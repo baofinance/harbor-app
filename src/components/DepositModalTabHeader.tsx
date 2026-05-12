@@ -32,8 +32,8 @@ export function DepositModalTabHeader({
           disabled={disabled || tabDisabled?.[value]}
           className={`flex-1 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold transition-colors touch-target ${
             activeTab === value
-              ? "bg-[#1E4775] text-white"
-              : "bg-[#eef1f7] text-[#4b5a78]"
+              ? "bg-[#153B63] text-white"
+              : "bg-[#eef2f7] text-[#153B63]"
           } disabled:opacity-50 disabled:cursor-not-allowed`}
         >
           {label}

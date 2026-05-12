@@ -1,5 +1,11 @@
 import type { FeeBand } from "@/utils/sailFeeBands";
 import { formatRatio } from "@/utils/sailDisplayFormat";
+import {
+  HARBOR_FEE_BAND_RANGE_TEXT_CLASS,
+  HARBOR_FEE_BAND_ROW_ACTIVE_CLASS,
+  HARBOR_FEE_BAND_ROW_QUIET_CLASS,
+  isCollateralRatioInFeeBandRow,
+} from "@/lib/harborFeeBandStyles";
 import { SailFeeBandBadge } from "./SailFeeBandBadge";
 
 type SailFeeBandsPanelProps = {
@@ -19,38 +25,35 @@ export function SailFeeBandsPanel({
   if (!bands || bands.length === 0) {
     return (
       <div className="bg-white p-2">
-        <h5 className="text-[#1E4775] font-semibold text-[10px] uppercase tracking-wider mb-1.5">
+        <h5 className="font-semibold text-[10px] uppercase tracking-wider mb-1.5 text-[#1E4775]">
           {title}
         </h5>
-        <div className="text-[10px] text-[#1E4775]/60">Loading…</div>
+        <div className="text-[10px] text-[#10141A]/55">Loading…</div>
       </div>
     );
   }
 
   return (
     <div className="bg-white p-2">
-      <h5 className="text-[#1E4775] font-semibold text-[10px] uppercase tracking-wider mb-1.5">
+      <h5 className="font-semibold text-[10px] uppercase tracking-wider mb-1.5 text-[#1E4775]">
         {title}
       </h5>
       <div className="space-y-1">
         {bands.map((b, idx) => {
-          const active =
-            collateralRatio &&
-            collateralRatio >= b.lowerBound &&
-            (b.upperBound === undefined || collateralRatio <= b.upperBound);
+          const active = isCollateralRatioInFeeBandRow(collateralRatio, b);
           const range = b.upperBound
             ? `${formatRatio(b.lowerBound)} – ${formatRatio(b.upperBound)}`
             : `> ${formatRatio(b.lowerBound)}`;
           return (
             <div
               key={idx}
-              className={`flex items-center justify-between text-[10px] px-2 py-1 rounded ${
+              className={`flex items-center justify-between rounded-lg text-[10px] px-2 py-1 ${
                 active
-                  ? "bg-[#1E4775]/10 border border-[#1E4775]/30"
-                  : "bg-[#1E4775]/5"
+                  ? HARBOR_FEE_BAND_ROW_ACTIVE_CLASS
+                  : HARBOR_FEE_BAND_ROW_QUIET_CLASS
               }`}
             >
-              <span className="text-[#1E4775]/70 font-mono">{range}</span>
+              <span className={HARBOR_FEE_BAND_RANGE_TEXT_CLASS}>{range}</span>
               <SailFeeBandBadge
                 ratio={b.ratio}
                 isMintSail={isMintSail}

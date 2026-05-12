@@ -1,3 +1,4 @@
+import { BASIC_MARKET_FEE_COLUMN_LABEL_CLASS } from "@/components/market-cards/harborBasicMarketTokens";
 import SimpleTooltip from "@/components/SimpleTooltip";
 import type { FeeBand } from "@/utils/sailFeeBands";
 import { formatRatio } from "@/utils/sailDisplayFormat";
@@ -12,6 +13,11 @@ type SailMintRedeemFeeColumnProps = {
   activeRedeemBand: FeeBand | undefined;
   mintBands: FeeBand[] | undefined;
   redeemBands: FeeBand[] | undefined;
+  /**
+   * UI+ markets table: one row `mint / redeem` (no per-row Mint/Redeem labels;
+   * column header stays “MINT / REDEEM FEE”).
+   */
+  compactRow?: boolean;
 };
 
 /** Desktop table cell: mint / redeem fee tooltips with shared CR header. */
@@ -23,6 +29,7 @@ export function SailMintRedeemFeeColumn({
   activeRedeemBand,
   mintBands,
   redeemBands,
+  compactRow = false,
 }: SailMintRedeemFeeColumnProps) {
   const crLine = (
     <div className="text-[10px] text-white/80">
@@ -33,67 +40,121 @@ export function SailMintRedeemFeeColumn({
     </div>
   );
 
+  const mintTooltip = (
+    <div className="space-y-1.5">
+      {crLine}
+      <div className="min-w-[260px]">
+        <SailFeeBandsPanel
+          title="Mint Fees"
+          bands={mintBands}
+          collateralRatio={collateralRatio}
+          isMintSail
+        />
+      </div>
+    </div>
+  );
+
+  const redeemTooltip = (
+    <div className="space-y-1.5">
+      {crLine}
+      <div className="min-w-[260px]">
+        <SailFeeBandsPanel
+          title="Redeem Fees"
+          bands={redeemBands}
+          collateralRatio={collateralRatio}
+        />
+      </div>
+    </div>
+  );
+
+  if (compactRow) {
+    return (
+      <div
+        className="inline-flex w-full max-w-[280px] items-center justify-center gap-1.5 px-1 py-0.5"
+        role="group"
+        aria-label="Mint fee and redeem fee"
+      >
+        <SimpleTooltip
+          side="bottom"
+          maxHeight="none"
+          maxWidth={720}
+          label={mintTooltip}
+        >
+          <span className="cursor-help inline-flex">
+            <SailFeeRatioCell
+              ratio={mintFeeRatio}
+              isMintSail
+              activeBand={activeMintBand}
+              showHelp
+            />
+          </span>
+        </SimpleTooltip>
+        <span
+          className="shrink-0 text-[11px] font-medium tabular-nums text-[#1E4775]/40"
+          aria-hidden
+        >
+          /
+        </span>
+        <SimpleTooltip
+          side="bottom"
+          maxHeight="none"
+          maxWidth={720}
+          label={redeemTooltip}
+        >
+          <span className="cursor-help inline-flex">
+            <SailFeeRatioCell
+              ratio={redeemFeeRatio}
+              isMintSail={false}
+              activeBand={activeRedeemBand}
+              showHelp
+            />
+          </span>
+        </SimpleTooltip>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex items-center justify-center gap-0 whitespace-nowrap max-w-full">
-      <SimpleTooltip
-        side="left"
-        maxHeight="none"
-        maxWidth={720}
-        label={
-          <div className="space-y-1.5">
-            {crLine}
-            <div className="min-w-[260px]">
-              <SailFeeBandsPanel
-                title="Mint Fees"
-                bands={mintBands}
-                collateralRatio={collateralRatio}
-                isMintSail
-              />
-            </div>
-          </div>
-        }
-      >
-        <span className="cursor-help inline-flex shrink-0">
-          <SailFeeRatioCell
-            ratio={mintFeeRatio}
-            isMintSail
-            activeBand={activeMintBand}
-            showHelp
-          />
-        </span>
-      </SimpleTooltip>
-      <span
-        className="text-[#1E4775]/50 text-[9px] font-bold shrink-0 select-none leading-none px-1"
-        aria-hidden="true"
-      >
-        /
-      </span>
-      <SimpleTooltip
-        side="left"
-        maxHeight="none"
-        maxWidth={720}
-        label={
-          <div className="space-y-1.5">
-            {crLine}
-            <div className="min-w-[260px]">
-              <SailFeeBandsPanel
-                title="Redeem Fees"
-                bands={redeemBands}
-                collateralRatio={collateralRatio}
-              />
-            </div>
-          </div>
-        }
-      >
-        <span className="cursor-help inline-flex shrink-0">
-          <SailFeeRatioCell
-            ratio={redeemFeeRatio}
-            isMintSail={false}
-            activeBand={activeRedeemBand}
-            showHelp
-          />
-        </span>
-      </SimpleTooltip>
+    <div className="inline-grid w-full max-w-[260px] grid-cols-[1fr_1px_1fr] items-stretch justify-center">
+      <div className="flex w-full flex-col items-center justify-center gap-1 px-3 py-1">
+        <span className={BASIC_MARKET_FEE_COLUMN_LABEL_CLASS}>Mint Fee</span>
+        <SimpleTooltip
+          side="bottom"
+          maxHeight="none"
+          maxWidth={720}
+          label={mintTooltip}
+        >
+          <span className="cursor-help inline-flex">
+            <SailFeeRatioCell
+              ratio={mintFeeRatio}
+              isMintSail
+              activeBand={activeMintBand}
+              showHelp
+            />
+          </span>
+        </SimpleTooltip>
+      </div>
+
+      <span className="w-px self-stretch bg-[#1E4775]/25" aria-hidden="true" />
+
+      <div className="flex w-full flex-col items-center justify-center gap-1 px-3 py-1">
+        <span className={BASIC_MARKET_FEE_COLUMN_LABEL_CLASS}>Redeem Fee</span>
+        <SimpleTooltip
+          side="bottom"
+          maxHeight="none"
+          maxWidth={720}
+          label={redeemTooltip}
+        >
+          <span className="cursor-help inline-flex">
+            <SailFeeRatioCell
+              ratio={redeemFeeRatio}
+              isMintSail={false}
+              activeBand={activeRedeemBand}
+              showHelp
+            />
+          </span>
+        </SimpleTooltip>
+      </div>
     </div>
   );
 }

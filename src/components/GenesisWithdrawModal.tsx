@@ -501,9 +501,9 @@ const successUSD = successAmountNum > 0 && collateralPriceUSD > 0
               </span>
             </h2>
           }
-          panelClassName="max-h-[95vh] sm:max-h-[90vh] overflow-y-auto"
+          panelClassName="max-h-[calc(100dvh-1rem)] sm:max-h-[90vh] flex flex-col"
           headerClassName="p-3 sm:p-4 lg:p-6"
-          contentClassName="p-3 sm:p-4 lg:p-6"
+          contentClassName="min-h-0 flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6"
         >
           {formContent}
         </DepositModalShell>

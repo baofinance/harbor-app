@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import "./globals.css";
 import ContextProvider from "@/contexts";
 import { PageLayoutPreferenceProvider } from "@/contexts/PageLayoutPreferenceContext";
+import { AppBackgroundProvider } from "@/contexts/AppBackgroundContext";
 import { headers } from "next/headers";
 import Navigation from "@/components/Navigation";
 import FadeContent from "@/components/FadeContent";
@@ -89,18 +90,20 @@ export default async function RootLayout({
  <div className="relative z-10 flex flex-1 flex-col min-h-0">
  <ContextProvider cookies={cookies}>
  <Suspense fallback={null}>
- <PageLayoutPreferenceProvider>
- <Navigation />
- <FadeContent
- blur={false}
- duration={500}
- easing="ease-out"
- initialOpacity={0}
- className="flex-1 min-h-0 flex flex-col"
- >
- {children}
- </FadeContent>
- </PageLayoutPreferenceProvider>
+            <PageLayoutPreferenceProvider>
+              <AppBackgroundProvider>
+                <Navigation />
+                <FadeContent
+                  blur={false}
+                  duration={500}
+                  easing="ease-out"
+                  initialOpacity={0}
+                  className="flex-1 min-h-0 flex flex-col"
+                >
+                  {children}
+                </FadeContent>
+              </AppBackgroundProvider>
+            </PageLayoutPreferenceProvider>
  </Suspense>
  <footer className="mt-auto flex-shrink-0 border-t border-white/20">
    <div className="w-full max-w-[1300px] mx-auto px-4 sm:px-10 py-6">

@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { useAppBackground } from "@/contexts/AppBackgroundContext";
 
 export type IndexToolbarMetric = {
   label: ReactNode;
@@ -21,11 +22,14 @@ export default function IndexToolbarMetricsGroup({
   action,
   className = "",
 }: IndexToolbarMetricsGroupProps) {
+  const { mode: backgroundMode } = useAppBackground();
+  const surfaceClass =
+    backgroundMode === "megaeth" ? "bg-[#10141A]" : "bg-[#17395F]";
   if (metrics.length === 0 && !action) return null;
 
   return (
     <div
-      className={`flex items-stretch shrink-0 overflow-x-auto rounded-md border border-white/15 bg-[#17395F] ${className}`.trim()}
+      className={`app-index-metrics-strip flex items-stretch shrink-0 overflow-x-auto rounded-md border border-white/15 ${surfaceClass} ${className}`.trim()}
     >
       {metrics.map((metric, index) => (
         <div key={index} className="flex items-stretch">

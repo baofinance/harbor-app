@@ -11,10 +11,18 @@ import { useQuery } from "@tanstack/react-query";
 import { useAccount, usePublicClient } from "wagmi";
 import { tokenPermitOnSmartWallet } from "@/config/permit";
 
+// Temporary safety switch: force classic approve flow everywhere.
+const FORCE_DISABLE_PERMIT = true;
+
 export interface UsePermitCapabilityOptions {
   enabled?: boolean;
   /** Selected deposit asset symbol (e.g. "stETH", "USDC") - used when smart wallet to check allowlist */
   depositAssetSymbol?: string | null;
+  /**
+   * strict: use token allowlist for smart/delegated wallets (deposit flow)
+   * optimistic: allow permit attempts and fallback on-chain (redeem flow)
+   */
+  tokenCheckMode?: "strict" | "optimistic";
 }
 
 export interface UsePermitCapabilityResult {
@@ -59,7 +67,7 @@ export function usePermitCapability(
   const opts = typeof enabledOrOptions === "boolean"
     ? { enabled: enabledOrOptions }
     : enabledOrOptions;
-  const { enabled = true, depositAssetSymbol } = opts;
+  const { enabled = true, depositAssetSymbol, tokenCheckMode = "strict" } = opts;
 
   const { address, isConnected } = useAccount();
   const publicClient = usePublicClient();
@@ -79,13 +87,20 @@ export function usePermitCapability(
   });
 
   // EOA: permit capable. Smart wallet: only if token is in allowlist (USDC, FXUSD, FXSAVE)
-  const tokenAllowsPermitOnSmartWallet = depositAssetSymbol
-    ? tokenPermitOnSmartWallet(depositAssetSymbol)
-    : false;
-  const isPermitCapable = !isSmartContractWallet || tokenAllowsPermitOnSmartWallet;
-  const disableReason = isSmartContractWallet && !tokenAllowsPermitOnSmartWallet
-    ? "Permit is not supported with smart contract or delegated wallets for this token. Use approval instead."
-    : null;
+  const tokenAllowsPermitOnSmartWallet =
+    tokenCheckMode === "optimistic"
+      ? true
+      : depositAssetSymbol
+        ? tokenPermitOnSmartWallet(depositAssetSymbol)
+        : false;
+  const computedPermitCapable =
+    !isSmartContractWallet || tokenAllowsPermitOnSmartWallet;
+  const isPermitCapable = FORCE_DISABLE_PERMIT ? false : computedPermitCapable;
+  const disableReason = FORCE_DISABLE_PERMIT
+    ? "Permit is temporarily disabled. Use approval instead."
+    : isSmartContractWallet && !tokenAllowsPermitOnSmartWallet
+      ? "Permit is not supported with smart contract or delegated wallets for this token. Use approval instead."
+      : null;
 
   return {
     isPermitCapable,

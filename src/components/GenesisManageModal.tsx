@@ -148,7 +148,7 @@ export const GenesisManageModal = ({
           }}
         />
       }
-      panelClassName="max-h-[95vh] sm:max-h-[90vh] flex flex-col animate-in fade-in-0 scale-in-95 duration-200"
+      panelClassName="max-h-[calc(100dvh-1rem)] sm:max-h-[90vh] flex flex-col animate-in fade-in-0 scale-in-95 duration-200"
       contentClassName="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6 min-h-0"
     >
           {!isValidGenesisAddress || !isValidCollateralAddress ? (

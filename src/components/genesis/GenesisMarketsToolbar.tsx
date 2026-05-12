@@ -4,13 +4,14 @@
  * Filter / controls row: active campaign pill, Genesis Ongoing/All, network filter, Ledger Marks badge.
  * @see docs/routes/genesis.md
  */
-import { XMarkIcon } from "@heroicons/react/24/outline";
 import LedgerMarksCompactBadge from "@/components/LedgerMarksCompactBadge";
-import SimpleTooltip from "@/components/SimpleTooltip";
-import { FilterMultiselectDropdown } from "@/components/FilterMultiselectDropdown";
+import IndexToolbarSegmentedToggle from "@/components/shared/IndexToolbarSegmentedToggle";
+import IndexToolbarNetworkFilter from "@/components/shared/IndexToolbarNetworkFilter";
+import IndexToolbarClearFiltersButton from "@/components/shared/IndexToolbarClearFiltersButton";
 import IndexToolbarMetricsGroup, {
   type IndexToolbarMetric,
 } from "@/components/shared/IndexToolbarMetricsGroup";
+import type { NetworkFilterOption } from "@/utils/networkFilter";
 import {
   INDEX_CORAL_INFO_TAG_CLASS,
   INDEX_MARKETS_TOOLBAR_ROW_WITH_TOP_RULE_CLASS,
@@ -19,12 +20,7 @@ import {
 export type GenesisMarketsToolbarProps = {
   activeCampaignName: string | null;
   displayedCompletedByCampaignSize: number;
-  genesisChainOptions: Array<{
-    id: string;
-    label: string;
-    iconUrl?: string;
-    networkId?: string;
-  }>;
+  genesisChainOptions: NetworkFilterOption[];
   chainFilterSelected: string[];
   setChainFilterSelected: React.Dispatch<React.SetStateAction<string[]>>;
   setShowCompletedGenesis: (value: boolean) => void;
@@ -44,93 +40,77 @@ export function GenesisMarketsToolbar({
 }: GenesisMarketsToolbarProps) {
   return (
     <div className={INDEX_MARKETS_TOOLBAR_ROW_WITH_TOP_RULE_CLASS}>
-      <div className="flex flex-wrap items-center gap-2">
-        <h2 className="text-xs font-medium text-white/70 uppercase tracking-wider flex items-center gap-2 flex-wrap">
-          <span className="flex items-center gap-1.5">
-            Active Campaign:
-            {activeCampaignName && (
-              <span className={INDEX_CORAL_INFO_TAG_CLASS}>{activeCampaignName}</span>
-            )}
-            {activeCampaignName ? (
-              <span className="rounded px-1.5 py-0.5 text-[10px] font-bold font-mono tracking-tight border border-white/40 bg-white/10 text-white">
-                2.0
-              </span>
-            ) : null}
-          </span>
-        </h2>
-        {displayedCompletedByCampaignSize > 0 && (
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs font-medium text-white/70 uppercase tracking-wider">
-              Genesis:
+      <div className="w-full lg:w-auto lg:min-w-0">
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+          <h2 className="text-xs font-medium text-white/70 uppercase tracking-wider flex items-center gap-2 flex-wrap">
+            <span className="flex items-center gap-1.5">
+              Active Campaign:
+              {activeCampaignName && (
+                <span className={INDEX_CORAL_INFO_TAG_CLASS}>{activeCampaignName}</span>
+              )}
+              {activeCampaignName ? (
+                <span className="rounded px-1.5 py-0.5 text-[10px] font-bold font-mono tracking-tight border border-white/40 bg-white/10 text-white">
+                  2.0
+                </span>
+              ) : null}
             </span>
-            {/* Segmented control — matches PageLayoutToggle (UI− / UI+): track bg-white/10, active white + Harbor blue, inactive white text; height matches Network dropdown (py-2 text-sm) */}
-            <div
-              className="flex shrink-0 items-center gap-0.5 rounded-md bg-white/10 p-0.5"
-              role="group"
-              aria-label="Genesis markets: ongoing or all campaigns"
-            >
-              <button
-                type="button"
-                onClick={() => setShowCompletedGenesis(false)}
-                aria-pressed={!showCompletedGenesis}
-                className={`min-w-[4.5rem] rounded px-3 py-2 text-sm font-medium tabular-nums tracking-tight transition-colors ${
-                  !showCompletedGenesis
-                    ? "bg-white text-[#1E4775] shadow-sm"
-                    : "text-white hover:bg-white/20"
-                }`}
-              >
-                Ongoing
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowCompletedGenesis(true)}
-                aria-pressed={showCompletedGenesis}
-                className={`min-w-[3.25rem] rounded px-3 py-2 text-sm font-medium tabular-nums tracking-tight transition-colors ${
-                  showCompletedGenesis
-                    ? "bg-white text-[#1E4775] shadow-sm"
-                    : "text-white hover:bg-white/20"
-                }`}
-              >
-                All
-              </button>
+          </h2>
+          {displayedCompletedByCampaignSize > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+              <span className="text-xs font-medium text-white/70 uppercase tracking-wider">
+                Genesis:
+              </span>
+              {genesisChainOptions.length > 1 && (
+                <IndexToolbarNetworkFilter
+                  options={genesisChainOptions}
+                  value={chainFilterSelected}
+                  onChange={setChainFilterSelected}
+                  minWidthClass="w-full min-w-0 sm:w-auto sm:min-w-[235px]"
+                />
+              )}
+              <IndexToolbarSegmentedToggle
+                label="Status:"
+                value={showCompletedGenesis ? "all" : "ongoing"}
+                onChange={(id) => setShowCompletedGenesis(id === "all")}
+                options={[
+                  { id: "ongoing", label: "Ongoing" },
+                  { id: "all", label: "All" },
+                ]}
+                ariaLabel="Genesis status"
+              />
+              {chainFilterSelected.length > 0 && (
+                <IndexToolbarClearFiltersButton
+                  onClick={() => setChainFilterSelected([])}
+                />
+              )}
             </div>
-          </div>
-        )}
-        {genesisChainOptions.length > 1 && (
-          <>
-            <FilterMultiselectDropdown
-              label="Network"
-              options={genesisChainOptions}
-              value={chainFilterSelected}
-              onChange={setChainFilterSelected}
-              allLabel="All networks"
-              groupLabel="NETWORKS"
-              minWidthClass="min-w-[235px]"
-            />
-            <SimpleTooltip label="clear filters">
-              <button
-                type="button"
-                onClick={() => setChainFilterSelected([])}
-                className="p-1.5 text-[#E67A6B] hover:text-[#D66A5B] hover:bg-white/10 rounded transition-colors"
-                aria-label="clear filters"
-              >
-                <XMarkIcon className="w-5 h-5 stroke-[2.5]" />
-              </button>
-            </SimpleTooltip>
-          </>
-        )}
+          )}
+          {displayedCompletedByCampaignSize === 0 && genesisChainOptions.length > 1 && (
+            <div className="flex flex-wrap items-center gap-2">
+              <IndexToolbarNetworkFilter
+                options={genesisChainOptions}
+                value={chainFilterSelected}
+                onChange={setChainFilterSelected}
+                minWidthClass="w-full min-w-0 sm:w-auto sm:min-w-[235px]"
+              />
+              {chainFilterSelected.length > 0 && (
+                <IndexToolbarClearFiltersButton
+                  onClick={() => setChainFilterSelected([])}
+                />
+              )}
+            </div>
+          )}
+        </div>
       </div>
-      <div className="w-full md:flex-1 md:min-w-0 grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] items-center gap-2 md:gap-3">
-        <div className="hidden md:block" />
+      <div className="w-full lg:ml-auto lg:w-auto lg:min-w-0 flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-end">
         {metrics && metrics.length > 0 ? (
-          <div className="md:justify-self-center">
-            <IndexToolbarMetricsGroup metrics={metrics} />
+          <div className="w-full lg:w-auto">
+            <IndexToolbarMetricsGroup metrics={metrics} className="w-full lg:w-auto" />
           </div>
-        ) : (
-          <div />
-        )}
+        ) : null}
         <LedgerMarksCompactBadge
-          className="md:justify-self-end"
+          className="max-w-full lg:w-auto"
+          pillClassName="text-xs sm:text-sm max-w-full min-h-[52px] px-3 py-1.5 justify-center lg:justify-start"
           tooltipMaxWidth="min(90vw, 22rem)"
           intro={
             <p>

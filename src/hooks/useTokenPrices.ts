@@ -2,6 +2,9 @@ import { useMemo } from "react";
 import { useReadContracts } from "wagmi";
 import { formatUnits } from "viem";
 import { minterABI } from "@/abis/minter";
+import { WRAPPED_PRICE_ORACLE_ABI } from "@/abis/shared";
+import { HS_FALLBACK_ORACLES_MAINNET } from "@/config/hsFallbackOracles";
+import type { TokenPriceInput } from "@/utils/tokenPriceInput";
 import { usePegTargetPrices } from "./usePegTargetPrices";
 
 interface TokenPricesResult {
@@ -14,14 +17,6 @@ interface TokenPricesResult {
   error: boolean;
 }
 
-interface MarketTokenPriceInput {
-  marketId: string;
-  minterAddress: `0x${string}`;
-  pegTarget: string;
-  /** Chain ID for multi-chain (e.g. 1 mainnet, 4326 MegaETH). Omit to use connected chain. */
-  chainId?: number;
-}
-
 /**
  * Hook to fetch ha and hs token prices in USD for multiple markets.
  * Uses central usePegTargetPrices for ETH, BTC, EUR, gold, silver - single source of truth.
@@ -32,9 +27,22 @@ interface MarketTokenPriceInput {
  * 3. Multiplies: haTokenPriceUSD = peggedTokenPrice × pegTargetUSD, etc.
  */
 export function useMultipleTokenPrices(
-  markets: MarketTokenPriceInput[]
+  markets: TokenPriceInput[]
 ): Record<string, TokenPricesResult> {
   const pegTargetPrices = usePegTargetPrices();
+  const resolvePegTargetUSD = (targetRaw: string): number => {
+    const target = targetRaw.toLowerCase();
+    if (target === "usd" || target === "fxusd") return 1.0;
+    if (target === "btc" || target === "bitcoin")
+      return pegTargetPrices.btcPrice ?? 0;
+    if (target === "eth" || target === "ethereum")
+      return pegTargetPrices.ethPrice ?? 0;
+    if (target === "eur" || target === "euro")
+      return pegTargetPrices.eurPrice ?? 0;
+    if (target === "gold") return pegTargetPrices.goldPrice ?? 0;
+    if (target === "silver") return pegTargetPrices.silverPrice ?? 0;
+    return 0;
+  };
 
   const minterContracts = useMemo(() => {
     return markets.flatMap((market) => {
@@ -64,6 +72,66 @@ export function useMultipleTokenPrices(
     },
   });
 
+  const { fallbackOracleContracts, fallbackOracleIndexByMarketId } = useMemo(() => {
+    const contracts: Array<{
+      address: `0x${string}`;
+      abi: typeof WRAPPED_PRICE_ORACLE_ABI;
+      functionName: "latestAnswer";
+      chainId: number;
+    }> = [];
+    const indexByMarketId = new Map<string, number>();
+
+    markets.forEach((market) => {
+      const fallbackOracle = HS_FALLBACK_ORACLES_MAINNET[market.marketId];
+      if (!fallbackOracle) return;
+      indexByMarketId.set(market.marketId, contracts.length);
+      contracts.push({
+        address: fallbackOracle,
+        abi: WRAPPED_PRICE_ORACLE_ABI,
+        functionName: "latestAnswer" as const,
+        chainId: 1,
+      });
+    });
+
+    return {
+      fallbackOracleContracts: contracts,
+      fallbackOracleIndexByMarketId: indexByMarketId,
+    };
+  }, [markets]);
+
+  const shouldQueryFallbackOracles = useMemo(() => {
+    if (isPriceLoading) return false;
+    if (priceError) return true;
+
+    return markets.some((market, idx) => {
+      if (!HS_FALLBACK_ORACLES_MAINNET[market.marketId]) return false;
+      const leveragedRaw = tokenPriceData?.[idx * 2 + 1]?.result as
+        | bigint
+        | undefined;
+      if (leveragedRaw == null) return true;
+
+      const pegTargetUSD = resolvePegTargetUSD(market.pegTarget);
+      const leveragedPriceInPegUnits = Number(formatUnits(leveragedRaw, 18));
+      const primaryLeveragedPriceUSD = leveragedPriceInPegUnits * pegTargetUSD;
+      return (
+        !Number.isFinite(primaryLeveragedPriceUSD) ||
+        primaryLeveragedPriceUSD <= 0
+      );
+    });
+  }, [isPriceLoading, priceError, markets, tokenPriceData, pegTargetPrices]);
+
+  const {
+    data: fallbackOracleData,
+    isLoading: isFallbackOracleLoading,
+    error: fallbackOracleError,
+  } = useReadContracts({
+    contracts: fallbackOracleContracts,
+    query: {
+      enabled: fallbackOracleContracts.length > 0 && shouldQueryFallbackOracles,
+      allowFailure: true,
+    },
+  });
+
   return useMemo(() => {
     const result: Record<string, TokenPricesResult> = {};
 
@@ -71,48 +139,59 @@ export function useMultipleTokenPrices(
       const baseOffset = idx * 2;
       const peggedResult = tokenPriceData?.[baseOffset];
       const leveragedResult = tokenPriceData?.[baseOffset + 1];
+      const fallbackIndex = fallbackOracleIndexByMarketId.get(market.marketId);
+      const fallbackOracleRead =
+        fallbackIndex !== undefined ? fallbackOracleData?.[fallbackIndex] : undefined;
 
-      const target = market.pegTarget.toLowerCase();
-      let pegTargetUSD = 0;
+      const pegTargetUSD = resolvePegTargetUSD(market.pegTarget);
 
-      if (target === "usd" || target === "fxusd") {
-        pegTargetUSD = 1.0;
-      } else if (target === "btc" || target === "bitcoin") {
-        pegTargetUSD = pegTargetPrices.btcPrice ?? 0;
-      } else if (target === "eth" || target === "ethereum") {
-        pegTargetUSD = pegTargetPrices.ethPrice ?? 0;
-      } else if (target === "eur" || target === "euro") {
-        pegTargetUSD = pegTargetPrices.eurPrice ?? 0;
-      } else if (target === "gold") {
-        pegTargetUSD = pegTargetPrices.goldPrice ?? 0;
-      } else if (target === "silver") {
-        pegTargetUSD = pegTargetPrices.silverPrice ?? 0;
+      const peggedRaw = peggedResult?.result as bigint | undefined;
+      const leveragedRaw = leveragedResult?.result as bigint | undefined;
+
+      let fallbackLeveragedPriceUSD = 0;
+      const fallbackTuple = fallbackOracleRead?.result;
+      if (Array.isArray(fallbackTuple) && fallbackTuple.length >= 2) {
+        const maxUnderlyingPrice = fallbackTuple[1];
+        const minUnderlyingPrice = fallbackTuple[0];
+        if (typeof maxUnderlyingPrice === "bigint" && maxUnderlyingPrice > 0n) {
+          fallbackLeveragedPriceUSD = Number(formatUnits(maxUnderlyingPrice, 18));
+        } else if (
+          typeof minUnderlyingPrice === "bigint" &&
+          minUnderlyingPrice > 0n
+        ) {
+          fallbackLeveragedPriceUSD = Number(formatUnits(minUnderlyingPrice, 18));
+        }
       }
 
-      if (!peggedResult?.result || !leveragedResult?.result) {
+      if (peggedRaw == null || leveragedRaw == null) {
         result[market.marketId] = {
           peggedBackingRatio: 0,
           peggedPriceUSD: 0,
-          leveragedPriceUSD: 0,
+          leveragedPriceUSD: fallbackLeveragedPriceUSD,
           pegTargetUSD,
           isDepegged: false,
-          isLoading: isPriceLoading,
-          error: !!priceError,
+          isLoading: isPriceLoading || isFallbackOracleLoading,
+          error: !!priceError || !!fallbackOracleError,
         };
         return;
       }
 
-      const peggedBackingRatio = Number(formatUnits(peggedResult.result as bigint, 18));
-      const leveragedPriceInPegUnits = Number(formatUnits(leveragedResult.result as bigint, 18));
+      const peggedBackingRatio = Number(formatUnits(peggedRaw, 18));
+      const leveragedPriceInPegUnits = Number(formatUnits(leveragedRaw, 18));
+      const primaryLeveragedPriceUSD = leveragedPriceInPegUnits * pegTargetUSD;
+      const leveragedPriceUSD =
+        primaryLeveragedPriceUSD > 0
+          ? primaryLeveragedPriceUSD
+          : fallbackLeveragedPriceUSD;
 
       result[market.marketId] = {
         peggedBackingRatio,
         peggedPriceUSD: peggedBackingRatio * pegTargetUSD,
-        leveragedPriceUSD: leveragedPriceInPegUnits * pegTargetUSD,
+        leveragedPriceUSD,
         pegTargetUSD,
         isDepegged: peggedBackingRatio < 1.0,
-        isLoading: isPriceLoading,
-        error: !!priceError,
+        isLoading: isPriceLoading || isFallbackOracleLoading,
+        error: !!priceError || !!fallbackOracleError,
       };
     });
 
@@ -127,5 +206,10 @@ export function useMultipleTokenPrices(
     pegTargetPrices.silverPrice,
     isPriceLoading,
     priceError,
+    fallbackOracleData,
+    fallbackOracleIndexByMarketId,
+    shouldQueryFallbackOracles,
+    isFallbackOracleLoading,
+    fallbackOracleError,
   ]);
 }

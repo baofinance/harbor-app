@@ -86,6 +86,7 @@ import { AnchorMarketGroupCollapsedRow } from "@/components/anchor/AnchorMarketG
 import { AnchorMarketsSections } from "@/components/anchor/AnchorMarketsSections";
 import { AnchorMarketGroupExpandedSection } from "@/components/anchor/AnchorMarketGroupExpandedSection";
 import { AnchorMarketsTableHeader } from "@/components/anchor/AnchorMarketsTableHeader";
+import { AnchorBasicMarketCardsGrid } from "@/components/anchor/AnchorBasicMarketCardsGrid";
 import { AnchorPageTitleSection } from "@/components/anchor/AnchorPageTitleSection";
 import { AnchorHeroIntroCards } from "@/components/anchor/AnchorHeroIntroCards";
 import { AnchorStatsStrip } from "@/components/anchor/AnchorStatsStrip";
@@ -326,6 +327,8 @@ export default function AnchorPage() {
     setMounted(true);
   }, []);
 
+  const { isBasic: anchorViewBasic } = usePageLayoutPreference();
+
   const {
     anchorMarkets,
     displayedAnchorMarkets,
@@ -392,10 +395,7 @@ export default function AnchorPage() {
     allMarketsData,
     anchorStats,
     claimAllPositions,
-  } = useAnchorPageData(chainFilterSelected, address);
-
-  /** Nav toggle: Basic = title + markets (no hero, stats strip, rewards bar). Persists like Genesis/Sail. */
-  const { isBasic: anchorViewBasic } = usePageLayoutPreference();
+  } = useAnchorPageData(chainFilterSelected, address, anchorViewBasic);
 
   // Create a map for quick lookup: marketId -> marketData
   const marketsDataMap = useMemo(() => {
@@ -5457,6 +5457,31 @@ export default function AnchorPage() {
               });
 
               // Process each group
+              if (anchorViewBasic) {
+                const marketGroups = Object.entries(groups)
+                  .map(([symbol, marketList]) => ({ symbol, list: marketList }))
+                  .filter(({ list }) =>
+                    list.some(({ marketId }) => marketsDataMap.has(marketId))
+                  );
+                return (
+                  <AnchorBasicMarketCardsGrid
+                    marketGroups={marketGroups}
+                    getMarketsDataForGroup={(list) =>
+                      list
+                        .map(({ marketId }) => marketsDataMap.get(marketId))
+                        .filter(
+                          (m): m is NonNullable<typeof m> => m !== undefined
+                        )
+                    }
+                    showLiveAprLoading={showLiveAprLoading}
+                    isConnected={isConnected}
+                    onOpenManage={(payload) => {
+                      void openManageModal(payload);
+                    }}
+                  />
+                );
+              }
+
               return (
                 <>
                   <AnchorMarketsTableHeader />

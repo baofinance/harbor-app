@@ -30,6 +30,7 @@ import {
   STABILITY_POOL_ABI,
   MINTER_PEGGED_ABI,
 } from "@/abis";
+import { REDEEM_PEGGED_WITH_PERMIT_ABI } from "@/abis/redeemPermit";
 import { stabilityPoolABI } from "@/abis/stabilityPool";
 import { ZAP_ABI, USDC_ZAP_ABI, WSTETH_ABI } from "@/abis";
 import { MINTER_ETH_ZAP_V3_ABI } from "@/abis";
@@ -303,6 +304,7 @@ export const AnchorDepositWithdrawModal = ({
     zapAndDeposit: false,
     wrappedZapAndDeposit: false,
     wrappedZapAsset: null as string | null,
+    includePermitRedeem: false,
     includeApproveRedeem: false,
     includeRedeem: false,
     withdrawCollateralLabel: "Withdraw from collateral pool",
@@ -428,7 +430,11 @@ export const AnchorDepositWithdrawModal = ({
     setPermitEnabled,
   } = usePermitFlow({
     enabled: isOpen && !!address,
-    depositAssetSymbol: selectedDepositAsset || null,
+    depositAssetSymbol:
+      activeTab === "deposit"
+        ? selectedDepositAsset || null
+        : market?.peggedToken?.symbol || null,
+    tokenCheckMode: activeTab === "withdraw" ? "optimistic" : "strict",
   });
 
   // Simple mode: stability pool selection - now includes marketId and pool type
@@ -534,6 +540,9 @@ export const AnchorDepositWithdrawModal = ({
           txHashes.withdrawSail || txHashes.requestSail
         );
       }
+      if (progressConfig.includePermitRedeem) {
+        addStep("permit-redeem", "Sign permit for anchor token (no gas)");
+      }
       if (progressConfig.includeApproveRedeem || hasApproveRedeemTx) {
         addStep("approve-redeem", "Approve anchor token for redemption", txHashes.approveRedeem);
       }
@@ -562,6 +571,9 @@ export const AnchorDepositWithdrawModal = ({
       );
       const withdrawSailIndex = steps.findIndex(
         (s) => s.id === "withdraw-sail"
+      );
+      const permitRedeemIndex = steps.findIndex(
+        (s) => s.id === "permit-redeem"
       );
       const approveRedeemIndex = steps.findIndex(
         (s) => s.id === "approve-redeem"
@@ -596,6 +608,7 @@ export const AnchorDepositWithdrawModal = ({
         // - direct mode: approve ha token
         // - withdraw/redeem mode: approve redeem
         if (permitCollateralIndex >= 0) return permitCollateralIndex;
+        if (permitRedeemIndex >= 0) return permitRedeemIndex;
         if (approveCollateralIndex >= 0) return approveCollateralIndex;
         if (approveDirectIndex >= 0) return approveDirectIndex;
         if (approveRedeemIndex >= 0) return approveRedeemIndex;
@@ -2451,6 +2464,7 @@ export const AnchorDepositWithdrawModal = ({
       selectedPositions.collateralPool &&
       positionAmounts.collateralPool &&
       withdrawalMethods.collateralPool === "immediate" &&
+      !isWindowOpen(collateralPoolRequest) &&
       collateralPoolEarlyFee &&
       collateralPoolFeePercent !== undefined
     ) {
@@ -2470,6 +2484,7 @@ export const AnchorDepositWithdrawModal = ({
       selectedPositions.sailPool &&
       positionAmounts.sailPool &&
       withdrawalMethods.sailPool === "immediate" &&
+      !isWindowOpen(sailPoolRequest) &&
       sailPoolEarlyFee &&
       sailPoolFeePercent !== undefined
     ) {
@@ -2492,6 +2507,9 @@ export const AnchorDepositWithdrawModal = ({
     collateralPoolFeePercent,
     sailPoolEarlyFee,
     sailPoolFeePercent,
+    collateralPoolRequest,
+    sailPoolRequest,
+    isWindowOpen,
   ]);
 
   const showEarlyWithdrawalFees =
@@ -4672,9 +4690,12 @@ export const AnchorDepositWithdrawModal = ({
   const useETHZap = useZap && isWstETHMarket && (isNativeETH || isStETH);
   const useUSDCZap = useZap && isFxUSDMarket && (isUSDC || isFxUSD);
 
-  const showPermitToggle =
+  const showDepositPermitToggle =
     activeTab === "deposit" &&
     ((!mintOnly && (isFxSAVE || isWstETH)) || isStETH || isUSDC || isFxUSD);
+  const showRedeemPermitToggle =
+    activeTab === "withdraw" && !withdrawOnly;
+  const showPermitToggle = showDepositPermitToggle || showRedeemPermitToggle;
   
   // Get fxSAVE rate for USDC zap calculations
   const priceOracleAddress = anchorAddressByName(
@@ -8362,15 +8383,14 @@ export const AnchorDepositWithdrawModal = ({
       writeContractAsync: !!writeContractAsync,
     });
 
-    if (!address || !minterAddress) {
+    if (!address) {
       console.error(
-        "[handleWithdrawExecution] Missing address or minterAddress",
+        "[handleWithdrawExecution] Missing wallet address",
         {
           address,
-          minterAddress,
         }
       );
-      setError("Wallet not connected or minter not configured");
+      setError("Wallet not connected");
       return;
     }
 
@@ -8422,6 +8442,18 @@ export const AnchorDepositWithdrawModal = ({
       const shouldAutoRedeem =
         !withdrawOnly &&
         (walletAmount > 0n || collateralIsImmediate || sailIsImmediate);
+      const targetRedeemMinterAddress = redeemMinterAddress || minterAddress;
+      const targetRedeemPeggedTokenAddress =
+        selectedRedeemMarket?.market?.addresses?.peggedToken || peggedTokenAddress;
+
+      if (
+        shouldAutoRedeem &&
+        (!targetRedeemMinterAddress || !targetRedeemPeggedTokenAddress)
+      ) {
+        throw new Error(
+          "Redeem market is not configured. Please choose a different redeem asset."
+        );
+      }
 
       const estimatedNeedsRedeemApproval =
         shouldAutoRedeem &&
@@ -8481,8 +8513,17 @@ export const AnchorDepositWithdrawModal = ({
         zapAndDeposit: false,
         wrappedZapAndDeposit: false,
         wrappedZapAsset: null,
+        includePermitRedeem:
+          shouldAutoRedeem &&
+          redeemableTotal > 0n &&
+          estimatedNeedsRedeemApproval &&
+          permitEnabled &&
+          isPermitCapable,
         includeApproveRedeem:
-          shouldAutoRedeem && redeemableTotal > 0n && estimatedNeedsRedeemApproval,
+          shouldAutoRedeem &&
+          redeemableTotal > 0n &&
+          estimatedNeedsRedeemApproval &&
+          !(permitEnabled && isPermitCapable),
         includeRedeem: shouldAutoRedeem && redeemableTotal > 0n,
         withdrawCollateralLabel:
           withdrawalMethods.collateralPool === "request"
@@ -8813,12 +8854,12 @@ export const AnchorDepositWithdrawModal = ({
         try {
           currentAllowance =
             ((await client.readContract({
-              address: peggedTokenAddress as `0x${string}`,
+              address: targetRedeemPeggedTokenAddress as `0x${string}`,
               abi: ERC20_ABI,
               functionName: "allowance",
                 args: [
                   address as `0x${string}`,
-                  minterAddress as `0x${string}`,
+                  targetRedeemMinterAddress as `0x${string}`,
                 ],
             })) as bigint) || 0n;
         } catch (allowErr) {
@@ -8830,27 +8871,73 @@ export const AnchorDepositWithdrawModal = ({
         }
 
           const needsApproval = redeemAmount > currentAllowance;
+          const canAttemptPermitRedeem =
+            needsApproval && permitEnabled && isPermitCapable;
+          let permitRedeemResult:
+            | {
+                usePermit: boolean;
+                permitSig?: { v: number; r: `0x${string}`; s: `0x${string}` };
+                deadline?: bigint;
+              }
+            | null = null;
+          let usePermitRedeem = false;
         console.log("[handleWithdrawExecution] Redeem approval check:", {
             redeemAmount: redeemAmount.toString(),
           currentAllowance: currentAllowance.toString(),
           needsApproval,
+          canAttemptPermitRedeem,
         });
 
-        if (needsApproval) {
-          setStep("approving");
-          setError(null);
-          setTxHash(null);
+        if (canAttemptPermitRedeem) {
+          try {
+            setStep("approving");
+            permitRedeemResult = await handlePermitOrApproval(
+              targetRedeemPeggedTokenAddress as `0x${string}`,
+              targetRedeemMinterAddress as `0x${string}`,
+              redeemAmount
+            );
+            usePermitRedeem =
+              !!permitRedeemResult?.usePermit &&
+              !!permitRedeemResult?.permitSig &&
+              !!permitRedeemResult?.deadline;
+            if (!usePermitRedeem) {
+              setProgressConfig((prev) => ({
+                ...prev,
+                includePermitRedeem: false,
+                includeApproveRedeem: true,
+              }));
+            }
+          } catch (permitErr) {
+            console.warn(
+              "[handleWithdrawExecution] Permit precheck failed, falling back to approve",
+              permitErr
+            );
+            usePermitRedeem = false;
+            setProgressConfig((prev) => ({
+              ...prev,
+              includePermitRedeem: false,
+              includeApproveRedeem: true,
+            }));
+          }
+        }
 
-          const approveHash = await writeContractAsync({
-            address: peggedTokenAddress as `0x${string}`,
-            abi: ERC20_ABI,
-            functionName: "approve",
-              args: [minterAddress as `0x${string}`, redeemAmount],
-          });
-          setTxHash(approveHash);
-          setTxHashes((prev) => ({ ...prev, approveRedeem: approveHash }));
-          await client.waitForTransactionReceipt({ hash: approveHash });
-          await new Promise((resolve) => setTimeout(resolve, 500));
+        if (needsApproval) {
+          if (!usePermitRedeem) {
+            setStep("approving");
+            setError(null);
+            setTxHash(null);
+
+            const approveHash = await writeContractAsync({
+              address: targetRedeemPeggedTokenAddress as `0x${string}`,
+              abi: ERC20_ABI,
+              functionName: "approve",
+                args: [targetRedeemMinterAddress as `0x${string}`, redeemAmount],
+            });
+            setTxHash(approveHash);
+            setTxHashes((prev) => ({ ...prev, approveRedeem: approveHash }));
+            await client.waitForTransactionReceipt({ hash: approveHash });
+            await new Promise((resolve) => setTimeout(resolve, 500));
+          }
         }
 
         // Step 2: Redeem pegged tokens
@@ -8861,7 +8948,7 @@ export const AnchorDepositWithdrawModal = ({
           let minCollateralOut = 0n;
         try {
           const freshDryRunResult = (await client.readContract({
-            address: minterAddress as `0x${string}`,
+            address: targetRedeemMinterAddress as `0x${string}`,
             abi: MINTER_PEGGED_ABI,
             functionName: "redeemPeggedTokenDryRun",
               args: [redeemAmount],
@@ -8874,24 +8961,72 @@ export const AnchorDepositWithdrawModal = ({
           } catch {}
 
         let redeemHash: `0x${string}` | undefined;
-        try {
-          redeemHash = await writeContractAsync({
-            address: minterAddress as `0x${string}`,
-            abi: MINTER_PEGGED_ABI,
-            functionName: "redeemPeggedToken",
+        if (
+          usePermitRedeem &&
+          permitRedeemResult?.permitSig &&
+          permitRedeemResult?.deadline
+        ) {
+          try {
+            redeemHash = await writeContractAsync({
+              address: targetRedeemMinterAddress as `0x${string}`,
+              abi: REDEEM_PEGGED_WITH_PERMIT_ABI,
+              functionName: "redeemPeggedTokenWithPermit",
+              args: [
+                redeemAmount,
+                address as `0x${string}`,
+                minCollateralOut,
+                permitRedeemResult.deadline,
+                permitRedeemResult.permitSig.v,
+                permitRedeemResult.permitSig.r,
+                permitRedeemResult.permitSig.s,
+              ],
+            });
+          } catch (permitRedeemErr) {
+            console.warn(
+              "[handleWithdrawExecution] redeemPeggedTokenWithPermit failed, falling back to approve+redeem",
+              permitRedeemErr
+            );
+            setProgressConfig((prev) => ({
+              ...prev,
+              includePermitRedeem: false,
+              includeApproveRedeem: true,
+            }));
+            setStep("approving");
+            const approveHash = await writeContractAsync({
+              address: targetRedeemPeggedTokenAddress as `0x${string}`,
+              abi: ERC20_ABI,
+              functionName: "approve",
+              args: [targetRedeemMinterAddress as `0x${string}`, redeemAmount],
+            });
+            setTxHashes((prev) => ({ ...prev, approveRedeem: approveHash }));
+            await client.waitForTransactionReceipt({ hash: approveHash });
+            redeemHash = await writeContractAsync({
+              address: targetRedeemMinterAddress as `0x${string}`,
+              abi: MINTER_PEGGED_ABI,
+              functionName: "redeemPeggedToken",
               args: [redeemAmount, address as `0x${string}`, minCollateralOut],
-          });
-        } catch (redeemErr: any) {
-          console.warn(
-            "[handleWithdrawExecution] redeemPeggedToken reverted with minCollateralOut, retrying with 0",
-            redeemErr
-          );
-          redeemHash = await writeContractAsync({
-            address: minterAddress as `0x${string}`,
-            abi: MINTER_PEGGED_ABI,
-            functionName: "redeemPeggedToken",
-              args: [redeemAmount, address as `0x${string}`, 0n],
-          });
+            });
+          }
+        } else {
+          try {
+            redeemHash = await writeContractAsync({
+              address: targetRedeemMinterAddress as `0x${string}`,
+              abi: MINTER_PEGGED_ABI,
+              functionName: "redeemPeggedToken",
+                args: [redeemAmount, address as `0x${string}`, minCollateralOut],
+            });
+          } catch (redeemErr: any) {
+            console.warn(
+              "[handleWithdrawExecution] redeemPeggedToken reverted with minCollateralOut, retrying with 0",
+              redeemErr
+            );
+            redeemHash = await writeContractAsync({
+              address: targetRedeemMinterAddress as `0x${string}`,
+              abi: MINTER_PEGGED_ABI,
+              functionName: "redeemPeggedToken",
+                args: [redeemAmount, address as `0x${string}`, 0n],
+            });
+          }
         }
 
         setTxHash(redeemHash);
@@ -9003,19 +9138,25 @@ export const AnchorDepositWithdrawModal = ({
       }
 
       const needsApproval = redeemAmount > currentAllowance;
+      const canAttemptPermitRedeem =
+        needsApproval && permitEnabled && isPermitCapable;
+      let permitRedeemResult:
+        | {
+            usePermit: boolean;
+            permitSig?: { v: number; r: `0x${string}`; s: `0x${string}` };
+            deadline?: bigint;
+          }
+        | null = null;
+      let usePermitRedeem = false;
 
       // Set up progress modal for redeem flow
       setProgressConfig({
+        ...defaultProgressConfig,
         mode: "withdraw",
-        includeApproveCollateral: false,
-        includeMint: false,
-        includeApprovePegged: false,
-        includeDeposit: false,
-        includeDirectApprove: false,
-        includeDirectDeposit: false,
-        includeWithdrawCollateral: false,
-        includeWithdrawSail: false,
-        includeApproveRedeem: needsApproval,
+        includePermitRedeem:
+          needsApproval && permitEnabled && isPermitCapable,
+        includeApproveRedeem:
+          needsApproval && !(permitEnabled && isPermitCapable),
         includeRedeem: true,
         title: "Redeem",
       });
@@ -9031,11 +9172,45 @@ export const AnchorDepositWithdrawModal = ({
           amount: redeemAmount.toString(),
           currentAllowance: currentAllowance.toString(),
           needsApproval,
+          canAttemptPermitRedeem,
         });
       }
 
+      if (canAttemptPermitRedeem) {
+        try {
+          setStep("approving");
+          permitRedeemResult = await handlePermitOrApproval(
+            targetPeggedTokenAddress as `0x${string}`,
+            targetMinterAddress as `0x${string}`,
+            redeemAmount
+          );
+          usePermitRedeem =
+            !!permitRedeemResult?.usePermit &&
+            !!permitRedeemResult?.permitSig &&
+            !!permitRedeemResult?.deadline;
+          if (!usePermitRedeem) {
+            setProgressConfig((prev) => ({
+              ...prev,
+              includePermitRedeem: false,
+              includeApproveRedeem: true,
+            }));
+          }
+        } catch (permitErr) {
+          console.warn(
+            "[handleRedeem] Permit precheck failed, falling back to approval",
+            permitErr
+          );
+          usePermitRedeem = false;
+          setProgressConfig((prev) => ({
+            ...prev,
+            includePermitRedeem: false,
+            includeApproveRedeem: true,
+          }));
+        }
+      }
+
       // Step 1: Approve pegged token for minter (if needed)
-      if (needsApproval) {
+      if (needsApproval && !usePermitRedeem) {
         setStep("approving");
         setError(null);
         setTxHash(null);
@@ -9080,30 +9255,79 @@ export const AnchorDepositWithdrawModal = ({
       }
 
       let redeemHash: `0x${string}` | undefined;
-      try {
-        redeemHash = await writeContractAsync({
-          address: targetMinterAddress as `0x${string}`,
-          abi: MINTER_PEGGED_ABI,
-          functionName: "redeemPeggedToken",
-          args: [redeemAmount, address as `0x${string}`, minCollateralOut],
-        });
-      } catch (callErr: any) {
-        // Retry once with minCollateralOut=0 to bypass slippage floor and surface real issues.
-        if (minCollateralOut > 0n) {
-          if (process.env.NODE_ENV === "development") {
-            console.warn(
-              "[handleRedeem] redeemPeggedToken reverted with minCollateralOut, retrying with 0",
-              callErr
-            );
-          }
+      if (
+        usePermitRedeem &&
+        permitRedeemResult?.permitSig &&
+        permitRedeemResult?.deadline
+      ) {
+        try {
+          redeemHash = await writeContractAsync({
+            address: targetMinterAddress as `0x${string}`,
+            abi: REDEEM_PEGGED_WITH_PERMIT_ABI,
+            functionName: "redeemPeggedTokenWithPermit",
+            args: [
+              redeemAmount,
+              address as `0x${string}`,
+              minCollateralOut,
+              permitRedeemResult.deadline,
+              permitRedeemResult.permitSig.v,
+              permitRedeemResult.permitSig.r,
+              permitRedeemResult.permitSig.s,
+            ],
+          });
+        } catch (permitRedeemErr) {
+          console.warn(
+            "[handleRedeem] redeemPeggedTokenWithPermit failed, falling back to approve+redeem",
+            permitRedeemErr
+          );
+          setProgressConfig((prev) => ({
+            ...prev,
+            includePermitRedeem: false,
+            includeApproveRedeem: true,
+          }));
+          setStep("approving");
+          const approveHash = await writeContractAsync({
+            address: targetPeggedTokenAddress as `0x${string}`,
+            abi: ERC20_ABI,
+            functionName: "approve",
+            args: [targetMinterAddress as `0x${string}`, redeemAmount],
+          });
+          setTxHash(approveHash);
+          setTxHashes((prev) => ({ ...prev, approveRedeem: approveHash }));
+          await publicClient?.waitForTransactionReceipt({ hash: approveHash });
           redeemHash = await writeContractAsync({
             address: targetMinterAddress as `0x${string}`,
             abi: MINTER_PEGGED_ABI,
             functionName: "redeemPeggedToken",
-            args: [redeemAmount, address as `0x${string}`, 0n],
+            args: [redeemAmount, address as `0x${string}`, minCollateralOut],
           });
-        } else {
-          throw callErr;
+        }
+      } else {
+        try {
+          redeemHash = await writeContractAsync({
+            address: targetMinterAddress as `0x${string}`,
+            abi: MINTER_PEGGED_ABI,
+            functionName: "redeemPeggedToken",
+            args: [redeemAmount, address as `0x${string}`, minCollateralOut],
+          });
+        } catch (callErr: any) {
+          // Retry once with minCollateralOut=0 to bypass slippage floor and surface real issues.
+          if (minCollateralOut > 0n) {
+            if (process.env.NODE_ENV === "development") {
+              console.warn(
+                "[handleRedeem] redeemPeggedToken reverted with minCollateralOut, retrying with 0",
+                callErr
+              );
+            }
+            redeemHash = await writeContractAsync({
+              address: targetMinterAddress as `0x${string}`,
+              abi: MINTER_PEGGED_ABI,
+              functionName: "redeemPeggedToken",
+              args: [redeemAmount, address as `0x${string}`, 0n],
+            });
+          } else {
+            throw callErr;
+          }
         }
       }
       setTxHash(redeemHash);
@@ -9384,92 +9608,64 @@ export const AnchorDepositWithdrawModal = ({
           }
           closeDisabled={isProcessing}
           closeTitle={isProcessing ? "Close modal (will cancel transaction)" : "Close"}
-          panelClassName="max-h-[90vh] flex flex-col overflow-hidden"
-          contentClassName="p-5 flex-1 overflow-y-auto"
+          panelClassName="max-h-[calc(100dvh-1rem)] sm:max-h-[90vh] flex flex-col overflow-hidden"
+          contentClassName="p-3 sm:p-5"
         >
             {simpleMode && activeTab === "deposit" ? (
               // Simple Mode: Step-by-Step Flow
               <div className="space-y-4">
                 {/* Step Labels with arrows */}
-                <div className="flex items-center justify-center text-xs text-[#1E4775]/50 pb-3 border-b border-[#d1d7e5]">
+                <div className="flex flex-wrap items-center justify-center gap-x-1 gap-y-2 border-b border-[#e2e8f0] pb-3 text-center text-[11px] text-[#94a3b8] sm:text-xs">
                   <div
                     className={`${
-                      currentStep === 1 ? "text-[#1E4775] font-semibold" : ""
+                      currentStep === 1
+                        ? "font-semibold text-[#153B63]"
+                        : ""
                     }`}
                   >
                     1. Deposit Collateral & Amount
                   </div>
                   {!mintOnly && !skipRewardStep && (
                     <>
-                      <svg
-                        className="w-4 h-4 mx-3 text-[#1E4775]/30"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M9 5l7 7-7 7"
-                        />
-                      </svg>
+                      <span className="mx-1 text-[#cbd5e1]" aria-hidden>
+                        ›
+                      </span>
                       <div
                         className={`${
                           currentStep === 2
-                            ? "text-[#1E4775] font-semibold"
+                            ? "font-semibold text-[#153B63]"
                             : ""
                         }`}
                       >
-                        2. Reward Token
+                        2. Reward token
                       </div>
-                      <svg
-                        className="w-4 h-4 mx-3 text-[#1E4775]/30"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M9 5l7 7-7 7"
-                        />
-                      </svg>
+                      <span className="mx-1 text-[#cbd5e1]" aria-hidden>
+                        ›
+                      </span>
                       <div
                         className={`${
                           currentStep === 3
-                            ? "text-[#1E4775] font-semibold"
+                            ? "font-semibold text-[#153B63]"
                             : ""
                         }`}
                       >
-                        3. Stability Pool
+                        3. Stability pool
                       </div>
                     </>
                   )}
                   {!mintOnly && skipRewardStep && (
                     <>
-                      <svg
-                        className="w-4 h-4 mx-3 text-[#1E4775]/30"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M9 5l7 7-7 7"
-                        />
-                      </svg>
+                      <span className="mx-1 text-[#cbd5e1]" aria-hidden>
+                        ›
+                      </span>
                       <div
                         className={`${
                           currentStep === 2
-                            ? "text-[#1E4775] font-semibold"
+                            ? "font-semibold text-[#153B63]"
                             : ""
                         }`}
                       >
-                        2. Stability Pool
+                        2. Stability pool
                       </div>
                     </>
                   )}
@@ -9735,7 +9931,7 @@ export const AnchorDepositWithdrawModal = ({
                         <>
                       {currentStep === 1 && !isDirectPeggedDeposit && (
                         <div className="space-y-2">
-                          <div className="flex items-center justify-between rounded-md border border-[#1E4775]/20 bg-[#17395F]/5 px-3 py-2 text-xs">
+                          <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-[#f8fafc] px-3 py-2.5 text-xs">
                             <div className="text-[#1E4775]/80">
                               Mint only (do not deposit to stability pool)
                             </div>
@@ -9783,9 +9979,11 @@ export const AnchorDepositWithdrawModal = ({
                         </div>
                       )}
                       {showPermitToggle && (
-                        <div className="flex items-center justify-between rounded-md border border-[#1E4775]/20 bg-[#17395F]/5 px-3 py-2 text-xs">
+                        <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-[#f8fafc] px-3 py-2.5 text-xs">
                           <div className="text-[#1E4775]/80">
-                            Use permit (gasless approval) for this deposit
+                            {showDepositPermitToggle
+                              ? "Use permit (gasless approval) for this deposit"
+                              : "Use permit (gasless approval) for this redemption"}
                           </div>
                           {disableReason ? (
                             <SimpleTooltip label={disableReason}>
@@ -9915,10 +10113,10 @@ export const AnchorDepositWithdrawModal = ({
                       {/* Transaction Overview - Show on first step, otherwise show simple preview */}
                       {!isDirectPeggedDeposit && currentStep === 1 ? (
                         <div className="space-y-2">
-                          <label className="block text-sm font-semibold text-[#1E4775] mb-1.5">
+                          <label className="block text-sm font-semibold text-[#153B63] mb-1.5">
                             Transaction Overview
                           </label>
-                          <div className="p-2.5 rounded-md bg-[#17395F]/5 border border-[#1E4775]/10">
+                          <div className="rounded-lg border border-slate-200 bg-[#f8fafc] p-3">
                             <div className="space-y-2 text-sm">
                               {/* You will receive */}
                               {expectedMintOutput && amount && parseFloat(amount) > 0 ? (
@@ -9993,7 +10191,7 @@ export const AnchorDepositWithdrawModal = ({
                           </div>
                         </div>
                       ) : !isDirectPeggedDeposit ? (
-                        <div className="bg-[rgb(var(--surface-selected-rgb))]/30 border border-[rgb(var(--surface-selected-border-rgb))]/50 p-2.5">
+                        <div className="rounded-lg border border-slate-200 bg-[#f8fafc] p-3">
                           <div className="flex justify-between items-center">
                             <span className="text-sm font-medium text-[#1E4775]/70">
                               You will receive:
@@ -10013,7 +10211,7 @@ export const AnchorDepositWithdrawModal = ({
                       {isDirectPeggedDeposit &&
                         amount &&
                         parseFloat(amount) > 0 && (
-                          <div className="bg-[rgb(var(--surface-selected-rgb))]/30 border border-[rgb(var(--surface-selected-border-rgb))]/50 p-2.5">
+                          <div className="rounded-lg border border-slate-200 bg-[#f8fafc] p-3">
                             <div className="flex justify-between items-center">
                               <span className="text-sm font-medium text-[#1E4775]/70">
                                 You will deposit:
@@ -10082,7 +10280,17 @@ export const AnchorDepositWithdrawModal = ({
                               !!error ||
                               isProcessing
                         }
-                        className="w-full mt-4 py-3 px-4 rounded-md bg-[#FF8A7A] text-white font-semibold hover:bg-[#FF6B5A] transition-colors disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
+                        className={
+                          step === "error"
+                            ? "mt-4 w-full rounded-xl bg-[#FF8A7A] px-4 py-3 font-semibold text-white transition-colors hover:bg-[#FF6B5A]"
+                            : !selectedDepositAsset ||
+                                !amount ||
+                                parseFloat(amount) <= 0 ||
+                                !!error ||
+                                isProcessing
+                              ? "mt-4 w-full cursor-not-allowed rounded-xl border border-slate-200/80 bg-[#e8ecf2] px-4 py-3 font-semibold text-[#64748b]"
+                              : "mt-4 w-full rounded-xl bg-[#153B63] px-4 py-3 font-semibold text-white shadow-sm transition-colors hover:bg-[#0F2F52]"
+                        }
                       >
                         {step === "error"
                           ? "Try Again"
@@ -10176,7 +10384,7 @@ export const AnchorDepositWithdrawModal = ({
                             !!error ||
                             isProcessing
                           }
-                          className="flex-1 py-3 px-4 rounded-md bg-[#1E4775] text-white font-semibold hover:bg-[#17395F] transition-colors disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
+                          className="flex-1 rounded-xl bg-[#153B63] px-4 py-3 font-semibold text-white shadow-sm transition-colors hover:bg-[#0F2F52] disabled:cursor-not-allowed disabled:bg-[#e8ecf2] disabled:text-[#64748b] disabled:shadow-none disabled:hover:bg-[#e8ecf2]"
                         >
                           {isProcessing
                             ? "Processing..."
@@ -10217,7 +10425,7 @@ export const AnchorDepositWithdrawModal = ({
                               return (
                                 <label
                                   key={poolKey}
-                                  className="flex items-start gap-2 p-2 rounded-md bg-[#17395F]/5 border border-[#17395F]/20 cursor-pointer hover:bg-[#17395F]/10 transition-colors"
+                                  className="flex cursor-pointer items-start gap-2 rounded-lg border border-slate-200 bg-[#f8fafc] p-2.5 transition-colors hover:bg-slate-100"
                                 >
                                   <input
                                     type="radio"
@@ -10370,10 +10578,10 @@ export const AnchorDepositWithdrawModal = ({
 
                         {/* Transaction Overview */}
                         <div className="space-y-2">
-                          <label className="block text-sm font-semibold text-[#1E4775] mb-1.5">
+                          <label className="mb-1.5 block text-sm font-semibold text-[#153B63]">
                             Transaction Overview
                           </label>
-                          <div className="p-3 rounded-md bg-[#17395F]/5 border border-[#1E4775]/10">
+                          <div className="rounded-lg border border-slate-200 bg-[#f8fafc] p-3">
                             {/* Review Summary */}
                             {(() => {
                           // Determine deposit token symbol
@@ -10679,7 +10887,7 @@ export const AnchorDepositWithdrawModal = ({
                                   (selectedRewardToken &&
                                     !selectedStabilityPool)
                                 }
-                                className="flex-1 py-3 px-4 rounded-md bg-[#FF8A7A] text-white font-semibold hover:bg-[#FF6B5A] transition-colors disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
+                                className="flex-1 rounded-xl bg-[#153B63] px-4 py-3 font-semibold text-white shadow-sm transition-colors hover:bg-[#0F2F52] disabled:cursor-not-allowed disabled:bg-[#e8ecf2] disabled:text-[#64748b] disabled:shadow-none disabled:hover:bg-[#e8ecf2]"
                               >
                                 {isDirectPeggedDeposit && selectedStabilityPool
                                   ? "Deposit"
@@ -10696,10 +10904,10 @@ export const AnchorDepositWithdrawModal = ({
                       <div className="space-y-4">
                         {/* Transaction Overview */}
                         <div className="space-y-2">
-                          <label className="block text-sm font-semibold text-[#1E4775] mb-1.5">
+                          <label className="mb-1.5 block text-sm font-semibold text-[#153B63]">
                             Transaction Overview
                           </label>
-                          <div className="p-3 rounded-md bg-[#17395F]/5 border border-[#1E4775]/10">
+                          <div className="rounded-lg border border-slate-200 bg-[#f8fafc] p-3">
                           {/* You will receive */}
                           <div className="flex justify-between items-center">
                             <span className="text-sm font-medium text-[#1E4775]/70">
@@ -11103,11 +11311,17 @@ export const AnchorDepositWithdrawModal = ({
                               </span>
                               <TokenSelectorDropdown
                                 value={withdrawCollateralFilter}
-                                onChange={(v) =>
-                                  setWithdrawCollateralFilter(
-                                    v as "all" | "fxSAVE" | "wstETH"
-                                  )
-                                }
+                                onChange={(v) => {
+                                  const nextFilter = v as
+                                    | "all"
+                                    | "fxSAVE"
+                                    | "wstETH";
+                                  setWithdrawCollateralFilter(nextFilter);
+                                  // Keep redeem target aligned with explicit collateral selection.
+                                  if (nextFilter !== "all") {
+                                    setSelectedRedeemAsset(nextFilter);
+                                  }
+                                }}
                                 options={[
                                   {
                                     symbol: "all",
@@ -11393,6 +11607,14 @@ export const AnchorDepositWithdrawModal = ({
                                 })();
                                 const showEarlyWithdrawOption = poolWindowOpen || earlyWithdraw1PctEnabled;
                                 const show1PctToggle = !poolWindowOpen;
+                                const immediateFeeDisplay = getFeeFreeDisplay(
+                                  request,
+                                  feePercent
+                                );
+                                const immediateWithdrawLabel =
+                                  immediateFeeDisplay === "free"
+                                    ? "Withdraw"
+                                    : "Early Withdraw";
                                 return (
                                   <>
                               <div className="flex items-center rounded-md overflow-hidden bg-[#17395F]/10 p-1 mb-2">
@@ -11412,14 +11634,7 @@ export const AnchorDepositWithdrawModal = ({
                                       : "text-[#1E4775]/70 hover:text-[#1E4775]"
                                   } disabled:opacity-50 disabled:cursor-not-allowed`}
                                 >
-                                  Early Withdraw
-                                          {(() => {
-                                            const display = getFeeFreeDisplay(
-                                              request,
-                                              feePercent
-                                            );
-                                            return ` (${display})`;
-                                          })()}
+                                  {immediateWithdrawLabel} ({immediateFeeDisplay})
                                 </button>
                                 )}
                                 <button
@@ -12065,29 +12280,13 @@ export const AnchorDepositWithdrawModal = ({
                                   const isImmediateWithdrawal = 
                                     (entry.poolType === "collateral" && withdrawalMethods.collateralPool === "immediate") ||
                                     (entry.poolType === "sail" && withdrawalMethods.sailPool === "immediate");
-                                  const isRequestWithdrawal = !isImmediateWithdrawal;
                                   
                                   // Calculate fee USD value
                                   const feeUSD = entry.fee && priceUSD > 0
                                     ? (Number(entry.fee.amount) / 1e18) * priceUSD
                                     : 0;
                                   
-                                  // Calculate 1% fee USD value for request withdrawals when redemption is active
-                                  const requestFeeUSD = isRequestWithdrawal && !withdrawOnly && entry.amount > 0n && priceUSD > 0
-                                    ? (Number(entry.amount) / 1e18) * priceUSD * 0.01
-                                    : 0;
-                                  
-                                  // Calculate 1% withdraw fee when redemption is not active and window is not active
-                                  const withdrawAmountPegged = redeemInputAmount || 0n;
-                                  const peggedPriceUSD = peggedTokenPriceUsdWei > 0n
-                                    ? Number(formatUnits(peggedTokenPriceUsdWei, 18))
-                                    : 0;
-                                  const withdrawFeeAmount = withdrawOnly && !isImmediateWithdrawal && withdrawAmountPegged > 0n
-                                    ? (Number(withdrawAmountPegged) / 1e18) * 0.01
-                                    : 0;
-                                  const withdrawFeeUSD = withdrawFeeAmount * peggedPriceUSD;
-                                  
-                                  return (entry.fee || entry.bonus || (isRequestWithdrawal && !withdrawOnly) || (withdrawOnly && !isImmediateWithdrawal)) ? (
+                                  return (entry.fee || entry.bonus) ? (
                                     <div className="pt-2 border-t border-[#1E4775]/30 space-y-1 text-xs mt-2">
                                       {entry.fee && (
                                         <div className="flex justify-between items-center">
@@ -12106,31 +12305,6 @@ export const AnchorDepositWithdrawModal = ({
                                           </span>
                                         </div>
                                       )}
-                                      
-                                      {/* Show 1% withdraw fee when redemption is not active and window is not active */}
-                                      {withdrawOnly && !isImmediateWithdrawal && !entry.fee && (
-                                        <div className="flex justify-between items-center">
-                                          <span className="text-[#1E4775]/70">
-                                            Withdraw Fee:
-                                          </span>
-                                          <span className="font-bold font-mono text-[#1E4775]">
-                                            1.00% - {withdrawFeeAmount > 0 ? `${withdrawFeeAmount.toFixed(6)} ${peggedTokenSymbol}` : "..."} ({withdrawFeeUSD > 0 ? `$${withdrawFeeUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "..."})
-                                          </span>
-                                        </div>
-                                      )}
-                                      
-                                      {/* Show 1% fee for request withdrawals when redemption is active */}
-                                      {isRequestWithdrawal && !withdrawOnly && !entry.fee && (
-                                        <div className="flex justify-between items-center">
-                                          <span className="text-[#1E4775]/70">
-                                            Request Fee:
-                                          </span>
-                                          <span className="font-bold font-mono text-[#1E4775]">
-                                            1.00% ({requestFeeUSD > 0 ? `$${requestFeeUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "..."})
-                                          </span>
-                                        </div>
-                                      )}
-
                                       {entry.bonus && (
                                         <div className="flex justify-between items-center text-green-700">
                                           <span>Bonus:</span>
@@ -12609,71 +12783,6 @@ export const AnchorDepositWithdrawModal = ({
                                   </span>
                                 </div>
                               )}
-
-                              {/* 1% Withdraw Fee - shown when redemption is not active and withdrawal window is not active */}
-                              {(() => {
-                                // Check if redemption is not active (withdrawOnly is true)
-                                if (!withdrawOnly) return null;
-                                
-                                // Check if withdrawal window is active (immediate withdrawal)
-                                const isImmediateWithdrawal = 
-                                  (selectedPositions.collateralPool && withdrawalMethods.collateralPool === "immediate") ||
-                                  (selectedPositions.sailPool && withdrawalMethods.sailPool === "immediate");
-                                
-                                // Only show 1% fee if window is NOT active (it's a request withdrawal)
-                                if (isImmediateWithdrawal) return null;
-                                
-                                // Calculate fee based on pegged token amount being withdrawn
-                                const withdrawAmountPegged = redeemInputAmount || 0n;
-                                const peggedPriceUSD = peggedTokenPriceUsdWei > 0n
-                                  ? Number(formatUnits(peggedTokenPriceUsdWei, 18))
-                                  : 0;
-                                const withdrawFeeAmount = withdrawAmountPegged > 0n
-                                  ? (Number(withdrawAmountPegged) / 1e18) * 0.01
-                                  : 0;
-                                const withdrawFeeUSD = withdrawFeeAmount * peggedPriceUSD;
-                                
-                                return (
-                                  <div className="flex justify-between items-center">
-                                    <span className="text-[#1E4775]/70">
-                                      Withdraw Fee:
-                                    </span>
-                                    <span className="font-bold font-mono text-[#1E4775]">
-                                      1.00% - {withdrawFeeAmount > 0 ? `${withdrawFeeAmount.toFixed(6)} ${peggedTokenSymbol}` : "..."} ({withdrawFeeUSD > 0 ? `$${withdrawFeeUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "..."})
-                                    </span>
-                                  </div>
-                                );
-                              })()}
-
-                              {/* 1% Request Fee - shown when redemption is active and it's a request withdrawal */}
-                              {(() => {
-                                // Only show if redemption is active (withdrawOnly is false)
-                                if (withdrawOnly) return null;
-                                
-                                const isRequestWithdrawal = 
-                                  (selectedPositions.collateralPool && withdrawalMethods.collateralPool === "request") ||
-                                  (selectedPositions.sailPool && withdrawalMethods.sailPool === "request");
-                                if (!isRequestWithdrawal) return null;
-                                
-                                const outputAmount = Number(formatEther(redeemDryRun.netCollateralReturned || 0n));
-                                const requestFeeSymbol = selectedRedeemAsset || collateralSymbol;
-                                const requestFeeUSD = amountToUSD(outputAmount * 0.01, requestFeeSymbol, {
-                                  ethPrice: ethPrice ?? 0,
-                                  wstETHPrice: wstETHPrice ?? 0,
-                                  fxSAVEPrice: fxSAVEPrice ?? 1.08,
-                                });
-                                
-                                return (
-                                  <div className="flex justify-between items-center">
-                                    <span className="text-[#1E4775]/70">
-                                      Request Fee:
-                                    </span>
-                                    <span className="font-bold font-mono text-[#1E4775]">
-                                      1.00% ({requestFeeUSD > 0 ? `$${requestFeeUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "..."})
-                                    </span>
-                                  </div>
-                                );
-                              })()}
 
                               {redeemDryRun.discountPercentage > 0 && (
                                 <div className="flex justify-between items-center text-green-700">

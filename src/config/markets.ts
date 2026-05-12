@@ -2,6 +2,11 @@ import { markets as contractsMarkets } from "./contracts.index";
 
 // Check if we're using test2 contracts
 const useTest2 = process.env.NEXT_PUBLIC_USE_TEST2_CONTRACTS === "true";
+const useMegaeth = process.env.NEXT_PUBLIC_USE_MEGAETH === "true";
+
+const getContractMarket = (marketId: string) => contractsMarkets[marketId];
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- main branch market configs call this helper
 const resolveStabilityPoolManager = (
   marketId: keyof typeof contractsMarkets,
   fallback?: `0x${string}`
@@ -16,6 +21,9 @@ export const markets = {
   "eth-fxusd": {
     name: "fxUSD - ETH",
     maintenance: false,
+    /** UI− Anchor card grid: only `true` rows are listed when layout is basic. */
+    anchorActive: true,
+    sailActive: true,
     status: "genesis" as const,
     pegTarget: "ETH", // haETH is pegged to ETH
     zapper: true,
@@ -104,6 +112,8 @@ export const markets = {
   "btc-fxusd": {
     name: "fxUSD - BTC",
     maintenance: false,
+    anchorActive: true,
+    sailActive: true,
     status: "genesis" as const,
     pegTarget: "BTC", // haBTC is pegged to BTC
     zapper: true,
@@ -192,6 +202,8 @@ export const markets = {
   "btc-steth": {
     name: "stETH - BTC",
     maintenance: false,
+    anchorActive: true,
+    sailActive: true,
     status: "genesis" as const,
     pegTarget: "BTC", // haBTC is pegged to BTC
     chain: {
@@ -278,6 +290,8 @@ export const markets = {
   "fxusd-gold": {
     name: "fxUSD - GOLD",
     maintenance: false,
+    anchorActive: false,
+    sailActive: false,
     status: "genesis" as const,
     pegTarget: "GOLD",
     chain: {
@@ -357,6 +371,8 @@ export const markets = {
   "steth-gold": {
     name: "stETH - GOLD",
     maintenance: false,
+    anchorActive: false,
+    sailActive: false,
     status: "genesis" as const,
     pegTarget: "GOLD",
     chain: {
@@ -436,6 +452,8 @@ export const markets = {
   "steth-eur": {
     name: "stETH - EUR",
     maintenance: false,
+    anchorActive: true,
+    sailActive: true,
     status: "genesis" as const,
     pegTarget: "EUR",
     chain: {
@@ -515,6 +533,8 @@ export const markets = {
   "fxusd-eur": {
     name: "fxUSD - EUR",
     maintenance: false,
+    anchorActive: true,
+    sailActive: true,
     status: "genesis" as const,
     pegTarget: "EUR",
     chain: {
@@ -593,7 +613,10 @@ export const markets = {
   },
   "steth-mcap": {
     name: "stETH - MCAP",
+    displayTransparency: false,
     maintenance: false,
+    anchorActive: false,
+    sailActive: false,
     status: "coming-soon" as const,
     pegTarget: "MCAP",
     chain: {
@@ -666,7 +689,10 @@ export const markets = {
   },
   "fxusd-mcap": {
     name: "fxUSD - MCAP",
+    displayTransparency: false,
     maintenance: false,
+    anchorActive: false,
+    sailActive: false,
     status: "coming-soon" as const,
     pegTarget: "MCAP",
     chain: {
@@ -740,6 +766,8 @@ export const markets = {
   "steth-silver": {
     name: "stETH - SILVER",
     maintenance: false,
+    anchorActive: false,
+    sailActive: false,
     status: "genesis" as const,
     pegTarget: "SILVER",
     chain: {
@@ -819,6 +847,8 @@ export const markets = {
   "fxusd-silver": {
     name: "fxUSD - SILVER",
     maintenance: false,
+    anchorActive: false,
+    sailActive: false,
     status: "genesis" as const,
     pegTarget: "SILVER",
     chain: {
@@ -896,118 +926,63 @@ export const markets = {
     },
   },
   }),
-  // ─── MegaETH genesis (reference only — not active). To enable: uncomment
-  // getContractMarket below (place after `useTest2`) and the spread (last line before
-  // `} as const`). Source: staging @ b4399a3. Ensure `NEXT_PUBLIC_USE_MEGAETH` + typings.
-  // ---------------------------------------------------------------------------
-  // Helper to safely get contract market or return undefined
-  // const getContractMarket = (marketId: string) => {
-  //   return contractsMarkets[marketId as keyof typeof contractsMarkets];
-  // };
-  //
-  //   // MegaETH markets (chainId 4326) - only when NEXT_PUBLIC_USE_MEGAETH=true
-  //   ...(getContractMarket("btc-usd-megaeth")
-  //     ? {
-  //         "btc-usd-megaeth": {
-  //           name: "BTC - USD",
-  //           maintenance: false,
-  //           /** `true` = square “TEST” label in Genesis Status column (QA / staging). */
-  //           test: true,
-  //           status: "genesis" as const,
-  //           pegTarget: "USD",
-  //           chainId: 4326,
-  //           zapper: false,
-  //           anyswap: false,
-  //           chain: { name: "MegaETH", logo: "icons/eth.png" },
-  //           collateral: {
-  //             symbol: "BTC",
-  //             name: "Bitcoin",
-  //             underlyingSymbol: "BTC",
-  //           },
-  //           underlyingCoinGeckoId: "bitcoin",
-  //           acceptedAssets: [{ symbol: "BTC", name: "Bitcoin" }],
-  //           rewardTokens: { default: ["USDM"], additional: [] },
-  //           addresses: {
-  //             minter: contractsMarkets["btc-usd-megaeth"].addresses.minter,
-  //             peggedToken: contractsMarkets["btc-usd-megaeth"].addresses.peggedToken,
-  //             leveragedToken: contractsMarkets["btc-usd-megaeth"].addresses.leveragedToken,
-  //             reservePool: contractsMarkets["btc-usd-megaeth"].addresses.reservePool,
-  //             stabilityPoolManager: contractsMarkets["btc-usd-megaeth"].addresses.stabilityPoolManager,
-  //             stabilityPoolCollateral: contractsMarkets["btc-usd-megaeth"].addresses.stabilityPoolCollateral,
-  //             stabilityPoolLeveraged: contractsMarkets["btc-usd-megaeth"].addresses.stabilityPoolLeveraged,
-  //             genesis: contractsMarkets["btc-usd-megaeth"].addresses.genesis,
-  //             priceOracle: contractsMarkets["btc-usd-megaeth"].addresses.priceOracle,
-  //             collateralPrice: contractsMarkets["btc-usd-megaeth"].addresses.collateralPrice,
-  //             feeReceiver: contractsMarkets["btc-usd-megaeth"].addresses.feeReceiver,
-  //             collateralToken: contractsMarkets["btc-usd-megaeth"].addresses.collateralToken,
-  //             wrappedCollateralToken: contractsMarkets["btc-usd-megaeth"].addresses.wrappedCollateralToken,
-  //           },
-  //           startBlock: contractsMarkets["btc-usd-megaeth"].startBlock,
-  //           peggedToken: { name: "Harbor Anchored USD", symbol: "haUSD", description: "Pegged token" },
-  //           leveragedToken: { name: "Harbor Sail USD-BTC", symbol: "hsUSD-BTC", description: "Leveraged token" },
-  //           rewardPoints: { pointsPerDollar: 100, description: "Ledger marks per dollar" },
-  //           marksCampaign: { id: "megaeth", label: "MegaETH" },
-  //           coinGeckoId: "usd",
-  //           genesis: {
-  //             startDate: contractsMarkets["btc-usd-megaeth"].genesis.startDate,
-  //             endDate: contractsMarkets["btc-usd-megaeth"].genesis.endDate,
-  //             tokenDistribution: {
-  //               pegged: { ratio: 0.5, description: "50% pegged" },
-  //               leveraged: { ratio: 0.5, description: "50% leveraged" },
-  //             },
-  //           },
-  //         },
-  //         "wsteth-usd-megaeth": {
-  //           name: "wstETH - USD",
-  //           maintenance: false,
-  //           /** Same as `btc-usd-megaeth`: square “TEST” label in Genesis Status when enabled. */
-  //           test: true,
-  //           status: "genesis" as const,
-  //           pegTarget: "USD",
-  //           chainId: 4326,
-  //           zapper: false,
-  //           anyswap: false,
-  //           chain: { name: "MegaETH", logo: "icons/eth.png" },
-  //           collateral: {
-  //             symbol: "wstETH",
-  //             name: "Wrapped stETH",
-  //             underlyingSymbol: "stETH",
-  //           },
-  //           underlyingCoinGeckoId: "wrapped-steth",
-  //           acceptedAssets: [{ symbol: "wstETH", name: "Wrapped stETH" }],
-  //           rewardTokens: { default: ["wstETH"], additional: [] },
-  //           addresses: {
-  //             minter: contractsMarkets["wsteth-usd-megaeth"].addresses.minter,
-  //             peggedToken: contractsMarkets["wsteth-usd-megaeth"].addresses.peggedToken,
-  //             leveragedToken: contractsMarkets["wsteth-usd-megaeth"].addresses.leveragedToken,
-  //             reservePool: contractsMarkets["wsteth-usd-megaeth"].addresses.reservePool,
-  //             stabilityPoolManager: contractsMarkets["wsteth-usd-megaeth"].addresses.stabilityPoolManager,
-  //             stabilityPoolCollateral: contractsMarkets["wsteth-usd-megaeth"].addresses.stabilityPoolCollateral,
-  //             stabilityPoolLeveraged: contractsMarkets["wsteth-usd-megaeth"].addresses.stabilityPoolLeveraged,
-  //             genesis: contractsMarkets["wsteth-usd-megaeth"].addresses.genesis,
-  //             priceOracle: contractsMarkets["wsteth-usd-megaeth"].addresses.priceOracle,
-  //             collateralPrice: contractsMarkets["wsteth-usd-megaeth"].addresses.collateralPrice,
-  //             feeReceiver: contractsMarkets["wsteth-usd-megaeth"].addresses.feeReceiver,
-  //             collateralToken: contractsMarkets["wsteth-usd-megaeth"].addresses.collateralToken,
-  //             wrappedCollateralToken: contractsMarkets["wsteth-usd-megaeth"].addresses.wrappedCollateralToken,
-  //           },
-  //           startBlock: contractsMarkets["wsteth-usd-megaeth"].startBlock,
-  //           peggedToken: { name: "Harbor Anchored USD", symbol: "haUSD", description: "Pegged token" },
-  //           leveragedToken: { name: "Harbor Sail USD-wstETH", symbol: "hsUSD-wstETH", description: "Leveraged token" },
-  //           rewardPoints: { pointsPerDollar: 100, description: "Ledger marks per dollar" },
-  //           marksCampaign: { id: "megaeth", label: "MegaETH" },
-  //           coinGeckoId: "wrapped-steth",
-  //           genesis: {
-  //             startDate: contractsMarkets["wsteth-usd-megaeth"].genesis.startDate,
-  //             endDate: contractsMarkets["wsteth-usd-megaeth"].genesis.endDate,
-  //             tokenDistribution: {
-  //               pegged: { ratio: 0.5, description: "50% pegged" },
-  //               leveraged: { ratio: 0.5, description: "50% leveraged" },
-  //             },
-  //           },
-  //         },
-  //       }
-  //     : {}),
+  // MegaETH markets (chainId 4326), enabled via NEXT_PUBLIC_USE_MEGAETH=true
+  ...(useMegaeth && getContractMarket("wsteth-usd-megaeth")
+    ? {
+        "wsteth-usd-megaeth": {
+          name: "stETH - USD",
+          maintenance: false,
+          anchorActive: true,
+          sailActive: "soon",
+          test: false,
+          status: "genesis" as const,
+          pegTarget: "USD",
+          chainId: 4326,
+          zapper: false,
+          anyswap: false,
+          chain: { name: "MegaETH", logo: "icons/eth.png" },
+          collateral: {
+            symbol: "wstETH",
+            name: "Wrapped stETH",
+            underlyingSymbol: "stETH",
+          },
+          underlyingCoinGeckoId: "wrapped-steth",
+          acceptedAssets: [{ symbol: "wstETH", name: "Wrapped stETH" }],
+          rewardTokens: { default: ["wstETH"], additional: [] },
+          addresses: {
+            minter: contractsMarkets["wsteth-usd-megaeth"].addresses.minter,
+            peggedToken: contractsMarkets["wsteth-usd-megaeth"].addresses.peggedToken,
+            leveragedToken: contractsMarkets["wsteth-usd-megaeth"].addresses.leveragedToken,
+            reservePool: contractsMarkets["wsteth-usd-megaeth"].addresses.reservePool,
+            stabilityPoolManager: contractsMarkets["wsteth-usd-megaeth"].addresses.stabilityPoolManager,
+            stabilityPoolCollateral: contractsMarkets["wsteth-usd-megaeth"].addresses.stabilityPoolCollateral,
+            stabilityPoolLeveraged: contractsMarkets["wsteth-usd-megaeth"].addresses.stabilityPoolLeveraged,
+            genesis: contractsMarkets["wsteth-usd-megaeth"].addresses.genesis,
+            priceOracle: contractsMarkets["wsteth-usd-megaeth"].addresses.priceOracle,
+            collateralPrice: contractsMarkets["wsteth-usd-megaeth"].addresses.collateralPrice,
+            feeReceiver: contractsMarkets["wsteth-usd-megaeth"].addresses.feeReceiver,
+            collateralToken: contractsMarkets["wsteth-usd-megaeth"].addresses.collateralToken,
+            wrappedCollateralToken: contractsMarkets["wsteth-usd-megaeth"].addresses.wrappedCollateralToken,
+          },
+          startBlock: contractsMarkets["wsteth-usd-megaeth"].startBlock,
+          peggedToken: { name: "Harbor Anchored USD", symbol: "haUSD", description: "Pegged token" },
+          leveragedToken: { name: "Harbor Sail stETH-USD", symbol: "hsSTETH-USD", description: "Leveraged token" },
+          rewardPoints: { pointsPerDollar: 100, description: "Ledger marks per dollar" },
+          marksCampaign: { id: "megaeth", label: "MegaETH" },
+          /** wstETH-denominated early depositor cap (see `getGenesisDepositCapData` / Genesis index row). */
+          genesisTokenCapAmount: 50,
+          coinGeckoId: "wrapped-steth",
+          genesis: {
+            startDate: contractsMarkets["wsteth-usd-megaeth"].genesis.startDate,
+            endDate: contractsMarkets["wsteth-usd-megaeth"].genesis.endDate,
+            tokenDistribution: {
+              pegged: { ratio: 0.5, description: "50% pegged" },
+              leveraged: { ratio: 0.5, description: "50% leveraged" },
+            },
+          },
+        },
+      }
+    : {}),
 } as const;
 
 export type Market = (typeof markets)[keyof typeof markets];
@@ -1023,6 +998,15 @@ export function isMarketInMaintenance(mkt: unknown): boolean {
     mkt &&
       typeof mkt === "object" &&
       (mkt as { maintenance?: boolean }).maintenance === true
+  );
+}
+
+/** Anchor UI−: list only markets with `anchorActive: true` (strict). */
+export function isAnchorActiveForBasicUi(mkt: unknown): boolean {
+  return Boolean(
+    mkt &&
+      typeof mkt === "object" &&
+      (mkt as { anchorActive?: boolean }).anchorActive === true
   );
 }
 
@@ -1131,9 +1115,9 @@ export function isGenesisActive(market: Market | undefined) {
 }
 
 export function getPrimaryRewardToken(market: Market) {
-  return (market as any).rewardToken;
+  return (market as { rewardToken?: unknown }).rewardToken;
 }
 
 export function getRewardPoints(market: Market) {
-  return (market as any).rewardPoints;
+  return (market as { rewardPoints?: unknown }).rewardPoints;
 }

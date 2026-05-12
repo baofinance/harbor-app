@@ -22,6 +22,7 @@ export function usePegTargetPrices() {
     address: CHAINLINK_FEEDS.ETH_USD,
     abi: CHAINLINK_ORACLE_ABI,
     functionName: "latestAnswer",
+    chainId: 1,
     query: { staleTime: 60_000, gcTime: 300_000 },
   });
 
@@ -29,6 +30,7 @@ export function usePegTargetPrices() {
     address: CHAINLINK_FEEDS.BTC_USD,
     abi: CHAINLINK_ORACLE_ABI,
     functionName: "latestAnswer",
+    chainId: 1,
     query: { staleTime: 60_000, gcTime: 300_000 },
   });
 
@@ -36,6 +38,7 @@ export function usePegTargetPrices() {
     address: CHAINLINK_FEEDS.EUR_USD,
     abi: CHAINLINK_ORACLE_ABI,
     functionName: "latestAnswer",
+    chainId: 1,
     query: { staleTime: 60_000, gcTime: 300_000 },
   });
 
@@ -43,6 +46,7 @@ export function usePegTargetPrices() {
     address: CHAINLINK_FEEDS.XAU_USD,
     abi: CHAINLINK_ORACLE_ABI,
     functionName: "latestAnswer",
+    chainId: 1,
     query: { staleTime: 60_000, gcTime: 300_000 },
   });
 
@@ -50,6 +54,7 @@ export function usePegTargetPrices() {
     address: CHAINLINK_FEEDS.XAG_USD,
     abi: CHAINLINK_ORACLE_ABI,
     functionName: "latestAnswer",
+    chainId: 1,
     query: { staleTime: 60_000, gcTime: 300_000 },
   });
 

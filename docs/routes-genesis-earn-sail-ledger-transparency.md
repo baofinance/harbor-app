@@ -301,7 +301,7 @@ This section is **not** a full penetration test; it documents trust boundaries a
 ### 9.1 Subgraph / GraphQL
 
 - **Endpoint:** [`getGraphUrl`](../src/config/graph.ts), [`GRAPH_CONFIG`](../src/config/graph.ts) — defaults to The Graph Studio URL; overridable via `NEXT_PUBLIC_GRAPH_URL` and testnet flags.
-- **API key:** `getGraphHeaders` uses `process.env.NEXT_PUBLIC_GRAPH_API_KEY || GRAPH_API_KEY` where **`GRAPH_API_KEY` is a hardcoded fallback string** in source. Because this module is imported by **client** bundles, **any fallback is shipped to the browser** — treat as **public**, rotate keys if they were meant to be secret, and prefer env-only keys for sensitive gateways.
+- **API key:** `getGraphHeaders` uses only `process.env.NEXT_PUBLIC_GRAPH_API_KEY` (trimmed). There is **no repo fallback**; gateway URLs need this set in each environment. Values under `NEXT_PUBLIC_*` are still exposed in client bundles — use a key scoped to public subgraph access, or proxy via a server route if you need secrecy.
 - **Trust model:** Leaderboard and marks data are **indexed off-chain**; users should not treat them as authoritative for financial decisions without verifying on-chain state.
 - **Query construction:** GraphQL strings are static in app code; no user-controlled query concatenation observed in these routes.
 

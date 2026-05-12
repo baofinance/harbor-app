@@ -12,6 +12,7 @@ import {
   STABILITY_POOL_MANAGER_ABI,
 } from "@/abis/shared";
 import { useMultipleTokenPrices } from "@/hooks/useTokenPrices";
+import { buildTokenPriceInput } from "@/utils/tokenPriceInput";
 
 const erc20ABI = ERC20_ABI;
 const erc20MetadataABI = ERC20_ABI;
@@ -300,18 +301,13 @@ export function useSailContractReads() {
   const tokenPriceInputs = useMemo(() => {
     return sailMarkets
       .map(([id, m]) => {
-        const minter = m.addresses?.minter as `0x${string}` | undefined;
-        const pegTarget = m.pegTarget || "USD";
         const chainId = (m as Market & { chainId?: number }).chainId ?? 1;
-        if (!minter || typeof minter !== "string" || !minter.startsWith("0x")) {
-          return null;
-        }
-        return {
+        return buildTokenPriceInput({
           marketId: id,
-          minterAddress: minter,
-          pegTarget: pegTarget,
+          minterAddress: m.addresses?.minter,
+          pegTarget: m.pegTarget || "USD",
           chainId,
-        };
+        });
       })
       .filter((input): input is NonNullable<typeof input> => input !== null);
   }, [sailMarkets]);

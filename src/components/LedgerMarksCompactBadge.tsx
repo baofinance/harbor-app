@@ -50,7 +50,7 @@ export default function LedgerMarksCompactBadge({
       className={className}
     >
       <div className={`${INDEX_CORAL_LEDGER_TAG_PILL_CLASS} ${pillClassName}`}>
-        <div className="flex items-center gap-1.5 whitespace-nowrap">
+        <div className="flex items-center gap-1.5">
           <Image
             src="/icons/marks.png"
             alt=""
@@ -58,7 +58,7 @@ export default function LedgerMarksCompactBadge({
             height={18}
             className="opacity-90 flex-shrink-0"
           />
-          <span>Ledger Marks</span>
+          <span className="whitespace-nowrap">Ledger Marks</span>
         </div>
       </div>
     </SimpleTooltip>

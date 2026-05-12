@@ -40,6 +40,8 @@ If the Alchemy URL is sent to the browser (e.g. via `NEXT_PUBLIC_MAINNET_RPC_URL
 - Your **Next.js API route** (`/api/rpc`) receives those requests and forwards them to Alchemy using a **server-only** env var.
 - The Alchemy key is never in the frontend bundle, so it can’t be scraped or abused by third parties.
 
+**CORS / abuse:** `/api/rpc` only sets `Access-Control-Allow-Origin` for known production domains, optional `RPC_ALLOWED_ORIGINS` (comma-separated), or when the browser `Origin` matches the request `Host` (same-origin previews and custom deploy URLs). Cross-site browser calls with a foreign `Origin` get **403** and are not forwarded. Requests with no `Origin` (e.g. `curl`) are still accepted. JSON bodies are capped at **512 KiB**.
+
 ### Step 1: Set server-only Alchemy URL in Vercel
 
 1. In [Vercel](https://vercel.com), open your Harbor project.
@@ -53,6 +55,18 @@ If the Alchemy URL is sent to the browser (e.g. via `NEXT_PUBLIC_MAINNET_RPC_URL
    - **Do not** add `NEXT_PUBLIC_` to this variable.  
    - Use the **new** key you created in Part 1.  
    - For **Preview** deployments that use the proxy, set `MAINNET_RPC_URL` on Preview too (otherwise `/api/rpc` returns 503). Development can use a public RPC if you turn the proxy off locally.
+
+#### Optional: add automatic fallback providers
+
+You can provide backup RPC endpoints that are used automatically when the primary returns `429` (rate/capacity) or `5xx` errors.
+
+| Name                           | Value example                                                                 | Environments |
+|--------------------------------|-------------------------------------------------------------------------------|--------------|
+| `MAINNET_RPC_FALLBACK_URLS`    | `https://mainnet.infura.io/v3/KEY,https://eth-mainnet.public.blastapi.io`    | Production, Preview |
+
+- Comma-separated list, no spaces required.
+- Keep these server-only (no `NEXT_PUBLIC_` prefix).
+- Primary remains `MAINNET_RPC_URL`; fallbacks are tried in order.
 
 ### Step 2: Turn on the RPC proxy
 

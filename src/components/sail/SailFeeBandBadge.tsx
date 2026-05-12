@@ -1,11 +1,15 @@
-import { WAD } from "@/utils/sailFeeBands";
+import { QuestionMarkCircleIcon } from "@heroicons/react/24/outline";
+import {
+  HARBOR_FEE_BAND_PILL_CLASS,
+  resolveHarborFeeBandKind,
+} from "@/lib/harborFeeBandStyles";
 
 type SailFeeBandBadgeProps = {
   ratio: bigint;
   isMintSail?: boolean;
   lowerBound?: bigint;
   upperBound?: bigint;
-  /** Table mint/redeem column: append [?] inside the tag (tooltip on parent). */
+  /** Table mint/redeem column: tooltip on parent; (? ) icon cue. */
   showHelp?: boolean;
   /** Table row only: show `1.00%` instead of `1.00% fee` (popups keep full text). */
   omitFeeSuffix?: boolean;
@@ -23,34 +27,25 @@ export function SailFeeBandBadge({
   omitFeeSuffix = false,
 }: SailFeeBandBadgeProps) {
   const pct = Number(ratio) / 1e16;
-  const isZeroToHundredRange = lowerBound === 0n && upperBound !== undefined;
-  const tolerance = 10n ** 14n;
-  const ratioAbs = ratio < 0n ? -ratio : ratio;
-  const is100PercentOrClose = ratioAbs >= WAD - tolerance && ratioAbs <= WAD;
-  const shouldBlockMintSail =
-    isMintSail && isZeroToHundredRange && is100PercentOrClose;
+  const kind = resolveHarborFeeBandKind(
+    ratio,
+    isMintSail,
+    lowerBound,
+    upperBound
+  );
 
-  const isBlocked = ratio >= WAD || shouldBlockMintSail;
-  const isDiscount = ratio < 0n;
-  const isFree = ratio === 0n;
+  const label =
+    kind === "blocked"
+      ? "Blocked"
+      : kind === "free"
+        ? "Free"
+        : kind === "discount"
+          ? `${pct.toFixed(2)}% discount`
+          : omitFeeSuffix
+            ? `${pct.toFixed(2)}%`
+            : `${pct.toFixed(2)}% fee`;
 
-  const className = isBlocked
-    ? "bg-red-500/30 text-red-700 font-semibold"
-    : isDiscount
-      ? "bg-green-500/30 text-green-700 font-semibold"
-      : isFree
-        ? "bg-blue-500/30 text-blue-700 font-semibold"
-        : "bg-orange-500/30 text-orange-700 font-semibold";
-
-  const label = isBlocked
-    ? "Blocked"
-    : isFree
-      ? "Free"
-      : isDiscount
-        ? `${pct.toFixed(2)}% discount`
-        : omitFeeSuffix
-          ? `${pct.toFixed(2)}%`
-          : `${pct.toFixed(2)}% fee`;
+  const className = HARBOR_FEE_BAND_PILL_CLASS[kind];
 
   /** Table badges: fixed width for `4.00%` + `[?]` (5px narrower than 4.5rem); popup badges unchanged. */
   const tableUniformClasses = omitFeeSuffix
@@ -67,7 +62,10 @@ export function SailFeeBandBadge({
         label
       )}
       {showHelp ? (
-        <span className="text-inherit font-semibold opacity-90 shrink-0">[?]</span>
+        <QuestionMarkCircleIcon
+          className="h-3.5 w-3.5 shrink-0 opacity-90"
+          aria-hidden
+        />
       ) : null}
     </span>
   );
