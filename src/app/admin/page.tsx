@@ -962,6 +962,43 @@ export default function Admin() {
  </div>
  ) : (
   <div className="space-y-4">
+ <div className="bg-zinc-900/50 p-4 sm:p-6 relative z-20">
+ <h2 className="text-lg font-medium text-white mb-4 font-geo">
+ System Controls
+ </h2>
+ <div className="flex flex-wrap gap-2 pointer-events-auto">
+  <Link
+    href="/admin/genesis"
+    className="inline-flex items-center rounded py-2 px-4 bg-harbor text-white font-medium hover:bg-harbor/90 transition-colors"
+  >
+    Genesis Admin
+  </Link>
+  <Link
+    href="/admin/fees"
+    className="inline-flex items-center rounded py-2 px-4 bg-harbor text-white font-medium hover:bg-harbor/90 transition-colors"
+  >
+    Mint/Redeem Fees
+  </Link>
+  <Link
+    href="/admin/rewards"
+    className="inline-flex items-center rounded py-2 px-4 bg-harbor text-white font-medium hover:bg-harbor/90 transition-colors"
+  >
+    Reward Deposits
+  </Link>
+  <Link
+    href="/admin/rebalancing"
+    className="inline-flex items-center rounded py-2 px-4 bg-harbor text-white font-medium hover:bg-harbor/90 transition-colors"
+  >
+    Rebalancing
+  </Link>
+  <Link
+    href="/admin/maiden-voyage-yield"
+    className="inline-flex items-center rounded py-2 px-4 bg-harbor text-white font-medium hover:bg-harbor/90 transition-colors"
+  >
+    Maiden voyage yield
+  </Link>
+ </div>
+ </div>
     {/* Rewards Streaming (per pool) */}
     <div className="bg-zinc-900/50 p-4 sm:p-6">
       <div className="flex items-center justify-between gap-4 mb-3">
@@ -1226,7 +1263,7 @@ export default function Admin() {
        </table>
      </div>
 
-     <div className="mt-4 shrink-0 flex flex-col lg:flex-row lg:items-stretch gap-4 border-t border-white/10 pt-4 sticky bottom-0 z-[1] bg-zinc-900/90">
+     <div className="mt-4 shrink-0 flex flex-col lg:flex-row lg:items-stretch gap-4 border-t border-white/10 pt-4 bg-zinc-900/90">
        <div className="flex flex-col gap-2">
          <button
            onClick={handleBatchHarvest}
@@ -1352,39 +1389,6 @@ export default function Admin() {
        </div>
      </div>
    </div>
-
- <div className="bg-zinc-900/50 p-4 sm:p-6">
- <h2 className="text-lg font-medium text-white mb-4 font-geo">
- System Controls
- </h2>
- <div className="flex flex-wrap gap-2">
-   <Link href="/admin/genesis">
-     <button className="py-2 px-4 bg-harbor text-white font-medium hover:bg-harbor transition-colors">
-       Genesis Admin
-     </button>
-   </Link>
-   <Link href="/admin/fees">
-     <button className="py-2 px-4 bg-harbor text-white font-medium hover:bg-harbor transition-colors">
-       Mint/Redeem Fees
-     </button>
-   </Link>
-   <Link href="/admin/rewards">
-     <button className="py-2 px-4 bg-harbor text-white font-medium hover:bg-harbor transition-colors">
-       Reward Deposits
-     </button>
-   </Link>
-      <Link href="/admin/rebalancing">
-        <button className="py-2 px-4 bg-harbor text-white font-medium hover:bg-harbor transition-colors">
-          Rebalancing
-        </button>
-      </Link>
-      <Link href="/admin/maiden-voyage-yield">
-        <button className="py-2 px-4 bg-harbor text-white font-medium hover:bg-harbor transition-colors">
-          Maiden voyage yield
-        </button>
-      </Link>
-</div>
-</div>
 
  <div className="bg-zinc-900/50 p-4 sm:p-6">
  <h2 className="text-lg font-medium text-white mb-4 font-geo">
