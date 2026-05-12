@@ -40,6 +40,8 @@ If the Alchemy URL is sent to the browser (e.g. via `NEXT_PUBLIC_MAINNET_RPC_URL
 - Your **Next.js API route** (`/api/rpc`) receives those requests and forwards them to Alchemy using a **server-only** env var.
 - The Alchemy key is never in the frontend bundle, so it can’t be scraped or abused by third parties.
 
+**CORS / abuse:** `/api/rpc` only sets `Access-Control-Allow-Origin` for known production domains, optional `RPC_ALLOWED_ORIGINS` (comma-separated), or when the browser `Origin` matches the request `Host` (same-origin previews and custom deploy URLs). Cross-site browser calls with a foreign `Origin` get **403** and are not forwarded. Requests with no `Origin` (e.g. `curl`) are still accepted. JSON bodies are capped at **512 KiB**.
+
 ### Step 1: Set server-only Alchemy URL in Vercel
 
 1. In [Vercel](https://vercel.com), open your Harbor project.

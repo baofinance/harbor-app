@@ -13,6 +13,57 @@ const MAINNET_RPC_FALLBACK_URLS = (process.env.MAINNET_RPC_FALLBACK_URLS || "")
   .map((url) => url.trim())
   .filter(Boolean);
 
+/** Max JSON-RPC body size (single or batch) to limit abuse. */
+const MAX_RPC_BODY_BYTES = 512 * 1024;
+
+const RPC_BASE_ALLOWLIST = new Set([
+  "https://harborfinance.io",
+  "https://www.harborfinance.io",
+  "https://app.harborfinance.io",
+  "http://localhost:3000",
+  "http://localhost:3001",
+  "http://localhost:3002",
+  "http://localhost:3003",
+  "http://localhost:3004",
+  "http://localhost:3005",
+]);
+
+function extraRpcAllowedOrigins(): Set<string> {
+  const raw = process.env.RPC_ALLOWED_ORIGINS || "";
+  return new Set(
+    raw
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean)
+  );
+}
+
+/** Vercel previews and custom deploy hosts: allow when `Origin` matches this request's `Host`. */
+function originMatchesHost(request: Request, origin: string): boolean {
+  const host = (request.headers.get("host") || "").trim().toLowerCase();
+  if (!host) return false;
+  try {
+    const u = new URL(origin);
+    if (u.protocol !== "http:" && u.protocol !== "https:") return false;
+    return u.host.toLowerCase() === host;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * CORS allowlist: do not echo arbitrary `Origin` (avoids reflecting untrusted origins).
+ * Missing `Origin` is allowed (curl, server-side); present-but-disallowed is rejected on POST.
+ */
+function getAllowedRpcOrigin(request: Request): string | undefined {
+  const origin = request.headers.get("origin");
+  if (!origin) return undefined;
+  if (RPC_BASE_ALLOWLIST.has(origin)) return origin;
+  if (extraRpcAllowedOrigins().has(origin)) return origin;
+  if (originMatchesHost(request, origin)) return origin;
+  return undefined;
+}
+
 function getUpstreamUrls(): string[] {
   return [MAINNET_RPC_URL, ...MAINNET_RPC_FALLBACK_URLS].filter(
     (url): url is string => Boolean(url)
@@ -24,13 +75,17 @@ function shouldRetryWithFallback(status: number): boolean {
 }
 
 function corsHeaders(request: Request): Record<string, string> {
-  const origin = request.headers.get("origin");
-  return {
-    "Access-Control-Allow-Origin": origin || "*",
+  const allowed = getAllowedRpcOrigin(request);
+  const base: Record<string, string> = {
     "Access-Control-Allow-Methods": "POST, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type",
     "Access-Control-Max-Age": "86400",
+    Vary: "Origin",
   };
+  if (allowed) {
+    base["Access-Control-Allow-Origin"] = allowed;
+  }
+  return base;
 }
 
 export async function OPTIONS(request: Request) {
@@ -47,6 +102,18 @@ export async function POST(request: Request) {
   const headers = corsHeaders(request);
   const upstreamUrls = getUpstreamUrls();
 
+  const origin = request.headers.get("origin");
+  if (origin && !getAllowedRpcOrigin(request)) {
+    return NextResponse.json(
+      {
+        error: "Forbidden",
+        jsonrpc: "2.0",
+        id: null,
+      },
+      { status: 403, headers }
+    );
+  }
+
   if (!upstreamUrls.length) {
     return NextResponse.json(
       {
@@ -57,9 +124,27 @@ export async function POST(request: Request) {
     );
   }
 
+  const contentLength = request.headers.get("content-length");
+  if (contentLength && /^\d+$/.test(contentLength)) {
+    const n = Number(contentLength);
+    if (n > MAX_RPC_BODY_BYTES) {
+      return NextResponse.json(
+        { error: "Request body too large", jsonrpc: "2.0", id: null },
+        { status: 413, headers }
+      );
+    }
+  }
+
   let body: unknown;
   try {
-    body = await request.json();
+    const text = await request.text();
+    if (text.length > MAX_RPC_BODY_BYTES) {
+      return NextResponse.json(
+        { error: "Request body too large", jsonrpc: "2.0", id: null },
+        { status: 413, headers }
+      );
+    }
+    body = JSON.parse(text) as unknown;
   } catch {
     return NextResponse.json(
       { error: "Invalid JSON body", jsonrpc: "2.0", id: null },
