@@ -1,6 +1,6 @@
 // GraphQL configuration for Harbor subgraphs
+// Never ship a fallback API key in source: it is bundled for the client when using NEXT_PUBLIC_*.
 
-const GRAPH_API_KEY = process.env.NEXT_PUBLIC_GRAPH_API_KEY || "247d3c7824af808d9ba8a671c7bddfdf";
 const useTest2 = process.env.NEXT_PUBLIC_USE_TEST2_CONTRACTS === "true";
 
 // Default marks subgraph (v0.1.4 = metals consistent pricing). Override with NEXT_PUBLIC_GRAPH_URL if needed.
@@ -84,22 +84,30 @@ export const getGraphHeaders = (url?: string): Record<string, string> => {
     "Content-Type": "application/json",
   };
   
-  // If using Graph Network gateway, add API key in Authorization header
+  // If using Graph Network gateway, add API key in Authorization header (env only; no repo fallback).
   const graphUrl = url || getGraphUrl();
-  const graphApiKey = process.env.NEXT_PUBLIC_GRAPH_API_KEY || GRAPH_API_KEY;
-  
-  if (typeof window !== "undefined") {
-    console.log("[getGraphHeaders] GraphQL URL:", redactUrl(graphUrl), "API key present:", !!graphApiKey && graphApiKey.length > 0);
+  const graphApiKey = (process.env.NEXT_PUBLIC_GRAPH_API_KEY || "").trim();
+
+  if (
+    typeof window !== "undefined" &&
+    process.env.NODE_ENV === "development"
+  ) {
+    console.log(
+      "[getGraphHeaders] GraphQL URL:",
+      redactUrl(graphUrl),
+      "API key present:",
+      graphApiKey.length > 0
+    );
   }
-  
+
   // Check if URL is a Graph Network gateway (requires auth)
   // gateway.thegraph.com uses Bearer token in Authorization header
   // gateway-arbitrum.network.thegraph.com uses API key in URL path
-  if (graphUrl.includes("gateway.thegraph.com")) {
-    headers["Authorization"] = `Bearer ${graphApiKey}`;
-  } else if (graphUrl.includes("gateway-arbitrum.network.thegraph.com")) {
-    // API key is already in the URL path for this gateway
-    // But we can also add it as Authorization header for extra security
+  if (
+    graphApiKey &&
+    (graphUrl.includes("gateway.thegraph.com") ||
+      graphUrl.includes("gateway-arbitrum.network.thegraph.com"))
+  ) {
     headers["Authorization"] = `Bearer ${graphApiKey}`;
   }
   
