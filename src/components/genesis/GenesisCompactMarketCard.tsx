@@ -101,6 +101,10 @@ export type GenesisCompactMarketCardProps = {
   onWithdraw: () => void;
   onClaim: () => void;
   expandedContent?: ReactNode;
+  /** Maiden voyage preview (`genesisActive: "soon"`): grey card, no deposits. */
+  isGenesisPreviewSoon?: boolean;
+  /** `genesisActive: "completed"`: no new deposits/withdrawals; claim when market ended. */
+  isGenesisClaimOnlyConfig?: boolean;
 };
 
 export function GenesisCompactMarketCard({
@@ -125,19 +129,40 @@ export function GenesisCompactMarketCard({
   onWithdraw,
   onClaim,
   expandedContent,
+  isGenesisPreviewSoon = false,
+  isGenesisClaimOnlyConfig = false,
 }: GenesisCompactMarketCardProps) {
+  const previewSoon = Boolean(isGenesisPreviewSoon);
+  const claimOnlyCfg = Boolean(isGenesisClaimOnlyConfig);
+  const blockConfiguredDeposits = previewSoon || claimOnlyCfg;
+
   const compactTitleMinCh = Math.max(
     COMPACT_CARD_TITLE_MIN_CH_FLOOR,
     marketName.trim().length,
   );
 
   const showClaimAction = isEnded && !showMaintenanceTag;
-  const disableClaim = !hasClaimable || isClaiming;
-  const disableManage = isProcessing || showMaintenanceTag || isEnded;
+  const disableClaim =
+    !hasClaimable || isClaiming || previewSoon;
+  const disableManage = isProcessing || showMaintenanceTag || isEnded || blockConfiguredDeposits;
   const progressPct = capData ? Math.min(100, Math.max(0, capData.progressPct)) : 0;
   const availablePct = capData ? Math.min(100, Math.max(0, 100 - progressPct)) : 0;
   const statusVisual: { variant: "open" | "warning" | "neutral" | "claim"; dotClass: string; text: string } =
     (() => {
+      if (previewSoon) {
+        return {
+          variant: "neutral",
+          dotClass: "bg-slate-400",
+          text: "Opening soon",
+        };
+      }
+      if (claimOnlyCfg && !isEnded) {
+        return {
+          variant: "neutral",
+          dotClass: "bg-slate-500",
+          text: "Deposits closed",
+        };
+      }
       if (showMaintenanceTag || statusText === "Maintenance") {
         return {
           variant: "neutral",
@@ -232,7 +257,11 @@ export function GenesisCompactMarketCard({
   }, [marketName, primaryMarketIcon]);
 
   return (
-    <article className="overflow-hidden rounded-xl bg-white text-[#1E4775] shadow-[0_16px_40px_-30px_rgba(0,0,0,0.55)] ring-1 ring-black/5">
+    <article
+      className={`overflow-hidden rounded-xl bg-white text-[#1E4775] shadow-[0_16px_40px_-30px_rgba(0,0,0,0.55)] ring-1 ring-black/5 ${
+        blockConfiguredDeposits ? "relative opacity-[0.92] saturate-[0.72]" : ""
+      }`}
+    >
       {/* lg: `1.15fr` / `2.7fr` / strip / `1.15fr` — outer cols equal */}
       <div className="grid gap-4 px-4 py-4 md:grid-cols-2 md:items-stretch lg:grid-cols-[minmax(0,_1.15fr)_minmax(0,_2.7fr)_calc(5.5rem_+_10px)_minmax(0,_1.15fr)] lg:items-stretch lg:gap-x-0 lg:gap-y-4">
         <div
@@ -475,7 +504,7 @@ export function GenesisCompactMarketCard({
             </div>
           )}
 
-          {capData && !isEnded && (
+          {capData && !isEnded && !previewSoon && (
             <div className="mt-auto space-y-2.5 pt-1">
               <div className={`${sectionHeaderClass} font-bold`}>
                 Early depositor advantage
@@ -499,7 +528,7 @@ export function GenesisCompactMarketCard({
         </div>
       </div>
 
-      {capData && !isEnded && (
+      {capData && !isEnded && !previewSoon && (
         <div className="border-t border-black/5 bg-[#FAFCFF] px-4 py-3">
           <div className="mb-1 flex items-center gap-2">
             <SimpleTooltip

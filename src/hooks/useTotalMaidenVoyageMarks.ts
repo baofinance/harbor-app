@@ -6,8 +6,7 @@ import { getGraphUrl, getGraphHeaders, retryGraphQLQuery } from "@/config/graph"
 import { POLLING_INTERVALS } from "@/config/polling";
 import { redactUrl } from "@/utils/redactUrl";
 import { calculateMarksForAPR } from "@/utils/tideAPR";
-import { markets } from "@/config/markets";
-import { isMegaethMaidenVoyageMarket } from "@/utils/megaethMarket";
+import { markets, genesisParticipatesInMaidenVoyageTotals } from "@/config/markets";
 
 /**
  * GraphQL query to get deposits filtered by contract addresses
@@ -56,20 +55,18 @@ export function useTotalMaidenVoyageMarks() {
   
   // Get all genesis contract addresses from markets config (exclude coming soon markets and zero addresses)
   const genesisAddresses = useMemo(() => {
-    const genesisMarkets = Object.entries(markets).filter(
-      ([id, mkt]) => {
-        const genesisAddr = (mkt as any).addresses?.genesis;
-        return (
-          genesisAddr &&
-          genesisAddr !== "0x0000000000000000000000000000000000000000" &&
-          (mkt as any).status !== "coming-soon" &&
-          !isMegaethMaidenVoyageMarket(id, mkt)
-        );
-      }
-    );
+    const genesisMarkets = Object.entries(markets).filter(([, mkt]) => {
+      const genesisAddr = (mkt as any).addresses?.genesis;
+      return (
+        genesisAddr &&
+        genesisAddr !== "0x0000000000000000000000000000000000000000" &&
+        (mkt as any).status !== "coming-soon" &&
+        genesisParticipatesInMaidenVoyageTotals(mkt)
+      );
+    });
     
     return genesisMarkets
-      .map(([_, mkt]) => (mkt as any).addresses?.genesis)
+      .map(([, mkt]) => (mkt as any).addresses?.genesis)
       .filter((addr): addr is string => 
         !!addr && 
         typeof addr === "string" && 

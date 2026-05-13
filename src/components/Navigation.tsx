@@ -16,12 +16,10 @@ import { ConnectWallet } from "@/components/Wallet";
 import { PageLayoutToggle } from "@/components/PageLayoutToggle";
 import { useAppBackground } from "@/contexts/AppBackgroundContext";
 
-/** Less-frequent destinations: desktop popover, mobile "More" section. */
-const SECONDARY_NAV: ReadonlyArray<{ href: string; label: string }> = [
-  { href: "/transparency", label: "Transparency" },
+/** Desktop popover + mobile “More”: lower-traffic destinations only. */
+const MORE_NAV: ReadonlyArray<{ href: string; label: string }> = [
   { href: "/ledger-marks", label: "Leaderboard" },
   { href: "/tide", label: "Tide" },
-  { href: "/harbor", label: "hyTOKEN" },
 ];
 
 export default function Example() {
@@ -64,10 +62,10 @@ export default function Example() {
                 priority
               />
             </a>
-            <div className="hidden min-w-0 flex-1 sm:grid sm:grid-cols-3 sm:items-center sm:gap-x-3 lg:gap-x-8">
+            <div className="hidden min-w-0 flex-1 sm:flex sm:flex-wrap sm:items-center sm:justify-center sm:gap-x-1.5 sm:gap-y-1 md:gap-x-2 lg:gap-x-3">
               <Link
                 href="/genesis"
-                className={`${linkClass("/genesis")} inline-flex min-w-0 w-full items-center justify-center gap-1`}
+                className={`${linkClass("/genesis")} inline-flex min-w-0 shrink-0 items-center justify-center gap-1`}
                 aria-current={isActive("/genesis") ? "page" : undefined}
               >
                 <span>Maiden Voyage</span>
@@ -83,21 +81,39 @@ export default function Example() {
               </Link>
               <Link
                 href="/anchor"
-                className={`${linkClass("/anchor")} flex min-w-0 w-full items-center justify-center`}
+                className={`${linkClass("/anchor")} flex shrink-0 items-center justify-center`}
                 aria-current={isActive("/anchor") ? "page" : undefined}
               >
                 Earn
               </Link>
               <Link
+                href="/harbor"
+                className={`${linkClass("/harbor")} flex shrink-0 items-center justify-center`}
+                aria-current={isActive("/harbor") ? "page" : undefined}
+              >
+                hyToken
+              </Link>
+              <Link
                 href="/sail"
-                className={`${linkClass("/sail")} flex min-w-0 w-full items-center justify-center`}
+                className={`${linkClass("/sail")} flex shrink-0 items-center justify-center`}
                 aria-current={isActive("/sail") ? "page" : undefined}
               >
                 Leverage
               </Link>
+              <Link
+                href="/transparency"
+                className={`${linkClass("/transparency")} flex shrink-0 items-center justify-center`}
+                aria-current={isActive("/transparency") ? "page" : undefined}
+              >
+                Transparency
+              </Link>
             </div>
           </div>
           <div className="hidden shrink-0 sm:flex sm:items-center sm:gap-2 lg:gap-3">
+            <Suspense fallback={null}>
+              <PageLayoutToggle />
+            </Suspense>
+            <ConnectWallet />
             <Popover className="relative">
               <PopoverButton
                 className="group relative inline-flex items-center justify-center rounded-md p-2 text-white hover:bg-white/20 focus:outline-2 focus:-outline-offset-1 focus:outline-white/40"
@@ -110,7 +126,7 @@ export default function Example() {
                 anchor={{ to: "bottom end", gap: 8 }}
                 className="z-[100] w-56 origin-top-right rounded-lg bg-white py-1 shadow-lg ring-1 ring-black/5 outline-none transition data-closed:scale-95 data-closed:opacity-0"
               >
-                {SECONDARY_NAV.map(({ href, label }) => (
+                {MORE_NAV.map(({ href, label }) => (
                   <Link
                     key={href}
                     href={href}
@@ -126,10 +142,6 @@ export default function Example() {
                 ))}
               </PopoverPanel>
             </Popover>
-            <Suspense fallback={null}>
-              <PageLayoutToggle />
-            </Suspense>
-            <ConnectWallet />
           </div>
           <div className="-mr-2 flex sm:hidden">
             {/* Mobile menu button */}
@@ -204,6 +216,18 @@ export default function Example() {
             </DisclosureButton>
             <DisclosureButton
               as={Link}
+              href="/harbor"
+              className={`block w-full max-w-sm mx-auto px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 text-center ${
+                isActive("/harbor")
+                  ? "text-[#1E4775] bg-white"
+                  : "text-white bg-white/10 hover:bg-white/20"
+              }`}
+              aria-current={isActive("/harbor") ? "page" : undefined}
+            >
+              hyToken
+            </DisclosureButton>
+            <DisclosureButton
+              as={Link}
               href="/sail"
               className={`block w-full max-w-sm mx-auto px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 text-center ${
                 isActive("/sail")
@@ -214,12 +238,24 @@ export default function Example() {
             >
               Leverage
             </DisclosureButton>
+            <DisclosureButton
+              as={Link}
+              href="/transparency"
+              className={`block w-full max-w-sm mx-auto px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 text-center ${
+                isActive("/transparency")
+                  ? "text-[#1E4775] bg-white"
+                  : "text-white bg-white/10 hover:bg-white/20"
+              }`}
+              aria-current={isActive("/transparency") ? "page" : undefined}
+            >
+              Transparency
+            </DisclosureButton>
             <div className="mt-6 w-full max-w-sm mx-auto border-t border-white/20 pt-6">
               <p className="mb-3 text-center text-xs font-medium uppercase tracking-wide text-white/50">
                 More
               </p>
               <div className="flex flex-col space-y-2.5">
-                {SECONDARY_NAV.map(({ href, label }) => (
+                {MORE_NAV.map(({ href, label }) => (
                   <DisclosureButton
                     key={href}
                     as={Link}

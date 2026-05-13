@@ -39,6 +39,7 @@ import { useGenesisPageData } from "@/hooks/useGenesisPageData";
 import { usePageLayoutPreference } from "@/contexts/PageLayoutPreferenceContext";
 import { ensureMarketWalletChain } from "@/utils/ensureMarketWalletChain";
 import { formatCompactUSD } from "@/utils/anchor";
+import { genesisParticipatesInMaidenVoyageTotals } from "@/config/markets";
 
 const SHOW_MAIDEN_VOYAGE_COMING_SOON =
   process.env.NEXT_PUBLIC_SHOW_MAIDEN_VOYAGE_COMING_SOON === "true";
@@ -636,6 +637,7 @@ export default function GenesisIndexPage() {
 
     genesisMarkets.forEach(([id, mkt], marketIndex) => {
       if (!activeIds.has(id)) return;
+      if (!genesisParticipatesInMaidenVoyageTotals(mkt)) return;
       const totalDeposits = totalDepositsReads?.[marketIndex]?.result as bigint | undefined;
       if (!totalDeposits || totalDeposits <= 0n) return;
 
@@ -660,6 +662,7 @@ export default function GenesisIndexPage() {
 
     genesisMarkets.forEach(([id, mkt], marketIndex) => {
       if (!activeIds.has(id)) return;
+      if (!genesisParticipatesInMaidenVoyageTotals(mkt)) return;
       const baseOffset = marketIndex * (isConnected ? 3 : 1);
       const userDeposit = reads?.[baseOffset + 1]?.result as bigint | undefined;
       if (!userDeposit || userDeposit <= 0n) return;

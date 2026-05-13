@@ -2,6 +2,8 @@
  * Narrow shape for Genesis index/detail row rendering (avoids `mkt as any` everywhere).
  * Markets in `config/markets` satisfy this for genesis entries; use when typing row props.
  */
+import type { GenesisActiveSetting } from "@/config/markets";
+
 export type GenesisMarketConfig = {
   name?: string;
   pegTarget?: string;
@@ -9,6 +11,11 @@ export type GenesisMarketConfig = {
   rowLeveragedSymbol?: string;
   coinGeckoId?: string;
   maintenance?: boolean;
+  /**
+   * Maiden Voyage listing + CTA mode. Default when omitted: full participation (`true`).
+   * @see `getGenesisActiveSetting` in `config/markets`.
+   */
+  genesisActive?: GenesisActiveSetting;
   /**
    * When true, show a square “TEST” label in the Status column instead of time / state text.
    */

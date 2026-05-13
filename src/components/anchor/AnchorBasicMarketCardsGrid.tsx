@@ -173,7 +173,7 @@ function AnchorBasicHorizontalTokenStrip({
 const CARD_RAIL_SLOT =
   "mt-1.5 flex min-h-[2rem] w-full max-w-[280px] items-center justify-center";
 const CARD_STATUS_SLOT =
-  "mt-1.5 flex min-h-[1.25rem] w-full items-center justify-center";
+  "mt-1.5 flex h-9 w-full items-center justify-center";
 const CARD_APR_SLOT =
   "mt-2 flex min-h-[2rem] w-full items-center justify-center";
 
