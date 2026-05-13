@@ -3,11 +3,11 @@
 
 const useTest2 = process.env.NEXT_PUBLIC_USE_TEST2_CONTRACTS === "true";
 
-// Default marks subgraph (v0.1.4 = metals consistent pricing). Override with NEXT_PUBLIC_GRAPH_URL if needed.
-const DEFAULT_MARKS_URL = "https://api.studio.thegraph.com/query/1718836/harbor-marks/v0.1.4-metals-consistent-pricing";
+// Default marks subgraph. Override with NEXT_PUBLIC_GRAPH_URL if needed.
+const DEFAULT_MARKS_URL = "https://api.studio.thegraph.com/query/1718836/harbor-marks/v0.1.6-spm-harvest-abi-fix";
 
 export const GRAPH_CONFIG = {
-  // Harbor Marks subgraph. Use env to override (e.g. gateway). Default: Studio v0.1.4 (metals consistent pricing).
+  // Harbor Marks subgraph. Use env to override (e.g. gateway). Default: Studio (see DEFAULT_MARKS_URL).
   marks: {
     url:
       (useTest2
@@ -62,8 +62,8 @@ export const CONTRACTS_WBTC = {
   stabilityPoolLeveraged: "0xfc2145de73ec53e34c4e6809b56a61321315e806",
 };
 
-// Harbor Marks subgraph version (metals consistent pricing). Bump when redeploying subgraph.
-const HARBOR_MARKS_VERSION = "v0.1.4-metals-consistent-pricing";
+// Harbor Marks subgraph version. Bump when redeploying subgraph.
+const HARBOR_MARKS_VERSION = "v0.1.6-spm-harvest-abi-fix";
 const STUDIO_MARKS_BASE = "https://api.studio.thegraph.com/query/1718836/harbor-marks";
 const STUDIO_MARKS_DEFAULT = `${STUDIO_MARKS_BASE}/${HARBOR_MARKS_VERSION}`;
 
