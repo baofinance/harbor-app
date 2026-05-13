@@ -3,7 +3,10 @@ import { Suspense } from "react";
 import {
   Disclosure,
   DisclosureButton,
-  DisclosurePanel
+  DisclosurePanel,
+  Popover,
+  PopoverButton,
+  PopoverPanel,
 } from "@headlessui/react";
 import { Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline";
 import { usePathname } from "next/navigation";
@@ -12,6 +15,14 @@ import Image from "next/image";
 import { ConnectWallet } from "@/components/Wallet";
 import { PageLayoutToggle } from "@/components/PageLayoutToggle";
 import { useAppBackground } from "@/contexts/AppBackgroundContext";
+
+/** Less-frequent destinations: desktop popover, mobile "More" section. */
+const SECONDARY_NAV: ReadonlyArray<{ href: string; label: string }> = [
+  { href: "/transparency", label: "Transparency" },
+  { href: "/ledger-marks", label: "Leaderboard" },
+  { href: "/tide", label: "Tide" },
+  { href: "/harbor", label: "hyTOKEN" },
+];
 
 export default function Example() {
   const pathname = usePathname();
@@ -56,13 +67,6 @@ export default function Example() {
             <div className="hidden min-w-0 sm:block">
               <div className="flex flex-nowrap items-center justify-start gap-1 overflow-x-auto py-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 <Link
-                  href="/dashboard"
-                  className={linkClass("/dashboard")}
-                  aria-current={isActive("/dashboard") ? "page" : undefined}
-                >
-                  Dashboard
-                </Link>
-                <Link
                   href="/genesis"
                   className={`${linkClass("/genesis")} inline-flex items-center gap-1`}
                   aria-current={isActive("/genesis") ? "page" : undefined}
@@ -79,13 +83,6 @@ export default function Example() {
                   </span>
                 </Link>
                 <Link
-                  href="/harbor"
-                  className={linkClass("/harbor")}
-                  aria-current={isActive("/harbor") ? "page" : undefined}
-                >
-                  Harbor
-                </Link>
-                <Link
                   href="/anchor"
                   className={linkClass("/anchor")}
                   aria-current={isActive("/anchor") ? "page" : undefined}
@@ -99,31 +96,38 @@ export default function Example() {
                 >
                   Leverage
                 </Link>
-                <Link
-                  href="/ledger-marks"
-                  className={linkClass("/ledger-marks")}
-                  aria-current={isActive("/ledger-marks") ? "page" : undefined}
-                >
-                  Leaderboard
-                </Link>
-                <Link
-                  href="/transparency"
-                  className={linkClass("/transparency")}
-                  aria-current={isActive("/transparency") ? "page" : undefined}
-                >
-                  Transperancy
-                </Link>
-                <Link
-                  href="/tide"
-                  className={linkClass("/tide")}
-                  aria-current={isActive("/tide") ? "page" : undefined}
-                >
-                  Tide
-                </Link>
               </div>
             </div>
           </div>
           <div className="hidden shrink-0 sm:flex sm:items-center sm:gap-2 lg:gap-3">
+            <Popover className="relative">
+              <PopoverButton
+                className="group relative inline-flex items-center justify-center rounded-md p-2 text-white hover:bg-white/20 focus:outline-2 focus:-outline-offset-1 focus:outline-white/40"
+                aria-label="More navigation"
+              >
+                <Bars3Icon aria-hidden="true" className="size-6" />
+              </PopoverButton>
+              <PopoverPanel
+                transition
+                anchor={{ to: "bottom end", gap: 8 }}
+                className="z-[100] w-56 origin-top-right rounded-lg bg-white py-1 shadow-lg ring-1 ring-black/5 outline-none transition data-closed:scale-95 data-closed:opacity-0"
+              >
+                {SECONDARY_NAV.map(({ href, label }) => (
+                  <Link
+                    key={href}
+                    href={href}
+                    className={`block px-4 py-2.5 text-sm font-medium ${
+                      isActive(href)
+                        ? "bg-[#1E4775]/10 text-[#1E4775]"
+                        : "text-[#1E4775] hover:bg-gray-100"
+                    }`}
+                    aria-current={isActive(href) ? "page" : undefined}
+                  >
+                    {label}
+                  </Link>
+                ))}
+              </PopoverPanel>
+            </Popover>
             <Suspense fallback={null}>
               <PageLayoutToggle />
             </Suspense>
@@ -167,18 +171,6 @@ export default function Example() {
           <div className="flex flex-col w-full items-stretch justify-center space-y-2.5 py-2">
             <DisclosureButton
               as={Link}
-              href="/dashboard"
-              className={`block w-full max-w-sm mx-auto px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 text-center ${
-                isActive("/dashboard")
-                  ? "text-[#1E4775] bg-white"
-                  : "text-white bg-white/10 hover:bg-white/20"
-              }`}
-              aria-current={isActive("/dashboard") ? "page" : undefined}
-            >
-              Dashboard
-            </DisclosureButton>
-            <DisclosureButton
-              as={Link}
               href="/genesis"
               className={`block w-full max-w-sm mx-auto px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 text-center ${
                 isActive("/genesis")
@@ -199,18 +191,6 @@ export default function Example() {
                   2.0
                 </span>
               </span>
-            </DisclosureButton>
-            <DisclosureButton
-              as={Link}
-              href="/harbor"
-              className={`block w-full max-w-sm mx-auto px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 text-center ${
-                isActive("/harbor")
-                  ? "text-[#1E4775] bg-white"
-                  : "text-white bg-white/10 hover:bg-white/20"
-              }`}
-              aria-current={isActive("/harbor") ? "page" : undefined}
-            >
-              Harbor
             </DisclosureButton>
             <DisclosureButton
               as={Link}
@@ -236,42 +216,28 @@ export default function Example() {
             >
               Leverage
             </DisclosureButton>
-            <DisclosureButton
-              as={Link}
-              href="/ledger-marks"
-              className={`block w-full max-w-sm mx-auto px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 text-center ${
-                isActive("/ledger-marks")
-                  ? "text-[#1E4775] bg-white"
-                  : "text-white bg-white/10 hover:bg-white/20"
-              }`}
-              aria-current={isActive("/ledger-marks") ? "page" : undefined}
-            >
-              Leaderboard
-            </DisclosureButton>
-            <DisclosureButton
-              as={Link}
-              href="/transparency"
-              className={`block w-full max-w-sm mx-auto px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 text-center ${
-                isActive("/transparency")
-                  ? "text-[#1E4775] bg-white"
-                  : "text-white bg-white/10 hover:bg-white/20"
-              }`}
-              aria-current={isActive("/transparency") ? "page" : undefined}
-            >
-              Transperancy
-            </DisclosureButton>
-            <DisclosureButton
-              as={Link}
-              href="/tide"
-              className={`block w-full max-w-sm mx-auto px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 text-center ${
-                isActive("/tide")
-                  ? "text-[#1E4775] bg-white"
-                  : "text-white bg-white/10 hover:bg-white/20"
-              }`}
-              aria-current={isActive("/tide") ? "page" : undefined}
-            >
-              Tide
-            </DisclosureButton>
+            <div className="mt-6 w-full max-w-sm mx-auto border-t border-white/20 pt-6">
+              <p className="mb-3 text-center text-xs font-medium uppercase tracking-wide text-white/50">
+                More
+              </p>
+              <div className="flex flex-col space-y-2.5">
+                {SECONDARY_NAV.map(({ href, label }) => (
+                  <DisclosureButton
+                    key={href}
+                    as={Link}
+                    href={href}
+                    className={`block w-full px-6 py-3.5 text-base font-medium rounded-full transition-colors flex-shrink-0 text-center ${
+                      isActive(href)
+                        ? "text-[#1E4775] bg-white"
+                        : "text-white bg-white/10 hover:bg-white/20"
+                    }`}
+                    aria-current={isActive(href) ? "page" : undefined}
+                  >
+                    {label}
+                  </DisclosureButton>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </DisclosurePanel>
