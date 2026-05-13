@@ -257,6 +257,12 @@ dataSources:
       abis:
         - name: StabilityPoolManager
           file: ./abis/StabilityPoolManager.json
+        - name: Minter
+          file: ./abis/Minter.json
+        - name: WrappedPriceOracle
+          file: ./abis/WrappedPriceOracle.json
+        - name: ChainlinkAggregator
+          file: ./abis/ChainlinkAggregator.json
       eventHandlers:
         - event: Harvested(uint256)
           handler: handleStabilityPoolManagerHarvested
@@ -488,6 +494,12 @@ dataSources:
       abis:
         - name: StabilityPoolManager
           file: ./abis/StabilityPoolManager.json
+        - name: Minter
+          file: ./abis/Minter.json
+        - name: WrappedPriceOracle
+          file: ./abis/WrappedPriceOracle.json
+        - name: ChainlinkAggregator
+          file: ./abis/ChainlinkAggregator.json
       eventHandlers:
         - event: Harvested(uint256)
           handler: handleStabilityPoolManagerHarvested
@@ -1030,6 +1042,12 @@ dataSources:
       abis:
         - name: StabilityPoolManager
           file: ./abis/StabilityPoolManager.json
+        - name: Minter
+          file: ./abis/Minter.json
+        - name: WrappedPriceOracle
+          file: ./abis/WrappedPriceOracle.json
+        - name: ChainlinkAggregator
+          file: ./abis/ChainlinkAggregator.json
       eventHandlers:
         - event: Harvested(uint256)
           handler: handleStabilityPoolManagerHarvested
@@ -1053,6 +1071,12 @@ dataSources:
       abis:
         - name: StabilityPoolManager
           file: ./abis/StabilityPoolManager.json
+        - name: Minter
+          file: ./abis/Minter.json
+        - name: WrappedPriceOracle
+          file: ./abis/WrappedPriceOracle.json
+        - name: ChainlinkAggregator
+          file: ./abis/ChainlinkAggregator.json
       eventHandlers:
         - event: Harvested(uint256)
           handler: handleStabilityPoolManagerHarvested
@@ -1340,6 +1364,12 @@ dataSources:
       abis:
         - name: StabilityPoolManager
           file: ./abis/StabilityPoolManager.json
+        - name: Minter
+          file: ./abis/Minter.json
+        - name: WrappedPriceOracle
+          file: ./abis/WrappedPriceOracle.json
+        - name: ChainlinkAggregator
+          file: ./abis/ChainlinkAggregator.json
       eventHandlers:
         - event: Harvested(uint256)
           handler: handleStabilityPoolManagerHarvested
