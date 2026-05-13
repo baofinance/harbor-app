@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 export const metadata: Metadata = {
   title: "Dashboard | Harbor",
   description:
-    "Wallet overview and founder yield metrics across Harbor maiden voyage markets.",
+    "Wallet overview, founder yield, and Earn / Maiden Voyage / Leverage positions from Harbor subgraphs.",
 };
 
 export default function DashboardLayout({
