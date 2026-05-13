@@ -64,7 +64,14 @@ export default function Example() {
                 priority
               />
             </a>
-            <div className="hidden min-w-0 flex-1 sm:grid sm:grid-cols-3 sm:items-center sm:gap-x-3 lg:gap-x-8">
+            <div className="hidden min-w-0 flex-1 sm:grid sm:grid-cols-4 sm:items-center sm:gap-x-2 md:gap-x-4 lg:gap-x-6">
+              <Link
+                href="/dashboard"
+                className={`${linkClass("/dashboard")} flex min-w-0 w-full items-center justify-center`}
+                aria-current={isActive("/dashboard") ? "page" : undefined}
+              >
+                Dashboard
+              </Link>
               <Link
                 href="/genesis"
                 className={`${linkClass("/genesis")} inline-flex min-w-0 w-full items-center justify-center gap-1`}
@@ -167,6 +174,18 @@ export default function Example() {
             <ConnectWallet />
           </div>
           <div className="flex flex-col w-full items-stretch justify-center space-y-2.5 py-2">
+            <DisclosureButton
+              as={Link}
+              href="/dashboard"
+              className={`block w-full max-w-sm mx-auto px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 text-center ${
+                isActive("/dashboard")
+                  ? "text-[#1E4775] bg-white"
+                  : "text-white bg-white/10 hover:bg-white/20"
+              }`}
+              aria-current={isActive("/dashboard") ? "page" : undefined}
+            >
+              Dashboard
+            </DisclosureButton>
             <DisclosureButton
               as={Link}
               href="/genesis"
