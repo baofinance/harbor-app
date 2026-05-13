@@ -8,6 +8,7 @@ import {
 } from "@/hooks/useHarborMarks";
 import { formatGenesisMarketDisplayName } from "@/utils/genesisDisplay";
 import { buildNetworkFilterOptions } from "@/utils/networkFilter";
+import { isMegaethMaidenVoyageMarket } from "@/utils/megaethMarket";
 
 /**
  * Genesis index route: market list config, subgraph marks, bonus status, combined error flags, and display helpers.
@@ -16,13 +17,14 @@ import { buildNetworkFilterOptions } from "@/utils/networkFilter";
 export function useGenesisPageData() {
   const genesisMarkets = useMemo(
     () =>
-      Object.entries(markets).filter(([_, mkt]) => {
+      Object.entries(markets).filter(([id, mkt]) => {
         const genesisAddr = (mkt as { addresses?: { genesis?: string } }).addresses
           ?.genesis;
         return (
           genesisAddr &&
           genesisAddr !== "0x0000000000000000000000000000000000000000" &&
-          (mkt as { status?: string }).status !== "coming-soon"
+          (mkt as { status?: string }).status !== "coming-soon" &&
+          !isMegaethMaidenVoyageMarket(id, mkt)
         );
       }),
     []

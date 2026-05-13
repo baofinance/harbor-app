@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { useContractReads } from "wagmi";
 import { formatEther } from "viem";
 import { markets } from "@/config/markets";
+import { isMegaethMaidenVoyageMarket } from "@/utils/megaethMarket";
 import { GENESIS_ABI, ERC20_ABI } from "@/abis/shared";
 import { useMultipleCollateralPrices } from "@/hooks/useCollateralPrice";
 
@@ -16,11 +17,14 @@ export function useTotalGenesisTVL() {
   const genesisMarkets = useMemo(
     () =>
       Object.entries(markets).filter(
-        ([_, mkt]) => {
+        ([id, mkt]) => {
           const genesisAddr = (mkt as any).addresses?.genesis;
-          return genesisAddr && 
-                 genesisAddr !== "0x0000000000000000000000000000000000000000" &&
-                 (mkt as any).status !== "coming-soon";
+          return (
+            genesisAddr &&
+            genesisAddr !== "0x0000000000000000000000000000000000000000" &&
+            (mkt as any).status !== "coming-soon" &&
+            !isMegaethMaidenVoyageMarket(id, mkt)
+          );
         }
       ),
     []

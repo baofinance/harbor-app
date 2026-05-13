@@ -50,10 +50,10 @@ export default function Example() {
       {/* Match index pages: `max-w-[1300px]` + `px-4 sm:px-10` on main */}
       <div className="w-full px-4 sm:px-10">
         <div className="flex h-16 items-center justify-between gap-3">
-          <div className="flex min-w-0 flex-1 items-center justify-start">
+          <div className="flex min-w-0 flex-1 items-center gap-3 sm:gap-5">
             <a
               href="https://harborfinance.io"
-              className="relative mr-2 h-10 w-auto shrink-0 sm:mr-3"
+              className="relative mr-0 h-10 w-auto shrink-0 sm:mr-0"
             >
               <Image
                 src="/logo.svg"
@@ -64,39 +64,37 @@ export default function Example() {
                 priority
               />
             </a>
-            <div className="hidden min-w-0 sm:block">
-              <div className="flex flex-nowrap items-center justify-start gap-1 overflow-x-auto py-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                <Link
-                  href="/genesis"
-                  className={`${linkClass("/genesis")} inline-flex items-center gap-1`}
-                  aria-current={isActive("/genesis") ? "page" : undefined}
+            <div className="hidden min-w-0 flex-1 sm:grid sm:grid-cols-3 sm:items-center sm:gap-x-3 lg:gap-x-8">
+              <Link
+                href="/genesis"
+                className={`${linkClass("/genesis")} inline-flex min-w-0 w-full items-center justify-center gap-1`}
+                aria-current={isActive("/genesis") ? "page" : undefined}
+              >
+                <span>Maiden Voyage</span>
+                <span
+                  className={`shrink-0 rounded px-1 py-0.5 text-[10px] font-bold leading-none font-mono border ${
+                    isActive("/genesis")
+                      ? "border-[#1E4775]/30 bg-[#1E4775] text-white"
+                      : "border-white/40 bg-white/10 text-white"
+                  }`}
                 >
-                  <span>Maiden Voyage</span>
-                  <span
-                    className={`rounded px-1 py-0.5 text-[10px] font-bold leading-none font-mono border ${
-                      isActive("/genesis")
-                        ? "border-[#1E4775]/30 bg-[#1E4775] text-white"
-                        : "border-white/40 bg-white/10 text-white"
-                    }`}
-                  >
-                    2.0
-                  </span>
-                </Link>
-                <Link
-                  href="/anchor"
-                  className={linkClass("/anchor")}
-                  aria-current={isActive("/anchor") ? "page" : undefined}
-                >
-                  Earn
-                </Link>
-                <Link
-                  href="/sail"
-                  className={linkClass("/sail")}
-                  aria-current={isActive("/sail") ? "page" : undefined}
-                >
-                  Leverage
-                </Link>
-              </div>
+                  2.0
+                </span>
+              </Link>
+              <Link
+                href="/anchor"
+                className={`${linkClass("/anchor")} flex min-w-0 w-full items-center justify-center`}
+                aria-current={isActive("/anchor") ? "page" : undefined}
+              >
+                Earn
+              </Link>
+              <Link
+                href="/sail"
+                className={`${linkClass("/sail")} flex min-w-0 w-full items-center justify-center`}
+                aria-current={isActive("/sail") ? "page" : undefined}
+              >
+                Leverage
+              </Link>
             </div>
           </div>
           <div className="hidden shrink-0 sm:flex sm:items-center sm:gap-2 lg:gap-3">

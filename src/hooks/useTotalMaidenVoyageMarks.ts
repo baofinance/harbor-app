@@ -7,6 +7,7 @@ import { POLLING_INTERVALS } from "@/config/polling";
 import { redactUrl } from "@/utils/redactUrl";
 import { calculateMarksForAPR } from "@/utils/tideAPR";
 import { markets } from "@/config/markets";
+import { isMegaethMaidenVoyageMarket } from "@/utils/megaethMarket";
 
 /**
  * GraphQL query to get deposits filtered by contract addresses
@@ -56,11 +57,14 @@ export function useTotalMaidenVoyageMarks() {
   // Get all genesis contract addresses from markets config (exclude coming soon markets and zero addresses)
   const genesisAddresses = useMemo(() => {
     const genesisMarkets = Object.entries(markets).filter(
-      ([_, mkt]) => {
+      ([id, mkt]) => {
         const genesisAddr = (mkt as any).addresses?.genesis;
-        return genesisAddr && 
-               genesisAddr !== "0x0000000000000000000000000000000000000000" &&
-               (mkt as any).status !== "coming-soon";
+        return (
+          genesisAddr &&
+          genesisAddr !== "0x0000000000000000000000000000000000000000" &&
+          (mkt as any).status !== "coming-soon" &&
+          !isMegaethMaidenVoyageMarket(id, mkt)
+        );
       }
     );
     
