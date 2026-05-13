@@ -52,6 +52,13 @@ export default function Example() {
             <div className="hidden min-w-0 sm:block">
               <div className="flex flex-nowrap items-center justify-start gap-1 overflow-x-auto py-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 <Link
+                  href="/dashboard"
+                  className={linkClass("/dashboard")}
+                  aria-current={isActive("/dashboard") ? "page" : undefined}
+                >
+                  Dashboard
+                </Link>
+                <Link
                   href="/genesis"
                   className={`${linkClass("/genesis")} inline-flex items-center gap-1`}
                   aria-current={isActive("/genesis") ? "page" : undefined}
@@ -140,6 +147,18 @@ export default function Example() {
             <ConnectWallet />
           </div>
           <div className="flex flex-col w-full items-stretch justify-center space-y-2.5 py-2">
+            <DisclosureButton
+              as={Link}
+              href="/dashboard"
+              className={`block w-full max-w-sm mx-auto px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 text-center ${
+                isActive("/dashboard")
+                  ? "text-[#1E4775] bg-white"
+                  : "text-white bg-white/10 hover:bg-white/20"
+              }`}
+              aria-current={isActive("/dashboard") ? "page" : undefined}
+            >
+              Dashboard
+            </DisclosureButton>
             <DisclosureButton
               as={Link}
               href="/genesis"

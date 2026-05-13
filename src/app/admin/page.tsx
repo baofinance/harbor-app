@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, type MouseEvent } from "react";
+import { usePathname } from "next/navigation";
 import {
  useAccount,
  useWriteContract,
@@ -11,7 +12,6 @@ import {
 import { parseEther, formatEther, formatUnits } from "viem";
 import { markets } from "../../config/markets";
 import { ConnectWallet } from "@/components/Wallet";
-import Link from "next/link";
 import { formatTimeRemaining } from "@/utils/formatters";
 
 import {
@@ -52,8 +52,36 @@ function formatTokenAmount(
   return trimmed ? `${whole}.${trimmed}` : whole;
 }
 
+const ADMIN_SYSTEM_LINKS: ReadonlyArray<{ href: string; label: string }> = [
+  { href: "/admin/genesis", label: "Genesis Admin" },
+  { href: "/admin/fees", label: "Mint/Redeem Fees" },
+  { href: "/admin/rewards", label: "Reward Deposits" },
+  { href: "/admin/rebalancing", label: "Rebalancing" },
+  { href: "/admin/maiden-voyage-yield", label: "Maiden voyage yield" },
+];
+
+/** Matches `basePath` logic in `next.config.js` for hard navigations. */
+function adminHrefBasePrefix(): string {
+  if (
+    process.env.NEXT_PUBLIC_USE_BASEPATH === "true" &&
+    process.env.NEXT_PUBLIC_APP_ENV === "staging"
+  ) {
+    return "/staging";
+  }
+  return "";
+}
+
+function adminNavClick(e: MouseEvent<HTMLAnchorElement>, href: string) {
+  if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) {
+    return;
+  }
+  e.preventDefault();
+  window.location.assign(`${adminHrefBasePrefix()}${href}`);
+}
+
 export default function Admin() {
  const { isConnected, address } = useAccount();
+ const pathname = usePathname() ?? "";
  const [mounted, setMounted] = useState(false);
  const [feeReceiver, setFeeReceiver] = useState("");
  const [reservePool, setReservePool] = useState("");
@@ -87,7 +115,7 @@ export default function Admin() {
  }, []);
 
  // ---------------------------------------------------------------------------
- // Fees + Harvestable summary (per market) - shown above "System Controls"
+ // Fees + Harvestable summary (per market)
  // ---------------------------------------------------------------------------
  const marketOptions = useMemo(
    () =>
@@ -962,43 +990,30 @@ export default function Admin() {
  </div>
  ) : (
   <div className="space-y-4">
- <div className="bg-zinc-900/50 p-4 sm:p-6 relative z-20">
- <h2 className="text-lg font-medium text-white mb-4 font-geo">
- System Controls
- </h2>
- <div className="flex flex-wrap gap-2 pointer-events-auto">
-  <Link
-    href="/admin/genesis"
-    className="inline-flex items-center rounded py-2 px-4 bg-harbor text-white font-medium hover:bg-harbor/90 transition-colors"
-  >
-    Genesis Admin
-  </Link>
-  <Link
-    href="/admin/fees"
-    className="inline-flex items-center rounded py-2 px-4 bg-harbor text-white font-medium hover:bg-harbor/90 transition-colors"
-  >
-    Mint/Redeem Fees
-  </Link>
-  <Link
-    href="/admin/rewards"
-    className="inline-flex items-center rounded py-2 px-4 bg-harbor text-white font-medium hover:bg-harbor/90 transition-colors"
-  >
-    Reward Deposits
-  </Link>
-  <Link
-    href="/admin/rebalancing"
-    className="inline-flex items-center rounded py-2 px-4 bg-harbor text-white font-medium hover:bg-harbor/90 transition-colors"
-  >
-    Rebalancing
-  </Link>
-  <Link
-    href="/admin/maiden-voyage-yield"
-    className="inline-flex items-center rounded py-2 px-4 bg-harbor text-white font-medium hover:bg-harbor/90 transition-colors"
-  >
-    Maiden voyage yield
-  </Link>
- </div>
- </div>
+    <nav
+      className="relative z-[60] -mx-4 sm:-mx-10 px-4 sm:px-10 py-2.5 flex flex-nowrap items-center gap-1 sm:gap-2 overflow-x-auto border-b border-white/15 bg-[#1E4775]/95 backdrop-blur-sm [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      aria-label="Admin sections"
+    >
+      {ADMIN_SYSTEM_LINKS.map(({ href, label }) => {
+        const fullHref = `${adminHrefBasePrefix()}${href}`;
+        const isActive = pathname === fullHref;
+        return (
+          <a
+            key={href}
+            href={fullHref}
+            className={`shrink-0 whitespace-nowrap rounded-md px-2.5 sm:px-3 py-2 text-sm font-medium transition-colors ${
+              isActive
+                ? "text-[#1E4775] bg-white"
+                : "text-white hover:bg-white/20 hover:text-white"
+            }`}
+            aria-current={isActive ? "page" : undefined}
+            onClick={(e) => adminNavClick(e, href)}
+          >
+            {label}
+          </a>
+        );
+      })}
+    </nav>
     {/* Rewards Streaming (per pool) */}
     <div className="bg-zinc-900/50 p-4 sm:p-6">
       <div className="flex items-center justify-between gap-4 mb-3">
