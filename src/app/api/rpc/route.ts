@@ -3,12 +3,20 @@ import { NextResponse } from "next/server";
 export const runtime = "nodejs";
 
 /**
- * JSON-RPC proxy for Ethereum mainnet.
+ * JSON-RPC proxy for Ethereum mainnet and MegaETH (chainId 4326).
  * Keeps provider API keys server-side only.
- * Client sends requests here; we forward to MAINNET_RPC_URL (+ optional fallbacks).
+ * Client sends POST to `/api/rpc` (mainnet) or `/api/rpc?chain=megaeth` (MegaETH);
+ * we forward to `MAINNET_RPC_URL` / `MEGAETH_RPC_URL` environment variables (+ optional fallbacks).
  */
 const MAINNET_RPC_URL = process.env.MAINNET_RPC_URL;
 const MAINNET_RPC_FALLBACK_URLS = (process.env.MAINNET_RPC_FALLBACK_URLS || "")
+  .split(",")
+  .map((url) => url.trim())
+  .filter(Boolean);
+
+/** MegaETH (chainId 4326) upstream — server-only; never `NEXT_PUBLIC_`. */
+const MEGAETH_RPC_URL = process.env.MEGAETH_RPC_URL;
+const MEGAETH_RPC_FALLBACK_URLS = (process.env.MEGAETH_RPC_FALLBACK_URLS || "")
   .split(",")
   .map((url) => url.trim())
   .filter(Boolean);
@@ -64,10 +72,43 @@ function getAllowedRpcOrigin(request: Request): string | undefined {
   return undefined;
 }
 
-function getUpstreamUrls(): string[] {
+function getMainnetUpstreamUrls(): string[] {
   return [MAINNET_RPC_URL, ...MAINNET_RPC_FALLBACK_URLS].filter(
     (url): url is string => Boolean(url)
   );
+}
+
+function getMegaethUpstreamUrls(): string[] {
+  return [MEGAETH_RPC_URL, ...MEGAETH_RPC_FALLBACK_URLS].filter(
+    (url): url is string => Boolean(url)
+  );
+}
+
+/** Resolve which upstream list to use from `?chain=` (default: Ethereum mainnet). */
+function getUpstreamUrlsForRequest(request: Request): {
+  upstreamUrls: string[];
+  chainLabel: string;
+} {
+  let chain: string | null = null;
+  try {
+    chain = new URL(request.url).searchParams.get("chain");
+  } catch {
+    chain = null;
+  }
+  const c = (chain || "").toLowerCase().trim();
+  if (c === "megaeth" || c === "4326") {
+    return { upstreamUrls: getMegaethUpstreamUrls(), chainLabel: "megaeth" };
+  }
+  if (
+    c === "" ||
+    c === "mainnet" ||
+    c === "ethereum" ||
+    c === "eth" ||
+    c === "1"
+  ) {
+    return { upstreamUrls: getMainnetUpstreamUrls(), chainLabel: "mainnet" };
+  }
+  return { upstreamUrls: [], chainLabel: "unknown" };
 }
 
 function shouldRetryWithFallback(status: number): boolean {
@@ -100,7 +141,7 @@ export async function OPTIONS(request: Request) {
 
 export async function POST(request: Request) {
   const headers = corsHeaders(request);
-  const upstreamUrls = getUpstreamUrls();
+  const { upstreamUrls, chainLabel } = getUpstreamUrlsForRequest(request);
 
   const origin = request.headers.get("origin");
   if (origin && !getAllowedRpcOrigin(request)) {
@@ -114,11 +155,26 @@ export async function POST(request: Request) {
     );
   }
 
-  if (!upstreamUrls.length) {
+  if (chainLabel === "unknown") {
     return NextResponse.json(
       {
         error:
-          "RPC proxy not configured (MAINNET_RPC_URL missing and no MAINNET_RPC_FALLBACK_URLS)",
+          "Unknown chain for RPC proxy. Use ?chain=mainnet (default) or ?chain=megaeth",
+        jsonrpc: "2.0",
+        id: null,
+      },
+      { status: 400, headers }
+    );
+  }
+
+  if (!upstreamUrls.length) {
+    const detail =
+      chainLabel === "megaeth"
+        ? "MEGAETH_RPC_URL missing (and no MEGAETH_RPC_FALLBACK_URLS)"
+        : "MAINNET_RPC_URL missing (and no MAINNET_RPC_FALLBACK_URLS)";
+    return NextResponse.json(
+      {
+        error: `RPC proxy not configured (${detail})`,
       },
       { status: 503, headers }
     );
