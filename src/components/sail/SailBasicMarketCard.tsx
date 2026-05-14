@@ -106,9 +106,9 @@ export function SailBasicMarketCard({
   const shortChipLabel = mappedSides?.short ?? normalizeSideLabel(shortSide);
 
   const longChipClass =
-    `flex w-full items-center justify-center gap-2 rounded-xl px-2.5 py-1.5 text-[11px] font-black tracking-[0.03em] ${BASIC_MARKET_DIRECTION_LONG_CHIP_CLASS}`;
+    `flex w-full items-center justify-center gap-2 rounded-xl px-2.5 py-1 text-[11px] font-black leading-none tracking-[0.03em] ${BASIC_MARKET_DIRECTION_LONG_CHIP_CLASS}`;
   const shortChipClass =
-    `flex w-full items-center justify-center gap-2 rounded-xl px-2.5 py-1.5 text-[11px] font-black tracking-[0.03em] ${BASIC_MARKET_DIRECTION_SHORT_CHIP_CLASS}`;
+    `flex w-full items-center justify-center gap-2 rounded-xl px-2.5 py-1 text-[11px] font-black leading-none tracking-[0.03em] ${BASIC_MARKET_DIRECTION_SHORT_CHIP_CLASS}`;
 
   return (
     <article
@@ -132,7 +132,7 @@ export function SailBasicMarketCard({
           <div className={BASIC_MARKET_SUBTITLE_PRIMARY_CLASS}>{footerLine}</div>
           <div className={BASIC_MARKET_SUBTITLE_MUTED_LINE_CLASS}>{subtitle}</div>
         </div>
-        <div className="mt-2 flex w-full flex-col items-center justify-center gap-1.5">
+        <div className="mt-2 flex h-9 w-full flex-col items-center justify-center gap-1.5">
           {isComingSoon ? (
             comingSoonChip
           ) : (

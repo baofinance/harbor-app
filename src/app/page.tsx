@@ -1,10 +1,13 @@
 import { redirect } from "next/navigation";
-import { markets, isGenesisActive } from "@/config/markets";
-import { isMegaethMaidenVoyageMarket } from "@/utils/megaethMarket";
+import {
+  markets,
+  isGenesisActive,
+  genesisEligibleForHomeRedirect,
+} from "@/config/markets";
 
 export default function HomePage() {
   // Check if any genesis market is currently active (genesis has not ended)
-  const hasActiveGenesis = Object.entries(markets).some(([id, market]) => {
+  const hasActiveGenesis = Object.entries(markets).some(([, market]) => {
     // Only check markets that have a genesis address configured
     const hasGenesisAddress =
       (market as any).addresses?.genesis &&
@@ -13,7 +16,7 @@ export default function HomePage() {
       (market as any).status !== "coming-soon";
 
     if (!hasGenesisAddress) return false;
-    if (isMegaethMaidenVoyageMarket(id, market)) return false;
+    if (!genesisEligibleForHomeRedirect(market)) return false;
 
     return isGenesisActive(market);
   });

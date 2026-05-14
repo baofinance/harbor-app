@@ -14,6 +14,9 @@ const resolveStabilityPoolManager = (
   contractsMarkets[marketId]?.addresses?.stabilityPoolManager ??
   (useTest2 ? undefined : fallback);
 
+/** Maiden Voyage / genesis index visibility (see `getGenesisActiveSetting`). */
+export type GenesisActiveSetting = true | false | "soon" | "completed";
+
 export const markets = {
   // ============================================================================
   // ETH/fxUSD Market (test2 deployment) - Mainnet deployment Dec 2025
@@ -25,6 +28,7 @@ export const markets = {
     anchorActive: true,
     sailActive: true,
     status: "genesis" as const,
+    genesisActive: true as GenesisActiveSetting,
     pegTarget: "ETH", // haETH is pegged to ETH
     zapper: true,
     anyswap: true,
@@ -115,6 +119,7 @@ export const markets = {
     anchorActive: true,
     sailActive: true,
     status: "genesis" as const,
+    genesisActive: true as GenesisActiveSetting,
     pegTarget: "BTC", // haBTC is pegged to BTC
     zapper: true,
     anyswap: true,
@@ -205,6 +210,7 @@ export const markets = {
     anchorActive: true,
     sailActive: true,
     status: "genesis" as const,
+    genesisActive: true as GenesisActiveSetting,
     pegTarget: "BTC", // haBTC is pegged to BTC
     chain: {
       name: "Ethereum",
@@ -293,6 +299,7 @@ export const markets = {
     anchorActive: false,
     sailActive: false,
     status: "genesis" as const,
+    genesisActive: true as GenesisActiveSetting,
     pegTarget: "GOLD",
     chain: {
       name: "Ethereum",
@@ -374,6 +381,7 @@ export const markets = {
     anchorActive: false,
     sailActive: false,
     status: "genesis" as const,
+    genesisActive: true as GenesisActiveSetting,
     pegTarget: "GOLD",
     chain: {
       name: "Ethereum",
@@ -455,6 +463,7 @@ export const markets = {
     anchorActive: true,
     sailActive: true,
     status: "genesis" as const,
+    genesisActive: true as GenesisActiveSetting,
     pegTarget: "EUR",
     chain: {
       name: "Ethereum",
@@ -536,6 +545,7 @@ export const markets = {
     anchorActive: true,
     sailActive: true,
     status: "genesis" as const,
+    genesisActive: true as GenesisActiveSetting,
     pegTarget: "EUR",
     chain: {
       name: "Ethereum",
@@ -769,6 +779,7 @@ export const markets = {
     anchorActive: false,
     sailActive: false,
     status: "genesis" as const,
+    genesisActive: true as GenesisActiveSetting,
     pegTarget: "SILVER",
     chain: {
       name: "Ethereum",
@@ -850,6 +861,7 @@ export const markets = {
     anchorActive: false,
     sailActive: false,
     status: "genesis" as const,
+    genesisActive: true as GenesisActiveSetting,
     pegTarget: "SILVER",
     chain: {
       name: "Ethereum",
@@ -936,6 +948,7 @@ export const markets = {
           sailActive: "soon",
           test: false,
           status: "genesis" as const,
+          genesisActive: "soon" as GenesisActiveSetting,
           pegTarget: "USD",
           chainId: 4326,
           zapper: false,
@@ -989,6 +1002,42 @@ export type Market = (typeof markets)[keyof typeof markets];
 
 /** Market config value when known to be defined (excludes `undefined` from optional `markets` keys). Prefer in Sail UI and modals. */
 export type DefinedMarket = NonNullable<Market>;
+
+export function getGenesisActiveSetting(mkt: unknown): GenesisActiveSetting {
+  if (!mkt || typeof mkt !== "object") return true;
+  const g = (mkt as { genesisActive?: GenesisActiveSetting }).genesisActive;
+  if (g === false || g === true || g === "soon" || g === "completed") return g;
+  return true;
+}
+
+/** Omit from genesis index, subgraph address lists driven by that index, etc. */
+export function isGenesisHiddenFromIndex(mkt: unknown): boolean {
+  return getGenesisActiveSetting(mkt) === false;
+}
+
+export function isGenesisSoonUi(mkt: unknown): boolean {
+  return getGenesisActiveSetting(mkt) === "soon";
+}
+
+/** Listed as ended: no new deposits; withdraw/deposit CTAs off, claim when contract allows. */
+export function isGenesisCompletedUi(mkt: unknown): boolean {
+  return getGenesisActiveSetting(mkt) === "completed";
+}
+
+/** Global maiden-voyage TVL / marks / landing hero markets (exclude hidden + preview). */
+export function genesisParticipatesInMaidenVoyageTotals(mkt: unknown): boolean {
+  const g = getGenesisActiveSetting(mkt);
+  return g === true || g === "completed";
+}
+
+export function isGenesisDepositWithdrawBlockedByConfig(mkt: unknown): boolean {
+  return isGenesisSoonUi(mkt) || isGenesisCompletedUi(mkt);
+}
+
+/** `/` redirect: only markets in full maiden-voyage mode (not preview). */
+export function genesisEligibleForHomeRedirect(mkt: unknown): boolean {
+  return getGenesisActiveSetting(mkt) === true;
+}
 
 /** Optional UI flag on any market object in `markets`: set `maintenance: true` to show a Maintenance tag; omit or use `false` otherwise. */
 export type MarketWithMaintenance = Market & { maintenance?: boolean };

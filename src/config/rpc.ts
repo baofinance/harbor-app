@@ -55,9 +55,38 @@ export const BASE_RPC_URL =
   process.env.NEXT_PUBLIC_BASE_RPC_URL ||
   "https://mainnet.base.org";
 
-// MegaETH RPC URL (chainId 4326) - set in env for MegaETH markets
-export const MEGAETH_RPC_URL =
-  process.env.NEXT_PUBLIC_MEGAETH_RPC_URL || "";
+/**
+ * MegaETH upstream (Alchemy, etc.) — server-side and non-proxy browser fallback.
+ * Prefer server-only `MEGAETH_RPC_URL`; optional `NEXT_PUBLIC_MEGAETH_RPC_URL` when not using the proxy.
+ */
+function getUpstreamMegaethRpcUrl(): string {
+  return (
+    process.env.MEGAETH_RPC_URL ||
+    process.env.NEXT_PUBLIC_MEGAETH_RPC_URL ||
+    "https://rpc.megaeth.org"
+  );
+}
+
+/**
+ * Browser JSON-RPC URL for MegaETH (wagmi / viem). When `NEXT_PUBLIC_USE_RPC_PROXY=true`,
+ * uses same-origin `/api/rpc?chain=megaeth` so keys stay server-side (see `app/api/rpc/route.ts`).
+ */
+function getBrowserMegaethRpcTransportUrl(): string {
+  if (process.env.NEXT_PUBLIC_USE_RPC_PROXY === "true") {
+    return "/api/rpc?chain=megaeth";
+  }
+  return process.env.NEXT_PUBLIC_MEGAETH_RPC_URL || "https://rpc.megaeth.org";
+}
+
+/** Wagmi / browser transport for MegaETH (relative proxy path or public RPC). */
+export const MEGAETH_RPC_URL = getBrowserMegaethRpcTransportUrl();
+
+function getMegaEthRpcTransportForRuntime(): string {
+  if (typeof window === "undefined") {
+    return getUpstreamMegaethRpcUrl();
+  }
+  return getBrowserMegaethRpcTransportUrl();
+}
 
 // Define mainnet chain
 const mainnetChain = defineChain({
@@ -155,10 +184,10 @@ const megaethChain = defineChain({
   },
   rpcUrls: {
     default: {
-      http: [MEGAETH_RPC_URL || "https://rpc.megaeth.org"],
+      http: [getBrowserMegaethRpcTransportUrl()],
     },
     public: {
-      http: [MEGAETH_RPC_URL || "https://rpc.megaeth.org"],
+      http: [getBrowserMegaethRpcTransportUrl()],
     },
   },
 });
@@ -204,7 +233,7 @@ export function getBaseRpcClient() {
  * Get MegaETH RPC client (chainId 4326)
  */
 export function getMegaEthRpcClient() {
-  const url = MEGAETH_RPC_URL || "https://rpc.megaeth.org";
+  const url = getMegaEthRpcTransportForRuntime();
   return createPublicClient({
     chain: megaethChain,
     transport: http(url),
