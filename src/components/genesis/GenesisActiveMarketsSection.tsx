@@ -26,7 +26,12 @@ import { getDepositMode } from "@/utils/depositMode";
 import { formatGenesisMarketDisplayName } from "@/utils/genesisDisplay";
 import { maidenVoyageYieldOwnerSharePercent } from "@/config/maidenVoyageYield";
 import { computeGenesisRowUsdPricing } from "@/utils/genesisRowPricing";
-import { isMarketInMaintenance } from "@/config/markets";
+import {
+  isGenesisCompletedUi,
+  isGenesisDepositWithdrawBlockedByConfig,
+  isGenesisSoonUi,
+  isMarketInMaintenance,
+} from "@/config/markets";
 import type { CollateralPriceData } from "@/hooks/useCollateralPrice";
 import {
   getGenesisDepositCapData,
@@ -245,6 +250,12 @@ export function GenesisActiveMarketsSection(props: GenesisActiveMarketsSectionPr
                 const depositModeRow = getDepositMode(mkt);
                 const isCollateralOnlyRow = depositModeRow.collateralOnly;
                 const isMegaEthRow = depositModeRow.isMegaEth;
+                const genesisPreviewSoon = isGenesisSoonUi(mkt);
+                const genesisClaimOnlyCfg = isGenesisCompletedUi(mkt);
+                const genesisDepositWithdrawBlocked =
+                  isGenesisDepositWithdrawBlockedByConfig(mkt);
+                const genesisGreyRow =
+                  genesisPreviewSoon || genesisClaimOnlyCfg;
                 // Updated offset: [isEnded, balanceOf?, claimable?] - no totalDeposits anymore
                 const baseOffset = mi * (isConnected ? 3 : 1);
 
@@ -379,7 +390,11 @@ export function GenesisActiveMarketsSection(props: GenesisActiveMarketsSectionPr
                   : false;
                 const isProcessing = timeHasExpired && !isEnded;
 
-                if (isEnded) {
+                if (genesisPreviewSoon) {
+                  statusText = "Opening soon";
+                } else if (genesisClaimOnlyCfg) {
+                  statusText = "Deposits closed";
+                } else if (isEnded) {
                   statusText = showMaintenanceTag
                     ? "Maintenance"
                     : hasClaimable
@@ -437,12 +452,14 @@ export function GenesisActiveMarketsSection(props: GenesisActiveMarketsSectionPr
                             : [...prev, id]
                         )
                       }
-                      onDeposit={() =>
-                        void openManageModal(id, mkt as GenesisMarketConfig, "deposit")
-                      }
-                      onWithdraw={() =>
-                        void openManageModal(id, mkt as GenesisMarketConfig, "withdraw")
-                      }
+                      onDeposit={() => {
+                        if (genesisDepositWithdrawBlocked) return;
+                        void openManageModal(id, mkt as GenesisMarketConfig, "deposit");
+                      }}
+                      onWithdraw={() => {
+                        if (genesisDepositWithdrawBlocked) return;
+                        void openManageModal(id, mkt as GenesisMarketConfig, "withdraw");
+                      }}
                       onClaim={() =>
                         claimMarket({
                           marketId: id,
@@ -451,6 +468,8 @@ export function GenesisActiveMarketsSection(props: GenesisActiveMarketsSectionPr
                           peggedSymbolForShare: peggedNoPrefix,
                         })
                       }
+                      isGenesisPreviewSoon={genesisPreviewSoon}
+                      isGenesisClaimOnlyConfig={genesisClaimOnlyCfg}
                       expandedContent={
                         <GenesisMarketExpandedView
                           marketId={id}
@@ -480,6 +499,8 @@ export function GenesisActiveMarketsSection(props: GenesisActiveMarketsSectionPr
                   <div key={id} className="overflow-visible">
                     <div
                       className={`py-2.5 px-2 overflow-x-auto overflow-y-visible transition cursor-pointer ${
+                        genesisGreyRow ? "opacity-90 saturate-[0.78]" : ""
+                      } ${
                         isExpanded ? "rounded-t-lg" : "rounded-lg"
                       } ${
                         isExpanded
@@ -547,6 +568,7 @@ export function GenesisActiveMarketsSection(props: GenesisActiveMarketsSectionPr
                               genesisAddress={genesisAddress}
                               walletAddress={address}
                               isClaimingThisMarket={claimingMarket === id}
+                              manageDisabled={genesisDepositWithdrawBlocked}
                               onClaim={() =>
                                 claimMarket({
                                   marketId: id,
@@ -996,6 +1018,7 @@ export function GenesisActiveMarketsSection(props: GenesisActiveMarketsSectionPr
                               genesisAddress={genesisAddress}
                               walletAddress={address}
                               isClaimingThisMarket={claimingMarket === id}
+                              manageDisabled={genesisDepositWithdrawBlocked}
                               onClaim={() =>
                                 claimMarket({
                                   marketId: id,
@@ -1546,7 +1569,7 @@ export function GenesisActiveMarketsSection(props: GenesisActiveMarketsSectionPr
                               genesisAddress={genesisAddress}
                               walletAddress={address}
                               isClaimingThisMarket={claimingMarket === id}
-                              manageDisabled={!genesisAddress}
+                              manageDisabled={!genesisAddress || genesisDepositWithdrawBlocked}
                               onClaim={() =>
                                 claimMarket({
                                   marketId: id,
@@ -1564,7 +1587,7 @@ export function GenesisActiveMarketsSection(props: GenesisActiveMarketsSectionPr
                       </div>
 
                       {/* Maiden voyage USD deposit cap – shared across depositors */}
-                      {!isEnded && !isProcessing && (() => {
+                      {!isEnded && !isProcessing && !genesisPreviewSoon && (() => {
                           const mv = maidenVoyageCampaignResults?.find(
                             (row: {
                               genesisAddress?: string;

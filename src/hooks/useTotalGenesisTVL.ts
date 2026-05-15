@@ -3,8 +3,7 @@
 import { useMemo } from "react";
 import { useContractReads } from "wagmi";
 import { formatEther } from "viem";
-import { markets } from "@/config/markets";
-import { isMegaethMaidenVoyageMarket } from "@/utils/megaethMarket";
+import { markets, genesisParticipatesInMaidenVoyageTotals } from "@/config/markets";
 import { GENESIS_ABI, ERC20_ABI } from "@/abis/shared";
 import { useMultipleCollateralPrices } from "@/hooks/useCollateralPrice";
 
@@ -16,23 +15,21 @@ export function useTotalGenesisTVL() {
   // Get all genesis markets (exclude coming soon markets and zero addresses)
   const genesisMarkets = useMemo(
     () =>
-      Object.entries(markets).filter(
-        ([id, mkt]) => {
-          const genesisAddr = (mkt as any).addresses?.genesis;
-          return (
-            genesisAddr &&
-            genesisAddr !== "0x0000000000000000000000000000000000000000" &&
-            (mkt as any).status !== "coming-soon" &&
-            !isMegaethMaidenVoyageMarket(id, mkt)
-          );
-        }
-      ),
+      Object.entries(markets).filter(([, mkt]) => {
+        const genesisAddr = (mkt as any).addresses?.genesis;
+        return (
+          genesisAddr &&
+          genesisAddr !== "0x0000000000000000000000000000000000000000" &&
+          (mkt as any).status !== "coming-soon" &&
+          genesisParticipatesInMaidenVoyageTotals(mkt)
+        );
+      }),
     []
   );
 
   // Get wrapped collateral token addresses for each genesis market
   const collateralTokenContracts = useMemo(() => {
-    return genesisMarkets.map(([_, mkt]) => {
+    return genesisMarkets.map(([, mkt]) => {
       const g = (mkt as any).addresses?.genesis as `0x${string}` | undefined;
       if (
         !g ||
@@ -59,7 +56,7 @@ export function useTotalGenesisTVL() {
 
   // Get total deposits contracts (balanceOf wrapped collateral in genesis contracts)
   const totalDepositsContracts = useMemo(() => {
-    return genesisMarkets.flatMap(([_, mkt], mi) => {
+    return genesisMarkets.flatMap(([, mkt], mi) => {
       const g = (mkt as any).addresses?.genesis as `0x${string}` | undefined;
       const wrappedCollateralAddress = collateralTokenReads?.[mi]?.result as
         | `0x${string}`
@@ -98,7 +95,7 @@ export function useTotalGenesisTVL() {
   // Get price oracle addresses for collateral prices
   const collateralOracleAddresses = useMemo(() => {
     return genesisMarkets
-      .map(([_, mkt]) => {
+      .map(([, mkt]) => {
         const oracleAddress = (mkt as any).addresses?.collateralPrice as `0x${string}` | undefined;
         return oracleAddress;
       })

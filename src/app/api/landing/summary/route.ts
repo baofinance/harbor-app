@@ -6,7 +6,7 @@ import { stabilityPoolABI } from "@/abis/stabilityPool";
 import { minterABI } from "@/abis/minter";
 import { getPriceFeedAddress, queryChainlinkPrice } from "@/utils/priceFeeds";
 import { CHAINLINK_FEEDS } from "@/config/chainlink";
-import { isMegaethMaidenVoyageMarket } from "@/utils/megaethMarket";
+import { genesisParticipatesInMaidenVoyageTotals } from "@/config/markets";
 
 export const runtime = "nodejs";
 
@@ -243,8 +243,9 @@ export async function GET(request: Request) {
   );
 
   const maidenVoyageMarkets = marketEntries.filter(
-    ([id, m]) =>
-      !!(m as any)?.marksCampaign && !isMegaethMaidenVoyageMarket(id, m)
+    ([, m]) =>
+      !!(m as any)?.marksCampaign &&
+      genesisParticipatesInMaidenVoyageTotals(m)
   );
 
   const [coinGecko, chainlinkEth, chainlinkBtc, chainlinkEur, defillamaApys] =

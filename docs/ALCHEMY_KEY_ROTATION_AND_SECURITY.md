@@ -77,6 +77,7 @@ In the same **Environment Variables** section, add:
 | `NEXT_PUBLIC_USE_RPC_PROXY` | `true`                           | Production, Preview (as needed) |
 
 - `NEXT_PUBLIC_USE_RPC_PROXY=true` makes the app use same-origin `/api/rpc` for mainnet instead of a direct RPC URL in the browser.
+- With the same flag, **MegaETH** (chainId 4326) uses `/api/rpc?chain=megaeth`; set server-only **`MEGAETH_RPC_URL`** to your MegaETH RPC (e.g. Alchemy `https://megaeth-mainnet.g.alchemy.com/v2/...`). Do not put that URL in `NEXT_PUBLIC_*` if you rely on the proxy. Optional fallbacks: **`MEGAETH_RPC_FALLBACK_URLS`** (comma-separated, server-only).
 - You do **not** need `NEXT_PUBLIC_APP_URL` for the RPC proxy; each deployment calls its own `/api/rpc` (avoids CORS when previews are on `*.vercel.app`). Set `NEXT_PUBLIC_APP_URL` only if other features require a canonical site URL.
 
 ### Step 3: Remove the old public RPC env var (if set)
@@ -123,12 +124,26 @@ The key is in the frontend here; use only for dev and never commit `.env.local`.
 
 ---
 
+### MegaETH (same proxy flag)
+
+When `NEXT_PUBLIC_USE_MEGAETH=true` and you use **`NEXT_PUBLIC_USE_RPC_PROXY=true`**, the app sends MegaETH JSON-RPC to **`/api/rpc?chain=megaeth`**. Configure the upstream on the server only:
+
+| Name                         | Value example                                                                 | Environments   |
+|------------------------------|-------------------------------------------------------------------------------|----------------|
+| `MEGAETH_RPC_URL`            | `https://megaeth-mainnet.g.alchemy.com/v2/YOUR_KEY`                          | Production, Preview, local (with proxy) |
+| `MEGAETH_RPC_FALLBACK_URLS` | Comma-separated backup URLs (optional)                                       | As needed      |
+
+Remove or leave unset **`NEXT_PUBLIC_MEGAETH_RPC_URL`** in Production when using the proxy, so the Alchemy MegaETH key is not bundled for the client.
+
+---
+
 ## Checklist
 
 - [ ] New Alchemy key created; old key revoked in Alchemy dashboard.
 - [ ] In Vercel: `MAINNET_RPC_URL` set (server-only, no `NEXT_PUBLIC_`) with the new key.
 - [ ] In Vercel: `NEXT_PUBLIC_USE_RPC_PROXY=true` and `NEXT_PUBLIC_APP_URL=https://app.harborfinance.io` for Production.
 - [ ] In Vercel: `NEXT_PUBLIC_MAINNET_RPC_URL` removed or cleared for Production (if it previously contained the Alchemy URL).
+- [ ] If using MegaETH with the proxy: **`MEGAETH_RPC_URL`** set (server-only); **`NEXT_PUBLIC_MEGAETH_RPC_URL`** removed or cleared for Production so the MegaETH Alchemy URL is not in the client bundle.
 - [ ] Production redeployed and tested (connect wallet, load data).
 - [ ] Optional: Alchemy usage/logs checked to confirm no more abuse from the old key.
 

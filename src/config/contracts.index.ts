@@ -9,7 +9,9 @@
 //
 // To include MegaETH markets (alongside current base):
 //   1. Set environment variable: NEXT_PUBLIC_USE_MEGAETH=true
-//   2. Set NEXT_PUBLIC_MEGAETH_RPC_URL to your MegaETH RPC
+//   2. For production: set server-only MEGAETH_RPC_URL (e.g. Alchemy MegaETH URL) and
+//      NEXT_PUBLIC_USE_RPC_PROXY=true so the browser uses /api/rpc?chain=megaeth (key not exposed).
+//      Optional: NEXT_PUBLIC_MEGAETH_RPC_URL only when not using the proxy (dev / keys in client).
 //   3. Restart your dev server
 //
 // Vercel: set `NEXT_PUBLIC_USE_MEGAETH` the same way on Preview vs Production if you want
