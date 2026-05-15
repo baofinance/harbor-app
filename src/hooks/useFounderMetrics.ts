@@ -17,6 +17,8 @@ export type FounderMetricRow = {
   marketName: string;
   genesis: Address;
   ownershipSharePct: number;
+  /** Maiden Voyage retention multiplier from subgraph; null if no user row. */
+  boostMultiplier: number | null;
   yieldSharePct: number;
   totalEarnedUSD: number;
   paidUSD: number;

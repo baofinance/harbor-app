@@ -3,7 +3,12 @@ import { RedeemPrincipalOutContext } from "../generated/schema";
 
 const ZERO_BI = BigInt.fromI32(0);
 
-function ctxId(minter: Address, receiver: Address, txHash: Bytes): string {
+/** Public so wrapped-collateral fee handlers can align with redeem principal reservation. */
+export function redeemPrincipalContextId(
+  minter: Address,
+  receiver: Address,
+  txHash: Bytes
+): string {
   return (
     minter.toHexString() + "-" + receiver.toHexString() + "-" + txHash.toHexString()
   );
@@ -17,7 +22,7 @@ export function addRedeemPrincipalOut(
   timestamp: BigInt
 ): void {
   if (collateralOut.le(ZERO_BI)) return;
-  const id = ctxId(minter, receiver, txHash);
+  const id = redeemPrincipalContextId(minter, receiver, txHash);
   let c = RedeemPrincipalOutContext.load(id);
   if (c == null) {
     c = new RedeemPrincipalOutContext(id);
@@ -44,7 +49,7 @@ export function consumePrincipalOutRemainder(
   timestamp: BigInt
 ): BigInt {
   if (transferAmount.le(ZERO_BI)) return ZERO_BI;
-  const id = ctxId(minter, receiver, txHash);
+  const id = redeemPrincipalContextId(minter, receiver, txHash);
   const c = RedeemPrincipalOutContext.load(id);
   if (c == null || c.remainingCollateralOut.le(ZERO_BI)) return transferAmount;
 

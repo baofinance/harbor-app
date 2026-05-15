@@ -5,7 +5,7 @@ import {
 } from "../generated/StabilityPoolManager_ETH_fxUSD/StabilityPoolManager";
 import { StabilityPoolManagerHarvest } from "../generated/schema";
 import { accrueMaidenVoyageCollateralYieldUSD } from "./maidenVoyageYield";
-import { valueCollateralUsd } from "./minterPnL";
+import { valueCollateralUsd } from "./minterCollateralUsd";
 
 const ZERO_BD = BigDecimal.fromString("0");
 const ZERO_BI = BigInt.fromI32(0);

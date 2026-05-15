@@ -9,6 +9,14 @@ import {
 } from "@/hooks/useDashboardPositions";
 import { formatPercent, formatUSD } from "@/utils/formatters";
 
+function formatMaidenVoyageBoost(mult: number | null): string {
+  if (mult == null) return "—";
+  const rounded = Math.round(mult * 100) / 100;
+  const frac = rounded % 1;
+  const s = frac === 0 ? String(rounded) : rounded.toFixed(2);
+  return `${s}×`;
+}
+
 function PositionsSubsection({
   title,
   rows,
@@ -100,8 +108,8 @@ export default function DashboardPage() {
               <p className="text-xs uppercase tracking-wide text-white/60">Harbor</p>
               <h1 className="text-3xl sm:text-4xl font-bold font-mono text-white mt-1">Dashboard</h1>
               <p className="text-white/70 mt-2 text-sm max-w-xl">
-                Founder yield attribution and a snapshot of open Maiden Voyage, Earn, and Leverage
-                positions for this wallet.
+                Open Maiden Voyage, Earn, and Leverage positions for this wallet, plus Maiden Voyage
+                yield ownership and payout attribution.
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -134,9 +142,9 @@ export default function DashboardPage() {
             isConnected ? "Metrics below are for this address." : "Connect to load data."
           )}
           {metricCard(
-            "Founder markets",
+            "Yield markets",
             rows.length.toString(),
-            "Maiden Voyage markets with founder yield data for you."
+            "Maiden Voyage markets with yield ownership data for you."
           )}
           {metricCard("Total paid", formatUSD(totalPaid, { compact: false }), "Recorded on Harbor's payout ledger.")}
           {metricCard(
@@ -146,82 +154,9 @@ export default function DashboardPage() {
           )}
         </section>
 
-        <section className="rounded-2xl border border-white/10 bg-zinc-900/50 p-4 sm:p-6">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-3">
-            <div>
-              <h2 className="text-xl font-semibold text-white font-geo">Maiden Voyage founder yield</h2>
-              <p className="text-xs text-white/60 mt-1 max-w-2xl">
-                <strong>MV ownership</strong> is your share of the genesis cap (from the indexer).{" "}
-                <strong>Yield pool %</strong> is your boost-weighted share used to split cumulative
-                yield. <strong>Uncollected</strong> is not a scheduled “next bill”—it is what is
-                still owed vs payouts on file until treasury sets an explicit payment cadence.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => void refresh()}
-              disabled={isLoading}
-              className="inline-flex items-center gap-2 self-start rounded-md bg-white/10 px-3 py-2 text-sm text-white hover:bg-white/15 disabled:opacity-50"
-            >
-              <ArrowPathIcon className="h-4 w-4" />
-              {isLoading ? "Refreshing…" : "Refresh"}
-            </button>
-          </div>
-
-          {!isConnected ? (
-            <div className="rounded-lg border border-white/10 bg-black/20 p-4 text-sm text-white/70">
-              Connect your wallet to view founder yield.
-            </div>
-          ) : error ? (
-            <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200">{error}</div>
-          ) : isLoading ? (
-            <div className="rounded-lg border border-white/10 bg-black/20 p-4 text-sm text-white/70">
-              Loading…
-            </div>
-          ) : rows.length === 0 ? (
-            <div className="rounded-lg border border-white/10 bg-black/20 p-4 text-sm text-white/70">
-              No founder yield rows for this wallet. If you have deposits, check Maiden Voyage after
-              genesis ends so final ownership is written on-chain.
-            </div>
-          ) : (
-            <div className="overflow-x-auto rounded-lg border border-white/10">
-              <table className="min-w-[820px] w-full text-sm">
-                <thead>
-                  <tr className="bg-white/5 text-white/60 text-xs uppercase tracking-wide">
-                    <th className="text-left py-2.5 px-3">Market</th>
-                    <th className="text-right py-2.5 px-3">MV ownership</th>
-                    <th className="text-right py-2.5 px-3">Yield pool %</th>
-                    <th className="text-right py-2.5 px-3">Total paid</th>
-                    <th className="text-right py-2.5 px-3">Uncollected</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((row) => (
-                    <tr key={row.marketId} className="border-t border-white/5">
-                      <td className="py-2.5 px-3 text-white">{row.marketName}</td>
-                      <td className="py-2.5 px-3 text-right font-mono text-white tabular-nums">
-                        {formatPercent(row.ownershipSharePct, { decimals: 2 })}
-                      </td>
-                      <td className="py-2.5 px-3 text-right font-mono text-white tabular-nums">
-                        {formatPercent(row.yieldSharePct, { decimals: 4 })}
-                      </td>
-                      <td className="py-2.5 px-3 text-right font-mono text-white tabular-nums">
-                        {formatUSD(row.paidUSD, { compact: false })}
-                      </td>
-                      <td className="py-2.5 px-3 text-right font-mono text-white tabular-nums">
-                        {formatUSD(row.outstandingUSD, { compact: false })}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </section>
-
-        <section className="rounded-2xl border border-white/10 bg-zinc-900/40 p-4 sm:p-6 space-y-4">
+        <section className="rounded-2xl border border-white/10 bg-zinc-900/50 p-4 sm:p-6 space-y-4">
           <div>
-            <h2 className="text-lg font-semibold text-white font-geo">Your positions</h2>
+            <h2 className="text-xl font-semibold text-white font-geo">Your positions</h2>
             <p className="text-xs text-white/60 mt-1 max-w-2xl">
               From the Harbor marks subgraph (Earn / Maiden Voyage) and the Sail price subgraph
               (Leverage notional). USD is indexer-reported; open the app for full detail and
@@ -260,6 +195,87 @@ export default function DashboardPage() {
               />
             </div>
           ) : null}
+        </section>
+
+        <section className="rounded-2xl border border-white/10 bg-zinc-900/40 p-4 sm:p-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-3">
+            <div>
+              <h2 className="text-lg font-semibold text-white font-geo">Yield Ownership</h2>
+              <p className="text-xs text-white/60 mt-1 max-w-2xl">
+                <strong>MV ownership</strong> is your share of the genesis cap (from the indexer).{" "}
+                <strong>Boost</strong> is your current Maiden Voyage retention multiplier for that
+                market (from the same indexer). <strong>Yield pool %</strong> is your boost-weighted
+                share used to split cumulative yield. <strong>Uncollected</strong> is not a scheduled
+                &quot;next bill&quot;—it is what is still owed vs payouts on file until treasury sets
+                an explicit payment cadence.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => void refresh()}
+              disabled={isLoading}
+              className="inline-flex items-center gap-2 self-start rounded-md bg-white/10 px-3 py-2 text-sm text-white hover:bg-white/15 disabled:opacity-50"
+            >
+              <ArrowPathIcon className="h-4 w-4" />
+              {isLoading ? "Refreshing…" : "Refresh"}
+            </button>
+          </div>
+
+          {!isConnected ? (
+            <div className="rounded-lg border border-white/10 bg-black/20 p-4 text-sm text-white/70">
+              Connect your wallet to view yield ownership.
+            </div>
+          ) : error ? (
+            <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200">{error}</div>
+          ) : isLoading ? (
+            <div className="rounded-lg border border-white/10 bg-black/20 p-4 text-sm text-white/70">
+              Loading…
+            </div>
+          ) : rows.length === 0 ? (
+            <div className="rounded-lg border border-white/10 bg-black/20 p-4 text-sm text-white/70">
+              No yield ownership rows for this wallet. If you have deposits, check Maiden Voyage
+              after genesis ends so final ownership is written on-chain.
+            </div>
+          ) : (
+            <div className="overflow-x-auto rounded-lg border border-white/10">
+              <table className="min-w-[920px] w-full text-sm">
+                <thead>
+                  <tr className="bg-white/5 text-white/60 text-xs uppercase tracking-wide">
+                    <th className="text-left py-2.5 px-3">Market</th>
+                    <th className="text-right py-2.5 px-3">MV ownership</th>
+                    <th className="text-right py-2.5 px-3">Boost</th>
+                    <th className="text-right py-2.5 px-3">Yield pool %</th>
+                    <th className="text-right py-2.5 px-3">Total paid</th>
+                    <th className="text-right py-2.5 px-3">Uncollected</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((row) => (
+                    <tr key={row.marketId} className="border-t border-white/5">
+                      <td className="py-2.5 px-3 text-white">{row.marketName}</td>
+                      <td className="py-2.5 px-3 text-right font-mono text-white tabular-nums">
+                        {formatPercent(row.ownershipSharePct, { decimals: 2 })}
+                      </td>
+                      <td className="py-2.5 px-3 text-right font-mono text-white tabular-nums">
+                        {row.ownershipSharePct > 0
+                          ? formatMaidenVoyageBoost(row.boostMultiplier)
+                          : "—"}
+                      </td>
+                      <td className="py-2.5 px-3 text-right font-mono text-white tabular-nums">
+                        {formatPercent(row.yieldSharePct, { decimals: 4 })}
+                      </td>
+                      <td className="py-2.5 px-3 text-right font-mono text-white tabular-nums">
+                        {formatUSD(row.paidUSD, { compact: false })}
+                      </td>
+                      <td className="py-2.5 px-3 text-right font-mono text-white tabular-nums">
+                        {formatUSD(row.outstandingUSD, { compact: false })}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </section>
       </main>
     </div>

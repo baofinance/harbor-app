@@ -5,6 +5,7 @@ import {
   Bytes,
   dataSource,
   ethereum,
+  store,
 } from "@graphprotocol/graph-ts";
 import {
   MintLeveragedToken,
@@ -23,11 +24,17 @@ import {
   HourlyPriceSnapshot,
   PriceTracker,
   MinterHourlyTracker,
+  MaidenWrappedFeeDeferred,
+  TxMaidenWrappedFeeDeferredQueue,
 } from "../generated/schema";
 import { runDailyMarksUpdate, runHourlySailMarksUpdate } from "./dailyMarksUpdate";
-import { accrueMaidenVoyageCollateralYieldUSD } from "./maidenVoyageYield";
+import {
+  accrueMaidenVoyageCollateralYieldUSD,
+  accrueMaidenVoyageMinterWrappedFeeUSD,
+} from "./maidenVoyageYield";
 import { minterUsesSpmHarvestEvents } from "./maidenVoyageConfig";
-import { addRedeemPrincipalOut } from "./redeemPrincipalContext";
+import { addRedeemPrincipalOut, consumePrincipalOutRemainder } from "./redeemPrincipalContext";
+import { valueCollateralUsd } from "./minterCollateralUsd";
 
 const ZERO_BI = BigInt.fromI32(0);
 const ZERO_BD = BigDecimal.fromString("0");
@@ -353,6 +360,57 @@ function createGenesisLot(
 // Genesis cost basis lots are created by `genesisPnL.ts` at genesis end.
 // We intentionally do not attempt to apply genesis lots from minter handlers.
 
+/** Same key format as `wrappedCollateralMaidenFeesCore.queueKey` (must stay in sync). */
+function maidenWrappedFeeDeferredQueueKey(minter: Address, txHash: Bytes): string {
+  return minter.toHexString().concat("::").concat(txHash.toHexString());
+}
+
+/**
+ * After `addRedeemPrincipalOut`, process wrapped fee transfers deferred because the ERC20 Transfer
+ * ran before this redeem log in the same transaction.
+ */
+function flushMaidenWrappedFeeDeferredBeforeRedeemLog(
+  minter: Address,
+  txHash: Bytes,
+  redeemLogIndex: BigInt,
+  timestamp: BigInt
+): void {
+  const qid = maidenWrappedFeeDeferredQueueKey(minter, txHash);
+  while (true) {
+    const q = TxMaidenWrappedFeeDeferredQueue.load(qid);
+    if (q == null || q.headId == "") return;
+
+    const d = MaidenWrappedFeeDeferred.load(q.headId);
+    if (d == null) {
+      store.remove("TxMaidenWrappedFeeDeferredQueue", qid);
+      return;
+    }
+    if (!d.logIndex.lt(redeemLogIndex)) return;
+
+    const mAddr = changetype<Address>(d.minter);
+    const feeRecv = changetype<Address>(d.feeReceiver);
+    const th = d.txHash;
+    const feeWei = consumePrincipalOutRemainder(mAddr, feeRecv, th, d.amount, timestamp);
+    if (!feeWei.equals(ZERO_BI)) {
+      const usd = valueCollateralUsd(mAddr, feeWei);
+      if (usd.gt(ZERO_BD)) {
+        accrueMaidenVoyageMinterWrappedFeeUSD(mAddr, usd, timestamp);
+      }
+    }
+
+    const nextId = d.nextId;
+    store.remove("MaidenWrappedFeeDeferred", d.id);
+    q.headId = nextId;
+    if (nextId == "") q.tailId = "";
+    q.lastUpdated = timestamp;
+    if (q.headId == "") {
+      store.remove("TxMaidenWrappedFeeDeferredQueue", qid);
+      return;
+    }
+    q.save();
+  }
+}
+
 export function handleBlock(block: ethereum.Block): void {
   // Daily marks snapshot update (price-at-the-time accumulation)
   runDailyMarksUpdate(block);
@@ -426,72 +484,6 @@ export function handleBlock(block: ethereum.Block): void {
       mt.save();
     }
   }
-}
-
-/**
- * Value a wrapped-collateral amount in USD using the market oracle.
- * Oracle.latestAnswer() returns (minUnderlyingPrice, maxUnderlyingPrice, minWrappedRate, maxWrappedRate) in 1e18.
- *
- * We treat:
- * - maxUnderlyingPrice: price in peg units (ETH/BTC/USD depending on market)
- * - maxWrappedRate: conversion factor
- *
- * wrappedTokenUsd = maxUnderlyingPrice * maxWrappedRate * pegUsd
- */
-export function valueCollateralUsd(
-  minterAddress: Address,
-  collateralAmount: BigInt
-): BigDecimal {
-  if (collateralAmount.equals(ZERO_BI)) return ZERO_BD;
-
-  // Prefer hardcoded oracle addresses for known markets to avoid PRICE_ORACLE() reverts.
-  // If unknown, fall back to PRICE_ORACLE().
-  let oracleAddr = getOracleAddressForMinter(minterAddress);
-  if (oracleAddr.equals(Address.zero())) {
-    const minter = Minter.bind(minterAddress);
-    const oracleAddrRes = minter.try_PRICE_ORACLE();
-    if (oracleAddrRes.reverted) return ZERO_BD;
-    oracleAddr = oracleAddrRes.value;
-  }
-  const oracle = WrappedPriceOracle.bind(oracleAddr);
-
-  // fxUSD markets: value directly from getPrice() (fxSAVE price in ETH).
-  if (isFxUsdMinter(minterAddress)) {
-    const priceRes = oracle.try_getPrice();
-    if (priceRes.reverted) return ZERO_BD;
-    const fxSavePriceEth = toE18(priceRes.value);
-    if (fxSavePriceEth.equals(ZERO_BD)) return ZERO_BD;
-    // getPrice() is denominated in the market's peg units (ETH for ETH-pegged, BTC for BTC-pegged).
-    // Convert to USD using the correct peg/USD feed.
-    const pegUsd = getPegUsdForMinter(minterAddress);
-    const fxSavePriceUsd = fxSavePriceEth.times(pegUsd);
-    const amountDec = toE18(collateralAmount);
-    return amountDec.times(fxSavePriceUsd);
-  }
-
-  const ans = oracle.try_latestAnswer();
-  if (ans.reverted) return ZERO_BD;
-
-  const maxUnderlyingPrice = toE18(ans.value.value1);
-  const maxWrappedRate = toE18(ans.value.value3);
-  if (maxWrappedRate.equals(ZERO_BD)) return ZERO_BD;
-
-  const amountDec = toE18(collateralAmount);
-
-  if (isStethEurMinter(minterAddress)) {
-    const ethUsd = chainlinkUsd(ETH_USD_FEED);
-    return amountDec.times(maxWrappedRate).times(ethUsd);
-  }
-
-  if (maxUnderlyingPrice.equals(ZERO_BD)) return ZERO_BD;
-
-  const pegUsd = getPegUsdForMinter(minterAddress);
-  // For BTC/stETH, collateralAmount is already underlying stETH units, so don't apply wrapped rate.
-  if (isBtcStethMinter(minterAddress)) {
-    return amountDec.times(maxUnderlyingPrice).times(pegUsd);
-  }
-  // (amount * price * rate * pegUsd)
-  return amountDec.times(maxUnderlyingPrice).times(maxWrappedRate).times(pegUsd);
 }
 
 function getOrCreateUserPosition(token: Address, user: Address): UserSailPosition {
@@ -738,6 +730,13 @@ export function handleRedeemLeveragedToken(event: RedeemLeveragedToken): void {
     receiver,
     event.transaction.hash,
     collateralOut,
+    event.block.timestamp
+  );
+
+  flushMaidenWrappedFeeDeferredBeforeRedeemLog(
+    minterAddress,
+    event.transaction.hash,
+    event.logIndex,
     event.block.timestamp
   );
 

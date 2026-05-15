@@ -4,7 +4,7 @@
 const useTest2 = process.env.NEXT_PUBLIC_USE_TEST2_CONTRACTS === "true";
 
 // Default marks subgraph. Override with NEXT_PUBLIC_GRAPH_URL if needed.
-const DEFAULT_MARKS_URL = "https://api.studio.thegraph.com/query/1718836/harbor-marks/v0.1.6-spm-harvest-abi-fix";
+const DEFAULT_MARKS_URL = "https://api.studio.thegraph.com/query/1718836/harbor-marks/v0.1.5-maiden-fee-defer-20260513-2043";
 
 export const GRAPH_CONFIG = {
   // Harbor Marks subgraph. Use env to override (e.g. gateway). Default: Studio (see DEFAULT_MARKS_URL).
@@ -63,7 +63,7 @@ export const CONTRACTS_WBTC = {
 };
 
 // Harbor Marks subgraph version. Bump when redeploying subgraph.
-const HARBOR_MARKS_VERSION = "v0.1.6-spm-harvest-abi-fix";
+const HARBOR_MARKS_VERSION = "v0.1.5-maiden-fee-defer-20260513-2043";
 const STUDIO_MARKS_BASE = "https://api.studio.thegraph.com/query/1718836/harbor-marks";
 const STUDIO_MARKS_DEFAULT = `${STUDIO_MARKS_BASE}/${HARBOR_MARKS_VERSION}`;
 

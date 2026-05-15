@@ -16,6 +16,8 @@ export type FounderWalletMetric = {
   yieldSharePct: number;
   /** Post–genesis-end ownership of the MV cap, from subgraph (0–100). */
   ownershipSharePct: number;
+  /** Current MV retention boost from indexer; null if this wallet has no marks row for that genesis. */
+  boostMultiplier: number | null;
   totalEarnedUSD: number;
   paidUSD: number;
   outstandingUSD: number;
@@ -43,6 +45,13 @@ export function deriveFounderWalletMetric(
   const targetWeight = target?.weight ?? 0;
   const targetShare = target?.share ?? 0;
 
+  const participant = input.participants.find((p) => p.user.toLowerCase() === walletLower);
+  let boostMultiplier: number | null = null;
+  if (participant) {
+    const b = Number.parseFloat(participant.maidenVoyageBoostMultiplier || "1");
+    boostMultiplier = Number.isFinite(b) && b > 0 ? b : 1;
+  }
+
   const poolShare =
     totalWeight > 0
       ? targetWeight / totalWeight
@@ -58,6 +67,7 @@ export function deriveFounderWalletMetric(
   return {
     yieldSharePct: poolShare * 100,
     ownershipSharePct: targetShare * 100,
+    boostMultiplier,
     totalEarnedUSD,
     paidUSD: input.paidUSD,
     outstandingUSD: totalEarnedUSD - input.paidUSD,

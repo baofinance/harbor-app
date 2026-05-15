@@ -22,6 +22,7 @@ import {
   STABILITY_POOL_MANAGER_ABI,
 } from "@/abis/admin";
 import { ERC20_ABI } from "@/abis/shared";
+import { computeHarborHarvestSplit } from "@/utils/harborHarvestSplit";
 
 // Add a helper function to safely parse numbers
 const safeParseEther = (value: string): bigint => {
@@ -50,6 +51,20 @@ function formatTokenAmount(
   const [whole, frac = ""] = s.split(".");
   const trimmed = frac.slice(0, maxFrac).replace(/0+$/, "");
   return trimmed ? `${whole}.${trimmed}` : whole;
+}
+
+function formatHarvestAllocationPct(pct: number): string {
+  if (!Number.isFinite(pct)) return "0";
+  const rounded = Math.round(pct * 100) / 100;
+  return rounded % 1 === 0 ? String(rounded) : rounded.toFixed(2);
+}
+
+function formatHarvestAllocationLine(split: {
+  bountyPct: number;
+  cutPct: number;
+  poolsPct: number;
+}): string {
+  return `Bounty ${formatHarvestAllocationPct(split.bountyPct)}% · Cut ${formatHarvestAllocationPct(split.cutPct)}% · Pools ${formatHarvestAllocationPct(split.poolsPct)}%`;
 }
 
 const ADMIN_SYSTEM_LINKS: ReadonlyArray<{ href: string; label: string }> = [
@@ -402,8 +417,6 @@ export default function Admin() {
      } as any,
    });
 
- const RATIO_DEN = 10n ** 18n;
-
  const feesTableRows = useMemo(() => {
    const decimalsByMarketIndex = new Map<number, number>();
    wrappedDecimalsReads.forEach((meta, idx) => {
@@ -437,6 +450,12 @@ export default function Admin() {
        expectedCut: bigint;
        expectedToPools: bigint;
        minBounty: bigint;
+       bountyPct: number;
+       cutPct: number;
+       poolsPct: number;
+       ratiosExceedHarvestable: boolean;
+       configuredBountyPct: number;
+       configuredCutPct: number;
      }
    >();
 
@@ -454,20 +473,23 @@ export default function Admin() {
        r2?.status === "success" && r2.result != null ? (r2.result as bigint) : 0n;
      const spmAddress = (markets as any)[m.id]?.addresses
        ?.stabilityPoolManager as `0x${string}`;
-     const expectedBounty = (h * br) / RATIO_DEN;
-     const expectedCut = (h * cr) / RATIO_DEN;
-     const expectedToPools =
-       h > expectedBounty + expectedCut ? h - expectedBounty - expectedCut : 0n;
-     const minBounty = (expectedBounty * 995n) / 1000n;
+     const split = computeHarborHarvestSplit(h, br, cr);
+     const minBounty = (split.bounty * 995n) / 1000n;
      spmByMarketId.set(m.id, {
        spmAddress,
        spmHarvestable: h,
        bountyRatio: br,
        cutRatio: cr,
-       expectedBounty,
-       expectedCut,
-       expectedToPools,
+       expectedBounty: split.bounty,
+       expectedCut: split.cut,
+       expectedToPools: split.toPools,
        minBounty,
+       bountyPct: split.bountyPct,
+       cutPct: split.cutPct,
+       poolsPct: split.poolsPct,
+       ratiosExceedHarvestable: split.ratiosExceedHarvestable,
+       configuredBountyPct: split.configuredBountyPct,
+       configuredCutPct: split.configuredCutPct,
      });
    });
 
@@ -515,6 +537,12 @@ export default function Admin() {
        expectedCut: spm?.expectedCut ?? 0n,
        expectedToPools: spm?.expectedToPools ?? 0n,
        minBounty: spm?.minBounty ?? 0n,
+       bountyPct: spm?.bountyPct ?? 0,
+       cutPct: spm?.cutPct ?? 0,
+       poolsPct: spm?.poolsPct ?? 0,
+       ratiosExceedHarvestable: spm?.ratiosExceedHarvestable ?? false,
+       configuredBountyPct: spm?.configuredBountyPct ?? 0,
+       configuredCutPct: spm?.configuredCutPct ?? 0,
        poolCollateral: addrs?.stabilityPoolCollateral as `0x${string}` | undefined,
        poolLeveraged: addrs?.stabilityPoolLeveraged as `0x${string}` | undefined,
        canCheck: hasSpmConfig && spmH > 0n,
@@ -595,7 +623,14 @@ export default function Admin() {
  const harvestSummary = useMemo(() => {
    const totalsByDenom = new Map<
      string,
-     { symbol: string; decimals: number; sumB: bigint; sumC: bigint; sumP: bigint }
+     {
+       symbol: string;
+       decimals: number;
+       sumH: bigint;
+       sumB: bigint;
+       sumC: bigint;
+       sumP: bigint;
+     }
    >();
    for (const r of harvestTargetRows) {
      const key = `${r.collateralSymbol}:${r.wrappedDecimals}`;
@@ -604,16 +639,34 @@ export default function Admin() {
        b = {
          symbol: r.collateralSymbol,
          decimals: r.wrappedDecimals,
+         sumH: 0n,
          sumB: 0n,
          sumC: 0n,
          sumP: 0n,
        };
        totalsByDenom.set(key, b);
      }
+     b.sumH += r.spmHarvestable;
      b.sumB += r.expectedBounty;
      b.sumC += r.expectedCut;
      b.sumP += r.expectedToPools;
    }
+   const totalsByDenomList = [...totalsByDenom.values()]
+     .sort((a, b) => a.symbol.localeCompare(b.symbol))
+     .map((t) => {
+       if (t.sumH <= 0n) {
+         return { ...t, bountyPct: 0, cutPct: 0, poolsPct: 0 };
+       }
+       const bountyBps = (t.sumB * 10000n) / t.sumH;
+       const cutBps = (t.sumC * 10000n) / t.sumH;
+       const poolsBps = 10000n - bountyBps - cutBps;
+       return {
+         ...t,
+         bountyPct: Number(bountyBps) / 100,
+         cutPct: Number(cutBps) / 100,
+         poolsPct: Number(poolsBps) / 100,
+       };
+     });
    const cutReceivers = new Map<`0x${string}`, string[]>();
    harvestTargetRows.forEach((r) => {
      if (!r.feeReceiver) return;
@@ -621,10 +674,10 @@ export default function Admin() {
      list.push(r.name);
      cutReceivers.set(r.feeReceiver, list);
    });
-   const totalsByDenomList = [...totalsByDenom.values()].sort((a, b) =>
-     a.symbol.localeCompare(b.symbol)
+   const anyRatiosExceedHarvestable = harvestTargetRows.some(
+     (r) => r.ratiosExceedHarvestable
    );
-   return { totalsByDenomList, cutReceivers };
+   return { totalsByDenomList, cutReceivers, anyRatiosExceedHarvestable };
  }, [harvestTargetRows]);
 
  // Contract writes
@@ -943,6 +996,7 @@ export default function Admin() {
    !isConnected ||
    !address ||
    harvestTargetRows.length === 0 ||
+   harvestSummary.anyRatiosExceedHarvestable ||
    harvestInFlight;
 
  // Return a placeholder during server-side rendering
@@ -1246,6 +1300,19 @@ export default function Admin() {
                        <div className="text-white/50 text-[10px] pt-1 uppercase tracking-wide">
                          Preview (selected tx)
                        </div>
+                       {r.spmHarvestable > 0n ? (
+                         <div className="text-[11px] text-white/85">
+                           {formatHarvestAllocationLine(r)}
+                         </div>
+                       ) : null}
+                       {r.ratiosExceedHarvestable ? (
+                         <p className="text-[10px] text-amber-300/90 leading-snug">
+                           Configured ratios (
+                           {formatHarvestAllocationPct(r.configuredBountyPct)}% bounty
+                           + {formatHarvestAllocationPct(r.configuredCutPct)}% cut) exceed
+                           100% of pool yield — harvest would revert on-chain.
+                         </p>
+                       ) : null}
                        <div className="font-mono text-[11px] text-white/90">
                          bounty{" "}
                          {formatTokenAmount(
@@ -1302,6 +1369,13 @@ export default function Admin() {
          )}
          {harvestSuccess && !harvestError && (
            <p className="text-green-400 text-sm max-w-md">{harvestSuccess}</p>
+         )}
+         {harvestSummary.anyRatiosExceedHarvestable && (
+           <p className="text-amber-300/90 text-sm max-w-md leading-snug">
+             Harvest disabled: configured bounty + cut ratios exceed 100% of pool yield
+             for at least one selected market (on-chain{" "}
+             <span className="font-mono">harvest()</span> would revert).
+           </p>
          )}
        </div>
 
@@ -1364,6 +1438,9 @@ export default function Admin() {
                  >
                    <summary className="cursor-pointer text-white/90 text-[11px]">
                      {m.name}
+                     {m.spmHarvestable > 0n
+                       ? ` · ${formatHarvestAllocationLine(m)}`
+                       : ""}
                    </summary>
                    <div className="mt-1 pl-2 space-y-0.5 font-mono text-[10px] text-white/70 break-all">
                      <div>Anchor: {m.poolCollateral ?? "—"}</div>
@@ -1397,6 +1474,17 @@ export default function Admin() {
                    {formatTokenAmount(t.sumB, t.decimals)} · Σ cut{" "}
                    {formatTokenAmount(t.sumC, t.decimals)} · Σ to pools{" "}
                    {formatTokenAmount(t.sumP, t.decimals)}
+                   {t.sumH > 0n ? (
+                     <>
+                       {" "}
+                       ·{" "}
+                       {formatHarvestAllocationLine({
+                         bountyPct: t.bountyPct,
+                         cutPct: t.cutPct,
+                         poolsPct: t.poolsPct,
+                       })}
+                     </>
+                   ) : null}
                  </div>
                ))}
              </div>

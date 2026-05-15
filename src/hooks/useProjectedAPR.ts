@@ -12,6 +12,7 @@ import {
   ERC20_ABI,
   CHAINLINK_ORACLE_ABI,
 } from "@/abis/shared";
+import { computeHarborHarvestSplit } from "@/utils/harborHarvestSplit";
 
 // Constants
 const STAKING_APR = 0.035; // 3.5% APR for stETH staking rewards
@@ -419,14 +420,12 @@ export function useProjectedAPR(
         }
       }
 
-      // Calculate what would go to pools after deductions
-      const bounty = bountyRatio
-        ? (projectedHarvestable * bountyRatio) / BigInt(1e18)
-        : 0n;
-      const cut = cutRatio
-        ? (projectedHarvestable * cutRatio) / BigInt(1e18)
-        : 0n;
-      const harvestableRemaining = projectedHarvestable - bounty - cut;
+      const harvestSplit = computeHarborHarvestSplit(
+        projectedHarvestable,
+        bountyRatio ?? 0n,
+        cutRatio ?? 0n
+      );
+      const harvestableRemaining = harvestSplit.toPools;
 
       // Calculate split between pools
       const toCollateralPool =

@@ -132,6 +132,34 @@ type RedeemPrincipalOutContext @entity(immutable: false) {
   lastUpdated: BigInt!
 }
 
+# Deferred minter->feeReceiver wrapped-collateral transfers when no RedeemPrincipalOutContext exists yet
+# in the same transaction (Transfer often appears before RedeemLeveragedToken in the tx log order).
+type MaidenWrappedFeeDeferred @entity(immutable: false) {
+  id: ID! # {txHash}-{logIndex}-{minter}
+  minter: Bytes!
+  feeReceiver: Bytes!
+  txHash: Bytes!
+  logIndex: BigInt!
+  amount: BigInt!
+  blockNumber: BigInt!
+  lastUpdated: BigInt!
+  nextId: String! # next deferred in same tx+minter queue; empty string if none
+}
+
+type TxMaidenWrappedFeeDeferredQueue @entity(immutable: false) {
+  id: ID! # {minter}-{txHash}
+  headId: String!
+  tailId: String!
+  lastUpdated: BigInt!
+}
+
+# Queues touched in a block so we can finalize deferred fees after all events in the block.
+type BlockMaidenWrappedFeeDeferredRollup @entity(immutable: false) {
+  id: ID! # block number as decimal string
+  queueIds: [String!]!
+  lastUpdated: BigInt!
+}
+
 # Gross wrapped-collateral harvest from minter (StabilityPoolManager `Harvested`).
 # Maiden voyage collateral yield is credited from this event for v1 markets; see `minterPnL` / `stabilityPoolManagerYield`.
 type StabilityPoolManagerHarvest @entity(immutable: true) {

@@ -560,6 +560,9 @@ dataSources:
       language: wasm/assemblyscript
       entities:
         - MaidenVoyageYieldGlobal
+        - MaidenWrappedFeeDeferred
+        - TxMaidenWrappedFeeDeferredQueue
+        - BlockMaidenWrappedFeeDeferredRollup
       abis:
         - name: ERC20
           file: ./abis/ERC20.json
@@ -572,6 +575,11 @@ dataSources:
       eventHandlers:
         - event: Transfer(indexed address,indexed address,uint256)
           handler: handleWrappedCollateralTransfer
+      blockHandlers:
+        - handler: handleWrappedCollateralFeeDeferredBlock
+          filter:
+            kind: polling
+            every: 1
       file: ./src/wrappedFxSaveMaidenFees.ts
 
   # wstETH wrapped collateral: BTC/stETH + EUR/stETH minter fees
@@ -588,6 +596,9 @@ dataSources:
       language: wasm/assemblyscript
       entities:
         - MaidenVoyageYieldGlobal
+        - MaidenWrappedFeeDeferred
+        - TxMaidenWrappedFeeDeferredQueue
+        - BlockMaidenWrappedFeeDeferredRollup
       abis:
         - name: ERC20
           file: ./abis/ERC20.json
