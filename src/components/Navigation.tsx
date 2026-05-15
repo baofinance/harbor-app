@@ -64,13 +64,6 @@ export default function Example() {
             </a>
             <div className="hidden min-w-0 flex-1 sm:flex sm:flex-wrap sm:items-center sm:justify-center sm:gap-x-1.5 sm:gap-y-1 md:gap-x-2 lg:gap-x-3">
               <Link
-                href="/dashboard"
-                className={`${linkClass("/dashboard")} flex shrink-0 items-center justify-center`}
-                aria-current={isActive("/dashboard") ? "page" : undefined}
-              >
-                Dashboard
-              </Link>
-              <Link
                 href="/genesis"
                 className={`${linkClass("/genesis")} inline-flex min-w-0 shrink-0 items-center justify-center gap-1`}
                 aria-current={isActive("/genesis") ? "page" : undefined}
@@ -186,18 +179,6 @@ export default function Example() {
             <ConnectWallet />
           </div>
           <div className="flex flex-col w-full items-stretch justify-center space-y-2.5 py-2">
-            <DisclosureButton
-              as={Link}
-              href="/dashboard"
-              className={`block w-full max-w-sm mx-auto px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 text-center ${
-                isActive("/dashboard")
-                  ? "text-[#1E4775] bg-white"
-                  : "text-white bg-white/10 hover:bg-white/20"
-              }`}
-              aria-current={isActive("/dashboard") ? "page" : undefined}
-            >
-              Dashboard
-            </DisclosureButton>
             <DisclosureButton
               as={Link}
               href="/genesis"
