@@ -3,7 +3,11 @@
 import { useMemo } from "react";
 import { useContractReads } from "wagmi";
 import { formatEther } from "viem";
-import { markets, genesisParticipatesInMaidenVoyageTotals } from "@/config/markets";
+import {
+  markets,
+  genesisParticipatesInMaidenVoyageTotals,
+  isMarketArchived,
+} from "@/config/markets";
 import { GENESIS_ABI, ERC20_ABI } from "@/abis/shared";
 import { useMultipleCollateralPrices } from "@/hooks/useCollateralPrice";
 
@@ -21,7 +25,8 @@ export function useTotalGenesisTVL() {
           genesisAddr &&
           genesisAddr !== "0x0000000000000000000000000000000000000000" &&
           (mkt as any).status !== "coming-soon" &&
-          genesisParticipatesInMaidenVoyageTotals(mkt)
+          genesisParticipatesInMaidenVoyageTotals(mkt) &&
+          !isMarketArchived(mkt)
         );
       }),
     []

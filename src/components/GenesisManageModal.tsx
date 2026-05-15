@@ -9,6 +9,7 @@ import { DepositModalTabHeader } from "./DepositModalTabHeader";
 import { useContractRead } from "wagmi";
 import { useAccount } from "wagmi";
 import { getAcceptedDepositAssets } from "@/utils/markets";
+import { isMarketArchived } from "@/config/markets";
 
 interface GenesisManageModalProps {
   isOpen: boolean;
@@ -97,6 +98,8 @@ export const GenesisManageModal = ({
 
   const acceptedAssets = getAcceptedDepositAssets(market);
   const hasDeposit = userDeposit && userDeposit > 0n;
+  const archived = isMarketArchived(market);
+  const depositsBlocked = !!isEnded || archived;
 
   // Reset tab when modal opens
   useEffect(() => {
@@ -143,7 +146,7 @@ export const GenesisManageModal = ({
           activeTab={activeTab}
           onTabChange={(v) => handleTabChange(v as "deposit" | "withdraw")}
           tabDisabled={{
-            deposit: !!isEnded,
+            deposit: depositsBlocked,
             withdraw: !hasDeposit,
           }}
         />
@@ -176,7 +179,7 @@ export const GenesisManageModal = ({
             <div className="text-center text-[#1E4775]/60 py-8">
               <div className="animate-pulse">Loading market data...</div>
             </div>
-          ) : activeTab === "deposit" && !isEnded && isValidGenesisAddress && isValidCollateralAddress ? (
+          ) : activeTab === "deposit" && !depositsBlocked && isValidGenesisAddress && isValidCollateralAddress ? (
             <GenesisDepositModal
               isOpen={true}
               onClose={handleClose}

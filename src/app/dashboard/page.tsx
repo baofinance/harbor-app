@@ -90,6 +90,7 @@ export default function DashboardPage() {
   const { rows, isLoading, error, refresh, isConnected, walletAddress } = useFounderMetrics();
   const {
     maidenVoyageRows,
+    archivedMaidenVoyageRows,
     earnRows,
     leverageRows,
     isLoading: posLoading,
@@ -194,6 +195,16 @@ export default function DashboardPage() {
                 emptyHint="No open leveraged positions in the Sail subgraph."
               />
             </div>
+          ) : null}
+
+          {isConnected && archivedMaidenVoyageRows.length > 0 ? (
+            <PositionsSubsection
+              title="Archived — Maiden Voyage"
+              rows={archivedMaidenVoyageRows}
+              loading={posLoading.maidenVoyage}
+              error={posErrors.maidenVoyage}
+              emptyHint="No archived genesis deposits for this wallet."
+            />
           ) : null}
         </section>
 

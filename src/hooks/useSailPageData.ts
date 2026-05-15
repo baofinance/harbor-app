@@ -16,6 +16,7 @@ import {
   buildNetworkFilterOptions,
   filterBySelectedNetworks,
 } from "@/utils/networkFilter";
+import { partitionMarketsByArchived } from "@/utils/marketPartitions";
 
 /**
  * Sail index route: filters, subgraph marks/PnL, aggregates, and derived `activeMarkets`.
@@ -111,15 +112,17 @@ export function useSailPageData() {
     refetchUserDeposits,
   } = useSailContractReads();
 
-  const displayedSailMarkets = useMemo(
-    () =>
-      chainFilterSelected.includes(FILTER_NONE_SENTINEL)
-        ? []
-        : chainFilterSelected.length === 0
-          ? sailMarkets
-          : filterBySelectedNetworks(sailMarkets, chainFilterSelected, ([, m]) => m),
-    [sailMarkets, chainFilterSelected]
-  );
+  const chainFilteredSailMarkets = useMemo(() => {
+    if (chainFilterSelected.includes(FILTER_NONE_SENTINEL)) return [];
+    if (chainFilterSelected.length === 0) return sailMarkets;
+    return filterBySelectedNetworks(sailMarkets, chainFilterSelected, ([, m]) => m);
+  }, [sailMarkets, chainFilterSelected]);
+
+  const { active: displayedSailMarkets, archived: displayedArchivedSailMarkets } =
+    useMemo(
+      () => partitionMarketsByArchived(chainFilteredSailMarkets),
+      [chainFilteredSailMarkets]
+    );
 
   const sailChainOptions = useMemo(
     () => buildNetworkFilterOptions(sailMarkets, ([, m]) => m),
@@ -357,6 +360,7 @@ export function useSailPageData() {
     sailMarkets,
     sailMarketIdToIndex,
     displayedSailMarkets,
+    displayedArchivedSailMarkets,
     sailChainOptions,
     uniqueLongSides,
     uniqueShortSides,

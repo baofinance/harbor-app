@@ -18,7 +18,8 @@ import {
   SailBasicMarketCardsGrid,
 } from "@/components/sail";
 import { usePageLayoutPreference } from "@/contexts/PageLayoutPreferenceContext";
-import type { DefinedMarket } from "@/config/markets";
+import { markets as marketsConfig, type DefinedMarket } from "@/config/markets";
+import { ArchivedMarketsListSection } from "@/components/ArchivedMarketsListSection";
 import { ensureMarketWalletChain } from "@/utils/ensureMarketWalletChain";
 import { formatCompactUSD } from "@/utils/anchor";
 
@@ -74,6 +75,7 @@ export default function SailPage() {
     activeSailBoostEndTimestamp,
     activeMarkets,
     displayedSailMarkets,
+    displayedArchivedSailMarkets,
   } = useSailPageData();
 
   const [expandedMarkets, setExpandedMarkets] = useState<string[]>([]);
@@ -85,6 +87,7 @@ export default function SailPage() {
   const [manageModalTab, setManageModalTab] = useState<"mint" | "redeem">(
     "mint"
   );
+  const [showArchivedSail, setShowArchivedSail] = useState(false);
 
   const queryClient = useQueryClient();
 
@@ -256,6 +259,20 @@ export default function SailPage() {
               )}
             </SailMarketsSections>
           )}
+
+          <ArchivedMarketsListSection
+            markets={displayedArchivedSailMarkets}
+            showSection={showArchivedSail}
+            onToggleShow={() => setShowArchivedSail((v) => !v)}
+            onManage={(marketId) => {
+              const m = (marketsConfig as Record<string, DefinedMarket>)[marketId];
+              if (!m) return;
+              setSelectedMarketId(marketId);
+              setSelectedMarket(m);
+              setManageModalTab("redeem");
+              setManageModalOpen(true);
+            }}
+          />
         </main>
 
         {selectedMarketId && selectedMarket && (

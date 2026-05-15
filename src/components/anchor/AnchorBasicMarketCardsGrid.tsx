@@ -10,7 +10,7 @@ import { CurrencyDollarIcon, ShieldCheckIcon } from "@heroicons/react/24/solid";
 import { Vault, Wallet } from "lucide-react";
 import { MarketMaintenanceTag } from "@/components/MarketMaintenanceTag";
 import type { DefinedMarket } from "@/config/markets";
-import { isMarketInMaintenance } from "@/config/markets";
+import { depositsBlockedForMarket, isMarketInMaintenance } from "@/config/markets";
 import type { MarketData } from "@/hooks/anchor/useAnchorMarketData";
 import { TokenLogo } from "@/components/shared";
 import type { AnchorMarketGroupCollapsedRowProps } from "@/components/anchor/AnchorMarketGroupCollapsedRow";
@@ -211,6 +211,9 @@ function AnchorBasicMarketCard({
   const groupHasMaintenance = marketList.some(({ market }) =>
     isMarketInMaintenance(market)
   );
+  const groupDepositsBlocked = marketList.some(({ market }) =>
+    depositsBlockedForMarket(market)
+  );
 
   const railsPresent = useMemo(() => {
     const set = new Set<"eth" | "usd">();
@@ -333,7 +336,8 @@ function AnchorBasicMarketCard({
   })();
 
   const handleStartEarning = () => {
-    if (!isConnected || !selectedMarket || groupHasMaintenance) return;
+    if (!isConnected || !selectedMarket || groupHasMaintenance || groupDepositsBlocked)
+      return;
     const enrichedAllMarkets = marketList.map((m) => {
       const marketData = marketsData.find((md) => md.marketId === m.marketId);
       return {
@@ -446,7 +450,7 @@ function AnchorBasicMarketCard({
       <div className="mt-auto flex shrink-0 flex-col gap-2 pt-4">
         <button
           type="button"
-          disabled={!isConnected || groupHasMaintenance}
+          disabled={!isConnected || groupHasMaintenance || groupDepositsBlocked}
           onClick={handleStartEarning}
           className={HARBOR_PRIMARY_CTA_CLASS}
         >

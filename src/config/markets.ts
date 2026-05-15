@@ -296,6 +296,7 @@ export const markets = {
   "fxusd-gold": {
     name: "fxUSD - GOLD",
     maintenance: false,
+    archived: true,
     anchorActive: false,
     sailActive: false,
     status: "genesis" as const,
@@ -378,6 +379,7 @@ export const markets = {
   "steth-gold": {
     name: "stETH - GOLD",
     maintenance: false,
+    archived: true,
     anchorActive: false,
     sailActive: false,
     status: "genesis" as const,
@@ -776,6 +778,7 @@ export const markets = {
   "steth-silver": {
     name: "stETH - SILVER",
     maintenance: false,
+    archived: true,
     anchorActive: false,
     sailActive: false,
     status: "genesis" as const,
@@ -858,6 +861,7 @@ export const markets = {
   "fxusd-silver": {
     name: "fxUSD - SILVER",
     maintenance: false,
+    archived: true,
     anchorActive: false,
     sailActive: false,
     status: "genesis" as const,
@@ -1050,6 +1054,19 @@ export function isMarketInMaintenance(mkt: unknown): boolean {
   );
 }
 
+export function isMarketArchived(mkt: unknown): boolean {
+  return Boolean(
+    mkt &&
+      typeof mkt === "object" &&
+      (mkt as { archived?: boolean }).archived === true
+  );
+}
+
+/** Deposits/mints blocked; withdrawals/redeems/claims still allowed. */
+export function depositsBlockedForMarket(mkt: unknown): boolean {
+  return isMarketInMaintenance(mkt) || isMarketArchived(mkt);
+}
+
 /** Anchor UI−: list only markets with `anchorActive: true` (strict). */
 export function isAnchorActiveForBasicUi(mkt: unknown): boolean {
   return Boolean(
@@ -1077,6 +1094,8 @@ export function getGenesisStatus(
   const now = new Date();
   const startDate = new Date(market.genesis.startDate);
   const endDate = new Date(market.genesis.endDate);
+
+  const archived = isMarketArchived(market);
 
   // Contract's genesisIsEnded() is the authoritative source
   if (onChainGenesisEnded) {
@@ -1106,7 +1125,7 @@ export function getGenesisStatus(
       phase: "live" as const,
       onChainStatus: "live" as const,
       canClaim: false,
-      canDeposit: true,
+      canDeposit: !archived,
       canWithdraw: true,
     };
   }
@@ -1127,7 +1146,7 @@ export function getGenesisStatus(
       phase: "live" as const,
       onChainStatus: "live" as const,
       canClaim: false,
-      canDeposit: true,
+      canDeposit: !archived,
       canWithdraw: true,
     };
   }

@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { formatEther } from "viem";
 import { markets, isAnchorActiveForBasicUi } from "@/config/markets";
+import { partitionMarketsByArchived } from "@/utils/marketPartitions";
 import { FILTER_NONE_SENTINEL } from "@/components/FilterMultiselectDropdown";
 import { useStaggeredReady } from "@/hooks/useStaggeredReady";
 import { useMultipleVolatilityProtection } from "@/hooks/useVolatilityProtection";
@@ -41,16 +42,19 @@ export function useAnchorPageData(
     []
   );
 
-  const displayedAnchorMarkets = useMemo(() => {
-    const byChain =
-      chainFilterSelected.includes(FILTER_NONE_SENTINEL)
-        ? []
-        : chainFilterSelected.length === 0
-          ? anchorMarkets
-          : filterBySelectedNetworks(anchorMarkets, chainFilterSelected, ([, m]) => m);
-    if (!layoutIsBasic) return byChain;
-    return byChain.filter(([, m]) => isAnchorActiveForBasicUi(m));
-  }, [anchorMarkets, chainFilterSelected, layoutIsBasic]);
+  const chainFilteredAnchorMarkets = useMemo(() => {
+    if (chainFilterSelected.includes(FILTER_NONE_SENTINEL)) return [];
+    if (chainFilterSelected.length === 0) return anchorMarkets;
+    return filterBySelectedNetworks(anchorMarkets, chainFilterSelected, ([, m]) => m);
+  }, [anchorMarkets, chainFilterSelected]);
+
+  const { active: displayedAnchorMarkets, archived: displayedArchivedAnchorMarkets } =
+    useMemo(() => {
+      const filtered = layoutIsBasic
+        ? chainFilteredAnchorMarkets.filter(([, m]) => isAnchorActiveForBasicUi(m))
+        : chainFilteredAnchorMarkets;
+      return partitionMarketsByArchived(filtered);
+    }, [chainFilteredAnchorMarkets, layoutIsBasic]);
 
   const anchorChainOptions = useMemo(
     () => buildNetworkFilterOptions(anchorMarkets, ([, m]) => m),
@@ -598,6 +602,7 @@ export function useAnchorPageData(
   return {
     anchorMarkets,
     displayedAnchorMarkets,
+    displayedArchivedAnchorMarkets,
     anchorChainOptions,
     volProtectionMarketsConfig,
     stagger,

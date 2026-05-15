@@ -6,7 +6,7 @@ import { useMemo } from "react";
 import { getGraphUrl, getGraphHeaders, getSailPriceGraphUrlOptional } from "@/config/graph";
 import { useAnchorLedgerMarks } from "@/hooks/useAnchorLedgerMarks";
 import { buildDashboardAddressIndex } from "@/utils/dashboardPositionLabels";
-import { markets } from "@/config/markets";
+import { markets, isMarketArchived } from "@/config/markets";
 import { isMegaethMaidenVoyageMarket } from "@/utils/megaethMarket";
 
 const USD_EPS = 0.005;
@@ -163,7 +163,7 @@ export function useDashboardPositions() {
     retry: 1,
   });
 
-  const maidenVoyageRows = useMemo((): DashboardPositionRow[] => {
+  const { maidenVoyageRows, archivedMaidenVoyageRows } = useMemo(() => {
     const raw = (mvData?.userHarborMarks ?? []) as Array<{
       id: string;
       contractAddress: string;
@@ -171,7 +171,8 @@ export function useDashboardPositions() {
       currentDepositUSD?: string;
       genesisEnded?: boolean;
     }>;
-    const rows: DashboardPositionRow[] = [];
+    const active: DashboardPositionRow[] = [];
+    const archived: DashboardPositionRow[] = [];
     for (const m of raw) {
       const dep = BigInt((m.currentDeposit as string) || "0");
       const usd = parseFloat(m.currentDepositUSD || "0");
@@ -183,16 +184,28 @@ export function useDashboardPositions() {
 
       const marketLabel = meta?.displayName ?? "Maiden Voyage";
       const phase = m.genesisEnded ? "Ended" : "Active";
-      rows.push({
+      const row: DashboardPositionRow = {
         id: `mv-${m.id}`,
         category: "maiden_voyage",
         marketLabel,
         detail: `Genesis · ${phase}`,
         usd,
         href: "/genesis",
-      });
+      };
+      const mktCfg = meta?.marketId
+        ? (markets as Record<string, unknown>)[meta.marketId]
+        : undefined;
+      if (isMarketArchived(mktCfg)) {
+        archived.push(row);
+      } else {
+        active.push(row);
+      }
     }
-    return rows.sort((a, b) => b.usd - a.usd);
+    const sortByUsd = (a: DashboardPositionRow, b: DashboardPositionRow) => b.usd - a.usd;
+    return {
+      maidenVoyageRows: active.sort(sortByUsd),
+      archivedMaidenVoyageRows: archived.sort(sortByUsd),
+    };
   }, [mvData, index.genesisByAddressLower]);
 
   const earnRows = useMemo((): DashboardPositionRow[] => {
@@ -293,6 +306,7 @@ export function useDashboardPositions() {
 
   return {
     maidenVoyageRows,
+    archivedMaidenVoyageRows,
     earnRows,
     leverageRows,
     isLoading: {

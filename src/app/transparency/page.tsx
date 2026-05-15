@@ -39,8 +39,15 @@ import {
 import InfoTooltip from "@/components/InfoTooltip";
 import { InfinityOutlineIcon } from "@/components/icons/InfinityOutlineIcon";
 import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
-import { isMarketInMaintenance, markets as marketsConfig } from "@/config/markets";
-import { MarketMaintenanceBadge } from "@/components/MarketMaintenanceTag";
+import {
+  isMarketArchived,
+  isMarketInMaintenance,
+  markets as marketsConfig,
+} from "@/config/markets";
+import {
+  MarketArchivedBadge,
+  MarketMaintenanceBadge,
+} from "@/components/MarketMaintenanceTag";
 import { useMultipleTokenPrices } from "@/hooks/useTokenPrices";
 import { buildTokenPriceInput } from "@/utils/tokenPriceInput";
 import { useMultipleVolatilityProtection } from "@/hooks/useVolatilityProtection";
@@ -313,6 +320,7 @@ function MarketCard({
 
     const marketCfg = (marketsConfig as any)?.[market.marketId];
     const showMaintenanceTag = isMarketInMaintenance(marketCfg);
+    const showArchivedTag = isMarketArchived(marketCfg);
     const chainName = marketCfg?.chain?.name || "Ethereum";
     const chainLogo = marketCfg?.chain?.logo || "icons/eth.png";
     const isGenesisPending =
@@ -481,7 +489,9 @@ function MarketCard({
                                 </div>
                             </div>
                             <div className="flex items-center gap-2 flex-shrink-0">
-                                {showMaintenanceTag ? (
+                                {showArchivedTag ? (
+                                    <MarketArchivedBadge compact />
+                                ) : showMaintenanceTag ? (
                                     <MarketMaintenanceBadge compact/>
                                 ) : (
                                     <HealthBadge status={healthBadgeStatus} compact/>
@@ -652,7 +662,9 @@ function MarketCard({
 
                         {/* Health Status */}
                         <div className="text-center">
-                            {showMaintenanceTag ? (
+                            {showArchivedTag ? (
+                                <MarketArchivedBadge compact />
+                            ) : showMaintenanceTag ? (
                                 <MarketMaintenanceBadge compact/>
                             ) : (
                                 <HealthBadge status={healthBadgeStatus} compact/>
@@ -1456,6 +1468,7 @@ export default function TransparencyPage() {
 
         const [chainFilterSelected, setChainFilterSelected] = useState<string[]>([]);
         const [showGenesisMarketsOnly, setShowGenesisMarketsOnly] = useState(false);
+        const [showArchivedTransparency, setShowArchivedTransparency] = useState(false);
 
         const transparencyChainOptions = useMemo(
             () =>
@@ -1503,6 +1516,20 @@ export default function TransparencyPage() {
 
             return filtered;
         }, [finishedMarkets, chainFilterSelected, showGenesisMarketsOnly]);
+
+        const { activeDisplayedMarkets, archivedDisplayedMarkets } = useMemo(() => {
+            const active: typeof displayedMarkets = [];
+            const archived: typeof displayedMarkets = [];
+            for (const m of displayedMarkets) {
+                const cfg = (marketsConfig as Record<string, unknown>)[m.marketId];
+                if (isMarketArchived(cfg)) {
+                    archived.push(m);
+                } else {
+                    active.push(m);
+                }
+            }
+            return { activeDisplayedMarkets: active, archivedDisplayedMarkets: archived };
+        }, [displayedMarkets]);
 
         const clearFilters = useCallback(() => {
             setChainFilterSelected([]);
@@ -1803,7 +1830,8 @@ export default function TransparencyPage() {
                             <>
                                 {!isLoading &&
                                     finishedMarkets.length > 0 &&
-                                    displayedMarkets.length === 0 && (
+                                    activeDisplayedMarkets.length === 0 &&
+                                    archivedDisplayedMarkets.length === 0 && (
                                         <div className="rounded-lg border border-white/10 bg-black/[0.10] backdrop-blur-sm px-4 py-6 text-center text-sm text-white/90">
                                             No markets match the selected network.{" "}
                                             <button
@@ -1815,7 +1843,7 @@ export default function TransparencyPage() {
                                             </button>
                                         </div>
                                     )}
-                                {displayedMarkets.length > 0 && (
+                                {activeDisplayedMarkets.length > 0 && (
                                     <div
                                         className={`hidden lg:block bg-white py-1.5 px-2 mb-0 overflow-x-auto rounded-md border border-[#1E4775]/15 shadow-sm ${SCROLLBAR_HIDE_X}`}
                                     >
@@ -1873,7 +1901,7 @@ export default function TransparencyPage() {
                                     </div>
                                 ) : (
                                     <div className="space-y-2">
-                                        {displayedMarkets.map((market) => (
+                                        {activeDisplayedMarkets.map((market) => (
                                             <MarketCard
                                                 key={market.marketId}
                                                 market={market}
@@ -1894,6 +1922,64 @@ export default function TransparencyPage() {
                                                 poolRewardsAprPending={poolRewardsAprPending}
                                             />
                                         ))}
+                                    </div>
+                                )}
+
+                                {archivedDisplayedMarkets.length > 0 && (
+                                    <div className="mt-8 space-y-3">
+                                        <button
+                                            type="button"
+                                            onClick={() =>
+                                                setShowArchivedTransparency((v) => !v)
+                                            }
+                                            className="flex w-full items-center justify-between gap-2 rounded-md border border-white/15 bg-white/5 px-3 py-2 text-left hover:bg-white/10 transition-colors"
+                                        >
+                                            <div>
+                                                <h2 className="text-xs font-medium text-white/80 uppercase tracking-wider">
+                                                    Archived markets
+                                                </h2>
+                                                <p className="text-[11px] text-white/50 mt-0.5">
+                                                    Read-only metrics · new deposits disabled
+                                                </p>
+                                            </div>
+                                            <span className="text-xs text-white/60 shrink-0">
+                                                {showArchivedTransparency ? "Hide" : "Show"} (
+                                                {archivedDisplayedMarkets.length})
+                                            </span>
+                                        </button>
+                                        {showArchivedTransparency ? (
+                                            <div className="space-y-2">
+                                                {archivedDisplayedMarkets.map((market) => (
+                                                    <MarketCard
+                                                        key={market.marketId}
+                                                        market={market}
+                                                        pools={pools.filter(
+                                                            (p) =>
+                                                                p.address ===
+                                                                    market.stabilityPoolCollateralAddress ||
+                                                                p.address ===
+                                                                    market.stabilityPoolLeveragedAddress
+                                                        )}
+                                                        userPools={userPools}
+                                                        tokenPricesByMarket={
+                                                            tokenPricesByMarket as any
+                                                        }
+                                                        volatilityProtectionMap={
+                                                            volatilityProtectionMap
+                                                        }
+                                                        fxSAVEPrice={fxSAVEPrice ?? undefined}
+                                                        wstETHPrice={wstETHPrice ?? undefined}
+                                                        stETHPrice={stETHPrice ?? undefined}
+                                                        btcPrice={btcPrice || undefined}
+                                                        ethPrice={ethPrice || undefined}
+                                                        poolRewardsMap={poolRewardsMap}
+                                                        poolRewardsAprPending={
+                                                            poolRewardsAprPending
+                                                        }
+                                                    />
+                                                ))}
+                                            </div>
+                                        ) : null}
                                     </div>
                                 )}
                             </>

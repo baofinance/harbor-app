@@ -27,6 +27,7 @@ import {
   GenesisCampaignStats,
   GenesisComingNextMarketsSection,
   GenesisCompletedMarketsSection,
+  GenesisArchivedMarketsSection,
   GenesisMaidenVoyageComingSoon,
   GenesisHeroIntroCards,
   GenesisMarketsSections,
@@ -39,7 +40,10 @@ import { useGenesisPageData } from "@/hooks/useGenesisPageData";
 import { usePageLayoutPreference } from "@/contexts/PageLayoutPreferenceContext";
 import { ensureMarketWalletChain } from "@/utils/ensureMarketWalletChain";
 import { formatCompactUSD } from "@/utils/anchor";
-import { genesisParticipatesInMaidenVoyageTotals } from "@/config/markets";
+import {
+  genesisParticipatesInMaidenVoyageTotals,
+  isMarketArchived,
+} from "@/config/markets";
 
 const SHOW_MAIDEN_VOYAGE_COMING_SOON =
   process.env.NEXT_PUBLIC_SHOW_MAIDEN_VOYAGE_COMING_SOON === "true";
@@ -74,12 +78,15 @@ export default function GenesisIndexPage() {
   const [chainFilterSelected, setChainFilterSelected] = useState<string[]>([]);
   // Hide completed genesis sections by default; filter to show "Ongoing" only or "All" (ongoing + completed)
   const [showCompletedGenesis, setShowCompletedGenesis] = useState(false);
+  const [showArchivedGenesis, setShowArchivedGenesis] = useState(false);
 
   const openManageModal = async (
     marketId: string,
     market: GenesisMarketConfig,
     initialTab: "deposit" | "withdraw" = "deposit"
   ) => {
+    const resolvedTab =
+      isMarketArchived(market) && initialTab === "deposit" ? "withdraw" : initialTab;
     const marketChainId = market?.chainId ?? 1;
 
     const isReady = await ensureMarketWalletChain({
@@ -101,7 +108,7 @@ export default function GenesisIndexPage() {
     setManageModal({
       marketId,
       market,
-      initialTab,
+      initialTab: resolvedTab,
     });
   };
 
@@ -219,7 +226,7 @@ export default function GenesisIndexPage() {
           ? contractSaysEnded
           : subgraphSaysEnded ?? false;
 
-      if (isEnded) {
+      if (isEnded && !isMarketArchived(mkt)) {
         completedMarkets.push([id, mkt, marks]);
       }
     });
@@ -599,13 +606,44 @@ export default function GenesisIndexPage() {
     });
   }, [reads, isConnected, genesisMarkets]);
 
-  const { activeMarkets, showHeaders, activeCampaignName } =
-    useSortedGenesisMarkets({
-      genesisMarkets,
-      reads,
-      isConnected,
-      marksResults,
+  const {
+    activeMarkets,
+    archivedLiveMarkets,
+    archivedCompletedMarkets,
+    showHeaders,
+    activeCampaignName,
+  } = useSortedGenesisMarkets({
+    genesisMarkets,
+    reads,
+    isConnected,
+    marksResults,
+  });
+
+  const hasArchivedUserDeposit = useMemo(() => {
+    if (!reads || !isConnected) return false;
+    const archivedIds = new Set([
+      ...archivedLiveMarkets.map(([id]) => id),
+      ...archivedCompletedMarkets.map(([id]) => id),
+    ]);
+    return genesisMarkets.some(([id, mkt], marketIndex) => {
+      if (!archivedIds.has(id)) return false;
+      const baseOffset = marketIndex * 3;
+      const userDeposit = reads?.[baseOffset + 1]?.result as bigint | undefined;
+      return userDeposit != null && userDeposit > 0n;
     });
+  }, [
+    reads,
+    isConnected,
+    genesisMarkets,
+    archivedLiveMarkets,
+    archivedCompletedMarkets,
+  ]);
+
+  useEffect(() => {
+    if (hasArchivedUserDeposit) {
+      setShowArchivedGenesis(true);
+    }
+  }, [hasArchivedUserDeposit]);
 
   const displayedActiveMarkets = useMemo(() => {
     if (chainFilterSelected.includes(FILTER_NONE_SENTINEL)) return [];
@@ -629,6 +667,37 @@ export default function GenesisIndexPage() {
     });
     return next;
   }, [completedByCampaign, chainFilterSelected]);
+
+  const filterGenesisPairs = <T,>(entries: Array<[string, T]>) => {
+    if (chainFilterSelected.includes(FILTER_NONE_SENTINEL)) return [];
+    if (chainFilterSelected.length === 0) return entries;
+    return entries.filter(([, m]) => {
+      const chainName = (m as { chain?: { name?: string } }).chain?.name || "Ethereum";
+      return chainFilterSelected.includes(chainName);
+    });
+  };
+
+  const filterGenesisTriples = <T, U,>(entries: Array<[string, T, U]>) => {
+    if (chainFilterSelected.includes(FILTER_NONE_SENTINEL)) return [];
+    if (chainFilterSelected.length === 0) return entries;
+    return entries.filter(([, m]) => {
+      const chainName = (m as { chain?: { name?: string } }).chain?.name || "Ethereum";
+      return chainFilterSelected.includes(chainName);
+    });
+  };
+
+  const displayedArchivedLiveMarkets = useMemo(
+    () => filterGenesisPairs(archivedLiveMarkets),
+    [archivedLiveMarkets, chainFilterSelected]
+  );
+
+  const displayedArchivedCompletedMarkets = useMemo(
+    () => filterGenesisTriples(archivedCompletedMarkets),
+    [archivedCompletedMarkets, chainFilterSelected]
+  );
+
+  const archivedGenesisCount =
+    displayedArchivedLiveMarkets.length + displayedArchivedCompletedMarkets.length;
 
   const activeGenesisTvlUsd = useMemo(() => {
     if (!totalDepositsReads || !collateralPricesMap) return 0;
@@ -795,6 +864,26 @@ export default function GenesisIndexPage() {
             address={address}
             claimingMarket={claimingMarket}
             onClaim={claimMarket}
+          />
+        )}
+
+        {archivedGenesisCount > 0 && (
+          <GenesisArchivedMarketsSection
+            showSection={showArchivedGenesis}
+            onToggleShow={() => setShowArchivedGenesis((v) => !v)}
+            displayedLiveMarkets={displayedArchivedLiveMarkets}
+            displayedCompletedMarkets={displayedArchivedCompletedMarkets}
+            genesisMarkets={genesisMarkets}
+            reads={reads}
+            isConnected={isConnected}
+            collateralPricesMap={collateralPricesMap}
+            coinGeckoPrices={coinGeckoPrices}
+            coinGeckoLoading={coinGeckoLoading}
+            chainlinkBtcPrice={chainlinkBtcPrice}
+            address={address}
+            claimingMarket={claimingMarket}
+            onClaim={claimMarket}
+            openManageModal={openManageModal}
           />
         )}
       </main>

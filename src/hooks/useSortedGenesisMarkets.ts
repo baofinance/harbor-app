@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { isMarketArchived } from "@/config/markets";
 
 interface UseSortedGenesisMarketsParams {
   genesisMarkets: Array<[string, any]>;
@@ -66,8 +67,11 @@ export const useSortedGenesisMarkets = ({
 
     const activeMarkets: Array<[string, any]> = [];
     const completedMarkets: Array<[string, any, any]> = [];
+    const archivedLiveMarkets: Array<[string, any]> = [];
+    const archivedCompletedMarkets: Array<[string, any, any]> = [];
 
     sortedMarkets.forEach(([id, mkt]) => {
+      const archived = isMarketArchived(mkt);
       const mi = getMarketIndex(genesisMarkets, id);
       const baseOffset = mi * (isConnected ? 3 : 1);
       const contractReadResult = reads?.[baseOffset];
@@ -87,6 +91,15 @@ export const useSortedGenesisMarkets = ({
 
       const isEnded =
         contractSaysEnded !== undefined ? contractSaysEnded : subgraphSaysEnded ?? false;
+
+      if (archived) {
+        if (isEnded) {
+          archivedCompletedMarkets.push([id, mkt, marks]);
+        } else {
+          archivedLiveMarkets.push([id, mkt]);
+        }
+        return;
+      }
 
       if (isEnded) {
         completedMarkets.push([id, mkt, marks]);
@@ -112,6 +125,8 @@ export const useSortedGenesisMarkets = ({
       sortedMarkets,
       activeMarkets,
       completedMarkets,
+      archivedLiveMarkets,
+      archivedCompletedMarkets,
       showHeaders,
       activeCampaignName,
     };

@@ -67,6 +67,7 @@ import { ErrorBanner } from "@/components/anchor/ErrorBanner";
 import { FeeDisplayRow } from "@/components/anchor/FeeDisplayRow";
 import { getRevertReason } from "@/utils/parseViemRevert";
 import type { DefinedMarket } from "@/config/markets";
+import { depositsBlockedForMarket, isMarketArchived } from "@/config/markets";
 import { anchorAddressByName } from "@/types/anchor";
 import { calculateDeadline } from "@/utils/permit";
 import {
@@ -206,6 +207,8 @@ export const AnchorDepositWithdrawModal = ({
 
   // Target chain for this market (multi-chain: mainnet or e.g. MegaETH 4326)
   const marketChainId = (market as DefinedMarket & { chainId?: number }).chainId ?? mainnet.id;
+  const depositsBlocked = depositsBlockedForMarket(market);
+  const marketArchived = isMarketArchived(market);
   const isCorrectNetwork = effectiveChainId === marketChainId;
   const shouldShowNetworkSwitch = !isCorrectNetwork && isConnected;
 
@@ -5245,6 +5248,14 @@ export const AnchorDepositWithdrawModal = ({
   };
 
   const handleMint = async () => {
+    if (depositsBlocked) {
+      handleTxError(
+        marketArchived
+          ? "This market is archived. New deposits and mints are not accepted."
+          : "Deposits are unavailable while this market is in maintenance."
+      );
+      return;
+    }
     // Ensure correct network before starting transaction (auto-attempt switch)
     if (!(await ensureCorrectNetwork())) return;
     // Clear any stale hashes from previous runs so the progress UI starts fresh
@@ -8252,6 +8263,14 @@ export const AnchorDepositWithdrawModal = ({
   };
 
   const handleDeposit = async () => {
+    if (depositsBlocked) {
+      handleTxError(
+        marketArchived
+          ? "This market is archived. New pool deposits are not accepted."
+          : "Deposits are unavailable while this market is in maintenance."
+      );
+      return;
+    }
     if (!validateAmount() || !address || !stabilityPoolAddress) return;
 
     // Check if wallet is connected

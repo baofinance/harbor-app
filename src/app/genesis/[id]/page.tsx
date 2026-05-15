@@ -10,7 +10,7 @@ import {
  usePublicClient,
 } from "wagmi";
 import { formatEther, parseEther } from "viem";
-import { markets, type Market } from "../../../config/markets";
+import { markets, type Market, isMarketArchived } from "../../../config/markets";
 import { GENESIS_ABI, ERC20_ABI, CHAINLINK_ORACLE_ABI } from "@/abis/shared";
 import { formatUSD, formatToken, formatDateTime } from "@/utils/formatters";
 import { EtherscanLink, TokenLogo, getLogoPath } from "@/components/shared";
@@ -179,6 +179,7 @@ function GenesisActionTabs({
  roiPercent,
  roiBreakdown,
  fdvUSD,
+ marketArchived,
 }: {
  activeTab:"deposit" |"withdraw" |"claim";
  setActiveTab: (tab:"deposit" |"withdraw" |"claim") => void;
@@ -212,6 +213,7 @@ function GenesisActionTabs({
  estUserValueUSD: number;
  };
  fdvUSD: number;
+ marketArchived: boolean;
 }) {
  const formatAmount = (v?: bigint) =>
  v ? (Number(v) / 1e18).toFixed(4) :"0.00";
@@ -242,6 +244,11 @@ function GenesisActionTabs({
  <div className="flex-grow">
  {activeTab ==="deposit" && (
  <div className="space-y-3">
+ {marketArchived && (
+ <p className="text-sm text-white/70 bg-white/5 border border-white/15 rounded-md px-3 py-2">
+ This market is archived. New deposits are disabled; use Withdraw to exit an existing position.
+ </p>
+ )}
  <BalanceDisplay
  label="Wallet Balance"
  value={formatAmount(walletBalance)}
@@ -295,7 +302,7 @@ function GenesisActionTabs({
  {error && <p className="text-sm text-rose-400">{error}</p>}
  <ActionButton
  onClick={handleDeposit}
- disabled={!isConnected || !depositAmount}
+ disabled={!isConnected || !depositAmount || marketArchived}
  isLoading={isDepositLoading || isApproveLoading}
  >
  Deposit
@@ -388,6 +395,7 @@ function GenesisActionTabs({
 export default function GenesisMarketPage({ params }: PageProps) {
  const { id } = use(params);
  const market = (markets as Record<string, Market>)[id] as Market | undefined;
+ const marketArchived = isMarketArchived(market);
  const { address, isConnected } = useAccount();
  const { writeContractAsync } = useWriteContract();
  const publicClient = usePublicClient();
@@ -594,6 +602,10 @@ export default function GenesisMarketPage({ params }: PageProps) {
 
  const handleDeposit = async () => {
  setActionError(null);
+ if (marketArchived) {
+ setActionError("This market is archived. New deposits are not accepted.");
+ return;
+ }
  if (!address || !genesisAddress || !collateralAddress || !depositAmount)
  return;
  let amount: bigint;
@@ -883,6 +895,7 @@ export default function GenesisMarketPage({ params }: PageProps) {
  roiPercent={roiPercent}
  roiBreakdown={roiBreakdown}
  fdvUSD={FDV_USD}
+ marketArchived={marketArchived}
  />
  </div>
  <div className="lg:col-span-1 h-full">
