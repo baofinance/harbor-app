@@ -231,7 +231,7 @@ export default function DashboardPage() {
                     rows={leverageRows}
                     loading={posLoading.leverage}
                     error={posErrors.leverage}
-                    emptyHint="No open leveraged positions in the Sail subgraph."
+                    emptyHint="No Sail positions in the Sail subgraph or Sail token marks in the indexer."
                   />
                 </div>
               ) : null}
