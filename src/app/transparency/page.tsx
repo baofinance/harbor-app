@@ -39,7 +39,13 @@ import {
 import InfoTooltip from "@/components/InfoTooltip";
 import { InfinityOutlineIcon } from "@/components/icons/InfinityOutlineIcon";
 import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
-import { isMarketInMaintenance, markets as marketsConfig } from "@/config/markets";
+import {
+  getGenesisActiveSetting,
+  isGenesisHiddenFromIndex,
+  isGenesisSoonUi,
+  isMarketInMaintenance,
+  markets as marketsConfig,
+} from "@/config/markets";
 import { MarketMaintenanceBadge } from "@/components/MarketMaintenanceTag";
 import { useMultipleTokenPrices } from "@/hooks/useTokenPrices";
 import { buildTokenPriceInput } from "@/utils/tokenPriceInput";
@@ -1477,29 +1483,23 @@ export default function TransparencyPage() {
                 );
             }
 
-            if (showGenesisMarketsOnly) {
-                filtered = filtered.filter((m) => {
-                    const cfg = (marketsConfig as any)[m.marketId];
-                    const genesisAddress = cfg?.addresses?.genesis;
-                    return (
-                        typeof genesisAddress === "string" &&
-                        genesisAddress.startsWith("0x") &&
-                        genesisAddress.length === 42 &&
-                        genesisAddress.toLowerCase() !==
-                            "0x0000000000000000000000000000000000000000"
-                    );
-                });
-            } else {
-                // Hide non-live genesis markets unless explicitly requested.
-                filtered = filtered.filter((m) => {
-                    const cfg = (marketsConfig as any)[m.marketId];
-                    const isPendingGenesis =
-                        cfg?.status === "genesis" &&
-                        m.peggedTokenBalance === 0n &&
-                        m.leveragedTokenBalance === 0n;
-                    return !isPendingGenesis;
-                });
-            }
+            filtered = filtered.filter((m) => {
+                const cfg = (marketsConfig as any)[m.marketId];
+                if (!cfg || isGenesisHiddenFromIndex(cfg)) return false;
+
+                if (showGenesisMarketsOnly) {
+                    const g = getGenesisActiveSetting(cfg);
+                    return g === true || g === "soon" || g === "completed";
+                }
+
+                if (isGenesisSoonUi(cfg)) return false;
+
+                const isPendingGenesis =
+                    cfg?.status === "genesis" &&
+                    m.peggedTokenBalance === 0n &&
+                    m.leveragedTokenBalance === 0n;
+                return !isPendingGenesis;
+            });
 
             return filtered;
         }, [finishedMarkets, chainFilterSelected, showGenesisMarketsOnly]);

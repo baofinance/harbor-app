@@ -5458,11 +5458,13 @@ export default function AnchorPage() {
 
               // Process each group
               if (anchorViewBasic) {
+                // Basic cards: show all peg groups from displayed markets (incl. preview /
+                // multichain). Do not require marketsDataMap — that map only has post-genesis
+                // TVL (see useAnchorMarketData), which hid haUSD and showed the single-chain
+                // placeholder instead of Ethereum + MegaETH footers.
                 const marketGroups = Object.entries(groups)
                   .map(([symbol, marketList]) => ({ symbol, list: marketList }))
-                  .filter(({ list }) =>
-                    list.some(({ marketId }) => marketsDataMap.has(marketId))
-                  );
+                  .filter(({ list }) => list.length > 0);
                 return (
                   <AnchorBasicMarketCardsGrid
                     marketGroups={marketGroups}

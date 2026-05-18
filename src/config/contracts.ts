@@ -9,6 +9,7 @@
 
 // Import test2 config if needed
 import { markets as test2Markets, contracts as test2Contracts } from "./contracts.test2";
+import { mainnetUsdMarkets } from "./contracts.mainnetUsd";
 
 // Check if we should use test2 contracts
 // NEXT_PUBLIC_ variables are available on both server and client in Next.js
@@ -603,7 +604,9 @@ const productionMarkets: Markets = {
 };
 
 // Export markets and contracts based on environment variable
-export const markets: Markets = useTest2 ? test2Markets : productionMarkets;
+export const markets: Markets = useTest2
+  ? test2Markets
+  : { ...productionMarkets, ...mainnetUsdMarkets };
 export const contracts = useTest2 ? test2Contracts : productionContracts;
 
 // For backward compatibility and convenience

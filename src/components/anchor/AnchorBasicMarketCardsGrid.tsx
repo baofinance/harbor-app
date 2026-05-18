@@ -10,11 +10,15 @@ import { CurrencyDollarIcon, ShieldCheckIcon } from "@heroicons/react/24/solid";
 import { Vault, Wallet } from "lucide-react";
 import { MarketMaintenanceTag } from "@/components/MarketMaintenanceTag";
 import type { DefinedMarket } from "@/config/markets";
-import { isMarketInMaintenance } from "@/config/markets";
+import { isAnchorSoonUi, isMarketInMaintenance } from "@/config/markets";
 import type { MarketData } from "@/hooks/anchor/useAnchorMarketData";
 import { TokenLogo } from "@/components/shared";
 import type { AnchorMarketGroupCollapsedRowProps } from "@/components/anchor/AnchorMarketGroupCollapsedRow";
-import { HarborBasicMarketNetworkFooter } from "@/components/market-cards/HarborBasicMarketNetworkFooter";
+import {
+  HarborBasicMarketNetworkFooter,
+  harborChainsFromMarkets,
+  harborMarketChainKey,
+} from "@/components/market-cards/HarborBasicMarketNetworkFooter";
 import {
   BASIC_MARKET_APR_MONO_CLASS,
   BASIC_MARKET_CARD_SHELL_CLASS,
@@ -212,21 +216,13 @@ function AnchorBasicMarketCard({
     isMarketInMaintenance(market)
   );
 
-  const railsPresent = useMemo(() => {
-    const set = new Set<"eth" | "usd">();
-    for (const { market } of marketList) {
-      const r = yieldRailLabel(market);
-      if (r === "eth") set.add("eth");
-      if (r === "usd") set.add("usd");
-    }
-    return set;
-  }, [marketList]);
+  const chains = useMemo(
+    () => harborChainsFromMarkets(marketList.map(({ market }) => market)),
+    [marketList]
+  );
+  const isMultichain = chains.length > 1;
 
-  const hasMultiRail = railsPresent.has("eth") && railsPresent.has("usd");
-  const singleEthOnly = railsPresent.has("eth") && !railsPresent.has("usd");
-  const singleUsdOnly = railsPresent.has("usd") && !railsPresent.has("eth");
-
-  const defaultMarketId = useMemo(() => {
+  const bestMarketIdOnList = useMemo(() => {
     let bestId = marketList[0]?.marketId;
     let bestApr = -1;
     for (const { marketId } of marketList) {
@@ -239,11 +235,42 @@ function AnchorBasicMarketCard({
     return bestId ?? marketList[0]?.marketId ?? "";
   }, [marketList, marketsData]);
 
-  const [selectedMarketId, setSelectedMarketId] = useState(defaultMarketId);
+  const [selectedChainKey, setSelectedChainKey] = useState(() => {
+    const entry = marketList.find((m) => m.marketId === bestMarketIdOnList);
+    return harborMarketChainKey(entry?.market ?? marketList[0]?.market ?? {});
+  });
+
+  const [selectedMarketId, setSelectedMarketId] = useState(bestMarketIdOnList);
 
   useEffect(() => {
-    setSelectedMarketId(defaultMarketId);
-  }, [defaultMarketId]);
+    const entry = marketList.find((m) => m.marketId === bestMarketIdOnList);
+    setSelectedChainKey(
+      harborMarketChainKey(entry?.market ?? marketList[0]?.market ?? {})
+    );
+    setSelectedMarketId(bestMarketIdOnList);
+  }, [bestMarketIdOnList, marketList]);
+
+  const marketsOnChain = useMemo(
+    () =>
+      marketList.filter(
+        ({ market }) => harborMarketChainKey(market) === selectedChainKey
+      ),
+    [marketList, selectedChainKey]
+  );
+
+  const railsPresent = useMemo(() => {
+    const set = new Set<"eth" | "usd">();
+    for (const { market } of marketsOnChain) {
+      const r = yieldRailLabel(market);
+      if (r === "eth") set.add("eth");
+      if (r === "usd") set.add("usd");
+    }
+    return set;
+  }, [marketsOnChain]);
+
+  const hasMultiRail = railsPresent.has("eth") && railsPresent.has("usd");
+  const singleEthOnly = railsPresent.has("eth") && !railsPresent.has("usd");
+  const singleUsdOnly = railsPresent.has("usd") && !railsPresent.has("eth");
 
   const selectedEntry = marketList.find((m) => m.marketId === selectedMarketId);
   const selectedMarket = selectedEntry?.market ?? marketList[0]?.market;
@@ -271,15 +298,38 @@ function AnchorBasicMarketCard({
       ? "…"
       : formatAprRange(minAPR, maxAPR);
 
-  const chains = useMemo(() => {
-    const seen = new Map<string, { name: string; logo?: string }>();
-    for (const { market } of marketList) {
-      const c = market.chain;
-      if (c?.name && !seen.has(c.name))
-        seen.set(c.name, { name: c.name, logo: c.logo });
+  const pickBestMarketIdOnChain = (chainKey: string, preferRail?: "eth" | "usd") => {
+    const onChain = marketList.filter(
+      ({ market }) => harborMarketChainKey(market) === chainKey
+    );
+    if (preferRail) {
+      const railMatch = onChain.find(
+        ({ market }) => yieldRailLabel(market) === preferRail
+      );
+      if (railMatch) return railMatch.marketId;
     }
-    return Array.from(seen.values());
-  }, [marketList]);
+    let bestId = onChain[0]?.marketId;
+    let bestApr = -1;
+    for (const { marketId } of onChain) {
+      const md = marketsData.find((d) => d.marketId === marketId);
+      if (md && md.maxAPR > bestApr) {
+        bestApr = md.maxAPR;
+        bestId = marketId;
+      }
+    }
+    return bestId ?? onChain[0]?.marketId ?? "";
+  };
+
+  const handleChainSelect = (chainKey: string) => {
+    setSelectedChainKey(chainKey);
+    const currentRail = yieldRailLabel(
+      marketList.find((m) => m.marketId === selectedMarketId)?.market ??
+        marketList[0].market
+    );
+    const prefer =
+      currentRail === "eth" || currentRail === "usd" ? currentRail : undefined;
+    setSelectedMarketId(pickBestMarketIdOnChain(chainKey, prefer));
+  };
 
   const yieldRailControl = (() => {
     if (hasMultiRail) {
@@ -290,7 +340,7 @@ function AnchorBasicMarketCard({
           aria-label="Yield type"
         >
           {(["eth", "usd"] as const).map((rail) => {
-            const m = marketList.find(
+            const m = marketsOnChain.find(
               ({ market }) => yieldRailLabel(market) === rail
             );
             if (!m) return null;
@@ -332,8 +382,11 @@ function AnchorBasicMarketCard({
     return null;
   })();
 
+  const selectedIsSoon = isAnchorSoonUi(selectedMarket);
+
   const handleStartEarning = () => {
-    if (!isConnected || !selectedMarket || groupHasMaintenance) return;
+    if (!isConnected || !selectedMarket || groupHasMaintenance || selectedIsSoon)
+      return;
     const enrichedAllMarkets = marketList.map((m) => {
       const marketData = marketsData.find((md) => md.marketId === m.marketId);
       return {
@@ -370,24 +423,47 @@ function AnchorBasicMarketCard({
         <div className={CARD_RAIL_SLOT}>{yieldRailControl}</div>
 
         <div className={CARD_STATUS_SLOT}>
-          <span className="inline-flex items-center gap-1.5">
-            <span
-              className="h-2 w-2 shrink-0 rounded-full bg-[#4A9784] shadow-[0_0_0_3px_rgba(74,151,132,0.22)]"
-              aria-hidden
-            />
-            <span className="text-xs font-semibold uppercase tracking-wide text-[#4A9784]">
-              Market active
+          {selectedIsSoon ? (
+            <span className={BASIC_MARKET_COMING_SOON_CHIP_CLASS}>
+              <span className={BASIC_MARKET_COMING_SOON_NEUTRAL_DOT_CLASS} />
+              <span>Coming soon</span>
             </span>
-          </span>
+          ) : (
+            <span className="inline-flex items-center gap-1.5">
+              <span
+                className="h-2 w-2 shrink-0 rounded-full bg-[#4A9784] shadow-[0_0_0_3px_rgba(74,151,132,0.22)]"
+                aria-hidden
+              />
+              <span className="text-xs font-semibold uppercase tracking-wide text-[#4A9784]">
+                Market active
+              </span>
+            </span>
+          )}
         </div>
       </div>
 
       <div className={CARD_APR_SLOT}>
-        <span className="inline-flex items-center gap-2 rounded-full bg-[#B8EBD5]/20 px-2.5 py-0.5 text-xs font-semibold text-[#1E4775] ring-1 ring-[#1E4775]/10">
-          <span className="text-[10px] font-bold uppercase tracking-wide text-[#1E4775]/65">
+        <span
+          className={`inline-flex items-center gap-2 rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ${
+            selectedIsSoon
+              ? "bg-[#f1f5f9] text-[#64748b] ring-[#1E4775]/10"
+              : "bg-[#B8EBD5]/20 text-[#1E4775] ring-[#1E4775]/10"
+          }`}
+        >
+          <span
+            className={`text-[10px] font-bold uppercase tracking-wide ${
+              selectedIsSoon ? "text-[#64748b]/80" : "text-[#1E4775]/65"
+            }`}
+          >
             APR
           </span>
-          <span className={BASIC_MARKET_APR_MONO_CLASS}>{aprDisplay}</span>
+          <span
+            className={`${BASIC_MARKET_APR_MONO_CLASS}${
+              selectedIsSoon ? " text-[#64748b]" : ""
+            }`}
+          >
+            {selectedIsSoon ? "—" : aprDisplay}
+          </span>
         </span>
       </div>
 
@@ -446,11 +522,15 @@ function AnchorBasicMarketCard({
       <div className="mt-auto flex shrink-0 flex-col gap-2 pt-4">
         <button
           type="button"
-          disabled={!isConnected || groupHasMaintenance}
+          disabled={!isConnected || groupHasMaintenance || selectedIsSoon}
           onClick={handleStartEarning}
-          className={HARBOR_PRIMARY_CTA_CLASS}
+          className={
+            selectedIsSoon
+              ? HARBOR_COMING_SOON_CTA_SURFACE_CLASS
+              : HARBOR_PRIMARY_CTA_CLASS
+          }
         >
-          Start Earning
+          {selectedIsSoon ? "Coming soon" : "Start Earning"}
         </button>
         <Link
           href={`/anchor/${encodeURIComponent(symbol)}`}
@@ -460,7 +540,11 @@ function AnchorBasicMarketCard({
           <ArrowRightIcon className="h-3.5 w-3.5 shrink-0" />
         </Link>
 
-        <HarborBasicMarketNetworkFooter chains={chains} />
+        <HarborBasicMarketNetworkFooter
+          chains={chains}
+          selectedChainKey={isMultichain ? selectedChainKey : undefined}
+          onChainSelect={isMultichain ? handleChainSelect : undefined}
+        />
       </div>
     </article>
   );
@@ -555,7 +639,10 @@ function AnchorBasicComingSoonCard({ symbol }: { symbol: string }) {
         </Link>
 
         <HarborBasicMarketNetworkFooter
-          chains={[{ name: "MegaETH", logo: "icons/eth.png" }]}
+          chains={[
+            { key: "Ethereum", name: "Ethereum", logo: "icons/eth.png" },
+            { key: "MegaETH", name: "MegaETH", logo: "icons/eth.png" },
+          ]}
         />
       </div>
       </div>
