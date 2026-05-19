@@ -10,7 +10,14 @@ import { useSailPositionsPnLSummary } from "@/hooks/useSailPositionsPnLSummary";
 import { getSailPriceGraphUrlOptional, getGraphHeaders } from "@/config/graph";
 import { FILTER_NONE_SENTINEL } from "@/components/FilterMultiselectDropdown";
 import type { SailMarketTuple } from "@/types/sail";
-import { filterSailActiveMarkets } from "@/utils/sailActiveMarkets";
+import {
+  filterSailActiveMarkets,
+  filterSailTableMarkets,
+} from "@/utils/sailActiveMarkets";
+import {
+  isSailActiveForBasicUi,
+  isSailActiveForExtendedUi,
+} from "@/config/markets";
 import { getLongSide, getShortSide } from "@/utils/marketSideLabels";
 import {
   buildNetworkFilterOptions,
@@ -22,7 +29,7 @@ import {
  * On-chain reads live in `useSailContractReads`.
  * UI-only state (modal, expanded rows, layout toggle) stays in `page.tsx`.
  */
-export function useSailPageData() {
+export function useSailPageData(layoutIsBasic: boolean) {
   const { address, isConnected } = useAccount();
 
   const [longFilterSelected, setLongFilterSelected] = useState<string[]>([]);
@@ -111,15 +118,16 @@ export function useSailPageData() {
     refetchUserDeposits,
   } = useSailContractReads();
 
-  const displayedSailMarkets = useMemo(
-    () =>
-      chainFilterSelected.includes(FILTER_NONE_SENTINEL)
-        ? []
-        : chainFilterSelected.length === 0
-          ? sailMarkets
-          : filterBySelectedNetworks(sailMarkets, chainFilterSelected, ([, m]) => m),
-    [sailMarkets, chainFilterSelected]
-  );
+  const displayedSailMarkets = useMemo(() => {
+    const byChain = chainFilterSelected.includes(FILTER_NONE_SENTINEL)
+      ? []
+      : chainFilterSelected.length === 0
+        ? sailMarkets
+        : filterBySelectedNetworks(sailMarkets, chainFilterSelected, ([, m]) => m);
+    return byChain.filter(([, m]) =>
+      layoutIsBasic ? isSailActiveForBasicUi(m) : isSailActiveForExtendedUi(m)
+    );
+  }, [sailMarkets, chainFilterSelected, layoutIsBasic]);
 
   const sailChainOptions = useMemo(
     () => buildNetworkFilterOptions(sailMarkets, ([, m]) => m),
@@ -322,7 +330,26 @@ export function useSailPageData() {
   ]);
 
   const activeMarkets = useMemo((): SailMarketTuple[] => {
+    if (!reads) return [];
     return filterSailActiveMarkets(
+      displayedSailMarkets,
+      sailMarketIdToIndex,
+      marketOffsets,
+      reads,
+      longFilterSelected,
+      shortFilterSelected
+    );
+  }, [
+    displayedSailMarkets,
+    longFilterSelected,
+    shortFilterSelected,
+    reads,
+    marketOffsets,
+    sailMarketIdToIndex,
+  ]);
+
+  const tableMarkets = useMemo((): SailMarketTuple[] => {
+    return filterSailTableMarkets(
       displayedSailMarkets,
       sailMarketIdToIndex,
       marketOffsets,
@@ -376,5 +403,6 @@ export function useSailPageData() {
     pnlFromMarkets,
     activeSailBoostEndTimestamp,
     activeMarkets,
+    tableMarkets,
   };
 }

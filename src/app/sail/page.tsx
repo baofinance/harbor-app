@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useChainId, useSwitchChain } from "wagmi";
 import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
@@ -18,7 +18,8 @@ import {
   SailBasicMarketCardsGrid,
 } from "@/components/sail";
 import { usePageLayoutPreference } from "@/contexts/PageLayoutPreferenceContext";
-import type { DefinedMarket } from "@/config/markets";
+import { isSailSoonUi, type DefinedMarket } from "@/config/markets";
+import { harborMarketChainKey } from "@/components/market-cards/HarborBasicMarketNetworkFooter";
 import { ensureMarketWalletChain } from "@/utils/ensureMarketWalletChain";
 import { formatCompactUSD } from "@/utils/anchor";
 
@@ -73,8 +74,9 @@ export default function SailPage() {
     pnlFromMarkets,
     activeSailBoostEndTimestamp,
     activeMarkets,
+    tableMarkets,
     displayedSailMarkets,
-  } = useSailPageData();
+  } = useSailPageData(sailViewBasic);
 
   const [expandedMarkets, setExpandedMarkets] = useState<string[]>([]);
   const [manageModalOpen, setManageModalOpen] = useState(false);
@@ -87,6 +89,16 @@ export default function SailPage() {
   );
 
   const queryClient = useQueryClient();
+
+  const sortedTableMarkets = useMemo(() => {
+    const rank = (entry: (typeof tableMarkets)[0]) => {
+      const [, m] = entry;
+      const sym = m.leveragedToken?.symbol ?? "";
+      const chain = harborMarketChainKey(m);
+      return `${sym}::${chain}`;
+    };
+    return [...tableMarkets].sort((a, b) => rank(a).localeCompare(rank(b)));
+  }, [tableMarkets]);
 
   const handleToggleMarketExpand = useCallback((marketId: string) => {
     setExpandedMarkets((prev) =>
@@ -209,11 +221,12 @@ export default function SailPage() {
                 <>
                   <SailMarketsTableHeader />
                   <div className="space-y-2">
-                    {activeMarkets.map(([id, m]) => {
+                    {sortedTableMarkets.map(([id, m]) => {
                       const globalIndex = sailMarketIdToIndex.get(id);
                       if (globalIndex === undefined) return null;
                       const userDeposit = userDepositMap.get(globalIndex);
                       const baseOffset = marketOffsets.get(globalIndex) ?? 0;
+                      const isComingSoonRow = isSailSoonUi(m);
 
                       const priceOracle = m.addresses?.collateralPrice as
                         | `0x${string}`
@@ -228,10 +241,11 @@ export default function SailPage() {
                       const hasToken = isValidAddress(leveragedTokenAddress);
 
                       const tokenPrices = tokenPricesByMarket[id];
+                      const rowKey = `${m.leveragedToken?.symbol ?? id}::${harborMarketChainKey(m)}`;
 
                       return (
                         <SailMarketRow
-                          key={id}
+                          key={rowKey}
                           id={id}
                           market={m}
                           baseOffset={baseOffset}
@@ -243,6 +257,7 @@ export default function SailPage() {
                           onToggleExpand={handleToggleMarketExpand}
                           onManageClick={handleManageMarketOpen}
                           isConnected={isConnected}
+                          isComingSoon={isComingSoonRow}
                           tokenPrices={tokenPrices}
                           minterConfigData={minterConfigByMarketId.get(id)}
                           rebalanceThresholdData={rebalanceThresholdByMarketId.get(

@@ -1,6 +1,10 @@
 import { useMemo } from "react";
 import { formatEther } from "viem";
-import { markets, isAnchorActiveForBasicUi } from "@/config/markets";
+import {
+  markets,
+  isAnchorActiveForBasicUi,
+  isAnchorActiveForExtendedUi,
+} from "@/config/markets";
 import { FILTER_NONE_SENTINEL } from "@/components/FilterMultiselectDropdown";
 import { useStaggeredReady } from "@/hooks/useStaggeredReady";
 import { useMultipleVolatilityProtection } from "@/hooks/useVolatilityProtection";
@@ -48,8 +52,9 @@ export function useAnchorPageData(
         : chainFilterSelected.length === 0
           ? anchorMarkets
           : filterBySelectedNetworks(anchorMarkets, chainFilterSelected, ([, m]) => m);
-    if (!layoutIsBasic) return byChain;
-    return byChain.filter(([, m]) => isAnchorActiveForBasicUi(m));
+    return byChain.filter(([, m]) =>
+      layoutIsBasic ? isAnchorActiveForBasicUi(m) : isAnchorActiveForExtendedUi(m)
+    );
   }, [anchorMarkets, chainFilterSelected, layoutIsBasic]);
 
   const anchorChainOptions = useMemo(

@@ -599,7 +599,7 @@ export default function GenesisIndexPage() {
     });
   }, [reads, isConnected, genesisMarkets]);
 
-  const { activeMarkets, showHeaders, activeCampaignName } =
+  const { activeMarkets, showHeaders, activeCampaignNames } =
     useSortedGenesisMarkets({
       genesisMarkets,
       reads,
@@ -718,7 +718,7 @@ export default function GenesisIndexPage() {
         {hasActiveOrPendingMarkets && (
           <GenesisMarketsSections
             toolbarProps={{
-              activeCampaignName,
+              activeCampaignNames,
               displayedCompletedByCampaignSize: displayedCompletedByCampaign.size,
               genesisChainOptions,
               chainFilterSelected,

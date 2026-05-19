@@ -52,6 +52,13 @@ export const BASIC_MARKET_NETWORK_FOOTER_TEXT_CLASS =
   "text-base font-semibold text-[#64748b] dark:text-slate-400";
 export const BASIC_MARKET_NETWORK_ICON_RING_CLASS =
   "rounded-full ring-1 ring-[#1E4775]/10";
+/** Multichain footer: icon-only chips; selected matches yield-rail white pill. */
+export const BASIC_MARKET_NETWORK_FOOTER_ICON_BUTTON_CLASS =
+  "inline-flex shrink-0 items-center justify-center rounded-full p-0.5 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1E4775]/35";
+export const BASIC_MARKET_NETWORK_FOOTER_ICON_SELECTED_CLASS =
+  "bg-white shadow-sm ring-2 ring-[#1E4775]/25";
+export const BASIC_MARKET_NETWORK_FOOTER_ICON_IDLE_CLASS =
+  "opacity-50 ring-1 ring-transparent hover:opacity-85 hover:ring-[#1E4775]/15";
 
 /** LONG / SHORT direction chip (Grokk palette). Dots unified to 8px rings. */
 export const BASIC_MARKET_DIRECTION_LONG_CHIP_CLASS =

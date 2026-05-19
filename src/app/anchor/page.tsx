@@ -15,7 +15,12 @@ import {
   useSwitchChain,
 } from "wagmi";
 import { formatEther, parseEther } from "viem";
-import { isMarketInMaintenance, type DefinedMarket } from "@/config/markets";
+import {
+  isAnchorSoonUi,
+  isMarketInMaintenance,
+  type DefinedMarket,
+} from "@/config/markets";
+import { harborMarketChainKey } from "@/components/market-cards/HarborBasicMarketNetworkFooter";
 import { MarketMaintenanceTag } from "@/components/MarketMaintenanceTag";
 import { POLLING_INTERVALS } from "@/config/polling";
 import {
@@ -5445,11 +5450,14 @@ export default function AnchorPage() {
               displayedAnchorMarkets.forEach(([id, m]) => {
                 const marketIndex = anchorMarkets.findIndex(([mid]) => mid === id);
                 if (marketIndex < 0) return;
-                const symbol = m.peggedToken?.symbol || "UNKNOWN";
-                if (!groups[symbol]) {
-                  groups[symbol] = [];
+                const pegSymbol = m.peggedToken?.symbol || "UNKNOWN";
+                const groupKey = anchorViewBasic
+                  ? pegSymbol
+                  : `${pegSymbol}::${harborMarketChainKey(m)}`;
+                if (!groups[groupKey]) {
+                  groups[groupKey] = [];
                 }
-                groups[symbol].push({
+                groups[groupKey].push({
                   marketId: id,
                   market: m,
                   marketIndex,
@@ -5458,11 +5466,16 @@ export default function AnchorPage() {
 
               // Process each group
               if (anchorViewBasic) {
+                // Basic cards: show all peg groups from displayed markets (incl. preview /
+                // multichain). Do not require marketsDataMap — that map only has post-genesis
+                // TVL (see useAnchorMarketData), which hid haUSD and showed the single-chain
+                // placeholder instead of Ethereum + MegaETH footers.
                 const marketGroups = Object.entries(groups)
-                  .map(([symbol, marketList]) => ({ symbol, list: marketList }))
-                  .filter(({ list }) =>
-                    list.some(({ marketId }) => marketsDataMap.has(marketId))
-                  );
+                  .map(([groupKey, marketList]) => ({
+                    symbol: groupKey.split("::")[0] ?? groupKey,
+                    list: marketList,
+                  }))
+                  .filter(({ list }) => list.length > 0);
                 return (
                   <AnchorBasicMarketCardsGrid
                     marketGroups={marketGroups}
@@ -5485,7 +5498,13 @@ export default function AnchorPage() {
               return (
                 <>
                   <AnchorMarketsTableHeader />
-                  {Object.entries(groups).map(([symbol, marketList]) => {
+                  {Object.entries(groups).map(([groupKey, marketList]) => {
+                const symbol = groupKey.split("::")[0] ?? groupKey;
+                // UI+ rows are one chain each; soon/active is per market config.
+                const isComingSoonRow = marketList.every(({ market }) =>
+                  isAnchorSoonUi(market)
+                );
+
                 // Collect all data for markets in this group from the hook
                 const marketsData = marketList
                   .map(({ marketId }) => marketsDataMap.get(marketId))
@@ -5497,8 +5516,7 @@ export default function AnchorPage() {
                 // This ensures all markets are displayed in the expanded view
                 const activeMarketsData = marketsData;
 
-                // Skip this group if no markets exist
-                if (activeMarketsData.length === 0) {
+                if (marketList.length === 0) {
                   return null;
                 }
 
@@ -5595,18 +5613,17 @@ export default function AnchorPage() {
                   { symbol: string; name: string }
                 >();
                 marketList.forEach(({ market }) => {
-                  // Only show wrapped collateral (fxSAVE, wstETH)
                   if (market?.collateral?.symbol) {
                     const wrappedCollateral = {
                       symbol: market.collateral.symbol,
-                          name:
-                            market.collateral.name || market.collateral.symbol,
+                      name:
+                        market.collateral.name || market.collateral.symbol,
                     };
                     if (!assetMap.has(wrappedCollateral.symbol)) {
-                          assetMap.set(
-                            wrappedCollateral.symbol,
-                            wrappedCollateral
-                          );
+                      assetMap.set(
+                        wrappedCollateral.symbol,
+                        wrappedCollateral
+                      );
                     }
                   }
                 });
@@ -5649,14 +5666,16 @@ export default function AnchorPage() {
                   string,
                   { symbol: string; name: string }
                 >();
-                marketList.forEach(({ market }) => {
-                  const zappableAssets = getDirectlyZappableAssets(market);
-                  zappableAssets.forEach((asset) => {
-                    if (!zappableAssetsMap.has(asset.symbol)) {
-                      zappableAssetsMap.set(asset.symbol, asset);
-                    }
+                if (!isComingSoonRow) {
+                  marketList.forEach(({ market }) => {
+                    const zappableAssets = getDirectlyZappableAssets(market);
+                    zappableAssets.forEach((asset) => {
+                      if (!zappableAssetsMap.has(asset.symbol)) {
+                        zappableAssetsMap.set(asset.symbol, asset);
+                      }
+                    });
                   });
-                });
+                }
                     const directlyZappableAssets = Array.from(
                       zappableAssetsMap.values()
                     );
@@ -5668,7 +5687,7 @@ export default function AnchorPage() {
                     const collateralSymbol =
                       firstMarket?.collateral?.symbol || "";
 
-                    const isExpanded = expandedMarkets.includes(symbol);
+                    const isExpanded = expandedMarkets.includes(groupKey);
                     const groupHasMaintenance = marketList.some(({ market }) =>
                       isMarketInMaintenance(market)
                     );
@@ -5681,10 +5700,12 @@ export default function AnchorPage() {
                       .filter(Boolean) as `0x${string}`[];
 
                 return (
-                  <React.Fragment key={symbol}>
+                  <React.Fragment key={groupKey}>
                     <div className="rounded-md border border-[#1E4775]/10 overflow-hidden">
                       <AnchorMarketGroupCollapsedRow
                         symbol={symbol}
+                        rowKey={groupKey}
+                        isComingSoonRow={isComingSoonRow}
                         isExpanded={isExpanded}
                         peggedTokenSymbol={peggedTokenSymbol}
                         groupHasMaintenance={groupHasMaintenance}

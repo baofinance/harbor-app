@@ -28,7 +28,11 @@ import {
   HARBOR_COMING_SOON_CTA_SURFACE_CLASS,
   HARBOR_PRIMARY_CTA_INLINE_FLEX_CLASS,
 } from "@/components/market-cards/harborBasicMarketTokens";
-import { HarborBasicMarketNetworkFooter } from "@/components/market-cards/HarborBasicMarketNetworkFooter";
+import {
+  HarborBasicMarketNetworkFooter,
+  harborMarketChainKey,
+  type HarborBasicMarketChain,
+} from "@/components/market-cards/HarborBasicMarketNetworkFooter";
 import { formatLeverage } from "@/utils/sailDisplayFormat";
 import type { SailMarketCardModel } from "@/utils/sailMarketCardModel";
 import { SailMintRedeemFeeColumn } from "./SailMintRedeemFeeColumn";
@@ -48,6 +52,9 @@ export function SailBasicMarketCard({
   isConnected,
   onExploreMarket,
   isComingSoon = false,
+  networkChains,
+  selectedChainKey,
+  onChainSelect,
 }: {
   marketId: string;
   market: DefinedMarket;
@@ -55,6 +62,9 @@ export function SailBasicMarketCard({
   isConnected: boolean;
   onExploreMarket: (marketId: string, m: DefinedMarket) => void;
   isComingSoon?: boolean;
+  networkChains?: HarborBasicMarketChain[];
+  selectedChainKey?: string;
+  onChainSelect?: (chainKey: string) => void;
 }) {
   const showMaintenance = isMarketInMaintenance(market);
   const { longSide, shortSide, collateralSymbol } = model;
@@ -225,10 +235,16 @@ export function SailBasicMarketCard({
         </div>
         <HarborBasicMarketNetworkFooter
           chains={
-            market.chain?.name
-              ? [{ name: market.chain.name, logo: market.chain.logo }]
-              : [{ name: "Ethereum", logo: "icons/eth.png" }]
+            networkChains ?? [
+              {
+                key: harborMarketChainKey(market),
+                name: market.chain?.name ?? "Ethereum",
+                logo: market.chain?.logo ?? "icons/eth.png",
+              },
+            ]
           }
+          selectedChainKey={selectedChainKey}
+          onChainSelect={onChainSelect}
         />
       </div>
       </div>

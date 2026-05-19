@@ -938,13 +938,227 @@ export const markets = {
     },
   },
   }),
+  // ============================================================================
+  // Mainnet USD collateral markets (shared haUSD pegged 0x2536…)
+  // ============================================================================
+  ...(getContractMarket("steth-usd")
+    ? {
+        "steth-usd": {
+          name: "stETH - USD",
+          maintenance: false,
+          anchorActive: "soon" as const,
+          sailActive: "soon" as const,
+          test: false,
+          status: "genesis" as const,
+          genesisActive: "soon" as GenesisActiveSetting,
+          pegTarget: "USD",
+          chainId: 1,
+          zapper: false,
+          anyswap: false,
+          chain: { name: "Ethereum", logo: "icons/eth.png" },
+          collateral: {
+            symbol: "wstETH",
+            name: "Wrapped stETH",
+            underlyingSymbol: "stETH",
+          },
+          underlyingCoinGeckoId: "wrapped-steth",
+          acceptedAssets: [{ symbol: "wstETH", name: "Wrapped stETH" }],
+          rewardTokens: { default: ["wstETH"], additional: [] },
+          addresses: {
+            minter: contractsMarkets["steth-usd"].addresses.minter,
+            peggedToken: contractsMarkets["steth-usd"].addresses.peggedToken,
+            leveragedToken: contractsMarkets["steth-usd"].addresses.leveragedToken,
+            reservePool: contractsMarkets["steth-usd"].addresses.reservePool,
+            stabilityPoolManager:
+              contractsMarkets["steth-usd"].addresses.stabilityPoolManager,
+            stabilityPoolCollateral:
+              contractsMarkets["steth-usd"].addresses.stabilityPoolCollateral,
+            stabilityPoolLeveraged:
+              contractsMarkets["steth-usd"].addresses.stabilityPoolLeveraged,
+            genesis: contractsMarkets["steth-usd"].addresses.genesis,
+            priceOracle: contractsMarkets["steth-usd"].addresses.priceOracle,
+            collateralPrice: contractsMarkets["steth-usd"].addresses.collateralPrice,
+            feeReceiver: contractsMarkets["steth-usd"].addresses.feeReceiver,
+            collateralToken: contractsMarkets["steth-usd"].addresses.collateralToken,
+            wrappedCollateralToken:
+              contractsMarkets["steth-usd"].addresses.wrappedCollateralToken,
+          },
+          startBlock: contractsMarkets["steth-usd"].startBlock,
+          peggedToken: {
+            name: "Harbor Anchored USD",
+            symbol: "haUSD",
+            description: "Pegged token",
+          },
+          leveragedToken: {
+            name: "Harbor Sail stETH-USD",
+            symbol: "hsSTETH-USD",
+            description: "Leveraged token",
+          },
+          rewardPoints: {
+            pointsPerDollar: 100,
+            description: "Ledger marks per dollar",
+          },
+          marksCampaign: { id: "usd", label: "USD" },
+          coinGeckoId: "wrapped-steth",
+          genesis: {
+            startDate: contractsMarkets["steth-usd"].genesis.startDate,
+            endDate: contractsMarkets["steth-usd"].genesis.endDate,
+            tokenDistribution: {
+              pegged: { ratio: 0.5, description: "50% pegged" },
+              leveraged: { ratio: 0.5, description: "50% leveraged" },
+            },
+          },
+        },
+        "paxg-usd": {
+          name: "PAXG - USD",
+          displayTransparency: false,
+          maintenance: false,
+          anchorActive: false,
+          sailActive: false,
+          status: "genesis" as const,
+          genesisActive: false as GenesisActiveSetting,
+          pegTarget: "USD",
+          chainId: 1,
+          chain: { name: "Ethereum", logo: "icons/eth.png" },
+          collateral: { symbol: "PAXG", name: "PAX Gold", underlyingSymbol: "PAXG" },
+          addresses: {
+            minter: contractsMarkets["paxg-usd"].addresses.minter,
+            peggedToken: contractsMarkets["paxg-usd"].addresses.peggedToken,
+            leveragedToken: contractsMarkets["paxg-usd"].addresses.leveragedToken,
+            reservePool: contractsMarkets["paxg-usd"].addresses.reservePool,
+            stabilityPoolManager:
+              contractsMarkets["paxg-usd"].addresses.stabilityPoolManager,
+            stabilityPoolCollateral:
+              contractsMarkets["paxg-usd"].addresses.stabilityPoolCollateral,
+            stabilityPoolLeveraged:
+              contractsMarkets["paxg-usd"].addresses.stabilityPoolLeveraged,
+            genesis: contractsMarkets["paxg-usd"].addresses.genesis,
+            priceOracle: contractsMarkets["paxg-usd"].addresses.priceOracle,
+            collateralPrice: contractsMarkets["paxg-usd"].addresses.collateralPrice,
+            feeReceiver: contractsMarkets["paxg-usd"].addresses.feeReceiver,
+            collateralToken: contractsMarkets["paxg-usd"].addresses.collateralToken,
+            wrappedCollateralToken:
+              contractsMarkets["paxg-usd"].addresses.wrappedCollateralToken,
+          },
+          startBlock: contractsMarkets["paxg-usd"].startBlock,
+          peggedToken: { name: "Harbor Anchored USD", symbol: "haUSD", description: "Pegged token" },
+          leveragedToken: {
+            name: "Harbor Sail PAXG-USD",
+            symbol: "hsPAXG-USD",
+            description: "Leveraged token",
+          },
+          genesis: {
+            startDate: contractsMarkets["paxg-usd"].genesis.startDate,
+            endDate: contractsMarkets["paxg-usd"].genesis.endDate,
+            tokenDistribution: {
+              pegged: { ratio: 0.5, description: "50% pegged" },
+              leveraged: { ratio: 0.5, description: "50% leveraged" },
+            },
+          },
+        },
+        "wbtc-usd": {
+          name: "wBTC - USD",
+          displayTransparency: false,
+          maintenance: false,
+          anchorActive: false,
+          sailActive: false,
+          status: "genesis" as const,
+          genesisActive: false as GenesisActiveSetting,
+          pegTarget: "USD",
+          chainId: 1,
+          chain: { name: "Ethereum", logo: "icons/eth.png" },
+          collateral: { symbol: "WBTC", name: "Wrapped BTC", underlyingSymbol: "WBTC" },
+          addresses: {
+            minter: contractsMarkets["wbtc-usd"].addresses.minter,
+            peggedToken: contractsMarkets["wbtc-usd"].addresses.peggedToken,
+            leveragedToken: contractsMarkets["wbtc-usd"].addresses.leveragedToken,
+            reservePool: contractsMarkets["wbtc-usd"].addresses.reservePool,
+            stabilityPoolManager:
+              contractsMarkets["wbtc-usd"].addresses.stabilityPoolManager,
+            stabilityPoolCollateral:
+              contractsMarkets["wbtc-usd"].addresses.stabilityPoolCollateral,
+            stabilityPoolLeveraged:
+              contractsMarkets["wbtc-usd"].addresses.stabilityPoolLeveraged,
+            genesis: contractsMarkets["wbtc-usd"].addresses.genesis,
+            priceOracle: contractsMarkets["wbtc-usd"].addresses.priceOracle,
+            collateralPrice: contractsMarkets["wbtc-usd"].addresses.collateralPrice,
+            feeReceiver: contractsMarkets["wbtc-usd"].addresses.feeReceiver,
+            collateralToken: contractsMarkets["wbtc-usd"].addresses.collateralToken,
+            wrappedCollateralToken:
+              contractsMarkets["wbtc-usd"].addresses.wrappedCollateralToken,
+          },
+          startBlock: contractsMarkets["wbtc-usd"].startBlock,
+          peggedToken: { name: "Harbor Anchored USD", symbol: "haUSD", description: "Pegged token" },
+          leveragedToken: {
+            name: "Harbor Sail wBTC-USD",
+            symbol: "hsWBTC-USD",
+            description: "Leveraged token",
+          },
+          genesis: {
+            startDate: contractsMarkets["wbtc-usd"].genesis.startDate,
+            endDate: contractsMarkets["wbtc-usd"].genesis.endDate,
+            tokenDistribution: {
+              pegged: { ratio: 0.5, description: "50% pegged" },
+              leveraged: { ratio: 0.5, description: "50% leveraged" },
+            },
+          },
+        },
+        "tbtc-usd": {
+          name: "tBTC - USD",
+          displayTransparency: false,
+          maintenance: false,
+          anchorActive: false,
+          sailActive: false,
+          status: "genesis" as const,
+          genesisActive: false as GenesisActiveSetting,
+          pegTarget: "USD",
+          chainId: 1,
+          chain: { name: "Ethereum", logo: "icons/eth.png" },
+          collateral: { symbol: "tBTC", name: "tBTC", underlyingSymbol: "tBTC" },
+          addresses: {
+            minter: contractsMarkets["tbtc-usd"].addresses.minter,
+            peggedToken: contractsMarkets["tbtc-usd"].addresses.peggedToken,
+            leveragedToken: contractsMarkets["tbtc-usd"].addresses.leveragedToken,
+            reservePool: contractsMarkets["tbtc-usd"].addresses.reservePool,
+            stabilityPoolManager:
+              contractsMarkets["tbtc-usd"].addresses.stabilityPoolManager,
+            stabilityPoolCollateral:
+              contractsMarkets["tbtc-usd"].addresses.stabilityPoolCollateral,
+            stabilityPoolLeveraged:
+              contractsMarkets["tbtc-usd"].addresses.stabilityPoolLeveraged,
+            genesis: contractsMarkets["tbtc-usd"].addresses.genesis,
+            priceOracle: contractsMarkets["tbtc-usd"].addresses.priceOracle,
+            collateralPrice: contractsMarkets["tbtc-usd"].addresses.collateralPrice,
+            feeReceiver: contractsMarkets["tbtc-usd"].addresses.feeReceiver,
+            collateralToken: contractsMarkets["tbtc-usd"].addresses.collateralToken,
+            wrappedCollateralToken:
+              contractsMarkets["tbtc-usd"].addresses.wrappedCollateralToken,
+          },
+          startBlock: contractsMarkets["tbtc-usd"].startBlock,
+          peggedToken: { name: "Harbor Anchored USD", symbol: "haUSD", description: "Pegged token" },
+          leveragedToken: {
+            name: "Harbor Sail tBTC-USD",
+            symbol: "hsTBTC-USD",
+            description: "Leveraged token",
+          },
+          genesis: {
+            startDate: contractsMarkets["tbtc-usd"].genesis.startDate,
+            endDate: contractsMarkets["tbtc-usd"].genesis.endDate,
+            tokenDistribution: {
+              pegged: { ratio: 0.5, description: "50% pegged" },
+              leveraged: { ratio: 0.5, description: "50% leveraged" },
+            },
+          },
+        },
+      }
+    : {}),
   // MegaETH markets (chainId 4326), enabled via NEXT_PUBLIC_USE_MEGAETH=true
   ...(useMegaeth && getContractMarket("wsteth-usd-megaeth")
     ? {
         "wsteth-usd-megaeth": {
           name: "stETH - USD",
           maintenance: false,
-          anchorActive: true,
+          anchorActive: "soon" as const,
           sailActive: "soon",
           test: false,
           status: "genesis" as const,
@@ -1050,13 +1264,72 @@ export function isMarketInMaintenance(mkt: unknown): boolean {
   );
 }
 
-/** Anchor UI−: list only markets with `anchorActive: true` (strict). */
+/**
+ * Per-surface visibility (each market row in `markets`):
+ * - `true` — live in that surface
+ * - `false` — hidden
+ * - `"soon"` — preview (grey / coming soon); flip to `true` per market when that chain launches
+ *
+ * Same pattern for `genesisActive` and `sailActive`. `maintenance` is separate (tag + gating).
+ */
+/** UI− card grid: live + preview only (no deprecated metals). */
 export function isAnchorActiveForBasicUi(mkt: unknown): boolean {
-  return Boolean(
-    mkt &&
-      typeof mkt === "object" &&
-      (mkt as { anchorActive?: boolean }).anchorActive === true
+  if (!mkt || typeof mkt !== "object") return false;
+  const a = (mkt as { anchorActive?: boolean | "soon" }).anchorActive;
+  return a === true || a === "soon";
+}
+
+/** Peg symbols kept on UI+ (extended table) after UI− deprecation. */
+export const ANCHOR_DEPRECATED_EXTENDED_PEG_SYMBOLS = [
+  "haGOLD",
+  "haSILVER",
+] as const;
+
+/** UI+ stability pool table: basic-visible markets + legacy haGOLD / haSILVER. */
+export function isAnchorActiveForExtendedUi(mkt: unknown): boolean {
+  if (isAnchorActiveForBasicUi(mkt)) return true;
+  if (!mkt || typeof mkt !== "object") return false;
+  const sym = (mkt as { peggedToken?: { symbol?: string } }).peggedToken?.symbol;
+  return (
+    typeof sym === "string" &&
+    (ANCHOR_DEPRECATED_EXTENDED_PEG_SYMBOLS as readonly string[]).includes(sym)
   );
+}
+
+export function isAnchorSoonUi(mkt: unknown): boolean {
+  if (!mkt || typeof mkt !== "object") return false;
+  return (mkt as { anchorActive?: boolean | "soon" }).anchorActive === "soon";
+}
+
+/** UI− Sail cards: live + preview only. */
+export function isSailActiveForBasicUi(mkt: unknown): boolean {
+  if (!mkt || typeof mkt !== "object") return false;
+  const a = (mkt as { sailActive?: boolean | "soon" }).sailActive;
+  return a === true || a === "soon";
+}
+
+export function isSailSoonUi(mkt: unknown): boolean {
+  if (!mkt || typeof mkt !== "object") return false;
+  return (mkt as { sailActive?: boolean | "soon" }).sailActive === "soon";
+}
+
+/** UI+ Sail table: basic-visible + legacy haGOLD / haSILVER (`sailActive: false`). */
+export function isSailActiveForExtendedUi(mkt: unknown): boolean {
+  if (isSailActiveForBasicUi(mkt)) return true;
+  return isSailDeprecatedExtendedUi(mkt);
+}
+
+/** Legacy metals: hidden on UI−, listed on UI+ without requiring pool TVL. */
+export function isSailDeprecatedExtendedUi(mkt: unknown): boolean {
+  if (!mkt || typeof mkt !== "object") return false;
+  const sym = (mkt as { peggedToken?: { symbol?: string } }).peggedToken?.symbol;
+  if (
+    typeof sym !== "string" ||
+    !(ANCHOR_DEPRECATED_EXTENDED_PEG_SYMBOLS as readonly string[]).includes(sym)
+  ) {
+    return false;
+  }
+  return (mkt as { sailActive?: boolean | "soon" }).sailActive === false;
 }
 
 // Helper functions for genesis status
