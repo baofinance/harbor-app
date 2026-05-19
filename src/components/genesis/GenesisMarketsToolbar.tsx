@@ -18,7 +18,7 @@ import {
 } from "@/components/shared/indexMarketsToolbarStyles";
 
 export type GenesisMarketsToolbarProps = {
-  activeCampaignName: string | null;
+  activeCampaignNames: string[];
   displayedCompletedByCampaignSize: number;
   genesisChainOptions: NetworkFilterOption[];
   chainFilterSelected: string[];
@@ -29,7 +29,7 @@ export type GenesisMarketsToolbarProps = {
 };
 
 export function GenesisMarketsToolbar({
-  activeCampaignName,
+  activeCampaignNames,
   displayedCompletedByCampaignSize,
   genesisChainOptions,
   chainFilterSelected,
@@ -43,12 +43,14 @@ export function GenesisMarketsToolbar({
       <div className="w-full lg:w-auto lg:min-w-0">
         <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
           <h2 className="text-xs font-medium text-white/70 uppercase tracking-wider flex items-center gap-2 flex-wrap">
-            <span className="flex items-center gap-1.5">
+            <span className="flex items-center gap-1.5 flex-wrap">
               Active Campaign:
-              {activeCampaignName && (
-                <span className={INDEX_CORAL_INFO_TAG_CLASS}>{activeCampaignName}</span>
-              )}
-              {activeCampaignName ? (
+              {activeCampaignNames.map((name) => (
+                <span key={name} className={INDEX_CORAL_INFO_TAG_CLASS}>
+                  {name}
+                </span>
+              ))}
+              {activeCampaignNames.length > 0 ? (
                 <span className="rounded px-1.5 py-0.5 text-[10px] font-bold font-mono tracking-tight border border-white/40 bg-white/10 text-white">
                   2.0
                 </span>

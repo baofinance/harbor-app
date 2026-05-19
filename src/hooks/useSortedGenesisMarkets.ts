@@ -10,6 +10,36 @@ interface UseSortedGenesisMarketsParams {
 const getMarketIndex = (genesisMarkets: Array<[string, any]>, id: string) =>
   genesisMarkets.findIndex((m) => m[0] === id);
 
+const ACTIVE_CAMPAIGN_LABEL_ORDER = ["MegaETH", "USD"];
+
+function cleanCampaignLabel(label: string): string {
+  return label.replace(/\s+Maiden Voyage.*/i, "").trim() || label;
+}
+
+function collectActiveCampaignNames(
+  activeMarkets: Array<[string, any]>
+): string[] {
+  const seen = new Set<string>();
+  const names: string[] = [];
+  for (const [, mkt] of activeMarkets) {
+    const raw = (mkt as { marksCampaign?: { label?: string } }).marksCampaign
+      ?.label;
+    if (!raw) continue;
+    const clean = cleanCampaignLabel(raw);
+    if (seen.has(clean)) continue;
+    seen.add(clean);
+    names.push(clean);
+  }
+  return names.sort((a, b) => {
+    const rank = (label: string) => {
+      const i = ACTIVE_CAMPAIGN_LABEL_ORDER.indexOf(label);
+      return i === -1 ? ACTIVE_CAMPAIGN_LABEL_ORDER.length : i;
+    };
+    const dr = rank(a) - rank(b);
+    return dr !== 0 ? dr : a.localeCompare(b);
+  });
+}
+
 export const useSortedGenesisMarkets = ({
   genesisMarkets,
   reads,
@@ -95,25 +125,14 @@ export const useSortedGenesisMarkets = ({
       }
     });
 
-    const activeCampaignName =
-      activeMarkets.length > 0
-        ? (() => {
-            const firstMarketConfig = activeMarkets[0][1] as any;
-            const campaignLabel =
-              firstMarketConfig?.marksCampaign?.label || "Genesis";
-            return (
-              campaignLabel.replace(/\s+Maiden Voyage.*/i, "").trim() ||
-              campaignLabel
-            );
-          })()
-        : null;
+    const activeCampaignNames = collectActiveCampaignNames(activeMarkets);
 
     return {
       sortedMarkets,
       activeMarkets,
       completedMarkets,
       showHeaders,
-      activeCampaignName,
+      activeCampaignNames,
     };
   }, [genesisMarkets, reads, isConnected, marksResults]);
 };
