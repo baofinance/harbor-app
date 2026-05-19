@@ -6,8 +6,7 @@ import { useMemo } from "react";
 import { getGraphUrl, getGraphHeaders, getSailPriceGraphUrlOptional } from "@/config/graph";
 import { useAnchorLedgerMarks } from "@/hooks/useAnchorLedgerMarks";
 import { buildDashboardAddressIndex } from "@/utils/dashboardPositionLabels";
-import { markets } from "@/config/markets";
-import { isMegaethMaidenVoyageMarket } from "@/utils/megaethMarket";
+import { markets, isGenesisHiddenFromIndex } from "@/config/markets";
 
 const USD_EPS = 0.005;
 
@@ -66,7 +65,7 @@ export function useDashboardPositions() {
         const g = (mkt as { addresses?: { genesis?: string } }).addresses?.genesis;
         if (!g || g === "0x0000000000000000000000000000000000000000") return false;
         if ((mkt as { status?: string }).status === "coming-soon") return false;
-        if (isMegaethMaidenVoyageMarket(id, mkt)) return false;
+        if (isGenesisHiddenFromIndex(mkt)) return false;
         return true;
       })
       .map(([_, mkt]) =>
