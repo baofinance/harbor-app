@@ -1,5 +1,4 @@
-import { markets } from "@/config/markets";
-import { isMegaethMaidenVoyageMarket } from "@/utils/megaethMarket";
+import { markets, isGenesisHiddenFromIndex } from "@/config/markets";
 
 export type DashboardMarketRef = {
   marketId: string;
@@ -7,7 +6,7 @@ export type DashboardMarketRef = {
 };
 
 export type DashboardGenesisRef = DashboardMarketRef & {
-  /** When true, omit from Maiden Voyage dashboard lists (MegaETH parity with genesis index). */
+  /** When true, omit from Maiden Voyage dashboard lists (`genesisActive: false`). */
   hideFromMvList: boolean;
 };
 
@@ -46,7 +45,7 @@ export function buildDashboardAddressIndex(): {
     if (g && g !== "0x0000000000000000000000000000000000000000") {
       genesisByAddressLower.set(g, {
         ...ref,
-        hideFromMvList: isMegaethMaidenVoyageMarket(marketId, m),
+        hideFromMvList: isGenesisHiddenFromIndex(m),
       });
     }
 
