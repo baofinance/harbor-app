@@ -1158,7 +1158,7 @@ export const markets = {
         "wsteth-usd-megaeth": {
           name: "stETH - USD",
           maintenance: false,
-          anchorActive: true,
+          anchorActive: "soon" as const,
           sailActive: "soon",
           test: false,
           status: "genesis" as const,
@@ -1264,16 +1264,72 @@ export function isMarketInMaintenance(mkt: unknown): boolean {
   );
 }
 
-/** Anchor UI− basic grid: live (`true`) and preview (`"soon"`) rows. */
+/**
+ * Per-surface visibility (each market row in `markets`):
+ * - `true` — live in that surface
+ * - `false` — hidden
+ * - `"soon"` — preview (grey / coming soon); flip to `true` per market when that chain launches
+ *
+ * Same pattern for `genesisActive` and `sailActive`. `maintenance` is separate (tag + gating).
+ */
+/** UI− card grid: live + preview only (no deprecated metals). */
 export function isAnchorActiveForBasicUi(mkt: unknown): boolean {
   if (!mkt || typeof mkt !== "object") return false;
   const a = (mkt as { anchorActive?: boolean | "soon" }).anchorActive;
   return a === true || a === "soon";
 }
 
+/** Peg symbols kept on UI+ (extended table) after UI− deprecation. */
+export const ANCHOR_DEPRECATED_EXTENDED_PEG_SYMBOLS = [
+  "haGOLD",
+  "haSILVER",
+] as const;
+
+/** UI+ stability pool table: basic-visible markets + legacy haGOLD / haSILVER. */
+export function isAnchorActiveForExtendedUi(mkt: unknown): boolean {
+  if (isAnchorActiveForBasicUi(mkt)) return true;
+  if (!mkt || typeof mkt !== "object") return false;
+  const sym = (mkt as { peggedToken?: { symbol?: string } }).peggedToken?.symbol;
+  return (
+    typeof sym === "string" &&
+    (ANCHOR_DEPRECATED_EXTENDED_PEG_SYMBOLS as readonly string[]).includes(sym)
+  );
+}
+
 export function isAnchorSoonUi(mkt: unknown): boolean {
   if (!mkt || typeof mkt !== "object") return false;
   return (mkt as { anchorActive?: boolean | "soon" }).anchorActive === "soon";
+}
+
+/** UI− Sail cards: live + preview only. */
+export function isSailActiveForBasicUi(mkt: unknown): boolean {
+  if (!mkt || typeof mkt !== "object") return false;
+  const a = (mkt as { sailActive?: boolean | "soon" }).sailActive;
+  return a === true || a === "soon";
+}
+
+export function isSailSoonUi(mkt: unknown): boolean {
+  if (!mkt || typeof mkt !== "object") return false;
+  return (mkt as { sailActive?: boolean | "soon" }).sailActive === "soon";
+}
+
+/** UI+ Sail table: basic-visible + legacy haGOLD / haSILVER (`sailActive: false`). */
+export function isSailActiveForExtendedUi(mkt: unknown): boolean {
+  if (isSailActiveForBasicUi(mkt)) return true;
+  return isSailDeprecatedExtendedUi(mkt);
+}
+
+/** Legacy metals: hidden on UI−, listed on UI+ without requiring pool TVL. */
+export function isSailDeprecatedExtendedUi(mkt: unknown): boolean {
+  if (!mkt || typeof mkt !== "object") return false;
+  const sym = (mkt as { peggedToken?: { symbol?: string } }).peggedToken?.symbol;
+  if (
+    typeof sym !== "string" ||
+    !(ANCHOR_DEPRECATED_EXTENDED_PEG_SYMBOLS as readonly string[]).includes(sym)
+  ) {
+    return false;
+  }
+  return (mkt as { sailActive?: boolean | "soon" }).sailActive === false;
 }
 
 // Helper functions for genesis status

@@ -25,6 +25,8 @@ export type FilterOption = {
   label: string;
   /** Path for option icon (e.g. token logo). Prepended with / if not already. Ignored when networkId is set. */
   iconUrl?: string;
+  /** Override `optionIconSizePx` for this row (e.g. larger peg badges). */
+  iconSizePx?: number;
   /** @web3icons network id (e.g. ethereum, mega-eth, arbitrum-one, base, monad). When set, renders NetworkIcon from @web3icons/core. */
   networkId?: string;
   /** Optional prefix icon for long/short filters */
@@ -53,6 +55,8 @@ interface FilterMultiselectDropdownProps {
   minWidthClass?: string;
   /** Max height of options panel (e.g. "max-h-60" or "max-h-[75rem]") */
   maxHeightClass?: string;
+  /** Token/peg icon size in the options list (default 22). */
+  optionIconSizePx?: number;
 }
 
 export function FilterMultiselectDropdown({
@@ -65,6 +69,7 @@ export function FilterMultiselectDropdown({
   groupLabel,
   minWidthClass = "min-w-[235px]",
   maxHeightClass = "max-h-60",
+  optionIconSizePx = 22,
 }: FilterMultiselectDropdownProps) {
   const isNoneSelected = value.includes(FILTER_NONE_SENTINEL);
   const allSelected =
@@ -183,8 +188,8 @@ export function FilterMultiselectDropdown({
                   <Image
                     src={src}
                     alt=""
-                    width={22}
-                    height={22}
+                    width={opt.iconSizePx ?? optionIconSizePx}
+                    height={opt.iconSizePx ?? optionIconSizePx}
                     className="shrink-0 rounded-full object-contain"
                   />
                 ) : (

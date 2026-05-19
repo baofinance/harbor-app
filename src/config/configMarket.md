@@ -14,8 +14,8 @@ Some rows are **spread in at build time** (for example MegaETH when `NEXT_PUBLIC
 |--------|-----------------|----------|--------|
 | `name` | `string` | Yes | Display name (e.g. `"stETH - BTC"`). |
 | `maintenance` | `boolean` | Yes | `true` shows maintenance treatment (`isMarketInMaintenance`). |
-| `anchorActive` | `boolean \| "soon"` | Yes | Anchor basic card grid: `true` (live) and `"soon"` (preview) via `isAnchorActiveForBasicUi`; `false` hidden. |
-| `sailActive` | `boolean \| "soon"` | Yes | Sail listing: `false` hides; `"soon"` shows a coming-soon style (`SailBasicMarketCardsGrid`). |
+| `anchorActive` | `boolean \| "soon"` | Yes | UI−: `true` / `"soon"` via `isAnchorActiveForBasicUi`; `false` hidden. UI+: also `haGOLD` / `haSILVER` with `false` via `isAnchorActiveForExtendedUi` (deprecated, still manageable). |
+| `sailActive` | `boolean \| "soon"` | Yes | UI−: `true` / `"soon"` via `isSailActiveForBasicUi`. UI+: also legacy `haGOLD` / `haSILVER` with `false` via `isSailActiveForExtendedUi`. `"soon"` uses coming-soon styling. |
 | `status` | `"genesis" \| "coming-soon"` (const) | Yes | **Lifecycle:** `"coming-soon"` excludes the market from many aggregates and genesis index paths (`status !== "coming-soon"`). `"genesis"` means the product treats it as a genesis-phase market (mint/redeem, transparency, badges). Distinct from **`genesisActive`** (Maiden Voyage mode). |
 | `genesisActive` | `GenesisActiveSetting` | No* | Maiden Voyage visibility and CTAs. Type: `true \| false \| "soon" \| "completed"`. **Default when omitted:** `true` (`getGenesisActiveSetting`). Use `true as GenesisActiveSetting` (or `"soon" as …`) so the row narrows correctly in the `Market` union. |
 | `pegTarget` | `string` | Yes | Peg asset label (e.g. `"BTC"`, `"USD"`). |

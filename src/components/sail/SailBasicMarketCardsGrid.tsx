@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import type { DefinedMarket } from "@/config/markets";
+import { isSailSoonUi, type DefinedMarket } from "@/config/markets";
 import { buildSailMarketCardModel } from "@/utils/sailMarketCardModel";
 import type { SailContractReads } from "@/types/sail";
 import { BASIC_MARKET_CARDS_GRID_CLASS } from "@/components/market-cards/harborBasicMarketTokens";
@@ -47,15 +47,12 @@ function buildRows(
     if (globalIndex === undefined) return [];
     const baseOffset = marketOffsets.get(globalIndex) ?? 0;
 
-    const sailActive = (m as { sailActive?: boolean | "soon" }).sailActive;
-    if (sailActive === false) return [];
-
     const priceOracle = m.addresses?.collateralPrice;
     const leveragedTokenAddress = m.addresses?.leveragedToken;
     const hasOracle = isValidContractAddress(priceOracle);
     const hasToken = isValidContractAddress(leveragedTokenAddress);
 
-    const isComingSoon = sailActive === "soon";
+    const isComingSoon = isSailSoonUi(m);
     if (isComingSoon) {
       return [
         {

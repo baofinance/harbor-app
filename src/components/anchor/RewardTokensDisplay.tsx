@@ -12,6 +12,8 @@ interface RewardTokensDisplayProps {
   collateralPool: `0x${string}` | undefined;
   sailPool: `0x${string}` | undefined;
   poolAddresses?: Array<`0x${string}`>;
+  /** From `markets.ts` `rewardTokens` when on-chain reads are empty (preview / wrong RPC chain). */
+  configuredRewardSymbols?: string[];
   iconSize?: number;
   className?: string;
 }
@@ -20,6 +22,7 @@ export function RewardTokensDisplay({
   collateralPool,
   sailPool,
   poolAddresses,
+  configuredRewardSymbols = [],
   iconSize = 24,
   className = "",
 }: RewardTokensDisplayProps) {
@@ -114,27 +117,43 @@ export function RewardTokensDisplay({
     retry: 2,
     });
 
-  // Combine and deduplicate reward tokens, keeping full token info
+  const configuredTokens = useMemo(
+    () =>
+      configuredRewardSymbols
+        .map((symbol) => symbol.trim())
+        .filter(Boolean)
+        .map((symbol) => ({
+          symbol,
+          displayName: symbol,
+        })),
+    [configuredRewardSymbols]
+  );
+
+  // Combine config + on-chain; config fills gaps (e.g. MegaETH preview before pool RPC works).
   const allRewardTokens = useMemo(() => {
-  const rewardTokenMap = new Map<
-    string,
-    { symbol: string; displayName: string; name?: string }
-  >();
+    const rewardTokenMap = new Map<
+      string,
+      { symbol: string; displayName: string; name?: string }
+    >();
+    for (const token of configuredTokens) {
+      rewardTokenMap.set(token.symbol.toLowerCase(), token);
+    }
     const sourceTokens =
       normalizedPoolAddresses.length > 0
         ? multiPoolTokens
         : [...collateralRewardTokens, ...sailRewardTokens];
     sourceTokens.forEach((token) => {
-    if (token.symbol && !rewardTokenMap.has(token.symbol.toLowerCase())) {
-      rewardTokenMap.set(token.symbol.toLowerCase(), {
-        symbol: token.symbol,
-        displayName: token.displayName || token.name || token.symbol,
-        name: token.name,
-      });
-    }
-  });
+      if (token.symbol && !rewardTokenMap.has(token.symbol.toLowerCase())) {
+        rewardTokenMap.set(token.symbol.toLowerCase(), {
+          symbol: token.symbol,
+          displayName: token.displayName || token.name || token.symbol,
+          name: token.name,
+        });
+      }
+    });
     return Array.from(rewardTokenMap.values());
   }, [
+    configuredTokens,
     collateralRewardTokens,
     sailRewardTokens,
     multiPoolTokens,

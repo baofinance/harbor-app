@@ -3,7 +3,12 @@
 import type { Dispatch, SetStateAction } from "react";
 import LedgerMarksCompactBadge from "@/components/LedgerMarksCompactBadge";
 import { FilterMultiselectDropdown } from "@/components/FilterMultiselectDropdown";
-import { getLogoPath } from "@/components/shared";
+import {
+  getSailSideLogoPath,
+  isSailPegAssetSide,
+  SAIL_PEG_ICON_TABLE_PX,
+  SAIL_TABLE_SIDE_ICON_PX,
+} from "@/utils/sailAssetLogos";
 import IndexToolbarMetricsGroup, {
   type IndexToolbarMetric,
 } from "@/components/shared/IndexToolbarMetricsGroup";
@@ -65,7 +70,10 @@ export function SailMarketsToolbar({
           options={uniqueLongSides.map((side) => ({
             id: side,
             label: `Long ${side}`,
-            iconUrl: getLogoPath(side),
+            iconUrl: getSailSideLogoPath(side),
+            iconSizePx: isSailPegAssetSide(side)
+              ? SAIL_PEG_ICON_TABLE_PX
+              : SAIL_TABLE_SIDE_ICON_PX,
             prefix: "long" as const,
           }))}
           value={longFilterSelected}
@@ -79,7 +87,10 @@ export function SailMarketsToolbar({
           options={uniqueShortSides.map((side) => ({
             id: side,
             label: `Short ${side}`,
-            iconUrl: getLogoPath(side),
+            iconUrl: getSailSideLogoPath(side),
+            iconSizePx: isSailPegAssetSide(side)
+              ? SAIL_PEG_ICON_TABLE_PX
+              : SAIL_TABLE_SIDE_ICON_PX,
             prefix: "short" as const,
           }))}
           value={shortFilterSelected}
