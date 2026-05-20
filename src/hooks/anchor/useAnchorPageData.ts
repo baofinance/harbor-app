@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { formatEther } from "viem";
 import {
   markets,
@@ -35,10 +35,11 @@ import {
  * Includes protocol-level `anchorStats` for the strip; keeps [`page.tsx`](../../app/anchor/page.tsx) thinner over time.
  */
 export function useAnchorPageData(
-  chainFilterSelected: string[],
   address: `0x${string}` | undefined,
   layoutIsBasic: boolean
 ) {
+  const [chainFilterSelected, setChainFilterSelected] = useState<string[]>([]);
+
   const anchorMarkets = useMemo(
     () =>
       Object.entries(markets).filter(([_, m]) => m.peggedToken) as AnchorMarketTuple[],
@@ -601,6 +602,8 @@ export function useAnchorPageData(
   }, [reads, anchorMarkets, allPoolRewards]);
 
   return {
+    chainFilterSelected,
+    setChainFilterSelected,
     anchorMarkets,
     displayedAnchorMarkets,
     anchorChainOptions,

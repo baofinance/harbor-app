@@ -1,5 +1,7 @@
 export { GenesisPageHero } from "./GenesisPageHero";
 export { GenesisPageTitleSection } from "./GenesisPageTitleSection";
+export { GenesisClaimProgressModal } from "./GenesisClaimProgressModal";
+export type { GenesisClaimProgressModalProps } from "./GenesisClaimProgressModal";
 export { GenesisHeroIntroCards } from "./GenesisHeroIntroCards";
 export { GenesisCampaignStats } from "./GenesisCampaignStats";
 export type { GenesisCampaignStatsProps } from "./GenesisCampaignStats";

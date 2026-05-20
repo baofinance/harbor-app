@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { IndexMarketsSections } from "@/components/shared/IndexMarketsSections";
 import {
   SailMarketsToolbar,
   type SailMarketsToolbarProps,
@@ -11,17 +12,18 @@ export type SailMarketsSectionsProps = {
   children: ReactNode;
 };
 
-/**
- * Toolbar + main table area for Sail index (rows passed as children).
- */
+/** Toolbar + main table area for Sail index (rows passed as children). */
 export function SailMarketsSections({
   toolbarProps,
   children,
 }: SailMarketsSectionsProps) {
   return (
-    <section className="space-y-2 overflow-visible" aria-label="Sail markets">
-      <SailMarketsToolbar {...toolbarProps} />
+    <IndexMarketsSections
+      ariaLabel="Sail markets"
+      Toolbar={SailMarketsToolbar}
+      toolbarProps={toolbarProps}
+    >
       {children}
-    </section>
+    </IndexMarketsSections>
   );
 }

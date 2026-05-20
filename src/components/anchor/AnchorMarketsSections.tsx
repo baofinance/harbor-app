@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { IndexMarketsSections } from "@/components/shared/IndexMarketsSections";
 import {
   AnchorMarketsToolbar,
   type AnchorMarketsToolbarProps,
@@ -11,21 +12,18 @@ export type AnchorMarketsSectionsProps = {
   children: ReactNode;
 };
 
-/**
- * Toolbar + main stability-pool list (rows passed as children). Parity with
- * Genesis `GenesisMarketsSections` / Sail `SailMarketsSections`.
- */
+/** Toolbar + main stability-pool list (rows passed as children). */
 export function AnchorMarketsSections({
   toolbarProps,
   children,
 }: AnchorMarketsSectionsProps) {
   return (
-    <section
-      className="space-y-2 overflow-visible"
-      aria-label="Anchor stability pools"
+    <IndexMarketsSections
+      ariaLabel="Anchor stability pools"
+      Toolbar={AnchorMarketsToolbar}
+      toolbarProps={toolbarProps}
     >
-      <AnchorMarketsToolbar {...toolbarProps} />
       {children}
-    </section>
+    </IndexMarketsSections>
   );
 }
