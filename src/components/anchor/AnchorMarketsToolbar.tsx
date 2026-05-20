@@ -2,7 +2,10 @@
 
 import type { ReactNode } from "react";
 import LedgerMarksCompactBadge from "@/components/LedgerMarksCompactBadge";
-import { INDEX_MARKETS_TOOLBAR_ROW_WITH_TOP_RULE_CLASS } from "@/components/shared/indexMarketsToolbarStyles";
+import {
+  INDEX_MARKETS_TOOLBAR_FILTERS_ROW_CLASS,
+  INDEX_MARKETS_TOOLBAR_ROW_WITH_TOP_RULE_CLASS,
+} from "@/components/shared/indexMarketsToolbarStyles";
 import { INDEX_WITHDRAW_BUTTON_CLASS_DESKTOP_CORAL } from "@/utils/indexPageManageButton";
 import IndexToolbarMetricsGroup from "@/components/shared/IndexToolbarMetricsGroup";
 import type { NetworkFilterOption } from "@/utils/networkFilter";
@@ -41,12 +44,13 @@ export function AnchorMarketsToolbar({
 }: AnchorMarketsToolbarProps) {
   const showNetworkFilter =
     anchorChainOptions.length > 1 || chainFilterSelected.length > 0;
+  const hasActiveFilters = chainFilterSelected.length > 0;
 
   return (
     <div className={INDEX_MARKETS_TOOLBAR_ROW_WITH_TOP_RULE_CLASS}>
       <div className="w-full lg:w-auto lg:min-w-0">
-        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-        <h2 className="text-xs font-medium text-white/70 uppercase tracking-wider">
+        <div className={INDEX_MARKETS_TOOLBAR_FILTERS_ROW_CLASS}>
+        <h2 className="text-xs font-medium text-white/70 uppercase tracking-wider shrink-0">
           Stability Pools:
         </h2>
         {showNetworkFilter && (
@@ -57,9 +61,10 @@ export function AnchorMarketsToolbar({
               onChange={onChainFilterChange}
               minWidthClass="w-full min-w-0 sm:w-auto sm:min-w-[235px]"
             />
-            {chainFilterSelected.length > 0 && (
-              <IndexToolbarClearFiltersButton onClick={onClearFilters} />
-            )}
+            <IndexToolbarClearFiltersButton
+              onClick={onClearFilters}
+              visible={hasActiveFilters}
+            />
           </>
         )}
         </div>

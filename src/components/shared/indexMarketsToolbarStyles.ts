@@ -11,6 +11,10 @@ export const INDEX_MARKETS_TOOLBAR_ROW_CLASS =
  */
 export const INDEX_MARKETS_TOOLBAR_ROW_WITH_TOP_RULE_CLASS = `${INDEX_MARKETS_TOOLBAR_ROW_CLASS} border-t border-white/10`;
 
+/** Filter controls row (network / long / short) — nowrap on sm+ avoids shift when clear (×) appears. */
+export const INDEX_MARKETS_TOOLBAR_FILTERS_ROW_CLASS =
+  "flex flex-col gap-2 sm:flex-row sm:flex-nowrap sm:items-center";
+
 /**
  * Feature tiles under index titles — matches origin/yield-share Genesis heroes
  * (rounded-lg, py-2.5, border-white/10, subtle blur, centered column layout).
