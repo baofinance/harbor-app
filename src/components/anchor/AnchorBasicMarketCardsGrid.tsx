@@ -235,20 +235,19 @@ function AnchorBasicMarketCard({
     return bestId ?? marketList[0]?.marketId ?? "";
   }, [marketList, marketsData]);
 
-  const [selectedChainKey, setSelectedChainKey] = useState(() => {
-    const entry = marketList.find((m) => m.marketId === bestMarketIdOnList);
-    return harborMarketChainKey(entry?.market ?? marketList[0]?.market ?? {});
-  });
-
   const [selectedMarketId, setSelectedMarketId] = useState(bestMarketIdOnList);
 
+  // Keep user yield-rail choice; only reset when the selected market drops off the list.
   useEffect(() => {
-    const entry = marketList.find((m) => m.marketId === bestMarketIdOnList);
-    setSelectedChainKey(
-      harborMarketChainKey(entry?.market ?? marketList[0]?.market ?? {})
+    setSelectedMarketId((prev) =>
+      marketList.some((m) => m.marketId === prev) ? prev : bestMarketIdOnList
     );
-    setSelectedMarketId(bestMarketIdOnList);
   }, [bestMarketIdOnList, marketList]);
+
+  const selectedEntry = marketList.find((m) => m.marketId === selectedMarketId);
+  const selectedChainKey = harborMarketChainKey(
+    selectedEntry?.market ?? marketList[0]?.market ?? {}
+  );
 
   const marketsOnChain = useMemo(
     () =>
@@ -272,7 +271,6 @@ function AnchorBasicMarketCard({
   const singleEthOnly = railsPresent.has("eth") && !railsPresent.has("usd");
   const singleUsdOnly = railsPresent.has("usd") && !railsPresent.has("eth");
 
-  const selectedEntry = marketList.find((m) => m.marketId === selectedMarketId);
   const selectedMarket = selectedEntry?.market ?? marketList[0]?.market;
   const selectedData = marketsData.find((d) => d.marketId === selectedMarketId);
 
@@ -321,7 +319,6 @@ function AnchorBasicMarketCard({
   };
 
   const handleChainSelect = (chainKey: string) => {
-    setSelectedChainKey(chainKey);
     const currentRail = yieldRailLabel(
       marketList.find((m) => m.marketId === selectedMarketId)?.market ??
         marketList[0].market

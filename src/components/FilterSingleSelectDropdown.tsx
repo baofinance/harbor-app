@@ -65,6 +65,7 @@ export function FilterSingleSelectDropdown({
         </ListboxButton>
 
         <ListboxOptions
+          modal={false}
           anchor={{ to: "bottom start", gap: 2 }}
           className={`z-50 w-full ${minWidthClass} min-w-0 bg-white border border-[#1E4775]/20 rounded-md shadow-lg overflow-hidden overflow-y-auto outline-none [width:var(--button-width)] max-h-60`}
         >

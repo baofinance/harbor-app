@@ -12,7 +12,10 @@ import {
 import IndexToolbarMetricsGroup, {
   type IndexToolbarMetric,
 } from "@/components/shared/IndexToolbarMetricsGroup";
-import { INDEX_MARKETS_TOOLBAR_ROW_WITH_TOP_RULE_CLASS } from "@/components/shared/indexMarketsToolbarStyles";
+import {
+  INDEX_MARKETS_TOOLBAR_FILTERS_ROW_CLASS,
+  INDEX_MARKETS_TOOLBAR_ROW_WITH_TOP_RULE_CLASS,
+} from "@/components/shared/indexMarketsToolbarStyles";
 import type { NetworkFilterOption } from "@/utils/networkFilter";
 import IndexToolbarNetworkFilter from "@/components/shared/IndexToolbarNetworkFilter";
 import IndexToolbarClearFiltersButton from "@/components/shared/IndexToolbarClearFiltersButton";
@@ -50,10 +53,15 @@ export function SailMarketsToolbar({
   onClearFilters,
   metrics,
 }: SailMarketsToolbarProps) {
+  const hasActiveFilters =
+    chainFilterSelected.length > 0 ||
+    longFilterSelected.length > 0 ||
+    shortFilterSelected.length > 0;
+
   return (
     <div className={INDEX_MARKETS_TOOLBAR_ROW_WITH_TOP_RULE_CLASS}>
       <div className="w-full lg:w-auto lg:min-w-0">
-        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+        <div className={INDEX_MARKETS_TOOLBAR_FILTERS_ROW_CLASS}>
         <h2 className="text-xs font-medium text-white/70 uppercase tracking-wider">
           Leverage Position:
         </h2>
@@ -99,11 +107,10 @@ export function SailMarketsToolbar({
           groupLabel="SHORT"
           minWidthClass="w-full min-w-0 sm:w-auto sm:min-w-[235px]"
         />
-        {(chainFilterSelected.length > 0 ||
-          longFilterSelected.length > 0 ||
-          shortFilterSelected.length > 0) && (
-          <IndexToolbarClearFiltersButton onClick={onClearFilters} />
-        )}
+        <IndexToolbarClearFiltersButton
+          onClick={onClearFilters}
+          visible={hasActiveFilters}
+        />
         </div>
       </div>
       <div className="w-full lg:ml-auto lg:w-auto lg:min-w-0 flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-end">

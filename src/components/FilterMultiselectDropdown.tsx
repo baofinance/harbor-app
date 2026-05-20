@@ -1,9 +1,8 @@
 "use client";
 
 /**
- * Uses Headless UI Listbox. If the dropdown disappears when moving mouse to panel,
- * we can try portal={false} + no anchor for inline panel, or revert to the
- * custom implementation (see git history: wrapper ref + useState open + click-outside only).
+ * Uses Headless UI Listbox. `modal={false}` on options prevents scroll-lock / body
+ * padding-right that shifts centered index pages when a filter opens (Headless UI v2 default).
  */
 import {
   Listbox,
@@ -116,6 +115,7 @@ export function FilterMultiselectDropdown({
         </ListboxButton>
 
         <ListboxOptions
+          modal={false}
           anchor={{ to: "bottom start", gap: 2 }}
           className={`z-50 w-full ${minWidthClass} min-w-0 bg-white border border-[#1E4775]/20 rounded-md shadow-lg overflow-hidden overflow-y-auto outline-none [width:var(--button-width)] ${maxHeightClass}`}
         >
