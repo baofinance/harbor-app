@@ -501,7 +501,6 @@ export default function GenesisIndexPage() {
           <GenesisMarketsSections
             toolbarProps={{
               activeCampaignNames,
-              displayedCompletedByCampaignSize: displayedCompletedByCampaign.size,
               genesisChainOptions,
               chainFilterSelected,
               setChainFilterSelected,

@@ -20,7 +20,6 @@ import {
 
 export type GenesisMarketsToolbarProps = {
   activeCampaignNames: string[];
-  displayedCompletedByCampaignSize: number;
   genesisChainOptions: NetworkFilterOption[];
   chainFilterSelected: string[];
   setChainFilterSelected: React.Dispatch<React.SetStateAction<string[]>>;
@@ -31,7 +30,6 @@ export type GenesisMarketsToolbarProps = {
 
 export function GenesisMarketsToolbar({
   activeCampaignNames,
-  displayedCompletedByCampaignSize,
   genesisChainOptions,
   chainFilterSelected,
   setChainFilterSelected,
@@ -56,51 +54,35 @@ export function GenesisMarketsToolbar({
               ))}
             </span>
           </h2>
-          {displayedCompletedByCampaignSize > 0 && (
-            <div className={`${INDEX_MARKETS_TOOLBAR_FILTERS_ROW_CLASS} gap-1.5 sm:gap-2`}>
-              <span className="text-xs font-medium text-white/70 uppercase tracking-wider shrink-0">
-                Genesis:
-              </span>
-              {hasChainFilter && (
-                <IndexToolbarNetworkFilter
-                  options={genesisChainOptions}
-                  value={chainFilterSelected}
-                  onChange={setChainFilterSelected}
-                  minWidthClass="w-full min-w-0 sm:w-auto sm:min-w-[235px]"
-                />
-              )}
-              <IndexToolbarSegmentedToggle
-                label="Status:"
-                value={showCompletedGenesis ? "all" : "ongoing"}
-                onChange={(id) => setShowCompletedGenesis(id === "all")}
-                options={[
-                  { id: "ongoing", label: "Ongoing" },
-                  { id: "all", label: "All" },
-                ]}
-                ariaLabel="Genesis status"
-              />
-              {hasChainFilter ? (
-                <IndexToolbarClearFiltersButton
-                  onClick={() => setChainFilterSelected([])}
-                  visible={hasActiveFilters}
-                />
-              ) : null}
-            </div>
-          )}
-          {displayedCompletedByCampaignSize === 0 && hasChainFilter && (
-            <div className={`${INDEX_MARKETS_TOOLBAR_FILTERS_ROW_CLASS} gap-2`}>
+          <div className={`${INDEX_MARKETS_TOOLBAR_FILTERS_ROW_CLASS} gap-1.5 sm:gap-2`}>
+            <span className="text-xs font-medium text-white/70 uppercase tracking-wider shrink-0">
+              Genesis:
+            </span>
+            {hasChainFilter && (
               <IndexToolbarNetworkFilter
                 options={genesisChainOptions}
                 value={chainFilterSelected}
                 onChange={setChainFilterSelected}
                 minWidthClass="w-full min-w-0 sm:w-auto sm:min-w-[235px]"
               />
+            )}
+            <IndexToolbarSegmentedToggle
+              label="Status:"
+              value={showCompletedGenesis ? "all" : "ongoing"}
+              onChange={(id) => setShowCompletedGenesis(id === "all")}
+              options={[
+                { id: "ongoing", label: "Ongoing" },
+                { id: "all", label: "All" },
+              ]}
+              ariaLabel="Genesis status"
+            />
+            {hasChainFilter ? (
               <IndexToolbarClearFiltersButton
                 onClick={() => setChainFilterSelected([])}
                 visible={hasActiveFilters}
               />
-            </div>
-          )}
+            ) : null}
+          </div>
         </div>
       </div>
       <div className="w-full lg:ml-auto lg:w-auto lg:min-w-0 flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-end">
