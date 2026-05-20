@@ -54,11 +54,6 @@ export function GenesisMarketsToolbar({
                   {name}
                 </span>
               ))}
-              {activeCampaignNames.length > 0 ? (
-                <span className="rounded px-1.5 py-0.5 text-[10px] font-bold font-mono tracking-tight border border-white/40 bg-white/10 text-white">
-                  2.0
-                </span>
-              ) : null}
             </span>
           </h2>
           {displayedCompletedByCampaignSize > 0 && (
