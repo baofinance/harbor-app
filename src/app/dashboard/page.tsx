@@ -22,69 +22,122 @@ function formatMaidenVoyageBoost(mult: number | null): string {
   return `${s}×`;
 }
 
-function PositionsSubsection({
-  title,
-  rows,
-  loading,
-  error,
-  emptyHint,
-}: {
-  title: string;
-  rows: DashboardPositionRow[];
-  loading: boolean;
-  error: string | null;
-  emptyHint: string;
-}) {
-  return (
-    <div className="rounded-xl border border-white/10 bg-black/20 p-4">
-      <h3 className="text-sm font-semibold text-white mb-2 font-geo">{title}</h3>
-      {error ? (
-        <p className="text-xs text-amber-200/90">{error}</p>
-      ) : loading ? (
-        <p className="text-xs text-white/50">Loading…</p>
-      ) : rows.length === 0 ? (
-        <p className="text-xs text-white/50">{emptyHint}</p>
-      ) : (
-        <div className="overflow-x-auto -mx-1">
-          <table className="min-w-[480px] w-full text-xs sm:text-sm">
-            <thead>
-              <tr className="text-left text-white/50 uppercase tracking-wide text-[10px]">
-                <th className="py-2 pl-1 pr-2">Market</th>
-                <th className="py-2 px-2">Type</th>
-                <th className="py-2 px-2 text-right">Notional</th>
-                <th className="py-2 pl-2 pr-1 w-20" />
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => (
-                <tr key={r.id} className="border-t border-white/10">
-                  <td className="py-2 pl-1 pr-2 text-white">{r.marketLabel}</td>
-                  <td className="py-2 px-2 text-white/75">{r.detail}</td>
-                  <td className="py-2 px-2 text-right font-mono text-white tabular-nums">
-                    {formatUSD(r.usd, { compact: false })}
-                  </td>
-                  <td className="py-2 pl-2 pr-1 text-right">
-                    <Link
-                      href={r.href}
-                      className="text-harbor hover:underline text-xs font-medium whitespace-nowrap"
-                    >
-                      Open
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
-  );
+function sumRowsUsd(rows: DashboardPositionRow[]): number {
+  return rows.reduce((s, r) => s + r.usd, 0);
+}
+
+function positionCountLabel(count: number): string {
+  if (count === 0) return "No positions";
+  if (count === 1) return "1 position";
+  return `${count} positions`;
 }
 
 function usdSummaryLabel(isConnected: boolean, usd: number): string {
   if (!isConnected) return "—";
   return formatUSD(usd, { compact: false });
 }
+
+function ExpandablePositionsPanel({
+  title,
+  rows,
+  loading,
+  error,
+  emptyHint,
+  isConnected,
+  expanded,
+  onToggle,
+}: {
+  title: string;
+  rows: DashboardPositionRow[];
+  loading: boolean;
+  error: string | null;
+  emptyHint: string;
+  isConnected: boolean;
+  expanded: boolean;
+  onToggle: () => void;
+}) {
+  const total = sumRowsUsd(rows);
+  const count = rows.length;
+
+  const collapsedSummary = loading ? (
+    <span className="text-xs text-white/50 sm:text-sm">Loading…</span>
+  ) : (
+    <span className="text-xs text-white/60 sm:text-sm">
+      <span className="font-mono text-white tabular-nums">
+        {usdSummaryLabel(isConnected, total)}
+      </span>
+      <span className="text-white/40"> · </span>
+      {positionCountLabel(count)}
+    </span>
+  );
+
+  return (
+    <div className="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
+      <button
+        type="button"
+        className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-white/5"
+        aria-expanded={expanded}
+        onClick={onToggle}
+      >
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1">
+          <h3 className="text-sm font-semibold text-white font-geo">{title}</h3>
+          {!expanded ? collapsedSummary : null}
+        </div>
+        {expanded ? (
+          <ChevronUpIcon className="h-4 w-4 shrink-0 text-white/60" aria-hidden />
+        ) : (
+          <ChevronDownIcon className="h-4 w-4 shrink-0 text-white/60" aria-hidden />
+        )}
+      </button>
+
+      {expanded ? (
+        <div className="border-t border-white/10 px-4 pb-4 pt-3">
+          {error ? (
+            <p className="text-xs text-amber-200/90">{error}</p>
+          ) : loading ? (
+            <p className="text-xs text-white/50">Loading…</p>
+          ) : rows.length === 0 ? (
+            <p className="text-xs text-white/50">{emptyHint}</p>
+          ) : (
+            <div className="overflow-x-auto -mx-1">
+              <table className="min-w-[480px] w-full text-xs sm:text-sm">
+                <thead>
+                  <tr className="text-left text-white/50 uppercase tracking-wide text-[10px]">
+                    <th className="py-2 pl-1 pr-2">Market</th>
+                    <th className="py-2 px-2">Type</th>
+                    <th className="py-2 px-2 text-right">Notional</th>
+                    <th className="py-2 pl-2 pr-1 w-20" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((r) => (
+                    <tr key={r.id} className="border-t border-white/10">
+                      <td className="py-2 pl-1 pr-2 text-white">{r.marketLabel}</td>
+                      <td className="py-2 px-2 text-white/75">{r.detail}</td>
+                      <td className="py-2 px-2 text-right font-mono text-white tabular-nums">
+                        {formatUSD(r.usd, { compact: false })}
+                      </td>
+                      <td className="py-2 pl-2 pr-1 text-right">
+                        <Link
+                          href={r.href}
+                          className="text-harbor hover:underline text-xs font-medium whitespace-nowrap"
+                        >
+                          Open
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+type PositionPanelKey = "maiden" | "earn" | "sail" | "archived";
 
 export default function DashboardPage() {
   const { rows, isLoading, error, refresh, isConnected } = useFounderMetrics();
@@ -99,15 +152,23 @@ export default function DashboardPage() {
 
   const [positionsExpanded, setPositionsExpanded] = useState(true);
   const [yieldShareExpanded, setYieldShareExpanded] = useState(false);
+  const [panelExpanded, setPanelExpanded] = useState<Record<PositionPanelKey, boolean>>({
+    maiden: true,
+    earn: false,
+    sail: false,
+    archived: false,
+  });
+
+  const togglePanel = (key: PositionPanelKey) => {
+    setPanelExpanded((p) => ({ ...p, [key]: !p[key] }));
+  };
 
   const positionTotals = useMemo(() => {
-    const maiden = [...maidenVoyageRows, ...archivedMaidenVoyageRows].reduce(
-      (s, r) => s + r.usd,
-      0
-    );
-    const earn = earnRows.reduce((s, r) => s + r.usd, 0);
-    const sail = leverageRows.reduce((s, r) => s + r.usd, 0);
-    return { maiden, earn, sail };
+    const maiden = sumRowsUsd(maidenVoyageRows);
+    const archived = sumRowsUsd(archivedMaidenVoyageRows);
+    const earn = sumRowsUsd(earnRows);
+    const sail = sumRowsUsd(leverageRows);
+    return { maiden, archived, earn, sail };
   }, [maidenVoyageRows, archivedMaidenVoyageRows, earnRows, leverageRows]);
 
   const totalOutstanding = rows.reduce((sum, row) => sum + row.outstandingUSD, 0);
@@ -115,6 +176,8 @@ export default function DashboardPage() {
     () => rows.reduce((s, r) => s + r.totalEarnedUSD, 0),
     [rows]
   );
+
+  const hasArchived = archivedMaidenVoyageRows.length > 0;
 
   return (
     <div className="min-h-0 flex-1 text-white max-w-[1300px] mx-auto font-sans relative w-full">
@@ -186,6 +249,17 @@ export default function DashboardPage() {
                         {usdSummaryLabel(isConnected, positionTotals.sail)}
                       </span>
                     </span>
+                    {hasArchived ? (
+                      <>
+                        <span className="text-white/40 hidden sm:inline">·</span>
+                        <span className="text-white/60 text-xs sm:text-sm">
+                          Archived{" "}
+                          <span className="font-mono text-white tabular-nums">
+                            {usdSummaryLabel(isConnected, positionTotals.archived)}
+                          </span>
+                        </span>
+                      </>
+                    ) : null}
                   </>
                 )}
               </div>
@@ -211,39 +285,50 @@ export default function DashboardPage() {
               ) : null}
 
               {isConnected ? (
-                <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-                  <PositionsSubsection
+                <div className="flex flex-col gap-3">
+                  <ExpandablePositionsPanel
                     title="Maiden Voyage"
                     rows={maidenVoyageRows}
                     loading={posLoading.maidenVoyage}
                     error={posErrors.maidenVoyage}
                     emptyHint="No active genesis deposits for this wallet."
+                    isConnected={isConnected}
+                    expanded={panelExpanded.maiden}
+                    onToggle={() => togglePanel("maiden")}
                   />
-                  <PositionsSubsection
+                  <ExpandablePositionsPanel
                     title="Earn"
                     rows={earnRows}
                     loading={posLoading.anchor}
                     error={posErrors.anchor}
                     emptyHint="No ha tokens or stability pool balances in the indexer."
+                    isConnected={isConnected}
+                    expanded={panelExpanded.earn}
+                    onToggle={() => togglePanel("earn")}
                   />
-                  <PositionsSubsection
+                  <ExpandablePositionsPanel
                     title="Sail"
                     rows={leverageRows}
                     loading={posLoading.leverage}
                     error={posErrors.leverage}
                     emptyHint="No Sail positions in the Sail subgraph or Sail token marks in the indexer."
+                    isConnected={isConnected}
+                    expanded={panelExpanded.sail}
+                    onToggle={() => togglePanel("sail")}
                   />
+                  {hasArchived ? (
+                    <ExpandablePositionsPanel
+                      title="Archived — Maiden Voyage"
+                      rows={archivedMaidenVoyageRows}
+                      loading={posLoading.maidenVoyage}
+                      error={posErrors.maidenVoyage}
+                      emptyHint="No archived genesis deposits for this wallet."
+                      isConnected={isConnected}
+                      expanded={panelExpanded.archived}
+                      onToggle={() => togglePanel("archived")}
+                    />
+                  ) : null}
                 </div>
-              ) : null}
-
-              {isConnected && archivedMaidenVoyageRows.length > 0 ? (
-                <PositionsSubsection
-                  title="Archived — Maiden Voyage"
-                  rows={archivedMaidenVoyageRows}
-                  loading={posLoading.maidenVoyage}
-                  error={posErrors.maidenVoyage}
-                  emptyHint="No archived genesis deposits for this wallet."
-                />
               ) : null}
             </div>
           ) : null}
