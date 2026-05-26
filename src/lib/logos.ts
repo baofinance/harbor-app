@@ -105,3 +105,18 @@ export function getLogoPath(symbol: string): string {
 
     return "/icons/placeholder.svg";
 }
+
+/** Peg-target icons for Sail long/short sides (USD / GOLD / SILVER only). Collateral tokens (fxUSD, wstETH, …) use `getLogoPath`. */
+export function getSailPegAssetLogoPath(side: string): string {
+    const key = normalizeSymbolKey(side);
+    if (key === "usd" || key === "dollar") {
+        return "/icons/sail-asset-usd.png";
+    }
+    if (key === "gold" || key === "xau") {
+        return "/icons/sail-asset-gold.png";
+    }
+    if (key === "silver" || key === "xag") {
+        return "/icons/sail-asset-silver.png";
+    }
+    return getLogoPath(side);
+}

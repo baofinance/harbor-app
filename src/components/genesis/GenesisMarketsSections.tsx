@@ -5,6 +5,7 @@
  * @see docs/routes/genesis.md
  */
 import type { ReactNode } from "react";
+import { IndexMarketsSections } from "@/components/shared/IndexMarketsSections";
 import {
   GenesisMarketsToolbar,
   type GenesisMarketsToolbarProps,
@@ -20,9 +21,12 @@ export function GenesisMarketsSections({
   children,
 }: GenesisMarketsSectionsProps) {
   return (
-    <section className="space-y-2 overflow-visible" aria-label="Genesis markets">
-      <GenesisMarketsToolbar {...toolbarProps} />
+    <IndexMarketsSections
+      ariaLabel="Genesis markets"
+      Toolbar={GenesisMarketsToolbar}
+      toolbarProps={toolbarProps}
+    >
       {children}
-    </section>
+    </IndexMarketsSections>
   );
 }

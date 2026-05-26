@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import type { DefinedMarket } from "@/config/markets";
+import { isAnchorSoonUi } from "@/config/markets";
 import type { AnchorContractReads, AnchorMarketTuple } from "@/types/anchor";
 import { getAcceptedDepositAssets } from "@/utils/anchor";
 import { DEBUG_ANCHOR } from "@/config/debug";
@@ -901,7 +902,8 @@ export function useAnchorMarketData(
       // - pool deposits > 0 (user has deposited in pools)
       // This ensures all markets with any form of collateral are shown
       const activeMarketsData = marketsData.filter(
-        (m) => 
+        (m) =>
+          isAnchorSoonUi(m.market) ||
           (m.collateralValue !== undefined && m.collateralValue > 0n) ||
           (m.totalDebt !== undefined && m.totalDebt > 0n) ||
           (m.collateralPoolTVL !== undefined && m.collateralPoolTVL > 0n) ||

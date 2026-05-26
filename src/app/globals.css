@@ -57,6 +57,7 @@
 
   body {
     @apply bg-[#1E4775] text-white min-h-full;
+    scrollbar-gutter: stable;
   }
 
   .dark {

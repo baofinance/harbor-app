@@ -1,10 +1,9 @@
 "use client";
 
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useCallback } from "react";
 import {
   useAccount,
   useChainId,
-  useContractReads,
   useContractRead,
   useSwitchChain,
 } from "wagmi";
@@ -38,7 +37,11 @@ import { useGenesisClaimMarket } from "@/hooks/useGenesisClaimMarket";
 import { DEFAULT_FDV } from "@/utils/tokenAllocation";
 import { useGenesisPageData } from "@/hooks/useGenesisPageData";
 import { usePageLayoutPreference } from "@/contexts/PageLayoutPreferenceContext";
-import { ensureMarketWalletChain } from "@/utils/ensureMarketWalletChain";
+import { useExpandedMarketIds } from "@/hooks/useExpandedMarketIds";
+import { useOpenMarketManageModal } from "@/hooks/useOpenMarketManageModal";
+import { useGenesisContractReads } from "@/hooks/useGenesisContractReads";
+import { useGenesisManageRefetch } from "@/hooks/useGenesisManageRefetch";
+import { GenesisClaimProgressModal } from "@/components/genesis/GenesisClaimProgressModal";
 import { formatCompactUSD } from "@/utils/anchor";
 import {
   genesisParticipatesInMaidenVoyageTotals,
@@ -60,7 +63,7 @@ export default function GenesisIndexPage() {
     initialTab?: "deposit" | "withdraw";
   } | null>(null);
   const [now, setNow] = useState(new Date());
-  const [expandedMarkets, setExpandedMarkets] = useState<string[]>([]);
+  const { expandedMarkets, setExpandedMarkets } = useExpandedMarketIds();
   const [mounted, setMounted] = useState(false);
   const [claimingMarket, setClaimingMarket] = useState<string | null>(null);
   const [claimModal, setClaimModal] = useState<{
@@ -75,42 +78,40 @@ export default function GenesisIndexPage() {
     peggedSymbol?: string;
   }>({ open: false });
   const [fdv, setFdv] = useState<number>(DEFAULT_FDV);
-  const [chainFilterSelected, setChainFilterSelected] = useState<string[]>([]);
   // Hide completed genesis sections by default; filter to show "Ongoing" only or "All" (ongoing + completed)
   const [showCompletedGenesis, setShowCompletedGenesis] = useState(false);
   const [showArchivedGenesis, setShowArchivedGenesis] = useState(false);
 
-  const openManageModal = async (
-    marketId: string,
-    market: GenesisMarketConfig,
-    initialTab: "deposit" | "withdraw" = "deposit"
-  ) => {
-    const resolvedTab =
-      isMarketArchived(market) && initialTab === "deposit" ? "withdraw" : initialTab;
-    const marketChainId = market?.chainId ?? 1;
+  const openManageModalBase = useOpenMarketManageModal<{
+    marketId: string;
+    market: GenesisMarketConfig;
+    initialTab?: "deposit" | "withdraw";
+  }>({
+    isConnected,
+    connectedChainId,
+    switchChain,
+    setManageModal,
+    logLabel: "Genesis",
+  });
 
-    const isReady = await ensureMarketWalletChain({
-      isConnected,
-      connectedChainId,
-      marketChainId,
-      switchChain,
-      onSwitchRejected: (err) => {
-        if (process.env.NODE_ENV === "development") {
-          console.warn(
-            "[Genesis] Network switch rejected before opening manage modal:",
-            err
-          );
-        }
-      },
-    });
-    if (!isReady) return;
-
-    setManageModal({
-      marketId,
-      market,
-      initialTab: resolvedTab,
-    });
-  };
+  const openManageModal = useCallback(
+    async (
+      marketId: string,
+      market: GenesisMarketConfig,
+      initialTab: "deposit" | "withdraw" = "deposit"
+    ) => {
+      const resolvedTab =
+        isMarketArchived(market) && initialTab === "deposit"
+          ? "withdraw"
+          : initialTab;
+      await openManageModalBase({
+        marketId,
+        market,
+        initialTab: resolvedTab,
+      });
+    },
+    [openManageModalBase]
+  );
 
   // Prevent hydration mismatch by only rendering dynamic content after mount
   useEffect(() => {
@@ -126,7 +127,10 @@ export default function GenesisIndexPage() {
   }, []);
 
   const {
+    chainFilterSelected,
+    setChainFilterSelected,
     genesisMarkets,
+    displayedGenesisMarkets,
     genesisChainOptions,
     comingSoonMarkets,
     genesisAddresses,
@@ -147,51 +151,23 @@ export default function GenesisIndexPage() {
 
   const queryClient = useQueryClient();
 
-  // Index layout per market: [isEnded, balanceOf?, claimable?]
-  // Note: totalDeposits() doesn't exist in IGenesis interface
-  // We'll get total deposits by checking the collateral token balance of the genesis contract
-  // Use Anvil-specific hook to ensure reads go to Anvil network
-  const genesisReadContracts = useMemo(() => {
-    return genesisMarkets.flatMap(([_, mkt]) => {
-      const g = (mkt as GenesisMarketConfig).addresses?.genesis as `0x${string}` | undefined;
-      const mktChainId = (mkt as GenesisMarketConfig)?.chainId ?? 1;
-      if (!g || typeof g !== "string" || !g.startsWith("0x") || g.length !== 42)
-        return [];
-      const base = [
-        {
-          address: g,
-          abi: GENESIS_ABI,
-          functionName: "genesisIsEnded" as const,
-          chainId: mktChainId,
-        },
-      ];
-      const user =
-        isConnected && address
-          ? [
-              {
-                address: g,
-                abi: GENESIS_ABI,
-                functionName: "balanceOf" as const,
-                args: [address as `0x${string}`],
-                chainId: mktChainId,
-              },
-              {
-                address: g,
-                abi: GENESIS_ABI,
-                functionName: "claimable" as const,
-                args: [address as `0x${string}`],
-                chainId: mktChainId,
-              },
-            ]
-          : [];
-      return [...base, ...user];
-    });
-  }, [genesisMarkets, isConnected, address]);
+  const {
+    reads,
+    refetchReads,
+    refetchCollateralTokens,
+    refetchTotalDeposits,
+    totalDepositsReads,
+  } = useGenesisContractReads(
+    genesisMarkets as Array<[string, GenesisMarketConfig]>,
+    isConnected,
+    address
+  );
 
-  const { data: reads, refetch: refetchReads } = useContractReads({
-    contracts: genesisReadContracts,
-    enabled: genesisMarkets.length > 0,
-    refetchInterval: 60000, // Refetch every 60 seconds - genesis doesn't end minute-to-minute
+  const onGenesisManageSuccess = useGenesisManageRefetch({
+    refetchCollateralTokens,
+    refetchReads,
+    refetchTotalDeposits,
+    refetchMarks,
   });
 
   // Calculate completed markets grouped by campaign (after reads is defined)
@@ -246,74 +222,6 @@ export default function GenesisIndexPage() {
     return grouped;
   }, [genesisMarkets, reads, isConnected, marksResults]);
 
-  // Fetch collateral token addresses from genesis contracts
-  const collateralTokenContracts = useMemo(() => {
-    return genesisMarkets
-      .map(([_, mkt]) => {
-        const g = (mkt as GenesisMarketConfig).addresses?.genesis as `0x${string}` | undefined;
-        const mktChainId = (mkt as GenesisMarketConfig)?.chainId ?? 1;
-        if (
-          !g ||
-          typeof g !== "string" ||
-          !g.startsWith("0x") ||
-          g.length !== 42
-        )
-          return null;
-        return {
-          address: g,
-          abi: GENESIS_ABI,
-          functionName: "WRAPPED_COLLATERAL_TOKEN" as const,
-          chainId: mktChainId,
-        };
-      })
-      .filter((c): c is NonNullable<typeof c> => c !== null);
-  }, [genesisMarkets]);
-
-  const { data: collateralTokenReads, refetch: refetchCollateralTokens } =
-    useContractReads({
-      contracts: collateralTokenContracts,
-      enabled: genesisMarkets.length > 0,
-    });
-
-  const totalDepositsContracts = useMemo(() => {
-    return genesisMarkets.flatMap(([_, mkt], mi) => {
-      const g = (mkt as GenesisMarketConfig).addresses?.genesis as `0x${string}` | undefined;
-      const mktChainId = (mkt as GenesisMarketConfig)?.chainId ?? 1;
-      const wrappedCollateralAddress = collateralTokenReads?.[mi]?.result as
-        | `0x${string}`
-        | undefined;
-      if (
-        !g ||
-        !wrappedCollateralAddress ||
-        typeof g !== "string" ||
-        !g.startsWith("0x") ||
-        g.length !== 42 ||
-        typeof wrappedCollateralAddress !== "string" ||
-        !wrappedCollateralAddress.startsWith("0x") ||
-        wrappedCollateralAddress.length !== 42
-      )
-        return [];
-      return [
-        {
-          address: wrappedCollateralAddress,
-          abi: ERC20_ABI,
-          functionName: "balanceOf" as const,
-          args: [g],
-          chainId: mktChainId,
-        },
-      ];
-    });
-  }, [genesisMarkets, collateralTokenReads]);
-
-  const { data: totalDepositsReads, refetch: refetchTotalDeposits } =
-    useContractReads({
-      contracts: totalDepositsContracts,
-      enabled:
-        genesisMarkets.length > 0 &&
-        collateralTokenReads &&
-        collateralTokenReads.length > 0,
-    });
-
   const { claimMarket } = useGenesisClaimMarket({
     setClaimingMarket,
     setClaimModal,
@@ -349,125 +257,16 @@ export default function GenesisIndexPage() {
     window.open(url, "_blank", "noopener,noreferrer");
   };
 
-  const ClaimProgressModal = ({
-    open,
-    status,
-    errorMessage,
-    onClose,
-    onShare,
-    marketName,
-    peggedSymbolNoPrefix,
-  }: {
-    open: boolean;
-    status: "pending" | "success" | "error";
-    errorMessage?: string;
-    onClose: () => void;
-    onShare?: () => void;
-    marketName?: string;
-    peggedSymbolNoPrefix?: string;
-  }) => {
-    if (!open) return null;
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center">
-        {/* Backdrop */}
-        <div
-          className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-          onClick={status === "pending" ? undefined : onClose}
-        />
-        <div className="relative bg-white shadow-2xl w-full max-w-md mx-4 animate-in fade-in-0 scale-in-95 duration-200  overflow-hidden">
-          {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-[#1E4775]/10">
-            <div>
-              <p className="text-xs uppercase tracking-wide text-[#1E4775]/60">
-                Claim Progress
-              </p>
-              <h3 className="text-sm font-semibold text-[#1E4775]">
-                {status === "pending"
-                  ? "Processing claim"
-                  : status === "success"
-                  ? "Claim successful"
-                  : "Claim failed"}
-              </h3>
-            </div>
-            <button
-              onClick={onClose}
-              className="text-xs text-[#1E4775]/60 hover:text-[#1E4775]"
-              disabled={status === "pending"}
-            >
-              Close
-            </button>
-          </div>
-
-          <div className="p-4 space-y-4">
-            {status === "pending" && (
-              <div className="space-y-3">
-                <p className="text-sm text-[#1E4775]/80">
-                  Waiting for transaction confirmation...
-                </p>
-                <div className="w-full bg-[#1E4775]/10 h-2 rounded-full overflow-hidden">
-                  <div className="h-2 bg-[#1E4775] animate-pulse w-1/2 rounded-full" />
-                </div>
-              </div>
-            )}
-
-            {status === "success" && (
-              <div className="space-y-4">
-                <div className="p-4 bg-[rgb(var(--surface-selected-rgb))]/20 border border-[rgb(var(--surface-selected-border-rgb))]  text-center">
-                  <p className="text-sm text-[#1E4775]/80">
-                    Tokens claimed{marketName ? ` for ${marketName}` : ""}.
-                  </p>
-                </div>
-
-                <div className="space-y-2 bg-[#17395F]/5 border border-[#1E4775]/15  p-4">
-                  <div className="text-base font-semibold text-[#1E4775]">
-                    Boost your airdrop
-                  </div>
-                  <p className="text-sm text-[#1E4775]/80">
-                    Share that {marketName || "this market"} is live and invite
-                    others to earn unbeatable yields on {peggedSymbolNoPrefix}{" "}
-                    or get liquidation-protected, funding-free leverage.
-                  </p>
-                  {onShare && (
-                    <button
-                      onClick={onShare}
-                      className="w-full py-3 px-4 bg-black hover:bg-gray-800 text-white font-medium rounded-full transition-colors flex items-center justify-center gap-2 text-sm"
-                    >
-                      <svg
-                        viewBox="0 0 24 24"
-                        className="w-5 h-5 fill-current"
-                        aria-hidden="true"
-                      >
-                        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-                      </svg>
-                      <span>Share on X</span>
-                    </button>
-                  )}
-                  <p className="text-xs text-[#1E4775]/60 mt-2">
-                    Share your post in the{" "}
-                    <span className="font-semibold">#boosters</span> channel on
-                    Discord to be included in the community marketing airdrop.
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {status === "error" && (
-              <div className="space-y-3">
-                <div className="p-4 bg-red-50 border border-red-100 ">
-                  <p className="text-sm text-red-700 font-semibold">
-                    Claim failed
-                  </p>
-                  <p className="text-xs text-[#1E4775]/80 break-words mt-1">
-                    {errorMessage || "Something went wrong. Please try again."}
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  };
+  const handleOpenManageModal = useCallback(
+    async (
+      marketId: string,
+      market: GenesisMarketConfig,
+      initialTab: "deposit" | "withdraw" = "deposit"
+    ) => {
+      await openManageModal({ marketId, market, initialTab });
+    },
+    [openManageModal]
+  );
 
   // Fetch collateral price oracles using the dedicated hook
   // This hook properly handles the Harbor oracle format (tuple with wrapped rates)
@@ -611,7 +410,7 @@ export default function GenesisIndexPage() {
     archivedLiveMarkets,
     archivedCompletedMarkets,
     showHeaders,
-    activeCampaignName,
+    activeCampaignNames,
   } = useSortedGenesisMarkets({
     genesisMarkets,
     reads,
@@ -787,8 +586,7 @@ export default function GenesisIndexPage() {
         {hasActiveOrPendingMarkets && (
           <GenesisMarketsSections
             toolbarProps={{
-              activeCampaignName,
-              displayedCompletedByCampaignSize: displayedCompletedByCampaign.size,
+              activeCampaignNames,
               genesisChainOptions,
               chainFilterSelected,
               setChainFilterSelected,
@@ -821,7 +619,7 @@ export default function GenesisIndexPage() {
               setExpandedMarkets={setExpandedMarkets}
               claimingMarket={claimingMarket}
               claimMarket={claimMarket}
-              openManageModal={openManageModal}
+              openManageModal={handleOpenManageModal}
               now={now}
               marksResults={marksResults}
               isLoadingMarks={isLoadingMarks}
@@ -895,69 +693,11 @@ export default function GenesisIndexPage() {
           marketId={manageModal.marketId}
           market={manageModal.market}
           initialTab={manageModal.initialTab}
-          onSuccess={async () => {
-            // Wait for blockchain state to update
-            await new Promise((resolve) => setTimeout(resolve, 2000));
-
-            // Invalidate query cache to force fresh reads
-            queryClient.invalidateQueries({
-              queryKey: ["anvil-contract-reads"],
-            });
-
-            // Refetch contract data in order: collateral tokens first (needed for total deposits)
-            await refetchCollateralTokens();
-            // Wait longer for collateral token reads to complete and component to re-render
-            // This ensures the useMemo for totalDepositsContracts recalculates with new data
-            await new Promise((resolve) => setTimeout(resolve, 1000));
-
-            // Then refetch everything else
-            // Note: Prices refresh automatically via their refetch intervals
-            await Promise.all([refetchReads(), refetchTotalDeposits()]);
-
-            // Force another refetch after a short delay to ensure everything is updated
-            await new Promise((resolve) => setTimeout(resolve, 1000));
-            await Promise.all([
-              refetchCollateralTokens(),
-              refetchReads(),
-              refetchTotalDeposits(),
-            ]);
-
-            // Wait longer for subgraph to index the event
-            // The subgraph needs time to process the event and update marks
-            await new Promise((resolve) => setTimeout(resolve, 5000));
-
-            // Invalidate and refetch harbor marks queries
-            queryClient.invalidateQueries({ queryKey: ["allHarborMarks"] });
-            queryClient.invalidateQueries({ queryKey: ["harborMarks"] });
-
-            // Force a refetch of marks data
-            await refetchMarks();
-
-            // Poll for marks update (subgraph might need more time)
-            let attempts = 0;
-            const maxAttempts = 6; // Try for up to 30 seconds (6 * 5 seconds)
-            const pollInterval = 5000; // 5 seconds
-
-            const pollForMarks = async () => {
-              if (attempts >= maxAttempts) return;
-              attempts++;
-              await new Promise((resolve) => setTimeout(resolve, pollInterval));
-              await refetchMarks();
-              // Continue polling if we haven't reached max attempts
-              if (attempts < maxAttempts) {
-                await pollForMarks();
-              }
-            };
-
-            // Start polling in background (don't await)
-            pollForMarks();
-
-            // Don't auto-close modal - let user see success state and close manually
-          }}
+          onSuccess={onGenesisManageSuccess}
         />
       )}
 
-      <ClaimProgressModal
+      <GenesisClaimProgressModal
         open={claimModal.open}
         status={claimModal.status}
         errorMessage={claimModal.errorMessage}

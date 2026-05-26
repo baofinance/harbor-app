@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useMemo } from "react";
 import Image from "next/image";
 import {
   ArrowPathIcon,
@@ -24,6 +24,10 @@ import type { DefinedMarket } from "@/config/markets";
 
 export type AnchorMarketGroupCollapsedRowProps = {
   symbol: string;
+  /** Expand/collapse key (UI+ uses `haUSD::Ethereum` per chain). */
+  rowKey?: string;
+  /** Preview row (`anchorActive: "soon"`): grey styling, no manage. */
+  isComingSoonRow?: boolean;
   isExpanded: boolean;
   peggedTokenSymbol: string | undefined;
   groupHasMaintenance: boolean;
@@ -90,6 +94,8 @@ function AnchorMarketGroupCollapsedRowInner(
 ) {
   const {
     symbol,
+    rowKey,
+    isComingSoonRow = false,
     isExpanded,
     peggedTokenSymbol,
     groupHasMaintenance,
@@ -123,9 +129,24 @@ function AnchorMarketGroupCollapsedRowInner(
     onOpenManage,
   } = props;
 
+  const expandKey = rowKey ?? symbol;
+
+  const configuredRewardSymbols = useMemo(() => {
+    const symbols = new Set<string>();
+    for (const { market } of marketList) {
+      const rt = (market as { rewardTokens?: { default?: string[]; additional?: string[] } })
+        .rewardTokens;
+      rt?.default?.forEach((s) => symbols.add(s));
+      rt?.additional?.forEach((s) => symbols.add(s));
+    }
+    return Array.from(symbols);
+  }, [marketList]);
+
   return (
 <div
   className={`p-3 transition cursor-pointer ${
+    isComingSoonRow ? "opacity-90 saturate-[0.78]" : ""
+  } ${
     isExpanded
       ? "bg-[rgb(var(--surface-selected-rgb))]"
       : "bg-white hover:bg-[rgb(var(--surface-selected-rgb))]"
@@ -136,7 +157,7 @@ function AnchorMarketGroupCollapsedRowInner(
       target.closest("button") === null &&
       target.closest("[onclick]") === null
     ) {
-      onToggleExpand(symbol);
+      onToggleExpand(expandKey);
     }
   }}
 >
@@ -157,9 +178,18 @@ function AnchorMarketGroupCollapsedRowInner(
             className="flex-shrink-0 cursor-help"
           />
         </SimpleTooltip>
-        <span className="text-[#1E4775] font-semibold text-base truncate">
+        <span
+          className={`font-semibold text-base truncate ${
+            isComingSoonRow ? "text-[#64748b]" : "text-[#1E4775]"
+          }`}
+        >
           {symbol}
         </span>
+        {isComingSoonRow ? (
+          <span className="shrink-0 rounded-md bg-[#f1f5f9] px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#64748b] ring-1 ring-[#1E4775]/10">
+            Soon
+          </span>
+        ) : null}
         {isExpanded ? (
           <ChevronUpIcon className="w-5 h-5 text-[#1E4775] flex-shrink-0" />
         ) : (
@@ -173,6 +203,8 @@ function AnchorMarketGroupCollapsedRowInner(
       >
         {groupHasMaintenance ? (
           <MarketMaintenanceTag />
+        ) : isComingSoonRow ? (
+          <span className="text-xs font-semibold text-[#64748b]">Coming soon</span>
         ) : (
           <button
             onClick={(e) => {
@@ -227,8 +259,12 @@ function AnchorMarketGroupCollapsedRowInner(
         <div className="text-[10px] text-[#1E4775]/60 font-semibold uppercase tracking-wide">
           APR
         </div>
-        <div className="text-[#1E4775] font-semibold text-sm font-mono">
-          {(() => {
+        <div
+          className={`font-semibold text-sm font-mono ${isComingSoonRow ? "text-[#64748b]" : "text-[#1E4775]"}`}
+        >
+          {isComingSoonRow ? (
+            "—"
+          ) : (() => {
                 const hasCurrentAPR =
                   minAPR > 0 || maxAPR > 0;
             const hasProjectedAPR =
@@ -309,7 +345,8 @@ function AnchorMarketGroupCollapsedRowInner(
           <RewardTokensDisplay
             collateralPool={collateralPoolAddress}
             sailPool={sailPoolAddress}
-                poolAddresses={rewardPoolAddresses}
+            poolAddresses={rewardPoolAddresses}
+            configuredRewardSymbols={configuredRewardSymbols}
             iconSize={16}
             className="justify-end gap-1"
           />
@@ -343,11 +380,18 @@ function AnchorMarketGroupCollapsedRowInner(
           />
         </SimpleTooltip>
         <span
-          className="text-[#1E4775] font-medium text-sm truncate min-w-0"
+          className={`font-medium text-sm truncate min-w-0 ${
+            isComingSoonRow ? "text-[#64748b]" : "text-[#1E4775]"
+          }`}
           title={symbol}
         >
           {symbol}
         </span>
+        {isComingSoonRow ? (
+          <span className="shrink-0 rounded-md bg-[#f1f5f9] px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#64748b] ring-1 ring-[#1E4775]/10">
+            Soon
+          </span>
+        ) : null}
         {isExpanded ? (
           <ChevronUpIcon className="w-5 h-5 text-[#1E4775] flex-shrink-0" />
         ) : (
@@ -359,7 +403,9 @@ function AnchorMarketGroupCollapsedRowInner(
       className="text-center min-w-0"
       onClick={(e) => e.stopPropagation()}
     >
-      {(() => {
+      {isComingSoonRow ? (
+        <span className="text-[#64748b] font-bold text-sm font-mono">—</span>
+      ) : (() => {
         const hasCurrentAPR = minAPR > 0 || maxAPR > 0;
         const hasProjectedAPR =
               (minProjectedAPR !== null &&
@@ -466,7 +512,8 @@ function AnchorMarketGroupCollapsedRowInner(
             <RewardTokensDisplay
               collateralPool={collateralPoolAddress}
               sailPool={sailPoolAddress}
-                  poolAddresses={rewardPoolAddresses}
+              poolAddresses={rewardPoolAddresses}
+              configuredRewardSymbols={configuredRewardSymbols}
               iconSize={16}
               className="justify-center gap-1"
             />
@@ -480,6 +527,8 @@ function AnchorMarketGroupCollapsedRowInner(
     >
       {groupHasMaintenance ? (
         <MarketMaintenanceTag />
+      ) : isComingSoonRow ? (
+        <span className="text-xs font-semibold text-[#64748b]">Coming soon</span>
       ) : (
         <button
           onClick={(e) => {
@@ -548,11 +597,18 @@ function AnchorMarketGroupCollapsedRowInner(
           />
         </SimpleTooltip>
         <span
-          className="text-[#1E4775] font-medium text-sm lg:text-base truncate min-w-0"
+          className={`font-medium text-sm lg:text-base truncate min-w-0 ${
+            isComingSoonRow ? "text-[#64748b]" : "text-[#1E4775]"
+          }`}
           title={symbol}
         >
           {symbol}
         </span>
+        {isComingSoonRow ? (
+          <span className="shrink-0 rounded-md bg-[#f1f5f9] px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#64748b] ring-1 ring-[#1E4775]/10">
+            Soon
+          </span>
+        ) : null}
         {isExpanded ? (
           <ChevronUpIcon className="w-5 h-5 text-[#1E4775] flex-shrink-0" />
         ) : (
@@ -564,6 +620,20 @@ function AnchorMarketGroupCollapsedRowInner(
       className="flex flex-wrap items-center justify-center gap-1.5 min-w-0 max-w-full"
       onClick={(e) => e.stopPropagation()}
     >
+      {isComingSoonRow ? (
+        allDepositAssets.map((asset) => (
+          <Image
+            key={asset.symbol}
+            src={getLogoPath(asset.symbol)}
+            alt={asset.name}
+            width={20}
+            height={20}
+            className="flex-shrink-0 rounded-full opacity-70"
+            title={asset.name}
+          />
+        ))
+      ) : (
+        <>
       {allDepositAssets.map((asset) => {
         return (
           <SimpleTooltip
@@ -658,11 +728,16 @@ function AnchorMarketGroupCollapsedRowInner(
           <span>{isCollateralOnlyRow ? "Collateral" : "Any Token"}</span>
         </div>
       </SimpleTooltip>
+        </>
+      )}
     </div>
     <div
       className="text-center min-w-0"
       onClick={(e) => e.stopPropagation()}
     >
+      {isComingSoonRow ? (
+        <span className="text-[#64748b] font-medium text-xs font-mono">—</span>
+      ) : (
       <SimpleTooltip
         label={
           <div className="text-left">
@@ -1174,6 +1249,7 @@ function AnchorMarketGroupCollapsedRowInner(
           })()}
         </span>
       </SimpleTooltip>
+      )}
     </div>
     <div
       className="text-center min-w-0"
@@ -1188,7 +1264,8 @@ function AnchorMarketGroupCollapsedRowInner(
     <RewardTokensDisplay
       collateralPool={collateralPoolAddress}
       sailPool={sailPoolAddress}
-          poolAddresses={rewardPoolAddresses}
+      poolAddresses={rewardPoolAddresses}
+      configuredRewardSymbols={configuredRewardSymbols}
     />
     <div className="text-center min-w-0">
       <span className="text-[#1E4775] font-medium text-xs font-mono">
@@ -1208,6 +1285,8 @@ function AnchorMarketGroupCollapsedRowInner(
     >
       {groupHasMaintenance ? (
         <MarketMaintenanceTag />
+      ) : isComingSoonRow ? (
+        <span className="text-xs font-semibold text-[#64748b]">Coming soon</span>
       ) : (
         <button
           onClick={(e) => {

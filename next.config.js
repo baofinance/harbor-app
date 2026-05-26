@@ -68,6 +68,15 @@ const nextConfig = {
       },
     ];
   },
+  async redirects() {
+    return [
+      {
+        source: "/harbor",
+        destination: "/hytoken",
+        permanent: true,
+      },
+    ];
+  },
   async rewrites() {
     return [
       // Rewrite any path ending in manifest.json to our API route

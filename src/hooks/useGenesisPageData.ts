@@ -1,13 +1,17 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { markets } from "@/config/markets";
+import { FILTER_NONE_SENTINEL } from "@/components/FilterMultiselectDropdown";
+import {
+  buildNetworkFilterOptions,
+  filterBySelectedNetworks,
+} from "@/utils/networkFilter";
 import {
   useAllHarborMarks,
   useAllMaidenVoyageCampaignIndex,
 } from "@/hooks/useHarborMarks";
 import { formatGenesisMarketDisplayName } from "@/utils/genesisDisplay";
-import { buildNetworkFilterOptions } from "@/utils/networkFilter";
 import { isGenesisHiddenFromIndex } from "@/config/markets";
 
 /**
@@ -15,6 +19,8 @@ import { isGenesisHiddenFromIndex } from "@/config/markets";
  * Heavy Wagmi reads and UI state stay in `genesis/page.tsx` until further split.
  */
 export function useGenesisPageData() {
+  const [chainFilterSelected, setChainFilterSelected] = useState<string[]>([]);
+
   const genesisMarkets = useMemo(
     () =>
       Object.entries(markets).filter(([, mkt]) => {
@@ -148,8 +154,21 @@ export function useGenesisPageData() {
   }, [marksResults]);
   const hasOraclePricingError = marketsWithOraclePricingError.length > 0;
 
+  const displayedGenesisMarkets = useMemo(() => {
+    if (chainFilterSelected.includes(FILTER_NONE_SENTINEL)) return [];
+    if (chainFilterSelected.length === 0) return genesisMarkets;
+    return filterBySelectedNetworks(
+      genesisMarkets,
+      chainFilterSelected,
+      ([, m]) => m
+    );
+  }, [genesisMarkets, chainFilterSelected]);
+
   return {
+    chainFilterSelected,
+    setChainFilterSelected,
     genesisMarkets,
+    displayedGenesisMarkets,
     genesisChainOptions,
     comingSoonMarkets,
     genesisAddresses,

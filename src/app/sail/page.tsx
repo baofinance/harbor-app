@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useChainId, useSwitchChain } from "wagmi";
 import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
@@ -18,10 +18,14 @@ import {
   SailBasicMarketCardsGrid,
 } from "@/components/sail";
 import { usePageLayoutPreference } from "@/contexts/PageLayoutPreferenceContext";
-import { markets as marketsConfig, type DefinedMarket } from "@/config/markets";
+import { isSailSoonUi, type DefinedMarket } from "@/config/markets";
 import { ArchivedMarketsListSection } from "@/components/ArchivedMarketsListSection";
+import { harborMarketChainKey } from "@/components/market-cards/HarborBasicMarketNetworkFooter";
+import { IndexMarketsLoadError } from "@/components/shared/IndexMarketsLoadError";
+import { useExpandedMarketIds } from "@/hooks/useExpandedMarketIds";
 import { ensureMarketWalletChain } from "@/utils/ensureMarketWalletChain";
 import { formatCompactUSD } from "@/utils/anchor";
+import { isValidContractAddress } from "@/utils/isValidContractAddress";
 
 export default function SailPage() {
   const connectedChainId = useChainId();
@@ -76,9 +80,11 @@ export default function SailPage() {
     activeMarkets,
     displayedSailMarkets,
     displayedArchivedSailMarkets,
-  } = useSailPageData();
+    tableMarkets,
+  } = useSailPageData(sailViewBasic);
 
-  const [expandedMarkets, setExpandedMarkets] = useState<string[]>([]);
+  const { expandedMarkets, toggleExpandedMarket: handleToggleMarketExpand } =
+    useExpandedMarketIds();
   const [manageModalOpen, setManageModalOpen] = useState(false);
   const [selectedMarketId, setSelectedMarketId] = useState<string | null>(null);
   const [selectedMarket, setSelectedMarket] = useState<DefinedMarket | null>(
@@ -91,13 +97,15 @@ export default function SailPage() {
 
   const queryClient = useQueryClient();
 
-  const handleToggleMarketExpand = useCallback((marketId: string) => {
-    setExpandedMarkets((prev) =>
-      prev.includes(marketId)
-        ? prev.filter((x) => x !== marketId)
-        : [...prev, marketId]
-    );
-  }, []);
+  const sortedTableMarkets = useMemo(() => {
+    const rank = (entry: (typeof tableMarkets)[0]) => {
+      const [, m] = entry;
+      const sym = m.leveragedToken?.symbol ?? "";
+      const chain = harborMarketChainKey(m);
+      return `${sym}::${chain}`;
+    };
+    return [...tableMarkets].sort((a, b) => rank(a).localeCompare(rank(b)));
+  }, [tableMarkets]);
 
   const handleManageMarketOpen = useCallback(
     (marketId: string, m: DefinedMarket) => {
@@ -153,7 +161,9 @@ export default function SailPage() {
                 />
               )}
 
-              {sailMarksError && <SailMarksSubgraphErrorBanner />}
+              {sailMarksError && (
+                <SailMarksSubgraphErrorBanner error={sailMarksError} />
+              )}
 
               <SailLedgerMarksBar
                 isLoadingSailMarks={isLoadingSailMarks}
@@ -164,18 +174,7 @@ export default function SailPage() {
           )}
 
           {isLoadingReads ? null : isReadsError ? (
-            <div className="bg-[#17395F] border border-white/10 p-6 rounded-lg text-center">
-              <p className="text-white text-lg font-medium mb-4">
-                Error loading markets
-              </p>
-              <button
-                type="button"
-                onClick={() => refetchReads()}
-                className="px-4 py-2 bg-[#FF8A7A] text-white rounded hover:bg-[#FF6B5A] transition-colors"
-              >
-                Try again
-              </button>
-            </div>
+            <IndexMarketsLoadError onRetry={() => refetchReads()} />
           ) : (
             <SailMarketsSections
               toolbarProps={{
@@ -200,7 +199,7 @@ export default function SailPage() {
             >
               {sailViewBasic ? (
                 <SailBasicMarketCardsGrid
-                  activeMarkets={displayedSailMarkets}
+                  activeMarkets={activeMarkets}
                   sailMarketIdToIndex={sailMarketIdToIndex}
                   marketOffsets={marketOffsets}
                   reads={reads}
@@ -212,29 +211,29 @@ export default function SailPage() {
                 <>
                   <SailMarketsTableHeader />
                   <div className="space-y-2">
-                    {activeMarkets.map(([id, m]) => {
+                    {sortedTableMarkets.map(([id, m]) => {
                       const globalIndex = sailMarketIdToIndex.get(id);
                       if (globalIndex === undefined) return null;
                       const userDeposit = userDepositMap.get(globalIndex);
                       const baseOffset = marketOffsets.get(globalIndex) ?? 0;
+                      const isComingSoonRow = isSailSoonUi(m);
 
                       const priceOracle = m.addresses?.collateralPrice as
                         | `0x${string}`
                         | undefined;
                       const leveragedTokenAddress = m.addresses
                         ?.leveragedToken as `0x${string}` | undefined;
-                      const isValidAddress = (addr: unknown): boolean =>
-                        typeof addr === "string" &&
-                        addr.startsWith("0x") &&
-                        addr.length === 42;
-                      const hasOracle = isValidAddress(priceOracle);
-                      const hasToken = isValidAddress(leveragedTokenAddress);
+                      const hasOracle = isValidContractAddress(priceOracle);
+                      const hasToken = isValidContractAddress(
+                        leveragedTokenAddress
+                      );
 
                       const tokenPrices = tokenPricesByMarket[id];
+                      const rowKey = `${m.leveragedToken?.symbol ?? id}::${harborMarketChainKey(m)}`;
 
                       return (
                         <SailMarketRow
-                          key={id}
+                          key={rowKey}
                           id={id}
                           market={m}
                           baseOffset={baseOffset}
@@ -246,6 +245,7 @@ export default function SailPage() {
                           onToggleExpand={handleToggleMarketExpand}
                           onManageClick={handleManageMarketOpen}
                           isConnected={isConnected}
+                          isComingSoon={isComingSoonRow}
                           tokenPrices={tokenPrices}
                           minterConfigData={minterConfigByMarketId.get(id)}
                           rebalanceThresholdData={rebalanceThresholdByMarketId.get(

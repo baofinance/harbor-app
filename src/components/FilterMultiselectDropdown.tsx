@@ -1,9 +1,8 @@
 "use client";
 
 /**
- * Uses Headless UI Listbox. If the dropdown disappears when moving mouse to panel,
- * we can try portal={false} + no anchor for inline panel, or revert to the
- * custom implementation (see git history: wrapper ref + useState open + click-outside only).
+ * Uses Headless UI Listbox. `modal={false}` on options prevents scroll-lock / body
+ * padding-right that shifts centered index pages when a filter opens (Headless UI v2 default).
  */
 import {
   Listbox,
@@ -25,6 +24,8 @@ export type FilterOption = {
   label: string;
   /** Path for option icon (e.g. token logo). Prepended with / if not already. Ignored when networkId is set. */
   iconUrl?: string;
+  /** Override `optionIconSizePx` for this row (e.g. larger peg badges). */
+  iconSizePx?: number;
   /** @web3icons network id (e.g. ethereum, mega-eth, arbitrum-one, base, monad). When set, renders NetworkIcon from @web3icons/core. */
   networkId?: string;
   /** Optional prefix icon for long/short filters */
@@ -53,6 +54,8 @@ interface FilterMultiselectDropdownProps {
   minWidthClass?: string;
   /** Max height of options panel (e.g. "max-h-60" or "max-h-[75rem]") */
   maxHeightClass?: string;
+  /** Token/peg icon size in the options list (default 22). */
+  optionIconSizePx?: number;
 }
 
 export function FilterMultiselectDropdown({
@@ -65,6 +68,7 @@ export function FilterMultiselectDropdown({
   groupLabel,
   minWidthClass = "min-w-[235px]",
   maxHeightClass = "max-h-60",
+  optionIconSizePx = 22,
 }: FilterMultiselectDropdownProps) {
   const isNoneSelected = value.includes(FILTER_NONE_SENTINEL);
   const allSelected =
@@ -111,6 +115,7 @@ export function FilterMultiselectDropdown({
         </ListboxButton>
 
         <ListboxOptions
+          modal={false}
           anchor={{ to: "bottom start", gap: 2 }}
           className={`z-50 w-full ${minWidthClass} min-w-0 bg-white border border-[#1E4775]/20 rounded-md shadow-lg overflow-hidden overflow-y-auto outline-none [width:var(--button-width)] ${maxHeightClass}`}
         >
@@ -183,8 +188,8 @@ export function FilterMultiselectDropdown({
                   <Image
                     src={src}
                     alt=""
-                    width={22}
-                    height={22}
+                    width={opt.iconSizePx ?? optionIconSizePx}
+                    height={opt.iconSizePx ?? optionIconSizePx}
                     className="shrink-0 rounded-full object-contain"
                   />
                 ) : (

@@ -87,18 +87,18 @@ export default function Example() {
                 Earn
               </Link>
               <Link
-                href="/harbor"
-                className={`${linkClass("/harbor")} flex shrink-0 items-center justify-center`}
-                aria-current={isActive("/harbor") ? "page" : undefined}
-              >
-                hyToken
-              </Link>
-              <Link
                 href="/sail"
                 className={`${linkClass("/sail")} flex shrink-0 items-center justify-center`}
                 aria-current={isActive("/sail") ? "page" : undefined}
               >
                 Leverage
+              </Link>
+              <Link
+                href="/hytoken"
+                className={`${linkClass("/hytoken")} flex shrink-0 items-center justify-center`}
+                aria-current={isActive("/hytoken") ? "page" : undefined}
+              >
+                The Hold
               </Link>
               <Link
                 href="/transparency"
@@ -216,18 +216,6 @@ export default function Example() {
             </DisclosureButton>
             <DisclosureButton
               as={Link}
-              href="/harbor"
-              className={`block w-full max-w-sm mx-auto px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 text-center ${
-                isActive("/harbor")
-                  ? "text-[#1E4775] bg-white"
-                  : "text-white bg-white/10 hover:bg-white/20"
-              }`}
-              aria-current={isActive("/harbor") ? "page" : undefined}
-            >
-              hyToken
-            </DisclosureButton>
-            <DisclosureButton
-              as={Link}
               href="/sail"
               className={`block w-full max-w-sm mx-auto px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 text-center ${
                 isActive("/sail")
@@ -237,6 +225,18 @@ export default function Example() {
               aria-current={isActive("/sail") ? "page" : undefined}
             >
               Leverage
+            </DisclosureButton>
+            <DisclosureButton
+              as={Link}
+              href="/hytoken"
+              className={`block w-full max-w-sm mx-auto px-6 py-4 text-base font-medium rounded-full transition-colors flex-shrink-0 text-center ${
+                isActive("/hytoken")
+                  ? "text-[#1E4775] bg-white"
+                  : "text-white bg-white/10 hover:bg-white/20"
+              }`}
+              aria-current={isActive("/hytoken") ? "page" : undefined}
+            >
+              The Hold
             </DisclosureButton>
             <DisclosureButton
               as={Link}

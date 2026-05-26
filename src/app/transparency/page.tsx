@@ -40,6 +40,9 @@ import InfoTooltip from "@/components/InfoTooltip";
 import { InfinityOutlineIcon } from "@/components/icons/InfinityOutlineIcon";
 import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
 import {
+  getGenesisActiveSetting,
+  isGenesisHiddenFromIndex,
+  isGenesisSoonUi,
   isMarketArchived,
   isMarketInMaintenance,
   markets as marketsConfig,
@@ -60,6 +63,7 @@ import {
   INDEX_HERO_INTRO_CARD_RING_ACCENT_CLASS,
   INDEX_HERO_INTRO_ICON_CLASS,
   INDEX_HERO_INTRO_TITLE_CLASS,
+  INDEX_MARKETS_TOOLBAR_FILTERS_ROW_CLASS,
   INDEX_MARKETS_TOOLBAR_ROW_WITH_TOP_RULE_CLASS,
 } from "@/components/shared/indexMarketsToolbarStyles";
 import IndexToolbarSegmentedToggle from "@/components/shared/IndexToolbarSegmentedToggle";
@@ -1490,29 +1494,23 @@ export default function TransparencyPage() {
                 );
             }
 
-            if (showGenesisMarketsOnly) {
-                filtered = filtered.filter((m) => {
-                    const cfg = (marketsConfig as any)[m.marketId];
-                    const genesisAddress = cfg?.addresses?.genesis;
-                    return (
-                        typeof genesisAddress === "string" &&
-                        genesisAddress.startsWith("0x") &&
-                        genesisAddress.length === 42 &&
-                        genesisAddress.toLowerCase() !==
-                            "0x0000000000000000000000000000000000000000"
-                    );
-                });
-            } else {
-                // Hide non-live genesis markets unless explicitly requested.
-                filtered = filtered.filter((m) => {
-                    const cfg = (marketsConfig as any)[m.marketId];
-                    const isPendingGenesis =
-                        cfg?.status === "genesis" &&
-                        m.peggedTokenBalance === 0n &&
-                        m.leveragedTokenBalance === 0n;
-                    return !isPendingGenesis;
-                });
-            }
+            filtered = filtered.filter((m) => {
+                const cfg = (marketsConfig as any)[m.marketId];
+                if (!cfg || isGenesisHiddenFromIndex(cfg)) return false;
+
+                if (showGenesisMarketsOnly) {
+                    const g = getGenesisActiveSetting(cfg);
+                    return g === true || g === "soon" || g === "completed";
+                }
+
+                if (isGenesisSoonUi(cfg)) return false;
+
+                const isPendingGenesis =
+                    cfg?.status === "genesis" &&
+                    m.peggedTokenBalance === 0n &&
+                    m.leveragedTokenBalance === 0n;
+                return !isPendingGenesis;
+            });
 
             return filtered;
         }, [finishedMarkets, chainFilterSelected, showGenesisMarketsOnly]);
@@ -1763,8 +1761,8 @@ export default function TransparencyPage() {
                     >
                         <div className={INDEX_MARKETS_TOOLBAR_ROW_WITH_TOP_RULE_CLASS}>
                             <div className="w-full lg:flex-1 lg:min-w-0">
-                                <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-                                <h2 className="text-xs font-medium text-white/70 uppercase tracking-wider">
+                                <div className={INDEX_MARKETS_TOOLBAR_FILTERS_ROW_CLASS}>
+                                <h2 className="text-xs font-medium text-white/70 uppercase tracking-wider shrink-0">
                                     Markets:
                                 </h2>
                                 {transparencyChainOptions.length > 0 && (
@@ -1785,9 +1783,13 @@ export default function TransparencyPage() {
                                     ]}
                                     ariaLabel="Show genesis markets"
                                 />
-                                {(chainFilterSelected.length > 0 || showGenesisMarketsOnly) && (
-                                    <IndexToolbarClearFiltersButton onClick={clearFilters} />
-                                )}
+                                <IndexToolbarClearFiltersButton
+                                    onClick={clearFilters}
+                                    visible={
+                                        chainFilterSelected.length > 0 ||
+                                        showGenesisMarketsOnly
+                                    }
+                                />
                                 </div>
                             </div>
                             <div className="w-full lg:w-auto flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center lg:ml-auto">

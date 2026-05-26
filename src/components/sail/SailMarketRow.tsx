@@ -13,6 +13,7 @@ import {
   bandsFromConfig,
   getActiveFeeBand,
   getCurrentFee,
+  WAD,
 } from "@/utils/sailFeeBands";
 import {
   formatLeverage,
@@ -21,6 +22,10 @@ import {
   formatUSD,
 } from "@/utils/sailDisplayFormat";
 import { getLogoPath } from "@/components/shared";
+import {
+  getSailSideLogoPath,
+  sailTableSideIconPx,
+} from "@/utils/sailAssetLogos";
 import SimpleTooltip from "@/components/SimpleTooltip";
 import NetworkIconCell from "@/components/NetworkIconCell";
 import { SailMintRedeemFeeColumn } from "./SailMintRedeemFeeColumn";
@@ -41,6 +46,7 @@ export const SailMarketRow = React.memo(function SailMarketRow({
   onToggleExpand,
   onManageClick,
   isConnected,
+  isComingSoon = false,
   tokenPrices,
   minterConfigData,
   rebalanceThresholdData,
@@ -56,6 +62,7 @@ export const SailMarketRow = React.memo(function SailMarketRow({
   onToggleExpand: (marketId: string) => void;
   onManageClick: (marketId: string, m: DefinedMarket) => void;
   isConnected: boolean;
+  isComingSoon?: boolean;
   tokenPrices?: {
     peggedBackingRatio: number;
     peggedPriceUSD: number;
@@ -126,6 +133,11 @@ export const SailMarketRow = React.memo(function SailMarketRow({
     [feeBands, collateralRatio]
   );
 
+  /** Preview rows: match UI− cards when minter `config` is unavailable (e.g. MegaETH RPC). */
+  const previewBlockedFee = WAD;
+  const displayMintFeeRatio = isComingSoon ? previewBlockedFee : mintFeeRatio;
+  const displayRedeemFeeRatio = isComingSoon ? previewBlockedFee : redeemFeeRatio;
+
   if (hasOracle && isFxUSDMarket) {
     const getPriceRead = reads?.[baseOffset + oracleOffset + 1];
     if (getPriceRead?.result !== undefined && getPriceRead?.result !== null) {
@@ -188,10 +200,16 @@ export const SailMarketRow = React.memo(function SailMarketRow({
   const pnlFormatted =
     pnlData.unrealizedPnL !== 0 ? formatPnL(pnlData.unrealizedPnL) : null;
 
+  const leverageLabel = isComingSoon
+    ? "—"
+    : formatLeverage(leverageRatio);
+
   return (
     <div
       key={id}
-      className="rounded-md border border-[#1E4775]/15 bg-white shadow-sm overflow-hidden"
+      className={`rounded-md border border-[#1E4775]/15 bg-white shadow-sm overflow-hidden ${
+        isComingSoon ? "opacity-90 saturate-[0.78]" : ""
+      }`}
     >
       <div
         className={`py-2 px-2 overflow-visible transition cursor-pointer relative group ${
@@ -199,7 +217,7 @@ export const SailMarketRow = React.memo(function SailMarketRow({
             ? "bg-white md:bg-[rgb(var(--surface-selected-rgb))]"
             : "bg-white md:hover:bg-[rgb(var(--surface-selected-rgb))]"
         }`}
-        onClick={() => onToggleExpand(id)}
+        onClick={() => !isComingSoon && onToggleExpand(id)}
       >
         <div className="lg:hidden relative overflow-visible">
           <div
@@ -216,7 +234,7 @@ export const SailMarketRow = React.memo(function SailMarketRow({
                       V.lev
                     </span>
                     <span className="text-sm font-mono font-semibold">
-                      {formatLeverage(leverageRatio)}
+                      {leverageLabel}
                     </span>
                   </div>
                   <div className="flex flex-col items-end gap-0.5 relative z-10 pr-2">
@@ -225,15 +243,11 @@ export const SailMarketRow = React.memo(function SailMarketRow({
                     </span>
                     <div className="flex items-center gap-2">
                       <Image
-                        src={getLogoPath(longSide)}
+                        src={getSailSideLogoPath(longSide)}
                         alt={longSide}
-                        width={26}
-                        height={26}
-                        className={`flex-shrink-0 rounded-full ${
-                          longSide.toLowerCase() === "fxusd"
-                            ? "mix-blend-multiply bg-transparent"
-                            : ""
-                        } ${
+                        width={sailTableSideIconPx(longSide, "mobile")}
+                        height={sailTableSideIconPx(longSide, "mobile")}
+                        className={`flex-shrink-0 rounded-full bg-transparent object-contain ${
                           longSide.toLowerCase() === "btc"
                             ? "border border-[#1E4775]/60"
                             : ""
@@ -252,11 +266,11 @@ export const SailMarketRow = React.memo(function SailMarketRow({
                     </span>
                     <div className="flex items-center gap-2">
                       <Image
-                        src={getLogoPath(shortSide)}
+                        src={getSailSideLogoPath(shortSide)}
                         alt={shortSide}
-                        width={26}
-                        height={26}
-                        className={`flex-shrink-0 rounded-full ${
+                        width={sailTableSideIconPx(shortSide, "mobile")}
+                        height={sailTableSideIconPx(shortSide, "mobile")}
+                        className={`flex-shrink-0 rounded-full bg-transparent object-contain ${
                           shortSide.toLowerCase() === "btc"
                             ? "border border-[#1E4775]/60"
                             : ""
@@ -343,6 +357,10 @@ export const SailMarketRow = React.memo(function SailMarketRow({
                   <div className="flex min-w-[160px] justify-center">
                     <MarketMaintenanceTag />
                   </div>
+                ) : isComingSoon ? (
+                  <span className="text-xs font-semibold text-[#64748b] min-w-[160px] text-center">
+                    Coming soon
+                  </span>
                 ) : (
                   <button
                     type="button"
@@ -379,15 +397,11 @@ export const SailMarketRow = React.memo(function SailMarketRow({
                 <div className="flex items-center justify-end px-3 py-[9px] text-[#0B2A2F] w-1/2 bg-[linear-gradient(90deg,#FFFFFF_0%,#A8F3DC_33%,#A8F3DC_100%)] overflow-hidden">
                   <div className="flex items-center gap-2 relative z-10 pr-2">
                     <Image
-                      src={getLogoPath(longSide)}
+                      src={getSailSideLogoPath(longSide)}
                       alt={longSide}
-                      width={18}
-                      height={18}
-                      className={`flex-shrink-0 rounded-full ${
-                        longSide.toLowerCase() === "fxusd"
-                          ? "mix-blend-multiply bg-transparent"
-                          : ""
-                      } ${
+                      width={sailTableSideIconPx(longSide, "desktop")}
+                      height={sailTableSideIconPx(longSide, "desktop")}
+                      className={`flex-shrink-0 rounded-full bg-transparent object-contain ${
                         longSide.toLowerCase() === "btc"
                           ? "border border-[#1E4775]/60"
                           : ""
@@ -401,11 +415,11 @@ export const SailMarketRow = React.memo(function SailMarketRow({
                 <div className="relative flex items-center justify-start min-w-0 px-2 sm:px-3 py-[9px] text-[#0B2A2F] w-1/2 bg-[linear-gradient(90deg,#FFC0B5_0%,#FFC0B5_67%,#FFFFFF_100%)] overflow-hidden">
                   <div className="flex items-center gap-1.5 min-w-0 flex-1 relative z-10 pl-1.5 sm:pl-2">
                     <Image
-                      src={getLogoPath(shortSide)}
+                      src={getSailSideLogoPath(shortSide)}
                       alt={shortSide}
-                      width={18}
-                      height={18}
-                      className={`flex-shrink-0 rounded-full ${
+                      width={sailTableSideIconPx(shortSide, "desktop")}
+                      height={sailTableSideIconPx(shortSide, "desktop")}
+                      className={`flex-shrink-0 rounded-full bg-transparent object-contain ${
                         shortSide.toLowerCase() === "btc"
                           ? "border border-[#1E4775]/60"
                           : ""
@@ -441,14 +455,19 @@ export const SailMarketRow = React.memo(function SailMarketRow({
                   className="flex-shrink-0 cursor-help"
                 />
               </SimpleTooltip>
-              <span className="text-[#1E4775] font-medium text-xs font-mono">
+              <span className={`font-medium text-xs font-mono ${isComingSoon ? "text-[#64748b]" : "text-[#1E4775]"}`}>
                 {market.leveragedToken.symbol}
               </span>
+              {isComingSoon ? (
+                <span className="shrink-0 rounded-md bg-[#f1f5f9] px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#64748b] ring-1 ring-[#1E4775]/10">
+                  Soon
+                </span>
+              ) : null}
             </div>
           </div>
           <div className="text-center min-w-0 flex items-center justify-center">
             <span className="text-[#1E4775] font-medium text-xs font-mono">
-              {formatLeverage(leverageRatio)}
+              {leverageLabel}
             </span>
           </div>
           <div className="text-center min-w-0 flex items-center justify-center">
@@ -482,8 +501,8 @@ export const SailMarketRow = React.memo(function SailMarketRow({
             <SailMintRedeemFeeColumn
               compactRow
               collateralRatio={collateralRatio}
-              mintFeeRatio={mintFeeRatio}
-              redeemFeeRatio={redeemFeeRatio}
+              mintFeeRatio={displayMintFeeRatio}
+              redeemFeeRatio={displayRedeemFeeRatio}
               activeMintBand={activeMintBand}
               activeRedeemBand={activeRedeemBand}
               mintBands={feeBands?.mintLeveraged}
@@ -496,6 +515,8 @@ export const SailMarketRow = React.memo(function SailMarketRow({
           >
             {showMaintenance ? (
               <MarketMaintenanceTag />
+            ) : isComingSoon ? (
+              <span className="text-xs font-semibold text-[#64748b]">Coming soon</span>
             ) : (
               <button
                 type="button"
@@ -513,7 +534,7 @@ export const SailMarketRow = React.memo(function SailMarketRow({
         </div>
       </div>
 
-      {isExpanded && (
+      {isExpanded && !isComingSoon && (
         <SailMarketExpandedView
           marketId={id}
           market={market}

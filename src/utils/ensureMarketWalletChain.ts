@@ -1,4 +1,6 @@
-type SwitchChainFn = (args: { chainId: number }) => unknown | Promise<unknown>;
+export type SwitchChainFn = (
+  args: { chainId: number }
+) => unknown | Promise<unknown>;
 
 type EnsureMarketWalletChainParams = {
   isConnected: boolean;

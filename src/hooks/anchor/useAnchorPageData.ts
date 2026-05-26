@@ -1,6 +1,10 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { formatEther } from "viem";
-import { markets, isAnchorActiveForBasicUi } from "@/config/markets";
+import {
+  markets,
+  isAnchorActiveForBasicUi,
+  isAnchorActiveForExtendedUi,
+} from "@/config/markets";
 import { partitionMarketsByArchived } from "@/utils/marketPartitions";
 import { FILTER_NONE_SENTINEL } from "@/components/FilterMultiselectDropdown";
 import { useStaggeredReady } from "@/hooks/useStaggeredReady";
@@ -32,10 +36,11 @@ import {
  * Includes protocol-level `anchorStats` for the strip; keeps [`page.tsx`](../../app/anchor/page.tsx) thinner over time.
  */
 export function useAnchorPageData(
-  chainFilterSelected: string[],
   address: `0x${string}` | undefined,
   layoutIsBasic: boolean
 ) {
+  const [chainFilterSelected, setChainFilterSelected] = useState<string[]>([]);
+
   const anchorMarkets = useMemo(
     () =>
       Object.entries(markets).filter(([_, m]) => m.peggedToken) as AnchorMarketTuple[],
@@ -50,10 +55,10 @@ export function useAnchorPageData(
 
   const { active: displayedAnchorMarkets, archived: displayedArchivedAnchorMarkets } =
     useMemo(() => {
-      const filtered = layoutIsBasic
-        ? chainFilteredAnchorMarkets.filter(([, m]) => isAnchorActiveForBasicUi(m))
-        : chainFilteredAnchorMarkets;
-      return partitionMarketsByArchived(filtered);
+      const visibilityFiltered = chainFilteredAnchorMarkets.filter(([, m]) =>
+        layoutIsBasic ? isAnchorActiveForBasicUi(m) : isAnchorActiveForExtendedUi(m)
+      );
+      return partitionMarketsByArchived(visibilityFiltered);
     }, [chainFilteredAnchorMarkets, layoutIsBasic]);
 
   const anchorChainOptions = useMemo(
@@ -600,6 +605,8 @@ export function useAnchorPageData(
   }, [reads, anchorMarkets, allPoolRewards]);
 
   return {
+    chainFilterSelected,
+    setChainFilterSelected,
     anchorMarkets,
     displayedAnchorMarkets,
     displayedArchivedAnchorMarkets,
