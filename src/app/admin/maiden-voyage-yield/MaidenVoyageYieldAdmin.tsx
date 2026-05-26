@@ -1,11 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useAccount, useSignMessage } from "wagmi";
-import { isAddress, type Address } from "viem";
+import { useAccount, useReadContract, useSignMessage } from "wagmi";
+import { formatUnits, isAddress, type Address } from "viem";
 import { markets } from "@/config/markets";
+import { ERC20_ABI } from "@/config/contracts";
+import { TREASURY_SAFE_ADDRESS } from "@/config/treasury";
 import { getGraphHeaders, getGraphUrl } from "@/config/graph";
 import { useAdminAccess } from "@/hooks/useAdminAccess";
+import { useCollateralPrice } from "@/hooks/useCollateralPrice";
+import { useCoinGeckoPrices } from "@/hooks/useCoinGeckoPrice";
 import { buildMaidenVoyageYieldAdminMessage } from "@/lib/maidenVoyageYieldAdminAuth";
 import type { MaidenVoyageDistributionEvent } from "@/lib/maidenVoyageYieldLedgerStore";
 import {
@@ -13,6 +17,14 @@ import {
   maidenVoyageYieldOwnerSharePercent,
 } from "@/config/maidenVoyageYield";
 import { redactUrl } from "@/utils/redactUrl";
+import { computeGenesisRowUsdPricing } from "@/utils/genesisRowPricing";
+import {
+  buildMaidenVoyagePayoutRows,
+  findMarketByGenesis,
+  outstandingUsdToTokenWei,
+  type MaidenVoyagePayoutRow,
+} from "@/utils/maidenVoyagePayouts";
+import { MaidenVoyageDistributeRewards } from "@/components/admin/MaidenVoyageDistributeRewards";
 
 type GraphParticipant = {
   user: string;
@@ -377,6 +389,104 @@ export function MaidenVoyageYieldAdmin() {
       ? maidenVoyageYieldOwnerSharePercent(genesis.toLowerCase())
       : null;
 
+  const marketForGenesis = useMemo(
+    () => (genesis && isAddress(genesis) ? findMarketByGenesis(genesis) : null),
+    [genesis]
+  );
+
+  const coinGeckoIds = useMemo(() => {
+    const ids: string[] = [];
+    if (marketForGenesis?.coinGeckoId) ids.push(marketForGenesis.coinGeckoId);
+    const sym = marketForGenesis?.collateralSymbol?.toLowerCase();
+    if (
+      sym === "wsteth" &&
+      !ids.includes("lido-staked-ethereum-steth")
+    ) {
+      ids.push("lido-staked-ethereum-steth");
+    }
+    const peg = marketForGenesis?.pegTarget?.toLowerCase();
+    if ((peg === "btc" || peg === "bitcoin") && !ids.includes("bitcoin")) {
+      ids.push("bitcoin");
+    }
+    return ids;
+  }, [marketForGenesis]);
+
+  const { prices: coinGeckoPrices, isLoading: coinGeckoLoading } =
+    useCoinGeckoPrices(coinGeckoIds, 120_000);
+
+  const collateralPriceData = useCollateralPrice(
+    marketForGenesis?.collateralPriceOracle,
+    { enabled: !!marketForGenesis?.collateralPriceOracle }
+  );
+
+  const { collateralPriceUSD, priceError } = useMemo(() => {
+    if (!marketForGenesis) {
+      return { collateralPriceUSD: 0, priceError: "Unknown genesis market" };
+    }
+    return computeGenesisRowUsdPricing({
+      underlyingSymbol: marketForGenesis.underlyingSymbol,
+      pegTarget: marketForGenesis.pegTarget,
+      marketCoinGeckoId: marketForGenesis.coinGeckoId,
+      coinGeckoPrices,
+      collateralPriceData,
+      chainlinkBtcPrice: null,
+      coinGeckoLoading,
+      collateralSymbol: marketForGenesis.collateralSymbol,
+    });
+  }, [marketForGenesis, coinGeckoPrices, collateralPriceData, coinGeckoLoading]);
+
+  const wrappedToken = marketForGenesis?.wrappedCollateralToken;
+
+  const { data: tokenDecimalsRaw } = useReadContract({
+    address: wrappedToken,
+    abi: ERC20_ABI,
+    functionName: "decimals",
+    query: { enabled: !!wrappedToken },
+  });
+
+  const tokenDecimals =
+    tokenDecimalsRaw !== undefined ? Number(tokenDecimalsRaw) : 18;
+
+  const { data: treasuryBalance, isLoading: balanceLoading } = useReadContract({
+    address: wrappedToken,
+    abi: ERC20_ABI,
+    functionName: "balanceOf",
+    args: [TREASURY_SAFE_ADDRESS],
+    query: { enabled: !!wrappedToken },
+  });
+
+  const payoutRows: MaidenVoyagePayoutRow[] = useMemo(
+    () =>
+      buildMaidenVoyagePayoutRows(
+        rows.map((r) => ({
+          wallet: r.wallet,
+          poolShare: r.poolShare,
+          outstanding: r.outstanding,
+        })),
+        collateralPriceUSD,
+        tokenDecimals
+      ),
+    [rows, collateralPriceUSD, tokenDecimals]
+  );
+
+  const recordLedgerFromPayout = useCallback(
+    async (safeTxHash: string | undefined, paidRows: MaidenVoyagePayoutRow[]) => {
+      const distributions = paidRows.map((r) => ({
+        wallet: r.wallet,
+        amountUSD: r.outstanding,
+        txHash: safeTxHash,
+        notes: "Maiden voyage Safe batch distribute",
+      }));
+      const res = await signAndPost({ action: "record", distributions });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || res.statusText);
+      setPaidByWallet(json.ledger?.paidByWallet || {});
+      setEvents(json.ledger?.events || []);
+      setStoreMode(json.store || "");
+    },
+    [signAndPost]
+  );
+
   if (!isAdmin) {
     return (
       <div className="bg-zinc-900/50 p-6 text-center rounded-md">
@@ -521,9 +631,37 @@ export function MaidenVoyageYieldAdmin() {
       </div>
 
       <div className="bg-zinc-900/50 p-4 sm:p-6 rounded-md overflow-x-auto">
-        <h2 className="text-lg font-medium text-white font-geo mb-3">
-          Participants
-        </h2>
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+          <h2 className="text-lg font-medium text-white font-geo">
+            Participants
+          </h2>
+          {marketForGenesis && wrappedToken && (
+            <MaidenVoyageDistributeRewards
+              marketLabel={marketForGenesis.label}
+              collateralSymbol={marketForGenesis.collateralSymbol}
+              wrappedToken={wrappedToken}
+              payoutRows={payoutRows}
+              collateralPriceUSD={collateralPriceUSD}
+              priceError={priceError}
+              tokenDecimals={tokenDecimals}
+              treasuryBalance={treasuryBalance}
+              balanceLoading={balanceLoading}
+              disabled={!isConnected}
+              onRecordLedger={recordLedgerFromPayout}
+            />
+          )}
+        </div>
+        {priceError && (
+          <p className="text-amber-200/90 text-xs mb-2">
+            Price: {priceError} — distribute disabled until price is available.
+          </p>
+        )}
+        {marketForGenesis && collateralPriceUSD > 0 && (
+          <p className="text-white/50 text-xs mb-2">
+            Wrapped {marketForGenesis.collateralSymbol} ≈ $
+            {collateralPriceUSD.toFixed(4)} (used for Pay column and Safe batch).
+          </p>
+        )}
         <table className="w-full text-sm">
           <thead>
             <tr className="text-left text-white/60 border-b border-white/10">
@@ -533,12 +671,24 @@ export function MaidenVoyageYieldAdmin() {
               <th className="py-2 pr-3 text-right">Attributed</th>
               <th className="py-2 pr-3 text-right">Paid</th>
               <th className="py-2 pr-3 text-right">Outstanding</th>
+              <th className="py-2 pr-3 text-right">
+                Pay ({marketForGenesis?.collateralSymbol ?? "token"})
+              </th>
               <th className="py-2 pr-3 text-right">Weight</th>
               <th className="py-2 text-right">Boost</th>
             </tr>
           </thead>
           <tbody>
-            {rows.map((r) => (
+            {rows.map((r) => {
+              const payWei =
+                collateralPriceUSD > 0
+                  ? outstandingUsdToTokenWei(
+                      r.outstanding,
+                      collateralPriceUSD,
+                      tokenDecimals
+                    )
+                  : 0n;
+              return (
               <tr key={r.wallet} className="border-t border-white/5">
                 <td className="py-2 pr-3 font-mono text-xs text-white/90">
                   {r.wallet}
@@ -558,6 +708,11 @@ export function MaidenVoyageYieldAdmin() {
                 <td className="py-2 pr-3 text-right font-mono text-amber-200">
                   {r.outstanding.toFixed(2)}
                 </td>
+                <td className="py-2 pr-3 text-right font-mono text-white/80">
+                  {payWei > 0n
+                    ? formatUnits(payWei, tokenDecimals)
+                    : "—"}
+                </td>
                 <td className="py-2 pr-3 text-right font-mono text-white/70">
                   {r.weight.toFixed(6)}
                 </td>
@@ -565,7 +720,8 @@ export function MaidenVoyageYieldAdmin() {
                   {r.boost.toFixed(2)}×
                 </td>
               </tr>
-            ))}
+            );
+            })}
           </tbody>
         </table>
         {rows.length === 0 && !loadingGraph && (
