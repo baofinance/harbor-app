@@ -26,3 +26,5 @@ export type {
   GenesisClaimMarketArgs,
   GenesisCompletedMarketsSectionProps,
 } from "./GenesisCompletedMarketsSection";
+export { GenesisArchivedMarketsSection } from "./GenesisArchivedMarketsSection";
+export type { GenesisArchivedMarketsSectionProps } from "./GenesisArchivedMarketsSection";

@@ -6,7 +6,12 @@ import { useMemo } from "react";
 import { getGraphUrl, getGraphHeaders, getSailPriceGraphUrlOptional } from "@/config/graph";
 import { useAnchorLedgerMarks } from "@/hooks/useAnchorLedgerMarks";
 import { buildDashboardAddressIndex } from "@/utils/dashboardPositionLabels";
-import { markets, isGenesisHiddenFromIndex } from "@/config/markets";
+import {
+  markets,
+  isMarketArchived,
+  isGenesisHiddenFromIndex,
+} from "@/config/markets";
+import { isMegaethMaidenVoyageMarket } from "@/utils/megaethMarket";
 
 const USD_EPS = 0.005;
 
@@ -52,6 +57,92 @@ function userHarborMarksId(genesis: string, user: string): string {
   return `${genesis.toLowerCase()}-${user.toLowerCase()}`;
 }
 
+/** Some marks subgraph builds reject `id_in` on `userHarborMarks`; they return this-shaped error. */
+function isUserHarborMarksIdInUnsupportedError(message: string): boolean {
+  return (
+    message.includes("id_in") ||
+    message.includes("Unknown argument") ||
+    message.includes("No value provided for required argument: `id`")
+  );
+}
+
+type MvMarkRow = {
+  id: string;
+  contractAddress: string;
+  currentDeposit?: string;
+  currentDepositUSD?: string;
+  genesisEnded?: boolean;
+};
+
+const DASHBOARD_MV_MARKS_FIELDS = `
+  id
+  contractAddress
+  currentDeposit
+  currentDepositUSD
+  genesisEnded
+`;
+
+async function fetchDashboardMvMarks(graphUrl: string, ids: string[]): Promise<MvMarkRow[]> {
+  const uniqueIds = [...new Set(ids.filter(Boolean))];
+  if (uniqueIds.length === 0) return [];
+
+  const batchRes = await fetch(graphUrl, {
+    method: "POST",
+    headers: getGraphHeaders(graphUrl),
+    body: JSON.stringify({
+      query: `
+        query DashboardMv($ids: [ID!]!) {
+          userHarborMarks(where: { id_in: $ids }) {
+            ${DASHBOARD_MV_MARKS_FIELDS}
+          }
+        }
+      `,
+      variables: { ids: uniqueIds },
+    }),
+  });
+  const batchJson = (await batchRes.json()) as {
+    errors?: Array<{ message?: string }>;
+    data?: { userHarborMarks?: MvMarkRow[] };
+  };
+
+  if (batchJson.errors?.length) {
+    const errMsg = batchJson.errors.map((e) => e.message).filter(Boolean).join("; ");
+    if (!isUserHarborMarksIdInUnsupportedError(errMsg)) {
+      throw new Error(errMsg || "Graph error");
+    }
+
+    const rows: MvMarkRow[] = [];
+    await Promise.all(
+      uniqueIds.map(async (id) => {
+        const r = await fetch(graphUrl, {
+          method: "POST",
+          headers: getGraphHeaders(graphUrl),
+          body: JSON.stringify({
+            query: `
+              query DashboardMvOne($id: ID!) {
+                userHarborMarks(id: $id) {
+                  ${DASHBOARD_MV_MARKS_FIELDS}
+                }
+              }
+            `,
+            variables: { id },
+          }),
+        });
+        const j = (await r.json()) as {
+          errors?: Array<{ message?: string }>;
+          data?: { userHarborMarks?: MvMarkRow | null };
+        };
+        if (j.errors?.length) return;
+        const m = j.data?.userHarborMarks;
+        if (m?.id) rows.push(m);
+      })
+    );
+    return rows;
+  }
+
+  return batchJson.data?.userHarborMarks ?? [];
+}
+
 export function useDashboardPositions() {
   const { address, isConnected } = useAccount();
   const userLower = address?.toLowerCase() ?? "";
@@ -68,7 +159,7 @@ export function useDashboardPositions() {
         if (isGenesisHiddenFromIndex(mkt)) return false;
         return true;
       })
-      .map(([_, mkt]) =>
+      .map(([, mkt]) =>
         userHarborMarksId(
           (mkt as { addresses: { genesis: string } }).addresses.genesis,
           userLower
@@ -95,32 +186,8 @@ export function useDashboardPositions() {
       if (!graphUrl || mvIds.length === 0) {
         return { userHarborMarks: [] as Array<Record<string, unknown>> };
       }
-      const res = await fetch(graphUrl, {
-        method: "POST",
-        headers: getGraphHeaders(graphUrl),
-        body: JSON.stringify({
-          query: `
-            query DashboardMv($ids: [ID!]!) {
-              userHarborMarks(where: { id_in: $ids }) {
-                id
-                contractAddress
-                currentDeposit
-                currentDepositUSD
-                genesisEnded
-              }
-            }
-          `,
-          variables: { ids: mvIds },
-        }),
-      });
-      const json = (await res.json()) as {
-        errors?: Array<{ message?: string }>;
-        data?: { userHarborMarks?: Array<Record<string, unknown>> };
-      };
-      if (json.errors?.length) {
-        throw new Error(json.errors.map((e) => e.message).join("; ") || "Graph error");
-      }
-      return json.data ?? { userHarborMarks: [] };
+      const userHarborMarks = await fetchDashboardMvMarks(graphUrl, mvIds);
+      return { userHarborMarks };
     },
     enabled: isConnected && !!address && mvIds.length > 0,
     refetchInterval: 60_000,
@@ -162,7 +229,7 @@ export function useDashboardPositions() {
     retry: 1,
   });
 
-  const maidenVoyageRows = useMemo((): DashboardPositionRow[] => {
+  const { maidenVoyageRows, archivedMaidenVoyageRows } = useMemo(() => {
     const raw = (mvData?.userHarborMarks ?? []) as Array<{
       id: string;
       contractAddress: string;
@@ -170,7 +237,8 @@ export function useDashboardPositions() {
       currentDepositUSD?: string;
       genesisEnded?: boolean;
     }>;
-    const rows: DashboardPositionRow[] = [];
+    const active: DashboardPositionRow[] = [];
+    const archived: DashboardPositionRow[] = [];
     for (const m of raw) {
       const dep = BigInt((m.currentDeposit as string) || "0");
       const usd = parseFloat(m.currentDepositUSD || "0");
@@ -182,16 +250,28 @@ export function useDashboardPositions() {
 
       const marketLabel = meta?.displayName ?? "Maiden Voyage";
       const phase = m.genesisEnded ? "Ended" : "Active";
-      rows.push({
+      const row: DashboardPositionRow = {
         id: `mv-${m.id}`,
         category: "maiden_voyage",
         marketLabel,
         detail: `Genesis · ${phase}`,
         usd,
         href: "/genesis",
-      });
+      };
+      const mktCfg = meta?.marketId
+        ? (markets as Record<string, unknown>)[meta.marketId]
+        : undefined;
+      if (isMarketArchived(mktCfg)) {
+        archived.push(row);
+      } else {
+        active.push(row);
+      }
     }
-    return rows.sort((a, b) => b.usd - a.usd);
+    const sortByUsd = (a: DashboardPositionRow, b: DashboardPositionRow) => b.usd - a.usd;
+    return {
+      maidenVoyageRows: active.sort(sortByUsd),
+      archivedMaidenVoyageRows: archived.sort(sortByUsd),
+    };
   }, [mvData, index.genesisByAddressLower]);
 
   const earnRows = useMemo((): DashboardPositionRow[] => {
@@ -232,25 +312,8 @@ export function useDashboardPositions() {
       });
     }
 
-    for (const s of sailBalances) {
-      if (!nonZeroUsd(s.balanceUSD) && !nonZeroBalanceToken(s.balance)) continue;
-      const tok = s.tokenAddress.toLowerCase();
-      const levMeta = index.leveragedTokenByAddressLower.get(tok);
-      const haMeta = index.haTokenByAddressLower.get(tok);
-      const meta = levMeta ?? haMeta;
-      const marketLabel = meta?.displayName ?? "Earn";
-      rows.push({
-        id: `sailbal-${s.id}`,
-        category: "earn",
-        marketLabel,
-        detail: "Sail token · marks",
-        usd: s.balanceUSD,
-        href: "/sail",
-      });
-    }
-
     return rows.sort((a, b) => b.usd - a.usd);
-  }, [haBalances, poolDeposits, sailBalances, index]);
+  }, [haBalances, poolDeposits, index]);
 
   const leverageRows = useMemo((): DashboardPositionRow[] => {
     const raw = (sailData?.userSailPositions ?? []) as Array<{
@@ -259,12 +322,14 @@ export function useDashboardPositions() {
       balanceUSD?: string;
     }>;
     const rows: DashboardPositionRow[] = [];
+    const tokensFromSailSubgraphRow = new Set<string>();
+
     for (const p of raw) {
       const usd = parseFloat(p.balanceUSD || "0");
       if (!nonZeroUsd(usd)) continue;
       const tok = String(p.tokenAddress || "").toLowerCase();
       const meta = index.leveragedTokenByAddressLower.get(tok);
-      const marketLabel = meta?.displayName ?? "Leverage";
+      const marketLabel = meta?.displayName ?? "Sail";
       const levSym =
         meta &&
         (markets as Record<string, { leveragedToken?: { symbol?: string } }>)[meta.marketId]
@@ -277,14 +342,37 @@ export function useDashboardPositions() {
         usd,
         href: "/sail",
       });
+      tokensFromSailSubgraphRow.add(tok);
     }
-    return rows.sort((a, b) => b.usd - a.usd);
-  }, [sailData, index.leveragedTokenByAddressLower]);
 
-  const sailSubgraphMessage =
-    !sailGraphUrl && isConnected && !!address
-      ? "Leverage positions: Sail price subgraph URL is not configured."
-      : null;
+    // Sail hs-token balances from marks ledger (same source as Genesis); show under Sail, not Earn.
+    // Skip when the Sail price subgraph already lists the same token (avoid duplicate lines / totals).
+    for (const s of sailBalances) {
+      if (!nonZeroUsd(s.balanceUSD) && !nonZeroBalanceToken(s.balance)) continue;
+      const tok = s.tokenAddress.toLowerCase();
+      if (tokensFromSailSubgraphRow.has(tok)) continue;
+      const levMeta = index.leveragedTokenByAddressLower.get(tok);
+      const haMeta = index.haTokenByAddressLower.get(tok);
+      const meta = levMeta ?? haMeta;
+      const marketLabel = meta?.displayName ?? "Sail";
+      rows.push({
+        id: `sailbal-${s.id}`,
+        category: "leverage",
+        marketLabel,
+        detail: "Sail token · marks",
+        usd: s.balanceUSD,
+        href: "/sail",
+      });
+    }
+
+    return rows.sort((a, b) => b.usd - a.usd);
+  }, [sailData, sailBalances, index]);
+
+  const sailSubgraphMessage = useMemo(() => {
+    if (!isConnected || !address || sailGraphUrl || anchorLoading) return null;
+    if (leverageRows.length > 0) return null;
+    return "Sail price subgraph URL is not configured (add it to show position notional from the Sail indexer).";
+  }, [isConnected, address, sailGraphUrl, anchorLoading, leverageRows.length]);
 
   const anchorErrorStr = anchorError ? String(anchorError) : null;
   const mvErrorStr = mvError ? (mvError as Error).message : null;
@@ -292,12 +380,15 @@ export function useDashboardPositions() {
 
   return {
     maidenVoyageRows,
+    archivedMaidenVoyageRows,
     earnRows,
     leverageRows,
     isLoading: {
       anchor: anchorLoading,
       maidenVoyage: mvLoading && mvIds.length > 0,
-      leverage: sailLoading && !!sailGraphUrl,
+      leverage:
+        (sailLoading && !!sailGraphUrl) ||
+        anchorLoading,
     },
     errors: {
       anchor: anchorErrorStr,

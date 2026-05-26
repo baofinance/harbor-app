@@ -26,6 +26,7 @@ import {
   GenesisCampaignStats,
   GenesisComingNextMarketsSection,
   GenesisCompletedMarketsSection,
+  GenesisArchivedMarketsSection,
   GenesisMaidenVoyageComingSoon,
   GenesisHeroIntroCards,
   GenesisMarketsSections,
@@ -42,7 +43,10 @@ import { useGenesisContractReads } from "@/hooks/useGenesisContractReads";
 import { useGenesisManageRefetch } from "@/hooks/useGenesisManageRefetch";
 import { GenesisClaimProgressModal } from "@/components/genesis/GenesisClaimProgressModal";
 import { formatCompactUSD } from "@/utils/anchor";
-import { genesisParticipatesInMaidenVoyageTotals } from "@/config/markets";
+import {
+  genesisParticipatesInMaidenVoyageTotals,
+  isMarketArchived,
+} from "@/config/markets";
 
 const SHOW_MAIDEN_VOYAGE_COMING_SOON =
   process.env.NEXT_PUBLIC_SHOW_MAIDEN_VOYAGE_COMING_SOON === "true";
@@ -76,8 +80,9 @@ export default function GenesisIndexPage() {
   const [fdv, setFdv] = useState<number>(DEFAULT_FDV);
   // Hide completed genesis sections by default; filter to show "Ongoing" only or "All" (ongoing + completed)
   const [showCompletedGenesis, setShowCompletedGenesis] = useState(false);
+  const [showArchivedGenesis, setShowArchivedGenesis] = useState(false);
 
-  const openManageModal = useOpenMarketManageModal<{
+  const openManageModalBase = useOpenMarketManageModal<{
     marketId: string;
     market: GenesisMarketConfig;
     initialTab?: "deposit" | "withdraw";
@@ -88,6 +93,25 @@ export default function GenesisIndexPage() {
     setManageModal,
     logLabel: "Genesis",
   });
+
+  const openManageModal = useCallback(
+    async (
+      marketId: string,
+      market: GenesisMarketConfig,
+      initialTab: "deposit" | "withdraw" = "deposit"
+    ) => {
+      const resolvedTab =
+        isMarketArchived(market) && initialTab === "deposit"
+          ? "withdraw"
+          : initialTab;
+      await openManageModalBase({
+        marketId,
+        market,
+        initialTab: resolvedTab,
+      });
+    },
+    [openManageModalBase]
+  );
 
   // Prevent hydration mismatch by only rendering dynamic content after mount
   useEffect(() => {
@@ -178,7 +202,7 @@ export default function GenesisIndexPage() {
           ? contractSaysEnded
           : subgraphSaysEnded ?? false;
 
-      if (isEnded) {
+      if (isEnded && !isMarketArchived(mkt)) {
         completedMarkets.push([id, mkt, marks]);
       }
     });
@@ -381,13 +405,44 @@ export default function GenesisIndexPage() {
     });
   }, [reads, isConnected, genesisMarkets]);
 
-  const { activeMarkets, showHeaders, activeCampaignNames } =
-    useSortedGenesisMarkets({
-      genesisMarkets,
-      reads,
-      isConnected,
-      marksResults,
+  const {
+    activeMarkets,
+    archivedLiveMarkets,
+    archivedCompletedMarkets,
+    showHeaders,
+    activeCampaignNames,
+  } = useSortedGenesisMarkets({
+    genesisMarkets,
+    reads,
+    isConnected,
+    marksResults,
+  });
+
+  const hasArchivedUserDeposit = useMemo(() => {
+    if (!reads || !isConnected) return false;
+    const archivedIds = new Set([
+      ...archivedLiveMarkets.map(([id]) => id),
+      ...archivedCompletedMarkets.map(([id]) => id),
+    ]);
+    return genesisMarkets.some(([id, mkt], marketIndex) => {
+      if (!archivedIds.has(id)) return false;
+      const baseOffset = marketIndex * 3;
+      const userDeposit = reads?.[baseOffset + 1]?.result as bigint | undefined;
+      return userDeposit != null && userDeposit > 0n;
     });
+  }, [
+    reads,
+    isConnected,
+    genesisMarkets,
+    archivedLiveMarkets,
+    archivedCompletedMarkets,
+  ]);
+
+  useEffect(() => {
+    if (hasArchivedUserDeposit) {
+      setShowArchivedGenesis(true);
+    }
+  }, [hasArchivedUserDeposit]);
 
   const displayedActiveMarkets = useMemo(() => {
     if (chainFilterSelected.includes(FILTER_NONE_SENTINEL)) return [];
@@ -411,6 +466,37 @@ export default function GenesisIndexPage() {
     });
     return next;
   }, [completedByCampaign, chainFilterSelected]);
+
+  const filterGenesisPairs = <T,>(entries: Array<[string, T]>) => {
+    if (chainFilterSelected.includes(FILTER_NONE_SENTINEL)) return [];
+    if (chainFilterSelected.length === 0) return entries;
+    return entries.filter(([, m]) => {
+      const chainName = (m as { chain?: { name?: string } }).chain?.name || "Ethereum";
+      return chainFilterSelected.includes(chainName);
+    });
+  };
+
+  const filterGenesisTriples = <T, U,>(entries: Array<[string, T, U]>) => {
+    if (chainFilterSelected.includes(FILTER_NONE_SENTINEL)) return [];
+    if (chainFilterSelected.length === 0) return entries;
+    return entries.filter(([, m]) => {
+      const chainName = (m as { chain?: { name?: string } }).chain?.name || "Ethereum";
+      return chainFilterSelected.includes(chainName);
+    });
+  };
+
+  const displayedArchivedLiveMarkets = useMemo(
+    () => filterGenesisPairs(archivedLiveMarkets),
+    [archivedLiveMarkets, chainFilterSelected]
+  );
+
+  const displayedArchivedCompletedMarkets = useMemo(
+    () => filterGenesisTriples(archivedCompletedMarkets),
+    [archivedCompletedMarkets, chainFilterSelected]
+  );
+
+  const archivedGenesisCount =
+    displayedArchivedLiveMarkets.length + displayedArchivedCompletedMarkets.length;
 
   const activeGenesisTvlUsd = useMemo(() => {
     if (!totalDepositsReads || !collateralPricesMap) return 0;
@@ -576,6 +662,26 @@ export default function GenesisIndexPage() {
             address={address}
             claimingMarket={claimingMarket}
             onClaim={claimMarket}
+          />
+        )}
+
+        {archivedGenesisCount > 0 && (
+          <GenesisArchivedMarketsSection
+            showSection={showArchivedGenesis}
+            onToggleShow={() => setShowArchivedGenesis((v) => !v)}
+            displayedLiveMarkets={displayedArchivedLiveMarkets}
+            displayedCompletedMarkets={displayedArchivedCompletedMarkets}
+            genesisMarkets={genesisMarkets}
+            reads={reads}
+            isConnected={isConnected}
+            collateralPricesMap={collateralPricesMap}
+            coinGeckoPrices={coinGeckoPrices}
+            coinGeckoLoading={coinGeckoLoading}
+            chainlinkBtcPrice={chainlinkBtcPrice}
+            address={address}
+            claimingMarket={claimingMarket}
+            onClaim={claimMarket}
+            openManageModal={openManageModal}
           />
         )}
       </main>

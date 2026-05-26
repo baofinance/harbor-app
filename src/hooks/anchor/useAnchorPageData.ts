@@ -5,6 +5,7 @@ import {
   isAnchorActiveForBasicUi,
   isAnchorActiveForExtendedUi,
 } from "@/config/markets";
+import { partitionMarketsByArchived } from "@/utils/marketPartitions";
 import { FILTER_NONE_SENTINEL } from "@/components/FilterMultiselectDropdown";
 import { useStaggeredReady } from "@/hooks/useStaggeredReady";
 import { useMultipleVolatilityProtection } from "@/hooks/useVolatilityProtection";
@@ -46,17 +47,19 @@ export function useAnchorPageData(
     []
   );
 
-  const displayedAnchorMarkets = useMemo(() => {
-    const byChain =
-      chainFilterSelected.includes(FILTER_NONE_SENTINEL)
-        ? []
-        : chainFilterSelected.length === 0
-          ? anchorMarkets
-          : filterBySelectedNetworks(anchorMarkets, chainFilterSelected, ([, m]) => m);
-    return byChain.filter(([, m]) =>
-      layoutIsBasic ? isAnchorActiveForBasicUi(m) : isAnchorActiveForExtendedUi(m)
-    );
-  }, [anchorMarkets, chainFilterSelected, layoutIsBasic]);
+  const chainFilteredAnchorMarkets = useMemo(() => {
+    if (chainFilterSelected.includes(FILTER_NONE_SENTINEL)) return [];
+    if (chainFilterSelected.length === 0) return anchorMarkets;
+    return filterBySelectedNetworks(anchorMarkets, chainFilterSelected, ([, m]) => m);
+  }, [anchorMarkets, chainFilterSelected]);
+
+  const { active: displayedAnchorMarkets, archived: displayedArchivedAnchorMarkets } =
+    useMemo(() => {
+      const visibilityFiltered = chainFilteredAnchorMarkets.filter(([, m]) =>
+        layoutIsBasic ? isAnchorActiveForBasicUi(m) : isAnchorActiveForExtendedUi(m)
+      );
+      return partitionMarketsByArchived(visibilityFiltered);
+    }, [chainFilteredAnchorMarkets, layoutIsBasic]);
 
   const anchorChainOptions = useMemo(
     () => buildNetworkFilterOptions(anchorMarkets, ([, m]) => m),
@@ -606,6 +609,7 @@ export function useAnchorPageData(
     setChainFilterSelected,
     anchorMarkets,
     displayedAnchorMarkets,
+    displayedArchivedAnchorMarkets,
     anchorChainOptions,
     volProtectionMarketsConfig,
     stagger,

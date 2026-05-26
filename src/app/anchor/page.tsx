@@ -17,9 +17,11 @@ import {
 import { formatEther, parseEther } from "viem";
 import {
   isAnchorSoonUi,
+  isMarketArchived,
   isMarketInMaintenance,
   type DefinedMarket,
 } from "@/config/markets";
+import { ArchivedMarketsListSection } from "@/components/ArchivedMarketsListSection";
 import { harborMarketChainKey } from "@/components/market-cards/HarborBasicMarketNetworkFooter";
 import { MarketMaintenanceTag } from "@/components/MarketMaintenanceTag";
 import { POLLING_INTERVALS } from "@/config/polling";
@@ -175,13 +177,31 @@ export default function AnchorPage() {
   const [manageModal, setManageModal] = useState<AnchorManageModalPayload | null>(
     null
   );
-  const openManageModal = useOpenMarketManageModal<AnchorManageModalPayload>({
+  const [showArchivedAnchor, setShowArchivedAnchor] = useState(false);
+  const openManageModalBase = useOpenMarketManageModal<AnchorManageModalPayload>({
     isConnected,
     connectedChainId,
     switchChain,
     setManageModal,
     logLabel: "Anchor",
   });
+  const openManageModal = useCallback(
+    async (payload: AnchorManageModalPayload) => {
+      const depositTabs = new Set([
+        "mint",
+        "deposit",
+        "deposit-mint",
+      ] as const);
+      const resolvedPayload =
+        isMarketArchived(payload.market) &&
+        payload.initialTab &&
+        depositTabs.has(payload.initialTab as "mint" | "deposit" | "deposit-mint")
+          ? { ...payload, initialTab: "withdraw" as const }
+          : payload;
+      await openManageModalBase(resolvedPayload);
+    },
+    [openManageModalBase]
+  );
   const [mounted, setMounted] = useState(false);
   const [isEarningsExpanded, setIsEarningsExpanded] = useState(false);
   const [contractAddressesModal, setContractAddressesModal] = useState<{
@@ -202,6 +222,7 @@ export default function AnchorPage() {
     setChainFilterSelected,
     anchorMarkets,
     displayedAnchorMarkets,
+    displayedArchivedAnchorMarkets,
     anchorChainOptions,
     stagger,
     volProtectionData,
@@ -946,6 +967,22 @@ export default function AnchorPage() {
               );
             })()}
           </AnchorMarketsSections>
+
+          <ArchivedMarketsListSection
+            markets={displayedArchivedAnchorMarkets}
+            showSection={showArchivedAnchor}
+            onToggleShow={() => setShowArchivedAnchor((v) => !v)}
+            onManage={(marketId) => {
+              const m = (marketsConfig as Record<string, DefinedMarket>)[marketId];
+              if (!m) return;
+              void openManageModal({
+                marketId,
+                market: m,
+                initialTab: "withdraw",
+                simpleMode: true,
+              });
+            }}
+          />
         </main>
 
         {manageModal && (

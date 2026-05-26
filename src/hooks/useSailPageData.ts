@@ -23,6 +23,7 @@ import {
   buildNetworkFilterOptions,
   filterBySelectedNetworks,
 } from "@/utils/networkFilter";
+import { partitionMarketsByArchived } from "@/utils/marketPartitions";
 
 /**
  * Sail index route: filters, subgraph marks/PnL, aggregates, and derived `activeMarkets`.
@@ -118,16 +119,19 @@ export function useSailPageData(layoutIsBasic: boolean) {
     refetchUserDeposits,
   } = useSailContractReads();
 
-  const displayedSailMarkets = useMemo(() => {
-    const byChain = chainFilterSelected.includes(FILTER_NONE_SENTINEL)
-      ? []
-      : chainFilterSelected.length === 0
-        ? sailMarkets
-        : filterBySelectedNetworks(sailMarkets, chainFilterSelected, ([, m]) => m);
-    return byChain.filter(([, m]) =>
-      layoutIsBasic ? isSailActiveForBasicUi(m) : isSailActiveForExtendedUi(m)
-    );
-  }, [sailMarkets, chainFilterSelected, layoutIsBasic]);
+  const chainFilteredSailMarkets = useMemo(() => {
+    if (chainFilterSelected.includes(FILTER_NONE_SENTINEL)) return [];
+    if (chainFilterSelected.length === 0) return sailMarkets;
+    return filterBySelectedNetworks(sailMarkets, chainFilterSelected, ([, m]) => m);
+  }, [sailMarkets, chainFilterSelected]);
+
+  const { active: displayedSailMarkets, archived: displayedArchivedSailMarkets } =
+    useMemo(() => {
+      const visibilityFiltered = chainFilteredSailMarkets.filter(([, m]) =>
+        layoutIsBasic ? isSailActiveForBasicUi(m) : isSailActiveForExtendedUi(m)
+      );
+      return partitionMarketsByArchived(visibilityFiltered);
+    }, [chainFilteredSailMarkets, layoutIsBasic]);
 
   const sailChainOptions = useMemo(
     () => buildNetworkFilterOptions(sailMarkets, ([, m]) => m),
@@ -384,6 +388,7 @@ export function useSailPageData(layoutIsBasic: boolean) {
     sailMarkets,
     sailMarketIdToIndex,
     displayedSailMarkets,
+    displayedArchivedSailMarkets,
     sailChainOptions,
     uniqueLongSides,
     uniqueShortSides,

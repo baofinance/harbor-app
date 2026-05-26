@@ -19,6 +19,7 @@ import {
 } from "@/components/sail";
 import { usePageLayoutPreference } from "@/contexts/PageLayoutPreferenceContext";
 import { isSailSoonUi, type DefinedMarket } from "@/config/markets";
+import { ArchivedMarketsListSection } from "@/components/ArchivedMarketsListSection";
 import { harborMarketChainKey } from "@/components/market-cards/HarborBasicMarketNetworkFooter";
 import { IndexMarketsLoadError } from "@/components/shared/IndexMarketsLoadError";
 import { useExpandedMarketIds } from "@/hooks/useExpandedMarketIds";
@@ -77,6 +78,8 @@ export default function SailPage() {
     pnlFromMarkets,
     activeSailBoostEndTimestamp,
     activeMarkets,
+    displayedSailMarkets,
+    displayedArchivedSailMarkets,
     tableMarkets,
   } = useSailPageData(sailViewBasic);
 
@@ -90,6 +93,7 @@ export default function SailPage() {
   const [manageModalTab, setManageModalTab] = useState<"mint" | "redeem">(
     "mint"
   );
+  const [showArchivedSail, setShowArchivedSail] = useState(false);
 
   const queryClient = useQueryClient();
 
@@ -255,6 +259,20 @@ export default function SailPage() {
               )}
             </SailMarketsSections>
           )}
+
+          <ArchivedMarketsListSection
+            markets={displayedArchivedSailMarkets}
+            showSection={showArchivedSail}
+            onToggleShow={() => setShowArchivedSail((v) => !v)}
+            onManage={(marketId) => {
+              const m = (marketsConfig as Record<string, DefinedMarket>)[marketId];
+              if (!m) return;
+              setSelectedMarketId(marketId);
+              setSelectedMarket(m);
+              setManageModalTab("redeem");
+              setManageModalOpen(true);
+            }}
+          />
         </main>
 
         {selectedMarketId && selectedMarket && (

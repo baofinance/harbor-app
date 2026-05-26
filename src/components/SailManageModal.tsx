@@ -49,6 +49,7 @@ import { TransactionSuccessMessage } from "@/components/TransactionSuccessMessag
 import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
 import { getDepositMode } from "@/utils/depositMode";
 import type { DefinedMarket } from "@/config/markets";
+import { depositsBlockedForMarket, isMarketArchived } from "@/config/markets";
 
 interface SailManageModalProps {
  isOpen: boolean;
@@ -848,6 +849,14 @@ const fxSAVEPrice = fxSAVEPriceProp ?? fxSAVEPriceFromHook ?? 1.08;
 
  // Handle mint
  const handleMint = async () => {
+ if (depositsBlockedForMarket(market)) {
+ setError(
+   isMarketArchived(market)
+     ? "This market is archived. New mints are not accepted."
+     : "Mints are unavailable while this market is in maintenance."
+ );
+ return;
+ }
  if (!validateAmount() || !address || !minterAddress || !parsedAmount)
  return;
 

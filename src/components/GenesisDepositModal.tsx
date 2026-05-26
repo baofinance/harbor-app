@@ -44,6 +44,7 @@ import { useTransactionProgress } from "@/hooks/useTransactionProgress";
 import SimpleTooltip from "@/components/SimpleTooltip";
 import { InfoCallout } from "@/components/InfoCallout";
 import { ModalNotificationsPanel } from "@/components/ModalNotificationsPanel";
+import { isMarketArchived } from "@/config/markets";
 import { DepositModalShell } from "@/components/DepositModalShell";
 import {
   AlertOctagon,
@@ -646,6 +647,9 @@ const allowanceTarget = (useETHZap || useUSDCZap) && genesisZapAddress ? genesis
  },
  });
 
+ const marketArchived = isMarketArchived(market);
+ const depositsBlocked = Boolean(genesisEnded) || marketArchived;
+
  // Get current user deposit in Genesis (on market's chain)
  const { data: currentDeposit, error: currentDepositError } = useContractRead({
  address: isValidGenesisAddress ? (genesisAddress as `0x${string}`) : undefined,
@@ -883,8 +887,12 @@ https://www.harborfinance.io/`;
  setError("Insufficient balance");
  return false;
  }
- if (genesisEnded) {
- setError("Genesis period has ended");
+ if (depositsBlocked) {
+ setError(
+   marketArchived
+     ? "This market is archived. New deposits are not accepted."
+     : "Genesis period has ended"
+ );
  return false;
  }
  return true;
@@ -1823,7 +1831,7 @@ setSuccessfulDepositAmount(amount); // Use original amount, not converted amount
  step ==="depositing" ||
  !amount ||
  parseFloat(amount) <= 0 ||
- genesisEnded
+ depositsBlocked
  );
  };
 
@@ -1953,6 +1961,11 @@ const successFmt = formatTokenAmount(
  ⚠️ Genesis period has ended. Deposits are no longer accepted.
  </div>
  )}
+ {marketArchived && !genesisEnded && (
+ <div className="p-3 bg-gray-100 border border-gray-400/40 text-gray-700 text-sm">
+ This market is archived. New deposits are disabled; withdraw existing balances from the Withdraw tab.
+ </div>
+ )}
 
  <TokenAmountSection
    tokenSelector={{
@@ -1978,7 +1991,7 @@ const successFmt = formatTokenAmount(
      ],
      label: "Select Deposit Token",
      placeholder: "Select Deposit Asset",
-     disabled: step === "approving" || step === "depositing" || genesisEnded,
+     disabled: step === "approving" || step === "depositing" || depositsBlocked,
      showCustomOption: !collateralOnly,
      onCustomOptionClick: () => {
        setShowCustomTokenInput(true);
@@ -1990,7 +2003,7 @@ const successFmt = formatTokenAmount(
      value: customTokenAddress,
      onChange: setCustomTokenAddress,
      show: true,
-     disabled: step === "approving" || step === "depositing" || genesisEnded,
+     disabled: step === "approving" || step === "depositing" || depositsBlocked,
      validTokenInfo: isCustomToken && customTokenSymbol ? `${customTokenName || customTokenSymbol} (${customTokenSymbol})` : null,
    } : undefined}
    betweenTokenAndAmount={
@@ -2032,7 +2045,7 @@ const successFmt = formatTokenAmount(
      balance: selectedAssetBalance,
      decimals: selectedTokenDecimals,
      label: "Enter Amount",
-     disabled: step === "approving" || step === "depositing" || genesisEnded,
+     disabled: step === "approving" || step === "depositing" || depositsBlocked,
      error,
      isNativeETH,
      capAtBalance: true,

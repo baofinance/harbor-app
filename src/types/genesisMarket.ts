@@ -11,6 +11,7 @@ export type GenesisMarketConfig = {
   rowLeveragedSymbol?: string;
   coinGeckoId?: string;
   maintenance?: boolean;
+  archived?: boolean;
   /**
    * Maiden Voyage listing + CTA mode. Default when omitted: full participation (`true`).
    * @see `getGenesisActiveSetting` in `config/markets`.
