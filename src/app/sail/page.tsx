@@ -306,7 +306,7 @@ export default function SailPage() {
               });
             }}
             leveragedTokenPriceUSD={
-              tokenPricesByMarket[selectedMarketId]?.leveragedPriceUSD
+              tokenPricesByMarket[manageModal.marketId]?.leveragedPriceUSD
             }
             ethPrice={sailPageEthPrice}
             wstETHPrice={sailPageWstETHPrice}
