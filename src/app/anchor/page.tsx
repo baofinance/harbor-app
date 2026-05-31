@@ -19,6 +19,7 @@ import {
   isAnchorSoonUi,
   isMarketArchived,
   isMarketInMaintenance,
+  markets as marketsConfig,
   type DefinedMarket,
 } from "@/config/markets";
 import { ArchivedMarketsListSection } from "@/components/ArchivedMarketsListSection";

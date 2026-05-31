@@ -106,6 +106,7 @@ export const SailManageModal = ({
   const depositMode = getDepositMode(market);
   const { collateralOnly: isCollateralOnlyChain, nativeTokenLabel, isMegaEth } = depositMode;
   const marketChainId = (market as DefinedMarket & { chainId?: number }).chainId ?? 1;
+  const depositsBlocked = depositsBlockedForMarket(market);
   const { writeContractAsync } = useWriteContract();
   const { sendTransactionAsync } = useSendTransaction();
   const { switchChain } = useSwitchChain();
@@ -1807,6 +1808,7 @@ if (usePermitRedeem && permitResult?.permitSig && permitResult?.deadline) {
        activeTab={activeTab}
        onTabChange={(v) => handleTabChange(v as "mint" | "redeem")}
        disabled={isProcessing}
+       tabDisabled={{ mint: depositsBlocked }}
      />
    }
    closeDisabled={isProcessing}

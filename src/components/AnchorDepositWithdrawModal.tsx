@@ -9623,6 +9623,7 @@ export const AnchorDepositWithdrawModal = ({
               activeTab={activeTab}
               onTabChange={(v) => handleTabChange(v as "deposit" | "withdraw")}
               disabled={isProcessing}
+              tabDisabled={{ deposit: depositsBlocked }}
             />
           }
           closeDisabled={isProcessing}
