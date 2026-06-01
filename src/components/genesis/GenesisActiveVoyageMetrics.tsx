@@ -3,7 +3,6 @@
 import type { ActiveVoyageStatus } from "@/utils/activeVoyageStatus";
 import {
   getActiveVoyageZeroStateCopy,
-  getCapDataSourceLabel,
 } from "@/utils/activeVoyageStatus";
 import type { GenesisVoyageCapDisplay } from "@/utils/genesisVoyageCapDisplay";
 import { formatUSD } from "@/utils/formatters";
@@ -65,13 +64,13 @@ export function GenesisActiveVoyageMetrics({
     : `${formatUSD(capDisplay.remainingUsd)} remaining`;
 
   const zeroState = getActiveVoyageZeroStateCopy(voyageStatus, filledPct);
-  const sourceLabel = getCapDataSourceLabel(capDisplay, isLoading, isUnavailable);
 
   return (
     <div className="min-w-0">
       <p className={MV_SECTION_LABEL}>Capacity progress</p>
       <p className="mt-1 font-mono text-4xl font-bold tabular-nums tracking-tight text-[#FF8A7A] sm:text-5xl">
-        {filledPct.toFixed(0)}% filled
+        {filledPct.toFixed(0)}%{" "}
+        <span className="text-2xl uppercase sm:text-3xl">FILLED</span>
       </p>
 
       <div
@@ -96,17 +95,9 @@ export function GenesisActiveVoyageMetrics({
       </div>
 
       {zeroState ? (
-        <div className="mt-2 space-y-0.5 text-xs leading-snug">
-          <p className="text-[#4A9784]/90">
-            {zeroState.line1}{" "}
-            <span className="text-white/50">{zeroState.line2}</span>
-          </p>
-          <p className="text-white/45">{zeroState.line3}</p>
-        </div>
-      ) : null}
-
-      {sourceLabel ? (
-        <p className="mt-2 text-[11px] text-white/35">{sourceLabel}</p>
+        <p className="mt-2 text-xs leading-snug text-[#4A9784]/90">
+          {zeroState.line1}
+        </p>
       ) : null}
     </div>
   );

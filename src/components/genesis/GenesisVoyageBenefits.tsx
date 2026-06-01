@@ -37,7 +37,10 @@ export function GenesisVoyageBenefits() {
       <h3 className={`mb-3 ${MV_SECTION_LABEL}`}>What you&apos;ll receive</h3>
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {BENEFITS.map(({ title, description, icon: Icon }) => (
-          <div key={title} className="flex flex-col items-center text-center sm:items-start sm:text-left">
+          <div
+            key={title}
+            className="flex flex-col items-center text-center"
+          >
             <span className={MV_ICON_BADGE}>
               <Icon className="h-5 w-5" aria-hidden />
             </span>

@@ -17,12 +17,13 @@ import { GenesisActiveVoyageMetrics } from "./GenesisActiveVoyageMetrics";
 import { GenesisVoyageBenefits } from "./GenesisVoyageBenefits";
 import { GenesisVoyageStatusBadge } from "./GenesisVoyageStatusBadge";
 import {
+  MV_CARD_INNER_GRADIENT,
   MV_CARD_SHELL,
   MV_PRIMARY_CTA,
   MV_TYPE_TAG,
 } from "./maidenVoyageLayoutStyles";
 
-const STRIP_ICON_PX = 36;
+const STRIP_ICON_PX = 24;
 
 function stripLabel(symbol: string): string {
   const s = symbol.trim();
@@ -85,7 +86,7 @@ export function GenesisActiveVoyageCard({
 
   return (
     <section
-      className={`${MV_CARD_SHELL} overflow-hidden`}
+      className={`${MV_CARD_SHELL} ${MV_CARD_INNER_GRADIENT} overflow-hidden`}
       aria-label="Active maiden voyage"
     >
       <div className="border-b border-white/10 px-4 py-4 sm:px-6 sm:py-5">
@@ -100,24 +101,24 @@ export function GenesisActiveVoyageCard({
         </div>
 
         <div
-          className="mt-4 flex flex-wrap items-center justify-center gap-2 sm:gap-3"
+          className="mt-3 flex flex-wrap items-center gap-1.5"
           aria-label={`${stripLabel(collateralSymbol)} to ${stripLabel(peggedSymbol)} and ${stripLabel(leveragedSymbol)}`}
         >
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1">
             <TokenLogo symbol={collateralSymbol} size={STRIP_ICON_PX} />
             <span className="font-mono text-xs font-semibold text-white/80">
               {stripLabel(collateralSymbol)}
             </span>
           </div>
-          <ArrowRightIcon className="h-4 w-4 shrink-0 text-white/40" aria-hidden />
-          <div className="flex items-center gap-1.5">
+          <ArrowRightIcon className="h-3.5 w-3.5 shrink-0 text-white/40" aria-hidden />
+          <div className="flex items-center gap-1">
             <TokenLogo symbol={peggedSymbol} size={STRIP_ICON_PX} />
             <span className="font-mono text-xs font-semibold text-white/80">
               {stripLabel(peggedSymbol)}
             </span>
           </div>
-          <span className="text-sm font-light text-white/40">+</span>
-          <div className="flex items-center gap-1.5">
+          <span className="text-xs font-light text-white/40">+</span>
+          <div className="flex items-center gap-1">
             <TokenLogo symbol={leveragedSymbol} size={STRIP_ICON_PX} />
             <span className="font-mono text-xs font-semibold text-white/80">
               {stripLabel(leveragedSymbol)}

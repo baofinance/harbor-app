@@ -1,12 +1,16 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import IndexToolbarSegmentedToggle from "@/components/shared/IndexToolbarSegmentedToggle";
 import type { MaidenVoyageStatsBarData } from "@/utils/maidenVoyageStatsBar";
 
 export type GenesisMaidenVoyageStatsBarProps = {
   stats: MaidenVoyageStatsBarData;
 };
+
+const VIEW_OPTIONS = [
+  { id: "active", label: "Active" },
+  { id: "completed", label: "Completed" },
+] as const;
 
 export function GenesisMaidenVoyageStatsBar({
   stats,
@@ -32,16 +36,35 @@ export function GenesisMaidenVoyageStatsBar({
       className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
       aria-label="Maiden Voyage overview"
     >
-      <IndexToolbarSegmentedToggle
-        label="View"
-        value={view}
-        options={[
-          { id: "active", label: "Active" },
-          { id: "completed", label: "Completed" },
-        ]}
-        onChange={handleViewChange}
-        variant="inline"
-      />
+      <div className="flex items-center gap-2">
+        <span className="text-[10px] font-medium uppercase tracking-wider text-white/50">
+          View
+        </span>
+        <div
+          className="inline-flex rounded-md bg-white/10 p-0.5"
+          role="group"
+          aria-label="View"
+        >
+          {VIEW_OPTIONS.map((option) => {
+            const active = option.id === view;
+            return (
+              <button
+                key={option.id}
+                type="button"
+                onClick={() => handleViewChange(option.id)}
+                className={`rounded px-3 py-1 text-xs font-semibold transition ${
+                  active
+                    ? "bg-[#FF8A7A] text-[#1a0f0d]"
+                    : "text-white/60 hover:text-white/80"
+                }`}
+                aria-pressed={active}
+              >
+                {option.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
       <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
         {stats.featuredTvlLabel ? (
           <div>

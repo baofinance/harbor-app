@@ -167,13 +167,11 @@ export function getActiveVoyageFootnote(status: ActiveVoyageStatus): string {
 export function getActiveVoyageZeroStateCopy(
   status: ActiveVoyageStatus,
   filledPct: number,
-): { line1: string; line2: string; line3: string } | null {
+): { line1: string } | null {
   if (filledPct >= 1) return null;
   if (status !== "deposits_open" && status !== "almost_full") return null;
   return {
-    line1: "Be among the first depositors.",
-    line2: "Capacity is fully open.",
-    line3: "Early participants receive the same launch access.",
+    line1: "Be among the first depositors—capacity is fully open.",
   };
 }
 

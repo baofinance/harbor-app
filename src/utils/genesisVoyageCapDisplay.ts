@@ -1,4 +1,5 @@
 import { maidenVoyageCapUsd } from "@/config/maidenVoyageCap";
+import { maidenVoyageYieldOwnerSharePercent } from "@/config/maidenVoyageYield";
 import {
   getGenesisDepositCapData,
   type GenesisDepositCapData,
@@ -119,7 +120,9 @@ export function resolveGenesisVoyageCapDisplay({
       collateralSymbol,
       ownershipShare: 0,
       countedUsd: 0,
-      yieldRevSharePct: null,
+      yieldRevSharePct: maidenVoyageYieldOwnerSharePercent(
+        genesisAddress?.toLowerCase() ?? null,
+      ),
     };
 
     return {

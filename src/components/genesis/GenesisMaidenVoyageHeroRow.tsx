@@ -17,7 +17,7 @@ export function GenesisMaidenVoyageHeroRow({
   return (
     <section
       id="maiden-voyage-active"
-      className="mb-8 scroll-mt-24 grid grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-8"
+      className="mb-8 scroll-mt-24 grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-center lg:gap-8"
       aria-label="Active Maiden Voyage campaign"
     >
       <div className="order-1 flex flex-col lg:order-none">

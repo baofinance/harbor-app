@@ -31,6 +31,7 @@ import { useOpenMarketManageModal } from "@/hooks/useOpenMarketManageModal";
 import { useGenesisContractReads } from "@/hooks/useGenesisContractReads";
 import { useGenesisManageRefetch } from "@/hooks/useGenesisManageRefetch";
 import { FEATURED_ACTIVE_MARKET_ID } from "@/config/maidenVoyageFeatured";
+import { maidenVoyageYieldOwnerSharePercent } from "@/config/maidenVoyageYield";
 import {
   getGenesisStatus,
   isMarketArchived,
@@ -348,6 +349,11 @@ export default function GenesisIndexPage() {
           ? `${formatToken(userDeposit)} ${collateralSymbol}`
           : undefined;
 
+    const genesisAddress = mkt.addresses?.genesis;
+    const yieldRevSharePct =
+      capDisplay?.yieldRevSharePct ??
+      maidenVoyageYieldOwnerSharePercent(genesisAddress?.toLowerCase() ?? null);
+
     return {
       marketId,
       mkt,
@@ -359,7 +365,8 @@ export default function GenesisIndexPage() {
       userDepositDisplay,
       displayMarketName,
       peggedNoPrefix,
-      genesisAddress: mkt.addresses?.genesis,
+      genesisAddress,
+      yieldRevSharePct,
     };
   }, [
     activeMarketEntry,
@@ -467,9 +474,7 @@ export default function GenesisIndexPage() {
         ) : null}
 
         <GenesisMaidenVoyageHeroRow
-          yieldRevSharePct={
-            activeMarketData?.capDisplay?.yieldRevSharePct ?? null
-          }
+          yieldRevSharePct={activeMarketData?.yieldRevSharePct ?? null}
           activeCard={
             activeMarketData
               ? {
@@ -543,9 +548,7 @@ export default function GenesisIndexPage() {
           <div className="mb-8 grid grid-cols-1 gap-4 lg:grid-cols-2">
             <GenesisRevenueShareSection />
             <GenesisYieldShareRulesCard
-              yieldRevSharePct={
-                activeMarketData?.capDisplay?.yieldRevSharePct ?? null
-              }
+              yieldRevSharePct={activeMarketData?.yieldRevSharePct ?? null}
             />
           </div>
           <GenesisMaidenVoyageFaq />

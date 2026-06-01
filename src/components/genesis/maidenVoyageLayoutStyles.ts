@@ -1,7 +1,10 @@
 /** Shared Maiden Voyage 2.0 landing layout tokens (dark campaign theme). */
 
 export const MV_CARD_SHELL =
-  "rounded-2xl border border-white/10 bg-white/5";
+  "rounded-2xl border border-white/15 bg-white/5 shadow-[0_0_60px_-20px_rgba(255,138,122,0.22)]";
+
+export const MV_CARD_INNER_GRADIENT =
+  "bg-gradient-to-b from-white/[0.06] to-transparent";
 
 export const MV_SECTION_LABEL =
   "text-xs font-medium uppercase tracking-wider text-white/50";
@@ -13,7 +16,7 @@ export const MV_ACCENT_GRADIENT =
   "bg-gradient-to-r from-[#FF8A7A] to-[#ffb4a8] bg-clip-text text-transparent";
 
 export const MV_PROGRESS_TRACK =
-  "h-3.5 overflow-hidden rounded-full border border-white/10 bg-white/10 sm:h-4";
+  "h-4 overflow-hidden rounded-full border border-white/10 bg-white/10";
 
 export const MV_PROGRESS_FILL =
   "h-full rounded-full bg-gradient-to-r from-[#FF8A7A] to-[#ffb4a8] transition-[width]";
@@ -31,7 +34,7 @@ export const MV_TYPE_TAG =
   "rounded-full border border-[#1E4775]/40 bg-[#1E4775]/25 px-2.5 py-0.5 text-[11px] font-semibold text-white/80";
 
 export const MV_LIVE_BADGE =
-  "inline-flex items-center gap-1.5 rounded-full border border-[#FF8A7A]/40 bg-[#FF8A7A]/15 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-[#FFE8E2]";
+  "inline-flex items-center gap-1.5 rounded-full border border-[#FF8A7A]/50 bg-[#FF8A7A]/30 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-white";
 
 export const MV_COMPLETED_PILL =
   "inline-flex items-center gap-1 rounded-full border border-[#4A9784]/40 bg-[#4A9784]/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-[#B8EBD5]";
