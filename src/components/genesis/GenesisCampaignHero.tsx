@@ -9,7 +9,7 @@ export function GenesisCampaignHero() {
   return (
     <div className="mb-6 flex flex-col">
       <GenesisMaidenVoyagePageHeader />
-      <GenesisMaidenVoyageHeroCopy yieldRevSharePct={null} />
+      <GenesisMaidenVoyageHeroCopy />
       <GenesisHowItWorksSteps />
     </div>
   );

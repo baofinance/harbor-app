@@ -474,7 +474,6 @@ export default function GenesisIndexPage() {
         ) : null}
 
         <GenesisMaidenVoyageHeroRow
-          yieldRevSharePct={activeMarketData?.yieldRevSharePct ?? null}
           activeCard={
             activeMarketData
               ? {

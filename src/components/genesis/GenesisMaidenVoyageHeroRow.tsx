@@ -6,12 +6,10 @@ import { GenesisHowItWorksSteps } from "./GenesisHowItWorksSteps";
 import { GenesisMaidenVoyageHeroCopy } from "./GenesisMaidenVoyageHeroCopy";
 
 export type GenesisMaidenVoyageHeroRowProps = {
-  yieldRevSharePct: number | null;
   activeCard: GenesisActiveVoyageCardProps | null;
 };
 
 export function GenesisMaidenVoyageHeroRow({
-  yieldRevSharePct,
   activeCard,
 }: GenesisMaidenVoyageHeroRowProps) {
   return (
@@ -21,7 +19,7 @@ export function GenesisMaidenVoyageHeroRow({
       aria-label="Active Maiden Voyage campaign"
     >
       <div className="order-1 flex flex-col lg:order-none">
-        <GenesisMaidenVoyageHeroCopy yieldRevSharePct={yieldRevSharePct} />
+        <GenesisMaidenVoyageHeroCopy />
         <GenesisHowItWorksSteps />
       </div>
       <div className="order-2 lg:order-none">

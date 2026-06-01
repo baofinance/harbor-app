@@ -3,7 +3,6 @@ export { GenesisPageTitleSection } from "./GenesisPageTitleSection";
 export { GenesisCampaignHero } from "./GenesisCampaignHero";
 export { GenesisMaidenVoyagePageHeader } from "./GenesisMaidenVoyagePageHeader";
 export { GenesisMaidenVoyageHeroCopy } from "./GenesisMaidenVoyageHeroCopy";
-export type { GenesisMaidenVoyageHeroCopyProps } from "./GenesisMaidenVoyageHeroCopy";
 export { GenesisMaidenVoyageHeroRow } from "./GenesisMaidenVoyageHeroRow";
 export type { GenesisMaidenVoyageHeroRowProps } from "./GenesisMaidenVoyageHeroRow";
 export { GenesisMaidenVoyageStatsBar } from "./GenesisMaidenVoyageStatsBar";

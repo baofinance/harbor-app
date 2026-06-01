@@ -28,33 +28,56 @@ const STEPS = [
   },
 ] as const;
 
+function StepColumn({
+  step,
+  icon: Icon,
+  title,
+  body,
+}: (typeof STEPS)[number]) {
+  return (
+    <li className="flex flex-col items-center text-center">
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#FF8A7A]/35 bg-[#FF8A7A]/10 font-mono text-xs font-bold text-[#FFE8E2]">
+        {step}
+      </span>
+      <span className={`mt-2 ${MV_ICON_BADGE}`}>
+        <Icon className="h-5 w-5" aria-hidden />
+      </span>
+      <h2 className="mt-2 text-sm font-semibold text-white/90">{title}</h2>
+      <p className="mt-1 min-h-[2.5rem] max-w-[11rem] text-xs leading-relaxed text-white/50">
+        {body}
+      </p>
+    </li>
+  );
+}
+
 export function GenesisHowItWorksSteps() {
   return (
-    <ol className="mt-6 flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between sm:gap-2">
-      {STEPS.map(({ step, icon: Icon, title, body }, index) => (
-        <li key={title} className="flex min-w-0 flex-1 items-start gap-2 sm:flex-col sm:items-center">
-          {index > 0 ? (
-            <span
-              className="hidden shrink-0 self-center pt-6 text-lg text-white/25 sm:inline"
-              aria-hidden
-            >
-              →
-            </span>
-          ) : null}
-          <div className="flex min-w-0 flex-1 flex-col items-center text-center sm:w-full">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#FF8A7A]/35 bg-[#FF8A7A]/10 font-mono text-xs font-bold text-[#FFE8E2]">
-              {step}
-            </span>
-            <span className={`mt-2 ${MV_ICON_BADGE}`}>
-              <Icon className="h-5 w-5" aria-hidden />
-            </span>
-            <h2 className="mt-2 text-sm font-semibold text-white/90">{title}</h2>
-            <p className="mt-1 max-w-[11rem] text-xs leading-relaxed text-white/50">
-              {body}
-            </p>
-          </div>
-        </li>
-      ))}
-    </ol>
+    <div className="mt-6">
+      <ol className="flex flex-col gap-6 md:hidden">
+        {STEPS.map((step) => (
+          <StepColumn key={step.title} {...step} />
+        ))}
+      </ol>
+      <ol
+        className="hidden md:grid md:grid-cols-[minmax(0,1fr)_1.25rem_minmax(0,1fr)_1.25rem_minmax(0,1fr)] md:items-center md:gap-x-1"
+        aria-label="How Maiden Voyage works"
+      >
+        <StepColumn {...STEPS[0]} />
+        <span
+          className="flex items-center justify-center text-lg text-white/25"
+          aria-hidden
+        >
+          →
+        </span>
+        <StepColumn {...STEPS[1]} />
+        <span
+          className="flex items-center justify-center text-lg text-white/25"
+          aria-hidden
+        >
+          →
+        </span>
+        <StepColumn {...STEPS[2]} />
+      </ol>
+    </div>
   );
 }
