@@ -75,6 +75,11 @@ const nextConfig = {
         destination: "/hytoken",
         permanent: true,
       },
+      {
+        source: "/dasboard",
+        destination: "/dashboard",
+        permanent: false,
+      },
     ];
   },
   async rewrites() {

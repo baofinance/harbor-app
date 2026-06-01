@@ -12,14 +12,32 @@ import {
   isGenesisHiddenFromIndex,
 } from "@/config/markets";
 import { isMegaethMaidenVoyageMarket } from "@/utils/megaethMarket";
+import {
+  genesisStatusFromEnded,
+  iconSymbolFromMarketLabel,
+} from "@/components/dashboard/dashboardRowPresentation";
 
 const USD_EPS = 0.005;
+
+type MarketTokenCfg = {
+  collateral?: { symbol?: string };
+  peggedToken?: { symbol?: string };
+  leveragedToken?: { symbol?: string };
+};
+
+function marketCfg(marketId: string | undefined): MarketTokenCfg | undefined {
+  if (!marketId) return undefined;
+  return (markets as Record<string, MarketTokenCfg>)[marketId];
+}
 
 export type DashboardPositionRow = {
   id: string;
   category: "maiden_voyage" | "earn" | "leverage";
   marketLabel: string;
   detail: string;
+  iconSymbol: string;
+  statusTone: "ended" | "active" | "neutral";
+  statusLabel: string;
   usd: number;
   href: "/genesis" | "/anchor" | "/sail";
 };
@@ -249,12 +267,18 @@ export function useDashboardPositions() {
       if (meta?.hideFromMvList) continue;
 
       const marketLabel = meta?.displayName ?? "Maiden Voyage";
-      const phase = m.genesisEnded ? "Ended" : "Active";
+      const genesisStatus = genesisStatusFromEnded(Boolean(m.genesisEnded));
+      const cfg = marketCfg(meta?.marketId);
+      const collateralSymbol = cfg?.collateral?.symbol;
       const row: DashboardPositionRow = {
         id: `mv-${m.id}`,
         category: "maiden_voyage",
         marketLabel,
-        detail: `Genesis · ${phase}`,
+        detail: `Genesis · ${genesisStatus.phase}`,
+        iconSymbol:
+          collateralSymbol || iconSymbolFromMarketLabel(marketLabel),
+        statusTone: genesisStatus.statusTone,
+        statusLabel: genesisStatus.statusLabel,
         usd,
         href: "/genesis",
       };
@@ -291,6 +315,9 @@ export function useDashboardPositions() {
         category: "earn",
         marketLabel,
         detail: `${pegSym ?? "Anchored"} · wallet`,
+        iconSymbol: pegSym || iconSymbolFromMarketLabel(marketLabel),
+        statusTone: "neutral",
+        statusLabel: "Wallet",
         usd: b.balanceUSD,
         href: "/anchor",
       });
@@ -307,6 +334,9 @@ export function useDashboardPositions() {
         category: "earn",
         marketLabel,
         detail: `${role} · stability`,
+        iconSymbol: iconSymbolFromMarketLabel(marketLabel),
+        statusTone: "neutral",
+        statusLabel: "Stability",
         usd: d.balanceUSD,
         href: "/anchor",
       });
@@ -339,6 +369,9 @@ export function useDashboardPositions() {
         category: "leverage",
         marketLabel,
         detail: `${levSym ?? "Leveraged"} · position`,
+        iconSymbol: levSym || iconSymbolFromMarketLabel(marketLabel),
+        statusTone: "neutral",
+        statusLabel: "Position",
         usd,
         href: "/sail",
       });
@@ -355,11 +388,19 @@ export function useDashboardPositions() {
       const haMeta = index.haTokenByAddressLower.get(tok);
       const meta = levMeta ?? haMeta;
       const marketLabel = meta?.displayName ?? "Sail";
+      const levSymFromMarks =
+        levMeta &&
+        marketCfg(levMeta.marketId)?.leveragedToken?.symbol;
       rows.push({
         id: `sailbal-${s.id}`,
         category: "leverage",
         marketLabel,
         detail: "Sail token · marks",
+        iconSymbol:
+          levSymFromMarks ||
+          iconSymbolFromMarketLabel(marketLabel),
+        statusTone: "neutral",
+        statusLabel: "Marks",
         usd: s.balanceUSD,
         href: "/sail",
       });

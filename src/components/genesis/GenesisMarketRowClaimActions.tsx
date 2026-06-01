@@ -3,23 +3,29 @@
 import { memo } from "react";
 import { MarketMaintenanceTag } from "@/components/MarketMaintenanceTag";
 import {
+  INDEX_CLAIM_BUTTON_CLASS_COMPACT,
+  INDEX_CLAIM_BUTTON_CLASS_DESKTOP,
+  INDEX_CLAIM_BUTTON_CLASS_RESPONSIVE,
   INDEX_MANAGE_BUTTON_CLASS_COMPACT,
   INDEX_MANAGE_BUTTON_CLASS_DESKTOP,
+  INDEX_MANAGE_BUTTON_CLASS_RESPONSIVE,
 } from "@/utils/indexPageManageButton";
 
-const claimButtonClassCompact =
-  "px-3 py-1.5 text-[10px] font-medium bg-[#1E4775] text-white hover:bg-[#17395F] disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors rounded-md whitespace-nowrap";
+const claimButtonClassCompact = INDEX_CLAIM_BUTTON_CLASS_COMPACT;
 
-const claimButtonClassDesktop =
-  "px-4 py-2 text-xs font-medium bg-[#1E4775] text-white hover:bg-[#17395F] disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors rounded-md whitespace-nowrap";
+const claimButtonClassDesktop = INDEX_CLAIM_BUTTON_CLASS_DESKTOP;
+
+const claimButtonClassResponsive = INDEX_CLAIM_BUTTON_CLASS_RESPONSIVE;
 
 const manageButtonClassCompact = INDEX_MANAGE_BUTTON_CLASS_COMPACT;
 
 const manageButtonClassDesktop = INDEX_MANAGE_BUTTON_CLASS_DESKTOP;
 
+const manageButtonClassResponsive = INDEX_MANAGE_BUTTON_CLASS_RESPONSIVE;
+
 export type GenesisMarketRowClaimActionsProps = {
-  /** Small buttons (mobile + md + completed grid) vs larger desktop table column */
-  variant: "compact" | "desktop";
+  /** compact = mobile/md; desktop = lg active rows; responsive = md+ archived/completed grids */
+  variant: "compact" | "desktop" | "responsive";
   isEnded: boolean;
   showMaintenanceTag: boolean;
   hasClaimable: boolean;
@@ -32,6 +38,8 @@ export type GenesisMarketRowClaimActionsProps = {
   onManage: () => void;
   /** Desktop manage uses `!genesisAddress`; compact manage is never disabled */
   manageDisabled?: boolean;
+  /** Primary action label when not ended (default Manage; archived rows use Withdraw). */
+  manageButtonLabel?: "Manage" | "Withdraw";
 };
 
 /**
@@ -49,11 +57,20 @@ export const GenesisMarketRowClaimActions = memo(function GenesisMarketRowClaimA
   onClaim,
   onManage,
   manageDisabled = false,
+  manageButtonLabel = "Manage",
 }: GenesisMarketRowClaimActionsProps) {
   const claimBtn =
-    variant === "desktop" ? claimButtonClassDesktop : claimButtonClassCompact;
+    variant === "desktop"
+      ? claimButtonClassDesktop
+      : variant === "responsive"
+        ? claimButtonClassResponsive
+        : claimButtonClassCompact;
   const manageBtn =
-    variant === "desktop" ? manageButtonClassDesktop : manageButtonClassCompact;
+    variant === "desktop"
+      ? manageButtonClassDesktop
+      : variant === "responsive"
+        ? manageButtonClassResponsive
+        : manageButtonClassCompact;
 
   if (isEnded) {
     if (showMaintenanceTag) {
@@ -101,7 +118,7 @@ export const GenesisMarketRowClaimActions = memo(function GenesisMarketRowClaimA
       disabled={manageDisabled}
       className={manageBtn}
     >
-      Manage
+      {manageButtonLabel}
     </button>
   );
 });

@@ -1455,6 +1455,19 @@ export function isGenesisActive(market: Market | undefined) {
   return status.phase === "live";
 }
 
+/**
+ * True when genesis is in the user-facing "Genesis Open" window (not scheduled,
+ * processing, or completed). Used for Active Campaign toolbar badges.
+ */
+export function isGenesisOpenForActiveCampaign(
+  market: Market | undefined,
+  onChainGenesisEnded: boolean
+): boolean {
+  if (!market) return false;
+  if (isGenesisSoonUi(market) || isGenesisCompletedUi(market)) return false;
+  return getGenesisStatus(market, onChainGenesisEnded, false).phase === "live";
+}
+
 export function getPrimaryRewardToken(market: Market) {
   return (market as { rewardToken?: unknown }).rewardToken;
 }

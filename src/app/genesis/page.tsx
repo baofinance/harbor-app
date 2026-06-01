@@ -1,12 +1,7 @@
 "use client";
 
 import React, { useMemo, useState, useEffect, useCallback } from "react";
-import {
-  useAccount,
-  useChainId,
-  useContractRead,
-  useSwitchChain,
-} from "wagmi";
+import { useAccount, useChainId, useContractRead, useSwitchChain } from "wagmi";
 import { formatEther } from "viem";
 import { useQueryClient } from "@tanstack/react-query";
 import { GenesisManageModal } from "@/components/GenesisManageModal";
@@ -98,7 +93,7 @@ export default function GenesisIndexPage() {
     async (
       marketId: string,
       market: GenesisMarketConfig,
-      initialTab: "deposit" | "withdraw" = "deposit"
+      initialTab: "deposit" | "withdraw" = "deposit",
     ) => {
       const resolvedTab =
         isMarketArchived(market) && initialTab === "deposit"
@@ -110,7 +105,7 @@ export default function GenesisIndexPage() {
         initialTab: resolvedTab,
       });
     },
-    [openManageModalBase]
+    [openManageModalBase],
   );
 
   // Prevent hydration mismatch by only rendering dynamic content after mount
@@ -160,7 +155,7 @@ export default function GenesisIndexPage() {
   } = useGenesisContractReads(
     genesisMarkets as Array<[string, GenesisMarketConfig]>,
     isConnected,
-    address
+    address,
   );
 
   const onGenesisManageSuccess = useGenesisManageRefetch({
@@ -173,7 +168,7 @@ export default function GenesisIndexPage() {
   // Calculate completed markets grouped by campaign (after reads is defined)
   const completedByCampaign = useMemo(() => {
     const completedMarkets: Array<[string, any, any]> = [];
-    
+
     genesisMarkets.forEach(([id, mkt]) => {
       const mi = genesisMarkets.findIndex((m) => m[0] === id);
       const baseOffset = mi * (isConnected ? 3 : 1);
@@ -189,7 +184,7 @@ export default function GenesisIndexPage() {
           data?: { userHarborMarks?: unknown };
         }) =>
           marks.genesisAddress?.toLowerCase() ===
-          (mkt as GenesisMarketConfig).addresses?.genesis?.toLowerCase()
+          (mkt as GenesisMarketConfig).addresses?.genesis?.toLowerCase(),
       );
       const userMarksData = marksForMarket?.data?.userHarborMarks;
       const marks = Array.isArray(userMarksData)
@@ -200,7 +195,7 @@ export default function GenesisIndexPage() {
       const isEnded =
         contractSaysEnded !== undefined
           ? contractSaysEnded
-          : subgraphSaysEnded ?? false;
+          : (subgraphSaysEnded ?? false);
 
       if (isEnded && !isMarketArchived(mkt)) {
         completedMarkets.push([id, mkt, marks]);
@@ -211,8 +206,9 @@ export default function GenesisIndexPage() {
     const grouped = new Map<string, Array<[string, any, any]>>();
     completedMarkets.forEach(([id, mkt, marks]) => {
       // Use campaign from market config, fallback to subgraph, then "Other"
-      const marketConfig = (mkt as GenesisMarketConfig);
-      const campaignLabel = marketConfig?.marksCampaign?.label || marks?.campaignLabel || "Other";
+      const marketConfig = mkt as GenesisMarketConfig;
+      const campaignLabel =
+        marketConfig?.marksCampaign?.label || marks?.campaignLabel || "Other";
       if (!grouped.has(campaignLabel)) {
         grouped.set(campaignLabel, []);
       }
@@ -236,7 +232,8 @@ export default function GenesisIndexPage() {
   const marketTokenPriceInputs = useMemo(() => {
     return genesisMarkets.map(([id, mkt]) => ({
       marketId: id,
-      minterAddress: (mkt as GenesisMarketConfig).addresses?.minter as `0x${string}`,
+      minterAddress: (mkt as GenesisMarketConfig).addresses
+        ?.minter as `0x${string}`,
       pegTarget: (mkt as GenesisMarketConfig).pegTarget || "USD",
     }));
   }, [genesisMarkets]);
@@ -245,7 +242,7 @@ export default function GenesisIndexPage() {
 
   const buildShareMessage = (
     marketName: string,
-    peggedSymbolNoPrefix: string
+    peggedSymbolNoPrefix: string,
   ) => {
     return `The ${marketName} market is live on @0xharborfi — Maiden voyage 2.0. Become a shareholder: ${peggedSymbolNoPrefix} and leveraged ${marketName} at harborfinance.io\n\n$TIDE airdrop and ledger marks for early Harbor liquidity.`;
   };
@@ -261,11 +258,11 @@ export default function GenesisIndexPage() {
     async (
       marketId: string,
       market: GenesisMarketConfig,
-      initialTab: "deposit" | "withdraw" = "deposit"
+      initialTab: "deposit" | "withdraw" = "deposit",
     ) => {
       await openManageModal({ marketId, market, initialTab });
     },
-    [openManageModal]
+    [openManageModal],
   );
 
   // Fetch collateral price oracles using the dedicated hook
@@ -273,7 +270,9 @@ export default function GenesisIndexPage() {
   const collateralOracleAddresses = useMemo(() => {
     return genesisMarkets.map(
       ([_, mkt]) =>
-        (mkt as GenesisMarketConfig).addresses?.collateralPrice as `0x${string}` | undefined
+        (mkt as GenesisMarketConfig).addresses?.collateralPrice as
+          | `0x${string}`
+          | undefined,
     );
   }, [genesisMarkets]);
 
@@ -293,7 +292,9 @@ export default function GenesisIndexPage() {
       .filter((id): id is string => !!id);
     // Add steth as fallback for wstETH markets
     const hasWstETH = genesisMarkets.some(
-      ([_, mkt]) => (mkt as GenesisMarketConfig)?.collateral?.symbol?.toLowerCase() === "wsteth"
+      ([_, mkt]) =>
+        (mkt as GenesisMarketConfig)?.collateral?.symbol?.toLowerCase() ===
+        "wsteth",
     );
     if (hasWstETH && !ids.includes("lido-staked-ethereum-steth")) {
       ids.push("lido-staked-ethereum-steth");
@@ -454,7 +455,8 @@ export default function GenesisIndexPage() {
   }, [activeMarkets, chainFilterSelected]);
 
   const displayedCompletedByCampaign = useMemo(() => {
-    if (chainFilterSelected.includes(FILTER_NONE_SENTINEL)) return new Map<string, Array<[string, any, any]>>();
+    if (chainFilterSelected.includes(FILTER_NONE_SENTINEL))
+      return new Map<string, Array<[string, any, any]>>();
     if (chainFilterSelected.length === 0) return completedByCampaign;
     const next = new Map<string, Array<[string, any, any]>>();
     completedByCampaign.forEach((markets, campaign) => {
@@ -471,32 +473,35 @@ export default function GenesisIndexPage() {
     if (chainFilterSelected.includes(FILTER_NONE_SENTINEL)) return [];
     if (chainFilterSelected.length === 0) return entries;
     return entries.filter(([, m]) => {
-      const chainName = (m as { chain?: { name?: string } }).chain?.name || "Ethereum";
+      const chainName =
+        (m as { chain?: { name?: string } }).chain?.name || "Ethereum";
       return chainFilterSelected.includes(chainName);
     });
   };
 
-  const filterGenesisTriples = <T, U,>(entries: Array<[string, T, U]>) => {
+  const filterGenesisTriples = <T, U>(entries: Array<[string, T, U]>) => {
     if (chainFilterSelected.includes(FILTER_NONE_SENTINEL)) return [];
     if (chainFilterSelected.length === 0) return entries;
     return entries.filter(([, m]) => {
-      const chainName = (m as { chain?: { name?: string } }).chain?.name || "Ethereum";
+      const chainName =
+        (m as { chain?: { name?: string } }).chain?.name || "Ethereum";
       return chainFilterSelected.includes(chainName);
     });
   };
 
   const displayedArchivedLiveMarkets = useMemo(
     () => filterGenesisPairs(archivedLiveMarkets),
-    [archivedLiveMarkets, chainFilterSelected]
+    [archivedLiveMarkets, chainFilterSelected],
   );
 
   const displayedArchivedCompletedMarkets = useMemo(
     () => filterGenesisTriples(archivedCompletedMarkets),
-    [archivedCompletedMarkets, chainFilterSelected]
+    [archivedCompletedMarkets, chainFilterSelected],
   );
 
   const archivedGenesisCount =
-    displayedArchivedLiveMarkets.length + displayedArchivedCompletedMarkets.length;
+    displayedArchivedLiveMarkets.length +
+    displayedArchivedCompletedMarkets.length;
 
   const activeGenesisTvlUsd = useMemo(() => {
     if (!totalDepositsReads || !collateralPricesMap) return 0;
@@ -506,12 +511,13 @@ export default function GenesisIndexPage() {
     genesisMarkets.forEach(([id, mkt], marketIndex) => {
       if (!activeIds.has(id)) return;
       if (!genesisParticipatesInMaidenVoyageTotals(mkt)) return;
-      const totalDeposits = totalDepositsReads?.[marketIndex]?.result as bigint | undefined;
+      const totalDeposits = totalDepositsReads?.[marketIndex]?.result as
+        | bigint
+        | undefined;
       if (!totalDeposits || totalDeposits <= 0n) return;
 
-      const oracleAddress = (mkt as GenesisMarketConfig).addresses?.collateralPrice as
-        | `0x${string}`
-        | undefined;
+      const oracleAddress = (mkt as GenesisMarketConfig).addresses
+        ?.collateralPrice as `0x${string}` | undefined;
       if (!oracleAddress) return;
       const priceData = collateralPricesMap.get(oracleAddress.toLowerCase());
       const collateralPriceUsd = priceData?.priceUSD || 0;
@@ -535,9 +541,8 @@ export default function GenesisIndexPage() {
       const userDeposit = reads?.[baseOffset + 1]?.result as bigint | undefined;
       if (!userDeposit || userDeposit <= 0n) return;
 
-      const oracleAddress = (mkt as GenesisMarketConfig).addresses?.collateralPrice as
-        | `0x${string}`
-        | undefined;
+      const oracleAddress = (mkt as GenesisMarketConfig).addresses
+        ?.collateralPrice as `0x${string}` | undefined;
       if (!oracleAddress) return;
       const priceData = collateralPricesMap.get(oracleAddress.toLowerCase());
       const collateralPriceUsd = priceData?.priceUSD || 0;
@@ -572,7 +577,9 @@ export default function GenesisIndexPage() {
               isLoadingMarks={isLoadingMarks}
               mounted={mounted}
               combinedHasIndexerErrors={combinedHasIndexerErrors}
-              combinedMarketsWithIndexerErrors={combinedMarketsWithIndexerErrors}
+              combinedMarketsWithIndexerErrors={
+                combinedMarketsWithIndexerErrors
+              }
               combinedHasAnyErrors={combinedHasAnyErrors}
               combinedMarketsWithOtherErrors={combinedMarketsWithOtherErrors}
               hasOraclePricingError={hasOraclePricingError}
@@ -711,7 +718,7 @@ export default function GenesisIndexPage() {
             ? () =>
                 openShareIntent(
                   shareModal.marketName || "Market",
-                  shareModal.peggedSymbol || "token"
+                  shareModal.peggedSymbol || "token",
                 )
             : undefined
         }

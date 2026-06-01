@@ -2,10 +2,7 @@
 
 import Image from "next/image";
 import SimpleTooltip from "@/components/SimpleTooltip";
-import {
-  MarketArchivedBadge,
-  WithdrawOnlyTag,
-} from "@/components/MarketMaintenanceTag";
+import { MarketArchivedBadge } from "@/components/MarketMaintenanceTag";
 import type { CollateralPriceData } from "@/hooks/useCollateralPrice";
 import { getLogoPath } from "@/components/shared";
 import { GenesisMarketRowClaimActions } from "./GenesisMarketRowClaimActions";
@@ -17,6 +14,8 @@ import {
 import {
   GENESIS_COMPLETED_DESKTOP_ROW_GRID_CLASS,
   GENESIS_COMPLETED_HEADER_INNER_GRID_CLASS,
+  GENESIS_TABLE_HEADER_SHELL_CLASS,
+  GENESIS_TABLE_ROW_SHELL_CLASS,
 } from "./genesisActiveTableStyles";
 import type { GenesisMarketConfig } from "@/types/genesisMarket";
 import { formatUSD, formatToken } from "@/utils/formatters";
@@ -130,28 +129,27 @@ function ArchivedGenesisRow({
   const sailTokenPriceUSD = collateralPriceUSD;
 
   return (
-    <div
-      key={id}
-      className="bg-white py-2.5 px-2 rounded-md border border-white/10"
-    >
+    <div key={id} className={GENESIS_TABLE_ROW_SHELL_CLASS}>
       <div className={GENESIS_COMPLETED_DESKTOP_ROW_GRID_CLASS}>
         <GenesisMarketChainCell
           chainName={mkt.chain?.name || "Ethereum"}
           chainLogo={mkt.chain?.logo || "icons/eth.png"}
           size={20}
         />
-        <div className="flex items-center gap-2 min-w-0 pl-4 flex-wrap">
-          <div className="text-[#1E4775] font-medium text-sm flex items-center gap-1.5 flex-wrap">
+        <div className="flex min-w-0 items-center gap-1.5 overflow-hidden pl-4">
+          <span className="truncate text-sm font-medium text-[#1E4775]">
             {displayMarketName}
-            <MarketArchivedBadge compact />
-            {!isEnded ? <WithdrawOnlyTag /> : null}
-          </div>
-          <GenesisMarketCollateralEquationStrip
-            collateralSymbol={collateralSymbol}
-            peggedSymbol={rowPeggedSymbol}
-            leveragedSymbol={rowLeveragedSymbol}
-            iconSize={20}
-          />
+          </span>
+          <MarketArchivedBadge compact />
+          <span className="hidden shrink-0 text-xs text-[#1E4775]/60 xl:inline">:</span>
+          <span className="hidden shrink-0 xl:inline-flex">
+            <GenesisMarketCollateralEquationStrip
+              collateralSymbol={collateralSymbol}
+              peggedSymbol={rowPeggedSymbol}
+              leveragedSymbol={rowLeveragedSymbol}
+              iconSize={20}
+            />
+          </span>
         </div>
 
         <div className="flex items-center justify-center gap-1.5 min-w-0">
@@ -218,13 +216,14 @@ function ArchivedGenesisRow({
 
         <div className="flex-shrink-0 flex items-center justify-center text-center">
           <GenesisMarketRowClaimActions
-            variant="compact"
+            variant="responsive"
             isEnded={isEnded}
             showMaintenanceTag={false}
             hasClaimable={hasClaimable}
             genesisAddress={genesisAddress}
             walletAddress={address}
             isClaimingThisMarket={claimingMarket === id}
+            manageButtonLabel="Withdraw"
             onClaim={() =>
               onClaim({
                 marketId: id,
@@ -283,7 +282,7 @@ export function GenesisArchivedMarketsSection({
 
       {showSection ? (
         <div className="space-y-2">
-          <div className="hidden md:block bg-white py-1.5 px-2 overflow-x-auto mb-0 rounded-md">
+          <div className={GENESIS_TABLE_HEADER_SHELL_CLASS}>
             <div className={GENESIS_COMPLETED_HEADER_INNER_GRID_CLASS}>
               <div className="min-w-0" aria-label="Network" />
               <div className="min-w-0 text-center">Market</div>
