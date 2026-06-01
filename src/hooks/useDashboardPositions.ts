@@ -100,6 +100,86 @@ const DASHBOARD_MV_MARKS_FIELDS = `
   genesisEnded
 `;
 
+const MV_MARKS_FALLBACK_CHUNK_SIZE = 4;
+
+function isSubgraphRateLimitMessage(text: string): boolean {
+  return /too many/i.test(text) || /\b429\b/.test(text);
+}
+
+function subgraphHttpErrorMessage(status: number, body: string): string {
+  if (status === 429 || isSubgraphRateLimitMessage(body)) {
+    return "Harbor Marks subgraph rate limit — wait a moment and refresh.";
+  }
+  const snippet = body.trim().slice(0, 120);
+  return `Harbor Marks subgraph HTTP ${status}${snippet ? `: ${snippet}` : ""}`;
+}
+
+async function readMarksSubgraphJson<T>(res: Response): Promise<T> {
+  const text = await res.text();
+  if (!res.ok) {
+    throw new Error(subgraphHttpErrorMessage(res.status, text));
+  }
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    if (isSubgraphRateLimitMessage(text)) {
+      throw new Error("Harbor Marks subgraph rate limit — wait a moment and refresh.");
+    }
+    throw new Error(
+      `Harbor Marks subgraph returned invalid JSON: ${text.trim().slice(0, 80)}`
+    );
+  }
+}
+
+async function fetchOneDashboardMvMark(
+  graphUrl: string,
+  id: string
+): Promise<MvMarkRow | null> {
+  try {
+    const r = await fetch(graphUrl, {
+      method: "POST",
+      headers: getGraphHeaders(graphUrl),
+      body: JSON.stringify({
+        query: `
+          query DashboardMvOne($id: ID!) {
+            userHarborMarks(id: $id) {
+              ${DASHBOARD_MV_MARKS_FIELDS}
+            }
+          }
+        `,
+        variables: { id },
+      }),
+    });
+    const j = await readMarksSubgraphJson<{
+      errors?: Array<{ message?: string }>;
+      data?: { userHarborMarks?: MvMarkRow | null };
+    }>(r);
+    if (j.errors?.length) return null;
+    const m = j.data?.userHarborMarks;
+    return m?.id ? m : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Fallback when batch `id_in` is unsupported — chunked to avoid rate limits. */
+async function fetchDashboardMvMarksIndividually(
+  graphUrl: string,
+  ids: string[]
+): Promise<MvMarkRow[]> {
+  const rows: MvMarkRow[] = [];
+  for (let i = 0; i < ids.length; i += MV_MARKS_FALLBACK_CHUNK_SIZE) {
+    const chunk = ids.slice(i, i + MV_MARKS_FALLBACK_CHUNK_SIZE);
+    const chunkRows = await Promise.all(
+      chunk.map((id) => fetchOneDashboardMvMark(graphUrl, id))
+    );
+    for (const row of chunkRows) {
+      if (row) rows.push(row);
+    }
+  }
+  return rows;
+}
+
 async function fetchDashboardMvMarks(graphUrl: string, ids: string[]): Promise<MvMarkRow[]> {
   const uniqueIds = [...new Set(ids.filter(Boolean))];
   if (uniqueIds.length === 0) return [];
@@ -118,44 +198,17 @@ async function fetchDashboardMvMarks(graphUrl: string, ids: string[]): Promise<M
       variables: { ids: uniqueIds },
     }),
   });
-  const batchJson = (await batchRes.json()) as {
+  const batchJson = await readMarksSubgraphJson<{
     errors?: Array<{ message?: string }>;
     data?: { userHarborMarks?: MvMarkRow[] };
-  };
+  }>(batchRes);
 
   if (batchJson.errors?.length) {
     const errMsg = batchJson.errors.map((e) => e.message).filter(Boolean).join("; ");
     if (!isUserHarborMarksIdInUnsupportedError(errMsg)) {
       throw new Error(errMsg || "Graph error");
     }
-
-    const rows: MvMarkRow[] = [];
-    await Promise.all(
-      uniqueIds.map(async (id) => {
-        const r = await fetch(graphUrl, {
-          method: "POST",
-          headers: getGraphHeaders(graphUrl),
-          body: JSON.stringify({
-            query: `
-              query DashboardMvOne($id: ID!) {
-                userHarborMarks(id: $id) {
-                  ${DASHBOARD_MV_MARKS_FIELDS}
-                }
-              }
-            `,
-            variables: { id },
-          }),
-        });
-        const j = (await r.json()) as {
-          errors?: Array<{ message?: string }>;
-          data?: { userHarborMarks?: MvMarkRow | null };
-        };
-        if (j.errors?.length) return;
-        const m = j.data?.userHarborMarks;
-        if (m?.id) rows.push(m);
-      })
-    );
-    return rows;
+    return fetchDashboardMvMarksIndividually(graphUrl, uniqueIds);
   }
 
   return batchJson.data?.userHarborMarks ?? [];
@@ -209,8 +262,13 @@ export function useDashboardPositions() {
     },
     enabled: isConnected && !!address && mvIds.length > 0,
     refetchInterval: 60_000,
-    staleTime: 15_000,
-    retry: 1,
+    staleTime: 30_000,
+    retry: (failureCount, error) => {
+      const msg = error instanceof Error ? error.message : String(error);
+      if (isSubgraphRateLimitMessage(msg)) return failureCount < 2;
+      return failureCount < 1;
+    },
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 8000),
   });
 
   const sailGraphUrl = getSailPriceGraphUrlOptional();
@@ -232,10 +290,10 @@ export function useDashboardPositions() {
           variables: { userAddress: userLower },
         }),
       });
-      const json = (await res.json()) as {
+      const json = await readMarksSubgraphJson<{
         errors?: Array<{ message?: string }>;
         data?: { userSailPositions?: Array<Record<string, unknown>> };
-      };
+      }>(res);
       if (json.errors?.length) {
         throw new Error(json.errors.map((e) => e.message).join("; ") || "Sail graph error");
       }

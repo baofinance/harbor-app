@@ -28,7 +28,7 @@ export const markets = {
     anchorActive: true,
     sailActive: true,
     status: "genesis" as const,
-    genesisActive: true as GenesisActiveSetting,
+    genesisActive: "completed" as GenesisActiveSetting,
     pegTarget: "ETH", // haETH is pegged to ETH
     zapper: true,
     anyswap: true,
@@ -119,7 +119,7 @@ export const markets = {
     anchorActive: true,
     sailActive: true,
     status: "genesis" as const,
-    genesisActive: true as GenesisActiveSetting,
+    genesisActive: "completed" as GenesisActiveSetting,
     pegTarget: "BTC", // haBTC is pegged to BTC
     zapper: true,
     anyswap: true,
@@ -210,7 +210,7 @@ export const markets = {
     anchorActive: true,
     sailActive: true,
     status: "genesis" as const,
-    genesisActive: true as GenesisActiveSetting,
+    genesisActive: "completed" as GenesisActiveSetting,
     pegTarget: "BTC", // haBTC is pegged to BTC
     chain: {
       name: "Ethereum",
@@ -954,7 +954,7 @@ export const markets = {
           sailActive: "soon" as const,
           test: false,
           status: "genesis" as const,
-          genesisActive: "soon" as GenesisActiveSetting,
+          genesisActive: true as GenesisActiveSetting,
           pegTarget: "USD",
           chainId: 1,
           zapper: false,

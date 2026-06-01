@@ -17,21 +17,28 @@ Do not duplicate long explanations across READMEs — link here instead.
 
 ---
 
-## 2. Layout regions (Genesis index)
+## 2. Layout regions (Genesis index — Maiden Voyage 2.0 landing)
 
-Order in [`src/app/genesis/page.tsx`](../src/app/genesis/page.tsx):
+Order in [`src/app/genesis/page.tsx`](../src/app/genesis/page.tsx) (Maiden Voyage 2.0 — Phase 3 landing):
 
-| Region | Component | UI+ | UI− |
-|--------|-----------|-----|-----|
-| Title | `GenesisPageTitleSection` | Yes | Yes |
-| Divider | — | After title in UI− only | — |
-| Intro cards | `GenesisHeroIntroCards` | Yes | No |
-| Campaign / marks stats | `GenesisCampaignStats` | Yes | No |
-| Toolbar + sections | `GenesisMarketsSections` (+ toolbar props) | Yes | Yes |
-| Market rows | Inline in `page.tsx` (large) | Yes | Yes |
-| Completed campaigns | Same page | Yes | Yes |
+| Region | Component |
+|--------|-----------|
+| Hero | `GenesisCampaignHero` |
+| Error banners (when needed) | `GenesisErrorBanner` |
+| Active voyage | `GenesisActiveVoyageCard` (`steth-usd`) |
+| Lifecycle (4 steps) | `GenesisMaidenVoyageLifecycle` |
+| Confidence strip | `GenesisVoyageConfidenceSignals` (from [`maidenVoyageConfidenceStats.ts`](../src/utils/maidenVoyageConfidenceStats.ts)) |
+| Revenue + yield rules | `GenesisRevenueShareSection`, `GenesisYieldShareRulesCard` |
+| FAQ | `GenesisMaidenVoyageFaq` |
+| Completed launch voyages | `GenesisFeaturedCompletedVoyages` |
+| Other / archived voyages (collapsed) | `GenesisOtherVoyagesSection` |
+| Footer notice | `GenesisVoyageFooterNotice` |
 
-**Full hero** (`GenesisPageHero` / `GenesisHeaderSummary`) = title + intro cards for reuse elsewhere; the index composes title + cards separately for UI−.
+Featured market IDs live in [`src/config/maidenVoyageFeatured.ts`](../src/config/maidenVoyageFeatured.ts). Static education copy lives in [`src/config/maidenVoyageEducation.ts`](../src/config/maidenVoyageEducation.ts).
+
+**Legacy components** (`GenesisPageTitleSection`, `GenesisHeroIntroCards`, `GenesisHowItWorksSteps`, `GenesisMarketsSections`, `GenesisActiveMarketsSection`, toolbar, coming-next) remain in the repo for reference or detail routes but are not composed on the index after Phase 3.
+
+**Full hero** (`GenesisPageHero` / `GenesisHeaderSummary`) = older title + intro cards bundle; prefer `GenesisCampaignHero` on the index; use `GenesisMaidenVoyageLifecycle` below the active card for the 4-step flow.
 
 ---
 
