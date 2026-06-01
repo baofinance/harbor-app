@@ -7,7 +7,12 @@ import {
 } from "@/utils/activeVoyageStatus";
 import type { GenesisVoyageCapDisplay } from "@/utils/genesisVoyageCapDisplay";
 import { formatUSD } from "@/utils/formatters";
-import { GenesisVoyageProgressMilestones } from "./GenesisVoyageProgressMilestones";
+import {
+  MV_PROGRESS_FILL,
+  MV_PROGRESS_FILL_COMPLETE,
+  MV_PROGRESS_TRACK,
+  MV_SECTION_LABEL,
+} from "./maidenVoyageLayoutStyles";
 
 function stripLabel(symbol: string): string {
   const s = symbol.trim();
@@ -36,7 +41,7 @@ export function GenesisActiveVoyageMetrics({
   if (isLoading) {
     return (
       <div
-        className="h-28 animate-pulse rounded-xl bg-[#1E4775]/8"
+        className="h-28 animate-pulse rounded-xl bg-white/10"
         aria-label="Loading capacity"
       />
     );
@@ -44,54 +49,33 @@ export function GenesisActiveVoyageMetrics({
 
   if (isUnavailable || !capDisplay) {
     return (
-      <p className="text-sm text-[#1E4775]/60">Capacity data unavailable</p>
+      <p className="text-sm text-white/50">Capacity data unavailable</p>
     );
   }
 
   const { filledPct, capFilled } = capDisplay;
   const progressWidth = `${Math.min(100, Math.max(0, filledPct))}%`;
 
-  const remainingPrimary = capDisplay.useTokenCap
-    ? `${formatRemainingToken(capDisplay.remaining)} ${stripLabel(capDisplay.collateralSymbol)}`
-    : formatUSD(capDisplay.remainingUsd);
+  const currentLabel = capDisplay.useTokenCap
+    ? `${capDisplay.capCurrent.toFixed(2)} / ${capDisplay.capTotal.toFixed(0)} ${stripLabel(capDisplay.collateralSymbol)}`
+    : `${formatUSD(capDisplay.capCurrentUsd)} / ${formatUSD(capDisplay.capTotalUsd)}`;
 
-  const depositedSecondary = capDisplay.useTokenCap
-    ? `${capDisplay.capCurrent.toFixed(2)} / ${capDisplay.capTotal.toFixed(0)} ${stripLabel(capDisplay.collateralSymbol)} deposited`
-    : `${formatUSD(capDisplay.capCurrentUsd)} / ${formatUSD(capDisplay.capTotalUsd)} deposited`;
+  const remainingLabel = capDisplay.useTokenCap
+    ? `${formatRemainingToken(capDisplay.remaining)} ${stripLabel(capDisplay.collateralSymbol)} remaining`
+    : `${formatUSD(capDisplay.remainingUsd)} remaining`;
 
   const zeroState = getActiveVoyageZeroStateCopy(voyageStatus, filledPct);
   const sourceLabel = getCapDataSourceLabel(capDisplay, isLoading, isUnavailable);
 
   return (
     <div className="min-w-0">
-      <p className="text-xs font-semibold uppercase tracking-wide text-[#1E4775]/55">
-        Remaining capacity
-      </p>
-      <p className="mt-0.5 font-mono text-4xl font-bold tabular-nums tracking-tight text-[#1E4775] sm:text-5xl">
-        {remainingPrimary}
-        <span className="ml-2 text-lg font-semibold text-[#1E4775]/50 sm:text-xl">
-          remaining
-        </span>
-      </p>
-
-      <p className="mt-2 font-mono text-xl font-semibold tabular-nums text-[#1E4775]/85">
+      <p className={MV_SECTION_LABEL}>Capacity progress</p>
+      <p className="mt-1 font-mono text-4xl font-bold tabular-nums tracking-tight text-[#FF8A7A] sm:text-5xl">
         {filledPct.toFixed(0)}% filled
       </p>
 
-      <p className="mt-1 text-xs text-[#1E4775]/60">{depositedSecondary}</p>
-
-      {zeroState ? (
-        <div className="mt-2 space-y-0.5 text-xs leading-snug">
-          <p className="text-[#4A9784]/90">
-            {zeroState.line1}{" "}
-            <span className="text-[#1E4775]/55">{zeroState.line2}</span>
-          </p>
-          <p className="text-[#1E4775]/55">{zeroState.line3}</p>
-        </div>
-      ) : null}
-
       <div
-        className="mt-3 h-3 overflow-hidden rounded-full border border-[#B8EBD5]/50 bg-[#1E4775]/10"
+        className={`mt-3 ${MV_PROGRESS_TRACK}`}
         role="progressbar"
         aria-valuenow={Math.round(filledPct)}
         aria-valuemin={0}
@@ -99,22 +83,30 @@ export function GenesisActiveVoyageMetrics({
         aria-label="Deposit cap progress"
       >
         <div
-          className={`h-full rounded-full transition-[width] ${
-            capFilled ? "bg-[#9AA5B8]" : "bg-[#4A9784]"
-          }`}
+          className={capFilled ? MV_PROGRESS_FILL_COMPLETE : MV_PROGRESS_FILL}
           style={{ width: progressWidth }}
         />
       </div>
 
-      <GenesisVoyageProgressMilestones
-        filledPct={filledPct}
-        capFilled={capFilled}
-      />
+      <div className="mt-2 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 text-xs">
+        <span className="font-mono tabular-nums text-white/55">{currentLabel}</span>
+        <span className="font-mono font-semibold tabular-nums text-[#FF8A7A]/90">
+          {remainingLabel.toUpperCase()}
+        </span>
+      </div>
+
+      {zeroState ? (
+        <div className="mt-2 space-y-0.5 text-xs leading-snug">
+          <p className="text-[#4A9784]/90">
+            {zeroState.line1}{" "}
+            <span className="text-white/50">{zeroState.line2}</span>
+          </p>
+          <p className="text-white/45">{zeroState.line3}</p>
+        </div>
+      ) : null}
 
       {sourceLabel ? (
-        <p className="mt-2 text-center text-[11px] text-[#1E4775]/45 sm:text-left">
-          {sourceLabel}
-        </p>
+        <p className="mt-2 text-[11px] text-white/35">{sourceLabel}</p>
       ) : null}
     </div>
   );

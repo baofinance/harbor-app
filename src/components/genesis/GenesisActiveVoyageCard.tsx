@@ -1,8 +1,7 @@
 "use client";
 
-import { ArrowDownIcon } from "@heroicons/react/24/outline";
+import { ArrowRightIcon, ClockIcon } from "@heroicons/react/24/outline";
 import { TokenLogo } from "@/components/shared";
-import { HARBOR_GENESIS_PRIMARY_CTA_CLASS } from "@/components/market-cards/harborBasicMarketTokens";
 import {
   getFeaturedVoyageNumber,
   getGenesisMarketTypeLabel,
@@ -17,6 +16,11 @@ import type { GenesisVoyageCapDisplay } from "@/utils/genesisVoyageCapDisplay";
 import { GenesisActiveVoyageMetrics } from "./GenesisActiveVoyageMetrics";
 import { GenesisVoyageBenefits } from "./GenesisVoyageBenefits";
 import { GenesisVoyageStatusBadge } from "./GenesisVoyageStatusBadge";
+import {
+  MV_CARD_SHELL,
+  MV_PRIMARY_CTA,
+  MV_TYPE_TAG,
+} from "./maidenVoyageLayoutStyles";
 
 const STRIP_ICON_PX = 36;
 
@@ -81,85 +85,81 @@ export function GenesisActiveVoyageCard({
 
   return (
     <section
-      className="mb-8 overflow-hidden rounded-2xl border border-[#1E4775]/15 bg-gradient-to-b from-[#FAFCFF] via-white to-[#F4F8FC] shadow-[0_12px_40px_-24px_rgba(30,71,117,0.35)]"
+      className={`${MV_CARD_SHELL} overflow-hidden`}
       aria-label="Active maiden voyage"
     >
-      <div className="border-b border-[#1E4775]/10 px-4 py-4 sm:px-6 sm:py-5">
-        <div className="flex flex-wrap items-center gap-2">
-          <GenesisVoyageStatusBadge status={voyageStatus} />
-          <span className="text-xs font-semibold uppercase tracking-wide text-[#1E4775]/70">
-            Maiden Voyage #{voyageNumber}
-          </span>
-          <span className="rounded-full border border-[#1E4775]/15 bg-[#1E4775]/8 px-2.5 py-0.5 text-[11px] font-semibold text-[#1E4775]/80">
-            {marketTypeLabel}
-          </span>
+      <div className="border-b border-white/10 px-4 py-4 sm:px-6 sm:py-5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <GenesisVoyageStatusBadge status={voyageStatus} />
+            <span className="text-sm font-semibold text-white/90">
+              Maiden Voyage #{voyageNumber}
+            </span>
+          </div>
+          <span className={MV_TYPE_TAG}>{marketTypeLabel}</span>
         </div>
 
-        <div className="mt-4 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div
-            className="flex items-center justify-center gap-2 sm:gap-3 lg:shrink-0"
-            aria-label={`${stripLabel(collateralSymbol)} to ${stripLabel(peggedSymbol)} and ${stripLabel(leveragedSymbol)}`}
-          >
-            <div className="flex flex-col items-center gap-1">
-              <TokenLogo symbol={collateralSymbol} size={STRIP_ICON_PX} />
-              <span className="font-mono text-[10px] font-semibold text-[#1E4775]/70">
-                {stripLabel(collateralSymbol)}
-              </span>
-            </div>
-            <ArrowDownIcon className="h-5 w-5 shrink-0 text-[#1E4775]/40" aria-hidden />
-            <div className="flex flex-col items-center gap-1">
-              <TokenLogo symbol={peggedSymbol} size={STRIP_ICON_PX} />
-              <span className="font-mono text-[10px] font-semibold text-[#1E4775]/70">
-                {stripLabel(peggedSymbol)}
-              </span>
-            </div>
-            <span className="text-lg font-light text-[#1E4775]/50">+</span>
-            <div className="flex flex-col items-center gap-1">
-              <TokenLogo symbol={leveragedSymbol} size={STRIP_ICON_PX} />
-              <span className="font-mono text-[10px] font-semibold text-[#1E4775]/70">
-                {stripLabel(leveragedSymbol)}
-              </span>
-            </div>
+        <div
+          className="mt-4 flex flex-wrap items-center justify-center gap-2 sm:gap-3"
+          aria-label={`${stripLabel(collateralSymbol)} to ${stripLabel(peggedSymbol)} and ${stripLabel(leveragedSymbol)}`}
+        >
+          <div className="flex items-center gap-1.5">
+            <TokenLogo symbol={collateralSymbol} size={STRIP_ICON_PX} />
+            <span className="font-mono text-xs font-semibold text-white/80">
+              {stripLabel(collateralSymbol)}
+            </span>
           </div>
+          <ArrowRightIcon className="h-4 w-4 shrink-0 text-white/40" aria-hidden />
+          <div className="flex items-center gap-1.5">
+            <TokenLogo symbol={peggedSymbol} size={STRIP_ICON_PX} />
+            <span className="font-mono text-xs font-semibold text-white/80">
+              {stripLabel(peggedSymbol)}
+            </span>
+          </div>
+          <span className="text-sm font-light text-white/40">+</span>
+          <div className="flex items-center gap-1.5">
+            <TokenLogo symbol={leveragedSymbol} size={STRIP_ICON_PX} />
+            <span className="font-mono text-xs font-semibold text-white/80">
+              {stripLabel(leveragedSymbol)}
+            </span>
+          </div>
+        </div>
 
-          <div className="min-w-0 flex-1 lg:max-w-lg">
-            <GenesisActiveVoyageMetrics
-              capDisplay={capDisplay}
-              isLoading={capLoading}
-              isUnavailable={capUnavailable}
-              voyageStatus={voyageStatus}
-            />
-          </div>
+        <div className="mt-5">
+          <GenesisActiveVoyageMetrics
+            capDisplay={capDisplay}
+            isLoading={capLoading}
+            isUnavailable={capUnavailable}
+            voyageStatus={voyageStatus}
+          />
         </div>
       </div>
 
       <div className="px-4 py-4 sm:px-6 sm:py-5">
         {userDepositDisplay ? (
-          <p className="mb-3 text-sm text-[#1E4775]/70">
+          <p className="mb-3 text-sm text-white/60">
             Your deposit:{" "}
-            <span className="font-semibold text-[#1E4775]">
+            <span className="font-semibold text-white/90">
               {userDepositDisplay}
             </span>
           </p>
         ) : null}
 
-        <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <button
-            type="button"
-            className={`${HARBOR_GENESIS_PRIMARY_CTA_CLASS} min-h-[44px] w-full sm:w-auto sm:min-w-[220px]`}
-            disabled={cta.disabled}
-            onClick={handleCtaClick}
-          >
-            {cta.action === "claim" && isClaiming
-              ? "Claiming..."
-              : cta.label}
-          </button>
-          {footnote ? (
-            <p className="text-center text-xs text-[#1E4775]/55 sm:text-left">
-              {footnote}
-            </p>
-          ) : null}
-        </div>
+        <button
+          type="button"
+          className={`${MV_PRIMARY_CTA} min-h-[44px]`}
+          disabled={cta.disabled}
+          onClick={handleCtaClick}
+        >
+          {cta.action === "claim" && isClaiming ? "Claiming..." : cta.label}
+        </button>
+
+        {footnote ? (
+          <p className="mt-2 flex items-center justify-center gap-1.5 text-center text-xs text-white/45">
+            <ClockIcon className="h-3.5 w-3.5 shrink-0" aria-hidden />
+            {footnote}
+          </p>
+        ) : null}
 
         <GenesisVoyageBenefits />
       </div>

@@ -9,20 +9,21 @@ import { GenesisErrorBanner } from "@/components/GenesisErrorBanner";
 import { useMultipleCollateralPrices } from "@/hooks/useCollateralPrice";
 import { useSortedGenesisMarkets } from "@/hooks/useSortedGenesisMarkets";
 import {
-  GenesisActiveVoyageCard,
-  GenesisCampaignHero,
   GenesisClaimProgressModal,
   GenesisFeaturedCompletedVoyages,
   GenesisMaidenVoyageComingSoon,
   GenesisMaidenVoyageFaq,
+  GenesisMaidenVoyageHeroRow,
   GenesisMaidenVoyageLifecycle,
+  GenesisMaidenVoyagePageHeader,
+  GenesisMaidenVoyageStatsBar,
   GenesisOtherVoyagesSection,
   GenesisRevenueShareSection,
-  GenesisVoyageConfidenceSignals,
   GenesisVoyageFooterNotice,
   GenesisYieldShareRulesCard,
 } from "@/components/genesis";
 import { computeMaidenVoyageConfidenceStats } from "@/utils/maidenVoyageConfidenceStats";
+import { computeMaidenVoyageStatsBarData } from "@/utils/maidenVoyageStatsBar";
 import type { GenesisMarketConfig } from "@/types/genesisMarket";
 import { useGenesisClaimMarket } from "@/hooks/useGenesisClaimMarket";
 import { useGenesisPageData } from "@/hooks/useGenesisPageData";
@@ -398,6 +399,16 @@ export default function GenesisIndexPage() {
     ],
   );
 
+  const statsBarData = useMemo(
+    () =>
+      computeMaidenVoyageStatsBarData({
+        confidenceStats,
+        activeDepositsUsd:
+          activeMarketData?.capDisplay?.capCurrentUsd ?? null,
+      }),
+    [confidenceStats, activeMarketData?.capDisplay?.capCurrentUsd],
+  );
+
   const buildShareMessage = (
     marketName: string,
     peggedSymbolNoPrefix: string,
@@ -419,7 +430,7 @@ export default function GenesisIndexPage() {
   return (
     <div className="relative mx-auto flex min-h-0 w-full max-w-[1300px] flex-1 flex-col font-sans text-white">
       <main className="container mx-auto px-4 pb-6 pt-2 sm:px-10 sm:pt-4">
-        <GenesisCampaignHero />
+        <GenesisMaidenVoyagePageHeader />
 
         {combinedHasIndexerErrors ? (
           <GenesisErrorBanner
@@ -455,46 +466,41 @@ export default function GenesisIndexPage() {
           </div>
         ) : null}
 
-        {activeMarketData ? (
-          <GenesisActiveVoyageCard
-            market={activeMarketData.mkt}
-            marketId={activeMarketData.marketId}
-            capDisplay={activeMarketData.capDisplay}
-            capLoading={activeMarketData.capLoading}
-            capUnavailable={activeMarketData.capUnavailable}
-            voyageStatus={activeMarketData.voyageStatus}
-            userDepositDisplay={activeMarketData.userDepositDisplay}
-            isConnected={isConnected}
-            isClaiming={claimingMarket === activeMarketData.marketId}
-            onDeposit={() =>
-              void handleOpenManageModal(
-                activeMarketData.marketId,
-                activeMarketData.mkt,
-                "deposit",
-              )
-            }
-            onClaim={() =>
-              void claimMarket({
-                marketId: activeMarketData.marketId,
-                genesisAddress: activeMarketData.genesisAddress,
-                displayMarketName: activeMarketData.displayMarketName,
-                peggedSymbolForShare: activeMarketData.peggedNoPrefix,
-              })
-            }
-          />
-        ) : null}
+        <GenesisMaidenVoyageHeroRow
+          yieldRevSharePct={
+            activeMarketData?.capDisplay?.yieldRevSharePct ?? null
+          }
+          activeCard={
+            activeMarketData
+              ? {
+                  market: activeMarketData.mkt,
+                  marketId: activeMarketData.marketId,
+                  capDisplay: activeMarketData.capDisplay,
+                  capLoading: activeMarketData.capLoading,
+                  capUnavailable: activeMarketData.capUnavailable,
+                  voyageStatus: activeMarketData.voyageStatus,
+                  userDepositDisplay: activeMarketData.userDepositDisplay,
+                  isConnected,
+                  isClaiming: claimingMarket === activeMarketData.marketId,
+                  onDeposit: () =>
+                    void handleOpenManageModal(
+                      activeMarketData.marketId,
+                      activeMarketData.mkt,
+                      "deposit",
+                    ),
+                  onClaim: () =>
+                    void claimMarket({
+                      marketId: activeMarketData.marketId,
+                      genesisAddress: activeMarketData.genesisAddress,
+                      displayMarketName: activeMarketData.displayMarketName,
+                      peggedSymbolForShare: activeMarketData.peggedNoPrefix,
+                    }),
+                }
+              : null
+          }
+        />
 
-        <GenesisMaidenVoyageLifecycle />
-        <GenesisVoyageConfidenceSignals stats={confidenceStats} />
-        <div className="mb-8 grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <GenesisRevenueShareSection />
-          <GenesisYieldShareRulesCard
-            yieldRevSharePct={
-              activeMarketData?.capDisplay?.yieldRevSharePct ?? null
-            }
-          />
-        </div>
-        <GenesisMaidenVoyageFaq />
+        <GenesisMaidenVoyageStatsBar stats={statsBarData} />
 
         <GenesisFeaturedCompletedVoyages
           genesisMarkets={genesisMarkets as Array<[string, GenesisMarketConfig]>}
@@ -528,6 +534,22 @@ export default function GenesisIndexPage() {
         />
 
         <GenesisVoyageFooterNotice />
+
+        <section className="mt-10 border-t border-white/10 pt-8" aria-label="Learn more">
+          <h2 className="mb-6 text-xs font-medium uppercase tracking-wider text-white/50">
+            Learn more
+          </h2>
+          <GenesisMaidenVoyageLifecycle />
+          <div className="mb-8 grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <GenesisRevenueShareSection />
+            <GenesisYieldShareRulesCard
+              yieldRevSharePct={
+                activeMarketData?.capDisplay?.yieldRevSharePct ?? null
+              }
+            />
+          </div>
+          <GenesisMaidenVoyageFaq />
+        </section>
       </main>
 
       {manageModal ? (

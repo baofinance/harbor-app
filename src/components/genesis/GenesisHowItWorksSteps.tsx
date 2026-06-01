@@ -5,52 +5,55 @@ import {
   BanknotesIcon,
   SparklesIcon,
 } from "@heroicons/react/24/outline";
-import {
-  INDEX_HERO_INTRO_BODY_CLASS,
-  INDEX_HERO_INTRO_CARD_CLASS,
-  INDEX_HERO_INTRO_CARD_RING_ACCENT_CLASS,
-  INDEX_HERO_INTRO_ICON_CLASS,
-  INDEX_HERO_INTRO_TITLE_CLASS,
-} from "@/components/shared/indexMarketsToolbarStyles";
 
 const STEPS = [
   {
+    step: 1,
     icon: BanknotesIcon,
     title: "Deposit",
     body: "Add assets while capacity lasts.",
-    accent: false,
   },
   {
+    step: 2,
     icon: SparklesIcon,
     title: "Launch",
     body: "Market launches when the cap is reached.",
-    accent: true,
   },
   {
+    step: 3,
     icon: ArrowPathIcon,
     title: "Claim & Earn",
     body: "Claim Anchor + Sail tokens and earn revenue share forever.",
-    accent: false,
   },
 ] as const;
 
 export function GenesisHowItWorksSteps() {
   return (
-    <div className="mb-6 grid grid-cols-1 gap-2 sm:grid-cols-3">
-      {STEPS.map(({ icon: Icon, title, body, accent }) => (
-        <div
-          key={title}
-          className={`${INDEX_HERO_INTRO_CARD_CLASS} ${
-            accent ? INDEX_HERO_INTRO_CARD_RING_ACCENT_CLASS : ""
-          }`}
-        >
-          <div className="mb-1 flex items-center justify-center gap-2">
-            <Icon className={INDEX_HERO_INTRO_ICON_CLASS} />
-            <h2 className={INDEX_HERO_INTRO_TITLE_CLASS}>{title}</h2>
+    <ol className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-2">
+      {STEPS.map(({ step, icon: Icon, title, body }, index) => (
+        <li key={title} className="flex min-w-0 flex-1 items-start gap-2 sm:flex-col sm:items-center sm:text-center">
+          {index > 0 ? (
+            <span
+              className="hidden shrink-0 self-center text-lg text-white/25 sm:inline"
+              aria-hidden
+            >
+              →
+            </span>
+          ) : null}
+          <div className="flex min-w-0 flex-1 items-start gap-3 sm:flex-col sm:items-center">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#FF8A7A]/35 bg-[#FF8A7A]/10 font-mono text-xs font-bold text-[#FFE8E2]">
+              {step}
+            </span>
+            <div className="min-w-0 flex-1 sm:flex-none">
+              <div className="flex items-center gap-1.5 sm:justify-center">
+                <Icon className="h-4 w-4 shrink-0 text-[#FF8A7A]/80" aria-hidden />
+                <h2 className="text-sm font-semibold text-white/90">{title}</h2>
+              </div>
+              <p className="mt-1 text-xs leading-relaxed text-white/50">{body}</p>
+            </div>
           </div>
-          <p className={INDEX_HERO_INTRO_BODY_CLASS}>{body}</p>
-        </div>
+        </li>
       ))}
-    </div>
+    </ol>
   );
 }

@@ -2,37 +2,38 @@
 
 import type { ActiveVoyageStatus } from "@/utils/activeVoyageStatus";
 import { getActiveVoyageStatusLabel } from "@/utils/activeVoyageStatus";
+import { MV_LIVE_BADGE } from "./maidenVoyageLayoutStyles";
 
 const STATUS_STYLES: Record<
   ActiveVoyageStatus,
-  { wrapper: string; dot?: boolean; pulse?: boolean }
+  { wrapper: string; dot?: boolean; pulse?: boolean; label?: string }
 > = {
   deposits_open: {
-    wrapper:
-      "border-[#4A9784]/40 bg-[#4A9784]/15 text-[#2d6b5c]",
+    wrapper: MV_LIVE_BADGE,
     dot: true,
     pulse: true,
+    label: "Live",
   },
   almost_full: {
-    wrapper:
-      "border-[#E8A84B]/40 bg-[#FFF4E3]/80 text-[#8a5a12]",
+    wrapper: MV_LIVE_BADGE,
     dot: true,
+    label: "Live",
   },
   opening_soon: {
-    wrapper: "border-[#1E4775]/20 bg-[#1E4775]/8 text-[#1E4775]/70",
+    wrapper: "border-white/20 bg-white/5 text-white/60",
   },
   capacity_reached: {
-    wrapper: "border-[#9AA5B8]/40 bg-[#9AA5B8]/15 text-[#5a6270]",
+    wrapper: "border-[#9AA5B8]/40 bg-[#9AA5B8]/15 text-white/70",
   },
   preparing_launch: {
-    wrapper: "border-[#1E4775]/25 bg-[#1E4775]/10 text-[#1E4775]/75",
+    wrapper: "border-white/20 bg-white/8 text-white/75",
   },
   launch_complete: {
-    wrapper: "border-[#1E4775]/20 bg-[#1E4775]/8 text-[#1E4775]/65",
+    wrapper: "border-white/15 bg-white/5 text-white/60",
   },
   claim_available: {
     wrapper:
-      "border-[#FF8A7A]/40 bg-[#FF8A7A]/15 text-[#a84335]",
+      "border-[#FF8A7A]/40 bg-[#FF8A7A]/15 text-[#FFE8E2]",
     dot: true,
   },
 };
@@ -43,7 +44,7 @@ export type GenesisVoyageStatusBadgeProps = {
 
 export function GenesisVoyageStatusBadge({ status }: GenesisVoyageStatusBadgeProps) {
   const style = STATUS_STYLES[status];
-  const label = getActiveVoyageStatusLabel(status);
+  const label = style.label ?? getActiveVoyageStatusLabel(status);
 
   return (
     <span

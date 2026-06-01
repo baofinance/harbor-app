@@ -1,6 +1,8 @@
 "use client";
 
+import { useCallback } from "react";
 import { formatEther } from "viem";
+import { CheckCircleIcon, ChevronDownIcon } from "@heroicons/react/24/outline";
 import {
   FEATURED_COMPLETED_MARKET_IDS,
   getGenesisMarketTypeLabel,
@@ -18,6 +20,7 @@ import { GenesisMarketRowClaimActions } from "./GenesisMarketRowClaimActions";
 import { GenesisMarketCollateralEquationStrip } from "./GenesisMarketSharedRowCells";
 import { readContractRowResult } from "./readContractRow";
 import type { GenesisClaimMarketArgs } from "./GenesisCompletedMarketsSection";
+import { MV_CARD_SHELL, MV_COMPLETED_PILL, MV_TYPE_TAG } from "./maidenVoyageLayoutStyles";
 
 export type GenesisFeaturedCompletedVoyagesProps = {
   genesisMarkets: Array<[string, GenesisMarketConfig]>;
@@ -47,15 +50,15 @@ function resolveDisplayName(mkt: GenesisMarketConfig): string {
   return formatGenesisMarketDisplayName(raw);
 }
 
-function resolveStatusLabel(
-  contractEnded: boolean,
-  hasClaimable: boolean,
-  mkt: GenesisMarketConfig,
-): string {
-  if (contractEnded && hasClaimable) return "Claim available";
-  if (contractEnded) return "Launched";
-  if (isGenesisCompletedUi(mkt)) return "Completed";
-  return "Processing";
+function formatLaunchDate(endDate?: string): string | null {
+  if (!endDate) return null;
+  const parsed = new Date(endDate);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(parsed);
 }
 
 export function GenesisFeaturedCompletedVoyages({
@@ -77,14 +80,40 @@ export function GenesisFeaturedCompletedVoyages({
     return entry ? ([id, entry[1]] as [string, GenesisMarketConfig]) : null;
   }).filter((row): row is [string, GenesisMarketConfig] => row != null);
 
+  const scrollToList = useCallback(() => {
+    document.getElementById("maiden-voyage-completed-list")?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  }, []);
+
   if (rows.length === 0) return null;
 
   return (
-    <section className="mb-8" aria-label="Completed voyages">
-      <h2 className="mb-3 text-xs font-medium uppercase tracking-wider text-white/50">
-        Completed voyages
-      </h2>
-      <div className="space-y-2">
+    <section
+      id="maiden-voyage-completed"
+      className="mb-8 scroll-mt-24"
+      aria-label="Completed voyages"
+    >
+      <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-semibold text-white/90">
+            Completed Voyages
+          </h2>
+          <p className="mt-1 text-sm text-white/50">
+            These markets have launched. Claims remain available.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={scrollToList}
+          className="text-xs font-semibold text-[#FF8A7A]/90 hover:text-[#ffb4a8]"
+        >
+          View all ({rows.length})
+        </button>
+      </div>
+
+      <div id="maiden-voyage-completed-list" className="space-y-2">
         {rows.map(([id, mkt]) => {
           const mi = genesisMarkets.findIndex((m) => m[0] === id);
           const baseOffset = mi * (isConnected ? 3 : 1);
@@ -133,44 +162,68 @@ export function GenesisFeaturedCompletedVoyages({
             peggedSymbol.toLowerCase().startsWith("ha")
               ? peggedSymbol.slice(2)
               : peggedSymbol;
-          const statusLabel = resolveStatusLabel(
-            contractEnded,
-            hasClaimable,
-            mkt,
-          );
-          const depositsLabel =
-            totalDepositsUsd > 0
-              ? `${formatUSD(totalDepositsUsd)} total deposits`
-              : "No deposits recorded";
+          const launchDateLabel = formatLaunchDate(mkt.genesis?.endDate);
+          const showCompletedPill =
+            contractEnded || isGenesisCompletedUi(mkt);
 
           return (
             <div
               key={id}
-              className="flex flex-col gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+              className={`${MV_CARD_SHELL} grid grid-cols-1 gap-3 px-4 py-3 md:grid-cols-[minmax(0,1.4fr)_auto_auto_auto_auto] md:items-center md:gap-4`}
             >
-              <div className="min-w-0 flex-1">
+              <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-medium text-white/90">
                     {displayMarketName}
                   </span>
-                  <span className="rounded-full border border-white/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white/50">
+                  <span className={MV_TYPE_TAG}>
                     {getGenesisMarketTypeLabel(mkt.pegTarget)}
                   </span>
-                  <span className="text-[10px] font-semibold uppercase tracking-wide text-white/40">
-                    {statusLabel}
-                  </span>
                 </div>
-                <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                <div className="mt-1.5">
                   <GenesisMarketCollateralEquationStrip
                     collateralSymbol={collateralSymbol}
                     peggedSymbol={peggedSymbol}
                     leveragedSymbol={leveragedSymbol}
                     iconSize={18}
                   />
-                  <span className="text-xs text-white/45">{depositsLabel}</span>
                 </div>
               </div>
-              <div className="flex shrink-0 justify-end">
+
+              <div className="md:text-right">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-white/40">
+                  Total Deposits
+                </p>
+                <p className="font-mono text-sm font-semibold tabular-nums text-white/85">
+                  {totalDepositsUsd > 0
+                    ? formatUSD(totalDepositsUsd)
+                    : "—"}
+                </p>
+              </div>
+
+              {launchDateLabel ? (
+                <div className="md:text-right">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-white/40">
+                    Launched
+                  </p>
+                  <p className="text-sm font-medium text-[#4A9784]">
+                    {launchDateLabel}
+                  </p>
+                </div>
+              ) : (
+                <div className="hidden md:block" aria-hidden />
+              )}
+
+              <div className="flex items-center md:justify-end">
+                {showCompletedPill ? (
+                  <span className={MV_COMPLETED_PILL}>
+                    <CheckCircleIcon className="h-3.5 w-3.5" aria-hidden />
+                    Completed
+                  </span>
+                ) : null}
+              </div>
+
+              <div className="flex shrink-0 items-center justify-between gap-2 md:justify-end">
                 <GenesisMarketRowClaimActions
                   variant="responsive"
                   isEnded={isEnded}
@@ -189,6 +242,10 @@ export function GenesisFeaturedCompletedVoyages({
                   }
                   onManage={() => onManage(id, mkt, "withdraw")}
                   manageButtonLabel="Manage"
+                />
+                <ChevronDownIcon
+                  className="hidden h-4 w-4 text-white/30 md:block"
+                  aria-hidden
                 />
               </div>
             </div>
