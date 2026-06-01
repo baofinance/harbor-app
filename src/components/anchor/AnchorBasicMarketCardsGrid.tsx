@@ -23,13 +23,13 @@ import {
   harborChainsFromMarkets,
   harborMarketChainKey,
 } from "@/components/market-cards/HarborBasicMarketNetworkFooter";
+import { HarborBasicMarketStatusRow } from "@/components/market-cards/HarborBasicMarketStatusRow";
+import { formatCompactUSD } from "@/utils/anchor";
 import {
   BASIC_MARKET_APR_MONO_CLASS,
   BASIC_MARKET_CARD_SHELL_CLASS,
   BASIC_MARKET_CARDS_GRID_CLASS,
-  BASIC_MARKET_COMING_SOON_CHIP_CLASS,
   BASIC_MARKET_COMING_SOON_CONTENT_DIM_CLASS,
-  BASIC_MARKET_COMING_SOON_NEUTRAL_DOT_CLASS,
   BASIC_MARKET_COMING_SOON_VEIL_CLASS,
   BASIC_MARKET_DIRECTION_LONG_DOT_CLASS,
   BASIC_MARKET_FEATURE_BODY_CLASS,
@@ -388,6 +388,25 @@ function AnchorBasicMarketCard({
 
   const selectedIsSoon = isAnchorSoonUi(selectedMarket);
 
+  const groupDepositSummary = useMemo(() => {
+    let usd = 0;
+    let hasPoolDeposit = false;
+    for (const { marketId } of marketList) {
+      const md = marketsData.find((d) => d.marketId === marketId);
+      if (!md) continue;
+      usd += md.collateralPoolDepositUSD + md.sailPoolDepositUSD;
+      if (md.collateralPoolDeposit > 0n || md.sailPoolDeposit > 0n) {
+        hasPoolDeposit = true;
+      }
+    }
+    return { usd, hasPoolDeposit };
+  }, [marketList, marketsData]);
+
+  const positionBadgeLabel =
+    groupDepositSummary.usd > 0
+      ? `Your deposit · ${formatCompactUSD(groupDepositSummary.usd)}`
+      : "Your deposit";
+
   const handleStartEarning = () => {
     if (
       !isConnected ||
@@ -434,20 +453,20 @@ function AnchorBasicMarketCard({
 
         <div className={CARD_STATUS_SLOT}>
           {selectedIsSoon ? (
-            <span className={BASIC_MARKET_COMING_SOON_CHIP_CLASS}>
-              <span className={BASIC_MARKET_COMING_SOON_NEUTRAL_DOT_CLASS} />
-              <span>Coming soon</span>
-            </span>
+            <HarborBasicMarketStatusRow variant="coming-soon" />
           ) : (
-            <span className="inline-flex items-center gap-1.5">
-              <span
-                className="h-2 w-2 shrink-0 rounded-full bg-[#4A9784] shadow-[0_0_0_3px_rgba(74,151,132,0.22)]"
-                aria-hidden
-              />
-              <span className="text-xs font-semibold uppercase tracking-wide text-[#4A9784]">
-                Market active
-              </span>
-            </span>
+            <HarborBasicMarketStatusRow
+              variant={
+                isConnected && groupDepositSummary.hasPoolDeposit
+                  ? "deposit"
+                  : "no-deposit"
+              }
+              label={
+                groupDepositSummary.hasPoolDeposit
+                  ? positionBadgeLabel
+                  : undefined
+              }
+            />
           )}
         </div>
       </div>
@@ -579,10 +598,7 @@ function AnchorBasicComingSoonCard({ symbol }: { symbol: string }) {
           <YieldRailSingleEthStatic />
         </div>
         <div className={CARD_STATUS_SLOT}>
-          <span className={BASIC_MARKET_COMING_SOON_CHIP_CLASS}>
-            <span className={BASIC_MARKET_COMING_SOON_NEUTRAL_DOT_CLASS} />
-            <span>Coming soon</span>
-          </span>
+          <HarborBasicMarketStatusRow variant="coming-soon" />
         </div>
       </div>
 

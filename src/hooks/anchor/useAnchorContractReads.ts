@@ -1,5 +1,6 @@
 import { useMemo } from "react";
-import { useAccount, useContractReads } from "wagmi";
+import { useContractReads } from "wagmi";
+import { useHarborAccount } from "@/hooks/useHarborAccount";
 import type { AnchorContractReads, AnchorMarketTuple } from "@/types/anchor";
 import type { DefinedMarket } from "@/config/markets";
 import { POLLING_INTERVALS } from "@/config/polling";
@@ -25,7 +26,7 @@ export function useAnchorContractReads(
   options?: { enabled?: boolean }
 ) {
   const enabledOverride = options?.enabled ?? true;
-  const { address } = useAccount();
+  const { address } = useHarborAccount();
 
   // Build all contract reads for all markets
   const allMarketContracts = useMemo(() => {

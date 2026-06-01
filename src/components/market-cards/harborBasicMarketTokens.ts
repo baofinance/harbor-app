@@ -70,11 +70,25 @@ export const BASIC_MARKET_DIRECTION_LONG_DOT_CLASS =
 export const BASIC_MARKET_DIRECTION_SHORT_DOT_CLASS =
   "h-2 w-2 rounded-full bg-[#FF8A7A] shadow-[0_0_0_3px_rgba(255,138,122,0.22)]";
 
-/** Match active “Market active” row height in basic cards (Anchor + Sail grids). */
+/** Match active status row height in basic cards (Anchor + Sail grids). */
 export const BASIC_MARKET_COMING_SOON_CHIP_CLASS =
   "flex w-full items-center justify-center gap-2 rounded-xl bg-[#f1f5f9] px-3 py-1 text-xs font-semibold uppercase tracking-wide text-[#64748b] ring-1 ring-[#1E4775]/10 leading-none";
 export const BASIC_MARKET_COMING_SOON_NEUTRAL_DOT_CLASS =
   "h-2 w-2 rounded-full bg-[#94a3b8] shadow-[0_0_0_3px_rgba(148,163,184,0.22)]";
+
+/** Dot + label row (replaces “Market active” / green deposit pill). */
+export const BASIC_MARKET_STATUS_ROW_CLASS =
+  "inline-flex items-center gap-1.5";
+/** Deposit / active market — seafoam (same as former “Market active”). */
+export const BASIC_MARKET_STATUS_DEPOSIT_DOT_CLASS =
+  "h-2 w-2 shrink-0 rounded-full bg-[#4A9784] shadow-[0_0_0_3px_rgba(74,151,132,0.22)]";
+export const BASIC_MARKET_STATUS_DEPOSIT_TEXT_CLASS =
+  "text-xs font-semibold uppercase tracking-wide text-[#4A9784]";
+/** Live market, no user deposit — pearl slate on white (pairs with coming-soon chip greys). */
+export const BASIC_MARKET_STATUS_NEUTRAL_DOT_CLASS =
+  "h-2 w-2 shrink-0 rounded-full bg-[#94a3b8] shadow-[0_0_0_3px_rgba(148,163,184,0.22)]";
+export const BASIC_MARKET_STATUS_NEUTRAL_TEXT_CLASS =
+  "text-xs font-semibold uppercase tracking-wide text-[#64748b]";
 
 /** Primary CTA: Nautical Blue (all basic market primary buttons). */
 export const HARBOR_PRIMARY_CTA_CLASS =

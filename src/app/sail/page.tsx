@@ -216,6 +216,8 @@ export default function SailPage() {
                   minterConfigByMarketId={minterConfigByMarketId}
                   isConnected={isConnected}
                   onExploreMarket={handleManageMarketOpen}
+                  userDepositMap={userDepositMap}
+                  tokenPricesByMarket={tokenPricesByMarket}
                 />
               ) : (
                 <>

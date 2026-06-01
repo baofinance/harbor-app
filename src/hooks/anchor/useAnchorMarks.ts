@@ -3,7 +3,7 @@ import type { AnchorContractReads, AnchorMarketTuple } from "@/types/anchor";
 import { useAnchorLedgerMarks } from "@/hooks/useAnchorLedgerMarks";
 import { DEBUG_ANCHOR } from "@/config/debug";
 import { useGenesisMarks } from "@/hooks/useGenesisMarks";
-import { useAccount } from "wagmi";
+import { useHarborAccount } from "@/hooks/useHarborAccount";
 
 /**
  * Hook to calculate anchor marks (total marks and marks per day)
@@ -18,7 +18,7 @@ export function useAnchorMarks(
   allMarketContracts: any[] | undefined,
   reads: AnchorContractReads
 ) {
-  const { address } = useAccount();
+  const { address } = useHarborAccount();
 
   // Fetch anchor ledger marks with real-time estimation (ha tokens + stability pools only, excluding sail tokens)
   const {

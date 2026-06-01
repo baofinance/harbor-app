@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { useAccount } from "wagmi";
+import { useHarborAccount } from "@/hooks/useHarborAccount";
 import { useMemo } from "react";
 import { getGraphUrl, getGraphHeaders, getSailPriceGraphUrlOptional } from "@/config/graph";
 import { useAnchorLedgerMarks } from "@/hooks/useAnchorLedgerMarks";
@@ -144,7 +144,7 @@ async function fetchDashboardMvMarks(graphUrl: string, ids: string[]): Promise<M
 }
 
 export function useDashboardPositions() {
-  const { address, isConnected } = useAccount();
+  const { address, isConnected } = useHarborAccount();
   const userLower = address?.toLowerCase() ?? "";
 
   const index = useMemo(() => buildDashboardAddressIndex(), []);

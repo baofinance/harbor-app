@@ -1,4 +1,5 @@
-import { useAccount, usePublicClient } from "wagmi";
+import { usePublicClient } from "wagmi";
+import { useHarborAccount } from "@/hooks/useHarborAccount";
 import { useQuery } from "@tanstack/react-query";
 import { STABILITY_POOL_ABI } from "@/abis/shared";
 import { redactForLog } from "@/utils/redactUrl";
@@ -16,7 +17,7 @@ export interface WithdrawalRequest {
 }
 
 export function useWithdrawalRequests(poolAddresses: `0x${string}`[]) {
-  const { address } = useAccount();
+  const { address } = useHarborAccount();
   const publicClient = usePublicClient();
 
   return useQuery({

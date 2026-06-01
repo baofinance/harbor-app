@@ -11,6 +11,8 @@ import {
 } from "@/components/market-cards/HarborBasicMarketNetworkFooter";
 import { SailBasicMarketCard } from "./SailBasicMarketCard";
 import { getLongSide, getShortSide } from "@/utils/marketSideLabels";
+import { formatCompactUSD } from "@/utils/anchor";
+import { formatToken } from "@/utils/formatters";
 
 export type SailBasicMarketCardsGridProps = {
   activeMarkets: Array<[string, DefinedMarket]>;
@@ -20,6 +22,11 @@ export type SailBasicMarketCardsGridProps = {
   minterConfigByMarketId: Map<string, unknown>;
   isConnected: boolean;
   onExploreMarket: (marketId: string, m: DefinedMarket) => void;
+  userDepositMap: Map<number, bigint | undefined>;
+  tokenPricesByMarket: Record<
+    string,
+    { leveragedPriceUSD?: number } | undefined
+  >;
 };
 
 type SailCardRow = {
@@ -27,6 +34,8 @@ type SailCardRow = {
   market: DefinedMarket;
   model: ReturnType<typeof buildSailMarketCardModel>;
   isComingSoon: boolean;
+  userDeposit?: bigint;
+  positionLabel?: string;
 };
 
 function isValidContractAddress(addr: unknown): boolean {
@@ -35,17 +44,47 @@ function isValidContractAddress(addr: unknown): boolean {
   );
 }
 
+function buildPositionLabel(
+  market: DefinedMarket,
+  userDeposit: bigint | undefined,
+  leveragedPriceUSD: number | undefined
+): { hasPosition: boolean; label?: string } {
+  if (!userDeposit || userDeposit === 0n) {
+    return { hasPosition: false };
+  }
+  const sym = market.leveragedToken?.symbol ?? "Sail";
+  const amount = Number(formatToken(userDeposit, 18, 4));
+  const usd =
+    leveragedPriceUSD && leveragedPriceUSD > 0
+      ? amount * leveragedPriceUSD
+      : 0;
+  const label =
+    usd > 0
+      ? `Your position · ${formatCompactUSD(usd)}`
+      : `Your position · ${amount} ${sym}`;
+  return { hasPosition: true, label };
+}
+
 function buildRows(
   activeMarkets: SailBasicMarketCardsGridProps["activeMarkets"],
   sailMarketIdToIndex: Map<string, number>,
   marketOffsets: Map<number, number>,
   reads: SailContractReads,
-  minterConfigByMarketId: Map<string, unknown>
+  minterConfigByMarketId: Map<string, unknown>,
+  userDepositMap: Map<number, bigint | undefined>,
+  tokenPricesByMarket: SailBasicMarketCardsGridProps["tokenPricesByMarket"]
 ): SailCardRow[] {
   return activeMarkets.flatMap(([id, m]) => {
     const globalIndex = sailMarketIdToIndex.get(id);
     if (globalIndex === undefined) return [];
     const baseOffset = marketOffsets.get(globalIndex) ?? 0;
+    const userDeposit = userDepositMap.get(globalIndex);
+    const leveragedPriceUSD = tokenPricesByMarket[id]?.leveragedPriceUSD;
+    const { hasPosition, label: positionLabel } = buildPositionLabel(
+      m,
+      userDeposit,
+      leveragedPriceUSD
+    );
 
     const priceOracle = m.addresses?.collateralPrice;
     const leveragedTokenAddress = m.addresses?.leveragedToken;
@@ -73,6 +112,8 @@ function buildRows(
             collateralSymbol: m.collateral?.symbol || "",
           },
           isComingSoon: true,
+          userDeposit,
+          positionLabel,
         },
       ];
     }
@@ -86,7 +127,16 @@ function buildRows(
       minterConfigByMarketId.get(id)
     );
 
-    return [{ id, market: m, model, isComingSoon: false }];
+    return [
+      {
+        id,
+        market: m,
+        model,
+        isComingSoon: false,
+        userDeposit,
+        positionLabel,
+      },
+    ];
   });
 }
 
@@ -95,11 +145,13 @@ function SailBasicMarketCardGroup({
   entries,
   isConnected,
   onExploreMarket,
+  tokenPricesByMarket,
 }: {
   hsSymbol: string;
   entries: SailCardRow[];
   isConnected: boolean;
   onExploreMarket: (marketId: string, m: DefinedMarket) => void;
+  tokenPricesByMarket: SailBasicMarketCardsGridProps["tokenPricesByMarket"];
 }) {
   const chains = useMemo(
     () => harborChainsFromMarkets(entries.map((e) => e.market)),
@@ -136,6 +188,23 @@ function SailBasicMarketCardGroup({
 
   if (!selected) return null;
 
+  const groupPositionLabel = useMemo(() => {
+    let usd = 0;
+    let hasPosition = false;
+    for (const entry of entries) {
+      if (!entry.userDeposit || entry.userDeposit === 0n) continue;
+      hasPosition = true;
+      const price = tokenPricesByMarket[entry.id]?.leveragedPriceUSD ?? 0;
+      if (price > 0) {
+        usd += (Number(entry.userDeposit) / 1e18) * price;
+      }
+    }
+    if (!hasPosition) return undefined;
+    return usd > 0
+      ? `Your position · ${formatCompactUSD(usd)}`
+      : "Your position";
+  }, [entries, tokenPricesByMarket]);
+
   return (
     <SailBasicMarketCard
       key={hsSymbol}
@@ -145,6 +214,7 @@ function SailBasicMarketCardGroup({
       isConnected={isConnected}
       onExploreMarket={onExploreMarket}
       isComingSoon={selected.isComingSoon}
+      positionLabel={groupPositionLabel}
       networkChains={chains}
       selectedChainKey={isMultichain ? selectedChainKey : undefined}
       onChainSelect={isMultichain ? handleChainSelect : undefined}
@@ -160,6 +230,8 @@ export function SailBasicMarketCardsGrid({
   minterConfigByMarketId,
   isConnected,
   onExploreMarket,
+  userDepositMap,
+  tokenPricesByMarket,
 }: SailBasicMarketCardsGridProps) {
   const rows = useMemo(
     () =>
@@ -168,7 +240,9 @@ export function SailBasicMarketCardsGrid({
         sailMarketIdToIndex,
         marketOffsets,
         reads,
-        minterConfigByMarketId
+        minterConfigByMarketId,
+        userDepositMap,
+        tokenPricesByMarket
       ),
     [
       activeMarkets,
@@ -176,6 +250,8 @@ export function SailBasicMarketCardsGrid({
       marketOffsets,
       reads,
       minterConfigByMarketId,
+      userDepositMap,
+      tokenPricesByMarket,
     ]
   );
 
@@ -206,6 +282,7 @@ export function SailBasicMarketCardsGrid({
             isConnected={isConnected}
             onExploreMarket={onExploreMarket}
             isComingSoon={list[0].isComingSoon}
+            positionLabel={list[0].positionLabel}
           />
         ) : (
           <SailBasicMarketCardGroup
@@ -214,6 +291,7 @@ export function SailBasicMarketCardsGrid({
             entries={list}
             isConnected={isConnected}
             onExploreMarket={onExploreMarket}
+            tokenPricesByMarket={tokenPricesByMarket}
           />
         )
       )}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { useAccount } from "wagmi";
+import { useHarborAccount } from "@/hooks/useHarborAccount";
 import { getSailPriceGraphUrlOptional, getGraphHeaders } from "@/config/graph";
 
 const USER_POSITIONS_QUERY = `
@@ -32,7 +32,7 @@ export type SailPositionsPnLSummary = {
 export function useSailPositionsPnLSummary(
   enabled: boolean = true
 ): SailPositionsPnLSummary {
-  const { address } = useAccount();
+  const { address } = useHarborAccount();
   const graphUrl = getSailPriceGraphUrlOptional();
 
   const { data, isLoading, error } = useQuery({

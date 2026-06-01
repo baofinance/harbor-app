@@ -1,4 +1,5 @@
-import { useAccount, usePublicClient } from "wagmi";
+import { usePublicClient } from "wagmi";
+import { useHarborAccount } from "@/hooks/useHarborAccount";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { formatEther } from "viem";
@@ -56,7 +57,7 @@ export function useAllStabilityPoolRewards({
   enabled = true,
   overrideAddress,
 }: UseAllStabilityPoolRewardsParams) {
-  const { address: accountAddress } = useAccount();
+  const { address: accountAddress } = useHarborAccount();
   const publicClient = usePublicClient();
   // Use overrideAddress if provided, otherwise use accountAddress
   const address = overrideAddress ?? accountAddress;

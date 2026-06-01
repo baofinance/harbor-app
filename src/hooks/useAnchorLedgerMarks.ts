@@ -1,7 +1,8 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { useAccount, usePublicClient } from "wagmi";
+import { usePublicClient } from "wagmi";
+import { useHarborAccount } from "@/hooks/useHarborAccount";
 import { formatEther } from "viem";
 import { getGraphUrl, getGraphHeaders } from "@/config/graph";
 import { redactUrl } from "@/utils/redactUrl";
@@ -163,7 +164,7 @@ export function useAnchorLedgerMarks({
   enabled = false, // Disabled by default - subgraph ran out of funds
   graphUrl = getGraphUrl(),
 }: UseAnchorLedgerMarksOptions = {}) {
-  const { address, isConnected } = useAccount();
+  const { address, isConnected } = useHarborAccount();
   const publicClient = usePublicClient();
   const [estimatedMarks, setEstimatedMarks] = useState(0);
   const [currentTime, setCurrentTime] = useState(Math.floor(Date.now() / 1000));

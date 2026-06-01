@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo } from "react";
-import { useAccount, useContractReads } from "wagmi";
+import { useContractReads } from "wagmi";
+import { useHarborAccount } from "@/hooks/useHarborAccount";
 import { markets } from "@/config/markets";
 import type { DefinedMarket, Market } from "@/config/markets";
 import type { SailContractReads, SailMarketTuple } from "@/types/sail";
@@ -24,7 +25,7 @@ const wrappedPriceOracleABI = WRAPPED_PRICE_ORACLE_ABI;
  * Composed by `useSailPageData`.
  */
 export function useSailContractReads() {
-  const { address } = useAccount();
+  const { address } = useHarborAccount();
 
   const sailMarkets = useMemo((): SailMarketTuple[] => {
     return (Object.entries(markets) as [string, DefinedMarket][]).filter(
