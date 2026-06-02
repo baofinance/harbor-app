@@ -1,11 +1,10 @@
 "use client";
 
 import type { ActiveVoyageStatus } from "@/utils/activeVoyageStatus";
-import {
-  getActiveVoyageZeroStateCopy,
-} from "@/utils/activeVoyageStatus";
+import { getActiveVoyageZeroStateCopy } from "@/utils/activeVoyageStatus";
 import type { GenesisVoyageCapDisplay } from "@/utils/genesisVoyageCapDisplay";
 import { formatUSD } from "@/utils/formatters";
+import { GenesisActiveVoyageQuickStats } from "./GenesisActiveVoyageQuickStats";
 import {
   MV_PROGRESS_FILL,
   MV_PROGRESS_FILL_COMPLETE,
@@ -29,6 +28,8 @@ export type GenesisActiveVoyageMetricsProps = {
   isLoading: boolean;
   isUnavailable: boolean;
   voyageStatus: ActiveVoyageStatus;
+  yieldRevSharePct?: number | null;
+  genesisAddress?: string;
 };
 
 export function GenesisActiveVoyageMetrics({
@@ -36,11 +37,13 @@ export function GenesisActiveVoyageMetrics({
   isLoading,
   isUnavailable,
   voyageStatus,
+  yieldRevSharePct = null,
+  genesisAddress,
 }: GenesisActiveVoyageMetricsProps) {
   if (isLoading) {
     return (
       <div
-        className="h-28 animate-pulse rounded-xl bg-white/10"
+        className="h-28 animate-pulse rounded-xl bg-black/25"
         aria-label="Loading capacity"
       />
     );
@@ -48,16 +51,12 @@ export function GenesisActiveVoyageMetrics({
 
   if (isUnavailable || !capDisplay) {
     return (
-      <p className="text-sm text-white/50">Capacity data unavailable</p>
+      <p className="text-sm text-white/60">Capacity data unavailable</p>
     );
   }
 
   const { filledPct, capFilled } = capDisplay;
   const progressWidth = `${Math.min(100, Math.max(0, filledPct))}%`;
-
-  const currentLabel = capDisplay.useTokenCap
-    ? `${capDisplay.capCurrent.toFixed(2)} / ${capDisplay.capTotal.toFixed(0)} ${stripLabel(capDisplay.collateralSymbol)}`
-    : `${formatUSD(capDisplay.capCurrentUsd)} / ${formatUSD(capDisplay.capTotalUsd)}`;
 
   const remainingLabel = capDisplay.useTokenCap
     ? `${formatRemainingToken(capDisplay.remaining)} ${stripLabel(capDisplay.collateralSymbol)} remaining`
@@ -67,10 +66,16 @@ export function GenesisActiveVoyageMetrics({
 
   return (
     <div className="min-w-0">
+      <GenesisActiveVoyageQuickStats
+        capDisplay={capDisplay}
+        yieldRevSharePct={yieldRevSharePct}
+        genesisAddress={genesisAddress}
+      />
+
       <p className={MV_SECTION_LABEL}>Capacity progress</p>
-      <p className="mt-1 font-mono text-4xl font-bold tabular-nums tracking-tight text-[#FF8A7A] sm:text-5xl">
+      <p className="mt-1 font-mono text-3xl font-bold tabular-nums tracking-tight text-[#FF8A7A] sm:text-4xl">
         {filledPct.toFixed(0)}%{" "}
-        <span className="text-2xl uppercase sm:text-3xl">FILLED</span>
+        <span className="text-xl uppercase sm:text-2xl">FILLED</span>
       </p>
 
       <div
@@ -87,12 +92,9 @@ export function GenesisActiveVoyageMetrics({
         />
       </div>
 
-      <div className="mt-2 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 text-xs">
-        <span className="font-mono tabular-nums text-white/55">{currentLabel}</span>
-        <span className="font-mono font-semibold tabular-nums text-[#FF8A7A]/90">
-          {remainingLabel.toUpperCase()}
-        </span>
-      </div>
+      <p className="mt-2 text-right font-mono text-xs font-semibold tabular-nums text-[#FF8A7A]">
+        {remainingLabel.toUpperCase()}
+      </p>
 
       {zeroState ? (
         <p className="mt-2 text-xs leading-snug text-[#4A9784]/90">

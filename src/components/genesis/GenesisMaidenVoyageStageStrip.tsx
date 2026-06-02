@@ -40,7 +40,7 @@ export function GenesisMaidenVoyageStageStrip({
 
   return (
     <div className="overflow-x-auto pb-1">
-      <div className="min-w-[640px]">
+      <div className="min-w-[640px] lg:min-w-0">
         <div className="mb-2 grid grid-cols-5 gap-2">
           {STAGES.map((stage) => {
             const isCompleted = stage.order < activeOrder;

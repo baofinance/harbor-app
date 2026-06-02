@@ -16,6 +16,7 @@ import {
   GenesisMaidenVoyageHeroRow,
   GenesisMaidenVoyageLifecycle,
   GenesisMaidenVoyagePageHeader,
+  GenesisMaidenVoyageStatsBand,
   GenesisMaidenVoyageStatsBar,
   GenesisOtherVoyagesSection,
   GenesisRevenueShareSection,
@@ -412,8 +413,14 @@ export default function GenesisIndexPage() {
         confidenceStats,
         activeDepositsUsd:
           activeMarketData?.capDisplay?.capCurrentUsd ?? null,
+        activeCapTotalUsd:
+          activeMarketData?.capDisplay?.capTotalUsd ?? null,
       }),
-    [confidenceStats, activeMarketData?.capDisplay?.capCurrentUsd],
+    [
+      confidenceStats,
+      activeMarketData?.capDisplay?.capCurrentUsd,
+      activeMarketData?.capDisplay?.capTotalUsd,
+    ],
   );
 
   const buildShareMessage = (
@@ -437,7 +444,8 @@ export default function GenesisIndexPage() {
   return (
     <div className="relative mx-auto flex min-h-0 w-full max-w-[1300px] flex-1 flex-col font-sans text-white">
       <main className="container mx-auto px-4 pb-6 pt-2 sm:px-10 sm:pt-4">
-        <GenesisMaidenVoyagePageHeader stats={statsBarData} />
+        <GenesisMaidenVoyagePageHeader />
+        <GenesisMaidenVoyageStatsBand stats={statsBarData} />
 
         {combinedHasIndexerErrors ? (
           <GenesisErrorBanner
@@ -553,7 +561,7 @@ export default function GenesisIndexPage() {
           <h2 className="mb-6 text-xs font-medium uppercase tracking-wider text-white/50">
             Learn more
           </h2>
-          <details className="mb-4 rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3">
+          <details className="mb-4 rounded-xl border border-white/10 bg-[#0f2340] px-4 py-3">
             <summary className="cursor-pointer text-sm font-semibold text-white/90">
               How a voyage works
             </summary>
@@ -561,7 +569,7 @@ export default function GenesisIndexPage() {
               <GenesisMaidenVoyageLifecycle />
             </div>
           </details>
-          <details className="mb-4 rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3">
+          <details className="mb-4 rounded-xl border border-white/10 bg-[#0f2340] px-4 py-3">
             <summary className="cursor-pointer text-sm font-semibold text-white/90">
               Revenue &amp; rules
             </summary>
@@ -572,7 +580,7 @@ export default function GenesisIndexPage() {
               />
             </div>
           </details>
-          <details className="rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3">
+          <details className="rounded-xl border border-white/10 bg-[#0f2340] px-4 py-3">
             <summary className="cursor-pointer text-sm font-semibold text-white/90">
               FAQ
             </summary>

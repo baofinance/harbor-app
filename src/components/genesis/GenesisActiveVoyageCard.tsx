@@ -7,11 +7,9 @@ import {
   getGenesisMarketTypeLabel,
   MAIDEN_VOYAGE_DOCS_URL,
 } from "@/config/maidenVoyageFeatured";
-import { maidenVoyageCapUsd } from "@/config/maidenVoyageCap";
 import type { GenesisMarketConfig } from "@/types/genesisMarket";
 import type { ActiveVoyageStatus } from "@/utils/activeVoyageStatus";
 import {
-  getCapDataSourceLabel,
   getActiveVoyageCta,
   getActiveVoyageFootnote,
 } from "@/utils/activeVoyageStatus";
@@ -25,6 +23,7 @@ import { GenesisVoyageStatusBadge } from "./GenesisVoyageStatusBadge";
 import {
   MV_CARD_INNER_GRADIENT,
   MV_CARD_SHELL,
+  MV_FOOTER_PANEL,
   MV_OUTLINE_BUTTON,
   MV_PRIMARY_CTA,
   MV_TYPE_TAG,
@@ -59,6 +58,7 @@ export type GenesisActiveVoyageCardProps = {
   isClaiming: boolean;
   onDeposit: () => void;
   onClaim: () => void;
+  embedded?: boolean;
 };
 
 export function GenesisActiveVoyageCard({
@@ -77,6 +77,7 @@ export function GenesisActiveVoyageCard({
   isClaiming,
   onDeposit,
   onClaim,
+  embedded = false,
 }: GenesisActiveVoyageCardProps) {
   const collateralSymbol =
     market.collateral?.underlyingSymbol ||
@@ -93,7 +94,6 @@ export function GenesisActiveVoyageCard({
     isConnected,
   });
   const footnote = getActiveVoyageFootnote(voyageStatus);
-  const dataSourceLabel = getCapDataSourceLabel(capDisplay, capLoading, capUnavailable);
   const countdownLabel =
     endDate &&
     (voyageStatus === "deposits_open" || voyageStatus === "almost_full")
@@ -103,36 +103,22 @@ export function GenesisActiveVoyageCard({
     ? `${countdownLabel} or when capacity is reached.`
     : footnote;
 
-  const capUsd =
-    maidenVoyageCapUsd(genesisAddress?.toLowerCase() ?? null) ??
-    (capDisplay?.capTotalUsd && capDisplay.capTotalUsd > 0
-      ? capDisplay.capTotalUsd
-      : null);
-  const estimatedOwnershipPct =
-    capUsd && capUsd > 0 ? (Math.min(1000, capUsd) / capUsd) * 100 : null;
-  const hasUserOwnership = Boolean(capDisplay && capDisplay.ownershipShare > 0);
-  const ownershipLabel = hasUserOwnership
-    ? `${(capDisplay!.ownershipShare * 100).toFixed(2)}%`
-    : estimatedOwnershipPct != null
-      ? `${estimatedOwnershipPct.toFixed(2)}%`
-      : "—";
+  const showLiveCapChip =
+    capDisplay?.dataSource === "subgraph" && !capLoading && !capUnavailable;
 
   const handleCtaClick = () => {
     if (cta.action === "deposit") onDeposit();
     else if (cta.action === "claim") onClaim();
   };
 
-  return (
-    <section
-      className={`${MV_CARD_SHELL} ${MV_CARD_INNER_GRADIENT} overflow-hidden`}
-      aria-label="Active maiden voyage"
-    >
-      <div className="grid grid-cols-1 gap-0 lg:grid-cols-[1.35fr_0.85fr]">
+  const inner = (
+    <>
+      <div className="grid grid-cols-1 gap-0 lg:grid-cols-[1.4fr_1fr]">
         <div className="border-b border-white/10 px-4 py-4 sm:px-6 sm:py-5 lg:border-b-0 lg:border-r">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex flex-wrap items-center gap-2">
               <GenesisVoyageStatusBadge status={voyageStatus} />
-              <span className="text-sm font-semibold text-white/90">
+              <span className="text-sm font-semibold text-white/95">
                 Maiden Voyage #{voyageNumber}
               </span>
             </div>
@@ -166,49 +152,21 @@ export function GenesisActiveVoyageCard({
           </div>
 
           <div className="mt-5">
-            <div className="mb-4 grid grid-cols-3 gap-2 rounded-lg border border-white/10 bg-white/[0.02] p-2.5">
-              <div>
-                <p className="text-[10px] uppercase tracking-wide text-white/45">
-                  Capacity
-                </p>
-                <p className="mt-1 font-mono text-sm font-semibold text-white/90">
-                  {capDisplay
-                    ? capDisplay.useTokenCap
-                      ? `${capDisplay.capCurrent.toFixed(2)} / ${capDisplay.capTotal.toFixed(0)}`
-                      : `$${capDisplay.capCurrentUsd.toFixed(0)} / $${capDisplay.capTotalUsd.toFixed(0)}`
-                    : "—"}
-                </p>
-              </div>
-              <div>
-                <p className="text-[10px] uppercase tracking-wide text-white/45">
-                  {hasUserOwnership ? "Your share" : "Est. at $1k"}
-                </p>
-                <p className="mt-1 font-mono text-sm font-semibold text-white/90">
-                  {ownershipLabel}
-                </p>
-              </div>
-              <div>
-                <p className="text-[10px] uppercase tracking-wide text-white/45">
-                  Revenue share
-                </p>
-                <p className="mt-1 font-mono text-sm font-semibold text-white/90">
-                  {yieldRevSharePct != null ? `${yieldRevSharePct}%` : "—"}
-                </p>
-              </div>
-            </div>
             <GenesisActiveVoyageMetrics
               capDisplay={capDisplay}
               isLoading={capLoading}
               isUnavailable={capUnavailable}
               voyageStatus={voyageStatus}
+              yieldRevSharePct={yieldRevSharePct}
+              genesisAddress={genesisAddress}
             />
           </div>
 
           <div className="mt-4">
             {userDepositDisplay ? (
-              <p className="mb-3 text-sm text-white/60">
+              <p className="mb-3 text-sm text-white/75">
                 Your deposit:{" "}
-                <span className="font-semibold text-white/90">
+                <span className="font-semibold text-white/95">
                   {userDepositDisplay}
                 </span>
               </p>
@@ -234,7 +192,7 @@ export function GenesisActiveVoyageCard({
             </div>
 
             {footerLabel ? (
-              <p className="mt-2 flex items-center justify-center gap-1.5 text-center text-xs text-white/45">
+              <p className="mt-2 flex items-center justify-center gap-1.5 text-center text-xs text-white/50">
                 <ClockIcon className="h-3.5 w-3.5 shrink-0" aria-hidden />
                 {footerLabel}
               </p>
@@ -242,27 +200,42 @@ export function GenesisActiveVoyageCard({
           </div>
         </div>
 
-        <div className="px-4 py-4 sm:px-6 sm:py-5">
-          <GenesisVoyageBenefitsWithLayout layout="list" />
+        <div className="px-4 py-4 sm:px-6 sm:py-5 lg:border-l lg:border-white/10 lg:pl-5">
+          <GenesisVoyageBenefitsWithLayout layout="listFlat" />
         </div>
       </div>
 
-      <div className="border-t border-white/10 px-4 py-3 sm:px-6">
+      <footer className={`${MV_FOOTER_PANEL} px-4 py-3 sm:px-6`}>
         <div className="mb-2 flex flex-wrap gap-1.5">
           <span className="rounded-full border border-white/10 px-2 py-0.5 text-[10px] uppercase tracking-wide text-white/55">
             Markets launched: {stats.completedLaunchesCount}
           </span>
           <span className="rounded-full border border-white/10 px-2 py-0.5 text-[10px] uppercase tracking-wide text-white/55">
-            Featured TVL: {stats.featuredTvlLabel ?? "—"}
+            Featured TVL: {stats.featuredTvlLabel}
           </span>
-          {dataSourceLabel ? (
+          {showLiveCapChip ? (
             <span className="rounded-full border border-white/10 px-2 py-0.5 text-[10px] uppercase tracking-wide text-white/55">
-              {dataSourceLabel}
+              Live cap data
             </span>
           ) : null}
         </div>
         <GenesisMaidenVoyageStageStrip status={voyageStatus} />
-      </div>
+      </footer>
+    </>
+  );
+
+  if (embedded) {
+    return (
+      <div aria-label="Active maiden voyage details">{inner}</div>
+    );
+  }
+
+  return (
+    <section
+      className={`${MV_CARD_SHELL} ${MV_CARD_INNER_GRADIENT} overflow-hidden`}
+      aria-label="Active maiden voyage"
+    >
+      {inner}
     </section>
   );
 }

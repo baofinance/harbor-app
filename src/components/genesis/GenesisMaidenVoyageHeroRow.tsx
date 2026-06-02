@@ -1,10 +1,10 @@
 "use client";
 
 import type { GenesisActiveVoyageCardProps } from "./GenesisActiveVoyageCard";
-import { GenesisActiveVoyageCard } from "./GenesisActiveVoyageCard";
 import { GenesisHowItWorksSteps } from "./GenesisHowItWorksSteps";
+import { GenesisMaidenVoyageCommandPanel } from "./GenesisMaidenVoyageCommandPanel";
 import { GenesisMaidenVoyageHeroCopy } from "./GenesisMaidenVoyageHeroCopy";
-import { GenesisMaidenVoyageUtilityRail } from "./GenesisMaidenVoyageUtilityRail";
+import { GenesisMaidenVoyageWhyJoinCard } from "./GenesisMaidenVoyageWhyJoinCard";
 import type { MaidenVoyageStatsBarData } from "@/utils/maidenVoyageStatsBar";
 
 export type GenesisMaidenVoyageHeroRowProps = {
@@ -21,7 +21,7 @@ export function GenesisMaidenVoyageHeroRow({
   return (
     <section
       id="maiden-voyage-active"
-      className="mb-6 scroll-mt-24 grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-center lg:gap-8"
+      className="mb-4 scroll-mt-24 grid grid-cols-1 gap-6 lg:grid-cols-[1fr_1.05fr] lg:items-start lg:gap-8"
       aria-label="Active Maiden Voyage campaign"
     >
       <div className="order-1 flex flex-col lg:order-none">
@@ -29,8 +29,8 @@ export function GenesisMaidenVoyageHeroRow({
         <GenesisHowItWorksSteps />
       </div>
       <div className="order-2 space-y-3 lg:order-none">
-        <GenesisMaidenVoyageUtilityRail stats={stats} />
-        {activeCard ? <GenesisActiveVoyageCard {...activeCard} /> : null}
+        <GenesisMaidenVoyageWhyJoinCard />
+        <GenesisMaidenVoyageCommandPanel stats={stats} activeCard={activeCard} />
       </div>
     </section>
   );

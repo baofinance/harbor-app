@@ -23,16 +23,19 @@ Order in [`src/app/genesis/page.tsx`](../src/app/genesis/page.tsx) (Maiden Voyag
 
 | Region | Component |
 |--------|-----------|
-| Page header | `GenesisMaidenVoyagePageHeader` (+ desktop KPI strip) |
+| Page header | `GenesisMaidenVoyagePageHeader` — brand + docs link |
+| Stats band | `GenesisMaidenVoyageStatsBand` — full-width KPIs (`md+`; hidden on mobile) |
 | Error banners (when needed) | `GenesisErrorBanner` |
-| Hero row (2-col) | `GenesisMaidenVoyageHeroRow` — left: headline + `GenesisHowItWorksSteps`; right: utility rail (`Why join`) + `GenesisActiveVoyageCard` |
-| Stats bar | `GenesisMaidenVoyageStatsBar` (derived TVL, voyage #, scroll toggle) |
+| Hero row (2-col) | `GenesisMaidenVoyageHeroRow` — left: headline + steps; right: `GenesisMaidenVoyageWhyJoinCard` + `GenesisMaidenVoyageCommandPanel` |
+| Mobile stats bar | `GenesisMaidenVoyageStatsBar` (scroll toggle; `lg:hidden` duplicate of band) |
 | Completed launch voyages | `GenesisFeaturedCompletedVoyages` |
 | Other / archived voyages (collapsed) | `GenesisOtherVoyagesSection` |
 | Footer callout + protocol line | `GenesisVoyageFooterNotice` |
-| Learn more (below funnel) | Collapsed `<details>` groups for lifecycle, revenue/rules, and FAQ |
+| Learn more (below funnel) | Collapsed `<details>` groups for lifecycle, revenue/rules, and FAQ (`#maiden-voyage-learn`) |
 
-Shared dark tokens: [`maidenVoyageLayoutStyles.ts`](../src/components/genesis/maidenVoyageLayoutStyles.ts). Stats derivation: [`maidenVoyageStatsBar.ts`](../src/utils/maidenVoyageStatsBar.ts) + [`maidenVoyageConfidenceStats.ts`](../src/utils/maidenVoyageConfidenceStats.ts).
+Active voyage card (inside command panel): dark inset 3-col quick stats, `% FILLED` + bar, full-width footer with trust chips + timeline. Card surfaces use `bg-[#0f2340]` (darker than page `#1E4775`). Mobile KPIs at top of command panel only.
+
+Shared dark tokens: [`maidenVoyageLayoutStyles.ts`](../src/components/genesis/maidenVoyageLayoutStyles.ts) (`MV_CARD_SHELL`, `MV_INSET_PANEL`, `MV_STATS_BAND`). Stats derivation: [`maidenVoyageStatsBar.ts`](../src/utils/maidenVoyageStatsBar.ts) + [`maidenVoyageConfidenceStats.ts`](../src/utils/maidenVoyageConfidenceStats.ts).
 
 Featured market IDs live in [`src/config/maidenVoyageFeatured.ts`](../src/config/maidenVoyageFeatured.ts). Static education copy lives in [`src/config/maidenVoyageEducation.ts`](../src/config/maidenVoyageEducation.ts).
 
