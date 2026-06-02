@@ -67,7 +67,7 @@ import {
   anchorDepositFlowParts,
   anchorWithdrawFlowParts,
 } from "@/components/depositModalFlowSteps";
-import { buildDepositModalTitle } from "@/components/depositModalTitle";
+import { DepositModalTitle } from "@/components/DepositModalTitle";
 import { InfoCallout } from "@/components/InfoCallout";
 import { ErrorBanner } from "@/components/anchor/ErrorBanner";
 import { FeeDisplayRow } from "@/components/anchor/FeeDisplayRow";
@@ -10196,11 +10196,23 @@ export const AnchorDepositWithdrawModal = ({
         <DepositModalShell
           isOpen={isOpen}
           onClose={handleClose}
-          title={buildDepositModalTitle(
-            "Anchor",
-            (selectedMarket || market)?.peggedToken?.symbol || peggedTokenSymbol,
-            activeTab === "deposit" ? "Deposit" : "Withdraw"
-          )}
+          title={
+            <DepositModalTitle
+              protocolName="Anchor"
+              tokenSymbol={
+                (selectedMarket || market)?.peggedToken?.symbol ||
+                peggedTokenSymbol
+              }
+              tokenIcon={
+                (selectedMarket || market)?.peggedToken?.icon as
+                  | string
+                  | undefined
+              }
+              actionLabel={
+                activeTab === "deposit" ? "Deposit" : "Withdraw"
+              }
+            />
+          }
           notifications={{
             expanded: showNotifications,
             onToggle: () => setShowNotifications((prev) => !prev),

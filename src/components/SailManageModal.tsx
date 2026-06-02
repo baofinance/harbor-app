@@ -48,7 +48,7 @@ import {
   sailMintFlowParts,
   sailRedeemFlowParts,
 } from "@/components/depositModalFlowSteps";
-import { buildDepositModalTitle } from "@/components/depositModalTitle";
+import { DepositModalTitle } from "@/components/DepositModalTitle";
 import { TransactionSuccessMessage } from "@/components/TransactionSuccessMessage";
 import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
 import { getDepositMode } from "@/utils/depositMode";
@@ -1794,11 +1794,16 @@ if (usePermitRedeem && permitResult?.permitSig && permitResult?.deadline) {
  <DepositModalShell
    isOpen={isOpen}
    onClose={handleClose}
-   title={buildDepositModalTitle(
-     "Sail",
-     leveragedTokenSymbol,
-     activeTab === "mint" ? "Mint" : "Redeem"
-   )}
+   title={
+     <DepositModalTitle
+       protocolName="Sail"
+       tokenSymbol={leveragedTokenSymbol}
+       tokenIcon={
+         (market.leveragedToken as { icon?: string } | undefined)?.icon
+       }
+       actionLabel={activeTab === "mint" ? "Mint" : "Redeem"}
+     />
+   }
    notifications={{
      expanded: showNotifications,
      onToggle: () => setShowNotifications((prev) => !prev),

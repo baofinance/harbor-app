@@ -22,8 +22,8 @@ export interface DepositModalShellNotifications {
 export interface DepositModalShellProps {
   isOpen: boolean;
   onClose: () => void;
-  /** Title line, e.g. Anchor · haBTC — Withdraw */
-  title: string;
+  /** Title row (string or DepositModalTitle with icons) */
+  title: React.ReactNode;
   /** Full-width tab row (DepositModalTabHeader) */
   tabs: React.ReactNode;
   /** Optional notifications drawer between title and tabs */
@@ -105,7 +105,7 @@ export function DepositModalShell({
         ) : (
           <>
             <div className="relative z-20 flex shrink-0 items-center justify-between gap-2 border-b border-[#1E4775]/15 bg-white px-3 py-2.5 sm:px-4">
-              <h2 className="min-w-0 truncate text-sm font-bold leading-snug tracking-tight text-[#1E4775] sm:text-base">
+              <h2 className="flex min-w-0 flex-1 items-center truncate text-sm font-bold leading-snug tracking-tight text-[#1E4775] sm:text-base">
                 {title}
               </h2>
               <div className="flex shrink-0 items-center gap-1">

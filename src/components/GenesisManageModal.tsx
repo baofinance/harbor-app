@@ -10,7 +10,7 @@ import {
   genesisDepositFlowParts,
   genesisWithdrawFlowParts,
 } from "./depositModalFlowSteps";
-import { buildDepositModalTitle } from "./depositModalTitle";
+import { DepositModalTitle } from "./DepositModalTitle";
 import { InfoCallout } from "@/components/InfoCallout";
 import { AlertTriangle, Info, RefreshCw } from "lucide-react";
 import { useContractRead } from "wagmi";
@@ -130,18 +130,24 @@ export const GenesisManageModal = ({
     (market?.peggedToken?.symbol as string | undefined) || "haTOKEN";
   const leveragedSymbol = (market?.leveragedToken?.symbol as string | undefined) ?? "";
 
-  const modalTitle = buildDepositModalTitle(
-    "Genesis",
-    peggedSymbol,
-    activeTab === "deposit" ? "Deposit" : "Withdraw",
-    leveragedSymbol || undefined
-  );
-
   return (
     <DepositModalShell
       isOpen={isOpen}
       onClose={handleClose}
-      title={modalTitle}
+      title={
+        <DepositModalTitle
+          protocolName="Genesis"
+          tokenSymbol={peggedSymbol}
+          tokenIcon={
+            (market?.peggedToken as { icon?: string } | undefined)?.icon
+          }
+          secondaryTokenSymbol={leveragedSymbol || undefined}
+          secondaryTokenIcon={
+            (market?.leveragedToken as { icon?: string } | undefined)?.icon
+          }
+          actionLabel={activeTab === "deposit" ? "Deposit" : "Withdraw"}
+        />
+      }
       tabs={
         <DepositModalTabHeader
           tabs={[
