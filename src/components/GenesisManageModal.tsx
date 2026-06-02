@@ -4,8 +4,15 @@ import React, { useState, useEffect } from "react";
 import { GenesisDepositModal } from "./GenesisDepositModal";
 import { GenesisWithdrawModal } from "./GenesisWithdrawModal";
 import { DepositModalShell } from "./DepositModalShell";
-import { ProtocolBanner } from "./ProtocolBanner";
 import { DepositModalTabHeader } from "./DepositModalTabHeader";
+import { DepositModalFlowOverview } from "./DepositModalFlowOverview";
+import {
+  genesisDepositFlowParts,
+  genesisWithdrawFlowParts,
+} from "./depositModalFlowSteps";
+import { buildDepositModalTitle } from "./depositModalTitle";
+import { InfoCallout } from "@/components/InfoCallout";
+import { AlertTriangle, Info, RefreshCw } from "lucide-react";
 import { useContractRead } from "wagmi";
 import { useAccount } from "wagmi";
 import { getAcceptedDepositAssets } from "@/utils/markets";
@@ -32,6 +39,7 @@ export const GenesisManageModal = ({
 }: GenesisManageModalProps) => {
   const { address } = useAccount();
   const [activeTab, setActiveTab] = useState<"deposit" | "withdraw">(initialTab);
+  const [showNotifications, setShowNotifications] = useState(false);
   
   // Delay contract reads until modal is fully mounted to avoid fetch errors
   const [mounted, setMounted] = useState(false);
@@ -122,22 +130,19 @@ export const GenesisManageModal = ({
     (market?.peggedToken?.symbol as string | undefined) || "haTOKEN";
   const leveragedSymbol = (market?.leveragedToken?.symbol as string | undefined) ?? "";
 
+  const modalTitle = buildDepositModalTitle(
+    "Genesis",
+    peggedSymbol,
+    activeTab === "deposit" ? "Deposit" : "Withdraw",
+    leveragedSymbol || undefined
+  );
+
   return (
     <DepositModalShell
       isOpen={isOpen}
       onClose={handleClose}
-      banner={
-        <ProtocolBanner
-          protocolName="Genesis"
-          tokenSymbol={peggedSymbol}
-          tokenIcon={(market?.peggedToken as { icon?: string } | undefined)?.icon}
-          secondaryTokenSymbol={leveragedSymbol}
-          secondaryTokenIcon={
-            (market?.leveragedToken as { icon?: string } | undefined)?.icon
-          }
-        />
-      }
-      header={
+      title={modalTitle}
+      tabs={
         <DepositModalTabHeader
           tabs={[
             { value: "deposit", label: "Deposit" },
@@ -151,9 +156,53 @@ export const GenesisManageModal = ({
           }}
         />
       }
+      notifications={{
+        expanded: showNotifications,
+        onToggle: () => setShowNotifications((p) => !p),
+        count: activeTab === "deposit" ? 2 : 1,
+        badgeSeverities:
+          activeTab === "deposit" ? ["green", "navy"] : ["coral"],
+        children:
+          activeTab === "deposit" ? (
+            <>
+              <InfoCallout
+                tone="success"
+                title="Tip:"
+                icon={<RefreshCw className="w-4 h-4 flex-shrink-0 mt-0.5 text-green-600" />}
+              >
+                You can deposit any ERC20 token! Non-collateral tokens will be
+                automatically swapped via Velora.
+              </InfoCallout>
+              <InfoCallout
+                title="Info:"
+                icon={<Info className="w-4 h-4 flex-shrink-0 mt-0.5 text-blue-600" />}
+              >
+                For large deposits, Harbor recommends using wstETH or fxSAVE
+                instead of the built-in swap and zaps.
+              </InfoCallout>
+            </>
+          ) : (
+            <InfoCallout
+              tone="pearl"
+              icon={<AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5 text-[#D57A3D]" />}
+              title="Harbor Marks Warning:"
+            >
+              Withdrawing forfeits any Harbor Marks for withdrawn assets. Only
+              assets still deposited at genesis close are eligible for completion
+              bonus marks earned during the genesis period.
+            </InfoCallout>
+          ),
+      }}
       panelClassName="max-h-[calc(100dvh-1rem)] sm:max-h-[90vh] flex flex-col animate-in fade-in-0 scale-in-95 duration-200"
-      contentClassName="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6 min-h-0"
+      contentClassName="flex-1 overflow-y-auto p-3 sm:p-4 min-h-0"
     >
+          <DepositModalFlowOverview
+            parts={
+              activeTab === "deposit"
+                ? genesisDepositFlowParts()
+                : genesisWithdrawFlowParts()
+            }
+          />
           {!isValidGenesisAddress || !isValidCollateralAddress ? (
             <div className="text-center text-[#1E4775]/60 py-8">
               <p className="font-semibold mb-2">Invalid Market Configuration</p>

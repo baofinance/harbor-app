@@ -23,6 +23,9 @@ import { useWrappedCollateralPrice } from "@/hooks/useWrappedCollateralPrice";
 import { AmountInputBlock } from "@/components/AmountInputBlock";
 import { ModalNotificationsPanel } from "@/components/ModalNotificationsPanel";
 import { DepositModalShell } from "@/components/DepositModalShell";
+import { DepositModalFlowOverview } from "@/components/DepositModalFlowOverview";
+import { genesisWithdrawFlowParts } from "@/components/depositModalFlowSteps";
+import { depositModalNotificationBadgeClass } from "@/components/depositModalNotificationStyles";
 import { InfoCallout } from "@/components/InfoCallout";
 
 interface GenesisWithdrawalModalProps {
@@ -275,6 +278,9 @@ const successUSD = successAmountNum > 0 && collateralPriceUSD > 0
   // Withdraw form content
   const formContent = (
     <div className="space-y-4 sm:space-y-6">
+      {!embedded ? (
+        <DepositModalFlowOverview parts={genesisWithdrawFlowParts()} />
+      ) : null}
  {/* Balance */}
 {(() => {
   const depositFmt = formatTokenAmount(
@@ -311,11 +317,14 @@ const successUSD = successAmountNum > 0 && collateralPriceUSD > 0
  />
 
  {/* Notifications - Harbor Marks Warning */}
+ {!embedded && (
  <ModalNotificationsPanel
    expanded={showNotifications}
    onToggle={() => setShowNotifications((prev) => !prev)}
    badge={
-     <span className="flex items-center gap-1 bg-[#FF8A7A]/20 px-2 py-0.5 text-xs text-[#FF8A7A]">
+     <span
+       className={`flex items-center gap-1 px-2 py-0.5 text-xs ${depositModalNotificationBadgeClass.coral}`}
+     >
        <Bell className="h-3 w-3" />
        1
      </span>
@@ -331,6 +340,7 @@ const successUSD = successAmountNum > 0 && collateralPriceUSD > 0
      completion bonus marks earned during the genesis period.
    </InfoCallout>
  </ModalNotificationsPanel>
+ )}
 
  {/* Transaction Preview */}
  {amount && parseFloat(amount ||"0") > 0 && (

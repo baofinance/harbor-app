@@ -30,8 +30,7 @@ import {
 import SimpleTooltip from "@/components/SimpleTooltip";
 import { ArrowPathIcon } from "@heroicons/react/24/outline";
 import { InfoCallout } from "@/components/InfoCallout";
-import { ModalNotificationsPanel } from "@/components/ModalNotificationsPanel";
-import { AlertOctagon, Bell, Info, RefreshCw } from "lucide-react";
+import { AlertOctagon, Info, RefreshCw } from "lucide-react";
 import {
   TransactionProgressModal,
   TransactionStep,
@@ -43,8 +42,13 @@ import { amountToUSD } from "@/utils/tokenPriceToUSD";
 import { TokenSelectorDropdown } from "@/components/TokenSelectorDropdown";
 import { TokenAmountSection } from "@/components/TokenAmountSection";
 import { DepositModalShell } from "@/components/DepositModalShell";
-import { ProtocolBanner } from "@/components/ProtocolBanner";
 import { DepositModalTabHeader } from "@/components/DepositModalTabHeader";
+import { DepositModalFlowOverview } from "@/components/DepositModalFlowOverview";
+import {
+  sailMintFlowParts,
+  sailRedeemFlowParts,
+} from "@/components/depositModalFlowSteps";
+import { buildDepositModalTitle } from "@/components/depositModalTitle";
 import { TransactionSuccessMessage } from "@/components/TransactionSuccessMessage";
 import { useCoinGeckoPrice } from "@/hooks/useCoinGeckoPrice";
 import { getDepositMode } from "@/utils/depositMode";
@@ -1790,16 +1794,54 @@ if (usePermitRedeem && permitResult?.permitSig && permitResult?.deadline) {
  <DepositModalShell
    isOpen={isOpen}
    onClose={handleClose}
-   banner={
-     market?.leveragedToken?.symbol ? (
-       <ProtocolBanner
-         protocolName="Sail"
-         tokenSymbol={leveragedTokenSymbol}
-         tokenIcon={(market.leveragedToken as { icon?: string })?.icon}
-       />
-     ) : undefined
-   }
-   header={
+   title={buildDepositModalTitle(
+     "Sail",
+     leveragedTokenSymbol,
+     activeTab === "mint" ? "Mint" : "Redeem"
+   )}
+   notifications={{
+     expanded: showNotifications,
+     onToggle: () => setShowNotifications((prev) => !prev),
+     count: activeTab === "mint" ? (isCollateralOnlyChain ? 1 : 2) : 1,
+     badgeSeverities:
+       activeTab === "mint"
+         ? isCollateralOnlyChain
+           ? ["navy"]
+           : ["green", "navy"]
+         : ["navy"],
+     children: (
+       <>
+         {activeTab === "mint" && (
+           <>
+             {!isCollateralOnlyChain && (
+               <InfoCallout
+                 tone="success"
+                 icon={<RefreshCw className="w-4 h-4 flex-shrink-0 mt-0.5 text-green-600" />}
+                 title="Tip"
+               >
+                 You can deposit any ERC20 token! Non-collateral tokens will be automatically swapped via Velora.
+               </InfoCallout>
+             )}
+             <InfoCallout
+               title="Info"
+               icon={<Info className="w-4 h-4 flex-shrink-0 mt-0.5 text-blue-600" />}
+             >
+               For large deposits, Harbor recommends using wstETH or fxSAVE instead of the built-in swap and zaps.
+             </InfoCallout>
+           </>
+         )}
+         {activeTab === "redeem" && (
+           <InfoCallout
+             title="Info"
+             icon={<Info className="w-4 h-4 flex-shrink-0 mt-0.5 text-blue-600" />}
+           >
+             You will receive collateral (e.g. {collateralSymbol}) in your wallet.
+           </InfoCallout>
+         )}
+       </>
+     ),
+   }}
+   tabs={
      <DepositModalTabHeader
        tabs={[
          { value: "mint", label: "Mint" },
@@ -1826,11 +1868,11 @@ if (usePermitRedeem && permitResult?.permitSig && permitResult?.deadline) {
  />
  ) : (
  <div className="space-y-4">
-   <div className="flex items-center justify-center text-xs text-[#1E4775]/50 pb-3 border-b border-[#d1d7e5]">
-     <div className="text-[#1E4775] font-semibold">
-       {activeTab === "mint" ? "Deposit Collateral & Amount" : "Withdraw Collateral & Amount"}
-     </div>
-   </div>
+   <DepositModalFlowOverview
+     parts={
+       activeTab === "mint" ? sailMintFlowParts() : sailRedeemFlowParts()
+     }
+   />
  {/* Input Section */}
  <TokenAmountSection
    tokenSelector={
@@ -1905,44 +1947,6 @@ if (usePermitRedeem && permitResult?.permitSig && permitResult?.deadline) {
                  : null}
          </div>
        )}
-       <ModalNotificationsPanel
-         expanded={showNotifications}
-         onToggle={() => setShowNotifications((prev) => !prev)}
-         badge={
-           <span className="flex items-center gap-1 bg-blue-100 px-2 py-0.5 text-xs text-blue-600">
-             <Bell className="h-3 w-3" />
-             {activeTab === "mint" ? 2 : 1}
-           </span>
-         }
-       >
-         {activeTab === "mint" && (
-           <>
-             {!isCollateralOnlyChain && (
-               <InfoCallout
-                 tone="success"
-                 icon={<RefreshCw className="w-4 h-4 flex-shrink-0 mt-0.5 text-green-600" />}
-                 title="Tip"
-               >
-                 You can deposit any ERC20 token! Non-collateral tokens will be automatically swapped via Velora.
-               </InfoCallout>
-             )}
-             <InfoCallout
-               title="Info"
-               icon={<Info className="w-4 h-4 flex-shrink-0 mt-0.5 text-blue-600" />}
-             >
-               For large deposits, Harbor recommends using wstETH or fxSAVE instead of the built-in swap and zaps.
-             </InfoCallout>
-           </>
-         )}
-         {activeTab === "redeem" && (
-           <InfoCallout
-             title="Info"
-             icon={<Info className="w-4 h-4 flex-shrink-0 mt-0.5 text-blue-600" />}
-           >
-             You will receive collateral (e.g. {collateralSymbol}) in your wallet.
-           </InfoCallout>
-         )}
-       </ModalNotificationsPanel>
      </>
    }
    amount={{

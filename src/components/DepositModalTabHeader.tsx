@@ -24,7 +24,7 @@ export function DepositModalTabHeader({
   tabDisabled,
 }: DepositModalTabHeaderProps) {
   return (
-    <div className="flex flex-1 mr-2 sm:mr-4 gap-1 rounded-md bg-[#1E4775] p-0.5">
+    <div className="flex w-full gap-1 rounded-md bg-[#1E4775] p-0.5">
       {tabs.map(({ value, label }) => (
         <button
           key={value}
