@@ -23,14 +23,14 @@ Order in [`src/app/genesis/page.tsx`](../src/app/genesis/page.tsx) (Maiden Voyag
 
 | Region | Component |
 |--------|-----------|
-| Page header | `GenesisMaidenVoyagePageHeader` |
+| Page header | `GenesisMaidenVoyagePageHeader` (+ desktop KPI strip) |
 | Error banners (when needed) | `GenesisErrorBanner` |
-| Hero row (2-col) | `GenesisMaidenVoyageHeroRow` — left: headline + `GenesisHowItWorksSteps`; right: `GenesisActiveVoyageCard` |
+| Hero row (2-col) | `GenesisMaidenVoyageHeroRow` — left: headline + `GenesisHowItWorksSteps`; right: utility rail (`Why join`) + `GenesisActiveVoyageCard` |
 | Stats bar | `GenesisMaidenVoyageStatsBar` (derived TVL, voyage #, scroll toggle) |
 | Completed launch voyages | `GenesisFeaturedCompletedVoyages` |
 | Other / archived voyages (collapsed) | `GenesisOtherVoyagesSection` |
 | Footer callout + protocol line | `GenesisVoyageFooterNotice` |
-| Learn more (below funnel) | `GenesisMaidenVoyageLifecycle`, revenue/rules cards, `GenesisMaidenVoyageFaq` |
+| Learn more (below funnel) | Collapsed `<details>` groups for lifecycle, revenue/rules, and FAQ |
 
 Shared dark tokens: [`maidenVoyageLayoutStyles.ts`](../src/components/genesis/maidenVoyageLayoutStyles.ts). Stats derivation: [`maidenVoyageStatsBar.ts`](../src/utils/maidenVoyageStatsBar.ts) + [`maidenVoyageConfidenceStats.ts`](../src/utils/maidenVoyageConfidenceStats.ts).
 

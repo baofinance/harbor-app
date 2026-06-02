@@ -8,7 +8,14 @@ import { GenesisHowItWorksSteps } from "./GenesisHowItWorksSteps";
 export function GenesisCampaignHero() {
   return (
     <div className="mb-6 flex flex-col">
-      <GenesisMaidenVoyagePageHeader />
+      <GenesisMaidenVoyagePageHeader
+        stats={{
+          featuredTvlUsd: null,
+          featuredTvlLabel: null,
+          voyageNumber: 0,
+          completedLaunchesCount: 0,
+        }}
+      />
       <GenesisMaidenVoyageHeroCopy />
       <GenesisHowItWorksSteps />
     </div>

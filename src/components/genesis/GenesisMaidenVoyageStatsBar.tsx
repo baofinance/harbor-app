@@ -33,7 +33,7 @@ export function GenesisMaidenVoyageStatsBar({
 
   return (
     <section
-      className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
+      className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between lg:hidden"
       aria-label="Maiden Voyage overview"
     >
       <div className="flex items-center gap-2">

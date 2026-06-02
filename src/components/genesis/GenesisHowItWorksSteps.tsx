@@ -43,7 +43,7 @@ function StepColumn({
         <Icon className="h-5 w-5" aria-hidden />
       </span>
       <h2 className="mt-2 text-sm font-semibold text-white/90">{title}</h2>
-      <p className="mt-1 min-h-[2.5rem] max-w-[11rem] text-xs leading-relaxed text-white/50">
+      <p className="mt-1 min-h-[2.2rem] max-w-[11rem] text-xs leading-snug text-white/50">
         {body}
       </p>
     </li>
@@ -52,8 +52,8 @@ function StepColumn({
 
 export function GenesisHowItWorksSteps() {
   return (
-    <div className="mt-6">
-      <ol className="flex flex-col gap-6 md:hidden">
+    <div className="mt-5">
+      <ol className="flex flex-col gap-5 md:hidden">
         {STEPS.map((step) => (
           <StepColumn key={step.title} {...step} />
         ))}

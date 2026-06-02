@@ -40,6 +40,13 @@ export const MAIDEN_VOYAGE_REVENUE_SHARE_BULLETS = [
   "Staying deposited in Harbor tokens after launch helps you keep benefiting from that share.",
 ] as const;
 
+export const MAIDEN_VOYAGE_WHY_JOIN_BULLETS = [
+  "Earn 5% of market revenue forever",
+  "Permanent share, limited opportunity",
+  "Anchor + Sail tokens at launch",
+  "Boosted yield for early supporters",
+] as const;
+
 export type MaidenVoyageYieldRule = {
   id: string;
   label: string;

@@ -437,7 +437,7 @@ export default function GenesisIndexPage() {
   return (
     <div className="relative mx-auto flex min-h-0 w-full max-w-[1300px] flex-1 flex-col font-sans text-white">
       <main className="container mx-auto px-4 pb-6 pt-2 sm:px-10 sm:pt-4">
-        <GenesisMaidenVoyagePageHeader />
+        <GenesisMaidenVoyagePageHeader stats={statsBarData} />
 
         {combinedHasIndexerErrors ? (
           <GenesisErrorBanner
@@ -474,15 +474,21 @@ export default function GenesisIndexPage() {
         ) : null}
 
         <GenesisMaidenVoyageHeroRow
+          stats={statsBarData}
+          yieldRevSharePct={activeMarketData?.yieldRevSharePct ?? null}
           activeCard={
             activeMarketData
               ? {
                   market: activeMarketData.mkt,
                   marketId: activeMarketData.marketId,
+                  stats: statsBarData,
                   capDisplay: activeMarketData.capDisplay,
                   capLoading: activeMarketData.capLoading,
                   capUnavailable: activeMarketData.capUnavailable,
                   voyageStatus: activeMarketData.voyageStatus,
+                  endDate: activeMarketData.mkt.genesis?.endDate,
+                  yieldRevSharePct: activeMarketData.yieldRevSharePct,
+                  genesisAddress: activeMarketData.genesisAddress,
                   userDepositDisplay: activeMarketData.userDepositDisplay,
                   isConnected,
                   isClaiming: claimingMarket === activeMarketData.marketId,
@@ -539,18 +545,41 @@ export default function GenesisIndexPage() {
 
         <GenesisVoyageFooterNotice />
 
-        <section className="mt-10 border-t border-white/10 pt-8" aria-label="Learn more">
+        <section
+          id="maiden-voyage-learn"
+          className="mt-10 border-t border-white/10 pt-8"
+          aria-label="Learn more"
+        >
           <h2 className="mb-6 text-xs font-medium uppercase tracking-wider text-white/50">
             Learn more
           </h2>
-          <GenesisMaidenVoyageLifecycle />
-          <div className="mb-8 grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <GenesisRevenueShareSection />
-            <GenesisYieldShareRulesCard
-              yieldRevSharePct={activeMarketData?.yieldRevSharePct ?? null}
-            />
-          </div>
-          <GenesisMaidenVoyageFaq />
+          <details className="mb-4 rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3">
+            <summary className="cursor-pointer text-sm font-semibold text-white/90">
+              How a voyage works
+            </summary>
+            <div className="mt-4">
+              <GenesisMaidenVoyageLifecycle />
+            </div>
+          </details>
+          <details className="mb-4 rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3">
+            <summary className="cursor-pointer text-sm font-semibold text-white/90">
+              Revenue &amp; rules
+            </summary>
+            <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+              <GenesisRevenueShareSection />
+              <GenesisYieldShareRulesCard
+                yieldRevSharePct={activeMarketData?.yieldRevSharePct ?? null}
+              />
+            </div>
+          </details>
+          <details className="rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3">
+            <summary className="cursor-pointer text-sm font-semibold text-white/90">
+              FAQ
+            </summary>
+            <div className="mt-4">
+              <GenesisMaidenVoyageFaq />
+            </div>
+          </details>
         </section>
       </main>
 
