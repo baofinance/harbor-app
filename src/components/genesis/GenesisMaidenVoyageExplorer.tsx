@@ -34,6 +34,7 @@ import {
   MV_TYPE_TAG,
   MV_UPCOMING_BADGE,
   MV_DETAILS_PANEL,
+  MV_GLASS_HOVER,
 } from "./maidenVoyageLayoutStyles";
 
 const EXPLORER_TABS = [
@@ -289,7 +290,7 @@ export function GenesisMaidenVoyageExplorer({
         <div className="mt-4" id="maiden-voyage-archived">
           <button
             type="button"
-            className={`flex w-full items-center justify-between gap-2 ${MV_DETAILS_PANEL} px-4 py-3 text-left transition hover:bg-white/[0.06]`}
+            className={`flex w-full items-center justify-between gap-2 ${MV_DETAILS_PANEL} ${MV_GLASS_HOVER} px-4 py-3 text-left`}
             onClick={() => setArchivedExpanded((v) => !v)}
             aria-expanded={archivedExpanded}
           >
